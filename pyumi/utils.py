@@ -6,7 +6,7 @@ import unicodedata
 
 import numpy as np
 
-from pyumi import settings
+from . import settings
 
 
 def config(data_folder=settings.data_folder,
@@ -18,9 +18,10 @@ def config(data_folder=settings.data_folder,
            log_console=settings.log_console,
            log_level=settings.log_level,
            log_name=settings.log_name,
-           log_filename=settings.log_filename):
+           log_filename=settings.log_filename,
+           useful_idf_objects=settings.useful_idf_objects):
     """
-    Configure pyumi by setting the default global vars to desired values.
+    Configure osmnx by setting the default global vars to desired values.
 
     Parameters
     ---------
@@ -43,6 +44,8 @@ def config(data_folder=settings.data_folder,
         one of the logger.level constants
     log_name : string
         name of the logger
+    useful_idf_objects : list
+        a list of useful idf objects
 
     Returns
     -------
@@ -60,6 +63,7 @@ def config(data_folder=settings.data_folder,
     settings.log_level = log_level
     settings.log_name = log_name
     settings.log_filename = log_filename
+    settings.useful_idf_objects = useful_idf_objects
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
@@ -155,7 +159,7 @@ def get_logger(level=None, name=None, filename=None):
 
         # get today's date and construct a log filename
         todays_date = dt.datetime.today().strftime('%Y_%m_%d')
-        log_filename = '{}/{}_{}.log'.format(settings.logs_folder, filename, todays_date)
+        log_filename = os.path.join(settings.logs_folder, '{}_{}.log'.format(filename, todays_date))
 
         # if the logs folder does not already exist, create it
         if not os.path.exists(settings.logs_folder):
@@ -187,7 +191,7 @@ def make_str(value):
     """
     try:
         # for python 2.x compatibility, use unicode
-        return np.unicode(value)
+        return unicode(value)
     except NameError:
         # python 3.x has no unicode type, so if error, use str type
         return str(value)

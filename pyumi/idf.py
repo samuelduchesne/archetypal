@@ -1,4 +1,8 @@
+import time
+
 import pandas as pd
+
+from .utils import log
 
 
 def parse_idfs(idf_list, ep_object, keys=None, groupby_name=True):
@@ -11,6 +15,7 @@ def parse_idfs(idf_list, ep_object, keys=None, groupby_name=True):
     :return: DataFrame of all specifed objects in idf files
     """
     container = []
+    start_time = time.time()
     for idf in idf_list:
         this_frame = idf.idfobjects[ep_object]
         this_frame = [get_values(frame) for frame in this_frame]
@@ -24,6 +29,7 @@ def parse_idfs(idf_list, ep_object, keys=None, groupby_name=True):
         this_frame = this_frame.groupby('Name').first()
     this_frame.reset_index(inplace=True)
     this_frame.index.rename('$id', inplace=True)
+    log('Parsed {} {} objects in {:,.2f} seconds'.format(len(idf_list), ep_object, time.time() - start_time))
     return this_frame
 
 

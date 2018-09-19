@@ -64,3 +64,5 @@ target/
 data/
 
 energy-table\.xlsx
+
+main-test\.py

@@ -33,6 +33,8 @@ def object_from_idfs(idfs, ep_object, keys=None, groupby_name=True):
         this_frame = pd.concat(container, keys=keys, names=['Archetype', '$id'], sort=True)
         this_frame.reset_index(inplace=True)
         this_frame.drop(columns='$id', inplace=True)
+    else:
+        this_frame = pd.concat(container)
     if groupby_name:
         this_frame = this_frame.groupby('Name').first()
     this_frame.reset_index(inplace=True)

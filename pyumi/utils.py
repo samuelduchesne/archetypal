@@ -1,8 +1,10 @@
 import datetime as dt
+import json
 import logging as lg
 import os
 import sys
 import unicodedata
+from pandas.io.json import json_normalize
 
 import numpy as np
 
@@ -195,3 +197,45 @@ def make_str(value):
     except NameError:
         # python 3.x has no unicode type, so if error, use str type
         return str(value)
+
+
+def load_umi_template_objects(filename):
+    """
+    Reads
+    :param filename: string
+        Path of template file
+    :return: dict
+        Dict of umi_objects
+    """
+    with open(filename) as f:
+        umi_objects = json.load(f)
+    return umi_objects
+
+
+def umi_template_object_to_dataframe(umi_dict, umi_object):
+    """
+    Returns flattened DataFrame of umi_objects
+    :param umi_dict: dict
+        dict of umi objects
+    :param umi_object: string
+        umi_object name
+    :return: DataFrame
+
+    """
+    return json_normalize(umi_dict[umi_object])
+
+
+def get_list_of_common_umi_objects(filename):
+    umi_objects = load_umi_template_objects(filename)
+
+
+def newrange(previous, following):
+    """
+    Takes the previous data
+    :param previous:
+    :param following:
+    :return:
+    """
+    from_index = previous.iloc[[-1]].index.values + 1
+    to_index = from_index + len(following)
+    return np.arange(from_index, to_index)

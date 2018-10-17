@@ -4,15 +4,13 @@ import math
 import numpy as np
 
 
-def simple_glazing(shgc, u_factor, visible_transmisstance):
+def simple_glazing(shgc, u_factor, visible_transmittance):
     """
     Calculates the physical properties of an equivalent single pane of glass from the solar_heat_gain_coefficient,
     the U_factor and the Visible Transmittance.
-    :param visible_transmisstance: Visible Transmittance
+    :param visible_transmittance: Visible Transmittance
     :param shgc: Solar Heat Gain Coefficient
     :param u_factor: U-factor
-    :param t_vis: Layer’s Visible Transmittance at normal incidence
-
     :return dict:
     """
 
@@ -20,8 +18,8 @@ def simple_glazing(shgc, u_factor, visible_transmisstance):
         shgc = float(shgc)
     if isinstance(u_factor, str):
         u_factor = float(u_factor)
-    if isinstance(visible_transmisstance, str):
-        visible_transmisstance = float(visible_transmisstance)
+    if isinstance(visible_transmittance, str):
+        visible_transmittance = float(visible_transmittance)
 
     dict = {}
 
@@ -61,7 +59,7 @@ def simple_glazing(shgc, u_factor, visible_transmisstance):
 
     # Step 6. Determine Layer Visible Properties
 
-    T_vis = visible_transmisstance
+    T_vis = visible_transmittance
 
     R_vis_b = r_vis_b(T_vis)
     R_vis_f = r_vis_f(T_vis)

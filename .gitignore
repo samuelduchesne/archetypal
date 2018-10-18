@@ -83,3 +83,5 @@ main-test\.py
 *.dbg
 *.eso
 *.mtr
+
+cache/

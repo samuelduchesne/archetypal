@@ -1,10 +1,12 @@
 import logging as lg
 
 # locations to save data, logs, images, and cache
+
 data_folder = 'data'
 logs_folder = 'logs'
 imgs_folder = 'images'
 cache_folder = 'cache'
+umitemplate = 'data/BostonTemplateLibrary.json'
 
 # cache server responses
 use_cache = False
@@ -59,3 +61,6 @@ available_sqlite_tables = {'ComponentSizes':{'PrimaryKey':['ComponentSizesIndex'
 'StringTypes':{'PrimaryKey':['StringTypeIndex'],'ParseDates':[]},
 'TabularDataWithStrings':{'PrimaryKey':['TabularDataIndex'],'ParseDates':[]},
 'Errors':{'PrimaryKey':['ErrorIndex'],'ParseDates':[]}}
+
+# common_umi_objects
+common_umi_objects = []

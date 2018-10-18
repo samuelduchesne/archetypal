@@ -8,6 +8,7 @@ from pandas.io.json import json_normalize
 
 import numpy as np
 
+from . import load_umi_template
 from . import settings
 
 
@@ -21,7 +22,8 @@ def config(data_folder=settings.data_folder,
            log_level=settings.log_level,
            log_name=settings.log_name,
            log_filename=settings.log_filename,
-           useful_idf_objects=settings.useful_idf_objects):
+           useful_idf_objects=settings.useful_idf_objects,
+           umitemplate = settings.umitemplate):
     """
     Configure osmnx by setting the default global vars to desired values.
 
@@ -66,6 +68,8 @@ def config(data_folder=settings.data_folder,
     settings.log_name = log_name
     settings.log_filename = log_filename
     settings.useful_idf_objects = useful_idf_objects
+    settings.umitemplate = umitemplate
+    settings.common_umi_objects = get_list_of_common_umi_objects(settings.umitemplate)
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
@@ -226,7 +230,13 @@ def umi_template_object_to_dataframe(umi_dict, umi_object):
 
 
 def get_list_of_common_umi_objects(filename):
-    umi_objects = load_umi_template_objects(filename)
+    umi_objects = load_umi_template(filename)
+    components = {}
+    for umi_dict in umi_objects:
+        for x in umi_dict:
+            #         print(umi_dict[x].columns.tolist())
+            components[x] = umi_dict[x].columns.tolist()
+    return components
 
 
 def newrange(previous, following):

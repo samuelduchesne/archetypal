@@ -108,35 +108,97 @@ def load_idf(files, idd_filename=None, openstudio_version=None):
             else:
                 log('The necessary IDD file could not be found', level=lg.ERROR)
                 raise ValueError('File Energy+.idd could not be found')
-        print(idd_filename)
         if idd_filename:
             log('Retrieved OpenStudio IDD file at location: {}'.format(idd_filename))
 
-    # Loading eppy
-    IDF.setiddname(idd_filename)
-    idfs = []
-    start_time = time.time()
+    dirnames = [os.path.dirname(path) for path in files]
+    idfs = {}
     for file in files:
-        idf_object = IDF(file)
+        eplus_finename = os.path.basename(file)
+        idfs[eplus_finename] = load_idf_object_from_cache(file)
+    objects_found = {k: v for k, v in idfs.items() if v is not None}
+    objects_not_found = [k for k, v in idfs.items() if v is None]
+    if not objects_not_found:
+        # if objects_not_found not empty, return the ones we actually did find and pass the other ones
+        return list(objects_found.values())
+    else:
+        files = [os.path.join(dir, run) for dir, run in zip(dirnames, objects_not_found)]
+        # Loading eppy
+        IDF.setiddname(idd_filename)
+        idfs = []
+        start_time = time.time()
+        for file in files:
+            idf_object = IDF(file)
 
-        # Check version of IDF file against version of IDD file
-        idf_version = idf_object.idfobjects['VERSION'][0].Version_Identifier
-        idd_version = '{}.{}'.format(idf_object.idd_version[0], idf_object.idd_version[1])
-        building = idf_object.idfobjects['BUILDING'][0]
-        if idf_version == idd_version:
-            log('The version of the IDF file {} : version {}, matched the version of EnergyPlus {}, '
-                'version {} used to parse it.'.format(building.Name, idf_version,
-                                                      idd_filename, idd_version),
-                level=lg.DEBUG)
-        else:
-            log('The version of the IDF file {} : version {}, does not match the version of EnergyPlus {}, '
-                'version {} used to parse it.'.format(idf_object.idfobjects['BUILDING:Name'], idf_version,
-                                                      idd_filename, idd_version),
-                level=lg.WARNING)
-        idfs.append(idf_object)
+            # Check version of IDF file against version of IDD file
+            idf_version = idf_object.idfobjects['VERSION'][0].Version_Identifier
+            idd_version = '{}.{}'.format(idf_object.idd_version[0], idf_object.idd_version[1])
+            building = idf_object.idfobjects['BUILDING'][0]
+            if idf_version == idd_version:
+                log('The version of the IDF file {} : version {}, matched the version of EnergyPlus {}, '
+                    'version {} used to parse it.'.format(building.Name, idf_version,
+                                                          idd_filename, idd_version),
+                    level=lg.DEBUG)
+            else:
+                log('The version of the IDF file {} : version {}, does not match the version of EnergyPlus {}, '
+                    'version {} used to parse it.'.format(idf_object.idfobjects['BUILDING:Name'], idf_version,
+                                                          idd_filename, idd_version),
+                    level=lg.WARNING)
+            save_idf_object_to_cache(idf_object, file)
+            idfs.append(idf_object)
 
-    log('Parsed {} idf file(s) in {:,.2f} seconds'.format(len(files), time.time() - start_time))
-    return idfs
+        log('Parsed {} idf file(s) in {:,.2f} seconds'.format(len(files), time.time() - start_time))
+        return idfs
+
+
+def save_idf_object_to_cache(idf_object, idf_file):
+    """Save IDFS instance to a gzip'ed pickle file
+    :param idfs: array
+    :param folder: str
+        location to save file
+    """
+    if settings.use_cache:
+        cache_filename = hash_file(idf_file)
+        cache_dir = os.path.join(settings.cache_folder, cache_filename)
+        cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename, os.extsep.join([
+            cache_filename + 'idfs','gzip']))
+
+        # create the folder on the disk if it doesn't already exist
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir)
+        # create pickle and dump
+        import gzip
+        try:
+            import cPickle as pickle
+        except ImportError:
+            import pickle
+        start_time = time.time()
+        with gzip.GzipFile(cache_fullpath_filename, 'wb') as file_handle:
+            pickle.dump(idf_object, file_handle)
+        log('Saved pickle to file in {:,.2f} seconds'.format(time.time() - start_time))
+
+
+def load_idf_object_from_cache(idf_file):
+    """
+    Load an idf instance from a gzip'ed pickle file
+    :param idfs:
+    """
+    if settings.use_cache:
+        import gzip
+        try:
+            import cPickle as pickle
+        except ImportError:
+            import pickle
+        start_time = time.time()
+        cache_filename = hash_file(idf_file)
+        cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename, os.extsep.join([
+            cache_filename + 'idfs', 'gzip']))
+        if os.path.isfile(cache_fullpath_filename):
+            with gzip.GzipFile(cache_fullpath_filename, 'r') as file_handle:
+                idf = pickle.load(file_handle)
+            log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(os.path.basename(idf_file), time.time() -
+                                                                          start_time))
+            return idf
 
 
 def get_values(frame):

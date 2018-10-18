@@ -6,9 +6,15 @@ import time
 
 import pandas as pd
 from eppy.modeleditor import IDF
+from eppy.runner.run_functions import multirunner
 
 from . import settings
 from .utils import log
+
+try:
+    import multiprocessing as mp
+except ImportError:
+    pass
 
 
 def object_from_idfs(idfs, ep_object, keys=None, groupby_name=True):
@@ -138,15 +144,16 @@ def get_values(frame):
     return pd.DataFrame([frame.fieldvalues[0:ncols]], columns=frame.fieldnames[0:ncols])
 
 
-def run_eplus(eplus_path, weather_file, eplus_file, output_folder=None, output_report='htm', **kwargs):
+def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0', output_report='htm', processors=6,
+              **kwargs):
     """
     Run an energy plus file and returns the SummaryReports Tables in a return a list of [(title, table), .....]
 
-    :param eplus_path: str
-        path to the EnergyPlus executable
+    :param ep_version: str
+        the EnergyPlus version to use eg: 8-9-0
     :param weather_file: str
         path to the WeatherFile
-    :param eplus_file: str
+    :param eplus_file: str or list
         path to the idf file
     :param output_folder: str
         path to the output folder. Will default to the settings.cache_folder value.
@@ -154,7 +161,6 @@ def run_eplus(eplus_path, weather_file, eplus_file, output_folder=None, output_r
         a dict of {title : table <DataFrame>, .....}
     """
 
-    import subprocess
     # If python 2.7: `from __future__ import print_function`
 
     if not output_folder:
@@ -163,58 +169,105 @@ def run_eplus(eplus_path, weather_file, eplus_file, output_folder=None, output_r
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     log('Output folder set to {}'.format(output_folder))
+    if isinstance(eplus_files, str):
+        # Treat str as an array
+        eplus_files = [eplus_files]
+    dirnames = [os.path.dirname(path) for path in eplus_files]
+    # Try to get cached results
+    cached_run_results = {}
+    for eplus_file in eplus_files:
+        eplus_finename = os.path.basename(eplus_file)
+        cached_run_results[eplus_finename] = get_from_cache(eplus_file, output_report, **kwargs)
 
-    cached_run_results = get_from_cache(eplus_file, output_report, **kwargs)
-    if cached_run_results is not None:
-        # found this run in the cache, just return it instead of making a
+    runs_found = {k: v for k, v in cached_run_results.items() if v is not None}
+    runs_not_found = [k for k, v in cached_run_results.items() if v is None]
+    if not runs_not_found:
+        # found these runs in the cache, just return them instead of making a
         # new eplus call
-        return cached_run_results
+        return runs_found
 
+        # continue
+        # with simulation of other files
     else:
+        # some runs not found
+        log('None or some runs could could be found. Running Eplus for {} out of {} files'.format(len(runs_not_found),
+                                                                                                  len(eplus_files)))
+        eplus_files = [os.path.join(dir, run) for dir, run in zip(dirnames, runs_not_found)]
+
         start_time = time.time()
-        # hash the eplus_file name (to make shorter than the often extremely long name)
-        filename_prefix = hashlib.md5(eplus_file.encode('utf-8')).hexdigest()
+        if processors <= 0:
+            processors = max(1, mp.cpu_count() - processors)
+
+        # shutil.rmtree("multi_runs", ignore_errors=True)
+        # os.mkdir("multi_runs")
+
+        processed_runs = []
+        for i, eplus_file in enumerate(eplus_files):
+            filename = os.path.basename(eplus_file)
+            # hash the eplus_file name (to make shorter than the often extremely long name)
+            filename_prefix = hash_file(eplus_file)
+            epw = weather_file
+            kwargs = {'output_directory': output_folder + '/{}'.format(filename_prefix),
+                      'ep_version': ep_version,
+                      'output_prefix': filename_prefix}
+            idf_path = os.path.abspath(eplus_file)  # TODO Should copy idf somewhere else before running
+            processed_runs.append([[idf_path, epw], kwargs])
 
         log('Running EnergyPlus...')
         # We run the EnergyPlus Simulation
-        popen = subprocess.Popen([eplus_path, "-w", weather_file, "-d", output_folder, "-p", filename_prefix,
-                                  eplus_file], stdout=subprocess.PIPE, universal_newlines=True)
-
-        # Might need to use `#for stdout_line in iter(popen.stdout.readline, ""):` instead in python 2.7
-        for stdout_line in popen.stdout:
-            log(stdout_line, level=lg.DEBUG)
-
-        popen.stdout.close()
-        return_code = popen.wait()
-
-        if return_code:
-            raise subprocess.CalledProcessError(return_code, popen.args)
-        log('EPlus Run completed in {:,.2f} seconds'.format(time.time() - start_time))
-        log('Saved outputs to cache files "{}*"'.format(os.path.join(output_folder, filename_prefix)))
-
+        try:
+            pool = mp.Pool(processors)
+            pool.map(multirunner, processed_runs)
+            pool.close()
+        except NameError:
+            # multiprocessing not present so pass the jobs one at a time
+            for job in processed_runs:
+                multirunner([job])
+        log('Completed EnergyPlus in {:,.2f} seconds'.format(time.time() - start_time))
         # Return summary DataFrames
-        return get_report(filename_prefix, output_folder, output_report, **kwargs)
+        reports = {}
+        for eplus_file in eplus_files:
+            eplus_finename = os.path.basename(eplus_file)
+            runs_found[eplus_finename] = get_report(eplus_file, output_folder, output_report, **kwargs)
+        return runs_found
 
 
-def get_report(filename_prefix, output_folder=None, output_report='htm', **kwargs):
-    print(kwargs)
+def hash_file(eplus_file):
+    """
+    Simple function to hash a file and return it as a string.
+    :param eplus_file: str
+        the path to the idf file
+    :return: str
+        hashed file string
+    """
+    hasher = hashlib.md5()
+    with open(eplus_file, 'rb') as afile:
+        buf = afile.read()
+        hasher.update(buf)
+    return hasher.hexdigest()
+
+
+def get_report(eplus_file, output_folder=None, output_report='htm', **kwargs):
+    filename = os.path.basename(eplus_file)
+    filename_prefix = hash_file(eplus_file)
     if 'htm' in output_report.lower():
         # Get the html report
-        fullpath_filename = os.path.join(output_folder,
-                                               os.extsep.join([filename_prefix + 'tbl', 'htm']))
+        fullpath_filename = os.path.join(output_folder, filename_prefix,
+                                         os.extsep.join([filename_prefix + 'tbl', 'htm']))
         if os.path.isfile(fullpath_filename):
             return get_html_report(fullpath_filename)
 
     elif 'sql' in output_report.lower():
-        # Get the html report
-        fullpath_filename = os.path.join(output_folder,
+        # Get the sql report
+        fullpath_filename = os.path.join(output_folder, filename_prefix,
                                          os.extsep.join([filename_prefix + 'out', 'sql']))
         if os.path.isfile(fullpath_filename):
             try:
                 if kwargs['report_tables']:
                     return get_sqlite_report(fullpath_filename, kwargs['report_tables'])
             except:
-                    return get_sqlite_report(fullpath_filename)
+                return get_sqlite_report(fullpath_filename)
+
 
 def get_from_cache(eplus_file, output_report='htm', **kwargs):
     """
@@ -229,17 +282,17 @@ def get_from_cache(eplus_file, output_report='htm', **kwargs):
     """
     if settings.use_cache:
         # determine the filename by hashing the eplus_file
-        cache_filename_prefix = hashlib.md5(eplus_file.encode('utf-8')).hexdigest()
+        cache_filename_prefix = hash_file(eplus_file)
         if 'htm' in output_report.lower():
             # Get the html report
-            cache_fullpath_filename = os.path.join(settings.cache_folder,
+            cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename_prefix,
                                                    os.extsep.join([cache_filename_prefix + 'tbl', 'htm']))
             if os.path.isfile(cache_fullpath_filename):
                 return get_html_report(cache_fullpath_filename)
 
         elif 'sql' in output_report.lower():
             # get the SQL report
-            cache_fullpath_filename = os.path.join(settings.cache_folder,
+            cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename_prefix,
                                                    os.extsep.join([cache_filename_prefix + 'out', 'sql']))
             if os.path.isfile(cache_fullpath_filename):
                 try:

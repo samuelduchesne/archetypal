@@ -32,6 +32,7 @@ def object_from_idfs(idfs, ep_object, keys=None, groupby_name=True):
     """
     container = []
     start_time = time.time()
+    log('Parsing {} {} objects'.format(len(idfs), ep_object))
     for idf in idfs:
         # Load objects from IDF files and concatenate
         this_frame = object_from_idf(idf, ep_object)

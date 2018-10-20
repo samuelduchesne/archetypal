@@ -32,7 +32,7 @@ def object_from_idfs(idfs, ep_object, keys=None, groupby_name=True):
     """
     container = []
     start_time = time.time()
-    log('Parsing {} {} objects'.format(len(idfs), ep_object))
+    log('Parsing {} {} objects...'.format(len(idfs), ep_object))
     for idf in idfs:
         # Load objects from IDF files and concatenate
         this_frame = object_from_idf(idf, ep_object)
@@ -112,17 +112,31 @@ def load_idf(files, idd_filename=None, openstudio_version=None):
         if idd_filename:
             log('Retrieved OpenStudio IDD file at location: {}'.format(idd_filename))
 
+    # Try loading IDF objects from pickled cache first
     dirnames = [os.path.dirname(path) for path in files]
-    idfs = {}
-    for file in files:
-        eplus_finename = os.path.basename(file)
-        idfs[eplus_finename] = load_idf_object_from_cache(file)
+    try:
+        start_time = time.time()
+        import concurrent.futures
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            idfs = {os.path.basename(file): result for file, result in zip(files, executor.map(
+                load_idf_object_from_cache, files))}
+            log('Parallel parsing completed in {:,.2f} seconds'.format(time.time() - start_time))
+    except NameError:
+        # multiprocessing not present so pass the jobs one at a time
+        start_time = time.time()
+        idfs = {}
+        for file in files:
+            eplus_finename = os.path.basename(file)
+            idfs[eplus_finename] = load_idf_object_from_cache(file)
+        log('Parsing completed in {:,.2f} seconds'.format(time.time() - start_time))
+
     objects_found = {k: v for k, v in idfs.items() if v is not None}
     objects_not_found = [k for k, v in idfs.items() if v is None]
     if not objects_not_found:
         # if objects_not_found not empty, return the ones we actually did find and pass the other ones
         return list(objects_found.values())
     else:
+        # Else, run eppy to load the idf objects
         files = [os.path.join(dir, run) for dir, run in zip(dirnames, objects_not_found)]
         # Loading eppy
         IDF.setiddname(idd_filename)
@@ -245,7 +259,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
         start_time = time.time()
         import concurrent.futures
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            cached_run_results = {eplus_finename: result for eplus_finename, result in
+            cached_run_results = {os.path.basename(eplus_finename): result for eplus_finename, result in
                                   zip(eplus_files, executor.map(get_from_cache_pool, processed_cache))}
             log('Parallel parsing completed in {:,.2f} seconds'.format(time.time() - start_time))
     except NameError:

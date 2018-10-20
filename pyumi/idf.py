@@ -236,11 +236,26 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
         # Treat str as an array
         eplus_files = [eplus_files]
     dirnames = [os.path.dirname(path) for path in eplus_files]
+
     # Try to get cached results
-    cached_run_results = {}
+    processed_cache = []
     for eplus_file in eplus_files:
-        eplus_finename = os.path.basename(eplus_file)
-        cached_run_results[eplus_finename] = get_from_cache(eplus_file, output_report, **kwargs)
+        processed_cache.append([eplus_file, output_report, kwargs])
+    try:
+        start_time = time.time()
+        import concurrent.futures
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            cached_run_results = {eplus_finename: result for eplus_finename, result in
+                                  zip(eplus_files, executor.map(get_from_cache_pool, processed_cache))}
+            log('Parallel parsing completed in {:,.2f} seconds'.format(time.time() - start_time))
+    except NameError:
+        # multiprocessing not present so pass the jobs one at a time
+        cached_run_results = {}
+        start_time = time.time()
+        for eplus_file in eplus_files:
+            eplus_finename = os.path.basename(eplus_file)
+            cached_run_results[eplus_finename] = get_from_cache(eplus_file, output_report, **kwargs)
+        log('Parsing completed in {:,.2f} seconds'.format(time.time() - start_time))
 
     runs_found = {k: v for k, v in cached_run_results.items() if v is not None}
     runs_not_found = [k for k, v in cached_run_results.items() if v is None]
@@ -299,6 +314,16 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
             eplus_finename = os.path.basename(eplus_file)
             runs_found[eplus_finename] = get_report(eplus_file, output_folder, output_report, **kwargs)
         return runs_found
+
+
+def get_from_cache_pool(args):
+    """Wrapper for get_from_cache() to be used when laoding in parallel.
+    Parameters
+    ----------
+    args : list
+        A list made up of arguments.
+    """
+    return get_from_cache(args[0], args[1])  # Todo: Settup arguments as Locals()
 
 
 def hash_file(eplus_file):

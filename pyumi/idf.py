@@ -162,7 +162,7 @@ def save_idf_object_to_cache(idf_object, idf_file):
         cache_filename = hash_file(idf_file)
         cache_dir = os.path.join(settings.cache_folder, cache_filename)
         cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename, os.extsep.join([
-            cache_filename + 'idfs','gzip']))
+            cache_filename + 'idfs', 'gzip']))
 
         # create the folder on the disk if it doesn't already exist
         if not os.path.exists(cache_dir):
@@ -264,6 +264,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
         # shutil.rmtree("multi_runs", ignore_errors=True)
         # os.mkdir("multi_runs")
 
+        from shutil import copyfile
         processed_runs = []
         for i, eplus_file in enumerate(eplus_files):
             filename = os.path.basename(eplus_file)
@@ -275,6 +276,11 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
                       'output_prefix': filename_prefix}
             idf_path = os.path.abspath(eplus_file)  # TODO Should copy idf somewhere else before running
             processed_runs.append([[idf_path, epw], kwargs])
+
+            # Put a copy of the file in its cache folder
+            if not os.path.isfile(os.path.join(kwargs['output_directory'], os.path.basename(eplus_file))):
+                os.mkdir(kwargs['output_directory'])
+                copyfile(eplus_file, os.path.join(kwargs['output_directory'], os.path.basename(eplus_file)))
 
         log('Running EnergyPlus...')
         # We run the EnergyPlus Simulation

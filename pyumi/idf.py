@@ -186,7 +186,7 @@ def eppy_load(file, idd_filename):
     from eppy.modeleditor import IDF
     # Loading eppy
     IDF.setiddname(idd_filename)
-    idf_object = IDF(file)
+    with IDF(file) as idf_object:
     # Check version of IDF file against version of IDD file
     idf_version = idf_object.idfobjects['VERSION'][0].Version_Identifier
     idd_version = '{}.{}'.format(idf_object.idd_version[0], idf_object.idd_version[1])

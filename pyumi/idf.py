@@ -129,8 +129,9 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
         with concurrent.futures.ProcessPoolExecutor() as executor:
             idfs = {os.path.basename(file): result for file, result in zip(files, executor.map(
                 load_idf_object_from_cache, files))}
-    except NameError:
+    except Exception as e:
         # multiprocessing not present so pass the jobs one at a time
+        log('Error with the following exception : {}\nCannot use parallel load'.format(e))
         log('Parsing IDF Objects...')
         idfs = {}
         for file in files:
@@ -155,15 +156,15 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
             runs.append([file, idd_filename])
         # Parallel load
         try:
-            # raise NameError('Parallel loading of eppy objects is not yet supported')
             start_time = time.time()
             import concurrent.futures
             with concurrent.futures.ProcessPoolExecutor() as executor:
                 idfs = [idf_object for idf_object in executor.map(eppy_load_pool, runs)] # TODO : Will probably break when dict is asked
                 log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(files), time.time() -
                                                                                              start_time))
-        except NameError:
+        except Exception as e:
             # multiprocessing not present so pass the jobs one at a time
+            log('Error with the following exception : {}\nCannot use parallel load'.format(e))
             idfs = {}
             start_time = time.time()
             for file in files:

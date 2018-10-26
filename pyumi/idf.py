@@ -184,21 +184,21 @@ def eppy_load(file, idd_filename):
     # Loading eppy
     IDF.setiddname(idd_filename)
     with IDF(file) as idf_object:
-    # Check version of IDF file against version of IDD file
-    idf_version = idf_object.idfobjects['VERSION'][0].Version_Identifier
-    idd_version = '{}.{}'.format(idf_object.idd_version[0], idf_object.idd_version[1])
-    building = idf_object.idfobjects['BUILDING'][0]
-    if idf_version == idd_version:
-        log('The version of the IDF file {} : version {}, matched the version of EnergyPlus {}, '
-            'version {} used to parse it.'.format(building.Name, idf_version,
-                                                  idf_object.getiddname(), idd_version),
-            level=lg.DEBUG)
-    else:
-        log('The version of the IDF file {} : version {}, does not match the version of EnergyPlus {}, '
-            'version {} used to parse it.'.format(idf_object.idfobjects['BUILDING'][0].Name, idf_version,
-                                                  idf_object.getiddname(), idd_version),
-            level=lg.WARNING)
-    save_idf_object_to_cache(idf_object, idf_object.idfname)
+        # Check version of IDF file against version of IDD file
+        idf_version = idf_object.idfobjects['VERSION'][0].Version_Identifier
+        idd_version = '{}.{}'.format(idf_object.idd_version[0], idf_object.idd_version[1])
+        building = idf_object.idfobjects['BUILDING'][0]
+        if idf_version == idd_version:
+            log('The version of the IDF file {} : version {}, matched the version of EnergyPlus {}, '
+                'version {} used to parse it.'.format(building.Name, idf_version,
+                                                      idf_object.getiddname(), idd_version),
+                level=lg.DEBUG)
+        else:
+            log('The version of the IDF file {} : version {}, does not match the version of EnergyPlus {}, '
+                'version {} used to parse it.'.format(idf_object.idfobjects['BUILDING'][0].Name, idf_version,
+                                                      idf_object.getiddname(), idd_version),
+                level=lg.WARNING)
+        save_idf_object_to_cache(idf_object, idf_object.idfname)
     return idf_object
 
 

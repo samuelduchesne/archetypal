@@ -119,13 +119,57 @@ def materials_glazing(idfs):
     sgs = get_simple_glazing_system(idfs)
     if not sgs.empty:
         log('Appending to WINDOWMATERIAL:GLAZING DataFrame...')
-            'list...'.format(len(sgs)))
         materials_df = materials_df.set_index('$id').append(sgs, ignore_index=True, sort=True)
     materials_df = materials_df.reset_index(drop=True).rename_axis('$id').reset_index()
     # Return the Dataframe
     log('Returning {} WINDOWMATERIAL:GLAZING objects in a DataFrame'.format(len(materials_df)))
     return materials_df[cols].set_index('$id')
 
+
+def materials_opaque(idfs):
+    mass = get_mass_materials(idfs)
+    nomass = get_nomass_materials(idfs)
+    materials_df = pd.concat([mass,nomass], sort=True, ignore_index=True)
+
+    cols = settings.common_umi_objects['OpaqueMaterials']
+    column_rename = {'Solar_Absorptance': 'SolarAbsorptance',
+                     'Specific_Heat': 'SpecificHeat',
+                     'Thermal_Absorptance': 'ThermalEmittance',
+                     'Thermal_Resistance': 'ThermalResistance',
+                     'Visible_Absorptance': 'VisibleAbsorptance'}
+
+    materials_df.rename(columns=column_rename, inplace=True)
+
+    materials_df['Comment'] = 'default'
+    materials_df['Cost'] = 0
+    try:
+        materials_df['DataSource'] = materials_df.pop('Archetype')
+    except Exception as e:
+        log('An exception was raised while setting the DataSource of the objects', lg.WARNING)
+        log('{}'.format(e), lg.ERROR)
+        log('Falling back onto first IDF file containing this common object', lg.WARNING)
+        materials_df['DataSource'] = 'First IDF file containing this common object'
+
+    materials_df['EmbodiedCarbon'] = 0
+    materials_df['EmbodiedCarbonStdDev'] = 0
+    materials_df['EmbodiedEnergy'] = 0
+    materials_df['EmbodiedEnergyStdDev'] = 0
+    materials_df['Life'] = 1
+    materials_df['MoistureDiffusionResistance'] = 50
+    materials_df['PhaseChange'] = False
+    materials_df['PhaseChangeProperties'] = ''  # TODO: Further investigation needed
+    materials_df['SubstitutionRatePattern'] = np.NaN  # TODO: Might have to change to an empty array
+    materials_df['SubstitutionTimestep'] = 0
+    materials_df['TransportCarbon'] = 0
+    materials_df['TransportDistance'] = 0
+    materials_df['TransportEnergy'] = 0
+    materials_df['Type'] = ''  # TODO: Further investigation necessary
+    materials_df['VariableConductivity'] = False
+    materials_df['VariableConductivityProperties'] = np.NaN  # TODO: Further investigation necessary
+
+    materials_df = materials_df.reset_index(drop=True).rename_axis('$id').reset_index()
+
+    return materials_df[cols].set_index('$id')
 
 def get_simple_glazing_system(idfs):
     try:
@@ -147,3 +191,24 @@ def get_simple_glazing_system(idfs):
         log('Found {} WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM objects'.format(len(materials_df)))
         return materials_df
 
+def get_mass_materials(idfs):
+    try:
+        materials_df = object_from_idfs(idfs, 'MATERIAL')
+    except Exception as e:
+        # Return empty DataFrame and log it
+        log('Error : Could not get MATERIAL because of the following error:\n{}'.format(e))
+        return pd.DataFrame([])
+    else:
+        log('Found {} MATERIAL objects'.format(len(materials_df)))
+        return materials_df
+
+def get_nomass_materials(idfs):
+    try:
+        materials_df = object_from_idfs(idfs, 'MATERIAL:NOMASS')
+    except Exception as e:
+        # Return empty DataFrame and log it
+        log('Error : Could not get MATERIAL:NOMASS because of the following error:\n{}'.format(e))
+        return pd.DataFrame([])
+    else:
+        log('Found {} MATERIAL:NOMASS objects'.format(len(materials_df)))
+        return materials_df

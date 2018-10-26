@@ -5,7 +5,7 @@ import os
 import time
 
 import pandas as pd
-from eppy.modeleditor import IDF
+from eppy.runner.run_functions import run
 from eppy.runner.run_functions import multirunner
 
 from . import settings
@@ -308,6 +308,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
 
             # Put a copy of the file in its cache folder
             if not os.path.isfile(os.path.join(kwargs['output_directory'], os.path.basename(eplus_file))):
+                if not os.path.isdir(os.path.join(kwargs['output_directory'])):
                 os.mkdir(kwargs['output_directory'])
                 copyfile(eplus_file, os.path.join(kwargs['output_directory'], os.path.basename(eplus_file)))
 
@@ -329,6 +330,27 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
             runs_found[eplus_finename] = get_report(eplus_file, output_folder, output_report, **kwargs)
         return runs_found
 
+def multirunner(args):
+    """Wrapper for run() to be used when running IDF and EPW runs in parallel.
+
+    Parameters
+    ----------
+    args : list
+        A list made up of a two-item list (IDF and EPW) and a kwargs dict.
+
+    """
+    try:
+        run(*args[0], **args[1])
+    except:
+        # Get error file
+        error_filename = os.path.join(args[1]['output_directory'], args[1]['output_prefix'] + 'out.err')
+        if os.path.isfile(error_filename):
+            with open(error_filename, 'r') as fin:
+                log('\nError File for {} begins here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
+                log(fin.read(), lg.ERROR)
+                log('\nError File for {} ends here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
+        else:
+            log('Could not find error file', lg.ERROR)
 
 def get_from_cache_pool(args):
     """Wrapper for get_from_cache() to be used when laoding in parallel.

@@ -246,7 +246,7 @@ def load_idf_object_from_cache(idf_file):
         cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename, os.extsep.join([
             cache_filename + 'idfs', 'gzip']))
         if os.path.isfile(cache_fullpath_filename):
-            with gzip.GzipFile(cache_fullpath_filename, 'r') as file_handle:
+            with gzip.GzipFile(cache_fullpath_filename, 'rb') as file_handle:
                 idf = pickle.load(file_handle)
             log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(os.path.basename(idf_file), time.time() -
                                                                           start_time))

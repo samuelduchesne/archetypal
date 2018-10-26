@@ -16,10 +16,10 @@ except ImportError:
     pass
 
 
-def object_from_idfs(idfs, ep_object, keys=None, groupby_name=True):
+def object_from_idfs(idfs, ep_object, groupby_name=True):
     """
 
-    :param idfs: list
+    :param idfs: list or dict
         List of IDF objects
     :param ep_object: string
         EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a string
@@ -32,18 +32,27 @@ def object_from_idfs(idfs, ep_object, keys=None, groupby_name=True):
     container = []
     start_time = time.time()
     log('Parsing {} {} objects...'.format(len(idfs), ep_object))
-    for idf in idfs:
-        # Load objects from IDF files and concatenate
-        this_frame = object_from_idf(idf, ep_object)
-        this_frame = pd.concat(this_frame, ignore_index=True, sort=True)
-        container.append(this_frame)
-    if keys:
+
+    if isinstance(idfs, dict):
+        for key, idf in idfs.items():
+            # Load objects from IDF files and concatenate
+            this_frame = object_from_idf(idf, ep_object)
+            this_frame = pd.concat(this_frame, ignore_index=True, sort=True)
+            container.append(this_frame)
+
         # If keys given, construct hierarchical index using the passed keys as the outermost level
-        this_frame = pd.concat(container, keys=keys, names=['Archetype', '$id'], sort=True)
+        this_frame = pd.concat(container, keys=idfs.keys(), names=['Archetype', '$id'], sort=True)
         this_frame.reset_index(inplace=True)
         this_frame.drop(columns='$id', inplace=True)
     else:
+        for idf in idfs:
+            # Load objects from IDF files and concatenate
+            this_frame = object_from_idf(idf, ep_object)
+            this_frame = pd.concat(this_frame, ignore_index=True, sort=True)
+            container.append(this_frame)
+        # Concat the list of DataFrames
         this_frame = pd.concat(container)
+
     if groupby_name:
         this_frame = this_frame.groupby('Name').first()
     this_frame.reset_index(inplace=True)
@@ -64,7 +73,7 @@ def object_from_idf(idf, ep_object):
     return object_values
 
 
-def load_idf(files, idd_filename=None, energyplus_version=None):
+def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
     """
     Returns a list of IDF objects using the eppy package.
     :param files: list
@@ -115,6 +124,7 @@ def load_idf(files, idd_filename=None, energyplus_version=None):
     dirnames = [os.path.dirname(path) for path in files]
     try:
         start_time = time.time()
+        log('Parsing IDF Objects in parallel...')
         import concurrent.futures
         with concurrent.futures.ProcessPoolExecutor() as executor:
             idfs = {os.path.basename(file): result for file, result in zip(files, executor.map(
@@ -122,6 +132,7 @@ def load_idf(files, idd_filename=None, energyplus_version=None):
             log('Parallel eppy load completed in {:,.2f} seconds'.format(time.time() - start_time))
     except NameError:
         # multiprocessing not present so pass the jobs one at a time
+        log('Parsing IDF Objects...')
         start_time = time.time()
         idfs = {}
         for file in files:
@@ -133,7 +144,10 @@ def load_idf(files, idd_filename=None, energyplus_version=None):
     objects_not_found = [k for k, v in idfs.items() if v is None]
     if not objects_not_found:
         # if objects_not_found not empty, return the ones we actually did find and pass the other ones
-        return list(objects_found.values())
+        if not as_dict:
+            return list(objects_found.values())
+        else:
+            return objects_found
     else:
         # Else, run eppy to load the idf objects
         files = [os.path.join(dir, run) for dir, run in zip(dirnames, objects_not_found)]
@@ -146,17 +160,20 @@ def load_idf(files, idd_filename=None, energyplus_version=None):
             start_time = time.time()
             import concurrent.futures
             with concurrent.futures.ProcessPoolExecutor() as executor:
-                idfs = [idf_object for idf_object in executor.map(eppy_load_pool, runs)]
+                idfs = [idf_object for idf_object in executor.map(eppy_load_pool, runs)] # TODO : Will probably break when dict is asked
                 log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(files), time.time() -
                                                                                              start_time))
         except NameError:
             # multiprocessing not present so pass the jobs one at a time
-            idfs = []
+            idfs = {}
             start_time = time.time()
             for file in files:
+                eplus_finename = os.path.basename(file)
                 idf_object = eppy_load(file, idd_filename)
-                idfs.append(idf_object)
+                idfs[eplus_finename] = idf_object
             log('Parsed {} idf file(s) in {:,.2f} seconds'.format(len(files), time.time() - start_time))
+        if not as_dict:
+            return list(idfs.values)
         return idfs
 
 def eppy_load_pool(args):

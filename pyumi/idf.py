@@ -122,31 +122,31 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
 
     # Try loading IDF objects from pickled cache first
     dirnames = [os.path.dirname(path) for path in files]
+    start_time = time.time()
     try:
-        start_time = time.time()
         log('Parsing IDF Objects in parallel...')
         import concurrent.futures
         with concurrent.futures.ProcessPoolExecutor() as executor:
             idfs = {os.path.basename(file): result for file, result in zip(files, executor.map(
                 load_idf_object_from_cache, files))}
-            log('Parallel eppy load completed in {:,.2f} seconds'.format(time.time() - start_time))
-    except NameError:
+    except Exception as e:
         # multiprocessing not present so pass the jobs one at a time
+        log('Error with the following exception : {}\nCannot use parallel load'.format(e))
         log('Parsing IDF Objects...')
-        start_time = time.time()
         idfs = {}
         for file in files:
             eplus_finename = os.path.basename(file)
             idfs[eplus_finename] = load_idf_object_from_cache(file)
-        log('eppy load completed in {:,.2f} seconds'.format(time.time() - start_time))
 
     objects_found = {k: v for k, v in idfs.items() if v is not None}
     objects_not_found = [k for k, v in idfs.items() if v is None]
     if not objects_not_found:
         # if objects_not_found not empty, return the ones we actually did find and pass the other ones
         if not as_dict:
+            log('Eppy load from cache completed in {:,.2f} seconds'.format(time.time() - start_time))
             return list(objects_found.values())
         else:
+            log('Eppy load from cache completed in {:,.2f} seconds'.format(time.time() - start_time))
             return objects_found
     else:
         # Else, run eppy to load the idf objects
@@ -156,15 +156,15 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
             runs.append([file, idd_filename])
         # Parallel load
         try:
-            raise NameError('Parallel loading of eppy objects is not yet supported')
             start_time = time.time()
             import concurrent.futures
             with concurrent.futures.ProcessPoolExecutor() as executor:
                 idfs = [idf_object for idf_object in executor.map(eppy_load_pool, runs)] # TODO : Will probably break when dict is asked
                 log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(files), time.time() -
                                                                                              start_time))
-        except NameError:
+        except Exception as e:
             # multiprocessing not present so pass the jobs one at a time
+            log('Error with the following exception : {}\nCannot use parallel load'.format(e))
             idfs = {}
             start_time = time.time()
             for file in files:
@@ -184,22 +184,22 @@ def eppy_load(file, idd_filename):
     from eppy.modeleditor import IDF
     # Loading eppy
     IDF.setiddname(idd_filename)
-    idf_object = IDF(file)
-    # Check version of IDF file against version of IDD file
-    idf_version = idf_object.idfobjects['VERSION'][0].Version_Identifier
-    idd_version = '{}.{}'.format(idf_object.idd_version[0], idf_object.idd_version[1])
-    building = idf_object.idfobjects['BUILDING'][0]
-    if idf_version == idd_version:
-        log('The version of the IDF file {} : version {}, matched the version of EnergyPlus {}, '
-            'version {} used to parse it.'.format(building.Name, idf_version,
-                                                  idf_object.getiddname(), idd_version),
-            level=lg.DEBUG)
-    else:
-        log('The version of the IDF file {} : version {}, does not match the version of EnergyPlus {}, '
-            'version {} used to parse it.'.format(idf_object.idfobjects['BUILDING'][0].Name, idf_version,
-                                                  idf_object.getiddname(), idd_version),
-            level=lg.WARNING)
-    save_idf_object_to_cache(idf_object, idf_object.idfname)
+    with IDF(file) as idf_object:
+        # Check version of IDF file against version of IDD file
+        idf_version = idf_object.idfobjects['VERSION'][0].Version_Identifier
+        idd_version = '{}.{}'.format(idf_object.idd_version[0], idf_object.idd_version[1])
+        building = idf_object.idfobjects['BUILDING'][0]
+        if idf_version == idd_version:
+            log('The version of the IDF file {} : version {}, matched the version of EnergyPlus {}, '
+                'version {} used to parse it.'.format(building.Name, idf_version,
+                                                      idf_object.getiddname(), idd_version),
+                level=lg.DEBUG)
+        else:
+            log('The version of the IDF file {} : version {}, does not match the version of EnergyPlus {}, '
+                'version {} used to parse it.'.format(idf_object.idfobjects['BUILDING'][0].Name, idf_version,
+                                                      idf_object.getiddname(), idd_version),
+                level=lg.WARNING)
+        save_idf_object_to_cache(idf_object, idf_object.idfname)
     return idf_object
 
 
@@ -246,7 +246,7 @@ def load_idf_object_from_cache(idf_file):
         cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename, os.extsep.join([
             cache_filename + 'idfs', 'gzip']))
         if os.path.isfile(cache_fullpath_filename):
-            with gzip.GzipFile(cache_fullpath_filename, 'r') as file_handle:
+            with gzip.GzipFile(cache_fullpath_filename, 'rb') as file_handle:
                 idf = pickle.load(file_handle)
             log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(os.path.basename(idf_file), time.time() -
                                                                           start_time))

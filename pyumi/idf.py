@@ -122,23 +122,20 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
 
     # Try loading IDF objects from pickled cache first
     dirnames = [os.path.dirname(path) for path in files]
+    start_time = time.time()
     try:
-        start_time = time.time()
         log('Parsing IDF Objects in parallel...')
         import concurrent.futures
         with concurrent.futures.ProcessPoolExecutor() as executor:
             idfs = {os.path.basename(file): result for file, result in zip(files, executor.map(
                 load_idf_object_from_cache, files))}
-            log('Parallel eppy load completed in {:,.2f} seconds'.format(time.time() - start_time))
     except NameError:
         # multiprocessing not present so pass the jobs one at a time
         log('Parsing IDF Objects...')
-        start_time = time.time()
         idfs = {}
         for file in files:
             eplus_finename = os.path.basename(file)
             idfs[eplus_finename] = load_idf_object_from_cache(file)
-        log('eppy load completed in {:,.2f} seconds'.format(time.time() - start_time))
 
     objects_found = {k: v for k, v in idfs.items() if v is not None}
     objects_not_found = [k for k, v in idfs.items() if v is None]

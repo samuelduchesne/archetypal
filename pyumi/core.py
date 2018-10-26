@@ -57,7 +57,9 @@ def materials_gas(idfs):
     try:
         materials_df['DataSource'] = materials_df.pop('Archetype')
     except Exception as e:
-        log('Error: {}'.format(e))
+        log('An exception was raised while setting the DataSource of the objects', lg.WARNING)
+        log('{}'.format(e), lg.ERROR)
+        log('Falling back onto first IDF file containing this common object', lg.WARNING)
         materials_df['DataSource'] = 'First IDF file containing this common object'
 
     materials_df = materials_df.reset_index(drop=True).rename_axis('$id').reset_index()
@@ -90,8 +92,12 @@ def materials_glazing(idfs):
     materials_df['Cost'] = 0
     try:
         materials_df['DataSource'] = materials_df.pop('Archetype')
-    except:
+    except Exception as e:
+        log('An exception was raised while setting the DataSource of the objects', lg.WARNING)
+        log('{}'.format(e), lg.ERROR)
+        log('Falling back onto first IDF file containing this common object', lg.WARNING)
         materials_df['DataSource'] = 'First IDF file containing this common object'
+
     materials_df['Density'] = 2500
     materials_df['EmbodiedCarbon'] = 0
     materials_df['EmbodiedCarbonStdDev'] = 0
@@ -112,7 +118,7 @@ def materials_glazing(idfs):
     # Try to get simple_glazing_systems
     sgs = get_simple_glazing_system(idfs)
     if not sgs.empty:
-        log('Found {} WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM objects. Appending to WINDOWMATERIAL:GLAZING '
+        log('Appending to WINDOWMATERIAL:GLAZING DataFrame...')
             'list...'.format(len(sgs)))
         materials_df = materials_df.set_index('$id').append(sgs, ignore_index=True, sort=True)
     materials_df = materials_df.reset_index(drop=True).rename_axis('$id').reset_index()
@@ -138,5 +144,6 @@ def get_simple_glazing_system(idfs):
         log('Error: {}'.format(e), lg.ERROR)
         return pd.DataFrame([])
     else:
+        log('Found {} WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM objects'.format(len(materials_df)))
         return materials_df
 

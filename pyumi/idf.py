@@ -5,8 +5,7 @@ import os
 import time
 
 import pandas as pd
-from eppy.modeleditor import IDF
-from eppy.runner.run_functions import multirunner
+from eppy.runner.run_functions import run
 
 from . import settings
 from .utils import log
@@ -32,7 +31,7 @@ def object_from_idfs(idfs, ep_object, keys=None, groupby_name=True):
     """
     container = []
     start_time = time.time()
-    log('Parsing {} {} objects'.format(len(idfs), ep_object))
+    log('Parsing {} {} objects...'.format(len(idfs), ep_object))
     for idf in idfs:
         # Load objects from IDF files and concatenate
         this_frame = object_from_idf(idf, ep_object)
@@ -65,7 +64,7 @@ def object_from_idf(idf, ep_object):
     return object_values
 
 
-def load_idf(files, idd_filename=None, openstudio_version=None):
+def load_idf(files, idd_filename=None, energyplus_version=None):
     """
     Returns a list of IDF objects using the eppy package.
     :param files: list
@@ -79,19 +78,19 @@ def load_idf(files, idd_filename=None, openstudio_version=None):
     if idd_filename is None:
         from sys import platform
 
-        if openstudio_version:
+        if energyplus_version:
             # Specify version
-            open_studio_folder = 'OpenStudio-{}'.format(openstudio_version)
+            energyplus_folder = 'EnergyPlus-{}'.format(energyplus_version)
         else:
             # Don't specify version
-            open_studio_folder = 'OpenStudio*'  # Wildcard will find any version installed
+            energyplus_folder = 'EnergyPlus*'  # Wildcard will find any version installed
 
         # Platform specific location of IDD file
         if platform == "darwin":
             # Assume MacOs file location in Applications Folder
-            idd_filename = glob.glob("/Applications/{}/EnergyPlus/*.idd".format(open_studio_folder))
+            idd_filename = glob.glob("/Applications/{}/Energy+.idd".format(energyplus_folder))
             if len(idd_filename) > 1:
-                log('More than one versions of OpenStudio were found. First one is used')
+                log('More than one versions of EnergyPlus were found. First one is used')
                 idd_filename = idd_filename[0]
             elif len(idd_filename) == 1:
                 idd_filename = idd_filename[0]
@@ -100,9 +99,9 @@ def load_idf(files, idd_filename=None, openstudio_version=None):
                 raise ValueError('File Energy+.idd could not be found')
         elif platform == "win32":
             # Assume Windows file location in "C" Drive
-            idd_filename = glob.glob("C:\{}\EnergyPlus\*.idd".format(open_studio_folder))
+            idd_filename = glob.glob("C:\{}\EnergyPlus\*.idd".format(energyplus_folder))
             if len(idd_filename) > 1:
-                log('More than one versions of OpenStudio were found. First one is used')
+                log('More than one versions of EnergyPlus were found. First one is used')
                 idd_filename = idd_filename[0]
             elif len(idd_filename) == 1:
                 idd_filename = idd_filename[0]
@@ -110,46 +109,81 @@ def load_idf(files, idd_filename=None, openstudio_version=None):
                 log('The necessary IDD file could not be found', level=lg.ERROR)
                 raise ValueError('File Energy+.idd could not be found')
         if idd_filename:
-            log('Retrieved OpenStudio IDD file at location: {}'.format(idd_filename))
+            log('Retrieved EnergyPlus IDD file at location: {}'.format(idd_filename))
 
+    # Try loading IDF objects from pickled cache first
     dirnames = [os.path.dirname(path) for path in files]
-    idfs = {}
-    for file in files:
-        eplus_finename = os.path.basename(file)
-        idfs[eplus_finename] = load_idf_object_from_cache(file)
+    try:
+        start_time = time.time()
+        import concurrent.futures
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            idfs = {os.path.basename(file): result for file, result in zip(files, executor.map(
+                load_idf_object_from_cache, files))}
+            log('Parallel eppy load completed in {:,.2f} seconds'.format(time.time() - start_time))
+    except NameError:
+        # multiprocessing not present so pass the jobs one at a time
+        start_time = time.time()
+        idfs = {}
+        for file in files:
+            eplus_finename = os.path.basename(file)
+            idfs[eplus_finename] = load_idf_object_from_cache(file)
+        log('eppy load completed in {:,.2f} seconds'.format(time.time() - start_time))
+
     objects_found = {k: v for k, v in idfs.items() if v is not None}
     objects_not_found = [k for k, v in idfs.items() if v is None]
     if not objects_not_found:
         # if objects_not_found not empty, return the ones we actually did find and pass the other ones
         return list(objects_found.values())
     else:
+        # Else, run eppy to load the idf objects
         files = [os.path.join(dir, run) for dir, run in zip(dirnames, objects_not_found)]
-        # Loading eppy
-        IDF.setiddname(idd_filename)
-        idfs = []
-        start_time = time.time()
+        runs=[]
         for file in files:
-            idf_object = IDF(file)
-
-            # Check version of IDF file against version of IDD file
-            idf_version = idf_object.idfobjects['VERSION'][0].Version_Identifier
-            idd_version = '{}.{}'.format(idf_object.idd_version[0], idf_object.idd_version[1])
-            building = idf_object.idfobjects['BUILDING'][0]
-            if idf_version == idd_version:
-                log('The version of the IDF file {} : version {}, matched the version of EnergyPlus {}, '
-                    'version {} used to parse it.'.format(building.Name, idf_version,
-                                                          idd_filename, idd_version),
-                    level=lg.DEBUG)
-            else:
-                log('The version of the IDF file {} : version {}, does not match the version of EnergyPlus {}, '
-                    'version {} used to parse it.'.format(idf_object.idfobjects['BUILDING:Name'], idf_version,
-                                                          idd_filename, idd_version),
-                    level=lg.WARNING)
-            save_idf_object_to_cache(idf_object, file)
-            idfs.append(idf_object)
-
-        log('Parsed {} idf file(s) in {:,.2f} seconds'.format(len(files), time.time() - start_time))
+            runs.append([file, idd_filename])
+        # Parallel load
+        try:
+            raise NameError('Parallel loading of eppy objects is not yet supported')
+            start_time = time.time()
+            import concurrent.futures
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                idfs = [idf_object for idf_object in executor.map(eppy_load_pool, runs)]
+                log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(files), time.time() -
+                                                                                             start_time))
+        except NameError:
+            # multiprocessing not present so pass the jobs one at a time
+            idfs = []
+            start_time = time.time()
+            for file in files:
+                idf_object = eppy_load(file, idd_filename)
+                idfs.append(idf_object)
+            log('Parsed {} idf file(s) in {:,.2f} seconds'.format(len(files), time.time() - start_time))
         return idfs
+
+def eppy_load_pool(args):
+    return eppy_load(args[0], args[1])
+
+
+def eppy_load(file, idd_filename):
+    from eppy.modeleditor import IDF
+    # Loading eppy
+    IDF.setiddname(idd_filename)
+    idf_object = IDF(file)
+    # Check version of IDF file against version of IDD file
+    idf_version = idf_object.idfobjects['VERSION'][0].Version_Identifier
+    idd_version = '{}.{}'.format(idf_object.idd_version[0], idf_object.idd_version[1])
+    building = idf_object.idfobjects['BUILDING'][0]
+    if idf_version == idd_version:
+        log('The version of the IDF file {} : version {}, matched the version of EnergyPlus {}, '
+            'version {} used to parse it.'.format(building.Name, idf_version,
+                                                  idf_object.getiddname(), idd_version),
+            level=lg.DEBUG)
+    else:
+        log('The version of the IDF file {} : version {}, does not match the version of EnergyPlus {}, '
+            'version {} used to parse it.'.format(idf_object.idfobjects['BUILDING'][0].Name, idf_version,
+                                                  idf_object.getiddname(), idd_version),
+            level=lg.WARNING)
+    save_idf_object_to_cache(idf_object, idf_object.idfname)
+    return idf_object
 
 
 def save_idf_object_to_cache(idf_object, idf_file):
@@ -236,11 +270,26 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
         # Treat str as an array
         eplus_files = [eplus_files]
     dirnames = [os.path.dirname(path) for path in eplus_files]
+
     # Try to get cached results
-    cached_run_results = {}
+    processed_cache = []
     for eplus_file in eplus_files:
-        eplus_finename = os.path.basename(eplus_file)
-        cached_run_results[eplus_finename] = get_from_cache(eplus_file, output_report, **kwargs)
+        processed_cache.append([eplus_file, output_report, kwargs])
+    try:
+        start_time = time.time()
+        import concurrent.futures
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            cached_run_results = {os.path.basename(eplus_finename): result for eplus_finename, result in
+                                  zip(eplus_files, executor.map(get_from_cache_pool, processed_cache))}
+            log('Parallel parsing completed in {:,.2f} seconds'.format(time.time() - start_time))
+    except NameError:
+        # multiprocessing not present so pass the jobs one at a time
+        cached_run_results = {}
+        start_time = time.time()
+        for eplus_file in eplus_files:
+            eplus_finename = os.path.basename(eplus_file)
+            cached_run_results[eplus_finename] = get_from_cache(eplus_file, output_report, **kwargs)
+        log('Parsing completed in {:,.2f} seconds'.format(time.time() - start_time))
 
     runs_found = {k: v for k, v in cached_run_results.items() if v is not None}
     runs_not_found = [k for k, v in cached_run_results.items() if v is None]
@@ -274,12 +323,13 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
             kwargs = {'output_directory': output_folder + '/{}'.format(filename_prefix),
                       'ep_version': ep_version,
                       'output_prefix': filename_prefix}
-            idf_path = os.path.abspath(eplus_file)  # TODO Should copy idf somewhere else before running
+            idf_path = os.path.abspath(eplus_file)  # TODO Should copy idf somewhere else before running; [Partly Fixed]
             processed_runs.append([[idf_path, epw], kwargs])
 
             # Put a copy of the file in its cache folder
             if not os.path.isfile(os.path.join(kwargs['output_directory'], os.path.basename(eplus_file))):
-                os.mkdir(kwargs['output_directory'])
+                if not os.path.isdir(os.path.join(kwargs['output_directory'])):
+                    os.mkdir(kwargs['output_directory'])
                 copyfile(eplus_file, os.path.join(kwargs['output_directory'], os.path.basename(eplus_file)))
 
         log('Running EnergyPlus...')
@@ -300,6 +350,37 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
             runs_found[eplus_finename] = get_report(eplus_file, output_folder, output_report, **kwargs)
         return runs_found
 
+def multirunner(args):
+    """Wrapper for run() to be used when running IDF and EPW runs in parallel.
+
+    Parameters
+    ----------
+    args : list
+        A list made up of a two-item list (IDF and EPW) and a kwargs dict.
+
+    """
+    try:
+        run(*args[0], **args[1])
+    except:
+        # Get error file
+        error_filename = os.path.join(args[1]['output_directory'], args[1]['output_prefix'] + 'out.err')
+        if os.path.isfile(error_filename):
+            with open(error_filename, 'r') as fin:
+                log('\nError File for {} begins here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
+                log(fin.read(), lg.ERROR)
+                log('\nError File for {} ends here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
+        else:
+            log('Could not find error file', lg.ERROR)
+
+def get_from_cache_pool(args):
+    """Wrapper for get_from_cache() to be used when laoding in parallel.
+    Parameters
+    ----------
+    args : list
+        A list made up of arguments.
+    """
+    return get_from_cache(args[0], args[1])  # Todo: Settup arguments as Locals()
+
 
 def hash_file(eplus_file):
     """
@@ -308,6 +389,8 @@ def hash_file(eplus_file):
         the path to the idf file
     :return: str
         hashed file string
+
+    TODO: Hashing only the idf file can cause issues when external files are used (and have changed) because hashing will no capture this change
     """
     hasher = hashlib.md5()
     with open(eplus_file, 'rb') as afile:

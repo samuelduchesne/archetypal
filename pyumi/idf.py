@@ -31,7 +31,7 @@ def object_from_idfs(idfs, ep_object, groupby_name=True):
     """
     container = []
     start_time = time.time()
-    log('Parsing {} {} objects...'.format(len(idfs), ep_object))
+    log('Parsing {1} objects for {0} idf files...'.format(len(idfs), ep_object))
 
     if isinstance(idfs, dict):
         for key, idf in idfs.items():
@@ -57,7 +57,8 @@ def object_from_idfs(idfs, ep_object, groupby_name=True):
         this_frame = this_frame.groupby('Name').first()
     this_frame.reset_index(inplace=True)
     this_frame.index.rename('$id', inplace=True)
-    log('Parsed {} {} objects in {:,.2f} seconds'.format(len(idfs), ep_object, time.time() - start_time))
+    log('Parsed {} {} object(s) in {} idf file(s) in {:,.2f} seconds'.format(len(this_frame), ep_object, len(idfs), time.time() -
+                                                                       start_time))
     return this_frame
 
 

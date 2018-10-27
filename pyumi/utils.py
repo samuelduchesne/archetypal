@@ -5,6 +5,7 @@ import os
 import sys
 import unicodedata
 from pandas.io.json import json_normalize
+import pandas as pd
 
 import numpy as np
 
@@ -241,11 +242,14 @@ def get_list_of_common_umi_objects(filename):
 
 def newrange(previous, following):
     """
-    Takes the previous data
+    Takes the previous DataFrame and calculates a new Index range.
+    Returns a DataFrame with a new index
     :param previous:
     :param following:
-    :return:
+    :return: DataFrame
     """
     from_index = previous.iloc[[-1]].index.values + 1
     to_index = from_index + len(following)
-    return np.arange(from_index, to_index)
+
+    following.index = np.arange(from_index, to_index)
+    return following.rename_axis('$id')

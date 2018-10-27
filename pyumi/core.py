@@ -170,8 +170,42 @@ def materials_opaque(idfs):
     materials_df['VariableConductivityProperties'] = np.NaN  # TODO: Further investigation necessary
 
     materials_df = materials_df.reset_index(drop=True).rename_axis('$id').reset_index()
-
+    cols.append('Thickness')
     return materials_df[cols].set_index('$id')
+
+
+def constructions_opaque(idfs, opaquematerials=None):
+    constructions_df = object_from_idfs(idfs, 'CONSTRUCTION', idfs.keys)
+    bldg_surface_detailed = object_from_idfs(idfs, 'BUILDINGSURFACE:DETAILED', idfs.keys)
+
+    start_time = time.time()
+    constructions_df = bldg_surface_detailed.merge(constructions_df, left_on='Construction_Name', right_on='Name')
+    log('Merged DatFrames in {:,.2f} seconds'.format(time.time() - start_time))
+
+    constructions_df['Category'] = constructions_df.apply(lambda x: label_surface(x), axis=1)
+    constructions_df['Type'] = constructions_df.apply(lambda x: type_surface(x), axis=1)
+
+    if opaquematerials is not None:
+        constructions_df['Layers'] = constructions_df.apply(lambda x: layer_composition(x, opaquematerials),
+                                                                      axis=1)
+    else:
+        log('Could not create layer_composition because the necessary lookup DataFrame "OpaqueMaterials"  was '
+            'not provided', lg.WARNING)
+    cols = settings.common_umi_objects['OpaqueConstructions']
+
+    constructions_df['AssemblyCarbon'] = 0
+    constructions_df['AssemblyCost'] = 0
+    constructions_df['AssemblyEnergy'] = 0
+    constructions_df['Comments'] = 'default'
+    constructions_df['DataSource'] = constructions_df.pop('Archetype_x')
+    constructions_df['DisassemblyCarbon'] = 0
+    constructions_df['DisassemblyEnergy'] = 0
+
+    constructions_df = constructions_df.rename(columns={'Construction_Name': 'Name'})
+    constructions_df = constructions_df.reset_index(drop=True).rename_axis('$id').reset_index()
+
+    return constructions_df[cols].set_index('$id')
+
 
 def get_simple_glazing_system(idfs):
     try:

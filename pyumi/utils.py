@@ -252,3 +252,107 @@ def newrange(previous, following):
 
     following.index = np.arange(from_index, to_index)
     return following.rename_axis('$id')
+
+
+def type_surface(row):
+    """
+    This function adds the umi-Type column
+    """
+    # Floors
+    if row['Surface_Type'] == 'Floor':
+        if row['Outside_Boundary_Condition'] == 'Surface':
+            return 3
+        if row['Outside_Boundary_Condition'] == 'Ground':
+            return 2
+        if row['Outside_Boundary_Condition'] == 'Outdoors':
+            return 4
+        else:
+            return np.NaN
+
+    # Roofs & Ceilings
+    if row['Surface_Type'] == 'Roof':
+        return 1
+    if row['Surface_Type'] == 'Ceiling':
+        return 3
+    # Walls
+    if row['Surface_Type'] == 'Wall':
+        if row['Outside_Boundary_Condition'] == 'Surface':
+            return 5
+        if row['Outside_Boundary_Condition'] == 'Outdoors':
+            return 0
+    return np.NaN
+
+
+def label_surface(row):
+    """
+    This function adds the umi-Category column
+    """
+    # Floors
+    if row['Surface_Type'] == 'Floor':
+        if row['Outside_Boundary_Condition'] == 'Surface':
+            return 'Interior Floor'
+        if row['Outside_Boundary_Condition'] == 'Ground':
+            return 'Ground Floor'
+        if row['Outside_Boundary_Condition'] == 'Outdoors':
+            return 'Exterior Floor'
+        else:
+            return 'Other'
+
+    # Roofs & Ceilings
+    if row['Surface_Type'] == 'Roof':
+        return 'Roof'
+    if row['Surface_Type'] == 'Ceiling':
+        return 'Interior Floor'
+    # Walls
+    if row['Surface_Type'] == 'Wall':
+        if row['Outside_Boundary_Condition'] == 'Surface':
+            return 'Partition'
+        if row['Outside_Boundary_Condition'] == 'Outdoors':
+            return 'Facade'
+    return 'Other'
+
+
+def layer_composition(row, df):
+    # Assumes 10 max layers
+    layers = []
+
+    # Let's start with the `Outside_Layer`
+    ref, thickness = get_row_prop(row, df, 'Outside_Layer', 'Thickness')
+    if np.isnan(ref):
+        return np.NaN
+    if thickness:
+        layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
+    else:
+        thickness = 0.001  # Very small tickness
+        layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
+    # Then we iterate over the other layers. The number of layers is unknown. Limited to 10 for now
+    for i in range(1, 10):
+        try:
+            layer_name = 'Layer_{}'.format(i)
+            ref, thickness = get_row_prop(row, df, layer_name, 'Thickness')
+            if thickness:
+                layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
+            else:
+                thickness = 0.001  # Very small tickness
+                layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
+        except:
+            pass  #
+    return layers
+
+
+def get_row_prop(self, other, on, property):
+    try:
+        value_series = other[other.Name == self[on]][property]
+        if len(value_series) > 1:
+            log('Found more than one possible values for property {} for item {}'.format(property, self[on]),
+                lg.WARNING)
+            log('Taking the first occurrence...')
+    except ValueError as e:
+        log('Could not find property "{}" for item "{}"'.format(property, self[on]), lg.ERROR)
+        # log('ValueError: {}'.format(e), lg.ERROR)
+        value_series = np.NaN
+        index = np.NaN
+    else:
+        index = value_series.index.astype(int)[0]
+        value_series = value_series.values.astype(float)[0]
+    return index, value_series

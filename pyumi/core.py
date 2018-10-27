@@ -1,9 +1,11 @@
+import logging as lg
+import time
+
 import numpy as np
 import pandas as pd
 
-from .utils import log
-import logging as lg
 from . import settings, object_from_idf, object_from_idfs, simple_glazing
+from .utils import log, label_surface, type_surface, layer_composition
 
 
 def convert_necb_to_umi_json(idfs, idfobjects=None):
@@ -129,7 +131,7 @@ def materials_glazing(idfs):
 def materials_opaque(idfs):
     mass = get_mass_materials(idfs)
     nomass = get_nomass_materials(idfs)
-    materials_df = pd.concat([mass,nomass], sort=True, ignore_index=True)
+    materials_df = pd.concat([mass, nomass], sort=True, ignore_index=True)
 
     cols = settings.common_umi_objects['OpaqueMaterials']
     column_rename = {'Solar_Absorptance': 'SolarAbsorptance',
@@ -175,10 +177,11 @@ def get_simple_glazing_system(idfs):
     try:
         materials_df = object_from_idfs(idfs, 'WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM')
 
-        materials_df = materials_df.set_index('Name').apply(lambda row: simple_glazing(row[
-                                                                                              'Solar_Heat_Gain_Coefficient'],
-                                                                     row['UFactor'],
-                                                                     row['Visible_Transmittance']), axis=1).apply(pd.Series)
+        materials_df = materials_df.set_index('Name').apply(
+            lambda row: simple_glazing(row['Solar_Heat_Gain_Coefficient'],
+                                       row['UFactor'],
+                                       row['Visible_Transmittance']),
+            axis=1).apply(pd.Series)
         materials_df = materials_df.reset_index().rename_axis('Name')
         materials_df['Optical'] = 'SpectralAverage'
         materials_df['OpticalData'] = ''
@@ -191,6 +194,7 @@ def get_simple_glazing_system(idfs):
         log('Found {} WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM objects'.format(len(materials_df)))
         return materials_df
 
+
 def get_mass_materials(idfs):
     try:
         materials_df = object_from_idfs(idfs, 'MATERIAL')
@@ -201,6 +205,7 @@ def get_mass_materials(idfs):
     else:
         log('Found {} MATERIAL objects'.format(len(materials_df)))
         return materials_df
+
 
 def get_nomass_materials(idfs):
     try:

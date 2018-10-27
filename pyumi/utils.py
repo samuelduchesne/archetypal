@@ -4,10 +4,9 @@ import logging as lg
 import os
 import sys
 import unicodedata
-from pandas.io.json import json_normalize
-import pandas as pd
 
 import numpy as np
+from pandas.io.json import json_normalize
 
 from . import load_umi_template
 from . import settings
@@ -24,7 +23,7 @@ def config(data_folder=settings.data_folder,
            log_name=settings.log_name,
            log_filename=settings.log_filename,
            useful_idf_objects=settings.useful_idf_objects,
-           umitemplate = settings.umitemplate):
+           umitemplate=settings.umitemplate):
     """
     Configure osmnx by setting the default global vars to desired values.
 

@@ -369,3 +369,32 @@ def get_row_prop(self, other, on, property):
             index = value_series.index.values.astype(int)[0]
             value_series = value_series.values.astype(float)[0]
         return index, value_series
+
+
+def schedule_composition(row):
+    """
+    Takes in a series with $id and *_ScheduleDay_Name values and return an array of dict of the form
+    {'$ref': ref}
+    :param row: pandas.Series
+        A series object
+    :return: array
+        Array of dicts
+    """
+    # Assumes 7 days
+    day_schedules = []
+    days = ['Monday_ScheduleDay_Name',
+            'Tuesday_ScheduleDay_Name',
+            'Wednesday_ScheduleDay_Name',
+            'Thursday_ScheduleDay_Name',
+            'Friday_ScheduleDay_Name',
+            'Saturday_ScheduleDay_Name',
+            'Sunday_ScheduleDay_Name']  # With weekends last (as defined in umi-template)
+    # Let's start with the `Outside_Layer`
+    for day in days:
+        try:
+            ref = row['$id', day]
+        except:
+            pass
+        else:
+            day_schedules.append({'$ref': ref})
+    return day_schedules

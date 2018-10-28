@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
+from pyumi import schedule_composition
 from . import settings, object_from_idf, object_from_idfs, simple_glazing
 from .utils import log, label_surface, type_surface, layer_composition
 
@@ -370,12 +371,16 @@ def my_to_datetime(date_str):
 def time2time(row):
     time_seg = []
     for i in range(1, 25):
-        time = row['Time_{}'.format(i)]  # Time_i
-        value = row['Value_Until_Time_{}'.format(i)]  # Value_Until_Time_i
-        if str(time) != 'nan' and str(value) != 'nan':
-            time = my_to_datetime(time).hour
-            times = np.ones(time + 1) * float(value)
-            time_seg.append(times)
+        try:
+            time = row['Time_{}'.format(i)]  # Time_i
+            value = row['Value_Until_Time_{}'.format(i)]  # Value_Until_Time_i
+        except:
+            pass
+        else:
+            if str(time) != 'nan' and str(value) != 'nan':
+                time = my_to_datetime(time).hour
+                times = np.ones(time + 1) * float(value)
+                time_seg.append(times)
     arrays = time_seg
     array = time_seg[0]
     length = len(arrays[0])
@@ -384,3 +389,31 @@ def time2time(row):
             array = np.append(array, a[length - 1:-1])
             length = len(a)
     return array[0:24]
+
+
+def week_schedule(idfs, dayschedules=None):
+    origin_time = time.time()
+    log('Initiating day_schedules...')
+    schedule = object_from_idfs(idfs, 'SCHEDULE:WEEK:DAILY', first_occurrence_only=False)
+    cols = settings.common_umi_objects['WeekSchedules']
+
+    if dayschedules is not None:
+        start_time = time.time()
+        df = pd.DataFrame(schedule.set_index(['Archetype', 'Name']).loc[:,
+                          schedule.set_index(['Archetype', 'Name']).columns.str.contains('Schedule')].stack(),
+                          columns=['Schedule']).join(dayschedules.reset_index().set_index(['Archetype', 'Name']),
+                                                     on=['Archetype', 'Schedule']).loc[:, ['$id', 'Values']].unstack(
+            level=2).apply(lambda x: schedule_composition(x), axis=1).rename('Days')
+        schedule = schedule.join(df, on=['Archetype', 'Name'])
+        log('Completed week_schedule schedule composition in {:,.2f} seconds'.format(time.time() - start_time))
+
+    schedule.loc[:, 'Category'] = 'Week'
+    schedule.loc[:, 'Comments'] = 'default'
+    schedule.loc[:, 'DataSource'] = schedule['Archetype']
+    schedule = schedule.join(dayschedules.set_index(['Archetype', 'Name']).loc[:, ['Type']],
+                             on=['Archetype', 'Monday_ScheduleDay_Name'])
+
+    schedule = schedule.reset_index(drop=True).rename_axis('$id').reset_index()
+    cols.append('Archetype')
+    log('Completed day_schedules in {:,.2f} seconds\n'.format(time.time() - origin_time))
+    return schedule[cols].set_index('$id')

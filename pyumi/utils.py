@@ -6,8 +6,8 @@ import sys
 import unicodedata
 
 import numpy as np
-from pandas.io.json import json_normalize
 import pandas as pd
+from pandas.io.json import json_normalize
 
 from . import load_umi_template
 from . import settings
@@ -313,41 +313,31 @@ def label_surface(row):
     return 'Other'
 
 
-def layer_composition(row, df):
-    # Assumes 10 max layers
-    layers = []
-
-    # Let's start with the `Outside_Layer`
-    try:
-        ref, thickness = get_row_prop(row, df, ['Archetype','Outside_Layer'], 'Thickness')
-    except:
-        # log('"Outside_Layer" is undefined for:\n\t\t\tConstruction_Name: {}\n\t\t\tArchetype:{}'.
-        #     format(row.Construction_Name, row.Archetype), lg.WARNING)
-        layers = None
+def layer_composition(row):
+    """
+    Takes in a series with $id and thickness values and return an array of dict of the form
+    {'Material': {'$ref': ref, 'thickness': thickness}}
+    If thickness is 'nan', it returns None.
+    :param row: pandas.Series
+        A series object
+    :return: array
+        Array of dicts
+    """
+    array = []
+    ref = row['$id', 'Outside_Layer']
+    thickness = row['Thickness', 'Outside_Layer']
+    if np.isnan(ref):
+        pass
     else:
-        if np.isnan(ref):
-            return np.NaN
-        if thickness:
-            layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
-        else:
-            thickness = 0.001  # Very small tickness
-            layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
-        # Then we iterate over the other layers. The number of layers is unknown. Limited to 10 for now
-        for i in range(2, 10):
-            layer_name = 'Layer_{}'.format(i)
-            try:
-                ref, thickness = get_row_prop(row, df, ['Archetype',layer_name], 'Thickness')
-            except:
-                pass  #
+        array.append({'Material': {'$ref': ref, 'thickness': thickness}})
+        for i in range(2, len(row['$id']) + 1):
+            ref = row['$id', 'Layer_{}'.format(i)]
+            if np.isnan(ref):
+                pass
             else:
-                if thickness:
-                    layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
-                else:
-                    log('A small thickness of 0.001 was given to layer {0} of Construction Name "{1}"'.
-                        format(row['Layer_{}'.format(i)], row.Name))
-                    thickness = 0.001  # Very small tickness
-                    layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
-    return layers
+                thickness = row['Thickness', 'Layer_{}'.format(i)]
+                array.append({'Material': {'$ref': ref, 'thickness': thickness}})
+        return array
 
 
 def get_row_prop(self, other, on, property):
@@ -360,8 +350,8 @@ def get_row_prop(self, other, on, property):
     :return:
     """
     try:
-        value_series = pd.DataFrame(self).T[on].join(other.reset_index().set_index([on[0],'Name']), on=on,
-                                                           rsuffix='_viz')[property]
+        value_series = pd.DataFrame(self).T[on].join(other.reset_index().set_index([on[0], 'Name']), on=on,
+                                                     rsuffix='_viz')[property]
         # value_series = other[other.Name == self[on]][property]
     except:
         raise ValueError()

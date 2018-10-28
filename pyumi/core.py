@@ -1,5 +1,6 @@
 import logging as lg
 import time
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -339,3 +340,47 @@ def get_nomass_materials(idfs):
     else:
         log('Found {} MATERIAL:NOMASS objects'.format(len(materials_df)))
         return materials_df
+
+
+def day_schedules(idfs):
+    origin_time = time.time()
+    log('Initiating day_schedules...')
+    schedule = object_from_idfs(idfs, 'SCHEDULE:DAY:INTERVAL', first_occurrence_only=False)
+    schedule['Values'] = schedule.apply(lambda x: time2time(x), axis=1)
+
+    cols = settings.common_umi_objects['DaySchedules']
+
+    schedule.loc[:, 'Category'] = 'Day'
+    schedule.loc[:, 'Comments'] = 'Comments'
+    schedule.loc[:, 'DataSource'] = 'default'
+    schedule.loc[:, 'Type'] = schedule['Schedule_Type_Limits_Name']
+
+    schedule = schedule.reset_index(drop=True).rename_axis('$id').reset_index()
+    cols.append('Archetype')
+    log('Completed day_schedules in {:,.2f} seconds\n'.format(time.time() - origin_time))
+    return schedule[cols].set_index('$id')
+
+
+def my_to_datetime(date_str):
+    if date_str[0:2] != '24':
+        return datetime.strptime(date_str, '%H:%M') - timedelta(hours=1)
+    return datetime.strptime('23:00', '%H:%M')
+
+
+def time2time(row):
+    time_seg = []
+    for i in range(1, 25):
+        time = row['Time_{}'.format(i)]  # Time_i
+        value = row['Value_Until_Time_{}'.format(i)]  # Value_Until_Time_i
+        if str(time) != 'nan' and str(value) != 'nan':
+            time = my_to_datetime(time).hour
+            times = np.ones(time + 1) * float(value)
+            time_seg.append(times)
+    arrays = time_seg
+    array = time_seg[0]
+    length = len(arrays[0])
+    for i, a in enumerate(arrays):
+        if i != 0:
+            array = np.append(array, a[length - 1:-1])
+            length = len(a)
+    return array[0:24]

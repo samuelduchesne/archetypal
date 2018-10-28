@@ -165,10 +165,10 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
     if not objects_not_found:
         # if objects_not_found not empty, return the ones we actually did find and pass the other ones
         if not as_dict:
-            log('Eppy load from cache completed in {:,.2f} seconds'.format(time.time() - start_time))
+            log('Eppy load from cache completed in {:,.2f} seconds\n'.format(time.time() - start_time))
             return list(objects_found.values())
         else:
-            log('Eppy load from cache completed in {:,.2f} seconds'.format(time.time() - start_time))
+            log('Eppy load from cache completed in {:,.2f} seconds\n'.format(time.time() - start_time))
             return objects_found
     else:
         # Else, run eppy to load the idf objects

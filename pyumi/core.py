@@ -1,12 +1,11 @@
 import logging as lg
-import time
 
 import numpy as np
 import pandas as pd
 
 from . import settings, object_from_idf, object_from_idfs, simple_glazing
 from .utils import log, label_surface, type_surface, layer_composition
-
+import time
 
 def convert_necb_to_umi_json(idfs, idfobjects=None):
     # if no list of idfobjects:
@@ -70,6 +69,8 @@ def materials_gas(idfs):
 
 
 def materials_glazing(idfs):
+    origin_time = time.time()
+    log('Initiating materials_glazing...')
     materials_df = object_from_idfs(idfs, 'WINDOWMATERIAL:GLAZING', first_occurrence_only=False)
     cols = settings.common_umi_objects['GlazingMaterials']
     cols.append('Thickness')
@@ -124,10 +125,13 @@ def materials_glazing(idfs):
     # Return the Dataframe
     log('Returning {} WINDOWMATERIAL:GLAZING objects in a DataFrame'.format(len(materials_df)))
     cols.append('Archetype')
+    log('Completed materials_glazing in {:,.2f} seconds\n'.format(time.time() - origin_time))
     return materials_df[cols].set_index('$id')
 
 
 def materials_opaque(idfs):
+    origin_time = time.time()
+    log('Initiating materials_opaque...')
     mass = get_mass_materials(idfs)
     nomass = get_nomass_materials(idfs)
     materials_df = pd.concat([mass, nomass], sort=True, ignore_index=True)
@@ -171,21 +175,25 @@ def materials_opaque(idfs):
     materials_df = materials_df.reset_index(drop=True).rename_axis('$id').reset_index()
     cols.append('Thickness')
     cols.append('Archetype')
+    log('Completed materials_opaque in {:,.2f} seconds\n'.format(time.time() - origin_time))
     return materials_df[cols].set_index('$id')
 
 
 def constructions_opaque(idfs, opaquematerials=None):
+    origin_time = time.time()
+    log('Initiating constructions_opaque...')
     constructions_df = object_from_idfs(idfs, 'CONSTRUCTION', first_occurrence_only=False)
     bldg_surface_detailed = object_from_idfs(idfs, 'BUILDINGSURFACE:DETAILED', first_occurrence_only=False)
 
     log('Joining constructions_df on bldg_surface_detailed...')
     constructions_df = bldg_surface_detailed.join(constructions_df.set_index(['Archetype', 'Name']),
-                                                  on=['Archetype','Construction_Name'], rsuffix='_constructions')
+                                                  on=['Archetype', 'Construction_Name'], rsuffix='_constructions')
 
     constructions_df['Category'] = constructions_df.apply(lambda x: label_surface(x), axis=1)
     constructions_df['Type'] = constructions_df.apply(lambda x: type_surface(x), axis=1)
 
     if opaquematerials is not None:
+        start_time = time.time()
         log('Initiating constructions_df Layer composition...')
         constructions_df['Layers'] = constructions_df.apply(lambda x: layer_composition(x, opaquematerials),
                                                             axis=1)
@@ -212,11 +220,13 @@ def constructions_opaque(idfs, opaquematerials=None):
 
     constructions_df = constructions_df.rename(columns={'Construction_Name': 'Name'})
     constructions_df = constructions_df.reset_index(drop=True).rename_axis('$id').reset_index()
-
+    log('Completed constructions_opaque in {:,.2f} seconds\n'.format(time.time() - origin_time))
     return constructions_df[cols].set_index('$id')
 
 
 def constructions_windows(idfs, material_glazing=None):
+    origin_time = time.time()
+    log('Initiating construction_windows...')
     constructions_df = object_from_idfs(idfs, 'CONSTRUCTION', first_occurrence_only=False)
     constructions_window_df = object_from_idfs(idfs, 'FENESTRATIONSURFACE:DETAILED', first_occurrence_only=False)
     constructions_window_df = constructions_window_df.join(constructions_df.set_index(['Archetype', 'Name']),
@@ -253,13 +263,15 @@ def constructions_windows(idfs, material_glazing=None):
 
     cols = settings.common_umi_objects['WindowConstructions']
     cols.append('Archetype')
+    log('Completed constructions_windows in {:,.2f} seconds\n'.format(time.time() - origin_time))
     return constructions_window_df[cols].set_index('$id')
+
 
 def get_simple_glazing_system(idfs):
     try:
         materials_df = object_from_idfs(idfs, 'WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM', first_occurrence_only=False)
 
-        materials_df = materials_df.set_index(['Archetype','Name']).apply(
+        materials_df = materials_df.set_index(['Archetype', 'Name']).apply(
             lambda row: simple_glazing(row['Solar_Heat_Gain_Coefficient'],
                                        row['UFactor'],
                                        row['Visible_Transmittance']),

@@ -400,6 +400,26 @@ def schedule_composition(row):
             day_schedules.append({'$ref': ref})
     return day_schedules
 
+def year_composition(row):
+    parts = []
+    for i in range(1, 26 + 1):
+        try:
+            ref = row['$id','ScheduleWeek_Name_{}'.format(i)]
+        except:
+            pass
+        else:
+            if ~np.isnan(ref):
+                fromday = row['Schedules', 'Start_Day_{}'.format(i)]
+                frommonth = row['Schedules', 'Start_Month_{}'.format(i)]
+                today = row['Schedules', 'End_Day_{}'.format(i)]
+                tomonth = row['Schedules', 'End_Month_{}'.format(i)]
+
+                parts.append({'FromDay': fromday,
+                              'FromMonth': frommonth,
+                              'Schedule': {'$ref': int(ref)},
+                              'ToDay': today,
+                              'ToMonth': tomonth})
+    return parts
 
 def my_to_datetime(date_str):
     if date_str[0:2] != '24':

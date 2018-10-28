@@ -5,7 +5,8 @@ import numpy as np
 import pandas as pd
 
 from . import settings, object_from_idf, object_from_idfs, simple_glazing
-from .utils import log, label_surface, type_surface, layer_composition, schedule_composition, time2time
+from .utils import log, label_surface, type_surface, layer_composition, schedule_composition, time2time, \
+    year_composition
 
 
 def convert_necb_to_umi_json(idfs, idfobjects=None):
@@ -359,8 +360,44 @@ def week_schedules(idfs, dayschedules=None):
     schedule.loc[:, 'Category'] = 'Week'
     schedule.loc[:, 'Comments'] = 'default'
     schedule.loc[:, 'DataSource'] = schedule['Archetype']
+
+    # Copy the Schedule Type Over
     schedule = schedule.join(dayschedules.set_index(['Archetype', 'Name']).loc[:, ['Type']],
                              on=['Archetype', 'Monday_ScheduleDay_Name'])
+
+    schedule = schedule.reset_index(drop=True).rename_axis('$id').reset_index()
+    cols.append('Archetype')
+    log('Completed day_schedules in {:,.2f} seconds\n'.format(time.time() - origin_time))
+    return schedule[cols].set_index('$id')
+
+
+def year_schedules(idfs, weekschedule=None):
+    origin_time = time.time()
+    log('Initiating week_schedules...')
+    schedule = object_from_idfs(idfs, 'SCHEDULE:YEAR', first_occurrence_only=False)
+    cols = settings.common_umi_objects['YearSchedules']
+
+    if weekschedule is not None:
+        start_time = time.time()
+        df = pd.DataFrame(schedule.set_index(['Archetype', 'Name']).drop(['index', 'key', 'Schedule_Type_Limits_Name'],
+                                                                         axis=1).stack(),
+                          columns=['Schedules']).reset_index().join(
+            weekschedule.reset_index().set_index(['Archetype', 'Name']), on=['Archetype', 'Schedules']).set_index(
+            ['Archetype', 'Name','level_2']).drop(['Category', 'Comments', 'DataSource', 'Days', 'Type'],
+                                                   axis=1).unstack().apply(lambda x: year_composition(x),
+                                                                           axis=1).rename('Parts')
+        schedule = schedule.join(df, on=['Archetype', 'Name'])
+        log('Completed week_schedules schedule composition in {:,.2f} seconds'.format(time.time() - start_time))
+    else:
+        log('Could not create layer_composition because the necessary lookup DataFrame "WeekSchedule"  was '
+            'not provided', lg.WARNING)
+
+    schedule['Category'] = 'Year'
+    schedule['Comments'] = 'default'
+    schedule['DataSource'] = schedule['Archetype']
+
+    schedule = schedule.join(weekschedule.set_index(['Archetype', 'Name']).loc[:, ['Type']],
+                             on=['Archetype', 'ScheduleWeek_Name_1'])
 
     schedule = schedule.reset_index(drop=True).rename_axis('$id').reset_index()
     cols.append('Archetype')

@@ -35,7 +35,7 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False):
 
     if isinstance(idfs, dict):
         try:
-            raise ValueError()
+            raise ValueError('Parallel takes more time at the moment')
             runs = [[idf, ep_object] for idfname, idf in idfs.items()]
             import concurrent.futures
             with concurrent.futures.ProcessPoolExecutor() as executor:

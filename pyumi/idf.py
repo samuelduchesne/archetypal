@@ -16,7 +16,7 @@ except ImportError:
     pass
 
 
-def object_from_idfs(idfs, ep_object, groupby_name=True):
+def object_from_idfs(idfs, ep_object, first_occurrence_only=False):
     """
 
     :param idfs: list or dict
@@ -25,7 +25,7 @@ def object_from_idfs(idfs, ep_object, groupby_name=True):
         EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a string
     :param keys: list
         List of names for each idf file. Becomes level-0 of a multi-index.
-    :param groupby_name: bool
+    :param first_occurrence_only: bool
 
     :return: DataFrame of all specified objects in idf files
     """
@@ -34,14 +34,23 @@ def object_from_idfs(idfs, ep_object, groupby_name=True):
     log('Parsing {1} objects for {0} idf files...'.format(len(idfs), ep_object))
 
     if isinstance(idfs, dict):
-        for key, idf in idfs.items():
-            # Load objects from IDF files and concatenate
-            this_frame = object_from_idf(idf, ep_object)
-            this_frame = pd.concat(this_frame, ignore_index=True, sort=True)
-            container.append(this_frame)
+        try:
+            raise ValueError()
+            runs = [[idf, ep_object] for idfname, idf in idfs.items()]
+            import concurrent.futures
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                container = {idfname:result for (idfname, idf), result in zip(idfs.items(), executor.map(
+                    object_from_idf_pool, runs))}
+        except Exception as e:
+            # multiprocessing not present so pass the jobs one at a time
+            container = {}
+            for key, idf in idfs.items():
+                # Load objects from IDF files and concatenate
+                this_frame = object_from_idf(idf, ep_object)
+                container[key]=this_frame
 
         # If keys given, construct hierarchical index using the passed keys as the outermost level
-        this_frame = pd.concat(container, keys=idfs.keys(), names=['Archetype', '$id'], sort=True)
+        this_frame = pd.concat(container, names=['Archetype', '$id'], sort=True)
         this_frame.reset_index(inplace=True)
         this_frame.drop(columns='$id', inplace=True)
     else:
@@ -53,12 +62,16 @@ def object_from_idfs(idfs, ep_object, groupby_name=True):
         # Concat the list of DataFrames
         this_frame = pd.concat(container)
 
-    if groupby_name:
+    if first_occurrence_only:
         this_frame = this_frame.groupby('Name').first()
     this_frame.reset_index(inplace=True)
     this_frame.index.rename('$id', inplace=True)
     log('Parsed {} {} object(s) in {} idf file(s) in {:,.2f} seconds'.format(len(this_frame), ep_object, len(idfs), time.time() -
                                                                        start_time))
+    return this_frame
+
+def object_from_idf_pool(args):
+    this_frame = object_from_idf(args[0], args[1])
     return this_frame
 
 
@@ -70,8 +83,16 @@ def object_from_idf(idf, ep_object):
     :param ep_object:
     :return:
     """
-    object_values = [get_values(frame) for frame in idf.idfobjects[ep_object]]
-    return object_values
+    try:
+        df = pd.concat([pd.DataFrame(obj.fieldvalues, index=obj.fieldnames[0:len(obj.fieldvalues)]).T for obj in idf.idfobjects[ep_object]],
+            ignore_index=True, sort=False)
+    except:
+        raise ValueError('EP object "{}" does not exist in frame'.format(ep_object))
+    else:
+        return df
+
+    # object_values = [get_values(frame) for frame in idf.idfobjects[ep_object]]
+    # return object_values
 
 
 def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):

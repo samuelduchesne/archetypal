@@ -7,6 +7,7 @@ import unicodedata
 
 import numpy as np
 from pandas.io.json import json_normalize
+import pandas as pd
 
 from . import load_umi_template
 from . import settings
@@ -317,42 +318,64 @@ def layer_composition(row, df):
     layers = []
 
     # Let's start with the `Outside_Layer`
-    ref, thickness = get_row_prop(row, df, 'Outside_Layer', 'Thickness')
-    if np.isnan(ref):
-        return np.NaN
-    if thickness:
-        layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
+    try:
+        ref, thickness = get_row_prop(row, df, ['Archetype','Outside_Layer'], 'Thickness')
+    except:
+        # log('"Outside_Layer" is undefined for:\n\t\t\tConstruction_Name: {}\n\t\t\tArchetype:{}'.
+        #     format(row.Construction_Name, row.Archetype), lg.WARNING)
+        layers = None
     else:
-        thickness = 0.001  # Very small tickness
-        layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
-    # Then we iterate over the other layers. The number of layers is unknown. Limited to 10 for now
-    for i in range(1, 10):
-        try:
+        if np.isnan(ref):
+            return np.NaN
+        if thickness:
+            layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
+        else:
+            thickness = 0.001  # Very small tickness
+            layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
+        # Then we iterate over the other layers. The number of layers is unknown. Limited to 10 for now
+        for i in range(2, 10):
             layer_name = 'Layer_{}'.format(i)
-            ref, thickness = get_row_prop(row, df, layer_name, 'Thickness')
-            if thickness:
-                layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
+            try:
+                ref, thickness = get_row_prop(row, df, ['Archetype',layer_name], 'Thickness')
+            except:
+                pass  #
             else:
-                thickness = 0.001  # Very small tickness
-                layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
-        except:
-            pass  #
+                if thickness:
+                    layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
+                else:
+                    log('A small thickness of 0.001 was given to layer {0} of Construction Name "{1}"'.
+                        format(row['Layer_{}'.format(i)], row.Name))
+                    thickness = 0.001  # Very small tickness
+                    layers.append({'Material': {'$ref': ref, 'thickness': thickness}})
     return layers
 
 
 def get_row_prop(self, other, on, property):
+    """
+    This function may raise an error (it has to)
+    :param self:
+    :param other:
+    :param on:
+    :param property:
+    :return:
+    """
     try:
-        value_series = other[other.Name == self[on]][property]
+        value_series = pd.DataFrame(self).T[on].join(other.reset_index().set_index([on[0],'Name']), on=on,
+                                                           rsuffix='_viz')[property]
+        # value_series = other[other.Name == self[on]][property]
+    except:
+        raise ValueError()
+    else:
         if len(value_series) > 1:
             log('Found more than one possible values for property {} for item {}'.format(property, self[on]),
                 lg.WARNING)
             log('Taking the first occurrence...')
-    except ValueError as e:
-        log('Could not find property "{}" for item "{}"'.format(property, self[on]), lg.ERROR)
-        # log('ValueError: {}'.format(e), lg.ERROR)
-        value_series = np.NaN
-        index = np.NaN
-    else:
-        index = value_series.index.astype(int)[0]
-        value_series = value_series.values.astype(float)[0]
-    return index, value_series
+
+            index = value_series.index.values.astype(int)[0]
+            value_series = value_series.values.astype(float)[0]
+        elif value_series.isna().all():
+            raise ValueError('No corresponding property was found')
+        else:
+            index = value_series.index.values.astype(int)[0]
+            value_series = value_series.values.astype(float)[0]
+        return index, value_series

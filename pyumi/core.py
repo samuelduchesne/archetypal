@@ -195,8 +195,13 @@ def constructions_opaque(idfs, opaquematerials=None):
     if opaquematerials is not None:
         start_time = time.time()
         log('Initiating constructions_df Layer composition...')
-        constructions_df['Layers'] = constructions_df.apply(lambda x: layer_composition(x, opaquematerials),
-                                                            axis=1)
+        df = pd.DataFrame(constructions_df.set_index(['Archetype', 'Name', 'Construction_Name']).loc[:,
+                          constructions_df.set_index(['Archetype', 'Name', 'Construction_Name']).columns.str.contains(
+                              'Layer')].stack(), columns=['Layers']).join(
+            opaquematerials.reset_index().set_index(['Archetype', 'Name']), on=['Archetype', 'Layers']).loc[:,
+             ['$id', 'Thickness']].unstack(level=3).apply(lambda x: layer_composition(x), axis=1).rename('Layers')
+        constructions_df = constructions_df.join(df, on=['Archetype', 'Name', 'Construction_Name'])
+        log('Completed constructions_df Layer composition in {:,.2f} seconds'.format(time.time()-start_time))
     else:
         log('Could not create layer_composition because the necessary lookup DataFrame "OpaqueMaterials"  was '
             'not provided', lg.WARNING)
@@ -233,9 +238,15 @@ def constructions_windows(idfs, material_glazing=None):
                                                            on=['Archetype', 'Construction_Name'],
                                                            rsuffix='_constructions')
     if material_glazing is not None:
-        constructions_window_df['Layers'] = constructions_window_df.apply(lambda x: layer_composition(x, material_glazing),
-                                                            axis=1)
+        start_time = time.time()
+        df = pd.DataFrame(constructions_window_df.set_index(['Archetype', 'Name', 'Construction_Name']).loc[:,
+                          constructions_window_df.set_index(['Archetype', 'Name', 'Construction_Name']).columns.str.contains(
+                              'Layer')].stack(), columns=['Layers']).join(
+            material_glazing.reset_index().set_index(['Archetype', 'Name']), on=['Archetype', 'Layers']).loc[:,
+             ['$id', 'Thickness']].unstack(level=3).apply(lambda x: layer_composition(x), axis=1).rename('Layers')
+        constructions_window_df = constructions_window_df.join(df, on=['Archetype', 'Name', 'Construction_Name'])
         constructions_window_df.dropna(subset=['Layers'], inplace=True)
+        log('Completed constructions_window_df Layer composition in {:,.2f} seconds'.format(time.time() - start_time))
     else:
         log('Could not create layer_composition because the necessary lookup DataFrame "OpaqueMaterials"  was '
             'not provided', lg.WARNING)

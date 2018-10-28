@@ -144,6 +144,21 @@ def materials_opaque(idfs):
                      'Thermal_Resistance': 'ThermalResistance',
                      'Visible_Absorptance': 'VisibleAbsorptance'}
 
+    # For nomass materials, create a dummy thicness of 10cm (0.1m) and calculate 'thermal_resistance' and
+    # 'conductivity' properties
+
+    # Thermal_Resistance {m^2-K/W}
+    materials_df['Thermal_Resistance'] = materials_df.apply(
+        lambda x: x['Thickness'] / x['Conductivity'] if ~np.isnan(x['Conductivity']) else
+        x['Thermal_Resistance'], axis=1)
+    # Thickness {m}
+    materials_df['Thickness'] = materials_df.apply(lambda x: 0.1 if np.isnan(x['Thickness']) else x['Thickness'],
+                                                   axis=1)
+    # Conductivity {W/m-K}
+    materials_df['Conductivity'] = materials_df.apply(
+        lambda x: x['Thickness'] / x['Thermal_Resistance'],
+        axis=1)
+
     materials_df.rename(columns=column_rename, inplace=True)
 
     materials_df['Comment'] = 'default'

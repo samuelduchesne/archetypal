@@ -337,9 +337,9 @@ def day_schedules(idfs):
     return schedule[cols].set_index('$id')
 
 
-def week_schedule(idfs, dayschedules=None):
+def week_schedules(idfs, dayschedules=None):
     origin_time = time.time()
-    log('Initiating week_schedule...')
+    log('Initiating week_schedules...')
     schedule = object_from_idfs(idfs, 'SCHEDULE:WEEK:DAILY', first_occurrence_only=False)
     cols = settings.common_umi_objects['WeekSchedules']
 
@@ -351,11 +351,11 @@ def week_schedule(idfs, dayschedules=None):
                                                      on=['Archetype', 'Schedule']).loc[:, ['$id', 'Values']].unstack(
             level=2).apply(lambda x: schedule_composition(x), axis=1).rename('Days')
         schedule = schedule.join(df, on=['Archetype', 'Name'])
-        log('Completed week_schedule schedule composition in {:,.2f} seconds'.format(time.time() - start_time))
+        log('Completed week_schedules schedule composition in {:,.2f} seconds'.format(time.time() - start_time))
     else:
         log('Could not create layer_composition because the necessary lookup DataFrame "DaySchedules"  was '
             'not provided', lg.WARNING)
-        
+
     schedule.loc[:, 'Category'] = 'Week'
     schedule.loc[:, 'Comments'] = 'default'
     schedule.loc[:, 'DataSource'] = schedule['Archetype']

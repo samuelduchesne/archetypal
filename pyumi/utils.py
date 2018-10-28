@@ -4,6 +4,7 @@ import logging as lg
 import os
 import sys
 import unicodedata
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -398,3 +399,32 @@ def schedule_composition(row):
         else:
             day_schedules.append({'$ref': ref})
     return day_schedules
+
+
+def my_to_datetime(date_str):
+    if date_str[0:2] != '24':
+        return datetime.strptime(date_str, '%H:%M') - timedelta(hours=1)
+    return datetime.strptime('23:00', '%H:%M')
+
+
+def time2time(row):
+    time_seg = []
+    for i in range(1, 25):
+        try:
+            time = row['Time_{}'.format(i)]  # Time_i
+            value = row['Value_Until_Time_{}'.format(i)]  # Value_Until_Time_i
+        except:
+            pass
+        else:
+            if str(time) != 'nan' and str(value) != 'nan':
+                time = my_to_datetime(time).hour
+                times = np.ones(time + 1) * float(value)
+                time_seg.append(times)
+    arrays = time_seg
+    array = time_seg[0]
+    length = len(arrays[0])
+    for i, a in enumerate(arrays):
+        if i != 0:
+            array = np.append(array, a[length - 1:-1])
+            length = len(a)
+    return array[0:24]

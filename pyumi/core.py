@@ -1,13 +1,11 @@
 import logging as lg
 import time
-from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
 
-from pyumi import schedule_composition
 from . import settings, object_from_idf, object_from_idfs, simple_glazing
-from .utils import log, label_surface, type_surface, layer_composition
+from .utils import log, label_surface, type_surface, layer_composition, schedule_composition, time2time
 
 
 def convert_necb_to_umi_json(idfs, idfobjects=None):
@@ -135,8 +133,8 @@ def materials_glazing(idfs):
 def materials_opaque(idfs):
     origin_time = time.time()
     log('Initiating materials_opaque...')
-    mass = get_mass_materials(idfs)
-    nomass = get_nomass_materials(idfs)
+    mass = object_from_idfs(idfs, 'MATERIAL')
+    nomass = object_from_idfs(idfs, 'MATERIAL:NOMASS')
     materials_df = pd.concat([mass, nomass], sort=True, ignore_index=True)
 
     cols = settings.common_umi_objects['OpaqueMaterials']
@@ -212,7 +210,7 @@ def constructions_opaque(idfs, opaquematerials=None):
 
     if opaquematerials is not None:
         start_time = time.time()
-        log('Initiating constructions_df Layer composition...')
+        log('Initiating constructions_opaque Layer composition...')
         df = pd.DataFrame(constructions_df.set_index(['Archetype', 'Name', 'Construction_Name']).loc[:,
                           constructions_df.set_index(['Archetype', 'Name', 'Construction_Name']).columns.str.contains(
                               'Layer')].stack(), columns=['Layers']).join(
@@ -256,6 +254,7 @@ def constructions_windows(idfs, material_glazing=None):
                                                            on=['Archetype', 'Construction_Name'],
                                                            rsuffix='_constructions')
     if material_glazing is not None:
+        log('Initiating constructions_windows Layer composition...')
         start_time = time.time()
         df = pd.DataFrame(constructions_window_df.set_index(['Archetype', 'Name', 'Construction_Name']).loc[:,
                           constructions_window_df.set_index(
@@ -319,30 +318,6 @@ def get_simple_glazing_system(idfs):
         return materials_df
 
 
-def get_mass_materials(idfs):
-    try:
-        materials_df = object_from_idfs(idfs, 'MATERIAL')
-    except Exception as e:
-        # Return empty DataFrame and log it
-        log('Error : Could not get MATERIAL because of the following error:\n{}'.format(e))
-        return pd.DataFrame([])
-    else:
-        log('Found {} MATERIAL objects'.format(len(materials_df)))
-        return materials_df
-
-
-def get_nomass_materials(idfs):
-    try:
-        materials_df = object_from_idfs(idfs, 'MATERIAL:NOMASS')
-    except Exception as e:
-        # Return empty DataFrame and log it
-        log('Error : Could not get MATERIAL:NOMASS because of the following error:\n{}'.format(e))
-        return pd.DataFrame([])
-    else:
-        log('Found {} MATERIAL:NOMASS objects'.format(len(materials_df)))
-        return materials_df
-
-
 def day_schedules(idfs):
     origin_time = time.time()
     log('Initiating day_schedules...')
@@ -362,38 +337,9 @@ def day_schedules(idfs):
     return schedule[cols].set_index('$id')
 
 
-def my_to_datetime(date_str):
-    if date_str[0:2] != '24':
-        return datetime.strptime(date_str, '%H:%M') - timedelta(hours=1)
-    return datetime.strptime('23:00', '%H:%M')
-
-
-def time2time(row):
-    time_seg = []
-    for i in range(1, 25):
-        try:
-            time = row['Time_{}'.format(i)]  # Time_i
-            value = row['Value_Until_Time_{}'.format(i)]  # Value_Until_Time_i
-        except:
-            pass
-        else:
-            if str(time) != 'nan' and str(value) != 'nan':
-                time = my_to_datetime(time).hour
-                times = np.ones(time + 1) * float(value)
-                time_seg.append(times)
-    arrays = time_seg
-    array = time_seg[0]
-    length = len(arrays[0])
-    for i, a in enumerate(arrays):
-        if i != 0:
-            array = np.append(array, a[length - 1:-1])
-            length = len(a)
-    return array[0:24]
-
-
 def week_schedule(idfs, dayschedules=None):
     origin_time = time.time()
-    log('Initiating day_schedules...')
+    log('Initiating week_schedule...')
     schedule = object_from_idfs(idfs, 'SCHEDULE:WEEK:DAILY', first_occurrence_only=False)
     cols = settings.common_umi_objects['WeekSchedules']
 
@@ -406,7 +352,10 @@ def week_schedule(idfs, dayschedules=None):
             level=2).apply(lambda x: schedule_composition(x), axis=1).rename('Days')
         schedule = schedule.join(df, on=['Archetype', 'Name'])
         log('Completed week_schedule schedule composition in {:,.2f} seconds'.format(time.time() - start_time))
-
+    else:
+        log('Could not create layer_composition because the necessary lookup DataFrame "DaySchedules"  was '
+            'not provided', lg.WARNING)
+        
     schedule.loc[:, 'Category'] = 'Week'
     schedule.loc[:, 'Comments'] = 'default'
     schedule.loc[:, 'DataSource'] = schedule['Archetype']

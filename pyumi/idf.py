@@ -295,12 +295,11 @@ def get_values(frame):
     return pd.DataFrame([frame.fieldvalues[0:ncols]], columns=frame.fieldnames[0:ncols])
 
 
-def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0', output_report='htm', processors=6,
-              parallel=False, **kwargs):
+def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0', output_report='htm', processors=1,
+              **kwargs):
     """
     Run an energy plus file and returns the SummaryReports Tables in a return a list of [(title, table), .....]
 
-    :param parallel:
     :param ep_version: str
         the EnergyPlus version to use eg: 8-9-0
     :param weather_file: str
@@ -324,14 +323,16 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
     if isinstance(eplus_files, str):
         # Treat str as an array
         eplus_files = [eplus_files]
-    dirnames = [os.path.dirname(path) for path in eplus_files]
+
+    # Create a {filename:dirname} dict
+    dirnames = {os.path.basename(path):os.path.dirname(path) for path in eplus_files}
 
     # Try to get cached results
     processed_cache = []
     for eplus_file in eplus_files:
         processed_cache.append([eplus_file, output_report, kwargs])
     try:
-        if parallel:
+        if processors > 1:
             start_time = time.time()
             import concurrent.futures
             with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -364,7 +365,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
         # some runs not found
         log('None or some runs could could be found. Running Eplus for {} out of {} files'.format(len(runs_not_found),
                                                                                                   len(eplus_files)))
-        eplus_files = [os.path.join(dir, run) for dir, run in zip(dirnames, runs_not_found)]
+        eplus_files = [os.path.join(dirnames[run], run) for run in runs_not_found]
 
         start_time = time.time()
         if processors <= 0:
@@ -392,7 +393,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
         log('Running EnergyPlus...')
         # We run the EnergyPlus Simulation
         try:
-            if parallel:
+            if processors > 1:
                 pool = mp.Pool(processors)
                 pool.map(multirunner, processed_runs)
                 pool.close()
@@ -402,7 +403,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
             # multiprocessing not present so pass the jobs one at a time
             log('Cannot use parallel runs. Error with the following exception:\n{}'.format(e))
             for job in processed_runs:
-                multirunner([job])
+                multirunner(job)
         log('Completed EnergyPlus in {:,.2f} seconds'.format(time.time() - start_time))
         # Return summary DataFrames
         reports = {}
@@ -425,13 +426,14 @@ def multirunner(args):
         run(*args[0], **args[1])
     except:
         # Get error file
-        error_filename = os.path.join(args[1]['output_directory'], args[1]['output_prefix'] + 'out.err')
-        if os.path.isfile(error_filename):
-            with open(error_filename, 'r') as fin:
-                log('\nError File for {} begins here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
-                log(fin.read(), lg.ERROR)
-                log('\nError File for {} ends here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
-        else:
+        try:
+            error_filename = os.path.join(args[1]['output_directory'], args[1]['output_prefix'] + 'out.err')
+            if os.path.isfile(error_filename):
+                with open(error_filename, 'r') as fin:
+                    log('\nError File for {} begins here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
+                    log(fin.read(), lg.ERROR)
+                    log('\nError File for {} ends here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
+        except:
             log('Could not find error file', lg.ERROR)
 
 

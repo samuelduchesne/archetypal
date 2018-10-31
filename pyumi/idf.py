@@ -296,10 +296,11 @@ def get_values(frame):
 
 
 def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0', output_report='htm', processors=6,
-              **kwargs):
+              parallel=False, **kwargs):
     """
     Run an energy plus file and returns the SummaryReports Tables in a return a list of [(title, table), .....]
 
+    :param parallel:
     :param ep_version: str
         the EnergyPlus version to use eg: 8-9-0
     :param weather_file: str
@@ -330,14 +331,18 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
     for eplus_file in eplus_files:
         processed_cache.append([eplus_file, output_report, kwargs])
     try:
-        start_time = time.time()
-        import concurrent.futures
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            cached_run_results = {os.path.basename(eplus_finename): result for eplus_finename, result in
-                                  zip(eplus_files, executor.map(get_from_cache_pool, processed_cache))}
-            log('Parallel parsing completed in {:,.2f} seconds'.format(time.time() - start_time))
-    except NameError:
+        if parallel:
+            start_time = time.time()
+            import concurrent.futures
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                cached_run_results = {os.path.basename(eplus_finename): result for eplus_finename, result in
+                                      zip(eplus_files, executor.map(get_from_cache_pool, processed_cache))}
+                log('Parallel parsing completed in {:,.2f} seconds'.format(time.time() - start_time))
+        else:
+            raise Exception('User asked not to run in parallel')
+    except Exception as e:
         # multiprocessing not present so pass the jobs one at a time
+        log('Cannot use parallel runs. Error with the following exception:\n{}'.format(e))
         cached_run_results = {}
         start_time = time.time()
         for eplus_file in eplus_files:
@@ -345,6 +350,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
             cached_run_results[eplus_finename] = get_from_cache(eplus_file, output_report, **kwargs)
         log('Parsing completed in {:,.2f} seconds'.format(time.time() - start_time))
 
+    # Check if retrieved cached results than run for other files with no cached results
     runs_found = {k: v for k, v in cached_run_results.items() if v is not None}
     runs_not_found = [k for k, v in cached_run_results.items() if v is None]
     if not runs_not_found:

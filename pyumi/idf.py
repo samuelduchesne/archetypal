@@ -39,7 +39,7 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False):
             runs = [[idf, ep_object] for idfname, idf in idfs.items()]
             import concurrent.futures
             with concurrent.futures.ProcessPoolExecutor() as executor:
-                container = {idfname:result for (idfname, idf), result in zip(idfs.items(), executor.map(
+                container = {idfname: result for (idfname, idf), result in zip(idfs.items(), executor.map(
                     object_from_idf_pool, runs))}
         except Exception as e:
             # multiprocessing not present so pass the jobs one at a time
@@ -47,7 +47,7 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False):
             for key, idf in idfs.items():
                 # Load objects from IDF files and concatenate
                 this_frame = object_from_idf(idf, ep_object)
-                container[key]=this_frame
+                container[key] = this_frame
 
         # If keys given, construct hierarchical index using the passed keys as the outermost level
         this_frame = pd.concat(container, names=['Archetype', '$id'], sort=True)
@@ -66,9 +66,11 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False):
         this_frame = this_frame.groupby('Name').first()
     this_frame.reset_index(inplace=True)
     this_frame.index.rename('$id', inplace=True)
-    log('Parsed {} {} object(s) in {} idf file(s) in {:,.2f} seconds'.format(len(this_frame), ep_object, len(idfs), time.time() -
-                                                                       start_time))
+    log('Parsed {} {} object(s) in {} idf file(s) in {:,.2f} seconds'.format(len(this_frame), ep_object, len(idfs),
+                                                                             time.time() -
+                                                                             start_time))
     return this_frame
+
 
 def object_from_idf_pool(args):
     this_frame = object_from_idf(args[0], args[1])
@@ -84,8 +86,9 @@ def object_from_idf(idf, ep_object):
     :return:
     """
     try:
-        df = pd.concat([pd.DataFrame(obj.fieldvalues, index=obj.fieldnames[0:len(obj.fieldvalues)]).T for obj in idf.idfobjects[ep_object]],
-            ignore_index=True, sort=False)
+        df = pd.concat([pd.DataFrame(obj.fieldvalues, index=obj.fieldnames[0:len(obj.fieldvalues)]).T for obj in
+                        idf.idfobjects[ep_object]],
+                       ignore_index=True, sort=False)
     except:
         raise ValueError('EP object "{}" does not exist in frame'.format(ep_object))
     else:
@@ -180,7 +183,7 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, p
     else:
         # Else, run eppy to load the idf objects
         files = [os.path.join(dir, run) for dir, run in zip(dirnames, objects_not_found)]
-        runs=[]
+        runs = []
         for file in files:
             runs.append([file, idd_filename])
         # Parallel load
@@ -189,8 +192,10 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, p
                 start_time = time.time()
                 import concurrent.futures
                 with concurrent.futures.ProcessPoolExecutor() as executor:
-                    idfs = [idf_object for idf_object in executor.map(eppy_load_pool, runs)] # TODO : Will probably break when dict is asked
-                    log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(files), time.time() -
+                    idfs = [idf_object for idf_object in
+                            executor.map(eppy_load_pool, runs)]  # TODO : Will probably break when dict is asked
+                    log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(files),
+                                                                                                 time.time() -
                                                                                                  start_time))
             raise Exception('User asked not to run in parallel')
         except Exception as e:
@@ -206,6 +211,7 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, p
         if as_dict:
             return list(idfs.values())
         return idfs
+
 
 def eppy_load_pool(args):
     return eppy_load(args[0], args[1])
@@ -358,9 +364,6 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
         if processors <= 0:
             processors = max(1, mp.cpu_count() - processors)
 
-        # shutil.rmtree("multi_runs", ignore_errors=True)
-        # os.mkdir("multi_runs")
-
         from shutil import copyfile
         processed_runs = []
         for i, eplus_file in enumerate(eplus_files):
@@ -383,11 +386,15 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
         log('Running EnergyPlus...')
         # We run the EnergyPlus Simulation
         try:
-            pool = mp.Pool(processors)
-            pool.map(multirunner, processed_runs)
-            pool.close()
-        except NameError:
+            if parallel:
+                pool = mp.Pool(processors)
+                pool.map(multirunner, processed_runs)
+                pool.close()
+            else:
+                raise Exception('User asked not to run in parallel')
+        except Exception as e:
             # multiprocessing not present so pass the jobs one at a time
+            log('Cannot use parallel runs. Error with the following exception:\n{}'.format(e))
             for job in processed_runs:
                 multirunner([job])
         log('Completed EnergyPlus in {:,.2f} seconds'.format(time.time() - start_time))
@@ -397,6 +404,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
             eplus_finename = os.path.basename(eplus_file)
             runs_found[eplus_finename] = get_report(eplus_file, output_folder, output_report, **kwargs)
         return runs_found
+
 
 def multirunner(args):
     """Wrapper for run() to be used when running IDF and EPW runs in parallel.
@@ -419,6 +427,7 @@ def multirunner(args):
                 log('\nError File for {} ends here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
         else:
             log('Could not find error file', lg.ERROR)
+
 
 def get_from_cache_pool(args):
     """Wrapper for get_from_cache() to be used when laoding in parallel.

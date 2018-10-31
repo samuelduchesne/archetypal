@@ -141,7 +141,9 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
                 raise ValueError('File Energy+.idd could not be found')
         if idd_filename:
             log('Retrieved EnergyPlus IDD file at location: {}'.format(idd_filename))
-
+    if isinstance(files, str):
+        # Treat str as an array
+        files = [files]
     # Try loading IDF objects from pickled cache first
     dirnames = [os.path.dirname(path) for path in files]
     start_time = time.time()
@@ -164,7 +166,7 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
     objects_not_found = [k for k, v in idfs.items() if v is None]
     if not objects_not_found:
         # if objects_not_found not empty, return the ones we actually did find and pass the other ones
-        if not as_dict:
+        if as_dict:
             log('Eppy load from cache completed in {:,.2f} seconds\n'.format(time.time() - start_time))
             return list(objects_found.values())
         else:
@@ -186,7 +188,7 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
                                                                                              start_time))
         except Exception as e:
             # multiprocessing not present so pass the jobs one at a time
-            log('Error with the following exception : {}\nCannot use parallel load'.format(e))
+            log('Cannot use parallel load. Error with the following exception :\n{}'.format(e))
             idfs = {}
             start_time = time.time()
             for file in files:
@@ -194,8 +196,8 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
                 idf_object = eppy_load(file, idd_filename)
                 idfs[eplus_finename] = idf_object
             log('Parsed {} idf file(s) in {:,.2f} seconds'.format(len(files), time.time() - start_time))
-        if not as_dict:
-            return list(idfs.values)
+        if as_dict:
+            return list(idfs.values())
         return idfs
 
 def eppy_load_pool(args):

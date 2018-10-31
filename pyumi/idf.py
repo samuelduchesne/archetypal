@@ -95,13 +95,15 @@ def object_from_idf(idf, ep_object):
     # return object_values
 
 
-def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
+def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, parallel=False):
     """
     Returns a list of IDF objects using the eppy package.
     :param files: list
         List of file paths
     :param idd_filename: string
         IDD file name location (Energy+.idd)
+    :param parallel: Bool
+        Wether or not to run in parallel
     :return: list
         List of IDF objects
     """
@@ -148,15 +150,18 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
     dirnames = [os.path.dirname(path) for path in files]
     start_time = time.time()
     try:
-        log('Parsing IDF Objects in parallel...')
-        import concurrent.futures
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            idfs = {os.path.basename(file): result for file, result in zip(files, executor.map(
-                load_idf_object_from_cache, files))}
+        if parallel:
+            log('Parsing IDF Objects in parallel...')
+            import concurrent.futures
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                idfs = {os.path.basename(file): result for file, result in zip(files, executor.map(
+                    load_idf_object_from_cache, files))}
+        else:
+            raise Exception('User asked not to run in parallel')
     except Exception as e:
         # multiprocessing not present so pass the jobs one at a time
-        log('Error with the following exception : {}\nCannot use parallel load'.format(e))
-        log('Parsing IDF Objects...')
+        log('Cannot use parallel load. Error with the following exception:\n{}'.format(e))
+        log('Parsing IDF Objects sequentially...')
         idfs = {}
         for file in files:
             eplus_finename = os.path.basename(file)
@@ -180,22 +185,24 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False):
             runs.append([file, idd_filename])
         # Parallel load
         try:
-            start_time = time.time()
-            import concurrent.futures
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                idfs = [idf_object for idf_object in executor.map(eppy_load_pool, runs)] # TODO : Will probably break when dict is asked
-                log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(files), time.time() -
-                                                                                             start_time))
+            if parallel:
+                start_time = time.time()
+                import concurrent.futures
+                with concurrent.futures.ProcessPoolExecutor() as executor:
+                    idfs = [idf_object for idf_object in executor.map(eppy_load_pool, runs)] # TODO : Will probably break when dict is asked
+                    log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(files), time.time() -
+                                                                                                 start_time))
+            raise Exception('User asked not to run in parallel')
         except Exception as e:
             # multiprocessing not present so pass the jobs one at a time
-            log('Cannot use parallel load. Error with the following exception :\n{}'.format(e))
+            log('Cannot use parallel load. Error with the following exception:\n{}'.format(e))
             idfs = {}
             start_time = time.time()
             for file in files:
                 eplus_finename = os.path.basename(file)
                 idf_object = eppy_load(file, idd_filename)
                 idfs[eplus_finename] = idf_object
-            log('Parsed {} idf file(s) in {:,.2f} seconds'.format(len(files), time.time() - start_time))
+            log('Parsed {} idf file(s) sequentially in {:,.2f} seconds'.format(len(files), time.time() - start_time))
         if as_dict:
             return list(idfs.values())
         return idfs

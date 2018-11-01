@@ -84,4 +84,9 @@ main-test\.py
 *.eso
 *.mtr
 
+# vscode stuff
+.vscode/
+
+# pyumi stuff
 cache/
+notebooks/

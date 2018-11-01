@@ -35,7 +35,8 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False):
 
     if isinstance(idfs, dict):
         try:
-            raise ValueError('Parallel takes more time at the moment')
+            # Loading objects in parallel is actually slower at the moment, so we raise an Exception
+            raise Exception('Parallel takes more time at the moment')
             runs = [[idf, ep_object] for idfname, idf in idfs.items()]
             import concurrent.futures
             with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -43,6 +44,7 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False):
                     object_from_idf_pool, runs))}
         except Exception as e:
             # multiprocessing not present so pass the jobs one at a time
+            log('Cannot use parallel load. Error with the following exception:\n{}'.format(e))
             container = {}
             for key, idf in idfs.items():
                 # Load objects from IDF files and concatenate
@@ -184,7 +186,7 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, p
         # Else, run eppy to load the idf objects
         files = [os.path.join(dir, run) for dir, run in zip(dirnames, objects_not_found)]
         runs = []
-        for file in files:
+        for file, idd_filename in zip(files, idd_filename):
             runs.append([file, idd_filename])
         # Parallel load
         try:
@@ -373,14 +375,14 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
 
         from shutil import copyfile
         processed_runs = []
-        for i, eplus_file in enumerate(eplus_files):
-            filename = os.path.basename(eplus_file)
-            # hash the eplus_file name (to make shorter than the often extremely long name)
+        for eplus_file in eplus_files:
+            # hash the eplus_file (to make shorter than the often extremely long name)
             filename_prefix = hash_file(eplus_file)
             epw = weather_file
             kwargs = {'output_directory': output_folder + '/{}'.format(filename_prefix),
-                      'ep_version': ep_version,
-                      'output_prefix': filename_prefix}
+                      'ep_version': versionids[eplus_file],
+                      'output_prefix': filename_prefix,
+                      'idd':idd_filename[eplus_file]}
             idf_path = os.path.abspath(eplus_file)  # TODO Should copy idf somewhere else before running; [Partly Fixed]
             processed_runs.append([[idf_path, epw], kwargs])
 
@@ -389,7 +391,6 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
                 if not os.path.isdir(os.path.join(kwargs['output_directory'])):
                     os.mkdir(kwargs['output_directory'])
                 copyfile(eplus_file, os.path.join(kwargs['output_directory'], os.path.basename(eplus_file)))
-
         log('Running EnergyPlus...')
         # We run the EnergyPlus Simulation
         try:
@@ -424,8 +425,9 @@ def multirunner(args):
     """
     try:
         run(*args[0], **args[1])
-    except:
+    except Exception as e:
         # Get error file
+        log('Error: {}'.format(e))
         try:
             error_filename = os.path.join(args[1]['output_directory'], args[1]['output_prefix'] + 'out.err')
             if os.path.isfile(error_filename):
@@ -465,7 +467,6 @@ def hash_file(eplus_file):
 
 
 def get_report(eplus_file, output_folder=None, output_report='htm', **kwargs):
-    filename = os.path.basename(eplus_file)
     filename_prefix = hash_file(eplus_file)
     if 'htm' in output_report.lower():
         # Get the html report

@@ -238,9 +238,10 @@ def eppy_load(file, idd_filename):
 
 def save_idf_object_to_cache(idf_object, idf_file):
     """Save IDFS instance to a gzip'ed pickle file
-    :param idfs: array
-    :param folder: str
-        location to save file
+    :param idf_object: eppy.IDF
+        an eppy IDF object
+    :param idf_file: str
+        file path of idf file
     """
     if settings.use_cache:
         cache_filename = hash_file(idf_file)
@@ -266,7 +267,10 @@ def save_idf_object_to_cache(idf_object, idf_file):
 def load_idf_object_from_cache(idf_file):
     """
     Load an idf instance from a gzip'ed pickle file
-    :param idfs:
+    :param idf_file: str
+        Path of idf file
+    :return: eppy.IDF
+        Returns eppy IDF Object from cache
     """
     if settings.use_cache:
         import gzip
@@ -398,7 +402,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
             kwargs = {'output_directory': output_folder + '/{}'.format(filename_prefix),
                       'ep_version': versionids[eplus_file],
                       'output_prefix': filename_prefix,
-                      'idd':idd_filename[eplus_file]}
+                      'idd': idd_filename[eplus_file]}
             idf_path = os.path.abspath(eplus_file)  # TODO Should copy idf somewhere else before running; [Partly Fixed]
             processed_runs.append([[idf_path, epw], kwargs])
 
@@ -423,7 +427,6 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
                 multirunner(job)
         log('Completed EnergyPlus in {:,.2f} seconds'.format(time.time() - start_time))
         # Return summary DataFrames
-        reports = {}
         for eplus_file in eplus_files:
             eplus_finename = os.path.basename(eplus_file)
             runs_found[eplus_finename] = get_report(eplus_file, output_folder, output_report, **kwargs)
@@ -473,7 +476,7 @@ def hash_file(eplus_file):
     :return: str
         hashed file string
 
-    TODO: Hashing only the idf file can cause issues when external files are used (and have changed) because hashing will no capture this change
+    TODO: Hashing only the idf file can cause issues when external files are used (and have changed) because hashing will not capture this change
     """
     hasher = hashlib.md5()
     with open(eplus_file, 'rb') as afile:

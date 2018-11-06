@@ -1,10 +1,12 @@
-import glob
 import hashlib
 import logging as lg
 import os
 import time
 
 import pandas as pd
+from eppy import EPlusInterfaceFunctions
+from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run
 
 from . import settings
@@ -113,44 +115,36 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, p
         List of IDF objects
     """
     # Check weather to use MacOs or Windows location
-    if idd_filename is None:
-        from sys import platform
-
-        if energyplus_version:
-            # Specify version
-            energyplus_folder = 'EnergyPlus-{}'.format(energyplus_version)
-        else:
-            # Don't specify version
-            energyplus_folder = 'EnergyPlus*'  # Wildcard will find any version installed
-
-        # Platform specific location of IDD file
-        if platform == "darwin":
-            # Assume MacOs file location in Applications Folder
-            idd_filename = glob.glob("/Applications/{}/Energy+.idd".format(energyplus_folder))
-            if len(idd_filename) > 1:
-                log('More than one versions of EnergyPlus were found. First one is used')
-                idd_filename = idd_filename[0]
-            elif len(idd_filename) == 1:
-                idd_filename = idd_filename[0]
-            else:
-                log('The necessary IDD file could not be found', level=lg.ERROR)
-                raise ValueError('File Energy+.idd could not be found')
-        elif platform == "win32":
-            # Assume Windows file location in "C" Drive
-            idd_filename = glob.glob("C:\{}\EnergyPlus\*.idd".format(energyplus_folder))
-            if len(idd_filename) > 1:
-                log('More than one versions of EnergyPlus were found. First one is used')
-                idd_filename = idd_filename[0]
-            elif len(idd_filename) == 1:
-                idd_filename = idd_filename[0]
-            else:
-                log('The necessary IDD file could not be found', level=lg.ERROR)
-                raise ValueError('File Energy+.idd could not be found')
-        if idd_filename:
-            log('Retrieved EnergyPlus IDD file at location: {}'.format(idd_filename))
     if isinstance(files, str):
-        # Treat str as an array
         files = [files]
+
+    # Determine version of idf file by reading the text file
+    if idd_filename is None:
+        versionids = []
+        for file in files:
+            with open(file, 'r', encoding='latin-1') as fhandle:
+                txt = fhandle.read()
+                ntxt = parse_idd.nocomment(txt, '!')
+                blocks = ntxt.split(';')
+                blocks = [block.strip() for block in blocks]
+                bblocks = [block.split(',') for block in blocks]
+                bblocks1 = [[item.strip() for item in block] for block in bblocks]
+                ver_blocks = [block for block in bblocks1
+                              if block[0].upper() == 'VERSION']
+                ver_block = ver_blocks[0]
+                versionid = ver_block[1]
+                versionids.append(versionid)
+
+        idd_filename = [getiddfile(versionid) for versionid in versionids]
+
+    #
+    # if energyplus_version:
+    #     # Try to upgrade older versions
+    #
+    #     # Change old item in idd_filename with new versino
+    #
+    # else:
+
     # Try loading IDF objects from pickled cache first
     dirnames = [os.path.dirname(path) for path in files]
     start_time = time.time()
@@ -297,7 +291,7 @@ def get_values(frame):
     return pd.DataFrame([frame.fieldvalues[0:ncols]], columns=frame.fieldnames[0:ncols])
 
 
-def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0', output_report='htm', processors=1,
+def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, output_report='htm', processors=1,
               **kwargs):
     """
     Run an energy plus file and returns the SummaryReports Tables in a return a list of [(title, table), .....]
@@ -314,7 +308,32 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
         a dict of {title : table <DataFrame>, .....}
     """
 
-    # If python 2.7: `from __future__ import print_function`
+    if isinstance(eplus_files, str):
+        # Treat str as an array
+        eplus_files = [eplus_files]
+
+    # Determine version of idf file by reading the text file
+    if ep_version is None:
+        versionids = {}
+        idd_filename = {}
+        for file in eplus_files:
+            with open(file, 'r', encoding='latin-1') as fhandle:
+                txt = fhandle.read()
+                ntxt = EPlusInterfaceFunctions.parse_idd.nocomment(txt, '!')
+                blocks = ntxt.split(';')
+                blocks = [block.strip() for block in blocks]
+                bblocks = [block.split(',') for block in blocks]
+                bblocks1 = [[item.strip() for item in block] for block in bblocks]
+                ver_blocks = [block for block in bblocks1
+                              if block[0].upper() == 'VERSION']
+                ver_block = ver_blocks[0]
+                versionid = ver_block[1]
+
+                versionids[file] = versionid.replace('.', '-') + '-0'
+                idd_filename[file] = getiddfile(versionid)
+    else:
+        versionids = {eplus_file: str(ep_version) for eplus_file in eplus_files}
+        idd_filename = {eplus_file: getiddfile(ep_version) for eplus_file in eplus_files}
 
     if not output_folder:
         output_folder = os.path.abspath(settings.cache_folder)
@@ -322,12 +341,9 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version='8-9-0',
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     log('Output folder set to {}'.format(output_folder))
-    if isinstance(eplus_files, str):
-        # Treat str as an array
-        eplus_files = [eplus_files]
 
     # Create a {filename:dirname} dict
-    dirnames = {os.path.basename(path):os.path.dirname(path) for path in eplus_files}
+    dirnames = {os.path.basename(path): os.path.dirname(path) for path in eplus_files}
 
     # Try to get cached results
     processed_cache = []

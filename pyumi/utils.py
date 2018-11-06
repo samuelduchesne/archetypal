@@ -400,11 +400,20 @@ def schedule_composition(row):
             day_schedules.append({'$ref': ref})
     return day_schedules
 
+
 def year_composition(row):
+    """
+    Takes in a series with $id and ScheduleWeek_Name_{} values and return an array of dict of the form
+    {'FromDay': fromday, 'FromMonth': frommonth, 'Schedule': {'$ref': int(ref)}, 'ToDay': today, 'ToMonth': tomonth}
+    :param row: pandas.Series
+        A series object
+    :return:
+        Array of dicts
+    """
     parts = []
     for i in range(1, 26 + 1):
         try:
-            ref = row['$id','ScheduleWeek_Name_{}'.format(i)]
+            ref = row['$id', 'ScheduleWeek_Name_{}'.format(i)]
         except:
             pass
         else:
@@ -421,13 +430,29 @@ def year_composition(row):
                               'ToMonth': tomonth})
     return parts
 
+
 def my_to_datetime(date_str):
+    """
+    Simple function transforming one-based hours (1->24) into zero-based hours (0->23)
+    :param date_str: str
+        a date string og the form 'HH:MM'
+    :return: datetime.datetime
+        datetime object
+    """
     if date_str[0:2] != '24':
         return datetime.strptime(date_str, '%H:%M') - timedelta(hours=1)
     return datetime.strptime('23:00', '%H:%M')
 
 
 def time2time(row):
+    """
+    Constructs an array of 24 hour schedule points from a Shedule:Day:Interval object.
+
+    :param row: pandas.Series
+        A Series object
+    :return: numpy.array
+        a numpy array of length 24
+    """
     time_seg = []
     for i in range(1, 25):
         try:

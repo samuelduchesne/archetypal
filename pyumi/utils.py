@@ -473,3 +473,58 @@ def time2time(row):
             array = np.append(array, a[length - 1:-1])
             length = len(a)
     return array[0:24]
+
+
+def iscore(row):
+    """
+    Helps to group by core and perimeter zones. If any of "has `core` in name" and "ExtGrossWallArea == 0" is true,
+    will consider zone as core, else as perimeter.
+
+    todo: assumes a basement zone will be considered as a core zone since no ext wall area for basements.
+    """
+    if any(['core' in row[('Zones', 'Zone Name')].lower(),
+            float(row[('Zones', 'Exterior Gross Wall Area {m2}')]) == 0]):  # We look for the string `core` in
+        # the
+        # Zone_Name
+        return 'Core'
+    elif row[('Zones', 'Part of Total Building Area')] == 'No':
+        return np.NaN
+    else:
+        return 'Perimeter'
+
+
+def weighted_mean(series, df):
+    """
+    Evaluates a weighteed average while ignoring NaNs
+    """
+    index = ~np.isnan(series.values.astype('float'))
+    weights = df.loc[series.index, ('Zones', 'Floor Area {m2}')].astype('float') * df.loc[
+        series.index, ('Zones', 'Zone Multiplier')].astype('float')
+    try:
+        wa = np.average(series[index].astype('float'), weights=weights[index])
+    except Exception as e:
+        log('\nAn Exception occured while applying weighted_mean on Series: {}'.format(series.name))
+        log('Occurs when all series values are NaN')
+        log('Error message: {}'.format(e))
+        return 0
+    else:
+        return wa
+
+
+def top(series, df):
+    """
+    Returns the element with the highest occurance weighted by floor area
+    """
+    try:
+        idx = df.loc[series.index].groupby(series.name).apply(
+            lambda x: x[('Zones', 'Floor Area {m2}')].astype('float').sum()).nlargest(1).index
+    except Exception as e:
+        log('\nAn Exception occured while applying "top" aggregator on Series: {}'.format(series.name), lg.WARNING)
+        log('Occurs when all series values are NaN', lg.WARNING)
+        log('Error message: {}'.format(e), lg.WARNING)
+        return np.NaN
+    else:
+        if idx.isnull().any():
+            return np.NaN
+        else:
+            return idx.values.astype('str')[0]

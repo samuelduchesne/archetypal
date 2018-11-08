@@ -312,7 +312,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
     Run an energy plus file and returns the SummaryReports Tables in a return a list of [(title, table), .....]
 
     :param str,list eplus_files: path to the idf file(s). Can be a list of strings or simply a string
-    :param str ep_version: optional, EnergyPlus version to use, eg: 8-9-0
+    :param str ep_version: optional, force to use a particular EnergyPlus version to use, eg: 8-9-0.
     :param str output_report: 'htm' or 'sql'
     :param str weather_file: path to the weather file
     :param str output_folder: optional, path to the output folder. Will default to the settings.cache_folder value.
@@ -328,24 +328,8 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
     # Determine version of idf file by reading the text file
     if ep_version is None:
         versionids = {}
-        idd_filename = {}
-        for file in eplus_files:
-            with open(file, 'r', encoding='latin-1') as fhandle:
-                txt = fhandle.read()
-                ntxt = EPlusInterfaceFunctions.parse_idd.nocomment(txt, '!')
-                blocks = ntxt.split(';')
-                blocks = [block.strip() for block in blocks]
-                bblocks = [block.split(',') for block in blocks]
-                bblocks1 = [[item.strip() for item in block] for block in bblocks]
-                ver_blocks = [block for block in bblocks1
-                              if block[0].upper() == 'VERSION']
-                ver_block = ver_blocks[0]
-                versionid = ver_block[1]
-
-                versionids[file] = versionid.replace('.', '-') + '-0'
-                idd_filename[file] = getiddfile(versionid)
+        idd_filename = {file: getiddfile(get_idf_version(file)) for file in eplus_files}
     else:
-        versionids = {eplus_file: str(ep_version) for eplus_file in eplus_files}
         idd_filename = {eplus_file: getiddfile(ep_version) for eplus_file in eplus_files}
 
     if not output_folder:

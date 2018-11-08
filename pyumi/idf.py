@@ -24,15 +24,13 @@ except ImportError:
 def object_from_idfs(idfs, ep_object, first_occurrence_only=False):
     """
 
-    :param idfs: list or dict
-        List of IDF objects
-    :param ep_object: string
-        EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a string
-    :param keys: list
-        List of names for each idf file. Becomes level-0 of a multi-index.
-    :param first_occurrence_only: bool
-
+    :param list or dict idfs:  List of IDF objects
+    :param str ep_object: EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a string
+    :param list keys: List of names for each idf file. Becomes level-0 of a multi-index.
+    :param bool first_occurrence_only:
     :return: DataFrame of all specified objects in idf files
+    :rtype: pandas.DataFrame
+
     """
     container = []
     start_time = time.time()
@@ -80,17 +78,25 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False):
 
 
 def object_from_idf_pool(args):
-    this_frame = object_from_idf(args[0], args[1])
-    return this_frame
+    """
+    Wrapper for :py:func:`object_from_idf` to use in parallel calls
+
+    :param list args: list of arguments to pass to :py:func:`object_from_idf`
+    :return: the list of
+    :rtype: pandas.DataFrame
+
+    """
+    return object_from_idf(args[0], args[1])
 
 
 def object_from_idf(idf, ep_object):
     """
 
-    :param idf: IDF
-        IDF object
-    :param ep_object:
-    :return:
+    :param eppy.IDF idf: IDF object
+    :param str ep_object:
+    :return: DataFrame
+    :rtype: pandas.DataFrame
+
     """
     try:
         df = pd.concat([pd.DataFrame(obj.fieldvalues, index=obj.fieldnames[0:len(obj.fieldvalues)]).T for obj in
@@ -107,15 +113,13 @@ def object_from_idf(idf, ep_object):
 
 def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, parallel=False):
     """
-    Returns a list of IDF objects using the eppy package.
-    :param files: list
-        List of file paths
-    :param idd_filename: string
-        IDD file name location (Energy+.idd)
-    :param parallel: Bool
-        Wether or not to run in parallel
-    :return: list
-        List of IDF objects
+    Returns a list of parsed IDF objects.
+
+    :param str,list files: file path or list of file paths to the idf files
+    :param str idd_filename: optional, the IDD file name location, eg.: './Energy+.idd'
+    :param bool parallel: Wether or not to run in parallel
+    :return: list of eppy.IDF objects
+    :rtype: list
     """
     # Check weather to use MacOs or Windows location
     if isinstance(files, str):
@@ -190,10 +194,28 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, p
 
 
 def eppy_load_pool(args):
+    """
+    Wrapper for :py:func:`eppy_load` to perform parallelization.
+
+    :param list args: list of arguments to pass to :py:func:`eppy_load`
+    :return: eppy.IDF object
+    :rtype: eppy.IDF
+
+    """
     return eppy_load(args[0], args[1])
 
 
 def eppy_load(file, idd_filename):
+    """
+    Uses pacakge eppy to parse an idf file. Will also try to upgrade the idf file using the EnergyPlus Transition
+    executables.
+
+    :param str file: path to idf file
+    :param str idd_filename: path the idd file
+    :return: eppy.IDF object
+    :rtype: eppy.IDF
+
+    """
     # Initiate an eppy.IDF object
     from eppy.modeleditor import IDF
     idf_object = None
@@ -229,11 +251,12 @@ def eppy_load(file, idd_filename):
 
 
 def save_idf_object_to_cache(idf_object, idf_file):
-    """Save IDFS instance to a gzip'ed pickle file
-    :param idf_object: eppy.IDF
-        an eppy IDF object
-    :param idf_file: str
-        file path of idf file
+    """
+    Save IDF instance to a gzip'ed pickle file
+
+    :param eppy.IDF idf_object: an eppy IDF object
+    :param str idf_file: file path of idf file
+
     """
     if settings.use_cache:
         cache_filename = hash_file(idf_file)
@@ -259,10 +282,11 @@ def save_idf_object_to_cache(idf_object, idf_file):
 def load_idf_object_from_cache(idf_file):
     """
     Load an idf instance from a gzip'ed pickle file
-    :param idf_file: str
-        Path of idf file
-    :return: eppy.IDF
-        Returns eppy IDF Object from cache
+
+    :param str idf_file: Path of idf file
+    :return: Returns eppy.IDF Object from cache
+    :rtype: eppy.IDF
+
     """
     if settings.use_cache:
         import gzip
@@ -282,26 +306,19 @@ def load_idf_object_from_cache(idf_file):
             return idf
 
 
-def get_values(frame):
-    ncols = min(len(frame.fieldvalues), len(frame.fieldnames))
-    return pd.DataFrame([frame.fieldvalues[0:ncols]], columns=frame.fieldnames[0:ncols])
-
-
 def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, output_report='htm', processors=1,
               **kwargs):
     """
     Run an energy plus file and returns the SummaryReports Tables in a return a list of [(title, table), .....]
 
-    :param ep_version: str
-        the EnergyPlus version to use eg: 8-9-0
-    :param weather_file: str
-        path to the WeatherFile
-    :param eplus_file: str or list
-        path to the idf file
-    :param output_folder: str
-        path to the output folder. Will default to the settings.cache_folder value.
-    :return: dict
-        a dict of {title : table <DataFrame>, .....}
+    :param str,list eplus_files: path to the idf file(s). Can be a list of strings or simply a string
+    :param str ep_version: optional, EnergyPlus version to use, eg: 8-9-0
+    :param str output_report: 'htm' or 'sql'
+    :param str weather_file: path to the weather file
+    :param str output_folder: optional, path to the output folder. Will default to the settings.cache_folder value.
+    :param int processors: number of processors to use. if > 1, then parallelization will occur
+    :return: dict of {title : table <DataFrame>, ...}
+
     """
 
     if isinstance(eplus_files, str):
@@ -426,12 +443,10 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
 
 
 def multirunner(args):
-    """Wrapper for run() to be used when running IDF and EPW runs in parallel.
+    """
+    Wrapper for run() to be used when running IDF and EPW runs in parallel.
 
-    Parameters
-    ----------
-    args : list
-        A list made up of a two-item list (IDF and EPW) and a kwargs dict.
+    :param list args: A list made up of a two-item list (IDF and EPW) and a kwargs dict.
 
     """
     try:
@@ -451,11 +466,12 @@ def multirunner(args):
 
 
 def get_from_cache_pool(args):
-    """Wrapper for get_from_cache() to be used when laoding in parallel.
-    Parameters
-    ----------
-    args : list
-        A list made up of arguments.
+    """Wrapper for :py:func:`get_from_cache` to be used when loading in parallel.
+
+    :param list args: A list made up of arguments.
+    :return: dict of {title : table <DataFrame>, .....}
+    :rtype: dict
+
     """
     return get_from_cache(args[0], args[1])  # Todo: Settup arguments as Locals()
 
@@ -463,12 +479,13 @@ def get_from_cache_pool(args):
 def hash_file(eplus_file):
     """
     Simple function to hash a file and return it as a string.
-    :param eplus_file: str
-        the path to the idf file
-    :return: str
-        hashed file string
+
+    :param str eplus_file: the path to the idf file
+    :return: hashed file string
+    :rtype: str
 
     TODO: Hashing only the idf file can cause issues when external files are used (and have changed) because hashing will not capture this change
+
     """
     hasher = hashlib.md5()
     with open(eplus_file, 'rb') as afile:
@@ -478,6 +495,16 @@ def hash_file(eplus_file):
 
 
 def get_report(eplus_file, output_folder=None, output_report='htm', **kwargs):
+    """
+    returns the specified report format (html or sql)
+
+    :param str eplus_file:
+    :param str output_folder: optional,
+    :param str output_report: 'htm' or 'sql'
+    :param kwargs: keyword arguments to pass to other functions
+    :return: the specified report format (html or sql)
+
+    """
     filename_prefix = hash_file(eplus_file)
     if 'htm' in output_report.lower():
         # Get the html report
@@ -501,12 +528,11 @@ def get_report(eplus_file, output_folder=None, output_report='htm', **kwargs):
 def get_from_cache(eplus_file, output_report='htm', **kwargs):
     """
     Retrieve a EPlus Tabulated Summary run result from the cache.
-    :param output_report: str
-        the eplus output file extension eg. 'htm' or 'sql'
-    :param eplus_file: str
-        the name of the eplus file
-    :return: dict
-        a dict of {title : table <DataFrame>, .....}
+
+    :param str output_report: the eplus output file extension eg. 'htm' or 'sql'
+    :param str eplus_file: the name of the eplus file
+    :return: dict of {title : table <DataFrame>, .....}
+    :rtype: dict
 
     """
     if settings.use_cache:
@@ -534,10 +560,11 @@ def get_from_cache(eplus_file, output_report='htm', **kwargs):
 def get_html_report(report_fullpath):
     """
     Parses the html Summary Report for each tables into a dictionary of DataFrames
-    :param report_fullpath: string
-        full path to the report file
-    :return: dict
-        a dict of {title : table <DataFrame>,...}
+
+    :param str report_fullpath: full path to the report file
+    :return: dict of {title : table <DataFrame>,...}
+    :rtype: dict
+
     """
     from eppy.results import readhtml  # the eppy module with functions to read the html
     with open(report_fullpath, 'r', encoding='utf-8') as cache_file:
@@ -554,10 +581,11 @@ def summary_reports_to_dataframes(reports_list):
     """
     Converts a list of [(title, table),...] to a dict of {title: table <DataFrame>}. Makes sure that duplicate keys
     have their own unique names in the output dict.
-    :param reports_list: list
-        a list of [(title, table),...]
-    :return: dict
-        a dict of {title: table <DataFrame>}
+
+    :param list reports_list: a list of [(title, table),...]
+    :return: a dict of {title: table <DataFrame>}
+    :rtype: dict
+
     """
     results_dict = {}
     for table in reports_list:
@@ -571,6 +599,14 @@ def summary_reports_to_dataframes(reports_list):
 
 
 def get_sqlite_report(report_file, report_tables=None):
+    """
+    Connects to the EnergyPlus SQL output file and retreives all tables.
+
+    :param report_file:
+    :param report_tables:
+    :return: dict of DataFrames
+    :rtype: dict,pandas.DataFrame
+    """
     # set list of report tables
     if not report_tables:
         report_tables = settings.available_sqlite_tables
@@ -596,6 +632,12 @@ def get_sqlite_report(report_file, report_tables=None):
 
 
 def upgrade_idf(files):
+    """
+    upgrade the idf file to the latest version
+
+    :param str,list files: path or list of paths to the idf file(s)
+
+    """
     # Check if files is a str and put in a list
     if isinstance(files, str):
         files = [files]
@@ -661,13 +703,13 @@ def perform_transition(file):
 def get_idf_version(file, doted=True):
     """
     Get idf version quickly by reading first few lines of idf file containing the 'VERSION' identifier
-    :param file: str
-        Absolute or relative Path to idf file
-    :param doted: bool
-        Wheter or not to return the version number with periods or dashes eg.: 8.9 vs 8-9-0. Doted=False appends -0
-        to the end of the version number
-    :return: str
-        The version id
+
+    :param str file: Absolute or relative Path to the idf file
+    :param bool doted: Wheter or not to return the version number with periods or dashes eg.: 8.9 vs 8-9-0. Doted=False
+        appends -0 to the end of the version number
+    :return: The version id
+    :rtype: str
+
     """
     with open(file, 'r', encoding='latin-1') as fhandle:
         txt = fhandle.read()

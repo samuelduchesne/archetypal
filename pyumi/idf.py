@@ -120,20 +120,7 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, p
 
     # Determine version of idf file by reading the text file
     if idd_filename is None:
-        versionids = []
-        for file in files:
-            with open(file, 'r', encoding='latin-1') as fhandle:
-                txt = fhandle.read()
-                ntxt = parse_idd.nocomment(txt, '!')
-                blocks = ntxt.split(';')
-                blocks = [block.strip() for block in blocks]
-                bblocks = [block.split(',') for block in blocks]
-                bblocks1 = [[item.strip() for item in block] for block in bblocks]
-                ver_blocks = [block for block in bblocks1
-                              if block[0].upper() == 'VERSION']
-                ver_block = ver_blocks[0]
-                versionid = ver_block[1]
-                versionids.append(versionid)
+        idd_filename = {file: getiddfile(get_idf_version(file)) for file in files}
 
         idd_filename = [getiddfile(versionid) for versionid in versionids]
 
@@ -601,3 +588,20 @@ def get_sqlite_report(report_file, report_tables=None):
 
             log('SQL query parsed {} tables as DataFrames from {}'.format(len(all_tables), report_file))
             return all_tables
+
+def get_idf_version(file, doted=True):
+    with open(file, 'r', encoding='latin-1') as fhandle:
+        txt = fhandle.read()
+        ntxt = parse_idd.nocomment(txt, '!')
+        blocks = ntxt.split(';')
+        blocks = [block.strip() for block in blocks]
+        bblocks = [block.split(',') for block in blocks]
+        bblocks1 = [[item.strip() for item in block] for block in bblocks]
+        ver_blocks = [block for block in bblocks1
+                      if block[0].upper() == 'VERSION']
+        ver_block = ver_blocks[0]
+        if doted:
+            versionid = ver_block[1]
+        else:
+            versionid = ver_block[1].replace('.', '-') + '-0'
+    return versionid

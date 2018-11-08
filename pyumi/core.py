@@ -409,10 +409,11 @@ def zone_loads(df):
     """
     Takes the sql reports (as a dict of DataFrames), concatenates all relevant 'Initialization Summary' tables and
     applies a series of aggragation functions (weighted means and "top").
-    :param df: dict
-        A dict of pandas.DataFrames
-    :return:
-        A new DataFrame with aggragated values
+
+    :param dict df: A dict of pandas.DataFrames
+    :return: A new DataFrame with aggragated values
+    :rtype: pandas.DataFrame
+
     """
 
     # Loading each section in a dictionnary. Used to create a new DF using pd.concat()
@@ -444,10 +445,10 @@ def aggregation(x):
 
     Returns a Series with a column MultiIndex
 
-    :param x: pandas.DataFrame
-        A DataFrame
-    :return: pandas.Series
-        A Series with a MultiIndex
+    :param pandas.DataFrame x: A DataFrame
+    :return: A Series with a MultiIndex
+    :rtype: pandas.Series
+
     """
     d = []
     d.append(weighted_mean(x[('NominalInfiltration', 'ACH - Air Changes per Hour')], x))

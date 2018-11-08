@@ -469,33 +469,37 @@ def nominal_lighting(df):
     df = get_from_tabulardata(df)
     tbstr = df[(df.ReportName == 'Initialization Summary') &
                (df.TableName == 'Lights Internal Gains Nominal')].reset_index()
-    # todo: Check if Zone Name has a duplicate. This breaks when multiple zones have the same name.
-    return tbstr.pivot_table(index=['Archetype', 'RowName'],
+
+    tbpiv = tbstr.pivot_table(index=['Archetype', 'RowName'],
                              columns='ColumnName',
                              values='Value',
                              aggfunc=lambda x: ' '.join(x))
+    return tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).agg(
+        lambda x: pd.to_numeric(x, errors='ignore').sum())
 
 
 def nominal_people(df):
     df = get_from_tabulardata(df)
     tbstr = df[(df.ReportName == 'Initialization Summary') &
                (df.TableName == 'People Internal Gains Nominal')].reset_index()
-    # todo: Check if Zone Name has a duplicate. This breaks when multiple zones have the same name.
-    return tbstr.pivot_table(index=['Archetype', 'RowName'],
-                             columns='ColumnName',
-                             values='Value',
-                             aggfunc=lambda x: ' '.join(x))
+
+    tbpiv = tbstr.pivot_table(index=['Archetype', 'RowName'],
+                              columns='ColumnName',
+                              values='Value',
+                              aggfunc=lambda x: ' '.join(x))
+    return tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).agg(
+        lambda x: pd.to_numeric(x, errors='ignore').sum())
 
 
 def nominal_equipment(df):
     df = get_from_tabulardata(df)
     tbstr = df[(df.ReportName == 'Initialization Summary') &
                (df.TableName == 'ElectricEquipment Internal Gains Nominal')].reset_index()
+
     tbpiv = tbstr.pivot_table(index=['Archetype', 'RowName'],
                               columns='ColumnName',
                               values='Value',
                               aggfunc=lambda x: ' '.join(x))
-    # todo: Check if Zone Name has a duplicate. This breaks when multiple zones have the same name.
     return tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).agg(
         lambda x: pd.to_numeric(x, errors='ignore').sum())
 
@@ -504,11 +508,13 @@ def nominal_infiltration(df):
     df = get_from_tabulardata(df)
     tbstr = df[(df.ReportName == 'Initialization Summary') &
                (df.TableName == 'ZoneInfiltration Airflow Stats Nominal')].reset_index()
-    # todo: Check if Zone Name has a duplicate. This breaks when multiple zones have the same name.
-    return tbstr.pivot_table(index=['Archetype', 'RowName'],
+
+    tbpiv = tbstr.pivot_table(index=['Archetype', 'RowName'],
                              columns='ColumnName',
                              values='Value',
                              aggfunc=lambda x: ' '.join(x))
+    return tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).agg(
+        lambda x: pd.to_numeric(x, errors='ignore').sum())
 
 
 def get_from_tabulardata(results):
@@ -527,5 +533,5 @@ def zone_information(df):
                                 columns='ColumnName',
                                 values='Value',
                                 aggfunc=lambda x: ' '.join(x))
-    # todo: Check if Zone Name has a duplicate. This breaks when multiple zones have the same name.
+
     return pivoted.loc[pivoted['Part of Total Building Area'] == 'Yes', :]

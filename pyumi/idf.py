@@ -312,7 +312,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
     Run an energy plus file and returns the SummaryReports Tables in a return a list of [(title, table), .....]
 
     :param str,list eplus_files: path to the idf file(s). Can be a list of strings or simply a string
-    :param str ep_version: optional, force to use a particular EnergyPlus version to use, eg: 8-9-0.
+    :param str ep_version: optional, EnergyPlus version to use, eg: 8-9-0
     :param str output_report: 'htm' or 'sql'
     :param str weather_file: path to the weather file
     :param str output_folder: optional, path to the output folder. Will default to the settings.cache_folder value.
@@ -327,9 +327,10 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
 
     # Determine version of idf file by reading the text file
     if ep_version is None:
-        versionids = {}
+        versionids = {file: get_idf_version(file) for file in eplus_files}
         idd_filename = {file: getiddfile(get_idf_version(file)) for file in eplus_files}
     else:
+        versionids = {eplus_file: str(ep_version) for eplus_file in eplus_files}
         idd_filename = {eplus_file: getiddfile(ep_version) for eplus_file in eplus_files}
 
     if not output_folder:

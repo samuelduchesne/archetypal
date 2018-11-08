@@ -1,7 +1,10 @@
+import glob
 import hashlib
 import logging as lg
 import os
 import time
+from subprocess import CalledProcessError
+from subprocess import check_call
 
 import pandas as pd
 from eppy import EPlusInterfaceFunctions
@@ -122,15 +125,6 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, p
     if idd_filename is None:
         idd_filename = {file: getiddfile(get_idf_version(file)) for file in files}
 
-
-    #
-    # if energyplus_version:
-    #     # Try to upgrade older versions
-    #
-    #     # Change old item in idd_filename with new versino
-    #
-    # else:
-
     # Try loading IDF objects from pickled cache first
     dirnames = [os.path.dirname(path) for path in files]
     start_time = time.time()
@@ -200,25 +194,37 @@ def eppy_load_pool(args):
 
 
 def eppy_load(file, idd_filename):
+    # Initiate an eppy.IDF object
     from eppy.modeleditor import IDF
-    # Loading eppy
-    IDF.setiddname(idd_filename)
-    with IDF(file) as idf_object:
-        # Check version of IDF file against version of IDD file
-        idf_version = idf_object.idfobjects['VERSION'][0].Version_Identifier
-        idd_version = '{}.{}'.format(idf_object.idd_version[0], idf_object.idd_version[1])
-        building = idf_object.idfobjects['BUILDING'][0]
-        if idf_version == idd_version:
-            log('The version of the IDF file {} : version {}, matched the version of EnergyPlus {}, '
-                'version {} used to parse it.'.format(building.Name, idf_version,
-                                                      idf_object.getiddname(), idd_version),
-                level=lg.DEBUG)
+    idf_object = None
+    while idf_object is None:
+        IDF.setiddname(idd_filename, testing=True)
+        try:
+            with IDF(file) as idf_object:
+                # Check version of IDF file against version of IDD file
+                idf_version = idf_object.idfobjects['VERSION'][0].Version_Identifier
+                idd_version = '{}.{}'.format(idf_object.idd_version[0], idf_object.idd_version[1])
+                building = idf_object.idfobjects['BUILDING'][0]
+                if idf_version == idd_version:
+                    log('The version of the IDF file {} : version {}, matched the version of EnergyPlus {}, '
+                        'version {} used to parse it.'.format(building.Name, idf_version,
+                                                              idf_object.getiddname(), idd_version),
+                        level=lg.DEBUG)
+        # An error could occur if the iddname is not found on the system. Try to upgrade the idf file
+        except Exception as e:
+            log('{}'.format(e))
+            log('Trying to upgrade the file instead...')
+            # Try to upgrade the file
+            try:
+                upgrade_idf(file)
+            except Exception as e:
+                log(''.format(e))
+            else:
+                # Get idd file for newly created and upgraded idf file
+                idd_filename = getiddfile(get_idf_version(file))
         else:
-            log('The version of the IDF file {} : version {}, does not match the version of EnergyPlus {}, '
-                'version {} used to parse it.'.format(idf_object.idfobjects['BUILDING'][0].Name, idf_version,
-                                                      idf_object.getiddname(), idd_version),
-                level=lg.WARNING)
-        save_idf_object_to_cache(idf_object, idf_object.idfname)
+            # when parsing is complete, save it to disk, then return object
+            save_idf_object_to_cache(idf_object, idf_object.idfname)
     return idf_object
 
 
@@ -588,7 +594,81 @@ def get_sqlite_report(report_file, report_tables=None):
             log('SQL query parsed {} tables as DataFrames from {}'.format(len(all_tables), report_file))
             return all_tables
 
+
+def upgrade_idf(files):
+    # Check if files is a str and put in a list
+    if isinstance(files, str):
+        files = [files]
+
+    for file in files:
+        try:
+            perform_transition(file)
+        except Exception as e:
+            log(''.format(e))
+
+
+def perform_transition(file):
+    versionid = get_idf_version(file, doted=False)
+
+    trans_exec = {'7-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater/Transition-V7-2-0-to-V8-0-0',
+                  '8-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater/Transition-V8-0-0-to-V8-1-0',
+                  '8-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater/Transition-V8-1-0-to-V8-2-0',
+                  '8-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater/Transition-V8-2-0-to-V8-3-0',
+                  '8-3-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater/Transition-V8-3-0-to-V8-4-0',
+                  '8-4-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater/Transition-V8-4-0-to-V8-5-0',
+                  '8-5-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater/Transition-V8-5-0-to-V8-6-0',
+                  '8-6-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater/Transition-V8-6-0-to-V8-7-0',
+                  '8-7-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater/Transition-V8-7-0-to-V8-8-0',
+                  '8-8-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater/Transition-V8-8-0-to-V8-9-0',
+                  }
+    file = os.path.abspath(file)
+    # store the directory we start in
+    cwd = os.getcwd()
+    run_dir = os.path.abspath(os.path.dirname(trans_exec[versionid]))
+    os.chdir(run_dir)
+
+    # build a list of command line arguments
+
+    #
+    result = None
+    while result is None:
+        if trans_exec[versionid] is not None:
+            cmd = [trans_exec[versionid], file]
+            try:
+                check_call(cmd)
+                os.chdir(cwd)  # Change back the directory
+            except CalledProcessError as e:
+                # potentially catch contents of std out and put it in the error log
+                log(''.format(e), lg.ERROR)
+                raise
+            else:
+                result = 1
+        else:
+            result = 0
+    if result == 0:
+        log('No more transitions to perform')
+    else:
+        log('Transition completed\n')
+    # Clean 'idfnew' and 'idfold' files created by the transition porgram
+    files_to_delete = glob.glob(os.path.dirname(file) + '/*.idfnew')
+    files_to_delete.extend(glob.glob(os.path.dirname(file) + '/*.idfold'))
+    files_to_delete.extend(glob.glob(os.path.dirname(file) + '/*.VCpErr'))  # Remove error files since logged to console
+    for file in files_to_delete:
+        if os.path.isfile(file):
+            os.remove(file)
+
+
 def get_idf_version(file, doted=True):
+    """
+    Get idf version quickly by reading first few lines of idf file containing the 'VERSION' identifier
+    :param file: str
+        Absolute or relative Path to idf file
+    :param doted: bool
+        Wheter or not to return the version number with periods or dashes eg.: 8.9 vs 8-9-0. Doted=False appends -0
+        to the end of the version number
+    :return: str
+        The version id
+    """
     with open(file, 'r', encoding='latin-1') as fhandle:
         txt = fhandle.read()
         ntxt = parse_idd.nocomment(txt, '!')

@@ -122,7 +122,6 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, p
     if idd_filename is None:
         idd_filename = {file: getiddfile(get_idf_version(file)) for file in files}
 
-        idd_filename = [getiddfile(versionid) for versionid in versionids]
 
     #
     # if energyplus_version:
@@ -167,8 +166,8 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, p
         # Else, run eppy to load the idf objects
         files = [os.path.join(dir, run) for dir, run in zip(dirnames, objects_not_found)]
         runs = []
-        for file, idd_filename in zip(files, idd_filename):
-            runs.append([file, idd_filename])
+        for file in files:
+            runs.append([file, idd_filename[file]])
         # Parallel load
         try:
             if parallel:
@@ -188,7 +187,7 @@ def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, p
             start_time = time.time()
             for file in files:
                 eplus_finename = os.path.basename(file)
-                idf_object = eppy_load(file, idd_filename)
+                idf_object = eppy_load(file, idd_filename[file])
                 idfs[eplus_finename] = idf_object
             log('Parsed {} idf file(s) sequentially in {:,.2f} seconds'.format(len(files), time.time() - start_time))
         if as_dict:

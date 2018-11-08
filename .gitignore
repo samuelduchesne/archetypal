@@ -90,3 +90,4 @@ main-test\.py
 # pyumi stuff
 cache/
 notebooks/
+_build/

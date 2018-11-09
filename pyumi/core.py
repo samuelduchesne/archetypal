@@ -432,14 +432,46 @@ def zone_loads(df):
     df[('Zones', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
 
     df = df.reset_index().groupby(['Archetype', ('Zones', 'Zone Type')]).apply(
-        lambda x: aggregation(x.set_index(['Archetype', 'RowName'])))
+        lambda x: zoneloads_aggregation(x.set_index(['Archetype', 'RowName'])))
     return df
 
 
-def aggregation(x):
+def zone_ventilation(df):
     """
-    Set of different aggregation (weighted mean and "top") on multiple objects, eg. ('NominalInfiltration',
-    'ACH - Air Changes per Hour').
+    Takes the sql reports (as a dict of DataFrames), concatenates all relevant 'Initialization Summary' tables and
+    applies a series of aggragation functions (weighted means and "top").
+
+    :param dict df: A dict of pandas.DataFrames
+    :return: A new DataFrame with aggragated values
+    :rtype: pandas.DataFrame
+
+    """
+
+    # Loading each section in a dictionnary. Used to create a new DF using pd.concat()
+    d = {'Zones': zone_information(df).reset_index().set_index(['Archetype', 'Zone Name']),
+         'NominalInfiltration': nominal_infiltration(df).reset_index().set_index(['Archetype', 'Zone Name']),
+         'NominalVentilation': nominal_ventilation(df).reset_index().set_index(
+             ['Archetype', 'Zone Name', 'Fan Type {Exhaust;Intake;Natural}']).unstack(level=2).swaplevel(axis=1)}
+
+    df = (pd.concat(d, axis=1, keys=d.keys())
+          .dropna(axis=0, how='all', subset=[('Zones', 'Type')])  # Drop rows that are all nans
+          .reset_index(level=1, col_level=1, col_fill='Zones')  # Reset Index level to get Zone Name
+          .reset_index().set_index(['Archetype', ('Zones', 'RowName')])
+          .rename_axis(['Archetype', 'RowName']))
+
+    df[('Zones', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
+
+    df = df.reset_index().groupby(
+        ['Archetype', ('Zones', 'Zone Type')]).apply(
+        lambda x: zoneventilation_aggregation(x.set_index(['Archetype', 'RowName'])))
+
+    return df
+
+
+def zoneloads_aggregation(x):
+    """
+    Set of different zoneloads_aggregation (weighted mean and "top") on multiple objects, eg. ('NominalLighting',
+    'Lights/Floor Area {W/m2}').
 
     All the DataFrame is passed to each function.
 

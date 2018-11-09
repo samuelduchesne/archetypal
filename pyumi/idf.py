@@ -7,7 +7,6 @@ from subprocess import CalledProcessError
 from subprocess import check_call
 
 import pandas as pd
-from eppy import EPlusInterfaceFunctions
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run

@@ -450,8 +450,7 @@ def zone_ventilation(df):
     # Loading each section in a dictionnary. Used to create a new DF using pd.concat()
     d = {'Zones': zone_information(df).reset_index().set_index(['Archetype', 'Zone Name']),
          'NominalInfiltration': nominal_infiltration(df).reset_index().set_index(['Archetype', 'Zone Name']),
-         'NominalVentilation': nominal_ventilation(df).reset_index().set_index(
-             ['Archetype', 'Zone Name', 'Fan Type {Exhaust;Intake;Natural}']).unstack(level=2).swaplevel(axis=1)}
+         'NominalVentilation': nominal_ventilation(df).reset_index().set_index(['Archetype', 'Zone Name'])}
 
     df = (pd.concat(d, axis=1, keys=d.keys())
           .dropna(axis=0, how='all', subset=[('Zones', 'Type')])  # Drop rows that are all nans
@@ -483,18 +482,40 @@ def zoneloads_aggregation(x):
 
     """
     d = []
-    d.append(weighted_mean(x[('NominalInfiltration', 'ACH - Air Changes per Hour')], x))
-    d.append(top(x[('NominalInfiltration', 'Schedule Name')], x))
     d.append(weighted_mean(x[('NominalLighting', 'Lights/Floor Area {W/m2}')], x))
     d.append(top(x[('NominalLighting', 'Schedule Name')], x))
     d.append(weighted_mean(x[('NominalPeople', 'People/Floor Area {person/m2}')], x))
     d.append(top(x[('NominalPeople', 'Schedule Name')], x))
     d.append(weighted_mean(x[('NominalEquipment', 'Equipment/Floor Area {W/m2}')], x))
     d.append(top(x[('NominalEquipment', 'Schedule Name')], x))
-    return pd.Series(d, index=[['NominalInfiltration', 'NominalInfiltration', 'NominalLighting', 'NominalLighting',
-                                'NominalPeople', 'NominalPeople', 'NominalEquipment', 'NominalEquipment'],
-                               ['weighted mean', 'top', 'weighted mean', 'top', 'weighted mean', 'top',
+    return pd.Series(d, index=[['NominalLighting', 'NominalLighting', 'NominalPeople', 'NominalPeople',
+                                'NominalEquipment', 'NominalEquipment'],
+                               ['weighted mean', 'top', 'weighted mean', 'top',
                                 'weighted mean', 'top']])
+
+
+def zoneventilation_aggregation(x):
+    """
+    Set of different zoneventilation_aggregation (weighted mean and "top") on multiple objects,
+    eg. ('NominalVentilation', 'ACH - Air Changes per Hour').
+
+    All the DataFrame is passed to each function.
+
+    Returns a Series with a column MultiIndex
+
+    :param pandas.DataFrame x: A DataFrame
+    :return: A Series with a MultiIndex
+    :rtype: pandas.Series
+    todo: infiltration for plenums should not be taken into account
+    """
+    d = []
+    d.append(weighted_mean(x[('NominalInfiltration', 'ACH - Air Changes per Hour')], x))
+    d.append(top(x[('NominalInfiltration', 'Schedule Name')], x))
+    d.append(weighted_mean(x[('NominalVentilation', 'ACH - Air Changes per Hour')], x))
+    d.append(top(x[('NominalVentilation', 'Schedule Name')], x))
+    return pd.Series(d, index=[['Infiltration {ACH}', 'Infiltration {ACH}',
+                                'Scheduled Ventilation {ACH}', 'Scheduled Ventilation {ACH}'],
+                               ['weighted mean', 'top', 'weighted mean', 'top']])
 
 
 def nominal_lighting(df):
@@ -503,9 +524,9 @@ def nominal_lighting(df):
                (df.TableName == 'Lights Internal Gains Nominal')].reset_index()
 
     tbpiv = tbstr.pivot_table(index=['Archetype', 'RowName'],
-                             columns='ColumnName',
-                             values='Value',
-                             aggfunc=lambda x: ' '.join(x))
+                              columns='ColumnName',
+                              values='Value',
+                              aggfunc=lambda x: ' '.join(x))
     return tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).agg(
         lambda x: pd.to_numeric(x, errors='ignore').sum())
 
@@ -542,9 +563,22 @@ def nominal_infiltration(df):
                (df.TableName == 'ZoneInfiltration Airflow Stats Nominal')].reset_index()
 
     tbpiv = tbstr.pivot_table(index=['Archetype', 'RowName'],
-                             columns='ColumnName',
-                             values='Value',
-                             aggfunc=lambda x: ' '.join(x))
+                              columns='ColumnName',
+                              values='Value',
+                              aggfunc=lambda x: ' '.join(x))
+    return tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).agg(
+        lambda x: pd.to_numeric(x, errors='ignore').sum())
+
+
+def nominal_ventilation(df):
+    df = get_from_tabulardata(df)
+    tbstr = df[(df.ReportName == 'Initialization Summary') &
+               (df.TableName == 'ZoneVentilation Airflow Stats Nominal')].reset_index()
+
+    tbpiv = tbstr.pivot_table(index=['Archetype', 'RowName'],
+                              columns='ColumnName',
+                              values='Value',
+                              aggfunc=lambda x: ' '.join(x))
     return tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).agg(
         lambda x: pd.to_numeric(x, errors='ignore').sum())
 

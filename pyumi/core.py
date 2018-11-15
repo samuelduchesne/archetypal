@@ -446,11 +446,19 @@ def zone_ventilation(df):
     :rtype: pandas.DataFrame
 
     """
+    nominal_infiltration(df).reset_index().set_index(['Archetype', 'Zone Name'])
 
     # Loading each section in a dictionnary. Used to create a new DF using pd.concat()
     d = {'Zones': zone_information(df).reset_index().set_index(['Archetype', 'Zone Name']),
          'NominalInfiltration': nominal_infiltration(df).reset_index().set_index(['Archetype', 'Zone Name']),
-         'NominalVentilation': nominal_ventilation(df).reset_index().set_index(['Archetype', 'Zone Name'])}
+         'NominalScheduledVentilation':
+             nominal_ventilation(df).reset_index().set_index(['Archetype',
+                                                              'Zone Name']).loc[
+             lambda e: e['Fan Type {Exhaust;Intake;Natural}'].str.contains('Natural'), :],
+         'NominalNaturalVentilation':
+             nominal_ventilation(df).reset_index().set_index(['Archetype',
+                                                              'Zone Name']).loc[
+             lambda e: ~e['Fan Type {Exhaust;Intake;Natural}'].str.contains('Natural'), :]}
 
     df = (pd.concat(d, axis=1, keys=d.keys())
           .dropna(axis=0, how='all', subset=[('Zones', 'Type')])  # Drop rows that are all nans
@@ -482,16 +490,14 @@ def zoneloads_aggregation(x):
 
     """
     d = []
-    d.append(weighted_mean(x[('NominalLighting', 'Lights/Floor Area {W/m2}')], x))
-    d.append(top(x[('NominalLighting', 'Schedule Name')], x))
-    d.append(weighted_mean(x[('NominalPeople', 'People/Floor Area {person/m2}')], x))
-    d.append(top(x[('NominalPeople', 'Schedule Name')], x))
-    d.append(weighted_mean(x[('NominalEquipment', 'Equipment/Floor Area {W/m2}')], x))
-    d.append(top(x[('NominalEquipment', 'Schedule Name')], x))
-    return pd.Series(d, index=[['NominalLighting', 'NominalLighting', 'NominalPeople', 'NominalPeople',
-                                'NominalEquipment', 'NominalEquipment'],
-                               ['weighted mean', 'top', 'weighted mean', 'top',
-                                'weighted mean', 'top']])
+    d.append(weighted_mean(x[('NominalLighting', 'Lights/Floor Area {W/m2}')], x, ('Zones', 'Floor Area {m2}')))
+    d.append(top(x[('NominalLighting', 'Schedule Name')], x, ('Zones', 'Floor Area {m2}')))
+    d.append(weighted_mean(x[('NominalPeople', 'People/Floor Area {person/m2}')], x, ('Zones', 'Floor Area {m2}')))
+    d.append(top(x[('NominalPeople', 'Schedule Name')], x, ('Zones', 'Floor Area {m2}')))
+    d.append(weighted_mean(x[('NominalEquipment', 'Equipment/Floor Area {W/m2}')], x, ('Zones', 'Floor Area {m2}')))
+    d.append(top(x[('NominalEquipment', 'Schedule Name')], x, ('Zones', 'Floor Area {m2}')))
+    return pd.Series(d, index=pd.MultiIndex.from_product([['NominalLighting', 'NominalPeople', 'NominalEquipment'],
+                                                          ['weighted mean', 'top']]))
 
 
 def zoneventilation_aggregation(x):
@@ -508,14 +514,34 @@ def zoneventilation_aggregation(x):
     :rtype: pandas.Series
     todo: infiltration for plenums should not be taken into account
     """
-    d = []
-    d.append(weighted_mean(x[('NominalInfiltration', 'ACH - Air Changes per Hour')], x))
-    d.append(top(x[('NominalInfiltration', 'Schedule Name')], x))
-    d.append(weighted_mean(x[('NominalVentilation', 'ACH - Air Changes per Hour')], x))
-    d.append(top(x[('NominalVentilation', 'Schedule Name')], x))
-    return pd.Series(d, index=[['Infiltration {ACH}', 'Infiltration {ACH}',
-                                'Scheduled Ventilation {ACH}', 'Scheduled Ventilation {ACH}'],
-                               ['weighted mean', 'top', 'weighted mean', 'top']])
+    d = {}
+    d[('Infiltration', 'weighted mean {ACH}')] = (
+        weighted_mean(x[('NominalInfiltration', 'ACH - Air Changes per Hour')], x, ('Zones', 'Floor Area {m2}')))
+    d[('Infiltration', 'Top Schedule Name')] = (
+        top(x[('NominalInfiltration', 'Schedule Name')], x, ('Zones', 'Floor Area {m2}')))
+    d[('ScheduledVentilation', 'weighted mean {ACH}')] = (
+        weighted_mean(x[('NominalScheduledVentilation', 'ACH - Air Changes per Hour')], x,
+                      ('Zones', 'Floor Area {m2}')))
+    d[('ScheduledVentilation', 'Top Schedule Name')] = (
+        top(x[('NominalScheduledVentilation', 'Schedule Name')], x, ('Zones', 'Floor Area {m2}')))
+    d[('ScheduledVentilation', 'Setpoint')] = (
+        top(x[('NominalScheduledVentilation', 'Minimum Indoor Temperature{C}/Schedule')], x, ('Zones', 'Floor Area {m2}')))
+    d[('NatVent', 'weighted mean {ACH}')] = (
+        weighted_mean(x[('NominalNaturalVentilation', 'ACH - Air Changes per Hour')], x, ('Zones', 'Floor Area {m2}')))
+    d[('NatVent', 'Top Schedule Name')] = (
+        top(x[('NominalNaturalVentilation', 'Schedule Name')], x, ('Zones', 'Floor Area {m2}')))
+    d[('NatVent', 'MaxOutdoorAirTemp')] = (
+        top(x[('NominalNaturalVentilation', 'Maximum Outdoor Temperature{C}/Schedule')], x,
+            ('Zones', 'Floor Area {m2}')))
+    d[('NatVent', 'MinOutdoorAirTemp')] = (
+        top(x[('NominalNaturalVentilation', 'Minimum Outdoor Temperature{C}/Schedule')], x,
+            ('Zones', 'Floor Area {m2}')))
+    d[('NatVent', 'ZoneTempSetpoint')] = (
+        top(x[('NominalNaturalVentilation', 'Minimum Indoor Temperature{C}/Schedule')], x,
+            ('Zones', 'Floor Area {m2}')))
+
+
+    return pd.Series(d)
 
 
 def nominal_lighting(df):
@@ -527,6 +553,7 @@ def nominal_lighting(df):
                               columns='ColumnName',
                               values='Value',
                               aggfunc=lambda x: ' '.join(x))
+    tbpiv.replace({'N/A': np.nan}, inplace=True)
     return tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).agg(
         lambda x: pd.to_numeric(x, errors='ignore').sum())
 
@@ -540,6 +567,7 @@ def nominal_people(df):
                               columns='ColumnName',
                               values='Value',
                               aggfunc=lambda x: ' '.join(x))
+    tbpiv.replace({'N/A': np.nan}, inplace=True)
     return tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).agg(
         lambda x: pd.to_numeric(x, errors='ignore').sum())
 
@@ -553,6 +581,7 @@ def nominal_equipment(df):
                               columns='ColumnName',
                               values='Value',
                               aggfunc=lambda x: ' '.join(x))
+    tbpiv.replace({'N/A': np.nan}, inplace=True)
     return tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).agg(
         lambda x: pd.to_numeric(x, errors='ignore').sum())
 
@@ -566,6 +595,7 @@ def nominal_infiltration(df):
                               columns='ColumnName',
                               values='Value',
                               aggfunc=lambda x: ' '.join(x))
+    tbpiv.replace({'N/A': np.nan}, inplace=True)
     return tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).agg(
         lambda x: pd.to_numeric(x, errors='ignore').sum())
 
@@ -579,14 +609,63 @@ def nominal_ventilation(df):
                               columns='ColumnName',
                               values='Value',
                               aggfunc=lambda x: ' '.join(x))
-    return tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).agg(
-        lambda x: pd.to_numeric(x, errors='ignore').sum())
+
+    tbpiv = tbpiv.replace({'N/A': np.nan}).apply(lambda x: pd.to_numeric(x, errors='ignore'))
+    tbpiv = tbpiv.reset_index().groupby(['Archetype',
+                                         'Zone Name',
+                                         'Fan Type {Exhaust;Intake;Natural}']).apply(how)
+    return tbpiv
+    # .reset_index().groupby(['Archetype', 'Zone Name']).agg(
+    # lambda x: pd.to_numeric(x, errors='ignore').sum())
+
+
+def how(x):
+    how_dict = {'Name': top(x['Name'], x, 'Zone Floor Area {m2}'),
+                'Schedule Name': top(x['Schedule Name'], x, 'Zone Floor Area {m2}'),
+                'Zone Floor Area {m2}': top(x['Zone Floor Area {m2}'], x, 'Zone Floor Area {m2}'),
+                '# Zone Occupants': top(x['# Zone Occupants'], x, 'Zone Floor Area {m2}'),
+                'Design Volume Flow Rate {m3/s}': weighted_mean(x['Design Volume Flow Rate {m3/s}'], x,
+                                                                'Zone Floor Area {m2}'),
+                'Volume Flow Rate/Floor Area {m3/s/m2}': weighted_mean(x['Volume Flow Rate/Floor Area {m3/s/m2}'],
+                                                                       x, 'Zone Floor Area {m2}'),
+                'Volume Flow Rate/person Area {m3/s/person}': weighted_mean(
+                    x['Volume Flow Rate/person Area {m3/s/person}'], x, 'Zone Floor Area {m2}'),
+                'ACH - Air Changes per Hour': weighted_mean(x['ACH - Air Changes per Hour'], x,
+                                                            'Zone Floor Area {m2}'),
+                'Fan Pressure Rise {Pa}': weighted_mean(x['Fan Pressure Rise {Pa}'], x,
+                                                        'Zone Floor Area {m2}'),
+                'Fan Efficiency {}': weighted_mean(x['Fan Efficiency {}'], x,
+                                                   'Zone Floor Area {m2}'),
+                'Equation A - Constant Term Coefficient {}': top(x['Equation A - Constant Term Coefficient {}'], x,
+                                                                 'Zone Floor Area {m2}'),
+                'Equation B - Temperature Term Coefficient {1/C}': top(x['Equation B - Temperature Term Coefficient {'
+                                                                         '1/C}'], x, 'Zone Floor Area {m2}'),
+                'Equation C - Velocity Term Coefficient {s/m}': top(x['Equation C - Velocity Term Coefficient {s/m}'],
+                                                                    x,
+                                                                    'Zone Floor Area {m2}'),
+                'Equation D - Velocity Squared Term Coefficient {s2/m2}': top(
+                    x['Equation D - Velocity Squared Term Coefficient {s2/m2}'], x, 'Zone Floor Area {m2}'),
+                'Minimum Indoor Temperature{C}/Schedule': top(x['Minimum Indoor Temperature{C}/Schedule'], x,
+                                                              'Zone Floor Area {m2}'),
+                'Maximum Indoor Temperature{C}/Schedule': top(x['Maximum Indoor Temperature{C}/Schedule'], x,
+                                                              'Zone Floor Area {m2}'),
+                'Delta Temperature{C}/Schedule': top(x['Delta Temperature{C}/Schedule'], x, 'Zone Floor Area {m2}'),
+                'Minimum Outdoor Temperature{C}/Schedule': top(x['Minimum Outdoor Temperature{C}/Schedule'], x,
+                                                               'Zone Floor Area {m2}'),
+                'Maximum Outdoor Temperature{C}/Schedule': top(x['Maximum Outdoor Temperature{C}/Schedule'], x,
+                                                               'Zone Floor Area {m2}'),
+                'Maximum WindSpeed{m/s}': top(x['Maximum WindSpeed{m/s}'], x, 'Zone Floor Area {m2}')}
+    try:
+        df = pd.DataFrame(how_dict, index=range(0, 1))  # range should always be one since we are trying to merge zones
+    except Exception as e:
+        print('{}'.format(e))
+    return df
 
 
 def get_from_tabulardata(results):
     tab_data_wstring = pd.concat([value['TabularDataWithStrings'] for value in results.values()],
                                  keys=results.keys(), names=['Archetype'])
-    tab_data_wstring.index.names = ['Archetype', 'Index']
+    tab_data_wstring.index.names = ['Archetype', 'Index']  #
     return tab_data_wstring
 
 

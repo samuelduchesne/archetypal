@@ -489,17 +489,26 @@ def iscore(row):
         return 'Core'
     elif row[('Zones', 'Part of Total Building Area')] == 'No':
         return np.NaN
+    elif 'plenum' in row[('Zones', 'Zone Name')].lower():
+        return np.NaN
     else:
         return 'Perimeter'
 
 
-def weighted_mean(series, df):
+def weighted_mean(series, df, weighting_variable):
     """
     Evaluates a weighteed average while ignoring NaNs
     """
+    # get non-nan values
     index = ~np.isnan(series.values.astype('float'))
-    weights = df.loc[series.index, ('Zones', 'Floor Area {m2}')].astype('float') * df.loc[
-        series.index, ('Zones', 'Zone Multiplier')].astype('float')
+    # Try to get weights
+    try:
+        # implies weighting_variable is a list
+        weights = [np.prod(df.loc[series.index, wv].astype('float')) for wv in weighting_variable]
+    except Exception:
+        # Returns weights even if there is no zone multiplier (implies weighting_variable is not a list)
+        weights = df.loc[series.index, weighting_variable].astype('float')
+    # Try to average
     try:
         wa = np.average(series[index].astype('float'), weights=weights[index])
     except Exception as e:
@@ -511,13 +520,13 @@ def weighted_mean(series, df):
         return wa
 
 
-def top(series, df):
+def top(series, df, weighting_variable):
     """
     Returns the element with the highest occurance weighted by floor area
     """
     try:
         idx = df.loc[series.index].groupby(series.name).apply(
-            lambda x: x[('Zones', 'Floor Area {m2}')].astype('float').sum()).nlargest(1).index
+            lambda x: x[weighting_variable].astype('float').sum()).nlargest(1).index
     except Exception as e:
         log('\nAn Exception occured while applying "top" aggregator on Series: {}'.format(series.name), lg.WARNING)
         log('Occurs when all series values are NaN', lg.WARNING)
@@ -527,4 +536,4 @@ def top(series, df):
         if idx.isnull().any():
             return np.NaN
         else:
-            return idx.values.astype('str')[0]
+            return pd.to_numeric(idx, errors='ignore').values[0]#idx.values.astype('str')[0]

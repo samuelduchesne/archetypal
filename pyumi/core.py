@@ -4,9 +4,44 @@ import time
 import numpy as np
 import pandas as pd
 
-from . import settings, object_from_idf, object_from_idfs, simple_glazing, iscore, weighted_mean, top
+from . import settings, object_from_idf, object_from_idfs, simple_glazing, iscore, weighted_mean, top, run_eplus, \
+    load_idf
 from .utils import log, label_surface, type_surface, layer_composition, schedule_composition, time2time, \
     year_composition
+
+
+class Template:
+
+    def __init__(self, idf_files, weather):
+        """
+
+        :param idf_files:
+        :param weather:
+        """
+        self.idf_files = idf_files
+        self.idfs = load_idf(self.idf_files)
+        self.weather = weather
+
+        self.sql = None
+
+        # Umi stuff
+        self.materials_gas = materials_gas(self.idfs)
+        self.materials_glazing = materials_glazing(self.idfs)
+        self.materials_opaque = materials_opaque(self.idfs)
+        self.constructions_opaque = constructions_opaque(self.idfs, self.materials_opaque)
+        self.constructions_windows = constructions_windows(self.idfs, self.materials_glazing)
+        self.day_schedules = day_schedules(self.idfs)
+        self.week_schedules = week_schedules(self.idfs, self.day_schedules)
+        self.year_schedules = year_schedules(self.idfs, self.week_schedules)
+
+    def run_eplus(self, silent=True):
+        """
+
+        :return:
+        """
+        self.sql = run_eplus(self.idf_files, self.weather, output_report='sql')
+        if not silent:
+            return self.sql
 
 
 def convert_necb_to_umi_json(idfs, idfobjects=None):

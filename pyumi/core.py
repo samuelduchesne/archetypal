@@ -122,8 +122,7 @@ def materials_glazing(idfs):
     sgs = get_simple_glazing_system(idfs)
     if not sgs.empty:
         log('Appending to WINDOWMATERIAL:GLAZING DataFrame...')
-        materials_df = materials_df.set_index('$id').append(sgs, ignore_index=True, sort=True)
-    materials_df = materials_df.reset_index(drop=True).rename_axis('$id').reset_index()
+        materials_df = materials_df.set_index('$id').append(sgs, ignore_index=True, sort=True).reset_index()
     # Return the Dataframe
     log('Returning {} WINDOWMATERIAL:GLAZING objects in a DataFrame'.format(len(materials_df)))
     cols.append('Archetype')
@@ -525,7 +524,8 @@ def zoneventilation_aggregation(x):
     d[('ScheduledVentilation', 'Top Schedule Name')] = (
         top(x[('NominalScheduledVentilation', 'Schedule Name')], x, ('Zones', 'Floor Area {m2}')))
     d[('ScheduledVentilation', 'Setpoint')] = (
-        top(x[('NominalScheduledVentilation', 'Minimum Indoor Temperature{C}/Schedule')], x, ('Zones', 'Floor Area {m2}')))
+        top(x[('NominalScheduledVentilation', 'Minimum Indoor Temperature{C}/Schedule')], x,
+            ('Zones', 'Floor Area {m2}')))
     d[('NatVent', 'weighted mean {ACH}')] = (
         weighted_mean(x[('NominalNaturalVentilation', 'ACH - Air Changes per Hour')], x, ('Zones', 'Floor Area {m2}')))
     d[('NatVent', 'Top Schedule Name')] = (
@@ -539,7 +539,6 @@ def zoneventilation_aggregation(x):
     d[('NatVent', 'ZoneTempSetpoint')] = (
         top(x[('NominalNaturalVentilation', 'Minimum Indoor Temperature{C}/Schedule')], x,
             ('Zones', 'Floor Area {m2}')))
-
 
     return pd.Series(d)
 

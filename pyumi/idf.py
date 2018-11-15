@@ -101,21 +101,19 @@ def object_from_idf(idf, ep_object):
         df = pd.concat([pd.DataFrame(obj.fieldvalues, index=obj.fieldnames[0:len(obj.fieldvalues)]).T for obj in
                         idf.idfobjects[ep_object]],
                        ignore_index=True, sort=False)
-    except:
-        raise ValueError('EP object "{}" does not exist in frame'.format(ep_object))
+    except Exception as e:
+        log('ValueError: EP object "{}" does not exist in frame for idf "{}"'.format(ep_object, idf.idfname))
     else:
         return df
 
-    # object_values = [get_values(frame) for frame in idf.idfobjects[ep_object]]
-    # return object_values
 
-
-def load_idf(files, idd_filename=None, energyplus_version=None, as_dict=False, parallel=False):
+def load_idf(files, idd_filename=None, as_dict=False, parallel=False):
     """
     Returns a list of parsed IDF objects.
 
     :param str,list files: file path or list of file paths to the idf files
     :param str idd_filename: optional, the IDD file name location, eg.: './Energy+.idd'
+    :param bool as_dict: return as dictionnary instead of list
     :param bool parallel: Wether or not to run in parallel
     :return: list of eppy.IDF objects
     :rtype: list

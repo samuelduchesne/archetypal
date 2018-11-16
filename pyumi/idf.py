@@ -6,6 +6,7 @@ import time
 from subprocess import CalledProcessError
 from subprocess import check_call
 
+import eppy.modeleditor
 import pandas as pd
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
@@ -217,7 +218,6 @@ def eppy_load(file, idd_filename):
 
     """
     # Initiate an eppy.IDF object
-    from eppy.modeleditor import IDF
     idf_object = None
     while idf_object is None:
         IDF.setiddname(idd_filename, testing=True)
@@ -711,3 +711,26 @@ def get_idf_version(file, doted=True):
         else:
             versionid = ver_block[1].replace('.', '-') + '-0'
     return versionid
+
+
+class IDF(eppy.modeleditor.IDF):
+
+    def add_object(self, ep_object, **kwargs):
+        """
+        Add a new object to an idf file. The function will test of the object exists to prevent duplicates.
+
+        :param eppy.IDF self: the load idf object
+        :param str ep_object: the object name to add, eg. 'OUTPUT:METER' (Must be in all_caps)
+        """
+        # get list of objects
+        objs = self.idfobjects[ep_object]  # a list
+        # create new object
+        new_object = self.newidfobject('OUTPUT:METER', **kwargs)
+        # Check of new object exists in previous list
+        # If True, delete the object
+        if True in (obj == new_object for obj in objs):
+            log('object "{}" already exists in idf file'.format(ep_object), lg.WARNING)
+            # Remove the newly created object since the function `idf.newidfobject()` automatically adds it
+            self.removeidfobject(new_object)
+        else:
+            self.save()

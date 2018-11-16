@@ -12,18 +12,32 @@ from .utils import log, label_surface, type_surface, layer_composition, schedule
 
 class Template:
 
-    def __init__(self, idf_files, weather):
+    def __init__(self, idf_files, weather, load=False, **kwargs):
         """
 
         :param idf_files:
         :param weather:
         """
         self.idf_files = idf_files
-        self.idfs = load_idf(self.idf_files)
+        self.idfs = load_idf(self.idf_files, **kwargs)
         self.weather = weather
+
+        # Umi stuff
+        self.materials_gas = None
+        self.materials_glazing = None
+        self.materials_opaque = None
+        self.constructions_opaque = None
+        self.constructions_windows = None
+        self.day_schedules = None
+        self.week_schedules = None
+        self.year_schedules = None
+
+        if load:
+            self.read()
 
         self.sql = None
 
+    def read(self):
         # Umi stuff
         self.materials_gas = materials_gas(self.idfs)
         self.materials_glazing = materials_glazing(self.idfs)
@@ -34,12 +48,12 @@ class Template:
         self.week_schedules = week_schedules(self.idfs, self.day_schedules)
         self.year_schedules = year_schedules(self.idfs, self.week_schedules)
 
-    def run_eplus(self, silent=True):
+    def run_eplus(self, silent=True, **kwargs):
         """
 
         :return:
         """
-        self.sql = run_eplus(self.idf_files, self.weather, output_report='sql')
+        self.sql = run_eplus(self.idf_files, self.weather, output_report='sql', **kwargs)
         if not silent:
             return self.sql
 

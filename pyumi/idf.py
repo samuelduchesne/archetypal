@@ -20,7 +20,7 @@ except ImportError:
     pass
 
 
-def object_from_idfs(idfs, ep_object, first_occurrence_only=False):
+def object_from_idfs(idfs, ep_object, first_occurrence_only=False, processors=None):
     """
 
     :param list or dict idfs:  List of IDF objects
@@ -41,7 +41,7 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False):
             raise Exception('Parallel takes more time at the moment')
             runs = [[idf, ep_object] for idfname, idf in idfs.items()]
             import concurrent.futures
-            with concurrent.futures.ProcessPoolExecutor() as executor:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
                 container = {idfname: result for (idfname, idf), result in zip(idfs.items(), executor.map(
                     object_from_idf_pool, runs))}
         except Exception as e:
@@ -107,14 +107,14 @@ def object_from_idf(idf, ep_object):
         return df
 
 
-def load_idf(files, idd_filename=None, as_dict=False, parallel=False):
+def load_idf(files, idd_filename=None, as_dict=True, processors=None):
     """
     Returns a list of parsed IDF objects.
 
     :param str,list files: file path or list of file paths to the idf files
     :param str idd_filename: optional, the IDD file name location, eg.: './Energy+.idd'
     :param bool as_dict: return as dictionnary instead of list
-    :param bool parallel: Wether or not to run in parallel
+    :param int processors: Wether or not to run in parallel
     :return: list of eppy.IDF objects
     :rtype: list
     """
@@ -130,10 +130,10 @@ def load_idf(files, idd_filename=None, as_dict=False, parallel=False):
     dirnames = [os.path.dirname(path) for path in files]
     start_time = time.time()
     try:
-        if parallel:
-            log('Parsing IDF Objects in parallel...')
+        if processors:
+            log('Parsing IDF Objects using {} processors...'.format(processors))
             import concurrent.futures
-            with concurrent.futures.ProcessPoolExecutor() as executor:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
                 idfs = {os.path.basename(file): result for file, result in zip(files, executor.map(
                     load_idf_object_from_cache, files))}
         else:
@@ -303,7 +303,7 @@ def load_idf_object_from_cache(idf_file):
             return idf
 
 
-def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, output_report='htm', processors=1,
+def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, output_report='htm', processors=None,
               **kwargs):
     """
     Run an energy plus file and returns the SummaryReports Tables in a return a list of [(title, table), .....]
@@ -345,10 +345,10 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
     for eplus_file in eplus_files:
         processed_cache.append([eplus_file, output_report, kwargs])
     try:
-        if processors > 1:
+        if processors:
             start_time = time.time()
             import concurrent.futures
-            with concurrent.futures.ProcessPoolExecutor() as executor:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
                 cached_run_results = {os.path.basename(eplus_finename): result for eplus_finename, result in
                                       zip(eplus_files, executor.map(get_from_cache_pool, processed_cache))}
                 log('Parallel parsing completed in {:,.2f} seconds'.format(time.time() - start_time))

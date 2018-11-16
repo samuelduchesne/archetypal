@@ -153,28 +153,31 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=None):
         # if objects_not_found not empty, return the ones we actually did find and pass the other ones
         if as_dict:
             log('Eppy load from cache completed in {:,.2f} seconds\n'.format(time.time() - start_time))
-            return list(objects_found.values())
+            return objects_found
         else:
             log('Eppy load from cache completed in {:,.2f} seconds\n'.format(time.time() - start_time))
-            return objects_found
+            return list(objects_found.values())
     else:
         # Else, run eppy to load the idf objects
         files = [os.path.join(dir, run) for dir, run in zip(dirnames, objects_not_found)]
-        runs = []
-        for file in files:
-            runs.append([file, idd_filename[file]])
+        # runs = []
+        runs = {os.path.basename(file): [file, idd_filename[file]] for file in files}
+        # for file in files:
+        #     runs.append([file, idd_filename[file]])
         # Parallel load
         try:
-            if parallel:
+            if processors:
                 start_time = time.time()
                 import concurrent.futures
-                with concurrent.futures.ProcessPoolExecutor() as executor:
-                    idfs = [idf_object for idf_object in
-                            executor.map(eppy_load_pool, runs)]  # TODO : Will probably break when dict is asked
+                with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
+                    idfs = {filename: idf_object for filename, idf_object in
+                            zip(runs.keys(), executor.map(eppy_load_pool, runs.values()))}
+                    # TODO : Will probably break when dict is asked
                     log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(files),
                                                                                                  time.time() -
                                                                                                  start_time))
-            raise Exception('User asked not to run in parallel')
+            else:
+                raise Exception('User asked not to run in parallel')
         except Exception as e:
             # multiprocessing not present so pass the jobs one at a time
             log('Cannot use parallel load. Error with the following exception:\n{}'.format(e))
@@ -186,8 +189,8 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=None):
                 idfs[eplus_finename] = idf_object
             log('Parsed {} idf file(s) sequentially in {:,.2f} seconds'.format(len(files), time.time() - start_time))
         if as_dict:
-            return list(idfs.values())
-        return idfs
+            return idfs
+        return list(idfs.values())
 
 
 def eppy_load_pool(args):

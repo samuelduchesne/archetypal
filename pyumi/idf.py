@@ -250,7 +250,7 @@ def eppy_load(file, idd_filename):
     return idf_object
 
 
-def save_idf_object_to_cache(idf_object, idf_file):
+def save_idf_object_to_cache(idf_object, idf_file, how='normal'):
     """
     Save IDF instance to a gzip'ed pickle file
 
@@ -261,25 +261,48 @@ def save_idf_object_to_cache(idf_object, idf_file):
     if settings.use_cache:
         cache_filename = hash_file(idf_file)
         cache_dir = os.path.join(settings.cache_folder, cache_filename)
-        cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename, os.extsep.join([
-            cache_filename + 'idfs', 'gzip']))
 
         # create the folder on the disk if it doesn't already exist
         if not os.path.exists(cache_dir):
             os.makedirs(cache_dir)
-        # create pickle and dump
-        import gzip
-        try:
-            import cPickle as pickle
-        except ImportError:
-            import pickle
-        start_time = time.time()
-        with gzip.GzipFile(cache_fullpath_filename, 'wb') as file_handle:
-            pickle.dump(idf_object, file_handle)
-        log('Saved pickle to file in {:,.2f} seconds'.format(time.time() - start_time))
+
+        if how.upper() == 'JSON':
+            cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename, os.extsep.join([
+                cache_filename + 'idfs', 'json']))
+            import gzip, json
+            with open(cache_fullpath_filename, 'w') as file_handle:
+                json.dump({key: value.__dict__ for key, value in idf_object.idfobjects.items()},
+                          file_handle,
+                          sort_keys=True, indent=4, check_circular=True)
+
+        elif how.upper() == 'PICKLE':
+            # create pickle and dump
+            cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename, os.extsep.join([
+                cache_filename + 'idfs', 'gzip']))
+            import gzip
+            try:
+                import cPickle as pickle
+            except ImportError:
+                import pickle
+            start_time = time.time()
+            with gzip.GzipFile(cache_fullpath_filename, 'wb') as file_handle:
+                pickle.dump(idf_object, file_handle, protocol=0)
+            log('Saved pickle to file in {:,.2f} seconds'.format(time.time() - start_time))
+
+        else:
+            cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename, os.extsep.join([
+                cache_filename + 'idfs', 'dat']))
+            try:
+                import cPickle as pickle
+            except ImportError:
+                import pickle
+            start_time = time.time()
+            with open(cache_fullpath_filename, 'wb') as file_handle:
+                pickle.dump(idf_object, file_handle, protocol=-1)
+            log('Saved pickle to file in {:,.2f} seconds'.format(time.time() - start_time))
 
 
-def load_idf_object_from_cache(idf_file):
+def load_idf_object_from_cache(idf_file, how='normal'):
     """
     Load an idf instance from a gzip'ed pickle file
 
@@ -289,21 +312,54 @@ def load_idf_object_from_cache(idf_file):
 
     """
     if settings.use_cache:
-        import gzip
-        try:
-            import cPickle as pickle
-        except ImportError:
-            import pickle
-        start_time = time.time()
         cache_filename = hash_file(idf_file)
-        cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename, os.extsep.join([
-            cache_filename + 'idfs', 'gzip']))
-        if os.path.isfile(cache_fullpath_filename):
-            with gzip.GzipFile(cache_fullpath_filename, 'rb') as file_handle:
-                idf = pickle.load(file_handle)
-            log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(os.path.basename(idf_file), time.time() -
-                                                                          start_time))
-            return idf
+        if how.upper() == 'JSON':
+            cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename, os.extsep.join([
+                cache_filename + 'idfs', 'json']))
+            import json
+            try:
+                import cPickle as pickle
+            except ImportError:
+                import pickle
+            start_time = time.time()
+            if os.path.isfile(cache_fullpath_filename):
+                with open(cache_fullpath_filename, 'rb') as file_handle:
+                    idf = json.load(file_handle)
+                log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(os.path.basename(idf_file), time.time() -
+                                                                              start_time))
+                return idf
+
+        elif how.upper() == 'PICKLE':
+            cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename, os.extsep.join([
+                cache_filename + 'idfs', 'gzip']))
+            import gzip
+            try:
+                import cPickle as pickle
+            except ImportError:
+                import pickle
+            start_time = time.time()
+            if os.path.isfile(cache_fullpath_filename):
+                with gzip.GzipFile(cache_fullpath_filename, 'rb') as file_handle:
+                    idf = pickle.load(file_handle)
+                log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(os.path.basename(idf_file), time.time() -
+                                                                              start_time))
+                return idf
+        else:
+            cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename, os.extsep.join([
+                cache_filename + 'idfs', 'dat']))
+            try:
+                import cPickle as pickle
+            except ImportError:
+                import pickle
+            start_time = time.time()
+            if os.path.isfile(cache_fullpath_filename):
+                with open(cache_fullpath_filename, 'rb') as file_handle:
+                    idf = pickle.load(file_handle)
+                idf.setiddname(getiddfile(get_idf_version(idf_file)))
+                idf.read()
+                log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(os.path.basename(idf_file), time.time() -
+                                                                              start_time))
+                return idf
 
 
 def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, output_report='htm', processors=None,

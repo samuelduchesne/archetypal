@@ -781,10 +781,10 @@ class IDF(eppy.modeleditor.IDF):
         # get list of objects
         objs = self.idfobjects[ep_object]  # a list
         # create new object
-        new_object = self.newidfobject('OUTPUT:METER', **kwargs)
+        new_object = self.newidfobject(ep_object, **kwargs)
         # Check of new object exists in previous list
         # If True, delete the object
-        if True in (obj == new_object for obj in objs):
+        if sum([obj == new_object for obj in objs]) > 1:
             log('object "{}" already exists in idf file'.format(ep_object), lg.WARNING)
             # Remove the newly created object since the function `idf.newidfobject()` automatically adds it
             self.removeidfobject(new_object)

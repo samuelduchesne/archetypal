@@ -753,20 +753,26 @@ def get_idf_version(file, doted=True):
 
     """
     with open(file, 'r', encoding='latin-1') as fhandle:
-        txt = fhandle.read()
-        ntxt = parse_idd.nocomment(txt, '!')
-        blocks = ntxt.split(';')
-        blocks = [block.strip() for block in blocks]
-        bblocks = [block.split(',') for block in blocks]
-        bblocks1 = [[item.strip() for item in block] for block in bblocks]
-        ver_blocks = [block for block in bblocks1
-                      if block[0].upper() == 'VERSION']
-        ver_block = ver_blocks[0]
-        if doted:
-            versionid = ver_block[1]
+        try:
+            txt = fhandle.read()
+            ntxt = parse_idd.nocomment(txt, '!')
+            blocks = ntxt.split(';')
+            blocks = [block.strip() for block in blocks]
+            bblocks = [block.split(',') for block in blocks]
+            bblocks1 = [[item.strip() for item in block] for block in bblocks]
+            ver_blocks = [block for block in bblocks1
+                          if block[0].upper() == 'VERSION']
+            ver_block = ver_blocks[0]
+            if doted:
+                versionid = ver_block[1]
+            else:
+                versionid = ver_block[1].replace('.', '-') + '-0'
+        except Exception as e:
+            log('Version id for file "{}" cannot be found'.format(file))
+            log(''.format(e))
+            raise
         else:
-            versionid = ver_block[1].replace('.', '-') + '-0'
-    return versionid
+            return versionid
 
 
 class IDF(eppy.modeleditor.IDF):

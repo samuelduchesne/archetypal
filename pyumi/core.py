@@ -781,6 +781,17 @@ def get_from_tabulardata(results):
     return tab_data_wstring
 
 
+def get_from_reportdata(results):
+    report_data = pd.concat([value['ReportData'] for value in results.values()],
+                            keys=results.keys(), names=['Archetype'])
+    report_data['ReportDataDictionaryIndex'] = pd.to_numeric(report_data['ReportDataDictionaryIndex'])
+
+    report_data_dict = pd.concat([value['ReportDataDictionary'] for value in results.values()],
+                                 keys=results.keys(), names=['Archetype'])
+
+    return report_data.reset_index().join(report_data_dict, on=['Archetype', 'ReportDataDictionaryIndex'])
+
+
 def zone_information(df):
     df = get_from_tabulardata(df)
     tbstr = df[(df.ReportName == 'Initialization Summary') &
@@ -792,3 +803,128 @@ def zone_information(df):
                                 aggfunc=lambda x: ' '.join(x))
 
     return pivoted.loc[pivoted['Part of Total Building Area'] == 'Yes', :]
+
+
+def zoneconditioning_aggregation(x):
+    d = {}
+    d[('COP Heating', 'weighted mean {}')] = (
+        weighted_mean(x[('COP', 'COP Heating')], x, ('Zones', 'Floor Area {m2}')))
+    d[('COP Cooling', 'weighted mean {}')] = (
+        weighted_mean(x[('COP', 'COP Cooling')], x, ('Zones', 'Floor Area {m2}')))
+    d[('ZoneCooling', 'designday')] = np.nanmean(x.loc[x[('ZoneCooling', 'Thermostat Setpoint Temperature at '
+                                                                         'Peak Load')] > 0, ('ZoneCooling',
+                                                                                             'Thermostat Setpoint Temperature at '
+                                                                                             'Peak Load')])
+    d[('ZoneHeating', 'designday')] = np.nanmean(x.loc[x[('ZoneHeating', 'Thermostat Setpoint Temperature at '
+                                                                         'Peak Load')] > 0, (
+                                                           'ZoneHeating', 'Thermostat Setpoint Temperature at '
+                                                                          'Peak Load')])
+    d[('MinFreshAirPerArea', 'weighted average {m3/s-m2}')] = max(weighted_mean(x[('ZoneCooling', 'Minimum Outdoor Air '
+                                                                                                  'Flow '
+                                                                                                  'Rate')].astype(
+        float) / x[('Zones', 'Floor Area {m2}')].astype(float),
+                                                                                x, ('Zones', 'Floor Area {m2}')),
+                                                                  weighted_mean(x[('ZoneHeating',
+                                                                                   'Minimum Outdoor Air Flow Rate')].astype(
+                                                                      float) / x[('Zones', 'Floor Area {m2}')].astype(
+                                                                      float),
+                                                                                x, ('Zones', 'Floor Area {m2}')))
+
+    d[('MinFreshAirPerPerson', 'weighted average {m3/s-person}')] = max(weighted_mean(x[('ZoneCooling',
+                                                                                         'Minimum Outdoor Air Flow Rate')].astype(
+        float) / x[('NominalPeople', '# Zone Occupants')].astype(float),
+                                                                                      x, ('Zones', 'Floor Area {m2}')),
+                                                                        weighted_mean(x[('ZoneHeating',
+                                                                                         'Minimum Outdoor Air Flow Rate')].astype(
+                                                                            float) / x[(
+                                                                        'NominalPeople', '# Zone Occupants')].astype(
+                                                                            float),
+                                                                                      x, ('Zones', 'Floor Area {m2}')))
+    return pd.Series(d)
+
+
+def zone_cop(df):
+    # Heating Energy
+    heating = get_from_reportdata(df).loc[lambda rd: rd.Name == 'Air System Total Heating Energy'].reset_index()
+    heating_out_sys = heating.groupby(['Archetype', 'KeyValue']).sum()['Value']
+    heating_out = heating.groupby(['Archetype']).sum()['Value']
+    nu_heating = heating_out_sys / heating_out
+    heating_in = get_from_reportdata(df).loc[(lambda rd: ((rd.Name == 'Heating:Electricity') |
+                                                          (rd.Name == 'Heating:Gas') |
+                                                          (rd.Name == 'Heating:DistrictHeating'))),
+                                             ['Archetype', 'Value']].set_index('Archetype').sum(level='Archetype')[
+        'Value']
+
+    # Cooling Energy
+    cooling = get_from_reportdata(df).loc[lambda rd: rd.Name == 'Air System Total Cooling Energy'].reset_index()
+    cooling_out_sys = cooling.groupby(['Archetype', 'KeyValue']).sum()['Value']
+    cooling_out = cooling.groupby(['Archetype']).sum()['Value']
+    nu_cooling = cooling_out_sys / cooling_out
+    cooling_in = get_from_reportdata(df).loc[(lambda rd: ((rd.Name == 'Cooling:Electricity') |
+                                                          (rd.Name == 'Cooling:Gas') |
+                                                          (rd.Name == 'Cooling:DistrictCooling'))),
+                                             ['Archetype', 'Value']].set_index('Archetype').sum(level='Archetype')[
+        'Value']
+
+    d = {'Heating': heating_out_sys / (nu_heating * heating_in),
+         'Cooling': cooling_out_sys / (nu_cooling * cooling_in)}
+
+    # Zone to system correspondence
+    df = get_from_tabulardata(df).loc[((lambda e: e.ReportName == 'Standard62.1Summary') and
+                                       (lambda e: e.TableName == 'System Ventilation Parameters') and
+                                       (lambda e: e.ColumnName == 'AirLoop Name')), ['RowName', 'Value']].reset_index()
+    df.rename(columns={'RowName': 'Zone Name', 'Value': 'System Name'}, inplace=True)
+    df.loc[:, 'COP Heating'] = df.join(d['Heating'], on=['Archetype', 'System Name'])['Value']
+    df.loc[:, 'COP Cooling'] = df.join(d['Cooling'], on=['Archetype', 'System Name'])['Value']
+    df.drop(columns='Index', inplace=True)
+    return df.groupby(['Archetype', 'Zone Name']).mean()
+
+
+def zone_setpoint(df):
+    """
+    Since we can't have a schedule setpoint in Umi, we return the "Design Day" 'Thermostat Setpoint Temperature at
+    'Peak Load'
+
+    :param pandas.DataFrame df:
+    :return:
+    """
+    df = get_from_tabulardata(df)
+    tbstr_cooling = df[(df.ReportName == 'HVACSizingSummary') &
+                       (df.TableName == 'Zone Sensible Cooling')].reset_index()
+    tbpiv_cooling = tbstr_cooling.pivot_table(index=['Archetype', 'RowName'],
+                                              columns='ColumnName',
+                                              values='Value',
+                                              aggfunc=lambda x: ' '.join(x)).replace({'N/A': np.nan}).apply(
+        lambda x: pd.to_numeric(x, errors='ignore'))
+    tbstr_heating = df[(df.ReportName == 'HVACSizingSummary') &
+                       (df.TableName == 'Zone Sensible Heating')].reset_index()
+    tbpiv_heating = tbstr_heating.pivot_table(index=['Archetype', 'RowName'],
+                                              columns='ColumnName',
+                                              values='Value',
+                                              aggfunc=lambda x: ' '.join(x)).replace({'N/A': np.nan}).apply(
+        lambda x: pd.to_numeric(x, errors='ignore'))
+    cd = pd.concat([tbpiv_cooling, tbpiv_heating], keys=['cooling', 'heating'], axis=1)
+    cd.index.names = ['Archetype', 'Zone Name']
+    return cd
+
+
+def zone_conditioning(df):
+    # Loading each section in a dictionnary. Used to create a new DF using pd.concat()
+    d = {'Zones': zone_information(df).reset_index().set_index(['Archetype', 'Zone Name']),
+         'NominalPeople': nominal_people(df).reset_index().set_index(['Archetype', 'Zone Name']),
+         'COP': zone_cop(df).reset_index().set_index(['Archetype', 'Zone Name']),
+         'ZoneCooling': zone_setpoint(df).loc[:, 'cooling'],
+         'ZoneHeating': zone_setpoint(df).loc[:, 'heating']}
+
+    df = (pd.concat(d, axis=1, keys=d.keys())
+          .dropna(axis=0, how='all', subset=[('Zones', 'Type')])  # Drop rows that are all nans
+          .reset_index(level=1, col_level=1, col_fill='Zones')  # Reset Index level to get Zone Name
+          .reset_index().set_index(['Archetype', ('Zones', 'RowName')])
+          .rename_axis(['Archetype', 'RowName']))
+
+    df[('Zones', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
+
+    df = df.reset_index().groupby(['Archetype', ('Zones', 'Zone Type')]).apply(
+        lambda x: zoneconditioning_aggregation(x.set_index(['Archetype', 'RowName'])))
+
+    return df

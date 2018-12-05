@@ -362,6 +362,58 @@ def load_idf_object_from_cache(idf_file, how='normal'):
                 return idf
 
 
+def prepare_outputs(eplus_file):
+    """
+    Adds necessary epobjects to the idf file.
+    :param eplus_file:
+    :return:
+    """
+    # todo: do we need to do this?
+    idfs = load_idf(eplus_file)  # Returns a dict, evan if there is only one file
+
+    eplus_finename = os.path.basename(eplus_file)
+
+    # SQL output
+    idfs[eplus_finename].add_object('Output:SQLite'.upper(),
+                                    Option_Type='SimpleAndTabular')
+
+    # Output variables
+    idfs[eplus_finename].add_object('Output:Variable'.upper(),
+                                    Variable_Name='Air System Total Heating Energy',
+                                    Reporting_Frequency='hourly')
+    idfs[eplus_finename].add_object('Output:Variable'.upper(),
+                                    Variable_Name='Air System Total Cooling Energy',
+                                    Reporting_Frequency='hourly')
+
+    # Output meters
+    idfs[eplus_finename].add_object('OUTPUT:METER',
+                                    Key_Name='HeatRejection:EnergyTransfer',
+                                    Reporting_Frequency='hourly')
+    idfs[eplus_finename].add_object('OUTPUT:METER',
+                                    Key_Name='Heating:EnergyTransfer',
+                                    Reporting_Frequency='hourly')
+    idfs[eplus_finename].add_object('OUTPUT:METER',
+                                    Key_Name='Cooling:EnergyTransfer',
+                                    Reporting_Frequency='hourly')
+    idfs[eplus_finename].add_object('OUTPUT:METER',
+                                    Key_Name='Heating:DistrictHeating',
+                                    Reporting_Frequency='hourly')
+    idfs[eplus_finename].add_object('OUTPUT:METER',
+                                    Key_Name='Heating:Electricity',
+                                    Reporting_Frequency='hourly')
+    idfs[eplus_finename].add_object('OUTPUT:METER',
+                                    Key_Name='Heating:Gas',
+                                    Reporting_Frequency='hourly')
+    idfs[eplus_finename].add_object('OUTPUT:METER',
+                                    Key_Name='Cooling:DistrictCooling',
+                                    Reporting_Frequency='hourly')
+    idfs[eplus_finename].add_object('OUTPUT:METER',
+                                    Key_Name='Cooling:Electricity',
+                                    Reporting_Frequency='hourly')
+    idfs[eplus_finename].add_object('OUTPUT:METER',
+                                    Key_Name='Cooling:Gas',
+                                    Reporting_Frequency='hourly')
+
 def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, output_report='htm', processors=None,
               **kwargs):
     """
@@ -400,6 +452,11 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
     # Create a {filename:dirname} dict
     dirnames = {os.path.basename(path): os.path.dirname(path) for path in eplus_files}
 
+    # Check if idf file has necessary objects (eg specific outputs)
+    for eplus_file in eplus_files:
+        log('Preparing outputs...\n', lg.INFO)
+        prepare_outputs(eplus_file)
+        log('Preparing outputs completed', lg.INFO)
     # Try to get cached results
     processed_cache = []
     for eplus_file in eplus_files:

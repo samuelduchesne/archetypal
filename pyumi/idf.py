@@ -464,7 +464,8 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
             kwargs = {'output_directory': output_folder + '/{}'.format(filename_prefix),
                       'ep_version': versionids[eplus_file],
                       'output_prefix': filename_prefix,
-                      'idd': idd_filename[eplus_file]}
+                      'idd': idd_filename[eplus_file],
+                      'annual': True}
             idf_path = os.path.abspath(eplus_file)  # TODO Should copy idf somewhere else before running; [Partly Fixed]
             processed_runs.append([[idf_path, epw], kwargs])
 

@@ -601,7 +601,8 @@ def nominal_lighting(df):
                               columns='ColumnName',
                               values='Value',
                               aggfunc=lambda x: ' '.join(x))
-    tbpiv.replace({'N/A': np.nan}, inplace=True)
+    tbpiv = tbpiv.replace({'N/A': np.nan}).apply(lambda x: pd.to_numeric(x, errors='ignore'))
+    tbpiv = tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).apply(nominal_lighting_aggregation)
     return tbpiv.reset_index().groupby(['Archetype', 'Zone Name']).agg(
         lambda x: pd.to_numeric(x, errors='ignore').sum())
 
@@ -667,7 +668,38 @@ def nominal_ventilation(df):
     # lambda x: pd.to_numeric(x, errors='ignore').sum())
 
 
-def how(x):
+def nominal_lighting_aggregation(x):
+    """
+    Aggregates the lighting equipments whithin a single zone name (implies that .groupby(['Archetype',
+    'Zone Name']) is performed before calling this function).
+
+    :param pandas.DataFrame x:
+    :return:
+    """
+    how_dict = {'# Zone Occupants': x['# Zone Occupants'].sum(),
+                'End-Use Category': top(x['End-Use Category'], x, 'Zone Floor Area {m2}'),
+                'Fraction Convected': weighted_mean(x['Fraction Convected'], x, 'Lighting Level {W}'),
+                'Fraction Radiant': weighted_mean(x['Fraction Radiant'], x, 'Lighting Level {W}'),
+                'Fraction Replaceable': weighted_mean(x['Fraction Replaceable'], x, 'Lighting Level {W}'),
+                'Fraction Return Air': weighted_mean(x['Fraction Return Air'], x, 'Lighting Level {W}'),
+                'Fraction Short Wave': weighted_mean(x['Fraction Short Wave'], x, 'Lighting Level {W}'),
+                'Lighting Level {W}': x['Lighting Level {W}'].sum(),
+                'Lights per person {W/person}': x['Lights per person {W/person}'].sum(),
+                'Lights/Floor Area {W/m2}': x['Lights/Floor Area {W/m2}'].sum(),
+                'Name': '+'.join(x['Name']),
+                'Nominal Maximum Lighting Level {W}': x['Nominal Maximum Lighting Level {W}'].sum(),
+                'Nominal Minimum Lighting Level {W}': x['Nominal Minimum Lighting Level {W}'].sum(),
+                'Schedule Name': top(x['Schedule Name'], x, 'Lighting Level {W}'),
+                # todo: The schedule could be an aggregation by itself
+                'Zone Floor Area {m2}': x['Zone Floor Area {m2}'].sum()}
+
+    try:
+        df = pd.DataFrame(how_dict, index=range(0, 1))  # range should always be one since we are trying to merge zones
+    except Exception as e:
+        print('{}'.format(e))
+    return df
+
+
     how_dict = {'Name': top(x['Name'], x, 'Zone Floor Area {m2}'),
                 'Schedule Name': top(x['Schedule Name'], x, 'Zone Floor Area {m2}'),
                 'Zone Floor Area {m2}': top(x['Zone Floor Area {m2}'], x, 'Zone Floor Area {m2}'),

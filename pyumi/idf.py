@@ -388,18 +388,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
     else:
         versionids = {eplus_file: str(ep_version) for eplus_file in eplus_files}
         idd_filename = {eplus_file: getiddfile(ep_version) for eplus_file in eplus_files}
-    # Test if file needs to be updgraded
-    for eplus_file, idd in idd_filename.items():
-        if not os.path.exists(idd):
-            # If path to idd does not exist, means user does not have that version installed.
-            # Try to upgrade the file
-            try:
-                upgrade_idf(eplus_file)
-            except Exception as e:
-                log('Could not upgrade file because of error:\n{}'.format(e))
-            else:
-                # Get idd file for newly created and upgraded idf file
-                idd_filename[eplus_file] = getiddfile(get_idf_version(eplus_file))
+    
     # Output folder check
     if not output_folder:
         output_folder = os.path.abspath(settings.cache_folder)

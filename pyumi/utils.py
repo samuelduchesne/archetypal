@@ -536,4 +536,4 @@ def top(series, df, weighting_variable):
         if idx.isnull().any():
             return np.NaN
         else:
-            return pd.to_numeric(idx, errors='ignore').values[0]#idx.values.astype('str')[0]
+            return pd.to_numeric(idx, errors='ignore').values[0]  # idx.values.astype('str')[0]

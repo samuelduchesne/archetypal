@@ -400,7 +400,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
             else:
                 # Get idd file for newly created and upgraded idf file
                 idd_filename[eplus_file] = getiddfile(get_idf_version(eplus_file))
-
+    # Output folder check
     if not output_folder:
         output_folder = os.path.abspath(settings.cache_folder)
     # create the folder on the disk if it doesn't already exist
@@ -823,7 +823,7 @@ class IDF(eppy.modeleditor.IDF):
         objs = self.idfobjects[ep_object]  # a list
         # create new object
         new_object = self.newidfobject(ep_object, **kwargs)
-        # Check of new object exists in previous list
+        # Check if new object exists in previous list
         # If True, delete the object
         if sum([obj == new_object for obj in objs]) > 1:
             log('object "{}" already exists in idf file'.format(ep_object), lg.WARNING)

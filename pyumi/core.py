@@ -662,7 +662,7 @@ def nominal_ventilation(df):
     tbpiv = tbpiv.replace({'N/A': np.nan}).apply(lambda x: pd.to_numeric(x, errors='ignore'))
     tbpiv = tbpiv.reset_index().groupby(['Archetype',
                                          'Zone Name',
-                                         'Fan Type {Exhaust;Intake;Natural}']).apply(how)
+                                         'Fan Type {Exhaust;Intake;Natural}']).apply(nominal_ventilation_aggregation)
     return tbpiv
     # .reset_index().groupby(['Archetype', 'Zone Name']).agg(
     # lambda x: pd.to_numeric(x, errors='ignore').sum())
@@ -729,6 +729,9 @@ def nominal_equipment_aggregation(x):
     except Exception as e:
         print('{}'.format(e))
     return df
+
+
+def nominal_ventilation_aggregation(x):
     how_dict = {'Name': top(x['Name'], x, 'Zone Floor Area {m2}'),
                 'Schedule Name': top(x['Schedule Name'], x, 'Zone Floor Area {m2}'),
                 'Zone Floor Area {m2}': top(x['Zone Floor Area {m2}'], x, 'Zone Floor Area {m2}'),

@@ -414,6 +414,7 @@ def prepare_outputs(eplus_file):
                                     Key_Name='Cooling:Gas',
                                     Reporting_Frequency='hourly')
 
+
 def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, output_report='htm', processors=None,
               **kwargs):
     """
@@ -440,7 +441,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
     else:
         versionids = {eplus_file: str(ep_version) for eplus_file in eplus_files}
         idd_filename = {eplus_file: getiddfile(ep_version) for eplus_file in eplus_files}
-    
+
     # Output folder check
     if not output_folder:
         output_folder = os.path.abspath(settings.cache_folder)

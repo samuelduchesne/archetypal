@@ -9,5 +9,5 @@ setup(
     author='Samuel Letellier-Duchesne',
     author_email='samuel.letellier-duchesne@polymtl.ca',
     description='',
-    install_requires=['numpy', 'pandas', 'eppy']
+    install_requires=['numpy', 'pandas', 'eppy', 'sphinx']
 )

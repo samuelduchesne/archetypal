@@ -6,13 +6,11 @@ from pandas.io.json import json_normalize  # package for flattening json in pand
 def load_umi_template(json_template):
     """
 
-    :param json_template: absolute or relative filepath to an umi json_template file.
-    :return: 17 DataFrames, one for each component groups
+    Args:
+        json_template: Absolute or relative filepath to an umi json_template file.
 
-    Example
-    -------
-
-
+    Returns:
+        pandas.DataFrame: 17 DataFrames, one for each component groups
 
     """
     with open(json_template) as f:

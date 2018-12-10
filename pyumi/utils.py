@@ -27,37 +27,27 @@ def config(data_folder=settings.data_folder,
            useful_idf_objects=settings.useful_idf_objects,
            umitemplate=settings.umitemplate):
     """
-    Configure osmnx by setting the default global vars to desired values.
+    Configurations
 
-    Parameters
-    ---------
-    data_folder : string
-        where to save and load data files
-    logs_folder : string
-        where to write the log files
-    imgs_folder : string
-        where to save figures
-    cache_folder : string
-        where to save the http response cache
-    use_cache : bool
-        if True, use a local cache to save/retrieve http responses instead of
-        calling API repetitively for the same request URL
-    log_file : bool
-        if true, save log output to a log file in logs_folder
-    log_console : bool
-        if true, print log output to the console
-    log_level : int
-        one of the logger.level constants
-    log_name : string
-        name of the logger
-    useful_idf_objects : list
-        a list of useful idf objects
+    Args:
+        data_folder (str): where to save and load data files
+        logs_folder (str): where to write the log files
+        imgs_folder (str): where to save figures
+        cache_folder (str): where to save the simluation results
+        use_cache (bool): if True, use a local cache to save/retrieve EnergyPlus simulation results instead of
+            calling the API repetitively for the same requests. This can save a lot of time when simulations are long
+        log_file (bool): if true, save log output to a log file in logs_folder
+        log_console (bool): if true, print log output to the console
+        log_level (int): one of the logger.level constants
+        log_name (str): name of the logger
+        log_filename (str): name of the log file
+        useful_idf_objects (list): a list of useful idf objects
+        umitemplate (str): where the umitemplate is located
 
-    Returns
-    -------
-    None
+    Returns:
+        None
+
     """
-
     # set each global variable to the passed-in parameter value
     settings.use_cache = use_cache
     settings.cache_folder = cache_folder
@@ -82,22 +72,16 @@ def log(message, level=None, name=None, filename=None):
     """
     Write a message to the log file and/or print to the the console.
 
-    Parameters
-    ----------
-    message : string
-        the content of the message to log
-    level : int
-        one of the logger.level constants
-    name : string
-        name of the logger
-    filename : string
-        name of the log file
+    Args:
+        message (str): the content of the message to log
+        level (int): one of the logger.level constants
+        name (str): name of the logger
+        filename (str): name of the log file
 
-    Returns
-    -------
-    None
+    Returns:
+        None
+
     """
-
     if level is None:
         level = settings.log_level
     if name is None:
@@ -139,18 +123,14 @@ def get_logger(level=None, name=None, filename=None):
     """
     Create a logger or return the current one if already instantiated.
 
-    Parameters
-    ----------
-    level : int
-        one of the logger.level constants
-    name : string
-        name of the logger
-    filename : string
-        name of the log file
+    Args:
+        level (int): one of the logger.level constants
+        name (str): name of the logger
+        filename (str): name of the log file
 
-    Returns
-    -------
-    logger.logger
+    Returns:
+        logging.Logger: a Logger
+
     """
 
     if level is None:
@@ -188,14 +168,12 @@ def make_str(value):
     """
     Convert a passed-in value to unicode if Python 2, or string if Python 3.
 
-    Parameters
-    ----------
-    value : any
-        the value to convert to unicode/string
+    Args:
+        value (any): the value to convert to unicode/string
 
-    Returns
-    -------
-    unicode or string
+    Returns:
+        unicode or string
+
     """
     try:
         # for python 2.x compatibility, use unicode
@@ -208,10 +186,13 @@ def make_str(value):
 def load_umi_template_objects(filename):
     """
     Reads
-    :param filename: string
-        Path of template file
-    :return: dict
-        Dict of umi_objects
+
+    Args:
+        filename (str): path of template file
+
+    Returns:
+        dict: Dict of umi_objects
+
     """
     with open(filename) as f:
         umi_objects = json.load(f)
@@ -221,17 +202,28 @@ def load_umi_template_objects(filename):
 def umi_template_object_to_dataframe(umi_dict, umi_object):
     """
     Returns flattened DataFrame of umi_objects
-    :param umi_dict: dict
-        dict of umi objects
-    :param umi_object: string
-        umi_object name
-    :return: DataFrame
+
+    Args:
+        umi_dict (dict): dict of umi objects
+        umi_object (str): umi_object name
+
+    Returns:
+        pandas.DataFrame: flattened DataFrame of umi_objects
 
     """
     return json_normalize(umi_dict[umi_object])
 
 
 def get_list_of_common_umi_objects(filename):
+    """
+    Returns list of common umi objects
+
+    Args:
+        filename (str): path to umi template file
+
+    Returns:
+        dict: Dict of common umi objects
+    """
     umi_objects = load_umi_template(filename)
     components = {}
     for umi_dict in umi_objects:
@@ -245,9 +237,14 @@ def newrange(previous, following):
     """
     Takes the previous DataFrame and calculates a new Index range.
     Returns a DataFrame with a new index
-    :param previous:
-    :param following:
-    :return: DataFrame
+
+    Args:
+        previous (pandas.DataFrame): previous DataFrame
+        following (pandas.DataFrame): follwoing DataFrame
+
+    Returns:
+        pandas.DataFrame: DataFrame with an incremented new index
+
     """
     from_index = previous.iloc[[-1]].index.values + 1
     to_index = from_index + len(following)
@@ -258,8 +255,15 @@ def newrange(previous, following):
 
 def type_surface(row):
     """
-    This function adds the umi-Type column
+    Takes a boundary and returns its corresponding umi-type
+
+    Args:
+        row:
+
+    Returns:
+        str: The umi-type of boundary
     """
+
     # Floors
     if row['Surface_Type'] == 'Floor':
         if row['Outside_Boundary_Condition'] == 'Surface':
@@ -287,7 +291,13 @@ def type_surface(row):
 
 def label_surface(row):
     """
-    This function adds the umi-Category column
+    Takes a boundary and returns its corresponding umi-Category
+
+    Args:
+        row:
+
+    Returns:
+
     """
     # Floors
     if row['Surface_Type'] == 'Floor':
@@ -319,10 +329,12 @@ def layer_composition(row):
     Takes in a series with $id and thickness values and return an array of dict of the form
     {'Material': {'$ref': ref, 'thickness': thickness}}
     If thickness is 'nan', it returns None.
-    :param row: pandas.Series
-        A series object
-    :return: array
-        Array of dicts
+
+    Args:
+        row (pandas.Series): a row
+
+    Returns (list): List of dicts
+
     """
     array = []
     ref = row['$id', 'Outside_Layer']
@@ -343,17 +355,24 @@ def layer_composition(row):
 
 def get_row_prop(self, other, on, property):
     """
-    This function may raise an error (it has to)
-    :param self:
-    :param other:
-    :param on:
-    :param property:
-    :return:
+
+    Todo:
+        * Not used
+        * This function may raise an error (it has to). Maybe we can do things better.
+
+    Args:
+        self:
+        other:
+        on:
+        property:
+
+    Returns:
+        same type as caller
+
     """
     try:
         value_series = pd.DataFrame(self).T[on].join(other.reset_index().set_index([on[0], 'Name']), on=on,
                                                      rsuffix='_viz')[property]
-        # value_series = other[other.Name == self[on]][property]
     except:
         raise ValueError()
     else:
@@ -374,12 +393,15 @@ def get_row_prop(self, other, on, property):
 
 def schedule_composition(row):
     """
-    Takes in a series with $id and *_ScheduleDay_Name values and return an array of dict of the form
+    Takes in a series with $id and \*_ScheduleDay_Name values and return an array of dict of the form
     {'$ref': ref}
-    :param row: pandas.Series
-        A series object
-    :return: array
-        Array of dicts
+
+    Args:
+        row (pandas.Series): a row
+
+    Returns:
+        list: list of dicts
+
     """
     # Assumes 7 days
     day_schedules = []
@@ -405,10 +427,13 @@ def year_composition(row):
     """
     Takes in a series with $id and ScheduleWeek_Name_{} values and return an array of dict of the form
     {'FromDay': fromday, 'FromMonth': frommonth, 'Schedule': {'$ref': int(ref)}, 'ToDay': today, 'ToMonth': tomonth}
-    :param row: pandas.Series
-        A series object
-    :return:
-        Array of dicts
+
+    Args:
+        row (pandas.Series): a row
+
+    Returns:
+        list: list of dicts
+
     """
     parts = []
     for i in range(1, 26 + 1):
@@ -431,13 +456,16 @@ def year_composition(row):
     return parts
 
 
-def my_to_datetime(date_str):
+def date_transform(date_str):
     """
     Simple function transforming one-based hours (1->24) into zero-based hours (0->23)
-    :param date_str: str
-        a date string og the form 'HH:MM'
-    :return: datetime.datetime
-        datetime object
+
+    Args:
+        date_str (str): a date string of the form 'HH:MM'
+
+    Returns:
+        datetime.datetime: datetime object
+
     """
     if date_str[0:2] != '24':
         return datetime.strptime(date_str, '%H:%M') - timedelta(hours=1)
@@ -448,10 +476,12 @@ def time2time(row):
     """
     Constructs an array of 24 hour schedule points from a Shedule:Day:Interval object.
 
-    :param row: pandas.Series
-        A Series object
-    :return: numpy.array
-        a numpy array of length 24
+    Args:
+        row (pandas.Series): a row
+
+    Returns:
+        numpy.ndarray: a numpy array of length 24
+
     """
     time_seg = []
     for i in range(1, 25):
@@ -462,7 +492,7 @@ def time2time(row):
             pass
         else:
             if str(time) != 'nan' and str(value) != 'nan':
-                time = my_to_datetime(time).hour
+                time = date_transform(time).hour
                 times = np.ones(time + 1) * float(value)
                 time_seg.append(times)
     arrays = time_seg
@@ -480,7 +510,15 @@ def iscore(row):
     Helps to group by core and perimeter zones. If any of "has `core` in name" and "ExtGrossWallArea == 0" is true,
     will consider zone as core, else as perimeter.
 
-    todo: assumes a basement zone will be considered as a core zone since no ext wall area for basements.
+    Todo:
+        * assumes a basement zone will be considered as a core zone since no ext wall area for basements.
+
+    Args:
+        row (pandas.Series): a row
+
+    Returns:
+        str: 'Core' or 'Perimeter'
+
     """
     if any(['core' in row[('Zones', 'Zone Name')].lower(),
             float(row[('Zones', 'Exterior Gross Wall Area {m2}')]) == 0]):  # We look for the string `core` in
@@ -497,15 +535,28 @@ def iscore(row):
 
 def weighted_mean(series, df, weighting_variable):
     """
-    Evaluates a weighteed average while ignoring NaNs
+    Compute the weighted average while ignoring NaNs. Implements :func:`numpy.average`.
+
+    Args:
+        series (pandas.Series):
+        df (pandas.DataFrame):
+        weighting_variable (str or list): Weight name to use in *df*. If multiple values given, the values are
+            multiplied together.
+
+    Returns:
+        numpy.ndarray: the weighted average
     """
     # get non-nan values
     index = ~np.isnan(series.values.astype('float'))
     # Try to get weights
-    try:
-        # implies weighting_variable is a list
-        weights = [np.prod(df.loc[series.index, wv].astype('float')) for wv in weighting_variable]
-    except Exception:
+    if isinstance(weighting_variable, list):
+        try:
+            # implies weighting_variable is a list
+            weights = [np.prod(df.loc[series.index, wv].astype('float')) for wv in weighting_variable]
+        except Exception:
+            # Catch an exception here if needed
+            pass
+    else:
         # Returns weights even if there is no zone multiplier (implies weighting_variable is not a list)
         weights = df.loc[series.index, weighting_variable].astype('float')
     # Try to average
@@ -522,7 +573,15 @@ def weighted_mean(series, df, weighting_variable):
 
 def top(series, df, weighting_variable):
     """
-    Returns the element with the highest occurance weighted by floor area
+    Compute the highest ranked value weighted by some other variable. Implements :func:`pandas.DataFrame.nlargest`.
+
+    Args:
+        series (pandas.Series): the *series* on which to compute the ranking.
+        df (pandas.DataFrame): the *df* containing weighting variables.
+        weighting_variable: Name of weights to use in *df*.
+
+    Returns:
+        numpy.ndarray: the weighted top ranked variable
     """
     try:
         idx = df.loc[series.index].groupby(series.name).apply(

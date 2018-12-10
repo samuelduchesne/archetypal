@@ -14,8 +14,8 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('.'))
 
+sys.path.insert(0, os.path.abspath('.'))
 
 # -- Project information -----------------------------------------------------
 
@@ -27,7 +27,6 @@ author = 'Samuel Letellier-Duchesne'
 version = ''
 # The full version, including alpha/beta/rc tags
 release = ''
-
 
 # -- General configuration ---------------------------------------------------
 
@@ -48,6 +47,7 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
+    'sphinx.ext.napoleon',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -83,7 +83,6 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'README.md', 'LICENSE.md
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 
-
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -102,8 +101,10 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+
 def setup(app):
     app.add_stylesheet('theme_overrides.css')
+
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -120,7 +121,6 @@ def setup(app):
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'pyumidoc'
-
 
 # -- Options for LaTeX output ------------------------------------------------
 
@@ -150,7 +150,6 @@ latex_documents = [
      'Samuel Letellier-Duchesne', 'manual'),
 ]
 
-
 # -- Options for manual page output ------------------------------------------
 
 # One entry per manual page. List of tuples
@@ -159,7 +158,6 @@ man_pages = [
     (master_doc, 'pyumi', 'pyumi Documentation',
      [author], 1)
 ]
-
 
 # -- Options for Texinfo output ----------------------------------------------
 
@@ -171,7 +169,6 @@ texinfo_documents = [
      author, 'pyumi', 'One line description of project.',
      'Miscellaneous'),
 ]
-
 
 # -- Options for Epub output -------------------------------------------------
 
@@ -193,7 +190,6 @@ epub_copyright = copyright
 # A list of files that should not be packed into the epub file.
 epub_exclude_files = ['search.html']
 
-
 # -- Extension configuration -------------------------------------------------
 
 # -- Options for intersphinx extension ---------------------------------------
@@ -201,7 +197,8 @@ epub_exclude_files = ['search.html']
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
                        'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
-                       'eppy': ('https://eppy.readthedocs.io/en/latest/', None)}
+                       'eppy': ('https://eppy.readthedocs.io/en/latest/', None),
+                       'numpy': ('https://docs.scipy.org/doc/numpy/', None)}
 
 # -- Options for todo extension ----------------------------------------------
 

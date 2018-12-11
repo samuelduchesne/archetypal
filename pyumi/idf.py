@@ -490,11 +490,12 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
     # Create a {filename:dirname} dict
     dirnames = {os.path.basename(path): os.path.dirname(path) for path in eplus_files}
 
-    # Check if idf file has necessary objects (eg specific outputs)
-    for eplus_file in eplus_files:
-        log('Preparing outputs...\n', lg.INFO)
-        prepare_outputs(eplus_file)
-        log('Preparing outputs completed', lg.INFO)
+    if prep_outputs:
+        # Check if idf file has necessary objects (eg specific outputs)
+        for eplus_file in eplus_files:
+            log('Preparing outputs...\n', lg.INFO)
+            prepare_outputs(eplus_file)
+            log('Preparing outputs completed', lg.INFO)
     # Try to get cached results
     processed_cache = []
     for eplus_file in eplus_files:

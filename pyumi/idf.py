@@ -780,7 +780,7 @@ def get_sqlite_report(report_file, report_tables=None):
                     all_tables[table] = pd.read_sql_query("select * from {};".format(table), conn,
                                                           index_col=report_tables[table]['PrimaryKey'],
                                                           parse_dates=report_tables[table]['ParseDates'])
-                except:
+                except Exception as e:
                     log('no such table: {}'.format(table), lg.WARNING)
 
             log('SQL query parsed {} tables as DataFrames from {}'.format(len(all_tables), report_file))

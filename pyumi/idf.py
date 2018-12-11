@@ -40,8 +40,10 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False, processors=No
 
     if isinstance(idfs, dict):
         try:
+            if processors is None:
+                raise Exception('Loading objects sequentially...')
+            log('Loading objects in parallel...')
             # Loading objects in parallel is actually slower at the moment, so we raise an Exception
-            raise Exception('Parallel takes more time at the moment')
             runs = [[idf, ep_object] for idfname, idf in idfs.items()]
             import concurrent.futures
             with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
@@ -64,7 +66,6 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False, processors=No
         for idf in idfs:
             # Load objects from IDF files and concatenate
             this_frame = object_from_idf(idf, ep_object)
-            this_frame = pd.concat(this_frame, ignore_index=True, sort=True)
             container.append(this_frame)
         # Concat the list of DataFrames
         this_frame = pd.concat(container)

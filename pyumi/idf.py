@@ -49,7 +49,7 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False, processors=No
                     object_from_idf_pool, runs))}
         except Exception as e:
             # multiprocessing not present so pass the jobs one at a time
-            log('Cannot use parallel load. Error with the following exception:\n{}'.format(e))
+            log('{}'.format(e))
             container = {}
             for key, idf in idfs.items():
                 # Load objects from IDF files and concatenate
@@ -250,7 +250,7 @@ def eppy_load(file, idd_filename):
             try:
                 upgrade_idf(file)
             except Exception as e:
-                log(''.format(e))
+                log('{}'.format(e))
             else:
                 # Get idd file for newly created and upgraded idf file
                 idd_filename = getiddfile(get_idf_version(file))
@@ -803,7 +803,7 @@ def upgrade_idf(files):
         try:
             perform_transition(file)
         except Exception as e:
-            log(''.format(e))
+            log('{}'.format(e))
 
 
 def perform_transition(file):
@@ -873,7 +873,7 @@ def perform_transition(file):
                 check_call(cmd)
             except CalledProcessError as e:
                 # potentially catch contents of std out and put it in the error log
-                log(''.format(e), lg.ERROR)
+                log('{}'.format(e), lg.ERROR)
             else:
                 # load new version id and continue loop
                 versionid = get_idf_version(file, doted=False)
@@ -917,7 +917,7 @@ def get_idf_version(file, doted=True):
                 versionid = ver_block[1].replace('.', '-') + '-0'
         except Exception as e:
             log('Version id for file "{}" cannot be found'.format(file))
-            log(''.format(e))
+            log('{}'.format(e))
             raise
         else:
             return versionid

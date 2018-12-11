@@ -25,7 +25,7 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False, processors=No
     """Takes a list of parsed IDF objects and a single ep_object and returns a DataFrame.
 
     Args:
-        idfs (list of eppy.IDF): List of IDF objects
+        idfs (list of eppy.modeleditor.IDF): List of IDF objects
         ep_object (str): EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a string. **Most be in all caps.**
         first_occurrence_only (bool, optional): if true, returns only the first occurence of the object
         processors (int, optional): specify how many processors to use for a parallel run
@@ -96,7 +96,7 @@ def object_from_idf(idf, ep_object):
     """Takes one parsed IDF object and a single ep_object and returns a DataFrame.
 
     Args:
-        idf (eppy.IDF): a parsed eppy object
+        idf (eppy.modeleditor.IDF): a parsed eppy object
         ep_object (str): EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a string. **Most be in all caps.**
 
     Returns:
@@ -118,7 +118,7 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=None):
     loaded from cache.
 
     Args:
-        files (str or list of str): path of the idf file. If a list is passed, a list of eppy.IDF objects will be
+        files (str or list of str): path of the idf file. If a list is passed, a list of eppy.modeleditor.IDF objects will be
             returned, unless as_dict=True.
         idd_filename (str, optional): name of the EnergyPlus IDD file. If None, the function tries to find it.
         as_dict (bool, optional): if true, returns a dict with the idf filename as keys instead of a list.
@@ -210,7 +210,7 @@ def eppy_load_pool(args):
         args (list): list of arguments to pass to :py:func:`eppy_load`
 
     Returns:
-        eppy.IDF: IDF object
+        eppy.modeleditor.IDF: IDF object
     """
     return eppy_load(args[0], args[1])
 
@@ -224,10 +224,10 @@ def eppy_load(file, idd_filename):
         idd_filename: path of the EnergyPlus IDD file
 
     Returns:
-        eppy.IDF: IDF object
+        eppy.modeleditor.IDF: IDF object
 
     """
-    # Initiate an eppy.IDF object
+    # Initiate an eppy.modeleditor.IDF object
     idf_object = None
     while idf_object is None:
         IDF.setiddname(idd_filename, testing=True)
@@ -264,7 +264,7 @@ def save_idf_object_to_cache(idf_object, idf_file, how=None):
     """Saves the object to disk. Essentially uses the pickling functions of python.
 
     Args:
-        idf_object (eppy.IDF): an eppy IDF object
+        idf_object (eppy.modeleditor.IDF): an eppy IDF object
         idf_file (str): file path of idf file
         how (str, optional): How the pickling is done. Choices are 'json' or 'pickle'. json dump doen't quite work
             yet. 'pickle' will save to a gzip'ed file instead of a regular binary file (.dat).
@@ -924,7 +924,7 @@ def get_idf_version(file, doted=True):
 
 
 class IDF(eppy.modeleditor.IDF):
-    """Wrapper over the eppy.IDF class
+    """Wrapper over the eppy.modeleditor.IDF class
 
     """
 
@@ -936,7 +936,7 @@ class IDF(eppy.modeleditor.IDF):
             **kwargs: keyword arguments to pass to other functions.
 
         Returns:
-            eppy.IDF: the IDF object
+            eppy.modeleditor.IDF: the IDF object
         """
         # get list of objects
         objs = self.idfobjects[ep_object]  # a list

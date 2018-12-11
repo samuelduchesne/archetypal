@@ -629,16 +629,22 @@ def zoneloads_aggregation(x):
         pandas.Series: Series with a MultiIndex
 
     """
+    area_m_ = [('Zones', 'Floor Area {m2}'), ('Zones', 'Zone Multiplier')]  # Floor area and zone multiplier
+    d = {('NominalLighting', 'weighted mean'):
+             weighted_mean(x[('NominalLighting', 'Lights/Floor Area {W/m2}')], x, area_m_),
+         ('NominalLighting', 'top'):
+             top(x[('NominalLighting', 'Schedule Name')], x, area_m_),
+         ('NominalPeople', 'weighted mean'):
+             weighted_mean(x[('NominalPeople', 'People/Floor Area {person/m2}')], x, area_m_),
+         ('NominalPeople', 'top'):
+             top(x[('NominalPeople', 'Schedule Name')], x, area_m_),
+         ('NominalEquipment', 'weighted mean'):
+             weighted_mean(x[('NominalEquipment', 'Equipment/Floor Area {W/m2}')], x, area_m_),
+         ('NominalEquipment', 'top'):
+             top(x[('NominalEquipment', 'Schedule Name')], x, area_m_)
+         }
 
-    d = []
-    d.append(weighted_mean(x[('NominalLighting', 'Lights/Floor Area {W/m2}')], x, ('Zones', 'Floor Area {m2}')))
-    d.append(top(x[('NominalLighting', 'Schedule Name')], x, ('Zones', 'Floor Area {m2}')))
-    d.append(weighted_mean(x[('NominalPeople', 'People/Floor Area {person/m2}')], x, ('Zones', 'Floor Area {m2}')))
-    d.append(top(x[('NominalPeople', 'Schedule Name')], x, ('Zones', 'Floor Area {m2}')))
-    d.append(weighted_mean(x[('NominalEquipment', 'Equipment/Floor Area {W/m2}')], x, ('Zones', 'Floor Area {m2}')))
-    d.append(top(x[('NominalEquipment', 'Schedule Name')], x, ('Zones', 'Floor Area {m2}')))
-    return pd.Series(d, index=pd.MultiIndex.from_product([['NominalLighting', 'NominalPeople', 'NominalEquipment'],
-                                                          ['weighted mean', 'top']]))
+    return pd.Series(d)
 
 
 def zoneventilation_aggregation(x):
@@ -658,27 +664,34 @@ def zoneventilation_aggregation(x):
     Todo: infiltration for plenums should not be taken into account
 
     """
+    area_m_ = [('Zones', 'Floor Area {m2}'), ('Zones', 'Zone Multiplier')]  # Floor area and zone multiplier
+
     d = {('Infiltration', 'weighted mean {ACH}'): (
-        weighted_mean(x[('NominalInfiltration', 'ACH - Air Changes per Hour')], x, ('Zones', 'Floor Area {m2}'))),
+        weighted_mean(x[('NominalInfiltration', 'ACH - Air Changes per Hour')], x, area_m_)),
         ('Infiltration', 'Top Schedule Name'): (
-            top(x[('NominalInfiltration', 'Schedule Name')], x, ('Zones', 'Floor Area {m2}'))),
+            top(x[('NominalInfiltration', 'Schedule Name')], x, area_m_)),
         ('ScheduledVentilation', 'weighted mean {ACH}'): (
             weighted_mean(x[('NominalScheduledVentilation', 'ACH - Air Changes per Hour')], x,
-                          ('Zones', 'Floor Area {m2}'))), ('ScheduledVentilation', 'Top Schedule Name'): (
-            top(x[('NominalScheduledVentilation', 'Schedule Name')], x, ('Zones', 'Floor Area {m2}'))),
+                          area_m_)),
+        ('ScheduledVentilation', 'Top Schedule Name'): (
+            top(x[('NominalScheduledVentilation', 'Schedule Name')], x, area_m_)),
         ('ScheduledVentilation', 'Setpoint'): (
             top(x[('NominalScheduledVentilation', 'Minimum Indoor Temperature{C}/Schedule')], x,
-                ('Zones', 'Floor Area {m2}'))), ('NatVent', 'weighted mean {ACH}'): (
+                area_m_)),
+        ('NatVent', 'weighted mean {ACH}'): (
             weighted_mean(x[('NominalNaturalVentilation', 'ACH - Air Changes per Hour')], x,
-                          ('Zones', 'Floor Area {m2}'))), ('NatVent', 'Top Schedule Name'): (
-            top(x[('NominalNaturalVentilation', 'Schedule Name')], x, ('Zones', 'Floor Area {m2}'))),
+                          area_m_)),
+        ('NatVent', 'Top Schedule Name'): (
+            top(x[('NominalNaturalVentilation', 'Schedule Name')], x, area_m_)),
         ('NatVent', 'MaxOutdoorAirTemp'): (
             top(x[('NominalNaturalVentilation', 'Maximum Outdoor Temperature{C}/Schedule')], x,
-                ('Zones', 'Floor Area {m2}'))), ('NatVent', 'MinOutdoorAirTemp'): (
+                area_m_)),
+        ('NatVent', 'MinOutdoorAirTemp'): (
             top(x[('NominalNaturalVentilation', 'Minimum Outdoor Temperature{C}/Schedule')], x,
-                ('Zones', 'Floor Area {m2}'))), ('NatVent', 'ZoneTempSetpoint'): (
+                area_m_)),
+        ('NatVent', 'ZoneTempSetpoint'): (
             top(x[('NominalNaturalVentilation', 'Minimum Indoor Temperature{C}/Schedule')], x,
-                ('Zones', 'Floor Area {m2}')))}
+                area_m_))}
 
     return pd.Series(d)
 
@@ -993,40 +1006,41 @@ def zone_information(df):
 
 def zoneconditioning_aggregation(x):
     d = {}
-    d[('COP Heating', 'weighted mean {}')] = (
-        weighted_mean(x[('COP', 'COP Heating')], x, ('Zones', 'Floor Area {m2}')))
-    d[('COP Cooling', 'weighted mean {}')] = (
-        weighted_mean(x[('COP', 'COP Cooling')], x, ('Zones', 'Floor Area {m2}')))
-    d[('ZoneCooling', 'designday')] = np.nanmean(x.loc[x[('ZoneCooling', 'Thermostat Setpoint Temperature at '
-                                                                         'Peak Load')] > 0, ('ZoneCooling',
-                                                                                             'Thermostat Setpoint Temperature at '
-                                                                                             'Peak Load')])
-    d[('ZoneHeating', 'designday')] = np.nanmean(x.loc[x[('ZoneHeating', 'Thermostat Setpoint Temperature at '
-                                                                         'Peak Load')] > 0, (
-                                                           'ZoneHeating', 'Thermostat Setpoint Temperature at '
-                                                                          'Peak Load')])
-    d[('MinFreshAirPerArea', 'weighted average {m3/s-m2}')] = max(weighted_mean(x[('ZoneCooling', 'Minimum Outdoor Air '
-                                                                                                  'Flow '
-                                                                                                  'Rate')].astype(
-        float) / x[('Zones', 'Floor Area {m2}')].astype(float),
-                                                                                x, ('Zones', 'Floor Area {m2}')),
-                                                                  weighted_mean(x[('ZoneHeating',
-                                                                                   'Minimum Outdoor Air Flow Rate')].astype(
-                                                                      float) / x[('Zones', 'Floor Area {m2}')].astype(
-                                                                      float),
-                                                                                x, ('Zones', 'Floor Area {m2}')))
+    area_m_ = [('Zones', 'Zone Multiplier'), ('Zones', 'Floor Area {m2}')]
 
-    d[('MinFreshAirPerPerson', 'weighted average {m3/s-person}')] = max(weighted_mean(x[('ZoneCooling',
-                                                                                         'Minimum Outdoor Air Flow Rate')].astype(
-        float) / x[('NominalPeople', '# Zone Occupants')].astype(float),
-                                                                                      x, ('Zones', 'Floor Area {m2}')),
-                                                                        weighted_mean(x[('ZoneHeating',
-                                                                                         'Minimum Outdoor Air Flow Rate')].astype(
-                                                                            float) / x[(
-                                                                            'NominalPeople',
-                                                                            '# Zone Occupants')].astype(
-                                                                            float),
-                                                                                      x, ('Zones', 'Floor Area {m2}')))
+    d[('COP Heating', 'weighted mean {}')] = (
+        weighted_mean(x[('COP', 'COP Heating')], x, area_m_))
+
+    d[('COP Cooling', 'weighted mean {}')] = (
+        weighted_mean(x[('COP', 'COP Cooling')], x, area_m_))
+
+    d[('ZoneCooling', 'designday')] = \
+        np.nanmean(x.loc[x[('ZoneCooling', 'Thermostat Setpoint Temperature at Peak Load')] > 0,
+                         ('ZoneCooling', 'Thermostat Setpoint Temperature at Peak Load')])
+
+    d[('ZoneHeating', 'designday')] = \
+        np.nanmean(x.loc[x[('ZoneHeating', 'Thermostat Setpoint Temperature at Peak Load')] > 0,
+                         ('ZoneHeating', 'Thermostat Setpoint Temperature at Peak Load')])
+
+    d[('MinFreshAirPerArea', 'weighted average {m3/s-m2}')] = \
+        max(weighted_mean(x[('ZoneCooling', 'Minimum Outdoor Air Flow Rate')].astype(float)
+                          / x.loc[:, ('Zones', 'Floor Area {m2}')].astype(float),
+                          x,
+                          area_m_),
+            weighted_mean(x[('ZoneHeating', 'Minimum Outdoor Air Flow Rate')].astype(float)
+                          / x[('Zones', 'Floor Area {m2}')].astype(float),
+                          x,
+                          area_m_))
+
+    d[('MinFreshAirPerPerson', 'weighted average {m3/s-person}')] = \
+        max(weighted_mean(x[('ZoneCooling', 'Minimum Outdoor Air Flow Rate')].astype(float)
+                          / x[('NominalPeople', '# Zone Occupants')].astype(float),
+                          x,
+                          area_m_),
+            weighted_mean(x[('ZoneHeating', 'Minimum Outdoor Air Flow Rate')].astype(float)
+                          / x[('NominalPeople', '# Zone Occupants')].astype(float),
+                          x,
+                          area_m_))
     return pd.Series(d)
 
 

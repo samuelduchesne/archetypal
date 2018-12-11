@@ -540,7 +540,7 @@ def weighted_mean(series, df, weighting_variable):
     Args:
         series (pandas.Series):
         df (pandas.DataFrame):
-        weighting_variable (str or list): Weight name to use in *df*. If multiple values given, the values are
+        weighting_variable (str or list or tuple): Weight name to use in *df*. If multiple values given, the values are
             multiplied together.
 
     Returns:
@@ -548,17 +548,15 @@ def weighted_mean(series, df, weighting_variable):
     """
     # get non-nan values
     index = ~np.isnan(series.values.astype('float'))
-    # Try to get weights
-    if isinstance(weighting_variable, list):
-        try:
-            # implies weighting_variable is a list
-            weights = [np.prod(df.loc[series.index, wv].astype('float')) for wv in weighting_variable]
-        except Exception:
-            # Catch an exception here if needed
-            pass
-    else:
-        # Returns weights even if there is no zone multiplier (implies weighting_variable is not a list)
-        weights = df.loc[series.index, weighting_variable].astype('float')
+
+    # Returns weights. If multiple `weighting_variable`, df.prod will take care of multipling them together.
+    if not isinstance(weighting_variable, list):
+        weighting_variable = [weighting_variable]
+    try:
+        weights = df.loc[series.index, weighting_variable].astype('float').prod(axis=1)
+    except Exception as e:
+        log(''.format(e))
+
     # Try to average
     try:
         wa = np.average(series[index].astype('float'), weights=weights[index])
@@ -578,14 +576,19 @@ def top(series, df, weighting_variable):
     Args:
         series (pandas.Series): the *series* on which to compute the ranking.
         df (pandas.DataFrame): the *df* containing weighting variables.
-        weighting_variable: Name of weights to use in *df*.
+        weighting_variable (str or list or tuple): Name of weights to use in *df*. If multiple values given,
+            the values are multiplied together.
 
     Returns:
         numpy.ndarray: the weighted top ranked variable
     """
+    # Returns weights. If multiple `weighting_variable`, df.prod will take care of multipling them together.
+    if not isinstance(weighting_variable, list):
+        weighting_variable = [weighting_variable]
+
     try:
         idx = df.loc[series.index].groupby(series.name).apply(
-            lambda x: x[weighting_variable].astype('float').sum()).nlargest(1).index
+            lambda x: df.loc[x.index, weighting_variable].astype('float').prod(axis=1).sum()).nlargest(1).index
     except Exception as e:
         log('\nAn Exception occured while applying "top" aggregator on Series: {}'.format(series.name), lg.WARNING)
         log('Occurs when all series values are NaN', lg.WARNING)

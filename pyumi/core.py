@@ -11,13 +11,16 @@ from .utils import log, label_surface, type_surface, layer_composition, schedule
 
 
 class Template:
+    """
+
+    """
 
     def __init__(self, idf_files, weather, load=False, **kwargs):
         """
 
         Args:
             idf_files:
-            weather (str):  
+            weather (str):
             load:
             **kwargs:
         """
@@ -70,8 +73,7 @@ def convert_necb_to_umi_json(idfs, idfobjects=None):
 
 
 def gas_type(row):
-    """
-    Return the UMI gas type number
+    """Return the UMI gas type number
 
     Args:
         row (pandas.DataFrame):
@@ -95,7 +97,7 @@ def gas_type(row):
 
 
 def materials_gas(idfs):
-    """
+    """Gas group
 
     Args:
         idfs: parsed IDF files
@@ -135,7 +137,7 @@ def materials_gas(idfs):
 
 
 def materials_glazing(idfs):
-    """
+    """Material Glazing group
 
     Args:
         idfs (list or dict): parsed IDF files
@@ -203,7 +205,7 @@ def materials_glazing(idfs):
 
 
 def materials_opaque(idfs):
-    """
+    """Opaque Material group
 
     Args:
         idfs (list or dict): parsed IDF files
@@ -276,7 +278,7 @@ def materials_opaque(idfs):
 
 
 def constructions_opaque(idfs, opaquematerials=None):
-    """
+    """Opaque Construction group
 
     Args:
         idfs (list or dict): parsed IDF files
@@ -336,7 +338,7 @@ def constructions_opaque(idfs, opaquematerials=None):
 
 
 def constructions_windows(idfs, material_glazing=None):
-    """
+    """Window Construction group
 
     Args:
         idfs (list or dict): parsed IDF files
@@ -397,8 +399,7 @@ def constructions_windows(idfs, material_glazing=None):
 
 
 def get_simple_glazing_system(idfs):
-    """
-    Retreives all simple glazing objects from a list of IDF files. Calls :func:`simple_glazing` in order to calculate a
+    """Retreives all simple glazing objects from a list of IDF files. Calls :func:`simple_glazing` in order to calculate a
     new glazing system that has the same properties.
 
     Args:
@@ -430,8 +431,7 @@ def get_simple_glazing_system(idfs):
 
 
 def day_schedules(idfs):
-    """
-    Parses daily schedules of type 'SCHEDULE:DAY:INTERVAL'
+    """Parses daily schedules of type 'SCHEDULE:DAY:INTERVAL'
 
     Args:
         idfs (list of dict): parsed IDF files
@@ -458,7 +458,7 @@ def day_schedules(idfs):
 
 
 def week_schedules(idfs, dayschedules=None):
-    """
+    """Parses daily schedules of type 'SCHEDULE:WEEK:DAILY'
 
     Args:
         idfs (list or dict): parsed IDF files
@@ -500,7 +500,7 @@ def week_schedules(idfs, dayschedules=None):
 
 
 def year_schedules(idfs, weekschedule=None):
-    """
+    """Parses daily schedules of type 'SCHEDULE:YEAR'
 
     Args:
         idfs (list or dict): parsed IDF files
@@ -543,8 +543,7 @@ def year_schedules(idfs, weekschedule=None):
 
 
 def zone_loads(df):
-    """
-    Takes the sql reports (as a dict of DataFrames), concatenates all relevant 'Initialization Summary' tables and
+    """Takes the sql reports (as a dict of DataFrames), concatenates all relevant 'Initialization Summary' tables and
     applies a series of aggragation functions (weighted means and "top").
 
     Args:
@@ -576,8 +575,7 @@ def zone_loads(df):
 
 
 def zone_ventilation(df):
-    """
-    Takes the sql reports (as a dict of DataFrames), concatenates all relevant 'Initialization Summary' tables and
+    """Takes the sql reports (as a dict of DataFrames), concatenates all relevant 'Initialization Summary' tables and
     applies a series of aggragation functions (weighted means and "top").
 
     Args:
@@ -617,19 +615,18 @@ def zone_ventilation(df):
 
 
 def zoneloads_aggregation(x):
-    """
-    Set of different zoneloads_aggregation (weighted mean and "top") on multiple objects, eg. ('NominalLighting',
+    """Set of different zoneloads_aggregation (weighted mean and "top") on multiple objects, eg. ('NominalLighting',
     'Lights/Floor Area {W/m2}').
 
     All the DataFrame is passed to each function.
 
-    Returns a Series with a column MultiIndex
+    Returns a Series with a MultiIndex
 
     Args:
         x (pandas.DataFrame):
 
     Returns:
-        pandas.Series
+        pandas.Series: Series with a MultiIndex
 
     """
 
@@ -645,19 +642,18 @@ def zoneloads_aggregation(x):
 
 
 def zoneventilation_aggregation(x):
-    """
-    Set of different zoneventilation_aggregation (weighted mean and "top") on multiple objects,
+    """Set of different zoneventilation_aggregation (weighted mean and "top") on multiple objects,
     eg. ('NominalVentilation', 'ACH - Air Changes per Hour').
 
     All the DataFrame is passed to each function.
 
-    Returns a Series with a column MultiIndex
+    Returns a Series with a MultiIndex
 
     Args:
         x (pandas.DataFrame):
 
     Returns:
-        pandas.Series: Series with a column MultiIndex
+        pandas.Series: Series with a MultiIndex
 
     Todo: infiltration for plenums should not be taken into account
 
@@ -688,7 +684,7 @@ def zoneventilation_aggregation(x):
 
 
 def nominal_lighting(df):
-    """
+    """Nominal lighting
 
     Args:
         df:
@@ -711,7 +707,11 @@ def nominal_lighting(df):
 
 
 def nominal_people(df):
-    """
+    """Nominal People
+
+    References:
+        * `NominalPeople Table <https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples/eplusout-sql.html
+        #nominalpeople-table>`_
 
     Args:
         df:
@@ -733,7 +733,12 @@ def nominal_people(df):
 
 
 def nominal_equipment(df):
-    """
+    """Nominal Electric Equipment
+
+    References:
+        * `NominalElectricEquipment Table <https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples
+            /eplusout-sql.html#nominalelectricequipment-table>`_
+
 
     Args:
         df:
@@ -1135,8 +1140,8 @@ def zone_conditioning(df):
     Examples:
         .. doctest:: *
 
-            >>> df = pu.run_eplus([./examples/zoneuncontrolled.idf], output_report='sql')
-            >>> zone_conditioning(df)
+            # >>> df = pu.run_eplus([./examples/zoneuncontrolled.idf], output_report='sql')
+            # >>> zone_conditioning(df)
 
     """
     # Loading each section in a dictionnary. Used to create a new DF using pd.concat()

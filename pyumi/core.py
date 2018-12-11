@@ -225,24 +225,30 @@ def materials_opaque(idfs):
                      'Thermal_Absorptance': 'ThermalEmittance',
                      'Thermal_Resistance': 'ThermalResistance',
                      'Visible_Absorptance': 'VisibleAbsorptance'}
-
-    # For nomass materials, create a dummy thicness of 10cm (0.1m) and calculate 'thermal_resistance' and
-    # 'conductivity' properties
-
-    # Thermal_Resistance {m^2-K/W}
-    materials_df['Thermal_Resistance'] = materials_df.apply(
-        lambda x: x['Thickness'] / x['Conductivity'] if ~np.isnan(x['Conductivity']) else
-        x['Thermal_Resistance'], axis=1)
-    # Thickness {m}
-    materials_df['Thickness'] = materials_df.apply(lambda x: 0.1 if np.isnan(x['Thickness']) else x['Thickness'],
-                                                   axis=1)
-    # Conductivity {W/m-K}
-    materials_df['Conductivity'] = materials_df.apply(
-        lambda x: x['Thickness'] / x['Thermal_Resistance'],
-        axis=1)
-
+    # Rename columns
     materials_df.rename(columns=column_rename, inplace=True)
 
+    # Thermal_Resistance {m^2-K/W}
+    materials_df['ThermalResistance'] = materials_df.apply(
+        lambda x: x['Thickness'] / x['Conductivity'] if ~np.isnan(x['Conductivity']) else
+        x['ThermalResistance'], axis=1)
+
+    # Fill nan values (nomass materials) with defaults
+    materials_df = materials_df.fillna({'Thickness': 0.0127,  # half inch tichness
+                                        'Density': 1,   # 1 kg/m3, smallest value umi allows
+                                        'SpecificHeat': 100,  # 100 J/kg-K, smallest value umi allows
+                                        'SolarAbsorptance': 0.7,  # default value
+                                        'SubstitutionTimestep': 0,  # default value
+                                        'ThermalEmittance': 0.9,  # default value
+                                        'VariableConductivityProperties': 0,  # default value
+                                        'VisibleAbsorptance': 0.8,  # default value
+                                        })
+    # Calculate Conductivity {W/m-K}
+    materials_df['Conductivity'] = materials_df.apply(
+        lambda x: x['Thickness'] / x['ThermalResistance'],
+        axis=1)
+
+    # Fill other necessary columns
     materials_df['Comment'] = 'default'
     materials_df['Cost'] = 0
     try:

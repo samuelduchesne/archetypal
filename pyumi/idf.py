@@ -507,7 +507,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
             with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
                 cached_run_results = {os.path.basename(eplus_finename): result for eplus_finename, result in
                                       zip(eplus_files, executor.map(get_from_cache_pool, processed_cache))}
-                log('Parallel parsing completed in {:,.2f} seconds'.format(time.time() - start_time))
+            log('Parallel parsing completed in {:,.2f} seconds'.format(time.time() - start_time))
         else:
             raise Exception('User asked not to run in parallel')
     except Exception as e:

@@ -36,6 +36,12 @@ def simple_glazing(shgc, u_factor, visible_transmittance=None):
         except ValueError:
             visible_transmittance = None
 
+    # Limits
+    if u_factor > 7:
+        raise ValueError('The model cannot support glazing systems with a U higher than 7.0 because  the thermal '
+                         'resistance of the film coefficients alone can provide this level of performance and  none '
+                         'of the various resistances can be negative.')
+
     dict = {}
 
     # Step 1. Determine glass-to-glass Resistance.

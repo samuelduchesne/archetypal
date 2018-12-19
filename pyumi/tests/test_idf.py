@@ -8,8 +8,9 @@ import os
 import shutil
 
 import matplotlib as mpl
-
 # use agg backend so you don't need a display on travis-ci
+import pytest
+
 mpl.use('Agg')
 
 # remove the .temp folder if it already exists so we start fresh with tests
@@ -36,8 +37,11 @@ def test_small_home_data():
     return pu.run_eplus(file, wf, expandobjects=True)
 
 
-def test_small_home_data_parallel():
+@pytest.mark.parametrize('processors', [0, 1, -1])
+@pytest.mark.parametrize('expandobjects', [True, False])
+@pytest.mark.parametrize('annual', [True, False])
+def test_example_idf(processors, expandobjects, annual):
     file1 = './input_data/AdultEducationCenter.idf'
     file2 = './input_data/AdultEducationCenter.idf'
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return pu.run_eplus([file1, file2], wf, processors=2, expandobjects=True)
+    return pu.run_eplus([file1, file2], wf, processors=processors, expandobjects=expandobjects, annual=annual)

@@ -7,7 +7,7 @@ import numpy as np
 from pyumi import log
 
 
-def simple_glazing(shgc, u_factor, visible_transmittance):
+def simple_glazing(shgc, u_factor, visible_transmittance=None):
     """
     Calculates the physical properties of an equivalent single pane of glass from the Solar Heat Gain Coefficient,
     the U-value and the Visible Transmittance.
@@ -15,7 +15,7 @@ def simple_glazing(shgc, u_factor, visible_transmittance):
     Args:
         shgc (double): The window's Solar Heat Gain Coefficient
         u_factor (double): The window's U-value
-        visible_transmittance (double): The window's visible transmittance
+        visible_transmittance (double, optional): The window's visible transmittance
 
     Returns:
         dict: A dictionnary of properties for the simple glazing system.
@@ -31,7 +31,10 @@ def simple_glazing(shgc, u_factor, visible_transmittance):
     if isinstance(u_factor, str):
         u_factor = float(u_factor)
     if isinstance(visible_transmittance, str):
-        visible_transmittance = float(visible_transmittance)
+        try:
+            visible_transmittance = float(visible_transmittance)
+        except ValueError:
+            visible_transmittance = None
 
     dict = {}
 
@@ -68,8 +71,12 @@ def simple_glazing(shgc, u_factor, visible_transmittance):
     # transmittance is 0.0
 
     # Step 6. Determine Layer Visible Properties
-
-    T_vis = visible_transmittance
+    # The user has the option of entering a value for visible transmittance as one of the simple performance indices.
+    # If the user does not enter a value, then the visible properties are the same as the solar properties.
+    if visible_transmittance:
+        T_vis = visible_transmittance
+    else:
+        T_vis = T_sol
 
     R_vis_b = r_vis_b(T_vis)
     R_vis_f = r_vis_f(T_vis)

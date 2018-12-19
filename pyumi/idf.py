@@ -21,7 +21,7 @@ except ImportError:
     pass
 
 
-def object_from_idfs(idfs, ep_object, first_occurrence_only=False, processors=None):
+def object_from_idfs(idfs, ep_object, first_occurrence_only=False, processors=1):
     """Takes a list of parsed IDF objects and a single ep_object and returns a DataFrame.
 
     Args:
@@ -40,7 +40,7 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False, processors=No
 
     if isinstance(idfs, dict):
         try:
-            if processors is None:
+            if processors == 1:
                 raise Exception('Loading objects sequentially...')
             log('Loading objects in parallel...')
             # Loading objects in parallel is actually slower at the moment, so we raise an Exception
@@ -114,7 +114,7 @@ def object_from_idf(idf, ep_object):
         return df
 
 
-def load_idf(files, idd_filename=None, as_dict=True, processors=None):
+def load_idf(files, idd_filename=None, as_dict=True, processors=1):
     """Returns a list (or a dict) of parsed IDF objects. If `settings.use_cache`_ is true, then the idf objects are
     loaded from cache.
 
@@ -141,7 +141,7 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=None):
     dirnames = [os.path.dirname(path) for path in files]
     start_time = time.time()
     try:
-        if processors:
+        if processors > 1:
             log('Parsing IDF Objects using {} processors...'.format(processors))
             import concurrent.futures
             with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
@@ -177,7 +177,7 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=None):
         #     runs.append([file, idd_filename[file]])
         # Parallel load
         try:
-            if processors:
+            if processors > 1:
                 start_time = time.time()
                 import concurrent.futures
                 with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
@@ -448,7 +448,7 @@ def prepare_outputs(eplus_file):
                                     Reporting_Frequency='hourly')
 
 
-def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, output_report='sql', processors=None,
+def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, output_report='sql', processors=1,
               prep_outputs=False, **kwargs):
     """Run an energy plus file and returns the SummaryReports Tables in a list of [(title, table), .....]
 
@@ -470,6 +470,11 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
     if isinstance(eplus_files, str):
         # Treat str as an array
         eplus_files = [eplus_files]
+
+    # determine processors
+    if processors < 0:
+        processors = min(len(eplus_files), mp.cpu_count())
+    log('Function calls unsing {} processors'.format(processors))
 
     # Determine version of idf file by reading the text file
     if ep_version is None:
@@ -501,7 +506,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
     for eplus_file in eplus_files:
         processed_cache.append([eplus_file, output_report, kwargs])
     try:
-        if processors:
+        if processors > 1:
             start_time = time.time()
             import concurrent.futures
             with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
@@ -537,8 +542,6 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
         eplus_files = [os.path.join(dirnames[run], run) for run in runs_not_found]
 
         start_time = time.time()
-        if processors <= 0:
-            processors = max(1, mp.cpu_count() - processors)
 
         from shutil import copyfile
         processed_runs = []
@@ -546,19 +549,20 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
             # hash the eplus_file (to make shorter than the often extremely long name)
             filename_prefix = hash_file(eplus_file)
             epw = weather_file
-            kwargs = {'output_directory': output_folder + '/{}'.format(filename_prefix),
-                      'ep_version': versionids[eplus_file],
-                      'output_prefix': filename_prefix,
-                      'idd': idd_filename[eplus_file],
-                      'annual': True}
+            runargs = {'output_directory': output_folder + '/{}'.format(filename_prefix),
+                       'ep_version': versionids[eplus_file],
+                       'output_prefix': filename_prefix,
+                       'idd': idd_filename[eplus_file],
+                       'annual': True}
+            runargs.update(kwargs)
             idf_path = os.path.abspath(eplus_file)  # TODO Should copy idf somewhere else before running; [Partly Fixed]
-            processed_runs.append([[idf_path, epw], kwargs])
+            processed_runs.append([[idf_path, epw], runargs])
 
             # Put a copy of the file in its cache folder
-            if not os.path.isfile(os.path.join(kwargs['output_directory'], os.path.basename(eplus_file))):
-                if not os.path.isdir(os.path.join(kwargs['output_directory'])):
-                    os.mkdir(kwargs['output_directory'])
-                copyfile(eplus_file, os.path.join(kwargs['output_directory'], os.path.basename(eplus_file)))
+            if not os.path.isfile(os.path.join(runargs['output_directory'], os.path.basename(eplus_file))):
+                if not os.path.isdir(os.path.join(runargs['output_directory'])):
+                    os.mkdir(runargs['output_directory'])
+                copyfile(eplus_file, os.path.join(runargs['output_directory'], os.path.basename(eplus_file)))
         log('Running EnergyPlus...')
         # We run the EnergyPlus Simulation
         try:

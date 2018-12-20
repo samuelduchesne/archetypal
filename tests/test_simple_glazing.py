@@ -3,9 +3,17 @@ import shutil
 
 import matplotlib as mpl
 import pytest
+import numpy as np
 
 import pyumi as pu
 from pyumi.simple_glazing import simple_glazing
+
+
+@pytest.mark.parametrize('t_vis', [0.1, None, 0.9])
+@pytest.mark.parametrize('u_value', np.linspace(0.1, 7, 10))
+@pytest.mark.parametrize('shgc', np.linspace(0.1, 1, 10))
+def test_glazing(shgc, u_value, t_vis):
+    simple_glazing(shgc, u_value, t_vis)
 
 
 @pytest.mark.parametrize('another', [

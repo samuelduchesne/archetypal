@@ -12,9 +12,10 @@ if os.path.exists('.temp'):
 pu.config(log_console=True, log_file=True, use_cache=True,
           data_folder='.temp/data', logs_folder='.temp/logs',
           imgs_folder='.temp/imgs', cache_folder='.temp/cache',
-          umitemplate='../../data/BostonTemplateLibrary.json')
+          umitemplate='../data/BostonTemplateLibrary.json')
 
 
 def test_load_umi_template():
     data_json = pu.settings.umitemplate
     assert len(load_umi_template(data_json)) == 17
+

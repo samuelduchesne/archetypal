@@ -101,15 +101,17 @@ def object_from_idf(idf, ep_object):
         ep_object (str): EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a string. **Most be in all caps.**
 
     Returns:
-        pandas.DataFrame: A DataFrame
+        pandas.DataFrame: A DataFrame. Returns an empty DataFrame if ep_object is not found in file.
 
     """
     try:
         df = pd.concat([pd.DataFrame(obj.fieldvalues, index=obj.fieldnames[0:len(obj.fieldvalues)]).T for obj in
                         idf.idfobjects[ep_object]],
                        ignore_index=True, sort=False)
-    except Exception as e:
-        log('ValueError: EP object "{}" does not exist in frame for idf "{}"'.format(ep_object, idf.idfname))
+    except ValueError:
+        log('ValueError: EP object "{}" does not exist in frame for idf "{}. Returning empty DataFrame"'.format(
+            ep_object, idf.idfname), lg.WARNING)
+        return pd.DataFrame({ep_object: []})
     else:
         return df
 

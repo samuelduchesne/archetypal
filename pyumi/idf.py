@@ -1,3 +1,4 @@
+import datetime
 import glob
 import hashlib
 import logging as lg
@@ -455,6 +456,16 @@ def prepare_outputs(eplus_file):
                                     Reporting_Frequency='hourly')
 
 
+def cache_runargs(eplus_file, runargs):
+    import json
+    output_directory = runargs['output_directory']
+
+    runargs.update({'run_time': datetime.datetime.now().isoformat()})
+    runargs.update({'idf_file': eplus_file})
+    with open(os.path.join(output_directory, 'runargs.json'), 'w') as fp:
+        json.dump(runargs, fp, sort_keys=True, indent=4)
+
+
 def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, output_report='sql', processors=1,
               prep_outputs=False, **kwargs):
     """Run an energy plus file and returns the SummaryReports Tables in a list of [(title, table), .....]
@@ -565,11 +576,12 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
             idf_path = os.path.abspath(eplus_file)  # TODO Should copy idf somewhere else before running; [Partly Fixed]
             processed_runs.append([[idf_path, epw], runargs])
 
-            # Put a copy of the file in its cache folder
+            # Put a copy of the file in its cache folder and save runargs
             if not os.path.isfile(os.path.join(runargs['output_directory'], os.path.basename(eplus_file))):
                 if not os.path.isdir(os.path.join(runargs['output_directory'])):
                     os.mkdir(runargs['output_directory'])
                 copyfile(eplus_file, os.path.join(runargs['output_directory'], os.path.basename(eplus_file)))
+                cache_runargs(eplus_file, runargs.copy())
         log('Running EnergyPlus...')
         # We run the EnergyPlus Simulation
         try:

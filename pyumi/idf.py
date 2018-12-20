@@ -547,7 +547,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
         processed_runs = []
         for eplus_file in eplus_files:
             # hash the eplus_file (to make shorter than the often extremely long name)
-            filename_prefix = hash_file(eplus_file)
+            filename_prefix = hash_file(eplus_file, **kwargs)
             epw = weather_file
             runargs = {'output_directory': output_folder + '/{}'.format(filename_prefix),
                        'ep_version': versionids[eplus_file],
@@ -625,42 +625,47 @@ def get_from_cache_pool(args):
     return get_from_cache(args[0], args[1])
 
 
-def hash_file(eplus_file):
+def hash_file(eplus_file, **kwargs):
     """Simple function to hash a file and return it as a string.
+    Will also hash the :py:func:`eppy.runner.run_functions.run()` arguments so that correct results are returned
+    when different run arguments are used
 
     Args:
         eplus_file (str): path of the idf file
+        **kwargs: keywords to pass to the hasher
 
     Returns:
-        str: hashed file string
+        str: The digest value as a string of hexadecimal digits
 
     Todo:
-        * Hashing should include the input files to an idf file. For example, if a model uses a csv file as an input
-        and that file changes, the hashing will currently not pickup that change. This could result in loading old
-        results without the user knowing.
+        * Hashing should include the external files used an idf file. For example, if a model
+        uses a csv file as an input and that file changes, the hashing will currently not pickup that change. This
+        could result in loading old results without the user knowing.
 
     """
     hasher = hashlib.md5()
     with open(eplus_file, 'rb') as afile:
         buf = afile.read()
         hasher.update(buf)
+        hasher.update(kwargs.__str__().encode('utf-8'))  # Hashing the kwargs as well
     return hasher.hexdigest()
 
 
-def get_report(eplus_file, output_folder=None, output_report='sql', **kwargs):
+def get_report(eplus_file, output_folder=None, report_table=None, output_report='sql', **kwargs):
     """Returns the specified report format (html or sql)
 
     Args:
+        report_table:
         eplus_file (str): path of the idf file
         output_folder (str, optional): path to the output folder. Will default to the settings.cache_folder.
         output_report: 'html' or 'sql'
-        **kwargs: keyword arguments to pass to other functions.
+        **kwargs: keyword arguments to pass to hasher.
 
     Returns:
         dict: a dict of DataFrames
 
     """
-    filename_prefix = hash_file(eplus_file)
+    filename_prefix = hash_file(eplus_file, **kwargs)
     if 'htm' in output_report.lower():
         # Get the html report
         fullpath_filename = os.path.join(output_folder, filename_prefix,
@@ -674,10 +679,11 @@ def get_report(eplus_file, output_folder=None, output_report='sql', **kwargs):
                                          os.extsep.join([filename_prefix + 'out', 'sql']))
         if os.path.isfile(fullpath_filename):
             try:
-                if kwargs['report_tables']:
-                    return get_sqlite_report(fullpath_filename, kwargs['report_tables'])
-            except:
-                return get_sqlite_report(fullpath_filename)
+                sql_report = get_sqlite_report(fullpath_filename, report_table)
+            except Exception:
+                raise Exception
+            else:
+                return sql_report
 
 
 def get_from_cache(eplus_file, output_report='sql', **kwargs):
@@ -693,7 +699,7 @@ def get_from_cache(eplus_file, output_report='sql', **kwargs):
     """
     if settings.use_cache:
         # determine the filename by hashing the eplus_file
-        cache_filename_prefix = hash_file(eplus_file)
+        cache_filename_prefix = hash_file(eplus_file, **kwargs)
         if 'htm' in output_report.lower():
             # Get the html report
             cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename_prefix,

@@ -91,3 +91,5 @@ main-test\.py
 cache/
 notebooks/
 _build/
+
+docs/

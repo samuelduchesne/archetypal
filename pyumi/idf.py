@@ -1,3 +1,4 @@
+import datetime
 import glob
 import hashlib
 import logging as lg
@@ -101,25 +102,27 @@ def object_from_idf(idf, ep_object):
         ep_object (str): EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a string. **Most be in all caps.**
 
     Returns:
-        pandas.DataFrame: A DataFrame
+        pandas.DataFrame: A DataFrame. Returns an empty DataFrame if ep_object is not found in file.
 
     """
     try:
         df = pd.concat([pd.DataFrame(obj.fieldvalues, index=obj.fieldnames[0:len(obj.fieldvalues)]).T for obj in
                         idf.idfobjects[ep_object]],
                        ignore_index=True, sort=False)
-    except Exception as e:
-        log('ValueError: EP object "{}" does not exist in frame for idf "{}"'.format(ep_object, idf.idfname))
+    except ValueError:
+        log('ValueError: EP object "{}" does not exist in frame for idf "{}. Returning empty DataFrame"'.format(
+            ep_object, idf.idfname), lg.WARNING)
+        return pd.DataFrame({ep_object: []})
     else:
         return df
 
 
-def load_idf(files, idd_filename=None, as_dict=True, processors=1):
+def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
     """Returns a list (or a dict) of parsed IDF objects. If `settings.use_cache`_ is true, then the idf objects are
     loaded from cache.
 
     Args:
-        files (str or list of str): path of the idf file. If a list is passed, a list of eppy.modeleditor.IDF objects will be
+        eplus_files (str or list of str): path of the idf file. If a list is passed, a list of eppy.modeleditor.IDF objects will be
             returned, unless as_dict=True.
         idd_filename (str, optional): name of the EnergyPlus IDD file. If None, the function tries to find it.
         as_dict (bool, optional): if true, returns a dict with the idf filename as keys instead of a list.
@@ -130,23 +133,28 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=1):
 
     """
     # Check weather to use MacOs or Windows location
-    if isinstance(files, str):
-        files = [files]
+    if isinstance(eplus_files, str):
+        eplus_files = [eplus_files]
 
     # Determine version of idf file by reading the text file
     if idd_filename is None:
-        idd_filename = {file: getiddfile(get_idf_version(file)) for file in files}
+        idd_filename = {file: getiddfile(get_idf_version(file)) for file in eplus_files}
+
+    # determine processors
+    if processors < 0:
+        processors = min(len(eplus_files), mp.cpu_count())
+    log('Function calls unsing {} processors'.format(processors))
 
     # Try loading IDF objects from pickled cache first
-    dirnames = [os.path.dirname(path) for path in files]
+    dirnames = [os.path.dirname(path) for path in eplus_files]
     start_time = time.time()
     try:
         if processors > 1:
             log('Parsing IDF Objects using {} processors...'.format(processors))
             import concurrent.futures
             with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
-                idfs = {os.path.basename(file): result for file, result in zip(files, executor.map(
-                    load_idf_object_from_cache, files))}
+                idfs = {os.path.basename(file): result for file, result in zip(eplus_files, executor.map(
+                    load_idf_object_from_cache, eplus_files))}
         else:
             raise Exception('User asked not to run in parallel')
     except Exception as e:
@@ -154,7 +162,7 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=1):
         log('Cannot use parallel load. Error with the following exception:\n{}'.format(e))
         log('Parsing IDF Objects sequentially...')
         idfs = {}
-        for file in files:
+        for file in eplus_files:
             eplus_finename = os.path.basename(file)
             idfs[eplus_finename] = load_idf_object_from_cache(file)
 
@@ -162,18 +170,17 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=1):
     objects_not_found = [k for k, v in idfs.items() if v is None]
     if not objects_not_found:
         # if objects_not_found not empty, return the ones we actually did find and pass the other ones
+        log('Eppy load from cache completed in {:,.2f} seconds\n'.format(time.time() - start_time))
         if as_dict:
-            log('Eppy load from cache completed in {:,.2f} seconds\n'.format(time.time() - start_time))
             return objects_found
         else:
-            log('Eppy load from cache completed in {:,.2f} seconds\n'.format(time.time() - start_time))
             return list(objects_found.values())
     else:
         # Else, run eppy to load the idf objects
-        files = [os.path.join(dir, run) for dir, run in zip(dirnames, objects_not_found)]
+        eplus_files = [os.path.join(dir, run) for dir, run in zip(dirnames, objects_not_found)]
         # runs = []
-        runs = {os.path.basename(file): [file, idd_filename[file]] for file in files}
-        # for file in files:
+        runs = {os.path.basename(file): [file, idd_filename[file]] for file in eplus_files}
+        # for file in eplus_files:
         #     runs.append([file, idd_filename[file]])
         # Parallel load
         try:
@@ -184,7 +191,7 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=1):
                     idfs = {filename: idf_object for filename, idf_object in
                             zip(runs.keys(), executor.map(eppy_load_pool, runs.values()))}
                     # TODO : Will probably break when dict is asked
-                    log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(files),
+                    log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(eplus_files),
                                                                                                  time.time() -
                                                                                                  start_time))
             else:
@@ -194,11 +201,12 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=1):
             log('Cannot use parallel load. Error with the following exception:\n{}'.format(e))
             idfs = {}
             start_time = time.time()
-            for file in files:
+            for file in eplus_files:
                 eplus_finename = os.path.basename(file)
                 idf_object = eppy_load(file, idd_filename[file])
                 idfs[eplus_finename] = idf_object
-            log('Parsed {} idf file(s) sequentially in {:,.2f} seconds'.format(len(files), time.time() - start_time))
+            log('Parsed {} idf file(s) sequentially in {:,.2f} seconds'.format(len(eplus_files),
+                                                                               time.time() - start_time))
         if as_dict:
             return idfs
         return list(idfs.values())
@@ -448,6 +456,16 @@ def prepare_outputs(eplus_file):
                                     Reporting_Frequency='hourly')
 
 
+def cache_runargs(eplus_file, runargs):
+    import json
+    output_directory = runargs['output_directory']
+
+    runargs.update({'run_time': datetime.datetime.now().isoformat()})
+    runargs.update({'idf_file': eplus_file})
+    with open(os.path.join(output_directory, 'runargs.json'), 'w') as fp:
+        json.dump(runargs, fp, sort_keys=True, indent=4)
+
+
 def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, output_report='sql', processors=1,
               prep_outputs=False, **kwargs):
     """Run an energy plus file and returns the SummaryReports Tables in a list of [(title, table), .....]
@@ -547,7 +565,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
         processed_runs = []
         for eplus_file in eplus_files:
             # hash the eplus_file (to make shorter than the often extremely long name)
-            filename_prefix = hash_file(eplus_file)
+            filename_prefix = hash_file(eplus_file, **kwargs)
             epw = weather_file
             runargs = {'output_directory': output_folder + '/{}'.format(filename_prefix),
                        'ep_version': versionids[eplus_file],
@@ -558,11 +576,12 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None, ou
             idf_path = os.path.abspath(eplus_file)  # TODO Should copy idf somewhere else before running; [Partly Fixed]
             processed_runs.append([[idf_path, epw], runargs])
 
-            # Put a copy of the file in its cache folder
+            # Put a copy of the file in its cache folder and save runargs
             if not os.path.isfile(os.path.join(runargs['output_directory'], os.path.basename(eplus_file))):
                 if not os.path.isdir(os.path.join(runargs['output_directory'])):
                     os.mkdir(runargs['output_directory'])
                 copyfile(eplus_file, os.path.join(runargs['output_directory'], os.path.basename(eplus_file)))
+                cache_runargs(eplus_file, runargs.copy())
         log('Running EnergyPlus...')
         # We run the EnergyPlus Simulation
         try:
@@ -596,17 +615,20 @@ def multirunner(args):
     """
     try:
         run(*args[0], **args[1])
-    except Exception as e:
+    except TypeError as e:
+        log('{}'.format(e), lg.ERROR)
+        raise TypeError('{}'.format(e))
+    except CalledProcessError as e:
         # Get error file
-        log('Error: {}'.format(e))
-        try:
-            error_filename = os.path.join(args[1]['output_directory'], args[1]['output_prefix'] + 'out.err')
-            if os.path.isfile(error_filename):
-                with open(error_filename, 'r') as fin:
-                    log('\nError File for {} begins here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
-                    log(fin.read(), lg.ERROR)
-                    log('\nError File for {} ends here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
-        except:
+        log('{}'.format(e), lg.ERROR)
+
+        error_filename = os.path.join(args[1]['output_directory'], args[1]['output_prefix'] + 'out.err')
+        if os.path.isfile(error_filename):
+            with open(error_filename, 'r') as fin:
+                log('\nError File for {} begins here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
+                log(fin.read(), lg.ERROR)
+                log('\nError File for {} ends here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
+        else:
             log('Could not find error file', lg.ERROR)
 
 
@@ -620,47 +642,52 @@ def get_from_cache_pool(args):
         dict: dict of {title : table <DataFrame>, .....}
 
     Todo:
-        * Settup arguments as Locals()
+        * Setup arguments as Locals()
     """
     return get_from_cache(args[0], args[1])
 
 
-def hash_file(eplus_file):
+def hash_file(eplus_file, **kwargs):
     """Simple function to hash a file and return it as a string.
+    Will also hash the :py:func:`eppy.runner.run_functions.run()` arguments so that correct results are returned
+    when different run arguments are used
 
     Args:
         eplus_file (str): path of the idf file
+        **kwargs: keywords to pass to the hasher
 
     Returns:
-        str: hashed file string
+        str: The digest value as a string of hexadecimal digits
 
     Todo:
-        * Hashing should include the input files to an idf file. For example, if a model uses a csv file as an input
-        and that file changes, the hashing will currently not pickup that change. This could result in loading old
-        results without the user knowing.
+        * Hashing should include the external files used an idf file. For example, if a model
+        uses a csv file as an input and that file changes, the hashing will currently not pickup that change. This
+        could result in loading old results without the user knowing.
 
     """
     hasher = hashlib.md5()
     with open(eplus_file, 'rb') as afile:
         buf = afile.read()
         hasher.update(buf)
+        hasher.update(kwargs.__str__().encode('utf-8'))  # Hashing the kwargs as well
     return hasher.hexdigest()
 
 
-def get_report(eplus_file, output_folder=None, output_report='sql', **kwargs):
+def get_report(eplus_file, output_folder=None, report_table=None, output_report='sql', **kwargs):
     """Returns the specified report format (html or sql)
 
     Args:
+        report_table:
         eplus_file (str): path of the idf file
         output_folder (str, optional): path to the output folder. Will default to the settings.cache_folder.
         output_report: 'html' or 'sql'
-        **kwargs: keyword arguments to pass to other functions.
+        **kwargs: keyword arguments to pass to hasher.
 
     Returns:
         dict: a dict of DataFrames
 
     """
-    filename_prefix = hash_file(eplus_file)
+    filename_prefix = hash_file(eplus_file, **kwargs)
     if 'htm' in output_report.lower():
         # Get the html report
         fullpath_filename = os.path.join(output_folder, filename_prefix,
@@ -674,10 +701,11 @@ def get_report(eplus_file, output_folder=None, output_report='sql', **kwargs):
                                          os.extsep.join([filename_prefix + 'out', 'sql']))
         if os.path.isfile(fullpath_filename):
             try:
-                if kwargs['report_tables']:
-                    return get_sqlite_report(fullpath_filename, kwargs['report_tables'])
-            except:
-                return get_sqlite_report(fullpath_filename)
+                sql_report = get_sqlite_report(fullpath_filename, report_table)
+            except Exception:
+                raise Exception
+            else:
+                return sql_report
 
 
 def get_from_cache(eplus_file, output_report='sql', **kwargs):
@@ -693,7 +721,7 @@ def get_from_cache(eplus_file, output_report='sql', **kwargs):
     """
     if settings.use_cache:
         # determine the filename by hashing the eplus_file
-        cache_filename_prefix = hash_file(eplus_file)
+        cache_filename_prefix = hash_file(eplus_file, **kwargs)
         if 'htm' in output_report.lower():
             # Get the html report
             cache_fullpath_filename = os.path.join(settings.cache_folder, cache_filename_prefix,

@@ -116,12 +116,12 @@ def object_from_idf(idf, ep_object):
         return df
 
 
-def load_idf(files, idd_filename=None, as_dict=True, processors=1):
+def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
     """Returns a list (or a dict) of parsed IDF objects. If `settings.use_cache`_ is true, then the idf objects are
     loaded from cache.
 
     Args:
-        files (str or list of str): path of the idf file. If a list is passed, a list of eppy.modeleditor.IDF objects will be
+        eplus_files (str or list of str): path of the idf file. If a list is passed, a list of eppy.modeleditor.IDF objects will be
             returned, unless as_dict=True.
         idd_filename (str, optional): name of the EnergyPlus IDD file. If None, the function tries to find it.
         as_dict (bool, optional): if true, returns a dict with the idf filename as keys instead of a list.
@@ -132,23 +132,28 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=1):
 
     """
     # Check weather to use MacOs or Windows location
-    if isinstance(files, str):
-        files = [files]
+    if isinstance(eplus_files, str):
+        eplus_files = [eplus_files]
 
     # Determine version of idf file by reading the text file
     if idd_filename is None:
-        idd_filename = {file: getiddfile(get_idf_version(file)) for file in files}
+        idd_filename = {file: getiddfile(get_idf_version(file)) for file in eplus_files}
+
+    # determine processors
+    if processors < 0:
+        processors = min(len(eplus_files), mp.cpu_count())
+    log('Function calls unsing {} processors'.format(processors))
 
     # Try loading IDF objects from pickled cache first
-    dirnames = [os.path.dirname(path) for path in files]
+    dirnames = [os.path.dirname(path) for path in eplus_files]
     start_time = time.time()
     try:
         if processors > 1:
             log('Parsing IDF Objects using {} processors...'.format(processors))
             import concurrent.futures
             with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
-                idfs = {os.path.basename(file): result for file, result in zip(files, executor.map(
-                    load_idf_object_from_cache, files))}
+                idfs = {os.path.basename(file): result for file, result in zip(eplus_files, executor.map(
+                    load_idf_object_from_cache, eplus_files))}
         else:
             raise Exception('User asked not to run in parallel')
     except Exception as e:
@@ -156,7 +161,7 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=1):
         log('Cannot use parallel load. Error with the following exception:\n{}'.format(e))
         log('Parsing IDF Objects sequentially...')
         idfs = {}
-        for file in files:
+        for file in eplus_files:
             eplus_finename = os.path.basename(file)
             idfs[eplus_finename] = load_idf_object_from_cache(file)
 
@@ -164,18 +169,17 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=1):
     objects_not_found = [k for k, v in idfs.items() if v is None]
     if not objects_not_found:
         # if objects_not_found not empty, return the ones we actually did find and pass the other ones
+        log('Eppy load from cache completed in {:,.2f} seconds\n'.format(time.time() - start_time))
         if as_dict:
-            log('Eppy load from cache completed in {:,.2f} seconds\n'.format(time.time() - start_time))
             return objects_found
         else:
-            log('Eppy load from cache completed in {:,.2f} seconds\n'.format(time.time() - start_time))
             return list(objects_found.values())
     else:
         # Else, run eppy to load the idf objects
-        files = [os.path.join(dir, run) for dir, run in zip(dirnames, objects_not_found)]
+        eplus_files = [os.path.join(dir, run) for dir, run in zip(dirnames, objects_not_found)]
         # runs = []
-        runs = {os.path.basename(file): [file, idd_filename[file]] for file in files}
-        # for file in files:
+        runs = {os.path.basename(file): [file, idd_filename[file]] for file in eplus_files}
+        # for file in eplus_files:
         #     runs.append([file, idd_filename[file]])
         # Parallel load
         try:
@@ -186,7 +190,7 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=1):
                     idfs = {filename: idf_object for filename, idf_object in
                             zip(runs.keys(), executor.map(eppy_load_pool, runs.values()))}
                     # TODO : Will probably break when dict is asked
-                    log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(files),
+                    log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(eplus_files),
                                                                                                  time.time() -
                                                                                                  start_time))
             else:
@@ -196,11 +200,12 @@ def load_idf(files, idd_filename=None, as_dict=True, processors=1):
             log('Cannot use parallel load. Error with the following exception:\n{}'.format(e))
             idfs = {}
             start_time = time.time()
-            for file in files:
+            for file in eplus_files:
                 eplus_finename = os.path.basename(file)
                 idf_object = eppy_load(file, idd_filename[file])
                 idfs[eplus_finename] = idf_object
-            log('Parsed {} idf file(s) sequentially in {:,.2f} seconds'.format(len(files), time.time() - start_time))
+            log('Parsed {} idf file(s) sequentially in {:,.2f} seconds'.format(len(eplus_files),
+                                                                               time.time() - start_time))
         if as_dict:
             return idfs
         return list(idfs.values())

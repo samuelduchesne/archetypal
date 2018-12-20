@@ -615,17 +615,20 @@ def multirunner(args):
     """
     try:
         run(*args[0], **args[1])
-    except Exception as e:
+    except TypeError as e:
+        log('{}'.format(e), lg.ERROR)
+        raise TypeError('{}'.format(e))
+    except CalledProcessError as e:
         # Get error file
-        log('Error: {}'.format(e))
-        try:
-            error_filename = os.path.join(args[1]['output_directory'], args[1]['output_prefix'] + 'out.err')
-            if os.path.isfile(error_filename):
-                with open(error_filename, 'r') as fin:
-                    log('\nError File for {} begins here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
-                    log(fin.read(), lg.ERROR)
-                    log('\nError File for {} ends here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
-        except:
+        log('{}'.format(e), lg.ERROR)
+
+        error_filename = os.path.join(args[1]['output_directory'], args[1]['output_prefix'] + 'out.err')
+        if os.path.isfile(error_filename):
+            with open(error_filename, 'r') as fin:
+                log('\nError File for {} begins here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
+                log(fin.read(), lg.ERROR)
+                log('\nError File for {} ends here...\n'.format(os.path.basename(args[0][0])), lg.ERROR)
+        else:
             log('Could not find error file', lg.ERROR)
 
 
@@ -639,7 +642,7 @@ def get_from_cache_pool(args):
         dict: dict of {title : table <DataFrame>, .....}
 
     Todo:
-        * Settup arguments as Locals()
+        * Setup arguments as Locals()
     """
     return get_from_cache(args[0], args[1])
 

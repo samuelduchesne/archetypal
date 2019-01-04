@@ -118,7 +118,7 @@ def object_from_idf(idf, ep_object):
 
 
 def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
-    """Returns a list (or a dict) of parsed IDF objects. If `settings.use_cache`_ is true, then the idf objects are
+    """Returns a list (or a dict) of parsed IDF objects. If *pyumi.settings.use_cache* is true, then the idf objects are
     loaded from cache.
 
     Args:
@@ -660,10 +660,9 @@ def hash_file(eplus_file, **kwargs):
         str: The digest value as a string of hexadecimal digits
 
     Todo:
-        * Hashing should include the external files used an idf file. For example, if a model
+        Hashing should include the external files used an idf file. For example, if a model
         uses a csv file as an input and that file changes, the hashing will currently not pickup that change. This
         could result in loading old results without the user knowing.
-
     """
     hasher = hashlib.md5()
     with open(eplus_file, 'rb') as afile:

@@ -19,4 +19,4 @@ def load_umi_template(json_template):
 
             return [{key: json_normalize(value)} for key, value in dicts.items()]
     else:
-        raise ValueError('File {} does not exist')
+        raise ValueError('File {} does not exist'.format(json_template))

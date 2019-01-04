@@ -1,7 +1,11 @@
+import os
+import pytest
+import shutil
+
+import matplotlib as mpl
+
 import pyumi as pu
 from pyumi import load_umi_template
-import matplotlib as mpl
-import os, shutil
 
 mpl.use('Agg')  # use agg backend so you don't need a display on travis-ci
 
@@ -19,3 +23,9 @@ def test_load_umi_template():
     data_json = pu.settings.umitemplate
     assert len(load_umi_template(data_json)) == 17
 
+
+def test_load_umi_template_fail():
+    with pytest.raises(ValueError):
+        pu.config(umitemplate='../data/noneexistingfile.json')
+        data_json = pu.settings.umitemplate
+        load_umi_template(data_json)

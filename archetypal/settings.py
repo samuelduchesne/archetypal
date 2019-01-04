@@ -16,8 +16,8 @@ log_file = False
 log_console = False
 log_notebook = False
 log_level = lg.INFO
-log_name = 'pyumi'
-log_filename = 'pyumi'
+log_name = 'archetypal'
+log_filename = 'archetypal'
 
 # usual idfobjects
 useful_idf_objects = ['WINDOWMATERIAL:GAS', 'WINDOWMATERIAL:GLAZING', 'WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM',

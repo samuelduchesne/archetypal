@@ -9,7 +9,7 @@ if "%SPHINXBUILD%" == "" (
 )
 set SOURCEDIR=.
 set BUILDDIR=_build
-set SPHINXPROJ=pyumi
+set SPHINXPROJ=archetypal
 
 if "%1" == "" goto help
 

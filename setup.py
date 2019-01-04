@@ -1,9 +1,9 @@
 from setuptools import setup
 
 setup(
-    name='pyumi',
+    name='archetypal',
     version='1.0',
-    packages=['pyumi', 'pyumi.tests'],
+    packages=['archetypal'],
     url='',
     license='MIT License',
     author='Samuel Letellier-Duchesne',

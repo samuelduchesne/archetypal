@@ -2,9 +2,9 @@ import glob
 
 import pytest
 
-import pyumi as pu
+import archetypal as pu
 
-# configure pyumi
+# configure archetypal
 pu.config(log_console=True, log_file=True, use_cache=True,
           data_folder='.temp/data', logs_folder='.temp/logs',
           imgs_folder='.temp/imgs', cache_folder='.temp/cache',

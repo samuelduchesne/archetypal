@@ -5,8 +5,8 @@ import matplotlib as mpl
 import pytest
 import numpy as np
 
-import pyumi as pu
-from pyumi.simple_glazing import simple_glazing
+import archetypal as pu
+from archetypal.simple_glazing import simple_glazing
 
 
 @pytest.mark.parametrize('t_vis', [0.1, None, 0.9])

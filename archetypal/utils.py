@@ -65,7 +65,7 @@ def config(data_folder=settings.data_folder,
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
-        log('Configured pyumi')
+        log('Configured archetypal')
 
 
 def log(message, level=None, name=None, filename=None):

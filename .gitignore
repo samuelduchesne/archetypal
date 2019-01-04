@@ -87,7 +87,7 @@ main-test\.py
 # vscode stuff
 .vscode/
 
-# pyumi stuff
+# archetypal stuff
 cache/
 notebooks/
 _build/

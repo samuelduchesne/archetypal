@@ -4,8 +4,8 @@ import shutil
 
 import matplotlib as mpl
 
-import pyumi as pu
-from pyumi import load_umi_template
+import archetypal as pu
+from archetypal import load_umi_template
 
 mpl.use('Agg')  # use agg backend so you don't need a display on travis-ci
 

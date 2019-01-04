@@ -1,4 +1,4 @@
-name: pyumi
+name: archetypal
 channels:
   - https://conda.anaconda.org/conda-forge/noarch
   - https://conda.anaconda.org/conda-forge/osx-64

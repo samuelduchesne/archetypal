@@ -1,26 +1,26 @@
-.. pyumi documentation master file, created by
+.. archetypal documentation master file, created by
    sphinx-quickstart on Thu Nov  8 13:38:32 2018.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to pyumi's documentation!
-=================================
+Welcome to archetypal's documentation!
+======================================
 
-Pyumi is a python module that can reduce EnergyPlus reference building models from a complex format (multiple zones)
+archetypal is a python module that can reduce EnergyPlus reference building models from a complex format (multiple zones)
 to a 2-zone model compatible with umi.
 
 
 Installation
 ------------
 
-If you have any trouble with the installation, try installing pyumi in a new,
+If you have any trouble with the installation, try installing archetypal in a new,
 clean `virtual environment`_ using conda. Note that python version 3.7 is recommended:
 
 .. code-block:: shell
 
-   cd <path of pyumi root folder>
+   cd <path of archetypal root folder>
    conda env create --file environment.yml
-   source activate pyumi
+   source activate archetypal
    python setup.py
 
 
@@ -29,12 +29,12 @@ Basile`_, but instead of creating a python venv, we use conda's virtual environm
 
 .. code-block:: shell
 
-   source activate pyumi
+   source activate archetypal
    pip install ipykernel
-   ipython kernel install --user --name=pyumi
+   ipython kernel install --user --name=archetypal
 
 Next time you `start a jupyter notebook`_, you will have the option to choose the *kernel* corresponding to your
-project, *pyumi* in this case.
+project, *archetypal* in this case.
 
 .. figure:: docs/images/20181211121922.png
    :alt: choosing the correct kernel in a jupyter notebook
@@ -43,7 +43,7 @@ project, *pyumi* in this case.
 
    choosing the correct kernel in a jupyter notebook.
    In the *kernel* menu, select *Change Kernel*
-   and select the appropriate virtual env created earlier (*pyumi* in our case).
+   and select the appropriate virtual env created earlier (*archetypal* in our case).
 
 
 Packages
@@ -56,19 +56,19 @@ Packages
    Getting Started <docs/first.md>
    Modelign Assumptions <docs/assumptions.rst>
 
-.. automodule:: pyumi.idf
+.. automodule:: archetypal.idf
    :members:
 
-.. automodule:: pyumi.core
+.. automodule:: archetypal.core
    :members:
 
-.. automodule:: pyumi.utils
+.. automodule:: archetypal.utils
    :members:
 
 Simple Galzing Module
 =====================
 
-.. automodule:: pyumi.simple_glazing
+.. automodule:: archetypal.simple_glazing
    :members:
 
 Indices and tables

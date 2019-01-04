@@ -4,7 +4,7 @@ import math
 
 import numpy as np
 
-from pyumi import log
+from archetypal import log
 
 
 def simple_glazing(shgc, u_factor, visible_transmittance=None):

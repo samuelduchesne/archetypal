@@ -118,7 +118,7 @@ def object_from_idf(idf, ep_object):
 
 
 def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
-    """Returns a list (or a dict) of parsed IDF objects. If *pyumi.settings.use_cache* is true, then the idf objects are
+    """Returns a list (or a dict) of parsed IDF objects. If *archetypal.settings.use_cache* is true, then the idf objects are
     loaded from cache.
 
     Args:
@@ -190,7 +190,6 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
                 with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
                     idfs = {filename: idf_object for filename, idf_object in
                             zip(runs.keys(), executor.map(eppy_load_pool, runs.values()))}
-                    # TODO : Will probably break when dict is asked
                     log('Parallel parsing of {} idf file(s) completed in {:,.2f} seconds'.format(len(eplus_files),
                                                                                                  time.time() -
                                                                                                  start_time))

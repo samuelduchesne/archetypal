@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath('.'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'pyumi'
+project = 'archetypal'
 copyright = '2018, Samuel Letellier-Duchesne'
 author = 'Samuel Letellier-Duchesne'
 
@@ -78,7 +78,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'README.md', 'LICENSE.md']
+exclude_patterns = ['.pytest_cache', '_build', 'Thumbs.db', '.DS_Store', 'README.md', 'LICENSE.md']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -120,7 +120,7 @@ def setup(app):
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'pyumidoc'
+htmlhelp_basename = 'archetypaldoc'
 
 # -- Options for LaTeX output ------------------------------------------------
 
@@ -146,7 +146,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'pyumi.tex', 'pyumi Documentation',
+    (master_doc, 'archetypal.tex', 'archetypal Documentation',
      'Samuel Letellier-Duchesne', 'manual'),
 ]
 
@@ -155,7 +155,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'pyumi', 'pyumi Documentation',
+    (master_doc, 'archetypal', 'archetypal Documentation',
      [author], 1)
 ]
 
@@ -165,8 +165,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'pyumi', 'pyumi Documentation',
-     author, 'pyumi', 'One line description of project.',
+    (master_doc, 'archetypal', 'archetypal Documentation',
+     author, 'archetypal', 'One line description of project.',
      'Miscellaneous'),
 ]
 

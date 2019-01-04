@@ -246,11 +246,15 @@ def newrange(previous, following):
         pandas.DataFrame: DataFrame with an incremented new index
 
     """
-    from_index = previous.iloc[[-1]].index.values + 1
-    to_index = from_index + len(following)
+    if not previous.empty:
+        from_index = previous.iloc[[-1]].index.values + 1
+        to_index = from_index + len(following)
 
-    following.index = np.arange(from_index, to_index)
-    return following.rename_axis('$id')
+        following.index = np.arange(from_index, to_index)
+        return following.rename_axis('$id')
+    else:
+        # If privious dataframe is empty, return the orginal DataFrame
+        return following
 
 
 def type_surface(row):

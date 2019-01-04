@@ -14,9 +14,12 @@ class Template:
     """
 
     """
+    materials_opaque = ...  # type: pd.DataFrame
+    materials_glazing = ...  # type: pd.DataFrame
+    materials_gas = ...  # type: pd.DataFrame
 
     def __init__(self, idf_files, weather, load=False, **kwargs):
-        """
+        """Initializes a Template class
 
         Args:
             idf_files:
@@ -148,8 +151,10 @@ def materials_glazing(idfs):
     origin_time = time.time()
     log('Initiating materials_glazing...')
     materials_df = object_from_idfs(idfs, 'WINDOWMATERIAL:GLAZING', first_occurrence_only=False)
-    cols = settings.common_umi_objects['GlazingMaterials']
+    cols = settings.common_umi_objects['GlazingMaterials'].copy()
+    cols.pop(0)  # remove $id
     cols.append('Thickness')
+    cols.append('Archetype')
     column_rename = {'Optical_Data_Type': 'Optical',
                      'Window_Glass_Spectral_Data_Set_Name': 'OpticalData',
                      'Solar_Transmittance_at_Normal_Incidence': 'SolarTransmittance',
@@ -162,9 +167,10 @@ def materials_glazing(idfs):
                      'Front_Side_Infrared_Hemispherical_Emissivity': 'IREmissivityFront',
                      'Back_Side_Infrared_Hemispherical_Emissivity': 'IREmissivityBack',
                      'Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance': 'DirtFactor'}
-
     # materials_df = materials_df.loc[materials_df.MaterialType == 10]
-    materials_df.rename(columns=column_rename, inplace=True)
+    materials_df = materials_df.rename(columns=column_rename)
+    materials_df = materials_df.reindex(columns=cols)
+    materials_df = materials_df.fillna({'DirtFactor': 1.0})
     materials_df['Comment'] = 'default'
     materials_df['Cost'] = 0
     try:
@@ -188,7 +194,7 @@ def materials_glazing(idfs):
     materials_df['TransportEnergy'] = 0
     materials_df['Type'] = 'Uncoated'  # TODO Further investigation necessary
 
-    materials_df = materials_df.reset_index(drop=True).rename_axis('$id').reset_index()
+    materials_df = materials_df.reset_index(drop=True).rename_axis('$id')
 
     # Now, we create glazing materials using the 'WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM' objects and append them to the
     # list.
@@ -196,12 +202,12 @@ def materials_glazing(idfs):
     sgs = get_simple_glazing_system(idfs)
     if not sgs.empty:
         log('Appending to WINDOWMATERIAL:GLAZING DataFrame...')
-        materials_df = materials_df.set_index('$id').append(sgs, ignore_index=True, sort=True).reset_index()
+        materials_df = materials_df.append(sgs, ignore_index=True, sort=True).reset_index(
+            drop=True).rename_axis('$id')
     # Return the Dataframe
     log('Returning {} WINDOWMATERIAL:GLAZING objects in a DataFrame'.format(len(materials_df)))
-    cols.append('Archetype')
     log('Completed materials_glazing in {:,.2f} seconds\n'.format(time.time() - origin_time))
-    return materials_df[cols].set_index('$id')
+    return materials_df[cols]
 
 
 def materials_opaque(idfs):
@@ -219,15 +225,19 @@ def materials_opaque(idfs):
     nomass = object_from_idfs(idfs, 'MATERIAL:NOMASS')
     materials_df = pd.concat([mass, nomass], sort=True, ignore_index=True)
 
-    cols = settings.common_umi_objects['OpaqueMaterials']
+    cols = settings.common_umi_objects['OpaqueMaterials'].copy()
+    cols.pop(0)  # Pop $id
+    cols.append('Thickness')
+    cols.append('Archetype')
+    cols.append('ThermalResistance')
     column_rename = {'Solar_Absorptance': 'SolarAbsorptance',
                      'Specific_Heat': 'SpecificHeat',
                      'Thermal_Absorptance': 'ThermalEmittance',
                      'Thermal_Resistance': 'ThermalResistance',
                      'Visible_Absorptance': 'VisibleAbsorptance'}
     # Rename columns
-    materials_df.rename(columns=column_rename, inplace=True)
-
+    materials_df = materials_df.rename(columns=column_rename)
+    materials_df = materials_df.reindex(columns=cols)
     # Thermal_Resistance {m^2-K/W}
     materials_df['ThermalResistance'] = materials_df.apply(
         lambda x: x['Thickness'] / x['Conductivity'] if ~np.isnan(x['Conductivity']) else
@@ -235,7 +245,7 @@ def materials_opaque(idfs):
 
     # Fill nan values (nomass materials) with defaults
     materials_df = materials_df.fillna({'Thickness': 0.0127,  # half inch tichness
-                                        'Density': 1,   # 1 kg/m3, smallest value umi allows
+                                        'Density': 1,  # 1 kg/m3, smallest value umi allows
                                         'SpecificHeat': 100,  # 100 J/kg-K, smallest value umi allows
                                         'SolarAbsorptance': 0.7,  # default value
                                         'SubstitutionTimestep': 0,  # default value
@@ -276,11 +286,9 @@ def materials_opaque(idfs):
     materials_df['VariableConductivity'] = False
     materials_df['VariableConductivityProperties'] = np.NaN  # TODO: Further investigation necessary
 
-    materials_df = materials_df.reset_index(drop=True).rename_axis('$id').reset_index()
-    cols.append('Thickness')
-    cols.append('Archetype')
+    materials_df = materials_df.reset_index(drop=True).rename_axis('$id')
     log('Completed materials_opaque in {:,.2f} seconds\n'.format(time.time() - origin_time))
-    return materials_df[cols].set_index('$id')
+    return materials_df[cols]
 
 
 def constructions_opaque(idfs, opaquematerials=None):
@@ -426,7 +434,12 @@ def get_simple_glazing_system(idfs):
         materials_df = materials_df.reset_index()
         materials_df['Optical'] = 'SpectralAverage'
         materials_df['OpticalData'] = ''
-        materials_df['DataSource'] = 'EnergyPlus Simple Glazing Calculation'
+        materials_df['DataSource'] = materials_df.apply(lambda row: 'EnergyPlus Simple Glazing Calculation {' \
+                                                                    'shgc:{:.2f}, u-value:{:.2f}, ' \
+                                                                    't_vis:{:.2f}}'.format(
+            row['Solar_Heat_Gain_Coefficient'],
+            row['UFactor'],
+            row['Visible_Transmittance']))
         materials_df['key'] = 'WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM'
     except Exception as e:
         log('Error: {}'.format(e), lg.ERROR)
@@ -448,19 +461,23 @@ def day_schedules(idfs):
     origin_time = time.time()
     log('Initiating day_schedules...')
     schedule = object_from_idfs(idfs, 'SCHEDULE:DAY:INTERVAL', first_occurrence_only=False)
-    schedule['Values'] = schedule.apply(lambda x: time2time(x), axis=1)
+    if not schedule.empty:
+        schedule['Values'] = schedule.apply(lambda x: time2time(x), axis=1)
 
-    cols = settings.common_umi_objects['DaySchedules']
+        cols = settings.common_umi_objects['DaySchedules']
 
-    schedule.loc[:, 'Category'] = 'Day'
-    schedule.loc[:, 'Comments'] = 'Comments'
-    schedule.loc[:, 'DataSource'] = 'default'
-    schedule.loc[:, 'Type'] = schedule['Schedule_Type_Limits_Name']
+        schedule.loc[:, 'Category'] = 'Day'
+        schedule.loc[:, 'Comments'] = 'Comments'
+        schedule.loc[:, 'DataSource'] = 'default'
+        schedule.loc[:, 'Type'] = schedule['Schedule_Type_Limits_Name']
 
-    schedule = schedule.reset_index(drop=True).rename_axis('$id').reset_index()
-    cols.append('Archetype')
-    log('Completed day_schedules in {:,.2f} seconds\n'.format(time.time() - origin_time))
-    return schedule[cols].set_index('$id')
+        schedule = schedule.reset_index(drop=True).rename_axis('$id').reset_index()
+        cols.append('Archetype')
+        log('Completed day_schedules in {:,.2f} seconds\n'.format(time.time() - origin_time))
+        return schedule[cols].set_index('$id')
+    else:
+        log('Returning Empty DataFrame', lg.WARNING)
+        return pd.DataFrame({'Day Schedules': []})
 
 
 def week_schedules(idfs, dayschedules=None):
@@ -476,33 +493,38 @@ def week_schedules(idfs, dayschedules=None):
     origin_time = time.time()
     log('Initiating week_schedules...')
     schedule = object_from_idfs(idfs, 'SCHEDULE:WEEK:DAILY', first_occurrence_only=False)
-    cols = settings.common_umi_objects['WeekSchedules']
+    if not schedule.empty:
+        cols = settings.common_umi_objects['WeekSchedules']
 
-    if dayschedules is not None:
-        start_time = time.time()
-        df = pd.DataFrame(schedule.set_index(['Archetype', 'Name']).loc[:,
-                          schedule.set_index(['Archetype', 'Name']).columns.str.contains('Schedule')].stack(),
-                          columns=['Schedule']).join(dayschedules.reset_index().set_index(['Archetype', 'Name']),
-                                                     on=['Archetype', 'Schedule']).loc[:, ['$id', 'Values']].unstack(
-            level=2).apply(lambda x: schedule_composition(x), axis=1).rename('Days')
-        schedule = schedule.join(df, on=['Archetype', 'Name'])
-        log('Completed week_schedules schedule composition in {:,.2f} seconds'.format(time.time() - start_time))
+        if dayschedules is not None:
+            start_time = time.time()
+            df = pd.DataFrame(schedule.set_index(['Archetype', 'Name']).loc[:,
+                              schedule.set_index(['Archetype', 'Name']).columns.str.contains('Schedule')].stack(),
+                              columns=['Schedule']).join(dayschedules.reset_index().set_index(['Archetype', 'Name']),
+                                                         on=['Archetype', 'Schedule']).loc[:,
+                 ['$id', 'Values']].unstack(
+                level=2).apply(lambda x: schedule_composition(x), axis=1).rename('Days')
+            schedule = schedule.join(df, on=['Archetype', 'Name'])
+            log('Completed week_schedules schedule composition in {:,.2f} seconds'.format(time.time() - start_time))
+        else:
+            log('Could not create layer_composition because the necessary lookup DataFrame "DaySchedules"  was '
+                'not provided', lg.WARNING)
+
+        schedule.loc[:, 'Category'] = 'Week'
+        schedule.loc[:, 'Comments'] = 'default'
+        schedule.loc[:, 'DataSource'] = schedule['Archetype']
+
+        # Copy the Schedule Type Over
+        schedule = schedule.join(dayschedules.set_index(['Archetype', 'Name']).loc[:, ['Type']],
+                                 on=['Archetype', 'Monday_ScheduleDay_Name'])
+
+        schedule = schedule.reset_index(drop=True).rename_axis('$id').reset_index()
+        cols.append('Archetype')
+        log('Completed day_schedules in {:,.2f} seconds\n'.format(time.time() - origin_time))
+        return schedule[cols].set_index('$id')
     else:
-        log('Could not create layer_composition because the necessary lookup DataFrame "DaySchedules"  was '
-            'not provided', lg.WARNING)
-
-    schedule.loc[:, 'Category'] = 'Week'
-    schedule.loc[:, 'Comments'] = 'default'
-    schedule.loc[:, 'DataSource'] = schedule['Archetype']
-
-    # Copy the Schedule Type Over
-    schedule = schedule.join(dayschedules.set_index(['Archetype', 'Name']).loc[:, ['Type']],
-                             on=['Archetype', 'Monday_ScheduleDay_Name'])
-
-    schedule = schedule.reset_index(drop=True).rename_axis('$id').reset_index()
-    cols.append('Archetype')
-    log('Completed day_schedules in {:,.2f} seconds\n'.format(time.time() - origin_time))
-    return schedule[cols].set_index('$id')
+        log('Returning Empty DataFrame', lg.WARNING)
+        return pd.DataFrame({'Week Schedules': []})
 
 
 def year_schedules(idfs, weekschedule=None):
@@ -518,34 +540,39 @@ def year_schedules(idfs, weekschedule=None):
     origin_time = time.time()
     log('Initiating week_schedules...')
     schedule = object_from_idfs(idfs, 'SCHEDULE:YEAR', first_occurrence_only=False)
-    cols = settings.common_umi_objects['YearSchedules']
+    if not schedule.empty:
+        cols = settings.common_umi_objects['YearSchedules']
 
-    if weekschedule is not None:
-        start_time = time.time()
-        df = pd.DataFrame(schedule.set_index(['Archetype', 'Name']).drop(['index', 'key', 'Schedule_Type_Limits_Name'],
-                                                                         axis=1).stack(),
-                          columns=['Schedules']).reset_index().join(
-            weekschedule.reset_index().set_index(['Archetype', 'Name']), on=['Archetype', 'Schedules']).set_index(
-            ['Archetype', 'Name', 'level_2']).drop(['Category', 'Comments', 'DataSource', 'Days', 'Type'],
-                                                   axis=1).unstack().apply(lambda x: year_composition(x),
-                                                                           axis=1).rename('Parts')
-        schedule = schedule.join(df, on=['Archetype', 'Name'])
-        log('Completed week_schedules schedule composition in {:,.2f} seconds'.format(time.time() - start_time))
+        if weekschedule is not None:
+            start_time = time.time()
+            df = pd.DataFrame(
+                schedule.set_index(['Archetype', 'Name']).drop(['index', 'key', 'Schedule_Type_Limits_Name'],
+                                                               axis=1).stack(),
+                columns=['Schedules']).reset_index().join(
+                weekschedule.reset_index().set_index(['Archetype', 'Name']), on=['Archetype', 'Schedules']).set_index(
+                ['Archetype', 'Name', 'level_2']).drop(['Category', 'Comments', 'DataSource', 'Days', 'Type'],
+                                                       axis=1).unstack().apply(lambda x: year_composition(x),
+                                                                               axis=1).rename('Parts')
+            schedule = schedule.join(df, on=['Archetype', 'Name'])
+            log('Completed week_schedules schedule composition in {:,.2f} seconds'.format(time.time() - start_time))
+        else:
+            log('Could not create layer_composition because the necessary lookup DataFrame "WeekSchedule"  was '
+                'not provided', lg.WARNING)
+
+        schedule['Category'] = 'Year'
+        schedule['Comments'] = 'default'
+        schedule['DataSource'] = schedule['Archetype']
+
+        schedule = schedule.join(weekschedule.set_index(['Archetype', 'Name']).loc[:, ['Type']],
+                                 on=['Archetype', 'ScheduleWeek_Name_1'])
+
+        schedule = schedule.reset_index(drop=True).rename_axis('$id').reset_index()
+        cols.append('Archetype')
+        log('Completed day_schedules in {:,.2f} seconds\n'.format(time.time() - origin_time))
+        return schedule[cols].set_index('$id')
     else:
-        log('Could not create layer_composition because the necessary lookup DataFrame "WeekSchedule"  was '
-            'not provided', lg.WARNING)
-
-    schedule['Category'] = 'Year'
-    schedule['Comments'] = 'default'
-    schedule['DataSource'] = schedule['Archetype']
-
-    schedule = schedule.join(weekschedule.set_index(['Archetype', 'Name']).loc[:, ['Type']],
-                             on=['Archetype', 'ScheduleWeek_Name_1'])
-
-    schedule = schedule.reset_index(drop=True).rename_axis('$id').reset_index()
-    cols.append('Archetype')
-    log('Completed day_schedules in {:,.2f} seconds\n'.format(time.time() - origin_time))
-    return schedule[cols].set_index('$id')
+        log('Returning Empty DataFrame', lg.WARNING)
+        return pd.DataFrame({'Year Schedules': []})
 
 
 def zone_loads(df):
@@ -730,7 +757,7 @@ def nominal_people(df):
 
     References:
         * `NominalPeople Table <https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples/eplusout-sql.html
-        #nominalpeople-table>`_
+          #nominalpeople-table>`_
 
     Args:
         df:
@@ -756,7 +783,7 @@ def nominal_equipment(df):
 
     References:
         * `NominalElectricEquipment Table <https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples
-            /eplusout-sql.html#nominalelectricequipment-table>`_
+          /eplusout-sql.html#nominalelectricequipment-table>`_
 
 
     Args:

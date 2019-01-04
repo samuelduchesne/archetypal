@@ -64,3 +64,32 @@ target/
 data/
 
 energy-table\.xlsx
+
+main-test\.py
+
+# EnergyPlus
+*.audit
+*.bnd
+*.eio
+*.end
+*.err
+*.mdd
+*.mtd
+*.rdd
+*.shd
+*.sql
+*.csv
+*.htm
+*.dbg
+*.eso
+*.mtr
+
+# vscode stuff
+.vscode/
+
+# archetypal stuff
+cache/
+notebooks/
+_build/
+
+docs/

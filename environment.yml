@@ -84,7 +84,6 @@ dependencies:
     - pydot3k==1.0.17
     - pygments==2.3.0
     - pytest==4.0.1
-    - pyumi==1.0
     - pyzmq==17.1.2
     - requests==2.21.0
     - snowballstemmer==1.2.1
@@ -94,4 +93,3 @@ dependencies:
     - traitlets==4.3.2
     - urllib3==1.24.1
     - wcwidth==0.1.7
-

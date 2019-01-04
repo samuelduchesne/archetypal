@@ -18,9 +18,11 @@ clean `virtual environment`_ using conda. Note that python version 3.7 is recomm
 
 .. code-block:: shell
 
-    cd <path of pyumi root folder>
-    conda create --name pyumi python=3.7 pyumi
-    source activate pyumi
+   cd <path of pyumi root folder>
+   conda env create --file environment.yml
+   source activate pyumi
+   python setup.py
+
 
 To use the new environnement inside a `jupyter notebook`_, we recommend using the steps described by `Angelo
 Basile`_, but instead of creating a python venv, we use conda's virtual environment functions:

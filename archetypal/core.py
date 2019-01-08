@@ -736,6 +736,12 @@ def nominal_lighting(df):
         df:
 
     Returns:
+        df
+
+    References:
+        * `NominalLighting Table <https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples/eplusout-sql
+          .html#nominallighting-table>`_
+
 
     """
     df = get_from_tabulardata(df)
@@ -755,14 +761,15 @@ def nominal_lighting(df):
 def nominal_people(df):
     """Nominal People
 
-    References:
-        * `NominalPeople Table <https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples/eplusout-sql.html
-          #nominalpeople-table>`_
-
     Args:
         df:
 
     Returns:
+        df
+
+    References:
+        * `NominalPeople Table <https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples/eplusout-sql.html
+          #nominalpeople-table>`_
 
     """
     df = get_from_tabulardata(df)
@@ -781,15 +788,15 @@ def nominal_people(df):
 def nominal_equipment(df):
     """Nominal Electric Equipment
 
-    References:
-        * `NominalElectricEquipment Table <https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples
-          /eplusout-sql.html#nominalelectricequipment-table>`_
-
-
     Args:
         df:
 
     Returns:
+        df
+
+    References:
+        * `NominalElectricEquipment Table <https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples
+          /eplusout-sql.html#nominalelectricequipment-table>`_
 
     """
     df = get_from_tabulardata(df)
@@ -806,12 +813,17 @@ def nominal_equipment(df):
 
 
 def nominal_infiltration(df):
-    """
+    """Nominal Infiltration
 
     Args:
         df:
 
     Returns:
+        df
+
+    References:
+        * `<https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples/eplusout-sql.html
+          #nominalinfiltration-table>`_
 
     """
     df = get_from_tabulardata(df)
@@ -828,12 +840,17 @@ def nominal_infiltration(df):
 
 
 def nominal_ventilation(df):
-    """
+    """Nominal Ventilation
 
     Args:
         df:
 
     Returns:
+        df
+
+    References:
+        * `<https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples/eplusout-sql.html
+          #nominalinfiltration-table>`_
 
     """
     df = get_from_tabulardata(df)
@@ -855,8 +872,7 @@ def nominal_ventilation(df):
 
 
 def nominal_lighting_aggregation(x):
-    """
-    Aggregates the lighting equipments whithin a single zone name (implies that .groupby(['Archetype',
+    """Aggregates the lighting equipments whithin a single zone name (implies that .groupby(['Archetype',
     'Zone Name']) is performed before calling this function).
 
     Args:
@@ -891,9 +907,8 @@ def nominal_lighting_aggregation(x):
 
 
 def nominal_equipment_aggregation(x):
-    """
-    Aggregates the equipments whithin a single zone name (implies that .groupby(['Archetype',
-    'Zone Name']) is performed before calling this function).
+    """Aggregates the equipments whithin a single zone name (implies that .groupby(['Archetype', 'Zone Name']) is
+    performed before calling this function).
 
     Args:
         x (pandas.DataFrame): x
@@ -926,9 +941,8 @@ def nominal_equipment_aggregation(x):
 
 
 def nominal_ventilation_aggregation(x):
-    """
-    Aggregates the ventilations whithin a single zone name (implies that .groupby(['Archetype',
-    'Zone Name']) is performed before calling this function).
+    """Aggregates the ventilations whithin a single zone name (implies that .groupby(['Archetype', 'Zone Name']) is
+    performed before calling this function).
 
     Args:
         x:
@@ -979,9 +993,7 @@ def nominal_ventilation_aggregation(x):
 
 
 def get_from_tabulardata(results):
-    """
-    Returns a DataFrame from the 'TabularDataWithStrings' table. A multiindex is returned with names [
-    'Archetype', 'Index']
+    """Returns a DataFrame from the 'TabularDataWithStrings' table. A multiindex is returned with names ['Archetype', 'Index']
 
     Args:
         results:
@@ -996,9 +1008,7 @@ def get_from_tabulardata(results):
 
 
 def get_from_reportdata(results):
-    """
-    Returns a DataFrame from the 'ReportData' table. A multiindex is returned with names [
-    'Archetype', 'Index']
+    """Returns a DataFrame from the 'ReportData' table. A multiindex is returned with names ['Archetype', 'Index']
 
     Args:
         results:
@@ -1017,12 +1027,16 @@ def get_from_reportdata(results):
 
 
 def zone_information(df):
-    """
+    """Each zone is summarized in a simple set of statements
 
     Args:
         df:
 
     Returns:
+        df
+
+    References:
+        * `<https://bigladdersoftware.com/epx/docs/8-3/output-details-and-examples/eplusout.eio.html#zone-information>`_
 
     """
     df = get_from_tabulardata(df)
@@ -1038,6 +1052,15 @@ def zone_information(df):
 
 
 def zoneconditioning_aggregation(x):
+    """Aggregates the zones conditioning parameters whithin a single zone name (implies that `.groupby(['Archetype',
+    ('Zones', 'Zone Type')])` is performed before calling this function).
+
+    Args:
+        x:
+
+    Returns:
+
+    """
     d = {}
     area_m_ = [('Zones', 'Zone Multiplier'), ('Zones', 'Floor Area {m2}')]
 
@@ -1078,8 +1101,7 @@ def zoneconditioning_aggregation(x):
 
 
 def zone_cop(df):
-    """
-    Returns the heating and cooling COP for each zones. The energyplus SQL result must contain some required meters
+    """Returns the heating and cooling COP for each zones. The energyplus SQL result must contain some required meters
     as described bellow.
 
     Todo:
@@ -1093,7 +1115,7 @@ def zone_cop(df):
 
     Notes:
 
-        Output Meters
+        Mandatory Output Meters
 
         Heating
 
@@ -1147,8 +1169,7 @@ def zone_cop(df):
 
 
 def zone_setpoint(df):
-    """
-    Since we can't have a schedule setpoint in Umi, we return the "Design Day" 'Thermostat Setpoint Temperature at
+    """Since we can't have a schedule setpoint in Umi, we return the "Design Day" 'Thermostat Setpoint Temperature at
     'Peak Load'
 
     Args:
@@ -1178,16 +1199,18 @@ def zone_setpoint(df):
 
 
 def zone_conditioning(df):
-    """
-    Aggregation of zone conditioning parameters. Imports Zones, NominalPeople, COP, ZoneCooling and ZoneHeating.
+    """Aggregation of zone conditioning parameters. Imports Zones, NominalPeople, COP, ZoneCooling and ZoneHeating.
 
-    :param df:
-    :return:
+    Args:
+        df (pandas.DataFrame): df
+
+    Returns:
+        DataFrame of Zone Condition parameters
 
     Examples:
         .. doctest:: *
 
-            # >>> df = pu.run_eplus([./examples/zoneuncontrolled.idf], output_report='sql')
+            # >>> df = ar.run_eplus([./examples/zoneuncontrolled.idf], output_report='sql')
             # >>> zone_conditioning(df)
 
     """

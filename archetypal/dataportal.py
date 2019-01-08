@@ -11,14 +11,26 @@ import requests
 from archetypal import log, settings, make_str
 
 
-def tabula_available_buildings(code_country='FR'):
+def tabula_available_buildings(code_country='France'):
+    """Returns all available building types for a specific country.
+
+    Args:
+        code_country:
+
+    Returns:
+
+    """
     # Check code country
     if code_country.upper() not in ['AT', 'BA', 'BE', 'BG', 'CY', 'CZ', 'DE',
-                                    'DK', 'ES', 'FR', 'GB', 'GR', 'HU',
-                                    'IE', 'IT', 'NL', 'NO', 'PL', 'RS', 'SE',
-                                    'SI']:
-        code_country = pycountry.countries.get(name=code_country).alpha_2
-    json_response = tabula_available_buildings_request(code_country)
+                                    'DK', 'ES', 'FR', 'GB', 'GR', 'HU', 'IE',
+                                    'IT', 'NL', 'NO', 'PL', 'RS', 'SE', 'SI']:
+        code_country = pycountry.countries.get(name=code_country)
+        if code_country is not None:
+            code_country = code_country.alpha_2
+        else:
+            raise ValueError('Country name {} is invalid'.format(code_country))
+    data = {'code_country': code_country}
+    json_response = tabula_api_request(data, table='all-country')
 
     # load data
     df = pd.DataFrame(json_response)
@@ -26,23 +38,41 @@ def tabula_available_buildings(code_country='FR'):
     return df
 
 
-def tabula_available_buildings_request(code_country):
-    """
-    'http://webtool.building-typology.eu/data/matrix/building//p/0/o/0/l/25
-    /dc/<13 CHAR. RANDOM STRING>'
-    Args:
-        code_country:
+def tabula_api_request(data, table='detail'):
+    """Send a request to the TABULA API via HTTP GET and return the JSON
+    response.
 
+    Args:
+        data (dict): dictionnary of query attributes.
+            with table='all-country', data expects 'code_country'.
+            with table='detail', data expects 'buildingtype', 'suffix', and
+            'variant'.
+        table (str): the server-table to query. 'detail' or 'all-country'
     Returns:
 
     """
+    # Prepare URL
+    if table == 'all-country':
+        codehex = str(
+            int(hashlib.md5(data['code_country'].encode('utf-8')).hexdigest(),
+                16))[0:13]
+        url_base = ('http://webtool.building-typology.eu/data/matrix/building'
+                    '/{0}/p/0/o/0/l/10/dc/{1}')
+        prepared_url = url_base.format(data['code_country'], codehex)
 
-    codehex = str(
-        int(hashlib.md5(code_country.encode('utf-8')).hexdigest(), 16))[0:13]
-    prepared_url = 'http://webtool.building-typology.eu/data/matrix/building' \
-                   '/{0}/p/0/o/0/l/10/dc/{1}'.format(
-        code_country,
-        codehex)
+    elif table == 'detail':
+        buildingtype = '.'.join(s for s in data['buildingtype'])
+        suffix = '.'.join(s for s in data['suffix'])
+        bldname = buildingtype + '.' + suffix
+        hexint = hashlib.md5(bldname.encode('utf-8')).hexdigest()[0:13]
+        url_base = ('http://webtool.building-typology.eu/data/adv/building'
+                    '/detail/{0}/bv/{1}/dc/{2}')
+        prepared_url = url_base.format(bldname, data['variant'], hexint)
+
+    else:
+        raise ValueError('server-table name "{}" invalid'.format(table))
+
+    # First, try to get the cached resonse from file
     cached_response_json = get_from_cache(prepared_url)
 
     if cached_response_json is not None:
@@ -50,22 +80,24 @@ def tabula_available_buildings_request(code_country):
         # new HTTP call
         return cached_response_json
     else:
-        # if this URL is not already in the cache, pause, then request it
+        # if this URL is not already in the cache, request it
         response = requests.get(prepared_url)
-        try:
+        if response.status_code == 200:
             response_json = response.json()
             if 'remark' in response_json:
                 log('Server remark: "{}"'.format(response_json['remark'],
                                                  level=lg.WARNING))
+            elif not response_json['success']:
+                raise ValueError('The query "{}" returned no results'.format(
+                    prepared_url), lg.WARNING)
             save_to_cache(prepared_url, response_json)
-        except Exception:
+            return response_json
+        else:
             # Handle some server errors
             pass
-        else:
-            return response_json
 
 
-def tabula_building_details_sheet(building_code=None, code_country='FR',
+def tabula_building_details_sheet(code_building=None, code_country='FR',
                                   code_typologyregion='N',
                                   code_buildingsizeclass='SFH',
                                   code_construcionyearclass=1,
@@ -75,7 +107,7 @@ def tabula_building_details_sheet(building_code=None, code_country='FR',
     """
 
     Args:
-        building_code (str) : Whole building code e.g.:
+        code_building (str) : Whole building code e.g.:
             "AT.MT.AB.02.Gen.ReEx.001.001"
              |  |  |  |   |   |    |   |__code_variantnumber
              |  |  |  |   |   |    |______code_num
@@ -86,54 +118,51 @@ def tabula_building_details_sheet(building_code=None, code_country='FR',
              |  |_________________________code_typologyregion
              |____________________________code_country
         code_country (str): Country name or International Country Code (ISO
-        3166-1-alpha-2 code)
+            3166-1-alpha-2 code). Input as 'France' will work equally as 'FR'.
         code_typologyregion (str): N for national; otherwise specific codes
-        representing
-            regions in a given country
+            representing regions in a given country
         code_buildingsizeclass (str): 4 standardized classes: 'SFH':
-        Single-family house,
-            'TH': Terraced house, 'MFH': multi-family house, 'AB': Apartment
-            block
+        Single-family house, 'TH': Terraced house, 'MFH': multi-family house,
+            'AB': Apartment block
         code_construcionyearclass (int or str): allocation of time bands to
-        classes. Defined
-            nationally (according to significant changes in construction
-            technologies,
-            building codes or available statistical data
-        code_additional_parameter (str): 1 unique category. Defines the
-        generic (or basic)
-            typology matrix so that each residential building of a given
-            country can be assigned
-            to one generic type. A further segmentation in subtypes is
-            possible and can be indicated
-            by a specific code. Whereas the generic types must comprise the
-            whole building stock
-            the total of subtypes must be comprehensive. e.g. 'HR' (highrises),
-            'TFrame' (timber frame), 'Semi' (semi-detached)
+            classes. Defined nationally (according to significant changes in
+            construction technologies, building codes or available statistical
+            data
+        code_additional_parameter (str): 1 unique category. Defines the generic
+            (or basic) typology matrix so that each residential building of a
+            given
+            country can be assigned to one generic type. A further
+            segmentation in
+            subtypes is  possible and can be indicated by a specific code.
+            Whereas
+            the generic types must comprise the whole building stock the
+            total of
+            subtypes must be comprehensive. e.g. 'HR' (highrises), 'TFrame' (
+            timber
+            frame), 'Semi' (semi-detached)
         code_type: “ReEx” is a code for “real example” and “SyAv” for
-        “Synthetical Average”
+            “Synthetical Average”
         code_num: TODO: What is this paramter?
-        code_variantnumber: the energy performance level 1, 2 and 3. 1:
-        minimum requirements,
-            2: improved and 3: ambitious or NZEB standard (assumed or
-            announced level of
-            Nearly Zero-Energy Buildings)
+        code_variantnumber: the energy performance level 1, 2 and 3. 1: minimum
+            requirements, 2: improved and 3: ambitious or NZEB standard (assumed
+            or announced level of Nearly Zero-Energy Buildings)
 
     Returns:
         pandas.DataFrame: The DataFrame from the
 
     """
     # Parse builsing_code
-    if building_code is not None:
+    if code_building is not None:
         try:
             code_country, code_typologyregion, code_buildingsizeclass, \
                 code_construcionyearclass, \
                 code_additional_parameter, code_type, code_num, \
-                code_variantnumber = building_code.split('.')
+                code_variantnumber = code_building.split('.')
         except ValueError:
             msg = (
                 'the query "{}" is missing a parameter. Make sure the '
-                '"building_code" has the form: '
-                'AT.MT.AB.02.Gen.ReEx.001.001').format(building_code)
+                '"code_building" has the form: '
+                'AT.MT.AB.02.Gen.ReEx.001.001').format(code_building)
             log(msg, lg.ERROR)
             raise ValueError(msg)
 
@@ -170,7 +199,7 @@ def tabula_building_details_sheet(building_code=None, code_country='FR',
                              code_additional_parameter],
             'suffix': [code_type, code_num],
             'variant': code_variantnumber}
-    json_response = tabula_building_details_sheet_request(data)
+    json_response = tabula_api_request(data, table='detail')
 
     if json_response is not None:
         log('')
@@ -188,54 +217,6 @@ def tabula_building_details_sheet(building_code=None, code_country='FR',
                          'building types'
                          ''.format('.'.join(s for s in data['buildingtype']),
                                    code_country))
-
-
-def tabula_building_details_sheet_request(data):
-    """Send a Request to the TABULA api and return de JSON response.
-
-    Args:
-        data (dict): prepared data for html query
-
-    Returns:
-
-    Examples:
-        'http://webtool.building-typology.eu/data/adv/building/detail/DE.N
-        .SFH.01.Gen.ReEx.001/bv/2/dc/1234567890123'
-    """
-    buildingtype = '.'.join(s for s in data['buildingtype'])
-    suffix = '.'.join(s for s in data['suffix'])
-    bldname = buildingtype + '.' + suffix
-    hexint = hashlib.md5(bldname.encode('utf-8')).hexdigest()[0:13]
-
-    log('quering archetype {}'.format(bldname))
-    prepared_url = 'http://webtool.building-typology.eu/data/adv/building' \
-                   '/detail/{0}/bv/{1}/dc/{2}'.format(
-        bldname,
-        data[
-            'variant'],
-        hexint)
-    cached_response_json = get_from_cache(prepared_url)
-
-    if cached_response_json is not None:
-        # found this request in the cache, just return it instead of making a
-        # new HTTP call
-        return cached_response_json
-
-    else:
-        # if this URL is not already in the cache, pause, then request it
-        response = requests.get(prepared_url)
-
-        try:
-            response_json = response.json()
-            if 'remark' in response_json:
-                log('Server remark: "{}"'.format(response_json['remark'],
-                                                 level=lg.WARNING))
-            save_to_cache(prepared_url, response_json)
-        except Exception:
-            # Handle some server errors
-            pass
-        else:
-            return response_json
 
 
 def tabula_system(code_country, code_boundarycond='SUH', code_variantnumber=1):

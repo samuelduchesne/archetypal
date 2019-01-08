@@ -10,9 +10,18 @@ ar.config(log_console=True, log_file=True, use_cache=True,
 
 
 def test_tabula_available_country(cleanup):
-    country_code = 'FR'
-    cc_res = ar.dataportal.tabula_available_buildings_request(country_code)
-    cc = ar.dataportal.tabula_available_buildings(country_code)
+    # First, let's try the API call
+    data = {'code_country': 'FR'}
+    cc_res = ar.dataportal.tabula_api_request(data, table='all-country')
+
+    # Then let's use the user-friendly call. Since it is the second call to the
+    # same function, the response should be read from the cache.
+    code_country = 'FR'
+    cc_cache = ar.dataportal.tabula_available_buildings(code_country)
+
+
+def test_tabula_notavailable_country(cleanup):
+    pass
 
 
 def test_tabula_building_sheet(cleanup):
@@ -24,7 +33,7 @@ def test_tabula_multiple():
     ab = ar.dataportal.tabula_available_buildings(country_code)
     archetypes = pd.concat(ab.apply(
         lambda x: ar.tabula_building_details_sheet(
-            building_code=x.code_buildingtype_column1 + '.' +
+            code_building=x.code_buildingtype_column1 + '.' +
                           x.suffix_building_column1 + '.001'),
         axis=1).values.tolist(),
                            keys=ab.code_buildingtype_column1 + '.' +

@@ -1,13 +1,10 @@
-import os
-import shutil
-
 import matplotlib as mpl
 # use agg backend so you don't need a display on travis-ci
 import pytest
 
-mpl.use('Agg')
-
 import archetypal as pu
+
+mpl.use('Agg')
 
 # configure archetypal
 pu.config(log_console=True, log_file=True, use_cache=True,
@@ -35,7 +32,8 @@ def test_example_idf(processors, expandobjects, annual):
     file1 = './input_data/AdultEducationCenter.idf'
     file2 = './input_data/AdultEducationCenter.idf'
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return pu.run_eplus([file1, file2], wf, processors=processors, annual=annual, expandobjects=expandobjects)
+    return pu.run_eplus([file1, file2], wf, processors=processors,
+                        annual=annual, expandobjects=expandobjects)
 
 
 @pytest.mark.parametrize('as_dict', [True, False])

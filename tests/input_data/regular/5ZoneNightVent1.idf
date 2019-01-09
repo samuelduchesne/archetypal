@@ -3819,11 +3819,11 @@ Curve:Quadratic,
     0.0,                      !- Minimum Value of x
     1.0;                      !- Maximum Value of x
 
+OUTPUT:TABLE:SUMMARYREPORTS,
+    AllSummary;               !- Report 1 Name
+
 Output:VariableDictionary,
     Regular;                  !- Key Field
-
-Output:Table:SummaryReports,
-    AllSummary;               !- Report 1 Name
 
 OutputControl:Table:Style,
     HTML;                     !- Column Separator

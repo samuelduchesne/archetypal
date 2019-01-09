@@ -1590,14 +1590,7 @@ Output:Variable,*,Zone Ventilation Air Change Rate,Monthly;
 Output:VariableDictionary, IDF;
 Output:Surfaces:Drawing,DXF,Triangulate3DFace;
 Output:Surfaces:List,Details;
-Output:Constructions,Construction;
 !Output:Diagnostics,DisplayExtraWarnings;
 !Output:Diagnostics,DisplayUnusedSchedules;
 !Output:Diagnostics,DisplayUnusedObjects;
 Output:Diagnostics,DisplayAdvancedReportVariables;
-
-Output:Table:SummaryReports,
-Output:Table:SummaryReports,
-    EnvelopeSummary,         !- Report 1 Name
-    InputVerificationandResultsSummary,  !- Report 2 Name
-    ShadingSummary;          !- Report 3 Name

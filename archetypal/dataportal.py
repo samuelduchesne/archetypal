@@ -130,16 +130,11 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
             data
         code_additional_parameter (str): 1 unique category. Defines the generic
             (or basic) typology matrix so that each residential building of a
-            given
-            country can be assigned to one generic type. A further
-            segmentation in
-            subtypes is  possible and can be indicated by a specific code.
-            Whereas
-            the generic types must comprise the whole building stock the
-            total of
-            subtypes must be comprehensive. e.g. 'HR' (highrises), 'TFrame' (
-            timber
-            frame), 'Semi' (semi-detached)
+            given country can be assigned to one generic type. A further
+            segmentation in subtypes is  possible and can be indicated by a
+            specific code. Whereas the generic types must comprise the whole
+            building stock the total of subtypes must be comprehensive. e.g.
+            'HR' (highrises), 'TFrame' (timber frame), 'Semi' (semi-detached)
         code_type: “ReEx” is a code for “real example” and “SyAv” for
             “Synthetical Average”
         code_num: TODO: What is this paramter?

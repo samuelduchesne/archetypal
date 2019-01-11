@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from pandas.io.json import json_normalize
 
+import archetypal as ar
 from . import load_umi_template
 from . import settings
 
@@ -34,8 +35,10 @@ def config(data_folder=settings.data_folder,
         logs_folder (str): where to write the log files
         imgs_folder (str): where to save figures
         cache_folder (str): where to save the simluation results
-        use_cache (bool): if True, use a local cache to save/retrieve EnergyPlus simulation results instead of
-            calling the API repetitively for the same requests. This can save a lot of time when simulations are long
+        use_cache (bool): if True, use a local cache to save/retrieve
+            EnergyPlus simulation results instead of calling the API
+            repetitively for the same requests. This can save a lot of time
+            when simulations are long
         log_file (bool): if true, save log output to a log file in logs_folder
         log_console (bool): if true, print log output to the console
         log_level (int): one of the logger.level constants
@@ -61,7 +64,8 @@ def config(data_folder=settings.data_folder,
     settings.log_filename = log_filename
     settings.useful_idf_objects = useful_idf_objects
     settings.umitemplate = umitemplate
-    settings.common_umi_objects = get_list_of_common_umi_objects(settings.umitemplate)
+    settings.common_umi_objects = get_list_of_common_umi_objects(
+        settings.umitemplate)
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
@@ -114,7 +118,8 @@ def log(message, level=None, name=None, filename=None):
 
         # convert message to ascii for console display so it doesn't break
         # windows terminals
-        message = unicodedata.normalize('NFKD', make_str(message)).encode('ascii', errors='replace').decode()
+        message = unicodedata.normalize('NFKD', make_str(message)).encode(
+            'ascii', errors='replace').decode()
         print(message)
         sys.stdout = standard_out
 
@@ -147,7 +152,8 @@ def get_logger(level=None, name=None, filename=None):
 
         # get today's date and construct a log filename
         todays_date = dt.datetime.today().strftime('%Y_%m_%d')
-        log_filename = os.path.join(settings.logs_folder, '{}_{}.log'.format(filename, todays_date))
+        log_filename = os.path.join(settings.logs_folder,
+                                    '{}_{}.log'.format(filename, todays_date))
 
         # if the logs folder does not already exist, create it
         if not os.path.exists(settings.logs_folder):
@@ -155,7 +161,8 @@ def get_logger(level=None, name=None, filename=None):
 
         # create file handler and log formatter and set them up
         handler = lg.FileHandler(log_filename, encoding='utf-8')
-        formatter = lg.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s')
+        formatter = lg.Formatter(
+            '%(asctime)s %(levelname)s %(name)s %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.setLevel(level)
@@ -330,7 +337,8 @@ def label_surface(row):
 
 def layer_composition(row):
     """
-    Takes in a series with $id and thickness values and return an array of dict of the form
+    Takes in a series with $id and thickness values and return an array of
+    dict of the form
     {'Material': {'$ref': ref, 'thickness': thickness}}
     If thickness is 'nan', it returns None.
 
@@ -353,7 +361,8 @@ def layer_composition(row):
                 pass
             else:
                 thickness = row['Thickness', 'Layer_{}'.format(i)]
-                array.append({'Material': {'$ref': ref, 'thickness': thickness}})
+                array.append(
+                    {'Material': {'$ref': ref, 'thickness': thickness}})
         return array
 
 
@@ -362,7 +371,8 @@ def get_row_prop(self, other, on, property):
 
     Todo:
         * Not used
-        * This function may raise an error (it has to). Maybe we can do things better.
+        * This function may raise an error (it has to). Maybe we can do
+        things better.
 
     Args:
         self:
@@ -375,13 +385,17 @@ def get_row_prop(self, other, on, property):
 
     """
     try:
-        value_series = pd.DataFrame(self).T[on].join(other.reset_index().set_index([on[0], 'Name']), on=on,
-                                                     rsuffix='_viz')[property]
+        value_series = pd.DataFrame(self).T[on].join(
+            other.reset_index().set_index([on[0], 'Name']), on=on,
+            rsuffix='_viz')[property]
     except:
         raise ValueError()
     else:
         if len(value_series) > 1:
-            log('Found more than one possible values for property {} for item {}'.format(property, self[on]),
+            log(
+                'Found more than one possible values for property {} for item '
+                '{}'.format(
+                    property, self[on]),
                 lg.WARNING)
             log('Taking the first occurrence...')
 
@@ -397,7 +411,8 @@ def get_row_prop(self, other, on, property):
 
 def schedule_composition(row):
     """
-    Takes in a series with $id and \*_ScheduleDay_Name values and return an array of dict of the form
+    Takes in a series with $id and \*_ScheduleDay_Name values and return an
+    array of dict of the form
     {'$ref': ref}
 
     Args:
@@ -415,7 +430,8 @@ def schedule_composition(row):
             'Thursday_ScheduleDay_Name',
             'Friday_ScheduleDay_Name',
             'Saturday_ScheduleDay_Name',
-            'Sunday_ScheduleDay_Name']  # With weekends last (as defined in umi-template)
+            'Sunday_ScheduleDay_Name']  # With weekends last (as defined in
+    # umi-template)
     # Let's start with the `Outside_Layer`
     for day in days:
         try:
@@ -429,8 +445,10 @@ def schedule_composition(row):
 
 def year_composition(row):
     """
-    Takes in a series with $id and ScheduleWeek_Name_{} values and return an array of dict of the form
-    {'FromDay': fromday, 'FromMonth': frommonth, 'Schedule': {'$ref': int(ref)}, 'ToDay': today, 'ToMonth': tomonth}
+    Takes in a series with $id and ScheduleWeek_Name_{} values and return an
+    array of dict of the form
+    {'FromDay': fromday, 'FromMonth': frommonth, 'Schedule': {'$ref': int(
+    ref)}, 'ToDay': today, 'ToMonth': tomonth}
 
     Args:
         row (pandas.Series): a row
@@ -462,7 +480,8 @@ def year_composition(row):
 
 def date_transform(date_str):
     """
-    Simple function transforming one-based hours (1->24) into zero-based hours (0->23)
+    Simple function transforming one-based hours (1->24) into zero-based
+    hours (0->23)
 
     Args:
         date_str (str): a date string of the form 'HH:MM'
@@ -478,7 +497,8 @@ def date_transform(date_str):
 
 def time2time(row):
     """
-    Constructs an array of 24 hour schedule points from a Shedule:Day:Interval object.
+    Constructs an array of 24 hour schedule points from a
+    Shedule:Day:Interval object.
 
     Args:
         row (pandas.Series): a row
@@ -511,11 +531,13 @@ def time2time(row):
 
 def iscore(row):
     """
-    Helps to group by core and perimeter zones. If any of "has `core` in name" and "ExtGrossWallArea == 0" is true,
-    will consider zone as core, else as perimeter.
+    Helps to group by core and perimeter zones. If any of "has `core` in
+    name" and "ExtGrossWallArea == 0" is true,
+    will consider zone_loads as core, else as perimeter.
 
     Todo:
-        * assumes a basement zone will be considered as a core zone since no ext wall area for basements.
+        * assumes a basement zone_loads will be considered as a core
+        zone_loads since no ext wall area for basements.
 
     Args:
         row (pandas.Series): a row
@@ -525,9 +547,8 @@ def iscore(row):
 
     """
     if any(['core' in row[('Zones', 'Zone Name')].lower(),
-            float(row[('Zones', 'Exterior Gross Wall Area {m2}')]) == 0]):  # We look for the string `core` in
-        # the
-        # Zone_Name
+            float(row[('Zones', 'Exterior Gross Wall Area {m2}')]) == 0]):
+        # We look for the string `core` in the Zone_Name
         return 'Core'
     elif row[('Zones', 'Part of Total Building Area')] == 'No':
         return np.NaN
@@ -539,12 +560,14 @@ def iscore(row):
 
 def weighted_mean(series, df, weighting_variable):
     """
-    Compute the weighted average while ignoring NaNs. Implements :func:`numpy.average`.
+    Compute the weighted average while ignoring NaNs. Implements
+    :func:`numpy.average`.
 
     Args:
         series (pandas.Series):
         df (pandas.DataFrame):
-        weighting_variable (str or list or tuple): Weight name to use in *df*. If multiple values given, the values are
+        weighting_variable (str or list or tuple): Weight name to use in
+        *df*. If multiple values given, the values are
             multiplied together.
 
     Returns:
@@ -553,53 +576,118 @@ def weighted_mean(series, df, weighting_variable):
     # get non-nan values
     index = ~np.isnan(series.values.astype('float'))
 
-    # Returns weights. If multiple `weighting_variable`, df.prod will take care of multipling them together.
+    # Returns weights. If multiple `weighting_variable`, df.prod will take care
+    # of multipling them together.
     if not isinstance(weighting_variable, list):
         weighting_variable = [weighting_variable]
     try:
-        weights = df.loc[series.index, weighting_variable].astype('float').prod(axis=1)
-    except Exception as e:
-        log(''.format(e))
+        weights = df.loc[series.index, weighting_variable].astype('float').prod(
+            axis=1)
+    except Exception:
+        raise
 
     # Try to average
     try:
         wa = np.average(series[index].astype('float'), weights=weights[index])
-    except Exception as e:
-        log('\nAn Exception occured while applying weighted_mean on Series: {}'.format(series.name))
-        log('Occurs when all series values are NaN')
-        log('Error message: {}'.format(e))
-        return 0
+    except ZeroDivisionError:
+        log('Cannot aggregate empty series {}'.format(series.name), lg.WARNING)
+        return np.NaN
+    except Exception:
+        raise
     else:
         return wa
 
 
 def top(series, df, weighting_variable):
     """
-    Compute the highest ranked value weighted by some other variable. Implements :func:`pandas.DataFrame.nlargest`.
+    Compute the highest ranked value weighted by some other variable. Implements
+        :func:`pandas.DataFrame.nlargest`.
 
     Args:
         series (pandas.Series): the *series* on which to compute the ranking.
         df (pandas.DataFrame): the *df* containing weighting variables.
-        weighting_variable (str or list or tuple): Name of weights to use in *df*. If multiple values given,
-            the values are multiplied together.
+        weighting_variable (str or list or tuple): Name of weights to use in
+            *df*. If multiple values given, the values are multiplied together.
 
     Returns:
         numpy.ndarray: the weighted top ranked variable
     """
-    # Returns weights. If multiple `weighting_variable`, df.prod will take care of multipling them together.
+    # Returns weights. If multiple `weighting_variable`, df.prod will take care
+    # of multipling them together.
+    if not isinstance(series, pd.Series):
+        raise TypeError('"top()" only works on Series, '
+                        'not DataFrames\n{}'.format(series))
+
     if not isinstance(weighting_variable, list):
         weighting_variable = [weighting_variable]
 
     try:
-        idx = df.loc[series.index].groupby(series.name).apply(
-            lambda x: df.loc[x.index, weighting_variable].astype('float').prod(axis=1).sum()).nlargest(1).index
-    except Exception as e:
-        log('\nAn Exception occured while applying "top" aggregator on Series: {}'.format(series.name), lg.WARNING)
-        log('Occurs when all series values are NaN', lg.WARNING)
-        log('Error message: {}'.format(e), lg.WARNING)
+        idx_ = df.loc[series.index].groupby(series.name).apply(
+            lambda x: safe_prod(x, df, weighting_variable)
+        )
+        if not idx_.empty:
+            idx = idx_.nlargest(1).index
+        else:
+            log('No such names "{}"'.format(series.name))
+            return np.NaN
+    except KeyError:
+        log('Cannot aggregate empty series {}'.format(series.name), lg.WARNING)
         return np.NaN
+    except Exception:
+        raise
     else:
         if idx.isnull().any():
             return np.NaN
         else:
-            return pd.to_numeric(idx, errors='ignore').values[0]  # idx.values.astype('str')[0]
+            return pd.to_numeric(idx, errors='ignore').values[0]
+
+
+def safe_prod(x, df, weighting_variable):
+    df_ = df.loc[x.index, weighting_variable]
+    if not df_.empty:
+        return df_.astype('float').prod(axis=1).sum()
+    else:
+        return 0
+
+
+def copy_file(files):
+    """Handles a copy of test idf files"""
+    import shutil, os
+    if isinstance(files, str):
+        files = [files]
+    files = {os.path.basename(k): k for k in files}
+    for file in files:
+        dst = os.path.join(ar.settings.cache_folder, file)
+        output_folder = ar.settings.cache_folder
+        if not os.path.isdir(output_folder):
+            os.makedirs(output_folder)
+        shutil.copyfile(files[file], dst)
+        files[file] = dst
+
+    return list(files.values())
+
+    # scratch_then_cache is not necessary if we want to see the results
+    # for file in files:
+    #     dirname = os.path.dirname(files[file])
+    #     if os.path.isdir(dirname):
+    #         shutil.rmtree(dirname)
+
+
+
+class Error(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+
+class EnergyPlusProcessError(Error):
+    """EnergyPlus Process call error"""
+
+    def __init__(self, cmd, stderr, idf=None):
+        self.cmd = cmd
+        self.idf = idf
+        self.stderr = stderr
+
+    def __str__(self):
+        """Override that only returns the stderr"""
+        msg = ':\n'.join([self.idf, self.stderr])
+        return msg

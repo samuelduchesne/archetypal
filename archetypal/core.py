@@ -1,5 +1,6 @@
 import logging as lg
 import time
+from pprint import pformat
 
 import numpy as np
 import pandas as pd
@@ -43,7 +44,11 @@ class Template:
         self.week_schedules = None
         self.year_schedules = None
 
+        self.zone_details = None
         self.zone_loads = None
+        self.zone_conditioning = None
+        self.zone_information = None
+        self.zone_ventilation = None
 
         if load:
             self.read()
@@ -755,24 +760,32 @@ def zone_ventilation(df):
         pandas.DataFrame:
 
     """
-    nominal_infiltration(df).reset_index().set_index(['Archetype', 'Zone Name'])
-
     # Loading each section in a dictionnary. Used to create a new DF using
     # pd.concat()
-    d = {'Zones': zone_information(df).reset_index().set_index(['Archetype',
-                                                                'Zone Name']),
-         'NominalInfiltration': nominal_infiltration(df).reset_index().set_index(
-             ['Archetype', 'Zone Name']),
-         'NominalScheduledVentilation':
-             nominal_ventilation(df).reset_index().set_index(['Archetype',
-                                                              'Zone Name']).loc[
-             lambda e: e['Fan Type {Exhaust;Intake;Natural}'].str.contains(
-                 'Natural'), :],
-         'NominalNaturalVentilation':
-             nominal_ventilation(df).reset_index().set_index(['Archetype',
-                                                              'Zone Name']).loc[
-             lambda e: ~e['Fan Type {Exhaust;Intake;Natural}'].str.contains(
-                 'Natural'), :]}
+
+    z_info = zone_information(df).reset_index().set_index(['Archetype',
+                                                           'Zone Name'])
+
+    _nom_infil = nominal_infiltration(df)
+    nom_infil = (_nom_infil.reset_index().set_index(['Archetype',
+                                                     'Zone Name'])
+                 if not _nom_infil.empty else None)
+    _nom_vent = nominal_ventilation(df)
+    nom_vent = (_nom_vent.reset_index().set_index(['Archetype',
+                                                   'Zone Name']).loc[
+                lambda e: e['Fan Type {Exhaust;Intake;Natural}']
+                .str.contains('Natural'), :]
+                if not _nom_vent.empty else None)
+    _nom_natvent = _nom_vent # we can reuse _nom_vent
+    nom_natvent = (_nom_natvent.reset_index().set_index(['Archetype',
+                                                         'Zone Name']).loc[
+                   lambda e: ~e['Fan Type {Exhaust;Intake;Natural}']
+                   .str.contains('Natural'), :]
+                   if not _nom_vent.empty else None)
+    d = {'Zones': z_info,
+         'NominalInfiltration': nom_infil,
+         'NominalScheduledVentilation': nom_vent,
+         'NominalNaturalVentilation': nom_natvent}
 
     df = (pd.concat(d, axis=1, keys=d.keys())
           .dropna(axis=0, how='all',
@@ -784,9 +797,10 @@ def zone_ventilation(df):
 
     df[('Zones', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
 
-    df = df.reset_index().groupby(
-        ['Archetype', ('Zones', 'Zone Type')]).apply(
-        lambda x: zoneventilation_aggregation(
+    df_g = df.reset_index().groupby(['Archetype', ('Zones', 'Zone Type')])
+    log('{} groups in zone ventiliation aggregation'.format(len(df_g)))
+    log('groups are:\n{}'.format(pformat(df_g.groups, indent=3)))
+    df = df_g.apply(lambda x: zoneventilation_aggregation(
             x.set_index(['Archetype', 'RowName'])))
 
     return df
@@ -809,7 +823,7 @@ def zoneloads_aggregation(x):
 
     """
     area_m_ = [('Zones', 'Floor Area {m2}'),
-               ('Zones', 'Zone Multiplier')]  # Floor area and zone multiplier
+               ('Zones', 'Zone Multiplier')]  # Floor area and zone_loads multiplier
     d = {('NominalLighting', 'weighted mean'):
              weighted_mean(x[('NominalLighting', 'Lights/Floor Area {W/m2}')],
                            x, area_m_),
@@ -835,7 +849,7 @@ def zoneloads_aggregation(x):
     return pd.Series(d)
 
 
-def zoneventilation_aggregation(x):
+def zoneventilation_aggregation(df):
     """Set of different zoneventilation_aggregation (weighted mean and "top")
     on multiple objects,
     eg. ('NominalVentilation', 'ACH - Air Changes per Hour').
@@ -845,7 +859,7 @@ def zoneventilation_aggregation(x):
     Returns a Series with a MultiIndex
 
     Args:
-        x (pandas.DataFrame):
+        df (pandas.DataFrame):
 
     Returns:
         pandas.Series: Series with a MultiIndex
@@ -853,47 +867,68 @@ def zoneventilation_aggregation(x):
     Todo: infiltration for plenums should not be taken into account
 
     """
-    area_m_ = [('Zones', 'Floor Area {m2}'),
-               ('Zones', 'Zone Multiplier')]  # Floor area and zone multiplier
+    log('\naggregating zone ventilations '
+        'for archetype "{}", zone "{}"'.format(df.index.values[0][0],
+                                               df[('Zones',
+                                                   'Zone Type')].values[0]))
 
-    d = {('Infiltration', 'weighted mean {ACH}'): (
-        weighted_mean(x[('NominalInfiltration', 'ACH - Air Changes per Hour')],
-                      x, area_m_)),
+    area_m_ = [('Zones', 'Floor Area {m2}'),
+               ('Zones', 'Zone Multiplier')]  # Floor area and zone_loads
+    # multiplier
+
+    ach_ = safe_loc(df, ('NominalInfiltration',
+                        'ACH - Air Changes per Hour'))
+    infil_schedule_name_ = safe_loc(df, ('NominalInfiltration',
+                                        'Schedule Name'))
+    changes_per_hour_ = safe_loc(df, ('NominalScheduledVentilation',
+                                     'ACH - Air Changes per Hour'))
+    vent_schedule_name_ = safe_loc(df, ('NominalScheduledVentilation',
+                                       'Schedule Name'))
+    vent_min_temp_ = safe_loc(df, ('NominalScheduledVentilation',
+                                  'Minimum Indoor Temperature{C}/Schedule'))
+    natvent_ach_ = safe_loc(df, ('NominalNaturalVentilation',
+                                'ACH - Air Changes per Hour'))
+    natvent_schedule_name_ = safe_loc(df, ('NominalNaturalVentilation',
+                                          'Schedule Name'))
+    natvent_max_temp_ = safe_loc(df, ('NominalNaturalVentilation',
+                                     'Maximum Outdoor Temperature{C}/Schedule'))
+    natvent_minoutdoor_temp_ = safe_loc(df, ('NominalNaturalVentilation',
+                                            'Minimum Outdoor Temperature{C}/Schedule'))
+    natvent_minindoor_temp_ = safe_loc(df, ('NominalNaturalVentilation',
+                                           'Minimum Indoor Temperature{C}/Schedule'))
+    d = {
+        ('Infiltration', 'weighted mean {ACH}'): (
+            weighted_mean(ach_, df, area_m_)),
         ('Infiltration', 'Top Schedule Name'): (
-            top(x[('NominalInfiltration', 'Schedule Name')],
-                x, area_m_)),
+            top(infil_schedule_name_, df, area_m_)),
         ('ScheduledVentilation', 'weighted mean {ACH}'): (
-            weighted_mean(x[('NominalScheduledVentilation',
-                             'ACH - Air Changes per Hour')],
-                          x, area_m_)),
+            weighted_mean(changes_per_hour_, df, area_m_)),
         ('ScheduledVentilation', 'Top Schedule Name'): (
-            top(x[('NominalScheduledVentilation', 'Schedule Name')],
-                x, area_m_)),
+            top(vent_schedule_name_, df, area_m_)),
         ('ScheduledVentilation', 'Setpoint'): (
-            top(x[('NominalScheduledVentilation',
-                   'Minimum Indoor Temperature{C}/Schedule')],
-                x, area_m_)),
+            top(vent_min_temp_, df, area_m_)),
         ('NatVent', 'weighted mean {ACH}'): (
-            weighted_mean(
-                x[('NominalNaturalVentilation', 'ACH - Air Changes per Hour')],
-                x, area_m_)),
+            weighted_mean(natvent_ach_, df, area_m_)),
         ('NatVent', 'Top Schedule Name'): (
-            top(x[('NominalNaturalVentilation', 'Schedule Name')],
-                x, area_m_)),
+            top(natvent_schedule_name_, df, area_m_)),
         ('NatVent', 'MaxOutdoorAirTemp'): (
-            top(x[('NominalNaturalVentilation',
-                   'Maximum Outdoor Temperature{C}/Schedule')],
-                x, area_m_)),
+            top(natvent_max_temp_, df, area_m_)),
         ('NatVent', 'MinOutdoorAirTemp'): (
-            top(x[('NominalNaturalVentilation',
-                   'Minimum Outdoor Temperature{C}/Schedule')],
-                x, area_m_)),
+            top(natvent_minoutdoor_temp_, df, area_m_)),
         ('NatVent', 'ZoneTempSetpoint'): (
-            top(x[('NominalNaturalVentilation',
-                   'Minimum Indoor Temperature{C}/Schedule')],
-                x, area_m_))}
+            top(natvent_minindoor_temp_, df, area_m_))}
 
     return pd.Series(d)
+
+
+def safe_loc(x, colnames):
+    try:
+        ach = x[colnames]
+    except KeyError:
+        log('No such columns {} in DataFrame'.format(str(colnames)))
+        return pd.Series([], name=colnames)
+    else:
+        return ach
 
 
 def nominal_lighting(df):
@@ -1022,11 +1057,15 @@ def nominal_ventilation(df):
 
     """
     df = get_from_tabulardata(df)
-    tbstr = df[(df.ReportName == 'Initialization Summary') &
-               (
-                           df.TableName == 'ZoneVentilation Airflow Stats '
-                                           'Nominal')].reset_index()
-
+    report_name = 'Initialization Summary'
+    table_name = 'ZoneVentilation Airflow Stats Nominal'
+    tbstr = df[(df.ReportName == report_name) &
+               (df.TableName == table_name)]\
+        .reset_index()
+    if tbstr.empty:
+        log('Table {} does not exist. '
+            'Returning an empty DataFrame'.format(table_name), lg.WARNING)
+        return pd.DataFrame([])
     tbpiv = tbstr.pivot_table(index=['Archetype', 'RowName'],
                               columns='ColumnName',
                               values='Value',
@@ -1036,16 +1075,15 @@ def nominal_ventilation(df):
         lambda x: pd.to_numeric(x, errors='ignore'))
     tbpiv = tbpiv.reset_index().groupby(['Archetype',
                                          'Zone Name',
-                                         'Fan Type {'
-                                         'Exhaust;Intake;Natural}']).apply(
-        nominal_ventilation_aggregation)
+                                         'Fan Type {Exhaust;Intake;Natural}'])\
+        .apply(nominal_ventilation_aggregation)
     return tbpiv
     # .reset_index().groupby(['Archetype', 'Zone Name']).agg(
     # lambda x: pd.to_numeric(x, errors='ignore').sum())
 
 
 def nominal_lighting_aggregation(x):
-    """Aggregates the lighting equipments whithin a single zone name (implies
+    """Aggregates the lighting equipments whithin a single zone_loads name (implies
     that .groupby(['Archetype',
     'Zone Name']) is performed before calling this function).
 
@@ -1093,7 +1131,7 @@ def nominal_lighting_aggregation(x):
 
 
 def nominal_equipment_aggregation(x):
-    """Aggregates the equipments whithin a single zone name (implies that
+    """Aggregates the equipments whithin a single zone_loads name (implies that
     .groupby(['Archetype', 'Zone Name']) is
     performed before calling this function).
 
@@ -1140,7 +1178,7 @@ def nominal_equipment_aggregation(x):
 
 
 def nominal_ventilation_aggregation(x):
-    """Aggregates the ventilations whithin a single zone name (implies that
+    """Aggregates the ventilations whithin a single zone_loads name (implies that
     .groupby(['Archetype', 'Zone Name']) is
     performed before calling this function).
 
@@ -1210,7 +1248,8 @@ def nominal_ventilation_aggregation(x):
         # one since we are trying to merge zones
     except Exception as e:
         print('{}'.format(e))
-    return df
+    else:
+        return df
 
 
 def get_from_tabulardata(results):
@@ -1227,6 +1266,9 @@ def get_from_tabulardata(results):
         [value['TabularDataWithStrings'] for value in results.values()],
         keys=results.keys(), names=['Archetype'])
     tab_data_wstring.index.names = ['Archetype', 'Index']  #
+    # strip whitespaces
+    tab_data_wstring.Value = tab_data_wstring.Value.str.strip()
+    tab_data_wstring.RowName = tab_data_wstring.RowName.str.strip()
     return tab_data_wstring
 
 
@@ -1255,7 +1297,7 @@ def get_from_reportdata(results):
 
 
 def zone_information(df):
-    """Each zone is summarized in a simple set of statements
+    """Each zone_loads is summarized in a simple set of statements
 
     Args:
         df:
@@ -1264,7 +1306,7 @@ def zone_information(df):
         df
 
     References:
-        * `<https://bigladdersoftware.com/epx/docs/8-3/output-details-and-examples/eplusout.eio.html#zone-information>`_
+        * `<https://bigladdersoftware.com/epx/docs/8-3/output-details-and-examples/eplusout.eio.html#zone_loads-information>`_
 
     """
     df = get_from_tabulardata(df)
@@ -1280,7 +1322,7 @@ def zone_information(df):
 
 
 def zoneconditioning_aggregation(x):
-    """Aggregates the zones conditioning parameters whithin a single zone
+    """Aggregates the zones conditioning parameters whithin a single zone_loads
     name (implies that `.groupby(['Archetype',
     ('Zones', 'Zone Type')])` is performed before calling this function).
 
@@ -1456,7 +1498,7 @@ def zone_setpoint(df):
 
 
 def zone_conditioning(df):
-    """Aggregation of zone conditioning parameters. Imports Zones, NominalPeople, COP, ZoneCooling and ZoneHeating.
+    """Aggregation of zone_loads conditioning parameters. Imports Zones, NominalPeople, COP, ZoneCooling and ZoneHeating.
 
     Args:
         df (pandas.DataFrame): df

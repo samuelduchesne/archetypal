@@ -569,22 +569,22 @@ def gis_server_raster_request(creds, bbox=None, how='intersects', srid=None,
           "rast " \
           "{how} " \
           "ST_MakeEnvelope({xmin}, {ymin}, {xmax}, {ymax}, {my_srid})".format(
-        schema=tb_schema,
-        table_name=table_name,
-        xmin=xmin,
-        ymin=ymin,
-        xmax=xmax,
-        ymax=ymax,
-        my_srid=srid,
-        how=how)
+            schema=tb_schema,
+            table_name=table_name,
+            xmin=xmin,
+            ymin=ymin,
+            xmax=xmax,
+            ymax=ymax,
+            my_srid=srid,
+            how=how)
 
     # try to get results from cache
-    cached_response_geojson = get_from_cache(sql)
-
-    if cached_response_geojson is not None:
-        # found this request in the cache, just return it instead of making a
-        # new sql call. We need to load id usin json.loads though.
-        return gpd.GeoDataFrame.from_features(cached_response_geojson)
+    # cached_response_geojson = get_from_cache(sql)
+    #
+    # if cached_response_geojson is not None:
+    #     # found this request in the cache, just return it instead of making a
+    #     # new sql call. We need to load id usin json.loads though.
+    #     return gpd.GeoDataFrame.from_features(cached_response_geojson)
 
     # Use a virtual memory file, which is named like this
     vsipath = '/vsimem/from_postgis'

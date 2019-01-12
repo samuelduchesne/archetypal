@@ -9,6 +9,7 @@ setup(
     author='Samuel Letellier-Duchesne',
     author_email='samuel.letellier-duchesne@polymtl.ca',
     description='',
-    install_requires=['numpy', 'pandas', 'eppy', 'sphinx'],
+    install_requires=['numpy', 'pandas', 'eppy', 'sphinx', 'pycountry',
+                      'geopandas', 'shapely', 'osmnx', 'pyproj', 'rasterstats'],
     test_suite='tests'
 )

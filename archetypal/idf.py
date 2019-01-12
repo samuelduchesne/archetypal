@@ -3,6 +3,7 @@ import glob
 import hashlib
 import logging as lg
 import os
+import shutil
 import time
 from subprocess import CalledProcessError
 from subprocess import check_call
@@ -11,8 +12,9 @@ import eppy.modeleditor
 import pandas as pd
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
-from eppy.runner.run_functions import run
+from eppy.runner.run_functions import run, paths_from_version
 
+from archetypal import EnergyPlusProcessError
 from . import settings
 from .utils import log
 
@@ -181,7 +183,7 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
                         zip(eplus_files, executor.map(
                             load_idf_object_from_cache, eplus_files))}
         else:
-            raise Exception('User asked not to run in parallel')
+            raise Exception('User specified {} processors'.format(processors))
     except Exception as e:
         # multiprocessing not present so pass the jobs one at a time
         log('Cannot use parallel load. Error with the following exception:\n'
@@ -224,9 +226,9 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
                                 executor.map(eppy_load_pool, runs.values()))}
                     log('Parallel parsing of {} idf file(s) completed in '
                         '{:,.2f} seconds'.format(
-                            len(eplus_files),
-                            time.time() -
-                            start_time))
+                        len(eplus_files),
+                        time.time() -
+                        start_time))
             else:
                 raise Exception('User asked not to run in parallel')
         except Exception as e:
@@ -276,25 +278,25 @@ def eppy_load(file, idd_filename):
     """
     # Initiate an eppy.modeleditor.IDF object
     idf_object = None
+    IDF.setiddname(idd_filename, testing=True)
     while idf_object is None:
-        IDF.setiddname(idd_filename, testing=True)
         try:
-            with IDF(file) as idf_object:
-                # Check version of IDF file against version of IDD file
-                idf_version = idf_object.idfobjects['VERSION'][
-                    0].Version_Identifier
-                idd_version = '{}.{}'.format(idf_object.idd_version[0],
-                                             idf_object.idd_version[1])
-                building = idf_object.idfobjects['BUILDING'][0]
-                if idf_version == idd_version:
-                    log(
-                        'The version of the IDF file {} : version {}, matched '
-                        'the version of EnergyPlus {}, '
-                        'version {} used to parse it.'.format(building.Name,
-                                                              idf_version,
-                                                              idf_object.getiddname(),
-                                                              idd_version),
-                        level=lg.DEBUG)
+            idf_object = IDF(file)
+            # Check version of IDF file against version of IDD file
+            idf_version = idf_object.idfobjects['VERSION'][
+                0].Version_Identifier
+            idd_version = '{}.{}'.format(idf_object.idd_version[0],
+                                         idf_object.idd_version[1])
+            # building = idf_object.idfobjects['BUILDING'][0]
+            if idf_version == idd_version:
+                log('The version of the IDF file "{}",\n\t'
+                    'version "{}", matched the version of EnergyPlus {},'
+                    '\n\tversion "{}", used to parse it.'.format(
+                    os.path.basename(file),
+                    idf_version,
+                    idf_object.getiddname(),
+                    idd_version),
+                    level=lg.DEBUG)
         # An error could occur if the iddname is not found on the system. Try
         # to upgrade the idf file
         except Exception as e:
@@ -303,11 +305,12 @@ def eppy_load(file, idd_filename):
             # Try to upgrade the file
             try:
                 upgrade_idf(file)
-            except Exception as e:
+            except (KeyError, Exception) as e:
                 log('{}'.format(e))
             else:
                 # Get idd file for newly created and upgraded idf file
                 idd_filename = getiddfile(get_idf_version(file))
+                IDF.iddname = idd_filename
         else:
             # when parsing is complete, save it to disk, then return object
             save_idf_object_to_cache(idf_object, idf_object.idfname)
@@ -483,10 +486,15 @@ def prepare_outputs(eplus_file):
         * do we need to do this?
         * allow users to specify other ep-objects.
     """
+    log('first, loading the idf file')
     idfs = load_idf(
         eplus_file)  # Returns a dict, evan if there is only one file
 
     eplus_finename = os.path.basename(eplus_file)
+
+    # SummaryReports
+    idfs[eplus_finename].add_object('Output:Table:SummaryReports'.upper(),
+                                    Report_1_Name='AllSummary')
 
     # SQL output
     idfs[eplus_finename].add_object('Output:SQLite'.upper(),
@@ -543,7 +551,7 @@ def cache_runargs(eplus_file, runargs):
 
 
 def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
-              output_report='sql', processors=1,
+              output_report='sql', processors=-1,
               prep_outputs=False, **kwargs):
     """Run an energy plus file and returns the SummaryReports Tables in a list
     of [(title, table), .....]
@@ -555,7 +563,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         weather_file (str): path to the EPW weather file
         output_folder (str, optional): path to the output folder. Will default
             to the settings.cache_folder.
-        ep_version (str, optional): EnergyPlus version to use, eg: 8-9-0
+        ep_version (str, optional): EnergyPlus version to use, eg: 8.9
         output_report: 'htm' or 'sql'.
         processors (int, optional): specify how many processors to use for a
             parallel run
@@ -563,7 +571,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
             be appended to the idf files. see :func:`prepare_outputs`
         **kwargs: keyword arguments to pass to other functions (see below)
     Returns:
-        list: list of [(title, table), .....]
+        dict: dict of [(title, table), .....]
 
     Keyword Args:
         annual: If True then force annual simulation (default: False)
@@ -576,20 +584,44 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         # Treat str as an array
         eplus_files = [eplus_files]
 
+    # use aboslute paths
+    for i, file in enumerate(eplus_files):
+        eplus_files[i] = os.path.abspath(file)
+
     # determine processors
     if processors < 0:
         processors = min(len(eplus_files), mp.cpu_count())
-    log('Function calls unsing {} processors'.format(processors))
+    log('run_eplus() is using {} processors'.format(processors))
 
     # Determine version of idf file by reading the text file
     if ep_version is None:
         versionids = {file: get_idf_version(file) for file in eplus_files}
-        idd_filename = {file: getiddfile(get_idf_version(file)) for file in
-                        eplus_files}
+        idd_filename = {file: getiddfile(get_idf_version(file)) for
+                        file in eplus_files}
     else:
         versionids = {eplus_file: str(ep_version) for eplus_file in eplus_files}
         idd_filename = {eplus_file: getiddfile(ep_version) for eplus_file in
                         eplus_files}
+
+    # Upgraded the file version if needed
+    for filename in eplus_files:
+        eplus_exe, eplus_home = paths_from_version(get_idf_version(filename,
+                                                                   doted=False))
+        if not os.path.isdir(eplus_home):
+            log('The version of EnergyPlus-{0} needed for file {1} is not '
+                'installed at the original location on this machine. '
+                'Attempting to upgrade the file using the EnergyPlusUpdtaer '
+                'utility...'.format(versionids[filename], filename))
+            try:
+                upgrade_idf(filename)
+            except Exception as e:
+                # catch upgrade version exceptions
+                raise
+            else:
+                # update the versionid of the file
+                versionids[filename] = get_idf_version(filename, doted=False)
+                idd_filename[filename] = getiddfile(get_idf_version(filename,
+                                                                    doted=True))
 
     # Output folder check
     if not output_folder:
@@ -599,66 +631,84 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         os.makedirs(output_folder)
     log('Output folder set to {}'.format(output_folder))
 
-    # Create a {filename:dirname} dict
-    dirnames = {os.path.basename(path): os.path.dirname(path) for path in
-                eplus_files}
+    # Create a {filename: dirname} dict
+    dirnames = {os.path.basename(path): os.path.dirname(path)
+                for path in eplus_files}
 
+    # Prepare outputs e.g. sql table
     if prep_outputs:
         # Check if idf file has necessary objects (eg specific outputs)
         for eplus_file in eplus_files:
-            log('Preparing outputs...\n', lg.INFO)
+            log('\nPreparing outputs...\n', lg.INFO)
             prepare_outputs(eplus_file)
-            log('Preparing outputs completed', lg.INFO)
+            log('Preparing outputs completed\n', lg.INFO)
+
     # Try to get cached results
+    #
     processed_cache = []
     for eplus_file in eplus_files:
+        # list arguments needed for cache retrive function
         processed_cache.append([eplus_file, output_report, kwargs])
     try:
         if processors > 1:
+            # if processors > 1, use multiprocessing routine
             start_time = time.time()
             import concurrent.futures
             with concurrent.futures.ProcessPoolExecutor(
-                    max_workers=processors) as executor:
+                    max_workers=processors) \
+                    as executor:
                 cached_run_results = {os.path.basename(eplus_finename): result
                                       for eplus_finename, result in
                                       zip(eplus_files,
                                           executor.map(get_from_cache_pool,
                                                        processed_cache))}
-            log('Parallel parsing completed in {:,.2f} seconds'.format(
-                time.time() - start_time))
+            if not all(v is None for v in cached_run_results.values()):
+                # if not all cached results are none, at least one is found
+                log('Succesfully parsed cached results in '
+                    'parallel in {:,.2f} seconds'.format(
+                    time.time() - start_time))
         else:
-            raise Exception('User asked not to run in parallel')
-    except Exception as e:
+            # if processors <= 1, raise ValueError which will pass to the
+            # except bloc bellow
+            raise ValueError('Retrieving cached results in parallel is '
+                             'unavailable. processors={}'.format(processors))
+    except ValueError as e:
         # multiprocessing not present so pass the jobs one at a time
-        log('Cannot use parallel runs. Error with the following exception:\n'
-            '{}'.format(e))
+        log('{}. Running sequentially...'.format(e))
+
         cached_run_results = {}
         start_time = time.time()
         for eplus_file in eplus_files:
-            eplus_finename = os.path.basename(eplus_file)
-            cached_run_results[eplus_finename] = get_from_cache(eplus_file,
+            eplus_filename = os.path.basename(eplus_file)
+            cached_run_results[eplus_filename] = get_from_cache(eplus_file,
                                                                 output_report,
                                                                 **kwargs)
-        log('Parsing completed in {:,.2f} seconds'.format(
-            time.time() - start_time))
+        if not all(v is None for v in cached_run_results.values()):
+            # if not all cached results are none, at least one is found
+            log('Succesfully parsed cached results sequentially '
+                'in {:,.2f} seconds'.format(time.time() - start_time))
+    except Exception as e:
+        # catch other exceptions that could occur
+        raise Exception('{}'.format(e))
 
-    # Check if retrieved cached results than run for other files with no cached
-    # results
+    # Check if retrieved cached results exist than run for other files with
+    # no cached results
     runs_found = {k: v for k, v in cached_run_results.items() if v is not None}
     runs_not_found = [k for k, v in cached_run_results.items() if v is None]
+
+    #
     if not runs_not_found:
-        # found these runs in the cache, just return them instead of making a
-        # new eplus call
+        # If we found these runs in the cache, just return them instead of
+        # making a new eplus call
         return runs_found
 
-        # continue
-        # with simulation of other files
     else:
-        # some runs not found
-        log('None or some runs could could be found. Running Eplus for {} out '
-            'of {} files'.format(
-                len(runs_not_found),
-                len(eplus_files)))
+        # continue with simulation of other files
+        log('no cached results for {} run(s). Running Eplus for {} out '
+            'of {} file(s)'.format(len(runs_not_found),
+                                   len(runs_not_found),
+                                   len(eplus_files)))
+        # list of files that need to be run
         eplus_files = [os.path.join(dirnames[run_i], run_i) for run_i in
                        runs_not_found]
 
@@ -670,17 +720,18 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
             # hash the eplus_file (to make shorter than the often extremely
             # long name)
             filename_prefix = hash_file(eplus_file, **kwargs)
+
             epw = weather_file
             runargs = {'output_directory': output_folder + '/{}'.format(
                 filename_prefix),
                        'ep_version': versionids[eplus_file],
                        'output_prefix': filename_prefix,
-                       'idd': idd_filename[eplus_file],
-                       'annual': True}
+                       'idd': idd_filename[eplus_file]}
             runargs.update(kwargs)
-            idf_path = os.path.abspath(
-                eplus_file)  # TODO Should copy idf somewhere else before
-            # running; [Partly Fixed]
+
+            idf_path = os.path.abspath(eplus_file)
+            # TODO Should copy idf somewhere else before running; [Partly
+            #  Fixed]
             processed_runs.append([[idf_path, epw], runargs])
 
             # Put a copy of the file in its cache folder and save runargs
@@ -692,29 +743,55 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
                                                   os.path.basename(eplus_file)))
                 cache_runargs(eplus_file, runargs.copy())
         log('Running EnergyPlus...')
+
         # We run the EnergyPlus Simulation
-        try:
-            if processors > 1:
+        if processors > 1:
+            # run using multirunner
+            try:
                 pool = mp.Pool(processors)
                 pool.map(multirunner, processed_runs)
                 pool.close()
-            else:
-                raise Exception('User asked not to run in parallel')
-        except Exception as e:
-            # multiprocessing not present so pass the jobs one at a time
-            log(
-                'Cannot use parallel runs. Error with the following '
-                'exception:\n{}'.format(
-                    e))
+            except EnergyPlusProcessError as e:
+                raise
+            except CalledProcessError as e:
+                raise
+        else:
+            # multirunner not available so pass the jobs one at a time
+            log('Running eplus in parallel is unavailable. processors={}. '
+                'Running sequentially...'.format(processors))
             for job in processed_runs:
-                multirunner(job)
+                try:
+                    log('file: "{}"'.format(os.path.basename(job[0][0])))
+                    multirunner(job)
+                except EnergyPlusProcessError as e:
+                    raise
+                except CalledProcessError as e:
+                    raise
         log('Completed EnergyPlus in {:,.2f} seconds'.format(
             time.time() - start_time))
         # Return summary DataFrames
+        reruns = []
         for eplus_file in eplus_files:
-            eplus_finename = os.path.basename(eplus_file)
-            runs_found[eplus_finename] = get_report(eplus_file, output_folder,
-                                                    output_report, **kwargs)
+            eplus_filename = os.path.basename(eplus_file)
+            try:
+                runs_found[eplus_filename] = get_report(eplus_file,
+                                                        output_folder,
+                                                        output_report,
+                                                        **kwargs)
+            except FileNotFoundError as e:
+                log('\nRequired "sql output" object not in {}. '
+                    'reruning with prep_outputs=True'.format(eplus_filename),
+                    lg.WARNING)
+                shutil.rmtree(os.path.join(output_folder,
+                                           hash_file(eplus_file, **kwargs)))
+                reruns.append(eplus_file)
+
+        if len(reruns) > 0:
+            # run again with prep_outputs=True
+            reruns_found = run_eplus(reruns, weather_file, output_folder,
+                                     ep_version, output_report, processors,
+                                     prep_outputs=True, **kwargs)
+            runs_found.update(reruns_found)
         return runs_found
 
 
@@ -742,11 +819,15 @@ def multirunner(args):
                                       args[1]['output_prefix'] + 'out.err')
         if os.path.isfile(error_filename):
             with open(error_filename, 'r') as fin:
-                log('\nError File for {} begins here...\n'.format(
+                log('\nError File for "{}" begins here...\n'.format(
                     os.path.basename(args[0][0])), lg.ERROR)
                 log(fin.read(), lg.ERROR)
-                log('\nError File for {} ends here...\n'.format(
+                log('Error File for "{}" ends here...\n'.format(
                     os.path.basename(args[0][0])), lg.ERROR)
+            with open(error_filename, 'r') as stderr:
+                raise EnergyPlusProcessError(cmd=e.cmd,
+                                             idf=os.path.basename(args[0][0]),
+                                             stderr=stderr.read())
         else:
             log('Could not find error file', lg.ERROR)
 
@@ -820,7 +901,7 @@ def get_report(eplus_file, output_folder=None,
         if os.path.isfile(fullpath_filename):
             return get_html_report(fullpath_filename)
         else:
-            raise ValueError(
+            raise FileNotFoundError(
                 'File "{}" does not exist'.format(fullpath_filename))
 
     elif 'sql' in output_report.lower():
@@ -831,7 +912,7 @@ def get_report(eplus_file, output_folder=None,
         if os.path.isfile(fullpath_filename):
             return get_sqlite_report(fullpath_filename)
         else:
-            raise ValueError(
+            raise FileNotFoundError(
                 'File "{}" does not exist'.format(fullpath_filename))
 
 
@@ -980,7 +1061,10 @@ def upgrade_idf(files):
     for file in files:
         try:
             perform_transition(file)
+        except KeyError as e:
+            log('file already upgraded to latest version "{}"'.format(e))
         except Exception as e:
+            # Catch any unhandled errors
             log('{}'.format(e))
 
 
@@ -997,70 +1081,72 @@ def perform_transition(file):
     versionid = get_idf_version(file, doted=False)
 
     trans_exec = {
-        '1-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '1-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-0-0-to-V1-0-1',
-        '1-0-1': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '1-0-1': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-0-1-to-V1-0-2',
-        '1-0-2': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '1-0-2': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-0-2-to-V1-0-3',
-        '1-0-3': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '1-0-3': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-0-3-to-V1-1-0',
-        '1-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '1-1-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-1-0-to-V1-1-1',
-        '1-1-1': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '1-1-1': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-1-1-to-V1-2-0',
-        '1-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '1-2-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-2-0-to-V1-2-1',
-        '1-2-1': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '1-2-1': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-2-1-to-V1-2-2',
-        '1-2-2': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '1-2-2': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-2-2-to-V1-2-3',
-        '1-2-3': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '1-2-3': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-2-3-to-V1-3-0',
-        '1-3-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '1-3-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-3-0-to-V1-4-0',
-        '1-4-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '1-4-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-4-0-to-V2-0-0',
-        '2-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '2-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V2-0-0-to-V2-1-0',
-        '2-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '2-1-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V2-1-0-to-V2-2-0',
-        '2-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '2-2-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V2-2-0-to-V3-0-0',
-        '3-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '3-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V3-0-0-to-V3-1-0',
-        '3-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '3-1-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V3-1-0-to-V4-0-0',
-        '4-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '4-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V4-0-0-to-V5-0-0',
-        '5-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '5-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V5-0-0-to-V6-0-0',
-        '6-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '6-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V6-0-0-to-V7-0-0',
-        '7-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '7-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V7-0-0-to-V7-1-0',
-        '7-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '7-1-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V7-1-0-to-V7-2-0',
-        '7-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '7-2-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V7-2-0-to-V8-0-0',
-        '8-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '8-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-0-0-to-V8-1-0',
-        '8-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '8-1-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-1-0-to-V8-2-0',
-        '8-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '8-2-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-2-0-to-V8-3-0',
-        '8-3-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '8-3-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-3-0-to-V8-4-0',
-        '8-4-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '8-4-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-4-0-to-V8-5-0',
-        '8-5-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '8-5-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-5-0-to-V8-6-0',
-        '8-6-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '8-6-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-6-0-to-V8-7-0',
-        '8-7-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '8-7-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-7-0-to-V8-8-0',
-        '8-8-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
+        '8-8-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-8-0-to-V8-9-0',
+        '8-9-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+                 '/Transition-V8-9-0-to-V9-0-0',
     }
     file = os.path.abspath(file)
     # store the directory we start in
@@ -1075,7 +1161,7 @@ def perform_transition(file):
     while result is None:
         try:
             trans_exec[versionid]
-        except Exception:
+        except Exception as e:
             result = 0
             os.chdir(cwd)  # Change back the directory
         else:
@@ -1086,6 +1172,7 @@ def perform_transition(file):
                 # potentially catch contents of std out and put it in the
                 # error log
                 log('{}'.format(e), lg.ERROR)
+                raise
             else:
                 # load new version id and continue loop
                 versionid = get_idf_version(file, doted=False)
@@ -1168,4 +1255,5 @@ class IDF(eppy.modeleditor.IDF):
             # `idf.newidfobject()` automatically adds it
             self.removeidfobject(new_object)
         else:
+            log('object "{}" added to the idf file'.format(ep_object))
             self.save()

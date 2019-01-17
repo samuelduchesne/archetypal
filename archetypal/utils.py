@@ -3,12 +3,17 @@ import json
 import logging as lg
 import os
 import sys
+import time
 import unicodedata
 from datetime import datetime, timedelta
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
+import shapely
+from lxml import objectify
 from pandas.io.json import json_normalize
+from shapely.geometry import Point
 
 import archetypal as ar
 from . import load_umi_template
@@ -672,6 +677,36 @@ def copy_file(files):
     #     if os.path.isdir(dirname):
     #         shutil.rmtree(dirname)
 
+
+def landxml_to_point(xml_file, crs=None, save=False):
+    """Read in a LandXML 1.0 file and return a GeoSeries of points or a
+    Shapefile"""
+    # {'init': 'epsg:2950'}
+    if not crs:
+        # using default crs
+        log('no crs was defined for LandXML file. Using default', lg.WARNING)
+        crs = {'init': 'epsg:2950'}
+    start = time.time()
+    name, extension = os.path.splitext(os.path.basename(xml_file))
+    log('Treating {}...'.format(name))
+    with open(xml_file, "r") as xml_data:
+        xml = objectify.parse(xml_data)
+    # get the root of the file
+    root = xml.getroot()
+    # get all points
+    pnts = root['Surfaces']['Surface']['Definition']['Pnts'].getchildren()
+    # create GeoSeries from list of points by reading in x,y,z coordinates
+    gds = gpd.GeoSeries([Point([float(i) for i in pnt.text.split(' ')])
+                         for pnt in pnts])
+    # set the crs. Must be the same as xml file coordinates.
+    gds.crs = crs
+    to_name = name + '.shp'
+    if save:
+        # save to shapefile
+        gds.to_file(to_name)
+    else:
+        return gds
+    log('Completed {} in {:,.2f} seconds'.format(name, time.time() - start))
 
 
 class Error(Exception):

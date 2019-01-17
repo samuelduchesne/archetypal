@@ -167,3 +167,9 @@ def test_update_height(bbox, scratch_then_cache):
         assert not gdf['raster_height'].empty
     else:
         assert pytest.raises(Exception)
+
+
+def test_land_xml(config):
+    file = './input_data/landxml/MNT2015_ville_Hampstead.xml'
+
+    return ar.utils.landxml_to_point(file)

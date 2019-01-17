@@ -4,6 +4,8 @@ import shutil
 
 import pytest
 
+import archetypal as ar
+
 
 @pytest.fixture(scope='session')
 def fresh_start():
@@ -34,7 +36,27 @@ def scratch_then_cache(request):
             assert not os.path.exists('.temp')
 
 
-@pytest.fixture(params=['problematic', 'regular', 'umi_samples'],
-                ids=['problematic', 'regular', 'umi_samples'], scope='session')
+samples_ = ['regular', 'umi_samples']  # ['problematic', 'regular',
+
+
+# 'umi_samples']
+
+
+@pytest.fixture(params=samples_, ids=samples_, scope='session')
 def idf_source(request):
     return glob.glob('./input_data/{}/*.idf'.format(request.param))
+
+
+@pytest.fixture()
+def config():
+    ar.config(log_console=True, log_file=True, use_cache=True,
+              data_folder='.temp/data', logs_folder='.temp/logs',
+              imgs_folder='.temp/imgs', cache_folder='.temp/cache',
+              umitemplate='../data/BostonTemplateLibrary.json')
+
+
+# List fixtures that are located outiside of conftest.py so that they can be
+# used in other tests
+pytest_plugins = [
+    "tests.test_dataportals",
+]

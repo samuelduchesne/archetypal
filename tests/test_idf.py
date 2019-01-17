@@ -72,16 +72,16 @@ def test_load_idf_asdict(as_dict, processors, fresh_start):
 def test_run_olderv(fresh_start):
     """Will run eplus on a file that needs to be upgraded"""
 
-    file = './input_data/nat_ventilation_SAMPLE0.idf'
+    file = './input_data/problematic/nat_ventilation_SAMPLE0.idf'
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     ar.run_eplus(file, wf, ep_version='8.9', annual=True,
                  expandobjects=True)
 
 
-def test_run(fresh_start):
+def test_run(scratch_then_cache):
     f1 = './input_data/umi_samples/nat_ventilation_SAMPLE0.idf'
     f2 = './input_data/umi_samples' \
-         '/no_shed_ventilation_and_no_mech_ventilation_SAMPLE0.idf '
+         '/no_shed_ventilation_and_no_mech_ventilation_SAMPLE0.idf'
     f3 = './input_data/umi_samples/no_shed_ventilation_SAMPLE0.idf'
     f4 = './input_data/umi_samples/shed_ventilation_SAMPLE0.idf'
 
@@ -90,5 +90,5 @@ def test_run(fresh_start):
     sql = ar.run_eplus(files, wf,
                        expandobjects=True, annual=True, processors=-1)
     np = ar.nominal_people(sql)
-    zc = ar.zone_conditioning(sql)
-    print(zc)
+    # zc = ar.zone_conditioning(sql)
+    # print(zc)

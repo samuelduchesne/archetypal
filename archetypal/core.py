@@ -861,6 +861,7 @@ def zone_loads(df):
 
     df = df.reset_index().groupby(['Archetype', ('Zones', 'Zone Type')]).apply(
         lambda x: zoneloads_aggregation(x.set_index(['Archetype', 'RowName'])))
+    df.name = 'ZoneLoads'
     return df
 
 

@@ -687,7 +687,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
             eplus_filename = os.path.basename(eplus_file)
             cached_run_results[eplus_filename] = get_from_cache(eplus_file,
                                                                 output_report,
-                                                                **kwargs)
+                                                                kwargs)
         if not all(v is None for v in cached_run_results.values()):
             # if not all cached results are none, at least one is found
             log('Succesfully parsed cached results sequentially '
@@ -724,7 +724,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         for eplus_file in eplus_files:
             # hash the eplus_file (to make shorter than the often extremely
             # long name)
-            filename_prefix = hash_file(eplus_file, **kwargs)
+            filename_prefix = hash_file(eplus_file, kwargs)
 
             epw = weather_file
             runargs = {'output_directory': output_folder + '/{}'.format(
@@ -852,10 +852,10 @@ def get_from_cache_pool(args):
     Todo:
         * Setup arguments as Locals()
     """
-    return get_from_cache(args[0], args[1])
+    return get_from_cache(args[0], args[1], args[2])
 
 
-def hash_file(eplus_file, **kwargs):
+def hash_file(eplus_file, kwargs=None):
     """Simple function to hash a file and return it as a string.
     Will also hash the :py:func:`eppy.runner.run_functions.run()` arguments
     so that correct results are returned
@@ -899,7 +899,7 @@ def get_report(eplus_file, output_folder=None,
         dict: a dict of DataFrames
 
     """
-    filename_prefix = hash_file(eplus_file, **kwargs)
+    filename_prefix = hash_file(eplus_file, kwargs)
     if 'htm' in output_report.lower():
         # Get the html report
         fullpath_filename = os.path.join(output_folder, filename_prefix,
@@ -923,7 +923,7 @@ def get_report(eplus_file, output_folder=None,
                 'File "{}" does not exist'.format(fullpath_filename))
 
 
-def get_from_cache(eplus_file, output_report='sql', **kwargs):
+def get_from_cache(eplus_file, output_report='sql', kwargs=None):
     """Retrieve a EPlus Tabulated Summary run result from the cache
 
     Args:
@@ -936,7 +936,7 @@ def get_from_cache(eplus_file, output_report='sql', **kwargs):
     """
     if settings.use_cache:
         # determine the filename by hashing the eplus_file
-        cache_filename_prefix = hash_file(eplus_file, **kwargs)
+        cache_filename_prefix = hash_file(eplus_file, kwargs)
         if 'htm' in output_report.lower():
             # Get the html report
             cache_fullpath_filename = os.path.join(settings.cache_folder,
@@ -957,12 +957,11 @@ def get_from_cache(eplus_file, output_report='sql', **kwargs):
                                                        + 'out',
                                                        'sql']))
             if os.path.isfile(cache_fullpath_filename):
-                try:
-                    if kwargs['report_tables']:
-                        return get_sqlite_report(cache_fullpath_filename,
-                                                 kwargs['report_tables'])
-                except:
-                    return get_sqlite_report(cache_fullpath_filename)
+                # get reports from passed-in report names or from
+                # settings.available_sqlite_tables if None are given
+                return get_sqlite_report(cache_fullpath_filename,
+                                         kwargs.get('report_tables',
+                                                    settings.available_sqlite_tables))
 
 
 def get_html_report(report_fullpath):

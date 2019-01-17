@@ -9,13 +9,16 @@ from archetypal import log
 
 def simple_glazing(shgc, u_factor, visible_transmittance=None):
     """
-    Calculates the physical properties of an equivalent single pane of glass from the Solar Heat Gain Coefficient,
-    the U-value and the Visible Transmittance.
+    Calculates the physical properties of an equivalent single pane of glass
+    from the Solar Heat Gain Coefficient, the U-value and the Visible
+    Transmittance.
 
     Args:
         shgc (double): The window's Solar Heat Gain Coefficient
         u_factor (double): The window's U-value
-        visible_transmittance (double, optional): The window's visible transmittance
+        visible_transmittance (double, optional): The window's visible
+            transmittance. If none, the visible transmittance defaults to the
+            solar transmittance t_sol.
 
     Returns:
         dict: A dictionnary of properties for the simple glazing system.
@@ -88,7 +91,8 @@ def simple_glazing(shgc, u_factor, visible_transmittance=None):
     R_vis_f = r_vis_f(T_vis)
 
     # Last Step. Saving results to dict
-
+    dict['SolarHeatGainCoefficient'] = shgc
+    dict['UFactor'] = u_factor
     dict['Conductivity'] = Lambda_eff
     dict['Thickness'] = Thickness
     dict['SolarTransmittance'] = T_sol

@@ -150,7 +150,7 @@ def test_update_height(config, bbox, scratch_then_cache):
                                                       output_type='memory')
     if not gdf.empty:
         from rasterstats import zonal_stats
-        z_stats = zonal_stats(gdf, geotiff, stats="mean")
+        z_stats = zonal_stats(gdf.copy(), geotiff, stats="mean")
         gdf['raster_height'] = [x['mean'] for x in z_stats]
         assert not gdf['raster_height'].empty
     else:

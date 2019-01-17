@@ -684,7 +684,8 @@ def gis_server_request(creds, bbox=None, how='intersects', srid=None):
         start_time = time.time()
         log('Getting from from {}:{}.{}, "{}"'.format(server, tb_schema,
                                                       table_name, sql))
-        gdf = gpd.read_postgis(sql, con=engine, geom_col='geom')
+        gdf = gpd.read_postgis(sql, con=engine, geom_col='geom',
+                               crs={'init': 'epsg:{srid}'.format(srid=srid)})
         size_kb = gdf.memory_usage(deep=True).sum() / 1000
         len_gdf = len(gdf)
         log('Downloaded {:,.1f} KB or {} entries from {}:{}.{} in '
@@ -694,7 +695,11 @@ def gis_server_request(creds, bbox=None, how='intersects', srid=None):
             gdf_json = gdf.to_json()
             save_to_cache(sql, json.loads(gdf_json))  # must load the json
             # because because the save_to_cache handles to conversion
+            # Todo: for some reason, rasterio does not like the gdf as is. so
+            #  the workaournd is to spit out the json back into a new
+            #  GeoDataFrame. Why?
+            return gpd.GeoDataFrame.from_features(json.loads(gdf_json))
         else:
-            log('No entries found. Check your parameters such as the bbox '
-                'coordinates and the CRS', lg.WARNING)
-    return gdf
+            log('No entries found. Check your parameters such as '
+                'the bbox coordinates and the CRS', lg.ERROR)
+            return gpd.GeoDataFrame([])  # return empty GeoDataFrame

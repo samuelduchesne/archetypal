@@ -27,8 +27,8 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
             are used then it must have same length as dataframe. Values are
             used to color the plot. Ignored if color is also set.
         color (str): If specified, all geometries will be colored uniformly.
-        fig_height (int): matplotlib figure height in inches
-        fig_width (int): matplotlib figure width in inches
+        fig_height (float): matplotlib figure height in inches
+        fig_width (float): matplotlib figure width in inches
         margin:
         plot_graph (bool): if True, plot the road network contained by the
             gdf's extent
@@ -129,7 +129,6 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         G = ox.project_graph(G, to_crs=to_crs)
 
         # plot the graph
-        axis_off = kwargs.get('axis_off', True)
         bgcolor = kwargs.get('bgcolor', 'w')
         node_color = kwargs.get('node_color', '#66ccff')
         node_size = kwargs.get('node_size', 15)
@@ -156,6 +155,7 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
     else:
         fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
+    # from here, we are in the gdf projection coordinates
     # plot the map
     cmap = kwargs.get('cmap', None)
     markersize = kwargs.get('markersize', 1)
@@ -172,7 +172,15 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
              vmax=vmax, k=k, scheme=scheme, legend=legend)
     # adjust the axis margins and limits around the image and make axes
     # equal-aspect
-    # west, south, east, north = gdf.total_bounds
+    # get north, south, east, west values either from bbox parameter or from the
+    # spatial extent of the GeoDataFrame geometries
+    if bbox is None:
+        bbox_geom = box(*gdf.unary_union.bounds)
+        west, south, east, north = project_geom(bbox_geom,
+                                                from_crs=crs,
+                                                to_crs=to_crs).bounds
+    else:
+        north, south, east, west = bbox
     margin_ns = (north - south) * margin
     margin_ew = (east - west) * margin
     ax.set_ylim((south - margin_ns, north + margin_ns))

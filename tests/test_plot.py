@@ -9,14 +9,14 @@ from archetypal import project_geom
 def test_plot_map(config, test_gis_server_osmnx, plot_graph):
     gdf = test_gis_server_osmnx
     # gdf.code_utilisation = gdf.code_utilisation.apply(pd.to_numeric)
-    ar.plot_map(gdf, column='libelle_utilisation', categorical=True,
-                plot_graph=plot_graph,
+    ar.plot_map(gdf, plot_graph=plot_graph,
                 equal_aspect=True, crs={'init': 'epsg:2950'},
-                annotate=False, legend=True, scheme='Quantiles', margin=0,
+                annotate=False, legend=False, scheme='Quantiles', margin=0,
                 save=True, show=True)
 
 
-def test_density(config):
+@pytest.mark.parametrize('axis_off', [True, False], ids=['axis_off', 'axis_on'])
+def test_density(config, axis_off):
     """plots the densitypu data from the GIS server"""
     from shapely.geometry import Polygon
     # We query the buffer (a polygon itself)
@@ -37,9 +37,9 @@ def test_density(config):
                                                                   south,
                                                                   east,
                                                                   west),
-                axis_off=False,
-                legend=True, margin=0, plot_graph=False,
-                crs={'init': 'epsg:4326'})
+                axis_off=axis_off, fig_height=8.5, fig_width=11, save=True,
+                legend=True, margin=0, plot_graph=True,
+                crs={'init': 'epsg:4326'}, file_format='pdf')
 
 
 

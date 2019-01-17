@@ -691,3 +691,72 @@ class EnergyPlusProcessError(Error):
         """Override that only returns the stderr"""
         msg = ':\n'.join([self.idf, self.stderr])
         return msg
+def project_geom(geom: shapely.geometry, from_crs=None, to_crs=None,
+                 to_latlon=False):
+    """Projects a geometry to another coordinates system
+
+    Args:
+        geom (shapely Polygon or MultiPolygon): the geometry to project
+        from_crs (dict): the starting coordinate reference system of the
+            passed-in geometry, default value (None) will set
+            settings.default_crs as the CRS
+        to_crs (dict): if not None, just project to this crs instead of to UTM
+        to_latlon (bool): of True, just project to lat-lon coordinates
+    Returns:
+        projected geom
+    """
+    from functools import partial
+    import pyproj
+    from shapely.ops import transform
+
+    if from_crs is None:
+        from_crs = settings.default_crs
+
+    # get the crs value
+    from_crs_get = from_crs.get('init', settings.default_crs['init'])
+
+    # if to_crs is there, use this value to project the geom
+    if to_crs:
+        # define new projection scheme
+        project = partial(
+            pyproj.transform,
+            pyproj.Proj(init=from_crs_get),
+            # source coordinate system
+            pyproj.Proj(init=to_crs['init']))
+
+        return transform(project, geom)  # apply projection
+    # if not, get latlon directly or calulte UTM zone from centroid and
+    # return projection
+    else:
+        if to_latlon:
+            # if to_latlong is True, project the geom to latlong
+            project = partial(
+                pyproj.transform,
+                pyproj.Proj(init=from_crs_get),
+                # source coordinate system
+                pyproj.Proj(init='epsg:4326'))
+            return transform(project, geom)  # apply projection
+        else:
+            # else, project the geom to UTM
+            # first, project to lat-long
+            project = partial(
+                pyproj.transform,
+                pyproj.Proj(init=from_crs_get),
+                # source coordinate system
+                pyproj.Proj(init='epsg:4326'))
+            geom = transform(project, geom)
+            # then, calculate UTM zone from geom center
+            # get UTM zone
+            import utm
+            easting, northing, zone_number, zone_letter = utm.from_latlon(
+                *(geom.centroid.x, geom.centroid.y))
+
+            # finally, define new projection scheme and project
+            project = partial(
+                pyproj.transform,
+                pyproj.Proj(init=from_crs_get),
+                # source coordinate system
+                pyproj.Proj(proj='utm', zone=zone_number, ellps='WGS84',
+                            units='m', datum='WGS84'))
+
+            return transform(project, geom)  # apply projection

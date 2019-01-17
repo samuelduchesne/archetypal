@@ -1086,72 +1086,70 @@ def perform_transition(file):
     versionid = get_idf_version(file, doted=False)
 
     trans_exec = {
-        '1-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '1-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-0-0-to-V1-0-1',
-        '1-0-1': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '1-0-1': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-0-1-to-V1-0-2',
-        '1-0-2': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '1-0-2': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-0-2-to-V1-0-3',
-        '1-0-3': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '1-0-3': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-0-3-to-V1-1-0',
-        '1-1-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '1-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-1-0-to-V1-1-1',
-        '1-1-1': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '1-1-1': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-1-1-to-V1-2-0',
-        '1-2-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '1-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-2-0-to-V1-2-1',
-        '1-2-1': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '1-2-1': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-2-1-to-V1-2-2',
-        '1-2-2': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '1-2-2': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-2-2-to-V1-2-3',
-        '1-2-3': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '1-2-3': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-2-3-to-V1-3-0',
-        '1-3-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '1-3-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-3-0-to-V1-4-0',
-        '1-4-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '1-4-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V1-4-0-to-V2-0-0',
-        '2-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '2-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V2-0-0-to-V2-1-0',
-        '2-1-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '2-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V2-1-0-to-V2-2-0',
-        '2-2-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '2-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V2-2-0-to-V3-0-0',
-        '3-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '3-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V3-0-0-to-V3-1-0',
-        '3-1-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '3-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V3-1-0-to-V4-0-0',
-        '4-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '4-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V4-0-0-to-V5-0-0',
-        '5-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '5-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V5-0-0-to-V6-0-0',
-        '6-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '6-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V6-0-0-to-V7-0-0',
-        '7-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '7-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V7-0-0-to-V7-1-0',
-        '7-1-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '7-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V7-1-0-to-V7-2-0',
-        '7-2-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '7-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V7-2-0-to-V8-0-0',
-        '8-0-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '8-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-0-0-to-V8-1-0',
-        '8-1-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '8-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-1-0-to-V8-2-0',
-        '8-2-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '8-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-2-0-to-V8-3-0',
-        '8-3-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '8-3-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-3-0-to-V8-4-0',
-        '8-4-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '8-4-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-4-0-to-V8-5-0',
-        '8-5-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '8-5-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-5-0-to-V8-6-0',
-        '8-6-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '8-6-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-6-0-to-V8-7-0',
-        '8-7-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '8-7-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-7-0-to-V8-8-0',
-        '8-8-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
+        '8-8-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
                  '/Transition-V8-8-0-to-V8-9-0',
-        '8-9-0': '/Applications/EnergyPlus-9-0-1/PreProcess/IDFVersionUpdater'
-                 '/Transition-V8-9-0-to-V9-0-0',
     }
     file = os.path.abspath(file)
     # store the directory we start in

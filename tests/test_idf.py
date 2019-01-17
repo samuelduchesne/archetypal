@@ -24,9 +24,27 @@ def test_small_home_data(fresh_start):
     return ar.run_eplus(file, wf, expandobjects=True, annual=True)
 
 
-@pytest.mark.parametrize('processors', [0, 1, -1])
-@pytest.mark.parametrize('annual', [True, False])
-@pytest.mark.parametrize('expandobjects', [True])
+def test_necb(config, fresh_start):
+    import glob
+    files = glob.glob("/Users/samuelduchesne/Dropbox/Polytechnique/Doc"
+                      "/software/archetypal-dev/data/necb"
+                      "/NECB_2011_Montreal_idf/*idf")
+    files = copy_file(files)
+    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    return ar.run_eplus(files, wf, expandobjects=True, annual=True)
+
+
+def test_std(config, fresh_start):
+    import glob
+    files = glob.glob("./input_data/STD/*idf")
+    files = copy_file(files)
+    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    return ar.run_eplus(files, wf, expandobjects=True, annual=True)
+
+
+@pytest.mark.parametrize('processors', [1, -1], ids=['1cpu', 'allcpu'])
+@pytest.mark.parametrize('annual', [True], ids=['annual'])
+@pytest.mark.parametrize('expandobjects', [True], ids=['expandobj'])
 def test_example_idf(processors, expandobjects, annual, fresh_start,
                      idf_source):
     """Will run all combinations of parameters defined above"""

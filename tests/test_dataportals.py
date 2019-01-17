@@ -5,15 +5,11 @@ from shapely.geometry import Point
 
 import archetypal as ar
 # configure archetypal
+from archetypal import project_geom
 from archetypal.building import download_bld_window
 
-ar.config(log_console=True, log_file=True, use_cache=True,
-          data_folder='.temp/data', logs_folder='.temp/logs',
-          imgs_folder='.temp/imgs', cache_folder='.temp/cache',
-          umitemplate='../data/BostonTemplateLibrary.json')
 
-
-def test_tabula_available_country(scratch_then_cache):
+def test_tabula_available_country(config, scratch_then_cache):
     # First, let's try the API call
     data = {'code_country': 'FR'}
     cc_res = ar.dataportal.tabula_api_request(data, table='all-country')
@@ -24,15 +20,15 @@ def test_tabula_available_country(scratch_then_cache):
     cc_cache = ar.dataportal.tabula_available_buildings(code_country)
 
 
-def test_tabula_notavailable_country(scratch_then_cache):
+def test_tabula_notavailable_country(config, scratch_then_cache):
     pass
 
 
-def test_tabula_building_sheet(scratch_then_cache):
+def test_tabula_building_sheet(config, scratch_then_cache):
     sheet = ar.tabula_building_details_sheet(code_country='Austria')
 
 
-def test_tabula_multiple(scratch_then_cache):
+def test_tabula_multiple(config, scratch_then_cache):
     country_code = 'FR'
     ab = ar.dataportal.tabula_available_buildings(country_code)
     archetypes = pd.concat(ab.apply(
@@ -44,7 +40,7 @@ def test_tabula_multiple(scratch_then_cache):
                                 ab.suffix_building_column1)
 
 
-def test_nrel_api_request(scratch_then_cache):
+def test_nrel_api_request(config, scratch_then_cache):
     data = {'keyword': 'Window',
             'format': 'json',
             'f[]': ['fs_a_Overall_U-factor:[3.4 TO 3.6]',
@@ -55,7 +51,7 @@ def test_nrel_api_request(scratch_then_cache):
     assert response['result']
 
 
-def test_gis_server_raster_request(bbox):
+def test_gis_server_raster_request(config, bbox):
     # Create credentials
     cred = {'username': 'samueld',
             'password': 'sdsd',
@@ -78,16 +74,8 @@ pts = [Point(-73.613112, 45.504631),  # Polytechnique Montréal
                                  'where_there_is_no_data'])
 def bbox(request):
     """Parametrizes the creation of bounding boxes"""
-    from functools import partial
-    import pyproj
-    from shapely.ops import transform
-
-    bbox = request.param
-    project = partial(
-        pyproj.transform,
-        pyproj.Proj(init='epsg:4326'),  # source coordinate system
-        pyproj.Proj(init='epsg:2950'))  # destination coordinate system
-    bbox = transform(project, bbox)  # apply projection
+    bbox = project_geom(request.param, from_crs={'init': 'epsg:4326'},
+                        to_crs={'init': 'epsg:2950'})
 
     yield bbox.buffer(100)
 
@@ -95,7 +83,7 @@ def bbox(request):
 
 
 @pytest.fixture()
-def test_gis_server_request(scratch_then_cache, bbox):
+def test_gis_server_request(config, scratch_then_cache, bbox):
     """Retrieves tax data for a bbox"""
     # Create credentials
     cred = {'username': 'samueld',
@@ -108,7 +96,8 @@ def test_gis_server_request(scratch_then_cache, bbox):
     yield ar.dataportal.gis_server_request(cred, bbox, srid=2950)
 
 
-def test_gis_server_osmnx(scratch_then_cache):
+@pytest.fixture()
+def test_gis_server_osmnx(config, scratch_then_cache):
     """Uses osmnx to create a retreive a geodataframe covering 1km2 around
     the center of dowwntown Montréal"""
     import osmnx as ox
@@ -128,8 +117,7 @@ def test_gis_server_osmnx(scratch_then_cache):
             'schema': 'donneesouvertesmtl',
             'table_name': 'uniteevaluationfonciere_latest'}
 
-    assert not ar.dataportal.gis_server_request(cred, bbox, 'contains',
-                                                2950).empty
+    yield ar.dataportal.gis_server_request(cred, bbox, 'contains', 2950)
 
 
 def test_download_bld_window(scratch_then_cache):
@@ -141,7 +129,7 @@ def test_download_bld_window(scratch_then_cache):
     assert response
 
 
-def test_update_height(bbox, scratch_then_cache):
+def test_update_height(config, bbox, scratch_then_cache):
     cred_gdf = {'username': 'samueld',
                 'password': 'sdsd',
                 'server': 'comsolator.meca.polymtl.ca',

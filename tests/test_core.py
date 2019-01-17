@@ -10,10 +10,14 @@ ar.config(log_console=True, log_file=True, use_cache=True,
           imgs_folder='.temp/imgs', cache_folder='.temp/cache',
           umitemplate='../data/BostonTemplateLibrary.json')
 
-files_to_try = ['./input_data/problematic/*.idf',
-                './input_data/regular/*.idf',
-                './input_data/umi_samples/*.idf']
-ids = ['problematic', 'regular', 'umi_samples']
+# # Uncomment this block to test different file variations
+# files_to_try = ['./input_data/problematic/*.idf',
+#                 './input_data/regular/*.idf',
+#                 './input_data/umi_samples/*.idf']
+# ids = ['problematic', 'regular', 'umi_samples']
+
+files_to_try = ['./input_data/regular/*.idf']
+ids = ['regular']
 
 
 @pytest.fixture(scope='module', params=files_to_try, ids=ids)
@@ -30,9 +34,22 @@ def template(fresh_start, request):
 
 
 @pytest.fixture(scope='module')
-def sql(template):
-    sql = template.run_eplus(silent=False, processors=-1, prep_outputs=True,
-                             expandobjects=True, design_day=True)
+def test_template_withcache():
+    """Instantiate an umi template placeholder. Does note call fresh_start
+    function so that caching can be used"""
+    idf = glob.glob('/Users/samuelduchesne/Dropbox/Polytechnique/Doc/software'
+                    '/archetypal-dev/data/necb/NECB_2011_Montreal_idf/*.idf')
+    idf = ar.copy_file(idf)
+    # idf = './input_data/AdultEducationCenter.idf'
+    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    a = ar.Template(idf, wf)
+
+    yield a
+
+
+@pytest.fixture(scope='module')
+def sql(test_template_withcache):
+    sql = test_template_withcache.run_eplus(silent=False, processors=-1)
     yield sql
 
 
@@ -107,3 +124,24 @@ def test_zone_ventilation(template, sql):
 
 def test_zone_condition(template, sql):
     template.zone_conditioning = ar.zone_conditioning(sql)
+
+
+def test_zone_condition_dev(test_template_withcache, sql):
+    test_template_withcache.zone_conditioning = ar.zone_conditioning(sql)
+    print(test_template_withcache.zone_conditioning)
+
+
+def test_to_json(test_template_withcache):
+    test_template_withcache.read()
+    json = test_template_withcache.to_json(orient='records')
+    print(json)
+
+
+def test_to_json_std():
+    files = glob.glob("./input_data/STD/*idf")
+    files = ar.copy_file(files)
+    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    a = ar.Template(files, wf)
+    a.read()
+    json = a.to_json(orient='records')
+    print(json)

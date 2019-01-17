@@ -1,4 +1,5 @@
 import os, json
+from collections import OrderedDict
 
 from pandas.io.json import json_normalize  # package for flattening json in pandas df
 
@@ -15,7 +16,7 @@ def load_umi_template(json_template):
     """
     if os.path.isfile(json_template):
         with open(json_template) as f:
-            dicts = json.load(f)
+            dicts = json.load(f, object_pairs_hook=OrderedDict)
 
             return [{key: json_normalize(value)} for key, value in dicts.items()]
     else:

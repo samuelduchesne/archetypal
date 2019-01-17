@@ -68,3 +68,6 @@ available_sqlite_tables = {'ComponentSizes': {'PrimaryKey': ['ComponentSizesInde
 
 # common_umi_objects
 common_umi_objects = []
+
+# default crs for when creating plots and querying databases
+default_crs = {'init': 'epsg:4326'}

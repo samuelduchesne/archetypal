@@ -6,15 +6,23 @@
 Welcome to archetypal's documentation!
 ======================================
 
-archetypal is a python module that can reduce EnergyPlus reference building models from a complex format (multiple zones)
-to a 2-zone model compatible with umi.
+archetypal is a python module that can reduce EnergyPlus reference building models from a complex definition (multiple
+zones) to a 2-zone model. This complexity-decution is particularly usefull for umi, the Urban Modeling Interface
+developed by the MIT Sustainable Design Lab.
+
+
+Requirements
+------------
+
+Prior to installing this package, you must have the latest version of `EnergyPlus`_ installed in it's default location.
+On Windows that would be in `C:\\EnergyPlusV8-X-X` and on MacOS that would be `/Applications/EnergyPlus-8-X-X`.
 
 
 Installation
 ------------
 
 If you have any trouble with the installation, try installing archetypal in a new,
-clean `virtual environment`_ using conda. Note that python version 3.7 is recommended:
+clean `virtual environment`_ using conda. Note that python version 3 is required:
 
 .. code-block:: shell
 
@@ -46,30 +54,14 @@ project, *archetypal* in this case.
    and select the appropriate virtual env created earlier (*archetypal* in our case).
 
 
-Packages
---------
-
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    Getting Started <docs/first.md>
    Modelign Assumptions <docs/assumptions.rst>
+   Package Modules <docs/package_modules.rst>
 
-.. automodule:: archetypal.idf
-   :members:
-
-.. automodule:: archetypal.core
-   :members:
-
-.. automodule:: archetypal.utils
-   :members:
-
-Simple Galzing Module
-=====================
-
-.. automodule:: archetypal.simple_glazing
-   :members:
 
 Indices and tables
 ==================
@@ -83,3 +75,5 @@ Indices and tables
 .. _jupyter notebook: https://jupyter-notebook.readthedocs.io/en/stable/#
 .. _Angelo Basile: https://anbasile.github.io/programming/2017/06/25/jupyter-venv/
 .. _start a jupyter notebook: https://jupyter.readthedocs.io/en/latest/running.html#starting-the-notebook-server
+.. _EnergyPlus: https://energyplus.net
+.. _umi: https://umidocs.readthedocs.io/en/latest/

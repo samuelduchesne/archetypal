@@ -92,4 +92,4 @@ cache/
 notebooks/
 _build/
 
-docs/
+tests/\.temp/

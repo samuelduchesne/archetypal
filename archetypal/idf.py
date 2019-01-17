@@ -16,7 +16,7 @@ from eppy.runner.run_functions import run, paths_from_version
 
 from archetypal import EnergyPlusProcessError
 from . import settings
-from .utils import log
+from .utils import log, cd
 
 try:
     import multiprocessing as mp
@@ -1157,30 +1157,30 @@ def perform_transition(file):
     # store the directory we start in
     cwd = os.getcwd()
     run_dir = os.path.abspath(os.path.dirname(trans_exec[versionid]))
-    os.chdir(run_dir)
 
     # build a list of command line arguments
 
-    #
-    result = None
-    while result is None:
-        try:
-            trans_exec[versionid]
-        except Exception as e:
-            result = 0
-            os.chdir(cwd)  # Change back the directory
-        else:
-            cmd = [trans_exec[versionid], file]
+    with cd(run_dir):
+        # we are now in run_dir
+        result = None
+        while result is None:
             try:
-                check_call(cmd)
-            except CalledProcessError as e:
-                # potentially catch contents of std out and put it in the
-                # error log
-                log('{}'.format(e), lg.ERROR)
-                raise
+                trans_exec[versionid]
+            except KeyError:
+                # there is no more updates to perfrom
+                result = 0
             else:
-                # load new version id and continue loop
-                versionid = get_idf_version(file, doted=False)
+                cmd = [trans_exec[versionid], file]
+                try:
+                    check_call(cmd)
+                except CalledProcessError as e:
+                    # potentially catch contents of std out and put it in the
+                    # error log
+                    log('{}'.format(e), lg.ERROR)
+                    raise
+                else:
+                    # load new version id and continue loop
+                    versionid = get_idf_version(file, doted=False)
 
     log('Transition completed\n')
     # Clean 'idfnew' and 'idfold' files created by the transition porgram

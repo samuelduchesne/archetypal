@@ -1,5 +1,9 @@
+import io
+import json
 import logging as lg
+import os
 import time
+from collections import OrderedDict
 from pprint import pformat
 
 import numpy as np
@@ -10,16 +14,13 @@ from . import settings, object_from_idf, object_from_idfs, simple_glazing, \
     load_idf
 from .utils import log, label_surface, type_surface, layer_composition, \
     schedule_composition, time2time, \
-    year_composition
+    year_composition, newrange
 
 
 class Template:
     """
 
     """
-    materials_opaque = ...  # type: pd.DataFrame
-    materials_glazing = ...  # type: pd.DataFrame
-    materials_gas = ...  # type: pd.DataFrame
 
     def __init__(self, idf_files, weather, load=False, **kwargs):
         """Initializes a Template class
@@ -43,12 +44,16 @@ class Template:
         self.day_schedules = None
         self.week_schedules = None
         self.year_schedules = None
-
+        self.structure_definitions = None
         self.zone_details = None
         self.zone_loads = None
         self.zone_conditioning = None
-        self.zone_information = None
+        self.zones = None
         self.zone_ventilation = None
+        self.windows_settings = None
+        self.building_templates = None
+        self.zone_construction_sets = None
+        self.domestic_hot_water_settings = None
 
         if load:
             self.read()
@@ -59,14 +64,38 @@ class Template:
         # Umi stuff
         self.materials_gas = materials_gas(self.idfs)
         self.materials_glazing = materials_glazing(self.idfs)
+        self.materials_glazing = newrange(self.materials_gas,
+                                          self.materials_glazing)
+
         self.materials_opaque = materials_opaque(self.idfs)
+        self.materials_opaque = newrange(self.materials_glazing,
+                                         self.materials_opaque)
+
         self.constructions_opaque = constructions_opaque(self.idfs,
                                                          self.materials_opaque)
+        self.constructions_opaque = newrange(self.materials_opaque,
+                                             self.constructions_opaque)
+
         self.constructions_windows = constructions_windows(self.idfs,
                                                            self.materials_glazing)
+        self.constructions_windows = newrange(self.constructions_opaque,
+                                              self.constructions_windows)
+
+        self.structure_definitions = structure_definition(self.idfs)
+        self.structure_definitions = newrange(self.constructions_windows,
+                                              self.structure_definitions)
+
         self.day_schedules = day_schedules(self.idfs)
+        self.day_schedules = newrange(self.structure_definitions,
+                                      self.day_schedules)
+
         self.week_schedules = week_schedules(self.idfs, self.day_schedules)
+        self.week_schedules = newrange(self.day_schedules,
+                                       self.week_schedules)
+
         self.year_schedules = year_schedules(self.idfs, self.week_schedules)
+        self.year_schedules = newrange(self.week_schedules,
+                                       self.year_schedules)
 
     def run_eplus(self, silent=True, **kwargs):
         """wrapper for :func:`run_eplus` function
@@ -76,6 +105,59 @@ class Template:
                              **kwargs)
         if not silent:
             return self.sql
+
+    def to_json(self, path_or_buf=None, orient=None, indent=2,
+                date_format=None):
+        """Writes the umi template to json format"""
+
+        # from pandas.io import json
+        categories = [self.materials_gas,
+                      self.materials_glazing,
+                      self.materials_opaque,
+                      self.constructions_opaque,
+                      self.constructions_windows,
+                      self.structure_definitions,
+                      self.day_schedules,
+                      self.week_schedules,
+                      self.year_schedules,
+                      self.domestic_hot_water_settings,
+                      self.zone_ventilation,
+                      self.zone_conditioning,
+                      self.zone_construction_sets,
+                      self.zone_loads,
+                      self.zones,
+                      self.building_templates,
+                      self.windows_settings]
+        if not path_or_buf:
+            path_or_buf = os.path.join(settings.data_folder, 'temp.json')
+            # create the folder on the disk if it doesn't already exist
+            if not os.path.exists(settings.data_folder):
+                os.makedirs(settings.data_folder)
+        with io.open(path_or_buf, 'w', encoding='utf-8') as path_or_buf:
+            data_dict = OrderedDict()
+            for js in categories:
+                if isinstance(js, pd.DataFrame):
+                    if not js.columns.is_unique:
+                        raise ValueError('columns {} are not unique'.format(
+                            js.columns))
+                    else:
+                        # Firs keep only required columns
+                        cols = settings.common_umi_objects[js.name].copy()
+                        reset_index_cols_ = js.reset_index()[cols]
+                        # Than convert ints to strings. this is how umi needs
+                        # them
+                        reset_index_cols_['$id'] = reset_index_cols_[
+                            '$id'].apply(str)
+                        # transform to json and add to dict of objects
+                        data_dict[js.name] = json.loads(
+                            reset_index_cols_.to_json(orient=orient,
+                                          date_format=date_format),
+                            object_pairs_hook=OrderedDict)
+                else:
+                    # do something with objects that are not DataFrames
+                    pass
+            # Write the dict to json using json.dumps
+            path_or_buf.write(json.dumps(data_dict, indent=indent))
 
 
 def convert_necb_to_umi_json(idfs, idfobjects=None):
@@ -91,7 +173,7 @@ def gas_type(row):
     """Return the UMI gas type number
 
     Args:
-        row (pandas.DataFrame):
+        row (pandas.DataFrame):name
 
     Returns:
         int: UMI gas type number. The return number is specific to the umi api.
@@ -119,7 +201,7 @@ def materials_gas(idfs):
         padnas.DataFrame: Returns a DataFrame with the all necessary Umi columns
     """
     materials_df = object_from_idfs(idfs, 'WINDOWMATERIAL:GAS')
-    cols = settings.common_umi_objects['GasMaterials']
+    cols = settings.common_umi_objects['GasMaterials'].copy()
 
     # Add Type of gas column
     materials_df['Type'] = 'Gas'
@@ -148,14 +230,18 @@ def materials_gas(idfs):
         log('{}'.format(e), lg.ERROR)
         log('Falling back onto first IDF file containing this common object',
             lg.WARNING)
-        materials_df['DataSource'] = 'First IDF file containing '\
+        materials_df['DataSource'] = 'First IDF file containing ' \
                                      'this common object'
 
     materials_df = materials_df.reset_index(drop=True).rename_axis(
         '$id').reset_index()
     log('Returning {} WINDOWMATERIAL:GAS objects in a DataFrame'.format(
         len(materials_df)))
-    return materials_df[cols].set_index('$id')  # Keep only relevant columns
+    materials_df = materials_df[cols].set_index(
+        '$id')  # Keep only relevant columns
+    materials_df.name = 'GasMaterials'
+    materials_df.index += 1  # Shift index by one since umi is one-based indexed
+    return materials_df
 
 
 def materials_glazing(idfs):
@@ -212,7 +298,7 @@ def materials_glazing(idfs):
         log('{}'.format(e), lg.ERROR)
         log('Falling back onto first IDF file containing this common object',
             lg.WARNING)
-        materials_df['DataSource'] = 'First IDF file containing this '\
+        materials_df['DataSource'] = 'First IDF file containing this ' \
                                      'common object'
 
     materials_df['Density'] = 2500
@@ -247,7 +333,9 @@ def materials_glazing(idfs):
         len(materials_df)))
     log('Completed materials_glazing in {:,.2f} seconds\n'.format(
         time.time() - origin_time))
-    return materials_df[cols]
+    materials_df = materials_df[cols]
+    materials_df.name = 'GlazingMaterials'
+    return materials_df
 
 
 def materials_opaque(idfs):
@@ -324,9 +412,9 @@ def materials_opaque(idfs):
     materials_df['MoistureDiffusionResistance'] = 50
     materials_df['PhaseChange'] = False
     materials_df['PhaseChangeProperties'] = ''
-        # TODO: Further investigation needed
+    # TODO: Further investigation needed
     materials_df['SubstitutionRatePattern'] = np.NaN
-        # TODO: Might have to change to an empty array
+    # TODO: Might have to change to an empty array
     materials_df['SubstitutionTimestep'] = 0
     materials_df['TransportCarbon'] = 0
     materials_df['TransportDistance'] = 0
@@ -334,12 +422,14 @@ def materials_opaque(idfs):
     materials_df['Type'] = ''  # TODO: Further investigation necessary
     materials_df['VariableConductivity'] = False
     materials_df['VariableConductivityProperties'] = np.NaN
-        # TODO: Further investigation necessary
+    # TODO: Further investigation necessary
 
     materials_df = materials_df.reset_index(drop=True).rename_axis('$id')
     log('Completed materials_opaque in {:,.2f} seconds\n'.format(
         time.time() - origin_time))
-    return materials_df[cols]
+    materials_df = materials_df[cols]
+    materials_df.name = 'OpaqueMaterials'
+    return materials_df
 
 
 def constructions_opaque(idfs, opaquematerials=None):
@@ -347,7 +437,8 @@ def constructions_opaque(idfs, opaquematerials=None):
 
     Args:
         idfs (list or dict): parsed IDF files opaquematerials
-            (pandas.DataFrame): DataFrame generated by :func:`materials_opaque()`
+            (pandas.DataFrame): DataFrame generated by
+            :func:`materials_opaque()`
 
     Returns:
         padnas.DataFrame: Returns a DataFrame with the all necessary Umi columns
@@ -390,7 +481,7 @@ def constructions_opaque(idfs, opaquematerials=None):
         log('Could not create layer_composition because the necessary lookup '
             'DataFrame "OpaqueMaterials"  was '
             'not provided', lg.WARNING)
-    cols = settings.common_umi_objects['OpaqueConstructions']
+    cols = settings.common_umi_objects['OpaqueConstructions'].copy()
 
     constructions_df['AssemblyCarbon'] = 0
     constructions_df['AssemblyCost'] = 0
@@ -406,19 +497,22 @@ def constructions_opaque(idfs, opaquematerials=None):
         log('{}'.format(e), lg.ERROR)
         log('Falling back onto first IDF file containing this common object',
             lg.WARNING)
-        constructions_df['DataSource'] = 'First IDF file containing '\
+        constructions_df['DataSource'] = 'First IDF file containing ' \
                                          'this common object'
 
     constructions_df['DisassemblyCarbon'] = 0
     constructions_df['DisassemblyEnergy'] = 0
-
+    constructions_df = constructions_df.rename(
+        columns={'Name': 'Zone Name'})
     constructions_df = constructions_df.rename(
         columns={'Construction_Name': 'Name'})
     constructions_df = constructions_df.reset_index(drop=True).rename_axis(
         '$id').reset_index()
     log('Completed constructions_opaque in {:,.2f} seconds\n'.format(
         time.time() - origin_time))
-    return constructions_df[cols].set_index('$id')
+    constructions_df = constructions_df[cols].set_index('$id')
+    constructions_df.name = 'OpaqueConstructions'
+    return constructions_df
 
 
 def constructions_windows(idfs, material_glazing=None):
@@ -448,23 +542,20 @@ def constructions_windows(idfs, material_glazing=None):
         log('Initiating constructions_windows Layer composition...')
         start_time = time.time()
         df = (pd.DataFrame(constructions_window_df.set_index(
-            ['Archetype', 'Name', 'Construction_Name'])
-                           .loc[:,constructions_window_df.set_index(
-                              ['Archetype', 'Name',
-                               'Construction_Name']).columns.str.contains(
-                              'Layer')].stack(), columns=['Layers'])
-              .join(material_glazing.reset_index()
-                    .set_index(['Archetype', 'Name']),
-                    on=['Archetype', 'Layers'])
-              .loc[:, ['$id', 'Thickness']]
-              .unstack(level=3)
-              .apply(lambda x: layer_composition(x), axis=1)
-              .rename('Layers'))
-
-        constructions_window_df = \
-            constructions_window_df.join(df, on=['Archetype',
-                                                 'Name',
-                                                 'Construction_Name'])
+            ['Archetype', 'Name', 'Construction_Name']).loc[:,
+                           constructions_window_df.set_index(
+                               ['Archetype', 'Name',
+                                'Construction_Name']).columns.str.contains(
+                               'Layer')].stack(), columns=['Layers']).join(
+            material_glazing.reset_index().set_index(['Archetype', 'Name']),
+            on=['Archetype', 'Layers']).loc[:, ['$id', 'Thickness']].unstack(
+            level=3).apply(lambda x: layer_composition(x), axis=1).rename(
+            'Layers'))
+        if not df.isna().all():
+            constructions_window_df = \
+                constructions_window_df.join(df, on=['Archetype',
+                                                     'Name',
+                                                     'Construction_Name'])
         constructions_window_df.dropna(subset=['Layers'], inplace=True)
         log('Completed constructions_window_df Layer composition in {:,'
             '.2f} seconds'.format(time.time() - start_time))
@@ -495,23 +586,26 @@ def constructions_windows(idfs, material_glazing=None):
 
     constructions_window_df.loc[:, 'DisassemblyCarbon'] = 0
     constructions_window_df.loc[:, 'DisassemblyEnergy'] = 0
-
+    constructions_window_df.rename(columns={'Name': 'Zone Name'},
+                                   inplace=True)
     constructions_window_df.rename(columns={'Construction_Name': 'Name'},
                                    inplace=True)
     constructions_window_df = constructions_window_df.reset_index(
         drop=True).rename_axis('$id').reset_index()
 
-    cols = settings.common_umi_objects['WindowConstructions']
+    cols = settings.common_umi_objects['WindowConstructions'].copy()
     cols.append('Archetype')
     log('Completed constructions_windows in {:,.2f} seconds\n'.format(
         time.time() - origin_time))
-    return constructions_window_df[cols].set_index('$id')
+    constructions_window_df = constructions_window_df[cols].set_index('$id')
+    constructions_window_df.name = 'WindowConstructions'
+    return constructions_window_df
 
 
 def get_simple_glazing_system(idfs):
     """Retreives all simple glazing objects from a list of IDF files. Calls
-    :func:`simple_glazing` in order to calculate a
-    new glazing system that has the same properties.
+    :func:`simple_glazing` in order to calculate a new glazing system that
+    has the same properties.
 
     Args:
         idfs (list or dict): parsed IDF files
@@ -525,30 +619,41 @@ def get_simple_glazing_system(idfs):
                                         'WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM',
                                         first_occurrence_only=False)
 
-        materials_df = materials_df.set_index(['Archetype', 'Name']).apply(
+        materials_with_sg = materials_df.set_index(['Archetype', 'Name']).apply(
             lambda row: simple_glazing(row['Solar_Heat_Gain_Coefficient'],
                                        row['UFactor'],
                                        row['Visible_Transmittance']),
             axis=1).apply(pd.Series)
-        materials_df = materials_df.reset_index()
-        materials_df['Optical'] = 'SpectralAverage'
-        materials_df['OpticalData'] = ''
-        materials_df['DataSource'] = \
-            materials_df.apply(lambda row:
-                               'EnergyPlus Simple Glazing Calculation {'
-                               'shgc:{:.2f}, u-value:{:.2f}, '
-                               't_vis:{:.2f}}'
-                               .format(row['Solar_Heat_Gain_Coefficient'],
-                                       row['UFactor'],
-                                       row['Visible_Transmittance']))
-        materials_df['key'] = 'WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM'
+        materials_umi = materials_with_sg.reset_index()
+        materials_umi['Optical'] = 'SpectralAverage'
+        materials_umi['OpticalData'] = ''
+        materials_umi['DataSource'] = materials_umi.apply(
+            lambda row: apply_window_perf(row), axis=1)
+        materials_umi['key'] = 'WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM'
     except Exception as e:
         log('Error: {}'.format(e), lg.ERROR)
         return pd.DataFrame([])
+        # return empty df since we could not find any simple glazing systems
     else:
         log('Found {} WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM objects'.format(
-            len(materials_df)))
-        return materials_df
+            len(materials_umi)))
+        return materials_umi
+
+
+def apply_window_perf(row):
+    """Returns the string description of the window component"""
+    perfs = {'shgc': row['SolarHeatGainCoefficient'],
+             'ufactor': row['UFactor'],
+             'tvis': row['VisibleTransmittance']}
+    for perf in perfs:
+        try:
+            perfs[perf] = float(perfs[perf])
+        except ValueError:
+            perfs['tvis'] = row['SolarTransmittance']
+    return 'EnergyPlus Simple Glazing Calculation shgc: {:,.2f}, u-value: '\
+           '{:,.2f}, t_vis: {:,.2f}'.format(perfs['shgc'],
+                                            perfs['ufactor'],
+                                            perfs['tvis'])
 
 
 def day_schedules(idfs):
@@ -564,10 +669,9 @@ def day_schedules(idfs):
     log('Initiating day_schedules...')
     schedule = object_from_idfs(idfs, 'SCHEDULE:DAY:INTERVAL',
                                 first_occurrence_only=False)
+    cols = settings.common_umi_objects['DaySchedules'].copy()
     if not schedule.empty:
         schedule['Values'] = schedule.apply(lambda x: time2time(x), axis=1)
-
-        cols = settings.common_umi_objects['DaySchedules']
 
         schedule.loc[:, 'Category'] = 'Day'
         schedule.loc[:, 'Comments'] = 'Comments'
@@ -579,10 +683,14 @@ def day_schedules(idfs):
         cols.append('Archetype')
         log('Completed day_schedules in {:,.2f} seconds\n'.format(
             time.time() - origin_time))
-        return schedule[cols].set_index('$id')
+        schedule = schedule[cols].set_index('$id')
+        schedule.name = 'DaySchedules'
+        return schedule
     else:
         log('Returning Empty DataFrame', lg.WARNING)
-        return pd.DataFrame({'Day Schedules': []})
+        schedule = pd.DataFrame([], columns=cols)
+        schedule.name = 'DaySchedules'
+        return schedule
 
 
 def week_schedules(idfs, dayschedules=None):
@@ -600,8 +708,8 @@ def week_schedules(idfs, dayschedules=None):
     log('Initiating week_schedules...')
     schedule = object_from_idfs(idfs, 'SCHEDULE:WEEK:DAILY',
                                 first_occurrence_only=False)
+    cols = settings.common_umi_objects['WeekSchedules'].copy()
     if not schedule.empty:
-        cols = settings.common_umi_objects['WeekSchedules']
 
         if dayschedules is not None:
             start_time = time.time()
@@ -639,10 +747,14 @@ def week_schedules(idfs, dayschedules=None):
         cols.append('Archetype')
         log('Completed day_schedules in {:,.2f} seconds\n'.format(
             time.time() - origin_time))
-        return schedule[cols].set_index('$id')
+        schedule = schedule[cols].set_index('$id')
+        schedule.name = 'WeekSchedules'
+        return schedule
     else:
         log('Returning Empty DataFrame', lg.WARNING)
-        return pd.DataFrame({'Week Schedules': []})
+        schedule = pd.DataFrame([], columns=cols)
+        schedule.name = 'WeekSchedules'
+        return schedule
 
 
 def year_schedules(idfs, weekschedule=None):
@@ -660,8 +772,8 @@ def year_schedules(idfs, weekschedule=None):
     log('Initiating week_schedules...')
     schedule = object_from_idfs(idfs, 'SCHEDULE:YEAR',
                                 first_occurrence_only=False)
+    cols = settings.common_umi_objects['YearSchedules'].copy()
     if not schedule.empty:
-        cols = settings.common_umi_objects['YearSchedules']
 
         if weekschedule is not None:
             start_time = time.time()
@@ -677,7 +789,7 @@ def year_schedules(idfs, weekschedule=None):
                                       on=['Archetype', 'Schedules'])
                   .set_index(['Archetype', 'Name', 'level_2'])
                   .drop(['Category', 'Comments',
-                         'DataSource', 'Days', 'Type'],axis=1)
+                         'DataSource', 'Days', 'Type'], axis=1)
                   .unstack()
                   .apply(lambda x: year_composition(x), axis=1).rename('Parts'))
 
@@ -702,10 +814,14 @@ def year_schedules(idfs, weekschedule=None):
         cols.append('Archetype')
         log('Completed day_schedules in {:,.2f} seconds\n'.format(
             time.time() - origin_time))
-        return schedule[cols].set_index('$id')
+        schedule = schedule[cols].set_index('$id')
+        schedule.name = 'YearSchedules'
+        return schedule
     else:
         log('Returning Empty DataFrame', lg.WARNING)
-        return pd.DataFrame({'Year Schedules': []})
+        schedule = pd.DataFrame([], columns=cols)
+        schedule.name = 'YearSchedules'
+        return schedule
 
 
 def zone_loads(df):
@@ -776,7 +892,7 @@ def zone_ventilation(df):
                 lambda e: e['Fan Type {Exhaust;Intake;Natural}']
                 .str.contains('Natural'), :]
                 if not _nom_vent.empty else None)
-    _nom_natvent = _nom_vent # we can reuse _nom_vent
+    _nom_natvent = _nom_vent  # we can reuse _nom_vent
     nom_natvent = (_nom_natvent.reset_index().set_index(['Archetype',
                                                          'Zone Name']).loc[
                    lambda e: ~e['Fan Type {Exhaust;Intake;Natural}']
@@ -801,7 +917,7 @@ def zone_ventilation(df):
     log('{} groups in zone ventiliation aggregation'.format(len(df_g)))
     log('groups are:\n{}'.format(pformat(df_g.groups, indent=3)))
     df = df_g.apply(lambda x: zoneventilation_aggregation(
-            x.set_index(['Archetype', 'RowName'])))
+        x.set_index(['Archetype', 'RowName'])))
 
     return df
 
@@ -823,7 +939,8 @@ def zoneloads_aggregation(x):
 
     """
     area_m_ = [('Zones', 'Floor Area {m2}'),
-               ('Zones', 'Zone Multiplier')]  # Floor area and zone_loads multiplier
+               ('Zones',
+                'Zone Multiplier')]  # Floor area and zone_loads multiplier
     d = {('NominalLighting', 'weighted mean'):
              weighted_mean(x[('NominalLighting', 'Lights/Floor Area {W/m2}')],
                            x, area_m_),
@@ -840,7 +957,7 @@ def zoneloads_aggregation(x):
          ('NominalEquipment', 'weighted mean'):
              weighted_mean(
                  x[('NominalEquipment', 'Equipment/Floor Area {W/m2}')],
-                 x,area_m_),
+                 x, area_m_),
          ('NominalEquipment', 'top'):
              top(x[('NominalEquipment', 'Schedule Name')],
                  x, area_m_)
@@ -877,25 +994,28 @@ def zoneventilation_aggregation(df):
     # multiplier
 
     ach_ = safe_loc(df, ('NominalInfiltration',
-                        'ACH - Air Changes per Hour'))
+                         'ACH - Air Changes per Hour'))
     infil_schedule_name_ = safe_loc(df, ('NominalInfiltration',
-                                        'Schedule Name'))
+                                         'Schedule Name'))
     changes_per_hour_ = safe_loc(df, ('NominalScheduledVentilation',
-                                     'ACH - Air Changes per Hour'))
+                                      'ACH - Air Changes per Hour'))
     vent_schedule_name_ = safe_loc(df, ('NominalScheduledVentilation',
-                                       'Schedule Name'))
+                                        'Schedule Name'))
     vent_min_temp_ = safe_loc(df, ('NominalScheduledVentilation',
-                                  'Minimum Indoor Temperature{C}/Schedule'))
+                                   'Minimum Indoor Temperature{C}/Schedule'))
     natvent_ach_ = safe_loc(df, ('NominalNaturalVentilation',
-                                'ACH - Air Changes per Hour'))
+                                 'ACH - Air Changes per Hour'))
     natvent_schedule_name_ = safe_loc(df, ('NominalNaturalVentilation',
-                                          'Schedule Name'))
+                                           'Schedule Name'))
     natvent_max_temp_ = safe_loc(df, ('NominalNaturalVentilation',
-                                     'Maximum Outdoor Temperature{C}/Schedule'))
+                                      'Maximum Outdoor Temperature{'
+                                      'C}/Schedule'))
     natvent_minoutdoor_temp_ = safe_loc(df, ('NominalNaturalVentilation',
-                                            'Minimum Outdoor Temperature{C}/Schedule'))
+                                             'Minimum Outdoor Temperature{'
+                                             'C}/Schedule'))
     natvent_minindoor_temp_ = safe_loc(df, ('NominalNaturalVentilation',
-                                           'Minimum Indoor Temperature{C}/Schedule'))
+                                            'Minimum Indoor Temperature{'
+                                            'C}/Schedule'))
     d = {
         ('Infiltration', 'weighted mean {ACH}'): (
             weighted_mean(ach_, df, area_m_)),
@@ -941,7 +1061,9 @@ def nominal_lighting(df):
         df
 
     References:
-        * `NominalLighting Table <https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples/eplusout-sql.html#nominallighting-table>`_
+        * `NominalLighting Table
+        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and
+        -examples/eplusout-sql.html#nominallighting-table>`_
 
 
     """
@@ -971,7 +1093,9 @@ def nominal_people(df):
         df
 
     References:
-        * `NominalPeople Table <https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples/eplusout-sql.html#nominalpeople-table>`_
+        * `NominalPeople Table
+        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and
+        -examples/eplusout-sql.html#nominalpeople-table>`_
 
     """
     df = get_from_tabulardata(df)
@@ -997,7 +1121,9 @@ def nominal_equipment(df):
         df
 
     References:
-        * `NominalElectricEquipment Table <https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples/eplusout-sql.html#nominalelectricequipment-table>`_
+        * `NominalElectricEquipment Table
+        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and
+        -examples/eplusout-sql.html#nominalelectricequipment-table>`_
 
     """
     df = get_from_tabulardata(df)
@@ -1026,7 +1152,8 @@ def nominal_infiltration(df):
         df
 
     References:
-        * `<https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples/eplusout-sql.html#nominalinfiltration-table>`_
+        * `<https://bigladdersoftware.com/epx/docs/8-9/output-details-and
+        -examples/eplusout-sql.html#nominalinfiltration-table>`_
 
     """
     df = get_from_tabulardata(df)
@@ -1053,14 +1180,15 @@ def nominal_ventilation(df):
         df
 
     References:
-        * `<https://bigladdersoftware.com/epx/docs/8-9/output-details-and-examples/eplusout-sql.html#nominalinfiltration-table>`_
+        * `<https://bigladdersoftware.com/epx/docs/8-9/output-details-and
+        -examples/eplusout-sql.html#nominalinfiltration-table>`_
 
     """
     df = get_from_tabulardata(df)
     report_name = 'Initialization Summary'
     table_name = 'ZoneVentilation Airflow Stats Nominal'
     tbstr = df[(df.ReportName == report_name) &
-               (df.TableName == table_name)]\
+               (df.TableName == table_name)] \
         .reset_index()
     if tbstr.empty:
         log('Table {} does not exist. '
@@ -1075,7 +1203,7 @@ def nominal_ventilation(df):
         lambda x: pd.to_numeric(x, errors='ignore'))
     tbpiv = tbpiv.reset_index().groupby(['Archetype',
                                          'Zone Name',
-                                         'Fan Type {Exhaust;Intake;Natural}'])\
+                                         'Fan Type {Exhaust;Intake;Natural}']) \
         .apply(nominal_ventilation_aggregation)
     return tbpiv
     # .reset_index().groupby(['Archetype', 'Zone Name']).agg(
@@ -1083,7 +1211,8 @@ def nominal_ventilation(df):
 
 
 def nominal_lighting_aggregation(x):
-    """Aggregates the lighting equipments whithin a single zone_loads name (implies
+    """Aggregates the lighting equipments whithin a single zone_loads name (
+    implies
     that .groupby(['Archetype',
     'Zone Name']) is performed before calling this function).
 
@@ -1178,7 +1307,8 @@ def nominal_equipment_aggregation(x):
 
 
 def nominal_ventilation_aggregation(x):
-    """Aggregates the ventilations whithin a single zone_loads name (implies that
+    """Aggregates the ventilations whithin a single zone_loads name (implies
+    that
     .groupby(['Archetype', 'Zone Name']) is
     performed before calling this function).
 
@@ -1196,7 +1326,7 @@ def nominal_ventilation_aggregation(x):
                 'Zone Floor Area {m2}': top(x['Zone Floor Area {m2}'],
                                             x, 'Zone Floor Area {m2}'),
                 '# Zone Occupants': top(x['# Zone Occupants'],
-                                        x,  'Zone Floor Area {m2}'),
+                                        x, 'Zone Floor Area {m2}'),
                 'Design Volume Flow Rate {m3/s}': weighted_mean(
                     x['Design Volume Flow Rate {m3/s}'],
                     x, 'Zone Floor Area {m2}'),
@@ -1306,7 +1436,8 @@ def zone_information(df):
         df
 
     References:
-        * `<https://bigladdersoftware.com/epx/docs/8-3/output-details-and-examples/eplusout.eio.html#zone_loads-information>`_
+        * `<https://bigladdersoftware.com/epx/docs/8-3/output-details-and
+        -examples/eplusout.eio.html#zone_loads-information>`_
 
     """
     df = get_from_tabulardata(df)
@@ -1345,13 +1476,13 @@ def zoneconditioning_aggregation(x):
 
     d[('ZoneCooling', 'designday')] = \
         np.nanmean(x.loc[x[(
-        'ZoneCooling', 'Thermostat Setpoint Temperature at Peak Load')] > 0,
+            'ZoneCooling', 'Thermostat Setpoint Temperature at Peak Load')] > 0,
                          ('ZoneCooling',
                           'Thermostat Setpoint Temperature at Peak Load')])
 
     d[('ZoneHeating', 'designday')] = \
         np.nanmean(x.loc[x[(
-        'ZoneHeating', 'Thermostat Setpoint Temperature at Peak Load')] > 0,
+            'ZoneHeating', 'Thermostat Setpoint Temperature at Peak Load')] > 0,
                          ('ZoneHeating',
                           'Thermostat Setpoint Temperature at Peak Load')])
 
@@ -1454,9 +1585,9 @@ def zone_cop(df):
     df.rename(columns={'RowName': 'Zone Name', 'Value': 'System Name'},
               inplace=True)
     df.loc[:, 'COP Heating'] = \
-    df.join(d['Heating'], on=['Archetype', 'System Name'])['Value']
+        df.join(d['Heating'], on=['Archetype', 'System Name'])['Value']
     df.loc[:, 'COP Cooling'] = \
-    df.join(d['Cooling'], on=['Archetype', 'System Name'])['Value']
+        df.join(d['Cooling'], on=['Archetype', 'System Name'])['Value']
     df.drop(columns='Index', inplace=True)
     return df.groupby(['Archetype', 'Zone Name']).mean()
 
@@ -1498,7 +1629,8 @@ def zone_setpoint(df):
 
 
 def zone_conditioning(df):
-    """Aggregation of zone_loads conditioning parameters. Imports Zones, NominalPeople, COP, ZoneCooling and ZoneHeating.
+    """Aggregation of zone_loads conditioning parameters. Imports Zones,
+    NominalPeople, COP, ZoneCooling and ZoneHeating.
 
     Args:
         df (pandas.DataFrame): df
@@ -1509,7 +1641,8 @@ def zone_conditioning(df):
     Examples:
         .. doctest:: *
 
-            # >>> df = ar.run_eplus([./examples/zoneuncontrolled.idf], output_report='sql')
+            # >>> df = ar.run_eplus([./examples/zoneuncontrolled.idf],
+            # >>> output_report='sql')
             # >>> zone_conditioning(df)
 
     """
@@ -1517,12 +1650,12 @@ def zone_conditioning(df):
     # a new DF using pd.concat()
     d = {'Zones': zone_information(df).reset_index().set_index(
         ['Archetype', 'Zone Name']),
-         'NominalPeople': nominal_people(df).reset_index().set_index(
-             ['Archetype', 'Zone Name']),
-         'COP': zone_cop(df).reset_index().set_index(
-             ['Archetype', 'Zone Name']),
-         'ZoneCooling': zone_setpoint(df).loc[:, 'cooling'],
-         'ZoneHeating': zone_setpoint(df).loc[:, 'heating']}
+        'NominalPeople': nominal_people(df).reset_index().set_index(
+            ['Archetype', 'Zone Name']),
+        'COP': zone_cop(df).reset_index().set_index(
+            ['Archetype', 'Zone Name']),
+        'ZoneCooling': zone_setpoint(df).loc[:, 'cooling'],
+        'ZoneHeating': zone_setpoint(df).loc[:, 'heating']}
 
     df = (pd.concat(d, axis=1, keys=d.keys())
           .dropna(axis=0, how='all',
@@ -1543,3 +1676,11 @@ def zone_conditioning(df):
 
 def zone_conditioning_umi(df):
     pass
+
+
+def structure_definition(idf):
+    cols = settings.common_umi_objects['StructureDefinitions'].copy()
+    structure_definition_df = pd.DataFrame([], columns=cols)
+    structure_definition_df.set_index('$id', inplace=True)
+    structure_definition_df.name = 'StructureDefinitions'
+    return structure_definition_df

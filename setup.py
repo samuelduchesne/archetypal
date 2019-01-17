@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='archetypal',
-    version='1.0',
+    version='1.1',
     packages=['archetypal'],
     url='',
     license='MIT License',

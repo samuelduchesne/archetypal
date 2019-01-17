@@ -624,7 +624,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
                 raise
             else:
                 # update the versionid of the file
-                versionids[filename] = get_idf_version(filename, doted=False)
+                versionids[filename] = get_idf_version(filename, doted=True)
                 idd_filename[filename] = getiddfile(get_idf_version(filename,
                                                                     doted=True))
 
@@ -670,8 +670,8 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
             if not all(v is None for v in cached_run_results.values()):
                 # if not all cached results are none, at least one is found
                 log('Succesfully parsed cached results in '
-                    'parallel in {:,.2f} seconds'.format(
-                    time.time() - start_time))
+                    'parallel in {:,.2f} seconds'.format(time.time() -
+                                                         start_time))
         else:
             # if processors <= 1, raise ValueError which will pass to the
             # except bloc bellow
@@ -787,16 +787,18 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
                 log('\nRequired "sql output" object not in {}. '
                     'reruning with prep_outputs=True'.format(eplus_filename),
                     lg.WARNING)
-                shutil.rmtree(os.path.join(output_folder,
-                                           hash_file(eplus_file, **kwargs)))
-                reruns.append(eplus_file)
-
-        if len(reruns) > 0:
-            # run again with prep_outputs=True
-            reruns_found = run_eplus(reruns, weather_file, output_folder,
-                                     ep_version, output_report, processors,
-                                     prep_outputs=True, **kwargs)
-            runs_found.update(reruns_found)
+        # Todo: more robust way of rerunnning wwith expand objects = true
+        #
+        #         shutil.rmtree(os.path.join(output_folder,
+        #                                    hash_file(eplus_file, **kwargs)))
+        #         reruns.append(eplus_file)
+        #
+        # if len(reruns) > 0:
+        #     # run again with prep_outputs=True
+        #     reruns_found = run_eplus(reruns, weather_file, output_folder,
+        #                              ep_version, output_report, processors,
+        #                              prep_outputs=True, **kwargs)
+        #     runs_found.update(reruns_found)
         return runs_found
 
 

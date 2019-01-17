@@ -691,6 +691,20 @@ class EnergyPlusProcessError(Error):
         """Override that only returns the stderr"""
         msg = ':\n'.join([self.idf, self.stderr])
         return msg
+class cd:
+    """Context manager for changing the current working directory"""
+
+    def __init__(self, new_path):
+        self.newPath = os.path.expanduser(new_path)
+
+    def __enter__(self):
+        self.savedPath = os.getcwd()
+        os.chdir(self.newPath)
+
+    def __exit__(self, etype, value, traceback):
+        os.chdir(self.savedPath)
+
+
 def project_geom(geom: shapely.geometry, from_crs=None, to_crs=None,
                  to_latlon=False):
     """Projects a geometry to another coordinates system

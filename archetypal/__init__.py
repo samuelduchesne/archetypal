@@ -4,3 +4,4 @@ from .simple_glazing import *
 from .idf import *
 from .core import *
 from .dataportal import *
+from .plot import *

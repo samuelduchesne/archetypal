@@ -580,6 +580,11 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         expandobjects: Run ExpandObjects prior to simulation (default: False)
         readvars: Run ReadVarsESO after simulation (default: False)
     """
+    if os.path.isfile(weather_file):
+        pass
+    else:
+        raise FileNotFoundError('Could not find weather file: {}'.format(
+            weather_file))
     if isinstance(eplus_files, str):
         # Treat str as an array
         eplus_files = [eplus_files]

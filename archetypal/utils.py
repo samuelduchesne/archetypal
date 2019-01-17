@@ -691,6 +691,13 @@ class EnergyPlusProcessError(Error):
         """Override that only returns the stderr"""
         msg = ':\n'.join([self.idf, self.stderr])
         return msg
+
+
+class NoCRSDefinedError(Error):
+    def __init__(self, message):
+        self.message = message
+
+
 class cd:
     """Context manager for changing the current working directory"""
 

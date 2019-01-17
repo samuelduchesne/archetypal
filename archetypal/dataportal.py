@@ -578,13 +578,14 @@ def gis_server_raster_request(creds, bbox=None, how='intersects', srid=None,
             my_srid=srid,
             how=how)
 
-    # try to get results from cache
-    # cached_response_geojson = get_from_cache(sql)
+    # Todo: seek raster data from cache instead of from gis server
+    # # try to get results from cache
+    # cached_response = get_from_cache(sql)
     #
-    # if cached_response_geojson is not None:
+    # if cached_response is not None:
     #     # found this request in the cache, just return it instead of making a
     #     # new sql call. We need to load id usin json.loads though.
-    #     return gpd.GeoDataFrame.from_features(cached_response_geojson)
+    #     return gpd.GeoDataFrame.from_features(cached_response)
 
     # Use a virtual memory file, which is named like this
     vsipath = '/vsimem/from_postgis'
@@ -691,7 +692,8 @@ def gis_server_request(creds, bbox=None, how='intersects', srid=None):
                                      table_name, time.time() - start_time))
         if not gdf.empty:
             gdf_json = gdf.to_json()
-            save_to_cache(sql, json.loads(gdf_json))
+            save_to_cache(sql, json.loads(gdf_json))  # must load the json
+            # because because the save_to_cache handles to conversion
         else:
             log('No entries found. Check your parameters such as the bbox '
                 'coordinates and the CRS', lg.WARNING)

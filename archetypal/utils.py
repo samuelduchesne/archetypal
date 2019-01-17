@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import unicodedata
+from collections import OrderedDict
 from datetime import datetime, timedelta
 
 import geopandas as gpd
@@ -237,10 +238,9 @@ def get_list_of_common_umi_objects(filename):
         dict: Dict of common umi objects
     """
     umi_objects = load_umi_template(filename)
-    components = {}
+    components = OrderedDict()
     for umi_dict in umi_objects:
         for x in umi_dict:
-            #         print(umi_dict[x].columns.tolist())
             components[x] = umi_dict[x].columns.tolist()
     return components
 
@@ -263,9 +263,10 @@ def newrange(previous, following):
         to_index = from_index + len(following)
 
         following.index = np.arange(from_index, to_index)
-        return following.rename_axis('$id')
+        following.rename_axis('$id', inplace=True)
+        return following
     else:
-        # If privious dataframe is empty, return the orginal DataFrame
+        # If previous dataframe is empty, return the orginal DataFrame
         return following
 
 
@@ -344,7 +345,7 @@ def layer_composition(row):
     """
     Takes in a series with $id and thickness values and return an array of
     dict of the form
-    {'Material': {'$ref': ref, 'thickness': thickness}}
+    {'Material': {'$ref': ref}, 'thickness': thickness}
     If thickness is 'nan', it returns None.
 
     Args:
@@ -359,7 +360,8 @@ def layer_composition(row):
     if np.isnan(ref):
         pass
     else:
-        array.append({'Material': {'$ref': ref, 'thickness': thickness}})
+        array.append({'Material': {'$ref': str(int(ref))},
+                      'Thickness': thickness})
         for i in range(2, len(row['$id']) + 1):
             ref = row['$id', 'Layer_{}'.format(i)]
             if np.isnan(ref):
@@ -367,7 +369,8 @@ def layer_composition(row):
             else:
                 thickness = row['Thickness', 'Layer_{}'.format(i)]
                 array.append(
-                    {'Material': {'$ref': ref, 'thickness': thickness}})
+                    {'Material': {'$ref': str(int(ref))},
+                     'Thickness': thickness})
         return array
 
 
@@ -444,7 +447,7 @@ def schedule_composition(row):
         except:
             pass
         else:
-            day_schedules.append({'$ref': ref})
+            day_schedules.append({'$ref': str(int(ref))})
     return day_schedules
 
 
@@ -477,7 +480,7 @@ def year_composition(row):
 
                 parts.append({'FromDay': fromday,
                               'FromMonth': frommonth,
-                              'Schedule': {'$ref': int(ref)},
+                              'Schedule': {'$ref': str(int(ref))},
                               'ToDay': today,
                               'ToMonth': tomonth})
     return parts

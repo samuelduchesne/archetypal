@@ -1,5 +1,6 @@
 import os
 import time
+
 import numpy as np
 import matplotlib.pyplot as plt
 import osmnx as ox
@@ -285,3 +286,35 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
         plt.close()
 
     return fig, ax
+
+
+def plot_dhmin(model, axis_off=True):
+    """ Plot power flows for model.
+
+    """
+    import dhmin
+
+    power_flows = dhmin.get_entities(model, ['Pin', 'Pot'])
+    power_flows_grouped = power_flows.groupby(level='timesteps')
+
+    power_input = dhmin.get_entity(model, 'Q')
+    power_input_grouped = power_input.groupby(level='timesteps')
+
+    for i, (name, group) in enumerate(power_flows_grouped):
+        fig, ax = plt.subplots()
+        plot_edges = model.edges.copy()
+        plot_edges = plot_edges.join(group.reset_index(level=2),
+                                       on=['Vertex1', 'Vertex2'])
+        plot_edges.plot(column='Pin', cmap='OrRd', ax=ax, vmin=1)
+
+        Q = power_input_grouped.get_group(name)['Q']
+        plot_nodes = model.vertices.copy()
+        plot_nodes = plot_nodes.join(Q.reset_index(level=1))
+
+        msizes = [20 if m > 0 else 0 for m in plot_nodes['Q']]
+        plot_nodes.plot(column='Q', cmap='OrRd', ax=ax, markersize=msizes,
+                        vmin=0)
+
+        if axis_off:
+            ax.axis('off')
+        fig.show()

@@ -5,6 +5,7 @@ import shutil
 import pytest
 
 import archetypal as ar
+import osmnx as ox
 
 
 @pytest.fixture(scope='session')
@@ -53,6 +54,16 @@ def config():
               data_folder='.temp/data', logs_folder='.temp/logs',
               imgs_folder='.temp/imgs', cache_folder='.temp/cache',
               umitemplate='../data/BostonTemplateLibrary.json')
+
+
+@pytest.fixture()
+def ox_config(config):
+    ox.config(log_console=ar.settings.log_console, log_file=ar.settings.log_file,
+              use_cache=ar.settings.use_cache,
+              data_folder=ar.settings.data_folder, logs_folder=ar.settings.logs_folder,
+              imgs_folder=ar.settings.imgs_folder,
+              cache_folder=ar.settings.cache_folder,
+              log_name=ar.settings.log_name)
 
 
 # List fixtures that are located outiside of conftest.py so that they can be

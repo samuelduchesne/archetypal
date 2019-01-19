@@ -93,3 +93,5 @@ notebooks/
 _build/
 
 tests/\.temp/
+
+*.lp

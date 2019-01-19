@@ -13,7 +13,12 @@ import archetypal as ar
 def test_dhmin(ox_config):
     bbox = Polygon(((-73.580147, 45.509472), (-73.551007, 45.509472),
                     (-73.551007, 45.488723), (-73.580147, 45.488723),
-                    (-73.580147, 45.509472))).buffer(-0.009)
+                    (-73.580147, 45.509472)))
+    bbox = ar.project_geom(bbox, from_crs={'init': 'epsg:4326'},
+                           to_crs={'init': 'epsg:2950'})
+    bbox = bbox.buffer(-800)
+    bbox = ar.project_geom(bbox, to_crs={'init': 'epsg:4326'},
+                           from_crs={'init': 'epsg:2950'})
     west, south, east, north = bbox.bounds
     G = ox.graph_from_bbox(north, south, east, west, simplify=False,
                            truncate_by_edge=False, retain_all=False,

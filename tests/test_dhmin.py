@@ -1,9 +1,11 @@
 import os
 import random
-
-import dhmin as dh
+import logging as lg
 import osmnx as ox
+import dhmin
+import numpy as np
 import pyomo.environ
+from archetypal import save_model_to_cache, load_model_from_cache
 from pyomo.opt import SolverFactory
 from shapely.geometry import Polygon
 import networkx as nx
@@ -63,36 +65,56 @@ def test_dhmin(ox_config):
     ox.plot_graph(G2, annotate=True, show=True)
 
     # let's create 5 random plants and give them properties
-    plants = nodes.sample(n=5).index
+    seed = 1
+    rdstate = np.random.RandomState(seed=seed)
+    plants = nodes.sample(n=5, random_state=rdstate).index
     nodes.loc[plants, 'init'] = 1
     nodes.loc[plants, 'c_heatvar'] = 0.035
     nodes.loc[plants, 'c_heatfix'] = 0
     nodes.loc[plants, 'capacity'] = 300
 
-    # let's pretend edges have these values
-    num = random.randint(-250, 250)  # random peak demand
     edges['pipe_exist'] = 0
     edges['must_build'] = 0
-    edges['peak'] = edges.apply(lambda x: randon_peak(), axis=1)
+    edges['peak'] = edges.apply(lambda x: randon_peak(rdstate), axis=1)
     edges['cnct_quota'] = 1
     edges['cap_max'] = 1000
 
     # create provblem
     params = {'r_heat': 0.07}
     timesteps = [(1600, .8), (1040, .5), (1800, 0.2)]
-    prob = dh.create_model(nodes, edges, params, timesteps)
 
-    optim = SolverFactory('gurobi')
-    outputfile = os.path.join(ar.settings.data_folder, 'rundh.lp')
-    if not os.path.isdir(ar.settings.data_folder):
-        os.makedirs(ar.settings.data_folder)
-    prob.write(outputfile, io_options={'symbolic_solver_labels': True})
-    result = optim.solve(prob, tee=True)
-    prob.solutions.load_from(result)
+    # try to load problem from cache
+    cached_model = load_model_from_cache(nodes, edges, params, timesteps)
+    if not cached_model:
+        prob = dhmin.create_model(nodes, edges, params, timesteps)
+
+        # Choose the solver
+        optim = SolverFactory('gurobi')
+
+        # Create readable output file
+        outputfile = os.path.join(ar.settings.data_folder, 'rundh.lp')
+        if not os.path.isdir(ar.settings.data_folder):
+            os.makedirs(ar.settings.data_folder)
+        prob.write(outputfile, io_options={'symbolic_solver_labels': True})
+
+        # get logger to writer solver log to logger
+        logger = lg.getLogger(ar.settings.log_name).handlers[0].baseFilename
+
+        # solve and load results back into the model
+        result = optim.solve(prob, tee=True, logfile=logger)
+        prob.solutions.load_from(result)
+
+        # save the model to cache
+        save_model_to_cache(prob)
+    else:
+        prob = cached_model
+    # plot results
     ar.plot_dhmin(prob)
 
 
-def randon_peak():
+def randon_peak(seed=None):
     """Creates random positive numbers; 2x more in the positive"""
-    num = random.randint(-250, 250)
+    if not seed:
+        seed = np.random.RandomState(seed=seed)
+    num = seed.randint(-250, 250)
     return num if num > 0 else 0

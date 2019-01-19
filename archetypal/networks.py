@@ -1,8 +1,12 @@
+import hashlib
+import os
+import time
+
 import networkx as nx
 from shapely.geometry import LineString, Point
 import numpy as np
 
-from archetypal import project_geom
+from archetypal import project_geom, settings, log
 
 
 def clean_paralleledges_and_selfloops(G):
@@ -40,7 +44,7 @@ def clean_paralleledges_and_selfloops(G):
 def cut(line, distance):
     """Cuts a line in two at a distance from its starting point"""
     if distance <= 0.0 or distance >= line.length:
-        return LineString(line), _, _
+        return LineString(line), None, None
     coords = list(line.coords)
     for i, p in enumerate(coords):
         pd = line.project(Point(p))
@@ -51,3 +55,75 @@ def cut(line, distance):
             cp = line.interpolate(distance)
             return LineString(coords[:i] + [(cp.x, cp.y)]),\
                    LineString([(cp.x, cp.y)] + coords[i:]), Point(p)
+
+
+def save_model_to_cache(prob):
+    """Pickle is the standard Python way of serializing and de-serializing
+    Python objects. By using it, saving any object, in case of this function a
+    Pyomo ConcreteModel, becomes a twoliner. GZip is a standard Python
+    compression library that is used to transparently compress the pickle
+    file further. It is used over the possibly more compact bzip2 compression
+    due to the
+    lower runtime.
+
+    Args:
+        prob (pyomo.ConcreteModel): the model
+
+    Returns:
+
+    """
+    if settings.use_cache:
+        if prob is None:
+            log('Saved nothing to cache because model is None')
+        else:
+
+            # create the folder on the disk if it doesn't already exist
+            if not os.path.exists(settings.cache_folder):
+                os.makedirs(settings.cache_folder)
+
+            # hash the model (to make a unique filename)
+            filename = hash_model(prob.vertices, prob.edges, prob.params,
+                                  prob.timesteps)
+
+            cache_path_filename = os.path.join(settings.cache_folder,
+                                               os.extsep.join(
+                                                   [filename, 'gzip']))
+            import gzip
+            try:
+                import cPickle as pickle
+            except ImportError:
+                import pickle
+            start_time = time.time()
+            with gzip.GzipFile(cache_path_filename, 'wb') as file_handle:
+                pickle.dump(prob, file_handle)
+            log('Saved pickle to file in {:,.2f} seconds'.format(
+                time.time() - start_time))
+
+
+def load_model_from_cache(nodes, edges, params, timesteps):
+    if settings.use_cache:
+        cache_filename = hash_model(nodes, edges, params, timesteps)
+        cache_fullpath_filename = os.path.join(settings.cache_folder,
+                                               os.extsep.join([
+                                                   cache_filename, 'gzip']))
+        if os.path.isfile(cache_fullpath_filename):
+            import gzip
+            try:
+                import cPickle as pickle
+            except ImportError:
+                import pickle
+            with gzip.GzipFile(cache_fullpath_filename, 'r') as file_handle:
+                prob = pickle.load(file_handle)
+            log('Retreived problem "{name}"from cache'.format(name=prob.name))
+            return prob
+
+
+def hash_model(nodes, edges, params, timesteps):
+    hasher = hashlib.md5()
+
+    hasher.update(nodes.__str__().encode('utf-8'))
+    hasher.update(edges.__str__().encode('utf-8'))
+    hasher.update(params.__str__().encode('utf-8'))
+    hasher.update(timesteps.__str__().encode('utf-8'))
+
+    return hasher.hexdigest()

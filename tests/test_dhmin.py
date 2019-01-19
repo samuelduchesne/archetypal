@@ -6,7 +6,7 @@ import osmnx as ox
 import pyomo.environ
 from pyomo.opt import SolverFactory
 from shapely.geometry import Polygon
-
+import networkx as nx
 import archetypal as ar
 
 
@@ -16,7 +16,7 @@ def test_dhmin(ox_config):
                     (-73.580147, 45.509472)))
     bbox = ar.project_geom(bbox, from_crs={'init': 'epsg:4326'},
                            to_crs={'init': 'epsg:2950'})
-    bbox = bbox.buffer(-800)
+    bbox = bbox.buffer(-900)
     bbox = ar.project_geom(bbox, to_crs={'init': 'epsg:4326'},
                            from_crs={'init': 'epsg:2950'})
     west, south, east, north = bbox.bounds
@@ -26,26 +26,32 @@ def test_dhmin(ox_config):
     # simplify network with strict mode turned off
     G = ox.simplify_graph(G, strict=True)
     G = ox.project_graph(G, to_crs={'init': 'epsg:2950'})
-    G2 = ox.get_undirected(G)  # Get the undirected graph since we don't want
-    # symmetry yet. We will create it with dhmin
-    ox.plot_graph(G2, annotate=False)
 
+    # G2 = nx.disjoint_union(G, nx.reverse(G))
+
+    G = ox.get_undirected(G)  # Get the undirected graph since we don't want
+    # symmetry yet. We will create it with dhmin
+
+    ec = ['b' if key == 0 else 'r' for u, v, key in G.edges(keys=True)]
+    ox.plot_graph(G, node_color='w', node_edgecolor='k', node_size=20,
+                  node_zorder=3, edge_color=ec, edge_linewidth=2)
+    G2 = ar.clean_paralleledges_and_selfloops(G)
     ec = ['b' if key == 0 else 'r' for u, v, key in G2.edges(keys=True)]
     ox.plot_graph(G2, node_color='w', node_edgecolor='k', node_size=20,
                   node_zorder=3, edge_color=ec, edge_linewidth=2)
 
     # Drop parallel edges and selfloops
-    paralel = [(u, v) for u, v, key in G2.edges(keys=True) if key != 0]
-    [G2.remove_edge(*key) for key in paralel]
+    # paralel = [(u, v) for u, v, key in G2.edges(keys=True) if key != 0]
+    # [G2.remove_edge(*key) for key in paralel]
     self_loops = [(u, v) for u, v in G2.selfloop_edges()]
-    [G2.remove_edge(*key) for key in self_loops]
-
-    ec = ['b' if key == 0 else 'r' for u, v, key in G2.edges(keys=True)]
+    ec = ['r' if (u, v) in self_loops else 'b' for u, v, key in G2.edges(
+        keys=True)]
     ox.plot_graph(G2, node_color='w', node_edgecolor='k', node_size=20,
                   node_zorder=3, edge_color=ec, edge_linewidth=2)
+
     nodes, edges = ox.graph_to_gdfs(G2, node_geometry=True,
                                     fill_edge_geometry=True)
-    edges.set_index(['from', 'to'], inplace=True)
+    edges.set_index(['u', 'v'], inplace=True)
     edges.index.names = ['Vertex1', 'Vertex2']
 
     # init, c_heatvar, c_heatfix

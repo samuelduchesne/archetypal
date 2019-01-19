@@ -1,0 +1,3 @@
+[submodule "dhmin"]
+	path = dhmin
+	url = https://github.com/samuelduchesne/dhmin.git

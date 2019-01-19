@@ -16,7 +16,7 @@ def test_dhmin(ox_config):
                     (-73.580147, 45.509472)))
     bbox = ar.project_geom(bbox, from_crs={'init': 'epsg:4326'},
                            to_crs={'init': 'epsg:2950'})
-    bbox = bbox.buffer(-900)
+    bbox = bbox.buffer(-1000)
     bbox = ar.project_geom(bbox, to_crs={'init': 'epsg:4326'},
                            from_crs={'init': 'epsg:2950'})
     west, south, east, north = bbox.bounds

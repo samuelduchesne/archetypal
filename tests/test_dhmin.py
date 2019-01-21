@@ -67,11 +67,11 @@ def test_dhmin(ox_config):
     # let's create 5 random plants and give them properties
     seed = 1
     rdstate = np.random.RandomState(seed=seed)
-    plants = nodes.sample(n=5, random_state=rdstate).index
+    plants = nodes.sample(n=3, random_state=rdstate).index
     nodes.loc[plants, 'init'] = 1
     nodes.loc[plants, 'c_heatvar'] = 0.035
     nodes.loc[plants, 'c_heatfix'] = 0
-    nodes.loc[plants, 'capacity'] = 300
+    nodes.loc[plants, 'capacity'] = 500
 
     edges['pipe_exist'] = 0
     edges['must_build'] = 0
@@ -81,12 +81,17 @@ def test_dhmin(ox_config):
 
     # create provblem
     params = {'r_heat': 0.07}
-    timesteps = [(1600, .8), (1040, .5), (1800, 0.2)]
+    timesteps = [(1600, .8), (1040, .5)]
+
+    # create fake duration, scaling factor with same as timstep (could be
+    # customized)
+    edge_profiles = edges.apply(lambda x: timesteps, axis=1)
 
     # try to load problem from cache
     cached_model = load_model_from_cache(nodes, edges, params, timesteps)
     if not cached_model:
-        prob = dhmin.create_model(nodes, edges, params, timesteps)
+        prob = dhmin.create_model(nodes, edges, params,
+                                  timesteps, edge_profiles, 'test')
 
         # Choose the solver
         optim = SolverFactory('gurobi')

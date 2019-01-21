@@ -42,4 +42,39 @@ def test_density(config, axis_off):
                 crs={'init': 'epsg:4326'}, file_format='pdf')
 
 
+def test_plot_c40():
+    # Create credentials
+    from shapely.geometry import Polygon
+    cred = {'username': 'samueld',
+            'password': 'sdsd',
+            'server': 'comsolator.meca.polymtl.ca',
+            'db_name': 'postgis_mtl',
+            'schema': 'donneesouvertesmtl',
+            'table_name': 'uniteevaluationfonciere_latest'}
+
+    # create a bounding box polygon
+    bbox = Polygon(((-73.558803, 45.49781), (-73.548325, 45.49781),
+                    (-73.548325, 45.490073), (-73.558803, 45.490073),
+                    (-73.558803, 45.49781)))
+
+    # Project the polygon coordinates to epsg:2950 coordinates
+    from functools import partial
+    import pyproj
+    from shapely.ops import transform
+
+    project = partial(
+        pyproj.transform,
+        pyproj.Proj(init='epsg:4326'),  # source coordinate system
+        pyproj.Proj(init='epsg:2950'))  # destination coordinate system
+
+    bbox = transform(project, bbox)  # apply projection
+    gdf = ar.dataportal.gis_server_request(cred, bbox, srid=2950)
+    west, south, east, north = ar.project_geom(bbox,
+                                               from_crs={'init': 'epsg:2950'},
+                                               to_latlon=True).bounds
+    fig, ax = ar.plot_map(gdf, column='code_utilisation', plot_graph=True,
+                          bbox=(north, south, east, west),
+                          crs={'init': 'epsg:2950'}, show=True)
+
+
 

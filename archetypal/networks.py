@@ -31,8 +31,10 @@ def clean_paralleledges_and_selfloops(G):
                                       lat=lat, lon=lon, osmid=v2, x=x, y=y)
                     # remove that edge and replace with two edged
                     G2.remove_edge(u, v, key)
-                    G2.add_edges_from([(u, v2, {'geometry': line1}),
-                                       (v2, v, {'geometry': line2})])
+                    G2.add_edges_from([(u, v2, {'geometry': line1,
+                                                'length': line1.length}),
+                                       (v2, v, {'geometry': line2,
+                                                'length': line2.length})])
             else:
                 G2.add_edge(u, v, key)
 

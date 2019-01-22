@@ -40,7 +40,8 @@ def test_dhmin(ox_config):
     G2 = ar.clean_paralleledges_and_selfloops(G)
     ec = ['b' if key == 0 else 'r' for u, v, key in G2.edges(keys=True)]
     ox.plot_graph(G2, node_color='w', node_edgecolor='k', node_size=20,
-                  node_zorder=3, edge_color=ec, edge_linewidth=2)
+                  save=True, node_zorder=3, edge_color=ec, edge_linewidth=2,
+                  annotate=True)
 
     # Drop parallel edges and selfloops
     # paralel = [(u, v) for u, v, key in G2.edges(keys=True) if key != 0]
@@ -48,8 +49,12 @@ def test_dhmin(ox_config):
     self_loops = [(u, v) for u, v in G2.selfloop_edges()]
     ec = ['r' if (u, v) in self_loops else 'b' for u, v, key in G2.edges(
         keys=True)]
-    ox.plot_graph(G2, node_color='w', node_edgecolor='k', node_size=20,
-                  node_zorder=3, edge_color=ec, edge_linewidth=2)
+    ec = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+             for i in G2.edges]
+    nc = ['r' if node > 9999999999 else 'b' for node in G2.nodes]
+    ox.plot_graph(G2, node_color=nc, node_edgecolor='k', node_size=20,
+                  save=True, node_zorder=3, edge_color=ec, edge_linewidth=2,
+                  annotate=True)
 
     nodes, edges = ox.graph_to_gdfs(G2, node_geometry=True,
                                     fill_edge_geometry=True)
@@ -65,9 +70,9 @@ def test_dhmin(ox_config):
     ox.plot_graph(G2, annotate=True, show=True)
 
     # let's create 5 random plants and give them properties
-    seed = 1
+    seed = 2
     rdstate = np.random.RandomState(seed=seed)
-    plants = nodes.sample(n=3, random_state=rdstate).index
+    plants = nodes.sample(n=5, random_state=rdstate).index
     nodes.loc[plants, 'init'] = 1
     nodes.loc[plants, 'c_heatvar'] = 0.035
     nodes.loc[plants, 'c_heatfix'] = 0
@@ -114,7 +119,7 @@ def test_dhmin(ox_config):
     else:
         prob = cached_model
     # plot results
-    ar.plot_dhmin(prob)
+    ar.plot_dhmin(prob, plot_demand=True, margin=0.05, show=False, save=True)
 
 
 def randon_peak(seed=None):
@@ -123,3 +128,8 @@ def randon_peak(seed=None):
         seed = np.random.RandomState(seed=seed)
     num = seed.randint(-250, 250)
     return num if num > 0 else 0
+
+def random_color():
+    rgbl=[0.1,0,0]
+    random.shuffle(rgbl)
+    return tuple(rgbl)

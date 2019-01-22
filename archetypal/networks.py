@@ -130,6 +130,6 @@ def hash_model(nodes, edges, params, timesteps):
     hasher.update(nodes.__str__().encode('utf-8'))
     hasher.update(edges.__str__().encode('utf-8'))
     hasher.update(params.__str__().encode('utf-8'))
-    hasher.update(timesteps.__str__().encode('utf-8'))
+    # hasher.update(timesteps.__str__().encode('utf-8'))
 
     return hasher.hexdigest()

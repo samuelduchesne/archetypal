@@ -13,6 +13,7 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
              fig_width=None, margin=0.02, equal_aspect=False, plot_graph=True,
              save=False, show=True, close=True, axis_off=True,
              file_format='png', filename='temp', dpi=300, annotate=False,
+             fig_title=None,
              **kwargs):
     """Plot a GeoDataFrame of geometry features.
 
@@ -215,6 +216,9 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         yaxis.set_visible(False)
         fig.canvas.draw()
 
+    if fig_title is not None:
+        ax.set_title(fig_title)
+
     fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
                             close=close, filename=filename,
                             file_format=file_format, dpi=dpi,
@@ -288,11 +292,44 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
     return fig, ax
 
 
-def plot_dhmin(model, axis_off=True):
+def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
+               show=True, save=False, close=False, dpi=300, file_format='png',
+               fig_title=True):
     """ Plot power flows for model.
+
+    Args:
+        fig_title:
+        plot_demand:
 
     """
     import dhmin
+
+    if bbox is None:
+        bbox = model.edges.geometry.total_bounds
+        bbox = box(*bbox)
+        # bbox = project_geom(bbox, from_crs={'init': 'epsg:2950'},
+        #                     to_latlon=True)
+        west, south, east, north = bbox.bounds
+    else:
+        west, south, east, north = bbox
+
+    if plot_demand:
+        plot_edges = model.edges.copy()
+        plot_edges = plot_edges.loc[lambda x: x['peak'] > 0, :]
+        filename = 'Timestep_Pmax'
+        fig, ax = plot_map(plot_edges, bbox=(north, south, east, west),
+                           column='peak', plot_graph=False, show=False,
+                           cmap='viridis', margin=margin, close=False,
+                           axis_off=axis_off, save=False,
+                           filename=filename, fig_title=fig_title)
+        # plot original street netowork behind the dh network
+        model.edges.plot(ax=ax, linewidth=0.1, zorder=-1, color='grey')
+        # plot_edges.plot(column='peak', cmap='viridis', ax=ax, vmin=1)
+        if fig_title:
+            ax.set_title('Peak demand on edges')
+        save_and_show(fig=fig, ax=ax, save=save, show=show, close=False,
+                      filename=filename, file_format=file_format,
+                      dpi=dpi, axis_off=axis_off)
 
     power_flows = dhmin.get_entities(model, ['Pin', 'Pot'])
     power_flows_grouped = power_flows.groupby(level='timesteps')
@@ -301,20 +338,26 @@ def plot_dhmin(model, axis_off=True):
     power_input_grouped = power_input.groupby(level='timesteps')
 
     for i, (name, group) in enumerate(power_flows_grouped):
-        fig, ax = plt.subplots()
         plot_edges = model.edges.copy()
         plot_edges = plot_edges.join(group.reset_index(level=2),
                                        on=['Vertex1', 'Vertex2'])
-        plot_edges.plot(column='Pin', cmap='OrRd', ax=ax, vmin=1)
+        plot_edges = plot_edges.loc[lambda x: x['Pin'] > 0, :]
+        fig, ax = plot_map(plot_edges, bbox=(north, south, east, west),
+                           column='Pin', plot_graph=False, show=False,
+                           cmap='viridis', margin=margin,
+                           axis_off=axis_off, save=False, close=False,
+                           filename='Timestep_{}'.format(name))
 
         Q = power_input_grouped.get_group(name)['Q']
         plot_nodes = model.vertices.copy()
         plot_nodes = plot_nodes.join(Q.reset_index(level=1))
 
-        msizes = [20 if m > 0 else 0 for m in plot_nodes['Q']]
+        msizes = [30 if m > 0 else 0 for m in plot_nodes['Q']]
         plot_nodes.plot(column='Q', cmap='OrRd', ax=ax, markersize=msizes,
-                        vmin=0)
-
-        if axis_off:
-            ax.axis('off')
-        fig.show()
+                        vmin=1, zorder=3)
+        filename = 'Timestep_{}'.format(name)
+        if fig_title:
+            ax.set_title(filename)
+        save_and_show(fig=fig, ax=ax, save=save, show=show, close=close,
+                      filename=filename, file_format=file_format,
+                      dpi=dpi, axis_off=axis_off)

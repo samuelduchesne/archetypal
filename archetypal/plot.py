@@ -219,18 +219,18 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
     if fig_title is not None:
         ax.set_title(fig_title)
 
-    fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
-                            close=close, filename=filename,
-                            file_format=file_format, dpi=dpi,
-                            axis_off=axis_off)
+    fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show, close=close,
+                            filename=filename, file_format=file_format, dpi=dpi,
+                            axis_off=axis_off, extent=None)
     return fig, ax
 
 
 def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
-                  axis_off):
+                  axis_off, extent):
     """Save a figure to disk and show it, as specified.
 
     Args:
+        extent:
         fig (figure):
         ax (axis):
         save (bool): whether to save the figure to disk or not
@@ -266,13 +266,14 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
             fig.savefig(path_filename, bbox_inches=0, format=file_format,
                         facecolor=fig.get_facecolor(), transparent=True)
         else:
-            if axis_off:
-                # if axis is turned off, constrain the saved figure's extent to
-                # the interior of the axis
-                extent = ax.get_window_extent().transformed(
-                    fig.dpi_scale_trans.inverted())
-            else:
-                extent = 'tight'
+            if extent is None:
+                if axis_off:
+                    # if axis is turned off, constrain the saved figure's extent to
+                    # the interior of the axis
+                    extent = ax.get_window_extent().transformed(
+                        fig.dpi_scale_trans.inverted())
+                else:
+                    extent = 'tight'
             fig.savefig(path_filename, dpi=dpi, bbox_inches=extent,
                         format=file_format, facecolor=fig.get_facecolor(),
                         transparent=True)
@@ -294,12 +295,26 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
 
 def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
                show=True, save=False, close=False, dpi=300, file_format='png',
-               fig_title=True):
-    """ Plot power flows for model.
+               fig_title=None, extent=None, legend=False):
+    """Plot power flows for model.
 
     Args:
-        fig_title:
+        model:
+        axis_off:
         plot_demand:
+        bbox:
+        margin:
+        show:
+        save:
+        close:
+        dpi:
+        file_format:
+        fig_title:
+        none:
+        extent:
+        legend:
+
+    Returns:
 
     """
     import dhmin
@@ -314,22 +329,22 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
         west, south, east, north = bbox
 
     if plot_demand:
+        # create a sperate figure with the original plotted demand
         plot_edges = model.edges.copy()
         plot_edges = plot_edges.loc[lambda x: x['peak'] > 0, :]
-        filename = 'Timestep_Pmax'
+        filename = '{}_original_peal_demand_on_edges'.format(model.name)
         fig, ax = plot_map(plot_edges, bbox=(north, south, east, west),
                            column='peak', plot_graph=False, show=False,
-                           cmap='viridis', margin=margin, close=False,
+                           cmap='magma', margin=margin, close=False,
                            axis_off=axis_off, save=False,
-                           filename=filename, fig_title=fig_title)
+                           fig_title='Original Peak Demand on Edges',
+                           legend=legend)
         # plot original street netowork behind the dh network
         model.edges.plot(ax=ax, linewidth=0.1, zorder=-1, color='grey')
         # plot_edges.plot(column='peak', cmap='viridis', ax=ax, vmin=1)
-        if fig_title:
-            ax.set_title('Peak demand on edges')
         save_and_show(fig=fig, ax=ax, save=save, show=show, close=False,
-                      filename=filename, file_format=file_format,
-                      dpi=dpi, axis_off=axis_off)
+                      filename=filename, file_format=file_format, dpi=dpi,
+                      axis_off=axis_off, extent=extent)
 
     power_flows = dhmin.get_entities(model, ['Pin', 'Pot'])
     power_flows_grouped = power_flows.groupby(level='timesteps')
@@ -355,9 +370,9 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
         msizes = [30 if m > 0 else 0 for m in plot_nodes['Q']]
         plot_nodes.plot(column='Q', cmap='OrRd', ax=ax, markersize=msizes,
                         vmin=1, zorder=3)
-        filename = 'Timestep_{}'.format(name)
+        filename = '{}_Timestep_{}'.format(model.name, name)
         if fig_title:
             ax.set_title(filename)
         save_and_show(fig=fig, ax=ax, save=save, show=show, close=close,
-                      filename=filename, file_format=file_format,
-                      dpi=dpi, axis_off=axis_off)
+                      filename=filename, file_format=file_format, dpi=dpi,
+                      axis_off=axis_off, extent=extent)

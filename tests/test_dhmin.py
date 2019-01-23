@@ -1,6 +1,8 @@
 import os
 import random
 import logging as lg
+import shutil
+
 import osmnx as ox
 import dhmin
 import numpy as np
@@ -13,12 +15,16 @@ import archetypal as ar
 
 
 def test_dhmin(ox_config):
+
+    if os.path.isdir('./.temp/imgs'):
+        shutil.rmtree('./.temp/imgs')
+
     bbox = Polygon(((-73.580147, 45.509472), (-73.551007, 45.509472),
                     (-73.551007, 45.488723), (-73.580147, 45.488723),
                     (-73.580147, 45.509472)))
     bbox = ar.project_geom(bbox, from_crs={'init': 'epsg:4326'},
                            to_crs={'init': 'epsg:2950'})
-    bbox = bbox.buffer(-1000)
+    bbox = bbox.buffer(-1050)
     bbox = ar.project_geom(bbox, to_crs={'init': 'epsg:4326'},
                            from_crs={'init': 'epsg:2950'})
     west, south, east, north = bbox.bounds
@@ -30,8 +36,8 @@ def test_dhmin(ox_config):
     G = ox.project_graph(G, to_crs={'init': 'epsg:2950'})
 
     # G2 = nx.disjoint_union(G, nx.reverse(G))
-
     G = ox.get_undirected(G)  # Get the undirected graph since we don't want
+    nx.is_connected(G)
     # symmetry yet. We will create it with dhmin
 
     ec = ['b' if key == 0 else 'r' for u, v, key in G.edges(keys=True)]
@@ -54,7 +60,7 @@ def test_dhmin(ox_config):
     nc = ['r' if node > 9999999999 else 'b' for node in G2.nodes]
     ox.plot_graph(G2, node_color=nc, node_edgecolor='k', node_size=20,
                   save=True, node_zorder=3, edge_color=ec, edge_linewidth=2,
-                  annotate=True)
+                  annotate=True, filename='fixed_nodes')
 
     nodes, edges = ox.graph_to_gdfs(G2, node_geometry=True,
                                     fill_edge_geometry=True)
@@ -96,7 +102,8 @@ def test_dhmin(ox_config):
     cached_model = load_model_from_cache(nodes, edges, params, timesteps)
     if not cached_model:
         prob = dhmin.create_model(nodes, edges, params,
-                                  timesteps, edge_profiles, 'test')
+                                  timesteps, edge_profiles, 'test',
+                                  is_connected=False)
 
         # Choose the solver
         optim = SolverFactory('gurobi')
@@ -119,7 +126,8 @@ def test_dhmin(ox_config):
     else:
         prob = cached_model
     # plot results
-    ar.plot_dhmin(prob, plot_demand=True, margin=0.05, show=False, save=True)
+    ar.plot_dhmin(prob, plot_demand=True, margin=0.2, show=False, save=True,
+                  extent='tight', legend=True)
 
 
 def randon_peak(seed=None):
@@ -127,9 +135,10 @@ def randon_peak(seed=None):
     if not seed:
         seed = np.random.RandomState(seed=seed)
     num = seed.randint(-250, 250)
-    return num if num > 0 else 0
+    return num if num > 50 else 0
+
 
 def random_color():
-    rgbl=[0.1,0,0]
+    rgbl=[0.1, 0, 0]
     random.shuffle(rgbl)
     return tuple(rgbl)

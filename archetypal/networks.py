@@ -1,6 +1,8 @@
 import hashlib
 import os
+import random
 import time
+import uuid
 
 import networkx as nx
 from shapely.geometry import LineString, Point
@@ -10,9 +12,10 @@ from archetypal import project_geom, settings, log
 
 
 def clean_paralleledges_and_selfloops(G):
+    """Cuts any parallel edges in two, creating a new point in between"""
     # copy nodes into new graph
     G2 = G.copy()
-
+    # Todo: check for self_loops = [(u, v) for u, v in G2.selfloop_edges()]
     # copy edges to new graph, including parallel edges
     if G2.is_multigraph:
         for u, v, key, data in G.edges(keys=True, data=True):
@@ -21,7 +24,8 @@ def clean_paralleledges_and_selfloops(G):
                 parallel_line = data['geometry']
                 line1, line2, point = cut(parallel_line,
                                           distance=parallel_line.length/2)
-                v2 = point._geom  # creates a unique id for the Point
+                v2 = int(str(uuid.uuid1().int)[0:11])  # creates a unique id
+                # for the Point
                 if G2.has_edge(u, v, key):
                     # create node associated with new point
                     x, y = point.coords[0]
@@ -33,7 +37,7 @@ def clean_paralleledges_and_selfloops(G):
                     from1 = G2.edges[u, v, key]['from']
                     to2 = G2.edges[u, v, key]['to']
                     # remove that edge and replace with two edged
-                    G2.remove_edge(u, v, key)
+                    G2.remove_edge(u, v, key=key)
                     G2.add_edges_from([(u, v2, 0, {'geometry': line1,
                                                    'length': line1.length,
                                                    'from': from1,
@@ -43,7 +47,7 @@ def clean_paralleledges_and_selfloops(G):
                                                    'from': v2,
                                                    'to': to2})])
             else:
-                G2.add_edge(u, v, key)
+                G2.add_edge(u, v, key=key, data=data)
     return G2
 
 

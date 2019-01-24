@@ -11,6 +11,6 @@ setup(
     description='',
     install_requires=['numpy', 'pandas', 'eppy', 'sphinx', 'pycountry',
                       'geopandas', 'shapely', 'osmnx', 'pyproj', 'rasterstats',
-                      'scikit-learn'],
+                      'pyomo'],
     test_suite='tests'
 )

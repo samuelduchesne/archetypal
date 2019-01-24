@@ -295,7 +295,7 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
 
 def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
                show=True, save=False, close=False, dpi=300, file_format='png',
-               fig_title=None, extent=None, legend=False):
+               fig_title=None, extent=None, legend=False, plot_built=True):
     """Plot power flows for model.
 
     Args:
@@ -332,16 +332,42 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
         # create a sperate figure with the original plotted demand
         plot_edges = model.edges.copy()
         plot_edges = plot_edges.loc[lambda x: x['peak'] > 0, :]
-        filename = '{}_original_peal_demand_on_edges'.format(model.name)
         fig, ax = plot_map(plot_edges, bbox=(north, south, east, west),
                            column='peak', plot_graph=False, show=False,
                            cmap='magma', margin=margin, close=False,
                            axis_off=axis_off, save=False,
                            fig_title='Original Peak Demand on Edges',
                            legend=legend)
+        plot_init = model.vertices.loc[lambda x: x.init > 0, :]
+        # plot initialized plants
+        plot_init.plot(ax=ax, color='r', markersize=10,
+                       legend=legend)
         # plot original street netowork behind the dh network
-        model.edges.plot(ax=ax, linewidth=0.1, zorder=-1, color='grey')
+        model.edges.plot(ax=ax, linewidth=0.1, zorder=-1, color='grey',
+                         legend=legend)
         # plot_edges.plot(column='peak', cmap='viridis', ax=ax, vmin=1)
+        filename = '{}_original_peal_demand_on_edges'.format(model.name)
+        save_and_show(fig=fig, ax=ax, save=save, show=show, close=False,
+                      filename=filename, file_format=file_format, dpi=dpi,
+                      axis_off=axis_off, extent=extent)
+
+    if plot_built:
+        pipe_x = dhmin.get_entities(model, ['x'])
+        plot_edges = model.edges.copy()
+        plot_edges = plot_edges.join(pipe_x,
+                                     on=['Vertex1', 'Vertex2']).loc[lambda x:
+        x.x==1, :]
+
+        fig, ax = plot_map(plot_edges, bbox=(north, south, east, west),
+                           column='x', plot_graph=False, show=False,
+                           cmap='magma', margin=margin, close=False,
+                           axis_off=axis_off, save=False,
+                           fig_title='Full extent of the network',
+                           legend=legend)
+        # plot original street netowork behind the dh network
+        model.edges.plot(ax=ax, linewidth=0.1, zorder=-1, color='grey',
+                         legend=legend)
+        filename = '{}_all_built_pipes'.format(model.name)
         save_and_show(fig=fig, ax=ax, save=save, show=show, close=False,
                       filename=filename, file_format=file_format, dpi=dpi,
                       axis_off=axis_off, extent=extent)
@@ -361,7 +387,7 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
                            column='Pin', plot_graph=False, show=False,
                            cmap='viridis', margin=margin,
                            axis_off=axis_off, save=False, close=False,
-                           filename='Timestep_{}'.format(name))
+                           fig_title='Timestep_{}'.format(name), legend=legend)
 
         Q = power_input_grouped.get_group(name)['Q']
         plot_nodes = model.vertices.copy()
@@ -369,10 +395,11 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
 
         msizes = [30 if m > 0 else 0 for m in plot_nodes['Q']]
         plot_nodes.plot(column='Q', cmap='OrRd', ax=ax, markersize=msizes,
-                        vmin=1, zorder=3)
+                        vmin=1, zorder=3, legend=legend)
+        # plot original street netowork behind the dh network
+        model.edges.plot(ax=ax, linewidth=0.1, zorder=-1, color='grey',
+                         legend=legend)
         filename = '{}_Timestep_{}'.format(model.name, name)
-        if fig_title:
-            ax.set_title(filename)
         save_and_show(fig=fig, ax=ax, save=save, show=show, close=close,
                       filename=filename, file_format=file_format, dpi=dpi,
                       axis_off=axis_off, extent=extent)

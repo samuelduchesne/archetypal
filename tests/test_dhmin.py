@@ -1,30 +1,24 @@
 import os
 import random
-import logging as lg
 import shutil
 
 import osmnx as ox
-import dhmin
 import numpy as np
-import pyomo.environ
-from archetypal import save_model_to_cache, load_model_from_cache
-from pyomo.opt import SolverFactory
+from archetypal import solve_network
 from shapely.geometry import Polygon
 import networkx as nx
 import archetypal as ar
+import pytest
 
 
-def test_dhmin(ox_config):
-
-    if os.path.isdir('./.temp/imgs'):
-        shutil.rmtree('./.temp/imgs')
-
+@pytest.mark.parametrize('seed', [1, 2])
+def test_dhmin(ox_config, seed):
     bbox = Polygon(((-73.580147, 45.509472), (-73.551007, 45.509472),
                     (-73.551007, 45.488723), (-73.580147, 45.488723),
                     (-73.580147, 45.509472)))
     bbox = ar.project_geom(bbox, from_crs={'init': 'epsg:4326'},
                            to_crs={'init': 'epsg:2950'})
-    bbox = bbox.buffer(-1050)
+    bbox = bbox.buffer(-1000)
     bbox = ar.project_geom(bbox, to_crs={'init': 'epsg:4326'},
                            from_crs={'init': 'epsg:2950'})
     west, south, east, north = bbox.bounds
@@ -35,106 +29,75 @@ def test_dhmin(ox_config):
     G = ox.simplify_graph(G, strict=True)
     G = ox.project_graph(G, to_crs={'init': 'epsg:2950'})
 
+    bbox = ar.project_geom(bbox, to_crs={'init': 'epsg:2950'},
+                           from_crs={'init': 'epsg:4326'})
+    west, south, east, north = bbox.bounds
+
     # G2 = nx.disjoint_union(G, nx.reverse(G))
     G = ox.get_undirected(G)  # Get the undirected graph since we don't want
-    nx.is_connected(G)
     # symmetry yet. We will create it with dhmin
 
-    ec = ['b' if key == 0 else 'r' for u, v, key in G.edges(keys=True)]
-    ox.plot_graph(G, node_color='w', node_edgecolor='k', node_size=20,
-                  node_zorder=3, edge_color=ec, edge_linewidth=2)
+    # Fix parallel and self-loop edges
     G2 = ar.clean_paralleledges_and_selfloops(G)
-    ec = ['b' if key == 0 else 'r' for u, v, key in G2.edges(keys=True)]
-    ox.plot_graph(G2, node_color='w', node_edgecolor='k', node_size=20,
-                  save=True, node_zorder=3, edge_color=ec, edge_linewidth=2,
-                  annotate=True)
 
-    # Drop parallel edges and selfloops
-    # paralel = [(u, v) for u, v, key in G2.edges(keys=True) if key != 0]
-    # [G2.remove_edge(*key) for key in paralel]
-    self_loops = [(u, v) for u, v in G2.selfloop_edges()]
-    ec = ['r' if (u, v) in self_loops else 'b' for u, v, key in G2.edges(
-        keys=True)]
+    random.seed(seed)
     ec = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
              for i in G2.edges]
     nc = ['r' if node > 9999999999 else 'b' for node in G2.nodes]
     ox.plot_graph(G2, node_color=nc, node_edgecolor='k', node_size=20,
                   save=True, node_zorder=3, edge_color=ec, edge_linewidth=2,
-                  annotate=True, filename='fixed_nodes')
+                  annotate=False, bbox=(north, south, east, west), margin=0.2,
+                  filename='test_{}_fixed_nodes'.format(seed))
 
     nodes, edges = ox.graph_to_gdfs(G2, node_geometry=True,
                                     fill_edge_geometry=True)
     edges.set_index(['u', 'v'], inplace=True)
     edges.index.names = ['Vertex1', 'Vertex2']
 
+    # Sort index to keep randomess pseudo
+    nodes = nodes.sort_index()
+    edges = edges.sort_index()
     # init, c_heatvar, c_heatfix
     nodes['init'] = 0
     nodes['c_heatvar'] = 0
     nodes['c_heatfix'] = 0
     nodes['capacity'] = 0
 
-    ox.plot_graph(G2, annotate=True, show=True)
-
     # let's create 5 random plants and give them properties
-    seed = 2
     rdstate = np.random.RandomState(seed=seed)
     plants = nodes.sample(n=5, random_state=rdstate).index
     nodes.loc[plants, 'init'] = 1
     nodes.loc[plants, 'c_heatvar'] = 0.035
     nodes.loc[plants, 'c_heatfix'] = 0
-    nodes.loc[plants, 'capacity'] = 500
+    nodes.loc[plants, 'capacity'] = 5000
 
     edges['pipe_exist'] = 0
     edges['must_build'] = 0
-    edges['peak'] = edges.apply(lambda x: randon_peak(rdstate), axis=1)
+    rdstate = np.random.RandomState(seed=seed)
+    edges['peak'] = edges.apply(lambda x: random_peak(random_state=rdstate),
+                                axis=1)
     edges['cnct_quota'] = 1
     edges['cap_max'] = 1000
 
     # create provblem
-    params = {'r_heat': 0.07}
-    timesteps = [(1600, .8), (1040, .5)]
+    params = {'c_rev': 0.07}
+    timesteps = [(1600, .8), (1040, .5), (6120, .1)]
 
     # create fake duration, scaling factor with same as timstep (could be
     # customized)
     edge_profiles = edges.apply(lambda x: timesteps, axis=1)
 
-    # try to load problem from cache
-    cached_model = load_model_from_cache(nodes, edges, params, timesteps)
-    if not cached_model:
-        prob = dhmin.create_model(nodes, edges, params,
-                                  timesteps, edge_profiles, 'test',
-                                  is_connected=False)
-
-        # Choose the solver
-        optim = SolverFactory('gurobi')
-
-        # Create readable output file
-        outputfile = os.path.join(ar.settings.data_folder, 'rundh.lp')
-        if not os.path.isdir(ar.settings.data_folder):
-            os.makedirs(ar.settings.data_folder)
-        prob.write(outputfile, io_options={'symbolic_solver_labels': True})
-
-        # get logger to writer solver log to logger
-        logger = lg.getLogger(ar.settings.log_name).handlers[0].baseFilename
-
-        # solve and load results back into the model
-        result = optim.solve(prob, tee=True, logfile=logger)
-        prob.solutions.load_from(result)
-
-        # save the model to cache
-        save_model_to_cache(prob)
-    else:
-        prob = cached_model
-    # plot results
-    ar.plot_dhmin(prob, plot_demand=True, margin=0.2, show=False, save=True,
-                  extent='tight', legend=True)
+    prob = solve_network(edges, nodes, params, timesteps, edge_profiles,
+                         is_connected=False, time_limit=120,
+                         solver='gurobi', legend=False, plot_results=True,
+                         model_name='test_{}'.format(seed), override_hash=True)
 
 
-def randon_peak(seed=None):
+def random_peak(random_state=None):
     """Creates random positive numbers; 2x more in the positive"""
-    if not seed:
-        seed = np.random.RandomState(seed=seed)
-    num = seed.randint(-250, 250)
+    if random_state is None:
+        random_state = np.random.RandomState(seed=1)
+    num = random_state.randint(-250, 250)
     return num if num > 50 else 0
 
 

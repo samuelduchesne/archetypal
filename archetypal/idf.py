@@ -1259,7 +1259,7 @@ class IDF(eppy.modeleditor.IDF):
         new_object = self.newidfobject(ep_object, **kwargs)
         # Check if new object exists in previous list
         # If True, delete the object
-        if sum([obj == new_object for obj in objs]) > 1:
+        if sum([str(obj).upper() == str(new_object).upper() for obj in objs]) > 1:
             log('object "{}" already exists in idf file'.format(ep_object),
                 lg.WARNING)
             # Remove the newly created object since the function
@@ -1268,3 +1268,4 @@ class IDF(eppy.modeleditor.IDF):
         else:
             log('object "{}" added to the idf file'.format(ep_object))
             self.save()
+

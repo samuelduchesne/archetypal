@@ -20,8 +20,10 @@ ar.config(log_console=True, log_file=True, use_cache=True,
 
 def test_small_home_data(fresh_start):
     file = './input_data/regular/AdultEducationCenter.idf'
+    file = copy_file(file)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return ar.run_eplus(file, wf, expandobjects=True, annual=True)
+    return ar.run_eplus(file, wf, expandobjects=True, annual=True,
+                        prep_outputs=True)
 
 
 def test_necb(config, fresh_start):

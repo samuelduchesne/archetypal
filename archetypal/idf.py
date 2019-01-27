@@ -473,12 +473,12 @@ def load_idf_object_from_cache(idf_file, how=None):
                 return idf
 
 
-def prepare_outputs(eplus_file):
-    """Adds necessary epobjects outputs to the idf file. For the moment these
-    are hardcoded in the function.
+def prepare_outputs(eplus_file, outputs=None):
+    """Add additional epobjects to the idf file. Users can pass in an outputs
 
     Args:
         eplus_file:
+        outputs (list of dict):
 
     Returns:
 
@@ -491,6 +491,11 @@ def prepare_outputs(eplus_file):
         eplus_file)  # Returns a dict, evan if there is only one file
 
     eplus_finename = os.path.basename(eplus_file)
+
+    if outputs:
+        for output in outputs:
+            idfs[eplus_finename].add_object(output['ep_object'], **output[
+                'kwargs'])
 
     # SummaryReports
     idfs[eplus_finename].add_object('Output:Table:SummaryReports'.upper(),
@@ -567,7 +572,9 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         output_report: 'htm' or 'sql'.
         processors (int, optional): specify how many processors to use for a
             parallel run
-        prep_outputs (bool, optional): if true, meters and variable outputs will
+        prep_outputs (bool or list, optional): if true, meters and variable
+        outputs
+        will
             be appended to the idf files. see :func:`prepare_outputs`
         **kwargs: keyword arguments to pass to other functions (see below)
     Returns:
@@ -645,7 +652,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         # Check if idf file has necessary objects (eg specific outputs)
         for eplus_file in eplus_files:
             log('\nPreparing outputs...\n', lg.INFO)
-            prepare_outputs(eplus_file)
+            prepare_outputs(eplus_file, prep_outputs)
             log('Preparing outputs completed\n', lg.INFO)
 
     # Try to get cached results

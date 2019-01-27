@@ -10,6 +10,7 @@ setup(
     author_email='samuel.letellier-duchesne@polymtl.ca',
     description='',
     install_requires=['numpy', 'pandas', 'eppy', 'sphinx', 'pycountry',
-                      'geopandas', 'shapely', 'osmnx', 'pyproj', 'rasterstats'],
+                      'geopandas', 'shapely', 'osmnx', 'pyproj', 'rasterstats',
+                      'scikit-learn'],
     test_suite='tests'
 )

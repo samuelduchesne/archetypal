@@ -188,6 +188,42 @@ class ReportData(pd.DataFrame):
     def schedules(self):
         return self.sorted_values(key_value='Schedule Value')
 
+    def heating_load(self, normalized=False, sort=False, ascending=False):
+        """Returns the aggragated 'Heating:Electricity', 'Heating:Gas' and
+        'Heating:DistrictHeating' of each archetype
+
+        Args:
+            normalized (bool): if True, returns a normalized Series.
+                Normalization is done with respect to each Archetype
+            sort (bool): if True, sorts the values. Usefull when a load
+                duration curve is needed.
+            ascending (bool): if True, sorts value in ascending order. If a
+                Load Duration Curve is needed, use ascending=False.
+
+        Returns:
+            pd.Series: the Value series of the Heating Load with a Archetype,
+                TimeIndex as MultiIndex.
+        """
+        from sklearn import preprocessing
+        hl = self.filter_report_data(name=('Heating:Electricity',
+                                           'Heating:Gas',
+                                           'Heating:DistrictHeating')).set_index(
+            ['Archetype', 'TimeIndex'])
+        units = set(hl.Units)
+        hl = hl.Value
+        if sort:
+            hl = hl.sort_values(ascending=ascending)
+        if normalized:
+            # for each archetype use the min_max_scaler and concatenate back
+            # into a Series
+            min_max_scaler = preprocessing.MinMaxScaler()
+            hl_groups = [pd.Series(min_max_scaler.fit_transform(
+                hl.values.reshape(-1, 1)).ravel(), index=hl.index) for i, hl in
+                         hl.groupby(level='Archetype')]
+            hl = pd.concat(hl_groups)
+        log('Returned Heating Load in units of {}'.format(str(units)), lg.DEBUG)
+        return hl
+
     def filter_report_data(self, archetype=None, reportdataindex=None,
                            timeindex=None, reportdatadictionaryindex=None,
                            value=None, ismeter=None, type=None,
@@ -1792,7 +1828,7 @@ def zone_cop(df):
     nu_heating = heating_out_sys / heating_out
     heating_in = rdf.filter_report_data(name=('Heating:Electricity',
                                               'Heating:Gas',
-                                              'Heating:DistrictHeating'))\
+                                              'Heating:DistrictHeating')) \
         .set_index(['Archetype'], append=True).sum(level='Archetype').Value
     # heating_in = rdf.loc[
     #     (lambda rd: ((rd.Name == 'Heating:Electricity') |

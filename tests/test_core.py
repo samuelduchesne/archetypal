@@ -190,5 +190,6 @@ def test_energyprofile():
     sv = ep.filter_report_data(name=('Heating:Electricity',
                                      'Heating:Gas',
                                      'Heating:DistrictHeating'))
+    sv.heating_load(normalized=True)
     print(sv.shape)
 

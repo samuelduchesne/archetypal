@@ -1,5 +1,4 @@
 import glob
-
 import pytest
 
 import archetypal as ar
@@ -110,19 +109,19 @@ def test_year_schedules(template):
 
 
 # Zones
-def test_zone_information(template, sql):
+def test_zone_information(test_template_withcache, sql):
     template.zone_details = ar.zone_information(sql)
 
 
-def test_zone_loads(template, sql):
+def test_zone_loads(test_template_withcache, sql):
     template.zone_loads = ar.zone_loads(sql)
 
 
-def test_zone_ventilation(template, sql):
+def test_zone_ventilation(test_template_withcache, sql):
     template.zone_ventilation = ar.zone_ventilation(sql)
 
 
-def test_zone_condition(template, sql):
+def test_zone_condition(test_template_withcache, sql):
     template.zone_conditioning = ar.zone_conditioning(sql)
 
 
@@ -145,3 +144,51 @@ def test_to_json_std():
     a.read()
     json = a.to_json(orient='records')
     print(json)
+
+
+def test_parse_schedule_profile():
+    idf = './input_data/regular/5ZoneNightVent1.idf'
+    outputs = {'ep_object': 'Output:Variable'.upper(),
+               'kwargs': {'Key_Value': 'OCCUPY-1',
+                          'Variable_Name': 'Schedule Value',
+                          'Reporting_Frequency': 'Hourly'}}
+    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    idf = ar.copy_file(idf)
+    sql = ar.run_eplus(idf, weather_file=wf, prep_outputs=[outputs],
+                       annual=True)
+    report = ar.get_from_reportdata(sql)
+    array = report.loc[(report.Name == 'Schedule Value') &
+                       (report['KeyValue'] == 'OCCUPY-1')].sort_values(
+        by="TimeIndex").Value
+    # return a list of arrays of 24 hours length
+    days = array.reset_index(drop=True).groupby(lambda x: x // 24).apply(
+        lambda x: x.values)
+
+    unique_day = {}
+    for i, day in days.iteritems():
+        hashed_day = str(day)
+        thisday = unique_day.get(hashed_day, None)
+        if thisday is None:
+            unique_day[hashed_day] = (i, day)
+
+    
+def test_energyprofile():
+    idf = './input_data/regular/5ZoneNightVent1.idf'
+    outputs = {'ep_object': 'Output:Variable'.upper(),
+               'kwargs': {'Key_Value': 'OCCUPY-1',
+                          'Variable_Name': 'Schedule Value',
+                          'Reporting_Frequency': 'Hourly'}}
+    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    idf = ar.copy_file(idf)
+    sql = ar.run_eplus(idf, weather_file=wf, prep_outputs=[outputs],
+                       annual=True)
+    report = ar.get_from_reportdata(sql)
+
+    ep = ar.ReportData(report)
+    # sv = ep.sorted_values(name='Schedule Value', key_value='OCCUPY-1',
+    #                       by='TimeIndex')
+    sv = ep.filter_report_data(name=('Heating:Electricity',
+                                     'Heating:Gas',
+                                     'Heating:DistrictHeating'))
+    print(sv.shape)
+

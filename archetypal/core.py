@@ -1,3 +1,4 @@
+import functools
 import io
 import json
 import logging as lg
@@ -151,7 +152,7 @@ class Template:
                         # transform to json and add to dict of objects
                         data_dict[js.name] = json.loads(
                             reset_index_cols_.to_json(orient=orient,
-                                          date_format=date_format),
+                                                      date_format=date_format),
                             object_pairs_hook=OrderedDict)
                 else:
                     # do something with objects that are not DataFrames
@@ -161,6 +162,9 @@ class Template:
 
 
 class ReportData(pd.DataFrame):
+    """This class serves as a subclass of a pandas DataFrame allowing to add
+    additional functionnality"""
+
     ARCHETYPE = 'Archetype'
     REPORTDATAINDEX = 'ReportDataIndex'
     TIMEINDEX = 'TimeIndex'
@@ -879,7 +883,7 @@ def apply_window_perf(row):
             perfs[perf] = float(perfs[perf])
         except ValueError:
             perfs['tvis'] = row['SolarTransmittance']
-    return 'EnergyPlus Simple Glazing Calculation shgc: {:,.2f}, u-value: '\
+    return 'EnergyPlus Simple Glazing Calculation shgc: {:,.2f}, u-value: ' \
            '{:,.2f}, t_vis: {:,.2f}'.format(perfs['shgc'],
                                             perfs['ufactor'],
                                             perfs['tvis'])
@@ -1778,17 +1782,24 @@ def zone_cop(df):
 
     """
     # Heating Energy
-    heating = get_from_reportdata(df).loc[
-        lambda rd: rd.Name == 'Air System Total Heating Energy'].reset_index()
+    rdf = ReportData(get_from_reportdata(df))
+    heating = rdf.filter_report_data(
+        name='Air System Total Heating Energy').reset_index()
+    # heating = get_from_reportdata(df).loc[
+    #     lambda rd: rd.Name == 'Air System Total Heating Energy'].reset_index()
     heating_out_sys = heating.groupby(['Archetype', 'KeyValue']).sum()['Value']
     heating_out = heating.groupby(['Archetype']).sum()['Value']
     nu_heating = heating_out_sys / heating_out
-    heating_in = get_from_reportdata(df).loc[
-        (lambda rd: ((rd.Name == 'Heating:Electricity') |
-                     (rd.Name == 'Heating:Gas') |
-                     (rd.Name == 'Heating:DistrictHeating'))),
-        ['Archetype', 'Value']].set_index('Archetype').sum(level='Archetype')[
-        'Value']
+    heating_in = rdf.filter_report_data(name=('Heating:Electricity',
+                                              'Heating:Gas',
+                                              'Heating:DistrictHeating'))\
+        .set_index(['Archetype'], append=True).sum(level='Archetype').Value
+    # heating_in = rdf.loc[
+    #     (lambda rd: ((rd.Name == 'Heating:Electricity') |
+    #                  (rd.Name == 'Heating:Gas') |
+    #                  (rd.Name == 'Heating:DistrictHeating'))),
+    #     ['Archetype', 'Value']].set_index('Archetype').sum(level='Archetype')[
+    #     'Value']
 
     # Cooling Energy
     cooling = get_from_reportdata(df).loc[

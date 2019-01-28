@@ -341,7 +341,7 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
         plot_init = model.vertices.loc[lambda x: x.init > 0, :]
         # plot initialized plants
         plot_init.plot(ax=ax, color='r', markersize=10,
-                       legend=legend)
+                       legend=legend, zorder=4, label='Initialized Plants')
         # plot original street netowork behind the dh network
         model.edges.plot(ax=ax, linewidth=0.1, zorder=-1, color='grey',
                          legend=legend)

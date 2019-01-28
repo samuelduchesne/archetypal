@@ -9,6 +9,7 @@ from pprint import pformat
 
 import numpy as np
 import pandas as pd
+from sklearn import preprocessing
 
 from . import settings, object_from_idf, object_from_idfs, simple_glazing, \
     iscore, weighted_mean, top, run_eplus, \
@@ -161,6 +162,85 @@ class Template:
             path_or_buf.write(json.dumps(data_dict, indent=indent))
 
 
+class EnergyProfile(pd.Series):
+
+    @property
+    def _constructor(self):
+        return EnergyProfile._internal_ctor
+
+    _metadata = ['profile_type', 'base_year', 'frequency', 'is_sorted',
+                 'units', 'archetypes']
+
+    @classmethod
+    def _internal_ctor(cls, *args, **kwargs):
+        # List required arguments here
+        kwargs['profile_type'] = None
+        kwargs['frequency'] = None
+        kwargs['units'] = None
+        return cls(*args, **kwargs)
+
+    def __init__(self, data, frequency, units, profile_type='undefinded',
+                 index=None, dtype=None, copy=True, name=None,
+                 fastpath=False, base_year=2017, normalize=False,
+                 is_sorted=False, ascending=False, archetypes=None):
+        super(EnergyProfile, self).__init__(data=data, index=index,
+                                            dtype=dtype, name=name,
+                                            copy=copy, fastpath=fastpath)
+        self.profile_type = profile_type
+        self.frequency = frequency
+        self.base_year = base_year
+        self.units = units
+        self.archetypes = archetypes
+        # handle sorting of the data
+        if is_sorted:
+            self.is_sorted = True
+            self.sort_values(ascending=ascending, inplace=True)
+        else:
+            self.is_sorted = False
+
+        # handle archetype names
+        if isinstance(self.index, pd.MultiIndex):
+            self.archetypes = list(set(self.index.get_level_values(level=1)))
+        else:
+            self.archetypes = None
+
+        # handle normalization
+        if normalize:
+            self.normalize()
+
+    def normalize(self):
+        scaler = preprocessing.MinMaxScaler()
+        if self.archetypes:
+            self.update(pd.concat([scaler(sub.values.reshape(-1, 1)).ravel()
+                              for i, sub in self.groupby(level=0)]))
+        else:
+            self.update(
+                pd.Series(scaler.fit_transform(self.values.reshape(-1,
+                                                                   1)).ravel()))
+
+    @property
+    def p_max(self):
+        if isinstance(self.index, pd.MultiIndex):
+            return self.groupby(level=0).max()
+        else:
+            return self.max()
+
+    @property
+    def monthly(self):
+        if isinstance(self.index, pd.MultiIndex):
+            return self.groupby(level=0).max()
+        else:
+            datetimeindex = pd.DatetimeIndex(freq=self.frequency,
+                                             start='{}-01-01'.format(
+                                                 self.base_year),
+                                             periods=self.size)
+            self_copy = self.copy()
+            self_copy.index = datetimeindex
+            self_copy = self_copy.resample('M', how='mean')
+            self_copy.frequency = 'M'
+            return EnergyProfile(self_copy, frequency='M', units=self.units)
+
+
 class ReportData(pd.DataFrame):
     """This class serves as a subclass of a pandas DataFrame allowing to add
     additional functionnality"""
@@ -207,8 +287,8 @@ class ReportData(pd.DataFrame):
         from sklearn import preprocessing
         hl = self.filter_report_data(name=('Heating:Electricity',
                                            'Heating:Gas',
-                                           'Heating:DistrictHeating')).set_index(
-            ['Archetype', 'TimeIndex'])
+                                           'Heating:DistrictHeating')).groupby(
+            ['Archetype', 'TimeIndex']).sum(level='TimeIndex')
         units = set(hl.Units)
         hl = hl.Value
         if sort:

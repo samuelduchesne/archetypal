@@ -230,3 +230,16 @@ def solve_network(edges, nodes, params, timesteps, edge_profiles,
         ar.plot_dhmin(prob, plot_demand=True, margin=0.2, show=False, save=True,
                       extent='tight', legend=legend)
     return prob
+
+
+def add_edge_profiles(G, edge_data):
+
+    for u, v, data in G.edges(keys=False, data=True):
+        try:
+            data['profiles'] = edge_data[(u, v)]
+        except KeyError:
+            raise KeyError('No edge_data for edge ({u}, {v})'.format(u=u, v=v))
+        else:
+            pass
+
+    return G

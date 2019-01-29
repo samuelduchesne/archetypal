@@ -169,7 +169,7 @@ class EnergyProfile(pd.Series):
         return EnergyProfile._internal_ctor
 
     _metadata = ['profile_type', 'base_year', 'frequency', 'is_sorted',
-                 'units', 'archetypes']
+                 'units', 'archetypes', 'concurrent_sort']
 
     @classmethod
     def _internal_ctor(cls, *args, **kwargs):
@@ -182,7 +182,8 @@ class EnergyProfile(pd.Series):
     def __init__(self, data, frequency, units, profile_type='undefinded',
                  index=None, dtype=None, copy=True, name=None,
                  fastpath=False, base_year=2017, normalize=False,
-                 is_sorted=False, ascending=False, archetypes=None):
+                 is_sorted=False, ascending=False, archetypes=None,
+                 concurrent_sort=False):
         super(EnergyProfile, self).__init__(data=data, index=index,
                                             dtype=dtype, name=name,
                                             copy=copy, fastpath=fastpath)
@@ -194,29 +195,55 @@ class EnergyProfile(pd.Series):
         # handle sorting of the data
         if is_sorted:
             self.is_sorted = True
-            self.sort_values(ascending=ascending, inplace=True)
+            if concurrent_sort:
+                self.concurrent_sort(ascending=ascending, inplace=True)
+            else:
+                self.sort_values(ascending=ascending, inplace=True)
         else:
             self.is_sorted = False
 
         # handle archetype names
         if isinstance(self.index, pd.MultiIndex):
-            self.archetypes = list(set(self.index.get_level_values(level=1)))
+            self.archetypes = list(set(self.index.get_level_values(level=0)))
         else:
             self.archetypes = None
 
         # handle normalization
         if normalize:
-            self.normalize()
+            self.normalize(inplace=True)
 
-    def normalize(self):
+    def concurrent_sort(self, ascending=False, inplace=False, level=0):
+        if isinstance(self.index, pd.MultiIndex):
+            concurrent = self.unstack(level=level)
+            concurrent_sum = concurrent.sum(axis=1)
+
+            sortedIdx = concurrent_sum.sort_values(ascending=ascending).index
+
+            result = concurrent.loc[sortedIdx, :]
+            result.index = concurrent.index
+            result = result.stack().swaplevel()
+
+            if inplace:
+                self._update_inplace(result)
+            else:
+                return result.__finalize__(self)
+
+    def normalize(self, inplace=False):
+        """Returns a normalized EnergyProfile"""
         scaler = preprocessing.MinMaxScaler()
         if self.archetypes:
-            self.update(pd.concat([scaler(sub.values.reshape(-1, 1)).ravel()
-                              for i, sub in self.groupby(level=0)]))
+            result = pd.concat({name: pd.Series(
+                scaler.fit_transform(sub.values.reshape(-1, 1)).ravel()) for
+                name, sub in self.groupby(level=0)}).sort_index()
+            result = self._constructor(result)
         else:
-            self.update(
-                pd.Series(scaler.fit_transform(self.values.reshape(-1,
-                                                                   1)).ravel()))
+            result = pd.Series(scaler.fit_transform(self.values.reshape(-1,
+                                                                   1)).ravel())
+            result = self._constructor(result)
+        if inplace:
+            self._update_inplace(result)
+        else:
+            return result.__finalize__(self)
 
     @property
     def p_max(self):
@@ -239,6 +266,17 @@ class EnergyProfile(pd.Series):
             self_copy = self_copy.resample('M', how='mean')
             self_copy.frequency = 'M'
             return EnergyProfile(self_copy, frequency='M', units=self.units)
+
+
+class EnergyProfiles(pd.DataFrame):
+
+    @property
+    def _constructor(self):
+        return EnergyProfiles
+
+    @property
+    def _constructor_sliced(self):
+        return EnergyProfile
 
 
 class ReportData(pd.DataFrame):
@@ -268,12 +306,13 @@ class ReportData(pd.DataFrame):
     def schedules(self):
         return self.sorted_values(key_value='Schedule Value')
 
-    def heating_load(self, normalized=False, sort=False, ascending=False):
+    def heating_load(self, normalize=False, sort=False, ascending=False,
+                     concurrent_sort=False):
         """Returns the aggragated 'Heating:Electricity', 'Heating:Gas' and
         'Heating:DistrictHeating' of each archetype
 
         Args:
-            normalized (bool): if True, returns a normalized Series.
+            normalize (bool): if True, returns a normalize Series.
                 Normalization is done with respect to each Archetype
             sort (bool): if True, sorts the values. Usefull when a load
                 duration curve is needed.
@@ -284,25 +323,19 @@ class ReportData(pd.DataFrame):
             pd.Series: the Value series of the Heating Load with a Archetype,
                 TimeIndex as MultiIndex.
         """
-        from sklearn import preprocessing
         hl = self.filter_report_data(name=('Heating:Electricity',
                                            'Heating:Gas',
-                                           'Heating:DistrictHeating')).groupby(
-            ['Archetype', 'TimeIndex']).sum(level='TimeIndex')
-        units = set(hl.Units)
-        hl = hl.Value
-        if sort:
-            hl = hl.sort_values(ascending=ascending)
-        if normalized:
-            # for each archetype use the min_max_scaler and concatenate back
-            # into a Series
-            min_max_scaler = preprocessing.MinMaxScaler()
-            hl_groups = [pd.Series(min_max_scaler.fit_transform(
-                hl.values.reshape(-1, 1)).ravel(), index=hl.index) for i, hl in
-                         hl.groupby(level='Archetype')]
-            hl = pd.concat(hl_groups)
+                                           'Heating:DistrictHeating'))
+        freq = list(set(hl.ReportingFrequency))
+        units = list(set(hl.Units))
+        if len(units) > 1:
+            raise MixedUnitsError()
+
+        hl = hl.groupby(['Archetype', 'TimeIndex']).Value.sum()
         log('Returned Heating Load in units of {}'.format(str(units)), lg.DEBUG)
-        return hl
+        return EnergyProfile(hl, frequency=freq, units=units,
+                             normalize=normalize, is_sorted=sort,
+                             ascending=ascending, concurrent_sort=concurrent_sort)
 
     def filter_report_data(self, archetype=None, reportdataindex=None,
                            timeindex=None, reportdatadictionaryindex=None,
@@ -1908,8 +1941,10 @@ def zone_cop(df):
     nu_heating = heating_out_sys / heating_out
     heating_in = rdf.filter_report_data(name=('Heating:Electricity',
                                               'Heating:Gas',
-                                              'Heating:DistrictHeating')) \
-        .set_index(['Archetype'], append=True).sum(level='Archetype').Value
+                                              'Heating:DistrictHeating')).groupby(
+        ['Archetype', 'TimeIndex']).Value.sum()
+    heating_in = EnergyProfile(heating_in, frequency='1H', units='J',
+                               is_sorted=False, concurrent_sort=False)
     # heating_in = rdf.loc[
     #     (lambda rd: ((rd.Name == 'Heating:Electricity') |
     #                  (rd.Name == 'Heating:Gas') |

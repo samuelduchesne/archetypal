@@ -9,6 +9,7 @@ from shapely.geometry import Polygon
 import networkx as nx
 import archetypal as ar
 import pytest
+import pandas as pd
 
 
 @pytest.mark.parametrize('seed', [1, 2])
@@ -64,10 +65,14 @@ def test_dhmin(ox_config, seed):
     edges = ox.graph_to_gdfs(G2, nodes=False)
     edges.set_index(['u', 'v'], inplace=True)
     rdstate = np.random.RandomState(seed=seed)
-    profiles = edges.apply(lambda x: {type: ar.create_fake_profile(y1={
-        'A': random.uniform(0, 10)}, normalize=False, profile_type='undefined',
-        sorted=False, units='kWh/m2').monthly
-        for type in random_type(size=random.randint(1, 5))}, axis=1)
+    profiles = edges.apply(lambda x: {type_str:
+        ar.create_fake_profile(y1={'A': random.uniform(0, 10)},
+                               normalize=False, profile_type=type_str,
+                               sorted=False, units='kWh/m2')
+        for type_str in random_type(size=random.randint(1,
+                                                        5))}, axis=1)
+    profiles = profiles.apply(ar.EnergyProfile, frequency='1H', units='kWh/m2',
+                              is_sorted=True, concurrent_sort=True)
     ar.add_edge_profiles(G2, edge_data=profiles)
 
     nodes, edges = ox.graph_to_gdfs(G2, node_geometry=True,

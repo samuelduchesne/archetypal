@@ -48,7 +48,8 @@ def test_template_withcache():
 
 @pytest.fixture(scope='module')
 def sql(test_template_withcache):
-    sql = test_template_withcache.run_eplus(silent=False, processors=-1)
+    sql = test_template_withcache.run_eplus(silent=False, processors=-1,
+                                            annual=True)
     yield sql
 
 
@@ -173,7 +174,8 @@ def test_parse_schedule_profile():
 
     
 def test_energyprofile():
-    idf = './input_data/regular/5ZoneNightVent1.idf'
+    idf = ['./input_data/regular/5ZoneNightVent1.idf',
+           './input_data/regular/AdultEducationCenter.idf']
     outputs = {'ep_object': 'Output:Variable'.upper(),
                'kwargs': {'Key_Value': 'OCCUPY-1',
                           'Variable_Name': 'Schedule Value',
@@ -181,7 +183,7 @@ def test_energyprofile():
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     idf = ar.copy_file(idf)
     sql = ar.run_eplus(idf, weather_file=wf, prep_outputs=[outputs],
-                       annual=True)
+                       annual=True, expandobjects=True)
     report = ar.get_from_reportdata(sql)
 
     ep = ar.ReportData(report)
@@ -190,6 +192,5 @@ def test_energyprofile():
     sv = ep.filter_report_data(name=('Heating:Electricity',
                                      'Heating:Gas',
                                      'Heating:DistrictHeating'))
-    sv.heating_load(normalized=True)
-    print(sv.shape)
+    hl = sv.heating_load(normalize=True, sort=True, concurrent_sort=True)
 

@@ -236,7 +236,7 @@ def add_edge_profiles(G, edge_data):
 
     for u, v, data in G.edges(keys=False, data=True):
         try:
-            data['profiles'] = edge_data[(u, v)]
+            data['profiles'] = edge_data.loc[(u, v)]
         except KeyError:
             raise KeyError('No edge_data for edge ({u}, {v})'.format(u=u, v=v))
         else:

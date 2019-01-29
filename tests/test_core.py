@@ -193,3 +193,6 @@ def test_energyprofile():
     sv.heating_load(normalized=True)
     print(sv.shape)
 
+    prob = ar.discretize(hl, bins=10)
+    prob.duration.display()
+    prob.amplitude.display()

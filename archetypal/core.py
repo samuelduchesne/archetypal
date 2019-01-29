@@ -17,7 +17,7 @@ from . import settings, object_from_idf, object_from_idfs, simple_glazing, \
 from .utils import log, label_surface, type_surface, layer_composition, \
     schedule_composition, time2time, \
     year_composition, newrange
-
+from .plot import plot_energyprofile
 
 class Template:
     """
@@ -244,6 +244,20 @@ class EnergyProfile(pd.Series):
             self._update_inplace(result)
         else:
             return result.__finalize__(self)
+
+    def plot3d(self, *args, **kwargs):
+        """Generate a plot of the EnergyProfile.
+
+        If the ``column`` parameter is given, colors plot according to values
+        in that column, otherwise calls ``GeoSeries.plot()`` on the
+        ``geometry`` column.
+
+        Wraps the ``plot_energyprofile()`` function, and documentation is copied
+        from there.
+        """
+        return plot_energyprofile(self, *args, **kwargs)
+
+    plot3d.__doc__ = plot_energyprofile.__doc__
 
     @property
     def p_max(self):

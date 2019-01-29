@@ -192,5 +192,7 @@ def test_energyprofile():
     sv = ep.filter_report_data(name=('Heating:Electricity',
                                      'Heating:Gas',
                                      'Heating:DistrictHeating'))
-    hl = sv.heating_load(normalize=True, sort=True, concurrent_sort=True)
+    hl = sv.heating_load(normalize=True, sort=False,
+                         concurrent_sort=True)['5ZoneNightVent1.idf'].plot3d(
+        show=True)
 

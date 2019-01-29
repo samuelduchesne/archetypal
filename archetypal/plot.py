@@ -2,11 +2,10 @@ import os
 import time
 
 import numpy as np
-import matplotlib.pyplot as plt
 import osmnx as ox
-from shapely.geometry import box
-
+import pandas as pd
 from archetypal import log, NoCRSDefinedError, project_geom, settings
+from shapely.geometry import box
 
 
 def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
@@ -63,6 +62,8 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
             is streets (ie, 'way["highway"]') but other infrastructures may
             be selected like power grids (ie, 'way["power"~"line"]'))
     """
+    import matplotlib.pyplot as plt
+
     log('Begin plotting the map...')
     # if no crs is passed calculate from gdf
     if crs is None:
@@ -248,6 +249,8 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
         (tuple) fig, ax
     """
     # save the figure if specified
+    import matplotlib.pyplot as plt
+
     if save:
         start_time = time.time()
 
@@ -268,7 +271,8 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
         else:
             if extent is None:
                 if axis_off:
-                    # if axis is turned off, constrain the saved figure's extent to
+                    # if axis is turned off, constrain the saved figure's
+                    # extent to
                     # the interior of the axis
                     extent = ax.get_window_extent().transformed(
                         fig.dpi_scale_trans.inverted())
@@ -356,7 +360,7 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
         plot_edges = model.edges.copy()
         plot_edges = plot_edges.join(pipe_x,
                                      on=['Vertex1', 'Vertex2']).loc[lambda x:
-        x.x==1, :]
+                                                                    x.x == 1, :]
 
         fig, ax = plot_map(plot_edges, bbox=(north, south, east, west),
                            column='x', plot_graph=False, show=False,
@@ -381,7 +385,7 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
     for i, (name, group) in enumerate(power_flows_grouped):
         plot_edges = model.edges.copy()
         plot_edges = plot_edges.join(group.reset_index(level=2),
-                                       on=['Vertex1', 'Vertex2'])
+                                     on=['Vertex1', 'Vertex2'])
         plot_edges = plot_edges.loc[lambda x: x['Pin'] > 0, :]
         fig, ax = plot_map(plot_edges, bbox=(north, south, east, west),
                            column='Pin', plot_graph=False, show=False,
@@ -403,3 +407,139 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
         save_and_show(fig=fig, ax=ax, save=save, show=show, close=close,
                       filename=filename, file_format=file_format, dpi=dpi,
                       axis_off=axis_off, extent=extent)
+
+
+def plot_energyprofile(energyprofile, axis_off=True, cmap=None,
+                       fig_height=None, fig_width=6, show=True,
+                       save=False, close=False, dpi=300, file_format='png',
+                       color=None, ax=None, vmin=None, vmax=None, filename=None,
+                       **style_kwds):
+    """
+
+    Args:
+        energyprofile:
+        axis_off:
+        cmap:
+        fig_height:
+        fig_width:
+        show:
+        save:
+        close:
+        dpi:
+        file_format:
+        color:
+        ax:
+        vmin:
+        vmax:
+        filename:
+        **style_kwds:
+
+    Returns:
+
+    """
+    if energyprofile.empty:
+        warnings.warn("The EnergyProgile you are attempting to plot is "
+                      "empty. Nothing has been displayed.", UserWarning)
+        return ax
+
+    from mpl_toolkits.mplot3d import Axes3D
+    import matplotlib.pyplot as plt
+
+    if isinstance(energyprofile.index, pd.MultiIndex):
+        groups = energyprofile.groupby(level=0)
+        nax = len(groups)
+    else:
+        nax = 1
+        groups = [('unnamed', energyprofile)]
+
+    if fig_height is None:
+        fig_height = fig_width * nax
+
+    fig = plt.figure(figsize=(fig_width, fig_height), dpi=dpi)
+
+    if ax is None:
+        ax = []
+        for i in range(1, nax + 1, 1):
+            ax.append(fig.add_subplot(nax, 1, i, projection='3d'))
+
+    for ax, (name, profile) in zip(ax, groups):
+        values = profile.values
+        verts, zs = prepare_verts(values)
+
+        mn = values.min() if vmin is None else vmin
+        mx = values.max() if vmax is None else vmax
+
+        if verts:
+            facecolor = style_kwds.pop('facecolor', None)
+            if color is not None:
+                facecolor = color
+            plot_poly_collection(ax, verts, zs, vmin=mn, vmax=mx,
+                                 facecolor=facecolor, edgecolor='k',
+                                 cmap=cmap, **style_kwds)
+        if filename is None:
+            filename = 'unnamed'
+
+        # configure axis appearance
+        xaxis = ax.xaxis
+        yaxis = ax.yaxis
+        zaxis = ax.zaxis
+
+        xaxis.get_major_formatter().set_useOffset(False)
+        yaxis.get_major_formatter().set_useOffset(False)
+        zaxis.get_major_formatter().set_useOffset(False)
+
+        # if axis_off, turn off the axis display set the margins to zero and
+        # point
+        # the ticks in so there's no space around the plot
+        if axis_off:
+            ax.axis('off')
+            ax.margins(0)
+            ax.tick_params(which='both', direction='in')
+            xaxis.set_visible(False)
+            yaxis.set_visible(False)
+            zaxis.set_visible(False)
+            fig.canvas.draw()
+
+    save_and_show(fig=fig, ax=ax, save=save, show=show, close=close,
+                  filename=filename, file_format=file_format, dpi=dpi,
+                  axis_off=axis_off, extent=None)
+
+    return fig, ax
+
+
+def prepare_verts(values):
+    zs = np.arange(0, 365, 1)  # days
+    xs = np.arange(0, 24, 1)  # hours 24
+    _reshaped = values.reshape(365, 24)
+    verts = []
+    for z in zs:
+        ys = _reshaped[z, :]
+        ys[0], ys[-1] = 0, 0
+        verts.append(list(zip(xs, ys)))
+    return verts, zs
+
+
+def plot_poly_collection(ax, verts, values=None, color=None, cmap=None,
+                         vmin=None, vmax=None, **kwargs):
+    from matplotlib.collections import PolyCollection
+
+    # if None in values:
+    #     values = None
+
+    # color=None overwrites specified facecolor/edgecolor with default color
+    if color is not None:
+        kwargs['color'] = color
+
+    poly = PolyCollection(verts, **kwargs)
+
+    if values is not None:
+        poly.set_array(np.asarray(values))
+        poly.set_cmap(cmap)
+        poly.set_clim(vmin, vmax)
+
+    ax.add_collection3d(poly, zs=values, zdir='y')
+    ax.set_xlim3d(-1, 24)
+    ax.set_ylim3d(0, 365)
+    ax.set_zlim3d(vmin, vmax)
+    # ax.autoscale_view()
+    return poly

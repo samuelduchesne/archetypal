@@ -132,7 +132,6 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         G = ox.project_graph(G, to_crs=to_crs)
 
         # plot the graph
-        bgcolor = kwargs.get('bgcolor', 'w')
         node_color = kwargs.get('node_color', '#66ccff')
         node_size = kwargs.get('node_size', 15)
         node_alpha = kwargs.get('node_alpha', 1)

@@ -7,12 +7,16 @@ import pandas as pd
 from archetypal import log, NoCRSDefinedError, project_geom, settings
 from shapely.geometry import box
 
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.colors import LightSource
+
 
 def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
-             fig_width=None, margin=0.02, equal_aspect=False, plot_graph=True,
-             save=False, show=True, close=True, axis_off=True,
-             file_format='png', filename='temp', dpi=300, annotate=False,
-             fig_title=None,
+             fig_width=None, margin=0.02, equal_aspect=False,
+             plot_graph=True, data_zorder=3, save=False, show=True,
+             close=True, axis_off=True, bgcolor='w', file_format='png',
+             filename='temp', dpi=300, annotate=False, fig_title=None,
              **kwargs):
     """Plot a GeoDataFrame of geometry features.
 
@@ -62,7 +66,6 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
             is streets (ie, 'way["highway"]') but other infrastructures may
             be selected like power grids (ie, 'way["power"~"line"]'))
     """
-    import matplotlib.pyplot as plt
 
     log('Begin plotting the map...')
     # if no crs is passed calculate from gdf
@@ -81,8 +84,7 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         bbox_geom = box(*gdf.unary_union.bounds)
         west, south, east, north = project_geom(bbox_geom,
                                                 from_crs=crs,
-                                                to_crs={'init':
-                                                            'epsg:4326'}).bounds
+                                                to_latlon=True).bounds
     else:
         north, south, east, west = bbox
 
@@ -155,8 +157,8 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
                                 edge_linewidth=edge_linewidth,
                                 edge_alpha=edge_alpha, use_geom=use_geom)
     else:
-        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height), facecolor=bgcolor)
+        ax.set_facecolor(bgcolor)
     # from here, we are in the gdf projection coordinates
     # plot the map
     cmap = kwargs.get('cmap', None)
@@ -169,7 +171,7 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
     categorical = kwargs.get('categorical', False)
 
     # plot the GeoDataFrame
-    gdf.plot(column=column, cmap=cmap, color=color, ax=ax,
+    gdf.plot(column=column, cmap=cmap, color=color, ax=ax, zorder=data_zorder,
              categorical=categorical, markersize=markersize, vmin=vmin,
              vmax=vmax, k=k, scheme=scheme, legend=legend)
     # adjust the axis margins and limits around the image and make axes
@@ -248,7 +250,6 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
         (tuple) fig, ax
     """
     # save the figure if specified
-    import matplotlib.pyplot as plt
 
     if save:
         start_time = time.time()
@@ -259,22 +260,26 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
         path_filename = os.path.join(settings.imgs_folder,
                                      os.extsep.join([filename, file_format]))
 
+        if not isinstance(ax, (np.ndarray, list)):
+            ax = [ax]
         if file_format == 'svg':
-            # if the file_format is svg, prep the fig/ax a bit for saving
-            ax.axis('off')
-            ax.set_position([0, 0, 1, 1])
-            ax.patch.set_alpha(0.)
+            for ax in ax:
+                # if the file_format is svg, prep the fig/ax a bit for saving
+                ax.axis('off')
+                ax.set_position([0, 0, 1, 1])
+                ax.patch.set_alpha(0.)
             fig.patch.set_alpha(0.)
             fig.savefig(path_filename, bbox_inches=0, format=file_format,
                         facecolor=fig.get_facecolor(), transparent=True)
         else:
             if extent is None:
-                if axis_off:
-                    # if axis is turned off, constrain the saved figure's
-                    # extent to
-                    # the interior of the axis
-                    extent = ax.get_window_extent().transformed(
-                        fig.dpi_scale_trans.inverted())
+                if len(ax) == 1:
+                    if axis_off:
+                        for ax in ax:
+                            # if axis is turned off, constrain the saved
+                            # figure's extent to the interior of the axis
+                            extent = ax.get_window_extent().transformed(
+                                fig.dpi_scale_trans.inverted())
                 else:
                     extent = 'tight'
             fig.savefig(path_filename, dpi=dpi, bbox_inches=extent,
@@ -287,6 +292,7 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
     if show:
         start_time = time.time()
         plt.show()
+        # fig.show()
         log('Showed the plot in {:,.2f} seconds'.format(time.time() -
                                                         start_time))
     # if show=False, close the figure if close=True to prevent display
@@ -408,11 +414,11 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
                       axis_off=axis_off, extent=extent)
 
 
-def plot_energyprofile(energyprofile, axis_off=True, cmap=None,
-                       fig_height=None, fig_width=6, show=True,
+def plot_energyprofile(energyprofile, kind='polygon', axis_off=True, cmap=None,
+                       fig_height=None, fig_width=6, show=True, view_angle=-60,
                        save=False, close=False, dpi=300, file_format='png',
-                       color=None, ax=None, vmin=None, vmax=None, filename=None,
-                       **style_kwds):
+                       color=None, axes=None, vmin=None, vmax=None,
+                       filename=None, **kwargs):
     """
 
     Args:
@@ -427,11 +433,11 @@ def plot_energyprofile(energyprofile, axis_off=True, cmap=None,
         dpi:
         file_format:
         color:
-        ax:
+        axes:
         vmin:
         vmax:
         filename:
-        **style_kwds:
+        **kwargs:
 
     Returns:
 
@@ -439,7 +445,7 @@ def plot_energyprofile(energyprofile, axis_off=True, cmap=None,
     if energyprofile.empty:
         warnings.warn("The EnergyProgile you are attempting to plot is "
                       "empty. Nothing has been displayed.", UserWarning)
-        return ax
+        return axes
 
     from mpl_toolkits.mplot3d import Axes3D
     import matplotlib.pyplot as plt
@@ -454,29 +460,59 @@ def plot_energyprofile(energyprofile, axis_off=True, cmap=None,
     if fig_height is None:
         fig_height = fig_width * nax
 
-    fig = plt.figure(figsize=(fig_width, fig_height), dpi=dpi)
+    # Set up plot
+    fig, axes = plt.subplots(nax, 1, subplot_kw=dict(projection='3d'),
+                             figsize=(fig_width, fig_height), dpi=dpi)
+    if not isinstance(axes, np.ndarray):
+        axes = [axes]
 
-    if ax is None:
-        ax = []
-        for i in range(1, nax + 1, 1):
-            ax.append(fig.add_subplot(nax, 1, i, projection='3d'))
-
-    for ax, (name, profile) in zip(ax, groups):
+    for ax, (name, profile) in zip(axes, groups):
         values = profile.values
-        verts, zs = prepare_verts(values)
 
-        mn = values.min() if vmin is None else vmin
-        mx = values.max() if vmax is None else vmax
+        vmin = values.min() if vmin is None else vmin
+        vmax = values.max() if vmax is None else vmax
 
-        if verts:
-            facecolor = style_kwds.pop('facecolor', None)
-            if color is not None:
-                facecolor = color
-            plot_poly_collection(ax, verts, zs, vmin=mn, vmax=mx,
-                                 facecolor=facecolor, edgecolor='k',
-                                 cmap=cmap, **style_kwds)
+        facecolor = kwargs.pop('facecolor', None)
+        if color is not None:
+            facecolor = color
+
+        if kind == 'polygon':
+            z = values.reshape(365, 24)
+            nrows, ncols = z.shape
+            xs = np.linspace(0, 23, ncols)
+            # y = np.linspace(0, 364, nrows)
+            # The ith polygon will appear on the plane y = zs[i]
+            zs = np.linspace(0, 364, nrows)
+            verts = []
+            for i in zs:
+                ys = z[int(i), :]
+                verts.append(polygon_under_graph(xs, ys))
+
+            plot_poly_collection(ax, verts, zs,
+                                 edgecolors=kwargs.get('edgecolors', None),
+                                 facecolors=kwargs.get('facecolors', None),
+                                 linewidths=kwargs.get('linewidths', None),
+                                 cmap=cmap)
+        elif kind == 'surface':
+            z = values.reshape(365, 24)
+            nrows, ncols = z.shape
+            x = np.linspace(1, 24, ncols)
+            y = np.linspace(1, 365, nrows)
+            x, y = np.meshgrid(x, y)
+            plot_surface(ax, x, y, z, cmap=cmap, **kwargs)
+        else:
+            raise NameError('plot kind "{}" is not supported'.format(kind))
+
         if filename is None:
             filename = 'unnamed'
+
+        # set the extent of the figure
+        ax.set_xlim3d(-1, 24)
+        ax.set_xlabel('X')
+        ax.set_ylim3d(-1, 365)
+        ax.set_ylabel('Y')
+        ax.set_zlim3d(vmin, vmax)
+        ax.set_zlabel('Z')
 
         # configure axis appearance
         xaxis = ax.xaxis
@@ -498,47 +534,56 @@ def plot_energyprofile(energyprofile, axis_off=True, cmap=None,
             yaxis.set_visible(False)
             zaxis.set_visible(False)
             fig.canvas.draw()
-
-    save_and_show(fig=fig, ax=ax, save=save, show=show, close=close,
-                  filename=filename, file_format=file_format, dpi=dpi,
-                  axis_off=axis_off, extent=None)
-
-    return fig, ax
-
-
-def prepare_verts(values):
-    zs = np.arange(0, 365, 1)  # days
-    xs = np.arange(0, 24, 1)  # hours 24
-    _reshaped = values.reshape(365, 24)
-    verts = []
-    for z in zs:
-        ys = _reshaped[z, :]
-        ys[0], ys[-1] = 0, 0
-        verts.append(list(zip(xs, ys)))
-    return verts, zs
+        if view_angle is not None:
+            ax.view_init(30, view_angle)
+            ax.set_proj_type(kwargs.get('proj_type', 'persp'))
+            fig.canvas.draw()
+    fig, axes = save_and_show(fig=fig, ax=axes, save=save, show=show,
+                              close=close, filename=filename,
+                              file_format=file_format, dpi=dpi,
+                              axis_off=axis_off, extent=None)
+    return fig, axes
 
 
-def plot_poly_collection(ax, verts, values=None, color=None, cmap=None,
+def plot_poly_collection(ax, verts, zs=None, color=None, cmap=None,
                          vmin=None, vmax=None, **kwargs):
     from matplotlib.collections import PolyCollection
 
-    # if None in values:
-    #     values = None
+    # if None in zs:
+    #     zs = None
 
     # color=None overwrites specified facecolor/edgecolor with default color
     if color is not None:
         kwargs['color'] = color
+    import matplotlib as mpl
+    norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
 
     poly = PolyCollection(verts, **kwargs)
-
-    if values is not None:
-        poly.set_array(np.asarray(values))
+    if zs is not None:
+        poly.set_array(np.asarray(zs))
         poly.set_cmap(cmap)
         poly.set_clim(vmin, vmax)
 
-    ax.add_collection3d(poly, zs=values, zdir='y')
-    ax.set_xlim3d(-1, 24)
-    ax.set_ylim3d(0, 365)
-    ax.set_zlim3d(vmin, vmax)
+    ax.add_collection3d(poly, zs=zs, zdir='y')
     # ax.autoscale_view()
     return poly
+
+
+def plot_surface(ax, x, y, z, cmap=None, **kwargs):
+
+    if cmap is None:
+        cmap = cm.gist_earth
+
+    ls = LightSource(270, 45)
+    # To use a custom hillshading mode, override the built-in shading and pass
+    # in the rgb colors of the shaded surface calculated from "shade".
+    rgb = ls.shade(z, cmap=cm.get_cmap(cmap), vert_exag=0.1, blend_mode='soft')
+    surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, facecolors=rgb,
+                           linewidth=0, antialiased=False, shade=False)
+    return surf
+
+
+def polygon_under_graph(xlist, ylist):
+    """Construct the vertex list which defines the polygon filling the space under
+    the (xlist, ylist) line graph.  Assumes the xs are in ascending order."""
+    return [(xlist[0], 0.), *zip(xlist, ylist), (xlist[-1], 0.)]

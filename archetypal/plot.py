@@ -15,9 +15,9 @@ from matplotlib.colors import LightSource
 def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
              fig_width=None, margin=0.02, equal_aspect=False,
              plot_graph=True, data_zorder=3, save=False, show=True,
-             close=True, axis_off=True, bgcolor='w', file_format='png',
-             filename='temp', dpi=300, annotate=False, fig_title=None,
-             **kwargs):
+             close=True, axis_off=True, legend=False, bgcolor='w',
+             file_format='png', filename='temp', dpi=300, annotate=False,
+             fig_title=None, **kwargs):
     """Plot a GeoDataFrame of geometry features.
 
     Args:
@@ -47,7 +47,7 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         filename (str): the name of the file if saving
         dpi (int): the resolution of the image file if saving
         annotate (bool): if True, annotate the nodes in the figure
-        **kwargs:
+        **kwargs (dict, optional):
 
     Returns:
         fig, ax: tuple
@@ -65,6 +65,11 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         infrastructure (str): download infrastructure of given type (default
             is streets (ie, 'way["highway"]') but other infrastructures may
             be selected like power grids (ie, 'way["power"~"line"]'))
+        edgecolor (str):
+        facecolor (str):
+        linewidth (float):
+        markersize (float):
+        alpha:
     """
 
     log('Begin plotting the map...')
@@ -161,19 +166,22 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         ax.set_facecolor(bgcolor)
     # from here, we are in the gdf projection coordinates
     # plot the map
-    cmap = kwargs.get('cmap', None)
-    markersize = kwargs.get('markersize', 1)
-    vmin = kwargs.get('vmin', None)
-    vmax = kwargs.get('vmax', None)
-    k = kwargs.get('k', 5)
-    scheme = kwargs.get('scheme', None)
-    legend = kwargs.get('legend', None)
-    categorical = kwargs.get('categorical', False)
+    # Need to pop variables since we also pass kwargs as an argument
+    cmap = kwargs.pop('cmap', None)
+    # color is a function parameter
+    categorical = kwargs.pop('categorical', False)
+    # legend is a function parameter
+    scheme = kwargs.pop('scheme', None)
+    k = kwargs.pop('k', 5)
+    vmin = kwargs.pop('vmin', None)
+    vmax = kwargs.pop('vmax', None)
+    markersize = kwargs.pop('markersize', 1)
 
     # plot the GeoDataFrame
     gdf.plot(column=column, cmap=cmap, color=color, ax=ax, zorder=data_zorder,
-             categorical=categorical, markersize=markersize, vmin=vmin,
-             vmax=vmax, k=k, scheme=scheme, legend=legend)
+             categorical=categorical, markersize=markersize,
+             figsize=(fig_width, fig_height), vmin=vmin,
+             vmax=vmax, k=k, scheme=scheme, legend=legend, **kwargs)
     # adjust the axis margins and limits around the image and make axes
     # equal-aspect
     # get north, south, east, west values either from bbox parameter or from the

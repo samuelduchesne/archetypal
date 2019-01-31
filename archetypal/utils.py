@@ -32,7 +32,8 @@ def config(data_folder=settings.data_folder,
            log_name=settings.log_name,
            log_filename=settings.log_filename,
            useful_idf_objects=settings.useful_idf_objects,
-           umitemplate=settings.umitemplate):
+           umitemplate=settings.umitemplate,
+           get_common_umi_objects=False):
     """
     Configurations
 
@@ -42,9 +43,9 @@ def config(data_folder=settings.data_folder,
         imgs_folder (str): where to save figures
         cache_folder (str): where to save the simluation results
         use_cache (bool): if True, use a local cache to save/retrieve
-            EnergyPlus simulation results instead of calling the API
-            repetitively for the same requests. This can save a lot of time
-            when simulations are long
+            many of archetypal outputs such as EnergyPlus simulation results.
+            This can save a lot of time by not calling the simulation and
+            dataportal APIs repetitively for the same requests.
         log_file (bool): if true, save log output to a log file in logs_folder
         log_console (bool): if true, print log output to the console
         log_level (int): one of the logger.level constants
@@ -70,8 +71,9 @@ def config(data_folder=settings.data_folder,
     settings.log_filename = log_filename
     settings.useful_idf_objects = useful_idf_objects
     settings.umitemplate = umitemplate
-    settings.common_umi_objects = get_list_of_common_umi_objects(
-        settings.umitemplate)
+    if get_common_umi_objects:
+        settings.common_umi_objects = get_list_of_common_umi_objects(
+            settings.umitemplate)
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:

@@ -168,3 +168,10 @@ def test_statcan(config):
 
     response = ar.dataportal.stat_can_request(data)
     print(response)
+
+
+def test_statcan_geo(config):
+    data = dict(type='json', lang='E', geos='PR', cpt='00')
+
+    response = ar.dataportal.stat_can_geo_request(data)
+    print(response)

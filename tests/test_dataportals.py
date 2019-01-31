@@ -161,3 +161,17 @@ def test_land_xml(config):
     file = './input_data/landxml/MNT2015_ville_Hampstead.xml'
 
     return ar.utils.landxml_to_point(file)
+
+
+def test_statcan(config):
+    data = dict(type='json', lang='E', dguid='2016A000011124', topic=5, notes=0)
+
+    response = ar.dataportal.stat_can_request(data)
+    print(response)
+
+
+def test_statcan_geo(config):
+    data = dict(type='json', lang='E', geos='PR', cpt='00')
+
+    response = ar.dataportal.stat_can_geo_request(data)
+    print(response)

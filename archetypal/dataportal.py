@@ -6,11 +6,11 @@ import os
 import re
 import time
 
-import pandas as pd
 import geopandas as gpd
-from sqlalchemy import create_engine
+import pandas as pd
 import pycountry as pycountry
 import requests
+from sqlalchemy import create_engine
 
 from archetypal import log, settings, make_str
 
@@ -160,9 +160,9 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
     if code_building is not None:
         try:
             code_country, code_typologyregion, code_buildingsizeclass, \
-                code_construcionyearclass, \
-                code_additional_parameter, code_type, code_num, \
-                code_variantnumber = code_building.split('.')
+            code_construcionyearclass, \
+            code_additional_parameter, code_type, code_num, \
+            code_variantnumber = code_building.split('.')
         except ValueError:
             msg = (
                 'the query "{}" is missing a parameter. Make sure the '
@@ -569,14 +569,14 @@ def gis_server_raster_request(creds, bbox=None, how='intersects', srid=None,
           "rast " \
           "{how} " \
           "ST_MakeEnvelope({xmin}, {ymin}, {xmax}, {ymax}, {my_srid})".format(
-            schema=tb_schema,
-            table_name=table_name,
-            xmin=xmin,
-            ymin=ymin,
-            xmax=xmax,
-            ymax=ymax,
-            my_srid=srid,
-            how=how)
+        schema=tb_schema,
+        table_name=table_name,
+        xmin=xmin,
+        ymin=ymin,
+        xmax=xmax,
+        ymax=ymax,
+        my_srid=srid,
+        how=how)
 
     # Todo: seek raster data from cache instead of from gis server
     # # try to get results from cache
@@ -718,3 +718,124 @@ def gis_server_available_tables(creds, schema='public'):
     engine = create_engine(engine_str)
 
     return engine.table_names(schema=schema)
+
+def stat_can_request(data):
+    prepared_url = 'https://www12.statcan.gc.ca/rest/census-recensement' \
+                   '/CPR2016.{type}?lang={lang}&dguid={dguid}&topic=' \
+                   '{topic}&notes={notes}'.format(
+        type=data.get('type', 'json'),
+        lang=data.get('land', 'E'),
+        dguid=data.get('dguid', '2016A000011124'),
+        topic=data.get('topic', 1),
+        notes=data.get('notes', 0))
+
+    cached_response_json = get_from_cache(prepared_url)
+
+    if cached_response_json is not None:
+        # found this request in the cache, just return it instead of making a
+        # new HTTP call
+        return cached_response_json
+
+    else:
+        # if this URL is not already in the cache, request it
+        start_time = time.time()
+        log('Getting from {}, "{}"'.format(prepared_url, data))
+        response = requests.get(prepared_url)
+        # if this URL is not already in the cache, pause, then request it
+        # get the response size and the domain, log result
+        size_kb = len(response.content) / 1000.
+        domain = re.findall(r'//(?s)(.*?)/', prepared_url)[0]
+        log('Downloaded {:,.1f}KB from {}'
+            ' in {:,.2f} seconds'.format(size_kb, domain,
+                                         time.time() - start_time))
+
+        try:
+            response_json = response.json()
+            if 'remark' in response_json:
+                log('Server remark: "{}"'.format(response_json['remark'],
+                                                 level=lg.WARNING))
+            save_to_cache(prepared_url, response_json)
+
+        except Exception:
+            # There seems to be a double backlash in the response. We try
+            # removing it here.
+            try:
+                response = response.content.decode('UTF-8').replace('//',
+                                                                    '')
+                response_json = json.loads(response)
+            except Exception:
+                log(
+                    'Server at {} returned status code {} and no JSON '
+                    'data.'.format(
+                        domain,
+                        response.status_code),
+                    level=lg.ERROR)
+            else:
+                save_to_cache(prepared_url, response_json)
+                return response_json
+            # deal with response satus_code here
+            log('Server at {} returned status code {} and no JSON '
+                'data.'.format(
+                    domain, response.status_code), level=lg.ERROR)
+        else:
+            return response_json
+
+
+def stat_can_geo_request(data):
+    prepared_url = 'https://www12.statcan.gc.ca/rest/census-recensement' \
+                   '/CR2016Geo.{type}?lang={lang}&geos={geos}&cpt={cpt}'.format(
+        type=data.get('type', 'json'),
+        lang=data.get('land', 'E'),
+        geos=data.get('geos', 'PR'),
+        cpt=data.get('cpt', '00'))
+
+    cached_response_json = get_from_cache(prepared_url)
+
+    if cached_response_json is not None:
+        # found this request in the cache, just return it instead of making a
+        # new HTTP call
+        return cached_response_json
+
+    else:
+        # if this URL is not already in the cache, request it
+        start_time = time.time()
+        log('Getting from {}, "{}"'.format(prepared_url, data))
+        response = requests.get(prepared_url)
+        # if this URL is not already in the cache, pause, then request it
+        # get the response size and the domain, log result
+        size_kb = len(response.content) / 1000.
+        domain = re.findall(r'//(?s)(.*?)/', prepared_url)[0]
+        log('Downloaded {:,.1f}KB from {}'
+            ' in {:,.2f} seconds'.format(size_kb, domain,
+                                         time.time() - start_time))
+
+        try:
+            response_json = response.json()
+            if 'remark' in response_json:
+                log('Server remark: "{}"'.format(response_json['remark'],
+                                                 level=lg.WARNING))
+            save_to_cache(prepared_url, response_json)
+
+        except Exception:
+            # There seems to be a double backlash in the response. We try
+            # removing it here.
+            try:
+                response = response.content.decode('UTF-8').replace('//',
+                                                                    '')
+                response_json = json.loads(response)
+            except Exception:
+                log(
+                    'Server at {} returned status code {} and no JSON '
+                    'data.'.format(
+                        domain,
+                        response.status_code),
+                    level=lg.ERROR)
+            else:
+                save_to_cache(prepared_url, response_json)
+                return response_json
+            # deal with response satus_code here
+            log('Server at {} returned status code {} and no JSON '
+                'data.'.format(
+                    domain, response.status_code), level=lg.ERROR)
+        else:
+            return response_json

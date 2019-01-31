@@ -703,3 +703,18 @@ def gis_server_request(creds, bbox=None, how='intersects', srid=None):
             log('No entries found. Check your parameters such as '
                 'the bbox coordinates and the CRS', lg.ERROR)
             return gpd.GeoDataFrame([])  # return empty GeoDataFrame
+
+
+def gis_server_available_tables(creds, schema='public'):
+    username = creds.pop('username')
+    password = creds.pop('password')
+    server = creds.pop('server')
+    db_name = creds.pop('db_name')
+
+    # create the engine string
+    engine_str = 'postgresql://{}:{}@{}/{}'.format(username, password, server,
+                                                   db_name)
+    # instanciate the server engine
+    engine = create_engine(engine_str)
+
+    return engine.table_names(schema=schema)

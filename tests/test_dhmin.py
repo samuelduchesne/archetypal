@@ -1,15 +1,12 @@
-import os
 import random
-import shutil
 
-import osmnx as ox
 import numpy as np
-from archetypal import solve_network
-from shapely.geometry import Polygon
-import networkx as nx
-import archetypal as ar
+import osmnx as ox
 import pytest
-import pandas as pd
+from shapely.geometry import Polygon
+
+import archetypal as ar
+from archetypal import solve_network
 
 
 @pytest.mark.parametrize('seed', [1, 2])
@@ -55,22 +52,26 @@ def test_dhmin(ox_config, seed):
     G2 = ar.clean_paralleledges_and_selfloops(G)
 
     random.seed(seed)
-    ec = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
-             for i in G2.edges]
+    ec = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+          for i in G2.edges]
     nc = ['r' if node > 9999999999 else 'b' for node in G2.nodes]
-    ox.plot_graph(G2, node_color=nc, node_edgecolor='k', node_size=20,
-                  save=True, node_zorder=3, edge_color=ec, edge_linewidth=2,
-                  annotate=False, bbox=(north, south, east, west), margin=0.2,
-                  filename='test_{}_fixed_nodes'.format(seed))
+    ox.plot_graph(G2, bbox=(north, south, east, west), node_color=nc,
+                  node_edgecolor='k', node_size=20, save=True, node_zorder=3,
+                  edge_color=ec, edge_linewidth=2, annotate=False,
+                  margin=0.2, filename='test_{}_fixed_nodes'.format(seed))
     edges = ox.graph_to_gdfs(G2, nodes=False)
     edges.set_index(['u', 'v'], inplace=True)
     rdstate = np.random.RandomState(seed=seed)
     profiles = edges.apply(lambda x: {type_str:
-        ar.create_fake_profile(y1={'A': random.uniform(0, 10)},
-                               normalize=False, profile_type=type_str,
-                               sorted=False, units='kWh/m2')
-        for type_str in random_type(size=random.randint(1,
-                                                        5))}, axis=1)
+                                          ar.create_fake_profile(
+                                              y1={'A': random.uniform(0, 10)},
+                                              normalize=False,
+                                              profile_type=type_str,
+                                              sorted=False, units='kWh/m2')
+                                      for type_str in
+                                      random_type(size=random.randint(1,
+                                                                      5))},
+                           axis=1)
     profiles = profiles.apply(ar.EnergyProfile, frequency='1H', units='kWh/m2',
                               is_sorted=True, concurrent_sort=True)
     ar.add_edge_profiles(G2, edge_data=profiles)
@@ -98,8 +99,12 @@ def test_dhmin(ox_config, seed):
 
     edges['pipe_exist'] = 0
     edges['must_build'] = 0
-    rdstate = np.random.RandomState(seed=seed)
-    edges['peak'] = edges.apply(lambda x: sum(x.profiles[profile].p_max for profile in x.profiles), axis=1)
+    edges['peak'] = edges.apply(
+        lambda x: sum(profile.p_max if isinstance(profile, ar.EnergyProfile)
+                      else 0
+                      for profile in
+                      x.profiles),
+        axis=1)
     edges['cnct_quota'] = 1
     edges['cap_max'] = 1000
 
@@ -131,10 +136,11 @@ def random_type(random_state=None, size=1):
         random_state = np.random.RandomState(seed=1)
     type = random_state.choice(['medium_office', 'large_office', 'small_office',
                                 'small_hotel', 'large_hotel', 'res_highrise'],
-                                size=size)
+                               size=size)
     return type
 
+
 def random_color():
-    rgbl=[0.1, 0, 0]
+    rgbl = [0.1, 0, 0]
     random.shuffle(rgbl)
     return tuple(rgbl)

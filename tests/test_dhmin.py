@@ -113,7 +113,8 @@ def test_dhmin(ox_config, seed):
 
     prob = solve_network(edges, nodes, params, timesteps, edge_profiles,
                          is_connected=False, time_limit=120,
-                         solver='gurobi', legend=True, plot_results=True,
+                         use_availability=False,
+                         solver='gurobi', legend=False, plot_results=True,
                          model_name='test_{}'.format(seed), override_hash=False)
 
 

@@ -160,7 +160,7 @@ def hash_model(nodes, edges, params, timesteps):
 def solve_network(edges, nodes, params, timesteps, edge_profiles,
                   plot_results=True, is_connected=True, time_limit=None,
                   solver='glpk', mip_gap=0.01, force_solve=False, legend=True,
-                  model_name=None, override_hash=False):
+                  model_name=None, override_hash=False, use_availability=True):
     """Prepares and solves a Mixed-Integer Programming problem from a set of
     edges and nodes with demand and supply techno-economic properties.
 
@@ -189,7 +189,8 @@ def solve_network(edges, nodes, params, timesteps, edge_profiles,
         # create the model
         prob = dhmin.create_model(nodes, edges, params,
                                   timesteps, edge_profiles, name=model_name,
-                                  is_connected=is_connected)
+                                  is_connected=is_connected,
+                                  use_availability=use_availability)
 
         # Choose the solver
         optim = SolverFactory(solver)

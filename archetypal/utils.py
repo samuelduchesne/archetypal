@@ -773,17 +773,14 @@ def project_geom(geom: shapely.geometry, from_crs=None, to_crs=None,
     if from_crs is None:
         from_crs = settings.default_crs
 
-    # get the crs value
-    from_crs_get = from_crs.get('init', settings.default_crs['init'])
-
     # if to_crs is there, use this value to project the geom
     if to_crs:
         # define new projection scheme
         project = partial(
             pyproj.transform,
-            pyproj.Proj(init=from_crs_get),
+            pyproj.Proj(**from_crs),
             # source coordinate system
-            pyproj.Proj(init=to_crs['init']))
+            pyproj.Proj(**to_crs))
 
         return transform(project, geom)  # apply projection
     # if not, get latlon directly or calulte UTM zone from centroid and
@@ -793,7 +790,7 @@ def project_geom(geom: shapely.geometry, from_crs=None, to_crs=None,
             # if to_latlong is True, project the geom to latlong
             project = partial(
                 pyproj.transform,
-                pyproj.Proj(init=from_crs_get),
+                pyproj.Proj(**from_crs),
                 # source coordinate system
                 pyproj.Proj(init='epsg:4326'))
             return transform(project, geom)  # apply projection
@@ -802,7 +799,7 @@ def project_geom(geom: shapely.geometry, from_crs=None, to_crs=None,
             # first, project to lat-long
             project = partial(
                 pyproj.transform,
-                pyproj.Proj(init=from_crs_get),
+                pyproj.Proj(**from_crs),
                 # source coordinate system
                 pyproj.Proj(init='epsg:4326'))
             geom = transform(project, geom)
@@ -815,7 +812,7 @@ def project_geom(geom: shapely.geometry, from_crs=None, to_crs=None,
             # finally, define new projection scheme and project
             project = partial(
                 pyproj.transform,
-                pyproj.Proj(init=from_crs_get),
+                pyproj.Proj(**from_crs),
                 # source coordinate system
                 pyproj.Proj(proj='utm', zone=zone_number, ellps='WGS84',
                             units='m', datum='WGS84'))

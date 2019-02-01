@@ -7,6 +7,7 @@ import re
 import time
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import pycountry as pycountry
 import requests
@@ -599,6 +600,11 @@ def gis_server_raster_request(creds, bbox=None, how='intersects', srid=None,
 
         # Read first band of raster with GDAL
         ds = gdal.Open(vsipath)
+        geo_transform = ds.GetGeoTransform()
+        minx = geo_transform[0]
+        maxy = geo_transform[3]
+        maxx = minx + geo_transform[1] * ds.RasterXSize
+        miny = maxy + geo_transform[5] * ds.RasterYSize
         band = ds.GetRasterBand(1)
         arr = band.ReadAsArray()
 
@@ -614,7 +620,7 @@ def gis_server_raster_request(creds, bbox=None, how='intersects', srid=None,
             return vsipath
         elif output_type == 'array':
             gdal.Unlink(vsipath)
-            return arr
+            return np.flipud(arr), (maxy, miny, maxx, minx)
 
 
 def gis_server_request(creds, bbox=None, how='intersects', srid=None):
@@ -719,6 +725,7 @@ def gis_server_available_tables(creds, schema='public'):
 
     return engine.table_names(schema=schema)
 
+
 def stat_can_request(data):
     prepared_url = 'https://www12.statcan.gc.ca/rest/census-recensement' \
                    '/CPR2016.{type}?lang={lang}&dguid={dguid}&topic=' \
@@ -776,7 +783,7 @@ def stat_can_request(data):
             # deal with response satus_code here
             log('Server at {} returned status code {} and no JSON '
                 'data.'.format(
-                    domain, response.status_code), level=lg.ERROR)
+                domain, response.status_code), level=lg.ERROR)
         else:
             return response_json
 
@@ -836,6 +843,6 @@ def stat_can_geo_request(data):
             # deal with response satus_code here
             log('Server at {} returned status code {} and no JSON '
                 'data.'.format(
-                    domain, response.status_code), level=lg.ERROR)
+                domain, response.status_code), level=lg.ERROR)
         else:
             return response_json

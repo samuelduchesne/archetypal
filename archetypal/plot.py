@@ -595,3 +595,84 @@ def polygon_under_graph(xlist, ylist):
     """Construct the vertex list which defines the polygon filling the space under
     the (xlist, ylist) line graph.  Assumes the xs are in ascending order."""
     return [(xlist[0], 0.), *zip(xlist, ylist), (xlist[-1], 0.)]
+
+
+def plot_raster_from_array(data, extent, bbox=None, crs=None,
+                           fig_height=6, fig_width=None, margin=0.02,
+                           equal_aspect=False, save=False, show=True,
+                           close=True, axis_off=True, legend=False, bgcolor='w',
+                           file_format='png', filename='temp', dpi=300,
+                           fig_title=None, **kwargs):
+    # get north, south, east, west values either from bbox parameter or from the
+    # spatial extent of the GeoTiff
+    if bbox is None:
+        north, south, east, west = extent
+    else:
+        north, south, east, west = bbox
+
+    # if caller did not pass in a fig_width, calculate it proportionately from
+    # the fig_height and bounding box aspect ratio
+    bbox_aspect_ratio = (north - south) / (east - west)
+    if fig_width is None:
+        fig_width = fig_height / bbox_aspect_ratio
+
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height), facecolor=bgcolor)
+    ax.set_facecolor(bgcolor)
+
+    maxy, miny, maxx, minx = extent
+    # Calculate meshgrid
+    x = np.linspace(minx, maxx, data.shape[1])
+    y = np.linspace(miny, maxy, data.shape[0])
+    xx, yy = np.meshgrid(x, y)
+
+    # plot
+    kk = ax.pcolormesh(xx, yy, data, cmap=plt.cm.jet)
+
+    # adjust the axis margins and limits around the image and make axes
+    # equal-aspect
+    # get north, south, east, west values either from bbox parameter or from the
+    # spatial extent of the GeoDataFrame geometries
+
+    margin_ns = (north - south) * margin
+    margin_ew = (east - west) * margin
+    ax.set_ylim((south - margin_ns, north + margin_ns))
+    ax.set_xlim((west - margin_ew, east + margin_ew))
+
+    # configure axis appearance
+    xaxis = ax.get_xaxis()
+    yaxis = ax.get_yaxis()
+
+    xaxis.get_major_formatter().set_useOffset(False)
+    yaxis.get_major_formatter().set_useOffset(False)
+
+    if equal_aspect:
+        # make everything square
+        ax.set_aspect('equal')
+        fig.canvas.draw()
+    else:
+        # if the graph is not projected, conform the aspect ratio to not
+        # stretch the plot
+        if crs == settings.default_crs:
+            coslat = np.cos((south + north) / 2. / 180. * np.pi)
+            ax.set_aspect(1. / coslat)
+            fig.canvas.draw()
+    # if axis_off, turn off the axis display set the margins to zero and point
+    # the ticks in so there's no space around the plot
+    if axis_off:
+        ax.axis('off')
+        ax.margins(0)
+        ax.tick_params(which='both', direction='in')
+        xaxis.set_visible(False)
+        yaxis.set_visible(False)
+        fig.canvas.draw()
+
+    if fig_title is not None:
+        ax.set_title(fig_title)
+
+    if legend:
+        fig.colorbar(kk, ax=ax)
+    fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show, close=close,
+                            filename=filename, file_format=file_format, dpi=dpi,
+                            axis_off=axis_off, extent=None)
+
+    return fig, ax

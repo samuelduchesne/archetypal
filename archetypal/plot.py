@@ -613,12 +613,38 @@ def plot_raster_from_array(data, extent, bbox=None, crs=None,
                            close=True, axis_off=True, legend=False, bgcolor='w',
                            file_format='png', filename='temp', dpi=300,
                            fig_title=None, **kwargs):
+    """
+
+    Args:
+        data (numpy.ndarray): The array to plot
+        extent (tuple): The array's geographic extent coordinates as a typle of 
+        bbox:
+        crs:
+        fig_height:
+        fig_width:
+        margin:
+        equal_aspect:
+        save:
+        show:
+        close:
+        axis_off:
+        legend:
+        bgcolor:
+        file_format:
+        filename:
+        dpi:
+        fig_title:
+        **kwargs:
+
+    Returns:
+
+    """
     # get north, south, east, west values either from bbox parameter or from the
     # spatial extent of the GeoTiff
     if bbox is None:
         north, south, east, west = extent
     else:
-        north, south, east, west = bbox
+        west, south, east, north = bbox
 
     # if caller did not pass in a fig_width, calculate it proportionately from
     # the fig_height and bounding box aspect ratio

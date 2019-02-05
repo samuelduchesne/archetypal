@@ -518,16 +518,24 @@ def nrel_bcl_api_request(data):
             return response_json
 
 
-def gis_server_raster_request(creds, bbox=None, how='intersects', srid=None,
-                              output_type='Raster'):
-    """
+def gis_server_raster_request(creds, bbox, how='intersects', srid=None,
+                              output_type='raster'):
+    """Download raster layer from a PostGis server. A bounding box limits
+    the extent of the returned data.
 
     Args:
-        output_type:
-        creds:
-        bbox:
-        how:
-        srid:
+        creds (dict): credentials to connect with the database. Pass a dict
+            containing the 'username', 'password', 'server', 'db_name',
+            'tb_schema', 'engine_str.
+        bbox (shapely.geometry): Any shapely geometry that has bounds.
+        how (str): the spatial operator to use. 'intersects' gets more rows
+            while 'contains' gets fewer rows.
+        srid (int): SRID. If no SRID is specified the unknown spatial
+            reference system is assumed.
+        output_type: 'raster' returns the output of gdal.Open(). 'memory'
+            returns the virutal memory file. 'array' returns the flipped
+            numpy array of the the data and a tuple of extent coordinates as
+            (maxy, miny, maxx, minx)
 
     Returns:
         numpy.array
@@ -613,7 +621,7 @@ def gis_server_raster_request(creds, bbox=None, how='intersects', srid=None,
         gdal.Unlink(vsipath)
         raise
     else:
-        if output_type == 'Raster':
+        if output_type == 'raster':
             gdal.Unlink(vsipath)
             return ds
         elif output_type == 'memory':
@@ -621,6 +629,10 @@ def gis_server_raster_request(creds, bbox=None, how='intersects', srid=None,
         elif output_type == 'array':
             gdal.Unlink(vsipath)
             return np.flipud(arr), (maxy, miny, maxx, minx)
+        else:
+            raise ValueError('"{}" is not a valid output_type. Please choose '
+                             'either "raster", "memory" or "array"'.format(
+                output_type))
 
 
 def gis_server_request(creds, bbox=None, how='intersects', srid=None):
@@ -629,8 +641,8 @@ def gis_server_request(creds, bbox=None, how='intersects', srid=None):
 
     Args:
         creds (dict): credentials to connect with the database. Pass a dict
-        containing the 'username', 'password', 'server', 'db_name',
-        'tb_schema', 'engine_str
+            containing the 'username', 'password', 'server', 'db_name',
+            'tb_schema', 'engine_str
         bbox (shapely.geometry): Any shapely geometry that has bounds.
         how (str): the spatial operator to use. 'intersects' gets more rows
             while 'contains' gets fewer rows.

@@ -112,16 +112,16 @@ def test_dhmin(ox_config, seed):
 
     # create provblem
     params = {'c_rev': 0.07}
-    timesteps = [(1600, .8), (1040, .5), (6120, .1)]
+    timesteps = [(1600, .8), (1040, .5)]
 
     # create fake duration, scaling factor with same as timstep (could be
     # customized)
     edge_profiles = edges.apply(lambda x: timesteps, axis=1)
 
     prob = solve_network(edges, nodes, params, timesteps, edge_profiles,
-                         is_connected=False, time_limit=120,
+                         is_connected=False, time_limit=820,
                          use_availability=False,
-                         solver='gurobi', legend=False, plot_results=True,
+                         solver='gurobi', legend=False, plot_results=False,
                          model_name='test_{}'.format(seed), override_hash=False)
 
 

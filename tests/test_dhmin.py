@@ -39,11 +39,11 @@ def test_dhmin(ox_config, seed):
     G = ox.simplify_graph(G, strict=True)
 
     # Project to graph to EPSG:2950
-    G = ox.project_graph(G, to_crs={'init': 'epsg:2950'})
+    G = ox.project_graph(G)
 
     # Reproject the bounding box to lat,lon since ploting functions need
     # lat/lon coordinates
-    bbox = ar.project_geom(bbox, to_crs={'init': 'epsg:2950'},
+    bbox = ar.project_geom(bbox, to_crs=G.graph['crs'],
                            from_crs={'init': 'epsg:4326'})
     west, south, east, north = bbox.bounds
 
@@ -51,17 +51,17 @@ def test_dhmin(ox_config, seed):
     # symmetry yet. We will create it with dhmin
 
     # Fix parallel and self-loop edges
-    G2 = ar.clean_paralleledges_and_selfloops(G)
+    G = ar.clean_paralleledges_and_selfloops(G)
 
     random.seed(seed)
     ec = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
-          for i in G2.edges]
-    nc = ['r' if node > 9999999999 else 'b' for node in G2.nodes]
-    ox.plot_graph(G2, bbox=(north, south, east, west), node_color=nc,
+          for i in G.edges]
+    nc = ['r' if node > 9999999999 else 'b' for node in G.nodes]
+    ox.plot_graph(G, bbox=(north, south, east, west), node_color=nc,
                   node_edgecolor='k', node_size=20, save=True, node_zorder=3,
                   edge_color=ec, edge_linewidth=2, annotate=False,
                   margin=0.2, filename='test_{}_fixed_nodes'.format(seed))
-    edges = ox.graph_to_gdfs(G2, nodes=False)
+    edges = ox.graph_to_gdfs(G, nodes=False)
     edges.set_index(['u', 'v'], inplace=True)
     rdstate = np.random.RandomState(seed=seed)
     profiles = edges.apply(lambda x: {type_str:
@@ -76,9 +76,9 @@ def test_dhmin(ox_config, seed):
                            axis=1)
     profiles = profiles.apply(ar.EnergyProfile, frequency='1H', units='kWh/m2',
                               is_sorted=True, concurrent_sort=True)
-    ar.add_edge_profiles(G2, edge_data=profiles)
+    ar.add_edge_profiles(G, edge_data=profiles)
 
-    nodes, edges = ox.graph_to_gdfs(G2, node_geometry=True,
+    nodes, edges = ox.graph_to_gdfs(G, node_geometry=True,
                                     fill_edge_geometry=True)
     edges.set_index(['u', 'v'], inplace=True)
     edges.index.names = ['Vertex1', 'Vertex2']

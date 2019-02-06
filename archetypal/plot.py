@@ -322,7 +322,8 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
 
 def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
                show=True, save=False, close=False, dpi=300, file_format='png',
-               extent=None, legend=False, plot_built=True):
+               extent=None, legend=False, plot_built=True, fig_height=6,
+               fig_width=None):
     """Plot power flows for dhmin model.
 
     Args:
@@ -356,11 +357,16 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
     else:
         west, south, east, north = bbox
 
+    bbox_aspect_ratio = (north - south) / (east - west)
+    if fig_width is None:
+        fig_width = fig_height / bbox_aspect_ratio
+
     if plot_demand:
         # create a sperate figure with the original plotted demand
         plot_edges = model.edges.copy()
         plot_edges = plot_edges.loc[lambda x: x['peak'] > 0, :]
         fig, ax = plot_map(plot_edges, bbox=(west, south, east, north),
+                           fig_height=fig_height, fig_width=fig_width,
                            column='peak', plot_graph=False, show=False,
                            cmap='magma', margin=margin, close=False,
                            axis_off=axis_off, save=False,
@@ -388,6 +394,7 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
         power_input = dhmin.get_entity(model, 'Q')
         if not plot_edges.empty:
             fig, ax = plot_map(plot_edges, bbox=(west, south, east, north),
+                               fig_height=fig_height, fig_width=fig_width,
                                column='x', plot_graph=False, show=False,
                                cmap='magma', margin=margin, close=False,
                                axis_off=axis_off, save=False,
@@ -420,6 +427,7 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
                                      on=['Vertex1', 'Vertex2'])
         plot_edges = plot_edges.loc[lambda x: x['Pin'] > 0, :]
         fig, ax = plot_map(plot_edges, bbox=(west, south, east, north),
+                           fig_height=fig_height, fig_width=fig_width,
                            column='Pin', plot_graph=False, show=False,
                            cmap='viridis', margin=margin,
                            axis_off=axis_off, save=False, close=False,

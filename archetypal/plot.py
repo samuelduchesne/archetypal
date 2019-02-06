@@ -385,20 +385,28 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
         plot_edges = plot_edges.join(pipe_x,
                                      on=['Vertex1', 'Vertex2']).loc[lambda x:
                                                                     x.x == 1, :]
+        power_input = dhmin.get_entity(model, 'Q')
+        if not plot_edges.empty:
+            fig, ax = plot_map(plot_edges, bbox=(west, south, east, north),
+                               column='x', plot_graph=False, show=False,
+                               cmap='magma', margin=margin, close=False,
+                               axis_off=axis_off, save=False,
+                               fig_title='Full extent of the network',
+                               legend=legend)
+            # plot used thermal plants
+            model.vertices.loc[power_input.loc[power_input.Q > 0].unstack(
 
-        fig, ax = plot_map(plot_edges, bbox=(west, south, east, north),
-                           column='x', plot_graph=False, show=False,
-                           cmap='magma', margin=margin, close=False,
-                           axis_off=axis_off, save=False,
-                           fig_title='Full extent of the network',
-                           legend=legend)
-        # plot original street netowork behind the dh network
-        model.edges.plot(ax=ax, linewidth=0.1, zorder=-1, color='grey',
-                         legend=legend)
-        filename = '{}_all_built_pipes'.format(model.name)
-        save_and_show(fig=fig, ax=ax, save=save, show=show, close=False,
-                      filename=filename, file_format=file_format, dpi=dpi,
-                      axis_off=axis_off, extent=extent)
+            ).index].plot(ax=ax, zorder=4, legend=legend)
+            # plot original street network behind the dh network
+            model.edges.plot(ax=ax, linewidth=0.1, zorder=-1, color='grey',
+                             legend=legend)
+            filename = '{}_all_built_pipes'.format(model.name)
+            save_and_show(fig=fig, ax=ax, save=save, show=show, close=False,
+                          filename=filename, file_format=file_format, dpi=dpi,
+                          axis_off=axis_off, extent=extent)
+        else:
+            raise ValueError('No edges to plot. Check the model solution for '
+                             'errors')
 
     power_flows = dhmin.get_entities(model, ['Pin', 'Pot'])
     power_flows_grouped = power_flows.groupby(level='timesteps')

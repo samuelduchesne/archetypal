@@ -53,8 +53,9 @@ def test_dhmin(ox_config, seed):
     # Fix parallel and self-loop edges
     G = ar.clean_paralleledges_and_selfloops(G)
 
-    random.seed(seed)
-    ec = ["#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+    rdstate = np.random.RandomState(seed=seed)
+    ec = ["#" + ''.join([rdstate.choice(list('0123456789ABCDEF')) for j in
+                         range(6)])
           for i in G.edges]
     nc = ['r' if node > 9999999999 else 'b' for node in G.nodes]
     ox.plot_graph(G, bbox=(north, south, east, west), node_color=nc,
@@ -63,15 +64,14 @@ def test_dhmin(ox_config, seed):
                   margin=0.2, filename='test_{}_fixed_nodes'.format(seed))
     edges = ox.graph_to_gdfs(G, nodes=False)
     edges.set_index(['u', 'v'], inplace=True)
-    rdstate = np.random.RandomState(seed=seed)
     profiles = edges.apply(lambda x: {type_str:
                                           ar.create_fake_profile(
-                                              y1={'A': random.uniform(0, 10)},
+                                              y1={'A': rdstate.uniform(0, 10)},
                                               normalize=False,
                                               profile_type=type_str,
                                               sorted=False, units='kWh/m2')
                                       for type_str in
-                                      random_type(size=random.randint(1,
+                                      random_type(size=rdstate.randint(1,
                                                                       5))},
                            axis=1)
     profiles = profiles.apply(ar.EnergyProfile, frequency='1H', units='kWh/m2',
@@ -142,7 +142,9 @@ def random_type(random_state=None, size=1):
     return type
 
 
-def random_color():
+def random_color(random_state=None):
+    if random_state is None:
+        random_state = np.random.RandomState(seed=1)
     rgbl = [0.1, 0, 0]
-    random.shuffle(rgbl)
+    random_state.shuffle(rgbl)
     return tuple(rgbl)

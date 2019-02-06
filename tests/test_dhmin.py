@@ -148,3 +148,9 @@ def random_color(random_state=None):
     rgbl = [0.1, 0, 0]
     random_state.shuffle(rgbl)
     return tuple(rgbl)
+
+
+def test_stats(config):
+    model = ar.load_model_from_cache([], [], [], [], override_hash=True,
+                                     model_name='test_1')
+    return ar.stats(model)

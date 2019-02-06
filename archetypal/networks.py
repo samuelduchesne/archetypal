@@ -7,6 +7,7 @@ import uuid
 import dhmin
 import networkx as nx
 import numpy as np
+import pandas as pd
 import osmnx as ox
 import pyomo.environ
 from pyomo.opt import SolverFactory
@@ -247,3 +248,40 @@ def add_edge_profiles(G, edge_data):
             pass
 
     return G
+
+
+def stats(model):
+
+    # built pipes length
+    built_edges = dhmin.get_entity(model, 'x')
+    total_network_length = model.edges.loc[built_edges.x == 1].geometry.\
+        unary_union.length
+
+    # Network cost
+    costs = dhmin.get_entity(model, 'costs').to_dict()['costs']
+    network_cost = costs['network']
+    heat_gen_cost = costs['heat']
+    heat_sell_revenue = costs['revenue']
+    net_profits = network_cost + heat_gen_cost + heat_sell_revenue
+    pmax = dhmin.get_entity(model, 'Pmax')
+    sfactor = dhmin.get_entity(model, 'scaling_factor')
+    sfactor_join_on_pmax = sfactor.join(pmax, on=['vertex', 'vertex_'])
+    duration = dhmin.get_entity(model, 'dt')
+    duration_join_on_sfactor_join_on_pmax = sfactor_join_on_pmax.join(
+        duration, on='timesteps')
+    pin = dhmin.get_entity(model, 'Pin')
+    pot = dhmin.get_entity(model, 'Pot')
+    linear_heat_density = (pin.Pin - pot.Pot).sum() / total_network_length
+    installed_power = dhmin.get_entity(model,
+                                       'Q').loc[(slice(None), 'Pmax'),
+                                                'Q'].sum()
+
+    stats = {'total_network_length': total_network_length,
+             'network_cost': network_cost,
+             'heat_gen_cost': heat_gen_cost,
+             'heat_sell_revenue': heat_sell_revenue,
+             'net_profits': net_profits,
+             'installed_power': installed_power,
+             'linear_heat_density': linear_heat_density}
+
+    return pd.Series(stats)

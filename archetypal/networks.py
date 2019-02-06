@@ -14,6 +14,8 @@ from pyomo.opt import SolverFactory
 import archetypal as ar
 from archetypal import project_geom, settings, log
 
+from shapely.geometry import Point, LineString
+
 
 def clean_paralleledges_and_selfloops(G):
     """Cuts any parallel edges in two, creating a new point in between"""

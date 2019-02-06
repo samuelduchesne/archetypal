@@ -82,9 +82,7 @@ def save_model_to_cache(prob, override_hash=False):
     Python objects. By using it, saving any object, in case of this function a
     Pyomo ConcreteModel, becomes a twoliner. GZip is a standard Python
     compression library that is used to transparently compress the pickle
-    file further. It is used over the possibly more compact bzip2 compression
-    due to the
-    lower runtime.
+    file further.
 
     Args:
         override_hash:
@@ -103,7 +101,8 @@ def save_model_to_cache(prob, override_hash=False):
                 os.makedirs(settings.cache_folder)
             if not override_hash:
                 # hash the model (to make a unique filename)
-                filename = hash_model(prob.nodes_tmp, prob.edges_tmp, prob.params,
+                filename = hash_model(prob.nodes_tmp, prob.edges_tmp,
+                                      prob.params,
                                       prob.timesteps)
             else:
                 filename = prob.name
@@ -113,7 +112,7 @@ def save_model_to_cache(prob, override_hash=False):
                                                    [filename, 'gzip']))
             import gzip
             try:
-                import cPickle as pickle
+                import cloudpickle as pickle
             except ImportError:
                 import pickle
             start_time = time.time()
@@ -136,7 +135,7 @@ def load_model_from_cache(nodes, edges, params, timesteps, override_hash=False,
         if os.path.isfile(cache_fullpath_filename):
             import gzip
             try:
-                import cPickle as pickle
+                import cloudpickle as pickle
             except ImportError:
                 import pickle
             with gzip.GzipFile(cache_fullpath_filename, 'r') as file_handle:

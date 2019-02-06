@@ -12,15 +12,17 @@ from archetypal import solve_network
 @pytest.mark.parametrize('seed', [1, 2])
 def test_dhmin(ox_config, seed):
     # Create a bounding in lat,lon coordinates
-    bbox = Polygon(((-73.580147, 45.509472), (-73.551007, 45.509472),
-                    (-73.551007, 45.488723), (-73.580147, 45.488723),
-                    (-73.580147, 45.509472)))
+    bbox = Polygon(((-73.55842859068035, 45.49078956443725),
+                   (-73.55842859068035, 45.50878642132324),
+                   (-73.58402020395432, 45.50878642132324),
+                   (-73.58402020395432, 45.49078956443725),
+                   (-73.55842859068035, 45.49078956443725)))
     # Project the geometry to EPSG:2950
     bbox = ar.project_geom(bbox, from_crs={'init': 'epsg:4326'},
                            to_crs={'init': 'epsg:2950'})
     # Change the size of the zone if necessary by creating a buffer. Negative
     # values will produce a smaller polygon.
-    bbox = bbox.buffer(-1000)
+    bbox = bbox.buffer(0)
 
     # Project back to EPSG:2950
     bbox = ar.project_geom(bbox, from_crs={'init': 'epsg:2950'},

@@ -7,6 +7,9 @@ from sklearn.preprocessing import MinMaxScaler
 
 from archetypal import nrel_bcl_api_request, log, settings
 from archetypal.core import EnergyProfile
+import pyomo.environ
+import pyomo.core as pyomo
+from pyomo.opt import SolverFactory
 
 
 def download_bld_window(u_factor, shgc, vis_trans, oauth_key, tolerance=0.05,
@@ -121,3 +124,38 @@ def create_fake_profile(x=None, y1={}, y2={}, normalize=False,
                          profile_type=profile_type, normalize=normalize,
                          is_sorted=sorted,
                          ascending=ascending)
+
+
+def discretize(profile, bins=5):
+    m = pyomo.ConcreteModel()
+
+    m.bins = pyomo.Set(initialize=range(bins))
+    m.timesteps = pyomo.Set(initialize=range(8760))
+    m.profile = profile.copy()
+    m.duration = pyomo.Var(m.bins, within=pyomo.NonNegativeIntegers)
+    m.amplitude = pyomo.Var(m.bins, within=pyomo.NonNegativeReals)
+
+    m.total_duration = pyomo.Constraint(m.bins,
+                                        doc='All duration must be ' \
+                                            'smaller or '
+                                            'equal to 8760',
+                                        rule=total_duration_rule)
+
+    m.obj = pyomo.Objective(sense=pyomo.minimize,
+                            doc='Minimize the sum of squared errors',
+                            rule=obj_rule)
+    optim = SolverFactory('gurobi')
+
+    result = optim.solve(m, tee=True, load_solutions=False)
+
+    m.solutions.load_from(result)
+
+    return m
+
+
+def total_duration_rule(m):
+    return sum(m.duration[i] for i in m.bins) == 8760
+
+
+def obj_rule(m):
+    return sum(m.duration * m.amplitude)

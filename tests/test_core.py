@@ -197,3 +197,6 @@ def test_energyprofile():
         save=True, axis_off=True, kind='polygon', cmap=None,
         fig_width=3, fig_height=8, edgecolors='k', linewidths=0.5)
 
+    prob = ar.discretize(hl, bins=10)
+    prob.duration.display()
+    prob.amplitude.display()

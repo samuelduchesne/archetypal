@@ -483,6 +483,7 @@ def plot_energyprofile(energyprofile, kind='polygon', axis_off=True, cmap=None,
         return axes
 
     import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import axes3d, Axes3D
 
     if isinstance(energyprofile.index, pd.MultiIndex):
         groups = energyprofile.groupby(level=0)

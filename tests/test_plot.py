@@ -1,7 +1,6 @@
 import pytest
 
 import archetypal as ar
-from archetypal import project_geom
 
 
 @pytest.mark.parametrize('plot_graph', [True, False], ids=['with_graph',
@@ -31,18 +30,14 @@ def test_density(config, axis_off):
                     (-73.580147, 45.509472)))
     # bbox = project_geom(bbox, from_crs={'init': 'epsg:4326'},
     #                     to_crs={'init': 'epsg:2950'})
-    west, south, east, north = bbox.bounds
     densitepu = ar.dataportal.gis_server_request(cred, bbox, 'intersects', 4326)
-    ar.plot_map(densitepu, column='indice', cmap='Oranges', bbox=(north,
-                                                                  south,
-                                                                  east,
-                                                                  west),
+    ar.plot_map(densitepu, column='indice', cmap='Oranges', bbox=bbox.bounds,
                 axis_off=axis_off, fig_height=8.5, fig_width=11, save=True,
                 legend=True, margin=0, plot_graph=True,
                 crs={'init': 'epsg:4326'}, file_format='pdf')
 
 
-def test_plot_c40():
+def test_plot_c40(config):
     # Create credentials
     from shapely.geometry import Polygon
     cred = {'username': 'samueld',
@@ -57,24 +52,13 @@ def test_plot_c40():
                     (-73.548325, 45.490073), (-73.558803, 45.490073),
                     (-73.558803, 45.49781)))
 
-    # Project the polygon coordinates to epsg:2950 coordinates
-    from functools import partial
-    import pyproj
-    from shapely.ops import transform
-
-    project = partial(
-        pyproj.transform,
-        pyproj.Proj(init='epsg:4326'),  # source coordinate system
-        pyproj.Proj(init='epsg:2950'))  # destination coordinate system
-
-    bbox = transform(project, bbox)  # apply projection
+    bbox = ar.project_geom(bbox, from_crs=dict(init='epsg:4326'),
+                           to_crs=dict(init='epsg:2950'))  # apply
+    # projection
     gdf = ar.dataportal.gis_server_request(cred, bbox, srid=2950)
-    west, south, east, north = ar.project_geom(bbox,
-                                               from_crs={'init': 'epsg:2950'},
-                                               to_latlon=True).bounds
-    fig, ax = ar.plot_map(gdf, column='code_utilisation', plot_graph=True,
-                          bbox=(north, south, east, west),
-                          crs={'init': 'epsg:2950'}, show=True)
-
-
-
+    bounds = ar.project_geom(bbox, from_crs={'init': 'epsg:2950'},
+                             to_latlon=True).bounds
+    ar.plot_map(gdf, column='code_utilisation', plot_graph=True, fig_height=8.5,
+                fig_width=11, save=True, bbox=bounds,
+                crs={'init': 'epsg:2950'},
+                show=True)

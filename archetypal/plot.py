@@ -1,25 +1,28 @@
 import os
 import time
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import osmnx as ox
+import pandas as pd
+from matplotlib import cm
+from matplotlib.colors import LightSource
 from shapely.geometry import box
 
 from archetypal import log, NoCRSDefinedError, project_geom, settings
 
 
 def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
-             fig_width=None, margin=0.02, equal_aspect=False, plot_graph=True,
-             save=False, show=True, close=True, axis_off=True,
+             fig_width=None, margin=0.02, equal_aspect=False,
+             plot_graph=False, data_zorder=3, save=False, show=True,
+             close=True, axis_off=True, legend=False, bgcolor='w',
              file_format='png', filename='temp', dpi=300, annotate=False,
-             fig_title=None,
-             **kwargs):
-    """Plot a GeoDataFrame of geometry features.
+             fig_title=None, **kwargs):
+    """Plot a GeoDataFrame of geometry features. Optionally draw the OSMNX graph
 
     Args:
         gdf: (geopandas.GeoDataFrame): geometry features
-        bbox (tuple): bounding box as north,south,east,west - if None will
+        bbox (tuple): bounding box as (west, south, east, north) - if None will
             calculate from spatial extents of gdf. if passing a
             bbox, you probably also want to pass margin=0 to constrain it.
         crs (dict): projection coordinate system of the plot. Also assumed to be
@@ -31,26 +34,35 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         color (str): If specified, all geometries will be colored uniformly.
         fig_height (float): matplotlib figure height in inches
         fig_width (float): matplotlib figure width in inches
-        margin:
+        margin (float): Specify the relative margin around the figure.
+        equal_aspect (bool, optional) : If True, set the axis aspect ratio equal
         plot_graph (bool): if True, plot the road network contained by the
             gdf's extent
+        data_zorder (int, optional): The order the matplotlib Artist will
+            draw the DataFrame. Usefull if drawing bellow or above the graph.
         save (bool): if True, save the figure as an image file to disk
         show (bool): if True, show the figure
         close (bool): close the figure (only if show equals False) to prevent
             display
-        axis_off (bool): if True turn off the matplotlib axis
+        axis_off (bool): If True turn off the matplotlib axis
+        legend (bool, optional): if True, will draw the legend associated
+            with the `column` argument above
+        bgcolor (str, optional): Set the figure background color. If None,
+            will use transparent.
         file_format (str): the format of the file to save (e.g., 'jpg', 'png',
             'svg', 'pdf')
         filename (str): the name of the file if saving
         dpi (int): the resolution of the image file if saving
         annotate (bool): if True, annotate the nodes in the figure
-        **kwargs:
+        fig_title (str, optional): Provide a figure title
+        **kwargs (dict, optional): See below
 
     Returns:
         fig, ax: tuple
 
     Keyword Args:
-        network_type (str): what type of street network to get
+        network_type (str): what type of street network to get. Choices:
+            drive, drive_service, walk, bike, all, all_private.
         retain_all (bool): if True, return the entire graph even if it is not
             connected
         simplify (bool): if true, simplify the graph topology
@@ -62,6 +74,11 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         infrastructure (str): download infrastructure of given type (default
             is streets (ie, 'way["highway"]') but other infrastructures may
             be selected like power grids (ie, 'way["power"~"line"]'))
+        edgecolor (str):
+        facecolor (str):
+        linewidth (float):
+        markersize (float):
+        alpha:
     """
     log('Begin plotting the map...')
     # if no crs is passed calculate from gdf
@@ -80,10 +97,9 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         bbox_geom = box(*gdf.unary_union.bounds)
         west, south, east, north = project_geom(bbox_geom,
                                                 from_crs=crs,
-                                                to_crs={'init':
-                                                            'epsg:4326'}).bounds
+                                                to_latlon=True).bounds
     else:
-        north, south, east, west = bbox
+        west, south, east, north = bbox
 
     # if caller did not pass in a fig_width, calculate it proportionately from
     # the fig_height and bounding box aspect ratio
@@ -106,18 +122,18 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
                   log_filename=settings.log_filename)
         # use osmnx.graph_from_bbox()
         # first get kwargs
-        network_type = kwargs.get('network_type', 'all_private')
-        retain_all = kwargs.get('retain_all', False)
-        simplify = kwargs.get('simplify', True)
-        truncate_by_edge = kwargs.get('truncate_by_edge', False)
-        name = kwargs.get('name', 'unnamed')
-        timeout = kwargs.get('timeout', 180)
-        memory = kwargs.get('memory', None)
-        max_query_area_size = kwargs.get('max_query_area_size', 50 * 1000 * 50
+        network_type = kwargs.pop('network_type', 'all_private')
+        retain_all = kwargs.pop('retain_all', False)
+        simplify = kwargs.pop('simplify', True)
+        truncate_by_edge = kwargs.pop('truncate_by_edge', False)
+        name = kwargs.pop('name', 'unnamed')
+        timeout = kwargs.pop('timeout', 180)
+        memory = kwargs.pop('memory', None)
+        max_query_area_size = kwargs.pop('max_query_area_size', 50 * 1000 * 50
                                          * 1000)
-        clean_periphery = kwargs.get('clean_periphery', True)
-        infrastructure = kwargs.get('infrastructure', 'way["highway"]')
-        custom_filter = kwargs.get('custom_filter', None)
+        clean_periphery = kwargs.pop('clean_periphery', True)
+        infrastructure = kwargs.pop('infrastructure', 'way["highway"]')
+        custom_filter = kwargs.pop('custom_filter', None)
         #
         G = ox.graph_from_bbox(north, south, east, west,
                                network_type=network_type, simplify=simplify,
@@ -131,7 +147,6 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         G = ox.project_graph(G, to_crs=to_crs)
 
         # plot the graph
-        bgcolor = kwargs.get('bgcolor', 'w')
         node_color = kwargs.get('node_color', '#66ccff')
         node_size = kwargs.get('node_size', 15)
         node_alpha = kwargs.get('node_alpha', 1)
@@ -142,12 +157,13 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         edge_alpha = kwargs.get('edge_alpha', 1)
         use_geom = kwargs.get('use_geom', True)
 
-        fig, ax = ox.plot_graph(G, bbox=bbox, fig_height=fig_height,
-                                fig_width=fig_width, margin=margin,
-                                axis_off=axis_off, equal_aspect=equal_aspect,
-                                bgcolor=bgcolor, show=False, save=False,
-                                close=False, file_format=file_format,
-                                filename=filename, dpi=dpi, annotate=annotate,
+        fig, ax = ox.plot_graph(G, bbox=(north, south, east, west),
+                                fig_height=fig_height, fig_width=fig_width,
+                                margin=margin, axis_off=axis_off,
+                                equal_aspect=equal_aspect, bgcolor=bgcolor,
+                                show=False, save=False, close=False,
+                                file_format=file_format, filename=filename,
+                                dpi=dpi, annotate=annotate,
                                 node_color=node_color, node_size=node_size,
                                 node_alpha=node_alpha,
                                 node_edgecolor=node_edgecolor,
@@ -155,23 +171,27 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
                                 edge_linewidth=edge_linewidth,
                                 edge_alpha=edge_alpha, use_geom=use_geom)
     else:
-        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height),
+                               facecolor=bgcolor)
+        ax.set_facecolor(bgcolor)
     # from here, we are in the gdf projection coordinates
     # plot the map
-    cmap = kwargs.get('cmap', None)
-    markersize = kwargs.get('markersize', 1)
-    vmin = kwargs.get('vmin', None)
-    vmax = kwargs.get('vmax', None)
-    k = kwargs.get('k', 5)
-    scheme = kwargs.get('scheme', None)
-    legend = kwargs.get('legend', None)
-    categorical = kwargs.get('categorical', False)
+    # Need to pop variables since we also pass kwargs as an argument
+    cmap = kwargs.pop('cmap', None)
+    # color is a function parameter
+    categorical = kwargs.pop('categorical', False)
+    # legend is a function parameter
+    scheme = kwargs.pop('scheme', None)
+    k = kwargs.pop('k', 5)
+    vmin = kwargs.pop('vmin', None)
+    vmax = kwargs.pop('vmax', None)
+    markersize = kwargs.pop('markersize', 1)
 
     # plot the GeoDataFrame
-    gdf.plot(column=column, cmap=cmap, color=color, ax=ax,
-             categorical=categorical, markersize=markersize, vmin=vmin,
-             vmax=vmax, k=k, scheme=scheme, legend=legend)
+    gdf.plot(column=column, cmap=cmap, color=color, ax=ax, zorder=data_zorder,
+             categorical=categorical, markersize=markersize,
+             figsize=(fig_width, fig_height), vmin=vmin,
+             vmax=vmax, k=k, scheme=scheme, legend=legend, **kwargs)
     # adjust the axis margins and limits around the image and make axes
     # equal-aspect
     # get north, south, east, west values either from bbox parameter or from the
@@ -182,7 +202,7 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
                                                 from_crs=crs,
                                                 to_crs=to_crs).bounds
     else:
-        north, south, east, west = bbox
+        west, south, east, north = bbox
     margin_ns = (north - south) * margin
     margin_ew = (east - west) * margin
     ax.set_ylim((south - margin_ns, north + margin_ns))
@@ -231,8 +251,8 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
 
     Args:
         extent:
-        fig (figure):
-        ax (axis):
+        fig (matplotlib.figure.Figure): the figure
+        ax (matplotlib.axes.Axes): the axes
         save (bool): whether to save the figure to disk or not
         show (bool): whether to display the figure or not
         close (bool): close the figure (only if show equals False) to prevent
@@ -240,7 +260,7 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
         filename (string): the name of the file to save
         file_format (string): the format of the file to save (e.g., 'jpg',
             'png', 'svg')
-        dpi (int): the resolution of the image file if saving
+        dpi (int): the resolution of the image file if saving (Dots per inch)
         axis_off (bool): if True matplotlib axis was turned off by plot_graph so
             constrain the saved figure's extent to the interior of the axis
 
@@ -248,6 +268,7 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
         (tuple) fig, ax
     """
     # save the figure if specified
+
     if save:
         start_time = time.time()
 
@@ -257,21 +278,26 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
         path_filename = os.path.join(settings.imgs_folder,
                                      os.extsep.join([filename, file_format]))
 
+        if not isinstance(ax, (np.ndarray, list)):
+            ax = [ax]
         if file_format == 'svg':
-            # if the file_format is svg, prep the fig/ax a bit for saving
-            ax.axis('off')
-            ax.set_position([0, 0, 1, 1])
-            ax.patch.set_alpha(0.)
+            for ax in ax:
+                # if the file_format is svg, prep the fig/ax a bit for saving
+                ax.axis('off')
+                ax.set_position([0, 0, 1, 1])
+                ax.patch.set_alpha(0.)
             fig.patch.set_alpha(0.)
             fig.savefig(path_filename, bbox_inches=0, format=file_format,
                         facecolor=fig.get_facecolor(), transparent=True)
         else:
             if extent is None:
-                if axis_off:
-                    # if axis is turned off, constrain the saved figure's extent to
-                    # the interior of the axis
-                    extent = ax.get_window_extent().transformed(
-                        fig.dpi_scale_trans.inverted())
+                if len(ax) == 1:
+                    if axis_off:
+                        for ax in ax:
+                            # if axis is turned off, constrain the saved
+                            # figure's extent to the interior of the axis
+                            extent = ax.get_window_extent().transformed(
+                                fig.dpi_scale_trans.inverted())
                 else:
                     extent = 'tight'
             fig.savefig(path_filename, dpi=dpi, bbox_inches=extent,
@@ -284,6 +310,7 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
     if show:
         start_time = time.time()
         plt.show()
+        # fig.show()
         log('Showed the plot in {:,.2f} seconds'.format(time.time() -
                                                         start_time))
     # if show=False, close the figure if close=True to prevent display
@@ -295,24 +322,26 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
 
 def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
                show=True, save=False, close=False, dpi=300, file_format='png',
-               fig_title=None, extent=None, legend=False, plot_built=True):
-    """Plot power flows for model.
+               extent=None, legend=False, plot_built=True, fig_height=6,
+               fig_width=None):
+    """Plot power flows for dhmin model.
 
     Args:
-        model:
-        axis_off:
-        plot_demand:
-        bbox:
-        margin:
+        model (pyomo.ConcreteModel): The pyomo model instance
+        axis_off (bool): If True, turn off the matplotlib axis
+        plot_demand (bool): If True, plot de demand along edges
+        bbox (tuple): Bounding box as (west, south, east, north) - if None will
+            calculate from spatial extent of the gdf. If passing a
+            bbox, you probably also want to pass margin=0 to constrain it.
+        margin (float): The rela
         show:
         save:
         close:
         dpi:
         file_format:
-        fig_title:
-        none:
         extent:
         legend:
+        plot_built:
 
     Returns:
 
@@ -328,11 +357,16 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
     else:
         west, south, east, north = bbox
 
+    bbox_aspect_ratio = (north - south) / (east - west)
+    if fig_width is None:
+        fig_width = fig_height / bbox_aspect_ratio
+
     if plot_demand:
         # create a sperate figure with the original plotted demand
         plot_edges = model.edges.copy()
         plot_edges = plot_edges.loc[lambda x: x['peak'] > 0, :]
-        fig, ax = plot_map(plot_edges, bbox=(north, south, east, west),
+        fig, ax = plot_map(plot_edges, bbox=(west, south, east, north),
+                           fig_height=fig_height, fig_width=fig_width,
                            column='peak', plot_graph=False, show=False,
                            cmap='magma', margin=margin, close=False,
                            axis_off=axis_off, save=False,
@@ -356,21 +390,30 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
         plot_edges = model.edges.copy()
         plot_edges = plot_edges.join(pipe_x,
                                      on=['Vertex1', 'Vertex2']).loc[lambda x:
-        x.x==1, :]
+                                                                    x.x == 1, :]
+        power_input = dhmin.get_entity(model, 'Q')
+        if not plot_edges.empty:
+            fig, ax = plot_map(plot_edges, bbox=(west, south, east, north),
+                               fig_height=fig_height, fig_width=fig_width,
+                               column='x', plot_graph=False, show=False,
+                               cmap='magma', margin=margin, close=False,
+                               axis_off=axis_off, save=False,
+                               fig_title='Full extent of the network',
+                               legend=legend)
+            # plot used thermal plants
+            model.vertices.loc[power_input.loc[power_input.Q > 0].unstack(
 
-        fig, ax = plot_map(plot_edges, bbox=(north, south, east, west),
-                           column='x', plot_graph=False, show=False,
-                           cmap='magma', margin=margin, close=False,
-                           axis_off=axis_off, save=False,
-                           fig_title='Full extent of the network',
-                           legend=legend)
-        # plot original street netowork behind the dh network
-        model.edges.plot(ax=ax, linewidth=0.1, zorder=-1, color='grey',
-                         legend=legend)
-        filename = '{}_all_built_pipes'.format(model.name)
-        save_and_show(fig=fig, ax=ax, save=save, show=show, close=False,
-                      filename=filename, file_format=file_format, dpi=dpi,
-                      axis_off=axis_off, extent=extent)
+            ).index].plot(ax=ax, zorder=4, legend=legend)
+            # plot original street network behind the dh network
+            model.edges.plot(ax=ax, linewidth=0.1, zorder=-1, color='grey',
+                             legend=legend)
+            filename = '{}_all_built_pipes'.format(model.name)
+            save_and_show(fig=fig, ax=ax, save=save, show=show, close=False,
+                          filename=filename, file_format=file_format, dpi=dpi,
+                          axis_off=axis_off, extent=extent)
+        else:
+            raise ValueError('No edges to plot. Check the model solution for '
+                             'errors')
 
     power_flows = dhmin.get_entities(model, ['Pin', 'Pot'])
     power_flows_grouped = power_flows.groupby(level='timesteps')
@@ -381,9 +424,10 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
     for i, (name, group) in enumerate(power_flows_grouped):
         plot_edges = model.edges.copy()
         plot_edges = plot_edges.join(group.reset_index(level=2),
-                                       on=['Vertex1', 'Vertex2'])
+                                     on=['Vertex1', 'Vertex2'])
         plot_edges = plot_edges.loc[lambda x: x['Pin'] > 0, :]
-        fig, ax = plot_map(plot_edges, bbox=(north, south, east, west),
+        fig, ax = plot_map(plot_edges, bbox=(west, south, east, north),
+                           fig_height=fig_height, fig_width=fig_width,
                            column='Pin', plot_graph=False, show=False,
                            cmap='viridis', margin=margin,
                            axis_off=axis_off, save=False, close=False,
@@ -403,3 +447,284 @@ def plot_dhmin(model, axis_off=True, plot_demand=True, bbox=None, margin=0,
         save_and_show(fig=fig, ax=ax, save=save, show=show, close=close,
                       filename=filename, file_format=file_format, dpi=dpi,
                       axis_off=axis_off, extent=extent)
+
+
+def plot_energyprofile(energyprofile, kind='polygon', axis_off=True, cmap=None,
+                       fig_height=None, fig_width=6, show=True, view_angle=-60,
+                       save=False, close=False, dpi=300, file_format='png',
+                       color=None, axes=None, vmin=None, vmax=None,
+                       filename=None, **kwargs):
+    """
+
+    Args:
+        energyprofile:
+        axis_off:
+        cmap:
+        fig_height:
+        fig_width:
+        show:
+        save:
+        close:
+        dpi:
+        file_format:
+        color:
+        axes:
+        vmin:
+        vmax:
+        filename:
+        **kwargs:
+
+    Returns:
+
+    """
+    if energyprofile.empty:
+        warnings.warn("The EnergyProgile you are attempting to plot is "
+                      "empty. Nothing has been displayed.", UserWarning)
+        return axes
+
+    import matplotlib.pyplot as plt
+
+    if isinstance(energyprofile.index, pd.MultiIndex):
+        groups = energyprofile.groupby(level=0)
+        nax = len(groups)
+    else:
+        nax = 1
+        groups = [('unnamed', energyprofile)]
+
+    if fig_height is None:
+        fig_height = fig_width * nax
+
+    # Set up plot
+    fig, axes = plt.subplots(nax, 1, subplot_kw=dict(projection='3d'),
+                             figsize=(fig_width, fig_height), dpi=dpi)
+    if not isinstance(axes, np.ndarray):
+        axes = [axes]
+
+    for ax, (name, profile) in zip(axes, groups):
+        values = profile.values
+
+        vmin = values.min() if vmin is None else vmin
+        vmax = values.max() if vmax is None else vmax
+
+        facecolor = kwargs.pop('facecolor', None)
+        if color is not None:
+            facecolor = color
+
+        if kind == 'polygon':
+            z = values.reshape(365, 24)
+            nrows, ncols = z.shape
+            xs = np.linspace(0, 23, ncols)
+            # y = np.linspace(0, 364, nrows)
+            # The ith polygon will appear on the plane y = zs[i]
+            zs = np.linspace(0, 364, nrows)
+            verts = []
+            for i in zs:
+                ys = z[int(i), :]
+                verts.append(polygon_under_graph(xs, ys))
+
+            plot_poly_collection(ax, verts, zs,
+                                 edgecolors=kwargs.get('edgecolors', None),
+                                 facecolors=kwargs.get('facecolors', None),
+                                 linewidths=kwargs.get('linewidths', None),
+                                 cmap=cmap)
+        elif kind == 'surface':
+            z = values.reshape(365, 24)
+            nrows, ncols = z.shape
+            x = np.linspace(1, 24, ncols)
+            y = np.linspace(1, 365, nrows)
+            x, y = np.meshgrid(x, y)
+            plot_surface(ax, x, y, z, cmap=cmap, **kwargs)
+        else:
+            raise NameError('plot kind "{}" is not supported'.format(kind))
+
+        if filename is None:
+            filename = 'unnamed'
+
+        # set the extent of the figure
+        ax.set_xlim3d(-1, 24)
+        ax.set_xlabel('X')
+        ax.set_ylim3d(-1, 365)
+        ax.set_ylabel('Y')
+        ax.set_zlim3d(vmin, vmax)
+        ax.set_zlabel('Z')
+
+        # configure axis appearance
+        xaxis = ax.xaxis
+        yaxis = ax.yaxis
+        zaxis = ax.zaxis
+
+        xaxis.get_major_formatter().set_useOffset(False)
+        yaxis.get_major_formatter().set_useOffset(False)
+        zaxis.get_major_formatter().set_useOffset(False)
+
+        # if axis_off, turn off the axis display set the margins to zero and
+        # point
+        # the ticks in so there's no space around the plot
+        if axis_off:
+            ax.axis('off')
+            ax.margins(0)
+            ax.tick_params(which='both', direction='in')
+            xaxis.set_visible(False)
+            yaxis.set_visible(False)
+            zaxis.set_visible(False)
+            fig.canvas.draw()
+        if view_angle is not None:
+            ax.view_init(30, view_angle)
+            ax.set_proj_type(kwargs.get('proj_type', 'persp'))
+            fig.canvas.draw()
+    fig, axes = save_and_show(fig=fig, ax=axes, save=save, show=show,
+                              close=close, filename=filename,
+                              file_format=file_format, dpi=dpi,
+                              axis_off=axis_off, extent=None)
+    return fig, axes
+
+
+def plot_poly_collection(ax, verts, zs=None, color=None, cmap=None,
+                         vmin=None, vmax=None, **kwargs):
+    from matplotlib.collections import PolyCollection
+
+    # if None in zs:
+    #     zs = None
+
+    # color=None overwrites specified facecolor/edgecolor with default color
+    if color is not None:
+        kwargs['color'] = color
+    import matplotlib as mpl
+    norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+
+    poly = PolyCollection(verts, **kwargs)
+    if zs is not None:
+        poly.set_array(np.asarray(zs))
+        poly.set_cmap(cmap)
+        poly.set_clim(vmin, vmax)
+
+    ax.add_collection3d(poly, zs=zs, zdir='y')
+    # ax.autoscale_view()
+    return poly
+
+
+def plot_surface(ax, x, y, z, cmap=None, **kwargs):
+    if cmap is None:
+        cmap = cm.gist_earth
+
+    ls = LightSource(270, 45)
+    # To use a custom hillshading mode, override the built-in shading and pass
+    # in the rgb colors of the shaded surface calculated from "shade".
+    rgb = ls.shade(z, cmap=cm.get_cmap(cmap), vert_exag=0.1, blend_mode='soft')
+    surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, facecolors=rgb,
+                           linewidth=0, antialiased=False, shade=False)
+    return surf
+
+
+def polygon_under_graph(xlist, ylist):
+    """Construct the vertex list which defines the polygon filling the space
+    under
+    the (xlist, ylist) line graph.  Assumes the xs are in ascending order."""
+    return [(xlist[0], 0.), *zip(xlist, ylist), (xlist[-1], 0.)]
+
+
+def plot_raster_from_array(data, extent, bbox=None, crs=None,
+                           fig_height=6, fig_width=None, margin=0.02,
+                           equal_aspect=False, save=False, show=True,
+                           close=True, axis_off=True, legend=False, bgcolor='w',
+                           file_format='png', filename='temp', dpi=300,
+                           fig_title=None, **kwargs):
+    """
+
+    Args:
+        data (numpy.ndarray): The array to plot
+        extent (tuple): The array's geographic extent coordinates as a typle of 
+        bbox:
+        crs:
+        fig_height:
+        fig_width:
+        margin:
+        equal_aspect:
+        save:
+        show:
+        close:
+        axis_off:
+        legend:
+        bgcolor:
+        file_format:
+        filename:
+        dpi:
+        fig_title:
+        **kwargs:
+
+    Returns:
+
+    """
+    # get north, south, east, west values either from bbox parameter or from the
+    # spatial extent of the GeoTiff
+    if bbox is None:
+        north, south, east, west = extent
+    else:
+        west, south, east, north = bbox
+
+    # if caller did not pass in a fig_width, calculate it proportionately from
+    # the fig_height and bounding box aspect ratio
+    bbox_aspect_ratio = (north - south) / (east - west)
+    if fig_width is None:
+        fig_width = fig_height / bbox_aspect_ratio
+
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height), facecolor=bgcolor)
+    ax.set_facecolor(bgcolor)
+
+    maxy, miny, maxx, minx = extent
+    # Calculate meshgrid
+    x = np.linspace(minx, maxx, data.shape[1])
+    y = np.linspace(miny, maxy, data.shape[0])
+    xx, yy = np.meshgrid(x, y)
+
+    # plot
+    kk = ax.pcolormesh(xx, yy, data, cmap=plt.cm.jet)
+
+    # adjust the axis margins and limits around the image and make axes
+    # equal-aspect
+    # get north, south, east, west values either from bbox parameter or from the
+    # spatial extent of the GeoDataFrame geometries
+
+    margin_ns = (north - south) * margin
+    margin_ew = (east - west) * margin
+    ax.set_ylim((south - margin_ns, north + margin_ns))
+    ax.set_xlim((west - margin_ew, east + margin_ew))
+
+    # configure axis appearance
+    xaxis = ax.get_xaxis()
+    yaxis = ax.get_yaxis()
+
+    xaxis.get_major_formatter().set_useOffset(False)
+    yaxis.get_major_formatter().set_useOffset(False)
+
+    if equal_aspect:
+        # make everything square
+        ax.set_aspect('equal')
+        fig.canvas.draw()
+    else:
+        # if the graph is not projected, conform the aspect ratio to not
+        # stretch the plot
+        if crs == settings.default_crs:
+            coslat = np.cos((south + north) / 2. / 180. * np.pi)
+            ax.set_aspect(1. / coslat)
+            fig.canvas.draw()
+    # if axis_off, turn off the axis display set the margins to zero and point
+    # the ticks in so there's no space around the plot
+    if axis_off:
+        ax.axis('off')
+        ax.margins(0)
+        ax.tick_params(which='both', direction='in')
+        xaxis.set_visible(False)
+        yaxis.set_visible(False)
+        fig.canvas.draw()
+
+    if fig_title is not None:
+        ax.set_title(fig_title)
+
+    if legend:
+        fig.colorbar(kk, ax=ax)
+    fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show, close=close,
+                            filename=filename, file_format=file_format, dpi=dpi,
+                            axis_off=axis_off, extent=None)
+
+    return fig, ax

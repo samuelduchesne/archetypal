@@ -5,14 +5,17 @@ import time
 import uuid
 
 import dhmin
+import networkx as nx
 import numpy as np
 import pandas as pd
+import osmnx as ox
 import pyomo.environ
 from pyomo.opt import SolverFactory
-from shapely.geometry import LineString, Point
 
 import archetypal as ar
 from archetypal import project_geom, settings, log
+
+from shapely.geometry import Point, LineString
 
 
 def clean_paralleledges_and_selfloops(G):
@@ -82,9 +85,7 @@ def save_model_to_cache(prob, override_hash=False):
     Python objects. By using it, saving any object, in case of this function a
     Pyomo ConcreteModel, becomes a twoliner. GZip is a standard Python
     compression library that is used to transparently compress the pickle
-    file further. It is used over the possibly more compact bzip2 compression
-    due to the
-    lower runtime.
+    file further.
 
     Args:
         override_hash:
@@ -103,7 +104,8 @@ def save_model_to_cache(prob, override_hash=False):
                 os.makedirs(settings.cache_folder)
             if not override_hash:
                 # hash the model (to make a unique filename)
-                filename = hash_model(prob.nodes_tmp, prob.edges_tmp, prob.params,
+                filename = hash_model(prob.nodes_tmp, prob.edges_tmp,
+                                      prob.params,
                                       prob.timesteps)
             else:
                 filename = prob.name
@@ -113,7 +115,7 @@ def save_model_to_cache(prob, override_hash=False):
                                                    [filename, 'gzip']))
             import gzip
             try:
-                import cPickle as pickle
+                import cloudpickle as pickle
             except ImportError:
                 import pickle
             start_time = time.time()
@@ -136,7 +138,7 @@ def load_model_from_cache(nodes, edges, params, timesteps, override_hash=False,
         if os.path.isfile(cache_fullpath_filename):
             import gzip
             try:
-                import cPickle as pickle
+                import cloudpickle as pickle
             except ImportError:
                 import pickle
             with gzip.GzipFile(cache_fullpath_filename, 'r') as file_handle:
@@ -160,7 +162,8 @@ def hash_model(nodes, edges, params, timesteps):
 def solve_network(edges, nodes, params, timesteps, edge_profiles,
                   plot_results=True, is_connected=True, time_limit=None,
                   solver='glpk', mip_gap=0.01, force_solve=False, legend=True,
-                  model_name=None, override_hash=False):
+                  model_name=None, override_hash=False,
+                  use_availability=True, **kwargs):
     """Prepares and solves a Mixed-Integer Programming problem from a set of
     edges and nodes with demand and supply techno-economic properties.
 
@@ -189,7 +192,8 @@ def solve_network(edges, nodes, params, timesteps, edge_profiles,
         # create the model
         prob = dhmin.create_model(nodes, edges, params,
                                   timesteps, edge_profiles, name=model_name,
-                                  is_connected=is_connected)
+                                  is_connected=is_connected,
+                                  use_availability=use_availability)
 
         # Choose the solver
         optim = SolverFactory(solver)
@@ -227,19 +231,76 @@ def solve_network(edges, nodes, params, timesteps, edge_profiles,
             prob.solutions.load_from(result)
     # plot results
     if plot_results:
-        ar.plot_dhmin(prob, plot_demand=True, margin=0.2, show=False, save=True,
-                      extent='tight', legend=legend)
+        show = kwargs.get('show', False)
+        bbox = kwargs.get('bbox', None)
+        ar.plot_dhmin(prob, bbox=bbox, plot_demand=True, margin=0.2,
+                      show=show, save=True, extent='tight', legend=legend)
     return prob
 
 
 def add_edge_profiles(G, edge_data):
-
     for u, v, data in G.edges(keys=False, data=True):
         try:
-            data['profiles'] = edge_data[(u, v)]
+            data['profiles'] = edge_data.loc[(u, v)]
         except KeyError:
             raise KeyError('No edge_data for edge ({u}, {v})'.format(u=u, v=v))
         else:
             pass
 
     return G
+
+
+def stats(model):
+    """Calculate basic kpis and topological stats for a model
+
+    Args:
+        model (pyomo.ConcreteModel):
+
+    Returns:
+        pandas.Series: Series of model measures:
+            - tech_parameters = techno-economic paramters used for the
+                simulation
+            - total_network_length = total network lenght
+            - network_cost = network cost
+            - heat_gen_cost = heat generation cost
+            - heat_sell_revenue = heat sell revenue
+            - net_profits = profits : network_cost + heat_gen_cost -
+                heat_sell_revenue
+            - installed_power = combined installed capacity of network
+            - linear_heat_density = linear heat density
+    """
+    # built pipes length
+    built_edges = dhmin.get_entity(model, 'x')
+    total_network_length = model.edges.loc[built_edges.x == 1].geometry.\
+        unary_union.length
+
+    # Network cost
+    costs = dhmin.get_entity(model, 'costs').to_dict()['costs']
+    network_cost = costs['network']
+    heat_gen_cost = costs['heat']
+    heat_sell_revenue = costs['revenue']
+    net_profits = network_cost + heat_gen_cost + heat_sell_revenue
+    pmax = dhmin.get_entity(model, 'Pmax')
+    sfactor = dhmin.get_entity(model, 'scaling_factor')
+    sfactor_join_on_pmax = sfactor.join(pmax, on=['vertex', 'vertex_'])
+    duration = dhmin.get_entity(model, 'dt')
+    duration_join_on_sfactor_join_on_pmax = sfactor_join_on_pmax.join(
+        duration, on='timesteps')
+    pin = dhmin.get_entity(model, 'Pin')
+    pot = dhmin.get_entity(model, 'Pot')
+    linear_heat_density = (pin.Pin - pot.Pot).sum() / total_network_length
+    installed_power = dhmin.get_entity(model,
+                                       'Q').loc[(slice(None), 'Pmax'),
+                                                'Q'].sum()
+    tech_parameters = model.tech_parameters._data
+
+    stats = {'tech_parameters': tech_parameters,
+             'total_network_length': total_network_length,
+             'network_cost': network_cost,
+             'heat_gen_cost': heat_gen_cost,
+             'heat_sell_revenue': heat_sell_revenue,
+             'net_profits': net_profits,
+             'installed_power': installed_power,
+             'linear_heat_density': linear_heat_density}
+
+    return pd.Series(stats)

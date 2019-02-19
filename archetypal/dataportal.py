@@ -6,11 +6,12 @@ import os
 import re
 import time
 
-import pandas as pd
 import geopandas as gpd
-from sqlalchemy import create_engine
+import numpy as np
+import pandas as pd
 import pycountry as pycountry
 import requests
+from sqlalchemy import create_engine
 
 from archetypal import log, settings, make_str
 
@@ -160,9 +161,9 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
     if code_building is not None:
         try:
             code_country, code_typologyregion, code_buildingsizeclass, \
-                code_construcionyearclass, \
-                code_additional_parameter, code_type, code_num, \
-                code_variantnumber = code_building.split('.')
+            code_construcionyearclass, \
+            code_additional_parameter, code_type, code_num, \
+            code_variantnumber = code_building.split('.')
         except ValueError:
             msg = (
                 'the query "{}" is missing a parameter. Make sure the '
@@ -517,16 +518,24 @@ def nrel_bcl_api_request(data):
             return response_json
 
 
-def gis_server_raster_request(creds, bbox=None, how='intersects', srid=None,
-                              output_type='Raster'):
-    """
+def gis_server_raster_request(creds, bbox, how='intersects', srid=None,
+                              output_type='raster'):
+    """Download raster layer from a PostGis server. A bounding box limits
+    the extent of the returned data.
 
     Args:
-        output_type:
-        creds:
-        bbox:
-        how:
-        srid:
+        creds (dict): credentials to connect with the database. Pass a dict
+            containing the 'username', 'password', 'server', 'db_name',
+            'tb_schema', 'engine_str.
+        bbox (shapely.geometry): Any shapely geometry that has bounds.
+        how (str): the spatial operator to use. 'intersects' gets more rows
+            while 'contains' gets fewer rows.
+        srid (int): SRID. If no SRID is specified the unknown spatial
+            reference system is assumed.
+        output_type: 'raster' returns the output of gdal.Open(). 'memory'
+            returns the virutal memory file. 'array' returns the flipped
+            numpy array of the the data and a tuple of extent coordinates as
+            (maxy, miny, maxx, minx)
 
     Returns:
         numpy.array
@@ -569,14 +578,14 @@ def gis_server_raster_request(creds, bbox=None, how='intersects', srid=None,
           "rast " \
           "{how} " \
           "ST_MakeEnvelope({xmin}, {ymin}, {xmax}, {ymax}, {my_srid})".format(
-            schema=tb_schema,
-            table_name=table_name,
-            xmin=xmin,
-            ymin=ymin,
-            xmax=xmax,
-            ymax=ymax,
-            my_srid=srid,
-            how=how)
+        schema=tb_schema,
+        table_name=table_name,
+        xmin=xmin,
+        ymin=ymin,
+        xmax=xmax,
+        ymax=ymax,
+        my_srid=srid,
+        how=how)
 
     # Todo: seek raster data from cache instead of from gis server
     # # try to get results from cache
@@ -599,6 +608,11 @@ def gis_server_raster_request(creds, bbox=None, how='intersects', srid=None,
 
         # Read first band of raster with GDAL
         ds = gdal.Open(vsipath)
+        geo_transform = ds.GetGeoTransform()
+        minx = geo_transform[0]
+        maxy = geo_transform[3]
+        maxx = minx + geo_transform[1] * ds.RasterXSize
+        miny = maxy + geo_transform[5] * ds.RasterYSize
         band = ds.GetRasterBand(1)
         arr = band.ReadAsArray()
 
@@ -607,14 +621,18 @@ def gis_server_raster_request(creds, bbox=None, how='intersects', srid=None,
         gdal.Unlink(vsipath)
         raise
     else:
-        if output_type == 'Raster':
+        if output_type == 'raster':
             gdal.Unlink(vsipath)
             return ds
         elif output_type == 'memory':
             return vsipath
         elif output_type == 'array':
             gdal.Unlink(vsipath)
-            return arr
+            return np.flipud(arr), (maxy, miny, maxx, minx)
+        else:
+            raise ValueError('"{}" is not a valid output_type. Please choose '
+                             'either "raster", "memory" or "array"'.format(
+                output_type))
 
 
 def gis_server_request(creds, bbox=None, how='intersects', srid=None):
@@ -623,8 +641,8 @@ def gis_server_request(creds, bbox=None, how='intersects', srid=None):
 
     Args:
         creds (dict): credentials to connect with the database. Pass a dict
-        containing the 'username', 'password', 'server', 'db_name',
-        'tb_schema', 'engine_str
+            containing the 'username', 'password', 'server', 'db_name',
+            'tb_schema', 'engine_str
         bbox (shapely.geometry): Any shapely geometry that has bounds.
         how (str): the spatial operator to use. 'intersects' gets more rows
             while 'contains' gets fewer rows.
@@ -703,3 +721,140 @@ def gis_server_request(creds, bbox=None, how='intersects', srid=None):
             log('No entries found. Check your parameters such as '
                 'the bbox coordinates and the CRS', lg.ERROR)
             return gpd.GeoDataFrame([])  # return empty GeoDataFrame
+
+
+def gis_server_available_tables(creds, schema='public'):
+    username = creds.pop('username')
+    password = creds.pop('password')
+    server = creds.pop('server')
+    db_name = creds.pop('db_name')
+
+    # create the engine string
+    engine_str = 'postgresql://{}:{}@{}/{}'.format(username, password, server,
+                                                   db_name)
+    # instanciate the server engine
+    engine = create_engine(engine_str)
+
+    return engine.table_names(schema=schema)
+
+
+def stat_can_request(data):
+    prepared_url = 'https://www12.statcan.gc.ca/rest/census-recensement' \
+                   '/CPR2016.{type}?lang={lang}&dguid={dguid}&topic=' \
+                   '{topic}&notes={notes}'.format(
+        type=data.get('type', 'json'),
+        lang=data.get('land', 'E'),
+        dguid=data.get('dguid', '2016A000011124'),
+        topic=data.get('topic', 1),
+        notes=data.get('notes', 0))
+
+    cached_response_json = get_from_cache(prepared_url)
+
+    if cached_response_json is not None:
+        # found this request in the cache, just return it instead of making a
+        # new HTTP call
+        return cached_response_json
+
+    else:
+        # if this URL is not already in the cache, request it
+        start_time = time.time()
+        log('Getting from {}, "{}"'.format(prepared_url, data))
+        response = requests.get(prepared_url)
+        # if this URL is not already in the cache, pause, then request it
+        # get the response size and the domain, log result
+        size_kb = len(response.content) / 1000.
+        domain = re.findall(r'//(?s)(.*?)/', prepared_url)[0]
+        log('Downloaded {:,.1f}KB from {}'
+            ' in {:,.2f} seconds'.format(size_kb, domain,
+                                         time.time() - start_time))
+
+        try:
+            response_json = response.json()
+            if 'remark' in response_json:
+                log('Server remark: "{}"'.format(response_json['remark'],
+                                                 level=lg.WARNING))
+            save_to_cache(prepared_url, response_json)
+
+        except Exception:
+            # There seems to be a double backlash in the response. We try
+            # removing it here.
+            try:
+                response = response.content.decode('UTF-8').replace('//',
+                                                                    '')
+                response_json = json.loads(response)
+            except Exception:
+                log(
+                    'Server at {} returned status code {} and no JSON '
+                    'data.'.format(
+                        domain,
+                        response.status_code),
+                    level=lg.ERROR)
+            else:
+                save_to_cache(prepared_url, response_json)
+                return response_json
+            # deal with response satus_code here
+            log('Server at {} returned status code {} and no JSON '
+                'data.'.format(
+                domain, response.status_code), level=lg.ERROR)
+        else:
+            return response_json
+
+
+def stat_can_geo_request(data):
+    prepared_url = 'https://www12.statcan.gc.ca/rest/census-recensement' \
+                   '/CR2016Geo.{type}?lang={lang}&geos={geos}&cpt={cpt}'.format(
+        type=data.get('type', 'json'),
+        lang=data.get('land', 'E'),
+        geos=data.get('geos', 'PR'),
+        cpt=data.get('cpt', '00'))
+
+    cached_response_json = get_from_cache(prepared_url)
+
+    if cached_response_json is not None:
+        # found this request in the cache, just return it instead of making a
+        # new HTTP call
+        return cached_response_json
+
+    else:
+        # if this URL is not already in the cache, request it
+        start_time = time.time()
+        log('Getting from {}, "{}"'.format(prepared_url, data))
+        response = requests.get(prepared_url)
+        # if this URL is not already in the cache, pause, then request it
+        # get the response size and the domain, log result
+        size_kb = len(response.content) / 1000.
+        domain = re.findall(r'//(?s)(.*?)/', prepared_url)[0]
+        log('Downloaded {:,.1f}KB from {}'
+            ' in {:,.2f} seconds'.format(size_kb, domain,
+                                         time.time() - start_time))
+
+        try:
+            response_json = response.json()
+            if 'remark' in response_json:
+                log('Server remark: "{}"'.format(response_json['remark'],
+                                                 level=lg.WARNING))
+            save_to_cache(prepared_url, response_json)
+
+        except Exception:
+            # There seems to be a double backlash in the response. We try
+            # removing it here.
+            try:
+                response = response.content.decode('UTF-8').replace('//',
+                                                                    '')
+                response_json = json.loads(response)
+            except Exception:
+                log(
+                    'Server at {} returned status code {} and no JSON '
+                    'data.'.format(
+                        domain,
+                        response.status_code),
+                    level=lg.ERROR)
+            else:
+                save_to_cache(prepared_url, response_json)
+                return response_json
+            # deal with response satus_code here
+            log('Server at {} returned status code {} and no JSON '
+                'data.'.format(
+                domain, response.status_code), level=lg.ERROR)
+        else:
+            return response_json

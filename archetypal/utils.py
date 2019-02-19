@@ -32,7 +32,8 @@ def config(data_folder=settings.data_folder,
            log_name=settings.log_name,
            log_filename=settings.log_filename,
            useful_idf_objects=settings.useful_idf_objects,
-           umitemplate=settings.umitemplate):
+           umitemplate=settings.umitemplate,
+           get_common_umi_objects=False):
     """
     Configurations
 
@@ -42,9 +43,9 @@ def config(data_folder=settings.data_folder,
         imgs_folder (str): where to save figures
         cache_folder (str): where to save the simluation results
         use_cache (bool): if True, use a local cache to save/retrieve
-            EnergyPlus simulation results instead of calling the API
-            repetitively for the same requests. This can save a lot of time
-            when simulations are long
+            many of archetypal outputs such as EnergyPlus simulation results.
+            This can save a lot of time by not calling the simulation and
+            dataportal APIs repetitively for the same requests.
         log_file (bool): if true, save log output to a log file in logs_folder
         log_console (bool): if true, print log output to the console
         log_level (int): one of the logger.level constants
@@ -70,8 +71,9 @@ def config(data_folder=settings.data_folder,
     settings.log_filename = log_filename
     settings.useful_idf_objects = useful_idf_objects
     settings.umitemplate = umitemplate
-    settings.common_umi_objects = get_list_of_common_umi_objects(
-        settings.umitemplate)
+    if get_common_umi_objects:
+        settings.common_umi_objects = get_list_of_common_umi_objects(
+            settings.umitemplate)
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
@@ -771,17 +773,14 @@ def project_geom(geom: shapely.geometry, from_crs=None, to_crs=None,
     if from_crs is None:
         from_crs = settings.default_crs
 
-    # get the crs value
-    from_crs_get = from_crs.get('init', settings.default_crs['init'])
-
     # if to_crs is there, use this value to project the geom
     if to_crs:
         # define new projection scheme
         project = partial(
             pyproj.transform,
-            pyproj.Proj(init=from_crs_get),
+            pyproj.Proj(**from_crs),
             # source coordinate system
-            pyproj.Proj(init=to_crs['init']))
+            pyproj.Proj(**to_crs))
 
         return transform(project, geom)  # apply projection
     # if not, get latlon directly or calulte UTM zone from centroid and
@@ -791,7 +790,7 @@ def project_geom(geom: shapely.geometry, from_crs=None, to_crs=None,
             # if to_latlong is True, project the geom to latlong
             project = partial(
                 pyproj.transform,
-                pyproj.Proj(init=from_crs_get),
+                pyproj.Proj(**from_crs),
                 # source coordinate system
                 pyproj.Proj(init='epsg:4326'))
             return transform(project, geom)  # apply projection
@@ -800,7 +799,7 @@ def project_geom(geom: shapely.geometry, from_crs=None, to_crs=None,
             # first, project to lat-long
             project = partial(
                 pyproj.transform,
-                pyproj.Proj(init=from_crs_get),
+                pyproj.Proj(**from_crs),
                 # source coordinate system
                 pyproj.Proj(init='epsg:4326'))
             geom = transform(project, geom)
@@ -813,7 +812,7 @@ def project_geom(geom: shapely.geometry, from_crs=None, to_crs=None,
             # finally, define new projection scheme and project
             project = partial(
                 pyproj.transform,
-                pyproj.Proj(init=from_crs_get),
+                pyproj.Proj(**from_crs),
                 # source coordinate system
                 pyproj.Proj(proj='utm', zone=zone_number, ellps='WGS84',
                             units='m', datum='WGS84'))

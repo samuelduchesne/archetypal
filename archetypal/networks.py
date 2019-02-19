@@ -251,7 +251,24 @@ def add_edge_profiles(G, edge_data):
 
 
 def stats(model):
+    """Calculate basic kpis and topological stats for a model
 
+    Args:
+        model (pyomo.ConcreteModel):
+
+    Returns:
+        pandas.Series: Series of model measures:
+            - tech_parameters = techno-economic paramters used for the
+                simulation
+            - total_network_length = total network lenght
+            - network_cost = network cost
+            - heat_gen_cost = heat generation cost
+            - heat_sell_revenue = heat sell revenue
+            - net_profits = profits : network_cost + heat_gen_cost -
+                heat_sell_revenue
+            - installed_power = combined installed capacity of network
+            - linear_heat_density = linear heat density
+    """
     # built pipes length
     built_edges = dhmin.get_entity(model, 'x')
     total_network_length = model.edges.loc[built_edges.x == 1].geometry.\
@@ -275,8 +292,10 @@ def stats(model):
     installed_power = dhmin.get_entity(model,
                                        'Q').loc[(slice(None), 'Pmax'),
                                                 'Q'].sum()
+    tech_parameters = model.tech_parameters._data
 
-    stats = {'total_network_length': total_network_length,
+    stats = {'tech_parameters': tech_parameters,
+             'total_network_length': total_network_length,
              'network_cost': network_cost,
              'heat_gen_cost': heat_gen_cost,
              'heat_sell_revenue': heat_sell_revenue,

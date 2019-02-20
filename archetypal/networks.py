@@ -7,16 +7,14 @@ import uuid
 import dhmin
 import networkx as nx
 import numpy as np
-import pandas as pd
-import geopandas as gpd
 import osmnx as ox
+import pandas as pd
 import pyomo.environ
 from pyomo.opt import SolverFactory
+from shapely.geometry import Point, LineString
 
 import archetypal as ar
 from archetypal import project_geom, settings, log
-
-from shapely.geometry import Point, LineString, shape
 
 
 def clean_paralleledges_and_selfloops(G):
@@ -334,10 +332,18 @@ def graph_from_shp(file, name=None, simplify=True, strict=True, crs=None):
     G = nx.MultiDiGraph(G, name=name, crs=settings.default_crs)
 
     # set osmid edge attribute. Uses a dict of {(u, v, key): id}
-    nx.set_edge_attributes(G, {(edge[0], edge[1], edge[2]): i for i, edge in
+    nx.set_edge_attributes(G, {(edge[0], edge[1], edge[2]): edge[3]['osmid']
+    if 'osmid' in edge[3] else i for
+                               i, edge in
                                enumerate(G.edges(keys=True, data=True))},
                            'osmid')
-
+    # set length attribute.
+    nx.set_edge_attributes(G, {(edge[0], edge[1], edge[2]): float(edge[3][
+        'length']) if edge[3]['length'] is not None else None
+    if 'length' in edge[3] else None for
+                               i, edge in
+                               enumerate(G.edges(keys=True, data=True))},
+                           'length')
     # Set x, y node attributes
     nx.set_node_attributes(G, {node: node[0] for node in G.nodes}, 'x')
     nx.set_node_attributes(G, {node: node[1] for node in G.nodes}, 'y')

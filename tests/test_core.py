@@ -7,7 +7,8 @@ import archetypal as ar
 ar.config(log_console=True, log_file=True, use_cache=True,
           data_folder='.temp/data', logs_folder='.temp/logs',
           imgs_folder='.temp/imgs', cache_folder='.temp/cache',
-          umitemplate='../data/BostonTemplateLibrary.json')
+          umitemplate='../data/BostonTemplateLibrary.json',
+          get_common_umi_objects=True)
 
 # # Uncomment this block to test different file variations
 # files_to_try = ['./input_data/problematic/*.idf',

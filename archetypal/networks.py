@@ -8,6 +8,7 @@ import dhmin
 import networkx as nx
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 import osmnx as ox
 import pyomo.environ
 from pyomo.opt import SolverFactory
@@ -15,7 +16,7 @@ from pyomo.opt import SolverFactory
 import archetypal as ar
 from archetypal import project_geom, settings, log
 
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point, LineString, shape
 
 
 def clean_paralleledges_and_selfloops(G):
@@ -271,7 +272,7 @@ def stats(model):
     """
     # built pipes length
     built_edges = dhmin.get_entity(model, 'x')
-    total_network_length = model.edges.loc[built_edges.x == 1].geometry.\
+    total_network_length = model.edges.loc[built_edges.x == 1].geometry. \
         unary_union.length
 
     # Network cost
@@ -304,3 +305,47 @@ def stats(model):
              'linear_heat_density': linear_heat_density}
 
     return pd.Series(stats)
+
+
+def graph_from_shp(file, name=None, simplify=True, strict=True, crs=None):
+    """creates a MultiDiGraph from a shapefile.
+
+    With simplify=True, it implements :func:`osmnx.simplify_graph`
+
+    Args:
+        file (str): shapefile of directory of multiple shapefiles
+        name (str, optional): name of graph
+        simplify (bool): If True, simplify a graph's topology by removing all
+            nodes that are not intersections or dead-ends.
+        strict (bool): if False, allow nodes to be end points even if they fail
+            all other rules but have edges with different ids
+        crs (dict): specify the crs of the shapefile eg. dict(init='epsg:2950')
+
+    Returns:
+        networkx.MultiDiGraph
+    """
+    if not name:
+        name = os.path.basename(file)
+    # create graph from shapefile
+    G = nx.read_shp(file, simplify=False)
+
+    # create multidigraph from digraph (since osmnx deals with multidigraphs)
+    # give it a name and the default crs
+    G = nx.MultiDiGraph(G, name=name, crs=settings.default_crs)
+
+    # set osmid edge attribute. Uses a dict of {(u, v, key): id}
+    nx.set_edge_attributes(G, {(edge[0], edge[1], edge[2]): i for i, edge in
+                               enumerate(G.edges(keys=True, data=True))},
+                           'osmid')
+
+    # Set x, y node attributes
+    nx.set_node_attributes(G, {node: node[0] for node in G.nodes}, 'x')
+    nx.set_node_attributes(G, {node: node[1] for node in G.nodes}, 'y')
+
+    if crs:
+        G.graph['crs'] = crs
+
+    if simplify:
+        G = ox.simplify_graph(G, strict=strict)
+
+    return G

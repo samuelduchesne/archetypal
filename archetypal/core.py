@@ -1365,8 +1365,8 @@ def zoneloads_aggregation(x):
 
 def zoneventilation_aggregation(df):
     """Set of different zoneventilation_aggregation (weighted mean and "top")
-    on multiple objects,
-    eg. ('NominalVentilation', 'ACH - Air Changes per Hour').
+    on multiple objects, eg. ('NominalVentilation', 'ACH - Air Changes per
+    Hour').
 
     All the DataFrame is passed to each function.
 
@@ -1458,10 +1458,9 @@ def nominal_lighting(df):
         df
 
     References:
-        * `NominalLighting Table
-        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and
+        * `NominalLighting Table \
+        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and \
         -examples/eplusout-sql.html#nominallighting-table>`_
-
 
     """
     df = get_from_tabulardata(df)
@@ -1490,9 +1489,9 @@ def nominal_people(df):
         df
 
     References:
-        * `NominalPeople Table
-        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and
-        -examples/eplusout-sql.html#nominalpeople-table>`_
+        * `NominalPeople Table \
+        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and- \
+        examples/eplusout-sql.html#nominalpeople-table>`_
 
     """
     df = get_from_tabulardata(df)
@@ -1518,9 +1517,9 @@ def nominal_equipment(df):
         df
 
     References:
-        * `NominalElectricEquipment Table
-        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and
-        -examples/eplusout-sql.html#nominalelectricequipment-table>`_
+        * `NominalElectricEquipment Table \
+        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and \
+        -examples/eplusout-sql.html#nominalelectricequipment-table>`_ \
 
     """
     df = get_from_tabulardata(df)
@@ -1549,7 +1548,8 @@ def nominal_infiltration(df):
         df
 
     References:
-        * `<https://bigladdersoftware.com/epx/docs/8-9/output-details-and
+        * `Nominal Infiltration Table \
+        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and \
         -examples/eplusout-sql.html#nominalinfiltration-table>`_
 
     """
@@ -1577,8 +1577,9 @@ def nominal_ventilation(df):
         df
 
     References:
-        * `<https://bigladdersoftware.com/epx/docs/8-9/output-details-and
-        -examples/eplusout-sql.html#nominalinfiltration-table>`_
+        * `Nominal Infiltration Table \
+        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and \
+        -examples/eplusout-sql.html#nominalventilation-table>`_
 
     """
     df = get_from_tabulardata(df)
@@ -1609,9 +1610,8 @@ def nominal_ventilation(df):
 
 def nominal_lighting_aggregation(x):
     """Aggregates the lighting equipments whithin a single zone_loads name (
-    implies
-    that .groupby(['Archetype',
-    'Zone Name']) is performed before calling this function).
+    implies that .groupby(['Archetype', 'Zone Name']) is performed before
+    calling this function).
 
     Args:
         x (pandas.DataFrame): x
@@ -1833,7 +1833,8 @@ def zone_information(df):
         df
 
     References:
-        * `<https://bigladdersoftware.com/epx/docs/8-3/output-details-and
+        * `Zone Loads Information \
+        <https://bigladdersoftware.com/epx/docs/8-3/output-details-and \
         -examples/eplusout.eio.html#zone_loads-information>`_
 
     """

@@ -382,7 +382,7 @@ def get_row_prop(self, other, on, property):
     Todo:
         * Not used
         * This function may raise an error (it has to). Maybe we can do
-        things better.
+          things better.
 
     Args:
         self:
@@ -547,7 +547,7 @@ def iscore(row):
 
     Todo:
         * assumes a basement zone_loads will be considered as a core
-        zone_loads since no ext wall area for basements.
+          zone_loads since no ext wall area for basements.
 
     Args:
         row (pandas.Series): a row

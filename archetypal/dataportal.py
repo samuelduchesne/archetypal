@@ -11,9 +11,8 @@ import numpy as np
 import pandas as pd
 import pycountry as pycountry
 import requests
-from sqlalchemy import create_engine
-
 from archetypal import log, settings, make_str
+from sqlalchemy import create_engine
 
 # scipy and sklearn are optional dependencies for faster nearest node search
 try:
@@ -420,6 +419,22 @@ def openei_api_request(data, pause_duration=None, timeout=180,
 
 
 def nrel_api_cbr_request(data):
+    """
+
+    Args:
+        data: a dict of
+
+    Returns:
+        dict: the json response
+
+    Examples
+        >>> ar.dataportal.nrel_api_cbr_request({'s': 'Commercial Reference', \
+        >>> 'api_key': 'oGZdX1nhars1cTJYTm7M9T12T1ZOvikX9pH0Zudq'})
+
+    Notes
+        For a detailed description of data arguments, visit
+        https://developer.nrel.gov/docs/buildings/commercial-building-resource-database-v1/resources/
+    """
     # define the Overpass API URL, then construct a GET-style URL as a string to
     # hash to look up/save to cache
     url = 'https://developer.nrel.gov/api/commercial-building-resources/v1' \

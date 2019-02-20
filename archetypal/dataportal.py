@@ -650,7 +650,7 @@ def gis_server_raster_request(creds, bbox, how='intersects', srid=None,
                 output_type))
 
 
-def gis_server_request(creds, bbox=None, how='intersects', srid=None):
+def gis_server_request(creds, bbox, how='intersects', srid=None):
     """Send a request to the GIS server via postgis SQL query and return the
     GeoDataFrame response.
 

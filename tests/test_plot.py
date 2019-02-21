@@ -11,7 +11,7 @@ def test_plot_map(config, test_gis_server_osmnx, plot_graph):
     ar.plot_map(gdf, plot_graph=plot_graph,
                 equal_aspect=True, crs={'init': 'epsg:2950'},
                 annotate=False, legend=False, scheme='Quantiles', margin=0,
-                save=True, show=True)
+                save=True, show=True, network_type='walk')
 
 
 @pytest.mark.parametrize('axis_off', [True, False], ids=['axis_off', 'axis_on'])

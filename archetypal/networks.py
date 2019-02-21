@@ -9,6 +9,7 @@ import networkx as nx
 import numpy as np
 import osmnx as ox
 import pandas as pd
+import geopandas as gpd
 import pyomo.environ
 from pyomo.opt import SolverFactory
 from shapely.geometry import Point, LineString
@@ -305,7 +306,8 @@ def stats(model):
     return pd.Series(stats)
 
 
-def graph_from_shp(file, name=None, simplify=True, strict=True, crs=None):
+def graph_from_shp(file, name=None, simplify=True, strict=True, crs=None,
+                   custom_filter=None):
     """creates a MultiDiGraph from a shapefile.
 
     With simplify=True, it implements :func:`osmnx.simplify_graph`
@@ -318,14 +320,26 @@ def graph_from_shp(file, name=None, simplify=True, strict=True, crs=None):
         strict (bool): if False, allow nodes to be end points even if they fail
             all other rules but have edges with different ids
         crs (dict): specify the crs of the shapefile eg. dict(init='epsg:2950')
-
+        custom_filter (tuple): filter the attributes of the shapefile. Pass a
+            tuple of ('column_name', equal_to_value). Todo: Implement != diff
     Returns:
         networkx.MultiDiGraph
     """
     if not name:
         name = os.path.basename(file)
     # create graph from shapefile
-    G = nx.read_shp(file, simplify=False)
+    if custom_filter:
+        # load GeoDataFrame and apply filter
+        gdf = gpd.read_file(file)
+        gdf = gdf[gdf[custom_filter[0]]==custom_filter[1]]
+
+        import tempfile
+        with tempfile.TemporaryDirectory() as tempdir:
+            with ar.cd(tempdir):
+                gdf.to_file('temp')
+                G = nx.read_shp('temp/temp.shp', simplify=False)
+    else:
+        G = nx.read_shp(file, simplify=False)
 
     # create multidigraph from digraph (since osmnx deals with multidigraphs)
     # give it a name and the default crs

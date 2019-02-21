@@ -17,7 +17,7 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
              plot_graph=False, data_zorder=3, save=False, show=True,
              close=True, axis_off=True, legend=False, bgcolor='w',
              file_format='png', filename='temp', dpi=300, annotate=False,
-             fig_title=None, **kwargs):
+             fig_title=None, legend_kwds=None, **kwargs):
     """Plot a GeoDataFrame of geometry features. Optionally draw the OSMNX graph
 
     Args:
@@ -55,6 +55,7 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         dpi (int): the resolution of the image file if saving
         annotate (bool): if True, annotate the nodes in the figure
         fig_title (str, optional): Provide a figure title
+        legend_kwds (dict, optinal): kwargs to pass to the legend
         **kwargs (dict, optional): See below
 
     Returns:
@@ -191,7 +192,8 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
     gdf.plot(column=column, cmap=cmap, color=color, ax=ax, zorder=data_zorder,
              categorical=categorical, markersize=markersize,
              figsize=(fig_width, fig_height), vmin=vmin,
-             vmax=vmax, k=k, scheme=scheme, legend=legend, **kwargs)
+             vmax=vmax, k=k, scheme=scheme, legend=legend,
+             legend_kwds=legend_kwds, **kwargs)
     # adjust the axis margins and limits around the image and make axes
     # equal-aspect
     # get north, south, east, west values either from bbox parameter or from the

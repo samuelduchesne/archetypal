@@ -369,3 +369,29 @@ def graph_from_shp(file, name=None, simplify=True, strict=True, crs=None,
         G = ox.simplify_graph(G, strict=strict)
 
     return G
+
+
+def split_union(gdfs):
+    """splits and unionizes a list of GeoDataFrames"""
+    if not isinstance(gdfs, list):
+        gdfs = list(gdfs)
+
+    import itertools
+    from shapely.ops import split, linemerge
+    gdf_segments = []
+
+    # with a list of GeoDataFrame, we use permutations to split all
+    # combinations of each GeoDataFrame
+    for first, second in itertools.permutations(gdfs, 2):
+        split_line = split(first.unary_union,
+                           second.unary_union)
+
+        # transform Geometry Collection to GeoDataFrame
+        segments = [feature for feature in split_line]
+        gdf_segments.append(
+            gpd.GeoDataFrame(list(range(len(segments))), geometry=segments))
+    df = pd.concat(gdf_segments)
+    gdf_segments = gpd.GeoDataFrame(df, crs=dict(init='epsg:2950'),
+                                    geometry=df.geometry)
+    gdf_segments.columns = ['index', 'geometry']
+    return gdf_segments

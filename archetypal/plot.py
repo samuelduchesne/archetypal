@@ -158,6 +158,13 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
         edge_alpha = kwargs.get('edge_alpha', 1)
         use_geom = kwargs.get('use_geom', True)
 
+        # since we projected the graph, we need to transform the bounding box
+        # again to the projection coordinate system. We assume the original
+        # bbox was in epsg:4326 coordinates
+        west, south, east, north = project_geom(box(*bbox),
+                                                from_crs=dict(init='epsg:4326'),
+                                                to_crs=to_crs).bounds
+
         fig, ax = ox.plot_graph(G, bbox=(north, south, east, west),
                                 fig_height=fig_height, fig_width=fig_width,
                                 margin=margin, axis_off=axis_off,
@@ -204,7 +211,9 @@ def plot_map(gdf, bbox=None, crs=None, column=None, color=None, fig_height=6,
                                                 from_crs=crs,
                                                 to_crs=to_crs).bounds
     else:
-        west, south, east, north = bbox
+        west, south, east, north = project_geom(box(*bbox),
+                                                from_crs=dict(init='epsg:4326'),
+                                                to_crs=to_crs).bounds
     margin_ns = (north - south) * margin
     margin_ew = (east - west) * margin
     ax.set_ylim((south - margin_ns, north + margin_ns))

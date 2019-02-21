@@ -60,5 +60,5 @@ def test_plot_c40(config):
                              to_latlon=True).bounds
     ar.plot_map(gdf, column='code_utilisation', plot_graph=True, fig_height=8.5,
                 fig_width=11, save=True, bbox=bounds,
-                crs={'init': 'epsg:2950'},
+                crs={'init': 'epsg:2950'}, axis_off=False,
                 show=True)

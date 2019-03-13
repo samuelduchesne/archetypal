@@ -5,5 +5,4 @@ from .idf import *
 from .core import *
 from .dataportal import *
 from .plot import *
-from .networks import *
 from .building import *

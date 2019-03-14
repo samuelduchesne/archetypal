@@ -37,8 +37,7 @@ def template(fresh_start, request):
 def test_template_withcache():
     """Instantiate an umi template placeholder. Does note call fresh_start
     function so that caching can be used"""
-    idf = glob.glob('/Users/samuelduchesne/Dropbox/Polytechnique/Doc/software'
-                    '/archetypal-dev/data/necb/NECB_2011_Montreal_idf/*.idf')
+    idf = glob.glob('./input_data/umi_samples/*.idf')
     idf = ar.copy_file(idf)
     # idf = './input_data/AdultEducationCenter.idf'
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'

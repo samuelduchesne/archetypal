@@ -1949,8 +1949,6 @@ def zone_cop(df):
     rdf = ReportData(get_from_reportdata(df))
     heating = rdf.filter_report_data(
         name='Air System Total Heating Energy').reset_index()
-    # heating = get_from_reportdata(df).loc[
-    #     lambda rd: rd.Name == 'Air System Total Heating Energy'].reset_index()
     heating_out_sys = heating.groupby(['Archetype', 'KeyValue']).sum()['Value']
     heating_out = heating.groupby(['Archetype']).sum()['Value']
     nu_heating = heating_out_sys / heating_out
@@ -1960,28 +1958,24 @@ def zone_cop(df):
         ['Archetype', 'TimeIndex']).Value.sum()
     heating_in = EnergyProfile(heating_in, frequency='1H', units='J',
                                is_sorted=False, concurrent_sort=False)
-    # heating_in = rdf.loc[
-    #     (lambda rd: ((rd.Name == 'Heating:Electricity') |
-    #                  (rd.Name == 'Heating:Gas') |
-    #                  (rd.Name == 'Heating:DistrictHeating'))),
-    #     ['Archetype', 'Value']].set_index('Archetype').sum(level='Archetype')[
-    #     'Value']
 
     # Cooling Energy
-    cooling = get_from_reportdata(df).loc[
-        lambda rd: rd.Name == 'Air System Total Cooling Energy'].reset_index()
+    cooling = rdf.filter_report_data(
+        name='Air System Total Cooling Energy').reset_index()
     cooling_out_sys = cooling.groupby(['Archetype', 'KeyValue']).sum()['Value']
     cooling_out = cooling.groupby(['Archetype']).sum()['Value']
     nu_cooling = cooling_out_sys / cooling_out
-    cooling_in = get_from_reportdata(df).loc[
-        (lambda rd: ((rd.Name == 'Cooling:Electricity') |
-                     (rd.Name == 'Cooling:Gas') |
-                     (rd.Name == 'Cooling:DistrictCooling'))),
-        ['Archetype', 'Value']].set_index('Archetype').sum(level='Archetype')[
-        'Value']
+    cooling_in = rdf.filter_report_data(name=('Cooling:Electricity',
+                                              'Cooling:Gas',
+                                              'Cooling:DistrictCooling')).groupby(
+        ['Archetype', 'TimeIndex']).Value.sum()
+    cooling_in = EnergyProfile(cooling_in, frequency='1H', units='J',
+                               is_sorted=False, concurrent_sort=False)
 
-    d = {'Heating': heating_out_sys / (nu_heating * heating_in),
-         'Cooling': cooling_out_sys / (nu_cooling * cooling_in)}
+    d = {'Heating': heating_out_sys / (nu_heating * heating_in.sum(
+             level='Archetype')),
+         'Cooling': cooling_out_sys / (nu_cooling * cooling_in.sum(
+             level='Archetype'))}
 
     # Zone to system correspondence
     df = get_from_tabulardata(df).loc[

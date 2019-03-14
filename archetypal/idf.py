@@ -478,7 +478,7 @@ def prepare_outputs(eplus_file, outputs=None):
 
     Args:
         eplus_file:
-        outputs (list of dict):
+        outputs (bool or list):
 
     Returns:
 
@@ -492,7 +492,7 @@ def prepare_outputs(eplus_file, outputs=None):
 
     eplus_finename = os.path.basename(eplus_file)
 
-    if outputs:
+    if isinstance(outputs, list):
         for output in outputs:
             idfs[eplus_finename].add_object(output['ep_object'], **output[
                 'kwargs'])

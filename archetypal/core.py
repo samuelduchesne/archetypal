@@ -281,6 +281,11 @@ class EnergyProfile(pd.Series):
             self_copy.frequency = 'M'
             return EnergyProfile(self_copy, frequency='M', units=self.units)
 
+    @property
+    def capacity_factor(self):
+        max = self.max()
+        mean = self.mean()
+        return mean / max
 
 class EnergyProfiles(pd.DataFrame):
 

@@ -193,10 +193,12 @@ def test_energyprofile():
                                      'Heating:Gas',
                                      'Heating:DistrictHeating'))
     hl = sv.heating_load(normalize=True, sort=False,
-                         concurrent_sort=True).plot3d(
+                         concurrent_sort=True)
+    assert hl.capacity_factor == 0.10376668840257346
+    hl.plot3d(
         save=True, axis_off=True, kind='polygon', cmap=None,
         fig_width=3, fig_height=8, edgecolors='k', linewidths=0.5)
-
-    prob = ar.discretize(hl, bins=10)
-    prob.duration.display()
-    prob.amplitude.display()
+    #
+    # prob = ar.discretize(hl, bins=10)
+    # prob.duration.display()
+    # prob.amplitude.display()

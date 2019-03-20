@@ -91,7 +91,7 @@ def create_fake_profile(x=None, y1={}, y2={}, normalize=False,
     """Utility that generates a generic EnergyProfile isntance
 
     Args:
-        x (np.ndarray): is a linspace
+        x (np.ndarray): is a linspace. Default is np.linspace(0, 8759, 8760)
         y1 (dict): {'A':1, 'f':1/8760, 'phy':1, 's':0.5}
         y2 (dict): {'A':1, 'f':1/24, 'phy':1, 's':0.5}
         ascending (bool): if True, sorts in ascending order. Implies 'sorted'

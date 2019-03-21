@@ -830,18 +830,17 @@ def rmse(data, targets):
 
 def piecewise(data):
     """returns a piecewise function from an array of the form
-    [hour1, value1, hour2, value2, ...]
+    [hour1, hour2, ..., value1, value2, ...]
     """
+    nb = int(len(data) / 2)
+    bins = data[0: nb]
+    sf = data[nb:]
     x = np.linspace(0, 8760, 8760)
     # build condition array
-    conds = [x < data[0]]
-    conds.extend([np.logical_and(x >= i, x < j) for i, j in zip(data[0::2],
-                                                                data[2::2])])
-    conds.extend([x >= data[-2]])
+    conds = [x < bins[0]]
+    conds.extend([np.logical_and(x >= i, x < j) for i, j in zip(bins[0:],
+                                                                bins[1:])])
     # build function array. This is the value of y when the condition is met.
-    funcs = [1]  # 1 for the first hours
-    funcs.extend(data[1::2])
-    y = np.piecewise(x,
-                     conds,
-                     funcs)
+    funcs = sf
+    y = np.piecewise(x, conds, funcs)
     return y

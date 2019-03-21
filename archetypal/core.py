@@ -266,42 +266,32 @@ class EnergyProfile(pd.Series):
                 if not hour_of_min:
                     hour_of_min = sub.time_at_min[1]
 
-                c = [(hour_of_min - hour_of_min * 1 / (i * 1.01), 1 / i) for i in
-                     range(1, n_bins + 1)]
-                c = list(chain(*c))
-                c.extend([8760, 0])
+                sf = [1 / (i * 1.01) for i in range(1, n_bins + 1)]
+                sf.extend([sub.min()])
+                sf_bounds = [(0, sub.max()) for i in range(0, n_bins + 1)]
+                hours = [hour_of_min - hour_of_min * 1 / (i * 1.01) for i in
+                         range(1, n_bins + 1)]
+                hours.extend([8760])
+                hours_bounds = [(0, 8760) for i in range(0, n_bins + 1)]
+
                 start_time = time.time()
                 log('discretizing EnergyProfile {}'.format(name), lg.DEBUG)
-                res = minimize(rmse, np.array(c), args=(self.values),
-                               method='Powell', options=dict(disp=True))
+                res = minimize(rmse, np.array(hours + sf), args=(self.values),
+                               method='L-BFGS-B',
+                               bounds=hours_bounds + sf_bounds,
+                               options=dict(disp=True))
                 log('Completed discretization in {:,.2f} seconds'.format(time.time()-start_time),
                     lg.DEBUG)
-                edges[name] = res.x[0::2]
-                ampls[name] = res.x[1::2]
+                edges[name] = res.x[0:n_bins+1]
+                ampls[name] = res.x[n_bins + 1:]
                 results[name] = pd.Series(piecewise(res.x))
-            self.bin_edges_ = pd.Series(edges)
-            self.bin_scaling_factors_ = pd.Series(ampls)
+            self.bin_edges_ = pd.Series(edges).apply(pd.Series)
+            self.bin_scaling_factors_ = pd.Series(ampls).apply(pd.Series)
 
             result = self._constructor(pd.concat(results))
         else:
-            # if not a multiindex
-            if not hour_of_min:
-                hour_of_min = self.time_at_min
-                c = [(hour_of_min - hour_of_min * 1 / (i * 1.01), 1 / i) for i
-                     in
-                     range(1, n_bins + 1)]
-                c = list(chain(*c))
-                c.extend([8760, 0])
-                start_time = time.time()
-                log('discretizing EnergyProfile {}'.format(name), lg.DEBUG)
-                res = minimize(rmse, np.array(c), args=(self.values),
-                               method='Powell', options=dict(disp=True))
-                log('Completed discretization in {:,.2f} seconds'.format(
-                    time.time() - start_time),
-                    lg.DEBUG)
-                self.bin_edges_ = pd.Series(res.x[0::2])
-
-                result = pd.Series(piecewise(res.x))
+            pass
+            # Todo: Implement else method
         if inplace:
             self._update_inplace(result)
         else:
@@ -364,6 +354,7 @@ class EnergyProfile(pd.Series):
 
     @property
     def duration_scaling_factor(self):
+        # todo Complete Function
         if not self.bin_edges:
             # if never discretized,
             # run discretization with default values

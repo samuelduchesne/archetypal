@@ -818,3 +818,30 @@ def project_geom(geom: shapely.geometry, from_crs=None, to_crs=None,
                             units='m', datum='WGS84'))
 
             return transform(project, geom)  # apply projection
+
+
+def rmse(data, targets):
+    """calculate rmse with target values"""
+    y = piecewise(data)
+    predictions = y
+    error = np.sqrt(np.mean((predictions-targets)**2))
+    return error
+
+
+def piecewise(data):
+    """returns a piecewise function from an array of the form
+    [hour1, value1, hour2, value2, ...]
+    """
+    x = np.linspace(0, 8760, 8760)
+    # build condition array
+    conds = [x < data[0]]
+    conds.extend([np.logical_and(x >= i, x < j) for i, j in zip(data[0::2],
+                                                                data[2::2])])
+    conds.extend([x >= data[-2]])
+    # build function array. This is the value of y when the condition is met.
+    funcs = [1]  # 1 for the first hours
+    funcs.extend(data[1::2])
+    y = np.piecewise(x,
+                     conds,
+                     funcs)
+    return y

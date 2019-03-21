@@ -14,10 +14,11 @@ from sklearn import preprocessing
 from . import settings, object_from_idf, object_from_idfs, simple_glazing, \
     iscore, weighted_mean, top, run_eplus, \
     load_idf
+from .plot import plot_energyprofile
 from .utils import log, label_surface, type_surface, layer_composition, \
     schedule_composition, time2time, \
-    year_composition, newrange
-from .plot import plot_energyprofile
+    year_composition, newrange, piecewise, rmse
+
 
 class Template:
     """
@@ -187,6 +188,8 @@ class EnergyProfile(pd.Series):
         super(EnergyProfile, self).__init__(data=data, index=index,
                                             dtype=dtype, name=name,
                                             copy=copy, fastpath=fastpath)
+        self.bin_edges_ = None
+        self.bin_scaling_factors_ = None
         self.profile_type = profile_type
         self.frequency = frequency
         self.base_year = base_year
@@ -238,8 +241,67 @@ class EnergyProfile(pd.Series):
             result = self._constructor(result)
         else:
             result = pd.Series(scaler.fit_transform(self.values.reshape(-1,
-                                                                   1)).ravel())
+                                                                        1)).ravel())
             result = self._constructor(result)
+        if inplace:
+            self._update_inplace(result)
+        else:
+            return result.__finalize__(self)
+
+    def discretize(self, n_bins=3, inplace=False, hour_of_min=None):
+        """Retruns a discretized EnergyProfile"""
+        try:
+            from scipy.optimize import minimize
+            from itertools import chain
+        except ImportError:
+            raise ImportError('The sklearn package must be installed to '
+                              'use this optional feature.')
+        if self.archetypes:
+            # if multiindex, group and apply operation on each group.
+            # combine at the end
+            results = {}
+            edges = {}
+            ampls = {}
+            for name, sub in self.groupby(level=0):
+                if not hour_of_min:
+                    hour_of_min = sub.time_at_min[1]
+
+                c = [(hour_of_min - hour_of_min * 1 / (i * 1.01), 1 / i) for i in
+                     range(1, n_bins + 1)]
+                c = list(chain(*c))
+                c.extend([8760, 0])
+                start_time = time.time()
+                log('discretizing EnergyProfile {}'.format(name), lg.DEBUG)
+                res = minimize(rmse, np.array(c), args=(self.values),
+                               method='Powell', options=dict(disp=True))
+                log('Completed discretization in {:,.2f} seconds'.format(time.time()-start_time),
+                    lg.DEBUG)
+                edges[name] = res.x[0::2]
+                ampls[name] = res.x[1::2]
+                results[name] = pd.Series(piecewise(res.x))
+            self.bin_edges_ = pd.Series(edges)
+            self.bin_scaling_factors_ = pd.Series(ampls)
+
+            result = self._constructor(pd.concat(results))
+        else:
+            # if not a multiindex
+            if not hour_of_min:
+                hour_of_min = self.time_at_min
+                c = [(hour_of_min - hour_of_min * 1 / (i * 1.01), 1 / i) for i
+                     in
+                     range(1, n_bins + 1)]
+                c = list(chain(*c))
+                c.extend([8760, 0])
+                start_time = time.time()
+                log('discretizing EnergyProfile {}'.format(name), lg.DEBUG)
+                res = minimize(rmse, np.array(c), args=(self.values),
+                               method='Powell', options=dict(disp=True))
+                log('Completed discretization in {:,.2f} seconds'.format(
+                    time.time() - start_time),
+                    lg.DEBUG)
+                self.bin_edges_ = pd.Series(res.x[0::2])
+
+                result = pd.Series(piecewise(res.x))
         if inplace:
             self._update_inplace(result)
         else:
@@ -271,13 +333,13 @@ class EnergyProfile(pd.Series):
         if isinstance(self.index, pd.MultiIndex):
             return self.groupby(level=0).max()
         else:
-            datetimeindex = pd.DatetimeIndex(freq=self.frequency,
-                                             start='{}-01-01'.format(
-                                                 self.base_year),
-                                             periods=self.size)
+            datetimeindex = pd.date_range(freq=self.frequency,
+                                          start='{}-01-01'.format(
+                                              self.base_year),
+                                          periods=self.size)
             self_copy = self.copy()
             self_copy.index = datetimeindex
-            self_copy = self_copy.resample('M', how='mean')
+            self_copy = self_copy.resample('M').mean()
             self_copy.frequency = 'M'
             return EnergyProfile(self_copy, frequency='M', units=self.units)
 
@@ -286,6 +348,31 @@ class EnergyProfile(pd.Series):
         max = self.max()
         mean = self.mean()
         return mean / max
+
+    @property
+    def bin_edges(self):
+        """"""
+        return self.bin_edges_
+
+    @property
+    def time_at_min(self):
+        return self.idxmin()
+
+    @property
+    def bin_scaling_factors(self):
+        return self.bin_scaling_factors_
+
+    @property
+    def duration_scaling_factor(self):
+        if not self.bin_edges:
+            # if never discretized,
+            # run discretization with default values
+            self.discretize()
+        # Calculate
+        a = self.bin_scaling_factors
+        b = self.bin_edges
+        return None
+
 
 class EnergyProfiles(pd.DataFrame):
 
@@ -354,7 +441,8 @@ class ReportData(pd.DataFrame):
         log('Returned Heating Load in units of {}'.format(str(units)), lg.DEBUG)
         return EnergyProfile(hl, frequency=freq, units=units,
                              normalize=normalize, is_sorted=sort,
-                             ascending=ascending, concurrent_sort=concurrent_sort)
+                             ascending=ascending,
+                             concurrent_sort=concurrent_sort)
 
     def filter_report_data(self, archetype=None, reportdataindex=None,
                            timeindex=None, reportdatadictionaryindex=None,
@@ -1978,7 +2066,7 @@ def zone_cop(df):
                                is_sorted=False, concurrent_sort=False)
 
     d = {'Heating': heating_out_sys / (nu_heating * heating_in.sum(
-             level='Archetype')),
+        level='Archetype')),
          'Cooling': cooling_out_sys / (nu_cooling * cooling_in.sum(
              level='Archetype'))}
 

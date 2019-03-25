@@ -45,7 +45,7 @@ def clear_name_idf_objects(idfFile):
 
                     uniqueList.append(new_name)
 
-                print("changed layer {} with {}".format(old_name, new_name))
+                #print("changed layer {} with {}".format(old_name, new_name))
                 modeleditor.rename(idfFile, obj, old_name, new_name)
 
             else:
@@ -63,7 +63,8 @@ def convert_idf_to_t3d(idf):
     """
     start_time = time.time()
     # Load IDF file(s)
-    idfFile = ar.load_idf(idf)
+    idf_file = ar.load_idf(idf)
+    idf_file = idf_file[os.path.basename(idf)]
     log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
         lg.INFO, name="CoverterLog", filename="CoverterLog")
 
@@ -77,4 +78,18 @@ def convert_idf_to_t3d(idf):
         lg.INFO, name="CoverterLog", filename="CoverterLog")
 
     # Clean names of idf objects (e.g. 'MATERIAL')
-    clear_name_idf_objects(idfFile[os.path.basename(idf)])
+    clear_name_idf_objects(idf_file)
+
+    # Get objects frim IDF file
+    materials = idf_file.idfobjects['MATERIAL']
+    materialNoMass = idf_file.idfobjects['MATERIAL:NOMASS']
+    materialAirGap = idf_file.idfobjects['MATERIAL:AIRGAP']
+    versions = idf_file.idfobjects['VERSION']
+    buildings = idf_file.idfobjects['BUILDING']
+    locations = idf_file.idfobjects['SITE:LOCATION']
+    globGeomRules = idf_file.idfobjects['GLOBALGEOMETRYRULES']
+    constructions = idf_file.idfobjects['CONSTRUCTION']
+    fenestrationSurfs = idf_file.idfobjects['FENESTRATIONSURFACE:DETAILED']
+    buildingSurfs = idf_file.idfobjects['BUILDINGSURFACE:DETAILED']
+    zones = idf_file.idfobjects['ZONE']
+

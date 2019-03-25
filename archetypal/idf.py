@@ -162,7 +162,7 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
 
     # Determine version of idf file by reading the text file
     if idd_filename is None:
-        idd_filename = {file: getiddfile(get_idf_version(file)) for file in
+        idd_filename = {os.path.relpath(file): getiddfile(get_idf_version(file)) for file in
                         eplus_files}
 
     # determine processors
@@ -207,7 +207,7 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
             return list(objects_found.values())
     else:
         # Else, run eppy to load the idf objects
-        eplus_files = [os.path.join(dir, run) for dir, run in
+        eplus_files = [os.path.join(os.path.relpath(dir), run) for dir, run in
                        zip(dirnames, objects_not_found)]
         # runs = []
         runs = {os.path.basename(file): [file, idd_filename[file]] for file in

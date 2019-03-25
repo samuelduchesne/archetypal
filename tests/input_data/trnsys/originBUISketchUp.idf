@@ -1,0 +1,273 @@
+!-   ===========  BUI-Template for TRNSYS 18 ==========
+!-T18_Template_Start
+!-*********************************************************************************
+!-*  TRNBuild   2.0.266
+!-*********************************************************************************
+!-*   BUILDING DESCRIPTIONS FILE TRNSYS
+!-*   FOR BUILDING:   
+!-*   GET BY WORKING WITH TRNBuild 1.0 for Windows
+!-*********************************************************************************
+!-*
+!-*--------------------------------------------------------------------------------
+!-*  C o m m e n t s
+!-*--------------------------------------------------------------------------------
+!-*
+!-*--------------------------------------------------------------------------------
+!-*  P r o j e c t
+!-*--------------------------------------------------------------------------------
+!-*+++ PROJECT
+!-*+++ TITLE=UNDEFINED
+!-*+++ DESCRIPTION=UNDEFINED
+!-*+++ CREATED=UNDEFINED
+!-*+++ ADDRESS=UNDEFINED
+!-*+++ CITY=UNDEFINED
+!-*+++ SWITCH=UNDEFINED
+!-*--------------------------------------------------------------------------------
+!-*  P r o p e r t i e s
+!-*--------------------------------------------------------------------------------
+!-PROPERTIES
+!- DENSITY=1.204 : CAPACITY=1.012 : PRESSURE=101325.000 : HVAPOR=2454.0 : SIGMA=2.041e-007 : RTEMP=293.15
+!-*--- convective heat transfer coefficient calculation ---------------------
+!- KFLOORUP=7.2 : EFLOORUP=0.31 : KFLOORDOWN=3.888 : EFLOORDOWN=0.31
+!- KCEILUP=7.2 : ECEILUP=0.31 : KCEILDOWN=3.888 : ECEILDOWN=0.31
+!- KVERTICAL=5.76 : EVERTICAL=0.3
+!-*--- radiance parameters -------------------
+!- SCENE_ROTATION_ANGLE=0 : GROUND_IDS= : GROUND_REFLECTANCE=0.2 : SHADER_REFLECTANCE=0
+!- CALC_MODE=RAD : LATITUDE=48 : LONGITUDE=-9.2 : TIME_ZONE=-15 : SITE_ELEVATION=200
+!- AB=5 : AD=1000 : AS=20 : AR=300 : AA=0.1
+!- LR=6 : ST=0.15 : SJ=1 : LW=0.004 : DJ=0 : DS=0.2 : DR=2 : DP=512
+!-*--- comfort parameters -------------------
+!- DIAM-SENSOR=0.07 : EPS-SENSOR=0.82 : REFL-SENSOR=0.47 : ELV_AIRSPEED1=0.3 : ELV_AIRSPEED2=0.7 : ELV_AIRSPEED3=1.2
+!-*--- other -------------------
+!- FSCAL_TREGENZA=MEDIUM : SHM_MODE=0 : SURFGRID=0.2
+!-*--- daylight  -------------------
+!- UDIMIN=100 : UDIMAX=2000 : DAMIN=300
+!-*
+!-*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!-TYPES
+!-*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!-*
+!-*--------------------------------------------------------------------------------
+!-*  L a y e r s
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  I n p u t s
+!-*--------------------------------------------------------------------------------
+!-INPUTS TGROUND TBOUNDARY SHADE_CLOSE SHADE_OPEN MAX_ISHADE MAX_ESHADE
+!-INPUTS_DESCRIPTION
+!- TGROUND : C : Ground Temperature (boundary temperature used for floors adjacent to the ground)
+!- TBOUNDARY : C : Boundary Temperature (boundary temperature used for boundary floors, walls, ceilings)
+!- SHADE_CLOSE : kJ/hr.m^2 : threshold of total radiation on facade where shading device is activated
+!- SHADE_OPEN : kJ/hr.m^2 : threshold of total radiation on facade where shading device is deactivated
+!- MAX_ISHADE : any : max shading factor of internal shading
+!- MAX_ESHADE : any : max shading factor of external shading
+!-*--------------------------------------------------------------------------------
+!-*  S c h e d u l e s
+!-*--------------------------------------------------------------------------------
+!-SCHEDULE WORKDAY
+!- HOURS =0.000 8.000 18.000 24.0
+!- VALUES=0 1. 0 0 
+!-SCHEDULE WEEKEND
+!- HOURS =0.000 1.000 24.0
+!- VALUES=0 0 0 
+!-SCHEDULE WORKLIGHT
+!- HOURS =0.000 8.000 18.000 24.0
+!- VALUES=0 1. 0 0 
+!-SCHEDULE DAYNIGHT
+!- HOURS =0.000 6.000 18.000 24.0
+!- VALUES=0 1. 0 0 
+!-SCHEDULE USE
+!- DAYS=1 2 3 4 5 6 7
+!- HOURLY=WORKDAY WORKDAY WORKDAY WORKDAY WORKDAY WEEKEND WEEKEND
+!-SCHEDULE LIGHT
+!- DAYS=1 2 3 4 5 6 7
+!- HOURLY=WORKLIGHT WORKLIGHT WORKLIGHT WORKLIGHT WORKLIGHT WEEKEND WEEKEND
+!-SCHEDULE SETOFF
+!- DAYS=1 2 3 4 5 6 7
+!- HOURLY=DAYNIGHT DAYNIGHT DAYNIGHT DAYNIGHT DAYNIGHT WEEKEND WEEKEND
+!-*--------------------------------------------------------------------------------
+!-*  C O N S T R U C T I O N (Wall, Floor, Ceiling,..)
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  W i n d o w s
+!-*--------------------------------------------------------------------------------
+!-WINDOW EXT_WINDOW1
+!- WINID=201 : HINSIDE=11 : HOUTSIDE=64 : SLOPE=-999 : SPACID=4 : WWID=0.77 : WHEIG=1.08 : FFRAME=0.15 : UFRAME=8.17 : ABSFRAME=0.6 : RISHADE=0 : RESHADE=0 : REFLISHADE=0.5 : REFLOSHADE=0.5 : CCISHADE=0.5 : EPSFRAME=0.9 : EPSISHADE=0.9 : ITSHADECLOSE=INPUT 1*SHADE_CLOSE : ITSHADEOPEN=INPUT 1*SHADE_OPEN : FLOWTOAIRNODE=1 : PERT=0 : PENRT=0 : RADMATERIAL=undefined : RADMATERIAL_SHD1=undefined
+!-WINDOW EXT_WINDOW2
+!- WINID=201 : HINSIDE=11 : HOUTSIDE=64 : SLOPE=-999 : SPACID=4 : WWID=0.77 : WHEIG=1.08 : FFRAME=0.15 : UFRAME=8.17 : ABSFRAME=0.6 : RISHADE=0 : RESHADE=0 : REFLISHADE=0.5 : REFLOSHADE=0.5 : CCISHADE=0.5 : EPSFRAME=0.9 : EPSISHADE=0.9 : ITSHADECLOSE=INPUT 1*SHADE_CLOSE : ITSHADEOPEN=INPUT 1*SHADE_OPEN : FLOWTOAIRNODE=1 : PERT=0 : PENRT=0 : RADMATERIAL=undefined : RADMATERIAL_SHD1=undefined
+!-WINDOW ADJ_WINDOW1
+!- WINID=201 : HINSIDE=11 : HOUTSIDE=64 : SLOPE=-999 : SPACID=4 : WWID=0.77 : WHEIG=1.08 : FFRAME=0.15 : UFRAME=8.17 : ABSFRAME=0.6 : RISHADE=0 : RESHADE=0 : REFLISHADE=0.5 : REFLOSHADE=0.5 : CCISHADE=0.5 : EPSFRAME=0.9 : EPSISHADE=0.9 : ITSHADECLOSE=INPUT 1*SHADE_CLOSE : ITSHADEOPEN=INPUT 1*SHADE_OPEN : FLOWTOAIRNODE=1 : PERT=0 : PENRT=0 : RADMATERIAL=undefined : RADMATERIAL_SHD1=undefined
+!-WINDOW ADJ_WINDOW2
+!- WINID=201 : HINSIDE=11 : HOUTSIDE=64 : SLOPE=-999 : SPACID=4 : WWID=0.77 : WHEIG=1.08 : FFRAME=0.15 : UFRAME=8.17 : ABSFRAME=0.6 : RISHADE=0 : RESHADE=0 : REFLISHADE=0.5 : REFLOSHADE=0.5 : CCISHADE=0.5 : EPSFRAME=0.9 : EPSISHADE=0.9 : ITSHADECLOSE=INPUT 1*SHADE_CLOSE : ITSHADEOPEN=INPUT 1*SHADE_OPEN : FLOWTOAIRNODE=1 : PERT=0 : PENRT=0 : RADMATERIAL=undefined : RADMATERIAL_SHD1=undefined
+!-*--------------------------------------------------------------------------------
+!-*  G a i n s
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  C o m f o r t
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  I n f i l t r a t i o n
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  V e n t i l a t i o n
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  C o o l i n g
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  H e a t i n g
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  D a y l i g h t   C o n t r o l 
+!-*--------------------------------------------------------------------------------
+!-*
+!-*--------------------------------------------------------------------------------
+!-*  Z o n e s
+!-*--------------------------------------------------------------------------------
+!-ZONES 
+!-*--------------------------------------------------------------------------------
+!-*  O r i e n t a t i o n s
+!-*--------------------------------------------------------------------------------
+!-HEMISPHERE NORTHERN
+!-ORIENTATIONS H_0_0
+!-INTERNAL_CALCULATION H_0_0
+!-*
+!-*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!-BUILDING
+!-*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!-*--------------------------------------------------------------------------------
+!-*  O u t p u t s
+!-*--------------------------------------------------------------------------------
+!-OUTPUTS
+!- TRANSFER : TIMEBASE=1.000
+!- DEFAULT
+!-*
+!-*--------------------------------------------------------------------------------
+!-*  E n d
+!-*--------------------------------------------------------------------------------
+!-END
+!-
+!-_EXTENSION_WINPOOL_START_
+!-BERKELEY LAB WINDOW v7.4.6.0  DOE-2 Data File : Multi Band Calculation : generated with Trnsys18.std
+!-Unit System : SI
+!-Name        : DOE-2 WINDOW LIB
+!-Desc        : 2-WSV_#3_Ar90
+!-Window ID   : 201
+!-Tilt        : 90.0
+!-Glazings    : 2
+!-Frame       :  3 Wood                  2.270
+!-Spacer      :  2 Class2                0.068   1.550  -0.143
+!-Total Height: 1500.0 mm
+!-Total Width : 1200.0 mm
+!-Glass Height: 1360.3 mm
+!-Glass Width : 1060.3 mm
+!-Mullion     : None
+!-Gap        Thick    Cond  dCond    Vis   dVis   Dens   dDens     Pr     dPr
+!-1 Ar90/Air1 16.0 0.01712  5.410  2.062  6.300  1.711 -0.0060  0.687 -0.0001 
+!-2              0       0      0      0      0      0       0      0       0
+!-3              0       0      0      0      0      0       0      0       0
+!-4              0       0      0      0      0      0       0      0       0
+!-5              0       0      0      0      0      0       0      0       0
+!-Angle     0    10    20    30    40    50    60    70    80    90 Hemis
+!-Tsol  0.504 0.507 0.499 0.489 0.475 0.449 0.392 0.284 0.130 0.000 0.418
+!-Abs1  0.171 0.172 0.174 0.178 0.184 0.191 0.197 0.199 0.184 0.000 0.185
+!-Abs2  0.094 0.095 0.103 0.108 0.109 0.112 0.121 0.125 0.086 0.000 0.109
+!-Abs3      0     0     0     0     0     0     0     0     0     0     0
+!-Abs4      0     0     0     0     0     0     0     0     0     0     0
+!-Abs5      0     0     0     0     0     0     0     0     0     0     0
+!-Abs6      0     0     0     0     0     0     0     0     0     0     0
+!-Rfsol 0.230 0.226 0.224 0.225 0.231 0.248 0.290 0.391 0.600 1.000 0.279
+!-Rbsol 0.232 0.226 0.224 0.226 0.237 0.256 0.294 0.382 0.582 0.999 0.280
+!-Tvis  0.717 0.721 0.711 0.697 0.678 0.641 0.559 0.405 0.186 0.000 0.596
+!-Rfvis 0.133 0.127 0.126 0.130 0.142 0.169 0.229 0.365 0.620 1.000 0.207
+!-Rbvis 0.131 0.124 0.121 0.124 0.136 0.160 0.208 0.313 0.540 0.999 0.189
+!-SHGC  0.620   N/A   N/A   N/A   N/A   N/A   N/A   N/A   N/A   N/A   N/A 
+!-Tvis_daylight:  0.780
+!-
+!-Layer ID#         7199    37003        0        0        0        0 
+!-Tir              0.000    0.000        0        0        0        0
+!-Emis F           0.837    0.037        0        0        0        0
+!-Emis B           0.837    0.837        0        0        0        0
+!-Thickness(mm)      6.0      6.0        0        0        0        0
+!-Cond(W/m2-K     )166.7    166.7        0        0        0        0    
+!-Spectral File  ip_fl_6.ipe 37003_IP_ipl         None         None         None         None
+!-
+!-Overall and Center of Glass Ig U-values (W/m2-K)
+!-Outdoor Temperature                 -17.8 C      15.6 C      26.7 C      37.8 C
+!-Solar      WdSpd  hcout hrout  hin
+!-(W/m2)     (m/s)     (W/m2-K)
+!-   0        0.00   0.00  0.00  0.00  1.35 1.35  1.08 1.08  1.10 1.10  1.12 1.12 
+!-   0        6.71   0.00  0.00  0.00  1.35 1.35  1.08 1.08  1.10 1.10  1.12 1.12 
+!- 783        0.00   0.00  0.00  0.00  1.35 1.35  1.08 1.08  1.10 1.10  1.12 1.12 
+!- 783        6.71   0.00  0.00  0.00  1.35 1.35  1.08 1.08  1.10 1.10  1.12 1.12 
+!-*** END OF LIBRARY ***
+!-********************************************************************************************************************************
+!-*WinID Description                                 Design     U-Value  g-value   T-sol  Rf-sol  T-vis_daylight  Lay  Width(mm)
+!-********************************************************************************************************************************
+!-201    2-WSV_#3_Ar90                               6/16/6       1.12     0.59    0.504  0.230        0.780       2     28
+!-_EXTENSION_WINPOOL_END_
+!-
+!-_EXTENSION_BuildingGeometry_START_
+!-
+!-_EXTENSION_BuildingGeometry_END_
+!-
+!-
+!-_EXTENSION_VirtualSurfaceGeometry_START_
+!-_EXTENSION_VirtualSurfaceGeometry_END_
+!-
+!-
+!-_EXTENSION_ExternalShadingGeometry_START_
+!-
+!-_EXTENSION_ExternalShadingGeometry_END_
+!-
+!-
+!-_EXTENSION_GeoPositionGeometry_START_
+!-_EXTENSION_GeoPositionGeometry_END_
+!-
+!-
+!-_EXTENSION_DaylightSensorPoints_START_
+!-_EXTENSION_DaylightSensorPoints_END_
+!-
+!-T18_Template_Stop
+
+
+!-   ===========  ALL OBJECTS IN CLASS: VERSION ===========
+ 
+!-   ===========  ALL OBJECTS IN CLASS: BUILDING ===========
+ 
+!-   ===========  ALL OBJECTS IN CLASS: LOCATION ===========
+ 
+!-   ===========  ALL OBJECTS IN CLASS: CONSTRUCTION ===========
+  Construction,
+    EXT_WINDOW1;         !- Name
+!-   ===========  ALL OBJECTS IN CLASS: SurfaceProperty:OtherSideCoefficients ===========
+SurfaceProperty:OtherSideCoefficients,
+    BOUNDARY=IDENTICAL;
+SurfaceProperty:OtherSideCoefficients,
+    BOUNDARY=INPUT 1*TBOUNDARY;
+SurfaceProperty:OtherSideCoefficients,   
+    BOUNDARY=INPUT 1*TBOUNDARY_2;
+SurfaceProperty:OtherSideCoefficients,
+    BOUNDARY=INPUT 1*TBOUNDARY_3;
+SurfaceProperty:OtherSideCoefficients,   
+    BOUNDARY=INPUT 1*TGROUND;
+SurfaceProperty:OtherSideCoefficients,
+    BOUNDARY=20; 
+SurfaceProperty:OtherSideCoefficients,
+    BOUNDARY=15; 
+ 
+!-   ===========  ALL OBJECTS IN CLASS: WindowProperty:ShadingControl ===========
+  WindowProperty:ShadingControl,
+    ESHADE=0; ISHADE=0 !- Name
+  WindowProperty:ShadingControl,
+    ESHADE=INPUT 1*MAX_ESHADE : SHADECNTRL=ESHADE_INTERNAL;  !- Name
+  WindowProperty:ShadingControl,
+    ISHADE=INPUT 1*MAX_ISHADE : SHADECNTRL=ISHADE_INTERNAL;  !- Name
+
+!-   ===========  ALL OBJECTS IN CLASS: ZONE_TYPE ===========
+ 
+  ZoneType,
+    00_NOT_SELECTED;              !- Name
+ !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:VARIABLEDICTIONARY ===========
+ 
+  Output:VariableDictionary,IDF;

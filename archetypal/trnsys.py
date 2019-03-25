@@ -33,11 +33,10 @@ def convert_idf_to_t3d(idf):
     # Load IDF_T3D template
     start_time = time.time()
     ori_idf_filename = "originBUISketchUp.idf"
-    ori_idf_filepath = os.path.join("..", "tests", "input_data", ori_idf_filename)
+    ori_idf_filepath = os.path.join("..", "tests", "input_data", "trnsys", ori_idf_filename)
     # Read IDF_T3D template and write lines in variable
     lines = open(ori_idf_filepath).readlines()
     log("IDF_T3D template read in {:,.2f} seconds".format(time.time() - start_time),
         lg.INFO, name="CoverterLog", filename="CoverterLog")
 
 
-    

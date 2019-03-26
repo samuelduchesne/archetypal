@@ -862,7 +862,7 @@ def checkStr(pathFile, string):
         count = 0
         for line in datafile:
             count = count + 1
-            match = re.search(string, line.lower())
+            match = re.search(string, line)
             if match:
                 return count
                 break

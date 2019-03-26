@@ -1,16 +1,11 @@
 import logging as lg
 import os
-import re
 import time
-import shutil
-import math
 import uuid
 from eppy import modeleditor
-from eppy.modeleditor import IDF
-from collections import OrderedDict
 
 import archetypal as ar
-from archetypal import log
+from archetypal import log, write_lines
 
 
 def clear_name_idf_objects(idfFile):
@@ -45,7 +40,7 @@ def clear_name_idf_objects(idfFile):
 
                     uniqueList.append(new_name)
 
-                #print("changed layer {} with {}".format(old_name, new_name))
+                # print("changed layer {} with {}".format(old_name, new_name))
                 modeleditor.rename(idfFile, obj, old_name, new_name)
 
             else:
@@ -66,11 +61,12 @@ def convert_idf_to_t3d(idf):
     idf_file = ar.load_idf(idf)
     idf_file = idf_file[os.path.basename(idf)]
     log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
-        lg.INFO, name="CoverterLog", filename="CoverterLog")
+        lg.INFO, name="CoverterLog", filename="CoverterLog", avoid_console=True)
 
     # Load IDF_T3D template
     ori_idf_filename = "originBUISketchUp.idf"
-    ori_idf_filepath = os.path.join("..", "tests", "input_data", "trnsys", ori_idf_filename)
+    ori_idf_filepath = os.path.join("..", "tests", "input_data", "trnsys",
+                                    ori_idf_filename)
     # Read IDF_T3D template and write lines in variable
     lines = open(ori_idf_filepath).readlines()
 
@@ -82,9 +78,8 @@ def convert_idf_to_t3d(idf):
     start_time = time.time()
     clear_name_idf_objects(idf_file)
     log("Cleaned IDF object names in {:,.2f} seconds".format(
-        time.time() - start_time),
-        lg.INFO, name="CoverterLog", filename="CoverterLog")
-
+        time.time() - start_time), lg.INFO, name="CoverterLog",
+        filename="CoverterLog")
 
     # Get objects from IDF file
     materials = idf_file.idfobjects['MATERIAL']
@@ -105,46 +100,142 @@ def convert_idf_to_t3d(idf):
     # Write VERSION from IDF to lines (T3D)
     # Get line number where to write
     versionNum = ar.checkStr(ori_idf_filepath,
-                          'all objects in class: version')
+                             'all objects in class: version')
     # Writing
     for i in range(0, len(versions)):
         lines.insert(versionNum,
                      ",".join(str(item) for item in versions.list2[i]) + ';')
-    # Delete temp file if exists
-    if os.path.exists(tempfile_path):
-        os.remove(tempfile_path)
-    # Save lines in temp file
-    temp_idf_file = open(tempfile_path, "w+")
-    for line in lines:
-        temp_idf_file.write("%s" % line)
-    temp_idf_file.close()
+
+    # Write lines in temp file
+    write_lines(tempfile_path, lines)
     # Read temp file to update lines
     lines = open(tempfile_path).readlines()
 
     # Write BUILDING from IDF to lines (T3D)
     # Get line number where to write
     buildingNum = ar.checkStr(tempfile_path,
-                             'all objects in class: building')
+                              'all objects in class: building')
     # Writing
     for building in buildings:
         lines.insert(buildingNum, building)
-    # Delete temp file if exists
-    if os.path.exists(tempfile_path):
-        os.remove(tempfile_path)
-    # Save lines in temp file
-    temp_idf_file = open(tempfile_path, "w+")
-    for line in lines:
-        temp_idf_file.write("%s" % line)
-    temp_idf_file.close()
+
+    # Write lines in temp file
+    write_lines(tempfile_path, lines)
+
     # Read temp file to update lines
     lines = open(tempfile_path).readlines()
 
-    a=1
+    # Write LOCATION and GLOBALGEOMETRYRULES from IDF to lines (T3D)
+    # Get line number where to write
+    locationNum = ar.checkStr(tempfile_path,
+                              'all objects in class: location')
+
+    # Write GLOBALGEOMETRYRULES lines
+    for globGeomRule in globGeomRules:
+        # Change Geometric rules from Relative to Absolute
+        coordSys = 0
+        if globGeomRule.Coordinate_System == 'Relative':
+            coordSys = 1
+            globGeomRule.Coordinate_System = 'Absolute'
+
+        if globGeomRule.Daylighting_Reference_Point_Coordinate_System == 'Relative':
+            globGeomRule.Daylighting_Reference_Point_Coordinate_System = 'Absolute'
+
+        if globGeomRule.Rectangular_Surface_Coordinate_System == 'Relative':
+            globGeomRule.Rectangular_Surface_Coordinate_System = 'Absolute'
+
+        lines.insert(locationNum, globGeomRule)
+
+    # Write LOCATION lines
+    for location in locations:
+        lines.insert(locationNum, location)
+
+    # Write lines in temp file
+    write_lines(tempfile_path, lines)
+
+    # Read temp file to update lines
+    lines = open(tempfile_path).readlines()
+
+    # Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf) from IDF to lines (T3D)
+    # Get line number where to write
+    variableDictNum = ar.checkStr(tempfile_path,
+                                  'all objects in class: output:variabledictionary')
+    # Writing fenestrationSurface:Detailed in lines
+    for fenestrationSurf in fenestrationSurfs:
+        fenestrationSurf.Construction_Name = "EXT_WINDOW1"
+        lines.insert(variableDictNum + 2, fenestrationSurf)
+
+    # Writing zones in lines
+    for zone in zones:
+        zone.Multiplier = 1
+        # Coords of zone
+        incrX = zone.X_Origin
+        incrY = zone.Y_Origin
+        incrZ = zone.Z_Origin
+
+        # Writing buildingSurface: Detailed in lines
+        for i in range(0, len(buildingSurfs)):
+            #Change Outside Boundary Condition and Objects
+            if buildingSurfs[i].Zone_Name == zone.Name:
+                if 'surface' in buildingSurfs[
+                    i].Outside_Boundary_Condition.lower():
+                    buildingSurfs[i].Outside_Boundary_Condition = "Zone"
+                    surface = buildingSurfs[i].Outside_Boundary_Condition_Object
+                    indiceSurf = [k for k, s in enumerate(buildingSurfs) if
+                                  surface == s.Name]
+                    indiceZone = [k for k, s in enumerate(zones) if
+                                  buildingSurfs[
+                                      indiceSurf[0]].Zone_Name == s.Name]
+                    buildingSurfs[i].Outside_Boundary_Condition_Object = zones[
+                        indiceZone[0]].Name
+
+                if 'ground' in buildingSurfs[
+                    i].Outside_Boundary_Condition.lower():
+                    buildingSurfs[
+                        i].Outside_Boundary_Condition_Object = "BOUNDARY=INPUT 1*TGROUND"
+
+                # Change coordinates from relative to absolute
+                if coordSys:
+                    # Change X vertex to
+                    buildingSurfs[i].Vertex_1_Xcoordinate = buildingSurfs[
+                                                                i].Vertex_1_Xcoordinate + incrX
+                    buildingSurfs[i].Vertex_2_Xcoordinate = buildingSurfs[
+                                                                i].Vertex_2_Xcoordinate + incrX
+                    buildingSurfs[i].Vertex_3_Xcoordinate = buildingSurfs[
+                                                                i].Vertex_3_Xcoordinate + incrX
+                    buildingSurfs[i].Vertex_4_Xcoordinate = buildingSurfs[
+                                                                i].Vertex_4_Xcoordinate + incrX
+
+                    # Change Y vertex to
+                    buildingSurfs[i].Vertex_1_Xcoordinate = buildingSurfs[
+                                                                i].Vertex_1_Xcoordinate + incrY
+                    buildingSurfs[i].Vertex_2_Xcoordinate = buildingSurfs[
+                                                                i].Vertex_2_Xcoordinate + incrY
+                    buildingSurfs[i].Vertex_3_Xcoordinate = buildingSurfs[
+                                                                i].Vertex_3_Xcoordinate + incrY
+                    buildingSurfs[i].Vertex_4_Xcoordinate = buildingSurfs[
+                                                                i].Vertex_4_Xcoordinate + incrY
+
+                    # Change Z vertex to
+                    buildingSurfs[i].Vertex_1_Xcoordinate = buildingSurfs[
+                                                                i].Vertex_1_Xcoordinate + incrZ
+                    buildingSurfs[i].Vertex_2_Xcoordinate = buildingSurfs[
+                                                                i].Vertex_2_Xcoordinate + incrZ
+                    buildingSurfs[i].Vertex_3_Xcoordinate = buildingSurfs[
+                                                                i].Vertex_3_Xcoordinate + incrZ
+                    buildingSurfs[i].Vertex_4_Xcoordinate = buildingSurfs[
+                                                                i].Vertex_4_Xcoordinate + incrZ
+
+                lines.insert(variableDictNum + 2, buildingSurfs[i])
+
+        lines.insert(variableDictNum + 2, zone)
+
+    # Write lines in temp file
+    write_lines(tempfile_path, lines)
+    # Read temp file to update lines
+    lines = open(tempfile_path).readlines()
+
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
-        time.time() - start_time),
-        lg.INFO, name="CoverterLog", filename="CoverterLog")
-
-
-
-
+        time.time() - start_time), lg.INFO, name="CoverterLog",
+        filename="CoverterLog")

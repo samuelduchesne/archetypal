@@ -74,11 +74,6 @@ def convert_idf_to_t3d(idf, output_folder=None):
     # Read IDF_T3D template and write lines in variable
     lines = open(ori_idf_filepath).readlines()
 
-    # Create temp file path to write lines during process
-    tempfile_name = os.path.basename(idf)
-    tempfile_path = os.path.join(ar.settings.cache_folder,
-                                 "TEMP_" + tempfile_name)
-
     # Clean names of idf objects (e.g. 'MATERIAL')
     start_time = time.time()
     clear_name_idf_objects(idf_file)
@@ -443,7 +438,7 @@ def convert_idf_to_t3d(idf, output_folder=None):
     with open(os.path.join(output_folder, "T3D_" + os.path.basename(idf)),
               "w") as converted_file:
         for line in lines:
-            converted_file.write("{}".format(line))
+            converted_file.write(str(line))
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="CoverterLog",

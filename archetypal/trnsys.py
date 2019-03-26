@@ -77,10 +77,20 @@ def convert_idf_to_t3d(idf):
     log("IDF_T3D template read in {:,.2f} seconds".format(time.time() - start_time),
         lg.INFO, name="CoverterLog", filename="CoverterLog")
 
-    # Clean names of idf objects (e.g. 'MATERIAL')
-    clear_name_idf_objects(idf_file)
+    # Create temp file path to write lines during process
+    tempfile_name = os.path.basename(idf)
+    tempfile_path = os.path.join("..", ".temp", "TEMP_" + tempfile_name)
 
-    # Get objects frim IDF file
+    # Clean names of idf objects (e.g. 'MATERIAL')
+    start_time = time.time()
+    clear_name_idf_objects(idf_file)
+    log("Cleaned IDF object names in {:,.2f} seconds".format(
+        time.time() - start_time),
+        lg.INFO, name="CoverterLog", filename="CoverterLog")
+
+
+    # Get objects from IDF file
+    start_time = time.time()
     materials = idf_file.idfobjects['MATERIAL']
     materialNoMass = idf_file.idfobjects['MATERIAL:NOMASS']
     materialAirGap = idf_file.idfobjects['MATERIAL:AIRGAP']
@@ -92,4 +102,33 @@ def convert_idf_to_t3d(idf):
     fenestrationSurfs = idf_file.idfobjects['FENESTRATIONSURFACE:DETAILED']
     buildingSurfs = idf_file.idfobjects['BUILDINGSURFACE:DETAILED']
     zones = idf_file.idfobjects['ZONE']
+    log("Get object from  in {:,.2f} seconds".format(
+        time.time() - start_time),
+        lg.INFO, name="CoverterLog", filename="CoverterLog")
+
+    # Write data from IDF file to T3D file
+
+    # Write VERSION from IDF to lines (T3D)
+    # Get line number where to write
+    versionNum = ar.checkStr(ori_idf_filepath,
+                          'all objects in class: version')
+    # Writing
+    for i in range(0, len(versions)):
+        lines.insert(versionNum,
+                     ",".join(str(item) for item in versions.list2[i]) + ';')
+    # Save lines in temp file
+    tempIDFFile = open(tempfile_path, "w+")
+    for line in lines:
+        tempIDFFile.write("%s" % line)
+    tempIDFFile.close()
+    # Read temp file to update lines
+    lines = open(tempfile_path).readlines()
+    # Delete temp file
+    os.remove(tempfile_path)
+
+    
+    a=1
+
+
+
 

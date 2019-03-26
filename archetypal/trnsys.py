@@ -239,8 +239,10 @@ def convert_idf_to_t3d(idf):
     # Get line number where to write
     constructionNum = ar.checkStr(tempfile_path, 'C O N S T R U C T I O N')
 
+    # Writing CONSTRUCTION in lines
     for i in range(0, len(constructions.list2)):
 
+        # Except fenestration construction
         fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
                         s in constructions.list2[i][1].lower()]
         if not fenestration:
@@ -249,6 +251,7 @@ def convert_idf_to_t3d(idf):
         else:
             continue
 
+        # Create lists to append with layers and thickness of contruction
         layerList = []
         thickList = []
 
@@ -257,7 +260,6 @@ def convert_idf_to_t3d(idf):
             indiceMat = [k for k, s in enumerate(materials) if
                          constructions.list2[i][j] == s.Name]
             if not indiceMat:
-                # indiceMat[0] = indiceMat[0]+ round_up(len(materials), -2)
                 thickList.append(0.0)
             else:
                 thickList.append(materials[indiceMat[0]].Thickness)
@@ -284,6 +286,22 @@ def convert_idf_to_t3d(idf):
     write_lines(tempfile_path, lines)
     # Read temp file to update lines
     lines = open(tempfile_path).readlines()
+
+    # Write CONSTRUCTION (END) from IDF to lines (T3D)
+    # Get line number where to write
+    constructionEndNum = ar.checkStr(tempfile_path, 'ALL OBJECTS IN CLASS: CONSTRUCTION')
+
+    # Writing CONSTRUCTION in lines
+    for i in range(0, len(constructions)):
+
+        # Except fenestration construction
+        fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
+                        s in constructions.list2[i][1].lower()]
+        if not fenestration:
+            lines.insert(constructionEndNum, constructions[i])
+        else:
+            continue
+
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="CoverterLog",

@@ -11,7 +11,7 @@ from archetypal import log, write_lines
 def clear_name_idf_objects(idfFile):
     objs = ['MATERIAL', 'MATERIAL:NOMASS', 'MATERIAL:AIRGAP', 'CONSTRUCTION',
             'FENESTRATIONSURFACE:DETAILED', 'BUILDINGSURFACE:DETAILED', 'ZONE',
-            'BUILDING', 'SITE:LOCATION']
+            'BUILDING', 'SITE:LOCATION', 'SCHEDULE:YEAR', 'SCHEDULE:WEEK:DAILY', 'SCHEDULE:DAY:INTERVAL']
     uniqueList = []
 
     # For all categorie that we want to change Names
@@ -93,6 +93,9 @@ def convert_idf_to_t3d(idf):
     fenestrationSurfs = idf_file.idfobjects['FENESTRATIONSURFACE:DETAILED']
     buildingSurfs = idf_file.idfobjects['BUILDINGSURFACE:DETAILED']
     zones = idf_file.idfobjects['ZONE']
+    scheduleYear = idf_file.idfobjects['SCHEDULE:YEAR']
+    scheduleWeek = idf_file.idfobjects['SCHEDULE:WEEK:DAILY']
+    scheduleDay = idf_file.idfobjects['SCHEDULE:DAY:INTERVAL']
 
     # Write data from IDF file to T3D file
     start_time = time.time()
@@ -301,6 +304,69 @@ def convert_idf_to_t3d(idf):
             lines.insert(constructionEndNum, constructions[i])
         else:
             continue
+
+    # Write lines in temp file
+    write_lines(tempfile_path, lines)
+    # Read temp file to update lines
+    lines = open(tempfile_path).readlines()
+
+    # Write LAYER from IDF to lines (T3D)
+    # Get line number where to write
+    layerNum = ar.checkStr(tempfile_path, 'L a y e r s')
+
+    # Write MATERIAL to lines
+    listLayerName = []
+    for i in range(0, len(materials)):
+        lines.insert(layerNum + 1, '!-LAYER ' + materials[i].Name + '\n')
+        listLayerName.append(materials[i].Name)
+
+        lines.insert(layerNum + 2, '!- CONDUCTIVITY=' + str(
+            round(materials[i].Conductivity * 3.6, 4)) +
+                     ' : CAPACITY= ' + str(
+            round(materials[i].Specific_Heat / 1000, 4)) + ' : DENSITY= ' +
+                     str(round(materials[i].Density,
+                               4)) + ' : PERT= 0 : PENRT= 0\n')
+
+    # Write MATERIAL:NOMASS to lines
+    for i in range(0, len(materialNoMass)):
+
+        duplicate = [s for s in listLayerName if s == materialNoMass[i].Name]
+        if not duplicate:
+            lines.insert(layerNum + 1,
+                         '!-LAYER ' + materialNoMass[i].Name + '\n')
+            listLayerName.append(materialNoMass[i].Name)
+
+            lines.insert(layerNum + 2, '!- RESISTANCE=' + str(
+                round(materialNoMass[i].Thermal_Resistance / 3.6, 4)) +
+                         ' : PERT= 0 : PENRT= 0\n')
+        else:
+            continue
+
+    # Write MATERIAL:AIRGAP to lines
+    for i in range(0, len(materialAirGap)):
+
+        duplicate = [s for s in listLayerName if s == materialAirGap[i].Name]
+        if not duplicate:
+            lines.insert(layerNum + 1,
+                         '!-LAYER ' + materialAirGap[i].Name + '\n')
+            listLayerName.append(materialAirGap[i].Name)
+
+            lines.insert(layerNum + 2, '!- RESISTANCE=' + str(
+                round(materialAirGap[i].Thermal_Resistance / 3.6, 4)) +
+                         ' : PERT= 0 : PENRT= 0\n')
+        else:
+            continue
+
+    # Write lines in temp file
+    write_lines(tempfile_path, lines)
+    # Read temp file to update lines
+    lines = open(tempfile_path).readlines()
+
+    # Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
+    # Get line number where to write
+    gainNum = ar.checkStr(tempfile_path, 'G a i n s')
+
+
 
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(

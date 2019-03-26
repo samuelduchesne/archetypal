@@ -76,7 +76,7 @@ def convert_idf_to_t3d(idf):
 
     # Create temp file path to write lines during process
     tempfile_name = os.path.basename(idf)
-    tempfile_path = os.path.join("..", ".temp", "TEMP_" + tempfile_name)
+    tempfile_path = os.path.join(ar.settings.cache_folder, "TEMP_" + tempfile_name)
 
     # Clean names of idf objects (e.g. 'MATERIAL')
     start_time = time.time()

@@ -3,6 +3,7 @@ import os
 import time
 import uuid
 from eppy import modeleditor
+from collections import OrderedDict
 
 import archetypal as ar
 from archetypal import log, write_lines
@@ -11,7 +12,8 @@ from archetypal import log, write_lines
 def clear_name_idf_objects(idfFile):
     objs = ['MATERIAL', 'MATERIAL:NOMASS', 'MATERIAL:AIRGAP', 'CONSTRUCTION',
             'FENESTRATIONSURFACE:DETAILED', 'BUILDINGSURFACE:DETAILED', 'ZONE',
-            'BUILDING', 'SITE:LOCATION', 'SCHEDULE:YEAR', 'SCHEDULE:WEEK:DAILY', 'SCHEDULE:DAY:INTERVAL']
+            'BUILDING', 'SITE:LOCATION', 'SCHEDULE:YEAR', 'SCHEDULE:WEEK:DAILY',
+            'SCHEDULE:DAY:INTERVAL', 'PEOPLE', 'LIGHTS', 'ELECTRICEQUIPMENT']
     uniqueList = []
 
     # For all categorie that we want to change Names
@@ -47,11 +49,13 @@ def clear_name_idf_objects(idfFile):
                 continue
 
 
-def convert_idf_to_t3d(idf):
-    """
+def convert_idf_to_t3d(idf, output_folder=None):
+    """ Convert IDF file to T3D file to be able to load it in TRNBuild
 
     Args:
-        idf (str): ejfufidfq
+        idf (str): File path of IDF file to convert to T3D
+        output_folder (str): location where output file will be saved. If None,
+            saves to settings.data_folder
 
     Returns:
 
@@ -72,7 +76,8 @@ def convert_idf_to_t3d(idf):
 
     # Create temp file path to write lines during process
     tempfile_name = os.path.basename(idf)
-    tempfile_path = os.path.join(ar.settings.cache_folder, "TEMP_" + tempfile_name)
+    tempfile_path = os.path.join(ar.settings.cache_folder,
+                                 "TEMP_" + tempfile_name)
 
     # Clean names of idf objects (e.g. 'MATERIAL')
     start_time = time.time()
@@ -96,6 +101,9 @@ def convert_idf_to_t3d(idf):
     scheduleYear = idf_file.idfobjects['SCHEDULE:YEAR']
     scheduleWeek = idf_file.idfobjects['SCHEDULE:WEEK:DAILY']
     scheduleDay = idf_file.idfobjects['SCHEDULE:DAY:INTERVAL']
+    people = idf_file.idfobjects['PEOPLE']
+    light = idf_file.idfobjects['LIGHTS']
+    equipment = idf_file.idfobjects['ELECTRICEQUIPMENT']
 
     # Write data from IDF file to T3D file
     start_time = time.time()
@@ -178,7 +186,7 @@ def convert_idf_to_t3d(idf):
 
         # Writing buildingSurface: Detailed in lines
         for i in range(0, len(buildingSurfs)):
-            #Change Outside Boundary Condition and Objects
+            # Change Outside Boundary Condition and Objects
             if buildingSurfs[i].Zone_Name == zone.Name:
                 if 'surface' in buildingSurfs[
                     i].Outside_Boundary_Condition.lower():
@@ -292,7 +300,8 @@ def convert_idf_to_t3d(idf):
 
     # Write CONSTRUCTION (END) from IDF to lines (T3D)
     # Get line number where to write
-    constructionEndNum = ar.checkStr(tempfile_path, 'ALL OBJECTS IN CLASS: CONSTRUCTION')
+    constructionEndNum = ar.checkStr(tempfile_path,
+                                     'ALL OBJECTS IN CLASS: CONSTRUCTION')
 
     # Writing CONSTRUCTION in lines
     for i in range(0, len(constructions)):
@@ -366,7 +375,111 @@ def convert_idf_to_t3d(idf):
     # Get line number where to write
     gainNum = ar.checkStr(tempfile_path, 'G a i n s')
 
+    # Write PEOPLE gains in lines
+    for i in range(0, len(people)):
 
+        schYearName = people[i].Activity_Level_Schedule_Name
+        indiceSchYear = [k for k, s in enumerate(scheduleYear) if
+                         people[i].Activity_Level_Schedule_Name == s.Name]
+        schWeekName = scheduleYear[indiceSchYear[0]].ScheduleWeek_Name_1
+        indiceSchWeek = [k for k, s in enumerate(scheduleWeek) if scheduleYear[
+            indiceSchYear[0]].ScheduleWeek_Name_1 == s.Name]
+        weekSch = list(
+            OrderedDict.fromkeys(scheduleWeek.list2[indiceSchWeek[0]][2::]))
+
+        for element in weekSch:
+            lines.insert(gainNum + 1, 'GAIN PEOPLE' + '_' + element.replace(" ",
+                                                                            "_").replace(
+                "-", "_").replace(".", "_").replace("{", "").replace("}",
+                                                                     "") + '\n')
+
+            if people[i].Number_of_People_Calculation_Method == "People":
+                areaMethod = "ABSOLUTE"
+            else:
+                areaMethod = "AREA_RELATED"
+
+            radFract = people[i].Fraction_Radiant
+            if len(str(radFract)) == 0:
+                radFract = 1 - people[i].Sensible_Heat_Fraction
+
+            indiceSchElement = [p for p, s in enumerate(scheduleDay) if
+                                element == s.Name]
+            power = round(scheduleDay[indiceSchElement[0]].Value_Until_Time_1,
+                          4)
+            lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
+                power * (1 - radFract)) + ' : RADIATIVE=' + str(
+                power * radFract) +
+                         ' : HUMIDITY=0.066 : ELPOWERFRAC=0 : ' + areaMethod + ' : CATEGORY=PEOPLE\n')
+
+    # Write LIGHT gains in lines
+    for i in range(0, len(light)):
+
+        lines.insert(gainNum + 1,
+                     'GAIN LIGHT' + '_' + light[i].Schedule_Name.replace(" ",
+                                                                         "_").replace(
+                         "-", "_").replace(".", "_").replace("{", "").replace(
+                         "}", "") + '\n')
+
+        if light[i].Design_Level_Calculation_Method == "Watts":
+            areaMethod = "ABSOLUTE"
+            power = round(light[i].Lighting_Level, 4)
+        elif light[i].Design_Level_Calculation_Method == "Watts/Area":
+            areaMethod = "AREA_RELATED"
+            power = round(light[i].Watts_per_Zone_Floor_Area, 4)
+        else:
+            areaMethod = "AREA_RELATED"
+            power = 0
+            log(
+                "Could not find the Light Power Density, cause depend on the number of people (Watts/Person)",
+                lg.WARNING, name="CoverterLog",
+                filename="CoverterLog")
+
+        radFract = light[i].Fraction_Radiant
+
+        lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
+            power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
+                     ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : CATEGORY=LIGHTS\n')
+
+    # Write EQUIPMENT gains in lines
+    for i in range(0, len(equipment)):
+
+        lines.insert(gainNum + 1, 'GAIN EQUIPMENT' + '_' + equipment[
+            i].Schedule_Name.replace(" ", "_").replace("-", "_").replace(".",
+                                                                         "_").replace(
+            "{", "").replace("}", "") + '\n')
+
+        if equipment[i].Design_Level_Calculation_Method == "Watts":
+            areaMethod = "ABSOLUTE"
+            power = round(equipment[i].Design_Level, 4)
+        elif equipment[i].Design_Level_Calculation_Method == "Watts/Area":
+            areaMethod = "AREA_RELATED"
+            power = round(equipment[i].Watts_per_Zone_Floor_Area, 4)
+        else:
+            areaMethod = "AREA_RELATED"
+            power = 0
+            log(
+                "Could not find the Equipment Power Density, cause depend on the number of people (Watts/Person)",
+                lg.WARNING, name="CoverterLog",
+                filename="CoverterLog")
+
+        radFract = equipment[i].Fraction_Radiant
+
+        lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
+            power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
+                     ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : CATEGORY=LIGHTS\n')
+
+
+    # Save file at output_folder
+    if output_folder is None:
+        # User did not provide an output folder path. We use the default setting
+        output_folder = ar.settings.data_folder
+
+    if not os.path.isdir(output_folder):
+        os.mkdir(output_folder)
+
+    with open(os.path.join(output_folder, "T3D_" + os.path.basename(idf)), "w") as converted_file:
+        for line in lines:
+            converted_file.write("{}".format(line))
 
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(

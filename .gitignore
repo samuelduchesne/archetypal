@@ -97,3 +97,5 @@ tests/\.temp/
 *.lp
 
 \.DS_Store
+
+\.temp/

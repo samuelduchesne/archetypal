@@ -100,7 +100,7 @@ def convert_idf_to_t3d(idf):
     # Write VERSION from IDF to lines (T3D)
     # Get line number where to write
     versionNum = ar.checkStr(ori_idf_filepath,
-                             'all objects in class: version')
+                             'ALL OBJECTS IN CLASS: VERSION')
     # Writing
     for i in range(0, len(versions)):
         lines.insert(versionNum,
@@ -114,7 +114,7 @@ def convert_idf_to_t3d(idf):
     # Write BUILDING from IDF to lines (T3D)
     # Get line number where to write
     buildingNum = ar.checkStr(tempfile_path,
-                              'all objects in class: building')
+                              'ALL OBJECTS IN CLASS: BUILDING')
     # Writing
     for building in buildings:
         lines.insert(buildingNum, building)
@@ -128,7 +128,7 @@ def convert_idf_to_t3d(idf):
     # Write LOCATION and GLOBALGEOMETRYRULES from IDF to lines (T3D)
     # Get line number where to write
     locationNum = ar.checkStr(tempfile_path,
-                              'all objects in class: location')
+                              'ALL OBJECTS IN CLASS: LOCATION')
 
     # Write GLOBALGEOMETRYRULES lines
     for globGeomRule in globGeomRules:
@@ -159,7 +159,7 @@ def convert_idf_to_t3d(idf):
     # Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf) from IDF to lines (T3D)
     # Get line number where to write
     variableDictNum = ar.checkStr(tempfile_path,
-                                  'all objects in class: output:variabledictionary')
+                                  'ALL OBJECTS IN CLASS: OUTPUT:VARIABLEDICTIONARY')
     # Writing fenestrationSurface:Detailed in lines
     for fenestrationSurf in fenestrationSurfs:
         fenestrationSurf.Construction_Name = "EXT_WINDOW1"
@@ -235,6 +235,55 @@ def convert_idf_to_t3d(idf):
     # Read temp file to update lines
     lines = open(tempfile_path).readlines()
 
+    # Write CONSTRUCTION from IDF to lines (T3D)
+    # Get line number where to write
+    constructionNum = ar.checkStr(tempfile_path, 'C O N S T R U C T I O N')
+
+    for i in range(0, len(constructions.list2)):
+
+        fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
+                        s in constructions.list2[i][1].lower()]
+        if not fenestration:
+            lines.insert(constructionNum + 1,
+                         '!-CONSTRUCTION ' + constructions[i].Name + '\n')
+        else:
+            continue
+
+        layerList = []
+        thickList = []
+
+        for j in range(2, len(constructions.list2[i])):
+
+            indiceMat = [k for k, s in enumerate(materials) if
+                         constructions.list2[i][j] == s.Name]
+            if not indiceMat:
+                # indiceMat[0] = indiceMat[0]+ round_up(len(materials), -2)
+                thickList.append(0.0)
+            else:
+                thickList.append(materials[indiceMat[0]].Thickness)
+
+            layerList.append(constructions.list2[i][j])
+
+        lines.insert(constructionNum + 2, '!- LAYERS = ' + " ".join(
+            str(item) for item in layerList[::-1]) + '\n')
+        lines.insert(constructionNum + 3, '!- THICKNESS= ' + " ".join(
+            str(item) for item in thickList[::-1]) + '\n')
+        lines.insert(constructionNum + 4,
+                     '!- ABS-FRONT= 0.4   : ABS-BACK= 0.5\n')
+        lines.insert(constructionNum + 5,
+                     '!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n')
+
+        basement = [s for s in ['basement', 'floor'] if
+                    s in constructions.list2[i][1].lower()]
+        if not basement:
+            lines.insert(constructionNum + 6, '!- HFRONT   = 11 : HBACK= 64\n')
+        else:
+            lines.insert(constructionNum + 6, '!- HFRONT   = 11 : HBACK= 0\n')
+
+    # Write lines in temp file
+    write_lines(tempfile_path, lines)
+    # Read temp file to update lines
+    lines = open(tempfile_path).readlines()
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="CoverterLog",

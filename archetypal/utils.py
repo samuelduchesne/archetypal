@@ -81,7 +81,7 @@ def config(data_folder=settings.data_folder,
         log('Configured archetypal')
 
 
-def log(message, level=None, name=None, filename=None):
+def log(message, level=None, name=None, filename=None, avoid_console=False):
     """
     Write a message to the log file and/or print to the the console.
 
@@ -90,6 +90,8 @@ def log(message, level=None, name=None, filename=None):
         level (int): one of the logger.level constants
         name (str): name of the logger
         filename (str): name of the log file
+        avoid_console (bool): If True, don't print to console for this message
+            only
 
     Returns:
         None
@@ -118,7 +120,7 @@ def log(message, level=None, name=None, filename=None):
 
     # if logging to console is turned on, convert message to ascii and print to
     # the console
-    if settings.log_console:
+    if settings.log_console and not avoid_console:
         # capture current stdout, then switch it to the console, print the
         # message, then switch back to what had been the stdout. this prevents
         # logging to notebook - instead, it goes to console
@@ -403,11 +405,9 @@ def get_row_prop(self, other, on, property):
         raise ValueError()
     else:
         if len(value_series) > 1:
-            log(
-                'Found more than one possible values for property {} for item '
+            log('Found more than one possible values for property {} for item '
                 '{}'.format(
-                    property, self[on]),
-                lg.WARNING)
+                property, self[on]), lg.WARNING)
             log('Taking the first occurrence...')
 
             index = value_series.index.values.astype(int)[0]

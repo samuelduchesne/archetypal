@@ -127,10 +127,9 @@ def object_from_idf(idf, ep_object):
              idf.idfobjects[ep_object]],
             ignore_index=True, sort=False)
     except ValueError:
-        log(
-            'ValueError: EP object "{}" does not exist in frame for idf "{}. '
+        log('ValueError: EP object "{}" does not exist in frame for idf "{}. '
             'Returning empty DataFrame"'.format(
-                ep_object, idf.idfname), lg.WARNING)
+            ep_object, idf.idfname), lg.WARNING)
         return pd.DataFrame({ep_object: []})
     else:
         return df
@@ -233,10 +232,9 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
                 raise Exception('User asked not to run in parallel')
         except Exception as e:
             # multiprocessing not present so pass the jobs one at a time
-            log(
-                'Cannot use parallel load. Error with the following '
+            log('Cannot use parallel load. Error with the following '
                 'exception:\n{}'.format(
-                    e))
+                e))
             idfs = {}
             start_time = time.time()
             for file in eplus_files:
@@ -295,8 +293,7 @@ def eppy_load(file, idd_filename):
                     os.path.basename(file),
                     idf_version,
                     idf_object.getiddname(),
-                    idd_version),
-                    level=lg.DEBUG)
+                    idd_version), level=lg.DEBUG)
         # An error could occur if the iddname is not found on the system. Try
         # to upgrade the idf file
         except Exception as e:

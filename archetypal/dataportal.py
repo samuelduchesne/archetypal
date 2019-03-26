@@ -464,11 +464,9 @@ def nrel_api_cbr_request(data):
             save_to_cache(prepared_url, response_json)
         except Exception:
             # deal with response satus_code here
-            log(
-                'Server at {} returned status code {} and no JSON data.'.format(
-                    domain,
-                    response.status_code),
-                level=lg.ERROR)
+            log('Server at {} returned status code {} and no JSON data.'.format(
+                domain,
+                response.status_code), level=lg.ERROR)
         else:
             return response_json
 
@@ -520,11 +518,9 @@ def nrel_bcl_api_request(data):
             save_to_cache(prepared_url, response_json)
         except Exception:
             # deal with response satus_code here
-            log(
-                'Server at {} returned status code {} and no JSON data.'.format(
-                    domain,
-                    response.status_code),
-                level=lg.ERROR)
+            log('Server at {} returned status code {} and no JSON data.'.format(
+                domain,
+                response.status_code), level=lg.ERROR)
             return response.content
         else:
             return response_json
@@ -575,12 +571,10 @@ def stat_can_request(data):
                                                                     '')
                 response_json = json.loads(response)
             except Exception:
-                log(
-                    'Server at {} returned status code {} and no JSON '
+                log('Server at {} returned status code {} and no JSON '
                     'data.'.format(
-                        domain,
-                        response.status_code),
-                    level=lg.ERROR)
+                    domain,
+                    response.status_code), level=lg.ERROR)
             else:
                 save_to_cache(prepared_url, response_json)
                 return response_json
@@ -635,12 +629,10 @@ def stat_can_geo_request(data):
                                                                     '')
                 response_json = json.loads(response)
             except Exception:
-                log(
-                    'Server at {} returned status code {} and no JSON '
+                log('Server at {} returned status code {} and no JSON '
                     'data.'.format(
-                        domain,
-                        response.status_code),
-                    level=lg.ERROR)
+                    domain,
+                    response.status_code), level=lg.ERROR)
             else:
                 save_to_cache(prepared_url, response_json)
                 return response_json

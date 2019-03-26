@@ -178,7 +178,8 @@ def r_l_w(u_factor):
 
     """
     if u_factor > 7.0:
-        log("The model cannot support glazing systems with a U-value higher than 7.0 because the thermal resistance "
+        log(
+            "The model cannot support glazing systems with a U-value higher than 7.0 because the thermal resistance "
             "of the film coefficients alone can provide this level of performance and none of the various resistances"
             "can be negative.", lg.WARNING)
         pass

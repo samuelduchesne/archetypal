@@ -280,8 +280,8 @@ class EnergyProfile(pd.Series):
                                method='L-BFGS-B',
                                bounds=hours_bounds + sf_bounds,
                                options=dict(disp=True))
-                log('Completed discretization in {:,.2f} seconds'.format(time.time()-start_time),
-                    lg.DEBUG)
+                log('Completed discretization in {:,.2f} seconds'.format(
+                    time.time() - start_time), lg.DEBUG)
                 edges[name] = res.x[0:n_bins+1]
                 ampls[name] = res.x[n_bins + 1:]
                 results[name] = pd.Series(piecewise(res.x))
@@ -705,8 +705,7 @@ def materials_gas(idfs):
         materials_df['DataSource'] = materials_df['Archetype']
     except Exception as e:
         log('An exception was raised while setting the DataSource of the '
-            'objects',
-            lg.WARNING)
+            'objects', lg.WARNING)
         log('{}'.format(e), lg.ERROR)
         log('Falling back onto first IDF file containing this common object',
             lg.WARNING)
@@ -773,8 +772,7 @@ def materials_glazing(idfs):
         materials_df['DataSource'] = materials_df['Archetype']
     except Exception as e:
         log('An exception was raised while setting the DataSource of the '
-            'objects',
-            lg.WARNING)
+            'objects', lg.WARNING)
         log('{}'.format(e), lg.ERROR)
         log('Falling back onto first IDF file containing this common object',
             lg.WARNING)
@@ -874,10 +872,8 @@ def materials_opaque(idfs):
     try:
         materials_df['DataSource'] = materials_df['Archetype']
     except Exception as e:
-        log(
-            'An exception was raised while setting the DataSource of the '
-            'objects',
-            lg.WARNING)
+        log('An exception was raised while setting the DataSource of the '
+            'objects', lg.WARNING)
         log('{}'.format(e), lg.ERROR)
         log('Falling back onto first IDF file containing this common object',
             lg.WARNING)
@@ -972,8 +968,7 @@ def constructions_opaque(idfs, opaquematerials=None):
         constructions_df['DataSource'] = constructions_df['Archetype']
     except Exception as e:
         log('An exception was raised while setting the DataSource of the '
-            'objects',
-            lg.WARNING)
+            'objects', lg.WARNING)
         log('{}'.format(e), lg.ERROR)
         log('Falling back onto first IDF file containing this common object',
             lg.WARNING)
@@ -1056,8 +1051,7 @@ def constructions_windows(idfs, material_glazing=None):
             'Archetype']
     except Exception as e:
         log('An exception was raised while setting the DataSource of the '
-            'objects',
-            lg.WARNING)
+            'objects', lg.WARNING)
         log('{}'.format(e), lg.ERROR)
         log('Falling back onto first IDF file containing this common object',
             lg.WARNING)

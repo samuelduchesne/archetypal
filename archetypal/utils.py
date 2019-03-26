@@ -847,25 +847,24 @@ def piecewise(data):
     return y
 
 
-def checkStr(pathFile, string):
+def checkStr(datafile, string):
     """Find the last occurrence of a string and return its line number
 
     Args:
-        pathFile (str): the file path of the txt file
+        datafile (list-like): a list-like object
         string (str): the string to find in the txt file
 
-    Returns: the line number of the string
+    Returns: the list index containing the string
 
     """
-    with open(pathFile, "r") as datafile:
-        value = []
-        count = 0
-        for line in datafile:
-            count = count + 1
-            match = re.search(string, line)
-            if match:
-                return count
-                break
+    value = []
+    count = 0
+    for line in datafile:
+        count = count + 1
+        match = re.search(string, str(line))
+        if match:
+            return count
+            break
 
 
 def write_lines(file_path, lines):

@@ -110,35 +110,25 @@ def convert_idf_to_t3d(idf, output_folder=None):
 
     # Write VERSION from IDF to lines (T3D)
     # Get line number where to write
-    versionNum = ar.checkStr(ori_idf_filepath,
-                             'ALL OBJECTS IN CLASS: VERSION')
+    with open(ori_idf_filepath) as ori:
+        versionNum = ar.checkStr(ori,
+                                 'ALL OBJECTS IN CLASS: VERSION')
     # Writing
     for i in range(0, len(versions)):
         lines.insert(versionNum,
                      ",".join(str(item) for item in versions.list2[i]) + ';')
 
-    # Write lines in temp file
-    write_lines(tempfile_path, lines)
-    # Read temp file to update lines
-    lines = open(tempfile_path).readlines()
-
     # Write BUILDING from IDF to lines (T3D)
     # Get line number where to write
-    buildingNum = ar.checkStr(tempfile_path,
+    buildingNum = ar.checkStr(lines,
                               'ALL OBJECTS IN CLASS: BUILDING')
     # Writing
     for building in buildings:
         lines.insert(buildingNum, building)
 
-    # Write lines in temp file
-    write_lines(tempfile_path, lines)
-
-    # Read temp file to update lines
-    lines = open(tempfile_path).readlines()
-
     # Write LOCATION and GLOBALGEOMETRYRULES from IDF to lines (T3D)
     # Get line number where to write
-    locationNum = ar.checkStr(tempfile_path,
+    locationNum = ar.checkStr(lines,
                               'ALL OBJECTS IN CLASS: LOCATION')
 
     # Write GLOBALGEOMETRYRULES lines
@@ -161,15 +151,9 @@ def convert_idf_to_t3d(idf, output_folder=None):
     for location in locations:
         lines.insert(locationNum, location)
 
-    # Write lines in temp file
-    write_lines(tempfile_path, lines)
-
-    # Read temp file to update lines
-    lines = open(tempfile_path).readlines()
-
     # Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf) from IDF to lines (T3D)
     # Get line number where to write
-    variableDictNum = ar.checkStr(tempfile_path,
+    variableDictNum = ar.checkStr(lines,
                                   'ALL OBJECTS IN CLASS: OUTPUT:VARIABLEDICTIONARY')
     # Writing fenestrationSurface:Detailed in lines
     for fenestrationSurf in fenestrationSurfs:
@@ -241,14 +225,9 @@ def convert_idf_to_t3d(idf, output_folder=None):
 
         lines.insert(variableDictNum + 2, zone)
 
-    # Write lines in temp file
-    write_lines(tempfile_path, lines)
-    # Read temp file to update lines
-    lines = open(tempfile_path).readlines()
-
     # Write CONSTRUCTION from IDF to lines (T3D)
     # Get line number where to write
-    constructionNum = ar.checkStr(tempfile_path, 'C O N S T R U C T I O N')
+    constructionNum = ar.checkStr(lines, 'C O N S T R U C T I O N')
 
     # Writing CONSTRUCTION in lines
     for i in range(0, len(constructions.list2)):
@@ -293,14 +272,9 @@ def convert_idf_to_t3d(idf, output_folder=None):
         else:
             lines.insert(constructionNum + 6, '!- HFRONT   = 11 : HBACK= 0\n')
 
-    # Write lines in temp file
-    write_lines(tempfile_path, lines)
-    # Read temp file to update lines
-    lines = open(tempfile_path).readlines()
-
     # Write CONSTRUCTION (END) from IDF to lines (T3D)
     # Get line number where to write
-    constructionEndNum = ar.checkStr(tempfile_path,
+    constructionEndNum = ar.checkStr(lines,
                                      'ALL OBJECTS IN CLASS: CONSTRUCTION')
 
     # Writing CONSTRUCTION in lines
@@ -314,14 +288,9 @@ def convert_idf_to_t3d(idf, output_folder=None):
         else:
             continue
 
-    # Write lines in temp file
-    write_lines(tempfile_path, lines)
-    # Read temp file to update lines
-    lines = open(tempfile_path).readlines()
-
     # Write LAYER from IDF to lines (T3D)
     # Get line number where to write
-    layerNum = ar.checkStr(tempfile_path, 'L a y e r s')
+    layerNum = ar.checkStr(lines, 'L a y e r s')
 
     # Write MATERIAL to lines
     listLayerName = []
@@ -366,14 +335,9 @@ def convert_idf_to_t3d(idf, output_folder=None):
         else:
             continue
 
-    # Write lines in temp file
-    write_lines(tempfile_path, lines)
-    # Read temp file to update lines
-    lines = open(tempfile_path).readlines()
-
     # Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
     # Get line number where to write
-    gainNum = ar.checkStr(tempfile_path, 'G a i n s')
+    gainNum = ar.checkStr(lines, 'G a i n s')
 
     # Write PEOPLE gains in lines
     for i in range(0, len(people)):
@@ -468,7 +432,6 @@ def convert_idf_to_t3d(idf, output_folder=None):
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
                      ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : CATEGORY=LIGHTS\n')
 
-
     # Save file at output_folder
     if output_folder is None:
         # User did not provide an output folder path. We use the default setting
@@ -477,10 +440,10 @@ def convert_idf_to_t3d(idf, output_folder=None):
     if not os.path.isdir(output_folder):
         os.mkdir(output_folder)
 
-    with open(os.path.join(output_folder, "T3D_" + os.path.basename(idf)), "w") as converted_file:
+    with open(os.path.join(output_folder, "T3D_" + os.path.basename(idf)),
+              "w") as converted_file:
         for line in lines:
             converted_file.write("{}".format(line))
-
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="CoverterLog",

@@ -866,3 +866,23 @@ def checkStr(pathFile, string):
             if match:
                 return count
                 break
+
+
+def write_lines(file_path, lines):
+    """Delete file if exists, then write lines in it
+
+    Args:
+        file_path (str): path of the file
+        lines (list of str): lines to be written in file
+
+    Returns:
+
+    """
+    # Delete temp file if exists
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    # Save lines in temp file
+    temp_idf_file = open(file_path, "w+")
+    for line in lines:
+        temp_idf_file.write("%s" % line)
+    temp_idf_file.close()

@@ -69,13 +69,10 @@ def convert_idf_to_t3d(idf):
         lg.INFO, name="CoverterLog", filename="CoverterLog")
 
     # Load IDF_T3D template
-    start_time = time.time()
     ori_idf_filename = "originBUISketchUp.idf"
     ori_idf_filepath = os.path.join("..", "tests", "input_data", "trnsys", ori_idf_filename)
     # Read IDF_T3D template and write lines in variable
     lines = open(ori_idf_filepath).readlines()
-    log("IDF_T3D template read in {:,.2f} seconds".format(time.time() - start_time),
-        lg.INFO, name="CoverterLog", filename="CoverterLog")
 
     # Create temp file path to write lines during process
     tempfile_name = os.path.basename(idf)
@@ -90,7 +87,6 @@ def convert_idf_to_t3d(idf):
 
 
     # Get objects from IDF file
-    start_time = time.time()
     materials = idf_file.idfobjects['MATERIAL']
     materialNoMass = idf_file.idfobjects['MATERIAL:NOMASS']
     materialAirGap = idf_file.idfobjects['MATERIAL:AIRGAP']
@@ -102,11 +98,9 @@ def convert_idf_to_t3d(idf):
     fenestrationSurfs = idf_file.idfobjects['FENESTRATIONSURFACE:DETAILED']
     buildingSurfs = idf_file.idfobjects['BUILDINGSURFACE:DETAILED']
     zones = idf_file.idfobjects['ZONE']
-    log("Get object from  in {:,.2f} seconds".format(
-        time.time() - start_time),
-        lg.INFO, name="CoverterLog", filename="CoverterLog")
 
     # Write data from IDF file to T3D file
+    start_time = time.time()
 
     # Write VERSION from IDF to lines (T3D)
     # Get line number where to write
@@ -116,18 +110,40 @@ def convert_idf_to_t3d(idf):
     for i in range(0, len(versions)):
         lines.insert(versionNum,
                      ",".join(str(item) for item in versions.list2[i]) + ';')
+    # Delete temp file if exists
+    if os.path.exists(tempfile_path):
+        os.remove(tempfile_path)
     # Save lines in temp file
-    tempIDFFile = open(tempfile_path, "w+")
+    temp_idf_file = open(tempfile_path, "w+")
     for line in lines:
-        tempIDFFile.write("%s" % line)
-    tempIDFFile.close()
+        temp_idf_file.write("%s" % line)
+    temp_idf_file.close()
     # Read temp file to update lines
     lines = open(tempfile_path).readlines()
-    # Delete temp file
-    os.remove(tempfile_path)
 
-    
+    # Write BUILDING from IDF to lines (T3D)
+    # Get line number where to write
+    buildingNum = ar.checkStr(tempfile_path,
+                             'all objects in class: building')
+    # Writing
+    for building in buildings:
+        lines.insert(buildingNum, building)
+    # Delete temp file if exists
+    if os.path.exists(tempfile_path):
+        os.remove(tempfile_path)
+    # Save lines in temp file
+    temp_idf_file = open(tempfile_path, "w+")
+    for line in lines:
+        temp_idf_file.write("%s" % line)
+    temp_idf_file.close()
+    # Read temp file to update lines
+    lines = open(tempfile_path).readlines()
+
     a=1
+
+    log("Write data from IDF to T3D in {:,.2f} seconds".format(
+        time.time() - start_time),
+        lg.INFO, name="CoverterLog", filename="CoverterLog")
 
 
 

@@ -211,14 +211,14 @@ def convert_idf_to_t3d(idf, output_folder=None):
     for zone in zones:
         zone.Multiplier = 1
         # Coords of zone
-        incrX = zone.X_Origin
-        incrY = zone.Y_Origin
-        incrZ = zone.Z_Origin
+        incrX, incrY, incrZ = zone_origin(zone)
 
+        surfList = []
         # Writing buildingSurface: Detailed in lines
         for i in range(0, len(buildingSurfs)):
             # Change Outside Boundary Condition and Objects
             if buildingSurfs[i].Zone_Name == zone.Name:
+                surfList.append(buildingSurfs[i])
                 if 'surface' in buildingSurfs[
                     i].Outside_Boundary_Condition.lower():
                     buildingSurfs[i].Outside_Boundary_Condition = "Zone"
@@ -269,6 +269,11 @@ def convert_idf_to_t3d(idf, output_folder=None):
                                                                 i].Vertex_4_Xcoordinate + incrZ
 
                 lines.insert(variableDictNum + 2, buildingSurfs[i])
+
+        # Change coordinates from world (all zones to 0) to absolute
+        if coordSys == 'World':
+            zone.X_Origin, zone.Y_Origin, zone.Z_Origin = closest_coords(
+                surfList, to=zone_origin(zone))
 
         lines.insert(variableDictNum + 2, zone)
 

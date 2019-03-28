@@ -767,3 +767,19 @@
     0.000000000000,0.000000000000,0.000000000000,  !- X,Y,Z ==> Vertex 3 {m}
     0.000000000000,0.000000000000,2.000000000000;  !- X,Y,Z ==> Vertex 4 {m}
 
+  FenestrationSurface:Detailed,
+    D1468F,                  !- Name
+    Window,                  !- Surface Type
+    Exterior Window,         !- Construction Name
+    CB5D0B,                  !- Building Surface Name
+    ,                        !- Outside Boundary Condition Object
+    ,                        !- View Factor to Ground
+    ,                        !- Shading Control Name
+    ,                        !- Frame and Divider Name
+    ,                        !- Multiplier
+    4,                       !- Number of Vertices
+    0.709777895370,0.000000000000,1.473204552997,  !- X,Y,Z ==> Vertex 1 {m}
+    0.709777895370,0.000000000000,0.653204552997,  !- X,Y,Z ==> Vertex 2 {m}
+    1.389777895370,0.000000000000,0.653204552997,  !- X,Y,Z ==> Vertex 3 {m}
+    1.389777895370,0.000000000000,1.473204552997;  !- X,Y,Z ==> Vertex 4 {m}
+

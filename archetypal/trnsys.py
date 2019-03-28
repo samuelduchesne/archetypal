@@ -169,9 +169,9 @@ def convert_idf_to_t3d(idf, output_folder=None):
     # Write GLOBALGEOMETRYRULES lines
     for globGeomRule in globGeomRules:
         # Change Geometric rules from Relative to Absolute
-        coordSys = 0
+        coordSys = "Absolute"
         if globGeomRule.Coordinate_System == 'Relative':
-            coordSys = 1
+            coordSys = "Relative"
             globGeomRule.Coordinate_System = 'Absolute'
 
         if globGeomRule.Daylighting_Reference_Point_Coordinate_System == 'Relative':
@@ -185,6 +185,18 @@ def convert_idf_to_t3d(idf, output_folder=None):
     # Write LOCATION lines
     for location in locations:
         lines.insert(locationNum, location)
+
+    # Determine if coordsSystem is "World" (all zones at (0,0,0)
+    X_zones = [] ; Y_zones = [] ; Z_zones = []
+    # Store all zones coordinates in lists
+    for zone in zones:
+        x, y, z = zone_origin(zone)
+        X_zones.append(x) ; Y_zones.append(y) ; Z_zones.append(z)
+    # If 2 zones have same coords and are equal to 0 -> coordSys = "World"
+    if X_zones[0] == X_zones[1] and Y_zones[0] == Y_zones[1] and \
+            Z_zones[0] == Z_zones[1] and X_zones[0] == 0 and Y_zones[0] == 0\
+            and Z_zones[0] == 0:
+        coordSys = "World"
 
     # Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf) from IDF to lines (T3D)
     # Get line number where to write

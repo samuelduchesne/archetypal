@@ -60,6 +60,7 @@ def clear_name_idf_objects(idfFile):
             else:
                 continue
 
+
 def zone_origin(zone_object):
     """ Return coordinates of a zone
 
@@ -71,7 +72,8 @@ def zone_origin(zone_object):
     """
     return [zone_object.X_Origin, zone_object.Y_Origin, zone_object.Z_Origin]
 
-def closest_coords(surfList, to=[0,0,0]):
+
+def closest_coords(surfList, to=[0, 0, 0]):
     """Find closest coordinates to given ones
 
     Args:
@@ -83,11 +85,14 @@ def closest_coords(surfList, to=[0,0,0]):
 
     """
     from scipy.spatial import cKDTree
-    nbdata = np.array([buildingSurf.coords for buildingSurf in surfList]).reshape(len(surfList)*4,len(to))
+    nbdata = np.array(
+        [buildingSurf.coords for buildingSurf in surfList]).reshape(
+        len(surfList) * 4, len(to))
     btree = cKDTree(data=nbdata, compact_nodes=True, balanced_tree=True)
     dist, idx = btree.query(np.array(to).T, k=1)
     x, y, z = nbdata[idx]
     return x, y, z
+
 
 def convert_idf_to_t3d(idf, output_folder=None):
     """ Convert IDF file to T3D file to be able to load it in TRNBuild
@@ -187,14 +192,18 @@ def convert_idf_to_t3d(idf, output_folder=None):
         lines.insert(locationNum, location)
 
     # Determine if coordsSystem is "World" (all zones at (0,0,0)
-    X_zones = [] ; Y_zones = [] ; Z_zones = []
+    X_zones = [];
+    Y_zones = [];
+    Z_zones = []
     # Store all zones coordinates in lists
     for zone in zones:
         x, y, z = zone_origin(zone)
-        X_zones.append(x) ; Y_zones.append(y) ; Z_zones.append(z)
+        X_zones.append(x);
+        Y_zones.append(y);
+        Z_zones.append(z)
     # If 2 zones have same coords and are equal to 0 -> coordSys = "World"
     if X_zones[0] == X_zones[1] and Y_zones[0] == Y_zones[1] and \
-            Z_zones[0] == Z_zones[1] and X_zones[0] == 0 and Y_zones[0] == 0\
+            Z_zones[0] == Z_zones[1] and X_zones[0] == 0 and Y_zones[0] == 0 \
             and Z_zones[0] == 0:
         coordSys = "World"
 
@@ -202,10 +211,6 @@ def convert_idf_to_t3d(idf, output_folder=None):
     # Get line number where to write
     variableDictNum = ar.checkStr(lines,
                                   'ALL OBJECTS IN CLASS: OUTPUT:VARIABLEDICTIONARY')
-    # Writing fenestrationSurface:Detailed in lines
-    for fenestrationSurf in fenestrationSurfs:
-        fenestrationSurf.Construction_Name = "EXT_WINDOW1"
-        lines.insert(variableDictNum + 2, fenestrationSurf)
 
     # Writing zones in lines
     for zone in zones:
@@ -213,8 +218,37 @@ def convert_idf_to_t3d(idf, output_folder=None):
         # Coords of zone
         incrX, incrY, incrZ = zone_origin(zone)
 
-        surfList = []
+        # Writing fenestrationSurface:Detailed in lines
+        for fenestrationSurf in fenestrationSurfs:
+            surfName = fenestrationSurf.Building_Surface_Name
+            indiceSurf = [k for k, s in enumerate(buildingSurfs) if
+                          surfName == s.Name]
+            if buildingSurfs[indiceSurf[0]].Zone_Name == zone.Name:
+
+                fenestrationSurf.Construction_Name = "EXT_WINDOW1"
+
+                # Change coordinates from relative to absolute
+                if coordSys == 'Relative':
+
+                    # Add zone coordinates to X, Y, Z vectors to fenestration surface
+                    for j in range(1, 5):
+                        fenestrationSurf["Vertex_" + str(j) + "_Xcoordinate"] \
+                            = round(
+                            fenestrationSurf["Vertex_" + str(j) + "_Xcoordinate"] \
+                            + incrX, 1)
+                        fenestrationSurf["Vertex_" + str(j) + "_Ycoordinate"] \
+                            = round(fenestrationSurf[
+                                        "Vertex_" + str(j) + "_Ycoordinate"] \
+                                    + incrY, 1)
+                        fenestrationSurf["Vertex_" + str(j) + "_Zcoordinate"] \
+                            = round(fenestrationSurf[
+                                        "Vertex_" + str(j) + "_Zcoordinate"] \
+                                    + incrZ, 1)
+
+                lines.insert(variableDictNum + 2, fenestrationSurf)
+
         # Writing buildingSurface: Detailed in lines
+        surfList = []
         for i in range(0, len(buildingSurfs)):
             # Change Outside Boundary Condition and Objects
             if buildingSurfs[i].Zone_Name == zone.Name:
@@ -237,36 +271,21 @@ def convert_idf_to_t3d(idf, output_folder=None):
                         i].Outside_Boundary_Condition_Object = "BOUNDARY=INPUT 1*TGROUND"
 
                 # Change coordinates from relative to absolute
-                if coordSys:
-                    # Change X vertex to
-                    buildingSurfs[i].Vertex_1_Xcoordinate = buildingSurfs[
-                                                                i].Vertex_1_Xcoordinate + incrX
-                    buildingSurfs[i].Vertex_2_Xcoordinate = buildingSurfs[
-                                                                i].Vertex_2_Xcoordinate + incrX
-                    buildingSurfs[i].Vertex_3_Xcoordinate = buildingSurfs[
-                                                                i].Vertex_3_Xcoordinate + incrX
-                    buildingSurfs[i].Vertex_4_Xcoordinate = buildingSurfs[
-                                                                i].Vertex_4_Xcoordinate + incrX
-
-                    # Change Y vertex to
-                    buildingSurfs[i].Vertex_1_Xcoordinate = buildingSurfs[
-                                                                i].Vertex_1_Xcoordinate + incrY
-                    buildingSurfs[i].Vertex_2_Xcoordinate = buildingSurfs[
-                                                                i].Vertex_2_Xcoordinate + incrY
-                    buildingSurfs[i].Vertex_3_Xcoordinate = buildingSurfs[
-                                                                i].Vertex_3_Xcoordinate + incrY
-                    buildingSurfs[i].Vertex_4_Xcoordinate = buildingSurfs[
-                                                                i].Vertex_4_Xcoordinate + incrY
-
-                    # Change Z vertex to
-                    buildingSurfs[i].Vertex_1_Xcoordinate = buildingSurfs[
-                                                                i].Vertex_1_Xcoordinate + incrZ
-                    buildingSurfs[i].Vertex_2_Xcoordinate = buildingSurfs[
-                                                                i].Vertex_2_Xcoordinate + incrZ
-                    buildingSurfs[i].Vertex_3_Xcoordinate = buildingSurfs[
-                                                                i].Vertex_3_Xcoordinate + incrZ
-                    buildingSurfs[i].Vertex_4_Xcoordinate = buildingSurfs[
-                                                                i].Vertex_4_Xcoordinate + incrZ
+                if coordSys == 'Relative':
+                    # Add zone coordinates to X, Y, Z vectors
+                    for j in range(1, 5):
+                        buildingSurfs[i]["Vertex_" + str(j) + "_Xcoordinate"] \
+                            = buildingSurfs[i][
+                                  "Vertex_" + str(j) + "_Xcoordinate"] \
+                              + incrX
+                        buildingSurfs[i]["Vertex_" + str(j) + "_Ycoordinate"] \
+                            = buildingSurfs[i][
+                                  "Vertex_" + str(j) + "_Ycoordinate"] \
+                              + incrY
+                        buildingSurfs[i]["Vertex_" + str(j) + "_Zcoordinate"] \
+                            = buildingSurfs[i][
+                                  "Vertex_" + str(j) + "_Zcoordinate"] \
+                              + incrZ
 
                 lines.insert(variableDictNum + 2, buildingSurfs[i])
 

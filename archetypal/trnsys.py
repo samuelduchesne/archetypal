@@ -1,4 +1,5 @@
 import logging as lg
+import numpy as np
 import os
 import time
 import uuid
@@ -10,6 +11,17 @@ from archetypal import log, write_lines
 
 
 def clear_name_idf_objects(idfFile):
+    """Clean names of IDF objects :
+        - replace special characters or whitespaces with "_"
+        - limits length to 13 characters
+        - replace name by an unique id if needed
+
+    Args:
+        idfFile (eppy.modeleditor.IDF): IDF object where to clean names
+
+    Returns:
+
+    """
     objs = ['MATERIAL', 'MATERIAL:NOMASS', 'MATERIAL:AIRGAP', 'CONSTRUCTION',
             'FENESTRATIONSURFACE:DETAILED', 'BUILDINGSURFACE:DETAILED', 'ZONE',
             'BUILDING', 'SITE:LOCATION', 'SCHEDULE:YEAR', 'SCHEDULE:WEEK:DAILY',
@@ -48,6 +60,34 @@ def clear_name_idf_objects(idfFile):
             else:
                 continue
 
+def zone_origin(zone_object):
+    """ Return coordinates of a zone
+
+    Args:
+        zone_object (EpBunch): zone element in zone list
+
+    Returns: Coordinates [X, Y, Z] of the zone in a list
+
+    """
+    return [zone_object.X_Origin, zone_object.Y_Origin, zone_object.Z_Origin]
+
+def closest_coords(surfList, to=[0,0,0]):
+    """Find closest coordinates to given ones
+
+    Args:
+        surfList (idf_MSequence): list of surface with coordinates of each one
+        to (list): list of coordinates we want to calculate the distance from
+
+    Returns: the closest point (its coordinates x, y, z) to the point chosen
+        (input "to")
+
+    """
+    from scipy.spatial import cKDTree
+    nbdata = np.array([buildingSurf.coords for buildingSurf in surfList]).reshape(len(surfList)*4,len(to))
+    btree = cKDTree(data=nbdata, compact_nodes=True, balanced_tree=True)
+    dist, idx = btree.query(np.array(to).T, k=1)
+    x, y, z = nbdata[idx]
+    return x, y, z
 
 def convert_idf_to_t3d(idf, output_folder=None):
     """ Convert IDF file to T3D file to be able to load it in TRNBuild

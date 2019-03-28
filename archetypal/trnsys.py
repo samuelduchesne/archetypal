@@ -121,7 +121,7 @@ def convert_idf_to_t3d(idf, output_folder=None):
 
     # Clean names of idf objects (e.g. 'MATERIAL')
     start_time = time.time()
-    # clear_name_idf_objects(idf_file)
+    clear_name_idf_objects(idf_file)
     log("Cleaned IDF object names in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="CoverterLog",
         filename="CoverterLog")
@@ -214,6 +214,7 @@ def convert_idf_to_t3d(idf, output_folder=None):
 
     # Writing zones in lines
     for zone in zones:
+        zone.Direction_of_Relative_North = 0.0
         zone.Multiplier = 1
         # Coords of zone
         incrX, incrY, incrZ = zone_origin(zone)
@@ -226,7 +227,7 @@ def convert_idf_to_t3d(idf, output_folder=None):
             if buildingSurfs[indiceSurf[0]].Zone_Name == zone.Name:
 
                 fenestrationSurf.Construction_Name = "EXT_WINDOW1"
-                fenestrationSurf.Number_of_Vertices = 4
+                fenestrationSurf.Number_of_Vertices = 4.0
 
                 # Change coordinates from relative to absolute
                 if coordSys == 'Relative':
@@ -234,14 +235,14 @@ def convert_idf_to_t3d(idf, output_folder=None):
                     # Add zone coordinates to X, Y, Z vectors to fenestration surface
                     for j in range(1, 5):
                         fenestrationSurf["Vertex_" + str(j) + "_Xcoordinate"] = \
-                        fenestrationSurf[
-                            "Vertex_" + str(j) + "_Xcoordinate"] + incrX
+                            fenestrationSurf[
+                                "Vertex_" + str(j) + "_Xcoordinate"] + incrX
                         fenestrationSurf["Vertex_" + str(j) + "_Ycoordinate"] = \
-                        fenestrationSurf[
-                            "Vertex_" + str(j) + "_Ycoordinate"] + incrY
+                            fenestrationSurf[
+                                "Vertex_" + str(j) + "_Ycoordinate"] + incrY
                         fenestrationSurf["Vertex_" + str(j) + "_Zcoordinate"] = \
-                        fenestrationSurf[
-                            "Vertex_" + str(j) + "_Zcoordinate"] + incrZ
+                            fenestrationSurf[
+                                "Vertex_" + str(j) + "_Zcoordinate"] + incrZ
 
                 lines.insert(variableDictNum + 2, fenestrationSurf)
 
@@ -250,7 +251,7 @@ def convert_idf_to_t3d(idf, output_folder=None):
         for i in range(0, len(buildingSurfs)):
             # Change Outside Boundary Condition and Objects
             if buildingSurfs[i].Zone_Name == zone.Name:
-                buildingSurfs[i].Number_of_Vertices = 4
+                buildingSurfs[i].Number_of_Vertices = 4.0
                 surfList.append(buildingSurfs[i])
                 if 'surface' in buildingSurfs[
                     i].Outside_Boundary_Condition.lower():
@@ -268,6 +269,10 @@ def convert_idf_to_t3d(idf, output_folder=None):
                     i].Outside_Boundary_Condition.lower():
                     buildingSurfs[
                         i].Outside_Boundary_Condition_Object = "BOUNDARY=INPUT 1*TGROUND"
+
+                if 'adiabatic' in buildingSurfs[i].Outside_Boundary_Condition.lower():
+                    buildingSurfs[i].Outside_Boundary_Condition = "OtherSideCoefficients"
+                    buildingSurfs[i].Outside_Boundary_Condition_Object = "BOUNDARY=IDENTICAL"
 
                 # Change coordinates from relative to absolute
                 if coordSys == 'Relative':
@@ -422,40 +427,32 @@ def convert_idf_to_t3d(idf, output_folder=None):
         weekSch = list(
             OrderedDict.fromkeys(scheduleWeek.list2[indiceSchWeek[0]][2::]))
 
-        for element in peoples:
-            name = 'GAIN PEOPLE' + '_' + element + '\n'
-            #             # schedule_list_people.append(name)
-            #             # for i in range(0, len(schedule_list_people)):
-            #             #     if name == schedule_list_people[i]:
-            #             #         name = name + "_" + str(i)
-            lines.insert(gainNum + 1, name)
+        lines.insert(gainNum + 1,
+                     'GAIN PEOPLE' + '_' + peoples[i].Name + '\n')
 
-            if peoples[i].Number_of_People_Calculation_Method == "People":
-                areaMethod = "ABSOLUTE"
-            else:
-                areaMethod = "AREA_RELATED"
+        if peoples[i].Number_of_People_Calculation_Method == "People":
+            areaMethod = "ABSOLUTE"
+        else:
+            areaMethod = "AREA_RELATED"
 
-            radFract = peoples[i].Fraction_Radiant
-            if len(str(radFract)) == 0:
-                radFract = 1 - peoples[i].Sensible_Heat_Fraction
+        radFract = peoples[i].Fraction_Radiant
+        if len(str(radFract)) == 0:
+            radFract = 1 - peoples[i].Sensible_Heat_Fraction
 
+        for element in weekSch:
             indiceSchElement = [p for p, s in enumerate(scheduleDay) if
                                 element == s.Name]
             power = round(scheduleDay[indiceSchElement[0]].Value_Until_Time_1,
                           4)
-            lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
-                power * (1 - radFract)) + ' : RADIATIVE=' + str(
-                power * radFract) +
-                         ' : HUMIDITY=0.066 : ELPOWERFRAC=0 : ' + areaMethod + ' : CATEGORY=PEOPLE\n')
+        lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
+            power * (1 - radFract)) + ' : RADIATIVE=' + str(
+            power * radFract) +
+                     ' : HUMIDITY=0.066 : ELPOWERFRAC=0 : ' + areaMethod + ' : CATEGORY=PEOPLE\n')
 
     # Write LIGHT gains in lines
     for i in range(0, len(lights)):
 
-        lines.insert(gainNum + 1,
-                     'GAIN LIGHT' + '_' + lights[i].Schedule_Name.replace(" ",
-                                                                         "_").replace(
-                         "-", "_").replace(".", "_").replace("{", "").replace(
-                         "}", "") + '\n')
+        lines.insert(gainNum + 1, 'GAIN LIGHT' + '_' + lights[i].Name + '\n')
 
         if lights[i].Design_Level_Calculation_Method == "Watts":
             areaMethod = "ABSOLUTE"
@@ -480,10 +477,8 @@ def convert_idf_to_t3d(idf, output_folder=None):
     # Write EQUIPMENT gains in lines
     for i in range(0, len(equipments)):
 
-        lines.insert(gainNum + 1, 'GAIN EQUIPMENT' + '_' + equipments[
-            i].Schedule_Name.replace(" ", "_").replace("-", "_").replace(".",
-                                                                         "_").replace(
-            "{", "").replace("}", "") + '\n')
+        lines.insert(gainNum + 1,
+                     'GAIN EQUIPMENT' + '_' + equipments[i].Name + '\n')
 
         if equipments[i].Design_Level_Calculation_Method == "Watts":
             areaMethod = "ABSOLUTE"

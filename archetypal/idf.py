@@ -15,8 +15,8 @@ from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run, paths_from_version
 
 from archetypal import EnergyPlusProcessError
-from . import settings
-from .utils import log, cd
+from archetypal import settings
+from archetypal.utils import log, cd
 
 try:
     import multiprocessing as mp

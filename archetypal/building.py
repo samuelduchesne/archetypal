@@ -120,7 +120,7 @@ def create_fake_profile(x=None, y1={}, y2={}, normalize=False,
     y2 = A * np.sin(w * x + phy) + s
 
     y = y1 + y2
-    return EnergyProfile(y, index=x, frequency='1H', units=units,
+    return EnergyProfile(y, index=x, frequency='1H', from_units=units,
                          profile_type=profile_type, normalize=normalize,
                          is_sorted=sorted,
                          ascending=ascending)

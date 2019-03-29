@@ -762,11 +762,12 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
             try:
                 pool = mp.Pool(processors)
                 pool.map(multirunner, processed_runs)
-                pool.close()
             except EnergyPlusProcessError as e:
-                raise
+                pass
             except CalledProcessError as e:
-                raise
+                pass
+            finally:
+                pool.close()
         else:
             # multirunner not available so pass the jobs one at a time
             log('Running eplus in parallel is unavailable. processors={}. '
@@ -824,7 +825,7 @@ def multirunner(args):
         run(*args[0], **args[1])
     except TypeError as e:
         log('{}'.format(e), lg.ERROR)
-        raise TypeError('{}'.format(e))
+        # raise TypeError(cmd='', stderr='')
     except CalledProcessError as e:
         # Get error file
         log('{}'.format(e), lg.ERROR)

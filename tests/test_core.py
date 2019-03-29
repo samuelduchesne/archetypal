@@ -1,5 +1,6 @@
 import glob
 import pytest
+import pandas as pd
 
 import archetypal as ar
 
@@ -228,3 +229,11 @@ def test_energyprofile2():
         save=True, axis_off=True, kind='polygon', cmap=None,
         fig_width=3, fig_height=8, edgecolors='k', linewidths=0.5)
     #
+
+def test_simple_energyprofile():
+    file = './input_data/test_profile.csv'
+    df = pd.read_csv(file, index_col=[0], names=['Heat'])
+    ep = ar.EnergyProfile(df.Heat, from_units='BTU/hour', frequency='1H')
+    epc = ep.unit_conversion()
+    epc.discretize()
+    print(epc)

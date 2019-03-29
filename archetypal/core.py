@@ -9,6 +9,8 @@ from pprint import pformat
 
 import numpy as np
 import pandas as pd
+import pint
+from pandas import Series
 from sklearn import preprocessing
 
 from . import settings, object_from_idf, object_from_idfs, simple_glazing, \
@@ -167,24 +169,35 @@ class EnergyProfile(pd.Series):
 
     @property
     def _constructor(self):
-        return EnergyProfile._internal_ctor
+        return EnergyProfile
 
-    _metadata = ['profile_type', 'base_year', 'frequency', 'is_sorted',
-                 'units', 'archetypes', 'concurrent_sort']
+    _metadata = ['bin_edges_', 'bin_scaling_factors_', 'profile_type',
+                 'base_year', 'frequency', 'from_units',
+                 'is_sorted',
+                 'to_units', 'archetypes', 'converted_', 'concurrent_sort_']
 
-    @classmethod
-    def _internal_ctor(cls, *args, **kwargs):
-        # List required arguments here
-        kwargs['profile_type'] = None
-        kwargs['frequency'] = None
-        kwargs['units'] = None
-        return cls(*args, **kwargs)
+    def __finalize__(self, other, method=None, **kwargs):
+        """ propagate metadata from other to self """
+        # NOTE: backported from pandas master (upcoming v0.13)
+        for name in self._metadata:
+            object.__setattr__(self, name, getattr(other, name, None))
+        return self
 
-    def __init__(self, data, frequency, units, profile_type='undefinded',
+    def __new__(cls, *args, **kwargs):
+        kwargs.pop('frequency', None)
+        kwargs.pop('from_units', None)
+        arr = Series.__new__(cls)
+        if type(arr) is EnergyProfile:
+            return arr
+        else:
+            return arr.view(EnergyProfile)
+
+    def __init__(self, data, frequency=None, from_units=None,
+                 profile_type='undefinded',
                  index=None, dtype=None, copy=True, name=None,
                  fastpath=False, base_year=2017, normalize=False,
                  is_sorted=False, ascending=False, archetypes=None,
-                 concurrent_sort=False):
+                 concurrent_sort=False, to_units='kW'):
         super(EnergyProfile, self).__init__(data=data, index=index,
                                             dtype=dtype, name=name,
                                             copy=copy, fastpath=fastpath)
@@ -193,8 +206,11 @@ class EnergyProfile(pd.Series):
         self.profile_type = profile_type
         self.frequency = frequency
         self.base_year = base_year
-        self.units = units
+        self.from_units = pint.UnitRegistry().parse_expression(from_units)
         self.archetypes = archetypes
+        self.to_units = pint.UnitRegistry().parse_expression(to_units)
+        self.converted_ = False
+        self.concurrent_sort_ = concurrent_sort
         # handle sorting of the data
         if is_sorted:
             self.is_sorted = True
@@ -202,6 +218,7 @@ class EnergyProfile(pd.Series):
                 self.concurrent_sort(ascending=ascending, inplace=True)
             else:
                 self.sort_values(ascending=ascending, inplace=True)
+                self.reset_index(drop=True, inplace=True)
         else:
             self.is_sorted = False
 
@@ -215,6 +232,26 @@ class EnergyProfile(pd.Series):
         if normalize:
             self.normalize(inplace=True)
 
+    def unit_conversion(self, to_units=None, inplace=False):
+        """returns the multiplier to convert from_units"""
+        from pint import UnitRegistry
+        a = UnitRegistry()
+        if to_units is None:
+            to_units = self.to_units
+        else:
+            to_units = a.parse_expression(to_units)
+        to_multiple = self.from_units.to(
+            to_units.units).m
+        result = self.apply(lambda x: x * to_multiple)
+        result.__class__ = EnergyProfile
+        result.converted_ = True
+        result.from_units = to_units
+        if inplace:
+            self.update(result)
+            self.__finalize__(result)
+        else:
+            return result.__finalize__(self)
+
     def concurrent_sort(self, ascending=False, inplace=False, level=0):
         if isinstance(self.index, pd.MultiIndex):
             concurrent = self.unstack(level=level)
@@ -227,7 +264,8 @@ class EnergyProfile(pd.Series):
             result = result.stack().swaplevel()
 
             if inplace:
-                self._update_inplace(result)
+                self.update(result)
+                self.__finalize__(result)
             else:
                 return result.__finalize__(self)
 
@@ -243,6 +281,7 @@ class EnergyProfile(pd.Series):
             result = pd.Series(scaler.fit_transform(self.values.reshape(-1,
                                                                         1)).ravel())
             result = self._constructor(result)
+            result.from_units = pint.UnitRegistry().dimensionless
         if inplace:
             self._update_inplace(result)
         else:
@@ -280,20 +319,54 @@ class EnergyProfile(pd.Series):
                                method='L-BFGS-B',
                                bounds=hours_bounds + sf_bounds,
                                options=dict(disp=True))
-                log('Completed discretization in {:,.2f} seconds'.format(time.time()-start_time),
-                    lg.DEBUG)
-                edges[name] = res.x[0:n_bins+1]
+                log('Completed discretization in {:,.2f} seconds'.format(
+                    time.time() - start_time), lg.DEBUG)
+                edges[name] = res.x[0:n_bins + 1]
                 ampls[name] = res.x[n_bins + 1:]
                 results[name] = pd.Series(piecewise(res.x))
             self.bin_edges_ = pd.Series(edges).apply(pd.Series)
-            self.bin_scaling_factors_ = pd.Series(ampls).apply(pd.Series)
+            self.bin_scaling_factors_ = pd.DataFrame(ampls,
+                                                     index=np.round(
+                                                         edges).astype(int),
+                                                     columns=['scaling_factor'])
 
-            result = self._constructor(pd.concat(results))
+            result = pd.concat(results)
         else:
-            pass
-            # Todo: Implement else method
+            if not hour_of_min:
+                hour_of_min = self.time_at_min
+
+            sf = [1 / (i * 1.01) for i in range(1, n_bins + 1)]
+            sf.extend([self.min()])
+            sf_bounds = [(0, self.max()) for i in range(0, n_bins + 1)]
+            hours = [hour_of_min - hour_of_min * 1 / (i * 1.01) for i in
+                     range(1, n_bins + 1)]
+            hours.extend([8760])
+            hours_bounds = [(0, 8760) for i in range(0, n_bins + 1)]
+
+            start_time = time.time()
+            # log('discretizing EnergyProfile {}'.format(name), lg.DEBUG)
+            res = minimize(rmse, np.array(hours + sf), args=(self.values),
+                           method='L-BFGS-B',
+                           bounds=hours_bounds + sf_bounds,
+                           options=dict(disp=True))
+            log('Completed discretization in {:,.2f} seconds'.format(
+                time.time() - start_time), lg.DEBUG)
+            edges = res.x[0:n_bins + 1]
+            ampls = res.x[n_bins + 1:]
+            result = pd.Series(piecewise(res.x))
+            bin_edges = pd.Series(edges).apply(pd.Series)
+            self.bin_edges_ = bin_edges
+            bin_edges.loc[-1, 0] = 0
+            bin_edges.sort_index(inplace=True)
+            bin_edges = bin_edges.diff().dropna()
+            bin_edges = bin_edges.round()
+            self.bin_scaling_factors_ = pd.DataFrame({'duration': bin_edges[
+                0], 'scaling factor': ampls})
+            self.bin_scaling_factors_.index = np.round(edges).astype(int)
+
         if inplace:
-            self._update_inplace(result)
+            self.update(result)
+            self.__finalize__(result)
         else:
             return result.__finalize__(self)
 
@@ -310,6 +383,10 @@ class EnergyProfile(pd.Series):
         return plot_energyprofile(self, *args, **kwargs)
 
     plot3d.__doc__ = plot_energyprofile.__doc__
+
+    @property
+    def units(self):
+        return self.from_units.units
 
     @property
     def p_max(self):
@@ -331,7 +408,8 @@ class EnergyProfile(pd.Series):
             self_copy.index = datetimeindex
             self_copy = self_copy.resample('M').mean()
             self_copy.frequency = 'M'
-            return EnergyProfile(self_copy, frequency='M', units=self.units)
+            return EnergyProfile(self_copy, frequency='M',
+                                 from_units=self.from_units)
 
     @property
     def capacity_factor(self):
@@ -354,15 +432,7 @@ class EnergyProfile(pd.Series):
 
     @property
     def duration_scaling_factor(self):
-        # todo Complete Function
-        if not self.bin_edges:
-            # if never discretized,
-            # run discretization with default values
-            self.discretize()
-        # Calculate
-        a = self.bin_scaling_factors
-        b = self.bin_edges
-        return None
+        return list(map(tuple, self.bin_scaling_factors.values))
 
 
 class EnergyProfiles(pd.DataFrame):
@@ -429,8 +499,9 @@ class ReportData(pd.DataFrame):
             raise MixedUnitsError()
 
         hl = hl.groupby(['Archetype', 'TimeIndex']).Value.sum()
-        log('Returned Heating Load in units of {}'.format(str(units)), lg.DEBUG)
-        return EnergyProfile(hl, frequency=freq, units=units,
+        log('Returned Heating Load in from_units of {}'.format(str(units)),
+            lg.DEBUG)
+        return EnergyProfile(hl, frequency=freq, from_units=units,
                              normalize=normalize, is_sorted=sort,
                              ascending=ascending,
                              concurrent_sort=concurrent_sort)
@@ -2040,7 +2111,7 @@ def zone_cop(df):
                                               'Heating:Gas',
                                               'Heating:DistrictHeating')).groupby(
         ['Archetype', 'TimeIndex']).Value.sum()
-    heating_in = EnergyProfile(heating_in, frequency='1H', units='J',
+    heating_in = EnergyProfile(heating_in, frequency='1H', from_units='J',
                                is_sorted=False, concurrent_sort=False)
 
     # Cooling Energy
@@ -2053,7 +2124,7 @@ def zone_cop(df):
                                               'Cooling:Gas',
                                               'Cooling:DistrictCooling')).groupby(
         ['Archetype', 'TimeIndex']).Value.sum()
-    cooling_in = EnergyProfile(cooling_in, frequency='1H', units='J',
+    cooling_in = EnergyProfile(cooling_in, frequency='1H', from_units='J',
                                is_sorted=False, concurrent_sort=False)
 
     d = {'Heating': heating_out_sys / (nu_heating * heating_in.sum(

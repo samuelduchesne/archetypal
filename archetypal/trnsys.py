@@ -85,13 +85,34 @@ def closest_coords(surfList, to=[0, 0, 0]):
 
     """
     from scipy.spatial import cKDTree
-    nbdata = np.array(
-        [buildingSurf.coords for buildingSurf in surfList]).reshape(
-        len(surfList) * 4, len(to))
+    size = recursive_len(
+        [buildingSurf.coords for buildingSurf in surfList])
+    tuple_list = []
+    for surf in surfList:
+        for i in range(0, len(surf.coords)):
+            tuple_list.append(surf.coords[i])
+
+    nbdata = np.array(tuple_list)
+    # nbdata = np.array([buildingSurf.coords for buildingSurf in surfList]).reshape(size,len(to))
     btree = cKDTree(data=nbdata, compact_nodes=True, balanced_tree=True)
     dist, idx = btree.query(np.array(to).T, k=1)
     x, y, z = nbdata[idx]
     return x, y, z
+
+
+def recursive_len(item):
+    """Calculate the number of elments in nested list
+
+    Args:
+        item (list): list of lists (i.e. nested list)
+
+    Returns: Total number of elements in nested list
+
+    """
+    if type(item) == list:
+        return sum(recursive_len(subitem) for subitem in item)
+    else:
+        return 1
 
 
 def convert_idf_to_t3d(idf, output_folder=None):
@@ -192,14 +213,14 @@ def convert_idf_to_t3d(idf, output_folder=None):
         lines.insert(locationNum, location)
 
     # Determine if coordsSystem is "World" (all zones at (0,0,0)
-    X_zones = [];
-    Y_zones = [];
+    X_zones = []
+    Y_zones = []
     Z_zones = []
     # Store all zones coordinates in lists
     for zone in zones:
         x, y, z = zone_origin(zone)
-        X_zones.append(x);
-        Y_zones.append(y);
+        X_zones.append(x)
+        Y_zones.append(y)
         Z_zones.append(z)
     # If 2 zones have same coords and are equal to 0 -> coordSys = "World"
     if X_zones[0] == X_zones[1] and Y_zones[0] == Y_zones[1] and \
@@ -227,7 +248,8 @@ def convert_idf_to_t3d(idf, output_folder=None):
             if buildingSurfs[indiceSurf[0]].Zone_Name == zone.Name:
 
                 fenestrationSurf.Construction_Name = "EXT_WINDOW1"
-                fenestrationSurf.Number_of_Vertices = 4.0
+                fenestrationSurf.Number_of_Vertices = len(
+                    fenestrationSurf.coords)
 
                 # Change coordinates from relative to absolute
                 if coordSys == 'Relative':
@@ -251,7 +273,8 @@ def convert_idf_to_t3d(idf, output_folder=None):
         for i in range(0, len(buildingSurfs)):
             # Change Outside Boundary Condition and Objects
             if buildingSurfs[i].Zone_Name == zone.Name:
-                buildingSurfs[i].Number_of_Vertices = 4.0
+                buildingSurfs[i].Number_of_Vertices = len(
+                    buildingSurfs[i].coords)
                 surfList.append(buildingSurfs[i])
                 if 'surface' in buildingSurfs[
                     i].Outside_Boundary_Condition.lower():
@@ -270,9 +293,12 @@ def convert_idf_to_t3d(idf, output_folder=None):
                     buildingSurfs[
                         i].Outside_Boundary_Condition_Object = "BOUNDARY=INPUT 1*TGROUND"
 
-                if 'adiabatic' in buildingSurfs[i].Outside_Boundary_Condition.lower():
-                    buildingSurfs[i].Outside_Boundary_Condition = "OtherSideCoefficients"
-                    buildingSurfs[i].Outside_Boundary_Condition_Object = "BOUNDARY=IDENTICAL"
+                if 'adiabatic' in buildingSurfs[
+                    i].Outside_Boundary_Condition.lower():
+                    buildingSurfs[
+                        i].Outside_Boundary_Condition = "OtherSideCoefficients"
+                    buildingSurfs[
+                        i].Outside_Boundary_Condition_Object = "BOUNDARY=IDENTICAL"
 
                 # Change coordinates from relative to absolute
                 if coordSys == 'Relative':

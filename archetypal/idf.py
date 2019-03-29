@@ -1213,7 +1213,7 @@ def get_idf_version(file, doted=True):
         str: the version id
 
     """
-    with open(file, 'r', encoding='latin-1') as fhandle:
+    with open(os.path.abspath(file), 'r', encoding='latin-1') as fhandle:
         try:
             txt = fhandle.read()
             ntxt = parse_idd.nocomment(txt, '!')

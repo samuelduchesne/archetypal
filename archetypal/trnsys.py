@@ -303,7 +303,8 @@ def convert_idf_to_t3d(idf, output_folder=None):
                 # Change coordinates from relative to absolute
                 if coordSys == 'Relative':
                     # Add zone coordinates to X, Y, Z vectors
-                    for j in range(1, 5):
+                    for j in range(1, len(buildingSurfs[i].coords)+1):
+                        
                         buildingSurfs[i]["Vertex_" + str(j) + "_Xcoordinate"] \
                             = buildingSurfs[i][
                                   "Vertex_" + str(j) + "_Xcoordinate"] \

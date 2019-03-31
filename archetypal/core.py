@@ -173,8 +173,8 @@ class EnergyProfile(pd.Series):
 
     _metadata = ['bin_edges_', 'bin_scaling_factors_', 'profile_type',
                  'base_year', 'frequency', 'from_units',
-                 'is_sorted',
-                 'to_units', 'archetypes', 'converted_', 'concurrent_sort_']
+                 'is_sorted', 'to_units', 'archetypes', 'converted_',
+                 'concurrent_sort_']
 
     def __finalize__(self, other, method=None, **kwargs):
         """ propagate metadata from other to self """
@@ -250,7 +250,7 @@ class EnergyProfile(pd.Series):
             self.update(result)
             self.__finalize__(result)
         else:
-            return result.__finalize__(self)
+            return result
 
     def concurrent_sort(self, ascending=False, inplace=False, level=0):
         if isinstance(self.index, pd.MultiIndex):
@@ -267,11 +267,11 @@ class EnergyProfile(pd.Series):
                 self.update(result)
                 self.__finalize__(result)
             else:
-                return result.__finalize__(self)
+                return result  # todo: make sure results has all the metadata
 
-    def normalize(self, inplace=False):
+    def normalize(self, feature_range=(0, 1), inplace=False):
         """Returns a normalized EnergyProfile"""
-        scaler = preprocessing.MinMaxScaler()
+        scaler = preprocessing.MinMaxScaler(feature_range=feature_range)
         if self.archetypes:
             result = pd.concat({name: pd.Series(
                 scaler.fit_transform(sub.values.reshape(-1, 1)).ravel()) for
@@ -285,7 +285,23 @@ class EnergyProfile(pd.Series):
         if inplace:
             self._update_inplace(result)
         else:
-            return result.__finalize__(self)
+            return result # todo: make sure result has all the metadata
+
+    def ldc_source(self, SCOPH=4, SCOPC=4):
+        """Returns the Load Duration Curve from the source side of
+        theoretical Heat Pumps
+
+        Args:
+            SCOPH: Seasonal COP in Heating
+            SCOPC: Seasonal COP in Cooling
+
+        Returns:
+            (EnergyProfile) Load Duration Curve
+        """
+
+        result = self.ldc.apply(lambda x: x * (1 - 1/SCOPH) if x > 0
+            else x * (1 + 1/SCOPC))
+        return result.__finalize__(self)
 
     def discretize(self, n_bins=3, inplace=False, hour_of_min=None):
         """Retruns a discretized EnergyProfile"""
@@ -434,6 +450,12 @@ class EnergyProfile(pd.Series):
     def duration_scaling_factor(self):
         return list(map(tuple, self.bin_scaling_factors.values))
 
+    @property
+    def ldc(self):
+        nb_points = len(self)
+        newdata = self.sort_values(ascending=False)
+        newdata.index = range(0, nb_points)
+        return newdata.__finalize__(self)
 
 class EnergyProfiles(pd.DataFrame):
 

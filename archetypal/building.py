@@ -6,7 +6,7 @@ import requests
 from sklearn.preprocessing import MinMaxScaler
 
 from archetypal import nrel_bcl_api_request, log, settings
-from archetypal.core import EnergyProfile
+from archetypal.energyseries import EnergyProfile
 import pyomo.environ
 import pyomo.core as pyomo
 from pyomo.opt import SolverFactory

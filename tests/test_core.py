@@ -1,10 +1,10 @@
 import glob
-import pytest
-import pandas as pd
-
 import archetypal as ar
+import pandas as pd
+import pytest
 
 # configure archetypal
+
 ar.config(log_console=True, log_file=True, use_cache=True,
           data_folder='.temp/data', logs_folder='.temp/logs',
           imgs_folder='.temp/imgs', cache_folder='.temp/cache',
@@ -173,7 +173,7 @@ def test_parse_schedule_profile():
         if thisday is None:
             unique_day[hashed_day] = (i, day)
 
-    
+
 def test_energyprofile():
     idf = ['./input_data/regular/5ZoneNightVent1.idf',
            './input_data/regular/AdultEducationCenter.idf']
@@ -187,7 +187,7 @@ def test_energyprofile():
                        annual=True, expandobjects=True)
     report = ar.get_from_reportdata(sql)
 
-    ep = ar.ReportData(report)
+    ep = ar.reportdata.ReportData(report)
     # sv = ep.sorted_values(name='Schedule Value', key_value='OCCUPY-1',
     #                       by='TimeIndex')
     sv = ep.filter_report_data(name=('Heating:Electricity',
@@ -196,7 +196,6 @@ def test_energyprofile():
     hl = sv.heating_load(normalize=True, sort=False,
                          concurrent_sort=True)
     dl = hl.discretize()
-    dl.duration_scaling_factor
     assert hl.capacity_factor == 0.10376668840257346
     hl.plot3d(
         save=True, axis_off=True, kind='polygon', cmap=None,
@@ -215,7 +214,7 @@ def test_energyprofile2():
                        annual=True, expandobjects=True)
     report = ar.get_from_reportdata(sql)
 
-    ep = ar.ReportData(report)
+    ep = ar.reportdata.ReportData(report)
     # sv = ep.sorted_values(name='Schedule Value', key_value='OCCUPY-1',
     #                       by='TimeIndex')
     sv = ep.filter_report_data(name=('Heating:Electricity',
@@ -223,18 +222,19 @@ def test_energyprofile2():
                                      'Heating:DistrictHeating'))
     hl = sv.heating_load(normalize=True, sort=True)
     dl = hl.discretize()
-    dl.duration_scaling_factor
     assert hl.capacity_factor == 0.10376668840257346
     hl.plot3d(
         save=True, axis_off=True, kind='polygon', cmap=None,
         fig_width=3, fig_height=8, edgecolors='k', linewidths=0.5)
     #
 
+
 def test_simple_energyprofile():
     file = './input_data/test_profile.csv'
     df = pd.read_csv(file, index_col=[0], names=['Heat'])
-    ep = ar.EnergyProfile(df.Heat, from_units='BTU/hour', frequency='1H',
-                          is_sorted=True)
+    ep = ar.energyseries.EnergyProfile(df.Heat, from_units='BTU/hour',
+                                               frequency='1H',
+                                               is_sorted=True)
     epc = ep.unit_conversion()
     res = epc.discretize()
     print(res)

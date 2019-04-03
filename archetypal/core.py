@@ -303,8 +303,34 @@ class EnergyProfile(pd.Series):
             else x * (1 + 1/SCOPC))
         return result
 
-    def discretize(self, n_bins=3, inplace=False, hour_of_min=None):
+    def source_side(self, SCOPH=None, SCOPC=None):
         """Returns the Source Side EnergyProfile given a Seasonal COP.
+        Negative values are considered like Cooling Demand.
+
+        Args:
+            SCOPH: Seasonal COP in Heating
+            SCOPC: Seasonal COP in Cooling
+
+        Returns:
+            (EnergyProfile) Load Duration Curve
+        """
+        if SCOPC or SCOPH:
+            result = self.apply(lambda x: x * (1 - 1/SCOPH) if SCOPH else x * (1 +
+                                                                       1/SCOPC))
+            return result
+        else:
+            raise ValueError('Please provide a SCOPH or a SCOPC')
+
+    def discretize(self, n_bins=3, inplace=False):
+        """Retruns a discretized pd.Series
+
+        Args:
+            n_bins (int): Number of bins or steps to discretize the function
+            inplace (bool): if True, perform operation in-place
+
+        Returns:
+
+        """
         try:
             from scipy.optimize import minimize
             from itertools import chain

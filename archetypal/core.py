@@ -318,14 +318,14 @@ class EnergyProfile(pd.Series):
             edges = {}
             ampls = {}
             for name, sub in self.groupby(level=0):
-                if not hour_of_min:
-                    hour_of_min = sub.time_at_min[1]
+                hour_of_min = sub.time_at_min[1]
 
                 sf = [1 / (i * 1.01) for i in range(1, n_bins + 1)]
                 sf.extend([sub.min()])
                 sf_bounds = [(0, sub.max()) for i in range(0, n_bins + 1)]
                 hours = [hour_of_min - hour_of_min * 1 / (i * 1.01) for i in
                          range(1, n_bins + 1)]
+                # Todo hours need to work fow datatime index
                 hours.extend([8760])
                 hours_bounds = [(0, 8760) for i in range(0, n_bins + 1)]
 

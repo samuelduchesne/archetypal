@@ -25,7 +25,8 @@ def clear_name_idf_objects(idfFile):
     objs = ['MATERIAL', 'MATERIAL:NOMASS', 'MATERIAL:AIRGAP', 'CONSTRUCTION',
             'FENESTRATIONSURFACE:DETAILED', 'BUILDINGSURFACE:DETAILED', 'ZONE',
             'BUILDING', 'SITE:LOCATION', 'SCHEDULE:YEAR', 'SCHEDULE:WEEK:DAILY',
-            'SCHEDULE:DAY:INTERVAL', 'PEOPLE', 'LIGHTS', 'ELECTRICEQUIPMENT']
+            'SCHEDULE:DAY:INTERVAL', 'SCHEDULE:COMPACT', 'PEOPLE', 'LIGHTS',
+            'ELECTRICEQUIPMENT']
     uniqueList = []
 
     # For all categorie that we want to change Names
@@ -303,8 +304,7 @@ def convert_idf_to_t3d(idf, output_folder=None):
                 # Change coordinates from relative to absolute
                 if coordSys == 'Relative':
                     # Add zone coordinates to X, Y, Z vectors
-                    for j in range(1, len(buildingSurfs[i].coords)+1):
-
+                    for j in range(1, len(buildingSurfs[i].coords) + 1):
                         buildingSurfs[i]["Vertex_" + str(j) + "_Xcoordinate"] \
                             = buildingSurfs[i][
                                   "Vertex_" + str(j) + "_Xcoordinate"] \
@@ -464,12 +464,12 @@ def convert_idf_to_t3d(idf, output_folder=None):
 
         radFract = peoples[i].Fraction_Radiant
         if len(str(radFract)) == 0:
-            radFract = 1 - peoples[i].Sensible_Heat_Fraction
+            radFract = float(1 - peoples[i].Sensible_Heat_Fraction)
 
         for element in weekSch:
             indiceSchElement = [p for p, s in enumerate(scheduleDay) if
                                 element == s.Name]
-            power = round(scheduleDay[indiceSchElement[0]].Value_Until_Time_1,
+            power = round(float(scheduleDay[indiceSchElement[0]].Value_Until_Time_1),
                           4)
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(
@@ -483,10 +483,10 @@ def convert_idf_to_t3d(idf, output_folder=None):
 
         if lights[i].Design_Level_Calculation_Method == "Watts":
             areaMethod = "ABSOLUTE"
-            power = round(lights[i].Lighting_Level, 4)
+            power = round(float(lights[i].Lighting_Level), 4)
         elif lights[i].Design_Level_Calculation_Method == "Watts/Area":
             areaMethod = "AREA_RELATED"
-            power = round(lights[i].Watts_per_Zone_Floor_Area, 4)
+            power = round(float(lights[i].Watts_per_Zone_Floor_Area), 4)
         else:
             areaMethod = "AREA_RELATED"
             power = 0
@@ -495,7 +495,7 @@ def convert_idf_to_t3d(idf, output_folder=None):
                 lg.WARNING, name="CoverterLog",
                 filename="CoverterLog")
 
-        radFract = lights[i].Fraction_Radiant
+        radFract = float(lights[i].Fraction_Radiant)
 
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
@@ -509,10 +509,10 @@ def convert_idf_to_t3d(idf, output_folder=None):
 
         if equipments[i].Design_Level_Calculation_Method == "Watts":
             areaMethod = "ABSOLUTE"
-            power = round(equipments[i].Design_Level, 4)
+            power = round(float(equipments[i].Design_Level), 4)
         elif equipments[i].Design_Level_Calculation_Method == "Watts/Area":
             areaMethod = "AREA_RELATED"
-            power = round(equipments[i].Watts_per_Zone_Floor_Area, 4)
+            power = round(float(equipments[i].Watts_per_Zone_Floor_Area), 4)
         else:
             areaMethod = "AREA_RELATED"
             power = 0
@@ -521,7 +521,7 @@ def convert_idf_to_t3d(idf, output_folder=None):
                 lg.WARNING, name="CoverterLog",
                 filename="CoverterLog")
 
-        radFract = equipments[i].Fraction_Radiant
+        radFract = float(equipments[i].Fraction_Radiant)
 
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +

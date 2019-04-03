@@ -301,10 +301,10 @@ class EnergyProfile(pd.Series):
 
         result = self.ldc.apply(lambda x: x * (1 - 1/SCOPH) if x > 0
             else x * (1 + 1/SCOPC))
-        return result.__finalize__(self)
+        return result
 
     def discretize(self, n_bins=3, inplace=False, hour_of_min=None):
-        """Retruns a discretized EnergyProfile"""
+        """Returns the Source Side EnergyProfile given a Seasonal COP.
         try:
             from scipy.optimize import minimize
             from itertools import chain

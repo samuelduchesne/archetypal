@@ -523,7 +523,7 @@ class ReportData(pd.DataFrame):
         hl = hl.groupby(['Archetype', 'TimeIndex']).Value.sum()
         log('Returned Heating Load in from_units of {}'.format(str(units)),
             lg.DEBUG)
-        return EnergyProfile(hl, frequency=freq, from_units=units,
+        return EnergyProfile(hl, frequency=freq, from_units=units[0],
                              normalize=normalize, is_sorted=sort,
                              ascending=ascending,
                              concurrent_sort=concurrent_sort)

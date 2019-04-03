@@ -3,9 +3,8 @@ import time
 
 import numpy as np
 import pint
-from pandas import Series
+from pandas import Series, DataFrame, concat, MultiIndex
 from sklearn import preprocessing
-
 from archetypal import log, rmse, piecewise, plot_energyprofile
 
 
@@ -69,7 +68,7 @@ class EnergySeries(Series):
             self.is_sorted = False
 
         # handle archetype names
-        if isinstance(self.index, pd.MultiIndex):
+        if isinstance(self.index, MultiIndex):
             self.archetypes = list(set(self.index.get_level_values(level=0)))
         else:
             self.archetypes = None
@@ -99,7 +98,7 @@ class EnergySeries(Series):
             return result
 
     def concurrent_sort(self, ascending=False, inplace=False, level=0):
-        if isinstance(self.index, pd.MultiIndex):
+        if isinstance(self.index, MultiIndex):
             concurrent = self.unstack(level=level)
             concurrent_sum = concurrent.sum(axis=1)
 
@@ -119,12 +118,12 @@ class EnergySeries(Series):
         """Returns a normalized EnergySeries"""
         scaler = preprocessing.MinMaxScaler(feature_range=feature_range)
         if self.archetypes:
-            result = pd.concat({name: pd.Series(
+            result = concat({name: Series(
                 scaler.fit_transform(sub.values.reshape(-1, 1)).ravel()) for
                 name, sub in self.groupby(level=0)}).sort_index()
             result = self._constructor(result)
         else:
-            result = pd.Series(scaler.fit_transform(self.values.reshape(-1,
+            result = Series(scaler.fit_transform(self.values.reshape(-1,
                                                                         1)).ravel())
             result = self._constructor(result)
             result.from_units = pint.UnitRegistry().dimensionless
@@ -212,25 +211,24 @@ class EnergySeries(Series):
                     time.time() - start_time), lg.DEBUG)
                 edges[name] = res.x[0:n_bins + 1]
                 ampls[name] = res.x[n_bins + 1:]
-                results[name] = pd.Series(piecewise(res.x))
-            self.bin_edges_ = pd.Series(edges).apply(pd.Series)
-            self.bin_scaling_factors_ = pd.DataFrame(ampls,
+                results[name] = Series(piecewise(res.x))
+            self.bin_edges_ = Series(edges).apply(Series)
+            self.bin_scaling_factors_ = DataFrame(ampls,
                                                      index=np.round(
                                                          edges).astype(int),
                                                      columns=['scaling_factor'])
 
-            result = pd.concat(results)
+            result = concat(results)
         else:
-            if not hour_of_min:
-                hour_of_min = self.time_at_min
+            hour_of_min = self.time_at_min
 
             sf = [1 / (i * 1.01) for i in range(1, n_bins + 1)]
             sf.extend([self.min()])
             sf_bounds = [(0, self.max()) for i in range(0, n_bins + 1)]
             hours = [hour_of_min - hour_of_min * 1 / (i * 1.01) for i in
                      range(1, n_bins + 1)]
-            hours.extend([8760])
-            hours_bounds = [(0, 8760) for i in range(0, n_bins + 1)]
+            hours.extend([len(self)])
+            hours_bounds = [(0, len(self)) for i in range(0, n_bins + 1)]
 
             start_time = time.time()
             # log('discretizing EnergySeries {}'.format(name), lg.DEBUG)
@@ -242,21 +240,23 @@ class EnergySeries(Series):
                 time.time() - start_time), lg.DEBUG)
             edges = res.x[0:n_bins + 1]
             ampls = res.x[n_bins + 1:]
-            result = pd.Series(piecewise(res.x))
-            bin_edges = pd.Series(edges).apply(pd.Series)
+            result = Series(piecewise(res.x))
+            bin_edges = Series(edges).apply(Series)
             self.bin_edges_ = bin_edges
             bin_edges.loc[-1, 0] = 0
             bin_edges.sort_index(inplace=True)
             bin_edges = bin_edges.diff().dropna()
             bin_edges = bin_edges.round()
-            self.bin_scaling_factors_ = pd.DataFrame({'duration': bin_edges[
+            self.bin_scaling_factors_ = DataFrame({'duration': bin_edges[
                 0], 'scaling factor': ampls})
             self.bin_scaling_factors_.index = np.round(edges).astype(int)
 
         if inplace:
             self.update(result)
+            self.__class__ = EnergySeries
             self.__finalize__(result)
         else:
+            result.__class__ = EnergySeries
             return result.__finalize__(self)
 
     def plot3d(self, *args, **kwargs):
@@ -279,17 +279,17 @@ class EnergySeries(Series):
 
     @property
     def p_max(self):
-        if isinstance(self.index, pd.MultiIndex):
+        if isinstance(self.index, MultiIndex):
             return self.groupby(level=0).max()
         else:
             return self.max()
 
     @property
     def monthly(self):
-        if isinstance(self.index, pd.MultiIndex):
+        if isinstance(self.index, MultiIndex):
             return self.groupby(level=0).max()
         else:
-            datetimeindex = pd.date_range(freq=self.frequency,
+            datetimeindex = date_range(freq=self.frequency,
                                           start='{}-01-01'.format(
                                               self.base_year),
                                           periods=self.size)

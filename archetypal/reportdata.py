@@ -1,10 +1,11 @@
+import functools
 import logging as lg
 import time
 
 import numpy as np
 import pandas as pd
 
-from archetypal import log, EnergySeries, conjunction
+from archetypal import log, EnergySeries
 
 
 class ReportData(pd.DataFrame):
@@ -256,3 +257,12 @@ class ReportData(pd.DataFrame):
                 'Archetype'], append=True).swaplevel(i=-2, j=-1, axis=0)
         else:
             return self.sort_values(by=by, inplace=False)
+
+
+def conjunction(*conditions, logical=np.logical_and):
+    """Applies a logical function on n conditons"""
+    return functools.reduce(logical, conditions)
+
+
+def or_conjunction(*conditions):
+    return functools.reduce(np.logical_or, conditions)

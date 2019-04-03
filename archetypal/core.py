@@ -1,4 +1,3 @@
-import functools
 import io
 import json
 import logging as lg
@@ -12,10 +11,10 @@ import pandas as pd
 
 from archetypal import EnergySeries
 from archetypal.reportdata import ReportData
-from . import settings, object_from_idf, object_from_idfs, simple_glazing, \
+from archetypal import settings, object_from_idf, object_from_idfs, simple_glazing, \
     iscore, weighted_mean, top, run_eplus, \
     load_idf
-from .utils import log, label_surface, type_surface, layer_composition, \
+from archetypal.utils import log, label_surface, type_surface, layer_composition, \
     schedule_composition, time2time, \
     year_composition, newrange
 
@@ -161,15 +160,6 @@ class Template:
                     pass
             # Write the dict to json using json.dumps
             path_or_buf.write(json.dumps(data_dict, indent=indent))
-
-
-def conjunction(*conditions, logical=np.logical_and):
-    """Applies a logical function on n conditons"""
-    return functools.reduce(logical, conditions)
-
-
-def or_conjunction(*conditions):
-    return functools.reduce(np.logical_or, conditions)
 
 
 def mean_profile(df: ReportData):

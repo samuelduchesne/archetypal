@@ -168,7 +168,7 @@ class EnergySeries(Series):
             raise ValueError('Please provide a SCOPH or a SCOPC')
 
     def discretize(self, n_bins=3, inplace=False):
-        """Retruns a discretized pd.Series
+        """Retruns a discretized pandas.Series
 
         Args:
             n_bins (int): Number of bins or steps to discretize the function

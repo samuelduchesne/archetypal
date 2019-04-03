@@ -198,12 +198,12 @@ class EnergySeries(Series):
                 hours = [hour_of_min - hour_of_min * 1 / (i * 1.01) for i in
                          range(1, n_bins + 1)]
                 # Todo hours need to work fow datatime index
-                hours.extend([8760])
-                hours_bounds = [(0, 8760) for i in range(0, n_bins + 1)]
+                hours.extend([len(sub)])
+                hours_bounds = [(0, len(sub)) for i in range(0, n_bins + 1)]
 
                 start_time = time.time()
                 log('discretizing EnergySeries {}'.format(name), lg.DEBUG)
-                res = minimize(rmse, np.array(hours + sf), args=(self.values),
+                res = minimize(rmse, np.array(hours + sf), args=(sub.values),
                                method='L-BFGS-B',
                                bounds=hours_bounds + sf_bounds,
                                options=dict(disp=True))

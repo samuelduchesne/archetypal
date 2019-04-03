@@ -9,13 +9,13 @@ from sklearn import preprocessing
 from archetypal import log, rmse, piecewise, plot_energyprofile
 
 
-class EnergyProfile(Series):
+class EnergySeries(Series):
     """A Series object designed to store energy related data.
     """
 
     @property
     def _constructor(self):
-        return EnergyProfile
+        return EnergySeries
 
     _metadata = ['bin_edges_', 'bin_scaling_factors_', 'profile_type',
                  'base_year', 'frequency', 'from_units',
@@ -33,10 +33,10 @@ class EnergyProfile(Series):
         kwargs.pop('frequency', None)
         kwargs.pop('from_units', None)
         arr = Series.__new__(cls)
-        if type(arr) is EnergyProfile:
+        if type(arr) is EnergySeries:
             return arr
         else:
-            return arr.view(EnergyProfile)
+            return arr.view(EnergySeries)
 
     def __init__(self, data, frequency=None, from_units=None,
                  profile_type='undefinded',
@@ -44,9 +44,9 @@ class EnergyProfile(Series):
                  fastpath=False, base_year=2017, normalize=False,
                  is_sorted=False, ascending=False, archetypes=None,
                  concurrent_sort=False, to_units='kW'):
-        super(EnergyProfile, self).__init__(data=data, index=index,
-                                            dtype=dtype, name=name,
-                                            copy=copy, fastpath=fastpath)
+        super(EnergySeries, self).__init__(data=data, index=index,
+                                           dtype=dtype, name=name,
+                                           copy=copy, fastpath=fastpath)
         self.bin_edges_ = None
         self.bin_scaling_factors_ = None
         self.profile_type = profile_type
@@ -89,7 +89,7 @@ class EnergyProfile(Series):
         to_multiple = self.from_units.to(
             to_units.units).m
         result = self.apply(lambda x: x * to_multiple)
-        result.__class__ = EnergyProfile
+        result.__class__ = EnergySeries
         result.converted_ = True
         result.from_units = to_units
         if inplace:
@@ -116,7 +116,7 @@ class EnergyProfile(Series):
                 return result  # todo: make sure results has all the metadata
 
     def normalize(self, feature_range=(0, 1), inplace=False):
-        """Returns a normalized EnergyProfile"""
+        """Returns a normalized EnergySeries"""
         scaler = preprocessing.MinMaxScaler(feature_range=feature_range)
         if self.archetypes:
             result = pd.concat({name: pd.Series(
@@ -142,7 +142,7 @@ class EnergyProfile(Series):
             SCOPC: Seasonal COP in Cooling
 
         Returns:
-            (EnergyProfile) Load Duration Curve
+            (EnergySeries) Load Duration Curve
         """
 
         result = self.ldc.apply(lambda x: x * (1 - 1 / SCOPH) if x > 0
@@ -150,7 +150,7 @@ class EnergyProfile(Series):
         return result
 
     def source_side(self, SCOPH=None, SCOPC=None):
-        """Returns the Source Side EnergyProfile given a Seasonal COP.
+        """Returns the Source Side EnergySeries given a Seasonal COP.
         Negative values are considered like Cooling Demand.
 
         Args:
@@ -158,7 +158,7 @@ class EnergyProfile(Series):
             SCOPC: Seasonal COP in Cooling
 
         Returns:
-            (EnergyProfile) Load Duration Curve
+            (EnergySeries) Load Duration Curve
         """
         if SCOPC or SCOPH:
             result = self.apply(
@@ -203,7 +203,7 @@ class EnergyProfile(Series):
                 hours_bounds = [(0, 8760) for i in range(0, n_bins + 1)]
 
                 start_time = time.time()
-                log('discretizing EnergyProfile {}'.format(name), lg.DEBUG)
+                log('discretizing EnergySeries {}'.format(name), lg.DEBUG)
                 res = minimize(rmse, np.array(hours + sf), args=(self.values),
                                method='L-BFGS-B',
                                bounds=hours_bounds + sf_bounds,
@@ -233,7 +233,7 @@ class EnergyProfile(Series):
             hours_bounds = [(0, 8760) for i in range(0, n_bins + 1)]
 
             start_time = time.time()
-            # log('discretizing EnergyProfile {}'.format(name), lg.DEBUG)
+            # log('discretizing EnergySeries {}'.format(name), lg.DEBUG)
             res = minimize(rmse, np.array(hours + sf), args=(self.values),
                            method='L-BFGS-B',
                            bounds=hours_bounds + sf_bounds,
@@ -260,7 +260,7 @@ class EnergyProfile(Series):
             return result.__finalize__(self)
 
     def plot3d(self, *args, **kwargs):
-        """Generate a plot of the EnergyProfile.
+        """Generate a plot of the EnergySeries.
 
         If the ``column`` parameter is given, colors plot according to values
         in that column, otherwise calls ``GeoSeries.plot()`` on the
@@ -297,8 +297,8 @@ class EnergyProfile(Series):
             self_copy.index = datetimeindex
             self_copy = self_copy.resample('M').mean()
             self_copy.frequency = 'M'
-            return EnergyProfile(self_copy, frequency='M',
-                                 from_units=self.from_units)
+            return EnergySeries(self_copy, frequency='M',
+                                from_units=self.from_units)
 
     @property
     def capacity_factor(self):

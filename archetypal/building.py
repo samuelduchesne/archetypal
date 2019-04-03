@@ -6,7 +6,7 @@ import requests
 from sklearn.preprocessing import MinMaxScaler
 
 from archetypal import nrel_bcl_api_request, log, settings
-from archetypal.energyseries import EnergyProfile
+from archetypal.energyseries import EnergySeries
 import pyomo.environ
 import pyomo.core as pyomo
 from pyomo.opt import SolverFactory
@@ -88,7 +88,7 @@ def download_bld_window(u_factor, shgc, vis_trans, oauth_key, tolerance=0.05,
 def create_fake_profile(x=None, y1={}, y2={}, normalize=False,
                         profile_type='undefined', sorted=False,
                         ascending=False, units='J'):
-    """Utility that generates a generic EnergyProfile isntance
+    """Utility that generates a generic EnergySeries isntance
 
     Args:
         x (np.ndarray): is a linspace. Default is np.linspace(0, 8759, 8760)
@@ -101,7 +101,7 @@ def create_fake_profile(x=None, y1={}, y2={}, normalize=False,
         sorted (bool): id True, series will be sorted.
 
     Returns:
-        EnergyProfile: the EnergyProfile
+        EnergySeries: the EnergySeries
     """
     if x is None:
         x = np.linspace(0, 8759, 8760)
@@ -120,10 +120,10 @@ def create_fake_profile(x=None, y1={}, y2={}, normalize=False,
     y2 = A * np.sin(w * x + phy) + s
 
     y = y1 + y2
-    return EnergyProfile(y, index=x, frequency='1H', from_units=units,
-                         profile_type=profile_type, normalize=normalize,
-                         is_sorted=sorted,
-                         ascending=ascending)
+    return EnergySeries(y, index=x, frequency='1H', from_units=units,
+                        profile_type=profile_type, normalize=normalize,
+                        is_sorted=sorted,
+                        ascending=ascending)
 
 
 def discretize(profile, bins=5):

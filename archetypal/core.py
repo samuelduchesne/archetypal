@@ -10,7 +10,7 @@ from pprint import pformat
 import numpy as np
 import pandas as pd
 
-from archetypal import EnergyProfile
+from archetypal import EnergySeries
 from archetypal.reportdata import ReportData
 from . import settings, object_from_idf, object_from_idfs, simple_glazing, \
     iscore, weighted_mean, top, run_eplus, \
@@ -1577,8 +1577,8 @@ def zone_cop(df):
                                               'Heating:Gas',
                                               'Heating:DistrictHeating')).groupby(
         ['Archetype', 'TimeIndex']).Value.sum()
-    heating_in = EnergyProfile(heating_in, frequency='1H', from_units='J',
-                               is_sorted=False, concurrent_sort=False)
+    heating_in = EnergySeries(heating_in, frequency='1H', from_units='J',
+                              is_sorted=False, concurrent_sort=False)
 
     # Cooling Energy
     cooling = rdf.filter_report_data(
@@ -1590,8 +1590,8 @@ def zone_cop(df):
                                               'Cooling:Gas',
                                               'Cooling:DistrictCooling')).groupby(
         ['Archetype', 'TimeIndex']).Value.sum()
-    cooling_in = EnergyProfile(cooling_in, frequency='1H', from_units='J',
-                               is_sorted=False, concurrent_sort=False)
+    cooling_in = EnergySeries(cooling_in, frequency='1H', from_units='J',
+                              is_sorted=False, concurrent_sort=False)
 
     d = {'Heating': heating_out_sys / (nu_heating * heating_in.sum(
         level='Archetype')),

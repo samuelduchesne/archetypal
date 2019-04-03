@@ -1,6 +1,6 @@
 from pandas import DataFrame
 
-from archetypal import EnergyProfile
+from archetypal import EnergySeries
 
 
 class EnergyProfiles(DataFrame):
@@ -17,4 +17,4 @@ class EnergyProfiles(DataFrame):
 
     @property
     def _constructor_sliced(self):
-        return EnergyProfile
+        return EnergySeries

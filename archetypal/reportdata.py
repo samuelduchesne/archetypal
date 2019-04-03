@@ -4,7 +4,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from archetypal import log, EnergyProfile, conjunction
+from archetypal import log, EnergySeries, conjunction
 
 
 class ReportData(pd.DataFrame):
@@ -62,10 +62,10 @@ class ReportData(pd.DataFrame):
         hl = hl.groupby(['Archetype', 'TimeIndex']).Value.sum()
         log('Returned Heating Load in from_units of {}'.format(str(units)),
             lg.DEBUG)
-        return EnergyProfile(hl, frequency=freq, from_units=units[0],
-                             normalize=normalize, is_sorted=sort,
-                             ascending=ascending,
-                             concurrent_sort=concurrent_sort)
+        return EnergySeries(hl, frequency=freq, from_units=units[0],
+                            normalize=normalize, is_sorted=sort,
+                            ascending=ascending,
+                            concurrent_sort=concurrent_sort)
 
     def filter_report_data(self, archetype=None, reportdataindex=None,
                            timeindex=None, reportdatadictionaryindex=None,

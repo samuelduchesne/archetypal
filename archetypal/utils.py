@@ -18,8 +18,8 @@ from pandas.io.json import json_normalize
 from shapely.geometry import Point
 
 import archetypal as ar
-from . import load_umi_template
-from . import settings
+from archetypal import load_umi_template
+from archetypal import settings
 
 
 def config(data_folder=settings.data_folder,

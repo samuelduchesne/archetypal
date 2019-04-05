@@ -835,7 +835,7 @@ def parallel_process(array, function, processors):
             pass
     out = []
     # Get the results from the futures.
-    for i, future in tqdm(enumerate(futures)):
+    for i, future in enumerate(futures):
         try:
             out.append(future.result())
         except Exception as e:

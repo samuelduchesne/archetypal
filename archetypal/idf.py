@@ -758,15 +758,9 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
 
         # We run the EnergyPlus Simulation
         if processors > 1:
-            # run using multirunner
-            try:
-                pool = mp.Pool(processors)
-                pool.map(multirunner, processed_runs)
-                pool.close()
-            except EnergyPlusProcessError as e:
-                raise
-            except CalledProcessError as e:
-                raise
+            array = [{'idf': main[0], 'weather': main[1], **args} for main, args
+                     in processed_runs]
+            parallel_process(array, run, processors)
         else:
             # multirunner not available so pass the jobs one at a time
             log('Running eplus in parallel is unavailable. processors={}. '
@@ -807,6 +801,46 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         #                              prep_outputs=True, **kwargs)
         #     runs_found.update(reruns_found)
         return runs_found
+
+
+def parallel_process(array, function, processors):
+    """A parallel version of the map function with a progress bar.
+
+    Args:
+        array (array-like): An array to iterate over.
+        function (function): A python function to apply to the elements of array
+        processors (int): The number of cores to use
+
+    Returns:
+        [function(array[0]), function(array[1]), ...]
+
+    """
+    from tqdm import tqdm
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    # run using multirunner
+
+    with ProcessPoolExecutor(max_workers=processors) as pool:
+        futures = [pool.submit(function, **a) for a in array]
+
+        kwargs = {
+            'desc': 'Running E+...',
+            'total': len(futures),
+            'unit': 'runs',
+            'unit_scale': True,
+            'leave': True
+        }
+
+        # Print out the progress as tasks complete
+        for f in tqdm(as_completed(futures), **kwargs):
+            pass
+    out = []
+    # Get the results from the futures.
+    for i, future in tqdm(enumerate(futures)):
+        try:
+            out.append(future.result())
+        except Exception as e:
+            out.append(e)
+    return out
 
 
 def multirunner(args):

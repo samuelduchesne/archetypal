@@ -22,7 +22,7 @@ def test_small_home_data(fresh_start):
     file = './input_data/regular/AdultEducationCenter.idf'
     file = copy_file(file)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return ar.run_eplus(file, wf, expandobjects=True, annual=True,
+    return ar.run_eplus(file, wf, expandobjects=True, annual=True, verbose='q',
                         prep_outputs=True)
 
 
@@ -33,7 +33,7 @@ def test_necb(config, fresh_start):
                       "/NECB_2011_Montreal_idf/*idf")
     files = copy_file(files)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return ar.run_eplus(files, wf, expandobjects=True, annual=True)
+    return ar.run_eplus(files, wf, expandobjects=True, verbose='q', annual=True)
 
 
 def test_std(config, fresh_start):
@@ -41,7 +41,8 @@ def test_std(config, fresh_start):
     files = glob.glob("./input_data/STD/*idf")
     files = copy_file(files)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return ar.run_eplus(files, wf, expandobjects=True, annual=True)
+    return ar.run_eplus(files, wf, expandobjects=True, annual=True,
+                        verbose='q', prep_outputs=True)
 
 
 @pytest.mark.parametrize('processors', [1, -1], ids=['1cpu', 'allcpu'])
@@ -53,7 +54,7 @@ def test_example_idf(processors, expandobjects, annual, fresh_start,
 
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     idf = ar.copy_file(idf_source)
-    return ar.run_eplus(idf, wf, processors=processors,
+    return ar.run_eplus(idf, wf, processors=processors, verbose='q',
                         annual=annual, expandobjects=expandobjects)
 
 
@@ -64,7 +65,8 @@ def test_load_idf_asdict(as_dict, processors, fresh_start):
 
     file1 = './input_data/regular/AdultEducationCenter.idf'
     file2 = './input_data/regular/AdultEducationCenter.idf'
-    obj = ar.load_idf([file1, file2], as_dict=as_dict, processors=processors)
+    obj = ar.load_idf([file1, file2], as_dict=as_dict, processors=processors,
+                      verbose='q',)
     if as_dict:
         assert isinstance(obj, dict)
     else:
@@ -77,7 +79,7 @@ def test_run_olderv(fresh_start):
     file = './input_data/problematic/nat_ventilation_SAMPLE0.idf'
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     ar.run_eplus(file, wf, ep_version='8.9', annual=True,
-                 expandobjects=True)
+                 expandobjects=True, verbose='q',)
 
 
 def test_run(scratch_then_cache):
@@ -89,7 +91,7 @@ def test_run(scratch_then_cache):
 
     files = copy_file([f1, f2, f3, f4])
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    sql = ar.run_eplus(files, wf,
+    sql = ar.run_eplus(files, wf, verbose='q',
                        expandobjects=True, annual=True, processors=-1)
     np = ar.nominal_people(sql)
     # zc = ar.zone_conditioning(sql)

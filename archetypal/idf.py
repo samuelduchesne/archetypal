@@ -665,15 +665,24 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         if processors > 1:
             # if processors > 1, use multiprocessing routine
             start_time = time.time()
-            import concurrent.futures
-            with concurrent.futures.ProcessPoolExecutor(
-                    max_workers=processors) \
-                    as executor:
-                cached_run_results = {os.path.basename(eplus_finename): result
-                                      for eplus_finename, result in
-                                      zip(eplus_files,
-                                          executor.map(get_from_cache_pool,
-                                                       processed_cache))}
+            # array = (eplus_file, output_report='sql', kwargs=None)
+            future_run = {os.path.basename(idf): {'eplus_file': idf,
+                                                  'output_report':
+                                                      output_report,
+                                                  **args}
+                          for idf, output_report, args in processed_cache
+                          }
+            cached_run_results = parallel_process(future_run, get_from_cache,
+                                                  processors)
+            # import concurrent.futures
+            # with concurrent.futures.ProcessPoolExecutor(
+            #         max_workers=processors) \
+            #         as executor:
+            #     cached_run_results = {os.path.basename(eplus_finename): result
+            #                           for eplus_finename, result in
+            #                           zip(eplus_files,
+            #                               executor.map(get_from_cache_pool,
+            #                                            processed_cache))}
             if not all(v is None for v in cached_run_results.values()):
                 # if not all cached results are none, at least one is found
                 log('Succesfully parsed cached results in '
@@ -727,13 +736,20 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         start_time = time.time()
 
         from shutil import copyfile
-        processed_runs = []
+        processed_runs = {}
         for eplus_file in eplus_files:
             # hash the eplus_file (to make shorter than the often extremely
             # long name)
             filename_prefix = hash_file(eplus_file, kwargs)
 
-            epw = weather_file
+            # idf = None, weather = None, output_directory = '', annual = False,
+            # design_day = False, idd = None, epmacro = False, expandobjects = \
+            #     False,
+            # readvars = False, output_prefix = None, output_suffix = None, \
+            #                                                         version =\
+            #     False,
+            # verbose = 'v', ep_version = None
+            epw = os.path.abspath(weather_file)
             runargs = {'output_directory': output_folder + '/{}'.format(
                 filename_prefix),
                        'ep_version': versionids[eplus_file],
@@ -744,7 +760,11 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
             idf_path = os.path.abspath(eplus_file)
             # TODO Should copy idf somewhere else before running; [Partly
             #  Fixed]
-            processed_runs.append([[idf_path, epw], runargs])
+            processed_runs[os.path.basename(idf_path)] = {'idf': idf_path,
+                                                          'weather': epw,
+                                                          'verbose': 'q',
+                                                          **runargs
+                                                          }
 
             # Put a copy of the file in its cache folder and save runargs
             if not os.path.isfile(os.path.join(runargs['output_directory'],
@@ -757,26 +777,11 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         log('Running EnergyPlus...')
 
         # We run the EnergyPlus Simulation
-        if processors > 1:
-            array = [{'idf': main[0], 'weather': main[1], **args} for main, args
-                     in processed_runs]
-            parallel_process(array, run, processors)
-        else:
-            # multirunner not available so pass the jobs one at a time
-            log('Running eplus in parallel is unavailable. processors={}. '
-                'Running sequentially...'.format(processors))
-            for job in processed_runs:
-                try:
-                    log('file: "{}"'.format(os.path.basename(job[0][0])))
-                    multirunner(job)
-                except EnergyPlusProcessError as e:
-                    raise
-                except CalledProcessError as e:
-                    raise
+        parallel_process(processed_runs, run, processors)
+
         log('Completed EnergyPlus in {:,.2f} seconds'.format(
             time.time() - start_time))
         # Return summary DataFrames
-        reruns = []
         for eplus_file in eplus_files:
             eplus_filename = os.path.basename(eplus_file)
             try:
@@ -785,30 +790,20 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
                                                         output_report,
                                                         **kwargs)
             except FileNotFoundError as e:
-                log('\nRequired "sql output" object not in {}. '
+                log('Required "sql output" object not in {}. '
                     'reruning with prep_outputs=True'.format(eplus_filename),
                     lg.WARNING)
-        # Todo: more robust way of rerunnning wwith expand objects = true
-        #
-        #         shutil.rmtree(os.path.join(output_folder,
-        #                                    hash_file(eplus_file, **kwargs)))
-        #         reruns.append(eplus_file)
-        #
-        # if len(reruns) > 0:
-        #     # run again with prep_outputs=True
-        #     reruns_found = run_eplus(reruns, weather_file, output_folder,
-        #                              ep_version, output_report, processors,
-        #                              prep_outputs=True, **kwargs)
-        #     runs_found.update(reruns_found)
+            # Todo: more robust way of rerunnning wwith expand objects = true
         return runs_found
 
 
-def parallel_process(array, function, processors):
+def parallel_process(in_dict, function, processors):
     """A parallel version of the map function with a progress bar.
 
     Args:
-        array (array-like): An array to iterate over.
-        function (function): A python function to apply to the elements of array
+        in_dict (dict-like): A dictionary to iterate over.
+        function (function): A python function to apply to the elements of
+            in_dict
         processors (int): The number of cores to use
 
     Returns:
@@ -817,13 +812,12 @@ def parallel_process(array, function, processors):
     """
     from tqdm import tqdm
     from concurrent.futures import ProcessPoolExecutor, as_completed
-    # run using multirunner
 
     with ProcessPoolExecutor(max_workers=processors) as pool:
-        futures = [pool.submit(function, **a) for a in array]
+        futures = {pool.submit(function, **in_dict[a]): a for a in in_dict}
 
         kwargs = {
-            'desc': 'Running E+...',
+            'desc': function.__name__,
             'total': len(futures),
             'unit': 'runs',
             'unit_scale': True,
@@ -833,67 +827,14 @@ def parallel_process(array, function, processors):
         # Print out the progress as tasks complete
         for f in tqdm(as_completed(futures), **kwargs):
             pass
-    out = []
+    out = {}
     # Get the results from the futures.
-    for i, future in enumerate(futures):
+    for key in futures:
         try:
-            out.append(future.result())
+            out[futures[key]] = key.result()
         except Exception as e:
-            out.append(e)
+            out[futures[key]] = e
     return out
-
-
-def multirunner(args):
-    """Wrapper for :func:`eppy.runner.run_functions.run` to be used when
-    running IDF and EPW runs in parallel.
-
-    Args:
-        args (list): A list made up of a two-item list (IDF and EPW) and a
-            kwargs dict.
-
-    Returns:
-
-    """
-    try:
-        run(*args[0], **args[1])
-    except TypeError as e:
-        log('{}'.format(e), lg.ERROR)
-        raise TypeError('{}'.format(e))
-    except CalledProcessError as e:
-        # Get error file
-        log('{}'.format(e), lg.ERROR)
-
-        error_filename = os.path.join(args[1]['output_directory'],
-                                      args[1]['output_prefix'] + 'out.err')
-        if os.path.isfile(error_filename):
-            with open(error_filename, 'r') as fin:
-                log('\nError File for "{}" begins here...\n'.format(
-                    os.path.basename(args[0][0])), lg.ERROR)
-                log(fin.read(), lg.ERROR)
-                log('Error File for "{}" ends here...\n'.format(
-                    os.path.basename(args[0][0])), lg.ERROR)
-            with open(error_filename, 'r') as stderr:
-                raise EnergyPlusProcessError(cmd=e.cmd,
-                                             idf=os.path.basename(args[0][0]),
-                                             stderr=stderr.read())
-        else:
-            log('Could not find error file', lg.ERROR)
-
-
-def get_from_cache_pool(args):
-    """Wrapper for :py:func:`get_from_cache` to be used when loading in
-    parallel.
-
-    Args:
-        args (list): list of arguments
-
-    Returns:
-        dict: dict of {title : table <DataFrame>, .....}
-
-    Todo:
-        * Setup arguments as Locals()
-    """
-    return get_from_cache(args[0], args[1], args[2])
 
 
 def hash_file(eplus_file, kwargs=None):
@@ -964,7 +905,7 @@ def get_report(eplus_file, output_folder=None,
                 'File "{}" does not exist'.format(fullpath_filename))
 
 
-def get_from_cache(eplus_file, output_report='sql', kwargs=None):
+def get_from_cache(eplus_file, output_report='sql', **kwargs):
     """Retrieve a EPlus Tabulated Summary run result from the cache
 
     Args:

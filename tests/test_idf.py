@@ -59,14 +59,13 @@ def test_example_idf(processors, expandobjects, annual, fresh_start,
 
 
 @pytest.mark.parametrize('as_dict', [True, False])
-@pytest.mark.parametrize('processors', [-1, 0, 1])
+@pytest.mark.parametrize('processors', [1, -1])
 def test_load_idf_asdict(as_dict, processors, fresh_start):
     """Will load an idf object"""
 
-    file1 = './input_data/regular/AdultEducationCenter.idf'
+    file1 = './input_data/regular/5ZoneNightVent1.idf'
     file2 = './input_data/regular/AdultEducationCenter.idf'
-    obj = ar.load_idf([file1, file2], as_dict=as_dict, processors=processors,
-                      verbose='q',)
+    obj = ar.load_idf([file1, file2], as_dict=as_dict, processors=processors)
     if as_dict:
         assert isinstance(obj, dict)
     else:

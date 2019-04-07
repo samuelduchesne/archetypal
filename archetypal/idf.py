@@ -9,11 +9,12 @@ from subprocess import check_call
 
 import eppy.modeleditor
 import pandas as pd
-from archetypal import settings
-from archetypal.utils import log, cd
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run, paths_from_version
+
+from archetypal import settings
+from archetypal.utils import log, cd
 
 try:
     import multiprocessing as mp
@@ -177,27 +178,6 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
     # Try loading IDF objects from pickled cache first
     dirnames = [os.path.dirname(path) for path in eplus_files]
     start_time = time.time()
-    # try:
-    #     if processors > 1:
-    #         log('Parsing IDF Objects using {} processors...'.format(
-    #         processors))
-    #         import concurrent.futures
-    #         with concurrent.futures.ProcessPoolExecutor(
-    #                 max_workers=processors) as executor:
-    #             idfs = {os.path.basename(file): result for file, result in
-    #                     zip(eplus_files, executor.map(
-    #                         load_idf_object_from_cache, eplus_files))}
-    #     else:
-    #         raise Exception('User specified {} processors'.format(processors))
-    # except Exception as e:
-    #     # multiprocessing not present so pass the jobs one at a time
-    #     log('Cannot use parallel load. Error with the following exception:\n'
-    #         '{}'.format(e))
-    #     log('Parsing IDF Objects sequentially...')
-    #     idfs = {}
-    #     for file in eplus_files:
-    #         eplus_finename = os.path.basename(file)
-    #         idfs[eplus_finename] = load_idf_object_from_cache(file)
 
     objects_found = {k: v for k, v in idfs.items() if v is not None}
     objects_not_found = [k for k, v in idfs.items() if v is None]
@@ -218,43 +198,8 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
         runs = {os.path.basename(file): {'file': file,
                                          'idd_filename': idd_filename[file]}
                 for file in eplus_files}
-        # for file in eplus_files:
-        #     runs.append([file, idd_filename[file]])
-        # Parallel load
-        try:
-            idfs = parallel_process(runs, eppy_load, processors,
-                                    use_kwargs=True)
+        idfs = parallel_process(runs, eppy_load, processors, use_kwargs=True)
 
-            # if processors > 1:
-            #     start_time = time.time()
-            #     import concurrent.futures
-            #     with concurrent.futures.ProcessPoolExecutor(
-            #             max_workers=processors) as executor:
-            #         idfs = {filename: idf_object for filename, idf_object in
-            #                 zip(runs.keys(),
-            #                     executor.map(eppy_load_pool, runs.values()))}
-            #         log('Parallel parsing of {} idf file(s) completed in '
-            #             '{:,.2f} seconds'.format(
-            #             len(eplus_files),
-            #             time.time() -
-            #             start_time))
-            # else:
-            #     raise Exception('User asked not to run in parallel')
-        except Exception as e:
-            # multiprocessing not present so pass the jobs one at a time
-            log(
-                'Cannot use parallel load. Error with the following '
-                'exception:\n{}'.format(
-                    e))
-            idfs = {}
-            start_time = time.time()
-            for file in eplus_files:
-                eplus_finename = os.path.basename(file)
-                idf_object = eppy_load(file, idd_filename[file])
-                idfs[eplus_finename] = idf_object
-            log('Parsed {} idf file(s) sequentially in {:,.2f} seconds'.format(
-                len(eplus_files),
-                time.time() - start_time))
         if as_dict:
             return idfs
         return list(idfs.values())
@@ -773,6 +718,7 @@ def parallel_process(in_dict, function, processors, use_kwargs=True):
         function (function): A python function to apply to the elements of
             in_dict
         processors (int): The number of cores to use
+        use_kwargs (bool): If True, pass the kwargs as arguments to `function`.
 
     Returns:
         [function(array[0]), function(array[1]), ...]

@@ -3,7 +3,6 @@ import glob
 import hashlib
 import logging as lg
 import os
-import shutil
 import time
 from subprocess import CalledProcessError
 from subprocess import check_call
@@ -14,7 +13,6 @@ from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run, paths_from_version
 
-from archetypal import EnergyPlusProcessError
 from archetypal import settings
 from archetypal.utils import log, cd
 
@@ -162,7 +160,8 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
 
     # Determine version of idf file by reading the text file
     if idd_filename is None:
-        idd_filename = {os.path.relpath(file): getiddfile(get_idf_version(file)) for file in
+        idd_filename = {os.path.relpath(file): getiddfile(get_idf_version(file))
+                        for file in
                         eplus_files}
 
     # determine processors
@@ -170,29 +169,15 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
         processors = min(len(eplus_files), mp.cpu_count())
     log('Function calls unsing {} processors'.format(processors))
 
+    processed_cache = {os.path.basename(eplus_file): eplus_file
+                       for eplus_file in eplus_files}
+
+    idfs = parallel_process(processed_cache, load_idf_object_from_cache,
+                            processors, use_kwargs=False)
+
     # Try loading IDF objects from pickled cache first
     dirnames = [os.path.dirname(path) for path in eplus_files]
     start_time = time.time()
-    try:
-        if processors > 1:
-            log('Parsing IDF Objects using {} processors...'.format(processors))
-            import concurrent.futures
-            with concurrent.futures.ProcessPoolExecutor(
-                    max_workers=processors) as executor:
-                idfs = {os.path.basename(file): result for file, result in
-                        zip(eplus_files, executor.map(
-                            load_idf_object_from_cache, eplus_files))}
-        else:
-            raise Exception('User specified {} processors'.format(processors))
-    except Exception as e:
-        # multiprocessing not present so pass the jobs one at a time
-        log('Cannot use parallel load. Error with the following exception:\n'
-            '{}'.format(e))
-        log('Parsing IDF Objects sequentially...')
-        idfs = {}
-        for file in eplus_files:
-            eplus_finename = os.path.basename(file)
-            idfs[eplus_finename] = load_idf_object_from_cache(file)
 
     objects_found = {k: v for k, v in idfs.items() if v is not None}
     objects_not_found = [k for k, v in idfs.items() if v is None]
@@ -210,42 +195,11 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
         eplus_files = [os.path.join(os.path.relpath(dir), run) for dir, run in
                        zip(dirnames, objects_not_found)]
         # runs = []
-        runs = {os.path.basename(file): [file, idd_filename[file]] for file in
-                eplus_files}
-        # for file in eplus_files:
-        #     runs.append([file, idd_filename[file]])
-        # Parallel load
-        try:
-            if processors > 1:
-                start_time = time.time()
-                import concurrent.futures
-                with concurrent.futures.ProcessPoolExecutor(
-                        max_workers=processors) as executor:
-                    idfs = {filename: idf_object for filename, idf_object in
-                            zip(runs.keys(),
-                                executor.map(eppy_load_pool, runs.values()))}
-                    log('Parallel parsing of {} idf file(s) completed in '
-                        '{:,.2f} seconds'.format(
-                        len(eplus_files),
-                        time.time() -
-                        start_time))
-            else:
-                raise Exception('User asked not to run in parallel')
-        except Exception as e:
-            # multiprocessing not present so pass the jobs one at a time
-            log(
-                'Cannot use parallel load. Error with the following '
-                'exception:\n{}'.format(
-                    e))
-            idfs = {}
-            start_time = time.time()
-            for file in eplus_files:
-                eplus_finename = os.path.basename(file)
-                idf_object = eppy_load(file, idd_filename[file])
-                idfs[eplus_finename] = idf_object
-            log('Parsed {} idf file(s) sequentially in {:,.2f} seconds'.format(
-                len(eplus_files),
-                time.time() - start_time))
+        runs = {os.path.basename(file): {'file': file,
+                                         'idd_filename': idd_filename[file]}
+                for file in eplus_files}
+        idfs = parallel_process(runs, eppy_load, processors, use_kwargs=True)
+
         if as_dict:
             return idfs
         return list(idfs.values())
@@ -484,13 +438,11 @@ def prepare_outputs(eplus_file, outputs=None):
 
     Todo:
         * do we need to do this?
-        * allow users to specify other ep-objects.
     """
     log('first, loading the idf file')
-    idfs = load_idf(
-        eplus_file)  # Returns a dict, evan if there is only one file
-
+    idfs = eppy_load(eplus_file, getiddfile(get_idf_version(eplus_file)))
     eplus_finename = os.path.basename(eplus_file)
+    idfs = {eplus_finename: idfs}
 
     if isinstance(outputs, list):
         for output in outputs:
@@ -573,10 +525,10 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         processors (int, optional): specify how many processors to use for a
             parallel run
         prep_outputs (bool or list, optional): if true, meters and variable
-        outputs
-        will
-            be appended to the idf files. see :func:`prepare_outputs`
+            outputs will be appended to the idf files. see
+            :func:`prepare_outputs`
         **kwargs: keyword arguments to pass to other functions (see below)
+
     Returns:
         dict: dict of [(title, table), .....]
 
@@ -662,43 +614,22 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         # list arguments needed for cache retrive function
         processed_cache.append([eplus_file, output_report, kwargs])
     try:
-        if processors > 1:
-            # if processors > 1, use multiprocessing routine
-            start_time = time.time()
-            import concurrent.futures
-            with concurrent.futures.ProcessPoolExecutor(
-                    max_workers=processors) \
-                    as executor:
-                cached_run_results = {os.path.basename(eplus_finename): result
-                                      for eplus_finename, result in
-                                      zip(eplus_files,
-                                          executor.map(get_from_cache_pool,
-                                                       processed_cache))}
-            if not all(v is None for v in cached_run_results.values()):
-                # if not all cached results are none, at least one is found
-                log('Succesfully parsed cached results in '
-                    'parallel in {:,.2f} seconds'.format(time.time() -
-                                                         start_time))
-        else:
-            # if processors <= 1, raise ValueError which will pass to the
-            # except bloc bellow
-            raise ValueError('Retrieving cached results in parallel is '
-                             'unavailable. processors={}'.format(processors))
-    except ValueError as e:
-        # multiprocessing not present so pass the jobs one at a time
-        log('{}. Running sequentially...'.format(e))
-
-        cached_run_results = {}
         start_time = time.time()
-        for eplus_file in eplus_files:
-            eplus_filename = os.path.basename(eplus_file)
-            cached_run_results[eplus_filename] = get_from_cache(eplus_file,
-                                                                output_report,
-                                                                kwargs)
+        # array = (eplus_file, output_report='sql', kwargs=None)
+        future_run = {os.path.basename(idf): {'eplus_file': idf,
+                                              'output_report':
+                                                  output_report,
+                                              **args}
+                      for idf, output_report, args in processed_cache
+                      }
+        cached_run_results = parallel_process(future_run, get_from_cache,
+                                              processors)
+
         if not all(v is None for v in cached_run_results.values()):
             # if not all cached results are none, at least one is found
-            log('Succesfully parsed cached results sequentially '
-                'in {:,.2f} seconds'.format(time.time() - start_time))
+            log('Succesfully parsed cached results in '
+                'parallel in {:,.2f} seconds'.format(time.time() -
+                                                     start_time))
     except Exception as e:
         # catch other exceptions that could occur
         raise Exception('{}'.format(e))
@@ -727,13 +658,13 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         start_time = time.time()
 
         from shutil import copyfile
-        processed_runs = []
+        processed_runs = {}
         for eplus_file in eplus_files:
             # hash the eplus_file (to make shorter than the often extremely
             # long name)
             filename_prefix = hash_file(eplus_file, kwargs)
 
-            epw = weather_file
+            epw = os.path.abspath(weather_file)
             runargs = {'output_directory': output_folder + '/{}'.format(
                 filename_prefix),
                        'ep_version': versionids[eplus_file],
@@ -744,7 +675,11 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
             idf_path = os.path.abspath(eplus_file)
             # TODO Should copy idf somewhere else before running; [Partly
             #  Fixed]
-            processed_runs.append([[idf_path, epw], runargs])
+            processed_runs[os.path.basename(idf_path)] = {'idf': idf_path,
+                                                          'weather': epw,
+                                                          'verbose': 'q',
+                                                          **runargs
+                                                          }
 
             # Put a copy of the file in its cache folder and save runargs
             if not os.path.isfile(os.path.join(runargs['output_directory'],
@@ -757,109 +692,83 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         log('Running EnergyPlus...')
 
         # We run the EnergyPlus Simulation
-        if processors > 1:
-            # run using multirunner
-            try:
-                pool = mp.Pool(processors)
-                pool.map(multirunner, processed_runs)
-                pool.close()
-            except EnergyPlusProcessError as e:
-                raise
-            except CalledProcessError as e:
-                raise
-        else:
-            # multirunner not available so pass the jobs one at a time
-            log('Running eplus in parallel is unavailable. processors={}. '
-                'Running sequentially...'.format(processors))
-            for job in processed_runs:
-                try:
-                    log('file: "{}"'.format(os.path.basename(job[0][0])))
-                    multirunner(job)
-                except EnergyPlusProcessError as e:
-                    raise
-                except CalledProcessError as e:
-                    raise
+        parallel_process(processed_runs, run, processors)
+
         log('Completed EnergyPlus in {:,.2f} seconds'.format(
             time.time() - start_time))
+
         # Return summary DataFrames
-        reruns = []
-        for eplus_file in eplus_files:
-            eplus_filename = os.path.basename(eplus_file)
-            try:
-                runs_found[eplus_filename] = get_report(eplus_file,
-                                                        output_folder,
-                                                        output_report,
-                                                        **kwargs)
-            except FileNotFoundError as e:
-                log('\nRequired "sql output" object not in {}. '
-                    'reruning with prep_outputs=True'.format(eplus_filename),
-                    lg.WARNING)
-        # Todo: more robust way of rerunnning wwith expand objects = true
-        #
-        #         shutil.rmtree(os.path.join(output_folder,
-        #                                    hash_file(eplus_file, **kwargs)))
-        #         reruns.append(eplus_file)
-        #
-        # if len(reruns) > 0:
-        #     # run again with prep_outputs=True
-        #     reruns_found = run_eplus(reruns, weather_file, output_folder,
-        #                              ep_version, output_report, processors,
-        #                              prep_outputs=True, **kwargs)
-        #     runs_found.update(reruns_found)
+        runs = {os.path.basename(eplus_file):
+                    {'eplus_file': eplus_file,
+                     'output_folder': output_folder,
+                     'output_report': output_report}
+                for eplus_file in eplus_files}
+        runs_found = parallel_process(runs, get_report, processors,
+                                      use_kwargs=True)
         return runs_found
 
 
-def multirunner(args):
-    """Wrapper for :func:`eppy.runner.run_functions.run` to be used when
-    running IDF and EPW runs in parallel.
+def parallel_process(in_dict, function, processors, use_kwargs=True):
+    """A parallel version of the map function with a progress bar.
 
     Args:
-        args (list): A list made up of a two-item list (IDF and EPW) and a
-            kwargs dict.
+        in_dict (dict-like): A dictionary to iterate over.
+        function (function): A python function to apply to the elements of
+            in_dict
+        processors (int): The number of cores to use
+        use_kwargs (bool): If True, pass the kwargs as arguments to `function`.
 
     Returns:
+        [function(array[0]), function(array[1]), ...]
 
     """
-    try:
-        run(*args[0], **args[1])
-    except TypeError as e:
-        log('{}'.format(e), lg.ERROR)
-        raise TypeError('{}'.format(e))
-    except CalledProcessError as e:
-        # Get error file
-        log('{}'.format(e), lg.ERROR)
+    from tqdm import tqdm
+    from concurrent.futures import ProcessPoolExecutor, as_completed
 
-        error_filename = os.path.join(args[1]['output_directory'],
-                                      args[1]['output_prefix'] + 'out.err')
-        if os.path.isfile(error_filename):
-            with open(error_filename, 'r') as fin:
-                log('\nError File for "{}" begins here...\n'.format(
-                    os.path.basename(args[0][0])), lg.ERROR)
-                log(fin.read(), lg.ERROR)
-                log('Error File for "{}" ends here...\n'.format(
-                    os.path.basename(args[0][0])), lg.ERROR)
-            with open(error_filename, 'r') as stderr:
-                raise EnergyPlusProcessError(cmd=e.cmd,
-                                             idf=os.path.basename(args[0][0]),
-                                             stderr=stderr.read())
+    if processors == 1:
+        kwargs = {
+            'desc': function.__name__,
+            'total': len(in_dict),
+            'unit': 'runs',
+            'unit_scale': True,
+            'leave': True
+        }
+        if use_kwargs:
+            futures = {function(**in_dict[a]): a for a in tqdm(in_dict,
+                                                               **kwargs)}
         else:
-            log('Could not find error file', lg.ERROR)
+            futures = {function(in_dict[a]): a for a in tqdm(in_dict, **kwargs)}
+    else:
+        with ProcessPoolExecutor(max_workers=processors) as pool:
+            if use_kwargs:
+                futures = {pool.submit(function, **in_dict[a]): a for a in
+                           in_dict}
+            else:
+                futures = {pool.submit(function, in_dict[a]): a for a in
+                           in_dict}
 
+            kwargs = {
+                'desc': function.__name__,
+                'total': len(futures),
+                'unit': 'runs',
+                'unit_scale': True,
+                'leave': True
+            }
 
-def get_from_cache_pool(args):
-    """Wrapper for :py:func:`get_from_cache` to be used when loading in
-    parallel.
-
-    Args:
-        args (list): list of arguments
-
-    Returns:
-        dict: dict of {title : table <DataFrame>, .....}
-
-    Todo:
-        * Setup arguments as Locals()
-    """
-    return get_from_cache(args[0], args[1], args[2])
+            # Print out the progress as tasks complete
+            for f in tqdm(as_completed(futures), **kwargs):
+                pass
+    out = {}
+    # Get the results from the futures.
+    for key in futures:
+        try:
+            if processors > 1:
+                out[futures[key]] = key.result()
+            else:
+                out[futures[key]] = key
+        except Exception as e:
+            out[futures[key]] = e
+    return out
 
 
 def hash_file(eplus_file, kwargs=None):
@@ -930,7 +839,7 @@ def get_report(eplus_file, output_folder=None,
                 'File "{}" does not exist'.format(fullpath_filename))
 
 
-def get_from_cache(eplus_file, output_report='sql', kwargs=None):
+def get_from_cache(eplus_file, output_report='sql', **kwargs):
     """Retrieve a EPlus Tabulated Summary run result from the cache
 
     Args:
@@ -1259,7 +1168,8 @@ class IDF(eppy.modeleditor.IDF):
         new_object = self.newidfobject(ep_object, **kwargs)
         # Check if new object exists in previous list
         # If True, delete the object
-        if sum([str(obj).upper() == str(new_object).upper() for obj in objs]) > 1:
+        if sum([str(obj).upper() == str(new_object).upper() for obj in
+                objs]) > 1:
             log('object "{}" already exists in idf file'.format(ep_object),
                 lg.WARNING)
             # Remove the newly created object since the function
@@ -1268,4 +1178,3 @@ class IDF(eppy.modeleditor.IDF):
         else:
             log('object "{}" added to the idf file'.format(ep_object))
             self.save()
-

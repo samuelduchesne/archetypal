@@ -438,13 +438,11 @@ def prepare_outputs(eplus_file, outputs=None):
 
     Todo:
         * do we need to do this?
-        * allow users to specify other ep-objects.
     """
     log('first, loading the idf file')
-    idfs = load_idf(
-        eplus_file)  # Returns a dict, evan if there is only one file
-
+    idfs = eppy_load(eplus_file, getiddfile(get_idf_version(eplus_file)))
     eplus_finename = os.path.basename(eplus_file)
+    idfs = {eplus_finename: idfs}
 
     if isinstance(outputs, list):
         for output in outputs:

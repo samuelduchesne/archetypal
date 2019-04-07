@@ -728,10 +728,18 @@ def parallel_process(in_dict, function, processors, use_kwargs=True):
     from concurrent.futures import ProcessPoolExecutor, as_completed
 
     if processors == 1:
+        kwargs = {
+            'desc': function.__name__,
+            'total': len(in_dict),
+            'unit': 'runs',
+            'unit_scale': True,
+            'leave': True
+        }
         if use_kwargs:
-            futures = {function(**in_dict[a]): a for a in in_dict}
+            futures = {function(**in_dict[a]): a for a in tqdm(in_dict,
+                                                               **kwargs)}
         else:
-            futures = {function(in_dict[a]): a for a in in_dict}
+            futures = {function(in_dict[a]): a for a in tqdm(in_dict, **kwargs)}
     else:
         with ProcessPoolExecutor(max_workers=processors) as pool:
             if use_kwargs:

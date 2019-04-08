@@ -14,7 +14,7 @@ from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run, paths_from_version
 
 from archetypal import settings
-from archetypal.utils import log, cd
+from archetypal.utils import log, cd, EnergyPlusProcessError
 
 try:
     import multiprocessing as mp
@@ -574,7 +574,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         if not os.path.isdir(eplus_home):
             log('The version of EnergyPlus-{0} needed for file {1} is not '
                 'installed at the original location on this machine. '
-                'Attempting to upgrade the file using the EnergyPlusUpdtaer '
+                'Attempting to upgrade the file using the EnergyPlusUpdater '
                 'utility...'.format(versionids[filename], filename))
             try:
                 upgrade_idf(filename)

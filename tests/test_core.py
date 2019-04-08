@@ -131,6 +131,12 @@ def test_zone_condition_dev(test_template_withcache, sql):
     print(test_template_withcache.zone_conditioning)
 
 
+def test_zone_dhw(test_template_withcache, sql):
+    test_template_withcache.domestic_hot_water_settings = \
+        ar.zone_domestic_hot_water_settings(sql, test_template_withcache.idfs)
+    print(test_template_withcache.domestic_hot_water_settings)
+
+
 def test_to_json(test_template_withcache):
     test_template_withcache.read()
     json = test_template_withcache.to_json(orient='records')
@@ -141,7 +147,8 @@ def test_to_json_std(config):
     files = glob.glob("./input_data/necb/*idf")
     files = ar.copy_file(files)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    a = ar.UmiTemplate(files, wf, load=True)
+    a = ar.UmiTemplate(files, wf, load=True, run_eplus_kwargs=dict(
+        verbose='q'))
     json = a.to_json(orient='records')
     print(json)
 
@@ -227,3 +234,15 @@ def test_energyprofile2():
         save=True, axis_off=True, kind='polygon', cmap=None,
         fig_width=3, fig_height=8, edgecolors='k', linewidths=0.5)
     #
+
+
+def test_necb(config):
+    import glob
+    files = glob.glob("/Users/samuelduchesne/Dropbox/Polytechnique/Doc"
+                      "/software/archetypal-dev/data/necb"
+                      "/NECB_2011_Montreal_idf/*idf")
+    files = ar.copy_file(files)
+    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    template = ar.UmiTemplate(files, wf, load=True)
+
+    return template

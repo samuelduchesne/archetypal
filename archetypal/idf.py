@@ -420,8 +420,9 @@ def load_idf_object_from_cache(idf_file, how=None):
             if os.path.isfile(cache_fullpath_filename):
                 with open(cache_fullpath_filename, 'rb') as file_handle:
                     idf = pickle.load(file_handle)
-                idf.setiddname(getiddfile(get_idf_version(idf_file)))
-                idf.read()
+                if idf.iddname is None:
+                    idf.setiddname(getiddfile(get_idf_version(idf_file)))
+                    idf.read()
                 log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(
                     os.path.basename(idf_file), time.time() - start_time))
                 return idf

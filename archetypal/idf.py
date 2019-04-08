@@ -777,10 +777,11 @@ def parallel_process(in_dict, function, processors, use_kwargs=True):
             'leave': True
         }
         if use_kwargs:
-            futures = {function(**in_dict[a]): a for a in tqdm(in_dict,
+            futures = {a: function(**in_dict[a]) for a in tqdm(in_dict,
                                                                **kwargs)}
         else:
-            futures = {function(in_dict[a]): a for a in tqdm(in_dict, **kwargs)}
+            futures = {a: function(in_dict[a]) for a in tqdm(in_dict,
+                                                              **kwargs)}
     else:
         with ProcessPoolExecutor(max_workers=processors) as pool:
             if use_kwargs:
@@ -808,7 +809,7 @@ def parallel_process(in_dict, function, processors, use_kwargs=True):
             if processors > 1:
                 out[futures[key]] = key.result()
             else:
-                out[futures[key]] = key
+                out[key] = futures[key]
         except Exception as e:
             out[futures[key]] = e
     return out

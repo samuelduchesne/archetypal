@@ -28,20 +28,20 @@ def template(fresh_start, request):
     idf = ar.copy_file(idf)
     # idf = './input_data/AdultEducationCenter.idf'
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    a = ar.Template(idf, wf)
+    a = ar.UmiTemplate(idf, wf)
 
     yield a
 
 
-@pytest.fixture(scope='module')
-def test_template_withcache():
+@pytest.fixture(scope='session')
+def test_template_withcache(config):
     """Instantiate an umi template placeholder. Does note call fresh_start
     function so that caching can be used"""
     idf = glob.glob('./input_data/umi_samples/*.idf')
     idf = ar.copy_file(idf)
     # idf = './input_data/AdultEducationCenter.idf'
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    a = ar.Template(idf, wf)
+    a = ar.UmiTemplate(idf, wf)
 
     yield a
 
@@ -53,60 +53,60 @@ def sql(test_template_withcache):
     yield sql
 
 
-def test_materials_gas(template):
-    template.materials_gas = ar.materials_gas(template.idfs)
-    assert not template.materials_gas.empty
+def test_materials_gas(test_template_withcache):
+    test_template_withcache.materials_gas = ar.materials_gas(test_template_withcache.idfs)
+    assert not test_template_withcache.materials_gas.empty
 
 
-def test_materials_glazing(template):
-    template.materials_glazing = ar.materials_glazing(template.idfs)
-    template.materials_glazing = ar.newrange(template.materials_gas,
-                                             template.materials_glazing)
-    return template.materials_glazing
+def test_materials_glazing(test_template_withcache):
+    test_template_withcache.materials_glazing = ar.materials_glazing(test_template_withcache.idfs)
+    test_template_withcache.materials_glazing = ar.newrange(test_template_withcache.materials_gas,
+                                                            test_template_withcache.materials_glazing)
+    return test_template_withcache.materials_glazing
 
 
-def test_materials_opaque(template):
-    template.materials_opaque = ar.materials_opaque(template.idfs)
-    template.materials_opaque = ar.newrange(template.materials_glazing,
-                                            template.materials_opaque)
-    return template.materials_opaque
+def test_materials_opaque(test_template_withcache):
+    test_template_withcache.materials_opaque = ar.materials_opaque(test_template_withcache.idfs)
+    test_template_withcache.materials_opaque = ar.newrange(test_template_withcache.materials_glazing,
+                                                           test_template_withcache.materials_opaque)
+    return test_template_withcache.materials_opaque
 
 
-def test_constructions_opaque(template):
-    template.constructions_opaque = ar.constructions_opaque(template.idfs,
-                                                            template.materials_opaque)
-    template.constructions_opaque = ar.newrange(template.materials_opaque,
-                                                template.constructions_opaque)
-    return template.constructions_opaque
+def test_constructions_opaque(test_template_withcache):
+    test_template_withcache.constructions_opaque = ar.constructions_opaque(test_template_withcache.idfs,
+                                                                           test_template_withcache.materials_opaque)
+    test_template_withcache.constructions_opaque = ar.newrange(test_template_withcache.materials_opaque,
+                                                               test_template_withcache.constructions_opaque)
+    return test_template_withcache.constructions_opaque
 
 
-def test_constructions_windows(template):
-    template.constructions_windows = ar.constructions_windows(template.idfs,
-                                                              template.materials_glazing)
-    template.constructions_windows = ar.newrange(template.constructions_opaque,
-                                                 template.constructions_windows)
-    return template.constructions_windows
+def test_constructions_windows(test_template_withcache):
+    test_template_withcache.constructions_windows = ar.constructions_windows(test_template_withcache.idfs,
+                                                                             test_template_withcache.materials_glazing)
+    test_template_withcache.constructions_windows = ar.newrange(test_template_withcache.constructions_opaque,
+                                                                test_template_withcache.constructions_windows)
+    return test_template_withcache.constructions_windows
 
 
-def test_day_schedules(template):
-    template.day_schedules = ar.day_schedules(template.idfs)
-    return template.day_schedules
+def test_day_schedules(test_template_withcache):
+    test_template_withcache.day_schedules = ar.day_schedules(test_template_withcache.idfs)
+    return test_template_withcache.day_schedules
 
 
-def test_week_schedules(template):
-    template.week_schedules = ar.week_schedules(template.idfs,
-                                                template.day_schedules)
-    template.week_schedules = ar.newrange(template.day_schedules,
-                                          template.week_schedules)
-    return template.week_schedules
+def test_week_schedules(test_template_withcache):
+    test_template_withcache.week_schedules = ar.week_schedules(test_template_withcache.idfs,
+                                                               test_template_withcache.day_schedules)
+    test_template_withcache.week_schedules = ar.newrange(test_template_withcache.day_schedules,
+                                                         test_template_withcache.week_schedules)
+    return test_template_withcache.week_schedules
 
 
-def test_year_schedules(template):
-    template.year_schedules = ar.year_schedules(template.idfs,
-                                                template.week_schedules)
-    template.year_schedules = ar.newrange(template.week_schedules,
-                                          template.year_schedules)
-    return template.year_schedules
+def test_year_schedules(test_template_withcache):
+    test_template_withcache.year_schedules = ar.year_schedules(test_template_withcache.idfs,
+                                                               test_template_withcache.week_schedules)
+    test_template_withcache.year_schedules = ar.newrange(test_template_withcache.week_schedules,
+                                                         test_template_withcache.year_schedules)
+    return test_template_withcache.year_schedules
 
 
 # Zones
@@ -137,12 +137,11 @@ def test_to_json(test_template_withcache):
     print(json)
 
 
-def test_to_json_std():
-    files = glob.glob("./input_data/STD/*idf")
+def test_to_json_std(config):
+    files = glob.glob("./input_data/necb/*idf")
     files = ar.copy_file(files)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    a = ar.Template(files, wf)
-    a.read()
+    a = ar.UmiTemplate(files, wf, load=True)
     json = a.to_json(orient='records')
     print(json)
 

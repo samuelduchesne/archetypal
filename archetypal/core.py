@@ -20,13 +20,13 @@ from .utils import log, label_surface, type_surface, layer_composition, \
     year_composition, newrange, piecewise, rmse
 
 
-class Template:
+class UmiTemplate:
     """
 
     """
 
     def __init__(self, idf_files, weather, load=False, **kwargs):
-        """Initializes a Template class
+        """Initializes a UmiTemplate class
 
         Args:
             idf_files:
@@ -64,6 +64,7 @@ class Template:
         self.sql = None
 
     def read(self):
+        """Initiazile UMI objects"""
         # Umi stuff
         self.materials_gas = materials_gas(self.idfs)
         self.materials_glazing = materials_glazing(self.idfs)
@@ -699,7 +700,7 @@ def materials_gas(idfs):
     materials_df['TransportDistance'] = 0
     materials_df['TransportEnergy'] = 0
     materials_df[
-        'Life'] = 1  # TODO: What does Life mean? Always 1 in Boston Template
+        'Life'] = 1  # TODO: What does Life mean? Always 1 in Boston UmiTemplate
     materials_df['Comment'] = ''
     try:
         materials_df['DataSource'] = materials_df['Archetype']

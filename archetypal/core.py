@@ -12,8 +12,8 @@ import pandas as pd
 from sklearn import preprocessing
 
 from . import settings, object_from_idf, object_from_idfs, simple_glazing, \
-    iscore, weighted_mean, top, run_eplus, \
-    load_idf
+    iscore, weighted_mean, top
+from .idf import run_eplus, load_idf
 from .plot import plot_energyprofile
 from .utils import log, label_surface, type_surface, layer_composition, \
     schedule_composition, time2time, \

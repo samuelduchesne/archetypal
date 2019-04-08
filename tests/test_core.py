@@ -49,7 +49,7 @@ def test_template_withcache():
 @pytest.fixture(scope='module')
 def sql(test_template_withcache):
     sql = test_template_withcache.run_eplus(silent=False, processors=-1,
-                                            annual=True)
+                                            annual=True, prep_outputs=True)
     yield sql
 
 

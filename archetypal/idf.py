@@ -602,10 +602,15 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
     # Prepare outputs e.g. sql table
     if prep_outputs:
         # Check if idf file has necessary objects (eg specific outputs)
-        for eplus_file in eplus_files:
-            log('\nPreparing outputs...\n', lg.INFO)
-            prepare_outputs(eplus_file, prep_outputs)
-            log('Preparing outputs completed\n', lg.INFO)
+        parallel_process(in_dict={os.path.basename(eplus_file): eplus_file for \
+                                  eplus_file in eplus_files},
+                         function=prepare_outputs,
+                         use_kwargs=False,
+                         processors=processors)
+        # for eplus_file in eplus_files:
+        #     log('\nPreparing outputs...\n', lg.INFO)
+        #     prepare_outputs(eplus_file, prep_outputs)
+        #     log('Preparing outputs completed\n', lg.INFO)
 
     # Try to get cached results
     #
@@ -652,21 +657,22 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
                                    len(runs_not_found),
                                    len(eplus_files)))
         # list of files that need to be run
-        eplus_files = [os.path.join(dirnames[run_i], run_i) for run_i in
+        rerun_files = [os.path.join(dirnames[run_i], run_i) for run_i in
                        runs_not_found]
 
         start_time = time.time()
 
         from shutil import copyfile
         processed_runs = {}
-        for eplus_file in eplus_files:
+        for eplus_file in rerun_files:
             # hash the eplus_file (to make shorter than the often extremely
             # long name)
             filename_prefix = hash_file(eplus_file, kwargs)
 
             epw = os.path.abspath(weather_file)
-            runargs = {'output_directory': output_folder + '/{}'.format(
-                filename_prefix),
+
+            runargs = {'output_directory': os.path.join(output_folder,
+                                                        filename_prefix),
                        'ep_version': versionids[eplus_file],
                        'output_prefix': filename_prefix,
                        'idd': idd_filename[eplus_file]}
@@ -692,7 +698,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         log('Running EnergyPlus...')
 
         # We run the EnergyPlus Simulation
-        parallel_process(processed_runs, run, processors)
+        parallel_process(processed_runs, multirunner, processors)
 
         log('Completed EnergyPlus in {:,.2f} seconds'.format(
             time.time() - start_time))
@@ -701,11 +707,48 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         runs = {os.path.basename(eplus_file):
                     {'eplus_file': eplus_file,
                      'output_folder': output_folder,
-                     'output_report': output_report}
-                for eplus_file in eplus_files}
-        runs_found = parallel_process(runs, get_report, processors,
-                                      use_kwargs=True)
-        return runs_found
+                     'output_report': output_report,
+                     **kwargs}
+                for eplus_file in rerun_files}
+        reruns = parallel_process(runs, get_report, processors,
+                                  use_kwargs=True)
+        cached_run_results.update(reruns)
+        return cached_run_results
+
+
+def multirunner(**kwargs):
+    """Wrapper for :func:`eppy.runner.run_functions.run` to be used when
+    running IDF and EPW runs in parallel.
+
+    Args:
+        kwargs (dict): A dict made up of run() arguments.
+
+    """
+    try:
+        run(**kwargs)
+    except TypeError as e:
+        log('{}'.format(e), lg.ERROR)
+        raise TypeError('{}'.format(e))
+    except CalledProcessError as e:
+        # Get error file
+        log('{}'.format(e), lg.ERROR)
+
+        error_filename = os.path.join(kwargs['output_directory'],
+                                      kwargs['output_prefix'] + 'out.err')
+        if os.path.isfile(error_filename):
+            with open(error_filename, 'r') as fin:
+                log('\nError File for "{}" begins here...\n'.format(
+                    os.path.basename(kwargs['idf'])), lg.ERROR)
+                log(fin.read(), lg.ERROR)
+                log('Error File for "{}" ends here...\n'.format(
+                    os.path.basename(kwargs['idf'])), lg.ERROR)
+            with open(error_filename, 'r') as stderr:
+                raise EnergyPlusProcessError(cmd=e.cmd,
+                                             idf=os.path.basename(
+                                                 kwargs['idf']),
+                                             stderr=stderr.read())
+        else:
+            log('Could not find error file', lg.ERROR)
 
 
 def parallel_process(in_dict, function, processors, use_kwargs=True):
@@ -815,6 +858,7 @@ def get_report(eplus_file, output_folder=None,
         dict: a dict of DataFrames
 
     """
+    # Hash the idf file with any kwargs used in the function
     filename_prefix = hash_file(eplus_file, kwargs)
     if 'htm' in output_report.lower():
         # Get the html report

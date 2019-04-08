@@ -660,27 +660,26 @@ def safe_prod(x, df, weighting_variable):
         return 0
 
 
-def copy_file(files):
+def copy_file(files, where=None):
     """Handles a copy of test idf files"""
     import shutil, os
     if isinstance(files, str):
         files = [files]
     files = {os.path.basename(k): k for k in files}
+
+    # defaults to cache folder
+    if where is None:
+        where = ar.settings.cache_folder
+
     for file in files:
-        dst = os.path.join(ar.settings.cache_folder, file)
-        output_folder = ar.settings.cache_folder
+        dst = os.path.join(where, file)
+        output_folder = where
         if not os.path.isdir(output_folder):
             os.makedirs(output_folder)
         shutil.copyfile(files[file], dst)
         files[file] = dst
 
     return list(files.values())
-
-    # scratch_then_cache is not necessary if we want to see the results
-    # for file in files:
-    #     dirname = os.path.dirname(files[file])
-    #     if os.path.isdir(dirname):
-    #         shutil.rmtree(dirname)
 
 
 def landxml_to_point(xml_file, crs=None, save=False):

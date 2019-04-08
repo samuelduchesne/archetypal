@@ -25,17 +25,23 @@ class UmiTemplate:
 
     """
 
-    def __init__(self, idf_files, weather, load=False, **kwargs):
+    def __init__(self, idf_files, weather, load=False, load_idf_kwargs={},
+                 run_eplus_kwargs={}):
         """Initializes a UmiTemplate class
 
         Args:
+            run_eplus_kwargs:
             idf_files:
             weather (str):
             load:
-            **kwargs:
+            **load_idf_kwargs:
         """
         self.idf_files = idf_files
-        self.idfs = load_idf(self.idf_files, **kwargs)
+
+        idd_filename = load_idf_kwargs.pop('idd_filename', None)
+        as_dict = load_idf_kwargs.pop('as_dict', True)
+        processors = load_idf_kwargs.pop('processors', 1)
+        self.idfs = load_idf(self.idf_files, idd_filename, as_dict, processors)
         self.weather = weather
 
         # Umi stuff
@@ -58,10 +64,11 @@ class UmiTemplate:
         self.zone_construction_sets = None
         self.domestic_hot_water_settings = None
 
-        if load:
-            self.read()
-
         self.sql = None
+
+        if load:
+            self.run_eplus(**run_eplus_kwargs)
+            self.read()
 
     def read(self):
         """Initiazile UMI objects"""
@@ -100,6 +107,8 @@ class UmiTemplate:
         self.year_schedules = year_schedules(self.idfs, self.week_schedules)
         self.year_schedules = newrange(self.week_schedules,
                                        self.year_schedules)
+        self.domestic_hot_water_settings = zone_domestic_hot_water_settings(
+            self.sql, self.idfs)
 
     def run_eplus(self, silent=True, **kwargs):
         """wrapper for :func:`run_eplus` function
@@ -1303,6 +1312,75 @@ def year_schedules(idfs, weekschedule=None):
         schedule = pd.DataFrame([], columns=cols)
         schedule.name = 'YearSchedules'
         return schedule
+
+
+def nominal_domestic_hot_water_settings(idfs):
+    water_use = object_from_idfs(idfs, 'WaterUse:Equipment'.upper(),
+                                 first_occurrence_only=False)
+    # WaterUseLEquipment can sometimes not have a Zone Name sepcified. This
+    # will break the code. Users must provide one.
+    condition = (water_use.Zone_Name.apply(
+        lambda x: x == '') | water_use.Zone_Name.isna())
+    if condition.any():
+        these_ones = water_use.loc[condition, 'Archetype'].unique()
+        raise ValueError('The WaterUse:Equipement Zone Name must not be '
+                         'empty.\nPlease provide a Zone Name for '
+                         'WaterUse:Equipement in idfs: '
+                         '{}\nbefore rerunning this function'.format(
+            these_ones))
+
+    # Make sure the Zone_Name is in capitals
+    water_use.Zone_Name = water_use.Zone_Name.str.upper()
+
+    # check if multiple WaterUse:Equipment for one zone.
+    # Todo: Multiple WaterUse:Equipement for the same zone should be
+    #  aggragated: PeakLoads summed and schedules merged.
+    to_drop = water_use.groupby(['Archetype', 'Zone_Name']).apply(lambda x:
+                                                                  x.duplicated(
+                                                                      subset='Zone_Name')).reset_index()
+    water_use = water_use.loc[~to_drop[0], :]
+
+    return water_use
+
+
+def zone_domestic_hot_water_settings(df, idfs):
+    d = {'Zones': zone_information(df).reset_index().set_index(['Archetype',
+                                                                'Zone Name']),
+         'NominalDhw': nominal_domestic_hot_water_settings(idfs).reset_index(
+         ).set_index([
+             'Archetype', 'Zone_Name'])}
+    df = (pd.concat(d, axis=1, keys=d.keys())
+          .dropna(axis=0, how='all',
+                  subset=[('Zones', 'Type')])  # Drop rows that are all nans
+          .rename_axis(['Archetype', 'Zone Name'])
+          .reset_index(level=1, col_level=1,
+                       col_fill='Zones')  # Reset Index level to get Zone Name
+          .reset_index().set_index(['Archetype', ('Zones', 'RowName')])
+          .rename_axis(['Archetype', 'RowName']))
+
+    df[('Zones', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
+
+    df = df.reset_index().groupby(['Archetype', ('Zones', 'Zone Type')]).apply(
+        lambda x: domestichotwatersettings_aggregation(x.set_index([
+            'Archetype', 'RowName'])))
+    df.name = 'DomesticHotWaterSettings'
+
+    return df
+
+
+def domestichotwatersettings_aggregation(x):
+    area_m_ = [('Zones', 'Floor Area {m2}'),
+               ('Zones', 'Zone Multiplier')]  # Floor area and zone_loads
+    # multiplier
+    d = {('FlowRatePerFloorArea', 'weighted mean'):
+             weighted_mean(x[('NominalDhw', 'Peak_Flow_Rate')] * 3600,
+                           x, area_m_),
+         ('FlowRatePerFloorArea', 'top'):
+             top(x[('NominalDhw', 'Flow_Rate_Fraction_Schedule_Name')],
+                 x, area_m_)
+         }
+
+    return pd.Series(d)
 
 
 def zone_loads(df):

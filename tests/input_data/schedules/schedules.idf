@@ -127,12 +127,6 @@ Schedule:Day:Interval,
 
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:DAY:LIST ===========
 
-! name
-! Schedule type
-! Interpolate value
-! Minutes per item
-! from 00:01 to 00:30
-! from 00:31 to 01:00
 Schedule:Day:List,
     Myschedule,              !- Name
     Fraction,                !- Schedule Type Limits Name
@@ -140,16 +134,16 @@ Schedule:Day:List,
     30,                      !- Minutes per Item
     0.0,                     !- Value 1
     0.5,                     !- N3
-    Schedule:Week:Compact,   !- N4
-    Week on Peak,            !- N5
-    For: AllDays,            !- N6
-    Day On Peak;             !- N7
+    0,                       !- N4
+    0,                       !- N5
+    0,                       !- N6
+    0;                       !- N7
 
 
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:WEEK:DAILY ===========
 
 Schedule:Week:Daily,
-    Week on Peak,            !- Name
+    Week on Peak Daily,      !- Name
     Day On Peak,             !- Sunday Schedule:Day Name
     Day On Peak,             !- Monday Schedule:Day Name
     Day On Peak,             !- Tuesday Schedule:Day Name
@@ -217,6 +211,15 @@ Schedule:Year,
     1,                       !- Start Day 3
     12,                      !- End Month 3
     31;                      !- End Day 3
+
+Schedule:Year,
+    On Peak 2,               !- Name
+    Fraction,                !- Schedule Type Limits Name
+    Week on Peak Daily,      !- Schedule:Week Name 1
+    1,                       !- Start Month 1
+    1,                       !- Start Day 1
+    12,                      !- End Month 1
+    31;                      !- End Day 1
 
 
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:COMPACT ===========

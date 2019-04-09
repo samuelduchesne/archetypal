@@ -9,12 +9,11 @@ from subprocess import check_call
 
 import eppy.modeleditor
 import pandas as pd
+from archetypal import settings
+from archetypal.utils import log, cd, EnergyPlusProcessError
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run, paths_from_version
-
-from archetypal import settings
-from archetypal.utils import log, cd, EnergyPlusProcessError
 
 try:
     import multiprocessing as mp
@@ -775,10 +774,11 @@ def parallel_process(in_dict, function, processors, use_kwargs=True):
             'leave': True
         }
         if use_kwargs:
-            futures = {function(**in_dict[a]): a for a in tqdm(in_dict,
+            futures = {a: function(**in_dict[a]) for a in tqdm(in_dict,
                                                                **kwargs)}
         else:
-            futures = {function(in_dict[a]): a for a in tqdm(in_dict, **kwargs)}
+            futures = {a: function(in_dict[a]) for a in tqdm(in_dict,
+                                                              **kwargs)}
     else:
         with ProcessPoolExecutor(max_workers=processors) as pool:
             if use_kwargs:
@@ -806,7 +806,7 @@ def parallel_process(in_dict, function, processors, use_kwargs=True):
             if processors > 1:
                 out[futures[key]] = key.result()
             else:
-                out[futures[key]] = key
+                out[key] = futures[key]
         except Exception as e:
             out[futures[key]] = e
     return out
@@ -1220,3 +1220,20 @@ class IDF(eppy.modeleditor.IDF):
         else:
             log('object "{}" added to the idf file'.format(ep_object))
             self.save()
+
+    def get_schedule_type_limits_data_by_name(self, sch_name):
+        """Returns the 'ScheduleTypeLimits' for a particular schedule name"""
+        for obj in self.idfobjects['ScheduleTypeLimits'.upper()]:
+            if obj.Name.upper() == sch_name.upper():
+                return obj
+
+    def get_schedule_data_by_name(self, sch_name):
+        """Returns the epbunch of a particular schedule name"""
+        # [self.idfobjects[obj] for obj in self.idfobjects]
+        for obj in self.idfobjects:
+            for bunch in self.idfobjects[obj]:
+                try:
+                    if bunch.Name.upper() == sch_name.upper():
+                        return bunch
+                except:
+                    pass

@@ -73,13 +73,12 @@ class Schedule(object):
 
     def get_hourly_day_ep_schedule_values(self, sch_name=None):
         """'Schedule:Day:Hourly'"""
-        # Todo: get_hourly_day_ep_schedule_values
         if sch_name is None:
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
 
-        return []
+        return values.fieldvalues[3:]
 
     def get_compact_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:compact'"""

@@ -170,7 +170,7 @@ class Schedule(object):
             if values["DayType_List_{}".format(i)].lower() == 'allotherdays':
                 for day in dayWeekList:
                     for j in range(0, 24):
-                        if df.loc[(day, j)].isna():
+                        if df.loc[(day, j)].isna().values[0]:
                             df.loc[(day, j)] = self.get_schedule_values(
                                 values["ScheduleDay_Name_{}".format(i)])[j]
                         else:

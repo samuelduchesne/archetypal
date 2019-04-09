@@ -100,7 +100,7 @@ class Schedule(object):
 
         # 7 list for 7 days of the week
         hourly_values_for_the_week = []
-        for day_schedule in values.fieldvalues[2:7]:
+        for day_schedule in values.fieldvalues[2:9]:
             hourly_values_for_the_week.extend(
                 self.get_schedule_values(day_schedule))
 
@@ -108,13 +108,34 @@ class Schedule(object):
 
     def get_list_day_ep_schedule_values(self, sch_name=None):
         """'schedule:day:list'"""
-        # Todo: get_list_day_ep_schedule_values
         if sch_name is None:
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
 
-        return []
+        import pandas as pd
+        freq = int(values['Minutes_per_Item'])  # Frequency of the values
+        num_values = values.fieldvalues[5:]  # List of values
+        method = values['Interpolate_to_Timestep']  # How to resample
+
+        # fill a list of availbale values and pad with zeros (this is safer
+        # but should not occur)
+        all_values = list(range(int(24 * 60 / freq)))
+        for i in all_values:
+            try:
+                all_values[i] = num_values[i]
+            except:
+                all_values[i] = 0
+        # create a fake index to help us with the resampling
+        index = pd.date_range(start='1/1/2018',
+                              periods=(24 * 60) / freq,
+                              freq='{}T'.format(freq))
+        series = pd.Series(all_values, index=index)
+
+        # resample series to hourly values and apply resampler function
+        series = series.resample('1H').apply(how(method))
+
+        return series.to_list()
 
     def get_constant_ep_schedule_values(self, sch_name=None):
         """'schedule:constant'"""
@@ -270,12 +291,27 @@ def separator(sep):
     """helper function to return the correct delimiter"""
     if sep == 'Comma':
         return ','
-    if sep == 'Tab':
+    elif sep == 'Tab':
         return '\t'
-    if sep == 'Fixed':
+    elif sep == 'Fixed':
         return None
-    if sep == 'Semicolon':
+    elif sep == 'Semicolon':
         return ';'
+    else:
+        return None
+
+
+def how(how):
+    """Helper function to return the correct resampler"""
+    if how.lower() == 'average':
+        return 'mean'
+    elif how.lower() == 'linear':
+        return 'interpolate'
+    elif how.lower() == 'no':
+        return 'max'
+    else:
+        return 'max'
+
 
 
 schedule_types = ['Schedule:Day:Hourly'.upper(),

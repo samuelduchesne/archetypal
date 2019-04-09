@@ -93,13 +93,18 @@ class Schedule(object):
 
     def get_daily_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:daily'"""
-        # Todo: get_daily_weekly_ep_schedule_values
         if sch_name is None:
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
 
-        return []
+        # 7 list for 7 days of the week
+        hourly_values_for_the_week = []
+        for day_schedule in values.fieldvalues[2:9]:
+            hourly_values_for_the_week.extend(
+                self.get_schedule_values(day_schedule))
+
+        return hourly_values_for_the_week
 
     def get_list_day_ep_schedule_values(self, sch_name=None):
         """'schedule:day:list'"""

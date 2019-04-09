@@ -10,7 +10,7 @@ def test_day_schedule(config):
         for bunch in idf['schedules.idf'].idfobjects[obj]:
             try:
                 s = Schedule(idf['schedules.idf'], sch_name=bunch.Name,
-                             start_day_of_the_week=0)
+                             start_day_of_the_week=idf['schedules.idf'].day_of_week_for_start_day)
 
                 values = s.get_schedule_values()
                 print('{name}\tType:{type}\t[{len}]\tValues:{'

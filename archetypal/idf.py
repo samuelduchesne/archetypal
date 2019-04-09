@@ -1239,3 +1239,26 @@ class IDF(eppy.modeleditor.IDF):
                         return bunch
                 except:
                     pass
+
+    @property
+    def day_of_week_for_start_day(self):
+        """Get day of week for start day for the first found RUNPERIOD"""
+
+        day = self.idfobjects["RUNPERIOD"][0]["Day_of_Week_for_Start_Day"]
+
+        if day.lower() == "sunday":
+            return 0
+        elif day.lower() == "monday":
+            return 1
+        elif day.lower() == "tuesday":
+            return 2
+        elif day.lower() == "wednesday":
+            return 3
+        elif day.lower() == "thursday":
+            return 4
+        elif day.lower() == "friday":
+            return 5
+        elif day.lower() == "saturday":
+            return 6
+        else:
+            return 0

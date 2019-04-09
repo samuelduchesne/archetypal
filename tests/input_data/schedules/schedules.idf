@@ -146,6 +146,24 @@ Schedule:Day:List,
     Day On Peak;             !- N7
 
 
+!-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:WEEK:DAILY ===========
+
+Schedule:Week:Daily,
+    Week on Peak,            !- Name
+    Day On Peak,             !- Sunday Schedule:Day Name
+    Day On Peak,             !- Monday Schedule:Day Name
+    Day On Peak,             !- Tuesday Schedule:Day Name
+    Day On Peak,             !- Wednesday Schedule:Day Name
+    Day On Peak,             !- Thursday Schedule:Day Name
+    Day On Peak,             !- Friday Schedule:Day Name
+    Day On Peak,             !- Saturday Schedule:Day Name
+    Day On Peak,             !- Holiday Schedule:Day Name
+    Day On Peak,             !- SummerDesignDay Schedule:Day Name
+    Day On Peak,             !- WinterDesignDay Schedule:Day Name
+    Day On Peak,             !- CustomDay1 Schedule:Day Name
+    Day On Peak;             !- CustomDay2 Schedule:Day Name
+
+
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:WEEK:COMPACT ===========
 
 Schedule:Week:Compact,
@@ -271,7 +289,7 @@ Schedule:Constant,
 Schedule:File,
     elecTDVfromCZ06res,      !- Name
     Any Number,              !- Schedule Type Limits Name
-    TDV_2008_kBtu_CTZ06.csv,      !- File Name
+    TDV_2008_kBtu_CTZ06.csv, !- File Name
     2,                       !- Column Number
     4;                       !- Rows to Skip at Top
 

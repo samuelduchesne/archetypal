@@ -13,7 +13,12 @@ def test_day_schedule(config):
                              start_day_of_the_week=0)
 
                 values = s.get_schedule_values()
-                print(bunch.Name, values)
+                print('{name}\tType:{type}\t[{len}]\tValues:{'
+                      'values}'.format(
+                    name=s.schName,
+                    type=s.schType,
+                    values=values,
+                    len=len(values)))
             except:
                 pass
 

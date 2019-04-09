@@ -66,8 +66,8 @@ class Schedule(object):
 
             start_hour = end_hour
 
-        if numeric_type.strip().lower() == "district":
-            hourly_values = map(int, hourly_values)
+        if numeric_type.strip().lower() == "discrete":
+            hourly_values = list(map(int, hourly_values))
 
         return hourly_values
 
@@ -104,13 +104,23 @@ class Schedule(object):
 
     def get_constant_ep_schedule_values(self, sch_name=None):
         """'schedule:constant'"""
-        # Todo: get_constant_ep_schedule_values
         if sch_name is None:
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
 
-        return []
+        type_limit_name = values.Schedule_Type_Limits_Name
+        lower_limit, upper_limit, numeric_type, unit_type = \
+            self.get_schedule_type_limits_data(type_limit_name)
+        hourly_values = list(range(8760))
+        value = float(values['Hourly_Value'])
+        for hour in hourly_values:
+            hourly_values[hour] = value
+
+        if numeric_type.strip().lower() == 'discrete':
+            hourly_values = list(map(int, hourly_values))
+
+        return hourly_values
 
     def get_hourly_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:hourly'"""

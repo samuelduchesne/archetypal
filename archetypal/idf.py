@@ -9,12 +9,11 @@ from subprocess import check_call
 
 import eppy.modeleditor
 import pandas as pd
+from archetypal import settings
+from archetypal.utils import log, cd, EnergyPlusProcessError
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run, paths_from_version
-
-from archetypal import settings
-from archetypal.utils import log, cd, EnergyPlusProcessError
 
 try:
     import multiprocessing as mp
@@ -1223,3 +1222,19 @@ class IDF(eppy.modeleditor.IDF):
         else:
             log('object "{}" added to the idf file'.format(ep_object))
             self.save()
+
+    def getScheduleTypeLimitsDataByName(self, schName):
+        for obj in self.idfobjects['ScheduleTypeLimits'.upper()]:
+            if obj.Name.upper() == schName.upper():
+                return obj
+
+    def getScheduleDataByName(self, schName):
+        """"""
+        # [self.idfobjects[obj] for obj in self.idfobjects]
+        for obj in self.idfobjects:
+            for bunch in self.idfobjects[obj]:
+                try:
+                    if bunch.Name.upper() == schName.upper():
+                        return bunch
+                except:
+                    pass

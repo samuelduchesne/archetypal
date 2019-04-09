@@ -5,6 +5,12 @@
 !-      Use '!' comments if they need to be retained when using the IDFEditor.
 
 
+!-   ===========  ALL OBJECTS IN CLASS: VERSION ===========
+
+Version,
+    8.9;                     !- Version Identifier
+
+
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULETYPELIMITS ===========
 
 ! Not limited
@@ -263,9 +269,9 @@ Schedule:Constant,
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:FILE ===========
 
 Schedule:File,
-    elecTDVfromCZ01res,      !- Name
+    elecTDVfromCZ06res,      !- Name
     Any Number,              !- Schedule Type Limits Name
-    TDV_kBtu_CTZ01.csv,      !- File Name
+    TDV_2008_kBtu_CTZ06.csv,      !- File Name
     2,                       !- Column Number
     4;                       !- Rows to Skip at Top
 

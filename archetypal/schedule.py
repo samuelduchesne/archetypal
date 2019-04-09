@@ -101,6 +101,16 @@ class Schedule(object):
 
         return []
 
+    def get_list_day_ep_schedule_values(self, sch_name=None):
+        """'schedule:day:list'"""
+        # Todo: get_list_day_ep_schedule_values
+        if sch_name is None:
+            sch_name = self.schName
+
+        values = self.idf.get_schedule_data_by_name(sch_name.upper())
+
+        return []
+
     def get_constant_ep_schedule_values(self, sch_name=None):
         """'schedule:constant'"""
         if sch_name is None:
@@ -210,14 +220,14 @@ class Schedule(object):
             elif schedule_type == "schedule:day:hourly".upper():
                 hourly_values = self.get_hourly_day_ep_schedule_values(
                     sch_name)
+            elif schedule_type == "schedule:day:list".upper():
+                hourly_values = self.get_list_day_ep_schedule_values(
+                    sch_name)
             elif schedule_type == "schedule:week:compact".upper():
                 hourly_values = self.get_compact_weekly_ep_schedule_values(
                     sch_name)
             elif schedule_type == "schedule:week:daily".upper():
                 hourly_values = self.get_daily_weekly_ep_schedule_values(
-                    sch_name)
-            elif schedule_type == "schedule:week:hourly".upper():
-                hourly_values = self.get_hourly_weekly_ep_schedule_values(
                     sch_name)
             elif schedule_type == "schedule:constant".upper():
                 hourly_values = self.get_constant_ep_schedule_values(

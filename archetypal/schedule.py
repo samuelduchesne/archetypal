@@ -121,16 +121,6 @@ class Schedule(object):
 
         return hourly_values
 
-    def get_hourly_weekly_ep_schedule_values(self, sch_name=None):
-        """'schedule:week:hourly'"""
-        # Todo: get_hourly_weekly_ep_schedule_values
-        if sch_name is None:
-            sch_name = self.schName
-
-        values = self.idf.get_schedule_data_by_name(sch_name.upper())
-
-        return []
-
     def get_file_ep_schedule_values(self, sch_name=None):
         """'schedule:file'"""
         if sch_name is None:

@@ -79,7 +79,7 @@ class Schedule(object):
 
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
 
-        return []
+        return values.fieldvalues[3:]
 
     def get_compact_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:compact'"""

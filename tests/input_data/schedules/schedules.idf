@@ -27,6 +27,33 @@ RunPeriod,
     Yes;                     !- Use Weather File Snow Indicators
 
 
+!-   ===========  ALL OBJECTS IN CLASS: RUNPERIODCONTROL:SPECIALDAYS ===========
+
+RunPeriodControl:SpecialDays,
+    President's Day,         !- Name
+    3rd Monday in February,  !- Start Date
+    1,                       !- Duration {days}
+    Holiday;                 !- Special Day Type
+
+RunPeriodControl:SpecialDays,
+    Thanksgiving,            !- Name
+    4th Thursday in November,!- Start Date
+    1,                       !- Duration {days}
+    Holiday;                 !- Special Day Type
+
+RunPeriodControl:SpecialDays,
+    Halloween,               !- Name
+    10/31,                   !- Start Date
+    1,                       !- Duration {days}
+    Holiday;                 !- Special Day Type
+
+RunPeriodControl:SpecialDays,
+    Vacation,                !- Name
+    5/1,                     !- Start Date
+    14,                      !- Duration {days}
+    CustomDay1;              !- Special Day Type
+
+
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULETYPELIMITS ===========
 
 ! Not limited

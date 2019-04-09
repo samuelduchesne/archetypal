@@ -22,6 +22,14 @@ class Schedule(object):
     def all_values(self):
         return self.get_schedule_values(self.schName)
 
+    @property
+    def max(self):
+        return max(self.all_values)
+
+    @property
+    def min(self):
+        return min(self.all_values)
+
     def get_schedule_type_limits_data(self, sch_name):
         """Returns Scehdule Type Limits data"""
 

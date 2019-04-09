@@ -108,7 +108,7 @@ class Schedule(object):
         col = ['Schedule Values']
         df = pd.DataFrame(index=idx, columns=col)
 
-        for i in range(1, int((len(values)-1)/2)+1):
+        for i in range(1, int((len(values) - 1) / 2) + 1):
 
             # Get DayType_List values and write schedule values in dataframe
             if values["DayType_List_{}".format(i)].lower() == 'sunday':
@@ -117,57 +117,57 @@ class Schedule(object):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]
 
-            if values["DayType_List_{}".format(i)].lower() == 'monday':
+            elif values["DayType_List_{}".format(i)].lower() == 'monday':
                 day_number = 1 + self.startDayOfTheWeek
                 for j in range(0, 24):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]
 
-            if values["DayType_List_{}".format(i)].lower() == 'tuesday':
+            elif values["DayType_List_{}".format(i)].lower() == 'tuesday':
                 day_number = 2 + self.startDayOfTheWeek
                 for j in range(0, 24):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]
 
-            if values["DayType_List_{}".format(i)].lower() == 'wednesday':
+            elif values["DayType_List_{}".format(i)].lower() == 'wednesday':
                 day_number = 3 + self.startDayOfTheWeek
                 for j in range(0, 24):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]
 
-            if values["DayType_List_{}".format(i)].lower() == 'thursday':
+            elif values["DayType_List_{}".format(i)].lower() == 'thursday':
                 day_number = 4 + self.startDayOfTheWeek
                 for j in range(0, 24):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]
 
-            if values["DayType_List_{}".format(i)].lower() == 'friday':
+            elif values["DayType_List_{}".format(i)].lower() == 'friday':
                 day_number = 5 + self.startDayOfTheWeek
                 for j in range(0, 24):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]
 
-            if values["DayType_List_{}".format(i)].lower() == 'saturday':
+            elif values["DayType_List_{}".format(i)].lower() == 'saturday':
                 day_number = 6 + self.startDayOfTheWeek
                 for j in range(0, 24):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]
 
-            if values["DayType_List_{}".format(i)].lower() == 'weekdays':
+            elif values["DayType_List_{}".format(i)].lower() == 'weekdays':
                 day_numbers = [1, 2, 3, 4, 5]
                 for day_number in day_numbers:
                     for j in range(0, 24):
                         df.loc[(day_number, j)] = self.get_schedule_values(
                             values["ScheduleDay_Name_{}".format(i)])[j]
 
-            if values["DayType_List_{}".format(i)].lower() == 'weekend':
+            elif values["DayType_List_{}".format(i)].lower() == 'weekends':
                 day_numbers = [6, 0]
                 for day_number in day_numbers:
                     for j in range(0, 24):
                         df.loc[(day_number, j)] = self.get_schedule_values(
                             values["ScheduleDay_Name_{}".format(i)])[j]
 
-            if values["DayType_List_{}".format(i)].lower() == 'allotherdays':
+            elif values["DayType_List_{}".format(i)].lower() == 'allotherdays':
                 for day in dayWeekList:
                     for j in range(0, 24):
                         if df.loc[(day, j)].isna().values[0]:
@@ -175,6 +175,11 @@ class Schedule(object):
                                 values["ScheduleDay_Name_{}".format(i)])[j]
                         else:
                             continue
+
+            else:
+                raise Exception(
+                    'Archetypal does not support "{}" currently'.format(
+                        values["DayType_List_{}".format(i)]))
 
         return df['Schedule Values'].tolist()
 
@@ -399,7 +404,6 @@ def how(how):
         return 'max'
     else:
         return 'max'
-
 
 
 schedule_types = ['Schedule:Day:Hourly'.upper(),

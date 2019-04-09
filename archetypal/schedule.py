@@ -1,5 +1,6 @@
 import logging as lg
 
+import pandas as pd
 from archetypal import log
 
 
@@ -175,22 +176,129 @@ class Schedule(object):
         idfdir = os.path.dirname(self.idf.idfname)
         file = os.path.join(idfdir, filename)
         delimeter = separator(sep)
-        skip_rows = int(rows)-1 # We want to keep the column
+        skip_rows = int(rows) - 1  # We want to keep the column
         col = [int(column)]
         values = pd.read_csv(file, delimiter=delimeter, skiprows=skip_rows,
                              usecols=col)
 
         return values.iloc[:, 0].to_list()
 
-    def get_compcat_ep_schedule_values(self, sch_name=None):
+    def get_compact_ep_schedule_values(self, sch_name=None):
         """'schedule:compact'"""
-        # Todo: get_compcat_ep_schedule_values
+        # Todo: get_compact_ep_schedule_values
         if sch_name is None:
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
+        field_sets = ['through', 'for', 'interpolate', 'until', 'value']
+        fields = values.fieldvalues[3:]
+        import pandas as pd
+        import numpy as np
+        index = pd.date_range(start='2018/1/1', periods=8760, freq='1H')
+        zeros = np.zeros(8760)
 
-        return []
+        series = pd.Series(zeros, index=index)
+        from datetime import datetime, timedelta
+        from_day = datetime.strptime('2018/01/01', '%Y/%m/%d')
+        from_time = '00:00'
+        for field in fields:
+            if any([spe in field.lower() for spe in field_sets]):
+                # we are dealing with a Field-Set (Through, For, Interpolate,
+                # Until, Value)
+                try:
+                    # the colon (:) after these elements (Through, For,
+                    # Until) is optional. We can catch this behaviour with a
+                    # try, except statement
+                    f_set, value = field.split(':')
+                    value = value.strip()  # remove trailing spaces
+                except:
+                    # The field does not have a colon or has more than one!
+                    try:
+                        # The field has more than one colon
+                        f_set, hour, minute = field.split(':')
+                        hour = hour.strip()  # remove trailing spaces
+                        minute = minute.strip()
+                    except:
+                        # The field does not have a colon. Simply capitalize
+                        # and use value
+                        f_set = spe.capitalize()
+                        value = field[len(spe) + 1:].strip()
+
+                if f_set.lower() == 'through':
+                    # main condition. All sub-conditions must obey a
+                    # `Through` condition
+
+                    # First, initialize the slice (all False for now)
+                    all_conditions = series.apply(lambda x: False)
+
+                    # reset from_time
+                    from_time = '00:00'
+
+                    # Prepare to_day variable
+                    to_day = datetime.strptime('2018/' + value, '%Y/%m/%d')
+
+                    # Add one hour because EP is 24H based while pandas is
+                    # 0-based eg.: 00:00 to 23:59 versus 01:01 to 24:00
+                    to_day = to_day + timedelta(days=1)
+
+                    # slice the conditions with the range and apply True
+                    all_conditions.loc[from_day:to_day] = True
+
+                    # update in memory slice. In case `For: AllOtherDays` is
+                    # used in another Field
+                    sliced_day.loc[from_day:to_day] = True
+
+                    # add one day to from_day in preparation for the next
+                    # Through condition.
+                    from_day = to_day + timedelta(days=1)
+                elif f_set.lower() == 'for':
+                    # slice specific days
+
+                    for_condition = series.apply(lambda x: False)
+                    values = value.split()
+                    if len(values) > 1:
+                        # if multiple `For`. eg.: For: Weekends Holidays,
+                        # Combine both conditions
+                        for value in values:
+                            how = field_set(value)
+                            for_condition.loc[how] = True
+                    else:
+                        # Apply condition to slice
+                        how = field_set(value)
+                        for_condition.loc[how] = True
+
+                    # Combine the for_condition with all_conditions
+                    all_conditions = all_conditions & for_condition
+
+                    # update in memory slice
+                    sliced_day.loc[all_conditions] = True
+                elif f_set.lower() == 'interpolate':
+                    raise NotImplementedError('Archetypal does not support '
+                                              '"interpolate" statements yet')
+                elif f_set.lower() == 'until':
+                    for_condition = series.apply(lambda x: False)
+                    until_time = str(int(hour) - 1) + ':' + minute
+                    for_condition.loc[for_condition.between_time(from_time,
+                                                                 until_time).index] = True
+                    all_conditions = for_condition & all_conditions
+
+                    # update in memory slice
+                    sliced_day.loc[all_conditions] = True
+
+                    from_time = until_time
+                elif f_set.lower() == 'value':
+                    # If the therm `Value: ` field is used, we will catch it
+                    # here.
+                    series[all_conditions] = value
+                else:
+                    pass
+            else:
+                # If the term `Value: ` is not used; the variable is simply
+                # passed in the Field
+                value = float(field)
+                series[all_conditions] = value
+
+        return series.to_list()
 
     def get_yearly_ep_schedule_values(self, sch_name=None):
         """'schedule:year'"""
@@ -229,7 +337,8 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
         if self.is_schedule(sch_name):
-            schedule_values = self.idf.get_schedule_data_by_name(sch_name.upper())
+            schedule_values = self.idf.get_schedule_data_by_name(
+                sch_name.upper())
 
             schedule_type = schedule_values.fieldvalues[0].upper()
             if self.count == 0:
@@ -259,7 +368,7 @@ class Schedule(object):
                 hourly_values = self.get_constant_ep_schedule_values(
                     sch_name)
             elif schedule_type == "schedule:compact".upper():
-                hourly_values = self.get_compcat_ep_schedule_values(
+                hourly_values = self.get_compact_ep_schedule_values(
                     sch_name)
             elif schedule_type == "schedule:file".upper():
                 hourly_values = self.get_file_ep_schedule_values(
@@ -313,6 +422,53 @@ def how(how):
         return 'max'
 
 
+def field_set(field):
+    """helper function to return the proper slicer depending on the field_set
+
+    Weekdays, Weekends, Holidays, Alldays, SummerDesignDay, WinterDesignDay,
+     Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday,
+     CustomDay1, CustomDay2, AllOtherDays"""
+
+    if field.lower() == 'weekdays':
+        # return only days of weeks
+        return lambda x: x.index.dayofweek < 5
+    elif field.lower() == 'weekends':
+        # return only weekends
+        return lambda x: x.index.dayofweek >= 5
+    elif field.lower() == 'alldays':
+        # return all days := equivalenet to .loc[:]
+        return pd.IndexSlice[:]
+    elif field.lower() == 'allotherdays':
+        # return unused days. Uses the global variable `sliced_day`
+        return ~sliced_day
+    elif field.lower() == 'sunday':
+        # return only sundays
+        return lambda x: x.index.dayofweek == 6
+    elif field.lower() == 'monday':
+        # return only mondays
+        return lambda x: x.index.dayofweek == 0
+    elif field.lower() == 'tuesday':
+        # return only Tuesdays
+        return lambda x: x.index.dayofweek == 1
+    elif field.lower() == 'wednesday':
+        # return only Wednesdays
+        return lambda x: x.index.dayofweek == 2
+    elif field.lower() == 'thursday':
+        # return only Thursdays
+        return lambda x: x.index.dayofweek == 3
+    elif field.lower() == 'friday':
+        # return only Fridays
+        return lambda x: x.index.dayofweek == 4
+    elif field.lower() == 'saturday':
+        # return only Saturdays
+        return lambda x: x.index.dayofweek == 5
+    else:
+        raise NotImplementedError('Archetypal does not yet support The '
+                                  'Field_set "{}"'.format(field))
+
+
+index = pd.date_range(start='2018/1/1', periods=8760, freq='1H')
+sliced_day = pd.Series(range(8760), index=index).apply(lambda x: False)
 
 schedule_types = ['Schedule:Day:Hourly'.upper(),
                   'Schedule:Day:Interval'.upper(), 'Schedule:Day:List'.upper(),

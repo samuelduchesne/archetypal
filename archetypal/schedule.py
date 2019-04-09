@@ -73,7 +73,6 @@ class Schedule(object):
 
     def get_hourly_day_ep_schedule_values(self, sch_name=None):
         """'Schedule:Day:Hourly'"""
-        # Todo: get_hourly_day_ep_schedule_values
         if sch_name is None:
             sch_name = self.schName
 

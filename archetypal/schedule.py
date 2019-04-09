@@ -22,6 +22,7 @@ class Schedule(object):
         return self.get_schedule_values(self.schName)
 
     def get_schedule_type_limits_data(self, sch_name):
+        """Returns Scehdule Type Limits data"""
 
         if sch_name is None:
             sch_name = self.schName
@@ -72,6 +73,7 @@ class Schedule(object):
 
     def get_hourly_day_ep_schedule_values(self, sch_name=None):
         """'Schedule:Day:Hourly'"""
+        # Todo: get_hourly_day_ep_schedule_values
         if sch_name is None:
             sch_name = self.schName
 
@@ -81,6 +83,7 @@ class Schedule(object):
 
     def get_compact_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:compact'"""
+        # Todo: get_compact_weekly_ep_schedule_values
 
         if sch_name is None:
             sch_name = self.schName
@@ -91,6 +94,7 @@ class Schedule(object):
 
     def get_daily_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:daily'"""
+        # Todo: get_daily_weekly_ep_schedule_values
         if sch_name is None:
             sch_name = self.schName
 
@@ -100,6 +104,7 @@ class Schedule(object):
 
     def get_constant_ep_schedule_values(self, sch_name=None):
         """'schedule:constant'"""
+        # Todo: get_constant_ep_schedule_values
         if sch_name is None:
             sch_name = self.schName
 
@@ -109,6 +114,7 @@ class Schedule(object):
 
     def get_hourly_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:hourly'"""
+        # Todo: get_hourly_weekly_ep_schedule_values
         if sch_name is None:
             sch_name = self.schName
 
@@ -143,6 +149,7 @@ class Schedule(object):
 
     def get_compcat_ep_schedule_values(self, sch_name=None):
         """'schedule:compact'"""
+        # Todo: get_compcat_ep_schedule_values
         if sch_name is None:
             sch_name = self.schName
 

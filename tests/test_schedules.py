@@ -2,6 +2,7 @@ from archetypal import Schedule, load_idf
 
 
 def test_day_schedule(config):
+    """Tests all schedules in the schedule.idf file"""
     idf_file = './input_data/schedules/schedules.idf'
     idf = load_idf(idf_file)
 
@@ -12,12 +13,13 @@ def test_day_schedule(config):
                              start_day_of_the_week=0)
 
                 values = s.get_schedule_values()
-                print(values)
+                print(bunch.Name, values)
             except:
                 pass
 
 
 def test_file_schedule(config):
+    """Tests only 'elecTDVfromCZ06com' schedule name"""
     idf_file = './input_data/schedules/schedules.idf'
     idf = load_idf(idf_file)['schedules.idf']
 

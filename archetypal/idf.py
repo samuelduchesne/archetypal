@@ -1223,18 +1223,19 @@ class IDF(eppy.modeleditor.IDF):
             log('object "{}" added to the idf file'.format(ep_object))
             self.save()
 
-    def getScheduleTypeLimitsDataByName(self, schName):
+    def get_schedule_type_limits_data_by_name(self, sch_name):
+        """Returns the 'ScheduleTypeLimits' for a particular schedule name"""
         for obj in self.idfobjects['ScheduleTypeLimits'.upper()]:
-            if obj.Name.upper() == schName.upper():
+            if obj.Name.upper() == sch_name.upper():
                 return obj
 
-    def getScheduleDataByName(self, schName):
-        """"""
+    def get_schedule_data_by_name(self, sch_name):
+        """Returns the epbunch of a particular schedule name"""
         # [self.idfobjects[obj] for obj in self.idfobjects]
         for obj in self.idfobjects:
             for bunch in self.idfobjects[obj]:
                 try:
-                    if bunch.Name.upper() == schName.upper():
+                    if bunch.Name.upper() == sch_name.upper():
                         return bunch
                 except:
                     pass

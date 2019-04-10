@@ -560,21 +560,36 @@ class Schedule(object):
         full_year = np.array(self.all_values)  # array of shape (8760,)
         values = full_year.reshape(-1, 24)  # shape (365, 24)
 
-        # find unique lines, somehow
-
-        # create days
+        # create unique days
         unique_days, nds = np.unique(values, axis=0, return_inverse=True)
 
-        # then, create weeks
+
+        # Appending unique days in dictionnary with name and values of days as
+        # keys
+        dict_day = {'name_day': [], 'value_day': []}
+        count = 0
+        for unique_day in unique_days:
+            dict_day['name_day'].append('day' + str(count))
+            dict_day['value_day'].append(unique_day)
+            count = count + 1
+
+
+        # create unique weeks from unique days
         unique_weeks, nws = np.unique(full_year[:364 * 24, ...].reshape(-1,
                                                                         168),
                                       axis=0, return_inverse=True)
+        dict_week = {'name_week': [], 'value_week': []}
+        count = 0
+        for unique_week in unique_weeks:
+            dict_week['name_week'].append('week' + str(count))
+            for i in list(range(0, 7)):
+                day_of_week = unique_week[..., i * 24:(i + 1) * 24]
+                for j in range(0, len(dict_day['value_day'])):
+                    if day_of_week in dict_day['value_day'][j]:
+                        indice_day_name = 
+                        dict_week['value_week'].append()
 
-        for i in list(range(0, 7)):
-            b = unique_weeks[..., 0 * 24:(0 + 1) * 24]
-        # then, create year
-
-        # for unique in unique_days:
+        # create year
 
         # self.idf.add_object('Schedule:Year'.upper(),
         #                   dict(Name="SchName",

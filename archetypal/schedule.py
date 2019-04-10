@@ -68,6 +68,18 @@ class Schedule(object):
         else:
             return '', '', '', ''
 
+    def plot(self, slice=None, **kwargs):
+        hourlyvalues = self.all_values
+        index = pd.date_range('2018/01/01', periods=len(hourlyvalues),
+                              freq='1H')
+        series = pd.Series(hourlyvalues, index=index, dtype=float)
+        if slice is None:
+            slice = pd.IndexSlice[:]
+        elif len(slice) > 1:
+            slice = pd.IndexSlice[slice[0]:slice[1]]
+        ax = series.loc[slice].plot(**kwargs)
+        return ax
+
     def get_interval_day_ep_schedule_values(self, sch_name=None):
         """'Schedule:Day:Interval"""
 
@@ -79,7 +91,7 @@ class Schedule(object):
         lower_limit, upper_limit, numeric_type, unit_type = \
             self.get_schedule_type_limits_data(type_limit_name)
 
-        number_of_day_sch = int((len(values) - 3) / 2)
+        number_of_day_sch = int((len(values.fieldvalues) - 3) / 2)
 
         hourly_values = list(range(24))
         start_hour = 0
@@ -121,17 +133,17 @@ class Schedule(object):
         list_of_days = [0, 1, 2, 3, 4, 5, 6]
         week = deque(list_of_days)
         week.rotate(-self.startDayOfTheWeek)
-        dayWeekList = list(
+        day_week_list = list(
             itertools.chain.from_iterable(itertools.repeat(week, 1)))[:7]
 
         # Create dataframe with 2 indexes (1 for day of the week and 1 for the
         # hour of the day) to store values of schedules
-        idx = pd.MultiIndex.from_product([dayWeekList, list(range(0, 24))],
+        idx = pd.MultiIndex.from_product([day_week_list, list(range(0, 24))],
                                          names=['WeekDay', 'Hour'])
         col = ['Schedule Values']
         df = pd.DataFrame(index=idx, columns=col)
 
-        for i in range(1, int((len(values) - 1) / 2) + 1):
+        for i in range(1, int((len(values.fieldvalues) - 1) / 2) + 1):
 
             # Get DayType_List values and write schedule values in dataframe
             if values["DayType_List_{}".format(i)].lower() == 'sunday':
@@ -191,7 +203,7 @@ class Schedule(object):
                             values["ScheduleDay_Name_{}".format(i)])[j]
 
             elif values["DayType_List_{}".format(i)].lower() == 'allotherdays':
-                for day in dayWeekList:
+                for day in day_week_list:
                     for j in range(0, 24):
                         if df.loc[(day, j)].isna().values[0]:
                             df.loc[(day, j)] = self.get_schedule_values(
@@ -200,7 +212,7 @@ class Schedule(object):
                             continue
 
             else:
-                raise Exception(
+                raise NotImplementedError(
                     'Archetypal does not support "{}" currently'.format(
                         values["DayType_List_{}".format(i)]))
 
@@ -329,15 +341,13 @@ class Schedule(object):
 
     def get_compact_ep_schedule_values(self, sch_name=None):
         """'schedule:compact'"""
-        # Todo: get_compact_ep_schedule_values
         if sch_name is None:
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
         field_sets = ['through', 'for', 'interpolate', 'until', 'value']
         fields = values.fieldvalues[3:]
-        import pandas as pd
-        import numpy as np
+
         index = pd.date_range(start='2018/1/1', periods=8760, freq='1H')
         zeros = np.zeros(8760)
 
@@ -373,7 +383,7 @@ class Schedule(object):
                     # `Through` condition
 
                     # First, initialize the slice (all False for now)
-                    all_conditions = series.apply(lambda x: False)
+                    through_conditions = series.apply(lambda x: False)
 
                     # reset from_time
                     from_time = '00:00'
@@ -383,10 +393,10 @@ class Schedule(object):
 
                     # Add one hour because EP is 24H based while pandas is
                     # 0-based eg.: 00:00 to 23:59 versus 01:01 to 24:00
-                    to_day = to_day + timedelta(days=1)
+                    to_day = to_day + timedelta(hours=23)
 
                     # slice the conditions with the range and apply True
-                    all_conditions.loc[from_day:to_day] = True
+                    through_conditions.loc[from_day:to_day] = True
 
                     # update in memory slice. In case `For: AllOtherDays` is
                     # used in another Field
@@ -394,9 +404,11 @@ class Schedule(object):
 
                     # add one day to from_day in preparation for the next
                     # Through condition.
-                    from_day = to_day + timedelta(days=1)
+                    from_day = to_day + timedelta(hours=1)
                 elif f_set.lower() == 'for':
                     # slice specific days
+                    # reset from_time
+                    from_time = '00:00'
 
                     for_condition = series.apply(lambda x: False)
                     values = value.split()
@@ -412,7 +424,7 @@ class Schedule(object):
                         for_condition.loc[how] = True
 
                     # Combine the for_condition with all_conditions
-                    all_conditions = all_conditions & for_condition
+                    all_conditions = through_conditions & for_condition
 
                     # update in memory slice
                     sliced_day.loc[all_conditions] = True
@@ -420,21 +432,24 @@ class Schedule(object):
                     raise NotImplementedError('Archetypal does not support '
                                               '"interpolate" statements yet')
                 elif f_set.lower() == 'until':
-                    for_condition = series.apply(lambda x: False)
+                    until_condition = series.apply(lambda x: False)
                     until_time = str(int(hour) - 1) + ':' + minute
-                    for_condition.loc[for_condition.between_time(from_time,
-                                                                 until_time).index] = True
-                    all_conditions = for_condition & all_conditions
+                    until_condition.loc[until_condition.between_time(from_time,
+                                                                     until_time).index] = True
+                    all_conditions = for_condition & through_conditions & \
+                                     until_condition
 
                     # update in memory slice
                     sliced_day.loc[all_conditions] = True
 
-                    from_time = until_time
+                    # Todo: Check if timedelta is necessary
+                    from_time = str(int(hour)) + ':' + minute
                 elif f_set.lower() == 'value':
                     # If the therm `Value: ` field is used, we will catch it
                     # here.
                     series[all_conditions] = value
                 else:
+                    # Do something here before looping to the next Field
                     pass
             else:
                 # If the term `Value: ` is not used; the variable is simply
@@ -458,8 +473,8 @@ class Schedule(object):
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
 
         # generate weekly schedules
-        num_of_weekly_schedules = int(len(values) / 5)
-
+        num_of_weekly_schedules = int(len(values.fieldvalues[3:]) / 5)
+        from_day = 0
         for i in range(num_of_weekly_schedules):
             week_day_schedule_name = values[
                 'ScheduleWeek_Name_{}'.format(i + 1)]
@@ -475,16 +490,18 @@ class Schedule(object):
                                                              end_day),
                                          '%Y/%m/%d')
             days = (end_date - start_date).days + 1
-            hourly_values = hourly_values[0:days, ...]
+            subset = hourly_values[from_day:from_day + days, ...]
             # 7 list for 7 days of the week
             hourly_values_for_the_week = self.get_schedule_values(
                 week_day_schedule_name)
             hourly_values_for_the_week = np.array(
                 hourly_values_for_the_week).reshape(-1, 24)
             hourly_values_for_the_week = np.resize(hourly_values_for_the_week,
-                                                   hourly_values.shape)
-
-        return list(hourly_values_for_the_week.ravel())
+                                                   subset.shape)
+            hourly_values[from_day:from_day + days, ...] = \
+                hourly_values_for_the_week
+            from_day += days
+        return hourly_values.ravel()
 
     def get_schedule_values(self, sch_name=None):
         """Main function that returns the schedule values"""
@@ -556,6 +573,7 @@ class Schedule(object):
             'Schedule:Year', 'Schedule:Week:Daily', 'Schedule:Day:Hourly'
         """
         # Todo: to_year_week_day()
+        # {'week1':{'from_date', 'to_date', 'lisofdays'}}
 
         full_year = np.array(self.all_values)  # array of shape (8760,)
         values = full_year.reshape(-1, 24)  # shape (365, 24)

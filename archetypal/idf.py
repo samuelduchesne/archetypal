@@ -1256,22 +1256,22 @@ class IDF(eppy.modeleditor.IDF):
     @property
     def day_of_week_for_start_day(self):
         """Get day of week for start day for the first found RUNPERIOD"""
-
+        import calendar
         day = self.idfobjects["RUNPERIOD"][0]["Day_of_Week_for_Start_Day"]
 
         if day.lower() == "sunday":
-            return 0
+            return calendar.SUNDAY
         elif day.lower() == "monday":
-            return 1
+            return calendar.MONDAY
         elif day.lower() == "tuesday":
-            return 2
+            return calendar.TUESDAY
         elif day.lower() == "wednesday":
-            return 3
+            return calendar.WEDNESDAY
         elif day.lower() == "thursday":
-            return 4
+            return calendar.THURSDAY
         elif day.lower() == "friday":
-            return 5
+            return calendar.FRIDAY
         elif day.lower() == "saturday":
-            return 6
+            return calendar.SATURDAY
         else:
             return 0

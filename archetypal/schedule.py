@@ -24,6 +24,7 @@ class Schedule(object):
 
     @property
     def all_values(self):
+        """returns the 8760 values array (list)"""
         return self.get_schedule_values(self.schName)
 
     @property
@@ -33,6 +34,10 @@ class Schedule(object):
     @property
     def min(self):
         return min(self.all_values)
+
+    @property
+    def mean(self):
+        return np.mean(self.all_values)
 
     def get_schedule_type_limits_data(self, sch_name):
         """Returns Scehdule Type Limits data"""

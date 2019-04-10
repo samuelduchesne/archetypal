@@ -29,7 +29,7 @@ def test_file_schedule(config):
     idf_file = './input_data/schedules/schedules.idf'
     idf = load_idf(idf_file)['schedules.idf']
 
-    s = Schedule(idf, sch_name='POFF')
+    s = Schedule(idf, sch_name='On Peak 2')
 
     assert len(s.all_values) == 8760
 
@@ -40,7 +40,19 @@ def test_schedules_in_necb(config):
     idfs = load_idf(idf_file)
     for key in idfs:
         idf = idfs[key]
+        # get all possible shcedules
         schedules = idf.get_all_schedules()
         for sched in schedules:
             schedules[sched] = Schedule(idf, sch_name=sched).all_values
         print(schedules)
+
+
+def test_make_umi_schedule(config):
+    """Tests only 'elecTDVfromCZ06com' schedule name"""
+    idf_file = './input_data/schedules/schedules.idf'
+    idf = load_idf(idf_file)['schedules.idf']
+
+    s = Schedule(idf, sch_name='On Peak 2')
+    ep_objs = s.to_year_week_day()
+
+    assert len(s.all_values) == 8760

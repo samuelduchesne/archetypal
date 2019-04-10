@@ -12,7 +12,16 @@ from archetypal import log
 class Schedule(object):
     """An object designed to handle any EnergyPlys schedule object"""
 
-    def __init__(self, idf, sch_name, start_day_of_the_week=None):
+    def __init__(self, idf, sch_name, start_day_of_the_week=None,
+                 base_year=2018):
+        """
+
+        Args:
+            idf:
+            sch_name:
+            start_day_of_the_week (int): 0-based day of week
+            base_year (int): The base year of the schedule
+        """
         self.idf = idf
         # self.hb_EPObjectsAUX = sc.sticky["honeybee_EPObjectsAUX"]()
         # self.lb_preparation = sc.sticky["ladybug_Preparation"]()
@@ -21,10 +30,14 @@ class Schedule(object):
         self.count = 0
         self.startHOY = 1
         self.endHOY = 24
+        self.year = base_year
         self.unit = "unknown"
 
         if self.startDayOfTheWeek is None:
             self.startDayOfTheWeek = self.idf.day_of_week_for_start_day
+
+        self.index_ = None
+        self.sliced_day_ = None
 
     @property
     def all_values(self):
@@ -74,7 +87,8 @@ class Schedule(object):
 
     def plot(self, slice=None, **kwargs):
         hourlyvalues = self.all_values
-        index = pd.date_range('2018/01/01', periods=len(hourlyvalues),
+        index = pd.date_range('{}/01/01'.format(self.year), periods=len(
+            hourlyvalues),
                               freq='1H')
         series = pd.Series(hourlyvalues, index=index, dtype=float)
         if slice is None:
@@ -257,9 +271,9 @@ class Schedule(object):
         customDay2Sch = self.get_schedule_values(
             values['CustomDay2_ScheduleDay_Name'])
 
-        hourly_values = np.array([sundaySch, mondaySch, tuesdaySch,
+        hourly_values = np.array([mondaySch, tuesdaySch,
                                   wednesdaySch, thursdaySch, fridaySch,
-                                  saturdaySch])
+                                  saturdaySch, sundaySch])
 
         # shift days earlier by self.startDayOfTheWeek
         hourly_values = np.roll(hourly_values, -self.startDayOfTheWeek, axis=0)
@@ -278,7 +292,7 @@ class Schedule(object):
         num_values = values.fieldvalues[5:]  # List of values
         method = values['Interpolate_to_Timestep']  # How to resample
 
-        # fill a list of availbale values and pad with zeros (this is safer
+        # fill a list of available values and pad with zeros (this is safer
         # but should not occur)
         all_values = list(range(int(24 * 60 / freq)))
         for i in all_values:
@@ -287,7 +301,7 @@ class Schedule(object):
             except:
                 all_values[i] = 0
         # create a fake index to help us with the resampling
-        index = pd.date_range(start='1/1/2018',
+        index = pd.date_range(start='{}/01/01'.format(self.year),
                               periods=(24 * 60) / freq,
                               freq='{}T'.format(freq))
         series = pd.Series(all_values, index=index)
@@ -351,12 +365,13 @@ class Schedule(object):
         field_sets = ['through', 'for', 'interpolate', 'until', 'value']
         fields = values.fieldvalues[3:]
 
-        index = pd.date_range(start='2018/1/1', periods=8760, freq='1H')
+        start_date = str(self.year) + '/1/1'
+        index = pd.date_range(start=start_date, periods=8760, freq='1H')
         zeros = np.zeros(8760)
 
         series = pd.Series(zeros, index=index)
         from datetime import datetime, timedelta
-        from_day = datetime.strptime('2018/01/01', '%Y/%m/%d')
+        from_day = datetime.strptime(start_date, '%Y/%m/%d')
         from_time = '00:00'
         for field in fields:
             if any([spe in field.lower() for spe in field_sets]):
@@ -369,7 +384,8 @@ class Schedule(object):
                     f_set, value = field.split(':')
                     value = value.strip()  # remove trailing spaces
                 except:
-                    # The field does not have a colon or has more than one!
+                    # The field does not have a colon or has more than one
+                    # but a maximum of two!
                     try:
                         # The field has more than one colon
                         f_set, hour, minute = field.split(':')
@@ -378,8 +394,15 @@ class Schedule(object):
                     except:
                         # The field does not have a colon. Simply capitalize
                         # and use value
-                        f_set = field.capitalize()
-                        value = field[len(field) + 1:].strip()
+                        try:
+                            f_set = field.capitalize()
+                            value = field[len(field) + 1:].strip()
+                        except:
+                            msg = 'The schedule "{sch}" contains a Field that ' \
+                                  'is not understood: "{field}"'.format(
+                                sch=self.schName,
+                                field=field)
+                            raise ValueError(msg)
 
                 if f_set.lower() == 'through':
                     # main condition. All sub-conditions must obey a
@@ -392,7 +415,7 @@ class Schedule(object):
                     from_time = '00:00'
 
                     # Prepare to_day variable
-                    to_day = datetime.strptime('2018/' + value, '%Y/%m/%d')
+                    to_day = self.date_field_interpretation(value)
 
                     # Add one hour because EP is 24H based while pandas is
                     # 0-based eg.: 00:00 to 23:59 versus 01:01 to 24:00
@@ -401,9 +424,9 @@ class Schedule(object):
                     # slice the conditions with the range and apply True
                     through_conditions.loc[from_day:to_day] = True
 
-                    # update in memory slice. In case `For: AllOtherDays` is
-                    # used in another Field
-                    sliced_day.loc[from_day:to_day] = True
+                    # # update in memory slice. In case `For: AllOtherDays` is
+                    # # used in another Field
+                    # self.sliced_day_.loc[from_day:to_day] = True
 
                     # add one day to from_day in preparation for the next
                     # Through condition.
@@ -419,18 +442,24 @@ class Schedule(object):
                         # if multiple `For`. eg.: For: Weekends Holidays,
                         # Combine both conditions
                         for value in values:
-                            how = field_set(value)
+                            how = self.field_set(value)
                             for_condition.loc[how] = True
+                    elif value.lower() == 'allotherdays':
+                        # Apply condition to slice
+                        how = self.field_set(value)
+                        # Reset though condition
+                        through_conditions = how
+                        for_condition = how
                     else:
                         # Apply condition to slice
-                        how = field_set(value)
+                        how = self.field_set(value)
                         for_condition.loc[how] = True
 
                     # Combine the for_condition with all_conditions
                     all_conditions = through_conditions & for_condition
 
                     # update in memory slice
-                    sliced_day.loc[all_conditions] = True
+                    # self.sliced_day_.loc[all_conditions] = True
                 elif f_set.lower() == 'interpolate':
                     raise NotImplementedError('Archetypal does not support '
                                               '"interpolate" statements yet')
@@ -442,13 +471,12 @@ class Schedule(object):
                     all_conditions = for_condition & through_conditions & \
                                      until_condition
 
-                    # update in memory slice
-                    sliced_day.loc[all_conditions] = True
-
                     from_time = str(int(hour)) + ':' + minute
                 elif f_set.lower() == 'value':
                     # If the therm `Value: ` field is used, we will catch it
                     # here.
+                    # update in memory slice
+                    self.sliced_day_.loc[all_conditions] = True
                     series[all_conditions] = value
                 else:
                     # Do something here before looping to the next Field
@@ -458,6 +486,9 @@ class Schedule(object):
                 # passed in the Field
                 value = float(field)
                 series[all_conditions] = value
+
+                # update in memory slice
+                self.sliced_day_.loc[all_conditions] = True
 
         return series.to_list()
 
@@ -486,10 +517,10 @@ class Schedule(object):
             end_day = values['End_Day_{}'.format(i + 1)]
 
             start_date = datetime.strptime(
-                '2018/{}/{}'.format(start_month, start_day),
+                '{}/{}/{}'.format(self.year, start_month, start_day),
                 '%Y/%m/%d')
-            end_date = datetime.strptime('2018/{}/{}'.format(end_month,
-                                                             end_day),
+            end_date = datetime.strptime('{}/{}/{}'.format(self.year, end_month,
+                                                           end_day),
                                          '%Y/%m/%d')
             days = (end_date - start_date).days + 1
             subset = hourly_values[from_day:from_day + days, ...]
@@ -507,9 +538,16 @@ class Schedule(object):
 
     def get_schedule_values(self, sch_name=None):
         """Main function that returns the schedule values"""
+
         if sch_name is None:
             sch_name = self.schName
         if self.is_schedule(sch_name):
+            # First create self.sliced_day_
+            self.index_ = pd.date_range(start='{}/1/1'.format(self.year),
+                                        periods=8760, freq='1H')
+            self.sliced_day_ = pd.Series(range(8760), index=self.index_).apply(
+                lambda x: False)
+
             schedule_values = self.idf.get_schedule_data_by_name(
                 sch_name.upper())
 
@@ -683,6 +721,132 @@ class Schedule(object):
 
         return
 
+    def date_field_interpretation(self, field):
+        """Date Field Interpretation
+
+        Args:
+            field (str): The EnergyPlus Field Contents
+
+        Returns:
+            (datetime): The datetime object
+
+        Info:
+            See EnergyPlus documentation for more details:
+            1.6.8.1.2 Field: Start Date
+                (Table 1.4: Date Field Interpretation)
+        """
+        # < number > Weekday in Month
+        formats = ['%m/%d', '%d %B', '%B %d', '%d %b', '%b %d']
+        date = None
+        for format_str in formats:
+            # Tru to parse using each defined formats
+            try:
+                date = datetime.strptime(field, format_str)
+            except:
+                pass
+            else:
+                date = datetime(self.year, date.month, date.day)
+        if date is None:
+            # if the defined formats did not work, try the fancy parse
+            try:
+                date = self.parse_fancy_string(field)
+            except:
+                msg = "the schedule '{sch}' contains a " \
+                      "Field that is not understood: '{field}'".format(
+                    sch=self.schName,
+                    field=field)
+                raise ValueError(msg)
+            else:
+                return date
+        else:
+            return date
+
+    def parse_fancy_string(self, field):
+        """Will try to parse cases such as `3rd Monday in February` or `Last
+        Weekday In Month`
+
+        Args:
+            field (str): The EnergyPlus Field Contents
+
+        Returns:
+            (datetime): The datetime object
+        """
+        import re
+
+        # split the string at the term ' in '
+        time, month = field.lower().split(' in ')
+        month = datetime.strptime(month, '%B').month
+
+        # split the first part into nth and dayofweek
+        nth, dayofweek = time.split(' ')
+        if 'last' in nth:
+            nth = -1  # Use the last one
+        else:
+            nth = re.findall(r'\d+', nth)  # use the nth one
+            nth = int(nth[0])
+
+        # parse the dayofweek eg. monday
+        dayofweek = datetime.strptime(dayofweek.capitalize(), '%A').weekday()
+
+        # create list of possible days using Calendar
+        import calendar
+        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
+        monthcal = c.monthdatescalendar(self.year, month)
+
+        # iterate though the month and get the nth weekday
+        date = [day for week in monthcal for day in week if \
+                day.weekday() == dayofweek and \
+                day.month == month][nth]
+        return datetime(date.year, date.month, date.day)
+
+    def field_set(self, field):
+        """helper function to return the proper slicer depending on the
+        field_set
+
+        Weekdays, Weekends, Holidays, Alldays, SummerDesignDay, WinterDesignDay,
+         Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday,
+         CustomDay1, CustomDay2, AllOtherDays
+
+        Args:
+            field: """
+
+        if field.lower() == 'weekdays':
+            # return only days of weeks
+            return lambda x: x.index.dayofweek < 5
+        elif field.lower() == 'weekends':
+            # return only weekends
+            return lambda x: x.index.dayofweek >= 5
+        elif field.lower() == 'alldays':
+            # return all days := equivalenet to .loc[:]
+            return pd.IndexSlice[:]
+        elif field.lower() == 'allotherdays':
+            # return unused days. Uses the global variable `sliced_day`
+            return ~self.sliced_day_
+        elif field.lower() == 'sunday':
+            # return only sundays
+            return lambda x: x.index.dayofweek == 6
+        elif field.lower() == 'monday':
+            # return only mondays
+            return lambda x: x.index.dayofweek == 0
+        elif field.lower() == 'tuesday':
+            # return only Tuesdays
+            return lambda x: x.index.dayofweek == 1
+        elif field.lower() == 'wednesday':
+            # return only Wednesdays
+            return lambda x: x.index.dayofweek == 2
+        elif field.lower() == 'thursday':
+            # return only Thursdays
+            return lambda x: x.index.dayofweek == 3
+        elif field.lower() == 'friday':
+            # return only Fridays
+            return lambda x: x.index.dayofweek == 4
+        elif field.lower() == 'saturday':
+            # return only Saturdays
+            return lambda x: x.index.dayofweek == 5
+        else:
+            raise NotImplementedError('Archetypal does not yet support The '
+                                      'Field_set "{}"'.format(field))
+
 
 def separator(sep):
     """helper function to return the correct delimiter"""
@@ -709,54 +873,6 @@ def how(how):
     else:
         return 'max'
 
-
-def field_set(field):
-    """helper function to return the proper slicer depending on the field_set
-
-    Weekdays, Weekends, Holidays, Alldays, SummerDesignDay, WinterDesignDay,
-     Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday,
-     CustomDay1, CustomDay2, AllOtherDays"""
-
-    if field.lower() == 'weekdays':
-        # return only days of weeks
-        return lambda x: x.index.dayofweek < 5
-    elif field.lower() == 'weekends':
-        # return only weekends
-        return lambda x: x.index.dayofweek >= 5
-    elif field.lower() == 'alldays':
-        # return all days := equivalenet to .loc[:]
-        return pd.IndexSlice[:]
-    elif field.lower() == 'allotherdays':
-        # return unused days. Uses the global variable `sliced_day`
-        return ~sliced_day
-    elif field.lower() == 'sunday':
-        # return only sundays
-        return lambda x: x.index.dayofweek == 6
-    elif field.lower() == 'monday':
-        # return only mondays
-        return lambda x: x.index.dayofweek == 0
-    elif field.lower() == 'tuesday':
-        # return only Tuesdays
-        return lambda x: x.index.dayofweek == 1
-    elif field.lower() == 'wednesday':
-        # return only Wednesdays
-        return lambda x: x.index.dayofweek == 2
-    elif field.lower() == 'thursday':
-        # return only Thursdays
-        return lambda x: x.index.dayofweek == 3
-    elif field.lower() == 'friday':
-        # return only Fridays
-        return lambda x: x.index.dayofweek == 4
-    elif field.lower() == 'saturday':
-        # return only Saturdays
-        return lambda x: x.index.dayofweek == 5
-    else:
-        raise NotImplementedError('Archetypal does not yet support The '
-                                  'Field_set "{}"'.format(field))
-
-
-index = pd.date_range(start='2018/1/1', periods=8760, freq='1H')
-sliced_day = pd.Series(range(8760), index=index).apply(lambda x: False)
 
 schedule_types = ['Schedule:Day:Hourly'.upper(),
                   'Schedule:Day:Interval'.upper(), 'Schedule:Day:List'.upper(),

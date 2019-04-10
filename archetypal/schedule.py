@@ -586,10 +586,11 @@ class Schedule(object):
                 day_of_week = unique_week[..., i * 24:(i + 1) * 24]
                 for j in range(0, len(dict_day['value_day'])):
                     if day_of_week in dict_day['value_day'][j]:
-                        indice_day_name = 
-                        dict_week['value_week'].append()
+                        dict_week['value_week'].append(dict_day['name_day'][j])
 
         # create year
+        
+
 
         # self.idf.add_object('Schedule:Year'.upper(),
         #                   dict(Name="SchName",

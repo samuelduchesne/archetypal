@@ -340,15 +340,13 @@ class Schedule(object):
 
     def get_compact_ep_schedule_values(self, sch_name=None):
         """'schedule:compact'"""
-        # Todo: get_compact_ep_schedule_values
         if sch_name is None:
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
         field_sets = ['through', 'for', 'interpolate', 'until', 'value']
         fields = values.fieldvalues[3:]
-        import pandas as pd
-        import numpy as np
+
         index = pd.date_range(start='2018/1/1', periods=8760, freq='1H')
         zeros = np.zeros(8760)
 
@@ -384,7 +382,7 @@ class Schedule(object):
                     # `Through` condition
 
                     # First, initialize the slice (all False for now)
-                    all_conditions = series.apply(lambda x: False)
+                    through_conditions = series.apply(lambda x: False)
 
                     # reset from_time
                     from_time = '00:00'
@@ -394,10 +392,10 @@ class Schedule(object):
 
                     # Add one hour because EP is 24H based while pandas is
                     # 0-based eg.: 00:00 to 23:59 versus 01:01 to 24:00
-                    to_day = to_day + timedelta(days=1)
+                    to_day = to_day + timedelta(hours=23)
 
                     # slice the conditions with the range and apply True
-                    all_conditions.loc[from_day:to_day] = True
+                    through_conditions.loc[from_day:to_day] = True
 
                     # update in memory slice. In case `For: AllOtherDays` is
                     # used in another Field
@@ -405,9 +403,11 @@ class Schedule(object):
 
                     # add one day to from_day in preparation for the next
                     # Through condition.
-                    from_day = to_day + timedelta(days=1)
+                    from_day = to_day + timedelta(hours=1)
                 elif f_set.lower() == 'for':
                     # slice specific days
+                    # reset from_time
+                    from_time = '00:00'
 
                     for_condition = series.apply(lambda x: False)
                     values = value.split()
@@ -423,7 +423,7 @@ class Schedule(object):
                         for_condition.loc[how] = True
 
                     # Combine the for_condition with all_conditions
-                    all_conditions = all_conditions & for_condition
+                    all_conditions = through_conditions & for_condition
 
                     # update in memory slice
                     sliced_day.loc[all_conditions] = True
@@ -431,21 +431,24 @@ class Schedule(object):
                     raise NotImplementedError('Archetypal does not support '
                                               '"interpolate" statements yet')
                 elif f_set.lower() == 'until':
-                    for_condition = series.apply(lambda x: False)
+                    until_condition = series.apply(lambda x: False)
                     until_time = str(int(hour) - 1) + ':' + minute
-                    for_condition.loc[for_condition.between_time(from_time,
-                                                                 until_time).index] = True
-                    all_conditions = for_condition & all_conditions
+                    until_condition.loc[until_condition.between_time(from_time,
+                                                                     until_time).index] = True
+                    all_conditions = for_condition & through_conditions & \
+                                     until_condition
 
                     # update in memory slice
                     sliced_day.loc[all_conditions] = True
 
-                    from_time = until_time
+                    # Todo: Check if timedelta is necessary
+                    from_time = str(int(hour)) + ':' + minute
                 elif f_set.lower() == 'value':
                     # If the therm `Value: ` field is used, we will catch it
                     # here.
                     series[all_conditions] = value
                 else:
+                    # Do something here before looping to the next Field
                     pass
             else:
                 # If the term `Value: ` is not used; the variable is simply

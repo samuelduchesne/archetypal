@@ -1,5 +1,6 @@
 import logging as lg
 
+import numpy as np
 import pandas as pd
 from archetypal import log
 
@@ -37,17 +38,27 @@ class Schedule(object):
             sch_name = self.schName
 
         schedule = self.idf.get_schedule_type_limits_data_by_name(sch_name)
-        try:
-            lower_limit, upper_limit, numeric_type, unit_type = schedule.obj[2:]
-        except:
-            lower_limit, upper_limit, numeric_type = schedule.obj[2:]
-            unit_type = "unknown"
+        lower_limit, upper_limit, numeric_type, unit_type = \
+            self.schedule_type_limits(schedule)
 
         self.unit = unit_type
         if self.unit == "unknown":
             self.unit = numeric_type
 
         return lower_limit, upper_limit, numeric_type, unit_type
+
+    @staticmethod
+    def schedule_type_limits(schedule):
+        """Returns ScheduleTypeValues of the epbunch"""
+        if schedule is not None:
+            lower_limit = schedule['Lower_Limit_Value']
+            upper_limit = schedule['Upper_Limit_Value']
+            numeric_type = schedule['Numeric_Type']
+            unit_type = schedule['Unit_Type']
+
+            return lower_limit, upper_limit, numeric_type, unit_type
+        else:
+            return '', '', '', ''
 
     def get_interval_day_ep_schedule_values(self, sch_name=None):
         """'Schedule:Day:Interval"""

@@ -1,14 +1,11 @@
+import itertools
 import logging as lg
+from collections import deque
 from datetime import datetime
 
 import numpy as np
 import pandas as pd
 from archetypal import log
-
-from collections import deque
-import itertools
-
-import pandas as pd
 
 
 class Schedule(object):
@@ -212,12 +209,42 @@ class Schedule(object):
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
 
         # 7 list for 7 days of the week
-        hourly_values_for_the_week = []
-        for day_schedule in values.fieldvalues[2:9]:
-            hourly_values_for_the_week.extend(
-                self.get_schedule_values(day_schedule))
+        hourly_values = []
+        sundaySch = self.get_schedule_values(
+            values['Sunday_ScheduleDay_Name'])
+        mondaySch = self.get_schedule_values(
+            values['Monday_ScheduleDay_Name'])
+        tuesdaySch = self.get_schedule_values(
+            values['Tuesday_ScheduleDay_Name'])
+        wednesdaySch = self.get_schedule_values(
+            values['Wednesday_ScheduleDay_Name'])
+        thursdaySch = self.get_schedule_values(
+            values['Thursday_ScheduleDay_Name'])
+        fridaySch = self.get_schedule_values(
+            values['Friday_ScheduleDay_Name'])
+        saturdaySch = self.get_schedule_values(
+            values['Saturday_ScheduleDay_Name'])
 
-        return hourly_values_for_the_week
+        # Not sure what to do with these...
+        holidaySch = self.get_schedule_values(
+            values['Holiday_ScheduleDay_Name'])
+        summerDesignDay = self.get_schedule_values(
+            values['SummerDesignDay_ScheduleDay_Name'])
+        winterDesignDay = self.get_schedule_values(
+            values['WinterDesignDay_ScheduleDay_Name'])
+        customDay1Sch = self.get_schedule_values(
+            values['CustomDay1_ScheduleDay_Name'])
+        customDay2Sch = self.get_schedule_values(
+            values['CustomDay2_ScheduleDay_Name'])
+
+        hourly_values = np.array([sundaySch, mondaySch, tuesdaySch,
+                                  wednesdaySch, thursdaySch, fridaySch,
+                                  saturdaySch])
+
+        # shift days earlier by self.startDayOfTheWeek
+        hourly_values = np.roll(hourly_values, -self.startDayOfTheWeek, axis=0)
+
+        return list(hourly_values.ravel())
 
     def get_list_day_ep_schedule_values(self, sch_name=None):
         """'schedule:day:list'"""

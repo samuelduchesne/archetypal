@@ -70,10 +70,11 @@ class Schedule(object):
 
     def plot(self, slice=None, **kwargs):
         hourlyvalues = self.all_values
-        index = pd.date_range('2018/01/01', periods=len(hourlyvalues), freq='1H')
+        index = pd.date_range('2018/01/01', periods=len(hourlyvalues),
+                              freq='1H')
         series = pd.Series(hourlyvalues, index=index, dtype=float)
         if slice is None:
-            slice=pd.IndexSlice[:]
+            slice = pd.IndexSlice[:]
         elif len(slice) > 1:
             slice = pd.IndexSlice[slice[0]:slice[1]]
         ax = series.loc[slice].plot(**kwargs)
@@ -489,7 +490,7 @@ class Schedule(object):
                                                              end_day),
                                          '%Y/%m/%d')
             days = (end_date - start_date).days + 1
-            subset = hourly_values[from_day:from_day+days, ...]
+            subset = hourly_values[from_day:from_day + days, ...]
             # 7 list for 7 days of the week
             hourly_values_for_the_week = self.get_schedule_values(
                 week_day_schedule_name)
@@ -497,7 +498,8 @@ class Schedule(object):
                 hourly_values_for_the_week).reshape(-1, 24)
             hourly_values_for_the_week = np.resize(hourly_values_for_the_week,
                                                    subset.shape)
-            hourly_values[from_day:from_day+days, ...] = hourly_values_for_the_week
+            hourly_values[from_day:from_day + days, ...] = \
+                hourly_values_for_the_week
             from_day += days
         return hourly_values.ravel()
 
@@ -571,6 +573,7 @@ class Schedule(object):
             'Schedule:Year', 'Schedule:Week:Daily', 'Schedule:Day:Hourly'
         """
         # Todo: to_year_week_day()
+        # {'week1':{'from_date', 'to_date', 'lisofdays'}}
 
         full_year = np.array(self.all_values)  # array of shape (8760,)
         values = full_year.reshape(-1, 24)  # shape (365, 24)

@@ -121,12 +121,12 @@ class Schedule(object):
         list_of_days = [0, 1, 2, 3, 4, 5, 6]
         week = deque(list_of_days)
         week.rotate(-self.startDayOfTheWeek)
-        dayWeekList = list(
+        day_week_list = list(
             itertools.chain.from_iterable(itertools.repeat(week, 1)))[:7]
 
         # Create dataframe with 2 indexes (1 for day of the week and 1 for the
         # hour of the day) to store values of schedules
-        idx = pd.MultiIndex.from_product([dayWeekList, list(range(0, 24))],
+        idx = pd.MultiIndex.from_product([day_week_list, list(range(0, 24))],
                                          names=['WeekDay', 'Hour'])
         col = ['Schedule Values']
         df = pd.DataFrame(index=idx, columns=col)
@@ -191,7 +191,7 @@ class Schedule(object):
                             values["ScheduleDay_Name_{}".format(i)])[j]
 
             elif values["DayType_List_{}".format(i)].lower() == 'allotherdays':
-                for day in dayWeekList:
+                for day in day_week_list:
                     for j in range(0, 24):
                         if df.loc[(day, j)].isna().values[0]:
                             df.loc[(day, j)] = self.get_schedule_values(
@@ -200,7 +200,7 @@ class Schedule(object):
                             continue
 
             else:
-                raise Exception(
+                raise NotImplementedError(
                     'Archetypal does not support "{}" currently'.format(
                         values["DayType_List_{}".format(i)]))
 

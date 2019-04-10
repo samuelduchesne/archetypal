@@ -11,6 +11,7 @@ import eppy.modeleditor
 import pandas as pd
 from archetypal import settings
 from archetypal.utils import log, cd, EnergyPlusProcessError
+from archetypal.schedule import schedule_types
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run, paths_from_version
@@ -1239,6 +1240,18 @@ class IDF(eppy.modeleditor.IDF):
                         return bunch
                 except:
                     pass
+
+    def get_all_schedules(self):
+        """Returns all schedule ep_objects in a dict with their name as a key"""
+        scheds = {}
+        for obj in self.idfobjects:
+            for bunch in self.idfobjects[obj]:
+                try:
+                    if bunch.fieldvalues[0].upper() in schedule_types:
+                        scheds[bunch.Name] = bunch
+                except:
+                    pass
+        return scheds
 
     @property
     def day_of_week_for_start_day(self):

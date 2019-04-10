@@ -79,7 +79,7 @@ class Schedule(object):
         lower_limit, upper_limit, numeric_type, unit_type = \
             self.get_schedule_type_limits_data(type_limit_name)
 
-        number_of_day_sch = int((len(values) - 3) / 2)
+        number_of_day_sch = int((len(values.fieldvalues) - 3) / 2)
 
         hourly_values = list(range(24))
         start_hour = 0
@@ -131,7 +131,7 @@ class Schedule(object):
         col = ['Schedule Values']
         df = pd.DataFrame(index=idx, columns=col)
 
-        for i in range(1, int((len(values) - 1) / 2) + 1):
+        for i in range(1, int((len(values.fieldvalues) - 1) / 2) + 1):
 
             # Get DayType_List values and write schedule values in dataframe
             if values["DayType_List_{}".format(i)].lower() == 'sunday':
@@ -458,8 +458,8 @@ class Schedule(object):
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
 
         # generate weekly schedules
-        num_of_weekly_schedules = int(len(values) / 5)
-
+        num_of_weekly_schedules = int(len(values.fieldvalues[3:]) / 5)
+        from_day = 0
         for i in range(num_of_weekly_schedules):
             week_day_schedule_name = values[
                 'ScheduleWeek_Name_{}'.format(i + 1)]
@@ -475,16 +475,17 @@ class Schedule(object):
                                                              end_day),
                                          '%Y/%m/%d')
             days = (end_date - start_date).days + 1
-            hourly_values = hourly_values[0:days, ...]
+            subset = hourly_values[from_day:from_day+days, ...]
             # 7 list for 7 days of the week
             hourly_values_for_the_week = self.get_schedule_values(
                 week_day_schedule_name)
             hourly_values_for_the_week = np.array(
                 hourly_values_for_the_week).reshape(-1, 24)
             hourly_values_for_the_week = np.resize(hourly_values_for_the_week,
-                                                   hourly_values.shape)
-
-        return list(hourly_values_for_the_week.ravel())
+                                                   subset.shape)
+            hourly_values[from_day:from_day+days, ...] = hourly_values_for_the_week
+            from_day += days
+        return hourly_values.ravel()
 
     def get_schedule_values(self, sch_name=None):
         """Main function that returns the schedule values"""

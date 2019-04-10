@@ -230,7 +230,7 @@ Schedule:Week:Compact,
 Schedule:Year,
     On Peak,                 !- Name
     Fraction,                !- Schedule Type Limits Name
-    Week On Peak,            !- Schedule:Week Name 1
+    Week on Peak Daily,            !- Schedule:Week Name 1
     1,                       !- Start Month 1
     1,                       !- Start Day 1
     12,                      !- End Month 1

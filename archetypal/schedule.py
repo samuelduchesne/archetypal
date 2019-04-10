@@ -594,8 +594,9 @@ class Schedule(object):
             # Create idf_objects for schedule:day:hourly
             self.idf.add_object(ep_object='Schedule:Day:Hourly'.upper(),
                                 **dict(Name=name,
-                                     Schedule_Type_Limits_Name="Fraction",
-                                     **{'Hour_{}'.format(i+1): unique_day[i] for i in range(24)})
+                                       Schedule_Type_Limits_Name="Fraction",
+                                       **{'Hour_{}'.format(i + 1): unique_day[i]
+                                          for i in range(24)})
                                 )
 
             # create unique weeks from unique days
@@ -608,15 +609,36 @@ class Schedule(object):
             dict_week = {'name_week': [], 'value_week': []}
             for unique_week in unique_weeks:
                 dict_week['name_week'].append('week_' + str(uuid.uuid4().hex))
-            temp_day_list = []
-            for i in list(range(0, 7)):
-                day_of_week = unique_week[..., i * 24:(i + 1) * 24]
-            for j in range(0, len(dict_day['value_day'])):
-                if day_of_week in dict_day['value_day'][j]:
-                    temp_day_list.append(dict_day['name_day'][j])
-                    dict_week['value_week'].append(temp_day_list)
+                temp_day_list = []
+                for i in list(range(0, 7)):
+                    day_of_week = unique_week[..., i * 24:(i + 1) * 24]
+                    for j in range(0, len(dict_day['value_day'])):
+                        if day_of_week in dict_day['value_day'][j]:
+                            temp_day_list.append(dict_day['name_day'][j])
 
+            dict_week['value_week'].append(temp_day_list)
 
+            # Create idf_objects for schedule:week:daily
+            list_day_of_week = ['Sunday', 'Monday', 'Tuesday',
+                                'Wednesday', 'Thursday', 'Friday',
+                                'Saturday', 'Holiday', 'SummerDesignDay',
+                                'WinterDesignDay', 'CustomDay1',
+                                'CustomDay2']
+            for i in range(0, len(dict_week['name_week'])):
+                week = np.roll(np.array(dict_week['value_week'][i]),
+                               self.startDayOfTheWeek)
+                self.idf.add_object(ep_object='Schedule:Week:Daily'.upper(),
+                                    **dict(Name=dict_week['name_week'][0],
+                                           **{'{}_ScheduleDay_Name'.format(
+                                               list_day_of_week[j]): week[i] for
+                                              j in
+                                              range(0, len(list_day_of_week))},
+                                           Holiday_ScheduleDay_Name=week[0],
+                                           SummerDesignDay_ScheduleDay_Name=week[2],
+                                           WinterDesignDay_ScheduleDay_Name=week[2],
+                                           CustomDay1_ScheduleDay_Name=week[3],
+                                           CustomDay2_ScheduleDay_Name=week[6])
+                                    )
 
             # Create year
             # Create empty array of string with shape (len(values), 1)

@@ -377,7 +377,7 @@ class Schedule(object):
                     except:
                         # The field does not have a colon. Simply capitalize
                         # and use value
-                        f_set = spe.capitalize()
+                        f_set = field.capitalize()
                         value = field[len(spe) + 1:].strip()
 
                 if f_set.lower() == 'through':
@@ -391,7 +391,7 @@ class Schedule(object):
                     from_time = '00:00'
 
                     # Prepare to_day variable
-                    to_day = datetime.strptime('2018/' + value, '%Y/%m/%d')
+                    to_day = date_field_interpretation(value)
 
                     # Add one hour because EP is 24H based while pandas is
                     # 0-based eg.: 00:00 to 23:59 versus 01:01 to 24:00

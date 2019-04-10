@@ -11,7 +11,7 @@ from archetypal import log
 class Schedule(object):
     """An object designed to handle any EnergyPlys schedule object"""
 
-    def __init__(self, idf, sch_name, start_day_of_the_week=0):
+    def __init__(self, idf, sch_name, start_day_of_the_week=None):
         self.idf = idf
         # self.hb_EPObjectsAUX = sc.sticky["honeybee_EPObjectsAUX"]()
         # self.lb_preparation = sc.sticky["ladybug_Preparation"]()
@@ -21,6 +21,9 @@ class Schedule(object):
         self.startHOY = 1
         self.endHOY = 24
         self.unit = "unknown"
+
+        if self.startDayOfTheWeek is None:
+            self.startDayOfTheWeek = self.idf.day_of_week_for_start_day
 
     @property
     def all_values(self):

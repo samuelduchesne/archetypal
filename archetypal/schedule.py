@@ -1,4 +1,5 @@
 import logging as lg
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -414,7 +415,7 @@ class Schedule(object):
     def get_yearly_ep_schedule_values(self, sch_name=None):
         """'schedule:year'"""
         # place holder for 365 days
-        hourly_values = range(365)
+        hourly_values = list(range(8760))
 
         # update last day of schedule
         self.endHOY = 8760
@@ -430,16 +431,27 @@ class Schedule(object):
         for i in range(num_of_weekly_schedules):
             week_day_schedule_name = values[
                 'ScheduleWeek_Name_{}'.format(i + 1)]
-
+            start_month = values['Start_Month_{}'.format(i + 1)]
+            end_month = values['End_Month_{}'.format(i + 1)]
             start_day = values['Start_Day_{}'.format(i + 1)]
             end_day = values['End_Day_{}'.format(i + 1)]
+
+            start_date = datetime.strptime(
+                '2018/{}/{}'.format(start_month, start_day),
+                '%Y/%m/%d')
+            end_date = datetime.strptime('2018/{}/{}'.format(end_month,
+                                                             end_day),
+                                         '%Y/%m/%d')
+            days = (end_date - start_date).days + 1
 
             # 7 list for 7 days of the week
             hourly_values_for_the_week = self.get_schedule_values(
                 week_day_schedule_name)
+            values = np.repeat(hourly_values_for_the_week, (days * 24 / 168))
 
-            for day in range(start_day - 1, end_day):
-                hourly_values[day] = hourly_values_for_the_week[day % 7]
+            hourly_values = values
+            # todo: get_yearly_ep_schedule_values
+            #  Fonctionne pas!
 
         return hourly_values
 

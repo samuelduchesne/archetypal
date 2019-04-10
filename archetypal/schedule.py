@@ -122,7 +122,6 @@ class Schedule(object):
 
     def get_compact_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:compact'"""
-        # Todo: get_compact_weekly_ep_schedule_values
 
         if sch_name is None:
             sch_name = self.schName
@@ -442,7 +441,6 @@ class Schedule(object):
                     # update in memory slice
                     sliced_day.loc[all_conditions] = True
 
-                    # Todo: Check if timedelta is necessary
                     from_time = str(int(hour)) + ':' + minute
                 elif f_set.lower() == 'value':
                     # If the therm `Value: ` field is used, we will catch it

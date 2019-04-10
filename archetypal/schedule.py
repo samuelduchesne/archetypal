@@ -1,11 +1,12 @@
 import itertools
 import logging as lg
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
 from archetypal import log
+import uuid
 
 
 class Schedule(object):
@@ -582,34 +583,114 @@ class Schedule(object):
         # create unique days
         unique_days, nds = np.unique(values, axis=0, return_inverse=True)
 
-
         # Appending unique days in dictionnary with name and values of days as
         # keys
-        dict_day = {'name_day': [], 'value_day': []}
-        count = 0
+        # 'name_day': [], 'value_day': []
+        dict_day = {}
         for unique_day in unique_days:
-            dict_day['name_day'].append('day' + str(count))
-            dict_day['value_day'].append(unique_day)
-            count = count + 1
+            name = 'day_' + str(uuid.uuid4().hex)
+            dict_day[name] = unique_day
 
+            # Create idf_objects for schedule:day:hourly
+            self.idf.add_object(ep_object='Schedule:Day:Hourly'.upper(),
+                                **dict(Name=name,
+                                       Schedule_Type_Limits_Name="Fraction",
+                                       **{'Hour_{}'.format(i + 1): unique_day[i]
+                                          for i in range(24)})
+                                )
 
         # create unique weeks from unique days
         unique_weeks, nws = np.unique(full_year[:364 * 24, ...].reshape(-1,
                                                                         168),
                                       axis=0, return_inverse=True)
-        dict_week = {'name_week': [], 'value_week': []}
-        count = 0
+
+        # Appending unique weeks in dictionary with name and values of weeks as
+        # keys
+        # {'name_week': {'dayName':[]}}
+        dict_week = {}
         for unique_week in unique_weeks:
-            dict_week['name_week'].append('week' + str(count))
+            week_id = 'week_' + str(uuid.uuid4().hex)
+            dict_week[week_id] = {}
+            temp_day_list = []
             for i in list(range(0, 7)):
                 day_of_week = unique_week[..., i * 24:(i + 1) * 24]
-                for j in range(0, len(dict_day['value_day'])):
-                    if day_of_week in dict_day['value_day'][j]:
-                        dict_week['value_week'].append(dict_day['name_day'][j])
+                for key in dict_day.keys():
+                    if (day_of_week == dict_day[key]).all():
+                        dict_week[week_id]['day_{}'.format(i)] = key
+                # for j in range(0, len(dict_day['value_day'])):
+                #     if day_of_week in dict_day['value_day'][j]:
+                #         temp_day_list.append(dict_day['name_day'][j])
 
-        # create year
-        
+            # dict_week['value_week'].append(temp_day_list)
 
+            # Create idf_objects for schedule:week:daily
+            list_day_of_week = ['Sunday', 'Monday', 'Tuesday',
+                                'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        for week_id in dict_week:
+            # week = np.roll(np.array(dict_week['value_week'][i]),
+            #                self.startDayOfTheWeek)
+            self.idf.add_object(ep_object='Schedule:Week:Daily'.upper(),
+                                **dict(Name=week_id,
+                                       **{'{}_ScheduleDay_Name'.format(
+                                           weekday): dict_week[week_id]['day_{}'.format(i)] for
+                                          i, weekday in
+                                          enumerate(list_day_of_week)
+                                          },
+                                       Holiday_ScheduleDay_Name=dict_week[week_id]['day_0'],
+                                       SummerDesignDay_ScheduleDay_Name=dict_week[week_id]['day_2'],
+                                       WinterDesignDay_ScheduleDay_Name=dict_week[week_id]['day_2'],
+                                       CustomDay1_ScheduleDay_Name=dict_week[week_id]['day_3'],
+                                       CustomDay2_ScheduleDay_Name=dict_week[week_id]['day_6'])
+                                )
+
+        # Create year
+        # Create empty array of string with shape (len(values), 1)
+        year_with_name_of_days = np.array([None] * len(values)).reshape(-1,
+                                                                        1)
+        # Write name_day in year_with_name_of_days
+        for i in range(0, len(values)):
+            for j in range(0, len(dict_day['value_day'])):
+                if values[i] in dict_day['value_day'][j]:
+                    year_with_name_of_days[i][0] = dict_day['name_day'][j]
+
+        # Unique weeks in year
+        year_with_name_of_days = year_with_name_of_days[:364, ...].reshape(
+            -1,
+            7)
+        unique_weeks_in_year, nys = np.unique(
+            year_with_name_of_days.astype(str),
+            axis=0, return_inverse=True)
+
+        # Create idf_objects for schedule:year
+        from_day = 1
+        from_month = 1
+        week = nys[0]
+        count = 0
+        for i in nys:
+            if nys[i] != week:
+                count += 1
+                num_day = i * 7 - 1
+                dt = datetime(self.year, 1, 1)
+                dtdelta = timedelta(days=num_day)
+                date = dt + dtdelta
+                self.idf.add_object(ep_object='Schedule:Year'.upper(),
+                                    **dict(Name=dict_week['name_week'][0],
+                                           Schedule_Type_Limits_Name="Fraction",
+                                           Schedule_Week_Name="bla",
+                                           **{"Start_Month_{}".format(
+                                               count): from_month},
+                                           **{"Start_Day_{}".format(
+                                               count): from_day},
+                                           **{"End_Month_{}".format(
+                                               count): date.month},
+                                           **{"End_Day_{}".format(
+                                               count): date.day}
+                                           )
+                                    )
+
+                from_day = date.day
+                from_month = date.month
+                week = nys[i]
 
         # self.idf.add_object('Schedule:Year'.upper(),
         #                   dict(Name="SchName",

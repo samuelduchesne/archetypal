@@ -447,7 +447,7 @@ class Schedule(object):
     def get_yearly_ep_schedule_values(self, sch_name=None):
         """'schedule:year'"""
         # place holder for 365 days
-        hourly_values = list(range(8760))
+        hourly_values = np.zeros([365, 24])
 
         # update last day of schedule
         self.endHOY = 8760
@@ -475,17 +475,16 @@ class Schedule(object):
                                                              end_day),
                                          '%Y/%m/%d')
             days = (end_date - start_date).days + 1
-
+            hourly_values = hourly_values[0:days, ...]
             # 7 list for 7 days of the week
             hourly_values_for_the_week = self.get_schedule_values(
                 week_day_schedule_name)
-            values = np.repeat(hourly_values_for_the_week, (days * 24 / 168))
+            hourly_values_for_the_week = np.array(
+                hourly_values_for_the_week).reshape(-1, 24)
+            hourly_values_for_the_week = np.resize(hourly_values_for_the_week,
+                                                   hourly_values.shape)
 
-            hourly_values = values
-            # todo: get_yearly_ep_schedule_values
-            #  Fonctionne pas!
-
-        return hourly_values
+        return list(hourly_values_for_the_week.ravel())
 
     def get_schedule_values(self, sch_name=None):
         """Main function that returns the schedule values"""

@@ -549,6 +549,44 @@ class Schedule(object):
                 except:
                     pass
 
+    def to_year_week_day(self):
+        """
+
+        Returns: epbunch
+            'Schedule:Year', 'Schedule:Week:Daily', 'Schedule:Day:Hourly'
+        """
+        # Todo: to_year_week_day()
+
+        full_year = np.array(self.all_values)  # array of shape (8760,)
+        values = full_year.reshape(-1, 24)  # shape (365, 24)
+
+        # find unique lines, somehow
+
+        # create days
+        unique_days, nds = np.unique(values, axis=0, return_inverse=True)
+
+        # then, create weeks
+        unique_weeks, nws = np.unique(full_year[:364 * 24, ...].reshape(-1,
+                                                                        168),
+                                      axis=0, return_inverse=True)
+
+        for i in list(range(0, 7)):
+            b = unique_weeks[..., 0 * 24:(0 + 1) * 24]
+        # then, create year
+
+        # for unique in unique_days:
+
+        # self.idf.add_object('Schedule:Year'.upper(),
+        #                   dict(Name="SchName",
+        #                        Schedule_Type_Limits_Name=""),
+        #                        ScheduleWeek_Name_1="",
+        #                        Start_Month_1="",
+        #                        Start_Day_1="",
+        #                        End_Month_1="",
+        #                        End_Day_1="")
+
+        return
+
 
 def separator(sep):
     """helper function to return the correct delimiter"""

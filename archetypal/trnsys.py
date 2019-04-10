@@ -30,15 +30,16 @@ def clear_name_idf_objects(idfFile):
     uniqueList = []
 
     # For all categorie that we want to change Names
-    for obj in objs:
+    for obj in idfFile.idfobjects:
         epObjects = idfFile.idfobjects[obj]
 
         # For all objects in Category
         for epObject in epObjects:
             # Do not take fenestration, to be treated later
-            fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
-                            s in epObject.Name.lower()]
-            if not fenestration:
+            # fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
+                            #s in epObject.Name.lower()]
+            # if not fenestration:
+            try:
                 old_name = epObject.Name
                 # clean old name by removing spaces, "-", period, "{", "}", doubleunderscore
                 new_name = old_name.replace(" ", "_").replace("-", "_").replace(
@@ -57,9 +58,10 @@ def clear_name_idf_objects(idfFile):
 
                 # print("changed layer {} with {}".format(old_name, new_name))
                 modeleditor.rename(idfFile, obj, old_name, new_name)
-
-            else:
-                continue
+            except:
+                pass
+            # else:
+                # continue
 
 
 def zone_origin(zone_object):

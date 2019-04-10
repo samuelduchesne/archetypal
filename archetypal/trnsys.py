@@ -7,7 +7,7 @@ from eppy import modeleditor
 from collections import OrderedDict
 
 import archetypal as ar
-from archetypal import log, write_lines
+from archetypal import log, Schedule
 
 
 def clear_name_idf_objects(idfFile):
@@ -143,29 +143,45 @@ def convert_idf_to_t3d(idf, output_folder=None):
 
     # Clean names of idf objects (e.g. 'MATERIAL')
     start_time = time.time()
-    clear_name_idf_objects(idf_file)
+    clear_name_idf_objects(idf)
     log("Cleaned IDF object names in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="CoverterLog",
         filename="CoverterLog")
 
     # Get objects from IDF file
-    materials = idf_file.idfobjects['MATERIAL']
-    materialNoMass = idf_file.idfobjects['MATERIAL:NOMASS']
-    materialAirGap = idf_file.idfobjects['MATERIAL:AIRGAP']
-    versions = idf_file.idfobjects['VERSION']
-    buildings = idf_file.idfobjects['BUILDING']
-    locations = idf_file.idfobjects['SITE:LOCATION']
-    globGeomRules = idf_file.idfobjects['GLOBALGEOMETRYRULES']
-    constructions = idf_file.idfobjects['CONSTRUCTION']
-    fenestrationSurfs = idf_file.idfobjects['FENESTRATIONSURFACE:DETAILED']
-    buildingSurfs = idf_file.idfobjects['BUILDINGSURFACE:DETAILED']
-    zones = idf_file.idfobjects['ZONE']
-    scheduleYear = idf_file.idfobjects['SCHEDULE:YEAR']
-    scheduleWeek = idf_file.idfobjects['SCHEDULE:WEEK:DAILY']
-    scheduleDay = idf_file.idfobjects['SCHEDULE:DAY:INTERVAL']
-    peoples = idf_file.idfobjects['PEOPLE']
-    lights = idf_file.idfobjects['LIGHTS']
-    equipments = idf_file.idfobjects['ELECTRICEQUIPMENT']
+    materials = idf.idfobjects['MATERIAL']
+    materialNoMass = idf.idfobjects['MATERIAL:NOMASS']
+    materialAirGap = idf.idfobjects['MATERIAL:AIRGAP']
+    versions = idf.idfobjects['VERSION']
+    buildings = idf.idfobjects['BUILDING']
+    locations = idf.idfobjects['SITE:LOCATION']
+    globGeomRules = idf.idfobjects['GLOBALGEOMETRYRULES']
+    constructions = idf.idfobjects['CONSTRUCTION']
+    fenestrationSurfs = idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
+    buildingSurfs = idf.idfobjects['BUILDINGSURFACE:DETAILED']
+    zones = idf.idfobjects['ZONE']
+    scheduleYear = idf.idfobjects['SCHEDULE:YEAR']
+    scheduleWeek = idf.idfobjects['SCHEDULE:WEEK:DAILY']
+    scheduleDay = idf.idfobjects['SCHEDULE:DAY:INTERVAL']
+    peoples = idf.idfobjects['PEOPLE']
+    lights = idf.idfobjects['LIGHTS']
+    equipments = idf.idfobjects['ELECTRICEQUIPMENT']
+
+    schedule_names = []
+    schedule_values = []
+    for obj in idf.idfobjects:
+        for bunch in idf.idfobjects[obj]:
+            try:
+                s = Schedule(idf, sch_name=bunch.Name,
+                             start_day_of_the_week=idf.day_of_week_for_start_day)
+
+                values = s.get_schedule_values()
+                if values:
+                    schedule_names.append(bunch.Name)
+                    schedule_values.append(values)
+
+            except:
+                pass
 
     # Write data from IDF file to T3D file
     start_time = time.time()

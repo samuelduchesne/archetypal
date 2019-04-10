@@ -21,7 +21,7 @@ def test_trnbuild_from_idf_parallel(scratch_then_cache, config):
 
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
-    in_dict = {os.path.basename(file): {'idf': file,
+    in_dict = {os.path.basename(file): {'idf_file': file,
                                         'output_folder': None} for
                file in files}
 

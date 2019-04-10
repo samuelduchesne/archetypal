@@ -118,7 +118,7 @@ def recursive_len(item):
         return 1
 
 
-def convert_idf_to_t3d(idf, output_folder=None):
+def convert_idf_to_t3d(idf_file, output_folder=None):
     """ Convert IDF file to T3D file to be able to load it in TRNBuild
 
     Args:
@@ -131,8 +131,8 @@ def convert_idf_to_t3d(idf, output_folder=None):
     """
     start_time = time.time()
     # Load IDF file(s)
-    idf_file = ar.load_idf(idf)
-    idf_file = idf_file[os.path.basename(idf)]
+    idf_dict = ar.load_idf(idf_file)
+    idf = idf_dict[os.path.basename(idf_file)]
     log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
         lg.INFO, name="CoverterLog", filename="CoverterLog", avoid_console=True)
 
@@ -487,8 +487,9 @@ def convert_idf_to_t3d(idf, output_folder=None):
         for element in weekSch:
             indiceSchElement = [p for p, s in enumerate(scheduleDay) if
                                 element == s.Name]
-            power = round(float(scheduleDay[indiceSchElement[0]].Value_Until_Time_1),
-                          4)
+            power = round(
+                float(scheduleDay[indiceSchElement[0]].Value_Until_Time_1),
+                4)
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(
             power * radFract) +

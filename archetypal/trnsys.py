@@ -117,6 +117,18 @@ def recursive_len(item):
     else:
         return 1
 
+def rotate(l, n):
+    """
+
+    Args:
+        l (list): list to rotate
+        n (int): number to shift list to the left
+
+    Returns (list): list shifted
+
+    """
+    return l[n:] + l[:n]
+
 
 def convert_idf_to_t3d(idf_file, output_folder=None):
     """ Convert IDF file to T3D file to be able to load it in TRNBuild

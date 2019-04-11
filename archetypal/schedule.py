@@ -158,7 +158,7 @@ class Schedule(object):
         num_of_daily_schedules = int(len(values.fieldvalues[2:]) / 2)
 
         for i in range(num_of_daily_schedules):
-            day_type = values['DayType_List_{}'.format(i+1)].lower()
+            day_type = values['DayType_List_{}'.format(i + 1)].lower()
             how = self.field_set(day_type, slicer_)
 
             # Loop through days and replace with day:schedule values
@@ -167,7 +167,7 @@ class Schedule(object):
                     freq='D')):
                 if not day.empty:
                     day.loc[:] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i+1)])
+                        values["ScheduleDay_Name_{}".format(i + 1)])
                     days.append(day)
             new = pd.concat(days)
             slicer_.update(pd.Series([True] * len(new.index), index=new.index))
@@ -480,7 +480,8 @@ class Schedule(object):
                     freq='168H')):
                 if not week.empty:
                     try:
-                        week.loc[:] = self.get_schedule_values(week_day_schedule_name)
+                        week.loc[:] = self.get_schedule_values(
+                            week_day_schedule_name)
                     except ValueError:
                         week.loc[:] = self.get_schedule_values(
                             week_day_schedule_name)[0:len(week)]
@@ -489,35 +490,7 @@ class Schedule(object):
             new = pd.concat(weeks)
             hourly_values.update(new)
             start_date += timedelta(days=days)
-        # print(hourly_values)
 
-        # from_day = 0
-        # for i in range(num_of_weekly_schedules):
-        #     week_day_schedule_name = values[
-        #         'ScheduleWeek_Name_{}'.format(i + 1)]
-        #     start_month = values['Start_Month_{}'.format(i + 1)]
-        #     end_month = values['End_Month_{}'.format(i + 1)]
-        #     start_day = values['Start_Day_{}'.format(i + 1)]
-        #     end_day = values['End_Day_{}'.format(i + 1)]
-        #
-        #     start_date = datetime.strptime(
-        #         '{}/{}/{}'.format(self.year, start_month, start_day),
-        #         '%Y/%m/%d')
-        #     end_date = datetime.strptime('{}/{}/{}'.format(self.year, end_month,
-        #                                                    end_day),
-        #                                  '%Y/%m/%d')
-        #     days = (end_date - start_date).days + 1
-        #     subset = hourly_values[from_day:from_day + days, ...]
-        #     # 7 list for 7 days of the week
-        #     hourly_values_for_the_week = self.get_schedule_values(
-        #         week_day_schedule_name)
-        #     hourly_values_for_the_week = np.array(
-        #         hourly_values_for_the_week).reshape(-1, 24)
-        #     hourly_values_for_the_week = np.resize(hourly_values_for_the_week,
-        #                                            subset.shape)
-        #     hourly_values[from_day:from_day + days, ...] = \
-        #         hourly_values_for_the_week
-        #     from_day += days
         return hourly_values.values
 
     def get_schedule_values(self, sch_name=None):

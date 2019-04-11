@@ -146,7 +146,7 @@ class Schedule(object):
         """'schedule:week:compact'"""
         import calendar
         c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
-        start_date = c.monthdatescalendar(2018, 1)[0][0]  # first day of
+        start_date = c.monthdatescalendar(self.year, 1)[0][0]  # first day of
         # first week
         idx = pd.date_range(start=start_date, periods=168, freq='1H')
         slicer_ = pd.Series([False] * (len(idx)), index=idx)
@@ -304,6 +304,8 @@ class Schedule(object):
 
     def get_compact_ep_schedule_values(self, sch_name=None):
         """'schedule:compact'"""
+        import calendar
+
         if sch_name is None:
             sch_name = self.schName
 
@@ -311,13 +313,15 @@ class Schedule(object):
         field_sets = ['through', 'for', 'interpolate', 'until', 'value']
         fields = values.fieldvalues[3:]
 
-        start_date = str(self.year) + '/1/1'
+        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
+        start_date = c.monthdatescalendar(self.year, 1)[0][0]  # first day of
+
         index = pd.date_range(start=start_date, periods=8760, freq='1H')
         zeros = np.zeros(8760)
 
         series = pd.Series(zeros, index=index)
         from datetime import datetime, timedelta
-        from_day = datetime.strptime(start_date, '%Y/%m/%d')
+        from_day = datetime(start_date.year, start_date.month, start_date.day)
         from_time = '00:00'
         for field in fields:
             if any([spe in field.lower() for spe in field_sets]):
@@ -443,7 +447,7 @@ class Schedule(object):
         import calendar
         # place holder for 365 days
         c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
-        start_date = c.monthdatescalendar(2018, 1)[0][0]  # first day of
+        start_date = c.monthdatescalendar(self.year, 1)[0][0]  # first day of
         start_date = datetime(start_date.year, start_date.month, start_date.day)
         # first week
         idx = pd.date_range(start=start_date, periods=8760, freq='1H')

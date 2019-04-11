@@ -367,7 +367,7 @@ class Schedule(object):
 
                     # # update in memory slice. In case `For: AllOtherDays` is
                     # # used in another Field
-                    # self.sliced_day_.loc[from_day:to_day] = True
+                    # self.slicer_.loc[from_day:to_day] = True
 
                     # add one day to from_day in preparation for the next
                     # Through condition.
@@ -417,7 +417,7 @@ class Schedule(object):
                     # If the therm `Value: ` field is used, we will catch it
                     # here.
                     # update in memory slice
-                    self.sliced_day_.loc[all_conditions] = True
+                    self.slicer_.loc[all_conditions] = True
                     series[all_conditions] = value
                 else:
                     # Do something here before looping to the next Field
@@ -429,7 +429,7 @@ class Schedule(object):
                 series[all_conditions] = value
 
                 # update in memory slice
-                self.sliced_day_.loc[all_conditions] = True
+                self.slicer_.loc[all_conditions] = True
 
         return series.to_list()
 
@@ -483,10 +483,10 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
         if self.is_schedule(sch_name):
-            # First create self.sliced_day_
+            # First create self.slicer_
             self.index_ = pd.date_range(start='{}/1/1'.format(self.year),
                                         periods=8760, freq='1H')
-            self.sliced_day_ = pd.Series(range(8760), index=self.index_).apply(
+            self.slicer_ = pd.Series(range(8760), index=self.index_).apply(
                 lambda x: False)
 
             schedule_values = self.idf.get_schedule_data_by_name(
@@ -739,7 +739,7 @@ class Schedule(object):
                 day.month == month][nth]
         return datetime(date.year, date.month, date.day)
 
-    def field_set(self, field):
+    def field_set(self, field, slicer_=None):
         """helper function to return the proper slicer depending on the
         field_set
 
@@ -749,6 +749,7 @@ class Schedule(object):
          CustomDay1, CustomDay2, AllOtherDays
 
         Args:
+            slicer_:
             field: """
 
         if field.lower() == 'weekdays':
@@ -762,7 +763,10 @@ class Schedule(object):
             return pd.IndexSlice[:]
         elif field.lower() == 'allotherdays':
             # return unused days. Uses the global variable `sliced_day`
-            return ~self.sliced_day_
+            if slicer_ is not None:
+                return ~slicer_
+            else:
+                return ~self.slicer_
         elif field.lower() == 'sunday':
             # return only sundays
             return lambda x: x.index.dayofweek == 6
@@ -833,7 +837,7 @@ def special_day(schedule, field):
             from_date = schedule.date_field_interpretation(data)
             to_date = from_date + timedelta(days=duration)
             slice.append(
-                schedule.sliced_day_.loc[from_date:to_date])
+                schedule.slicer_.loc[from_date:to_date])
         import operator
         return conjunction(*slice, logical=operator.and_).index
     else:

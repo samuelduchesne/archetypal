@@ -546,6 +546,39 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
                      ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : CATEGORY=LIGHTS\n')
 
+    # Write SCHEDULES from IDF to lines (T3D)
+    # Get line number where to write
+    scheduleNum = ar.checkStr(lines, 'S c h e d u l e s')
+
+    # Write schedules DAY in lines
+    for i in range(0, len(scheduleDay)):
+        lines.insert(scheduleNum + 1,
+                     '!-SCHEDULE ' + scheduleDay[i].Name + '\n')
+
+        hourList = []
+        valueList = []
+
+
+
+        for j in range(4, len(scheduleDay.list2[i])):
+
+            # Even number of scheduleDay.list2 are the hour of the day
+            if j % 2 == 0:
+                hourList.append(scheduleDay.list2[i][j])
+
+            # Odd number of scheduleDay.list2 are the value of the schedule
+            # until the hour of the day
+            if j % 2 != 0:
+                valueList.append(scheduleDay.list2[i][j])
+
+            lines.insert(scheduleNum + 2,
+                         '!- HOURS= ' + scheduleDay[i].Name + " ".join(
+            str(item) for item in hourList) + '\n')
+
+            lines.insert(scheduleNum + 3,
+                         '!- VALUES= ' + scheduleDay[i].Name + " ".join(
+                             str(item) for item in valueList) + '\n')
+
     # Save file at output_folder
     if output_folder is None:
         # User did not provide an output folder path. We use the default setting

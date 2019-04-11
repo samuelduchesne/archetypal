@@ -1,10 +1,8 @@
 import functools
 import logging as lg
 import uuid
-from collections import deque
 from datetime import datetime, timedelta
 
-import itertools
 import numpy as np
 import pandas as pd
 from archetypal import log, schedule_types
@@ -38,7 +36,7 @@ class Schedule(object):
             self.startDayOfTheWeek = self.idf.day_of_week_for_start_day
 
         self.index_ = None
-        self.sliced_day_ = None
+        self.slicer_ = None
 
     @property
     def all_values(self):
@@ -141,100 +139,42 @@ class Schedule(object):
 
     def get_compact_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:compact'"""
+        import calendar
+        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
+        start_date = c.monthdatescalendar(2018, 1)[0][0]  # first day of
+        # first week
+        idx = pd.date_range(start=start_date, periods=168, freq='1H')
+        slicer_ = pd.Series([False] * (len(idx)), index=idx)
 
         if sch_name is None:
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
 
-        # Create list of days of a year
-        list_of_days = [0, 1, 2, 3, 4, 5, 6]
-        week = deque(list_of_days)
-        week.rotate(-self.startDayOfTheWeek)
-        day_week_list = list(
-            itertools.chain.from_iterable(itertools.repeat(week, 1)))[:7]
+        weekly_schedules = slicer_.apply(lambda x: 0)
+        # update last day of schedule
+        self.endHOY = 168
 
-        # Create dataframe with 2 indexes (1 for day of the week and 1 for the
-        # hour of the day) to store values of schedules
-        idx = pd.MultiIndex.from_product([day_week_list, list(range(0, 24))],
-                                         names=['WeekDay', 'Hour'])
-        col = ['Schedule Values']
-        df = pd.DataFrame(index=idx, columns=col)
+        num_of_daily_schedules = int(len(values.fieldvalues[2:]) / 2)
 
-        for i in range(1, int((len(values.fieldvalues) - 1) / 2) + 1):
+        for i in range(num_of_daily_schedules):
+            day_type = values['DayType_List_{}'.format(i+1)].lower()
+            how = self.field_set(day_type, slicer_)
 
-            # Get DayType_List values and write schedule values in dataframe
-            if values["DayType_List_{}".format(i)].lower() == 'sunday':
-                day_number = 0
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
+            # Loop through days and replace with day:schedule values
+            days = []
+            for name, day in weekly_schedules.loc[how].groupby(pd.Grouper(
+                    freq='D')):
+                if not day.empty:
+                    day.loc[:] = self.get_schedule_values(
+                        values["ScheduleDay_Name_{}".format(i+1)])
+                    days.append(day)
+            new = pd.concat(days)
+            slicer_.update(pd.Series([True] * len(new.index), index=new.index))
+            slicer_ = slicer_.apply(lambda x: x == True)
+            weekly_schedules.update(new)
 
-            elif values["DayType_List_{}".format(i)].lower() == 'monday':
-                day_number = 1
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'tuesday':
-                day_number = 2
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'wednesday':
-                day_number = 3
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'thursday':
-                day_number = 4
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'friday':
-                day_number = 5
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'saturday':
-                day_number = 6
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'weekdays':
-                day_numbers = [1, 2, 3, 4, 5]
-                for day_number in day_numbers:
-                    for j in range(0, 24):
-                        df.loc[(day_number, j)] = self.get_schedule_values(
-                            values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'weekends':
-                day_numbers = [6, 0]
-                for day_number in day_numbers:
-                    for j in range(0, 24):
-                        df.loc[(day_number, j)] = self.get_schedule_values(
-                            values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'allotherdays':
-                for day in day_week_list:
-                    for j in range(0, 24):
-                        if df.loc[(day, j)].isna().values[0]:
-                            df.loc[(day, j)] = self.get_schedule_values(
-                                values["ScheduleDay_Name_{}".format(i)])[j]
-                        else:
-                            continue
-
-            else:
-                raise NotImplementedError(
-                    'Archetypal does not support "{}" currently'.format(
-                        values["DayType_List_{}".format(i)]))
-
-        return df['Schedule Values'].tolist()
+        return weekly_schedules.values
 
     def get_daily_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:daily'"""

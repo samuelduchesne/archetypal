@@ -1237,8 +1237,8 @@ class IDF(eppy.modeleditor.IDF):
 
     def get_schedule_data_by_name(self, sch_name):
         """Returns the epbunch of a particular schedule name"""
-        # [self.idfobjects[obj] for obj in self.idfobjects]
-        for obj in self.idfobjects:
+
+        for obj in schedule_types:
             for bunch in self.idfobjects[obj]:
                 try:
                     if bunch.Name.upper() == sch_name.upper():
@@ -1294,3 +1294,10 @@ class IDF(eppy.modeleditor.IDF):
             return calendar.SATURDAY
         else:
             return 0
+
+
+schedule_types = ['Schedule:Day:Hourly'.upper(),
+                  'Schedule:Day:Interval'.upper(), 'Schedule:Day:List'.upper(),
+                  'Schedule:Week:Daily'.upper(), 'Schedule:Year'.upper(),
+                  'Schedule:Week:Compact'.upper(), 'Schedule:Compact'.upper(),
+                  'Schedule:Constant'.upper(), 'Schedule:File'.upper()]

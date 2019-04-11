@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import itertools
 import numpy as np
 import pandas as pd
-from archetypal import log
+from archetypal import log, schedule_types
 
 
 class Schedule(object):
@@ -933,10 +933,3 @@ def how(how):
         return 'max'
     else:
         return 'max'
-
-
-schedule_types = ['Schedule:Day:Hourly'.upper(),
-                  'Schedule:Day:Interval'.upper(), 'Schedule:Day:List'.upper(),
-                  'Schedule:Week:Daily'.upper(), 'Schedule:Year'.upper(),
-                  'Schedule:Week:Compact'.upper(), 'Schedule:Compact'.upper(),
-                  'Schedule:Constant'.upper(), 'Schedule:File'.upper()]

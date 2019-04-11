@@ -65,17 +65,23 @@ def test_schedules_in_necb_specific(config):
 
 
 def test_make_umi_schedule(config):
-    """Tests only 'elecTDVfromCZ06com' schedule name"""
+    """Tests only a single schedule name"""
+    import matplotlib.pyplot as plt
     idf_file = './input_data/schedules/schedules.idf'
     idf_file = copy_file(idf_file)[0]
     idf = load_idf(idf_file)['schedules.idf']
 
-    s = Schedule(idf, sch_name='POFF')
+    s = Schedule(idf, sch_name='CoolingCoilAvailSched',
+                 start_day_of_the_week=0)
     ep_year, ep_weeks, ep_days = s.to_year_week_day()
 
-    new = Schedule(idf, sch_name=ep_year.Name)
+    new = Schedule(idf, sch_name=ep_year.Name,
+                   start_day_of_the_week=s.startDayOfTheWeek)
 
     print(len(s.all_values))
     print(len(new.all_values))
-
+    ax = s.plot(slice=('2018/01/01 00:00', '2018/01/07'), legend=True)
+    new.plot(slice=('2018/01/01 00:00', '2018/01/07'), ax=ax, legend=True)
+    plt.show()
+    assert len(s.all_values) == len(new.all_values)
     assert (new.all_values == s.all_values).all()

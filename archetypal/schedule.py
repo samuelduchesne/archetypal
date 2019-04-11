@@ -1,10 +1,8 @@
 import functools
 import logging as lg
 import uuid
-from collections import deque
 from datetime import datetime, timedelta
 
-import itertools
 import numpy as np
 import pandas as pd
 from archetypal import log, schedule_types
@@ -38,12 +36,17 @@ class Schedule(object):
             self.startDayOfTheWeek = self.idf.day_of_week_for_start_day
 
         self.index_ = None
-        self.sliced_day_ = None
+        self.slicer_ = None
+        self.values = None
 
     @property
     def all_values(self):
-        """returns the 8760 values array (list)"""
-        return self.get_schedule_values(self.schName)
+        """returns the values array"""
+        if self.values is None:
+            self.values = self.get_schedule_values(self.schName)
+            return self.values
+        else:
+            return self.values
 
     @property
     def max(self):
@@ -141,100 +144,42 @@ class Schedule(object):
 
     def get_compact_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:compact'"""
+        import calendar
+        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
+        start_date = c.monthdatescalendar(self.year, 1)[0][0]  # first day of
+        # first week
+        idx = pd.date_range(start=start_date, periods=168, freq='1H')
+        slicer_ = pd.Series([False] * (len(idx)), index=idx)
 
         if sch_name is None:
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
 
-        # Create list of days of a year
-        list_of_days = [0, 1, 2, 3, 4, 5, 6]
-        week = deque(list_of_days)
-        week.rotate(-self.startDayOfTheWeek)
-        day_week_list = list(
-            itertools.chain.from_iterable(itertools.repeat(week, 1)))[:7]
+        weekly_schedules = slicer_.apply(lambda x: 0)
+        # update last day of schedule
+        self.endHOY = 168
 
-        # Create dataframe with 2 indexes (1 for day of the week and 1 for the
-        # hour of the day) to store values of schedules
-        idx = pd.MultiIndex.from_product([day_week_list, list(range(0, 24))],
-                                         names=['WeekDay', 'Hour'])
-        col = ['Schedule Values']
-        df = pd.DataFrame(index=idx, columns=col)
+        num_of_daily_schedules = int(len(values.fieldvalues[2:]) / 2)
 
-        for i in range(1, int((len(values.fieldvalues) - 1) / 2) + 1):
+        for i in range(num_of_daily_schedules):
+            day_type = values['DayType_List_{}'.format(i + 1)].lower()
+            how = self.field_set(day_type, slicer_)
 
-            # Get DayType_List values and write schedule values in dataframe
-            if values["DayType_List_{}".format(i)].lower() == 'sunday':
-                day_number = 0
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
+            # Loop through days and replace with day:schedule values
+            days = []
+            for name, day in weekly_schedules.loc[how].groupby(pd.Grouper(
+                    freq='D')):
+                if not day.empty:
+                    day.loc[:] = self.get_schedule_values(
+                        values["ScheduleDay_Name_{}".format(i + 1)])
+                    days.append(day)
+            new = pd.concat(days)
+            slicer_.update(pd.Series([True] * len(new.index), index=new.index))
+            slicer_ = slicer_.apply(lambda x: x == True)
+            weekly_schedules.update(new)
 
-            elif values["DayType_List_{}".format(i)].lower() == 'monday':
-                day_number = 1
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'tuesday':
-                day_number = 2
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'wednesday':
-                day_number = 3
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'thursday':
-                day_number = 4
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'friday':
-                day_number = 5
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'saturday':
-                day_number = 6
-                for j in range(0, 24):
-                    df.loc[(day_number, j)] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'weekdays':
-                day_numbers = [1, 2, 3, 4, 5]
-                for day_number in day_numbers:
-                    for j in range(0, 24):
-                        df.loc[(day_number, j)] = self.get_schedule_values(
-                            values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'weekends':
-                day_numbers = [6, 0]
-                for day_number in day_numbers:
-                    for j in range(0, 24):
-                        df.loc[(day_number, j)] = self.get_schedule_values(
-                            values["ScheduleDay_Name_{}".format(i)])[j]
-
-            elif values["DayType_List_{}".format(i)].lower() == 'allotherdays':
-                for day in day_week_list:
-                    for j in range(0, 24):
-                        if df.loc[(day, j)].isna().values[0]:
-                            df.loc[(day, j)] = self.get_schedule_values(
-                                values["ScheduleDay_Name_{}".format(i)])[j]
-                        else:
-                            continue
-
-            else:
-                raise NotImplementedError(
-                    'Archetypal does not support "{}" currently'.format(
-                        values["DayType_List_{}".format(i)]))
-
-        return df['Schedule Values'].tolist()
+        return weekly_schedules.values
 
     def get_daily_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:daily'"""
@@ -359,6 +304,8 @@ class Schedule(object):
 
     def get_compact_ep_schedule_values(self, sch_name=None):
         """'schedule:compact'"""
+        import calendar
+
         if sch_name is None:
             sch_name = self.schName
 
@@ -366,13 +313,15 @@ class Schedule(object):
         field_sets = ['through', 'for', 'interpolate', 'until', 'value']
         fields = values.fieldvalues[3:]
 
-        start_date = str(self.year) + '/1/1'
+        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
+        start_date = c.monthdatescalendar(self.year, 1)[0][0]  # first day of
+
         index = pd.date_range(start=start_date, periods=8760, freq='1H')
         zeros = np.zeros(8760)
 
         series = pd.Series(zeros, index=index)
         from datetime import datetime, timedelta
-        from_day = datetime.strptime(start_date, '%Y/%m/%d')
+        from_day = datetime(start_date.year, start_date.month, start_date.day)
         from_time = '00:00'
         for field in fields:
             if any([spe in field.lower() for spe in field_sets]):
@@ -427,7 +376,7 @@ class Schedule(object):
 
                     # # update in memory slice. In case `For: AllOtherDays` is
                     # # used in another Field
-                    # self.sliced_day_.loc[from_day:to_day] = True
+                    # self.slicer_.loc[from_day:to_day] = True
 
                     # add one day to from_day in preparation for the next
                     # Through condition.
@@ -477,7 +426,7 @@ class Schedule(object):
                     # If the therm `Value: ` field is used, we will catch it
                     # here.
                     # update in memory slice
-                    self.sliced_day_.loc[all_conditions] = True
+                    self.slicer_.loc[all_conditions] = True
                     series[all_conditions] = value
                 else:
                     # Do something here before looping to the next Field
@@ -489,14 +438,20 @@ class Schedule(object):
                 series[all_conditions] = value
 
                 # update in memory slice
-                self.sliced_day_.loc[all_conditions] = True
+                self.slicer_.loc[all_conditions] = True
 
         return series.to_list()
 
     def get_yearly_ep_schedule_values(self, sch_name=None):
         """'schedule:year'"""
+        import calendar
         # place holder for 365 days
-        hourly_values = np.zeros([365, 24])
+        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
+        start_date = c.monthdatescalendar(self.year, 1)[0][0]  # first day of
+        start_date = datetime(start_date.year, start_date.month, start_date.day)
+        # first week
+        idx = pd.date_range(start=start_date, periods=8760, freq='1H')
+        hourly_values = pd.Series([0] * (len(idx)), index=idx)
 
         # update last day of schedule
         self.endHOY = 8760
@@ -508,34 +463,44 @@ class Schedule(object):
 
         # generate weekly schedules
         num_of_weekly_schedules = int(len(values.fieldvalues[3:]) / 5)
-        from_day = 0
+
         for i in range(num_of_weekly_schedules):
             week_day_schedule_name = values[
                 'ScheduleWeek_Name_{}'.format(i + 1)]
+
             start_month = values['Start_Month_{}'.format(i + 1)]
             end_month = values['End_Month_{}'.format(i + 1)]
             start_day = values['Start_Day_{}'.format(i + 1)]
             end_day = values['End_Day_{}'.format(i + 1)]
 
-            start_date = datetime.strptime(
+            start = datetime.strptime(
                 '{}/{}/{}'.format(self.year, start_month, start_day),
                 '%Y/%m/%d')
-            end_date = datetime.strptime('{}/{}/{}'.format(self.year, end_month,
-                                                           end_day),
-                                         '%Y/%m/%d')
-            days = (end_date - start_date).days + 1
-            subset = hourly_values[from_day:from_day + days, ...]
-            # 7 list for 7 days of the week
-            hourly_values_for_the_week = self.get_schedule_values(
-                week_day_schedule_name)
-            hourly_values_for_the_week = np.array(
-                hourly_values_for_the_week).reshape(-1, 24)
-            hourly_values_for_the_week = np.resize(hourly_values_for_the_week,
-                                                   subset.shape)
-            hourly_values[from_day:from_day + days, ...] = \
-                hourly_values_for_the_week
-            from_day += days
-        return hourly_values.ravel()
+            end = datetime.strptime(
+                '{}/{}/{}'.format(self.year, end_month, end_day),
+                '%Y/%m/%d')
+            days = (end - start).days + 1
+
+            end_date = start_date + timedelta(days=days) + timedelta(hours=23)
+            how = pd.IndexSlice[start_date:end_date]
+
+            weeks = []
+            for name, week in hourly_values.loc[how].groupby(pd.Grouper(
+                    freq='168H')):
+                if not week.empty:
+                    try:
+                        week.loc[:] = self.get_schedule_values(
+                            week_day_schedule_name)
+                    except ValueError:
+                        week.loc[:] = self.get_schedule_values(
+                            week_day_schedule_name)[0:len(week)]
+                    finally:
+                        weeks.append(week)
+            new = pd.concat(weeks)
+            hourly_values.update(new)
+            start_date += timedelta(days=days)
+
+        return hourly_values.values
 
     def get_schedule_values(self, sch_name=None):
         """Main function that returns the schedule values"""
@@ -543,10 +508,10 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
         if self.is_schedule(sch_name):
-            # First create self.sliced_day_
+            # First create self.slicer_
             self.index_ = pd.date_range(start='{}/1/1'.format(self.year),
                                         periods=8760, freq='1H')
-            self.sliced_day_ = pd.Series(range(8760), index=self.index_).apply(
+            self.slicer_ = pd.Series(range(8760), index=self.index_).apply(
                 lambda x: False)
 
             schedule_values = self.idf.get_schedule_data_by_name(
@@ -659,7 +624,7 @@ class Schedule(object):
         list_day_of_week = ['Sunday', 'Monday', 'Tuesday',
                             'Wednesday', 'Thursday', 'Friday', 'Saturday']
         ordered_day_n = np.array([6, 0, 1, 2, 3, 4, 5])
-        ordered_day_n = np.roll(ordered_day_n, self.startDayOfTheWeek)
+        ordered_day_n = np.roll(ordered_day_n, self.startDayOfTheWeek + 1)
         ep_weeks = []
         for week_id in dict_week:
             ep_week = self.idf.add_object(
@@ -799,7 +764,7 @@ class Schedule(object):
                 day.month == month][nth]
         return datetime(date.year, date.month, date.day)
 
-    def field_set(self, field):
+    def field_set(self, field, slicer_=None):
         """helper function to return the proper slicer depending on the
         field_set
 
@@ -809,6 +774,7 @@ class Schedule(object):
          CustomDay1, CustomDay2, AllOtherDays
 
         Args:
+            slicer_:
             field: """
 
         if field.lower() == 'weekdays':
@@ -822,7 +788,10 @@ class Schedule(object):
             return pd.IndexSlice[:]
         elif field.lower() == 'allotherdays':
             # return unused days. Uses the global variable `sliced_day`
-            return ~self.sliced_day_
+            if slicer_ is not None:
+                return ~slicer_
+            else:
+                return ~self.slicer_
         elif field.lower() == 'sunday':
             # return only sundays
             return lambda x: x.index.dayofweek == 6
@@ -893,7 +862,7 @@ def special_day(schedule, field):
             from_date = schedule.date_field_interpretation(data)
             to_date = from_date + timedelta(days=duration)
             slice.append(
-                schedule.sliced_day_.loc[from_date:to_date])
+                schedule.slicer_.loc[from_date:to_date])
         import operator
         return conjunction(*slice, logical=operator.and_).index
     else:

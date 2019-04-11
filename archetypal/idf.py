@@ -3,14 +3,13 @@ import glob
 import hashlib
 import logging as lg
 import os
-import time
 from subprocess import CalledProcessError
 from subprocess import check_call
 
 import eppy.modeleditor
 import pandas as pd
+import time
 from archetypal import settings
-from archetypal.schedule import schedule_types
 from archetypal.utils import log, cd, EnergyPlusProcessError
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
@@ -1257,17 +1256,18 @@ class IDF(eppy.modeleditor.IDF):
             (dict of eppy.bunch_subclass.EpBunch): the schedules with their
                 name as a key
         """
+        from archetypal import schedule_types
         if yearly_only:
             schedule_types = ['Schedule:Year'.upper(),
                               'Schedule:Compact'.upper(),
                               'Schedule:Constant'.upper(),
                               'Schedule:File'.upper()]
         scheds = {}
-        for obj in self.idfobjects:
-            for bunch in self.idfobjects[obj]:
+        for sched_type in schedule_types:
+            for sched in self.idfobjects[sched_type]:
                 try:
-                    if bunch.fieldvalues[0].upper() in schedule_types:
-                        scheds[bunch.Name] = bunch
+                    if sched.fieldvalues[0].upper() in schedule_types:
+                        scheds[sched.Name] = sched
                 except:
                     pass
         return scheds

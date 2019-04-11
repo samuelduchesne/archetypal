@@ -1245,8 +1245,21 @@ class IDF(eppy.modeleditor.IDF):
                 except:
                     pass
 
-    def get_all_schedules(self):
-        """Returns all schedule ep_objects in a dict with their name as a key"""
+    def get_all_schedules(self, yearly_only=False):
+        """Returns all schedule ep_objects in a dict with their name as a key
+
+        Args:
+            yearly_only (bool): If True, return only yearly schedules
+
+        Returns:
+            (dict of eppy.bunch_subclass.EpBunch): the schedules with their
+                name as a key
+        """
+        if yearly_only:
+            schedule_types = ['Schedule:Year'.upper(),
+                              'Schedule:Compact'.upper(),
+                              'Schedule:Constant'.upper(),
+                              'Schedule:File'.upper()]
         scheds = {}
         for obj in self.idfobjects:
             for bunch in self.idfobjects[obj]:

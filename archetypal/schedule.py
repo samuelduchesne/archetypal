@@ -1,12 +1,13 @@
-import itertools
+import functools
 import logging as lg
 import uuid
 from collections import deque
 from datetime import datetime, timedelta
 
+import itertools
 import numpy as np
 import pandas as pd
-from archetypal import log
+from archetypal import log, schedule_types
 
 
 class Schedule(object):
@@ -781,7 +782,7 @@ class Schedule(object):
             nth = -1  # Use the last one
         else:
             nth = re.findall(r'\d+', nth)  # use the nth one
-            nth = int(nth[0])
+            nth = int(nth[0]) - 1  # python is zero-based
 
         # parse the dayofweek eg. monday
         dayofweek = datetime.strptime(dayofweek.capitalize(),
@@ -843,10 +844,69 @@ class Schedule(object):
         elif field.lower() == 'saturday':
             # return only Saturdays
             return lambda x: x.index.dayofweek == 5
+        elif field.lower() == 'summerdesignday':
+            # return design_day(self, field)
+            return pd.IndexSlice[:]
+        elif field.lower() == 'winterdesignday':
+            # return design_day(self, field)
+            return pd.IndexSlice[:]
+        elif field.lower() == 'holiday' or field.lower() == 'holidays':
+            field = 'holiday'
+            return special_day(self, field)
         else:
             raise NotImplementedError(
                 'Archetypal does not yet support The '
                 'Field_set "{}"'.format(field))
+
+
+def design_day(schedule, field):
+    # try to get the SizingPeriod:DesignDay for the corresponding Day
+    # Type
+    dds = schedule.idf.idfobjects['SizingPeriod:DesignDay'.upper()]
+    dd = [dd for dd in dds if dd.Day_Type.lower() == field]
+    if len(dd) > 0:
+        # should have found only one design day matching the Day Type
+
+        data = [dd[0].Month, dd[0].Day_of_Month]
+        date = '/'.join([str(item).zfill(2) for item in data])
+        date = schedule.date_field_interpretation(date)
+        return lambda x: x.index == date
+    else:
+        msg = 'Could not find a "SizingPeriod:DesignDay" object ' \
+              'needed for schedule "{}" with Day Type "{}"'.format(
+            schedule.schName, field.capitalize()
+        )
+        raise ValueError(msg)
+
+
+def special_day(schedule, field):
+    # try to get the RunPeriodControl:SpecialDays for the corresponding Day
+    # Type
+    dds = schedule.idf.idfobjects['RunPeriodControl:SpecialDays'.upper()]
+    dd = [dd for dd in dds if dd.Special_Day_Type.lower() == field]
+    if len(dd) > 0:
+        slice = []
+        for dd in dd:
+            # can have more than one special day types
+            data = dd.Start_Date
+            duration = dd.Duration
+            from_date = schedule.date_field_interpretation(data)
+            to_date = from_date + timedelta(days=duration)
+            slice.append(
+                schedule.sliced_day_.loc[from_date:to_date])
+        import operator
+        return conjunction(*slice, logical=operator.and_).index
+    else:
+        msg = 'Could not find a "SizingPeriod:DesignDay" object ' \
+              'needed for schedule "{}" with Day Type "{}"'.format(
+            schedule.schName, field.capitalize()
+        )
+        raise ValueError(msg)
+
+
+def conjunction(*conditions, logical=np.logical_and):
+    """Applies a logical function on n conditions"""
+    return functools.reduce(logical, conditions)
 
 
 def separator(sep):
@@ -873,10 +933,3 @@ def how(how):
         return 'max'
     else:
         return 'max'
-
-
-schedule_types = ['Schedule:Day:Hourly'.upper(),
-                  'Schedule:Day:Interval'.upper(), 'Schedule:Day:List'.upper(),
-                  'Schedule:Week:Daily'.upper(), 'Schedule:Year'.upper(),
-                  'Schedule:Week:Compact'.upper(), 'Schedule:Compact'.upper(),
-                  'Schedule:Constant'.upper(), 'Schedule:File'.upper()]

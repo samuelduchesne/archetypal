@@ -10,6 +10,7 @@ from subprocess import check_call
 import eppy.modeleditor
 import pandas as pd
 from archetypal import settings
+from archetypal.schedule import schedule_types
 from archetypal.utils import log, cd, EnergyPlusProcessError
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
@@ -778,7 +779,7 @@ def parallel_process(in_dict, function, processors, use_kwargs=True):
                                                                **kwargs)}
         else:
             futures = {a: function(in_dict[a]) for a in tqdm(in_dict,
-                                                              **kwargs)}
+                                                             **kwargs)}
     else:
         with ProcessPoolExecutor(max_workers=processors) as pool:
             if use_kwargs:
@@ -1192,7 +1193,7 @@ class IDF(eppy.modeleditor.IDF):
 
     """
 
-    def add_object(self, ep_object, **kwargs):
+    def add_object(self, ep_object, save=True, **kwargs):
         """Add a new object to an idf file. The function will test if the
         object exists to prevent duplicates.
 
@@ -1217,9 +1218,15 @@ class IDF(eppy.modeleditor.IDF):
             # Remove the newly created object since the function
             # `idf.newidfobject()` automatically adds it
             self.removeidfobject(new_object)
+            if not save:
+                return []
         else:
-            log('object "{}" added to the idf file'.format(ep_object))
-            self.save()
+            if save:
+                log('object "{}" added to the idf file'.format(ep_object))
+                self.save()
+            else:
+                # return the ep_object
+                return new_object
 
     def get_schedule_type_limits_data_by_name(self, sch_name):
         """Returns the 'ScheduleTypeLimits' for a particular schedule name"""
@@ -1238,25 +1245,37 @@ class IDF(eppy.modeleditor.IDF):
                 except:
                     pass
 
+    def get_all_schedules(self):
+        """Returns all schedule ep_objects in a dict with their name as a key"""
+        scheds = {}
+        for obj in self.idfobjects:
+            for bunch in self.idfobjects[obj]:
+                try:
+                    if bunch.fieldvalues[0].upper() in schedule_types:
+                        scheds[bunch.Name] = bunch
+                except:
+                    pass
+        return scheds
+
     @property
     def day_of_week_for_start_day(self):
         """Get day of week for start day for the first found RUNPERIOD"""
-
+        import calendar
         day = self.idfobjects["RUNPERIOD"][0]["Day_of_Week_for_Start_Day"]
 
         if day.lower() == "sunday":
-            return 0
+            return calendar.SUNDAY
         elif day.lower() == "monday":
-            return 1
+            return calendar.MONDAY
         elif day.lower() == "tuesday":
-            return 2
+            return calendar.TUESDAY
         elif day.lower() == "wednesday":
-            return 3
+            return calendar.WEDNESDAY
         elif day.lower() == "thursday":
-            return 4
+            return calendar.THURSDAY
         elif day.lower() == "friday":
-            return 5
+            return calendar.FRIDAY
         elif day.lower() == "saturday":
-            return 6
+            return calendar.SATURDAY
         else:
             return 0

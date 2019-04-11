@@ -1,4 +1,4 @@
-from archetypal import Schedule, load_idf
+from archetypal import Schedule, load_idf, copy_file
 
 
 def test_day_schedule(config):
@@ -10,7 +10,8 @@ def test_day_schedule(config):
         for bunch in idf['schedules.idf'].idfobjects[obj]:
             try:
                 s = Schedule(idf['schedules.idf'], sch_name=bunch.Name,
-                             start_day_of_the_week=idf['schedules.idf'].day_of_week_for_start_day)
+                             start_day_of_the_week=idf[
+                                 'schedules.idf'].day_of_week_for_start_day)
 
                 values = s.get_schedule_values()
                 print('{name}\tType:{type}\t[{len}]\tValues:{'
@@ -28,6 +29,50 @@ def test_file_schedule(config):
     idf_file = './input_data/schedules/schedules.idf'
     idf = load_idf(idf_file)['schedules.idf']
 
-    s = Schedule(idf, sch_name='elecTDVfromCZ06com')
+    s = Schedule(idf, sch_name='POFF')
 
     assert len(s.all_values) == 8760
+
+
+def test_schedules_in_necb(config):
+    idf_file = './input_data/regular/NECB 2011-MediumOffice-NECB HDD ' \
+               'Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf'
+    idfs = load_idf(idf_file)
+    for key in idfs:
+        idf = idfs[key]
+        # get all possible shcedules
+        schedules = idf.get_all_schedules()
+        for sched in schedules:
+            schedules[sched] = Schedule(idf, sch_name=sched).all_values
+        print(schedules)
+
+
+def test_schedules_in_necb_specific(config):
+    idf_file = './input_data/regular/NECB 2011-MediumOffice-NECB HDD ' \
+               'Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf'
+    idfs = load_idf(idf_file)
+    import matplotlib.pyplot as plt
+    for key in idfs:
+        idf = idfs[key]
+        s = Schedule(idf, sch_name='NECB-A-Thermostat Setpoint-Heating',
+                     start_day_of_the_week=0)
+        s.plot(slice=('2018/01/02', '2018/01/03'), drawstyle="steps-post")
+        plt.show()
+
+
+def test_make_umi_schedule(config):
+    """Tests only 'elecTDVfromCZ06com' schedule name"""
+    idf_file = './input_data/schedules/schedules.idf'
+    idf_file = copy_file(idf_file)[0]
+    idf = load_idf(idf_file)['schedules.idf']
+
+
+    s = Schedule(idf, sch_name='POFF')
+    ep_year, ep_weeks, ep_days = s.to_year_week_day()
+
+    new = Schedule(idf, sch_name=ep_year.Name)
+
+    print(len(s.all_values))
+    print(len(new.all_values))
+
+    assert (new.all_values == s.all_values).all()

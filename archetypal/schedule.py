@@ -37,11 +37,16 @@ class Schedule(object):
 
         self.index_ = None
         self.slicer_ = None
+        self.values = None
 
     @property
     def all_values(self):
-        """returns the 8760 values array (list)"""
-        return self.get_schedule_values(self.schName)
+        """returns the values array"""
+        if self.values is None:
+            self.values = self.get_schedule_values(self.schName)
+            return self.values
+        else:
+            return self.values
 
     @property
     def max(self):

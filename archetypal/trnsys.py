@@ -145,7 +145,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
 
     # Clean names of idf objects (e.g. 'MATERIAL')
     start_time = time.time()
-    # clear_name_idf_objects(idf)
+    clear_name_idf_objects(idf)
     log("Cleaned IDF object names in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="CoverterLog",
         filename="CoverterLog")
@@ -171,6 +171,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
 
     # Get yearly, weekly and daily schedules
     # (schedule:year, schedule:week:daily, schedule:day:hourly)
+    start_time = time.time()
     schedule_names = []
     schedules = idf.get_all_schedules(yearly_only=True)
 
@@ -184,6 +185,10 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
         schedules[schedule_name]['year'] = year
         schedules[schedule_name]['weeks'] = weeks
         schedules[schedule_name]['days'] = days
+
+    log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
+        time.time() - start_time), lg.INFO, name="CoverterLog",
+        filename="CoverterLog")
 
     # Write data from IDF file to T3D file
     start_time = time.time()
@@ -550,34 +555,35 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
     # Get line number where to write
     scheduleNum = ar.checkStr(lines, 'S c h e d u l e s')
 
-    # Write schedules DAY in lines
-    for i in range(0, len(scheduleDay)):
-        lines.insert(scheduleNum + 1,
-                     '!-SCHEDULE ' + scheduleDay[i].Name + '\n')
+    hour_list = list(range(25))
+    week_list = list(range(1,8))
+    # Write schedules DAY and WEEK in lines
+    for schedule_name in schedule_names:
+        for period in ['weeks', 'days']:
+            for i in range(0, len(schedules[schedule_name][period])):
 
-        hourList = []
-        valueList = []
+                lines.insert(scheduleNum + 1,
+                             '!-SCHEDULE ' + schedules[schedule_name][period][i].Name  + '\n')
 
+                if period == 'days':
+                    lines.insert(scheduleNum + 2,
+                                 '!- HOURS= ' + " ".join(
+                                     str(item) for item in hour_list) + '\n')
 
+                    lines.insert(scheduleNum + 3,
+                                 '!- VALUES= ' + " ".join(
+                                     str(item) for item in schedules[schedule_name][period][i].fieldvalues[3:]) + '\n')
 
-        for j in range(4, len(scheduleDay.list2[i])):
+                if period == 'weeks':
+                    lines.insert(scheduleNum + 2,
+                                 '!- DAYS= ' + " ".join(
+                                     str(item) for item in week_list) + '\n')
 
-            # Even number of scheduleDay.list2 are the hour of the day
-            if j % 2 == 0:
-                hourList.append(scheduleDay.list2[i][j])
-
-            # Odd number of scheduleDay.list2 are the value of the schedule
-            # until the hour of the day
-            if j % 2 != 0:
-                valueList.append(scheduleDay.list2[i][j])
-
-            lines.insert(scheduleNum + 2,
-                         '!- HOURS= ' + scheduleDay[i].Name + " ".join(
-            str(item) for item in hourList) + '\n')
-
-            lines.insert(scheduleNum + 3,
-                         '!- VALUES= ' + scheduleDay[i].Name + " ".join(
-                             str(item) for item in valueList) + '\n')
+                    lines.insert(scheduleNum + 3,
+                                 '!- VALUES= ' + " ".join(
+                                     str(item) for item in
+                                     rotate(schedules[schedule_name][period][
+                                         i].fieldvalues[2:9]))+ '\n')
 
     # Save file at output_folder
     if output_folder is None:

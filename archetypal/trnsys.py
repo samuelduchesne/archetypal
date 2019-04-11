@@ -36,32 +36,35 @@ def clear_name_idf_objects(idfFile):
         # For all objects in Category
         for epObject in epObjects:
             # Do not take fenestration, to be treated later
-            # fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
-                            #s in epObject.Name.lower()]
-            # if not fenestration:
             try:
-                old_name = epObject.Name
-                # clean old name by removing spaces, "-", period, "{", "}", doubleunderscore
-                new_name = old_name.replace(" ", "_").replace("-", "_").replace(
-                    ".", "_").replace("{", "").replace("}", "").replace("__",
-                                                                        "_")
-                if len(new_name) > 13:
-                    # Trnbuild doen not like names longer than 13 characters
-                    # Replace with unique ID
-                    new_name = uuid.uuid4().hex[:13]
-
-                    # Make sure uuid does not already exist
-                    while new_name in uniqueList:
+                fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
+                                s in epObject.Name.lower()]
+            except:
+                fenestration = []
+            if not fenestration:
+                try:
+                    old_name = epObject.Name
+                    # clean old name by removing spaces, "-", period, "{", "}", doubleunderscore
+                    new_name = old_name.replace(" ", "_").replace("-", "_").replace(
+                        ".", "_").replace("{", "").replace("}", "").replace("__",
+                                                                            "_")
+                    if len(new_name) > 13:
+                        # Trnbuild doen not like names longer than 13 characters
+                        # Replace with unique ID
                         new_name = uuid.uuid4().hex[:13]
 
-                    uniqueList.append(new_name)
+                        # Make sure uuid does not already exist
+                        while new_name in uniqueList:
+                            new_name = uuid.uuid4().hex[:13]
 
-                # print("changed layer {} with {}".format(old_name, new_name))
-                modeleditor.rename(idfFile, obj, old_name, new_name)
-            except:
-                pass
-            # else:
-                # continue
+                        uniqueList.append(new_name)
+
+                    # print("changed layer {} with {}".format(old_name, new_name))
+                    modeleditor.rename(idfFile, obj, old_name, new_name)
+                except:
+                    pass
+            else:
+                continue
 
 
 def zone_origin(zone_object):
@@ -595,7 +598,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
                                  '!- VALUES= ' + " ".join(
                                      str(item) for item in
                                      rotate(schedules[schedule_name][period][
-                                         i].fieldvalues[2:9]))+ '\n')
+                                         i].fieldvalues[2:9], 1))+ '\n')
 
     # Save file at output_folder
     if output_folder is None:
@@ -605,7 +608,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
     if not os.path.isdir(output_folder):
         os.mkdir(output_folder)
 
-    with open(os.path.join(output_folder, "T3D_" + os.path.basename(idf)),
+    with open(os.path.join(output_folder, "T3D_" + list(idf_dict.keys())[0]),
               "w") as converted_file:
         for line in lines:
             converted_file.write(str(line))

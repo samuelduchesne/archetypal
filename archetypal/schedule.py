@@ -658,7 +658,7 @@ class Schedule(object):
         # Create idf_objects for schedule:week:daily
         list_day_of_week = ['Sunday', 'Monday', 'Tuesday',
                             'Wednesday', 'Thursday', 'Friday', 'Saturday']
-        ordered_day_n = np.array([0, 1, 2, 3, 4, 5, 6])
+        ordered_day_n = np.array([6, 0, 1, 2, 3, 4, 5])
         ordered_day_n = np.roll(ordered_day_n, self.startDayOfTheWeek)
         ep_weeks = []
         for week_id in dict_week:

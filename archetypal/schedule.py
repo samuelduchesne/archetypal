@@ -603,9 +603,9 @@ class Schedule(object):
             ep_days.append(ep_day)
 
         # create unique weeks from unique days
-        unique_weeks, nws = np.unique(full_year[:364 * 24, ...].reshape(-1,
-                                                                        168),
-                                      axis=0, return_inverse=True)
+        unique_weeks, nwsi, nws, count = np.unique(
+            full_year[:364 * 24, ...].reshape(-1, 168), return_index=True,
+            axis=0, return_inverse=True, return_counts=True)
 
         # Appending unique weeks in dictionary with name and values of weeks as
         # keys
@@ -650,10 +650,15 @@ class Schedule(object):
             )
             ep_weeks.append(ep_week)
 
+        import itertools
         blocks = {}
         from_date = datetime(self.year, 1, 1)
-        for i, (week_id, count) in enumerate(
-                zip(dict_week.keys(), np.bincount(nws))):
+        bincount = np.bincount(nws)
+        week_order = {i:v for i, v in enumerate(np.array(
+            [key for key, group in itertools.groupby(nws + 1) if key]) - 1)}
+        for i, (week_n, count) in enumerate(
+                zip(week_order, [bincount[week_order[i]] for i in week_order])):
+            week_id = list(dict_week)[week_order[i]]
             to_date = from_date + timedelta(days=int(count * 7))
             blocks[week_id] = {}
             blocks[week_id]['from_day'] = from_date.day
@@ -663,7 +668,7 @@ class Schedule(object):
             from_date = to_date + timedelta(days=1)
 
             # If this is the last block, force end of year
-            if i == len(np.bincount(nws)) - 1:
+            if i == len(bincount) - 1:
                 blocks[week_id]['end_day'] = 31
                 blocks[week_id]['end_month'] = 12
 

@@ -435,8 +435,14 @@ class Schedule(object):
 
     def get_yearly_ep_schedule_values(self, sch_name=None):
         """'schedule:year'"""
+        import calendar
         # place holder for 365 days
-        hourly_values = np.zeros([365, 24])
+        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
+        start_date = c.monthdatescalendar(2018, 1)[0][0]  # first day of
+        start_date = datetime(start_date.year, start_date.month, start_date.day)
+        # first week
+        idx = pd.date_range(start=start_date, periods=8760, freq='1H')
+        hourly_values = pd.Series([0] * (len(idx)), index=idx)
 
         # update last day of schedule
         self.endHOY = 8760
@@ -448,34 +454,71 @@ class Schedule(object):
 
         # generate weekly schedules
         num_of_weekly_schedules = int(len(values.fieldvalues[3:]) / 5)
-        from_day = 0
+
         for i in range(num_of_weekly_schedules):
             week_day_schedule_name = values[
                 'ScheduleWeek_Name_{}'.format(i + 1)]
+
             start_month = values['Start_Month_{}'.format(i + 1)]
             end_month = values['End_Month_{}'.format(i + 1)]
             start_day = values['Start_Day_{}'.format(i + 1)]
             end_day = values['End_Day_{}'.format(i + 1)]
 
-            start_date = datetime.strptime(
+            start = datetime.strptime(
                 '{}/{}/{}'.format(self.year, start_month, start_day),
                 '%Y/%m/%d')
-            end_date = datetime.strptime('{}/{}/{}'.format(self.year, end_month,
-                                                           end_day),
-                                         '%Y/%m/%d')
-            days = (end_date - start_date).days + 1
-            subset = hourly_values[from_day:from_day + days, ...]
-            # 7 list for 7 days of the week
-            hourly_values_for_the_week = self.get_schedule_values(
-                week_day_schedule_name)
-            hourly_values_for_the_week = np.array(
-                hourly_values_for_the_week).reshape(-1, 24)
-            hourly_values_for_the_week = np.resize(hourly_values_for_the_week,
-                                                   subset.shape)
-            hourly_values[from_day:from_day + days, ...] = \
-                hourly_values_for_the_week
-            from_day += days
-        return hourly_values.ravel()
+            end = datetime.strptime(
+                '{}/{}/{}'.format(self.year, end_month, end_day),
+                '%Y/%m/%d')
+            days = (end - start).days + 1
+
+            end_date = start_date + timedelta(days=days) + timedelta(hours=23)
+            how = pd.IndexSlice[start_date:end_date]
+
+            weeks = []
+            for name, week in hourly_values.loc[how].groupby(pd.Grouper(
+                    freq='168H')):
+                if not week.empty:
+                    try:
+                        week.loc[:] = self.get_schedule_values(week_day_schedule_name)
+                    except ValueError:
+                        week.loc[:] = self.get_schedule_values(
+                            week_day_schedule_name)[0:len(week)]
+                    finally:
+                        weeks.append(week)
+            new = pd.concat(weeks)
+            hourly_values.update(new)
+            start_date += timedelta(days=days)
+        # print(hourly_values)
+
+        # from_day = 0
+        # for i in range(num_of_weekly_schedules):
+        #     week_day_schedule_name = values[
+        #         'ScheduleWeek_Name_{}'.format(i + 1)]
+        #     start_month = values['Start_Month_{}'.format(i + 1)]
+        #     end_month = values['End_Month_{}'.format(i + 1)]
+        #     start_day = values['Start_Day_{}'.format(i + 1)]
+        #     end_day = values['End_Day_{}'.format(i + 1)]
+        #
+        #     start_date = datetime.strptime(
+        #         '{}/{}/{}'.format(self.year, start_month, start_day),
+        #         '%Y/%m/%d')
+        #     end_date = datetime.strptime('{}/{}/{}'.format(self.year, end_month,
+        #                                                    end_day),
+        #                                  '%Y/%m/%d')
+        #     days = (end_date - start_date).days + 1
+        #     subset = hourly_values[from_day:from_day + days, ...]
+        #     # 7 list for 7 days of the week
+        #     hourly_values_for_the_week = self.get_schedule_values(
+        #         week_day_schedule_name)
+        #     hourly_values_for_the_week = np.array(
+        #         hourly_values_for_the_week).reshape(-1, 24)
+        #     hourly_values_for_the_week = np.resize(hourly_values_for_the_week,
+        #                                            subset.shape)
+        #     hourly_values[from_day:from_day + days, ...] = \
+        #         hourly_values_for_the_week
+        #     from_day += days
+        return hourly_values.values
 
     def get_schedule_values(self, sch_name=None):
         """Main function that returns the schedule values"""

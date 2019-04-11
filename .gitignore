@@ -78,7 +78,6 @@ main-test\.py
 *.rdd
 *.shd
 *.sql
-*.csv
 *.htm
 *.dbg
 *.eso

@@ -6,22 +6,19 @@ def test_day_schedule(config):
     idf_file = './input_data/schedules/schedules.idf'
     idf = load_idf(idf_file)
 
-    for obj in idf['schedules.idf'].idfobjects:
-        for bunch in idf['schedules.idf'].idfobjects[obj]:
-            try:
-                s = Schedule(idf['schedules.idf'], sch_name=bunch.Name,
-                             start_day_of_the_week=idf[
-                                 'schedules.idf'].day_of_week_for_start_day)
+    scheds = idf['schedules.idf'].get_all_schedules()
 
-                values = s.get_schedule_values()
-                print('{name}\tType:{type}\t[{len}]\tValues:{'
-                      'values}'.format(
-                    name=s.schName,
-                    type=s.schType,
-                    values=values,
-                    len=len(values)))
-            except:
-                pass
+    for sched in scheds:
+        s = Schedule(idf['schedules.idf'], sch_name=scheds[sched].Name,
+                          start_day_of_the_week=idf[
+                              'schedules.idf'].day_of_week_for_start_day)
+        values = s.all_values
+        print('{name}\tType:{type}\t[{len}]\tValues:{'
+              'values}'.format(
+            name=s.schName,
+            type=s.schType,
+            values=values,
+            len=len(values)))
 
 
 def test_file_schedule(config):
@@ -29,22 +26,29 @@ def test_file_schedule(config):
     idf_file = './input_data/schedules/schedules.idf'
     idf = load_idf(idf_file)['schedules.idf']
 
-    s = Schedule(idf, sch_name='POFF')
+    s = Schedule(idf, sch_name='Daytime Ventilation')
 
     assert len(s.all_values) == 8760
 
 
 def test_schedules_in_necb(config):
+    import pandas as pd
     idf_file = './input_data/regular/NECB 2011-MediumOffice-NECB HDD ' \
                'Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf'
     idfs = load_idf(idf_file)
     for key in idfs:
         idf = idfs[key]
-        # get all possible shcedules
+        # get all possible schedules
         schedules = idf.get_all_schedules()
         for sched in schedules:
-            schedules[sched] = Schedule(idf, sch_name=sched).all_values
-        print(schedules)
+            s = Schedule(idf, sch_name=sched)
+            values = s.all_values
+            print('{name}\tType:{type}\t[{len}]\tValues:{'
+                  'values}'.format(
+                name=s.schName,
+                type=s.schType,
+                values=values,
+                len=len(values)))
 
 
 def test_schedules_in_necb_specific(config):
@@ -65,7 +69,6 @@ def test_make_umi_schedule(config):
     idf_file = './input_data/schedules/schedules.idf'
     idf_file = copy_file(idf_file)[0]
     idf = load_idf(idf_file)['schedules.idf']
-
 
     s = Schedule(idf, sch_name='POFF')
     ep_year, ep_weeks, ep_days = s.to_year_week_day()

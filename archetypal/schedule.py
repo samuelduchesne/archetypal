@@ -164,43 +164,43 @@ class Schedule(object):
 
             # Get DayType_List values and write schedule values in dataframe
             if values["DayType_List_{}".format(i)].lower() == 'sunday':
-                day_number = 0 + self.startDayOfTheWeek
+                day_number = 0
                 for j in range(0, 24):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]
 
             elif values["DayType_List_{}".format(i)].lower() == 'monday':
-                day_number = 1 + self.startDayOfTheWeek
+                day_number = 1
                 for j in range(0, 24):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]
 
             elif values["DayType_List_{}".format(i)].lower() == 'tuesday':
-                day_number = 2 + self.startDayOfTheWeek
+                day_number = 2
                 for j in range(0, 24):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]
 
             elif values["DayType_List_{}".format(i)].lower() == 'wednesday':
-                day_number = 3 + self.startDayOfTheWeek
+                day_number = 3
                 for j in range(0, 24):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]
 
             elif values["DayType_List_{}".format(i)].lower() == 'thursday':
-                day_number = 4 + self.startDayOfTheWeek
+                day_number = 4
                 for j in range(0, 24):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]
 
             elif values["DayType_List_{}".format(i)].lower() == 'friday':
-                day_number = 5 + self.startDayOfTheWeek
+                day_number = 5
                 for j in range(0, 24):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]
 
             elif values["DayType_List_{}".format(i)].lower() == 'saturday':
-                day_number = 6 + self.startDayOfTheWeek
+                day_number = 6
                 for j in range(0, 24):
                     df.loc[(day_number, j)] = self.get_schedule_values(
                         values["ScheduleDay_Name_{}".format(i)])[j]

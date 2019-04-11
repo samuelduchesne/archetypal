@@ -642,7 +642,7 @@ class Schedule(object):
         list_day_of_week = ['Sunday', 'Monday', 'Tuesday',
                             'Wednesday', 'Thursday', 'Friday', 'Saturday']
         ordered_day_n = np.array([6, 0, 1, 2, 3, 4, 5])
-        ordered_day_n = np.roll(ordered_day_n, self.startDayOfTheWeek)
+        ordered_day_n = np.roll(ordered_day_n, self.startDayOfTheWeek + 1)
         ep_weeks = []
         for week_id in dict_week:
             ep_week = self.idf.add_object(

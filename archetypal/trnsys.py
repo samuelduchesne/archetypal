@@ -145,7 +145,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
 
     # Clean names of idf objects (e.g. 'MATERIAL')
     start_time = time.time()
-    clear_name_idf_objects(idf)
+    # clear_name_idf_objects(idf)
     log("Cleaned IDF object names in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="CoverterLog",
         filename="CoverterLog")
@@ -169,21 +169,21 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
     lights = idf.idfobjects['LIGHTS']
     equipments = idf.idfobjects['ELECTRICEQUIPMENT']
 
+    # Get yearly, weekly and daily schedules
+    # (schedule:year, schedule:week:daily, schedule:day:hourly)
     schedule_names = []
-    schedule_values = []
-    for obj in idf.idfobjects:
-        for bunch in idf.idfobjects[obj]:
-            try:
-                s = Schedule(idf, sch_name=bunch.Name,
-                             start_day_of_the_week=idf.day_of_week_for_start_day)
+    schedules = idf.get_all_schedules(yearly_only=True)
 
-                values = s.get_schedule_values()
-                if values:
-                    schedule_names.append(bunch.Name)
-                    schedule_values.append(values)
+    for schedule_name in schedules:
+        s = Schedule(idf, sch_name=schedule_name,
+                     start_day_of_the_week=idf.day_of_week_for_start_day)
 
-            except:
-                pass
+        schedule_names.append(schedule_name)
+        schedules[schedule_name] = {}
+        year, weeks, days = s.to_year_week_day()
+        schedules[schedule_name]['year'] = year
+        schedules[schedule_name]['weeks'] = weeks
+        schedules[schedule_name]['days'] = days
 
     # Write data from IDF file to T3D file
     start_time = time.time()

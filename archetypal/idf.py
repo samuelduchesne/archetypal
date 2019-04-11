@@ -10,8 +10,8 @@ from subprocess import check_call
 import eppy.modeleditor
 import pandas as pd
 from archetypal import settings
-from archetypal.utils import log, cd, EnergyPlusProcessError
 from archetypal.schedule import schedule_types
+from archetypal.utils import log, cd, EnergyPlusProcessError
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run, paths_from_version
@@ -781,7 +781,7 @@ def parallel_process(in_dict, function, processors, use_kwargs=True):
                                                                **kwargs)}
         else:
             futures = {a: function(in_dict[a]) for a in tqdm(in_dict,
-                                                              **kwargs)}
+                                                             **kwargs)}
     else:
         with ProcessPoolExecutor(max_workers=processors) as pool:
             if use_kwargs:
@@ -1195,7 +1195,7 @@ class IDF(eppy.modeleditor.IDF):
 
     """
 
-    def add_object(self, ep_object, **kwargs):
+    def add_object(self, ep_object, save=True, **kwargs):
         """Add a new object to an idf file. The function will test if the
         object exists to prevent duplicates.
 
@@ -1220,9 +1220,15 @@ class IDF(eppy.modeleditor.IDF):
             # Remove the newly created object since the function
             # `idf.newidfobject()` automatically adds it
             self.removeidfobject(new_object)
+            if not save:
+                return []
         else:
-            log('object "{}" added to the idf file'.format(ep_object))
-            self.save()
+            if save:
+                log('object "{}" added to the idf file'.format(ep_object))
+                self.save()
+            else:
+                # return the ep_object
+                return new_object
 
     def get_schedule_type_limits_data_by_name(self, sch_name):
         """Returns the 'ScheduleTypeLimits' for a particular schedule name"""

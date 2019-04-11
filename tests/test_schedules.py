@@ -1,4 +1,4 @@
-from archetypal import Schedule, load_idf
+from archetypal import Schedule, load_idf, copy_file
 
 
 def test_day_schedule(config):
@@ -63,9 +63,16 @@ def test_schedules_in_necb_specific(config):
 def test_make_umi_schedule(config):
     """Tests only 'elecTDVfromCZ06com' schedule name"""
     idf_file = './input_data/schedules/schedules.idf'
+    idf_file = copy_file(idf_file)[0]
     idf = load_idf(idf_file)['schedules.idf']
 
-    s = Schedule(idf, sch_name='On Peak 2')
-    ep_objs = s.to_year_week_day()
 
-    assert len(s.all_values) == 8760
+    s = Schedule(idf, sch_name='POFF')
+    ep_year, ep_weeks, ep_days = s.to_year_week_day()
+
+    new = Schedule(idf, sch_name=ep_year.Name)
+
+    print(len(s.all_values))
+    print(len(new.all_values))
+
+    assert (new.all_values == s.all_values).all()

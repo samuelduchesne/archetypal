@@ -1,7 +1,8 @@
 import itertools
 import logging as lg
+import uuid
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -94,7 +95,7 @@ class Schedule(object):
             slice = pd.IndexSlice[:]
         elif len(slice) > 1:
             slice = pd.IndexSlice[slice[0]:slice[1]]
-        ax = series.loc[slice].plot(**kwargs)
+        ax = series.loc[slice].plot(**kwargs, label=self.schName)
         return ax
 
     def get_interval_day_ep_schedule_values(self, sch_name=None):
@@ -397,8 +398,8 @@ class Schedule(object):
                             f_set = field.capitalize()
                             value = field[len(field) + 1:].strip()
                         except:
-                            msg = 'The schedule "{sch}" contains a Field that ' \
-                                  'is not understood: "{field}"'.format(
+                            msg = 'The schedule "{sch}" contains a Field ' \
+                                  'that is not understood: "{field}"'.format(
                                 sch=self.schName,
                                 field=field)
                             raise ValueError(msg)
@@ -611,38 +612,112 @@ class Schedule(object):
         Returns: epbunch
             'Schedule:Year', 'Schedule:Week:Daily', 'Schedule:Day:Hourly'
         """
-        # Todo: to_year_week_day()
-        # {'week1':{'from_date', 'to_date', 'lisofdays'}}
 
         full_year = np.array(self.all_values)  # array of shape (8760,)
         values = full_year.reshape(-1, 24)  # shape (365, 24)
 
-        # find unique lines, somehow
-
-        # create days
+        # create unique days
         unique_days, nds = np.unique(values, axis=0, return_inverse=True)
 
-        # then, create weeks
+        ep_days = []
+        dict_day = {}
+        for unique_day in unique_days:
+            name = 'day_' + str(uuid.uuid4().hex)
+            dict_day[name] = unique_day
+
+            # Create idf_objects for schedule:day:hourly
+            ep_day = self.idf.add_object(
+                ep_object='Schedule:Day:Hourly'.upper(),
+                save=False,
+                **dict(Name=name,
+                       Schedule_Type_Limits_Name=self.schType,
+                       **{'Hour_{}'.format(i + 1): unique_day[i]
+                          for i in range(24)})
+            )
+            ep_days.append(ep_day)
+
+        # create unique weeks from unique days
         unique_weeks, nws = np.unique(full_year[:364 * 24, ...].reshape(-1,
                                                                         168),
                                       axis=0, return_inverse=True)
 
-        for i in list(range(0, 7)):
-            b = unique_weeks[..., 0 * 24:(0 + 1) * 24]
-        # then, create year
+        # Appending unique weeks in dictionary with name and values of weeks as
+        # keys
+        # {'name_week': {'dayName':[]}}
+        dict_week = {}
+        for unique_week in unique_weeks:
+            week_id = 'week_' + str(uuid.uuid4().hex)
+            dict_week[week_id] = {}
+            for i in list(range(0, 7)):
+                day_of_week = unique_week[..., i * 24:(i + 1) * 24]
+                for key in dict_day:
+                    if (day_of_week == dict_day[key]).all():
+                        dict_week[week_id]['day_{}'.format(i)] = key
 
-        # for unique in unique_days:
+        # Create idf_objects for schedule:week:daily
+        list_day_of_week = ['Sunday', 'Monday', 'Tuesday',
+                            'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        ordered_day_n = np.array([0, 1, 2, 3, 4, 5, 6])
+        ordered_day_n = np.roll(ordered_day_n, self.startDayOfTheWeek)
+        ep_weeks = []
+        for week_id in dict_week:
+            ep_week = self.idf.add_object(
+                ep_object='Schedule:Week:Daily'.upper(),
+                save=False,
+                **dict(Name=week_id,
+                       **{'{}_ScheduleDay_Name'.format(
+                           weekday): dict_week[week_id][
+                           'day_{}'.format(i)] for
+                          i, weekday in
+                          zip(ordered_day_n, list_day_of_week)
+                          },
+                       Holiday_ScheduleDay_Name=
+                       dict_week[week_id]['day_0'],
+                       SummerDesignDay_ScheduleDay_Name=
+                       dict_week[week_id]['day_2'],
+                       WinterDesignDay_ScheduleDay_Name=
+                       dict_week[week_id]['day_2'],
+                       CustomDay1_ScheduleDay_Name=
+                       dict_week[week_id]['day_3'],
+                       CustomDay2_ScheduleDay_Name=
+                       dict_week[week_id]['day_6'])
+            )
+            ep_weeks.append(ep_week)
 
-        # self.idf.add_object('Schedule:Year'.upper(),
-        #                   dict(Name="SchName",
-        #                        Schedule_Type_Limits_Name=""),
-        #                        ScheduleWeek_Name_1="",
-        #                        Start_Month_1="",
-        #                        Start_Day_1="",
-        #                        End_Month_1="",
-        #                        End_Day_1="")
+        blocks = {}
+        from_date = datetime(self.year, 1, 1)
+        for i, (week_id, count) in enumerate(
+                zip(dict_week.keys(), np.bincount(nws))):
+            to_date = from_date + timedelta(days=int(count * 7))
+            blocks[week_id] = {}
+            blocks[week_id]['from_day'] = from_date.day
+            blocks[week_id]['end_day'] = to_date.day
+            blocks[week_id]['from_month'] = from_date.month
+            blocks[week_id]['end_month'] = to_date.month
+            from_date = to_date + timedelta(days=1)
 
-        return
+            # If this is the last block, force end of year
+            if i == len(np.bincount(nws)) - 1:
+                blocks[week_id]['end_day'] = 31
+                blocks[week_id]['end_month'] = 12
+
+        new_dict = dict(Name=self.schName + '_',
+                        Schedule_Type_Limits_Name=self.schType)
+        for count, week_id in enumerate(blocks):
+            count += 1
+            new_dict.update({"ScheduleWeek_Name_{}".format(count): week_id,
+                             "Start_Month_{}".format(count):
+                                 blocks[week_id]['from_month'],
+                             "Start_Day_{}".format(count):
+                                 blocks[week_id]['from_day'],
+                             "End_Month_{}".format(count):
+                                 blocks[week_id]['end_month'],
+                             "End_Day_{}".format(count):
+                                 blocks[week_id]['end_day']})
+
+        ep_year = self.idf.add_object(ep_object='Schedule:Year'.upper(),
+                                      save=False, **new_dict)
+        return ep_year, ep_weeks, ep_days
 
     def date_field_interpretation(self, field):
         """Date Field Interpretation
@@ -709,7 +784,8 @@ class Schedule(object):
             nth = int(nth[0])
 
         # parse the dayofweek eg. monday
-        dayofweek = datetime.strptime(dayofweek.capitalize(), '%A').weekday()
+        dayofweek = datetime.strptime(dayofweek.capitalize(),
+                                      '%A').weekday()
 
         # create list of possible days using Calendar
         import calendar
@@ -726,7 +802,8 @@ class Schedule(object):
         """helper function to return the proper slicer depending on the
         field_set
 
-        Weekdays, Weekends, Holidays, Alldays, SummerDesignDay, WinterDesignDay,
+        Weekdays, Weekends, Holidays, Alldays, SummerDesignDay,
+        WinterDesignDay,
          Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday,
          CustomDay1, CustomDay2, AllOtherDays
 
@@ -767,8 +844,9 @@ class Schedule(object):
             # return only Saturdays
             return lambda x: x.index.dayofweek == 5
         else:
-            raise NotImplementedError('Archetypal does not yet support The '
-                                      'Field_set "{}"'.format(field))
+            raise NotImplementedError(
+                'Archetypal does not yet support The '
+                'Field_set "{}"'.format(field))
 
 
 def separator(sep):

@@ -1,5 +1,5 @@
 from archetypal import Schedule, load_idf, copy_file
-
+import time
 
 def test_day_schedule(config):
     """Tests all schedules in the schedule.idf file"""
@@ -9,9 +9,7 @@ def test_day_schedule(config):
     scheds = idf['schedules.idf'].get_all_schedules()
 
     for sched in scheds:
-        s = Schedule(idf['schedules.idf'], sch_name=scheds[sched].Name,
-                          start_day_of_the_week=idf[
-                              'schedules.idf'].day_of_week_for_start_day)
+        s = Schedule(idf['schedules.idf'], sch_name=scheds[sched].Name)
         values = s.all_values
         print('{name}\tType:{type}\t[{len}]\tValues:{'
               'values}'.format(
@@ -26,13 +24,12 @@ def test_file_schedule(config):
     idf_file = './input_data/schedules/schedules.idf'
     idf = load_idf(idf_file)['schedules.idf']
 
-    s = Schedule(idf, sch_name='Daytime Ventilation')
+    s = Schedule(idf, sch_name='POFF')
 
     assert len(s.all_values) == 8760
 
 
 def test_schedules_in_necb(config):
-    import pandas as pd
     idf_file = './input_data/regular/NECB 2011-MediumOffice-NECB HDD ' \
                'Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf'
     idfs = load_idf(idf_file)
@@ -83,5 +80,6 @@ def test_make_umi_schedule(config):
     ax = s.plot(slice=('2018/01/01 00:00', '2018/01/07'), legend=True)
     new.plot(slice=('2018/01/01 00:00', '2018/01/07'), ax=ax, legend=True)
     plt.show()
+    print((s != new).sum())
     assert len(s.all_values) == len(new.all_values)
     assert (new.all_values == s.all_values).all()

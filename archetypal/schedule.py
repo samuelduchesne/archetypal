@@ -366,8 +366,7 @@ class Schedule(object):
                     # `Through` condition
 
                     # First, initialize the slice (all False for now)
-                    # Todo: replace lambda with something quicker
-                    through_conditions = series.apply(lambda x: False)
+                    through_conditions = self.invalidate_condition(series)
 
                     # reset from_time
                     from_time = '00:00'
@@ -391,8 +390,7 @@ class Schedule(object):
                     # reset from_time
                     from_time = '00:00'
 
-                    # Todo: replace lambda with something quicker
-                    for_condition = series.apply(lambda x: False)
+                    for_condition = self.invalidate_condition(series)
                     values = value.split()
                     if len(values) > 1:
                         # if multiple `For`. eg.: For: Weekends Holidays,
@@ -427,8 +425,7 @@ class Schedule(object):
                     raise NotImplementedError('Archetypal does not support '
                                               '"interpolate" statements yet')
                 elif f_set.lower() == 'until':
-                    # Todo: replace lambda with something quicker
-                    until_condition = series.apply(lambda x: False)
+                    until_condition = self.invalidate_condition(series)
                     until_time = str(int(hour) - 1) + ':' + minute
                     until_condition.loc[until_condition.between_time(from_time,
                                                                      until_time).index] = True
@@ -455,6 +452,12 @@ class Schedule(object):
                 slicer_.loc[all_conditions] = True
 
         return series.values
+
+    @staticmethod
+    def invalidate_condition(series):
+        index = series.index
+        periods = len(series)
+        return pd.Series([False] * periods, index=index)
 
     def get_yearly_ep_schedule_values(self, sch_name=None):
         """'schedule:year'"""

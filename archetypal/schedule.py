@@ -16,24 +16,21 @@ class Schedule(object):
         """
 
         Args:
-            idf:
-            sch_name:
-            start_day_of_the_week (int): 0-based day of week
-            base_year (int): The base year of the schedule
+            idf (IDF): IDF object
+            sch_name (str): The schedule name in the idf file
+            start_day_of_the_week (int): 0-based day of week (Monday=0)
+            base_year (int): The base year of the schedule. Defaults to 2018
+                since the first day of that year is a Monday.
         """
         self.idf = idf
-        # self.hb_EPObjectsAUX = sc.sticky["honeybee_EPObjectsAUX"]()
-        # self.lb_preparation = sc.sticky["ladybug_Preparation"]()
         self.schName = sch_name
-        self.startDayOfTheWeek = start_day_of_the_week
+        self.startDayOfTheWeek = self.get_sdow(start_day_of_the_week)
+        self.year = base_year
+        self.startDate = self.start_date()
         self.count = 0
         self.startHOY = 1
         self.endHOY = 24
-        self.year = base_year
         self.unit = "unknown"
-
-        if self.startDayOfTheWeek is None:
-            self.startDayOfTheWeek = self.idf.day_of_week_for_start_day
 
         self.index_ = None
         self.slicer_ = None
@@ -89,9 +86,16 @@ class Schedule(object):
         else:
             return '', '', '', ''
 
+    def start_date(self):
+        """The start date of the schedule. Satisfies `startDayOfTheWeek`"""
+        import calendar
+        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
+        start_date = c.monthdatescalendar(self.year, 1)[0][0]
+        return datetime(start_date.year, start_date.month, start_date.day)
+
     def plot(self, slice=None, **kwargs):
         hourlyvalues = self.all_values
-        index = pd.date_range('{}/01/01'.format(self.year), periods=len(
+        index = pd.date_range(self.startDate, periods=len(
             hourlyvalues),
                               freq='1H')
         series = pd.Series(hourlyvalues, index=index, dtype=float)
@@ -131,7 +135,7 @@ class Schedule(object):
         if numeric_type.strip().lower() == "discrete":
             hourly_values = list(map(int, hourly_values))
 
-        return hourly_values
+        return np.array(hourly_values)
 
     def get_hourly_day_ep_schedule_values(self, sch_name=None):
         """'Schedule:Day:Hourly'"""
@@ -140,15 +144,13 @@ class Schedule(object):
 
         values = self.idf.get_schedule_data_by_name(sch_name.upper())
 
-        return values.fieldvalues[3:]
+        fieldvalues_ = values.fieldvalues[3:]
+
+        return np.array(fieldvalues_)
 
     def get_compact_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:compact'"""
-        import calendar
-        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
-        start_date = c.monthdatescalendar(self.year, 1)[0][0]  # first day of
-        # first week
-        idx = pd.date_range(start=start_date, periods=168, freq='1H')
+        idx = pd.date_range(start=self.startDate, periods=168, freq='1H')
         slicer_ = pd.Series([False] * (len(idx)), index=idx)
 
         if sch_name is None:
@@ -224,7 +226,7 @@ class Schedule(object):
         # shift days earlier by self.startDayOfTheWeek
         hourly_values = np.roll(hourly_values, -self.startDayOfTheWeek, axis=0)
 
-        return list(hourly_values.ravel())
+        return hourly_values.ravel()
 
     def get_list_day_ep_schedule_values(self, sch_name=None):
         """'schedule:day:list'"""
@@ -247,7 +249,7 @@ class Schedule(object):
             except:
                 all_values[i] = 0
         # create a fake index to help us with the resampling
-        index = pd.date_range(start='{}/01/01'.format(self.year),
+        index = pd.date_range(start=self.startDate,
                               periods=(24 * 60) / freq,
                               freq='{}T'.format(freq))
         series = pd.Series(all_values, index=index)
@@ -255,7 +257,7 @@ class Schedule(object):
         # resample series to hourly values and apply resampler function
         series = series.resample('1H').apply(how(method))
 
-        return series.to_list()
+        return series.values
 
     def get_constant_ep_schedule_values(self, sch_name=None):
         """'schedule:constant'"""
@@ -267,13 +269,13 @@ class Schedule(object):
         type_limit_name = values.Schedule_Type_Limits_Name
         lower_limit, upper_limit, numeric_type, unit_type = \
             self.get_schedule_type_limits_data(type_limit_name)
-        hourly_values = list(range(8760))
+        hourly_values = np.arange(8760)
         value = float(values['Hourly_Value'])
         for hour in hourly_values:
             hourly_values[hour] = value
 
         if numeric_type.strip().lower() == 'discrete':
-            hourly_values = list(map(int, hourly_values))
+            hourly_values = hourly_values.astype(int)
 
         return hourly_values
 
@@ -300,11 +302,10 @@ class Schedule(object):
         values = pd.read_csv(file, delimiter=delimeter, skiprows=skip_rows,
                              usecols=col)
 
-        return values.iloc[:, 0].to_list()
+        return values.iloc[:, 0].values
 
     def get_compact_ep_schedule_values(self, sch_name=None):
         """'schedule:compact'"""
-        import calendar
 
         if sch_name is None:
             sch_name = self.schName
@@ -313,15 +314,12 @@ class Schedule(object):
         field_sets = ['through', 'for', 'interpolate', 'until', 'value']
         fields = values.fieldvalues[3:]
 
-        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
-        start_date = c.monthdatescalendar(self.year, 1)[0][0]  # first day of
-
-        index = pd.date_range(start=start_date, periods=8760, freq='1H')
+        index = pd.date_range(start=self.startDate, periods=8760, freq='1H')
         zeros = np.zeros(8760)
 
         series = pd.Series(zeros, index=index)
-        from datetime import datetime, timedelta
-        from_day = datetime(start_date.year, start_date.month, start_date.day)
+
+        from_day = self.startDate
         from_time = '00:00'
         for field in fields:
             if any([spe in field.lower() for spe in field_sets]):
@@ -440,16 +438,13 @@ class Schedule(object):
                 # update in memory slice
                 self.slicer_.loc[all_conditions] = True
 
-        return series.to_list()
+        return series.values
 
     def get_yearly_ep_schedule_values(self, sch_name=None):
         """'schedule:year'"""
-        import calendar
-        # place holder for 365 days
-        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
-        start_date = c.monthdatescalendar(self.year, 1)[0][0]  # first day of
-        start_date = datetime(start_date.year, start_date.month, start_date.day)
         # first week
+
+        start_date = self.startDate
         idx = pd.date_range(start=start_date, periods=8760, freq='1H')
         hourly_values = pd.Series([0] * (len(idx)), index=idx)
 
@@ -509,7 +504,7 @@ class Schedule(object):
             sch_name = self.schName
         if self.is_schedule(sch_name):
             # First create self.slicer_
-            self.index_ = pd.date_range(start='{}/1/1'.format(self.year),
+            self.index_ = pd.date_range(start=self.startDate,
                                         periods=8760, freq='1H')
             self.slicer_ = pd.Series(range(8760), index=self.index_).apply(
                 lambda x: False)
@@ -654,7 +649,7 @@ class Schedule(object):
         blocks = {}
         from_date = datetime(self.year, 1, 1)
         bincount = np.bincount(nws)
-        week_order = {i:v for i, v in enumerate(np.array(
+        week_order = {i: v for i, v in enumerate(np.array(
             [key for key, group in itertools.groupby(nws + 1) if key]) - 1)}
         for i, (week_n, count) in enumerate(
                 zip(week_order, [bincount[week_order[i]] for i in week_order])):

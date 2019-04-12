@@ -5,8 +5,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
-
-from archetypal import log, schedule_types
+from archetypal import log
 
 
 class Schedule(object):
@@ -120,14 +119,14 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name.upper())
+        values = self.idf.get_schedule_data_by_name(sch_name)
         type_limit_name = values.Schedule_Type_Limits_Name
         lower_limit, upper_limit, numeric_type, unit_type = \
             self.get_schedule_type_limits_data(type_limit_name)
 
         number_of_day_sch = int((len(values.fieldvalues) - 3) / 2)
 
-        hourly_values = list(range(24))
+        hourly_values = np.arange(24)
         start_hour = 0
         for i in range(number_of_day_sch):
             value = float(values['Value_Until_Time_{}'.format(i + 1)])
@@ -141,16 +140,16 @@ class Schedule(object):
             start_hour = end_hour
 
         if numeric_type.strip().lower() == "discrete":
-            hourly_values = list(map(int, hourly_values))
+            hourly_values = hourly_values.astype(int)
 
-        return np.array(hourly_values)
+        return hourly_values
 
     def get_hourly_day_ep_schedule_values(self, sch_name=None):
         """'Schedule:Day:Hourly'"""
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name.upper())
+        values = self.idf.get_schedule_data_by_name(sch_name)
 
         fieldvalues_ = values.fieldvalues[3:]
 
@@ -164,7 +163,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name.upper())
+        values = self.idf.get_schedule_data_by_name(sch_name)
 
         weekly_schedules = slicer_.apply(lambda x: 0)
         # update last day of schedule
@@ -196,7 +195,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name.upper())
+        values = self.idf.get_schedule_data_by_name(sch_name)
 
         # 7 list for 7 days of the week
         hourly_values = []
@@ -241,7 +240,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name.upper())
+        values = self.idf.get_schedule_data_by_name(sch_name)
 
         import pandas as pd
         freq = int(values['Minutes_per_Item'])  # Frequency of the values
@@ -250,7 +249,7 @@ class Schedule(object):
 
         # fill a list of available values and pad with zeros (this is safer
         # but should not occur)
-        all_values = list(range(int(24 * 60 / freq)))
+        all_values = np.arange(int(24 * 60 / freq))
         for i in all_values:
             try:
                 all_values[i] = num_values[i]
@@ -272,7 +271,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name.upper())
+        values = self.idf.get_schedule_data_by_name(sch_name)
 
         type_limit_name = values.Schedule_Type_Limits_Name
         lower_limit, upper_limit, numeric_type, unit_type = \
@@ -292,7 +291,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name.upper())
+        values = self.idf.get_schedule_data_by_name(sch_name)
         filename = values['File_Name']
         column = values['Column_Number']
         rows = values['Rows_to_Skip_at_Top']
@@ -318,7 +317,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name.upper())
+        values = self.idf.get_schedule_data_by_name(sch_name)
         field_sets = ['through', 'for', 'interpolate', 'until', 'value']
         fields = values.fieldvalues[3:]
 
@@ -329,6 +328,7 @@ class Schedule(object):
         series = pd.Series(zeros, index=index)
 
         from_day = self.startDate
+        ep_from_day = datetime(self.year, 1, 1)
         from_time = '00:00'
         for field in fields:
             if any([spe in field.lower() for spe in field_sets]):
@@ -366,35 +366,45 @@ class Schedule(object):
                     # `Through` condition
 
                     # First, initialize the slice (all False for now)
-                    through_conditions = series.apply(lambda x: False)
+                    through_conditions = self.invalidate_condition(series)
 
                     # reset from_time
                     from_time = '00:00'
 
-                    # Prepare to_day variable
-                    to_day = self.date_field_interpretation(value)
+                    # Prepare ep_to_day variable
+                    ep_to_day = self.date_field_interpretation(value)
 
-                    # Add one hour because EP is 24H based while pandas is
-                    # 0-based eg.: 00:00 to 23:59 versus 01:01 to 24:00
-                    to_day = to_day + timedelta(hours=23)
+                    # Calculate Timedelta in days
+                    days = (ep_to_day - ep_from_day).days
+                    # Add timedelta to start_date
+                    to_day = from_day + timedelta(days=days) \
+                             + timedelta(hours=23)
 
                     # slice the conditions with the range and apply True
                     through_conditions.loc[from_day:to_day] = True
 
-                    from_day = to_day + timedelta(hours=1)
+                    from_day = to_day + timedelta(hours=-23)
+                    ep_from_day = ep_to_day
                 elif f_set.lower() == 'for':
                     # slice specific days
                     # reset from_time
                     from_time = '00:00'
 
-                    for_condition = series.apply(lambda x: False)
+                    for_condition = self.invalidate_condition(series)
                     values = value.split()
                     if len(values) > 1:
                         # if multiple `For`. eg.: For: Weekends Holidays,
                         # Combine both conditions
                         for value in values:
-                            how = self.field_set(value)
-                            for_condition.loc[how] = True
+                            if value.lower() == 'allotherdays':
+                                # Apply condition to slice
+                                how = self.field_set(value, slicer_)
+                                # Reset though condition
+                                through_conditions = how
+                                for_condition = how
+                            else:
+                                how = self.field_set(value, slicer_)
+                                for_condition.loc[how] = True
                     elif value.lower() == 'allotherdays':
                         # Apply condition to slice
                         how = self.field_set(value, slicer_)
@@ -415,7 +425,7 @@ class Schedule(object):
                     raise NotImplementedError('Archetypal does not support '
                                               '"interpolate" statements yet')
                 elif f_set.lower() == 'until':
-                    until_condition = series.apply(lambda x: False)
+                    until_condition = self.invalidate_condition(series)
                     until_time = str(int(hour) - 1) + ':' + minute
                     until_condition.loc[until_condition.between_time(from_time,
                                                                      until_time).index] = True
@@ -443,6 +453,12 @@ class Schedule(object):
 
         return series.values
 
+    @staticmethod
+    def invalidate_condition(series):
+        index = series.index
+        periods = len(series)
+        return pd.Series([False] * periods, index=index)
+
     def get_yearly_ep_schedule_values(self, sch_name=None):
         """'schedule:year'"""
         # first week
@@ -457,7 +473,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name.upper())
+        values = self.idf.get_schedule_data_by_name(sch_name)
 
         # generate weekly schedules
         num_of_weekly_schedules = int(len(values.fieldvalues[3:]) / 5)
@@ -505,70 +521,56 @@ class Schedule(object):
 
         if sch_name is None:
             sch_name = self.schName
-        if self.is_schedule(sch_name):
-            # First create self.slicer_
-            self.index_ = pd.date_range(start=self.startDate,
-                                        periods=8760, freq='1H')
-            self.slicer_ = pd.Series(range(8760), index=self.index_).apply(
-                lambda x: False)
 
-            schedule_values = self.idf.get_schedule_data_by_name(
-                sch_name.upper())
+        schedule_values = self.idf.get_schedule_data_by_name(sch_name)
 
-            schedule_type = schedule_values.fieldvalues[0].upper()
-            if self.count == 0:
-                self.schType = schedule_type
+        schedule_type = schedule_values.fieldvalues[0].upper()
+        if self.count == 0:
+            self.schType = schedule_type
 
-            self.count += 1
+        self.count += 1
 
-            if schedule_type == "schedule:year".upper():
-                hourly_values = self.get_yearly_ep_schedule_values(
-                    sch_name)
-            elif schedule_type == "schedule:day:interval".upper():
-                hourly_values = self.get_interval_day_ep_schedule_values(
-                    sch_name)
-            elif schedule_type == "schedule:day:hourly".upper():
-                hourly_values = self.get_hourly_day_ep_schedule_values(
-                    sch_name)
-            elif schedule_type == "schedule:day:list".upper():
-                hourly_values = self.get_list_day_ep_schedule_values(
-                    sch_name)
-            elif schedule_type == "schedule:week:compact".upper():
-                hourly_values = self.get_compact_weekly_ep_schedule_values(
-                    sch_name)
-            elif schedule_type == "schedule:week:daily".upper():
-                hourly_values = self.get_daily_weekly_ep_schedule_values(
-                    sch_name)
-            elif schedule_type == "schedule:constant".upper():
-                hourly_values = self.get_constant_ep_schedule_values(
-                    sch_name)
-            elif schedule_type == "schedule:compact".upper():
-                hourly_values = self.get_compact_ep_schedule_values(
-                    sch_name)
-            elif schedule_type == "schedule:file".upper():
-                hourly_values = self.get_file_ep_schedule_values(
-                    sch_name)
-            else:
-                log('Archetypal does not support "{}" currently'.format(
-                    schedule_type), lg.WARNING)
+        if schedule_type == "schedule:year".upper():
+            hourly_values = self.get_yearly_ep_schedule_values(
+                sch_name)
+        elif schedule_type == "schedule:day:interval".upper():
+            hourly_values = self.get_interval_day_ep_schedule_values(
+                sch_name)
+        elif schedule_type == "schedule:day:hourly".upper():
+            hourly_values = self.get_hourly_day_ep_schedule_values(
+                sch_name)
+        elif schedule_type == "schedule:day:list".upper():
+            hourly_values = self.get_list_day_ep_schedule_values(
+                sch_name)
+        elif schedule_type == "schedule:week:compact".upper():
+            hourly_values = self.get_compact_weekly_ep_schedule_values(
+                sch_name)
+        elif schedule_type == "schedule:week:daily".upper():
+            hourly_values = self.get_daily_weekly_ep_schedule_values(
+                sch_name)
+        elif schedule_type == "schedule:constant".upper():
+            hourly_values = self.get_constant_ep_schedule_values(
+                sch_name)
+        elif schedule_type == "schedule:compact".upper():
+            hourly_values = self.get_compact_ep_schedule_values(
+                sch_name)
+        elif schedule_type == "schedule:file".upper():
+            hourly_values = self.get_file_ep_schedule_values(
+                sch_name)
+        else:
+            log('Archetypal does not support "{}" currently'.format(
+                schedule_type), lg.WARNING)
 
-                hourly_values = []
+            hourly_values = []
 
-            return hourly_values
+        return hourly_values
 
     def is_schedule(self, sch_name):
         """Returns True if idfobject is one of 'schedule_types'"""
-        for obj in self.idf.idfobjects:
-            for bunch in self.idf.idfobjects[obj]:
-                try:
-                    if bunch.Name.upper() == sch_name.upper():
-                        obj_type = bunch.fieldvalues[0]
-                        if obj_type.upper() in schedule_types:
-                            return True
-                        else:
-                            return False
-                except:
-                    pass
+        if sch_name.upper() in self.idf.schedules_dict:
+            return True
+        else:
+            return False
 
     def to_year_week_day(self):
         """
@@ -622,7 +624,7 @@ class Schedule(object):
         list_day_of_week = ['Sunday', 'Monday', 'Tuesday',
                             'Wednesday', 'Thursday', 'Friday', 'Saturday']
         ordered_day_n = np.array([6, 0, 1, 2, 3, 4, 5])
-        ordered_day_n = np.roll(ordered_day_n, self.startDayOfTheWeek + 1)
+        ordered_day_n = np.roll(ordered_day_n, self.startDayOfTheWeek)
         ep_weeks = []
         for week_id in dict_week:
             ep_week = self.idf.add_object(
@@ -636,15 +638,15 @@ class Schedule(object):
                           zip(ordered_day_n, list_day_of_week)
                           },
                        Holiday_ScheduleDay_Name=
-                       dict_week[week_id]['day_0'],
+                       dict_week[week_id]['day_6'],
                        SummerDesignDay_ScheduleDay_Name=
-                       dict_week[week_id]['day_2'],
+                       dict_week[week_id]['day_1'],
                        WinterDesignDay_ScheduleDay_Name=
-                       dict_week[week_id]['day_2'],
+                       dict_week[week_id]['day_1'],
                        CustomDay1_ScheduleDay_Name=
-                       dict_week[week_id]['day_3'],
+                       dict_week[week_id]['day_2'],
                        CustomDay2_ScheduleDay_Name=
-                       dict_week[week_id]['day_6'])
+                       dict_week[week_id]['day_5'])
             )
             ep_weeks.append(ep_week)
 
@@ -824,7 +826,7 @@ class Schedule(object):
             return pd.IndexSlice[:]
         elif field.lower() == 'holiday' or field.lower() == 'holidays':
             field = 'holiday'
-            return special_day(self, field)
+            return special_day(self, field, slicer_)
         else:
             raise NotImplementedError(
                 'Archetypal does not yet support The '
@@ -895,7 +897,7 @@ def design_day(schedule, field):
         raise ValueError(msg)
 
 
-def special_day(schedule, field):
+def special_day(schedule, field, slicer_):
     # try to get the RunPeriodControl:SpecialDays for the corresponding Day
     # Type
     dds = schedule.idf.idfobjects['RunPeriodControl:SpecialDays'.upper()]
@@ -908,8 +910,7 @@ def special_day(schedule, field):
             duration = dd.Duration
             from_date = schedule.date_field_interpretation(data)
             to_date = from_date + timedelta(days=duration)
-            slice.append(
-                schedule.slicer_.loc[from_date:to_date])
+            slice.append(slicer_.loc[from_date:to_date])
         import operator
         return conjunction(*slice, logical=operator.and_).index
     else:

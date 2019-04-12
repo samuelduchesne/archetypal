@@ -158,7 +158,7 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
 
     # Determine version of idf file by reading the text file
     if idd_filename is None:
-        idd_filename = {os.path.relpath(file): getiddfile(get_idf_version(file))
+        idd_filename = {os.path.basename(file): getiddfile(get_idf_version(file))
                         for file in
                         eplus_files}
 
@@ -194,7 +194,7 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
                        zip(dirnames, objects_not_found)]
         # runs = []
         runs = {os.path.basename(file): {'file': file,
-                                         'idd_filename': idd_filename[file]}
+                                         'idd_filename': idd_filename[os.path.basename(file)]}
                 for file in eplus_files}
         idfs = parallel_process(runs, eppy_load, processors, use_kwargs=True)
 

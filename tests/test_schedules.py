@@ -71,7 +71,7 @@ def test_make_umi_schedule(config):
     idf_file = copy_file(idf_file)[0]
     idf = load_idf(idf_file)['schedules.idf']
 
-    s = Schedule(idf, sch_name='CoolingCoilAvailSched',
+    s = Schedule(idf, sch_name='POFF',
                  start_day_of_the_week=0)
     ep_year, ep_weeks, ep_days = s.to_year_week_day()
 

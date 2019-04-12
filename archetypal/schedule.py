@@ -832,10 +832,54 @@ class Schedule(object):
                 'Archetypal does not yet support The '
                 'Field_set "{}"'.format(field))
 
+    def __len__(self):
+        """returns the length of all values of the schedule"""
+        return len(self.all_values)
+
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, Schedule):
+            return self.all_values == other.all_values
+        else:
+            raise NotImplementedError
+
+    def __ne__(self, other):
+        return ~(self.__eq__(other))
+
+    def __add__(self, other):
+        if isinstance(other, Schedule):
+            return self.all_values + other.all_values
+        elif isinstance(other, list):
+            return self.all_values + other
+        else:
+            raise NotImplementedError
+
+    def __sub__(self, other):
+        if isinstance(other, Schedule):
+            return self.all_values - other.all_values
+        elif isinstance(other, list):
+            return self.all_values - other
+        else:
+            raise NotImplementedError
+
+    def __mul__(self, other):
+        if isinstance(other, Schedule):
+            return self.all_values * other.all_values
+        elif isinstance(other, list):
+            return self.all_values * other
+        else:
+            raise NotImplementedError
+
+    def get_sdow(self, start_day_of_week):
+        """Returns the start day of the week"""
+        if start_day_of_week is None:
+            return self.idf.day_of_week_for_start_day
+        else:
+            return start_day_of_week
+
 
 def design_day(schedule, field):
-    # try to get the SizingPeriod:DesignDay for the corresponding Day
-    # Type
+    # try to get the SizingPeriod:DesignDay for the corresponding Day Type
     dds = schedule.idf.idfobjects['SizingPeriod:DesignDay'.upper()]
     dd = [dd for dd in dds if dd.Day_Type.lower() == field]
     if len(dd) > 0:

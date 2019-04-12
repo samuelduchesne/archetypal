@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
+
 from archetypal import log, schedule_types
 
 
@@ -33,7 +34,6 @@ class Schedule(object):
         self.unit = "unknown"
 
         self.index_ = None
-        self.slicer_ = None
         self.values = None
 
     @property
@@ -57,8 +57,16 @@ class Schedule(object):
     def mean(self):
         return np.mean(self.all_values)
 
+    @property
+    def series(self):
+        """Returns the schedule values as a pd.Series object with a
+        DateTimeIndex"""
+        index = pd.date_range(start=self.startDate, periods=len(
+            self.all_values), freq='1H')
+        return pd.Series(self.all_values, index=index)
+
     def get_schedule_type_limits_data(self, sch_name):
-        """Returns Scehdule Type Limits data"""
+        """Returns Schedule Type Limits data"""
 
         if sch_name is None:
             sch_name = self.schName
@@ -317,6 +325,7 @@ class Schedule(object):
         index = pd.date_range(start=self.startDate, periods=8760, freq='1H')
         zeros = np.zeros(8760)
 
+        slicer_ = pd.Series([False] * 8760, index=index)
         series = pd.Series(zeros, index=index)
 
         from_day = self.startDate
@@ -372,12 +381,6 @@ class Schedule(object):
                     # slice the conditions with the range and apply True
                     through_conditions.loc[from_day:to_day] = True
 
-                    # # update in memory slice. In case `For: AllOtherDays` is
-                    # # used in another Field
-                    # self.slicer_.loc[from_day:to_day] = True
-
-                    # add one day to from_day in preparation for the next
-                    # Through condition.
                     from_day = to_day + timedelta(hours=1)
                 elif f_set.lower() == 'for':
                     # slice specific days
@@ -394,7 +397,7 @@ class Schedule(object):
                             for_condition.loc[how] = True
                     elif value.lower() == 'allotherdays':
                         # Apply condition to slice
-                        how = self.field_set(value)
+                        how = self.field_set(value, slicer_)
                         # Reset though condition
                         through_conditions = how
                         for_condition = how
@@ -424,7 +427,7 @@ class Schedule(object):
                     # If the therm `Value: ` field is used, we will catch it
                     # here.
                     # update in memory slice
-                    self.slicer_.loc[all_conditions] = True
+                    slicer_.loc[all_conditions] = True
                     series[all_conditions] = value
                 else:
                     # Do something here before looping to the next Field
@@ -436,7 +439,7 @@ class Schedule(object):
                 series[all_conditions] = value
 
                 # update in memory slice
-                self.slicer_.loc[all_conditions] = True
+                slicer_.loc[all_conditions] = True
 
         return series.values
 
@@ -446,7 +449,7 @@ class Schedule(object):
 
         start_date = self.startDate
         idx = pd.date_range(start=start_date, periods=8760, freq='1H')
-        hourly_values = pd.Series([0] * (len(idx)), index=idx)
+        hourly_values = pd.Series([0] * 8760, index=idx)
 
         # update last day of schedule
         self.endHOY = 8760
@@ -480,8 +483,8 @@ class Schedule(object):
             how = pd.IndexSlice[start_date:end_date]
 
             weeks = []
-            for name, week in hourly_values.loc[how].groupby(pd.Grouper(
-                    freq='168H')):
+            for name, week in hourly_values.loc[how].groupby(
+                    pd.Grouper(freq='168H')):
                 if not week.empty:
                     try:
                         week.loc[:] = self.get_schedule_values(
@@ -791,7 +794,7 @@ class Schedule(object):
             if slicer_ is not None:
                 return ~slicer_
             else:
-                return ~self.slicer_
+                raise NotImplementedError
         elif field.lower() == 'sunday':
             # return only sundays
             return lambda x: x.index.dayofweek == 6

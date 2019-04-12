@@ -622,7 +622,7 @@ class Schedule(object):
         list_day_of_week = ['Sunday', 'Monday', 'Tuesday',
                             'Wednesday', 'Thursday', 'Friday', 'Saturday']
         ordered_day_n = np.array([6, 0, 1, 2, 3, 4, 5])
-        ordered_day_n = np.roll(ordered_day_n, self.startDayOfTheWeek + 1)
+        ordered_day_n = np.roll(ordered_day_n, self.startDayOfTheWeek)
         ep_weeks = []
         for week_id in dict_week:
             ep_week = self.idf.add_object(
@@ -636,15 +636,15 @@ class Schedule(object):
                           zip(ordered_day_n, list_day_of_week)
                           },
                        Holiday_ScheduleDay_Name=
-                       dict_week[week_id]['day_0'],
+                       dict_week[week_id]['day_6'],
                        SummerDesignDay_ScheduleDay_Name=
-                       dict_week[week_id]['day_2'],
+                       dict_week[week_id]['day_1'],
                        WinterDesignDay_ScheduleDay_Name=
-                       dict_week[week_id]['day_2'],
+                       dict_week[week_id]['day_1'],
                        CustomDay1_ScheduleDay_Name=
-                       dict_week[week_id]['day_3'],
+                       dict_week[week_id]['day_2'],
                        CustomDay2_ScheduleDay_Name=
-                       dict_week[week_id]['day_6'])
+                       dict_week[week_id]['day_5'])
             )
             ep_weeks.append(ep_week)
 

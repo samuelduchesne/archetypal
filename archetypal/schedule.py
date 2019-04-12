@@ -375,7 +375,7 @@ class Schedule(object):
                     ep_to_day = self.date_field_interpretation(value)
 
                     # Calculate Timedelta in days
-                    days = (ep_to_day - ep_from_day).days
+                    days = (ep_to_day - ep_from_day).days + 1
                     # Add timedelta to start_date
                     to_day = from_day + timedelta(days=days) \
                              + timedelta(hours=23)

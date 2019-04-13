@@ -83,3 +83,26 @@ def test_make_umi_schedule(config):
     print((s != new).sum())
     assert len(s.all_values) == len(new.all_values)
     assert (new.all_values == s.all_values).all()
+
+
+def test_ep_versus_shedule(config):
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    idf_file = './input_data/schedules/schedules.idf'
+    idf_file = copy_file(idf_file)[0]
+    idf = load_idf(idf_file)['schedules.idf']
+
+    s = Schedule(idf, sch_name='POFF',
+                 start_day_of_the_week=0)
+    index = s.series.index
+    epv = pd.read_csv('./input_data/schedules/output_EP.csv').loc[:, 'POFF'].values
+    epv = pd.Series(epv, index=index)
+
+    slice_ = ('2018/04/30 12:00', '2018/05/02 16:00')
+    diff = (epv.values != s.all_values).sum()
+    ax = epv.loc[slice_[0]:slice_[1]].plot(label='E+', legend=True,
+                                           drawstyle='steps-post')
+    s.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post')
+    plt.show()
+    print(diff)

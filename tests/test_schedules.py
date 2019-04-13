@@ -94,7 +94,7 @@ def test_ep_versus_shedule(config):
     idf = load_idf(idf_file)['schedules.idf']
 
     s = Schedule(idf, sch_name='POFF',
-                 start_day_of_the_week=0)
+                 start_day_of_the_week=1)
     index = s.series.index
     epv = pd.read_csv('./input_data/schedules/output_EP.csv').loc[:, 'POFF'].values
     epv = pd.Series(epv, index=index)

@@ -99,10 +99,12 @@ def test_ep_versus_shedule(config):
     epv = pd.read_csv('./input_data/schedules/output_EP.csv').loc[:, 'POFF'].values
     epv = pd.Series(epv, index=index)
 
-    slice_ = ('2018/04/30 12:00', '2018/05/02 16:00')
-    diff = (epv.values != s.all_values).sum()
+    slice_ = ('2018/05/20 12:00', '2018/05/22 12:00')
+    mask = epv.values != s.all_values
+    diff = mask.sum()
     ax = epv.loc[slice_[0]:slice_[1]].plot(label='E+', legend=True,
                                            drawstyle='steps-post')
     s.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post')
     plt.show()
     print(diff)
+    print(s.series[mask])

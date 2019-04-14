@@ -34,6 +34,7 @@ class Schedule(object):
 
         self.index_ = None
         self.values = None
+        self.schType = None
 
     @property
     def all_values(self):
@@ -151,9 +152,11 @@ class Schedule(object):
 
         values = self.idf.get_schedule_data_by_name(sch_name)
 
-        fieldvalues_ = values.fieldvalues[3:]
+        fieldvalues_ = np.array(values.fieldvalues[3:])
 
-        return np.array(fieldvalues_)
+        fieldvalues_ = np.roll(fieldvalues_, shift=-1)
+
+        return fieldvalues_
 
     def get_compact_weekly_ep_schedule_values(self, sch_name=None):
         """'schedule:week:compact'"""
@@ -162,12 +165,16 @@ class Schedule(object):
 
         if sch_name is None:
             sch_name = self.schName
-
+        schedule_values = self.idf.get_schedule_data_by_name(sch_name)
         values = self.idf.get_schedule_data_by_name(sch_name)
 
+        # todo: replace the lambda with something quicker
         weekly_schedules = slicer_.apply(lambda x: 0)
         # update last day of schedule
-        self.endHOY = 168
+
+        if self.count == 0:
+            self.schType = schedule_values
+            self.endHOY = 168
 
         num_of_daily_schedules = int(len(values.fieldvalues[2:]) / 2)
 

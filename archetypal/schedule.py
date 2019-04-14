@@ -438,7 +438,7 @@ class Schedule(object):
                     all_conditions = for_condition & through_conditions & \
                                      until_condition
 
-                    from_time = until_time
+                    from_time = str(int(hour)) + ':' + minute
                 elif f_set.lower() == 'value':
                     # If the therm `Value: ` field is used, we will catch it
                     # here.

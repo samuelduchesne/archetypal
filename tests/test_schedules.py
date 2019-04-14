@@ -1,6 +1,6 @@
 import pytest
 
-from archetypal import Schedule, load_idf, copy_file
+from archetypal import Schedule, load_idf, copy_file, run_eplus
 
 
 def test_day_schedule(config):
@@ -87,39 +87,95 @@ def test_make_umi_schedule(config):
     assert (new.all_values == s.all_values).all()
 
 
-schedules = ['POFF', 'On Peak']
+idf_file = './input_data/schedules/test_multizone_EP.idf'
 
 
-@pytest.mark.parametrize('sch_name', schedules)
-def test_ep_versus_shedule(config, sch_name):
-    import pandas as pd
+def schedules_idf():
+    idf = load_idf(idf_file)['test_multizone_EP.idf']
+    return idf
+
+
+idf = schedules_idf()
+schedules = list(idf.get_all_schedules(yearly_only=True).keys())
+ids = [i.replace(" ", "_") for i in schedules]
+
+
+def test_ep_versus_schedule(test_data):
+    """Main test. Will run the idf using EnergyPlus, retreive the csv file,
+    create the schedules and compare"""
     import matplotlib.pyplot as plt
 
-    idf_file = './input_data/schedules/schedules.idf'
-    idf_file = copy_file(idf_file)[0]
-    idf = load_idf(idf_file)['schedules.idf']
+    orig, new, expected = test_data
 
-    s = Schedule(idf, sch_name=sch_name,
-                 start_day_of_the_week=1)
+    slice_ = ('2018/01/01 00:00', '2018/01/08 00:00')  # first week
+    # slice_ = ('2018/05/20 12:00', '2018/05/22 12:00')
+    # slice_ = ('2018/01/01 00:00', '2018/12/31 23:00')  # all year
+    # slice_ = ('2018/04/30 12:00', '2018/05/01 12:00')  # break
 
-    print('StartDate: {}'.format(s.startDate))
-    index = s.series.index
-    epv = pd.read_csv('./input_data/schedules/output_EP.csv').loc[:,
-          sch_name.upper()].values
-    epv = pd.Series(epv, index=index)
-
-    # slice_ = ('2018/01/01 00:00', '2018/05/01 00:00')
-    slice_ = ('2018/05/20 12:00', '2018/05/22 12:00')
-    # slice_ = ('2018/01/01 00:00', '2018/12/31 23:00')
-    mask = epv.values != s.all_values
-
+    mask = expected.values != orig.all_values
     diff = mask.sum()
-    fig, ax = plt.subplots(1, 1, figsize=(5, 4))
-    epv.loc[slice_[0]:slice_[1]].plot(label='E+', legend=True, ax=ax,
-                                           drawstyle='steps-post')
 
-    s.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post')
-    ax.set_title(sch_name.capitalize())
+    # region Plot
+    fig, ax = plt.subplots(1, 1, figsize=(5, 4))
+    orig.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post',
+              linestyle='dashed')
+    new.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post',
+             linestyle='dotted')
+    expected.loc[slice_[0]:slice_[1]].plot(label='E+', legend=True, ax=ax,
+                                           drawstyle='steps-post',
+                                           linestyle='dashdot')
+    ax.set_title(orig.schName.capitalize())
     plt.show()
+    # endregion
+
     print(diff)
-    print(s.series[mask])
+    print(orig.series[mask])
+    assert (orig.all_values == expected).all()
+    assert (new.all_values == expected).all()
+
+
+@pytest.fixture(params=schedules, ids=ids)
+def test_data(request, run_schedules_idf):
+    """Create the test_data"""
+    import pandas as pd
+    # read original schedule
+    idf = schedules_idf()
+    schName = request.param
+    orig = Schedule(idf, sch_name=schName)
+
+    # create year:week:day version
+    new_eps = orig.to_year_week_day()
+    new = Schedule(idf, sch_name=new_eps[0].Name)
+
+    index = orig.series.index
+    epv = pd.read_csv(run_schedules_idf).loc[:,
+          schName.upper() + ':Schedule Value [](Hourly)'].values
+    expected = pd.Series(epv, index=index)
+
+    print('Year: {}'.format(new_eps[0].Name))
+    print('Weeks: {}'.format([obj.Name for obj in new_eps[1]]))
+    print('Days: {}'.format([obj.Name for obj in new_eps[2]]))
+
+    yield orig, new, expected
+
+
+def test_convert_schedule(test_data):
+    """Test the creation of the original schedule (orig) and its
+    year:week:day implementation against the expected values (output from by
+    E+)"""
+    orig, new, expected = test_data
+
+    assert (orig.all_values == expected).all()
+    assert (new.all_values == expected).all()
+
+
+@pytest.fixture(scope='module')
+def run_schedules_idf():
+    import os
+    run_eplus(idf_file, weather_file='./input_data/CAN_PQ_Montreal.Intl.AP'
+                                     '.716270_CWEC.epw',
+              annual=True, output_folder='./input_data/schedules',
+              output_prefix='eprun', readvars=True)
+    csv = os.path.join(os.curdir, 'input_data', 'schedules', 'eprun',
+                       'eprunout.csv')
+    yield csv

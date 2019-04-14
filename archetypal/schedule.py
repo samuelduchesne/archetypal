@@ -338,34 +338,7 @@ class Schedule(object):
         from_time = '00:00'
         for field in fields:
             if any([spe in field.lower() for spe in field_sets]):
-                # we are dealing with a Field-Set (Through, For, Interpolate,
-                # Until, Value)
-                try:
-                    # the colon (:) after these elements (Through, For,
-                    # Until) is optional. We can catch this behaviour with a
-                    # try, except statement
-                    f_set, value = field.split(':')
-                    value = value.strip()  # remove trailing spaces
-                except:
-                    # The field does not have a colon or has more than one
-                    # but a maximum of two!
-                    try:
-                        # The field has more than one colon
-                        f_set, hour, minute = field.split(':')
-                        hour = hour.strip()  # remove trailing spaces
-                        minute = minute.strip()
-                    except:
-                        # The field does not have a colon. Simply capitalize
-                        # and use value
-                        try:
-                            f_set = field.capitalize()
-                            value = field[len(field) + 1:].strip()
-                        except:
-                            msg = 'The schedule "{sch}" contains a Field ' \
-                                  'that is not understood: "{field}"'.format(
-                                sch=self.schName,
-                                field=field)
-                            raise ValueError(msg)
+                f_set, hour, minute, value = self.field_interpreter(field)
 
                 if f_set.lower() == 'through':
                     # main condition. All sub-conditions must obey a
@@ -458,6 +431,76 @@ class Schedule(object):
                 slicer_.loc[all_conditions] = True
 
         return series.values
+
+    def field_interpreter(self, field):
+        """dealing with a Field-Set (Through, For, Interpolate,
+        # Until, Value) and return the parsed string"""
+
+        if 'through' in field.lower():
+            # deal with through
+            if ':' in field.lower():
+                # parse colon
+                f_set, statement = field.split(':')
+                hour = None
+                minute = None
+                value = statement.strip()
+            else:
+                msg = 'The schedule "{sch}" contains a Field ' \
+                      'that is not understood: "{field}"'.format(
+                    sch=self.schName, field=field)
+                raise NotImplementedError(msg)
+        elif 'for' in field.lower():
+            if ':' in field.lower():
+                # parse colon
+                f_set, statement = field.split(':')
+                value = statement.strip()
+                hour = None
+                minute = None
+            else:
+                # parse without a colon
+                msg = 'The schedule "{sch}" contains a Field ' \
+                      'that is not understood: "{field}"'.format(
+                    sch=self.schName, field=field)
+                raise NotImplementedError(msg)
+        elif 'until' in field.lower():
+            if ':' in field.lower():
+                # parse colon
+                try:
+                    f_set, hour, minute = field.split(':')
+                    hour = hour.strip()  # remove trailing spaces
+                    minute = minute.strip()  # remove trailing spaces
+                    value = None
+                except:
+                    f_set = 'until'
+                    hour, minute = field.split(':')
+                    hour = hour[-2:].strip()
+                    minute = minute.strip()
+                    value = None
+            else:
+                msg = 'The schedule "{sch}" contains a Field ' \
+                      'that is not understood: "{field}"'.format(
+                    sch=self.schName, field=field)
+                raise NotImplementedError(msg)
+        elif 'value' in field.lower():
+            if ':' in field.lower():
+                # parse colon
+                f_set, statement = field.split(':')
+                value = statement.strip()
+                hour = None
+                minute = None
+            else:
+                msg = 'The schedule "{sch}" contains a Field ' \
+                      'that is not understood: "{field}"'.format(
+                    sch=self.schName, field=field)
+                raise NotImplementedError(msg)
+        else:
+            # deal with the data value
+            f_set = None
+            hour = None
+            minute = None
+            value = field[len(field) + 1:].strip()
+
+        return f_set, hour, minute, value
 
     @staticmethod
     def invalidate_condition(series):

@@ -826,10 +826,10 @@ class Schedule(object):
             return lambda x: x.index.dayofweek == 5
         elif field.lower() == 'summerdesignday':
             # return design_day(self, field)
-            return pd.IndexSlice[:]
+            return None
         elif field.lower() == 'winterdesignday':
             # return design_day(self, field)
-            return pd.IndexSlice[:]
+            return None
         elif field.lower() == 'holiday' or field.lower() == 'holidays':
             field = 'holiday'
             return special_day(self, field, slicer_)

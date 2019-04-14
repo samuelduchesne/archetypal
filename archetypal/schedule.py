@@ -354,18 +354,19 @@ class Schedule(object):
                     from_time = '00:00'
 
                     # Prepare ep_to_day variable
-                    ep_to_day = self.date_field_interpretation(value)
+                    ep_to_day = self.date_field_interpretation(value) + \
+                                timedelta(days=1)
 
                     # Calculate Timedelta in days
-                    days = (ep_to_day - ep_from_day).days + 1
+                    days = (ep_to_day - ep_from_day).days
                     # Add timedelta to start_date
-                    to_day = from_day + timedelta(days=days) \
-                             + timedelta(hours=23)
+                    to_day = from_day + timedelta(days=days) + timedelta(
+                        hours=-1)
 
                     # slice the conditions with the range and apply True
                     through_conditions.loc[from_day:to_day] = True
 
-                    from_day = to_day + timedelta(hours=-23)
+                    from_day = to_day + timedelta(hours=1)
                     ep_from_day = ep_to_day
                 elif f_set.lower() == 'for':
                     # slice specific days

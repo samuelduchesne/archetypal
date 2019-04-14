@@ -1,5 +1,7 @@
+import pytest
+
 from archetypal import Schedule, load_idf, copy_file
-import time
+
 
 def test_day_schedule(config):
     """Tests all schedules in the schedule.idf file"""
@@ -85,7 +87,11 @@ def test_make_umi_schedule(config):
     assert (new.all_values == s.all_values).all()
 
 
-def test_ep_versus_shedule(config):
+schedules = ['POFF', 'On Peak']
+
+
+@pytest.mark.parametrize('sch_name', schedules)
+def test_ep_versus_shedule(config, sch_name):
     import pandas as pd
     import matplotlib.pyplot as plt
 
@@ -93,18 +99,27 @@ def test_ep_versus_shedule(config):
     idf_file = copy_file(idf_file)[0]
     idf = load_idf(idf_file)['schedules.idf']
 
-    s = Schedule(idf, sch_name='POFF',
+    s = Schedule(idf, sch_name=sch_name,
                  start_day_of_the_week=1)
+
+    print('StartDate: {}'.format(s.startDate))
     index = s.series.index
-    epv = pd.read_csv('./input_data/schedules/output_EP.csv').loc[:, 'POFF'].values
+    epv = pd.read_csv('./input_data/schedules/output_EP.csv').loc[:,
+          sch_name.upper()].values
     epv = pd.Series(epv, index=index)
 
+    # slice_ = ('2018/01/01 00:00', '2018/05/01 00:00')
     slice_ = ('2018/05/20 12:00', '2018/05/22 12:00')
+    # slice_ = ('2018/01/01 00:00', '2018/12/31 23:00')
     mask = epv.values != s.all_values
+
     diff = mask.sum()
-    ax = epv.loc[slice_[0]:slice_[1]].plot(label='E+', legend=True,
+    fig, ax = plt.subplots(1, 1, figsize=(5, 4))
+    epv.loc[slice_[0]:slice_[1]].plot(label='E+', legend=True, ax=ax,
                                            drawstyle='steps-post')
+
     s.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post')
+    ax.set_title(sch_name.capitalize())
     plt.show()
     print(diff)
     print(s.series[mask])

@@ -157,9 +157,12 @@ class Schedule(object):
 
         return fieldvalues_
 
-    def get_compact_weekly_ep_schedule_values(self, sch_name=None):
+    def get_compact_weekly_ep_schedule_values(self, sch_name=None,
+                                              start_date=None):
         """'schedule:week:compact'"""
-        idx = pd.date_range(start=self.startDate, periods=168, freq='1H')
+        if start_date is None:
+            start_date = self.startDate
+        idx = pd.date_range(start=start_date, periods=168, freq='1H')
         slicer_ = pd.Series([False] * (len(idx)), index=idx)
 
         if sch_name is None:
@@ -553,10 +556,10 @@ class Schedule(object):
                 if not week.empty:
                     try:
                         week.loc[:] = self.get_schedule_values(
-                            week_day_schedule_name)
+                            week_day_schedule_name, week.index[0])
                     except ValueError:
                         week.loc[:] = self.get_schedule_values(
-                            week_day_schedule_name)[0:len(week)]
+                            week_day_schedule_name, week.index[0])[0:len(week)]
                     finally:
                         weeks.append(week)
             new = pd.concat(weeks)
@@ -565,8 +568,12 @@ class Schedule(object):
 
         return hourly_values.values
 
-    def get_schedule_values(self, sch_name=None):
-        """Main function that returns the schedule values"""
+    def get_schedule_values(self, sch_name=None, start_date=None):
+        """Main function that returns the schedule values
+
+        Args:
+            start_date:
+        """
 
         if sch_name is None:
             sch_name = self.schName
@@ -593,7 +600,7 @@ class Schedule(object):
                 sch_name)
         elif schedule_type == "schedule:week:compact".upper():
             hourly_values = self.get_compact_weekly_ep_schedule_values(
-                sch_name)
+                sch_name, start_date)
         elif schedule_type == "schedule:week:daily".upper():
             hourly_values = self.get_daily_weekly_ep_schedule_values(
                 sch_name)

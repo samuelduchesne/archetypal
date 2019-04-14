@@ -154,8 +154,6 @@ class Schedule(object):
 
         fieldvalues_ = np.array(values.fieldvalues[3:])
 
-        fieldvalues_ = np.roll(fieldvalues_, shift=-1)
-
         return fieldvalues_
 
     def get_compact_weekly_ep_schedule_values(self, sch_name=None):

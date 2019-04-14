@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
+
 from archetypal import log
 
 
@@ -310,7 +311,7 @@ class Schedule(object):
         file = os.path.join(idfdir, filename)
         delimeter = separator(sep)
         skip_rows = int(rows) - 1  # We want to keep the column
-        col = [int(column)]
+        col = [int(column) - 1]  # zero-based
         values = pd.read_csv(file, delimiter=delimeter, skiprows=skip_rows,
                              usecols=col)
 
@@ -942,7 +943,7 @@ def separator(sep):
     elif sep == 'Semicolon':
         return ';'
     else:
-        return None
+        return ','
 
 
 def how(how):

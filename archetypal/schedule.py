@@ -170,8 +170,7 @@ class Schedule(object):
         schedule_values = self.idf.get_schedule_data_by_name(sch_name)
         values = self.idf.get_schedule_data_by_name(sch_name)
 
-        # todo: replace the lambda with something quicker
-        weekly_schedules = slicer_.apply(lambda x: 0)
+        weekly_schedules = pd.Series([0] * len(slicer_), index=slicer_.index)
         # update last day of schedule
 
         if self.count == 0:

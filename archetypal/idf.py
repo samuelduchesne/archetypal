@@ -508,7 +508,7 @@ def cache_runargs(eplus_file, runargs):
 
 
 def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
-              output_report='sql', processors=-1,
+              output_report=None, processors=-1,
               prep_outputs=False, **kwargs):
     """Run an energy plus file and returns the SummaryReports Tables in a list
     of [(title, table), .....]
@@ -533,11 +533,13 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         dict: dict of [(title, table), .....]
 
     Keyword Args:
-        annual: If True then force annual simulation (default: False)
-        design_day: Force design-day-only simulation (default: False)
-        epmacro: Run EPMacro prior to simulation (default: False)
-        expandobjects: Run ExpandObjects prior to simulation (default: False)
-        readvars: Run ReadVarsESO after simulation (default: False)
+        annual (bool): If True then force annual simulation (default: False)
+        design_day (bool): Force design-day-only simulation (default: False)
+        epmacro (bool): Run EPMacro prior to simulation (default: False)
+        expandobjects (bool): Run ExpandObjects prior to simulation (default:
+        False)
+        readvars (bool): Run ReadVarsESO after simulation (default: False)
+        output_prefix (str): Prefix for output file names
     """
     if os.path.isfile(weather_file):
         pass
@@ -613,7 +615,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         #     log('Preparing outputs completed\n', lg.INFO)
 
     # Try to get cached results
-    #
+
     processed_cache = []
     for eplus_file in eplus_files:
         # list arguments needed for cache retrive function
@@ -667,7 +669,8 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         for eplus_file in rerun_files:
             # hash the eplus_file (to make shorter than the often extremely
             # long name)
-            filename_prefix = hash_file(eplus_file, kwargs)
+            filename_prefix = kwargs.get('output_prefix', hash_file(
+                eplus_file, kwargs))
 
             epw = os.path.abspath(weather_file)
 
@@ -861,7 +864,9 @@ def get_report(eplus_file, output_folder=None,
     """
     # Hash the idf file with any kwargs used in the function
     filename_prefix = hash_file(eplus_file, kwargs)
-    if 'htm' in output_report.lower():
+    if output_report is None:
+        return None
+    elif 'htm' in output_report.lower():
         # Get the html report
         fullpath_filename = os.path.join(output_folder, filename_prefix,
                                          os.extsep.join(
@@ -882,6 +887,8 @@ def get_report(eplus_file, output_folder=None,
         else:
             raise FileNotFoundError(
                 'File "{}" does not exist'.format(fullpath_filename))
+    else:
+        return None
 
 
 def get_from_cache(eplus_file, output_report='sql', **kwargs):
@@ -898,7 +905,9 @@ def get_from_cache(eplus_file, output_report='sql', **kwargs):
     if settings.use_cache:
         # determine the filename by hashing the eplus_file
         cache_filename_prefix = hash_file(eplus_file, kwargs)
-        if 'htm' in output_report.lower():
+        if output_report is None:
+            return None
+        elif 'htm' in output_report.lower():
             # Get the html report
             cache_fullpath_filename = os.path.join(settings.cache_folder,
                                                    cache_filename_prefix,

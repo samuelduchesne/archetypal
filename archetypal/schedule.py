@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
+
 from archetypal import log
 
 
@@ -34,6 +35,7 @@ class Schedule(object):
 
         self.index_ = None
         self.values = None
+        self.schType = None
 
     @property
     def all_values(self):
@@ -151,23 +153,29 @@ class Schedule(object):
 
         values = self.idf.get_schedule_data_by_name(sch_name)
 
-        fieldvalues_ = values.fieldvalues[3:]
+        fieldvalues_ = np.array(values.fieldvalues[3:])
 
-        return np.array(fieldvalues_)
+        return fieldvalues_
 
-    def get_compact_weekly_ep_schedule_values(self, sch_name=None):
+    def get_compact_weekly_ep_schedule_values(self, sch_name=None,
+                                              start_date=None):
         """'schedule:week:compact'"""
-        idx = pd.date_range(start=self.startDate, periods=168, freq='1H')
+        if start_date is None:
+            start_date = self.startDate
+        idx = pd.date_range(start=start_date, periods=168, freq='1H')
         slicer_ = pd.Series([False] * (len(idx)), index=idx)
 
         if sch_name is None:
             sch_name = self.schName
-
+        schedule_values = self.idf.get_schedule_data_by_name(sch_name)
         values = self.idf.get_schedule_data_by_name(sch_name)
 
-        weekly_schedules = slicer_.apply(lambda x: 0)
+        weekly_schedules = pd.Series([0] * len(slicer_), index=slicer_.index)
         # update last day of schedule
-        self.endHOY = 168
+
+        if self.count == 0:
+            self.schType = schedule_values
+            self.endHOY = 168
 
         num_of_daily_schedules = int(len(values.fieldvalues[2:]) / 2)
 
@@ -305,7 +313,7 @@ class Schedule(object):
         file = os.path.join(idfdir, filename)
         delimeter = separator(sep)
         skip_rows = int(rows) - 1  # We want to keep the column
-        col = [int(column)]
+        col = [int(column) - 1]  # zero-based
         values = pd.read_csv(file, delimiter=delimeter, skiprows=skip_rows,
                              usecols=col)
 
@@ -332,34 +340,7 @@ class Schedule(object):
         from_time = '00:00'
         for field in fields:
             if any([spe in field.lower() for spe in field_sets]):
-                # we are dealing with a Field-Set (Through, For, Interpolate,
-                # Until, Value)
-                try:
-                    # the colon (:) after these elements (Through, For,
-                    # Until) is optional. We can catch this behaviour with a
-                    # try, except statement
-                    f_set, value = field.split(':')
-                    value = value.strip()  # remove trailing spaces
-                except:
-                    # The field does not have a colon or has more than one
-                    # but a maximum of two!
-                    try:
-                        # The field has more than one colon
-                        f_set, hour, minute = field.split(':')
-                        hour = hour.strip()  # remove trailing spaces
-                        minute = minute.strip()
-                    except:
-                        # The field does not have a colon. Simply capitalize
-                        # and use value
-                        try:
-                            f_set = field.capitalize()
-                            value = field[len(field) + 1:].strip()
-                        except:
-                            msg = 'The schedule "{sch}" contains a Field ' \
-                                  'that is not understood: "{field}"'.format(
-                                sch=self.schName,
-                                field=field)
-                            raise ValueError(msg)
+                f_set, hour, minute, value = self.field_interpreter(field)
 
                 if f_set.lower() == 'through':
                     # main condition. All sub-conditions must obey a
@@ -372,18 +353,19 @@ class Schedule(object):
                     from_time = '00:00'
 
                     # Prepare ep_to_day variable
-                    ep_to_day = self.date_field_interpretation(value)
+                    ep_to_day = self.date_field_interpretation(value) + \
+                                timedelta(days=1)
 
                     # Calculate Timedelta in days
-                    days = (ep_to_day - ep_from_day).days + 1
+                    days = (ep_to_day - ep_from_day).days
                     # Add timedelta to start_date
-                    to_day = from_day + timedelta(days=days) \
-                             + timedelta(hours=23)
+                    to_day = from_day + timedelta(days=days) + timedelta(
+                        hours=-1)
 
                     # slice the conditions with the range and apply True
                     through_conditions.loc[from_day:to_day] = True
 
-                    from_day = to_day + timedelta(hours=-23)
+                    from_day = to_day + timedelta(hours=1)
                     ep_from_day = ep_to_day
                 elif f_set.lower() == 'for':
                     # slice specific days
@@ -432,7 +414,7 @@ class Schedule(object):
                     all_conditions = for_condition & through_conditions & \
                                      until_condition
 
-                    from_time = until_time
+                    from_time = str(int(hour)) + ':' + minute
                 elif f_set.lower() == 'value':
                     # If the therm `Value: ` field is used, we will catch it
                     # here.
@@ -452,6 +434,76 @@ class Schedule(object):
                 slicer_.loc[all_conditions] = True
 
         return series.values
+
+    def field_interpreter(self, field):
+        """dealing with a Field-Set (Through, For, Interpolate,
+        # Until, Value) and return the parsed string"""
+
+        if 'through' in field.lower():
+            # deal with through
+            if ':' in field.lower():
+                # parse colon
+                f_set, statement = field.split(':')
+                hour = None
+                minute = None
+                value = statement.strip()
+            else:
+                msg = 'The schedule "{sch}" contains a Field ' \
+                      'that is not understood: "{field}"'.format(
+                    sch=self.schName, field=field)
+                raise NotImplementedError(msg)
+        elif 'for' in field.lower():
+            if ':' in field.lower():
+                # parse colon
+                f_set, statement = field.split(':')
+                value = statement.strip()
+                hour = None
+                minute = None
+            else:
+                # parse without a colon
+                msg = 'The schedule "{sch}" contains a Field ' \
+                      'that is not understood: "{field}"'.format(
+                    sch=self.schName, field=field)
+                raise NotImplementedError(msg)
+        elif 'until' in field.lower():
+            if ':' in field.lower():
+                # parse colon
+                try:
+                    f_set, hour, minute = field.split(':')
+                    hour = hour.strip()  # remove trailing spaces
+                    minute = minute.strip()  # remove trailing spaces
+                    value = None
+                except:
+                    f_set = 'until'
+                    hour, minute = field.split(':')
+                    hour = hour[-2:].strip()
+                    minute = minute.strip()
+                    value = None
+            else:
+                msg = 'The schedule "{sch}" contains a Field ' \
+                      'that is not understood: "{field}"'.format(
+                    sch=self.schName, field=field)
+                raise NotImplementedError(msg)
+        elif 'value' in field.lower():
+            if ':' in field.lower():
+                # parse colon
+                f_set, statement = field.split(':')
+                value = statement.strip()
+                hour = None
+                minute = None
+            else:
+                msg = 'The schedule "{sch}" contains a Field ' \
+                      'that is not understood: "{field}"'.format(
+                    sch=self.schName, field=field)
+                raise NotImplementedError(msg)
+        else:
+            # deal with the data value
+            f_set = None
+            hour = None
+            minute = None
+            value = field[len(field) + 1:].strip()
+
+        return f_set, hour, minute, value
 
     @staticmethod
     def invalidate_condition(series):
@@ -504,10 +556,10 @@ class Schedule(object):
                 if not week.empty:
                     try:
                         week.loc[:] = self.get_schedule_values(
-                            week_day_schedule_name)
+                            week_day_schedule_name, week.index[0])
                     except ValueError:
                         week.loc[:] = self.get_schedule_values(
-                            week_day_schedule_name)[0:len(week)]
+                            week_day_schedule_name, week.index[0])[0:len(week)]
                     finally:
                         weeks.append(week)
             new = pd.concat(weeks)
@@ -516,8 +568,12 @@ class Schedule(object):
 
         return hourly_values.values
 
-    def get_schedule_values(self, sch_name=None):
-        """Main function that returns the schedule values"""
+    def get_schedule_values(self, sch_name=None, start_date=None):
+        """Main function that returns the schedule values
+
+        Args:
+            start_date:
+        """
 
         if sch_name is None:
             sch_name = self.schName
@@ -544,7 +600,7 @@ class Schedule(object):
                 sch_name)
         elif schedule_type == "schedule:week:compact".upper():
             hourly_values = self.get_compact_weekly_ep_schedule_values(
-                sch_name)
+                sch_name, start_date)
         elif schedule_type == "schedule:week:daily".upper():
             hourly_values = self.get_daily_weekly_ep_schedule_values(
                 sch_name)
@@ -653,38 +709,41 @@ class Schedule(object):
         import itertools
         blocks = {}
         from_date = datetime(self.year, 1, 1)
-        bincount = np.bincount(nws)
+        bincount = [sum(1 for _ in group)
+                    for key, group in itertools.groupby(nws + 1) if key]
         week_order = {i: v for i, v in enumerate(np.array(
             [key for key, group in itertools.groupby(nws + 1) if key]) - 1)}
         for i, (week_n, count) in enumerate(
-                zip(week_order, [bincount[week_order[i]] for i in week_order])):
+                zip(week_order, bincount)):
             week_id = list(dict_week)[week_order[i]]
-            to_date = from_date + timedelta(days=int(count * 7))
-            blocks[week_id] = {}
-            blocks[week_id]['from_day'] = from_date.day
-            blocks[week_id]['end_day'] = to_date.day
-            blocks[week_id]['from_month'] = from_date.month
-            blocks[week_id]['end_month'] = to_date.month
-            from_date = to_date + timedelta(days=1)
+            to_date = from_date + timedelta(days=int(count * 7), hours=-1)
+            blocks[i] = {}
+            blocks[i]['week_id'] = week_id
+            blocks[i]['from_day'] = from_date.day
+            blocks[i]['end_day'] = to_date.day
+            blocks[i]['from_month'] = from_date.month
+            blocks[i]['end_month'] = to_date.month
+            from_date = to_date + timedelta(hours=1)
 
             # If this is the last block, force end of year
             if i == len(bincount) - 1:
-                blocks[week_id]['end_day'] = 31
-                blocks[week_id]['end_month'] = 12
+                blocks[i]['end_day'] = 31
+                blocks[i]['end_month'] = 12
 
         new_dict = dict(Name=self.schName + '_',
                         Schedule_Type_Limits_Name=self.schType)
-        for count, week_id in enumerate(blocks):
-            count += 1
-            new_dict.update({"ScheduleWeek_Name_{}".format(count): week_id,
-                             "Start_Month_{}".format(count):
-                                 blocks[week_id]['from_month'],
-                             "Start_Day_{}".format(count):
-                                 blocks[week_id]['from_day'],
-                             "End_Month_{}".format(count):
-                                 blocks[week_id]['end_month'],
-                             "End_Day_{}".format(count):
-                                 blocks[week_id]['end_day']})
+        for i in blocks:
+
+            new_dict.update({"ScheduleWeek_Name_{}".format(i+1):
+                                 blocks[i]['week_id'],
+                             "Start_Month_{}".format(i+1):
+                                 blocks[i]['from_month'],
+                             "Start_Day_{}".format(i+1):
+                                 blocks[i]['from_day'],
+                             "End_Month_{}".format(i+1):
+                                 blocks[i]['end_month'],
+                             "End_Day_{}".format(i+1):
+                                 blocks[i]['end_day']})
 
         ep_year = self.idf.add_object(ep_object='Schedule:Year'.upper(),
                                       save=False, **new_dict)
@@ -820,10 +879,10 @@ class Schedule(object):
             return lambda x: x.index.dayofweek == 5
         elif field.lower() == 'summerdesignday':
             # return design_day(self, field)
-            return pd.IndexSlice[:]
+            return None
         elif field.lower() == 'winterdesignday':
             # return design_day(self, field)
-            return pd.IndexSlice[:]
+            return None
         elif field.lower() == 'holiday' or field.lower() == 'holidays':
             field = 'holiday'
             return special_day(self, field, slicer_)
@@ -937,7 +996,7 @@ def separator(sep):
     elif sep == 'Semicolon':
         return ';'
     else:
-        return None
+        return ','
 
 
 def how(how):

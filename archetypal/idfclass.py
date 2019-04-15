@@ -1,6 +1,7 @@
 import logging as lg
 
 import eppy.modeleditor
+
 from archetypal import log
 
 
@@ -62,9 +63,10 @@ class IDF(eppy.modeleditor.IDF):
             try:
                 schedules_dict = self.get_all_schedules()
                 return schedules_dict[sch_name]
-            except Exception as e:
-                raise Exception('{}'.format(e))
-
+            except KeyError:
+                raise KeyError('Unable to find schedule "{}" in idf '
+                               'file "{}"'.format(
+                    sch_name, self.idfname))
 
     def get_all_schedules(self, yearly_only=False):
         """Returns all schedule ep_objects in a dict with their name as a key

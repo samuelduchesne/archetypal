@@ -436,6 +436,11 @@ def prepare_outputs(eplus_file, outputs=None):
 
     Returns:
 
+    Examples:
+        >>> outputs = [{'ep_object':'OUTPUT:DIAGNOSTICS',
+        >>>             'kwargs':{'key1':'DisplayUnusedSchedules'}}]
+        >>> prepare_outputs(eplus_file, outputs=None)
+
     Todo:
         * do we need to do this?
     """

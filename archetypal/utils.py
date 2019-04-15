@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import unicodedata
+import warnings
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
@@ -121,15 +122,20 @@ def log(message, level=None, name=None, filename=None):
         # capture current stdout, then switch it to the console, print the
         # message, then switch back to what had been the stdout. this prevents
         # logging to notebook - instead, it goes to console
-        standard_out = sys.stdout
-        sys.stdout = sys.__stdout__
+        if level != lg.WARNING:
+            standard_out = sys.stdout
+            sys.stdout = sys.__stdout__
 
-        # convert message to ascii for console display so it doesn't break
-        # windows terminals
-        message = unicodedata.normalize('NFKD', make_str(message)).encode(
-            'ascii', errors='replace').decode()
-        print(message)
-        sys.stdout = standard_out
+            # convert message to ascii for console display so it doesn't break
+            # windows terminals
+            message = unicodedata.normalize('NFKD', make_str(message)).encode(
+                'ascii', errors='replace').decode()
+            print(message)
+            sys.stdout = standard_out
+        else:
+            message = unicodedata.normalize('NFKD', make_str(message)).encode(
+                'ascii', errors='replace').decode()
+            warnings.warn(message)
 
 
 def get_logger(level=None, name=None, filename=None):

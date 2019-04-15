@@ -267,7 +267,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
             and Z_zones[0] == 0:
         coordSys = "World"
 
-    # Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf) from IDF to lines (T3D)
+    # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf) from IDF to lines (T3D)
     # Get line number where to write
     variableDictNum = ar.checkStr(lines,
                                   'ALL OBJECTS IN CLASS: OUTPUT:VARIABLEDICTIONARY')
@@ -364,8 +364,9 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
                 surfList, to=zone_origin(zone))
 
         lines.insert(variableDictNum + 2, zone)
+    # endregion
 
-    # Write CONSTRUCTION from IDF to lines (T3D)
+    # region Write CONSTRUCTION from IDF to lines (T3D)
     # Get line number where to write
     constructionNum = ar.checkStr(lines, 'C O N S T R U C T I O N')
 
@@ -411,6 +412,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
             lines.insert(constructionNum + 6, '!- HFRONT   = 11 : HBACK= 64\n')
         else:
             lines.insert(constructionNum + 6, '!- HFRONT   = 11 : HBACK= 0\n')
+    # endregion
 
     # Write CONSTRUCTION (END) from IDF to lines (T3D)
     # Get line number where to write
@@ -428,7 +430,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
         else:
             continue
 
-    # Write LAYER from IDF to lines (T3D)
+    # region Write LAYER from IDF to lines (T3D)
     # Get line number where to write
     layerNum = ar.checkStr(lines, 'L a y e r s')
 
@@ -474,8 +476,9 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
                          ' : PERT= 0 : PENRT= 0\n')
         else:
             continue
+    # endregion
 
-    # Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
+    # region Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
     # Get line number where to write
     gainNum = ar.checkStr(lines, 'G a i n s')
 
@@ -565,20 +568,22 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
                      ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : CATEGORY=LIGHTS\n')
+    # endregion
 
     # Write SCHEDULES from IDF to lines (T3D)
     # Get line number where to write
     scheduleNum = ar.checkStr(lines, 'S c h e d u l e s')
 
     hour_list = list(range(25))
-    week_list = list(range(1,8))
+    week_list = list(range(1, 8))
     # Write schedules DAY and WEEK in lines
     for schedule_name in schedule_names:
         for period in ['weeks', 'days']:
             for i in range(0, len(schedules[schedule_name][period])):
 
                 lines.insert(scheduleNum + 1,
-                             '!-SCHEDULE ' + schedules[schedule_name][period][i].Name  + '\n')
+                             '!-SCHEDULE ' + schedules[schedule_name][period][
+                                 i].Name + '\n')
 
                 if period == 'days':
                     lines.insert(scheduleNum + 2,

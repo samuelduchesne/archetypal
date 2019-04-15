@@ -101,14 +101,15 @@ ids = [i.replace(" ", "_") for i in schedules]
 
 
 def test_ep_versus_schedule(test_data):
-    """Main test. Will run the idf using EnergyPlus, retreive the csv file,
+    """Main test. Will run the idf using EnergyPlus, retrieve the csv file,
     create the schedules and compare"""
     import matplotlib.pyplot as plt
 
     orig, new, expected = test_data
 
-    slice_ = ('2018/01/01 00:00', '2018/01/08 00:00')  # first week
+    # slice_ = ('2018/01/01 00:00', '2018/01/08 00:00')  # first week
     # slice_ = ('2018/05/20 12:00', '2018/05/22 12:00')
+    slice_ = ('2018/04/30 12:00', '2018/05/02 12:00')  # Holiday
     # slice_ = ('2018/01/01 00:00', '2018/12/31 23:00')  # all year
     # slice_ = ('2018/04/30 12:00', '2018/05/01 12:00')  # break
 

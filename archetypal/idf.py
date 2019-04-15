@@ -7,14 +7,14 @@ import time
 from subprocess import CalledProcessError
 from subprocess import check_call
 
-import eppy.modeleditor
+# import eppy.modeleditor
 import pandas as pd
+from archetypal import settings
+from archetypal import IDF
+from archetypal.utils import log, cd, EnergyPlusProcessError
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run, paths_from_version
-
-from archetypal import settings
-from archetypal.utils import log, cd, EnergyPlusProcessError
 
 try:
     import multiprocessing as mp
@@ -160,9 +160,10 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
 
     # Determine version of idf file by reading the text file
     if idd_filename is None:
-        idd_filename = {os.path.relpath(file): getiddfile(get_idf_version(file))
-                        for file in
-                        eplus_files}
+        idd_filename = {
+            os.path.basename(file): getiddfile(get_idf_version(file))
+            for file in
+            eplus_files}
 
     # determine processors
     if processors < 0:
@@ -196,7 +197,8 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
                        zip(dirnames, objects_not_found)]
         # runs = []
         runs = {os.path.basename(file): {'file': file,
-                                         'idd_filename': idd_filename[file]}
+                                         'idd_filename': idd_filename[
+                                             os.path.basename(file)]}
                 for file in eplus_files}
         idfs = parallel_process(runs, eppy_load, processors, use_kwargs=True)
 
@@ -508,7 +510,7 @@ def cache_runargs(eplus_file, runargs):
 
 
 def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
-              output_report='sql', processors=-1,
+              output_report=None, processors=-1,
               prep_outputs=False, **kwargs):
     """Run an energy plus file and returns the SummaryReports Tables in a list
     of [(title, table), .....]
@@ -533,11 +535,13 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         dict: dict of [(title, table), .....]
 
     Keyword Args:
-        annual: If True then force annual simulation (default: False)
-        design_day: Force design-day-only simulation (default: False)
-        epmacro: Run EPMacro prior to simulation (default: False)
-        expandobjects: Run ExpandObjects prior to simulation (default: False)
-        readvars: Run ReadVarsESO after simulation (default: False)
+        annual (bool): If True then force annual simulation (default: False)
+        design_day (bool): Force design-day-only simulation (default: False)
+        epmacro (bool): Run EPMacro prior to simulation (default: False)
+        expandobjects (bool): Run ExpandObjects prior to simulation (default:
+        False)
+        readvars (bool): Run ReadVarsESO after simulation (default: False)
+        output_prefix (str): Prefix for output file names
     """
     if os.path.isfile(weather_file):
         pass
@@ -613,7 +617,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         #     log('Preparing outputs completed\n', lg.INFO)
 
     # Try to get cached results
-    #
+
     processed_cache = []
     for eplus_file in eplus_files:
         # list arguments needed for cache retrive function
@@ -667,7 +671,8 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         for eplus_file in rerun_files:
             # hash the eplus_file (to make shorter than the often extremely
             # long name)
-            filename_prefix = hash_file(eplus_file, kwargs)
+            filename_prefix = kwargs.get('output_prefix', hash_file(
+                eplus_file, kwargs))
 
             epw = os.path.abspath(weather_file)
 
@@ -781,7 +786,7 @@ def parallel_process(in_dict, function, processors, use_kwargs=True):
                                                                **kwargs)}
         else:
             futures = {a: function(in_dict[a]) for a in tqdm(in_dict,
-                                                              **kwargs)}
+                                                             **kwargs)}
     else:
         with ProcessPoolExecutor(max_workers=processors) as pool:
             if use_kwargs:
@@ -861,7 +866,9 @@ def get_report(eplus_file, output_folder=None,
     """
     # Hash the idf file with any kwargs used in the function
     filename_prefix = hash_file(eplus_file, kwargs)
-    if 'htm' in output_report.lower():
+    if output_report is None:
+        return None
+    elif 'htm' in output_report.lower():
         # Get the html report
         fullpath_filename = os.path.join(output_folder, filename_prefix,
                                          os.extsep.join(
@@ -882,6 +889,8 @@ def get_report(eplus_file, output_folder=None,
         else:
             raise FileNotFoundError(
                 'File "{}" does not exist'.format(fullpath_filename))
+    else:
+        return None
 
 
 def get_from_cache(eplus_file, output_report='sql', **kwargs):
@@ -898,7 +907,9 @@ def get_from_cache(eplus_file, output_report='sql', **kwargs):
     if settings.use_cache:
         # determine the filename by hashing the eplus_file
         cache_filename_prefix = hash_file(eplus_file, kwargs)
-        if 'htm' in output_report.lower():
+        if output_report is None:
+            return None
+        elif 'htm' in output_report.lower():
             # Get the html report
             cache_fullpath_filename = os.path.join(settings.cache_folder,
                                                    cache_filename_prefix,
@@ -1190,36 +1201,8 @@ def get_idf_version(file, doted=True):
             return versionid
 
 
-class IDF(eppy.modeleditor.IDF):
-    """Wrapper over the eppy.modeleditor.IDF class
-
-    """
-
-    def add_object(self, ep_object, **kwargs):
-        """Add a new object to an idf file. The function will test if the
-        object exists to prevent duplicates.
-
-        Args:
-            ep_object (str): the object name to add, eg. 'OUTPUT:METER' (Must
-                be in all_caps)
-            **kwargs: keyword arguments to pass to other functions.
-
-        Returns:
-            eppy.modeleditor.IDF: the IDF object
-        """
-        # get list of objects
-        objs = self.idfobjects[ep_object]  # a list
-        # create new object
-        new_object = self.newidfobject(ep_object, **kwargs)
-        # Check if new object exists in previous list
-        # If True, delete the object
-        if sum([str(obj).upper() == str(new_object).upper() for obj in
-                objs]) > 1:
-            log('object "{}" already exists in idf file'.format(ep_object),
-                lg.WARNING)
-            # Remove the newly created object since the function
-            # `idf.newidfobject()` automatically adds it
-            self.removeidfobject(new_object)
-        else:
-            log('object "{}" added to the idf file'.format(ep_object))
-            self.save()
+schedule_types = ['Schedule:Day:Hourly'.upper(),
+                  'Schedule:Day:Interval'.upper(), 'Schedule:Day:List'.upper(),
+                  'Schedule:Week:Daily'.upper(), 'Schedule:Year'.upper(),
+                  'Schedule:Week:Compact'.upper(), 'Schedule:Compact'.upper(),
+                  'Schedule:Constant'.upper(), 'Schedule:File'.upper()]

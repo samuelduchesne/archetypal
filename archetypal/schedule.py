@@ -710,38 +710,41 @@ class Schedule(object):
         import itertools
         blocks = {}
         from_date = datetime(self.year, 1, 1)
-        bincount = np.bincount(nws)
+        bincount = [sum(1 for _ in group)
+                    for key, group in itertools.groupby(nws + 1) if key]
         week_order = {i: v for i, v in enumerate(np.array(
             [key for key, group in itertools.groupby(nws + 1) if key]) - 1)}
         for i, (week_n, count) in enumerate(
-                zip(week_order, [bincount[week_order[i]] for i in week_order])):
+                zip(week_order, bincount)):
             week_id = list(dict_week)[week_order[i]]
-            to_date = from_date + timedelta(days=int(count * 7))
-            blocks[week_id] = {}
-            blocks[week_id]['from_day'] = from_date.day
-            blocks[week_id]['end_day'] = to_date.day
-            blocks[week_id]['from_month'] = from_date.month
-            blocks[week_id]['end_month'] = to_date.month
-            from_date = to_date + timedelta(days=1)
+            to_date = from_date + timedelta(days=int(count * 7), hours=-1)
+            blocks[i] = {}
+            blocks[i]['week_id'] = week_id
+            blocks[i]['from_day'] = from_date.day
+            blocks[i]['end_day'] = to_date.day
+            blocks[i]['from_month'] = from_date.month
+            blocks[i]['end_month'] = to_date.month
+            from_date = to_date + timedelta(hours=1)
 
             # If this is the last block, force end of year
             if i == len(bincount) - 1:
-                blocks[week_id]['end_day'] = 31
-                blocks[week_id]['end_month'] = 12
+                blocks[i]['end_day'] = 31
+                blocks[i]['end_month'] = 12
 
         new_dict = dict(Name=self.schName + '_',
                         Schedule_Type_Limits_Name=self.schType)
-        for count, week_id in enumerate(blocks):
-            count += 1
-            new_dict.update({"ScheduleWeek_Name_{}".format(count): week_id,
-                             "Start_Month_{}".format(count):
-                                 blocks[week_id]['from_month'],
-                             "Start_Day_{}".format(count):
-                                 blocks[week_id]['from_day'],
-                             "End_Month_{}".format(count):
-                                 blocks[week_id]['end_month'],
-                             "End_Day_{}".format(count):
-                                 blocks[week_id]['end_day']})
+        for i in blocks:
+
+            new_dict.update({"ScheduleWeek_Name_{}".format(i+1):
+                                 blocks[i]['week_id'],
+                             "Start_Month_{}".format(i+1):
+                                 blocks[i]['from_month'],
+                             "Start_Day_{}".format(i+1):
+                                 blocks[i]['from_day'],
+                             "End_Month_{}".format(i+1):
+                                 blocks[i]['end_month'],
+                             "End_Day_{}".format(i+1):
+                                 blocks[i]['end_day']})
 
         ep_year = self.idf.add_object(ep_object='Schedule:Year'.upper(),
                                       save=False, **new_dict)

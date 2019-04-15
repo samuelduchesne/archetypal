@@ -78,7 +78,8 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = ['.pytest_cache', '_build', 'Thumbs.db', '.DS_Store', 'README.md', 'LICENSE.md']
+exclude_patterns = ['.pytest_cache', '_build', 'Thumbs.db', '.DS_Store',
+                    'README.md', 'LICENSE.md']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -104,6 +105,7 @@ html_static_path = ['_static']
 
 def setup(app):
     app.add_stylesheet('theme_overrides.css')
+    app.connect('autodoc-skip-member', autodoc_skip_member)
 
 
 # Custom sidebar templates, must be a dictionary that maps document names
@@ -196,7 +198,9 @@ epub_exclude_files = ['search.html']
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
-                       'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
+                       'pandas': (
+                           'http://pandas.pydata.org/pandas-docs/stable/',
+                           None),
                        'eppy': ('https://eppy.readthedocs.io/en/latest/', None),
                        'numpy': ('https://docs.scipy.org/doc/numpy/', None)}
 
@@ -204,3 +208,18 @@ intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
+
+# -- Autodoc Skip Memebrs ____________________________________________________
+
+autodoc_default_flags = ['members', 'private-members', 'special-members',
+                         # 'undoc-members',
+                         'show-inheritance']
+
+
+def autodoc_skip_member(app, what, name, obj, skip, options):
+    exclusions = ('__weakref__',  # special-members
+                  '__doc__', '__module__', '__dict__',  # undoc-members,
+                  'archetypal.schedule._conjunction'
+                  )
+    exclude = name in exclusions
+    return skip or exclude

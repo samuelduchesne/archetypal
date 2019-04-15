@@ -1454,13 +1454,11 @@ def zoneventilation_aggregation(df):
 
     All the DataFrame is passed to each function.
 
-    Returns a Series with a MultiIndex
-
     Args:
         df (pandas.DataFrame):
 
     Returns:
-        pandas.Series: Series with a MultiIndex
+        (pandas.Series): Series with a MultiIndex
 
     Todo: infiltration for plenums should not be taken into account
 
@@ -1661,7 +1659,7 @@ def nominal_ventilation(df):
         df
 
     References:
-        * `Nominal Infiltration Table \
+        * `Nominal Ventilation Table \
         <https://bigladdersoftware.com/epx/docs/8-9/output-details-and \
         -examples/eplusout-sql.html#nominalventilation-table>`_
 

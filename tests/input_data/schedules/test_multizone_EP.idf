@@ -412,7 +412,7 @@ Schedule:Compact,
     1.0,                     !- Field 10
     Until: 24:00,            !- Field 11
     .1,                      !- Field 12
-    For: Weekends,           !- Field 13
+    For: Weekends Holidays,  !- Field 13
     Until: 24:00,            !- Field 14
     .1,                      !- Field 15
     For: AllOtherDays,       !- Field 16

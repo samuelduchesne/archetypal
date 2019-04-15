@@ -158,12 +158,15 @@ class Schedule(object):
         return fieldvalues_
 
     def get_compact_weekly_ep_schedule_values(self, sch_name=None,
-                                              start_date=None):
+                                              start_date=None, index=None):
         """'schedule:week:compact'"""
         if start_date is None:
             start_date = self.startDate
-        idx = pd.date_range(start=start_date, periods=168, freq='1H')
-        slicer_ = pd.Series([False] * (len(idx)), index=idx)
+        if index is None:
+            idx = pd.date_range(start=start_date, periods=168, freq='1H')
+            slicer_ = pd.Series([False] * (len(idx)), index=idx)
+        else:
+            slicer_ = pd.Series([False] * (len(index)), index=index)
 
         if sch_name is None:
             sch_name = self.schName
@@ -182,19 +185,22 @@ class Schedule(object):
         for i in range(num_of_daily_schedules):
             day_type = values['DayType_List_{}'.format(i + 1)].lower()
             how = self.field_set(day_type, slicer_)
-
-            # Loop through days and replace with day:schedule values
-            days = []
-            for name, day in weekly_schedules.loc[how].groupby(pd.Grouper(
-                    freq='D')):
-                if not day.empty:
-                    day.loc[:] = self.get_schedule_values(
-                        values["ScheduleDay_Name_{}".format(i + 1)])
-                    days.append(day)
-            new = pd.concat(days)
-            slicer_.update(pd.Series([True] * len(new.index), index=new.index))
-            slicer_ = slicer_.apply(lambda x: x == True)
-            weekly_schedules.update(new)
+            if not weekly_schedules.loc[how].empty:
+                # Loop through days and replace with day:schedule values
+                days = []
+                for name, day in weekly_schedules.loc[how].groupby(pd.Grouper(
+                        freq='D')):
+                    if not day.empty:
+                        day.loc[:] = self.get_schedule_values(
+                            values["ScheduleDay_Name_{}".format(i + 1)])
+                        days.append(day)
+                new = pd.concat(days)
+                slicer_.update(
+                    pd.Series([True] * len(new.index), index=new.index))
+                slicer_ = slicer_.apply(lambda x: x == True)
+                weekly_schedules.update(new)
+            else:
+                return weekly_schedules.values
 
         return weekly_schedules.values
 
@@ -207,18 +213,15 @@ class Schedule(object):
 
         # 7 list for 7 days of the week
         hourly_values = []
-        sundaySch = self.get_schedule_values(
-            values['Sunday_ScheduleDay_Name'])
-        mondaySch = self.get_schedule_values(
-            values['Monday_ScheduleDay_Name'])
+        sundaySch = self.get_schedule_values(values['Sunday_ScheduleDay_Name'])
+        mondaySch = self.get_schedule_values(values['Monday_ScheduleDay_Name'])
         tuesdaySch = self.get_schedule_values(
             values['Tuesday_ScheduleDay_Name'])
         wednesdaySch = self.get_schedule_values(
             values['Wednesday_ScheduleDay_Name'])
         thursdaySch = self.get_schedule_values(
             values['Thursday_ScheduleDay_Name'])
-        fridaySch = self.get_schedule_values(
-            values['Friday_ScheduleDay_Name'])
+        fridaySch = self.get_schedule_values(values['Friday_ScheduleDay_Name'])
         saturdaySch = self.get_schedule_values(
             values['Saturday_ScheduleDay_Name'])
 
@@ -270,7 +273,7 @@ class Schedule(object):
         series = pd.Series(all_values, index=index)
 
         # resample series to hourly values and apply resampler function
-        series = series.resample('1H').apply(how(method))
+        series = series.resample('1H').apply(_how(method))
 
         return series.values
 
@@ -311,7 +314,7 @@ class Schedule(object):
         import os
         idfdir = os.path.dirname(self.idf.idfname)
         file = os.path.join(idfdir, filename)
-        delimeter = separator(sep)
+        delimeter = _separator(sep)
         skip_rows = int(rows) - 1  # We want to keep the column
         col = [int(column) - 1]  # zero-based
         values = pd.read_csv(file, delimiter=delimeter, skiprows=skip_rows,
@@ -556,7 +559,7 @@ class Schedule(object):
                 if not week.empty:
                     try:
                         week.loc[:] = self.get_schedule_values(
-                            week_day_schedule_name, week.index[0])
+                            week_day_schedule_name, week.index[0], week.index)
                     except ValueError:
                         week.loc[:] = self.get_schedule_values(
                             week_day_schedule_name, week.index[0])[0:len(week)]
@@ -568,10 +571,11 @@ class Schedule(object):
 
         return hourly_values.values
 
-    def get_schedule_values(self, sch_name=None, start_date=None):
+    def get_schedule_values(self, sch_name=None, start_date=None, index=None):
         """Main function that returns the schedule values
 
         Args:
+            index:
             start_date:
         """
 
@@ -600,7 +604,7 @@ class Schedule(object):
                 sch_name)
         elif schedule_type == "schedule:week:compact".upper():
             hourly_values = self.get_compact_weekly_ep_schedule_values(
-                sch_name, start_date)
+                sch_name, start_date, index)
         elif schedule_type == "schedule:week:daily".upper():
             hourly_values = self.get_daily_weekly_ep_schedule_values(
                 sch_name)
@@ -733,16 +737,15 @@ class Schedule(object):
         new_dict = dict(Name=self.schName + '_',
                         Schedule_Type_Limits_Name=self.schType)
         for i in blocks:
-
-            new_dict.update({"ScheduleWeek_Name_{}".format(i+1):
+            new_dict.update({"ScheduleWeek_Name_{}".format(i + 1):
                                  blocks[i]['week_id'],
-                             "Start_Month_{}".format(i+1):
+                             "Start_Month_{}".format(i + 1):
                                  blocks[i]['from_month'],
-                             "Start_Day_{}".format(i+1):
+                             "Start_Day_{}".format(i + 1):
                                  blocks[i]['from_day'],
-                             "End_Month_{}".format(i+1):
+                             "End_Month_{}".format(i + 1):
                                  blocks[i]['end_month'],
-                             "End_Day_{}".format(i+1):
+                             "End_Day_{}".format(i + 1):
                                  blocks[i]['end_day']})
 
         ep_year = self.idf.add_object(ep_object='Schedule:Year'.upper(),
@@ -760,8 +763,7 @@ class Schedule(object):
 
         Info:
             See EnergyPlus documentation for more details:
-            1.6.8.1.2 Field: Start Date
-                (Table 1.4: Date Field Interpretation)
+            1.6.8.1.2 Field: Start Date (Table 1.4: Date Field Interpretation)
         """
         # < number > Weekday in Month
         formats = ['%m/%d', '%d %B', '%B %d', '%d %b', '%b %d']
@@ -813,9 +815,11 @@ class Schedule(object):
             nth = re.findall(r'\d+', nth)  # use the nth one
             nth = int(nth[0]) - 1  # python is zero-based
 
+        weekday = {'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+                   'friday': 4, 'saturday': 5, 'sunday': 6}
+
         # parse the dayofweek eg. monday
-        dayofweek = datetime.strptime(dayofweek.capitalize(),
-                                      '%A').weekday()
+        dayofweek = weekday.get(dayofweek, 6)
 
         # create list of possible days using Calendar
         import calendar
@@ -830,16 +834,20 @@ class Schedule(object):
 
     def field_set(self, field, slicer_=None):
         """helper function to return the proper slicer depending on the
-        field_set
+        field_set value.
 
+        Available values are:
         Weekdays, Weekends, Holidays, Alldays, SummerDesignDay,
-        WinterDesignDay,
-         Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday,
-         CustomDay1, CustomDay2, AllOtherDays
+        WinterDesignDay, Sunday, Monday, Tuesday, Wednesday, Thursday,
+        Friday, Saturday, CustomDay1, CustomDay2, AllOtherDays
 
         Args:
-            slicer_:
-            field: """
+            field (str): The EnergyPlus field set value.
+            slicer_ (pd.Series): The persistent slicer for this schedule
+
+        Returns:
+            (indexer-like): Returns the appropriate indexer for the series.
+        """
 
         if field.lower() == 'weekdays':
             # return only days of weeks
@@ -848,12 +856,18 @@ class Schedule(object):
             # return only weekends
             return lambda x: x.index.dayofweek >= 5
         elif field.lower() == 'alldays':
+            log('For schdedule {}, the field-set "AllDays" may be overridden '
+                'by the "AllOtherDays" field-set'.format(
+                self.schName), lg.WARNING)
             # return all days := equivalenet to .loc[:]
             return pd.IndexSlice[:]
         elif field.lower() == 'allotherdays':
-            # return unused days. Uses the global variable `sliced_day`
+            # return unused days (including special days). Uses the global
+            # variable `slicer_`
+            import operator
             if slicer_ is not None:
-                return ~slicer_
+                return _conjunction(*[self.special_day(field, slicer_),
+                                      ~slicer_], logical=operator.or_)
             else:
                 raise NotImplementedError
         elif field.lower() == 'sunday':
@@ -885,7 +899,7 @@ class Schedule(object):
             return None
         elif field.lower() == 'holiday' or field.lower() == 'holidays':
             field = 'holiday'
-            return special_day(self, field, slicer_)
+            return self.special_day(field, slicer_)
         else:
             raise NotImplementedError(
                 'Archetypal does not yet support The '
@@ -936,6 +950,38 @@ class Schedule(object):
         else:
             return start_day_of_week
 
+    def special_day(self, field, slicer_):
+        """try to get the RunPeriodControl:SpecialDays for the corresponding
+        Day Type"""
+        sp_slicer_ = slicer_.copy()
+        sp_slicer_.loc[:] = False
+        special_day_types = ['holiday', 'customday1', 'customday2']
+
+        dds = self.idf.idfobjects['RunPeriodControl:SpecialDays'.upper()]
+        dd = [dd for dd in dds if dd.Special_Day_Type.lower() == field
+              or dd.Special_Day_Type.lower() in special_day_types]
+        if len(dd) > 0:
+            slice = []
+            for dd in dd:
+                # can have more than one special day types
+                data = dd.Start_Date
+                ep_start_date = self.date_field_interpretation(data)
+                ep_orig = datetime(self.year, 1, 1)
+                days_to_speciald = (ep_start_date - ep_orig).days
+                duration = int(dd.Duration)
+                from_date = self.startDate + timedelta(days=days_to_speciald)
+                to_date = from_date + timedelta(days=duration) + timedelta(
+                    hours=-1)
+
+                sp_slicer_.loc[from_date:to_date] = True
+            return sp_slicer_
+        else:
+            msg = 'Could not find a "SizingPeriod:DesignDay" object ' \
+                  'needed for schedule "{}" with Day Type "{}"'.format(
+                self.schName, field.capitalize()
+            )
+            raise ValueError(msg)
+
 
 def design_day(schedule, field):
     # try to get the SizingPeriod:DesignDay for the corresponding Day Type
@@ -956,36 +1002,12 @@ def design_day(schedule, field):
         raise ValueError(msg)
 
 
-def special_day(schedule, field, slicer_):
-    # try to get the RunPeriodControl:SpecialDays for the corresponding Day
-    # Type
-    dds = schedule.idf.idfobjects['RunPeriodControl:SpecialDays'.upper()]
-    dd = [dd for dd in dds if dd.Special_Day_Type.lower() == field]
-    if len(dd) > 0:
-        slice = []
-        for dd in dd:
-            # can have more than one special day types
-            data = dd.Start_Date
-            duration = dd.Duration
-            from_date = schedule.date_field_interpretation(data)
-            to_date = from_date + timedelta(days=duration)
-            slice.append(slicer_.loc[from_date:to_date])
-        import operator
-        return conjunction(*slice, logical=operator.and_).index
-    else:
-        msg = 'Could not find a "SizingPeriod:DesignDay" object ' \
-              'needed for schedule "{}" with Day Type "{}"'.format(
-            schedule.schName, field.capitalize()
-        )
-        raise ValueError(msg)
-
-
-def conjunction(*conditions, logical=np.logical_and):
+def _conjunction(*conditions, logical=np.logical_and):
     """Applies a logical function on n conditions"""
     return functools.reduce(logical, conditions)
 
 
-def separator(sep):
+def _separator(sep):
     """helper function to return the correct delimiter"""
     if sep == 'Comma':
         return ','
@@ -999,7 +1021,7 @@ def separator(sep):
         return ','
 
 
-def how(how):
+def _how(how):
     """Helper function to return the correct resampler"""
     if how.lower() == 'average':
         return 'mean'

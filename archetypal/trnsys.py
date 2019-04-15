@@ -29,7 +29,7 @@ def clear_name_idf_objects(idfFile):
             'ELECTRICEQUIPMENT']
     uniqueList = []
 
-    # For all categorie that we want to change Names
+    # For all categories of objects in the IDF file
     for obj in idfFile.idfobjects:
         epObjects = idfFile.idfobjects[obj]
 
@@ -216,7 +216,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
     with open(ori_idf_filepath) as ori:
         versionNum = ar.checkStr(ori,
                                  'ALL OBJECTS IN CLASS: VERSION')
-    # Writing
+    # Writing VERSION infos to lines
     for i in range(0, len(versions)):
         lines.insert(versionNum,
                      ",".join(str(item) for item in versions.list2[i]) + ';')
@@ -225,7 +225,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
     # Get line number where to write
     buildingNum = ar.checkStr(lines,
                               'ALL OBJECTS IN CLASS: BUILDING')
-    # Writing
+    # Writing BUILDING infos to lines
     for building in buildings:
         lines.insert(buildingNum, building)
 
@@ -234,7 +234,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
     locationNum = ar.checkStr(lines,
                               'ALL OBJECTS IN CLASS: LOCATION')
 
-    # Write GLOBALGEOMETRYRULES lines
+    # Writing GLOBALGEOMETRYRULES infos to lines
     for globGeomRule in globGeomRules:
         # Change Geometric rules from Relative to Absolute
         coordSys = "Absolute"
@@ -250,11 +250,11 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
 
         lines.insert(locationNum, globGeomRule)
 
-    # Write LOCATION lines
+    # Writing LOCATION infos to lines
     for location in locations:
         lines.insert(locationNum, location)
 
-    # Determine if coordsSystem is "World" (all zones at (0,0,0)
+    # Determine if coordsSystem is "World" (all zones at (0,0,0))
     X_zones = []
     Y_zones = []
     Z_zones = []
@@ -420,12 +420,12 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
             lines.insert(constructionNum + 6, '!- HFRONT   = 11 : HBACK= 0\n')
     # endregion
 
-    # Write CONSTRUCTION (END) from IDF to lines (T3D)
+    # Write CONSTRUCTION from IDF to lines, at the end of the T3D file
     # Get line number where to write
     constructionEndNum = ar.checkStr(lines,
                                      'ALL OBJECTS IN CLASS: CONSTRUCTION')
 
-    # Writing CONSTRUCTION in lines
+    # Writing CONSTRUCTION infos to lines
     for i in range(0, len(constructions)):
 
         # Except fenestration construction
@@ -440,7 +440,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
     # Get line number where to write
     layerNum = ar.checkStr(lines, 'L a y e r s')
 
-    # Write MATERIAL to lines
+    # Writing MATERIAL infos to lines
     listLayerName = []
     for i in range(0, len(materials)):
         lines.insert(layerNum + 1, '!-LAYER ' + materials[i].Name + '\n')
@@ -453,7 +453,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
                      str(round(materials[i].Density,
                                4)) + ' : PERT= 0 : PENRT= 0\n')
 
-    # Write MATERIAL:NOMASS to lines
+    # Writing MATERIAL:NOMASS infos to lines
     for i in range(0, len(materialNoMass)):
 
         duplicate = [s for s in listLayerName if s == materialNoMass[i].Name]
@@ -468,7 +468,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
         else:
             continue
 
-    # Write MATERIAL:AIRGAP to lines
+    # Writing MATERIAL:AIRGAP infos to lines
     for i in range(0, len(materialAirGap)):
 
         duplicate = [s for s in listLayerName if s == materialAirGap[i].Name]
@@ -488,7 +488,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
     # Get line number where to write
     gainNum = ar.checkStr(lines, 'G a i n s')
 
-    # Write PEOPLE gains in lines
+    # Writing PEOPLE gains infos to lines
     schedule_list_people = []
     for i in range(0, len(peoples)):
 
@@ -524,7 +524,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
             power * radFract) +
                      ' : HUMIDITY=0.066 : ELPOWERFRAC=0 : ' + areaMethod + ' : CATEGORY=PEOPLE\n')
 
-    # Write LIGHT gains in lines
+    # Writing LIGHT gains infos to lines
     for i in range(0, len(lights)):
 
         lines.insert(gainNum + 1, 'GAIN LIGHT' + '_' + lights[i].Name + '\n')
@@ -549,7 +549,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
                      ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : CATEGORY=LIGHTS\n')
 
-    # Write EQUIPMENT gains in lines
+    # Writing EQUIPMENT gains infos to lines
     for i in range(0, len(equipments)):
 
         lines.insert(gainNum + 1,

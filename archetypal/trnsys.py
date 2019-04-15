@@ -45,9 +45,11 @@ def clear_name_idf_objects(idfFile):
                 try:
                     old_name = epObject.Name
                     # clean old name by removing spaces, "-", period, "{", "}", doubleunderscore
-                    new_name = old_name.replace(" ", "_").replace("-", "_").replace(
-                        ".", "_").replace("{", "").replace("}", "").replace("__",
-                                                                            "_")
+                    new_name = old_name.replace(" ", "_").replace("-",
+                                                                  "_").replace(
+                        ".", "_").replace("{", "").replace("}", "").replace(
+                        "__",
+                        "_")
                     if len(new_name) > 13:
                         # Trnbuild doen not like names longer than 13 characters
                         # Replace with unique ID
@@ -119,6 +121,7 @@ def recursive_len(item):
         return sum(recursive_len(subitem) for subitem in item)
     else:
         return 1
+
 
 def rotate(l, n):
     """
@@ -390,12 +393,15 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
 
             indiceMat = [k for k, s in enumerate(materials) if
                          constructions.list2[i][j] == s.Name]
-            if not indiceMat:
-                thickList.append(0.0)
-            else:
-                thickList.append(materials[indiceMat[0]].Thickness)
 
-            layerList.append(constructions.list2[i][j])
+            if materials[indiceMat[0]].Thickness / (
+                    materials[indiceMat[0]].Conductivity * 3.6) > 0.0007:
+                if not indiceMat:
+                    thickList.append(0.0)
+                else:
+                    thickList.append(materials[indiceMat[0]].Thickness)
+
+                layerList.append(constructions.list2[i][j])
 
         lines.insert(constructionNum + 2, '!- LAYERS = ' + " ".join(
             str(item) for item in layerList[::-1]) + '\n')
@@ -592,7 +598,9 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
 
                     lines.insert(scheduleNum + 3,
                                  '!- VALUES= ' + " ".join(
-                                     str(item) for item in schedules[schedule_name][period][i].fieldvalues[3:]) + '\n')
+                                     str(item) for item in
+                                     schedules[schedule_name][period][
+                                         i].fieldvalues[3:]) + '\n')
 
                 if period == 'weeks':
                     lines.insert(scheduleNum + 2,
@@ -603,7 +611,7 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
                                  '!- VALUES= ' + " ".join(
                                      str(item) for item in
                                      rotate(schedules[schedule_name][period][
-                                         i].fieldvalues[2:9], 1))+ '\n')
+                                                i].fieldvalues[2:9], 1)) + '\n')
 
     # Save file at output_folder
     if output_folder is None:

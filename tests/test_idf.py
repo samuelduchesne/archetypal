@@ -22,8 +22,8 @@ def test_small_home_data(fresh_start):
     file = './input_data/regular/AdultEducationCenter.idf'
     file = copy_file(file)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return ar.run_eplus(file, wf, expandobjects=True, annual=True, verbose='q',
-                        prep_outputs=True)
+    return ar.run_eplus(file, wf, expandobjects=True, verbose='q',
+                        prep_outputs=True, design_day=True)
 
 
 def test_necb(config, fresh_start):
@@ -33,7 +33,8 @@ def test_necb(config, fresh_start):
                       "/NECB_2011_Montreal_idf/*idf")
     files = copy_file(files)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return ar.run_eplus(files, wf, expandobjects=True, verbose='q', annual=True)
+    return ar.run_eplus(files, wf, expandobjects=True, verbose='q',
+                        design_day=True)
 
 
 def test_std(config, fresh_start):
@@ -42,20 +43,7 @@ def test_std(config, fresh_start):
     files = copy_file(files)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     return ar.run_eplus(files, wf, expandobjects=True, annual=True,
-                        verbose='q', prep_outputs=True)
-
-
-@pytest.mark.parametrize('processors', [1, -1], ids=['1cpu', 'allcpu'])
-@pytest.mark.parametrize('annual', [True], ids=['annual'])
-@pytest.mark.parametrize('expandobjects', [True], ids=['expandobj'])
-def test_example_idf(processors, expandobjects, annual, fresh_start,
-                     idf_source):
-    """Will run all combinations of parameters defined above"""
-
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    idf = ar.copy_file(idf_source)
-    return ar.run_eplus(idf, wf, processors=processors, verbose='q',
-                        annual=annual, expandobjects=expandobjects)
+                        verbose='q', prep_outputs=True, design_day=True)
 
 
 @pytest.mark.parametrize('as_dict', [True, False])
@@ -78,7 +66,7 @@ def test_run_olderv(fresh_start):
     file = './input_data/problematic/nat_ventilation_SAMPLE0.idf'
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     ar.run_eplus(file, wf, ep_version='8.9', annual=True,
-                 expandobjects=True, verbose='q',)
+                 expandobjects=True, verbose='q', )
 
 
 def test_run(scratch_then_cache):

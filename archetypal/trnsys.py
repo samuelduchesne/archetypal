@@ -7,7 +7,7 @@ from eppy import modeleditor
 from collections import OrderedDict
 
 import archetypal as ar
-from archetypal import log, Schedule
+from archetypal import log, Schedule, run_eplus, copy_file, schedule_types
 
 
 def clear_name_idf_objects(idfFile):
@@ -187,13 +187,22 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
     lights = idf.idfobjects['LIGHTS']
     equipments = idf.idfobjects['ELECTRICEQUIPMENT']
 
+    # # Retrieve unused schedules
+    # outputs = [{'ep_object': 'Output:Diagnostics'.upper(),
+    #             'kwargs': {'Key_1': 'DisplayUnusedSchedules'}}]
+    # idf_files = copy_file([idf_file])
+    # run_eplus(idf_files[0],
+    #           '/Users/leroylouis/Dropbox/Cours Poly/Projet_maitrise/archetypal/tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw',
+    #           prep_outputs=outputs, design_day=True)
+
     # Get yearly, weekly and daily schedules
     # (schedule:year, schedule:week:daily, schedule:day:hourly)
     start_time = time.time()
     schedule_names = []
-    schedules = idf.get_all_schedules(yearly_only=True)
+    used_schedules = idf.get_used_schedules(yearly_only=True)
+    schedules = {}
 
-    for schedule_name in schedules:
+    for schedule_name in used_schedules:
         s = Schedule(idf, sch_name=schedule_name,
                      start_day_of_the_week=idf.day_of_week_for_start_day)
 

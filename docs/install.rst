@@ -44,3 +44,9 @@ project, *archetypal* in this case.
    In the *kernel* menu, select *Change Kernel*
    and select the appropriate virtual env created earlier (*archetypal* in our case).
 
+.. _start a jupyter notebook: https://jupyter.readthedocs.io/en/latest/running.html#starting-the-notebook-server
+.. _jupyter notebook: https://jupyter-notebook.readthedocs.io/en/stable/#
+.. _Angelo Basile: https://anbasile.github.io/programming/2017/06/25/jupyter-venv/
+.. _virtual environment: https://conda.io/docs/using/envs.html
+.. _EnergyPlus: https://energyplus.net
+.. _umi: https://umidocs.readthedocs.io/en/latest/

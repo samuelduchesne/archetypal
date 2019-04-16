@@ -436,15 +436,11 @@ def prepare_outputs(eplus_file, outputs=None):
         eplus_file:
         outputs (bool or list):
 
-    Returns:
-
     Examples:
         >>> outputs = [{'ep_object':'OUTPUT:DIAGNOSTICS',
         >>>             'kwargs':{'key1':'DisplayUnusedSchedules'}}]
         >>> prepare_outputs(eplus_file, outputs=None)
 
-    Todo:
-        * do we need to do this?
     """
     log('first, loading the idf file')
     idfs = eppy_load(eplus_file, getiddfile(get_idf_version(eplus_file)))

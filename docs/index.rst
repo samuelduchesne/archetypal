@@ -40,9 +40,3 @@ Indices and tables
 * :ref:`search`
 
 
-.. _virtual environment: https://conda.io/docs/using/envs.html
-.. _jupyter notebook: https://jupyter-notebook.readthedocs.io/en/stable/#
-.. _Angelo Basile: https://anbasile.github.io/programming/2017/06/25/jupyter-venv/
-.. _start a jupyter notebook: https://jupyter.readthedocs.io/en/latest/running.html#starting-the-notebook-server
-.. _EnergyPlus: https://energyplus.net
-.. _umi: https://umidocs.readthedocs.io/en/latest/

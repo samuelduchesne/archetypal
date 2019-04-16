@@ -3,7 +3,7 @@ import matplotlib as mpl
 import pytest
 
 import archetypal as ar
-from archetypal import copy_file
+from archetypal import copy_file, CalledProcessError
 
 mpl.use('Agg')
 
@@ -60,26 +60,28 @@ def test_load_idf_asdict(as_dict, processors, fresh_start):
         assert isinstance(obj, list)
 
 
-def test_run_olderv(fresh_start):
-    """Will run eplus on a file that needs to be upgraded"""
+@pytest.mark.parametrize('ep_version', ['8.9', None],
+                         ids=['specific-ep-version', 'no-specific-ep-version'])
+def test_run_olderv(fresh_start, ep_version):
+    """Will run eplus on a file that needs to be upgraded with one that does
+    not"""
 
-    file = './input_data/problematic/nat_ventilation_SAMPLE0.idf'
+    files = ['./input_data/problematic/nat_ventilation_SAMPLE0.idf',
+             './input_data/regular/5ZoneNightVent1.idf']
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    ar.run_eplus(file, wf, ep_version='8.9', annual=True,
+    files = copy_file(files)
+    ar.run_eplus(files, wf, ep_version=ep_version, annual=True,
                  expandobjects=True, verbose='q', )
 
 
-def test_run(scratch_then_cache):
-    f1 = './input_data/umi_samples/nat_ventilation_SAMPLE0.idf'
-    f2 = './input_data/umi_samples' \
-         '/no_shed_ventilation_and_no_mech_ventilation_SAMPLE0.idf'
-    f3 = './input_data/umi_samples/no_shed_ventilation_SAMPLE0.idf'
-    f4 = './input_data/umi_samples/shed_ventilation_SAMPLE0.idf'
+@pytest.mark.xfail(raises=CalledProcessError)
+def test_run_olderv_problematic(fresh_start):
+    """Will run eplus on a file that needs to be upgraded and that should
+    fail. Will be ignores in the test suit"""
 
-    files = copy_file([f1, f2, f3, f4])
+    file = './input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7' \
+           '.2_5A_USA_IL_CHICAGO-OHARE.idf'
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    sql = ar.run_eplus(files, wf, verbose='q',
-                       expandobjects=True, annual=True, processors=-1)
-    np = ar.nominal_people(sql)
-    # zc = ar.zone_conditioning(sql)
-    # print(zc)
+    file = copy_file([file])[0]
+    ar.run_eplus(file, wf, ep_version='8.9', annual=True,
+                 expandobjects=True, verbose='q', prep_outputs=True)

@@ -7,7 +7,7 @@ import numpy as np
 from archetypal import log
 
 
-def simple_glazing(shgc, u_factor, visible_transmittance=None):
+def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
     """
     Calculates the physical properties of an equivalent single pane of glass
     from the Solar Heat Gain Coefficient, the U-value and the Visible

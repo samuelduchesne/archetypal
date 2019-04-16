@@ -29,7 +29,7 @@ Utilities
    :members:
 
 Simple Galzing Module
-=====================
+---------------------
 
 .. automodule:: archetypal.simple_glazing
-   :members:
+   :members: calc_simple_glazing

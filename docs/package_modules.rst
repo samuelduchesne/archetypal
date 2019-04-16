@@ -2,6 +2,14 @@ Packages
 ========
 
 
+Schedules Module
+----------------
+
+.. currentmodule:: archetypal
+
+.. autoclass:: Schedule
+
+
 IDF operations
 --------------
 

@@ -94,6 +94,31 @@ class IDF(eppy.modeleditor.IDF):
                     pass
         return scheds
 
+    def get_used_schedules(self, yearly_only=False):
+        """Returns all used schedules
+
+        Args:
+            yearly_only (bool): If True, return only yearly schedules
+
+        Returns:
+            (list): the schedules names
+
+        """
+
+        used_schedules = []
+        from archetypal import schedule_types
+        all_schedules = self.get_all_schedules(yearly_only=yearly_only)
+        for object_name in self.idfobjects:
+            for object in self.idfobjects[object_name]:
+                if object.fieldvalues[0].upper() not in schedule_types:
+                    for fieldvalue in object.fieldvalues:
+                        try:
+                            if fieldvalue in all_schedules and fieldvalue not in used_schedules:
+                                used_schedules.append(fieldvalue)
+                        except:
+                            pass
+        return used_schedules
+
     @property
     def day_of_week_for_start_day(self):
         """Get day of week for start day for the first found RUNPERIOD"""

@@ -438,7 +438,7 @@ def prepare_outputs(eplus_file, outputs=None):
 
     Examples:
         >>> outputs = [{'ep_object':'OUTPUT:DIAGNOSTICS',
-        >>>             'kwargs':{'key1':'DisplayUnusedSchedules'}}]
+        >>>             'kwargs':{'Key_1':'DisplayUnusedSchedules'}}]
         >>> prepare_outputs(eplus_file, outputs=None)
 
     Todo:
@@ -609,11 +609,13 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
     # Prepare outputs e.g. sql table
     if prep_outputs:
         # Check if idf file has necessary objects (eg specific outputs)
-        parallel_process(in_dict={os.path.basename(eplus_file): eplus_file for \
-                                  eplus_file in eplus_files},
-                         function=prepare_outputs,
-                         use_kwargs=False,
-                         processors=processors)
+        parallel_process(
+            in_dict={os.path.basename(eplus_file): {'eplus_file': eplus_file,
+                                                    'outputs': prep_outputs} for
+                     eplus_file in eplus_files},
+            function=prepare_outputs,
+            use_kwargs=True,
+            processors=processors)
         # for eplus_file in eplus_files:
         #     log('\nPreparing outputs...\n', lg.INFO)
         #     prepare_outputs(eplus_file, prep_outputs)

@@ -7,7 +7,6 @@ from .utils import *
 from .simple_glazing import *
 from .idfclass import IDF
 from .idf import *
-from .plot import *
 from .energyseries import EnergySeries
 from .energydataframe import EnergyDataFrame
 from .schedule import Schedule

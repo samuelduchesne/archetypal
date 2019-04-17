@@ -190,6 +190,7 @@ def parse_window_lib(window_file_path):
 
 
 def get_window_id(bunches):
+    """Return bunch of window properties with their window id"""
     id_line = 'Window ID   :'
     for bunch in bunches:
         for line in bunch:

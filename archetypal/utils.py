@@ -18,7 +18,6 @@ from pandas.io.json import json_normalize
 from shapely.geometry import Point
 
 import archetypal as ar
-from archetypal import load_umi_template
 from archetypal import settings
 
 
@@ -849,3 +848,22 @@ def piecewise(data):
     funcs = sf
     y = np.piecewise(x, conds, funcs)
     return y
+
+
+def load_umi_template(json_template):
+    """
+
+    Args:
+        json_template: Absolute or relative filepath to an umi json_template file.
+
+    Returns:
+        pandas.DataFrame: 17 DataFrames, one for each component groups
+
+    """
+    if os.path.isfile(json_template):
+        with open(json_template) as f:
+            dicts = json.load(f, object_pairs_hook=OrderedDict)
+
+            return [{key: json_normalize(value)} for key, value in dicts.items()]
+    else:
+        raise ValueError('File {} does not exist'.format(json_template))

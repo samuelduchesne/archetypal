@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from sklearn import preprocessing
 
-from . import settings, object_from_idf, object_from_idfs, simple_glazing, \
+from . import settings, object_from_idf, object_from_idfs, calc_simple_glazing, \
     iscore, weighted_mean, top
 from .idf import run_eplus, load_idf
 from .plot import plot_energyprofile
@@ -1094,7 +1094,7 @@ def constructions_windows(idfs, material_glazing=None):
 
 def get_simple_glazing_system(idfs):
     """Retreives all simple glazing objects from a list of IDF files. Calls
-    :func:`simple_glazing` in order to calculate a new glazing system that
+    :func:`calc_simple_glazing` in order to calculate a new glazing system that
     has the same properties.
 
     Args:
@@ -1110,9 +1110,9 @@ def get_simple_glazing_system(idfs):
                                         first_occurrence_only=False)
 
         materials_with_sg = materials_df.set_index(['Archetype', 'Name']).apply(
-            lambda row: simple_glazing(row['Solar_Heat_Gain_Coefficient'],
-                                       row['UFactor'],
-                                       row['Visible_Transmittance']),
+            lambda row: calc_simple_glazing(row['Solar_Heat_Gain_Coefficient'],
+                                            row['UFactor'],
+                                            row['Visible_Transmittance']),
             axis=1).apply(pd.Series)
         materials_umi = materials_with_sg.reset_index()
         materials_umi['Optical'] = 'SpectralAverage'
@@ -1533,13 +1533,11 @@ def zoneventilation_aggregation(df):
 
     All the DataFrame is passed to each function.
 
-    Returns a Series with a MultiIndex
-
     Args:
         df (pandas.DataFrame):
 
     Returns:
-        pandas.Series: Series with a MultiIndex
+        (pandas.Series): Series with a MultiIndex
 
     Todo: infiltration for plenums should not be taken into account
 
@@ -1740,7 +1738,7 @@ def nominal_ventilation(df):
         df
 
     References:
-        * `Nominal Infiltration Table \
+        * `Nominal Ventilation Table \
         <https://bigladdersoftware.com/epx/docs/8-9/output-details-and \
         -examples/eplusout-sql.html#nominalventilation-table>`_
 

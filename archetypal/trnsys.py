@@ -1,5 +1,6 @@
 import logging as lg
 import numpy as np
+import pandas as pd
 import os
 import time
 import uuid
@@ -136,6 +137,133 @@ def rotate(l, n):
     return l[n:] + l[:n]
 
 
+def parse_window_lib(window_file_path):
+    # Read window library and write lines in variable
+    all_lines = open(window_file_path).readlines()
+
+    # Select list of windows at the end of the file
+    end = '*** END OF LIBRARY ***'
+    indice_end = [k for k, s in enumerate(all_lines) if
+                  end in s]
+
+    window_list = all_lines[indice_end[0] + 1:]
+
+    # Delete asterisk lines
+    asterisk = '*'
+    indices_asterisk = [k for k, line in enumerate(window_list) if
+                        asterisk in line]
+    window_list = [','.join(line.split()) for i, line in enumerate(window_list)
+                   if
+                   i not in indices_asterisk]
+
+    # Save lines_for_df in text file
+    # User did not provide an output folder path. We use the default setting
+    output_folder = ar.settings.data_folder
+
+    if not os.path.isdir(output_folder):
+        os.mkdir(output_folder)
+
+    with open(os.path.join(output_folder, "winPOOL.txt"),
+              "w") as converted_file:
+        for line in window_list:
+            converted_file.write(str(line) + '\n')
+
+    df_windows = pd.read_csv(os.path.join(output_folder, "winPOOL.txt"),
+                             header=None)
+    columns = ['WinID', 'Description', 'Design', 'u_value', 'g_value', 'T_sol',
+               'Rf_sol', 't_vis', 'Lay', 'Width(mm)']
+    df_windows.columns = columns
+
+    # Select list of windows with all their characteristics (bunch)
+    bunch_delimiter = 'BERKELEY LAB WINDOW v7.4.6.0  DOE-2 Data File : Multi Band Calculation : generated with Trnsys18.std\n'
+    indices_bunch = [k for k, s in enumerate(all_lines) if
+                     s == bunch_delimiter]
+    detailed_windows = all_lines[0:indice_end[0]]
+
+    # 1 window = 55 lines
+    window_count = (len(detailed_windows) - 1) / 55
+    bunches_list = list(chunks(detailed_windows, 55))
+
+    bunches = dict(get_window_id(bunches_list))
+
+    return df_windows, bunches
+
+
+def get_window_id(bunches):
+    id_line = 'Window ID   :'
+    for bunch in bunches:
+        for line in bunch:
+            if id_line in line:
+                _, value = line.split(':')
+                value = int(value.strip())
+                yield value, bunch
+
+
+def chunks(l, n):
+    """Yield successive n-sized chunks from l"""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
+
+def choose_window(u_value, shgc, t_vis, error_lim, window_lib_path):
+    """Return window object from TRNBuild library
+
+    Args:
+        u_value (float): U_value of the glazing
+        shgc (float): SHGC of the glazing
+        t_vis (float): Visible transmittance of the glazing
+        error_lim (float): Maximum error in percent on u_value, shgc and tvis
+            wanted by the user
+        window_lib_path (.dat file): window library from Berkeley lab
+
+    Returns:
+
+    """
+
+    # Making sure u_value, shgc and tvis are float
+    if not isinstance(u_value, float):
+        u_value = float(u_value)
+    if not isinstance(shgc, float):
+        shgc = float(shgc)
+    if not isinstance(t_vis, float):
+        t_vis = float(t_vis)
+    if not isinstance(t_vis, float):
+        t_vis = float(t_vis)
+
+    # Parse window library
+    df_windows, window_bunches = parse_window_lib(window_lib_path)
+
+    # Create error column for the 3 window properties
+    df_windows["error_u"] = ((df_windows["u_value"] - u_value) / u_value) * 100
+    df_windows["error_shgc"] = ((df_windows["g_value"] - shgc) / shgc) * 100
+    df_windows["error_tvis"] = ((df_windows["t_vis"] - t_vis) / t_vis) * 100
+
+    # Create column sum of the errors
+    df_windows["sum_error"] = df_windows["error_u"] + df_windows["error_shgc"] + \
+                              df_windows["error_tvis"]
+
+    sum_error = 1000
+    for i in range(0, len(df_windows)):
+        if df_windows.loc[i, "error_u"] <= error_lim and df_windows.loc[
+            i, "error_shgc"] <= error_lim and df_windows.loc[
+            i, "t_vis"] <= error_lim and df_windows.loc[
+            i, "sum_error"] < sum_error:
+            win_id = df_windows.loc[i, 'WinID']
+            sum_error = df_windows.loc[i, 'sum_error']
+
+    if not win_id:
+        win_id = df_windows.loc[df_windows['sum_error'].idxmin(), 'WinID']
+
+    u_window = df_windows.loc[df_windows['WinID'] == win_id, 'u_value'].values[
+        0]
+    shgc_window = \
+    df_windows.loc[df_windows['WinID'] == win_id, 'g_value'].values[0]
+    t_vis_window = \
+    df_windows.loc[df_windows['WinID'] == win_id]['t_vis'].values[0]
+
+    return win_id, window_bunches[win_id], u_window, shgc_window, t_vis_window
+
+
 def convert_idf_to_t3d(idf_file, output_folder=None):
     """ Convert IDF file to T3D file to be able to load it in TRNBuild
 
@@ -145,8 +273,10 @@ def convert_idf_to_t3d(idf_file, output_folder=None):
             saves to settings.data_folder
 
     Returns:
+        (idf file) : Input file for TRNBuild
 
     """
+
     start_time = time.time()
     # Load IDF file(s)
     idf_dict = ar.load_idf(idf_file)

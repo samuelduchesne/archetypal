@@ -156,7 +156,7 @@ def test_parse_schedule_profile():
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     idf = ar.copy_file(idf)
     sql = ar.run_eplus(idf, weather_file=wf, prep_outputs=[outputs],
-                       annual=True)
+                       annual=True, output_report='sql')
     report = ar.get_from_reportdata(sql)
     array = report.loc[(report.Name == 'Schedule Value') &
                        (report['KeyValue'] == 'OCCUPY-1')].sort_values(

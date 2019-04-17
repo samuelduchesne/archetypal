@@ -202,7 +202,7 @@ class EnergySeries(Series):
                 sf_bounds = [(0, sub.max()) for i in range(0, n_bins + 1)]
                 hours = [hour_of_min - hour_of_min * 1 / (i * 1.01) for i in
                          range(1, n_bins + 1)]
-                # Todo hours need to work fow datatime index
+                # Todo hours need to work fow datetime index
                 hours.extend([len(sub)])
                 hours_bounds = [(0, len(sub)) for i in range(0, n_bins + 1)]
 
@@ -218,10 +218,7 @@ class EnergySeries(Series):
                 ampls[name] = res.x[n_bins + 1:]
                 results[name] = Series(piecewise(res.x))
             self.bin_edges_ = Series(edges).apply(Series)
-            self.bin_scaling_factors_ = DataFrame(ampls,
-                                                     index=np.round(
-                                                         edges).astype(int),
-                                                     columns=['scaling_factor'])
+            self.bin_scaling_factors_ = DataFrame(ampls)
 
             result = concat(results)
         else:
@@ -266,10 +263,6 @@ class EnergySeries(Series):
 
     def plot3d(self, *args, **kwargs):
         """Generate a plot of the EnergySeries.
-
-        If the ``column`` parameter is given, colors plot according to values
-        in that column, otherwise calls ``GeoSeries.plot()`` on the
-        ``geometry`` column.
 
         Wraps the ``plot_energyprofile()`` function, and documentation is copied
         from there.

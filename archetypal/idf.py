@@ -9,12 +9,13 @@ from subprocess import check_call
 
 # import eppy.modeleditor
 import pandas as pd
-from archetypal import settings
-from archetypal import IDF
-from archetypal.utils import log, cd, EnergyPlusProcessError
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run, paths_from_version
+
+from archetypal import IDF
+from archetypal import settings
+from archetypal.utils import log, cd, EnergyPlusProcessError
 
 try:
     import multiprocessing as mp
@@ -161,8 +162,13 @@ def load_idf(eplus_files, idd_filename=None, as_dict=True, processors=1):
     if idd_filename is None:
         idd_filename = {
             os.path.basename(file): getiddfile(get_idf_version(file))
-            for file in
-            eplus_files}
+            for file in eplus_files
+        }
+    else:
+        idd_filename = {
+            os.path.basename(file): idd_filename
+            for file in eplus_files
+        }
 
     # determine processors
     if processors < 0:
@@ -219,7 +225,7 @@ def eppy_load_pool(args):
 
 
 def eppy_load(file, idd_filename):
-    """Uses pacakge eppy to parse an idf file. Will also try to upgrade the
+    """Uses package eppy to parse an idf file. Will also try to upgrade the
     idf file using the EnergyPlus Transition
     executables.
 
@@ -242,29 +248,32 @@ def eppy_load(file, idd_filename):
                 0].Version_Identifier
             idd_version = '{}.{}'.format(idf_object.idd_version[0],
                                          idf_object.idd_version[1])
-            # building = idf_object.idfobjects['BUILDING'][0]
+
             if idf_version == idd_version:
+                # if the versions fit, great!
                 log('The version of the IDF file "{}",\n\t'
                     'version "{}", matched the version of EnergyPlus {},'
                     '\n\tversion "{}", used to parse it.'.format(
                     os.path.basename(file),
                     idf_version,
                     idf_object.getiddname(),
-                    idd_version), level=lg.DEBUG)
+                    idd_version),
+                    level=lg.DEBUG)
+            else:
+                # if they don't fit, upgrade file
+                upgrade_idf(file)
+                idd_filename = getiddfile(get_idf_version(file))
+                IDF.iddname = idd_filename
         # An error could occur if the iddname is not found on the system. Try
         # to upgrade the idf file
         except Exception as e:
             log('{}'.format(e))
             log('Trying to upgrade the file instead...')
             # Try to upgrade the file
-            try:
-                upgrade_idf(file)
-            except (KeyError, Exception) as e:
-                log('{}'.format(e))
-            else:
-                # Get idd file for newly created and upgraded idf file
-                idd_filename = getiddfile(get_idf_version(file))
-                IDF.iddname = idd_filename
+            upgrade_idf(file)
+            # Get idd file for newly created and upgraded idf file
+            idd_filename = getiddfile(get_idf_version(file))
+            IDF.iddname = idd_filename
         else:
             # when parsing is complete, save it to disk, then return object
             save_idf_object_to_cache(idf_object, idf_object.idfname)
@@ -427,77 +436,74 @@ def load_idf_object_from_cache(idf_file, how=None):
                 return idf
 
 
-def prepare_outputs(eplus_file, outputs=None):
+def prepare_outputs(eplus_file, outputs=None, idd_filename=None):
     """Add additional epobjects to the idf file. Users can pass in an outputs
 
     Args:
         eplus_file:
         outputs (bool or list):
 
-    Returns:
-
     Examples:
         >>> outputs = [{'ep_object':'OUTPUT:DIAGNOSTICS',
         >>>             'kwargs':{'Key_1':'DisplayUnusedSchedules'}}]
         >>> prepare_outputs(eplus_file, outputs=None)
 
-    Todo:
-        * do we need to do this?
     """
+
     log('first, loading the idf file')
-    idfs = eppy_load(eplus_file, getiddfile(get_idf_version(eplus_file)))
+    idf = load_idf(eplus_file, idd_filename=idd_filename, as_dict=False)[0]
     eplus_finename = os.path.basename(eplus_file)
-    idfs = {eplus_finename: idfs}
+    idf = {eplus_finename: idf}
 
     if isinstance(outputs, list):
         for output in outputs:
-            idfs[eplus_finename].add_object(output['ep_object'], **output[
+            idf[eplus_finename].add_object(output['ep_object'], **output[
                 'kwargs'])
 
     # SummaryReports
-    idfs[eplus_finename].add_object('Output:Table:SummaryReports'.upper(),
+    idf[eplus_finename].add_object('Output:Table:SummaryReports'.upper(),
                                     Report_1_Name='AllSummary')
 
     # SQL output
-    idfs[eplus_finename].add_object('Output:SQLite'.upper(),
+    idf[eplus_finename].add_object('Output:SQLite'.upper(),
                                     Option_Type='SimpleAndTabular')
 
     # Output variables
-    idfs[eplus_finename].add_object('Output:Variable'.upper(),
+    idf[eplus_finename].add_object('Output:Variable'.upper(),
                                     Variable_Name='Air System Total Heating '
                                                   'Energy',
                                     Reporting_Frequency='hourly')
-    idfs[eplus_finename].add_object('Output:Variable'.upper(),
+    idf[eplus_finename].add_object('Output:Variable'.upper(),
                                     Variable_Name='Air System Total Cooling '
                                                   'Energy',
                                     Reporting_Frequency='hourly')
 
     # Output meters
-    idfs[eplus_finename].add_object('OUTPUT:METER',
+    idf[eplus_finename].add_object('OUTPUT:METER',
                                     Key_Name='HeatRejection:EnergyTransfer',
                                     Reporting_Frequency='hourly')
-    idfs[eplus_finename].add_object('OUTPUT:METER',
+    idf[eplus_finename].add_object('OUTPUT:METER',
                                     Key_Name='Heating:EnergyTransfer',
                                     Reporting_Frequency='hourly')
-    idfs[eplus_finename].add_object('OUTPUT:METER',
+    idf[eplus_finename].add_object('OUTPUT:METER',
                                     Key_Name='Cooling:EnergyTransfer',
                                     Reporting_Frequency='hourly')
-    idfs[eplus_finename].add_object('OUTPUT:METER',
+    idf[eplus_finename].add_object('OUTPUT:METER',
                                     Key_Name='Heating:DistrictHeating',
                                     Reporting_Frequency='hourly')
-    idfs[eplus_finename].add_object('OUTPUT:METER',
+    idf[eplus_finename].add_object('OUTPUT:METER',
                                     Key_Name='Heating:Electricity',
                                     Reporting_Frequency='hourly')
-    idfs[eplus_finename].add_object('OUTPUT:METER',
+    idf[eplus_finename].add_object('OUTPUT:METER',
                                     Key_Name='Heating:Gas',
                                     Reporting_Frequency='hourly')
-    idfs[eplus_finename].add_object('OUTPUT:METER',
+    idf[eplus_finename].add_object('OUTPUT:METER',
                                     Key_Name='Cooling:DistrictCooling',
                                     Reporting_Frequency='hourly')
-    idfs[eplus_finename].add_object('OUTPUT:METER',
+    idf[eplus_finename].add_object('OUTPUT:METER',
                                     Key_Name='Cooling:Electricity',
                                     Reporting_Frequency='hourly')
-    idfs[eplus_finename].add_object('OUTPUT:METER',
+    idf[eplus_finename].add_object('OUTPUT:METER',
                                     Key_Name='Cooling:Gas',
                                     Reporting_Frequency='hourly')
 
@@ -566,33 +572,47 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
 
     # Determine version of idf file by reading the text file
     if ep_version is None:
-        versionids = {file: get_idf_version(file) for file in eplus_files}
-        idd_filename = {file: getiddfile(get_idf_version(file)) for
-                        file in eplus_files}
+        versionids = {
+            os.path.basename(eplus_file): get_idf_version(eplus_file)
+            for eplus_file in eplus_files
+        }
+        idd_filename = {
+            os.path.basename(eplus_file): getiddfile(
+                get_idf_version(eplus_file))
+            for eplus_file in eplus_files
+        }
     else:
-        versionids = {eplus_file: str(ep_version) for eplus_file in eplus_files}
-        idd_filename = {eplus_file: getiddfile(ep_version) for eplus_file in
-                        eplus_files}
+        versionids = {
+            os.path.basename(eplus_file): str(ep_version)
+            for eplus_file in eplus_files
+        }
+        idd_filename = {
+            os.path.basename(eplus_file): getiddfile(ep_version)
+            for eplus_file in eplus_files
+        }
 
     # Upgraded the file version if needed
-    for filename in eplus_files:
-        eplus_exe, eplus_home = paths_from_version(get_idf_version(filename,
+    for eplus_file in eplus_files:
+        eplus_exe, eplus_home = paths_from_version(get_idf_version(eplus_file,
                                                                    doted=False))
         if not os.path.isdir(eplus_home):
             log('The version of EnergyPlus-{0} needed for file {1} is not '
                 'installed at the original location on this machine. '
                 'Attempting to upgrade the file using the EnergyPlusUpdater '
-                'utility...'.format(versionids[filename], filename))
+                'utility...'.format(versionids[os.path.basename(eplus_file)],
+                                    eplus_file))
             try:
-                upgrade_idf(filename)
+                upgrade_idf(eplus_file)
             except Exception as e:
                 # catch upgrade version exceptions
                 raise
             else:
                 # update the versionid of the file
-                versionids[filename] = get_idf_version(filename, doted=True)
-                idd_filename[filename] = getiddfile(get_idf_version(filename,
-                                                                    doted=True))
+                versionids[os.path.basename(eplus_file)] = get_idf_version(
+                    eplus_file, doted=True)
+                idd_filename[os.path.basename(eplus_file)] = getiddfile(
+                    get_idf_version(eplus_file,
+                                    doted=True))
 
     # Output folder check
     if not output_folder:
@@ -611,8 +631,12 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         # Check if idf file has necessary objects (eg specific outputs)
         parallel_process(
             in_dict={os.path.basename(eplus_file): {'eplus_file': eplus_file,
-                                                    'outputs': prep_outputs} for
-                     eplus_file in eplus_files},
+                                                    'outputs': prep_outputs,
+                                                    'idd_filename':
+                                                        idd_filename[
+                                                            os.path.basename(
+                                                                eplus_file)]}
+                     for eplus_file in eplus_files},
             function=prepare_outputs,
             use_kwargs=True,
             processors=processors)
@@ -683,9 +707,9 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
 
             runargs = {'output_directory': os.path.join(output_folder,
                                                         filename_prefix),
-                       'ep_version': versionids[eplus_file],
+                       'ep_version': versionids[os.path.basename(eplus_file)],
                        'output_prefix': filename_prefix,
-                       'idd': idd_filename[eplus_file]}
+                       'idd': idd_filename[os.path.basename(eplus_file)]}
             runargs.update(kwargs)
 
             idf_path = os.path.abspath(eplus_file)
@@ -1046,9 +1070,9 @@ def upgrade_idf(files):
             perform_transition(file)
         except KeyError as e:
             log('file already upgraded to latest version "{}"'.format(e))
-        except Exception as e:
-            # Catch any unhandled errors
-            log('{}'.format(e))
+        # except Exception as e:
+        #     # Catch any unhandled errors
+        #     log('{}'.format(e))
 
 
 def perform_transition(file):

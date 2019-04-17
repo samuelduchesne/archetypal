@@ -3,7 +3,7 @@ from shapely.geometry import Point
 
 import archetypal as ar
 # configure archetypal
-from archetypal.building import download_bld_window
+from archetypal import download_bld_window
 
 
 def test_tabula_available_country(config, scratch_then_cache):

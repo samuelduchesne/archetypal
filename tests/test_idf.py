@@ -3,7 +3,7 @@ import matplotlib as mpl
 import pytest
 
 import archetypal as ar
-from archetypal import copy_file
+from archetypal import copy_file, CalledProcessError
 
 mpl.use('Agg')
 
@@ -22,8 +22,8 @@ def test_small_home_data(fresh_start):
     file = './input_data/regular/AdultEducationCenter.idf'
     file = copy_file(file)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return ar.run_eplus(file, wf, expandobjects=True, annual=True, verbose='q',
-                        prep_outputs=True)
+    return ar.run_eplus(file, wf, expandobjects=True, verbose='q',
+                        prep_outputs=True, design_day=True)
 
 
 def test_necb(config, fresh_start):
@@ -33,7 +33,8 @@ def test_necb(config, fresh_start):
                       "/NECB_2011_Montreal_idf/*idf")
     files = copy_file(files)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return ar.run_eplus(files, wf, expandobjects=True, verbose='q', annual=True)
+    return ar.run_eplus(files, wf, expandobjects=True, verbose='q',
+                        design_day=True)
 
 
 def test_std(config, fresh_start):
@@ -42,20 +43,7 @@ def test_std(config, fresh_start):
     files = copy_file(files)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     return ar.run_eplus(files, wf, expandobjects=True, annual=True,
-                        verbose='q', prep_outputs=True)
-
-
-@pytest.mark.parametrize('processors', [1, -1], ids=['1cpu', 'allcpu'])
-@pytest.mark.parametrize('annual', [True], ids=['annual'])
-@pytest.mark.parametrize('expandobjects', [True], ids=['expandobj'])
-def test_example_idf(processors, expandobjects, annual, fresh_start,
-                     idf_source):
-    """Will run all combinations of parameters defined above"""
-
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    idf = ar.copy_file(idf_source)
-    return ar.run_eplus(idf, wf, processors=processors, verbose='q',
-                        annual=annual, expandobjects=expandobjects)
+                        verbose='q', prep_outputs=True, design_day=True)
 
 
 @pytest.mark.parametrize('as_dict', [True, False])
@@ -72,26 +60,28 @@ def test_load_idf_asdict(as_dict, processors, fresh_start):
         assert isinstance(obj, list)
 
 
-def test_run_olderv(fresh_start):
-    """Will run eplus on a file that needs to be upgraded"""
+@pytest.mark.parametrize('ep_version', ['8.9', None],
+                         ids=['specific-ep-version', 'no-specific-ep-version'])
+def test_run_olderv(fresh_start, ep_version):
+    """Will run eplus on a file that needs to be upgraded with one that does
+    not"""
 
-    file = './input_data/problematic/nat_ventilation_SAMPLE0.idf'
+    files = ['./input_data/problematic/nat_ventilation_SAMPLE0.idf',
+             './input_data/regular/5ZoneNightVent1.idf']
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    files = copy_file(files)
+    ar.run_eplus(files, wf, ep_version=ep_version, annual=True,
+                 expandobjects=True, verbose='q', )
+
+
+@pytest.mark.xfail(raises=CalledProcessError)
+def test_run_olderv_problematic(fresh_start):
+    """Will run eplus on a file that needs to be upgraded and that should
+    fail. Will be ignores in the test suit"""
+
+    file = './input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7' \
+           '.2_5A_USA_IL_CHICAGO-OHARE.idf'
+    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    file = copy_file([file])[0]
     ar.run_eplus(file, wf, ep_version='8.9', annual=True,
-                 expandobjects=True, verbose='q',)
-
-
-def test_run(scratch_then_cache):
-    f1 = './input_data/umi_samples/nat_ventilation_SAMPLE0.idf'
-    f2 = './input_data/umi_samples' \
-         '/no_shed_ventilation_and_no_mech_ventilation_SAMPLE0.idf'
-    f3 = './input_data/umi_samples/no_shed_ventilation_SAMPLE0.idf'
-    f4 = './input_data/umi_samples/shed_ventilation_SAMPLE0.idf'
-
-    files = copy_file([f1, f2, f3, f4])
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    sql = ar.run_eplus(files, wf, verbose='q',
-                       expandobjects=True, annual=True, processors=-1)
-    np = ar.nominal_people(sql)
-    # zc = ar.zone_conditioning(sql)
-    # print(zc)
+                 expandobjects=True, verbose='q', prep_outputs=True)

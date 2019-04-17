@@ -3,53 +3,6 @@ import pytest
 from archetypal import Schedule, load_idf, copy_file, run_eplus
 
 
-def test_day_schedule(config):
-    """Tests all schedules in the schedule.idf file"""
-    idf_file = './input_data/schedules/schedules.idf'
-    idf = load_idf(idf_file)
-
-    scheds = idf['schedules.idf'].get_all_schedules()
-
-    for sched in scheds:
-        s = Schedule(idf['schedules.idf'], sch_name=scheds[sched].Name)
-        values = s.all_values
-        print('{name}\tType:{type}\t[{len}]\tValues:{'
-              'values}'.format(
-            name=s.schName,
-            type=s.schType,
-            values=values,
-            len=len(values)))
-
-
-def test_file_schedule(config):
-    """Tests only 'elecTDVfromCZ06com' schedule name"""
-    idf_file = './input_data/schedules/schedules.idf'
-    idf = load_idf(idf_file)['schedules.idf']
-
-    s = Schedule(idf, sch_name='POFF')
-
-    assert len(s.all_values) == 8760
-
-
-def test_schedules_in_necb(config):
-    idf_file = './input_data/regular/NECB 2011-MediumOffice-NECB HDD ' \
-               'Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf'
-    idfs = load_idf(idf_file)
-    for key in idfs:
-        idf = idfs[key]
-        # get all possible schedules
-        schedules = idf.get_all_schedules()
-        for sched in schedules:
-            s = Schedule(idf, sch_name=sched)
-            values = s.all_values
-            print('{name}\tType:{type}\t[{len}]\tValues:{'
-                  'values}'.format(
-                name=s.schName,
-                type=s.schType,
-                values=values,
-                len=len(values)))
-
-
 def test_schedules_in_necb_specific(config):
     idf_file = './input_data/regular/NECB 2011-MediumOffice-NECB HDD ' \
                'Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf'
@@ -116,18 +69,18 @@ def test_ep_versus_schedule(test_data):
     mask = expected.values != orig.all_values
     diff = mask.sum()
 
-    # region Plot
-    fig, ax = plt.subplots(1, 1, figsize=(5, 4))
-    orig.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post',
-              linestyle='dashed')
-    new.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post',
-             linestyle='dotted')
-    expected.loc[slice_[0]:slice_[1]].plot(label='E+', legend=True, ax=ax,
-                                           drawstyle='steps-post',
-                                           linestyle='dashdot')
-    ax.set_title(orig.schName.capitalize())
-    plt.show()
-    # endregion
+    # # region Plot
+    # fig, ax = plt.subplots(1, 1, figsize=(5, 4))
+    # orig.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post',
+    #           linestyle='dashed')
+    # new.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post',
+    #          linestyle='dotted')
+    # expected.loc[slice_[0]:slice_[1]].plot(label='E+', legend=True, ax=ax,
+    #                                        drawstyle='steps-post',
+    #                                        linestyle='dashdot')
+    # ax.set_title(orig.schName.capitalize())
+    # plt.show()
+    # # endregion
 
     print(diff)
     print(orig.series[mask])
@@ -144,6 +97,12 @@ def test_data(request, run_schedules_idf):
     schName = request.param
     orig = Schedule(idf, sch_name=schName)
 
+    print('{name}\tType:{type}\t[{len}]\tValues:{'
+          'values}'.format(name=orig.schName,
+                           type=orig.schType,
+                           values=orig.all_values,
+                           len=len(orig.all_values)))
+
     # create year:week:day version
     new_eps = orig.to_year_week_day()
     new = Schedule(idf, sch_name=new_eps[0].Name)
@@ -158,16 +117,6 @@ def test_data(request, run_schedules_idf):
     print('Days: {}'.format([obj.Name for obj in new_eps[2]]))
 
     yield orig, new, expected
-
-
-def test_convert_schedule(test_data):
-    """Test the creation of the original schedule (orig) and its
-    year:week:day implementation against the expected values (output from by
-    E+)"""
-    orig, new, expected = test_data
-
-    assert (orig.all_values == expected).all()
-    assert (new.all_values == expected).all()
 
 
 @pytest.fixture(scope='module')

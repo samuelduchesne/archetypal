@@ -78,7 +78,6 @@ main-test\.py
 *.rdd
 *.shd
 *.sql
-*.csv
 *.htm
 *.dbg
 *.eso
@@ -95,3 +94,5 @@ _build/
 tests/\.temp/
 
 *.lp
+
+\.DS_Store

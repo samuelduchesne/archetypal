@@ -2,6 +2,14 @@ Packages
 ========
 
 
+Schedules Module
+----------------
+
+.. currentmodule:: archetypal
+
+.. autoclass:: Schedule
+
+
 IDF operations
 --------------
 
@@ -21,7 +29,12 @@ Utilities
    :members:
 
 Simple Galzing Module
-=====================
+---------------------
 
 .. automodule:: archetypal.simple_glazing
-   :members:
+   :members: calc_simple_glazing
+
+Data Portals
+------------
+
+.. automodule:: archetypal.dataportal

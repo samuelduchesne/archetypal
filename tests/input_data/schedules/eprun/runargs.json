@@ -1,0 +1,10 @@
+{
+    "annual": true,
+    "ep_version": "8.9",
+    "idd": "/Applications/EnergyPlus-8-9-0/Energy+.idd",
+    "idf_file": "/Users/samuelduchesne/Dropbox/Polytechnique/Doc/software/archetypal/tests/input_data/schedules/test_multizone_EP.idf",
+    "output_directory": "./input_data/schedules/eprun",
+    "output_prefix": "eprun",
+    "readvars": true,
+    "run_time": "2019-04-15T10:37:39.421213"
+}

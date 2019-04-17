@@ -5,10 +5,13 @@ import logging as lg
 import os
 import re
 import time
+import zipfile
 
 import pandas as pd
 import pycountry as pycountry
 import requests
+
+import archetypal.dataportal
 from archetypal import log, settings, make_str
 
 # scipy and sklearn are optional dependencies for faster nearest node search
@@ -425,12 +428,13 @@ def nrel_api_cbr_request(data):
         dict: the json response
 
     Examples
-        >>> ar.dataportal.nrel_api_cbr_request({'s': 'Commercial Reference', \
-        >>> 'api_key': 'oGZdX1nhars1cTJYTm7M9T12T1ZOvikX9pH0Zudq'})
+        >>> archetypal.dataportal.nrel_api_cbr_request({'s': 'Commercial Reference',
+        >>>     'api_key': 'oGZdX1nhars1cTJYTm7M9T12T1ZOvikX9pH0Zudq'})
 
     Notes
         For a detailed description of data arguments, visit
-        https://developer.nrel.gov/docs/buildings/commercial-building-resource-database-v1/resources/
+        https://developer.nrel.gov/docs/buildings/commercial-building
+        -resource-database-v1/resources/
     """
     # define the Overpass API URL, then construct a GET-style URL as a string to
     # hash to look up/save to cache
@@ -650,3 +654,98 @@ def stat_can_geo_request(data):
                 domain, response.status_code), level=lg.ERROR)
         else:
             return response_json
+
+
+def download_bld_window(u_factor, shgc, vis_trans, oauth_key, tolerance=0.05,
+                        extension='idf', output_folder=None):
+    """Find window constructions corresponding to a combination of a
+    u_factor, shgc and visible transmittance and download their idf file to
+    disk. it is necessary to have an authentication key (see Info below).
+
+    Args:
+        u_factor (float or tuple): The center of glass u-factor. Pass a
+            range of values by passing a tuple (from, to). If a tuple is
+            passed, *tolerance* is ignored.
+        shgc (float or tuple): The Solar Heat Gain Coefficient. Pass a range
+            of values by passing a tuple (from, to). If a tuple is passed,
+            *tolerance* is ignored.
+        vis_trans (float or tuple): The Visible Transmittance. Pass a range
+            of values by passing a tuple (from, to). If a tuple is passed,
+            *tolerance* is ignored.
+        tolerance (float): relative tolerance for the input values. Default
+            is 0.05 (5%).
+        oauth_key (str): the Building_Component_Library_ authentication key.
+        extension (str): specify the extension of the file to download.
+            (default: 'idf')
+        output_folder (str, optional): specify folder to save response data
+            to. Defaults to settings.data_folder.
+
+    Returns:
+        archetypal.IDF: a list of IDF files containing window objects
+            matching the  parameters.
+
+    Note:
+        An authentication key from NREL is required to download building
+        components. Register at Building_Component_Library_
+
+    .. _Building_Component_Library: https://bcl.nrel.gov/user/register
+
+    """
+    # check if one or multiple values
+    if isinstance(u_factor, tuple):
+        u_factor_dict = '[{} TO {}]'.format(u_factor[0], u_factor[1])
+    else:
+        # apply tolerance
+        u_factor_dict = '[{} TO {}]'.format(u_factor * (1 - tolerance),
+                                            u_factor * (1 + tolerance))
+    if isinstance(shgc, tuple):
+        shgc_dict = '[{} TO {}]'.format(shgc[0], shgc[1])
+    else:
+        # apply tolerance
+        shgc_dict = '[{} TO {}]'.format(shgc * (1 - tolerance),
+                                        shgc * (1 + tolerance))
+    if isinstance(vis_trans, tuple):
+        vis_trans_dict = '[{} TO {}]'.format(vis_trans[0], vis_trans[1])
+    else:
+        # apply tolerance
+        vis_trans_dict = '[{} TO {}]'.format(vis_trans * (1 - tolerance),
+                                             vis_trans * (1 + tolerance))
+
+    data = {'keyword': 'Window',
+            'format': 'json',
+            'f[]': ['fs_a_Overall_U-factor:{}'.format(u_factor_dict),
+                    'fs_a_VLT:{}'.format(vis_trans_dict),
+                    'fs_a_SHGC:{}'.format(shgc_dict),
+                    'sm_component_type:"Window"'],
+            'oauth_consumer_key': oauth_key}
+    response = nrel_bcl_api_request(data)
+
+    if response['result']:
+        log('found {} possible window component(s) matching '
+            'the range {}'.format(len(response['result']), str(data['f[]'])))
+
+    # download components
+    uids = []
+    for component in response['result']:
+        uids.append(component['component']['uid'])
+    url = 'https://bcl.nrel.gov/api/component/download?uids={}'.format(','
+                                                                       ''.join(
+        uids))
+    # actual download with get()
+    d_response = requests.get(url)
+
+    if d_response.ok:
+        # loop through files and extract the ones that match the extension
+        # parameter
+        results = []
+        if output_folder is None:
+            output_folder = settings.data_folder
+        with zipfile.ZipFile(io.BytesIO(d_response.content)) as z:
+            for info in z.infolist():
+                if info.filename.endswith(extension):
+                    z.extract(info, path=output_folder)
+                    results.append(os.path.join(settings.data_folder,
+                                                info.filename))
+        return results
+    else:
+        return response['result']

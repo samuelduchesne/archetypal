@@ -33,10 +33,16 @@ class EnergyDataFrame(DataFrame):
         if not inplace:
             return frame
 
-    @property
-    def _constructor(self):
-        return EnergyDataFrame
+    def __init__(self, *args, **kwargs):
+        super(EnergyDataFrame, self).__init__(*args, **kwargs)
 
-    @property
-    def _constructor_sliced(self):
-        return EnergySeries
+    def __getitem__(self, key):
+        """
+        return a EnergySeries.
+        """
+        result = super(EnergyDataFrame, self).__getitem__(key)
+        if isinstance(result, Series):
+            result.__class__ = EnergySeries
+        elif isinstance(result, DataFrame):
+            result.__class__ = EnergyDataFrame
+        return result

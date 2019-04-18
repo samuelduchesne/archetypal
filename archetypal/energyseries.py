@@ -10,6 +10,8 @@ from matplotlib import pyplot as plt, cm
 from matplotlib.colors import LightSource
 from pandas import Series, DataFrame, concat, MultiIndex, date_range
 from sklearn import preprocessing
+
+import archetypal
 from archetypal import log, rmse, piecewise, settings
 
 
@@ -129,7 +131,7 @@ class EnergySeries(Series):
             result = self._constructor(result)
         else:
             result = Series(scaler.fit_transform(self.values.reshape(-1,
-                                                                        1)).ravel())
+                                                                     1)).ravel())
             result = self._constructor(result)
             result.from_units = pint.UnitRegistry().dimensionless
         if inplace:
@@ -264,12 +266,10 @@ class EnergySeries(Series):
     def plot3d(self, *args, **kwargs):
         """Generate a plot of the EnergySeries.
 
-        Wraps the ``plot_energyprofile()`` function, and documentation is copied
+        Wraps the ``plot_energyseries()`` function, and documentation is copied
         from there.
         """
-        return plot_energyprofile(self, *args, **kwargs)
-
-    plot3d.__doc__ = plot_energyprofile.__doc__
+        return plot_energyseries(self, *args, **kwargs)
 
     @property
     def units(self):
@@ -288,9 +288,9 @@ class EnergySeries(Series):
             return self.groupby(level=0).max()
         else:
             datetimeindex = date_range(freq=self.frequency,
-                                          start='{}-01-01'.format(
-                                              self.base_year),
-                                          periods=self.size)
+                                       start='{}-01-01'.format(
+                                           self.base_year),
+                                       periods=self.size)
             self_copy = self.copy()
             self_copy.index = datetimeindex
             self_copy = self_copy.resample('M').mean()
@@ -404,11 +404,11 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
     return fig, ax
 
 
-def plot_energyprofile(energy_series, kind='polygon', axis_off=True, cmap=None,
-                       fig_height=None, fig_width=6, show=True, view_angle=-60,
-                       save=False, close=False, dpi=300, file_format='png',
-                       color=None, axes=None, vmin=None, vmax=None,
-                       filename=None, **kwargs):
+def plot_energyseries(energy_series, kind='polygon', axis_off=True, cmap=None,
+                      fig_height=None, fig_width=6, show=True, view_angle=-60,
+                      save=False, close=False, dpi=300, file_format='png',
+                      color=None, axes=None, vmin=None, vmax=None,
+                      filename=None, **kwargs):
     """
 
     Args:
@@ -440,6 +440,7 @@ def plot_energyprofile(energy_series, kind='polygon', axis_off=True, cmap=None,
         return axes
 
     import matplotlib.pyplot as plt
+    # noinspection PyUnresolvedReferences
     from mpl_toolkits.mplot3d import Axes3D
 
     if isinstance(energy_series.index, pd.MultiIndex):
@@ -464,10 +465,6 @@ def plot_energyprofile(energy_series, kind='polygon', axis_off=True, cmap=None,
         vmin = values.min() if vmin is None else vmin
         vmax = values.max() if vmax is None else vmax
 
-        facecolor = kwargs.pop('facecolor', None)
-        if color is not None:
-            facecolor = color
-
         if kind == 'polygon':
             z = values.reshape(365, 24)
             nrows, ncols = z.shape
@@ -478,20 +475,20 @@ def plot_energyprofile(energy_series, kind='polygon', axis_off=True, cmap=None,
             verts = []
             for i in zs:
                 ys = z[int(i), :]
-                verts.append(polygon_under_graph(xs, ys))
+                verts.append(_polygon_under_graph(xs, ys))
 
-            plot_poly_collection(ax, verts, zs,
-                                 edgecolors=kwargs.get('edgecolors', None),
-                                 facecolors=kwargs.get('facecolors', None),
-                                 linewidths=kwargs.get('linewidths', None),
-                                 cmap=cmap)
+            _plot_poly_collection(ax, verts, zs,
+                                  edgecolors=kwargs.get('edgecolors', None),
+                                  facecolors=kwargs.get('facecolors', None),
+                                  linewidths=kwargs.get('linewidths', None),
+                                  cmap=cmap)
         elif kind == 'surface':
             z = values.reshape(365, 24)
             nrows, ncols = z.shape
             x = np.linspace(1, 24, ncols)
             y = np.linspace(1, 365, nrows)
             x, y = np.meshgrid(x, y)
-            plot_surface(ax, x, y, z, cmap=cmap, **kwargs)
+            _plot_surface(ax, x, y, z, cmap=cmap, **kwargs)
         else:
             raise NameError('plot kind "{}" is not supported'.format(kind))
 
@@ -516,8 +513,7 @@ def plot_energyprofile(energy_series, kind='polygon', axis_off=True, cmap=None,
         zaxis.get_major_formatter().set_useOffset(False)
 
         # if axis_off, turn off the axis display set the margins to zero and
-        # point
-        # the ticks in so there's no space around the plot
+        # point the ticks in so there's no space around the plot
         if axis_off:
             ax.axis('off')
             ax.margins(0)
@@ -537,8 +533,8 @@ def plot_energyprofile(energy_series, kind='polygon', axis_off=True, cmap=None,
     return fig, axes
 
 
-def plot_poly_collection(ax, verts, zs=None, color=None, cmap=None,
-                         vmin=None, vmax=None, **kwargs):
+def _plot_poly_collection(ax, verts, zs=None, color=None, cmap=None,
+                          vmin=None, vmax=None, **kwargs):
     from matplotlib.collections import PolyCollection
 
     # if None in zs:
@@ -561,7 +557,7 @@ def plot_poly_collection(ax, verts, zs=None, color=None, cmap=None,
     return poly
 
 
-def plot_surface(ax, x, y, z, cmap=None, **kwargs):
+def _plot_surface(ax, x, y, z, cmap=None, **kwargs):
     if cmap is None:
         cmap = cm.gist_earth
 
@@ -570,12 +566,16 @@ def plot_surface(ax, x, y, z, cmap=None, **kwargs):
     # in the rgb colors of the shaded surface calculated from "shade".
     rgb = ls.shade(z, cmap=cm.get_cmap(cmap), vert_exag=0.1, blend_mode='soft')
     surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, facecolors=rgb,
-                           linewidth=0, antialiased=False, shade=False)
+                           linewidth=0, antialiased=False, shade=False,
+                           **kwargs)
     return surf
 
 
-def polygon_under_graph(xlist, ylist):
+def _polygon_under_graph(xlist, ylist):
     """Construct the vertex list which defines the polygon filling the space
     under
     the (xlist, ylist) line graph.  Assumes the xs are in ascending order."""
     return [(xlist[0], 0.), *zip(xlist, ylist), (xlist[-1], 0.)]
+
+
+EnergySeries.plot3d.__doc__ = plot_energyseries.__doc__

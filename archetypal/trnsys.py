@@ -266,15 +266,17 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
     best_window_index = df_windows.loc[win_ids.index, :].apply(
         lambda x: (x.u_value - u_value) ** 2 + (x.g_value - shgc) ** 2 + (
                 x.t_vis - t_vis) ** 2, axis=1).idxmin()
-    win_id, u_win, shgc_win, t_vis_win = df_windows.loc[
-        best_window_index, ['WinID', 'u_value', 'g_value', 't_vis']]
+    win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol, t_vis_win, lay_win, width = \
+        df_windows.loc[
+            best_window_index, ['WinID', 'u_value', 'g_value', 't_vis']]
 
     # If warn = 1 (tolerance not respected) return tolerance
     if warn:
-        return (win_id, window_bunches[
-            win_id], u_win, shgc_win, t_vis_win, tolerance)
+        return (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
+                t_vis_win, lay_win, width, tolerance)
     else:
-        return (win_id, window_bunches[win_id], u_win, shgc_win, t_vis_win)
+        return (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
+                t_vis_win, lay_win, width)
 
 
 def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):

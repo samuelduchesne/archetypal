@@ -13,16 +13,27 @@ def round_up(n, decimals=0):
 
 def test_trnbuild_from_idf(scratch_then_cache, config):
     # Path to IDF file to convert
-    convert_idf_to_t3d("./input_data/trnsys/NECB 2011 - Small Office.idf")
+
+    window_file = 'W74-lib.dat'
+    window_filepath = os.path.join("..", "tests", "input_data", "trnsys",
+                                   window_file)
+
+    convert_idf_to_t3d("./input_data/trnsys/NECB 2011 - Small Office.idf",
+                       window_filepath)
 
 
 def test_trnbuild_from_idf_parallel(scratch_then_cache, config):
     # List files here
     files = ["./input_data/trnsys/NECB 2011 - Small Office.idf"]
 
+    window_file = 'W74-lib.dat'
+    window_filepath = os.path.join("..", "tests", "input_data", "trnsys",
+                                   window_file)
+
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
     in_dict = {os.path.basename(file): {'idf_file': file,
+                                        'window_lib' : window_filepath,
                                         'output_folder': None} for
                file in files}
 
@@ -42,5 +53,5 @@ def test_trnbuild_choose_window(scratch_then_cache, config):
     file = 'W74-lib.dat'
     window_filepath = os.path.join("..", "tests", "input_data", "trnsys",
                                    file)
-    window_id, bunch, u, sghc, tvis = choose_window(2.0, 0.70, 0.8, 5,
+    window = choose_window(2.2, 0.64, 0.8, 0.05,
                                                     window_filepath)

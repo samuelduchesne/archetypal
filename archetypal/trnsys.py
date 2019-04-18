@@ -171,7 +171,7 @@ def parse_window_lib(window_file_path):
     df_windows = pd.read_csv(os.path.join(output_folder, "winPOOL.txt"),
                              header=None)
     columns = ['WinID', 'Description', 'Design', 'u_value', 'g_value', 'T_sol',
-               'Rf_sol', 't_vis', 'Lay', 'Width(mm)']
+               'Rf_sol', 't_vis', 'Lay', 'Width']
     df_windows.columns = columns
 
     # Select list of windows with all their characteristics (bunch)
@@ -266,17 +266,21 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
     best_window_index = df_windows.loc[win_ids.index, :].apply(
         lambda x: (x.u_value - u_value) ** 2 + (x.g_value - shgc) ** 2 + (
                 x.t_vis - t_vis) ** 2, axis=1).idxmin()
-    win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol, t_vis_win, lay_win, width = \
+    win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win, t_vis_win, lay_win, width = \
         df_windows.loc[
-            best_window_index, ['WinID', 'u_value', 'g_value', 't_vis']]
+            best_window_index, ['WinID', 'Description', 'Design', 'u_value',
+                                'g_value', 'T_sol', 'Rf_sol', 't_vis', 'Lay',
+                                'Width']]
 
     # If warn = 1 (tolerance not respected) return tolerance
     if warn:
-        return (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
-                t_vis_win, lay_win, width, window_bunches[win_id], tolerance)
+        return (
+        win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win,
+        t_vis_win, lay_win, width, window_bunches[win_id], tolerance)
     else:
-        return (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
-                t_vis_win, lay_win, width, window_bunches[win_id])
+        return (
+        win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win,
+        t_vis_win, lay_win, width, window_bunches[win_id])
 
 
 def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
@@ -309,7 +313,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
     # Clean names of idf objects (e.g. 'MATERIAL')
     start_time = time.time()
-    clear_name_idf_objects(idf)
+    # clear_name_idf_objects(idf)
     log("Cleaned IDF object names in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="CoverterLog",
         filename="CoverterLog")
@@ -549,12 +553,13 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             indiceMat = [k for k, s in enumerate(materials) if
                          constructions.list2[i][j] == s.Name]
 
-            if materials[indiceMat[0]].Thickness / (
-                    materials[indiceMat[0]].Conductivity * 3.6) > 0.0007:
-                if not indiceMat:
-                    thickList.append(0.0)
-                else:
-                    thickList.append(materials[indiceMat[0]].Thickness)
+            # if materials[indiceMat[0]].Thickness / (
+            #         materials[indiceMat[0]].Conductivity * 3.6) > 0.0007:
+
+            if not indiceMat:
+                thickList.append(0.0)
+            else:
+                thickList.append(materials[indiceMat[0]].Thickness)
 
                 layerList.append(constructions.list2[i][j])
 
@@ -767,6 +772,60 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                      str(item) for item in
                                      rotate(schedules[schedule_name][period][
                                                 i].fieldvalues[2:9], 1)) + '\n')
+
+    # Write WINDOWS chosen by the user (from Berkeley lab library) in lines (T3D)
+    # Get window from library
+    # window = (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
+    #                 t_vis_win, lay_win, width, window_bunches[win_id],
+    #                 and maybe tolerance)
+    window = choose_window(2.2, 0.64, 0.8, 0.05, window_lib)
+    # If tolerance was not respected to find a window, write in log a warning
+    if len(window) > 11:
+        log(
+            "WARNING : window tolerance was not respected. Final tolerance=  {:,.2f}".format(
+                window[-1]), lg.WARNING, name="CoverterLog",
+            filename="CoverterLog")
+    # Write in log (info) the characteristics of the window
+    log(
+        "Characterisitics of the chosen window are: u_value= {:,.2f}, "
+        "SHGC= {:,.2f}, t_vis= {:,.2f}".format(window[3], window[4], window[7]),
+        lg.INFO, name="CoverterLog", filename="CoverterLog")
+
+    # Get line number where to write
+    windowNum = ar.checkStr(lines,
+                            'W i n d o w s')
+    # Write
+    lines.insert(windowNum + 2,
+                 '!- WINID = ' + str(window[0]) + ': HINSIDE = 11:'
+                                                  ' HOUTSIDE = 64: SLOPE = -999: '
+                                                  'SPACID = 4: WWID = 0.77: WHEIG = 1.08: '
+                                                  'FFRAME = 0.15: UFRAME = 8.17: ABSFRAME = 0.6: '
+                                                  'RISHADE = 0: RESHADE = 0: REFLISHADE = 0.5: '
+                                                  'REFLOSHADE = 0.5: CCISHADE = 0.5: '
+                                                  'EPSFRAME = 0.9: EPSISHADE = 0.9: '
+                                                  'ITSHADECLOSE = INPUT 1 * SHADE_CLOSE: '
+                                                  'ITSHADEOPEN = INPUT 1 * SHADE_OPEN: '
+                                                  'FLOWTOAIRNODE = 1: PERT = 0: PENRT = 0: '
+                                                  'RADMATERIAL = undefined: '
+                                                  'RADMATERIAL_SHD1 = undefined')
+
+    # Get line number to write the EXTENSION_WINPOOL
+    extWinpoolNum = ar.checkStr(lines,
+                                '!-_EXTENSION_WINPOOL_START_')
+    count = 0
+    for line in window[10]:
+        lines.insert(extWinpoolNum + count, '!-' + line)
+        count += 1
+
+    # Get line number to write the Window description
+    winDescriptionNum = ar.checkStr(lines,
+                                    'WinID Description')
+    lines.insert(winDescriptionNum + 1,
+                 '!-' + str(window[0]) + ' ' + str(window[1])
+                 + ' ' + str(window[2]) + ' ' + str(window[3]) + ' ' +
+                 str(window[4]) + ' ' + str(window[5]) + ' ' + str(window[6]) +
+                 ' ' + str(window[7]) + ' ' + str(window[8]) + ' ' + str(
+                     window[9]) + '\n')
 
     # Save file at output_folder
     if output_folder is None:

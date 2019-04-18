@@ -7,6 +7,7 @@ from .simple_glazing import *
 from .idfclass import IDF
 from .idf import *
 from .schedule import Schedule
+from .template import *
 from .core import *
 from .dataportal import *
 from .plot import *

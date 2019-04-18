@@ -11,8 +11,9 @@ import numpy as np
 import pandas as pd
 from sklearn import preprocessing
 
-from . import settings, object_from_idf, object_from_idfs, calc_simple_glazing, \
-    iscore, weighted_mean, top
+from . import settings, object_from_idf, object_from_idfs, \
+    calc_simple_glazing, \
+    iscore, weighted_mean, top, Schedule, MaterialsGas
 from .idf import run_eplus, load_idf
 from .plot import plot_energyprofile
 from .utils import log, label_surface, type_surface, layer_composition, \
@@ -290,9 +291,10 @@ class EnergyProfile(pd.Series):
                                method='L-BFGS-B',
                                bounds=hours_bounds + sf_bounds,
                                options=dict(disp=True))
-                log('Completed discretization in {:,.2f} seconds'.format(time.time()-start_time),
+                log('Completed discretization in {:,.2f} seconds'.format(
+                    time.time() - start_time),
                     lg.DEBUG)
-                edges[name] = res.x[0:n_bins+1]
+                edges[name] = res.x[0:n_bins + 1]
                 ampls[name] = res.x[n_bins + 1:]
                 results[name] = pd.Series(piecewise(res.x))
             self.bin_edges_ = pd.Series(edges).apply(pd.Series)
@@ -688,50 +690,15 @@ def materials_gas(idfs):
         idfs: parsed IDF files
 
     Returns:
-        padnas.DataFrame: Returns a DataFrame with the all necessary Umi columns
+        pandas.Series: Returns a Series of MaterialsGas objects
     """
+    # First, get the list of materials (returns a DataFrame)
     materials_df = object_from_idfs(idfs, 'WINDOWMATERIAL:GAS')
-    cols = settings.common_umi_objects['GasMaterials'].copy()
 
-    # Add Type of gas column
-    materials_df['Type'] = 'Gas'
-    materials_df['GasType'] = materials_df.apply(lambda x: gas_type(x), axis=1)
-    materials_df['Cost'] = 0
-    materials_df['EmbodiedCarbon'] = 0
-    materials_df['EmbodiedCarbonStdDev'] = 0
-    materials_df['EmbodiedEnergy'] = 0
-    materials_df['EmbodiedEnergyStdDev'] = 0
-    materials_df[
-        'SubstitutionRatePattern'] = np.NaN  # ! Might have to change to an
-    # empty array
-    materials_df['SubstitutionTimestep'] = 0
-    materials_df['TransportCarbon'] = 0
-    materials_df['TransportDistance'] = 0
-    materials_df['TransportEnergy'] = 0
-    materials_df[
-        'Life'] = 1  # TODO: What does Life mean? Always 1 in Boston UmiTemplate
-    materials_df['Comment'] = ''
-    try:
-        materials_df['DataSource'] = materials_df['Archetype']
-    except Exception as e:
-        log('An exception was raised while setting the DataSource of the '
-            'objects',
-            lg.WARNING)
-        log('{}'.format(e), lg.ERROR)
-        log('Falling back onto first IDF file containing this common object',
-            lg.WARNING)
-        materials_df['DataSource'] = 'First IDF file containing ' \
-                                     'this common object'
+    materials = materials_df.apply(lambda x: MaterialsGas(**x), axis=1)
 
-    materials_df = materials_df.reset_index(drop=True).rename_axis(
-        '$id').reset_index()
-    log('Returning {} WINDOWMATERIAL:GAS objects in a DataFrame'.format(
-        len(materials_df)))
-    materials_df = materials_df[cols].set_index(
-        '$id')  # Keep only relevant columns
-    materials_df.name = 'GasMaterials'
-    materials_df.index += 1  # Shift index by one since umi is one-based indexed
-    return materials_df
+    log('Returning {} WINDOWMATERIAL:GAS objects'.format(len(materials)))
+    return materials
 
 
 def materials_glazing(idfs):
@@ -1260,6 +1227,14 @@ def year_schedules(idfs, weekschedule=None):
     """
     origin_time = time.time()
     log('Initiating week_schedules...')
+    schedules = {}
+    for idf in idfs:
+        schedules[idf] = idfs[idf].get_all_schedules(yearly_only=True)
+    for idf in schedules:
+        for schedule in schedules[idf]:
+            schedules[idf][schedule] = Schedule(idf=idfs[idf],
+                                                sch_name=schedule)
+
     schedule = object_from_idfs(idfs, 'SCHEDULE:YEAR',
                                 first_occurrence_only=False)
     cols = settings.common_umi_objects['YearSchedules'].copy()

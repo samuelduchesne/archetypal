@@ -206,20 +206,25 @@ def chunks(l, n):
         yield l[i:i + n]
 
 
-def choose_window(u_value, shgc, t_vis, error_lim, window_lib_path):
+def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
     """Return window object from TRNBuild library
 
     Args:
         u_value (float): U_value of the glazing
         shgc (float): SHGC of the glazing
         t_vis (float): Visible transmittance of the glazing
-        error_lim (float): Maximum error in percent on u_value, shgc and tvis
+        tolerance (float): Maximum tolerance on u_value, shgc and tvis
             wanted by the user
         window_lib_path (.dat file): window library from Berkeley lab
 
-    Returns:
+    Returns (tuple): The window chosen : window_ID, the "bunch" of
+        description/properties from Berkeley lab, window u_value, window shgc,
+        and window visible transmittance. If tolerance not respected return new
+        tolerance used to find a window.
 
     """
+    # Init "warn" variable (0 or 1) to log a warning if tolerance not respected
+    warn = 0
 
     # Making sure u_value, shgc and tvis are float
     if not isinstance(u_value, float):
@@ -234,42 +239,50 @@ def choose_window(u_value, shgc, t_vis, error_lim, window_lib_path):
     # Parse window library
     df_windows, window_bunches = parse_window_lib(window_lib_path)
 
-    # Create error column for the 3 window properties
-    df_windows["error_u"] = ((df_windows["u_value"] - u_value) / u_value) * 100
-    df_windows["error_shgc"] = ((df_windows["g_value"] - shgc) / shgc) * 100
-    df_windows["error_tvis"] = ((df_windows["t_vis"] - t_vis) / t_vis) * 100
+    # Find window(s) in the tolerance limit
+    cond1 = (df_windows['u_value'] <= u_value * (1 + tolerance)) & (
+            df_windows['u_value'] >= u_value * (1 - tolerance))
+    cond2 = (df_windows['g_value'] <= shgc * (1 + tolerance)) & (
+            df_windows['g_value'] >= shgc * (1 - tolerance))
+    cond3 = (df_windows['t_vis'] <= t_vis * (1 + tolerance)) & (
+            df_windows['t_vis'] >= t_vis * (1 - tolerance))
 
-    # Create column sum of the errors
-    df_windows["sum_error"] = df_windows["error_u"] + df_windows["error_shgc"] + \
-                              df_windows["error_tvis"]
+    # Every window's IDs satisfying the tolerance
+    win_ids = df_windows.loc[(cond1 & cond2 & cond3), 'WinID']
 
-    sum_error = 1000
-    for i in range(0, len(df_windows)):
-        if df_windows.loc[i, "error_u"] <= error_lim and df_windows.loc[
-            i, "error_shgc"] <= error_lim and df_windows.loc[
-            i, "t_vis"] <= error_lim and df_windows.loc[
-            i, "sum_error"] < sum_error:
-            win_id = df_windows.loc[i, 'WinID']
-            sum_error = df_windows.loc[i, 'sum_error']
+    # If nothing found, increase the tolerance
+    while win_ids.empty:
+        warn = 1
+        tolerance += 0.01
+        cond1 = (df_windows['u_value'] <= u_value * (1 + tolerance)) & (
+                df_windows['u_value'] >= u_value * (1 - tolerance))
+        cond2 = (df_windows['g_value'] <= shgc * (1 + tolerance)) & (
+                df_windows['g_value'] >= shgc * (1 - tolerance))
+        cond3 = (df_windows['t_vis'] <= t_vis * (1 + tolerance)) & (
+                df_windows['t_vis'] >= t_vis * (1 - tolerance))
+        win_ids = df_windows.loc[(cond1 & cond2 & cond3), 'WinID']
 
-    if not win_id:
-        win_id = df_windows.loc[df_windows['sum_error'].idxmin(), 'WinID']
+    # If several windows found, get the one with the minimal square error sum.
+    best_window_index = df_windows.loc[win_ids.index, :].apply(
+        lambda x: (x.u_value - u_value) ** 2 + (x.g_value - shgc) ** 2 + (
+                x.t_vis - t_vis) ** 2, axis=1).idxmin()
+    win_id, u_win, shgc_win, t_vis_win = df_windows.loc[
+        best_window_index, ['WinID', 'u_value', 'g_value', 't_vis']]
 
-    u_window = df_windows.loc[df_windows['WinID'] == win_id, 'u_value'].values[
-        0]
-    shgc_window = \
-    df_windows.loc[df_windows['WinID'] == win_id, 'g_value'].values[0]
-    t_vis_window = \
-    df_windows.loc[df_windows['WinID'] == win_id]['t_vis'].values[0]
-
-    return win_id, window_bunches[win_id], u_window, shgc_window, t_vis_window
+    # If warn = 1 (tolerance not respected) return tolerance
+    if warn:
+        return (win_id, window_bunches[
+            win_id], u_win, shgc_win, t_vis_win, tolerance)
+    else:
+        return (win_id, window_bunches[win_id], u_win, shgc_win, t_vis_win)
 
 
-def convert_idf_to_t3d(idf_file, output_folder=None):
+def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     """ Convert IDF file to T3D file to be able to load it in TRNBuild
 
     Args:
         idf (str): File path of IDF file to convert to T3D
+        window_lib (str): File path of the window library (from Berkeley Lab)
         output_folder (str): location where output file will be saved. If None,
             saves to settings.data_folder
 

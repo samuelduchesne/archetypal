@@ -905,6 +905,9 @@ class Schedule(object):
         elif field.lower() == 'holiday' or field.lower() == 'holidays':
             field = 'holiday'
             return self.special_day(field, slicer_)
+        elif not self.strict:
+            # If not strict, ignore missing field-sets such as CustomDay1
+            return pd.IndexSlice[:]
         else:
             raise NotImplementedError(
                 'Archetypal does not yet support The '

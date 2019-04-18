@@ -33,6 +33,24 @@ class EnergyDataFrame(DataFrame):
         if not inplace:
             return frame
 
+    @property
+    def _constructor(self):
+        return EnergyDataFrame
+
+    def set_unit(self, from_unit, inplace):
+        import pint
+        ureg = pint.UnitRegistry()
+
+        if inplace:
+            frame = self
+        else:
+            frame = self.copy()
+
+        self.from_units = ureg.parse_expression(from_unit)
+
+        if not inplace:
+            return frame
+
     def __init__(self, *args, **kwargs):
         super(EnergyDataFrame, self).__init__(*args, **kwargs)
 

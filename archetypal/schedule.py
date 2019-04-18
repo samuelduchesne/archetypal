@@ -12,7 +12,7 @@ from archetypal import log
 class Schedule(object):
     """An object designed to handle any EnergyPlys schedule object"""
 
-    def __init__(self, idf, sch_name, start_day_of_the_week=None,
+    def __init__(self, idf, sch_name, start_day_of_the_week=None, strict=False,
                  base_year=2018):
         """
 
@@ -20,9 +20,14 @@ class Schedule(object):
             idf (IDF): IDF object
             sch_name (str): The schedule name in the idf file
             start_day_of_the_week (int): 0-based day of week (Monday=0)
+            strict (bool): if True, schedules that have the Field-Sets such
+                as Holidays and CustomDay will raise an error if they are absent
+                from the IDF file. If False, any missing qualifiers will be
+                ignored.
             base_year (int): The base year of the schedule. Defaults to 2018
                 since the first day of that year is a Monday.
         """
+        self.strict = strict
         self.idf = idf
         self.schName = sch_name
         self.startDayOfTheWeek = self.get_sdow(start_day_of_the_week)
@@ -900,6 +905,9 @@ class Schedule(object):
         elif field.lower() == 'holiday' or field.lower() == 'holidays':
             field = 'holiday'
             return self.special_day(field, slicer_)
+        elif not self.strict:
+            # If not strict, ignore missing field-sets such as CustomDay1
+            return pd.IndexSlice[:]
         else:
             raise NotImplementedError(
                 'Archetypal does not yet support The '
@@ -974,6 +982,8 @@ class Schedule(object):
                     hours=-1)
 
                 sp_slicer_.loc[from_date:to_date] = True
+            return sp_slicer_
+        elif not self.strict:
             return sp_slicer_
         else:
             msg = 'Could not find a "SizingPeriod:DesignDay" object ' \

@@ -41,6 +41,7 @@ class Schedule(object):
         self.index_ = None
         self.values = None
         self.schType = None
+        self.schLimitType = None
 
     @property
     def all_values(self):
@@ -157,6 +158,10 @@ class Schedule(object):
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name)
+        type_limit_name = values.Schedule_Type_Limits_Name
+        lower_limit, upper_limit, numeric_type, unit_type = \
+            self.get_schedule_type_limits_data(type_limit_name)
+        self.schLimitType = unit_type
 
         fieldvalues_ = np.array(values.fieldvalues[3:])
 
@@ -177,6 +182,10 @@ class Schedule(object):
             sch_name = self.schName
         schedule_values = self.idf.get_schedule_data_by_name(sch_name)
         values = self.idf.get_schedule_data_by_name(sch_name)
+        # type_limit_name = values.Schedule_Type_Limits_Name
+        # lower_limit, upper_limit, numeric_type, unit_type = \
+        #     self.get_schedule_type_limits_data(type_limit_name)
+        # self.schLimitType = unit_type
 
         weekly_schedules = pd.Series([0] * len(slicer_), index=slicer_.index)
         # update last day of schedule
@@ -257,6 +266,10 @@ class Schedule(object):
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name)
+        type_limit_name = values.Schedule_Type_Limits_Name
+        lower_limit, upper_limit, numeric_type, unit_type = \
+            self.get_schedule_type_limits_data(type_limit_name)
+        self.schLimitType = unit_type
 
         import pandas as pd
         freq = int(values['Minutes_per_Item'])  # Frequency of the values
@@ -288,6 +301,10 @@ class Schedule(object):
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name)
+        type_limit_name = values.Schedule_Type_Limits_Name
+        lower_limit, upper_limit, numeric_type, unit_type = \
+            self.get_schedule_type_limits_data(type_limit_name)
+        self.schLimitType = unit_type
 
         type_limit_name = values.Schedule_Type_Limits_Name
         lower_limit, upper_limit, numeric_type, unit_type = \
@@ -308,6 +325,11 @@ class Schedule(object):
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name)
+        type_limit_name = values.Schedule_Type_Limits_Name
+        lower_limit, upper_limit, numeric_type, unit_type = \
+            self.get_schedule_type_limits_data(type_limit_name)
+        self.schLimitType = unit_type
+
         filename = values['File_Name']
         column = values['Column_Number']
         rows = values['Rows_to_Skip_at_Top']
@@ -334,6 +356,11 @@ class Schedule(object):
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name)
+        type_limit_name = values.Schedule_Type_Limits_Name
+        lower_limit, upper_limit, numeric_type, unit_type = \
+            self.get_schedule_type_limits_data(type_limit_name)
+        self.schLimitType = unit_type
+
         field_sets = ['through', 'for', 'interpolate', 'until', 'value']
         fields = values.fieldvalues[3:]
 
@@ -534,6 +561,10 @@ class Schedule(object):
             sch_name = self.schName
 
         values = self.idf.get_schedule_data_by_name(sch_name)
+        type_limit_name = values.Schedule_Type_Limits_Name
+        lower_limit, upper_limit, numeric_type, unit_type = \
+            self.get_schedule_type_limits_data(type_limit_name)
+        self.schLimitType = unit_type
 
         # generate weekly schedules
         num_of_weekly_schedules = int(len(values.fieldvalues[3:]) / 5)

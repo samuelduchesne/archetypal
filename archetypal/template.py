@@ -2,8 +2,7 @@ import collections
 
 import numpy as np
 
-import archetypal
-from archetypal import settings, object_from_idfs
+from archetypal import settings, object_from_idfs, Schedule
 
 created_obj = []
 
@@ -24,17 +23,18 @@ class Unique(type):
 
 
 class UmiBase(object):
-    def __init__(self, idf, Name='unnamed', Comment='', DataSource=None,
-                 Archetype=None, **kwargs):
+    def __init__(self, idf,
+                 Name='unnamed',
+                 Comments='',
+                 DataSource=None,
+                 **kwargs):
         self.idf = idf
-        self.Comment = Comment
+        self.Comments = Comments
         if DataSource is None:
-            self.DataSource = self.idf.building_name
+            self.DataSource = self.idf.building_name(use_idfname=True)
         else:
             self.DataSource = DataSource
         self.Name = Name
-        self.Archetype = Archetype
-
         self.all_objects = created_obj
 
     @property
@@ -56,14 +56,13 @@ class UmiBase(object):
 
 class MaterialsGas(UmiBase, metaclass=Unique):
     """
-    $id, Comment, Cost, DataSource, EmbodiedCarbon, EmbodiedCarbonStdDev,
+    $id, Comments, Cost, DataSource, EmbodiedCarbon, EmbodiedCarbonStdDev,
     EmbodiedEnergy, EmbodiedEnergyStdDev, GasType, Life, Name,
     SubstitutionRatePattern, SubstitutionTimestep, TransportCarbon,
     TransportDistance, TransportEnergy, Type
     """
 
     def __init__(self, *args,
-                 Archetype='default',
                  Cost=0,
                  EmbodiedCarbon=0,
                  EmbodiedCarbonStdDev=0,
@@ -94,9 +93,6 @@ class MaterialsGas(UmiBase, metaclass=Unique):
         self.Life = Life
         self.Type = Type
         self.GasType = self._gas_type(Gas_Type)
-        self.Archetype = Archetype
-        self.DataSource = self.Archetype  # Use the Archetype Name as a
-        # DataSource
 
         # TODO: What does Life mean? Always 1 in Boston UmiTemplate
 
@@ -124,21 +120,21 @@ class MaterialsGas(UmiBase, metaclass=Unique):
             return 4
 
 
-class UmiSchedules(archetypal.Schedule, UmiBase, metaclass=Unique):
+class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
     """
     $id, Category, Comments, DataSource, Name, Parts, Type
     """
 
-    def __init__(self, *args,
+    def __init__(self, Name, idf,
                  Category='Year',
                  **kwargs):
-        super(UmiSchedules, self).__init__(*args, **kwargs)
+        super(UmiSchedule, self).__init__(idf=idf, sch_name=Name, **kwargs)
 
-        self.cols_ = settings.common_umi_objects['DaySchedules']
         self.Category = Category
-        self.Parts = []
         self.Type = self.schType
-        # self.DataSource = self.Archetype
+        self.Name = Name
+        self._id = self.id
+        self.develop()
 
     def __str__(self):
         """string representation of the object as id:Name"""
@@ -150,6 +146,176 @@ class UmiSchedules(archetypal.Schedule, UmiBase, metaclass=Unique):
     def __hash__(self):
         return hash(repr(self))
 
+    def develop(self):
+        year, weeks, days = self.to_year_week_day()
+
+        newdays = []
+        for day in days:
+            newdays.append(
+                DaySchedule(Name=day.Name, idf=self.idf, epbunch=day))
+        newweeks = []
+        for week in weeks:
+            newweeks.append(WeekSchedule(Name=week.Name, idf=self.idf,
+                                         epbunch=week, newdays=newdays))
+        YearSchedule(Name=year.Name, _id=self.id, idf=self.idf, epbunch=year,
+                     newweeks=newweeks,
+                     Comments='Year Week Day schedules created from: '
+                              '{}'.format(self.Name))
+
+
+class YearSchedule(Schedule, metaclass=Unique):
+    """$id, Category, Comments, DataSource, Name, Parts, Type
+    """
+
+    def __init__(self, Name, idf,
+                 DataSource=None,
+                 Category='Year',
+                 **kwargs):
+        super(YearSchedule, self).__init__(idf=idf, sch_name=Name, **kwargs)
+        self.idf = idf
+        self.Comments = kwargs.get('Comments', '')
+        if DataSource is None:
+            self.DataSource = self.idf.building_name(use_idfname=True)
+        else:
+            self.DataSource = DataSource
+        self.Name = Name
+        self.id = kwargs.get('_id', id(self))
+        self.all_objects = created_obj
+
+        self.Name = Name
+        self.Category = Category
+        self.Parts = self.get_parts()
+
+    def to_json(self):
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["Category"] = "Year"
+        data_dict["Parts"] = self.Parts
+        data_dict["Type"] = self.schLimitType
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
+
+    def get_parts(self):
+        return [
+            {
+                "FromDay": 1,
+                "FromMonth": 1,
+                "ToDay": 31,
+                "ToMonth": 12,
+                "Schedule": {
+                    "$ref": "112"
+                }
+            }
+        ]
+
+
+class WeekSchedule(Schedule, metaclass=Unique):
+    """$id, Category, Comments, DataSource, Days, Name, Type"""
+
+    def __init__(self, Name, idf,
+                 DataSource=None,
+                 Comments=None,
+                 Category='Week',
+                 **kwargs):
+        super(WeekSchedule, self).__init__(idf=idf, sch_name=Name, **kwargs)
+        self.idf = idf
+        self.Comments = Comments
+        if DataSource is None:
+            self.DataSource = self.idf.building_name(use_idfname=True)
+        else:
+            self.DataSource = DataSource
+        self.Name = Name
+        self.all_objects = created_obj
+        self.id = id(self)
+
+        self.Name = Name
+        self.Category = Category
+        self.week = kwargs.get('week', None)
+        self.Days = self.get_days()
+
+    def to_json(self):
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["Category"] = "Week"
+        data_dict["Days"] = self.Days
+        data_dict["Type"] = self.schLimitType
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
+
+    def get_days(self):
+        return [
+            {
+                "$ref": "66"
+            },
+            {
+                "$ref": "66"
+            },
+            {
+                "$ref": "66"
+            },
+            {
+                "$ref": "66"
+            },
+            {
+                "$ref": "66"
+            },
+            {
+                "$ref": "66"
+            },
+            {
+                "$ref": "66"
+            }
+        ]
+
+
+class DaySchedule(Schedule, metaclass=Unique):
+    """$id, Category, Comments, DataSource, Name, Type, Values
+    """
+
+    def __init__(self, Name, idf,
+                 DataSource=None,
+                 Comments=None,
+                 Category='Day',
+                 **kwargs):
+        super(DaySchedule, self).__init__(idf=idf, sch_name=Name, **kwargs)
+        self.idf = idf
+        self.Comments = Comments
+        if DataSource is None:
+            self.DataSource = self.idf.building_name(use_idfname=True)
+        else:
+            self.DataSource = DataSource
+        self.Name = Name
+        self.all_objects = created_obj
+        self.id = id(self)
+
+        self.Name = Name
+        self.Category = Category
+        self.Values = self.get_values()
+
+    def to_json(self):
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["Category"] = "Day"
+        data_dict["Type"] = self.schLimitType
+        data_dict["Values"] = self.Values
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
+
+    def get_values(self):
+        return list(self.all_values.astype(float))
+
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
     """
@@ -158,6 +324,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
     """
 
     def __init__(self, *args,
+                 Category='',
                  PartitionRatio=0.35,
                  Lifespan=60,
                  sql=None,
@@ -165,12 +332,58 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         super(BuildingTemplate, self).__init__(*args, **kwargs)
 
         self.PartitionRatio = PartitionRatio
-        self.Windows = None
-        self.Structure = None
+        self.Category = Category
         self.Lifespan = Lifespan
         self.sql = sql
 
         self.zone_refs()
+        self.windows()
+
+    def windows(self):
+        """create windows"""
+        surfaces = {}
+        for zone in self.idf.idfobjects['ZONE']:
+            for surface in zone.zonesurfaces:
+                azimuth = str(round(surface.azimuth))
+                if surface.tilt == 90.0:
+                    surfaces[azimuth] = {'wall': 0,
+                                         'window': 0,
+                                         'wwr': 0}
+                    surfaces[azimuth]['wall'] += surface.area
+                    subs = surface.subsurfaces
+                    surfaces[azimuth]['shading'] = {'noshading': True}
+                    if subs:
+                        for sub in subs:
+                            surfaces[azimuth]['window'] += sub.area
+                            surfaces[azimuth]['shading'] = \
+                                self.get_shading_control(sub)
+                    wwr = surfaces[azimuth]['window'] / surfaces[azimuth][
+                        'wall']
+                    surfaces[azimuth]['wwr'] = round(wwr, 1)
+
+        self.Windows = [Window(Name='',
+                               idf=self.idf,
+                               **surfaces[azim]['shading']) for azim in
+                        surfaces]
+
+    def get_shading_control(self, sub):
+        scn = sub.Shading_Control_Name
+        obj = self.idf.getobject('WindowProperty:ShadingControl'.upper(), scn)
+        if obj:
+            sch_name = obj.Schedule_Name
+            return {'IsShadingSystemOn': True,
+                    'ShadingSystemType': 1,
+                    'ShadingSystemSetPoint': obj.Setpoint,
+                    'ShadingSystemAvailabilitySchedule': UmiSchedule(
+                        Name=sch_name, idf=self.idf)}
+        else:
+            sch_name = list(self.idf.get_all_schedules(yearly_only=True))[0]
+            return {'IsShadingSystemOn': False,
+                    'ShadingSystemType': 0,
+                    'ShadingSystemSetPoint': 0,
+                    'ShadingSystemAvailabilitySchedule': UmiSchedule(
+                        Name=sch_name, idf=self.idf)
+                    }
 
     def zone_refs(self):
         """Recursively create the core and perimeter zones"""
@@ -201,19 +414,64 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             # if there is no core, use the perim zone
             core = perim
 
-        self.Zones = [core, perim]
-        self.Windows = [Window(Name='', idf=self.idf)]
+        structure_name = '_'.join([self.Name, 'structure'])
+        structure = StructureDefinition(Name=structure_name,
+                                        idf=self.idf,
+                                        sql=self.sql)
 
-        self.Core_ref = core.id
-        self.Perimeter_ref = perim.id
+        self.Zones = [core, perim]
+
+        self.Core = core
+        self.Perimeter = perim
+        self.Structure = structure
 
     def to_json(self):
-        data_dict = {"$id": "{}".format(self.id),
-                     "Name": "{}".format(self.Name)}
-        window_dict = {"Windows": win.to_json() for win in self.all_objects
-                       if isinstance(win, Window)}
-        data_dict.update(window_dict)
+        data_dict = collections.OrderedDict()
+
+        data_dict["Core"] = {
+            "$ref": str(self.Core.id)
+        }
+        data_dict["Lifespan"] = self.Lifespan
+        data_dict["PartitionRatio"] = self.PartitionRatio
+        data_dict["Perimeter"] = {
+            "$ref": str(self.Perimeter.id)
+        }
+        data_dict["Structure"] = {
+            "$ref": str(self.Structure.id)
+        }
+        data_dict["Windows"] = [win.to_json() for win in self.all_objects
+                                if isinstance(win, Window)][0]
+        data_dict["Category"] = self.Category
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
         return data_dict
+
+
+class StructureDefinition(UmiBase, metaclass=Unique):
+    """
+    $id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
+    DataSource, DisassemblyCarbon, DisassemblyEnergy, MassRatios, Name,
+    """
+
+    def __init__(self, *args,
+                 AssemblyCarbon=0,
+                 AssemblyCost=0,
+                 AssemblyEnergy=0,
+                 Category='',
+                 DisassemblyCarbon=0,
+                 DisassemblyEnergy=0,
+                 MassRatios=0,
+                 **kwargs):
+        super(StructureDefinition, self).__init__(*args, **kwargs)
+        self.AssemblyCarbon = AssemblyCarbon
+        self.AssemblyCost = AssemblyCost
+        self.AssemblyEnergy = AssemblyEnergy
+        self.Category = Category
+        self.DisassemblyCarbon = DisassemblyCarbon
+        self.DisassemblyEnergy = DisassemblyEnergy
+        self.MassRatios = MassRatios
 
 
 class Zone(UmiBase, metaclass=Unique):
@@ -308,7 +566,7 @@ class ConstructionSet(UmiBase, metaclass=Unique):
             'Zone_Name'].str.upper()
 
         constructions_df = constructions_df[
-            ~constructions_df.duplicated(subset='Construction_Name')]
+            ~constructions_df.duplicated(subset=['Construction_Name'])]
 
         constructions_df['constructions'] = constructions_df.apply(
             lambda x: OpaqueConstruction(Name=x.Construction_Name,
@@ -317,9 +575,9 @@ class ConstructionSet(UmiBase, metaclass=Unique):
                                          Type=x.Type),
             axis=1)
 
-        partcond = constructions_df.Type == 5
+        partcond = (constructions_df.Type == 5) | (constructions_df.Type == 0)
         roofcond = constructions_df.Type == 1
-        slabcond = constructions_df.Type == 3
+        slabcond = (constructions_df.Type == 3) | (constructions_df.Type == 2)
         facadecond = constructions_df.Type == 0
         groundcond = constructions_df.Type == 2
 
@@ -400,7 +658,7 @@ class OpaqueConstruction(UmiBase, metaclass=Unique):
         data_dict["DisassemblyCarbon"] = self.DisassemblyCarbon
         data_dict["DisassemblyEnergy"] = self.DisassemblyEnergy
         data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comment
+        data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = str(self.DataSource)
         data_dict["Name"] = str(self.Name)
 
@@ -409,7 +667,7 @@ class OpaqueConstruction(UmiBase, metaclass=Unique):
 
 class OpaqueMaterial(UmiBase, metaclass=Unique):
     """
-    $id, Comment, Conductivity, Cost, DataSource, Density, EmbodiedCarbon,
+    $id, Comments, Conductivity, Cost, DataSource, Density, EmbodiedCarbon,
     EmbodiedCarbonStdDev, EmbodiedEnergy, EmbodiedEnergyStdDev, Life,
     MoistureDiffusionResistance, Name, PhaseChange, PhaseChangeProperties,
     Roughness, SolarAbsorptance, SpecificHeat, SubstitutionRatePattern,
@@ -471,6 +729,7 @@ class Window(UmiBase, metaclass=Unique):
                  Type=0,
                  ZoneMixingDeltaTemperature=2,
                  ZoneMixingFlowRate=0.001,
+                 Category='',
                  **kwargs):
         super(Window, self).__init__(*args, **kwargs)
 
@@ -486,6 +745,80 @@ class Window(UmiBase, metaclass=Unique):
         self.Type = Type
         self.ZoneMixingDeltaTemperature = ZoneMixingDeltaTemperature
         self.ZoneMixingFlowRate = ZoneMixingFlowRate
+        self.Category = Category
+
+    def __add__(self, other):
+        if isinstance(other, self.__class__):
+            self.AfnDischargeC = max(self.AfnDischargeC, other.AfnDischargeC)
+            self.AfnTempSetpoint = max(self.AfnTempSetpoint,
+                                       other.AfnTempSetpoint)
+            self.IsShadingSystemOn = any([self.IsShadingSystemOn,
+                                          other.IsShadingSystemOn])
+            self.IsVirtualPartition = any([self.IsVirtualPartition,
+                                           other.IsVirtualPartition])
+            self.IsZoneMixingOn = any([self.IsZoneMixingOn,
+                                       other.IsZoneMixingOn])
+            self.OperableArea = max(self.OperableArea,
+                                    other.OperableArea)
+            self.ShadingSystemSetpoint = max(self.ShadingSystemSetpoint,
+                                             other.ShadingSystemSetpoint)
+            self.ShadingSystemTransmittance = \
+                max(self.ShadingSystemTransmittance,
+                    other.ShadingSystemTransmittance)
+            self.ShadingSystemType = self.ShadingSystemType
+            self.Type = self.Type
+            self.ZoneMixingDeltaTemperature = \
+                max(self.ZoneMixingDeltaTemperature,
+                    other.ZoneMixingDeltaTemperature)
+            self.ZoneMixingFlowRate = max(self.ZoneMixingFlowRate,
+                                          other.ZoneMixingFlowRate)
+            self.Category = self.Category
+            return self
+        else:
+            raise NotImplementedError
+
+    def __iadd__(self, other):
+        if isinstance(other, None):
+            return self
+        else:
+            return self + other
+
+    def to_json(self):
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["AfnDischargeC"] = self.AfnDischargeC
+        data_dict["AfnTempSetpoint"] = self.AfnTempSetpoint
+        data_dict["AfnWindowAvailability"] = {
+            "$ref": "145"
+        }
+        data_dict["Construction"] = {
+            "$ref": "57"
+        }
+        data_dict["IsShadingSystemOn"] = self.IsShadingSystemOn
+        data_dict["IsVirtualPartition"] = self.IsVirtualPartition
+        data_dict["IsZoneMixingOn"] = self.IsZoneMixingOn
+        data_dict["OperableArea"] = self.OperableArea
+        data_dict["ShadingSystemAvailabilitySchedule"] = {
+            "$ref": "145"
+        }
+        data_dict["ShadingSystemSetpoint"] = self.ShadingSystemSetpoint
+        data_dict[
+            "ShadingSystemTransmittance"] = self.ShadingSystemTransmittance
+        data_dict["ShadingSystemType"] = self.ShadingSystemType
+        data_dict["Type"] = self.Type
+        data_dict["ZoneMixingAvailabilitySchedule"] = {
+            "$ref": "145"
+        }
+        data_dict[
+            "ZoneMixingDeltaTemperature"] = self.ZoneMixingDeltaTemperature,
+        data_dict["ZoneMixingFlowRate"] = self.ZoneMixingFlowRate
+        data_dict["Category"] = self.Category
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
 
 
 # class WeekSchedules(UmiBase, metaclass=Unique):

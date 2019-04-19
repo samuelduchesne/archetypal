@@ -13,8 +13,8 @@ from sklearn import preprocessing
 
 from . import settings, object_from_idf, object_from_idfs, \
     calc_simple_glazing, \
-    iscore, weighted_mean, top, MaterialsGas, UmiSchedules, BuildingTemplate, \
-    parallel_process
+    iscore, weighted_mean, top, MaterialsGas, UmiSchedule, BuildingTemplate, \
+    parallel_process, Window
 from .idf import run_eplus, load_idf
 from .plot import plot_energyprofile
 from .utils import log, label_surface, type_surface, layer_composition, \
@@ -106,19 +106,19 @@ class UmiTemplate:
             # create the folder on the disk if it doesn't already exist
             if not os.path.exists(settings.data_folder):
                 os.makedirs(settings.data_folder)
-        with io.open(path_or_buf, 'w', encoding='utf-8') as path_or_buf:
-            data_dict = OrderedDict()
-            all_objects=[]
+        with io.open(path_or_buf, 'w+', encoding='utf-8') as path_or_buf:
+            all_objects = []
             for bld in self.building_templates:
                 all_objects.extend(self.building_templates[bld].all_objects)
 
             data_dict = OrderedDict()
             for obj in all_objects:
-                catname = obj.__class__.__name__ + 's'
-                if catname not in data_dict:
-                    data_dict[catname] = []
-                app_dict = obj.to_json()
-                data_dict[catname].append(app_dict)
+                if not isinstance(obj, (Window, UmiSchedule)):
+                    catname = obj.__class__.__name__ + 's'
+                    if catname not in data_dict:
+                        data_dict[catname] = []
+                    app_dict = obj.to_json()
+                    data_dict[catname].append(app_dict)
             # Write the dict to json using json.dumps
             path_or_buf.write(json.dumps(data_dict, indent=indent))
 
@@ -693,7 +693,7 @@ def materials_glazing(idfs):
     materials_df = materials_df.rename(columns=column_rename)
     materials_df = materials_df.reindex(columns=cols)
     materials_df = materials_df.fillna({'DirtFactor': 1.0})
-    materials_df['Comment'] = 'default'
+    materials_df['Comments'] = 'default'
     materials_df['Cost'] = 0
     try:
         materials_df['DataSource'] = materials_df['Archetype']
@@ -795,7 +795,7 @@ def materials_opaque(idfs):
         axis=1)
 
     # Fill other necessary columns
-    materials_df['Comment'] = 'default'
+    materials_df['Comments'] = 'default'
     materials_df['Cost'] = 0
     try:
         materials_df['DataSource'] = materials_df['Archetype']
@@ -1181,9 +1181,9 @@ def year_schedules(idfs, weekschedule=None):
         schedules[idf] = idfs[idf].get_all_schedules(yearly_only=True)
     for idf in schedules:
         for schedule in schedules[idf]:
-            schedules[idf][schedule] = UmiSchedules(idf=idfs[idf],
-                                                    sch_name=schedule,
-                                                    Name=schedule)
+            schedules[idf][schedule] = UmiSchedule(idf=idfs[idf],
+                                                   sch_name=schedule,
+                                                   Name=schedule)
 
     schedule = object_from_idfs(idfs, 'SCHEDULE:YEAR',
                                 first_occurrence_only=False)

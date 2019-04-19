@@ -114,7 +114,8 @@ class IDF(eppy.modeleditor.IDF):
                 if object.fieldvalues[0].upper() not in schedule_types:
                     for fieldvalue in object.fieldvalues:
                         try:
-                            if fieldvalue in all_schedules and fieldvalue not in used_schedules:
+                            if fieldvalue in all_schedules and fieldvalue not \
+                                    in used_schedules:
                                 used_schedules.append(fieldvalue)
                         except:
                             pass
@@ -143,10 +144,12 @@ class IDF(eppy.modeleditor.IDF):
         else:
             return 0
 
-    @property
-    def building_name(self):
-        bld = self.idfobjects["BUILDING"]
-        if bld is not None:
-            return bld[0].Name
+    def building_name(self, use_idfname=False):
+        if use_idfname:
+            return os.path.basename(self.idfname)
         else:
-            return os.paht.basename(self.idfname)
+            bld = self.idfobjects["BUILDING"]
+            if bld is not None:
+                return bld[0].Name
+            else:
+                return os.path.basename(self.idfname)

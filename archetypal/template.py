@@ -427,17 +427,13 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         core_zone_names = zone_info.loc[core_n, 'Zone Name']
         perim_zone_names = zone_info.loc[perim_n, 'Zone Name']
 
-        perim = Zone(Name=perim_name,
-                     Zone_Names=perim_zone_names.values,
-                     idf=self.idf,
-                     sql=self.sql)
+        perim = Zone(Zone_Names=perim_zone_names.values, sql=self.sql,
+                     Name=perim_name, idf=self.idf)
 
         if not core_zone_names.empty:
             # if there are core zones, create core zone
-            core = Zone(Name=core_name,
-                        Zone_Names=core_zone_names.values,
-                        idf=self.idf,
-                        sql=self.sql)
+            core = Zone(Zone_Names=core_zone_names.values, sql=self.sql,
+                        Name=core_name, idf=self.idf)
         else:
             # if there is no core, use the perim zone
             core = perim
@@ -510,14 +506,11 @@ class Zone(UmiBase, metaclass=Unique):
     InternalMassExposedPerFloorArea, Loads.$ref, Name, Ventilation.$ref
     """
 
-    def __init__(self, *args,
-                 Zone_Names,
-                 DaylightMeshResolution=1,
-                 DaylightWorkplaneHeight=0.8,
-                 InternalMassExposedPerFloorArea=1.05,
-                 sql=None,
-                 **kwargs):
+    def __init__(self, *args, Category=None, Zone_Names,
+                 DaylightMeshResolution=1, DaylightWorkplaneHeight=0.8,
+                 InternalMassExposedPerFloorArea=1.05, sql=None, **kwargs):
         super(Zone, self).__init__(*args, **kwargs)
+        self.Category = Category
         self.Zone_Names = Zone_Names
         self.sql = sql
         self.conditioning()
@@ -531,7 +524,7 @@ class Zone(UmiBase, metaclass=Unique):
 
     def conditioning(self):
         """run conditioning and return id"""
-        self.Conditioning_ref = []
+        self.Conditioning = []
 
     def constructions(self):
         """run construction sets and return id"""
@@ -540,19 +533,54 @@ class Zone(UmiBase, metaclass=Unique):
                                                 Zone_Names=self.Zone_Names,
                                                 idf=self.idf,
                                                 sql=self.sql)
-        self.Constructions_ref = self.ConstructionsSet.id
 
     def dhw(self):
         """run domestic hot water and return id"""
-        self.DomesticHotWater_ref = []
+        self.DomesticHotWater = []
 
     def internal_mass_construction(self):
         """run internal mass construction and return id"""
-        self.InternalMassConstruction_ref = []
+        self.InternalMassConstruction = []
 
     def loads(self):
         """run loads and return id"""
-        self.Loads_ref = []
+        self.Loads = []
+
+    def ventilation(self):
+        self.Ventilation = []
+
+    # todo: uncomment when method is completed
+    # def to_json(self):
+    #     data_dict = collections.OrderedDict()
+    #
+    #     data_dict["$id"] = str(self.id)
+    #     data_dict["Conditioning"] = {
+    #         "$ref": self.Conditioning.id
+    #     }
+    #     data_dict["Constructions"] = {
+    #         "$ref": self.ConstructionsSet.id
+    #     }
+    #     data_dict["DaylightMeshResolution"] = self.DaylightMeshResolution
+    #     data_dict["DaylightWorkplaneHeight"] = self.DaylightWorkplaneHeight
+    #     data_dict["DomesticHotWater"] = {
+    #         "$ref": self.DomesticHotWater.id
+    #     }
+    #     data_dict["InternalMassConstruction"] = {
+    #         "$ref": self.InternalMassConstruction.id
+    #     }
+    #     data_dict[
+    #         "InternalMassExposedPerFloorArea"] = \
+    #         self.InternalMassExposedPerFloorArea
+    #     data_dict["Loads"] = {
+    #         "$ref": self.Loads.id
+    #     }
+    #     data_dict["Ventilation"] = {
+    #         "$ref": self.Ventilation.id
+    #     }
+    #     data_dict["Category"] = self.Category
+    #     data_dict["Comments"] = self.Comments
+    #     data_dict["DataSource"] = self.DataSource
+    #     data_dict["Name"] = self.Name
 
 
 class ConstructionSet(UmiBase, metaclass=Unique):
@@ -563,11 +591,22 @@ class ConstructionSet(UmiBase, metaclass=Unique):
     IsRoofAdiabatic, IsSlabAdiabatic, Name, Partition.$ref, Roof.$ref, Slab.$ref
     """
 
-    def __init__(self, *args,
-                 Zone_Names,
+    def __init__(self, Zone_Names,
+                 Category='',
+                 IsSlabAdiabatic=False,
+                 IsRoofAdiabatic=False,
+                 IsPartitionAdiabatic=False,
+                 IsGroundAdiabatic=False,
+                 IsFacadeAdiabatic=False,
                  sql=None,
                  **kwargs):
-        super(ConstructionSet, self).__init__(*args, **kwargs)
+        super(ConstructionSet, self).__init__(**kwargs)
+        self.Category = Category
+        self.IsSlabAdiabatic = IsSlabAdiabatic
+        self.IsRoofAdiabatic = IsRoofAdiabatic
+        self.IsPartitionAdiabatic = IsPartitionAdiabatic
+        self.IsGroundAdiabatic = IsGroundAdiabatic
+        self.IsFacadeAdiabatic = IsFacadeAdiabatic
         self.Zone_Names = Zone_Names
         self.sql = sql
 
@@ -619,6 +658,37 @@ class ConstructionSet(UmiBase, metaclass=Unique):
                                            'constructions'].values[0]
         self.Ground = constructions_df.loc[groundcond,
                                            'constructions'].values[0]
+
+    def to_json(self):
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["Facade"] = {
+            "$ref": str(self.Facade.id)
+        }
+        data_dict["Ground"] = {
+            "$ref": str(self.Ground.id)
+        }
+        data_dict["Partition"] = {
+            "$ref": str(self.Partition.id)
+        }
+        data_dict["Roof"] = {
+            "$ref": str(self.Roof.id)
+        }
+        data_dict["Slab"] = {
+            "$ref": str(self.Slab.id)
+        }
+        data_dict["IsFacadeAdiabatic"] = self.IsFacadeAdiabatic
+        data_dict["IsGroundAdiabatic"] = self.IsGroundAdiabatic
+        data_dict["IsPartitionAdiabatic"] = self.IsPartitionAdiabatic
+        data_dict["IsRoofAdiabatic"] = self.IsRoofAdiabatic
+        data_dict["IsSlabAdiabatic"] = self.IsSlabAdiabatic
+        data_dict["Category"] = self.Category
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
 
 
 class OpaqueConstruction(UmiBase, metaclass=Unique):

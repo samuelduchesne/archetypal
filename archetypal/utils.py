@@ -561,13 +561,13 @@ def iscore(row):
         str: 'Core' or 'Perimeter'
 
     """
-    if any(['core' in row[('Zones', 'Zone Name')].lower(),
-            float(row[('Zones', 'Exterior Gross Wall Area {m2}')]) == 0]):
+    if any(['core' in row[('Zone', 'Zone Name')].lower(),
+            float(row[('Zone', 'Exterior Gross Wall Area {m2}')]) == 0]):
         # We look for the string `core` in the Zone_Name
         return 'Core'
-    elif row[('Zones', 'Part of Total Building Area')] == 'No':
+    elif row[('Zone', 'Part of Total Building Area')] == 'No':
         return np.NaN
-    elif 'plenum' in row[('Zones', 'Zone Name')].lower():
+    elif 'plenum' in row[('Zone', 'Zone Name')].lower():
         return np.NaN
     else:
         return 'Perimeter'

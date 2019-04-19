@@ -41,10 +41,11 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False,
         pandas.DataFrame: A DataFrame
 
     """
+    if not isinstance(idfs, (list, dict)):
+        idfs = [idfs]
     container = []
     start_time = time.time()
     log('Parsing {1} objects for {0} idf files...'.format(len(idfs), ep_object))
-
     if isinstance(idfs, dict):
         try:
             if processors == 1:

@@ -13,7 +13,7 @@ class Schedule(object):
     """An object designed to handle any EnergyPlys schedule object"""
 
     def __init__(self, idf, sch_name, start_day_of_the_week=None, strict=False,
-                 base_year=2018):
+                 base_year=2018, **kwargs):
         """
 
         Args:
@@ -861,7 +861,7 @@ class Schedule(object):
             # return only weekends
             return lambda x: x.index.dayofweek >= 5
         elif field.lower() == 'alldays':
-            log('For schdedule {}, the field-set "AllDays" may be overridden '
+            log('For schdedule "{}", the field-set "AllDays" may be overridden '
                 'by the "AllOtherDays" field-set'.format(
                 self.schName), lg.WARNING)
             # return all days := equivalenet to .loc[:]

@@ -13,12 +13,13 @@ from sklearn import preprocessing
 
 from . import settings, object_from_idf, object_from_idfs, \
     calc_simple_glazing, \
-    iscore, weighted_mean, top, Schedule, MaterialsGas
+    iscore, weighted_mean, top, MaterialsGas, UmiSchedules, BuildingTemplate, \
+    parallel_process
 from .idf import run_eplus, load_idf
 from .plot import plot_energyprofile
 from .utils import log, label_surface, type_surface, layer_composition, \
     schedule_composition, time2time, \
-    year_composition, newrange, piecewise, rmse
+    piecewise, rmse
 
 
 class UmiTemplate:
@@ -74,42 +75,18 @@ class UmiTemplate:
     def read(self):
         """Initiazile UMI objects"""
         # Umi stuff
-        self.materials_gas = materials_gas(self.idfs)
-        self.materials_glazing = materials_glazing(self.idfs)
-        self.materials_glazing = newrange(self.materials_gas,
-                                          self.materials_glazing)
-
-        self.materials_opaque = materials_opaque(self.idfs)
-        self.materials_opaque = newrange(self.materials_glazing,
-                                         self.materials_opaque)
-
-        self.constructions_opaque = constructions_opaque(self.idfs,
-                                                         self.materials_opaque)
-        self.constructions_opaque = newrange(self.materials_opaque,
-                                             self.constructions_opaque)
-
-        self.constructions_windows = constructions_windows(self.idfs,
-                                                           self.materials_glazing)
-        self.constructions_windows = newrange(self.constructions_opaque,
-                                              self.constructions_windows)
-
-        self.structure_definitions = structure_definition(self.idfs)
-        self.structure_definitions = newrange(self.constructions_windows,
-                                              self.structure_definitions)
-
-        self.day_schedules = day_schedules(self.idfs)
-        self.day_schedules = newrange(self.structure_definitions,
-                                      self.day_schedules)
-
-        self.week_schedules = week_schedules(self.idfs, self.day_schedules)
-        self.week_schedules = newrange(self.day_schedules,
-                                       self.week_schedules)
-
-        self.year_schedules = year_schedules(self.idfs, self.week_schedules)
-        self.year_schedules = newrange(self.week_schedules,
-                                       self.year_schedules)
-        self.domestic_hot_water_settings = zone_domestic_hot_water_settings(
-            self.sql, self.idfs)
+        in_dict = {idf: {'Name': idf,
+                         'idf': self.idfs[idf],
+                         'sql': self.sql[idf]}
+                   for idf in self.idfs
+                   }
+        self.building_templates = parallel_process(in_dict, BuildingTemplate,
+                                                   use_kwargs=True,
+                                                   processors=len(in_dict))
+        # self.building_templates = [BuildingTemplate(Name=idf,
+        #                                             idf=self.idfs[idf],
+        #                                             sql=self.sql[idf])
+        #                            for idf in self.idfs]
 
     def run_eplus(self, silent=True, **kwargs):
         """wrapper for :func:`run_eplus` function
@@ -120,28 +97,10 @@ class UmiTemplate:
         if not silent:
             return self.sql
 
-    def to_json(self, path_or_buf=None, orient=None, indent=2,
-                date_format=None):
+    def to_json(self, path_or_buf=None, indent=2):
         """Writes the umi template to json format"""
+        # todo: check is bools are created as lowercase 'false' pr 'true'
 
-        # from pandas.io import json
-        categories = [self.materials_gas,
-                      self.materials_glazing,
-                      self.materials_opaque,
-                      self.constructions_opaque,
-                      self.constructions_windows,
-                      self.structure_definitions,
-                      self.day_schedules,
-                      self.week_schedules,
-                      self.year_schedules,
-                      self.domestic_hot_water_settings,
-                      self.zone_ventilation,
-                      self.zone_conditioning,
-                      self.zone_construction_sets,
-                      self.zone_loads,
-                      self.zones,
-                      self.building_templates,
-                      self.windows_settings]
         if not path_or_buf:
             path_or_buf = os.path.join(settings.data_folder, 'temp.json')
             # create the folder on the disk if it doesn't already exist
@@ -149,27 +108,17 @@ class UmiTemplate:
                 os.makedirs(settings.data_folder)
         with io.open(path_or_buf, 'w', encoding='utf-8') as path_or_buf:
             data_dict = OrderedDict()
-            for js in categories:
-                if isinstance(js, pd.DataFrame):
-                    if not js.columns.is_unique:
-                        raise ValueError('columns {} are not unique'.format(
-                            js.columns))
-                    else:
-                        # Firs keep only required columns
-                        cols = settings.common_umi_objects[js.name].copy()
-                        reset_index_cols_ = js.reset_index()[cols]
-                        # Than convert ints to strings. this is how umi needs
-                        # them
-                        reset_index_cols_['$id'] = reset_index_cols_[
-                            '$id'].apply(str)
-                        # transform to json and add to dict of objects
-                        data_dict[js.name] = json.loads(
-                            reset_index_cols_.to_json(orient=orient,
-                                                      date_format=date_format),
-                            object_pairs_hook=OrderedDict)
-                else:
-                    # do something with objects that are not DataFrames
-                    pass
+            all_objects=[]
+            for bld in self.building_templates:
+                all_objects.extend(self.building_templates[bld].all_objects)
+
+            data_dict = OrderedDict()
+            for obj in all_objects:
+                catname = obj.__class__.__name__ + 's'
+                if catname not in data_dict:
+                    data_dict[catname] = []
+                app_dict = obj.to_json()
+                data_dict[catname].append(app_dict)
             # Write the dict to json using json.dumps
             path_or_buf.write(json.dumps(data_dict, indent=indent))
 
@@ -890,7 +839,7 @@ def materials_opaque(idfs):
 
 
 def constructions_opaque(idfs, opaquematerials=None):
-    """Opaque Construction group
+    """Opaque OpaqueConstruction group
 
     Args:
         idfs (list or dict): parsed IDF files opaquematerials
@@ -973,7 +922,7 @@ def constructions_opaque(idfs, opaquematerials=None):
 
 
 def constructions_windows(idfs, material_glazing=None):
-    """Window Construction group
+    """Window OpaqueConstruction group
 
     Args:
         idfs (list or dict): parsed IDF files
@@ -1232,61 +1181,65 @@ def year_schedules(idfs, weekschedule=None):
         schedules[idf] = idfs[idf].get_all_schedules(yearly_only=True)
     for idf in schedules:
         for schedule in schedules[idf]:
-            schedules[idf][schedule] = Schedule(idf=idfs[idf],
-                                                sch_name=schedule)
+            schedules[idf][schedule] = UmiSchedules(idf=idfs[idf],
+                                                    sch_name=schedule,
+                                                    Name=schedule)
 
     schedule = object_from_idfs(idfs, 'SCHEDULE:YEAR',
                                 first_occurrence_only=False)
-    cols = settings.common_umi_objects['YearSchedules'].copy()
-    if not schedule.empty:
 
-        if weekschedule is not None:
-            start_time = time.time()
-            df = (pd.DataFrame(schedule
-                               .set_index(['Archetype', 'Name'])
-                               .drop(['index',
-                                      'key',
-                                      'Schedule_Type_Limits_Name'],
-                                     axis=1).stack(), columns=['Schedules'])
-                  .reset_index().join(weekschedule
-                                      .reset_index()
-                                      .set_index(['Archetype', 'Name']),
-                                      on=['Archetype', 'Schedules'])
-                  .set_index(['Archetype', 'Name', 'level_2'])
-                  .drop(['Category', 'Comments',
-                         'DataSource', 'Days', 'Type'], axis=1)
-                  .unstack()
-                  .apply(lambda x: year_composition(x), axis=1).rename('Parts'))
-
-            schedule = schedule.join(df, on=['Archetype', 'Name'])
-            log('Completed week_schedules schedule composition in {:,.2f} '
-                'seconds'.format(time.time() - start_time))
-        else:
-            log('Could not create layer_composition because the necessary '
-                'lookup DataFrame "WeekSchedule"  was '
-                'not provided', lg.WARNING)
-
-        schedule['Category'] = 'Year'
-        schedule['Comments'] = 'default'
-        schedule['DataSource'] = schedule['Archetype']
-
-        schedule = schedule.join(
-            weekschedule.set_index(['Archetype', 'Name']).loc[:, ['Type']],
-            on=['Archetype', 'ScheduleWeek_Name_1'])
-
-        schedule = schedule.reset_index(drop=True).rename_axis(
-            '$id').reset_index()
-        cols.append('Archetype')
-        log('Completed day_schedules in {:,.2f} seconds\n'.format(
-            time.time() - origin_time))
-        schedule = schedule[cols].set_index('$id')
-        schedule.name = 'YearSchedules'
-        return schedule
-    else:
-        log('Returning Empty DataFrame', lg.WARNING)
-        schedule = pd.DataFrame([], columns=cols)
-        schedule.name = 'YearSchedules'
-        return schedule
+    return pd.DataFrame.from_dict(schedules, orient='index').stack()
+    # cols = settings.common_umi_objects['YearSchedules'].copy()
+    # if not schedule.empty:
+    #
+    #     if weekschedule is not None:
+    #         start_time = time.time()
+    #         df = (pd.DataFrame(schedule
+    #                            .set_index(['Archetype', 'Name'])
+    #                            .drop(['index',
+    #                                   'key',
+    #                                   'Schedule_Type_Limits_Name'],
+    #                                  axis=1).stack(), columns=['Schedules'])
+    #               .reset_index().join(weekschedule
+    #                                   .reset_index()
+    #                                   .set_index(['Archetype', 'Name']),
+    #                                   on=['Archetype', 'Schedules'])
+    #               .set_index(['Archetype', 'Name', 'level_2'])
+    #               .drop(['Category', 'Comments',
+    #                      'DataSource', 'Days', 'Type'], axis=1)
+    #               .unstack()
+    #               .apply(lambda x: year_composition(x), axis=1).rename(
+    #               'Parts'))
+    #
+    #         schedule = schedule.join(df, on=['Archetype', 'Name'])
+    #         log('Completed week_schedules schedule composition in {:,.2f} '
+    #             'seconds'.format(time.time() - start_time))
+    #     else:
+    #         log('Could not create layer_composition because the necessary '
+    #             'lookup DataFrame "WeekSchedule"  was '
+    #             'not provided', lg.WARNING)
+    #
+    #     schedule['Category'] = 'Year'
+    #     schedule['Comments'] = 'default'
+    #     schedule['DataSource'] = schedule['Archetype']
+    #
+    #     schedule = schedule.join(
+    #         weekschedule.set_index(['Archetype', 'Name']).loc[:, ['Type']],
+    #         on=['Archetype', 'ScheduleWeek_Name_1'])
+    #
+    #     schedule = schedule.reset_index(drop=True).rename_axis(
+    #         '$id').reset_index()
+    #     cols.append('Archetype')
+    #     log('Completed day_schedules in {:,.2f} seconds\n'.format(
+    #         time.time() - origin_time))
+    #     schedule = schedule[cols].set_index('$id')
+    #     schedule.name = 'YearSchedules'
+    #     return schedule
+    # else:
+    #     log('Returning Empty DataFrame', lg.WARNING)
+    #     schedule = pd.DataFrame([], columns=cols)
+    #     schedule.name = 'YearSchedules'
+    #     return schedule
 
 
 def nominal_domestic_hot_water_settings(idfs):
@@ -1319,23 +1272,23 @@ def nominal_domestic_hot_water_settings(idfs):
 
 
 def zone_domestic_hot_water_settings(df, idfs):
-    d = {'Zones': zone_information(df).reset_index().set_index(['Archetype',
-                                                                'Zone Name']),
+    d = {'Zone': zone_information(df).reset_index().set_index(['Archetype',
+                                                               'Zone Name']),
          'NominalDhw': nominal_domestic_hot_water_settings(idfs).reset_index(
          ).set_index([
              'Archetype', 'Zone_Name'])}
     df = (pd.concat(d, axis=1, keys=d.keys())
           .dropna(axis=0, how='all',
-                  subset=[('Zones', 'Type')])  # Drop rows that are all nans
+                  subset=[('Zone', 'Type')])  # Drop rows that are all nans
           .rename_axis(['Archetype', 'Zone Name'])
           .reset_index(level=1, col_level=1,
-                       col_fill='Zones')  # Reset Index level to get Zone Name
-          .reset_index().set_index(['Archetype', ('Zones', 'RowName')])
+                       col_fill='Zone')  # Reset Index level to get Zone Name
+          .reset_index().set_index(['Archetype', ('Zone', 'RowName')])
           .rename_axis(['Archetype', 'RowName']))
 
-    df[('Zones', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
+    df[('Zone', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
 
-    df = df.reset_index().groupby(['Archetype', ('Zones', 'Zone Type')]).apply(
+    df = df.reset_index().groupby(['Archetype', ('Zone', 'Zone Type')]).apply(
         lambda x: domestichotwatersettings_aggregation(x.set_index([
             'Archetype', 'RowName'])))
     df.name = 'DomesticHotWaterSettings'
@@ -1344,8 +1297,8 @@ def zone_domestic_hot_water_settings(df, idfs):
 
 
 def domestichotwatersettings_aggregation(x):
-    area_m_ = [('Zones', 'Floor Area {m2}'),
-               ('Zones', 'Zone Multiplier')]  # Floor area and zone_loads
+    area_m_ = [('Zone', 'Floor Area {m2}'),
+               ('Zone', 'Zone Multiplier')]  # Floor area and zone_loads
     # multiplier
     d = {('FlowRatePerFloorArea', 'weighted mean'):
              weighted_mean(x[('NominalDhw', 'Peak_Flow_Rate')] * 3600,
@@ -1372,8 +1325,8 @@ def zone_loads(df):
     """
     # Loading each section in a dictionnary. Used to create a new DF using
     # pd.concat()
-    d = {'Zones': zone_information(df).reset_index().set_index(['Archetype',
-                                                                'Zone Name']),
+    d = {'Zone': zone_information(df).reset_index().set_index(['Archetype',
+                                                               'Zone Name']),
          'NominalLighting': nominal_lighting(df).reset_index().set_index(
              ['Archetype', 'Zone Name']),
          'NominalPeople': nominal_people(df).reset_index().set_index(
@@ -1385,15 +1338,15 @@ def zone_loads(df):
 
     df = (pd.concat(d, axis=1, keys=d.keys())
           .dropna(axis=0, how='all',
-                  subset=[('Zones', 'Type')])  # Drop rows that are all nans
+                  subset=[('Zone', 'Type')])  # Drop rows that are all nans
           .reset_index(level=1, col_level=1,
-                       col_fill='Zones')  # Reset Index level to get Zone Name
-          .reset_index().set_index(['Archetype', ('Zones', 'RowName')])
+                       col_fill='Zone')  # Reset Index level to get Zone Name
+          .reset_index().set_index(['Archetype', ('Zone', 'RowName')])
           .rename_axis(['Archetype', 'RowName']))
 
-    df[('Zones', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
+    df[('Zone', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
 
-    df = df.reset_index().groupby(['Archetype', ('Zones', 'Zone Type')]).apply(
+    df = df.reset_index().groupby(['Archetype', ('Zone', 'Zone Type')]).apply(
         lambda x: zoneloads_aggregation(x.set_index(['Archetype', 'RowName'])))
     df.name = 'ZoneLoads'
     return df
@@ -1433,22 +1386,22 @@ def zone_ventilation(df):
                    lambda e: ~e['Fan Type {Exhaust;Intake;Natural}']
                    .str.contains('Natural'), :]
                    if not _nom_vent.empty else None)
-    d = {'Zones': z_info,
+    d = {'Zone': z_info,
          'NominalInfiltration': nom_infil,
          'NominalScheduledVentilation': nom_vent,
          'NominalNaturalVentilation': nom_natvent}
 
     df = (pd.concat(d, axis=1, keys=d.keys())
           .dropna(axis=0, how='all',
-                  subset=[('Zones', 'Type')])  # Drop rows that are all nans
+                  subset=[('Zone', 'Type')])  # Drop rows that are all nans
           .reset_index(level=1, col_level=1,
-                       col_fill='Zones')  # Reset Index level to get Zone Name
-          .reset_index().set_index(['Archetype', ('Zones', 'RowName')])
+                       col_fill='Zone')  # Reset Index level to get Zone Name
+          .reset_index().set_index(['Archetype', ('Zone', 'RowName')])
           .rename_axis(['Archetype', 'RowName']))
 
-    df[('Zones', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
+    df[('Zone', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
 
-    df_g = df.reset_index().groupby(['Archetype', ('Zones', 'Zone Type')])
+    df_g = df.reset_index().groupby(['Archetype', ('Zone', 'Zone Type')])
     log('{} groups in zone ventiliation aggregation'.format(len(df_g)))
     log('groups are:\n{}'.format(pformat(df_g.groups, indent=3)))
     df = df_g.apply(lambda x: zoneventilation_aggregation(
@@ -1473,8 +1426,8 @@ def zoneloads_aggregation(x):
         pandas.Series: Series with a MultiIndex
 
     """
-    area_m_ = [('Zones', 'Floor Area {m2}'),
-               ('Zones',
+    area_m_ = [('Zone', 'Floor Area {m2}'),
+               ('Zone',
                 'Zone Multiplier')]  # Floor area and zone_loads multiplier
     d = {('NominalLighting', 'weighted mean'):
              weighted_mean(x[('NominalLighting', 'Lights/Floor Area {W/m2}')],
@@ -1498,6 +1451,8 @@ def zoneloads_aggregation(x):
                  x, area_m_)
          }
 
+    d['']
+
     return pd.Series(d)
 
 
@@ -1519,11 +1474,11 @@ def zoneventilation_aggregation(df):
     """
     log('\naggregating zone ventilations '
         'for archetype "{}", zone "{}"'.format(df.index.values[0][0],
-                                               df[('Zones',
+                                               df[('Zone',
                                                    'Zone Type')].values[0]))
 
-    area_m_ = [('Zones', 'Floor Area {m2}'),
-               ('Zones', 'Zone Multiplier')]  # Floor area and zone_loads
+    area_m_ = [('Zone', 'Floor Area {m2}'),
+               ('Zone', 'Zone Multiplier')]  # Floor area and zone_loads
     # multiplier
 
     ach_ = safe_loc(df, ('NominalInfiltration',
@@ -1977,7 +1932,7 @@ def zone_information(df):
     df = get_from_tabulardata(df)
     tbstr = df[(df.ReportName == 'Initialization Summary') &
                (df.TableName == 'Zone Information')].reset_index()
-    # Ignore Zones that are not part of building area
+    # Ignore Zone that are not part of building area
     pivoted = tbstr.pivot_table(index=['Archetype', 'RowName'],
                                 columns='ColumnName',
                                 values='Value',
@@ -1989,7 +1944,7 @@ def zone_information(df):
 def zoneconditioning_aggregation(x):
     """Aggregates the zones conditioning parameters whithin a single zone_loads
     name (implies that `.groupby(['Archetype',
-    ('Zones', 'Zone Type')])` is performed before calling this function).
+    ('Zone', 'Zone Type')])` is performed before calling this function).
 
     Args:
         x:
@@ -1998,7 +1953,7 @@ def zoneconditioning_aggregation(x):
 
     """
     d = {}
-    area_m_ = [('Zones', 'Zone Multiplier'), ('Zones', 'Floor Area {m2}')]
+    area_m_ = [('Zone', 'Zone Multiplier'), ('Zone', 'Floor Area {m2}')]
 
     d[('COP Heating', 'weighted mean {}')] = (
         weighted_mean(x[('COP', 'COP Heating')],
@@ -2023,13 +1978,13 @@ def zoneconditioning_aggregation(x):
     d[('MinFreshAirPerArea', 'weighted average {m3/s-m2}')] = \
         max(weighted_mean(
             x[('ZoneCooling', 'Minimum Outdoor Air Flow Rate')].astype(float)
-            / x.loc[:, ('Zones', 'Floor Area {m2}')].astype(float),
+            / x.loc[:, ('Zone', 'Floor Area {m2}')].astype(float),
             x,
             area_m_),
             weighted_mean(
                 x[('ZoneHeating', 'Minimum Outdoor Air Flow Rate')].astype(
                     float)
-                / x[('Zones', 'Floor Area {m2}')].astype(float),
+                / x[('Zone', 'Floor Area {m2}')].astype(float),
                 x,
                 area_m_))
 
@@ -2166,7 +2121,7 @@ def zone_setpoint(df):
 
 
 def zone_conditioning(df):
-    """Aggregation of zone_loads conditioning parameters. Imports Zones,
+    """Aggregation of zone_loads conditioning parameters. Imports Zone,
     NominalPeople, COP, ZoneCooling and ZoneHeating.
 
     Args:
@@ -2185,7 +2140,7 @@ def zone_conditioning(df):
     """
     # Loading each section in a dictionnary. Used to create
     # a new DF using pd.concat()
-    d = {'Zones': zone_information(df).reset_index().set_index(
+    d = {'Zone': zone_information(df).reset_index().set_index(
         ['Archetype', 'Zone Name']),
         'NominalPeople': nominal_people(df).reset_index().set_index(
             ['Archetype', 'Zone Name']),
@@ -2196,15 +2151,15 @@ def zone_conditioning(df):
 
     df = (pd.concat(d, axis=1, keys=d.keys())
           .dropna(axis=0, how='all',
-                  subset=[('Zones', 'Type')])  # Drop rows that are all nans
+                  subset=[('Zone', 'Type')])  # Drop rows that are all nans
           .reset_index(level=1, col_level=1,
-                       col_fill='Zones')  # Reset Index level to get Zone Name
-          .reset_index().set_index(['Archetype', ('Zones', 'RowName')])
+                       col_fill='Zone')  # Reset Index level to get Zone Name
+          .reset_index().set_index(['Archetype', ('Zone', 'RowName')])
           .rename_axis(['Archetype', 'RowName']))
 
-    df[('Zones', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
+    df[('Zone', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
 
-    df = df.reset_index().groupby(['Archetype', ('Zones', 'Zone Type')]).apply(
+    df = df.reset_index().groupby(['Archetype', ('Zone', 'Zone Type')]).apply(
         lambda x: zoneconditioning_aggregation(
             x.set_index(['Archetype', 'RowName'])))
 

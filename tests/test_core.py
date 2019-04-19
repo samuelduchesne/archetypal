@@ -109,7 +109,7 @@ def test_year_schedules(test_template_withcache):
     return test_template_withcache.year_schedules
 
 
-# Zones
+# Zone
 def test_zone_information(test_template_withcache, sql):
     template.zone_details = ar.zone_information(sql)
 
@@ -139,7 +139,7 @@ def test_zone_dhw(test_template_withcache, sql):
 
 def test_to_json(test_template_withcache):
     test_template_withcache.read()
-    json = test_template_withcache.to_json(orient='records')
+    json = test_template_withcache.to_json()
     print(json)
 
 
@@ -149,7 +149,7 @@ def test_to_json_std(config):
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     a = ar.UmiTemplate(files, wf, load=True, run_eplus_kwargs=dict(
         verbose='q'))
-    json = a.to_json(orient='records')
+    json = a.to_json()
     print(json)
 
 

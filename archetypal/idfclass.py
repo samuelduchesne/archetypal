@@ -1,4 +1,5 @@
 import logging as lg
+import os
 
 import eppy.modeleditor
 
@@ -141,3 +142,11 @@ class IDF(eppy.modeleditor.IDF):
             return calendar.SATURDAY
         else:
             return 0
+
+    @property
+    def building_name(self):
+        bld = self.idfobjects["BUILDING"]
+        if bld is not None:
+            return bld[0].Name
+        else:
+            return os.paht.basename(self.idfname)

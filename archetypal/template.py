@@ -4,7 +4,7 @@ import numpy as np
 
 from archetypal import settings, object_from_idfs, Schedule
 
-created_obj = []
+created_obj = {}
 
 
 class Unique(type):
@@ -14,7 +14,7 @@ class Unique(type):
             self = cls.__new__(cls, *args, **kwargs)
             cls.__init__(self, *args, **kwargs)
             cls._cache[kwargs['Name']] = self
-            created_obj.append(self)
+            created_obj[kwargs['Name']] = self
         return cls._cache[kwargs['Name']]
 
     def __init__(cls, name, bases, attributes):
@@ -152,11 +152,16 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         newdays = []
         for day in days:
             newdays.append(
-                DaySchedule(Name=day.Name, idf=self.idf, epbunch=day))
+                DaySchedule(Name=day.Name, idf=self.idf, epbunch=day,
+                            Comments='Year Week Day schedules created from: '
+                                     '{}'.format(self.Name)))
         newweeks = []
         for week in weeks:
             newweeks.append(WeekSchedule(Name=week.Name, idf=self.idf,
-                                         epbunch=week, newdays=newdays))
+                                         epbunch=week, newdays=newdays,
+                                         Comments='Year Week Day schedules '
+                                                  'created from: '
+                                                  '{}'.format(self.Name)))
         YearSchedule(Name=year.Name, _id=self.id, idf=self.idf, epbunch=year,
                      newweeks=newweeks,
                      Comments='Year Week Day schedules created from: '
@@ -184,7 +189,7 @@ class YearSchedule(Schedule, metaclass=Unique):
 
         self.Name = Name
         self.Category = Category
-        self.Parts = self.get_parts()
+        self.Parts = self.get_parts(kwargs['epbunch'])
 
     def to_json(self):
         data_dict = collections.OrderedDict()
@@ -199,18 +204,28 @@ class YearSchedule(Schedule, metaclass=Unique):
 
         return data_dict
 
-    def get_parts(self):
-        return [
-            {
-                "FromDay": 1,
-                "FromMonth": 1,
-                "ToDay": 31,
-                "ToMonth": 12,
-                "Schedule": {
-                    "$ref": "112"
+    def get_parts(self, epbunch):
+        parts = []
+        for i in range(int(len(epbunch.fieldvalues[3:]) / 5)):
+            week_day_schedule_name = epbunch[
+                'ScheduleWeek_Name_{}'.format(i + 1)]
+
+            FromMonth = epbunch['Start_Month_{}'.format(i + 1)]
+            ToMonth = epbunch['End_Month_{}'.format(i + 1)]
+            FromDay = epbunch['Start_Day_{}'.format(i + 1)]
+            ToDay = epbunch['End_Day_{}'.format(i + 1)]
+            parts.append(
+                {
+                    "FromDay": FromDay,
+                    "FromMonth": FromMonth,
+                    "ToDay": ToDay,
+                    "ToMonth": ToMonth,
+                    "Schedule": {
+                        "$ref": self.all_objects[week_day_schedule_name].id
+                    }
                 }
-            }
-        ]
+            )
+        return parts
 
 
 class WeekSchedule(Schedule, metaclass=Unique):
@@ -236,6 +251,7 @@ class WeekSchedule(Schedule, metaclass=Unique):
         self.Category = Category
         self.week = kwargs.get('week', None)
         self.Days = self.get_days()
+        self.epbunch = kwargs['epbunch']
 
     def to_json(self):
         data_dict = collections.OrderedDict()
@@ -440,7 +456,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             "$ref": str(self.Structure.id)
         }
         data_dict["Windows"] = [win.to_json() for win in self.all_objects
-                                if isinstance(win, Window)][0]
+                                if isinstance(win, Window)]
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource

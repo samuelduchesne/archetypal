@@ -73,7 +73,7 @@ class UmiTemplate:
             self.read()
 
     def read(self):
-        """Initiazile UMI objects"""
+        """Initialize UMI objects"""
         # Umi stuff
         in_dict = {idf: {'Name': idf,
                          'idf': self.idfs[idf],
@@ -107,18 +107,16 @@ class UmiTemplate:
             if not os.path.exists(settings.data_folder):
                 os.makedirs(settings.data_folder)
         with io.open(path_or_buf, 'w+', encoding='utf-8') as path_or_buf:
-            all_objects = []
-            for bld in self.building_templates:
-                all_objects.extend(self.building_templates[bld].all_objects)
-
             data_dict = OrderedDict()
-            for obj in all_objects:
-                if not isinstance(obj, (Window, UmiSchedule)):
-                    catname = obj.__class__.__name__ + 's'
-                    if catname not in data_dict:
-                        data_dict[catname] = []
-                    app_dict = obj.to_json()
-                    data_dict[catname].append(app_dict)
+            for bld in self.building_templates:
+                all_objs = self.building_templates[bld].all_objects
+                for obj in all_objs:
+                    if not isinstance(all_objs[obj], (Window, UmiSchedule)):
+                        catname = all_objs[obj].__class__.__name__ + 's'
+                        if catname not in data_dict:
+                            data_dict[catname] = []
+                        app_dict = all_objs[obj].to_json()
+                        data_dict[catname].append(app_dict)
             # Write the dict to json using json.dumps
             path_or_buf.write(json.dumps(data_dict, indent=indent))
 

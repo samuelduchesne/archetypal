@@ -275,12 +275,12 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
     # If warn = 1 (tolerance not respected) return tolerance
     if warn:
         return (
-        win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win,
-        t_vis_win, lay_win, width, window_bunches[win_id], tolerance)
+            win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win,
+            t_vis_win, lay_win, width, window_bunches[win_id], tolerance)
     else:
         return (
-        win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win,
-        t_vis_win, lay_win, width, window_bunches[win_id])
+            win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win,
+            t_vis_win, lay_win, width, window_bunches[win_id])
 
 
 def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):

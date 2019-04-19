@@ -182,10 +182,6 @@ class Schedule(object):
             sch_name = self.schName
         schedule_values = self.idf.get_schedule_data_by_name(sch_name)
         values = self.idf.get_schedule_data_by_name(sch_name)
-        # type_limit_name = values.Schedule_Type_Limits_Name
-        # lower_limit, upper_limit, numeric_type, unit_type = \
-        #     self.get_schedule_type_limits_data(type_limit_name)
-        # self.schLimitType = unit_type
 
         weekly_schedules = pd.Series([0] * len(slicer_), index=slicer_.index)
         # update last day of schedule

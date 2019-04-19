@@ -54,7 +54,7 @@ class UmiBase(object):
         # return {str(self.__class__.__name__): 'NotImplemented'}
 
 
-class MaterialsGas(UmiBase, metaclass=Unique):
+class GasMaterial(UmiBase, metaclass=Unique):
     """
     $id, Comments, Cost, DataSource, EmbodiedCarbon, EmbodiedCarbonStdDev,
     EmbodiedEnergy, EmbodiedEnergyStdDev, GasType, Life, Name,
@@ -77,7 +77,7 @@ class MaterialsGas(UmiBase, metaclass=Unique):
                  TransportEnergy=0,
                  Type='Gas',
                  **kwargs):
-        super(MaterialsGas, self).__init__(*args, **kwargs)
+        super(GasMaterial, self).__init__(*args, **kwargs)
 
         self.cols_ = settings.common_umi_objects['GasMaterials']
         self.Cost = Cost
@@ -118,6 +118,29 @@ class MaterialsGas(UmiBase, metaclass=Unique):
             return 3
         elif 'sf6' in Gas_Type.lower():
             return 4
+
+    def to_json(self):
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["GasType"] = self.GasType
+        data_dict["Type"] = self.Type
+        data_dict["EmbodiedEnergy"] = self.EmbodiedEnergy
+        data_dict["EmbodiedEnergyStdDev"] = self.EmbodiedEnergyStdDev
+        data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon
+        data_dict["EmbodiedCarbonStdDev"] = self.EmbodiedCarbonStdDev
+        data_dict["Cost"] = self.Cost
+        data_dict["Life"] = self.Life
+        data_dict["SubstitutionRatePattern"] = self.SubstitutionRatePattern
+        data_dict["SubstitutionTimestep"] = self.SubstitutionTimestep
+        data_dict["TransportCarbon"] = self.TransportCarbon
+        data_dict["TransportDistance"] = self.TransportDistance
+        data_dict["TransportEnergy"] = self.TransportEnergy
+        data_dict["Comment"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
 
 
 class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
@@ -250,8 +273,7 @@ class WeekSchedule(Schedule, metaclass=Unique):
         self.Name = Name
         self.Category = Category
         self.week = kwargs.get('week', None)
-        self.Days = self.get_days()
-        self.epbunch = kwargs['epbunch']
+        self.Days = self.get_days(kwargs['epbunch'])
 
     def to_json(self):
         data_dict = collections.OrderedDict()
@@ -266,30 +288,20 @@ class WeekSchedule(Schedule, metaclass=Unique):
 
         return data_dict
 
-    def get_days(self):
-        return [
-            {
-                "$ref": "66"
-            },
-            {
-                "$ref": "66"
-            },
-            {
-                "$ref": "66"
-            },
-            {
-                "$ref": "66"
-            },
-            {
-                "$ref": "66"
-            },
-            {
-                "$ref": "66"
-            },
-            {
-                "$ref": "66"
-            }
-        ]
+    def get_days(self, epbunch):
+        blocks = []
+        dayname = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
+                   'Thursday', 'Friday', 'Saturday']
+        for day in dayname:
+            week_day_schedule_name = epbunch[
+                "{}_ScheduleDay_Name".format(day)]
+            blocks.append(
+                {
+                    "$ref": self.all_objects[week_day_schedule_name].id
+                }
+            )
+
+        return blocks
 
 
 class DaySchedule(Schedule, metaclass=Unique):
@@ -720,6 +732,68 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                  **kwargs):
         super(OpaqueMaterial, self).__init__(*args, **kwargs)
 
+        self.Conductivity = Conductivity
+        self.Roughness = Roughness
+        self.SolarAbsorptance = SolarAbsorptance
+        self.SpecificHeat = SpecificHeat
+        self.Type = Type
+        self.ThermalEmittance = ThermalEmittance
+        self.VisibleAbsorptance = VisibleAbsorptance
+        self.VariableConductivity = VariableConductivity
+        self.VariableConductivityProperties = VariableConductivityProperties
+        self.TransportCarbon = TransportCarbon
+        self.TransportDistance = TransportDistance
+        self.TransportEnergy = TransportEnergy
+        self.SubstitutionRatePattern = SubstitutionRatePattern
+        self.SubstitutionTimestep = SubstitutionTimestep
+        self.Cost = Cost
+        self.Density = Density
+        self.EmbodiedCarbon = EmbodiedCarbon
+        self.EmbodiedCarbonStdDev = EmbodiedCarbonStdDev
+        self.EmbodiedEnergy = EmbodiedEnergy
+        self.EmbodiedEnergyStdDev = EmbodiedEnergyStdDev
+        self.Life = Life
+        self.MoistureDiffusionResistance = MoistureDiffusionResistance
+        self.PhaseChange = PhaseChange
+        self.PhaseChangeProperties = PhaseChangeProperties
+
+    def to_json(self):
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = "10"
+        data_dict["Conductivity"] = self.Conductivity
+        data_dict["Density"] = self.Density
+        data_dict["Roughness"] = self.Roughness
+        data_dict["SpecificHeat"] = self.SpecificHeat
+        data_dict["ThermalEmittance"] = self.ThermalEmittance
+        data_dict["SolarAbsorptance"] = self.SolarAbsorptance
+        data_dict["VisibleAbsorptance"] = self.VisibleAbsorptance
+        data_dict[
+            "MoistureDiffusionResistance"] = self.MoistureDiffusionResistance
+        data_dict["PhaseChange"] = self.PhaseChange
+        data_dict["PhaseChangeProperties"] = self.PhaseChangeProperties
+        data_dict["VariableConductivity"] = self.VariableConductivity
+        data_dict[
+            "VariableConductivityProperties"] = \
+            self.VariableConductivityProperties
+        data_dict["Type"] = self.Type
+        data_dict["EmbodiedEnergy"] = self.EmbodiedEnergy
+        data_dict["EmbodiedEnergyStdDev"] = self.EmbodiedEnergyStdDev
+        data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon
+        data_dict["EmbodiedCarbonStdDev"] = self.EmbodiedCarbonStdDev
+        data_dict["Cost"] = self.Cost
+        data_dict["Life"] = self.Life
+        data_dict["SubstitutionRatePattern"] = self.SubstitutionRatePattern
+        data_dict["SubstitutionTimestep"] = self.SubstitutionTimestep
+        data_dict["TransportCarbon"] = self.TransportCarbon
+        data_dict["TransportDistance"] = self.TransportDistance
+        data_dict["TransportEnergy"] = self.TransportEnergy
+        data_dict["Comment"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
+
 
 class Window(UmiBase, metaclass=Unique):
     """
@@ -827,7 +901,7 @@ class Window(UmiBase, metaclass=Unique):
             "$ref": "145"
         }
         data_dict[
-            "ZoneMixingDeltaTemperature"] = self.ZoneMixingDeltaTemperature,
+            "ZoneMixingDeltaTemperature"] = self.ZoneMixingDeltaTemperature
         data_dict["ZoneMixingFlowRate"] = self.ZoneMixingFlowRate
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
@@ -835,44 +909,6 @@ class Window(UmiBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
-
-
-# class WeekSchedules(UmiBase, metaclass=Unique):
-#     """
-#     $id, Category, Comments, DataSource, Name, Parts, Type
-#     """
-#
-#     def __init__(self, *args,
-#                  Category='Year',
-#                  Parts=[],
-#                  Type='Fraction',
-#                  **kwargs):
-#         super(WeekSchedules, self).__init__(*args, **kwargs)
-#
-#         self.cols_ = settings.common_umi_objects['WeekSchedules']
-#         self.Category = Category
-#         self.Parts = Parts
-#         self.Type = Type
-#         self.DataSource = self.Archetype
-#
-#
-# class YearSchedules(UmiBase, metaclass=Unique):
-#     """
-#     $id, Category, Comments, DataSource, Name, Parts, Type
-#     """
-#
-#     def __init__(self, *args,
-#                  Category='Year',
-#                  Parts=[],
-#                  Type='Fraction',
-#                  **kwargs):
-#         super(YearSchedules, self).__init__(*args, **kwargs)
-#
-#         self.cols_ = settings.common_umi_objects['YearSchedules']
-#         self.Category = Category
-#         self.Parts = Parts
-#         self.Type = Type
-#         self.DataSource = self.Archetype
 
 
 def label_surface(row):
@@ -936,22 +972,24 @@ def type_surface(row):
         if row['Outside_Boundary_Condition'] == 'Adiabatic':
             return 5
         else:
-            return np.NaN
+            return ValueError(
+                'Cannot find Construction Type for "{}"'.format(row))
 
     # Roofs & Ceilings
-    if row['Surface_Type'] == 'Roof':
+    elif row['Surface_Type'] == 'Roof':
         return 1
-    if row['Surface_Type'] == 'Ceiling':
+    elif row['Surface_Type'] == 'Ceiling':
         return 3
     # Walls
-    if row['Surface_Type'] == 'Wall':
+    elif row['Surface_Type'] == 'Wall':
         if row['Outside_Boundary_Condition'] == 'Surface':
             return 5
         if row['Outside_Boundary_Condition'] == 'Outdoors':
             return 0
         if row['Outside_Boundary_Condition'] == 'Adiabatic':
-            return 5
-    return np.NaN
+            return 0
+    else:
+        raise ValueError('Cannot find Construction Type for "{}"'.format(row))
 
 
 def zone_information(df):

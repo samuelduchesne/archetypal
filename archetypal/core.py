@@ -13,7 +13,7 @@ from sklearn import preprocessing
 
 from . import settings, object_from_idf, object_from_idfs, \
     calc_simple_glazing, \
-    iscore, weighted_mean, top, MaterialsGas, UmiSchedule, BuildingTemplate, \
+    iscore, weighted_mean, top, GasMaterial, UmiSchedule, BuildingTemplate, \
     parallel_process, Window
 from .idf import run_eplus, load_idf
 from .plot import plot_energyprofile
@@ -637,12 +637,12 @@ def materials_gas(idfs):
         idfs: parsed IDF files
 
     Returns:
-        pandas.Series: Returns a Series of MaterialsGas objects
+        pandas.Series: Returns a Series of GasMaterial objects
     """
     # First, get the list of materials (returns a DataFrame)
     materials_df = object_from_idfs(idfs, 'WINDOWMATERIAL:GAS')
 
-    materials = materials_df.apply(lambda x: MaterialsGas(**x), axis=1)
+    materials = materials_df.apply(lambda x: GasMaterial(**x), axis=1)
 
     log('Returning {} WINDOWMATERIAL:GAS objects'.format(len(materials)))
     return materials

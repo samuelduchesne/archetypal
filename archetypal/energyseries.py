@@ -35,9 +35,12 @@ class EnergySeries(Series):
             object.__setattr__(self, name, getattr(other, name, None))
         return self
 
-    def __new__(cls, *args, **kwargs):
-        kwargs.pop('frequency', None)
-        kwargs.pop('from_units', None)
+    def __new__(cls, data, frequency=None, from_units=None,
+                 profile_type='undefinded',
+                 index=None, dtype=None, copy=True, name=None,
+                 fastpath=False, base_year=2017, normalize=False,
+                 is_sorted=False, ascending=False, archetypes=None,
+                 concurrent_sort=False, to_units='kW'):
         arr = Series.__new__(cls)
         if type(arr) is EnergySeries:
             return arr

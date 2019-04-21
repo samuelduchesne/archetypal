@@ -51,6 +51,7 @@ class UmiBase(object):
         return str(self)
 
     def to_json(self):
+        """Convert class properties to dict"""
         return {"$id": "{}".format(self.id),
                 "Name": "{}".format(self.Name)}
         # return {str(self.__class__.__name__): 'NotImplemented'}
@@ -122,6 +123,7 @@ class GasMaterial(UmiBase, metaclass=Unique):
             return 4
 
     def to_json(self):
+        """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -192,6 +194,12 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                      Comments='Year Week Day schedules created from: '
                               '{}'.format(self.Name))
 
+    def to_json(self):
+        """UmiSchedule does not implement the to_json method because it is
+        not used when generating the json file. Only Year-Week- and
+        DaySchedule classes are used"""
+        pass
+
 
 class YearSchedule(Schedule, metaclass=Unique):
     """$id, Category, Comments, DataSource, Name, Parts, Type
@@ -217,6 +225,7 @@ class YearSchedule(Schedule, metaclass=Unique):
         self.Parts = self.get_parts(kwargs['epbunch'])
 
     def to_json(self):
+        """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -278,6 +287,7 @@ class WeekSchedule(Schedule, metaclass=Unique):
         self.Days = self.get_days(kwargs['epbunch'])
 
     def to_json(self):
+        """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -331,6 +341,7 @@ class DaySchedule(Schedule, metaclass=Unique):
         self.Values = self.get_values()
 
     def to_json(self):
+        """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -492,6 +503,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         self.Structure = structure
 
     def to_json(self):
+        """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
         data_dict["Core"] = {
@@ -657,7 +669,7 @@ class ConstructionSet(UmiBase, metaclass=Unique):
         self.constructions()
 
     def constructions(self):
-        """a copy of :func:``"""
+        """G"""
         idfs = {self.Name: self.idf}
 
         constructions_df = object_from_idfs(idfs, 'CONSTRUCTION',
@@ -704,6 +716,7 @@ class ConstructionSet(UmiBase, metaclass=Unique):
                                            'constructions'].values[0]
 
     def to_json(self):
+        """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -761,19 +774,31 @@ class OpaqueConstruction(UmiBase, metaclass=Unique):
         self.Layers = self.layers()
 
     def layers(self):
+        """Retrieve layers for the OpaqueConstruction"""
         c = self.idf.getobject('CONSTRUCTION', self.Name)
         layers = []
         for layer in c.fieldvalues[2:]:
+            # Loop through the layers from the outside layer towards the
+            # indoor layers and get the material they are made of.
             material = self.idf.getobject('MATERIAL', layer)
             if material is None:
+                # if the material was not found, mostevidently means it is a
+                # nomass layer.
                 material = self.idf.getobject('MATERIAL:NOMASS', layer)
-                thickness = 0.0127
+
+                # Nomass layers are not supported by umi. Create a fake half
+                # inch thickness and calculate conductivity using the thermal
+                # resistance.
+                thickness = 0.0127 # half inch layer tickness
                 conductivity = thickness / material.Thermal_Resistance
-                specific_heat = 100
+                specific_heat = 100  # The lowest possible value
             else:
+                # This is a regular mass layer. Get its properties
                 thickness = material.Thickness
                 conductivity = material.Conductivity
                 specific_heat = material.Specific_Heat
+
+            # Create the OpaqueMaterial and append to the list of layers
             layers.append({'Material': OpaqueMaterial(Name=material.Name,
                                                       Roughness=material.Roughness,
                                                       SolarAbsorptance=material.Solar_Absorptance,
@@ -787,6 +812,7 @@ class OpaqueConstruction(UmiBase, metaclass=Unique):
         return layers
 
     def to_json(self):
+        """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -872,9 +898,10 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.PhaseChangeProperties = PhaseChangeProperties
 
     def to_json(self):
+        """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
-        data_dict["$id"] = "10"
+        data_dict["$id"] = self.id
         data_dict["Conductivity"] = self.Conductivity
         data_dict["Density"] = self.Density
         data_dict["Roughness"] = self.Roughness
@@ -998,6 +1025,7 @@ class Window(UmiBase, metaclass=Unique):
             return self + other
 
     def to_json(self):
+        """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -1038,15 +1066,7 @@ class Window(UmiBase, metaclass=Unique):
 
 
 def label_surface(row):
-    """
-    Takes a boundary and returns its corresponding umi-Category
-
-    Args:
-        row:
-
-    Returns:
-
-    """
+    """Takes a boundary and returns its corresponding umi-Category"""
     # Floors
     if row['Surface_Type'] == 'Floor':
         if row['Outside_Boundary_Condition'] == 'Surface':
@@ -1077,15 +1097,7 @@ def label_surface(row):
 
 
 def type_surface(row):
-    """
-    Takes a boundary and returns its corresponding umi-type
-
-    Args:
-        row:
-
-    Returns:
-        str: The umi-type of boundary
-    """
+    """Takes a boundary and returns its corresponding umi-type"""
 
     # Floors
     if row['Surface_Type'] == 'Floor':

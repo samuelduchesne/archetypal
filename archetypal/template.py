@@ -389,10 +389,14 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                         'wall']
                     surfaces[azimuth]['wwr'] = round(wwr, 1)
 
-        self.Windows = [Window(Name='',
-                               idf=self.idf,
-                               **surfaces[azim]['shading']) for azim in
-                        surfaces]
+        window = [Window(Name='A Window Name', idf=self.idf,
+                         **surfaces[azim]['shading']) for azim in surfaces if
+                  surfaces[azim]['shading']]
+        if window:
+            self.Windows = window[0]
+        else:
+            raise ValueError('Could not create a Window for '
+                             'building {}'.format(self.DataSource))
 
     def get_shading_control(self, sub):
         scn = sub.Shading_Control_Name
@@ -403,14 +407,23 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                     'ShadingSystemType': 1,
                     'ShadingSystemSetPoint': obj.Setpoint,
                     'ShadingSystemAvailabilitySchedule': UmiSchedule(
-                        Name=sch_name, idf=self.idf)}
+                        Name=sch_name, idf=self.idf),
+                    'AfnWindowAvailability': UmiSchedule(
+                        Name=sch_name, idf=self.idf),
+                    'ZoneMixingAvailabilitySchedule': UmiSchedule(
+                        Name=sch_name, idf=self.idf),
+                    }
         else:
             sch_name = list(self.idf.get_all_schedules(yearly_only=True))[0]
             return {'IsShadingSystemOn': False,
                     'ShadingSystemType': 0,
                     'ShadingSystemSetPoint': 0,
                     'ShadingSystemAvailabilitySchedule': UmiSchedule(
-                        Name=sch_name, idf=self.idf)
+                        Name=sch_name, idf=self.idf),
+                    'AfnWindowAvailability': UmiSchedule(
+                        Name=sch_name, idf=self.idf),
+                    'ZoneMixingAvailabilitySchedule': UmiSchedule(
+                        Name=sch_name, idf=self.idf),
                     }
 
     def zone_refs(self):
@@ -463,14 +476,16 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         data_dict["Structure"] = {
             "$ref": str(self.Structure.id)
         }
-        data_dict["Windows"] = [win.to_json() for win in self.all_objects
-                                if isinstance(win, Window)]
+        data_dict["Windows"] = self.Windows.to_json()
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
         data_dict["Name"] = self.Name
 
         return data_dict
+
+    def __hash__(self):
+        return hash(self.Name)
 
 
 class StructureDefinition(UmiBase, metaclass=Unique):
@@ -876,7 +891,10 @@ class Window(UmiBase, metaclass=Unique):
     ZoneMixingFlowRate
     """
 
-    def __init__(self, *args,
+    def __init__(self, ZoneMixingAvailabilitySchedule=None,
+                 ShadingSystemAvailabilitySchedule=None,
+                 Construction=None,
+                 AfnWindowAvailability=None,
                  AfnDischargeC=0.65,
                  AfnTempSetpoint=20,
                  IsShadingSystemOn=False,
@@ -893,6 +911,11 @@ class Window(UmiBase, metaclass=Unique):
                  **kwargs):
         super(Window, self).__init__(*args, **kwargs)
 
+        self.ZoneMixingAvailabilitySchedule = ZoneMixingAvailabilitySchedule
+        self.ShadingSystemAvailabilitySchedule = \
+            ShadingSystemAvailabilitySchedule
+        self.Construction = Construction
+        self.AfnWindowAvailability = AfnWindowAvailability
         self.AfnDischargeC = AfnDischargeC
         self.AfnTempSetpoint = AfnTempSetpoint
         self.IsShadingSystemOn = IsShadingSystemOn
@@ -950,17 +973,17 @@ class Window(UmiBase, metaclass=Unique):
         data_dict["AfnDischargeC"] = self.AfnDischargeC
         data_dict["AfnTempSetpoint"] = self.AfnTempSetpoint
         data_dict["AfnWindowAvailability"] = {
-            "$ref": "145"
+            "$ref": self.AfnWindowAvailability.id
         }
         data_dict["Construction"] = {
-            "$ref": "57"
+            "$ref": self.Construction.id
         }
         data_dict["IsShadingSystemOn"] = self.IsShadingSystemOn
         data_dict["IsVirtualPartition"] = self.IsVirtualPartition
         data_dict["IsZoneMixingOn"] = self.IsZoneMixingOn
         data_dict["OperableArea"] = self.OperableArea
         data_dict["ShadingSystemAvailabilitySchedule"] = {
-            "$ref": "145"
+            "$ref": self.ShadingSystemAvailabilitySchedule.id
         }
         data_dict["ShadingSystemSetpoint"] = self.ShadingSystemSetpoint
         data_dict[
@@ -968,7 +991,7 @@ class Window(UmiBase, metaclass=Unique):
         data_dict["ShadingSystemType"] = self.ShadingSystemType
         data_dict["Type"] = self.Type
         data_dict["ZoneMixingAvailabilitySchedule"] = {
-            "$ref": "145"
+            "$ref": self.ZoneMixingAvailabilitySchedule.id
         }
         data_dict[
             "ZoneMixingDeltaTemperature"] = self.ZoneMixingDeltaTemperature

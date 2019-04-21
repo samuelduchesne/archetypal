@@ -50,11 +50,25 @@ class IDF(eppy.modeleditor.IDF):
                 # return the ep_object
                 return new_object
 
-    def get_schedule_type_limits_data_by_name(self, sch_name):
-        """Returns the 'ScheduleTypeLimits' for a particular schedule name"""
-        for obj in self.idfobjects['ScheduleTypeLimits'.upper()]:
-            if obj.Name.upper() == sch_name.upper():
-                return obj
+    def get_schedule_type_limits_data_by_name(self, schedule_limit_name):
+        """Returns the data for a particular 'ScheduleTypeLimits' object"""
+        schedule = self.getobject('ScheduleTypeLimits'.upper(), schedule_limit_name)
+
+        if schedule is not None:
+            lower_limit = schedule['Lower_Limit_Value']
+            upper_limit = schedule['Upper_Limit_Value']
+            numeric_type = schedule['Numeric_Type']
+            unit_type = schedule['Unit_Type']
+
+            if schedule['Unit_Type'] == '':
+                unit_type = numeric_type
+
+            return lower_limit, upper_limit, numeric_type, unit_type
+        else:
+            raise KeyError('Could not find ScheduleTypeLimits "{}" in '
+                           'idf file "{}"'.format(schedule_limit_name,
+                                                  self.idfname))
+
 
     def get_schedule_data_by_name(self, sch_name):
         """Returns the epbunch of a particular schedule name"""

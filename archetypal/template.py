@@ -222,7 +222,10 @@ class YearSchedule(Schedule, metaclass=Unique):
 
         self.Name = Name
         self.Category = Category
-        self.Parts = self.get_parts(kwargs['epbunch'])
+        self.epbunch = kwargs['epbunch']
+        self.Type = self.schLimitType
+        self.Parts = self.get_parts(self.epbunch)
+        self.schLimitType = self.get_schedule_type_limits_name()
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -285,6 +288,7 @@ class WeekSchedule(Schedule, metaclass=Unique):
         self.Category = Category
         self.week = kwargs.get('week', None)
         self.Days = self.get_days(kwargs['epbunch'])
+        self.schLimitType = self.get_schedule_type_limits_name()
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -339,6 +343,7 @@ class DaySchedule(Schedule, metaclass=Unique):
         self.Name = Name
         self.Category = Category
         self.Values = self.get_values()
+        self.schLimitType = self.get_schedule_type_limits_name()
 
     def to_json(self):
         """Convert class properties to dict"""

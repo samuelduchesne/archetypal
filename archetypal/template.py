@@ -29,7 +29,9 @@ class UmiBase(object):
                  DataSource=None,
                  **kwargs):
         self.idf = idf
-        self.Comments = Comments
+        self.Comments = ''
+        if Comments != '':
+            self.Comments += Comments
         if DataSource is None:
             self.DataSource = self.idf.building_name(use_idfname=True)
         else:

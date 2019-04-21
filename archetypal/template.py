@@ -371,6 +371,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
     def windows(self):
         """create windows"""
+        # Todo: This routine fails to identify windows for some IDF files
+        #  such as LargeHotel.
         surfaces = {}
         for zone in self.idf.idfobjects['ZONE']:
             for surface in zone.zonesurfaces:
@@ -381,7 +383,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                                          'wwr': 0}
                     surfaces[azimuth]['wall'] += surface.area
                     subs = surface.subsurfaces
-                    surfaces[azimuth]['shading'] = {'noshading': True}
+                    surfaces[azimuth]['shading'] = {}
                     if subs:
                         for sub in subs:
                             surfaces[azimuth]['window'] += sub.area
@@ -391,14 +393,38 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                         'wall']
                     surfaces[azimuth]['wwr'] = round(wwr, 1)
 
-        window = [Window(Name='A Window Name', idf=self.idf,
-                         **surfaces[azim]['shading']) for azim in surfaces if
-                  surfaces[azim]['shading']]
+        window = []
+        for azim in surfaces:
+            try:
+                if surfaces[azim]['shading']:
+                    window.append(
+                        Window(Name='A Window Name', idf=self.idf,
+                               **surfaces[azim]['shading'])
+                    )
+            except:
+                pass
         if window:
             self.Windows = window[0]
         else:
-            raise ValueError('Could not create a Window for '
-                             'building {}'.format(self.DataSource))
+            sch_name = list(self.idf.get_all_schedules(yearly_only=True))[0]
+            kwargs = {'IsShadingSystemOn': False,
+                      'ShadingSystemType': 0,
+                      'ShadingSystemSetPoint': 0,
+                      'ShadingSystemAvailabilitySchedule': UmiSchedule(
+                          Name=sch_name, idf=self.idf),
+                      'AfnWindowAvailability': UmiSchedule(
+                          Name=sch_name, idf=self.idf),
+                      'ZoneMixingAvailabilitySchedule': UmiSchedule(
+                          Name=sch_name, idf=self.idf),
+                      }
+            msg = '\nThis window was created using the first available schedule'
+            self.Windows = Window(Name='Random Window', Comments=msg,
+                                  idf=self.idf, **kwargs)
+
+            # Todo: We should actually raise an error once this method
+            #  corrected. Use the error bellow
+            # raise ValueError('Could not create a Window for '
+            #                  'building {}'.format(self.DataSource))
 
     def get_shading_control(self, sub):
         scn = sub.Shading_Control_Name
@@ -414,6 +440,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                         Name=sch_name, idf=self.idf),
                     'ZoneMixingAvailabilitySchedule': UmiSchedule(
                         Name=sch_name, idf=self.idf),
+                    # Todo: Add WindowConstruction here
                     }
         else:
             sch_name = list(self.idf.get_all_schedules(yearly_only=True))[0]
@@ -566,7 +593,7 @@ class Zone(UmiBase, metaclass=Unique):
     def ventilation(self):
         self.Ventilation = []
 
-    # todo: uncomment when method is completed
+    # todo: uncomment bellow when method is completed
     # def to_json(self):
     #     data_dict = collections.OrderedDict()
     #
@@ -893,10 +920,11 @@ class Window(UmiBase, metaclass=Unique):
     ZoneMixingFlowRate
     """
 
-    def __init__(self, ZoneMixingAvailabilitySchedule=None,
-                 ShadingSystemAvailabilitySchedule=None,
+    def __init__(self, Name, ZoneMixingAvailabilitySchedule,
+                 AfnWindowAvailability,
+                 ShadingSystemAvailabilitySchedule,
+                 *args,
                  Construction=None,
-                 AfnWindowAvailability=None,
                  AfnDischargeC=0.65,
                  AfnTempSetpoint=20,
                  IsShadingSystemOn=False,
@@ -913,6 +941,7 @@ class Window(UmiBase, metaclass=Unique):
                  **kwargs):
         super(Window, self).__init__(*args, **kwargs)
 
+        self.Name = Name
         self.ZoneMixingAvailabilitySchedule = ZoneMixingAvailabilitySchedule
         self.ShadingSystemAvailabilitySchedule = \
             ShadingSystemAvailabilitySchedule
@@ -978,7 +1007,9 @@ class Window(UmiBase, metaclass=Unique):
             "$ref": self.AfnWindowAvailability.id
         }
         data_dict["Construction"] = {
-            "$ref": self.Construction.id
+            "$ref": "NotImplementedYet"
+            # Todo: Replace
+            #   with : self.Construction.id
         }
         data_dict["IsShadingSystemOn"] = self.IsShadingSystemOn
         data_dict["IsVirtualPartition"] = self.IsVirtualPartition

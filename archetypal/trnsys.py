@@ -313,7 +313,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
     # Clean names of idf objects (e.g. 'MATERIAL')
     start_time = time.time()
-    # clear_name_idf_objects(idf)
+    clear_name_idf_objects(idf)
     log("Cleaned IDF object names in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="CoverterLog",
         filename="CoverterLog")
@@ -356,6 +356,30 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="CoverterLog",
         filename="CoverterLog")
+
+    # Get materials with resistance lower than 0.0007
+    material_low_res = []
+    for material in materials:
+        if material.Thickness / (
+                material.Conductivity * 3.6) < 0.0007:
+
+            material_low_res.append(material)
+
+    # Remove materials with resistance lower than 0.0007 from IDF
+    mat_name = []
+    for mat in material_low_res:
+        mat_name.append(mat.Name)
+        idf.removeidfobject(mat)
+
+    # Get constructions with only materials with resistance lower than 0.0007
+    construct_low_res = []
+    for i in range(0, len(constructions)):
+        if len(constructions.list2[i])==3 and constructions.list2[i][2] in mat_name:
+            construct_low_res.append(constructions[i])
+
+    # Remove constructions with only materials with resistance lower than 0.0007 from IDF
+    for construct in construct_low_res:
+        idf.removeidfobject(construct)
 
     # Write data from IDF file to T3D file
     start_time = time.time()
@@ -528,30 +552,33 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         # Except fenestration construction
         fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
                         s in constructions.list2[i][1].lower()]
+
         if not fenestration:
             lines.insert(constructionNum + 1,
                          '!-CONSTRUCTION ' + constructions[i].Name + '\n')
         else:
             continue
 
-        # Create lists to append with layers and thickness of contruction
+        # Create lists to append with layers and thickness of construction
         layerList = []
         thickList = []
 
         for j in range(2, len(constructions.list2[i])):
 
-            indiceMat = [k for k, s in enumerate(materials) if
-                         constructions.list2[i][j] == s.Name]
+            if constructions.list2[i][j] not in mat_name:
 
-            # if materials[indiceMat[0]].Thickness / (
-            #         materials[indiceMat[0]].Conductivity * 3.6) > 0.0007:
+                indiceMat = [k for k, s in enumerate(materials) if
+                             constructions.list2[i][j] == s.Name]
 
-            if not indiceMat:
-                thickList.append(0.0)
-            else:
-                thickList.append(materials[indiceMat[0]].Thickness)
+                if not indiceMat:
+                    thickList.append(0.0)
+                else:
+                    thickList.append(materials[indiceMat[0]].Thickness)
 
                 layerList.append(constructions.list2[i][j])
+
+            else:
+                continue
 
         lines.insert(constructionNum + 2, '!- LAYERS = ' + " ".join(
             str(item) for item in layerList[::-1]) + '\n')

@@ -10,12 +10,12 @@ created_obj = {}
 class Unique(type):
 
     def __call__(cls, *args, **kwargs):
-        if kwargs['Name'] not in cls._cache:
+        if kwargs['Name'] not in created_obj:
             self = cls.__new__(cls, *args, **kwargs)
             cls.__init__(self, *args, **kwargs)
             cls._cache[kwargs['Name']] = self
             created_obj[kwargs['Name']] = self
-        return cls._cache[kwargs['Name']]
+        return created_obj[kwargs['Name']]
 
     def __init__(cls, name, bases, attributes):
         super().__init__(name, bases, attributes)

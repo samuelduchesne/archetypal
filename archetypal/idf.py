@@ -29,7 +29,7 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False,
     a DataFrame.
 
     Args:
-        idfs (list of eppy.modeleditor.IDF): List of IDF objects
+        idfs (list of dict of IDF): List or Dict of IDF objects
         ep_object (str): EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a
             string. **Most be in all caps.**
         first_occurrence_only (bool, optional): if true, returns only the

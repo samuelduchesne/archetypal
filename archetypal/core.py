@@ -62,7 +62,7 @@ class UmiTemplate:
         self.zones = None
         self.zone_ventilation = None
         self.windows_settings = None
-        self.building_templates = None
+        self.building_templates = {}
         self.zone_construction_sets = None
         self.domestic_hot_water_settings = None
 
@@ -80,9 +80,11 @@ class UmiTemplate:
                          'sql': self.sql[idf]}
                    for idf in self.idfs
                    }
-        self.building_templates = parallel_process(in_dict, BuildingTemplate,
-                                                   use_kwargs=True,
-                                                   processors=len(in_dict))
+        for idf in in_dict:
+            self.building_templates[idf] = BuildingTemplate(**in_dict[idf])
+        # self.building_templates = parallel_process(in_dict, BuildingTemplate,
+        #                                            use_kwargs=True,
+        #                                            processors=len(in_dict))
         # self.building_templates = [BuildingTemplate(Name=idf,
         #                                             idf=self.idfs[idf],
         #                                             sql=self.sql[idf])
@@ -108,15 +110,19 @@ class UmiTemplate:
                 os.makedirs(settings.data_folder)
         with io.open(path_or_buf, 'w+', encoding='utf-8') as path_or_buf:
             data_dict = OrderedDict()
+            jsonized = []
             for bld in self.building_templates:
                 all_objs = self.building_templates[bld].all_objects
                 for obj in all_objs:
-                    if not isinstance(all_objs[obj], (Window, UmiSchedule)):
-                        catname = all_objs[obj].__class__.__name__ + 's'
-                        if catname not in data_dict:
-                            data_dict[catname] = []
-                        app_dict = all_objs[obj].to_json()
-                        data_dict[catname].append(app_dict)
+                    if obj not in jsonized:
+                        if not isinstance(all_objs[obj], (Window, UmiSchedule)):
+                            jsonized.append(obj)
+                            catname = all_objs[obj].__class__.__name__ + 's'
+                            if catname not in data_dict:
+                                data_dict[catname] = []
+                            app_dict = all_objs[obj].to_json()
+                            data_dict[catname].append(app_dict)
+
             # Write the dict to json using json.dumps
             path_or_buf.write(json.dumps(data_dict, indent=indent))
 

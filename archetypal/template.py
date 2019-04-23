@@ -160,7 +160,6 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         self.Category = Category
         self.Type = self.schType
         self.Name = Name
-        self._id = self.id
         self.develop()
 
     def __str__(self):
@@ -205,7 +204,7 @@ class YearSchedule(Schedule, metaclass=Unique):
     """$id, Category, Comments, DataSource, Name, Parts, Type
     """
 
-    def __init__(self, Name, idf,
+    def __init__(self, Name, idf, _id,
                  DataSource=None,
                  Category='Year',
                  **kwargs):
@@ -217,7 +216,7 @@ class YearSchedule(Schedule, metaclass=Unique):
         else:
             self.DataSource = DataSource
         self.Name = Name
-        self.id = kwargs.get('_id', id(self))
+        self.id = _id
         self.all_objects = created_obj
 
         self.Name = Name

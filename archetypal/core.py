@@ -14,7 +14,7 @@ from sklearn import preprocessing
 from . import settings, object_from_idf, object_from_idfs, \
     calc_simple_glazing, \
     iscore, weighted_mean, top, GasMaterial, UmiSchedule, BuildingTemplate, \
-    parallel_process, Window
+    Window
 from .idf import run_eplus, load_idf
 from .plot import plot_energyprofile
 from .utils import log, label_surface, type_surface, layer_composition, \
@@ -109,7 +109,23 @@ class UmiTemplate:
             if not os.path.exists(settings.data_folder):
                 os.makedirs(settings.data_folder)
         with io.open(path_or_buf, 'w+', encoding='utf-8') as path_or_buf:
-            data_dict = OrderedDict()
+            data_dict = OrderedDict({'GasMaterials': [],
+                                     'GlazingMaterials': [],
+                                     'OpaqueMaterials': [],
+                                     'OpaqueConstructions': [],
+                                     'WindowConstructions': [],
+                                     'StructureDefinitions': [],
+                                     'DaySchedules': [],
+                                     'WeekSchedules': [],
+                                     'YearSchedules': [],
+                                     'DomesticHotWaterSettings': [],
+                                     'VentilationSettings': [],
+                                     'ZoneConditionings': [],
+                                     'ZoneConstructionSets': [],
+                                     'ZoneLoads': [],
+                                     'Zones': [],
+                                     'BuildingTemplates': [],
+                                     'WindowSettings': []})
             jsonized = []
             for bld in self.building_templates:
                 all_objs = self.building_templates[bld].all_objects
@@ -118,8 +134,6 @@ class UmiTemplate:
                         if not isinstance(all_objs[obj], (Window, UmiSchedule)):
                             jsonized.append(obj)
                             catname = all_objs[obj].__class__.__name__ + 's'
-                            if catname not in data_dict:
-                                data_dict[catname] = []
                             app_dict = all_objs[obj].to_json()
                             data_dict[catname].append(app_dict)
 

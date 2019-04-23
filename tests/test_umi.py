@@ -2,9 +2,9 @@ from archetypal import load_umi_template, copy_file, UmiTemplate, settings, \
     run_eplus
 
 
-def test_load_umi_template(config):
-    data_json = settings.umitemplate
-    assert len(load_umi_template(data_json)) == 17
+# def test_load_umi_template(config):
+#     data_json = settings.umitemplate
+#     assert len(load_umi_template(data_json)) == 17
 
 
 def test_umi_routine(config):
@@ -18,7 +18,7 @@ def test_umi_routine(config):
     idf = copy_file(idf_source)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     a = UmiTemplate(idf, wf, load=True, run_eplus_kwargs=dict(
-        prep_outputs=True))
+        prep_outputs=True), name='Mixed_Files')
     print(a.building_templates)
 
     print(a.to_json())
@@ -34,7 +34,7 @@ def test_umi_samples(config):
     #                                    '.716270_CWEC.epw')
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     a = UmiTemplate(idf_source, wf, load=True, run_eplus_kwargs=dict(
-        prep_outputs=True, expandobjects=True))
+        prep_outputs=True, expandobjects=True), name='Umi_Samples')
     print(a.building_templates)
 
     print(a.to_json())

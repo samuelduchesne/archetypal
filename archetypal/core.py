@@ -27,8 +27,8 @@ class UmiTemplate:
 
     """
 
-    def __init__(self, idf_files, weather, load=False, load_idf_kwargs={},
-                 run_eplus_kwargs={}):
+    def __init__(self, idf_files, weather, load=False, name='unnamed',
+                 load_idf_kwargs={}, run_eplus_kwargs={}):
         """Initializes a UmiTemplate class
 
         Args:
@@ -45,7 +45,7 @@ class UmiTemplate:
         processors = load_idf_kwargs.pop('processors', 1)
         self.idfs = load_idf(self.idf_files, idd_filename, as_dict, processors)
         self.weather = weather
-
+        self.name = name
         # Umi stuff
         self.materials_gas = None
         self.materials_glazing = None
@@ -104,7 +104,8 @@ class UmiTemplate:
         # todo: check is bools are created as lowercase 'false' pr 'true'
 
         if not path_or_buf:
-            path_or_buf = os.path.join(settings.data_folder, 'temp.json')
+            json_name = '%s.json' % self.name
+            path_or_buf = os.path.join(settings.data_folder, json_name)
             # create the folder on the disk if it doesn't already exist
             if not os.path.exists(settings.data_folder):
                 os.makedirs(settings.data_folder)

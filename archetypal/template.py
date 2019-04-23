@@ -391,22 +391,27 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         surfaces = {}
         for zone in self.idf.idfobjects['ZONE']:
             for surface in zone.zonesurfaces:
-                azimuth = str(round(surface.azimuth))
-                if surface.tilt == 90.0:
-                    surfaces[azimuth] = {'wall': 0,
-                                         'window': 0,
-                                         'wwr': 0}
-                    surfaces[azimuth]['wall'] += surface.area
-                    subs = surface.subsurfaces
-                    surfaces[azimuth]['shading'] = {}
-                    if subs:
-                        for sub in subs:
-                            surfaces[azimuth]['window'] += sub.area
-                            surfaces[azimuth]['shading'] = \
-                                self.get_shading_control(sub)
-                    wwr = surfaces[azimuth]['window'] / surfaces[azimuth][
-                        'wall']
-                    surfaces[azimuth]['wwr'] = round(wwr, 1)
+                try:
+                    # Todo: The following is inside a try/except because il
+                    #  will fail on ThermalMass objects.
+                    azimuth = str(round(surface.azimuth))
+                    if surface.tilt == 90.0:
+                        surfaces[azimuth] = {'wall': 0,
+                                             'window': 0,
+                                             'wwr': 0}
+                        surfaces[azimuth]['wall'] += surface.area
+                        subs = surface.subsurfaces
+                        surfaces[azimuth]['shading'] = {}
+                        if subs:
+                            for sub in subs:
+                                surfaces[azimuth]['window'] += sub.area
+                                surfaces[azimuth]['shading'] = \
+                                    self.get_shading_control(sub)
+                        wwr = surfaces[azimuth]['window'] / surfaces[azimuth][
+                            'wall']
+                        surfaces[azimuth]['wwr'] = round(wwr, 1)
+                except:
+                    pass
 
         window = []
         for azim in surfaces:

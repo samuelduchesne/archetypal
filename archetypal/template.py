@@ -696,11 +696,13 @@ class ConstructionSet(UmiBase, metaclass=Unique):
         constructions_df = constructions_df[
             ~constructions_df.duplicated(subset=['Construction_Name'])]
 
+        # Here we create OpaqueConstruction using a apply.
         constructions_df['constructions'] = constructions_df.apply(
             lambda x: OpaqueConstruction(Name=x.Construction_Name,
                                          idf=self.idf,
-                                         Category=x.Category,
-                                         Type=x.Type),
+                                         Surface_Type=x.Surface_Type,
+                                         Outside_Boundary_Condition=x.Outside_Boundary_Condition,
+                                         Category=x.Category),
             axis=1)
 
         partcond = (constructions_df.Type == 5) | (constructions_df.Type == 0)
@@ -711,14 +713,23 @@ class ConstructionSet(UmiBase, metaclass=Unique):
 
         self.Partition = constructions_df.loc[partcond,
                                               'constructions'].values[0]
+        self.IsPartitionAdiabatic = self.Partition.IsAdiabatic
+
         self.Roof = constructions_df.loc[roofcond,
                                          'constructions'].values[0]
+        self.IsRoofAdiabatic = self.Roof.IsAdiabatic
+
         self.Slab = constructions_df.loc[slabcond,
                                          'constructions'].values[0]
+        self.IsPartitionAdiabatic = self.Slab.IsAdiabatic
+
         self.Facade = constructions_df.loc[facadecond,
                                            'constructions'].values[0]
+        self.IsPartitionAdiabatic = self.Facade.IsAdiabatic
+
         self.Ground = constructions_df.loc[groundcond,
                                            'constructions'].values[0]
+        self.IsPartitionAdiabatic = self.Ground.IsAdiabatic
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -758,7 +769,9 @@ class OpaqueConstruction(UmiBase, metaclass=Unique):
     DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
     """
 
-    def __init__(self, *args,
+    def __init__(self, Surface_Type,
+                 Outside_Boundary_Condition,
+                 *args,
                  AssemblyCarbon=0,
                  AssemblyCost=0,
                  AssemblyEnergy=0,
@@ -766,8 +779,12 @@ class OpaqueConstruction(UmiBase, metaclass=Unique):
                  DisassemblyEnergy=0,
                  Type=0,
                  Category="Facade",
+                 IsAdiabatic=False,
                  **kwargs):
         super(OpaqueConstruction, self).__init__(*args, **kwargs)
+        self.Surface_Type = Surface_Type
+        self.Outside_Boundary_Condition = Outside_Boundary_Condition
+        self.IsAdiabatic = IsAdiabatic
         self.Type = Type
         self.Category = Category
         self.AssemblyCarbon = AssemblyCarbon
@@ -776,6 +793,7 @@ class OpaqueConstruction(UmiBase, metaclass=Unique):
         self.DisassemblyCarbon = DisassemblyCarbon
         self.DisassemblyEnergy = DisassemblyEnergy
 
+        self.type_surface()
         self.Layers = self.layers()
 
     def layers(self):
@@ -794,7 +812,7 @@ class OpaqueConstruction(UmiBase, metaclass=Unique):
                 # Nomass layers are not supported by umi. Create a fake half
                 # inch thickness and calculate conductivity using the thermal
                 # resistance.
-                thickness = 0.0127 # half inch layer tickness
+                thickness = 0.0127  # half inch layer tickness
                 conductivity = thickness / material.Thermal_Resistance
                 specific_heat = 100  # The lowest possible value
             else:
@@ -815,6 +833,42 @@ class OpaqueConstruction(UmiBase, metaclass=Unique):
                                                       idf=self.idf),
                            'Thickness': thickness})
         return layers
+
+    def type_surface(self):
+        """Takes a boundary and returns its corresponding umi-type"""
+
+        # Floors
+        if self.Surface_Type == 'Floor':
+            if self.Outside_Boundary_Condition == 'Surface':
+                self.Type = 3  # umi defined
+            if self.Outside_Boundary_Condition == 'Ground':
+                self.Type = 2  # umi defined
+            if self.Outside_Boundary_Condition == 'Outdoors':
+                self.Type = 4  # umi defined
+            if self.Outside_Boundary_Condition == 'Adiabatic':
+                self.Type = 5  # umi defined
+                self.IsAdiabatic = True
+            else:
+                return ValueError(
+                    'Cannot find Construction Type for "{}"'.format(self))
+
+        # Roofs & Ceilings
+        elif self.Surface_Type == 'Roof':
+            self.Type = 1  # umi defined
+        elif self.Surface_Type == 'Ceiling':
+            self.Type = 3  # umi defined
+        # Walls
+        elif self.Surface_Type == 'Wall':
+            if self.Outside_Boundary_Condition == 'Surface':
+                self.Type = 5  # umi defined
+            if self.Outside_Boundary_Condition == 'Outdoors':
+                self.Type = 0  # umi defined
+            if self.Outside_Boundary_Condition == 'Adiabatic':
+                self.Type = 5  # umi defined
+                self.IsAdiabatic = True
+        else:
+            raise ValueError(
+                'Cannot find Construction Type for "{}"'.format(self))
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -1107,11 +1161,11 @@ def type_surface(row):
     # Floors
     if row['Surface_Type'] == 'Floor':
         if row['Outside_Boundary_Condition'] == 'Surface':
-            return 3
+            return 3  # umi defined
         if row['Outside_Boundary_Condition'] == 'Ground':
-            return 2
+            return 2  # umi defined
         if row['Outside_Boundary_Condition'] == 'Outdoors':
-            return 4
+            return 4  # umi defined
         if row['Outside_Boundary_Condition'] == 'Adiabatic':
             return 5
         else:
@@ -1126,11 +1180,11 @@ def type_surface(row):
     # Walls
     elif row['Surface_Type'] == 'Wall':
         if row['Outside_Boundary_Condition'] == 'Surface':
-            return 5
+            return 5  # umi defined
         if row['Outside_Boundary_Condition'] == 'Outdoors':
-            return 0
+            return 0  # umi defined
         if row['Outside_Boundary_Condition'] == 'Adiabatic':
-            return 0
+            return 5  # umi defined
     else:
         raise ValueError('Cannot find Construction Type for "{}"'.format(row))
 

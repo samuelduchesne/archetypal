@@ -1,8 +1,9 @@
 import collections
 
+import eppy.modeleditor
 import numpy as np
 
-from archetypal import settings, object_from_idfs, Schedule
+from archetypal import object_from_idfs, Schedule, calc_simple_glazing
 
 created_obj = {}
 
@@ -82,7 +83,6 @@ class GasMaterial(UmiBase, metaclass=Unique):
                  **kwargs):
         super(GasMaterial, self).__init__(*args, **kwargs)
 
-        self.cols_ = settings.common_umi_objects['GasMaterials']
         self.Cost = Cost
         self.EmbodiedCarbon = EmbodiedCarbon
         self.EmbodiedCarbonStdDev = EmbodiedCarbonStdDev
@@ -128,6 +128,93 @@ class GasMaterial(UmiBase, metaclass=Unique):
 
         data_dict["$id"] = str(self.id)
         data_dict["GasType"] = self.GasType
+        data_dict["Type"] = self.Type
+        data_dict["EmbodiedEnergy"] = self.EmbodiedEnergy
+        data_dict["EmbodiedEnergyStdDev"] = self.EmbodiedEnergyStdDev
+        data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon
+        data_dict["EmbodiedCarbonStdDev"] = self.EmbodiedCarbonStdDev
+        data_dict["Cost"] = self.Cost
+        data_dict["Life"] = self.Life
+        data_dict["SubstitutionRatePattern"] = self.SubstitutionRatePattern
+        data_dict["SubstitutionTimestep"] = self.SubstitutionTimestep
+        data_dict["TransportCarbon"] = self.TransportCarbon
+        data_dict["TransportDistance"] = self.TransportDistance
+        data_dict["TransportEnergy"] = self.TransportEnergy
+        data_dict["Comment"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
+
+
+class GlazingMaterial(UmiBase, metaclass=Unique):
+    """$id, Comment, Conductivity, Cost, DataSource, Density, DirtFactor,
+    EmbodiedCarbon, EmbodiedCarbonStdDev, EmbodiedEnergy,
+    EmbodiedEnergyStdDev, IREmissivityBack, IREmissivityFront,
+    IRTransmittance, Life, Name, Optical, OpticalData, SolarReflectanceBack,
+    SolarReflectanceFront, SolarTransmittance, SubstitutionRatePattern,
+    SubstitutionTimestep, TransportCarbon, TransportDistance,
+    TransportEnergy, Type, VisibleReflectanceBack, VisibleReflectanceFront,
+    VisibleTransmittance
+    """
+
+    def __init__(self, Density=2500, Conductivity=None, Optical=None,
+                 OpticalData=None, SolarTransmittance=None,
+                 SolarReflectanceFront=None, SolarReflectanceBack=None,
+                 VisibleTransmittance=None, VisibleReflectanceFront=None,
+                 VisibleReflectanceBack=None, IRTransmittance=None,
+                 IREmissivityFront=None, IREmissivityBack=None, DirtFactor=1.0,
+                 Type=None, EmbodiedEnergy=0, EmbodiedEnergyStdDev=0,
+                 EmbodiedCarbon=0, EmbodiedCarbonStdDev=0, Cost=0.0, Life=1,
+                 SubstitutionRatePattern=[0.2], SubstitutionTimestep=50,
+                 TransportCarbon=None, TransportDistance=None,
+                 TransportEnergy=0, *args, **kwargs):
+        super(GlazingMaterial, self).__init__(*args, **kwargs)
+        self.TransportEnergy = TransportEnergy
+        self.TransportDistance = TransportDistance
+        self.TransportCarbon = TransportCarbon
+        self.SubstitutionTimestep = SubstitutionTimestep
+        self.SubstitutionRatePattern = SubstitutionRatePattern
+        self.Life = Life
+        self.Cost = Cost
+        self.EmbodiedCarbonStdDev = EmbodiedCarbonStdDev
+        self.EmbodiedCarbon = EmbodiedCarbon
+        self.EmbodiedEnergyStdDev = EmbodiedEnergyStdDev
+        self.EmbodiedEnergy = EmbodiedEnergy
+        self.Type = Type
+        self.DirtFactor = DirtFactor
+        self.IREmissivityBack = IREmissivityBack
+        self.IREmissivityFront = IREmissivityFront
+        self.IRTransmittance = IRTransmittance
+        self.VisibleReflectanceBack = VisibleReflectanceBack
+        self.VisibleReflectanceFront = VisibleReflectanceFront
+        self.VisibleTransmittance = VisibleTransmittance
+        self.SolarReflectanceBack = SolarReflectanceBack
+        self.SolarReflectanceFront = SolarReflectanceFront
+        self.SolarTransmittance = SolarTransmittance
+        self.OpticalData = OpticalData
+        self.Optical = Optical
+        self.Density = Density
+        self.Conductivity = Conductivity
+
+    def to_json(self):
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["Conductivity"] = self.Conductivity
+        data_dict["Density"] = self.Density
+        data_dict["Optical"] = self.Optical
+        data_dict["OpticalData"] = self.OpticalData
+        data_dict["SolarTransmittance"] = self.SolarTransmittance
+        data_dict["SolarReflectanceFront"] = self.SolarReflectanceFront
+        data_dict["SolarReflectanceBack"] = self.SolarReflectanceBack
+        data_dict["VisibleTransmittance"] = self.VisibleTransmittance
+        data_dict["VisibleReflectanceFront"] = self.VisibleReflectanceFront
+        data_dict["VisibleReflectanceBack"] = self.VisibleReflectanceBack
+        data_dict["IRTransmittance"] = self.IRTransmittance
+        data_dict["IREmissivityFront"] = self.IREmissivityFront
+        data_dict["IREmissivityBack"] = self.IREmissivityBack
+        data_dict["DirtFactor"] = self.DirtFactor
         data_dict["Type"] = self.Type
         data_dict["EmbodiedEnergy"] = self.EmbodiedEnergy
         data_dict["EmbodiedEnergyStdDev"] = self.EmbodiedEnergyStdDev
@@ -389,44 +476,86 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         # Todo: This routine fails to identify windows for some IDF files
         #  such as LargeHotel.
         surfaces = {}
+        window = []
         for zone in self.idf.idfobjects['ZONE']:
+            surfaces[zone.Name] = {}
             for surface in zone.zonesurfaces:
                 try:
-                    # Todo: The following is inside a try/except because il
+                    # Todo: The following is inside a try/except because it
                     #  will fail on ThermalMass objects.
                     azimuth = str(round(surface.azimuth))
                     if surface.tilt == 90.0:
-                        surfaces[azimuth] = {'wall': 0,
-                                             'window': 0,
-                                             'wwr': 0}
-                        surfaces[azimuth]['wall'] += surface.area
+                        surfaces[zone.Name][azimuth] = {'wall': 0,
+                                                        'window': 0,
+                                                        'wwr': 0}
+                        surfaces[zone.Name][azimuth]['wall'] += surface.area
                         subs = surface.subsurfaces
-                        surfaces[azimuth]['shading'] = {}
+                        surfaces[zone.Name][azimuth]['shading'] = {}
                         if subs:
                             for sub in subs:
-                                surfaces[azimuth]['window'] += sub.area
-                                surfaces[azimuth]['shading'] = \
+                                surfaces[zone.Name][azimuth]['Name'] = sub.Name
+                                surfaces[zone.Name][azimuth][
+                                    'Construction_Name'] = \
+                                    sub.Construction_Name
+                                surfaces[zone.Name][azimuth][
+                                    'window'] += sub.area
+                                surfaces[zone.Name][azimuth]['shading'] = \
                                     self.get_shading_control(sub)
-                        wwr = surfaces[azimuth]['window'] / surfaces[azimuth][
-                            'wall']
-                        surfaces[azimuth]['wwr'] = round(wwr, 1)
+                        wwr = surfaces[zone.Name][azimuth]['window'] / \
+                              surfaces[zone.Name][azimuth][
+                                  'wall']
+                        surfaces[zone.Name][azimuth]['wwr'] = round(wwr, 1)
+
+                        if surfaces[zone.Name][azimuth]['window'] > 0:
+                            window.append(
+                                Window(idf=self.idf,
+                                       Name=surfaces[zone.Name][azimuth][
+                                           'Name'],
+                                       **surfaces[zone.Name][azimuth][
+                                           'shading'],
+                                       Construction=
+                                       surfaces[zone.Name][azimuth][
+                                           'Construction_Name']
+                                       )
+                            )
                 except:
                     pass
 
-        window = []
-        for azim in surfaces:
-            try:
-                if surfaces[azim]['shading']:
-                    window.append(
-                        Window(Name='A Window Name', idf=self.idf,
-                               **surfaces[azim]['shading'])
-                    )
-            except:
-                pass
+        # window = []
+        # for azim in surfaces:
+        #     try:
+        #         if surfaces[azim]['window'] > 0:
+        #             window.append(
+        #                 Window(idf=self.idf,
+        #                        **surfaces[azim]['shading'],
+        #                        **surfaces[azim]['window_name'])
+        #             )
+        #     except:
+        #         pass
         if window:
             self.Windows = window[0]
         else:
-            sch_name = list(self.idf.get_all_schedules(yearly_only=True))[0]
+            # create fake window
+            # Schedule:Constant,
+            #   AlwaysOn,     !- Name
+            #   On/Off,       !- Schedule Type Limits Name
+            #   1.0;          !- Hourly Value
+            #
+            # ScheduleTypeLimits,
+            #   On/Off,       !- Name
+            #   0,            !- Lower Limit Value
+            #   1,            !- Upper Limit Value
+            #   DISCRETE,     !- Numeric Type
+            #   Availability; !- Unit Type
+            self.idf.add_object(ep_object='SCHEDULETYPELIMITS', save=False,
+                                Name='On/Off', Lower_Limit_Value=0,
+                                Upper_Limit_Value=1, Numeric_Type='DISCRETE',
+                                Unit_Type='AVAILABILITY')
+            sch_name = 'AlwaysOn'
+            self.idf.add_object(ep_object='SCHEDULE:CONSTANT', save=False,
+                                Name=sch_name,
+                                Schedule_Type_Limits_Name='On/Off',
+                                Hourly_Value=1.0)
             kwargs = {'IsShadingSystemOn': False,
                       'ShadingSystemType': 0,
                       'ShadingSystemSetPoint': 0,
@@ -437,11 +566,31 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                       'ZoneMixingAvailabilitySchedule': UmiSchedule(
                           Name=sch_name, idf=self.idf),
                       }
-            msg = '\nThis window was created using the first available schedule'
-            self.Windows = Window(Name='Random Window', Comments=msg,
-                                  idf=self.idf, **kwargs)
+            msg = '\nThis window was created using the constant schedule ' \
+                  'On/Off of 1'
+            # 2.716 , !-  U-Factor
+            # 0.763 , !-  Solar Heat Gain Coefficient
+            # 0.812 ; !-  Visible Transmittance
+            sgl = calc_simple_glazing(0.763, 2.716, 0.812)
 
-            # Todo: We should actually raise an error once this method
+            glazing_name = 'Custom glazing material with SHGC {}, ' \
+                           'u-value {} and t_vis {}'.format(0.763, 2.716, 0.812)
+            GlazingMaterial(**sgl, Name=glazing_name, idf=self.idf)
+            construction_name = 'Custom Fenestration with SHGC {}, ' \
+                                'u-value {} and t_vis {}'.format(0.763, 2.716,
+                                                                 0.812)
+            # Construction
+            # B_Dbl_Air_Cl,            !- Name
+            # B_Glass_Clear_3_0.003_B_Dbl_Air_Cl,  !- Outside Layer
+            self.idf.add_object(ep_object='CONSTRUCTION', save=False,
+                                Name=construction_name,
+                                Outside_Layer=construction_name)
+
+            self.Windows = Window(Name='Random Window', Comments=msg,
+                                  idf=self.idf, Construction=construction_name,
+                                  **kwargs)
+
+            # Todo: We should actually raise an error once this method is
             #  corrected. Use the error bellow
             # raise ValueError('Could not create a Window for '
             #                  'building {}'.format(self.DataSource))
@@ -578,11 +727,11 @@ class Zone(UmiBase, metaclass=Unique):
         self.Category = Category
         self.Zone_Names = Zone_Names
         self.sql = sql
+        self.InternalMassExposedPerFloorArea = InternalMassExposedPerFloorArea
         self.conditioning()
         self.constructions()
         self.dhw()
         self.internal_mass_construction()
-        self.InternalMassExposedPerFloorArea = InternalMassExposedPerFloorArea
         self.DaylightWorkplaneHeight = DaylightWorkplaneHeight
         self.DaylightMeshResolution = DaylightMeshResolution
         self.loads()
@@ -594,18 +743,60 @@ class Zone(UmiBase, metaclass=Unique):
     def constructions(self):
         """run construction sets and return id"""
         set_name = '_'.join([self.Name, 'constructions'])
-        self.ConstructionsSet = ConstructionSet(Name=set_name,
-                                                Zone_Names=self.Zone_Names,
-                                                idf=self.idf,
-                                                sql=self.sql)
+        self.ConstructionsSet = ZoneConstructionSet(Name=set_name,
+                                                    Zone_Names=self.Zone_Names,
+                                                    idf=self.idf,
+                                                    sql=self.sql)
 
     def dhw(self):
         """run domestic hot water and return id"""
         self.DomesticHotWater = []
 
     def internal_mass_construction(self):
-        """run internal mass construction and return id"""
-        self.InternalMassConstruction = []
+        """Group internal walls into a ThermalMass object for each Zones"""
+
+        surfaces = {}
+        for zone in self.idf.idfobjects['ZONE']:
+            for surface in zone.zonesurfaces:
+                if surface.fieldvalues[0] == 'InternalMass':
+                    oc = OpaqueConstruction(Name=surface.Construction_Name,
+                                            idf=self.idf,
+                                            Surface_Type='Wall',
+                                            Outside_Boundary_Condition='Outdoors',
+                                            )
+                    self.InternalMassConstruction = oc
+                    pass
+                else:
+                    # Todo: Create Equivalent InternalMassConstruction from
+                    #  partitions. For now, creating dummy InternalMass
+
+                    #   InternalMass,
+                    #     PerimInternalMass,       !- Name
+                    #     B_Ret_Thm_0,             !- Construction Name
+                    #     Perim,                   !- Zone Name
+                    #     2.05864785735637;        !- Surface Area {m2}
+
+                    existgin_cons = self.idf.idfobjects['CONSTRUCTION'][0]
+                    new = self.idf.copyidfobject(existgin_cons)
+                    internal_mass = '{}InternalMass'.format(zone.Name)
+                    new.Name = internal_mass + '_construction'
+                    self.idf.add_object(
+                        ep_object='InternalMass'.upper(),
+                        save=False, Name=internal_mass,
+                        Construction_Name=new.Name,
+                        Zone_Name=zone.Name,
+                        Surface_Area=10
+                    )
+                    oc = OpaqueConstruction(Name=new.Name,
+                                            idf=self.idf,
+                                            Surface_Type='Wall',
+                                            Outside_Boundary_Condition='Outdoors'
+                                            )
+                    self.InternalMassConstruction = oc
+                    self.InternalMassExposedPerFloorArea = \
+                        self.idf.getobject('INTERNALMASS',
+                                           internal_mass).Surface_Area / \
+                        eppy.modeleditor.zonearea(self.idf, zone.Name)
 
     def loads(self):
         """run loads and return id"""
@@ -614,41 +805,42 @@ class Zone(UmiBase, metaclass=Unique):
     def ventilation(self):
         self.Ventilation = []
 
-    # todo: uncomment bellow when method is completed
-    # def to_json(self):
-    #     data_dict = collections.OrderedDict()
-    #
-    #     data_dict["$id"] = str(self.id)
-    #     data_dict["Conditioning"] = {
-    #         "$ref": self.Conditioning.id
-    #     }
-    #     data_dict["Constructions"] = {
-    #         "$ref": self.ConstructionsSet.id
-    #     }
-    #     data_dict["DaylightMeshResolution"] = self.DaylightMeshResolution
-    #     data_dict["DaylightWorkplaneHeight"] = self.DaylightWorkplaneHeight
-    #     data_dict["DomesticHotWater"] = {
-    #         "$ref": self.DomesticHotWater.id
-    #     }
-    #     data_dict["InternalMassConstruction"] = {
-    #         "$ref": self.InternalMassConstruction.id
-    #     }
-    #     data_dict[
-    #         "InternalMassExposedPerFloorArea"] = \
-    #         self.InternalMassExposedPerFloorArea
-    #     data_dict["Loads"] = {
-    #         "$ref": self.Loads.id
-    #     }
-    #     data_dict["Ventilation"] = {
-    #         "$ref": self.Ventilation.id
-    #     }
-    #     data_dict["Category"] = self.Category
-    #     data_dict["Comments"] = self.Comments
-    #     data_dict["DataSource"] = self.DataSource
-    #     data_dict["Name"] = self.Name
+    def to_json(self):
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["Conditioning"] = {
+            "$ref": "NotImplementedYet"  # str(self.Conditioning.id)
+        }
+        data_dict["Constructions"] = {
+            "$ref": "NotImplementedYet"  # str(self.ConstructionsSet.id)
+        }
+        data_dict["DaylightMeshResolution"] = self.DaylightMeshResolution
+        data_dict["DaylightWorkplaneHeight"] = self.DaylightWorkplaneHeight
+        data_dict["DomesticHotWater"] = {
+            "$ref": "NotImplementedYet"  # str(self.DomesticHotWater.id)
+        }
+        data_dict["InternalMassConstruction"] = {
+            "$ref": str(self.InternalMassConstruction.id)
+        }
+        data_dict[
+            "InternalMassExposedPerFloorArea"] = \
+            self.InternalMassExposedPerFloorArea
+        data_dict["Loads"] = {
+            "$ref": "NotImplementedYet"  # str(self.Loads.id)
+        }
+        data_dict["Ventilation"] = {
+            "$ref": "NotImplementedYet"  # str(self.Ventilation.id)
+        }
+        data_dict["Category"] = self.Category
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
 
 
-class ConstructionSet(UmiBase, metaclass=Unique):
+class ZoneConstructionSet(UmiBase, metaclass=Unique):
     """Zone Specific Construction ids
 
     $id, Category, Comments, DataSource, Facade.$ref, Ground.$ref,
@@ -665,7 +857,7 @@ class ConstructionSet(UmiBase, metaclass=Unique):
                  IsFacadeAdiabatic=False,
                  sql=None,
                  **kwargs):
-        super(ConstructionSet, self).__init__(**kwargs)
+        super(ZoneConstructionSet, self).__init__(**kwargs)
         self.Category = Category
         self.IsSlabAdiabatic = IsSlabAdiabatic
         self.IsRoofAdiabatic = IsRoofAdiabatic
@@ -964,7 +1156,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
-        data_dict["$id"] = self.id
+        data_dict["$id"] = str(self.id)
         data_dict["Conductivity"] = self.Conductivity
         data_dict["Density"] = self.Density
         data_dict["Roughness"] = self.Roughness
@@ -1035,7 +1227,7 @@ class Window(UmiBase, metaclass=Unique):
         self.ZoneMixingAvailabilitySchedule = ZoneMixingAvailabilitySchedule
         self.ShadingSystemAvailabilitySchedule = \
             ShadingSystemAvailabilitySchedule
-        self.Construction = Construction
+        self.Construction = self.window_construction(Construction)
         self.AfnWindowAvailability = AfnWindowAvailability
         self.AfnDischargeC = AfnDischargeC
         self.AfnTempSetpoint = AfnTempSetpoint
@@ -1050,6 +1242,12 @@ class Window(UmiBase, metaclass=Unique):
         self.ZoneMixingDeltaTemperature = ZoneMixingDeltaTemperature
         self.ZoneMixingFlowRate = ZoneMixingFlowRate
         self.Category = Category
+
+    def window_construction(self, window_construction_name):
+        window_construction = WindowConstruction(Name=window_construction_name,
+                                                 idf=self.idf)
+
+        return window_construction
 
     def __add__(self, other):
         if isinstance(other, self.__class__):
@@ -1095,19 +1293,17 @@ class Window(UmiBase, metaclass=Unique):
         data_dict["AfnDischargeC"] = self.AfnDischargeC
         data_dict["AfnTempSetpoint"] = self.AfnTempSetpoint
         data_dict["AfnWindowAvailability"] = {
-            "$ref": self.AfnWindowAvailability.id
+            "$ref": str(self.AfnWindowAvailability.id)
         }
         data_dict["Construction"] = {
-            "$ref": "NotImplementedYet"
-            # Todo: Replace
-            #   with : self.Construction.id
+            "$ref": str(self.Construction.id)
         }
         data_dict["IsShadingSystemOn"] = self.IsShadingSystemOn
         data_dict["IsVirtualPartition"] = self.IsVirtualPartition
         data_dict["IsZoneMixingOn"] = self.IsZoneMixingOn
         data_dict["OperableArea"] = self.OperableArea
         data_dict["ShadingSystemAvailabilitySchedule"] = {
-            "$ref": self.ShadingSystemAvailabilitySchedule.id
+            "$ref": str(self.ShadingSystemAvailabilitySchedule.id)
         }
         data_dict["ShadingSystemSetpoint"] = self.ShadingSystemSetpoint
         data_dict[
@@ -1115,7 +1311,7 @@ class Window(UmiBase, metaclass=Unique):
         data_dict["ShadingSystemType"] = self.ShadingSystemType
         data_dict["Type"] = self.Type
         data_dict["ZoneMixingAvailabilitySchedule"] = {
-            "$ref": self.ZoneMixingAvailabilitySchedule.id
+            "$ref": str(self.ZoneMixingAvailabilitySchedule.id)
         }
         data_dict[
             "ZoneMixingDeltaTemperature"] = self.ZoneMixingDeltaTemperature
@@ -1126,6 +1322,97 @@ class Window(UmiBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
+
+
+class WindowConstruction(UmiBase, metaclass=Unique):
+    """$id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
+    DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
+    """
+
+    def __init__(self, Type=None, AssemblyCarbon=0, AssemblyCost=0,
+                 AssemblyEnergy=0, DisassemblyCarbon=0,
+                 DisassemblyEnergy=0, Category=None,
+                 *args, **kwargs):
+        super(WindowConstruction, self).__init__(*args, **kwargs)
+        self.Category = Category
+        self.DisassemblyEnergy = DisassemblyEnergy
+        self.DisassemblyCarbon = DisassemblyCarbon
+        self.AssemblyEnergy = AssemblyEnergy
+        self.AssemblyCost = AssemblyCost
+        self.AssemblyCarbon = AssemblyCarbon
+        self.Type = Type
+        self.Layers = self.layers()
+
+    def to_json(self):
+        """Convert class properties to dict"""
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["Layers"] = [{"Material": {"$ref": str(lay['Material'].id)},
+                                "Thickness": lay['Thickness']} for lay in
+                               self.Layers]
+        data_dict["Type"] = self.Type
+        data_dict["AssemblyCarbon"] = self.AssemblyCarbon
+        data_dict["AssemblyCost"] = self.AssemblyCost
+        data_dict["AssemblyEnergy"] = self.AssemblyEnergy
+        data_dict["DisassemblyCarbon"] = self.DisassemblyCarbon
+        data_dict["DisassemblyEnergy"] = self.DisassemblyEnergy
+        data_dict["Category"] = self.Category
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
+
+    def layers(self):
+        """Retrieve layers for the WindowConstruction"""
+        c = self.idf.getobject('CONSTRUCTION', self.Name)
+        layers = []
+        for field in c.fieldnames:
+            # Loop through the layers from the outside layer towards the
+            # indoor layers and get the material they are made of.
+            material = c.get_referenced_object(field)
+            if material:
+                # Create the WindowMaterial:Glazing or the WindowMaterial:Gas
+                # and append to the list of layers
+                layers.append(
+                    {
+                        'Material': GlazingMaterial(
+                            Name=material.Name,
+                            Conductivity=material.Conductivity,
+                            Optical=material.Optical_Data_Type,
+                            OpticalData=material.Window_Glass_Spectral_Data_Set_Name,
+                            SolarTransmittance=material
+                                .Solar_Transmittance_at_Normal_Incidence,
+                            SolarReflectanceFront=material
+                                .Front_Side_Solar_Reflectance_at_Normal_Incidence,
+                            SolarReflectanceBack=material
+                                .Back_Side_Solar_Reflectance_at_Normal_Incidence,
+                            VisibleTransmittance=material
+                                .Visible_Transmittance_at_Normal_Incidence,
+                            VisibleReflectanceFront=material
+                                .Front_Side_Visible_Reflectance_at_Normal_Incidence,
+                            VisibleReflectanceBack=material.Back_Side_Visible_Reflectance_at_Normal_Incidence,
+                            IRTransmittance=material
+                                .Infrared_Transmittance_at_Normal_Incidence,
+                            IREmissivityFront=material
+                                .Front_Side_Infrared_Hemispherical_Emissivity,
+                            IREmissivityBack=material
+                                .Back_Side_Infrared_Hemispherical_Emissivity,
+                            DirtFactor=material.Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance,
+                            Type='Uncoated',
+                            idf=self.idf
+                        )
+                        if material.obj[0].upper() ==
+                           'WindowMaterial:Glazing'.upper()
+                        else GasMaterial(Name=material.Name,
+                                         idf=self.idf,
+                                         Gas_Type=material.Gas_Type,
+                                         ),
+                        'Thickness': material.Thickness
+                    }
+                )
+        return layers
 
 
 def label_surface(row):

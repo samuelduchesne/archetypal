@@ -53,7 +53,7 @@ available_sqlite_tables = {'ComponentSizes': {'PrimaryKey': ['ComponentSizesInde
                                            'ParseDates': {'PeakHrMin': '%m/%d %H:%M:%S'}},
                            'Time': {'PrimaryKey': ['TimeIndex'], 'ParseDates': []},
                            'ZoneGroups': {'PrimaryKey': ['ZoneGroupIndex'], 'ParseDates': []},
-                           'Zones': {'PrimaryKey': ['ZoneIndex'], 'ParseDates': []},
+                           'Zone': {'PrimaryKey': ['ZoneIndex'], 'ParseDates': []},
                            'ZoneLists': {'PrimaryKey': ['ZoneListIndex'], 'ParseDates': []},
                            'ZoneSizes': {'PrimaryKey': ['ZoneSizesIndex'], 'ParseDates': []},
                            'ZoneInfoZoneLists': {'PrimaryKey': ['ZoneListIndex'], 'ParseDates': []},

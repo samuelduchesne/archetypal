@@ -48,7 +48,7 @@ def idf_source(request):
     return glob.glob('./input_data/{}/*.idf'.format(request.param))
 
 
-@pytest.fixture()
+@pytest.fixture(scope='session')
 def config():
     ar.config(log_console=True, log_file=True, use_cache=True,
               data_folder='.temp/data', logs_folder='.temp/logs',

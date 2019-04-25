@@ -19,7 +19,6 @@ from pandas.io.json import json_normalize
 from shapely.geometry import Point
 
 import archetypal as ar
-from archetypal import load_umi_template
 from archetypal import settings
 
 
@@ -563,13 +562,13 @@ def iscore(row):
         str: 'Core' or 'Perimeter'
 
     """
-    if any(['core' in row[('Zones', 'Zone Name')].lower(),
-            float(row[('Zones', 'Exterior Gross Wall Area {m2}')]) == 0]):
+    if any(['core' in row[('Zone', 'Zone Name')].lower(),
+            float(row[('Zone', 'Exterior Gross Wall Area {m2}')]) == 0]):
         # We look for the string `core` in the Zone_Name
         return 'Core'
-    elif row[('Zones', 'Part of Total Building Area')] == 'No':
+    elif row[('Zone', 'Part of Total Building Area')] == 'No':
         return np.NaN
-    elif 'plenum' in row[('Zones', 'Zone Name')].lower():
+    elif 'plenum' in row[('Zone', 'Zone Name')].lower():
         return np.NaN
     else:
         return 'Perimeter'
@@ -667,27 +666,26 @@ def safe_prod(x, df, weighting_variable):
         return 0
 
 
-def copy_file(files):
+def copy_file(files, where=None):
     """Handles a copy of test idf files"""
     import shutil, os
     if isinstance(files, str):
         files = [files]
     files = {os.path.basename(k): k for k in files}
+
+    # defaults to cache folder
+    if where is None:
+        where = ar.settings.cache_folder
+
     for file in files:
-        dst = os.path.join(ar.settings.cache_folder, file)
-        output_folder = ar.settings.cache_folder
+        dst = os.path.join(where, file)
+        output_folder = where
         if not os.path.isdir(output_folder):
             os.makedirs(output_folder)
         shutil.copyfile(files[file], dst)
         files[file] = dst
 
     return list(files.values())
-
-    # scratch_then_cache is not necessary if we want to see the results
-    # for file in files:
-    #     dirname = os.path.dirname(files[file])
-    #     if os.path.isdir(dirname):
-    #         shutil.rmtree(dirname)
 
 
 def landxml_to_point(xml_file, crs=None, save=False):
@@ -891,3 +889,22 @@ def write_lines(file_path, lines):
     for line in lines:
         temp_idf_file.write("%s" % line)
     temp_idf_file.close()
+
+
+def load_umi_template(json_template):
+    """
+
+    Args:
+        json_template: Absolute or relative filepath to an umi json_template file.
+
+    Returns:
+        pandas.DataFrame: 17 DataFrames, one for each component groups
+
+    """
+    if os.path.isfile(json_template):
+        with open(json_template) as f:
+            dicts = json.load(f, object_pairs_hook=OrderedDict)
+
+            return [{key: json_normalize(value)} for key, value in dicts.items()]
+    else:
+        raise ValueError('File {} does not exist'.format(json_template))

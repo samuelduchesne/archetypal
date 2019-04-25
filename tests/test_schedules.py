@@ -56,7 +56,6 @@ ids = [i.replace(" ", "_") for i in schedules]
 def test_ep_versus_schedule(test_data):
     """Main test. Will run the idf using EnergyPlus, retrieve the csv file,
     create the schedules and compare"""
-    import matplotlib.pyplot as plt
 
     orig, new, expected = test_data
 
@@ -108,8 +107,9 @@ def test_data(request, run_schedules_idf):
     new = Schedule(idf, sch_name=new_eps[0].Name)
 
     index = orig.series.index
-    epv = pd.read_csv(run_schedules_idf).loc[:,
-          schName.upper() + ':Schedule Value [](Hourly)'].values
+    epv = pd.read_csv(run_schedules_idf)
+    epv.columns = epv.columns.str.strip()
+    epv = epv.loc[:, schName.upper() + ':Schedule Value [](Hourly)'].values
     expected = pd.Series(epv, index=index)
 
     print('Year: {}'.format(new_eps[0].Name))

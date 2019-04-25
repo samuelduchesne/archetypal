@@ -182,7 +182,7 @@ class Schedule(object):
         # update last day of schedule
 
         if self.count == 0:
-            self.schType = schedule_values
+            self.schType = values.key
             self.endHOY = 168
 
         num_of_daily_schedules = int(len(values.fieldvalues[2:]) / 2)
@@ -589,7 +589,7 @@ class Schedule(object):
 
         schedule_values = self.idf.get_schedule_data_by_name(sch_name)
 
-        schedule_type = schedule_values.fieldvalues[0].upper()
+        schedule_type = schedule_values.key.upper()
         if self.count == 0:
             self.schType = schedule_type
 

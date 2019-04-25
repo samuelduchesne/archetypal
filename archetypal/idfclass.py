@@ -88,7 +88,7 @@ class IDF(eppy.modeleditor.IDF):
         for sched_type in schedule_types:
             for sched in self.idfobjects[sched_type]:
                 try:
-                    if sched.fieldvalues[0].upper() in schedule_types:
+                    if sched.key.upper() in schedule_types:
                         scheds[sched.Name] = sched
                 except:
                     pass
@@ -110,7 +110,7 @@ class IDF(eppy.modeleditor.IDF):
         all_schedules = self.get_all_schedules(yearly_only=yearly_only)
         for object_name in self.idfobjects:
             for object in self.idfobjects[object_name]:
-                if object.fieldvalues[0].upper() not in schedule_types:
+                if object.key.upper() not in schedule_types:
                     for fieldvalue in object.fieldvalues:
                         try:
                             if fieldvalue in all_schedules and fieldvalue not in used_schedules:

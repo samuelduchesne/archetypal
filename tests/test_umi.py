@@ -1,31 +1,23 @@
-import os
-import pytest
-import shutil
-
-import matplotlib as mpl
-
-import archetypal as pu
-from archetypal import load_umi_template
-
-mpl.use('Agg')  # use agg backend so you don't need a display on travis-ci
-
-# remove the .temp folder if it already exists so we start fresh with tests
-if os.path.exists('.temp'):
-    shutil.rmtree('.temp')
-
-pu.config(log_console=True, log_file=True, use_cache=True,
-          data_folder='.temp/data', logs_folder='.temp/logs',
-          imgs_folder='.temp/imgs', cache_folder='.temp/cache',
-          umitemplate='../data/BostonTemplateLibrary.json')
+from archetypal import load_umi_template, copy_file, UmiTemplate, settings
 
 
-def test_load_umi_template():
-    data_json = pu.settings.umitemplate
+def test_load_umi_template(config):
+    data_json = settings.umitemplate
     assert len(load_umi_template(data_json)) == 17
 
 
-def test_load_umi_template_fail():
-    with pytest.raises(ValueError):
-        pu.config(umitemplate='../data/noneexistingfile.json')
-        data_json = pu.settings.umitemplate
-        load_umi_template(data_json)
+def test_umi_routine(config):
+    idf_source = [
+        './input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD '
+        'Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf',
+        './input_data/necb/NECB 2011-LargeHotel-NECB HDD '
+        'Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf',
+        './input_data/umi_samples/VentilationSimpleTest.idf'
+        ]
+    idf = copy_file(idf_source)
+    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    a = UmiTemplate(idf, wf, load=True, run_eplus_kwargs=dict(
+        prep_outputs=True))
+    print(a.building_templates)
+
+    print(a.to_json())

@@ -120,7 +120,7 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
     dict['TransportEnergy'] = 0
     dict['Type'] = 'Uncoated'  # TODO Further investigation necessary
 
-    dict['Comment'] = 'Properties calculated from Simple Glazing System'
+    dict['Comments'] = 'Properties calculated from Simple Glazing System'
 
     return dict
 

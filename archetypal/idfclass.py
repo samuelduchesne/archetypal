@@ -1,4 +1,5 @@
 import logging as lg
+import os
 
 import eppy.modeleditor
 
@@ -49,11 +50,25 @@ class IDF(eppy.modeleditor.IDF):
                 # return the ep_object
                 return new_object
 
-    def get_schedule_type_limits_data_by_name(self, sch_name):
-        """Returns the 'ScheduleTypeLimits' for a particular schedule name"""
-        for obj in self.idfobjects['ScheduleTypeLimits'.upper()]:
-            if obj.Name.upper() == sch_name.upper():
-                return obj
+    def get_schedule_type_limits_data_by_name(self, schedule_limit_name):
+        """Returns the data for a particular 'ScheduleTypeLimits' object"""
+        schedule = self.getobject('ScheduleTypeLimits'.upper(), schedule_limit_name)
+
+        if schedule is not None:
+            lower_limit = schedule['Lower_Limit_Value']
+            upper_limit = schedule['Upper_Limit_Value']
+            numeric_type = schedule['Numeric_Type']
+            unit_type = schedule['Unit_Type']
+
+            if schedule['Unit_Type'] == '':
+                unit_type = numeric_type
+
+            return lower_limit, upper_limit, numeric_type, unit_type
+        else:
+            raise KeyError('Could not find ScheduleTypeLimits "{}" in '
+                           'idf file "{}"'.format(schedule_limit_name,
+                                                  self.idfname))
+
 
     def get_schedule_data_by_name(self, sch_name):
         """Returns the epbunch of a particular schedule name"""
@@ -113,7 +128,8 @@ class IDF(eppy.modeleditor.IDF):
                 if object.fieldvalues[0].upper() not in schedule_types:
                     for fieldvalue in object.fieldvalues:
                         try:
-                            if fieldvalue in all_schedules and fieldvalue not in used_schedules:
+                            if fieldvalue in all_schedules and fieldvalue not \
+                                    in used_schedules:
                                 used_schedules.append(fieldvalue)
                         except:
                             pass
@@ -141,3 +157,13 @@ class IDF(eppy.modeleditor.IDF):
             return calendar.SATURDAY
         else:
             return 0
+
+    def building_name(self, use_idfname=False):
+        if use_idfname:
+            return os.path.basename(self.idfname)
+        else:
+            bld = self.idfobjects["BUILDING"]
+            if bld is not None:
+                return bld[0].Name
+            else:
+                return os.path.basename(self.idfname)

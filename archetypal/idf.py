@@ -29,7 +29,7 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False,
     a DataFrame.
 
     Args:
-        idfs (list of eppy.modeleditor.IDF): List of IDF objects
+        idfs (list of dict of IDF): List or Dict of IDF objects
         ep_object (str): EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a
             string. **Most be in all caps.**
         first_occurrence_only (bool, optional): if true, returns only the
@@ -41,10 +41,11 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False,
         pandas.DataFrame: A DataFrame
 
     """
+    if not isinstance(idfs, (list, dict)):
+        idfs = [idfs]
     container = []
     start_time = time.time()
     log('Parsing {1} objects for {0} idf files...'.format(len(idfs), ep_object))
-
     if isinstance(idfs, dict):
         try:
             if processors == 1:
@@ -430,8 +431,9 @@ def load_idf_object_from_cache(idf_file, how=None):
             if os.path.isfile(cache_fullpath_filename):
                 with open(cache_fullpath_filename, 'rb') as file_handle:
                     idf = pickle.load(file_handle)
-                idf.setiddname(getiddfile(get_idf_version(idf_file)))
-                idf.read()
+                if idf.iddname is None:
+                    idf.setiddname(getiddfile(get_idf_version(idf_file)))
+                    idf.read()
                 log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(
                     os.path.basename(idf_file), time.time() - start_time))
                 return idf
@@ -846,6 +848,7 @@ def parallel_process(in_dict, function, processors, use_kwargs=True):
             else:
                 out[key] = futures[key]
         except Exception as e:
+            raise e
             out[futures[key]] = e
     return out
 

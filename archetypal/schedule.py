@@ -126,7 +126,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name)
+        values = self.idf.getobject('Schedule:Day:Interval'.upper(), sch_name)
         type_limit_name = values.Schedule_Type_Limits_Name
         lower_limit, upper_limit, numeric_type, unit_type = \
             self.get_schedule_type_limits_data(type_limit_name)
@@ -156,7 +156,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name)
+        values = self.idf.getobject('Schedule:Day:Hourly'.upper(), sch_name)
 
         fieldvalues_ = np.array(values.fieldvalues[3:])
 
@@ -175,8 +175,7 @@ class Schedule(object):
 
         if sch_name is None:
             sch_name = self.schName
-        schedule_values = self.idf.get_schedule_data_by_name(sch_name)
-        values = self.idf.get_schedule_data_by_name(sch_name)
+        values = self.idf.getobject('schedule:week:compact'.upper(), sch_name)
 
         weekly_schedules = pd.Series([0] * len(slicer_), index=slicer_.index)
         # update last day of schedule
@@ -214,7 +213,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name)
+        values = self.idf.getobject('schedule:week:daily'.upper(), sch_name)
 
         # 7 list for 7 days of the week
         hourly_values = []
@@ -256,7 +255,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name)
+        values = self.idf.getobject('schedule:day:list'.upper(), sch_name)
 
         import pandas as pd
         freq = int(values['Minutes_per_Item'])  # Frequency of the values
@@ -287,7 +286,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name)
+        values = self.idf.getobject('schedule:constant'.upper(), sch_name)
 
         type_limit_name = values.Schedule_Type_Limits_Name
         lower_limit, upper_limit, numeric_type, unit_type = \
@@ -307,7 +306,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name)
+        values = self.idf.getobject('schedule:file'.upper(), sch_name)
         filename = values['File_Name']
         column = values['Column_Number']
         rows = values['Rows_to_Skip_at_Top']
@@ -333,7 +332,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name)
+        values = self.idf.getobject('schedule:compact'.upper(), sch_name)
         field_sets = ['through', 'for', 'interpolate', 'until', 'value']
         fields = values.fieldvalues[3:]
 
@@ -533,7 +532,7 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        values = self.idf.get_schedule_data_by_name(sch_name)
+        values = self.idf.getobject('schedule:year'.upper(), sch_name)
 
         # generate weekly schedules
         num_of_weekly_schedules = int(len(values.fieldvalues[3:]) / 5)

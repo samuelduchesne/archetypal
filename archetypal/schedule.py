@@ -47,7 +47,8 @@ class Schedule(object):
     def all_values(self):
         """returns the values array"""
         if self.values is None:
-            self.values = self.get_schedule_values(self.schName)
+            self.values = self.get_schedule_values(sch_name=self.schName,
+                                                   sch_type=self.schType)
             return self.values
         else:
             return self.values

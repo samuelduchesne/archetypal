@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
-
 from archetypal import log
 
 
@@ -103,7 +102,7 @@ class Schedule(object):
         else:
             lower_limit, upper_limit, numeric_type, unit_type = \
                 self.idf.get_schedule_type_limits_data_by_name(
-                schedule_limit_name)
+                    schedule_limit_name)
 
             self.unit = unit_type
             if self.unit == "unknown":
@@ -216,8 +215,10 @@ class Schedule(object):
                 for name, day in weekly_schedules.loc[how].groupby(pd.Grouper(
                         freq='D')):
                     if not day.empty:
+                        ref = values.get_referenced_object(
+                            "ScheduleDay_Name_{}".format(i + 1))
                         day.loc[:] = self.get_schedule_values(
-                            values["ScheduleDay_Name_{}".format(i + 1)])
+                            sch_name=ref.Name, sch_type=ref.key)
                         days.append(day)
                 new = pd.concat(days)
                 slicer_.update(
@@ -238,34 +239,13 @@ class Schedule(object):
 
         # 7 list for 7 days of the week
         hourly_values = []
-        sundaySch = self.get_schedule_values(values['Sunday_ScheduleDay_Name'])
-        mondaySch = self.get_schedule_values(values['Monday_ScheduleDay_Name'])
-        tuesdaySch = self.get_schedule_values(
-            values['Tuesday_ScheduleDay_Name'])
-        wednesdaySch = self.get_schedule_values(
-            values['Wednesday_ScheduleDay_Name'])
-        thursdaySch = self.get_schedule_values(
-            values['Thursday_ScheduleDay_Name'])
-        fridaySch = self.get_schedule_values(values['Friday_ScheduleDay_Name'])
-        saturdaySch = self.get_schedule_values(
-            values['Saturday_ScheduleDay_Name'])
-
-        # Not sure what to do with these...
-        holidaySch = self.get_schedule_values(
-            values['Holiday_ScheduleDay_Name'])
-        summerDesignDay = self.get_schedule_values(
-            values['SummerDesignDay_ScheduleDay_Name'])
-        winterDesignDay = self.get_schedule_values(
-            values['WinterDesignDay_ScheduleDay_Name'])
-        customDay1Sch = self.get_schedule_values(
-            values['CustomDay1_ScheduleDay_Name'])
-        customDay2Sch = self.get_schedule_values(
-            values['CustomDay2_ScheduleDay_Name'])
-
-        hourly_values = np.array([mondaySch, tuesdaySch,
-                                  wednesdaySch, thursdaySch, fridaySch,
-                                  saturdaySch, sundaySch])
-
+        for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday',
+                    'Friday', 'Saturday', 'Sunday']:
+            ref = values.get_referenced_object(
+                '{}_ScheduleDay_Name'.format(day))
+            h = self.get_schedule_values(sch_name=ref.Name, sch_type=ref.key)
+            hourly_values.append(h)
+        hourly_values = np.array(hourly_values)
         # shift days earlier by self.startDayOfTheWeek
         hourly_values = np.roll(hourly_values, -self.startDayOfTheWeek, axis=0)
 
@@ -558,8 +538,8 @@ class Schedule(object):
         num_of_weekly_schedules = int(len(values.fieldvalues[3:]) / 5)
 
         for i in range(num_of_weekly_schedules):
-            week_day_schedule_name = values[
-                'ScheduleWeek_Name_{}'.format(i + 1)]
+            ref = values.get_referenced_object(
+                'ScheduleWeek_Name_{}'.format(i + 1))
 
             start_month = values['Start_Month_{}'.format(i + 1)]
             end_month = values['End_Month_{}'.format(i + 1)]
@@ -583,10 +563,11 @@ class Schedule(object):
                 if not week.empty:
                     try:
                         week.loc[:] = self.get_schedule_values(
-                            week_day_schedule_name, week.index[0], week.index)
+                            sch_name=ref.Name, start_date=week.index[0],
+                            index=week.index, sch_type=ref.key)
                     except ValueError:
                         week.loc[:] = self.get_schedule_values(
-                            week_day_schedule_name, week.index[0])[0:len(week)]
+                            ref.Name, week.index[0])[0:len(week)]
                     finally:
                         weeks.append(week)
             new = pd.concat(weeks)
@@ -595,10 +576,12 @@ class Schedule(object):
 
         return hourly_values.values
 
-    def get_schedule_values(self, sch_name=None, start_date=None, index=None):
+    def get_schedule_values(self, sch_name=None, start_date=None, index=None,
+                            sch_type=None):
         """Main function that returns the schedule values
 
         Args:
+            sch_type:
             index:
             start_date:
         """
@@ -606,39 +589,40 @@ class Schedule(object):
         if sch_name is None:
             sch_name = self.schName
 
-        self.schType = self.get_schedule_type(sch_name)
-
-        schedule_type = schedule_values.key.upper()
+        if sch_type is None:
+            schedule_values = self.idf.get_schedule_data_by_name(sch_name)
+            self.schType = schedule_values.key.upper()
+            sch_type = self.schType
         if self.count == 0:
             # This is the first time, get the schedule type and the type limits.
             self.schLimitType = self.get_schedule_type_limits_name()
         self.count += 1
 
-        if self.schType.upper() == "schedule:year".upper():
+        if sch_type.upper() == "schedule:year".upper():
             hourly_values = self.get_yearly_ep_schedule_values(
                 sch_name)
-        elif self.schType.upper() == "schedule:day:interval".upper():
+        elif sch_type.upper() == "schedule:day:interval".upper():
             hourly_values = self.get_interval_day_ep_schedule_values(
                 sch_name)
-        elif self.schType.upper() == "schedule:day:hourly".upper():
+        elif sch_type.upper() == "schedule:day:hourly".upper():
             hourly_values = self.get_hourly_day_ep_schedule_values(
                 sch_name)
-        elif self.schType.upper() == "schedule:day:list".upper():
+        elif sch_type.upper() == "schedule:day:list".upper():
             hourly_values = self.get_list_day_ep_schedule_values(
                 sch_name)
-        elif self.schType.upper() == "schedule:week:compact".upper():
+        elif sch_type.upper() == "schedule:week:compact".upper():
             hourly_values = self.get_compact_weekly_ep_schedule_values(
                 sch_name, start_date, index)
-        elif self.schType.upper() == "schedule:week:daily".upper():
+        elif sch_type.upper() == "schedule:week:daily".upper():
             hourly_values = self.get_daily_weekly_ep_schedule_values(
                 sch_name)
-        elif self.schType.upper() == "schedule:constant".upper():
+        elif sch_type.upper() == "schedule:constant".upper():
             hourly_values = self.get_constant_ep_schedule_values(
                 sch_name)
-        elif self.schType.upper() == "schedule:compact".upper():
+        elif sch_type.upper() == "schedule:compact".upper():
             hourly_values = self.get_compact_ep_schedule_values(
                 sch_name)
-        elif self.schType.upper() == "schedule:file".upper():
+        elif sch_type.upper() == "schedule:file".upper():
             hourly_values = self.get_file_ep_schedule_values(
                 sch_name)
         else:

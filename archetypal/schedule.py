@@ -202,7 +202,7 @@ class Schedule(object):
         # update last day of schedule
 
         if self.count == 0:
-            self.schType = schedule_values
+            self.schType = values.key
             self.endHOY = 168
 
         num_of_daily_schedules = int(len(values.fieldvalues[2:]) / 2)
@@ -620,6 +620,7 @@ class Schedule(object):
 
         self.schType = self.get_schedule_type(sch_name)
 
+        schedule_type = schedule_values.key.upper()
         if self.count == 0:
             # This is the first time, get the schedule type and the type limits.
             self.schLimitType = self.get_schedule_type_limits_name()

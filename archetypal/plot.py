@@ -13,7 +13,10 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
     """Save a figure to disk and show it, as specified.
 
     Args:
-        extent:
+        extent (str or `~matplotlib.transforms.Bbox`, optional): Bbox in
+            inches. Only the given portion of the figure is saved. If
+            'tight', try to figure out the tight bbox of the figure. If None,
+            use savefig.bbox
         fig (matplotlib.figure.Figure): the figure
         ax (matplotlib.axes.Axes): the axes
         save (bool): whether to save the figure to disk or not
@@ -44,13 +47,8 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
         if not isinstance(ax, (np.ndarray, list)):
             ax = [ax]
         if file_format == 'svg':
-            for ax in ax:
-                # if the file_format is svg, prep the fig/ax a bit for saving
-                ax.axis('off')
-                ax.set_position([0, 0, 1, 1])
-                ax.patch.set_alpha(0.)
             fig.patch.set_alpha(0.)
-            fig.savefig(path_filename, bbox_inches=0, format=file_format,
+            fig.savefig(path_filename, bbox_inches=extent, format=file_format,
                         facecolor=fig.get_facecolor(), transparent=True)
         else:
             if extent is None:
@@ -62,7 +60,7 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
                             extent = ax.get_window_extent().transformed(
                                 fig.dpi_scale_trans.inverted())
                 else:
-                    extent = 'tight'
+                    pass
             fig.savefig(path_filename, dpi=dpi, bbox_inches=extent,
                         format=file_format, facecolor=fig.get_facecolor(),
                         transparent=True)

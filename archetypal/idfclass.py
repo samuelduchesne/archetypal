@@ -82,9 +82,9 @@ class IDF(eppy.modeleditor.IDF):
                     schedules_dict = self.get_all_schedules()
                     return schedules_dict[sch_name]
                 except KeyError:
-                    raise KeyError('Unable to find schedule "{}" in idf '
-                                   'file "{}"'.format(
-                        sch_name, self.idfname))
+                    raise KeyError('Unable to find schedule "{}" of type "{}" '
+                                   'in idf file "{}"'.format(
+                        sch_name, sch_type, self.idfname))
         else:
             return self.getobject(sch_type, sch_name)
 

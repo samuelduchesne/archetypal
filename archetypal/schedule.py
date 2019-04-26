@@ -12,7 +12,7 @@ class Schedule(object):
     """An object designed to handle any EnergyPlys schedule object"""
 
     def __init__(self, idf, sch_name, start_day_of_the_week=None, strict=False,
-                 base_year=2018, **kwargs):
+                 base_year=2018, schType=None, **kwargs):
         """
 
         Args:
@@ -39,8 +39,9 @@ class Schedule(object):
 
         self.index_ = None
         self.values = None
-        self.schType = self.get_schedule_type()
-        self.schLimitType = self.get_schedule_type_limits_name()
+        self.schType = schType
+        self.schTypeLimitsName = self.get_schedule_type_limits_name(
+            sch_type=self.schType)
 
     @property
     def all_values(self):
@@ -71,14 +72,14 @@ class Schedule(object):
             self.all_values), freq='1H')
         return pd.Series(self.all_values, index=index)
 
-    def get_schedule_type_limits_name(self, sch_name=None):
+    def get_schedule_type_limits_name(self, sch_name=None, sch_type=None):
         """Return the Schedule Type Limits name associated to a schedule
         name"""
         if sch_name is None:
             sch_name = self.schName
-
-        schedule_values = self.idf.get_schedule_data_by_name(sch_name)
-
+        if sch_type is None:
+            schedule_values = self.idf.get_schedule_data_by_name(sch_name,
+                                                             sch_type=sch_type)
         try:
             schedule_limit_name = schedule_values.Schedule_Type_Limits_Name
         except:
@@ -147,7 +148,6 @@ class Schedule(object):
             sch_name = self.schName
 
         values = self.idf.getobject('Schedule:Day:Interval'.upper(), sch_name)
-        type_limit_name = values.Schedule_Type_Limits_Name
         lower_limit, upper_limit, numeric_type, unit_type = \
             self.get_schedule_type_limits_data(sch_name)
 
@@ -257,6 +257,8 @@ class Schedule(object):
             sch_name = self.schName
 
         values = self.idf.getobject('schedule:day:list'.upper(), sch_name)
+        lower_limit, upper_limit, numeric_type, unit_type = \
+            self.get_schedule_type_limits_data(sch_name)
 
         import pandas as pd
         freq = int(values['Minutes_per_Item'])  # Frequency of the values
@@ -288,9 +290,9 @@ class Schedule(object):
             sch_name = self.schName
 
         values = self.idf.getobject('schedule:constant'.upper(), sch_name)
-
         lower_limit, upper_limit, numeric_type, unit_type = \
             self.get_schedule_type_limits_data(sch_name)
+
         hourly_values = np.arange(8760)
         value = float(values['Hourly_Value'])
         for hour in hourly_values:
@@ -307,6 +309,9 @@ class Schedule(object):
             sch_name = self.schName
 
         values = self.idf.getobject('schedule:file'.upper(), sch_name)
+        lower_limit, upper_limit, numeric_type, unit_type = \
+            self.get_schedule_type_limits_data(sch_name)
+
         filename = values['File_Name']
         column = values['Column_Number']
         rows = values['Rows_to_Skip_at_Top']
@@ -333,6 +338,9 @@ class Schedule(object):
             sch_name = self.schName
 
         values = self.idf.getobject('schedule:compact'.upper(), sch_name)
+        lower_limit, upper_limit, numeric_type, unit_type = \
+            self.get_schedule_type_limits_data(sch_name)
+
         field_sets = ['through', 'for', 'interpolate', 'until', 'value']
         fields = values.fieldvalues[3:]
 
@@ -595,7 +603,7 @@ class Schedule(object):
             sch_type = self.schType
         if self.count == 0:
             # This is the first time, get the schedule type and the type limits.
-            self.schLimitType = self.get_schedule_type_limits_name()
+            self.schTypeLimitsName = self.get_schedule_type_limits_name()
         self.count += 1
 
         if sch_type.upper() == "schedule:year".upper():
@@ -745,7 +753,7 @@ class Schedule(object):
                 blocks[i]['end_month'] = 12
 
         new_dict = dict(Name=self.schName + '_',
-                        Schedule_Type_Limits_Name=self.schLimitType)
+                        Schedule_Type_Limits_Name=self.schTypeLimitsName)
         for i in blocks:
             new_dict.update({"ScheduleWeek_Name_{}".format(i + 1):
                                  blocks[i]['week_id'],

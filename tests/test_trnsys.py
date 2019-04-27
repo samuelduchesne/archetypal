@@ -11,7 +11,7 @@ def round_up(n, decimals=0):
     return math.ceil(n * multiplier) / multiplier
 
 
-def test_trnbuild_from_idf(scratch_then_cache, config):
+def test_trnbuild_from_idf(config):
     # Path to IDF file to convert
 
     window_file = 'W74-lib.dat'
@@ -22,7 +22,7 @@ def test_trnbuild_from_idf(scratch_then_cache, config):
                        window_filepath)
 
 
-def test_trnbuild_from_idf_parallel(scratch_then_cache, config):
+def test_trnbuild_from_idf_parallel(config):
     # List files here
     file_upper_path = './input_data/trnsys/'
     files = ["NECB 2011 - Small Office.idf"]
@@ -41,7 +41,7 @@ def test_trnbuild_from_idf_parallel(scratch_then_cache, config):
     parallel_process(in_dict, convert_idf_to_t3d, 8, use_kwargs=True)
 
 
-def test_trnbuild_parse_window_lib(scratch_then_cache, config):
+def test_trnbuild_parse_window_lib(config):
     file = 'W74-lib.dat'
     window_filepath = os.path.join("..", "tests", "input_data", "trnsys",
                                    file)
@@ -50,7 +50,7 @@ def test_trnbuild_parse_window_lib(scratch_then_cache, config):
     assert len(df) == len(bunches)
 
 
-def test_trnbuild_choose_window(scratch_then_cache, config):
+def test_trnbuild_choose_window(config):
     file = 'W74-lib.dat'
     window_filepath = os.path.join("..", "tests", "input_data", "trnsys",
                                    file)

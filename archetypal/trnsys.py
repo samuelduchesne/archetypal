@@ -472,7 +472,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                 if coordSys == 'Relative':
 
                     # Add zone coordinates to X, Y, Z vectors to fenestration surface
-                    for j in range(1, 5):
+                    for j in range(1, len(
+                                fenestrationSurf.coords) + 1):
                         fenestrationSurf["Vertex_" + str(j) + "_Xcoordinate"] = \
                             fenestrationSurf[
                                 "Vertex_" + str(j) + "_Xcoordinate"] + incrX

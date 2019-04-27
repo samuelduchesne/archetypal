@@ -5,6 +5,8 @@ import os
 import time
 import uuid
 from eppy import modeleditor
+from geomeppy.geom.polygons import Polygon3D
+from geomeppy.utilities import almostequal
 from collections import OrderedDict
 
 import archetypal as ar
@@ -362,7 +364,6 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     for material in materials:
         if material.Thickness / (
                 material.Conductivity * 3.6) < 0.0007:
-
             material_low_res.append(material)
 
     # Remove materials with resistance lower than 0.0007 from IDF
@@ -374,7 +375,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     # Get constructions with only materials with resistance lower than 0.0007
     construct_low_res = []
     for i in range(0, len(constructions)):
-        if len(constructions.list2[i])==3 and constructions.list2[i][2] in mat_name:
+        if len(constructions.list2[i]) == 3 and constructions.list2[i][
+            2] in mat_name:
             construct_low_res.append(constructions[i])
 
     # Remove constructions with only materials with resistance lower than 0.0007 from IDF
@@ -502,6 +504,31 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                       indiceSurf[0]].Zone_Name == s.Name]
                     buildingSurfs[i].Outside_Boundary_Condition_Object = zones[
                         indiceZone[0]].Name
+
+                    # Polygon from vector's adjacent surfaces
+                    poly1 = Polygon3D(buildingSurfs[i].coords)
+                    poly2 = Polygon3D(buildingSurfs[indiceSurf[0]].coords)
+                    # Normal vectors of each polygon
+                    n1 = poly1.normal_vector
+                    n2 = poly2.normal_vector
+                    # Verify if normal vectors of adjacent surfaces have
+                    # opposite directions
+                    if (n1 + n2).x != 0 or (n1 + n2).y != 0 or (n1 + n2).z != 0:
+                        for j, k in zip(range(1, len(
+                                buildingSurfs[i].coords) + 1), range(
+                                len(buildingSurfs[i].coords), 0, -1)):
+                            buildingSurfs[indiceSurf[0]][
+                                "Vertex_" + str(j) + "_Xcoordinate"] \
+                                = buildingSurfs[i][
+                                      "Vertex_" + str(k) + "_Xcoordinate"]
+                            buildingSurfs[indiceSurf[0]][
+                                "Vertex_" + str(j) + "_Ycoordinate"] \
+                                = buildingSurfs[i][
+                                      "Vertex_" + str(k) + "_Ycoordinate"]
+                            buildingSurfs[indiceSurf[0]][
+                                "Vertex_" + str(j) + "_Zcoordinate"] \
+                                = buildingSurfs[i][
+                                      "Vertex_" + str(k) + "_Zcoordinate"]
 
                 if 'ground' in buildingSurfs[
                     i].Outside_Boundary_Condition.lower():

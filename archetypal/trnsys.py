@@ -313,7 +313,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
     # Clean names of idf objects (e.g. 'MATERIAL')
     start_time = time.time()
-    clear_name_idf_objects(idf)
+    # clear_name_idf_objects(idf)
     log("Cleaned IDF object names in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="CoverterLog",
         filename="CoverterLog")
@@ -337,25 +337,25 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     lights = idf.idfobjects['LIGHTS']
     equipments = idf.idfobjects['ELECTRICEQUIPMENT']
 
-    start_time = time.time()
-    schedule_names = []
-    used_schedules = idf.get_used_schedules(yearly_only=True)
-    schedules = {}
-
-    for schedule_name in used_schedules:
-        s = Schedule(idf, sch_name=schedule_name,
-                     start_day_of_the_week=idf.day_of_week_for_start_day)
-
-        schedule_names.append(schedule_name)
-        schedules[schedule_name] = {}
-        year, weeks, days = s.to_year_week_day()
-        schedules[schedule_name]['year'] = year
-        schedules[schedule_name]['weeks'] = weeks
-        schedules[schedule_name]['days'] = days
-
-    log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO, name="CoverterLog",
-        filename="CoverterLog")
+    # start_time = time.time()
+    # schedule_names = []
+    # used_schedules = idf.get_used_schedules(yearly_only=True)
+    # schedules = {}
+    #
+    # for schedule_name in used_schedules:
+    #     s = Schedule(idf, sch_name=schedule_name,
+    #                  start_day_of_the_week=idf.day_of_week_for_start_day)
+    #
+    #     schedule_names.append(schedule_name)
+    #     schedules[schedule_name] = {}
+    #     year, weeks, days = s.to_year_week_day()
+    #     schedules[schedule_name]['year'] = year
+    #     schedules[schedule_name]['weeks'] = weeks
+    #     schedules[schedule_name]['days'] = days
+    #
+    # log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
+    #     time.time() - start_time), lg.INFO, name="CoverterLog",
+    #     filename="CoverterLog")
 
     # Get materials with resistance lower than 0.0007
     material_low_res = []

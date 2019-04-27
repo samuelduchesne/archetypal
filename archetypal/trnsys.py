@@ -473,7 +473,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
                     # Add zone coordinates to X, Y, Z vectors to fenestration surface
                     for j in range(1, len(
-                                fenestrationSurf.coords) + 1):
+                            fenestrationSurf.coords) + 1):
                         fenestrationSurf["Vertex_" + str(j) + "_Xcoordinate"] = \
                             fenestrationSurf[
                                 "Vertex_" + str(j) + "_Xcoordinate"] + incrX
@@ -515,21 +515,23 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                     # Verify if normal vectors of adjacent surfaces have
                     # opposite directions
                     if (n1 + n2).x != 0 or (n1 + n2).y != 0 or (n1 + n2).z != 0:
+                        # If not, inverse vertice of buildingSurf
+                        # (Vertex4 become Vertex1, Vertex2 become Vertex3, etc.)
                         for j, k in zip(range(1, len(
                                 buildingSurfs[i].coords) + 1), range(
-                                len(buildingSurfs[i].coords), 0, -1)):
+                            len(buildingSurfs[i].coords), 0, -1)):
                             buildingSurfs[indiceSurf[0]][
                                 "Vertex_" + str(j) + "_Xcoordinate"] \
                                 = buildingSurfs[i][
-                                      "Vertex_" + str(k) + "_Xcoordinate"]
+                                "Vertex_" + str(k) + "_Xcoordinate"]
                             buildingSurfs[indiceSurf[0]][
                                 "Vertex_" + str(j) + "_Ycoordinate"] \
                                 = buildingSurfs[i][
-                                      "Vertex_" + str(k) + "_Ycoordinate"]
+                                "Vertex_" + str(k) + "_Ycoordinate"]
                             buildingSurfs[indiceSurf[0]][
                                 "Vertex_" + str(j) + "_Zcoordinate"] \
                                 = buildingSurfs[i][
-                                      "Vertex_" + str(k) + "_Zcoordinate"]
+                                "Vertex_" + str(k) + "_Zcoordinate"]
 
                 if 'ground' in buildingSurfs[
                     i].Outside_Boundary_Condition.lower():

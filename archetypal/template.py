@@ -2,7 +2,6 @@ import collections
 
 import eppy.modeleditor
 import numpy as np
-
 from archetypal import object_from_idfs, Schedule, calc_simple_glazing
 
 created_obj = {}
@@ -24,7 +23,7 @@ class Unique(type):
 
 
 class UmiBase(object):
-    def __init__(self, idf,
+    def __init__(self, idf=None,
                  Name='unnamed',
                  Comments='',
                  DataSource=None,
@@ -34,7 +33,10 @@ class UmiBase(object):
         if Comments != '':
             self.Comments += Comments
         if DataSource is None:
-            self.DataSource = self.idf.building_name(use_idfname=True)
+            try:
+                self.DataSource = self.idf.building_name(use_idfname=True)
+            except:
+                self.DataSource = 'Other'
         else:
             self.DataSource = DataSource
         self.Name = Name
@@ -95,7 +97,7 @@ class GasMaterial(UmiBase, metaclass=Unique):
         self.TransportEnergy = TransportEnergy
         self.Life = Life
         self.Type = Type
-        self.GasType = self._gas_type(Gas_Type)
+        self.GasType = self._gas_type(str(kwargs.get('GasType', Gas_Type)))
 
         # TODO: What does Life mean? Always 1 in Boston UmiTemplate
 
@@ -275,7 +277,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                                          Comments='Year Week Day schedules '
                                                   'created from: '
                                                   '{}'.format(self.Name)))
-        YearSchedule(Name=year.Name, _id=self.id, idf=self.idf, epbunch=year,
+        YearSchedule(Name=year.Name, id=self.id, idf=self.idf, epbunch=year,
                      newweeks=newweeks,
                      Comments='Year Week Day schedules created from: '
                               '{}'.format(self.Name))
@@ -291,7 +293,7 @@ class YearSchedule(Schedule, metaclass=Unique):
     """$id, Category, Comments, DataSource, Name, Parts, Type
     """
 
-    def __init__(self, Name, idf, _id,
+    def __init__(self, Name, idf=None, id=None,
                  DataSource=None,
                  Category='Year',
                  **kwargs):
@@ -303,15 +305,27 @@ class YearSchedule(Schedule, metaclass=Unique):
         else:
             self.DataSource = DataSource
         self.Name = Name
-        self.id = _id
+        self.id = id
         self.all_objects = created_obj
 
         self.Name = Name
         self.Category = Category
-        self.epbunch = kwargs['epbunch']
-        self.Type = self.schLimitType
-        self.Parts = self.get_parts(self.epbunch)
-        self.schLimitType = self.get_schedule_type_limits_name()
+        self.epbunch = kwargs.get('epbunch', None)
+        type = kwargs.get('Type', None)
+        if type is None:
+            self.Type = self.schLimitType
+        else:
+            self.Type = type
+        parts = kwargs.get('Parts', None)
+        if parts is None:
+            self.Parts = self.get_parts(self.epbunch)
+        else:
+            self.Parts = parts
+        type = kwargs.get('Type', None)
+        if type is None:
+            self.schLimitType = self.get_schedule_type_limits_name()
+        else:
+            self.schLimitType = type
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -354,7 +368,7 @@ class YearSchedule(Schedule, metaclass=Unique):
 class WeekSchedule(Schedule, metaclass=Unique):
     """$id, Category, Comments, DataSource, Days, Name, Type"""
 
-    def __init__(self, Name, idf,
+    def __init__(self, Name, idf=None,
                  DataSource=None,
                  Comments=None,
                  Category='Week',
@@ -373,8 +387,15 @@ class WeekSchedule(Schedule, metaclass=Unique):
         self.Name = Name
         self.Category = Category
         self.week = kwargs.get('week', None)
-        self.Days = self.get_days(kwargs['epbunch'])
-        self.schLimitType = self.get_schedule_type_limits_name()
+        days = kwargs.get('Days', None)
+        if days is None:
+            self.Days = self.get_days(kwargs['epbunch'])
+        else:
+            self.Days = days
+        if type is None:
+            self.schLimitType = self.get_schedule_type_limits_name()
+        else:
+            self.schLimitType = type
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -410,7 +431,7 @@ class DaySchedule(Schedule, metaclass=Unique):
     """$id, Category, Comments, DataSource, Name, Type, Values
     """
 
-    def __init__(self, Name, idf,
+    def __init__(self, Name, idf=None,
                  DataSource=None,
                  Comments=None,
                  Category='Day',
@@ -428,8 +449,16 @@ class DaySchedule(Schedule, metaclass=Unique):
 
         self.Name = Name
         self.Category = Category
-        self.Values = self.get_values()
-        self.schLimitType = self.get_schedule_type_limits_name()
+        values = kwargs.get('Values', None)
+        if values is None:
+            self.Values = self.get_values()
+        else:
+            self.Values = values
+        type = kwargs.get('Type', None)
+        if type is None:
+            self.schLimitType = self.get_schedule_type_limits_name()
+        else:
+            self.schLimitType = type
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -965,9 +994,10 @@ class OpaqueConstruction(UmiBase, metaclass=Unique):
     DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
     """
 
-    def __init__(self, Surface_Type,
-                 Outside_Boundary_Condition,
+    def __init__(self,
                  *args,
+                 Surface_Type=None,
+                 Outside_Boundary_Condition=None,
                  AssemblyCarbon=0,
                  AssemblyCost=0,
                  AssemblyEnergy=0,
@@ -988,12 +1018,15 @@ class OpaqueConstruction(UmiBase, metaclass=Unique):
         self.AssemblyEnergy = AssemblyEnergy
         self.DisassemblyCarbon = DisassemblyCarbon
         self.DisassemblyEnergy = DisassemblyEnergy
-
-        self.type_surface()
-        self.Layers = self.layers()
+        layers = kwargs.get('Layers', None)
+        if layers is None:
+            self.Layers = self.layers()
+        else:
+            self.Layers = layers
 
     def layers(self):
         """Retrieve layers for the OpaqueConstruction"""
+        self.type_surface()
         c = self.idf.getobject('CONSTRUCTION', self.Name)
         layers = []
         for layer in c.fieldvalues[2:]:
@@ -1341,7 +1374,11 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         self.AssemblyCost = AssemblyCost
         self.AssemblyCarbon = AssemblyCarbon
         self.Type = Type
-        self.Layers = self.layers()
+        layers = kwargs.get('Layers', None)
+        if layers is None:
+            self.Layers = self.layers()
+        else:
+            self.Layers = layers
 
     def to_json(self):
         """Convert class properties to dict"""

@@ -11,7 +11,7 @@ from archetypal import log
 class Schedule(object):
     """An object designed to handle any EnergyPlys schedule object"""
 
-    def __init__(self, idf, sch_name, start_day_of_the_week=None, strict=False,
+    def __init__(self, idf, sch_name, start_day_of_the_week=0, strict=False,
                  base_year=2018, schType=None, **kwargs):
         """
 
@@ -40,8 +40,12 @@ class Schedule(object):
         self.index_ = None
         self.values = None
         self.schType = schType
-        self.schTypeLimitsName = self.get_schedule_type_limits_name(
-            sch_type=self.schType)
+        type = kwargs.get('Type', None)
+        if type is None:
+            self.schTypeLimitsName = self.get_schedule_type_limits_name(
+                sch_type=self.schType)
+        else:
+            self.schTypeLimitsName = type
 
     @property
     def all_values(self):

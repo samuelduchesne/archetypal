@@ -14,7 +14,9 @@ from sklearn import preprocessing
 from . import settings, object_from_idf, object_from_idfs, \
     calc_simple_glazing, \
     iscore, weighted_mean, top, GasMaterial, UmiSchedule, BuildingTemplate, \
-    Window
+    Window, GlazingMaterial, OpaqueMaterial, OpaqueConstruction, \
+    WindowConstruction, StructureDefinition, DaySchedule, WeekSchedule, \
+    YearSchedule
 from .idf import run_eplus, load_idf
 from .plot import plot_energyprofile
 from .utils import log, label_surface, type_surface, layer_composition, \
@@ -140,6 +142,53 @@ class UmiTemplate:
 
             # Write the dict to json using json.dumps
             path_or_buf.write(json.dumps(data_dict, indent=indent))
+
+    @classmethod
+    def from_json(self, filename):
+        """Load umi template from json"""
+        import json
+
+        if os.path.isfile(filename):
+            if filename:
+                with open(filename, 'r') as f:
+                    datastore = json.load(f)
+
+            # with datastore, create each objects
+            for obj in datastore:
+                if obj == 'GasMaterials':
+                    self.materials_gas = [GasMaterial(**store) for
+                                          store in datastore[obj]]
+
+                elif obj == 'GlazingMaterials':
+                    self.materials_glazing = [GlazingMaterial(**store) for
+                                              store in datastore[obj]]
+                elif obj == 'OpaqueMaterials':
+                    self.materials_opaque = [OpaqueMaterial(**store) for
+                                             store in datastore[obj]]
+                elif obj == 'OpaqueConstructions':
+                    self.constructions_opaque = [OpaqueConstruction(**store) for
+                                                 store in datastore[obj]]
+                elif obj == 'WindowConstructions':
+                    self.constructions_windows = [WindowConstruction(**store)
+                                                  for store in datastore[obj]]
+                elif obj == 'StructureDefinitions':
+                    self.structure_definitions = [StructureDefinition(**store)
+                                                  for store in datastore[obj]]
+                elif obj == 'DaySchedules':
+                    self.day_schedules = [DaySchedule(**store)
+                                          for store in datastore[obj]]
+                elif obj == 'WeekSchedules':
+                    self.week_schedules = [WeekSchedule(**store)
+                                           for store in datastore[obj]]
+                elif obj == 'YearSchedules':
+                    self.week_schedules = [YearSchedule(**store)
+                                           for store in datastore[obj]]
+                elif obj == 'DomesticHotWaterSettings':
+                    self.week_schedules = [DomesticHotWaterSetting(**store)
+                                           for store in datastore[obj]]
+            return self
+        else:
+            return None
 
 
 class EnergyProfile(pd.Series):

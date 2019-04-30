@@ -6,6 +6,14 @@ from archetypal import load_umi_template, copy_file, UmiTemplate, settings, \
 #     data_json = settings.umitemplate
 #     assert len(load_umi_template(data_json)) == 17
 
+def test_template_to_template():
+    file = '../data/BostonTemplateLibrary.json'
+    template = UmiTemplate.from_json(file)
+
+    print(template)
+    # read a template library
+
+
 
 def test_umi_routine(config):
     idf_source = [

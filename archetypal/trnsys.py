@@ -453,7 +453,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     # Writing zones in lines
     for zone in zones:
         zone.Direction_of_Relative_North = 0.0
-        zone.Multiplier = 1
+        if zone.Multiplier == '':
+            zone.Multiplier = 1
         # Coords of zone
         incrX, incrY, incrZ = zone_origin(zone)
 

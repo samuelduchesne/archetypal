@@ -478,6 +478,25 @@ class DaySchedule(Schedule, metaclass=Unique):
         return list(self.all_values.astype(float))
 
 
+class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
+    """$id, Category, Comments, DataSource, FlowRatePerFloorArea, IsOn, Name,
+    WaterSchedule.$ref, WaterSupplyTemperature, WaterTemperatureInlet
+    """
+
+    def __init__(self, Name, *args, idf=None,
+                 Category=None, DataSource=None, FlowRatePerFloorArea=None,
+                 IsOn=None, WaterSupplyTemperature=None,
+                 WaterTemperatureInlet=None, **kwargs):
+        super(DomesticHotWaterSetting, self).__init__(*args, **kwargs)
+        self.idf = idf
+        self.Category = Category
+        self.DataSource = DataSource
+        self.FlowRatePerFloorArea = FlowRatePerFloorArea
+        self.IsOn = IsOn
+        self.WaterSupplyTemperature = WaterSupplyTemperature
+        self.WaterTemperatureInlet = WaterTemperatureInlet
+
+
 class BuildingTemplate(UmiBase, metaclass=Unique):
     """
     Category, Comments, Core.$ref, DataSource, Lifespan, Name,

@@ -1,4 +1,5 @@
 import collections
+from enum import IntEnum
 
 import eppy.modeleditor
 import numpy as np
@@ -11,12 +12,13 @@ created_obj = {}
 class Unique(type):
 
     def __call__(cls, *args, **kwargs):
-        if kwargs['Name'] not in created_obj:
+        key = (cls.mro()[0].__name__, kwargs['Name'])
+        if key not in created_obj:
             self = cls.__new__(cls, *args, **kwargs)
             cls.__init__(self, *args, **kwargs)
-            cls._cache[kwargs['Name']] = self
-            created_obj[kwargs['Name']] = self
-        return created_obj[kwargs['Name']]
+            cls._cache[key] = self
+            created_obj[key] = self
+        return created_obj[key]
 
     def __init__(cls, name, bases, attributes):
         super().__init__(name, bases, attributes)
@@ -24,25 +26,33 @@ class Unique(type):
 
 
 class UmiBase(object):
-    def __init__(self, idf,
-                 Name='unnamed',
-                 Comments='',
+    def __init__(self,
+                 Name,
+                 idf=None,
+                 Category='Uncategorized',
+                 Comments=None,
                  DataSource=None,
+                 sql=None,
                  **kwargs):
+        super(UmiBase, self).__init__()
+        self.Name = Name
         self.idf = idf
+        self.sql = sql
+        self.Category = Category
         self.Comments = ''
-        if Comments != '':
+        try:
             self.Comments += Comments
+        except:
+            self.Comments = Comments
         if DataSource is None:
-            self.DataSource = self.idf.building_name(use_idfname=True)
+            try:
+                self.DataSource = self.idf.building_name(use_idfname=True)
+            except:
+                self.DataSource = DataSource
         else:
             self.DataSource = DataSource
-        self.Name = Name
         self.all_objects = created_obj
-
-    @property
-    def id(self):
-        return id(self)
+        self.id = kwargs.get('$id', id(self))
 
     def __str__(self):
         """string representation of the object as id:Name"""
@@ -55,10 +65,63 @@ class UmiBase(object):
         """Convert class properties to dict"""
         return {"$id": "{}".format(self.id),
                 "Name": "{}".format(self.Name)}
-        # return {str(self.__class__.__name__): 'NotImplemented'}
+
+    def get_ref(self, ref):
+        try:
+            key = (self.mro()[0].__name__)
+            return [self.all_objects[obj]
+                    for obj in self.all_objects
+                    if self.all_objects[obj].id == ref['$ref']][0]
+        except:
+            key = (self.__class__.__name__)
+            return [self.all_objects[obj]
+                    for obj in self.all_objects
+                    if self.all_objects[obj].id == ref['$ref']][0]
+
+    def __hash__(self):
+        return hash(self.Name)
 
 
-class GasMaterial(UmiBase, metaclass=Unique):
+class MaterialBase(UmiBase):
+    def __init__(self, Name, Cost, EmbodiedCarbon, EmbodiedEnergy,
+                 SubstitutionTimestep, TransportCarbon, TransportDistance,
+                 TransportEnergy, SubstitutionRatePattern=None,
+                 Conductivity=2.4, Density=2400,
+                 **kwargs):
+        super(MaterialBase, self).__init__(Name, **kwargs)
+        if SubstitutionRatePattern is None:
+            SubstitutionRatePattern = [1.0]
+        self.Conductivity = Conductivity
+        self.Cost = Cost
+        self.Density = Density
+        self.EmbodiedCarbon = EmbodiedCarbon
+        self.EmbodiedEnergy = EmbodiedEnergy
+        self.SubstitutionRatePattern = SubstitutionRatePattern
+        self.SubstitutionTimestep = SubstitutionTimestep
+        self.TransportCarbon = TransportCarbon
+        self.TransportDistance = TransportDistance
+        self.TransportEnergy = TransportEnergy
+
+    def __eq__(self, other):
+        if isinstance(other, MaterialBase):
+            return \
+                self.Name == other.Name and \
+                self.Conductivity == other.Conductivity and \
+                self.Cost == other.Cost and \
+                self.Density == other.Density and \
+                self.EmbodiedCarbon == other.EmbodiedCarbon and \
+                self.EmbodiedEnergy == other.EmbodiedEnergy and \
+                self.SubstitutionRatePattern == other.SubstitutionRatePattern \
+                and \
+                self.SubstitutionTimestep == other.SubstitutionTimestep and \
+                self.TransportCarbon == other.TransportCarbon and \
+                self.TransportDistance == other.TransportDistance and \
+                self.TransportEnergy == other.TransportEnergy
+        else:
+            raise NotImplementedError
+
+
+class GasMaterial(MaterialBase, metaclass=Unique):
     """
     $id, Comments, Cost, DataSource, EmbodiedCarbon, EmbodiedCarbonStdDev,
     EmbodiedEnergy, EmbodiedEnergyStdDev, GasType, Life, Name,
@@ -67,37 +130,19 @@ class GasMaterial(UmiBase, metaclass=Unique):
     """
 
     def __init__(self, *args,
-                 Cost=0,
-                 EmbodiedCarbon=0,
-                 EmbodiedCarbonStdDev=0,
-                 EmbodiedEnergy=0,
-                 EmbodiedEnergyStdDev=0,
-                 Gas_Type=None,
-                 Life=1,
-                 SubstitutionRatePattern=[],
-                 SubstitutionTimestep=0,
-                 TransportCarbon=0,
-                 TransportDistance=0,
-                 TransportEnergy=0,
-                 Type='Gas',
+                 Category='Gases',
+                 Type="Gas",
                  **kwargs):
-        super(GasMaterial, self).__init__(*args, **kwargs)
-
-        self.Cost = Cost
-        self.EmbodiedCarbon = EmbodiedCarbon
-        self.EmbodiedCarbonStdDev = EmbodiedCarbonStdDev
-        self.EmbodiedEnergy = EmbodiedEnergy
-        self.EmbodiedEnergyStdDev = EmbodiedEnergyStdDev
-        self.SubstitutionRatePattern = SubstitutionRatePattern
-        self.SubstitutionTimestep = SubstitutionTimestep
-        self.TransportCarbon = TransportCarbon
-        self.TransportDistance = TransportDistance
-        self.TransportEnergy = TransportEnergy
-        self.Life = Life
+        super(GasMaterial, self).__init__(*args, Category=Category, **kwargs)
         self.Type = Type
-        self.GasType = self._gas_type(Gas_Type)
 
-        # TODO: What does Life mean? Always 1 in Boston UmiTemplate
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+        gm = GasMaterial(*args, **kwargs)
+        gas_type = kwargs.get('Name', None)
+        gm.Type = gas_type
+
+        return gm
 
     @staticmethod
     def _gas_type(Gas_Type):
@@ -112,39 +157,41 @@ class GasMaterial(UmiBase, metaclass=Unique):
 
         """
         if 'air' in Gas_Type.lower():
-            return 0
+            return GasType.air
         elif 'argon' in Gas_Type.lower():
-            return 1
+            return GasType.argon
         elif 'krypton' in Gas_Type.lower():
-            return 2
+            return GasType.krypton
         elif 'xenon' in Gas_Type.lower():
-            return 3
+            return GasType.xenon
         elif 'sf6' in Gas_Type.lower():
-            return 4
+            return GasType.sf6
 
     def to_json(self):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["GasType"] = self.GasType
+        data_dict["Category"] = self.Category
         data_dict["Type"] = self.Type
-        data_dict["EmbodiedEnergy"] = self.EmbodiedEnergy
-        data_dict["EmbodiedEnergyStdDev"] = self.EmbodiedEnergyStdDev
-        data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon
-        data_dict["EmbodiedCarbonStdDev"] = self.EmbodiedCarbonStdDev
+        data_dict["Conductivity"] = self.Conductivity
         data_dict["Cost"] = self.Cost
-        data_dict["Life"] = self.Life
+        data_dict["Density"] = self.Density
+        data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon
+        data_dict["EmbodiedEnergy"] = self.EmbodiedEnergy
         data_dict["SubstitutionRatePattern"] = self.SubstitutionRatePattern
         data_dict["SubstitutionTimestep"] = self.SubstitutionTimestep
         data_dict["TransportCarbon"] = self.TransportCarbon
         data_dict["TransportDistance"] = self.TransportDistance
         data_dict["TransportEnergy"] = self.TransportEnergy
-        data_dict["Comment"] = self.Comments
+        data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
         data_dict["Name"] = self.Name
 
         return data_dict
+
+    def __dict__(self):
+        return {'$ref': str(self.id)}
 
 
 class GlazingMaterial(UmiBase, metaclass=Unique):
@@ -201,33 +248,28 @@ class GlazingMaterial(UmiBase, metaclass=Unique):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Conductivity"] = self.Conductivity
-        data_dict["Density"] = self.Density
-        data_dict["Optical"] = self.Optical
-        data_dict["OpticalData"] = self.OpticalData
-        data_dict["SolarTransmittance"] = self.SolarTransmittance
-        data_dict["SolarReflectanceFront"] = self.SolarReflectanceFront
-        data_dict["SolarReflectanceBack"] = self.SolarReflectanceBack
-        data_dict["VisibleTransmittance"] = self.VisibleTransmittance
-        data_dict["VisibleReflectanceFront"] = self.VisibleReflectanceFront
-        data_dict["VisibleReflectanceBack"] = self.VisibleReflectanceBack
-        data_dict["IRTransmittance"] = self.IRTransmittance
-        data_dict["IREmissivityFront"] = self.IREmissivityFront
-        data_dict["IREmissivityBack"] = self.IREmissivityBack
         data_dict["DirtFactor"] = self.DirtFactor
-        data_dict["Type"] = self.Type
-        data_dict["EmbodiedEnergy"] = self.EmbodiedEnergy
-        data_dict["EmbodiedEnergyStdDev"] = self.EmbodiedEnergyStdDev
-        data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon
-        data_dict["EmbodiedCarbonStdDev"] = self.EmbodiedCarbonStdDev
+        data_dict["IREmissivityBack"] = self.IREmissivityBack
+        data_dict["IREmissivityFront"] = self.IREmissivityFront
+        data_dict["IRTransmittance"] = self.IRTransmittance
+        data_dict["SolarReflectanceBack"] = self.SolarReflectanceBack
+        data_dict["SolarReflectanceFront"] = self.SolarReflectanceFront
+        data_dict["SolarTransmittance"] = self.SolarTransmittance
+        data_dict["VisibleReflectanceBack"] = self.VisibleReflectanceBack
+        data_dict["VisibleReflectanceFront"] = self.VisibleReflectanceFront
+        data_dict["VisibleTransmittance"] = self.VisibleTransmittance
+        data_dict["Conductivity"] = self.Conductivity
         data_dict["Cost"] = self.Cost
-        data_dict["Life"] = self.Life
+        data_dict["Density"] = self.Density
+        data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon
+        data_dict["EmbodiedEnergy"] = self.EmbodiedEnergy
         data_dict["SubstitutionRatePattern"] = self.SubstitutionRatePattern
         data_dict["SubstitutionTimestep"] = self.SubstitutionTimestep
         data_dict["TransportCarbon"] = self.TransportCarbon
         data_dict["TransportDistance"] = self.TransportDistance
         data_dict["TransportEnergy"] = self.TransportEnergy
-        data_dict["Comment"] = self.Comments
+        data_dict["Category"] = self.Category
+        data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
         data_dict["Name"] = self.Name
 
@@ -239,15 +281,17 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
     $id, Category, Comments, DataSource, Name, Parts, Type
     """
 
-    def __init__(self, Name, idf,
-                 Category='Year',
-                 **kwargs):
-        super(UmiSchedule, self).__init__(idf=idf, sch_name=Name, **kwargs)
+    def __init__(self, *args, **kwargs):
+        kwargs['sch_name'] = kwargs.get('Name', None)
+        super(UmiSchedule, self).__init__(*args, **kwargs)
 
-        self.Category = Category
-        self.Type = self.schType
-        self.Name = Name
-        self.develop()
+        self.Type = self.schTypeLimitsName
+
+    @classmethod
+    def from_idf(cls, *args, **kwargs):
+        sched = UmiSchedule(*args, **kwargs)
+        sched.develop()
+        return sched
 
     def __str__(self):
         """string representation of the object as id:Name"""
@@ -275,7 +319,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                                          Comments='Year Week Day schedules '
                                                   'created from: '
                                                   '{}'.format(self.Name)))
-        YearSchedule(Name=year.Name, _id=self.id, idf=self.idf, epbunch=year,
+        YearSchedule(Name=year.Name, id=self.id, idf=self.idf, epbunch=year,
                      newweeks=newweeks,
                      Comments='Year Week Day schedules created from: '
                               '{}'.format(self.Name))
@@ -287,31 +331,152 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         pass
 
 
-class YearSchedule(Schedule, metaclass=Unique):
+class YearScheduleParts():
+    def __init__(self, FromDay=None, FromMonth=None, ToDay=None, ToMonth=None,
+                 Schedule=None):
+        self.FromDay = FromDay
+        self.FromMonth = FromMonth
+        self.ToDay = ToDay
+        self.ToMonth = ToMonth
+        self.Schedule = Schedule
+
+    @classmethod
+    def from_json(cls, all_objects, *args, **kwargs):
+        ysp = YearScheduleParts(*args, **kwargs)
+        ref = kwargs.get('Schedule', None)
+        ysp.Schedule = all_objects.get_ref(ref)
+
+        return ysp
+
+    def __dict__(self):
+        return collections.OrderedDict(FromDay=self.FromDay,
+                                       FromMonth=self.FromMonth,
+                                       ToDay=self.ToDay,
+                                       ToMonth=self.ToMonth,
+                                       Schedule={'$ref': str(self.Schedule.id)})
+
+    def __str__(self):
+        return str(self.__dict__())
+
+
+class DaySchedule(UmiSchedule):
+    """$id, Category, Comments, DataSource, Name, Type, Values
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(DaySchedule, self).__init__(*args, **kwargs)
+        self.Values = kwargs.get('Values', None)
+
+    def to_json(self):
+        """Convert class properties to dict"""
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["Category"] = "Day"
+        data_dict["Type"] = self.schTypeLimitsName
+        data_dict["Values"] = self.Values
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
+
+    def __dict__(self):
+        return {'$ref': str(self.id)}
+
+
+class WeekSchedule(UmiSchedule):
+    """$id, Category, Comments, DataSource, Days, Name, Type"""
+
+    def __init__(self, *args, **kwargs):
+        super(WeekSchedule, self).__init__(*args, **kwargs)
+
+        days = kwargs.get('Days', None)
+        if days is None:
+            self.Days = self.get_days(kwargs['epbunch'])
+        else:
+            self.Days = days
+        _type = kwargs.get('Type', None)
+        if type is None:
+            self.schLimitType = self.get_schedule_type_limits_name()
+        else:
+            self.schLimitType = _type
+
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+        wc = WeekSchedule(*args, **kwargs)
+        days = kwargs.get('Days', None)
+        wc.Days = [wc.get_ref(day) for day in days]
+        return wc
+
+    def to_json(self):
+        """Convert class properties to dict"""
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["Category"] = "Week"
+        day: DaySchedule
+        data_dict["Days"] = [day.__dict__() for day in self.Days]
+        data_dict["Type"] = self.schLimitType
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
+
+    def get_days(self, epbunch):
+        blocks = []
+        dayname = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
+                   'Thursday', 'Friday', 'Saturday']
+        for day in dayname:
+            week_day_schedule_name = epbunch[
+                "{}_ScheduleDay_Name".format(day)]
+            blocks.append(
+                {
+                    "$ref": self.all_objects[(week_day_schedule_name,
+                                              DaySchedule.__class__)].id
+                }
+            )
+
+        return blocks
+
+    def __dict__(self):
+        return {'$ref': str(self.id)}
+
+
+class YearSchedule(UmiSchedule):
     """$id, Category, Comments, DataSource, Name, Parts, Type
     """
 
-    def __init__(self, Name, idf, _id,
-                 DataSource=None,
-                 Category='Year',
-                 **kwargs):
-        super(YearSchedule, self).__init__(idf=idf, sch_name=Name, **kwargs)
-        self.idf = idf
+    def __init__(self, *args, **kwargs):
+        super(YearSchedule, self).__init__(*args, **kwargs)
         self.Comments = kwargs.get('Comments', '')
-        if DataSource is None:
-            self.DataSource = self.idf.building_name(use_idfname=True)
+        self.epbunch = kwargs.get('epbunch', None)
+        type = kwargs.get('Type', None)
+        if type is None:
+            self.Type = self.schTypeLimitsName
         else:
-            self.DataSource = DataSource
-        self.Name = Name
-        self.id = _id
-        self.all_objects = created_obj
+            self.Type = type
+        parts = kwargs.get('Parts', None)
+        if parts is None:
+            self.Parts = self.get_parts(self.epbunch)
+        else:
+            self.Parts = parts
+        type = kwargs.get('Type', None)
+        if type is None:
+            self.schLimitType = self.get_schedule_type_limits_name()
+        else:
+            self.schLimitType = type
 
-        self.Name = Name
-        self.Category = Category
-        self.epbunch = kwargs['epbunch']
-        self.Type = self.schLimitType
-        self.Parts = self.get_parts(self.epbunch)
-        self.schLimitType = self.get_schedule_type_limits_name()
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+        ys = YearSchedule(*args, **kwargs)
+        parts = kwargs.get('Parts', None)
+
+        ys.Parts = [YearScheduleParts.from_json(all_objects=ys, **part) for
+                    part in parts]
+
+        return ys
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -319,7 +484,7 @@ class YearSchedule(Schedule, metaclass=Unique):
 
         data_dict["$id"] = str(self.id)
         data_dict["Category"] = "Year"
-        data_dict["Parts"] = self.Parts
+        data_dict["Parts"] = [part.__dict__() for part in self.Parts]
         data_dict["Type"] = self.schLimitType
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
@@ -337,116 +502,14 @@ class YearSchedule(Schedule, metaclass=Unique):
             ToMonth = epbunch['End_Month_{}'.format(i + 1)]
             FromDay = epbunch['Start_Day_{}'.format(i + 1)]
             ToDay = epbunch['End_Day_{}'.format(i + 1)]
-            parts.append(
-                {
-                    "FromDay": FromDay,
-                    "FromMonth": FromMonth,
-                    "ToDay": ToDay,
-                    "ToMonth": ToMonth,
-                    "Schedule": {
-                        "$ref": self.all_objects[week_day_schedule_name].id
-                    }
-                }
-            )
+            parts.append(YearScheduleParts(FromDay, FromMonth, ToDay,
+                                           ToMonth, self.all_objects[
+                                               (week_day_schedule_name,
+                                                WeekSchedule.__class__)]))
         return parts
 
-
-class WeekSchedule(Schedule, metaclass=Unique):
-    """$id, Category, Comments, DataSource, Days, Name, Type"""
-
-    def __init__(self, Name, idf,
-                 DataSource=None,
-                 Comments=None,
-                 Category='Week',
-                 **kwargs):
-        super(WeekSchedule, self).__init__(idf=idf, sch_name=Name, **kwargs)
-        self.idf = idf
-        self.Comments = Comments
-        if DataSource is None:
-            self.DataSource = self.idf.building_name(use_idfname=True)
-        else:
-            self.DataSource = DataSource
-        self.Name = Name
-        self.all_objects = created_obj
-        self.id = id(self)
-
-        self.Name = Name
-        self.Category = Category
-        self.week = kwargs.get('week', None)
-        self.Days = self.get_days(kwargs['epbunch'])
-        self.schLimitType = self.get_schedule_type_limits_name()
-
-    def to_json(self):
-        """Convert class properties to dict"""
-        data_dict = collections.OrderedDict()
-
-        data_dict["$id"] = str(self.id)
-        data_dict["Category"] = "Week"
-        data_dict["Days"] = self.Days
-        data_dict["Type"] = self.schLimitType
-        data_dict["Comments"] = self.Comments
-        data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
-
-        return data_dict
-
-    def get_days(self, epbunch):
-        blocks = []
-        dayname = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
-                   'Thursday', 'Friday', 'Saturday']
-        for day in dayname:
-            week_day_schedule_name = epbunch[
-                "{}_ScheduleDay_Name".format(day)]
-            blocks.append(
-                {
-                    "$ref": self.all_objects[week_day_schedule_name].id
-                }
-            )
-
-        return blocks
-
-
-class DaySchedule(Schedule, metaclass=Unique):
-    """$id, Category, Comments, DataSource, Name, Type, Values
-    """
-
-    def __init__(self, Name, idf,
-                 DataSource=None,
-                 Comments=None,
-                 Category='Day',
-                 **kwargs):
-        super(DaySchedule, self).__init__(idf=idf, sch_name=Name, **kwargs)
-        self.idf = idf
-        self.Comments = Comments
-        if DataSource is None:
-            self.DataSource = self.idf.building_name(use_idfname=True)
-        else:
-            self.DataSource = DataSource
-        self.Name = Name
-        self.all_objects = created_obj
-        self.id = id(self)
-
-        self.Name = Name
-        self.Category = Category
-        self.Values = self.get_values()
-        self.schLimitType = self.get_schedule_type_limits_name()
-
-    def to_json(self):
-        """Convert class properties to dict"""
-        data_dict = collections.OrderedDict()
-
-        data_dict["$id"] = str(self.id)
-        data_dict["Category"] = "Day"
-        data_dict["Type"] = self.schLimitType
-        data_dict["Values"] = self.Values
-        data_dict["Comments"] = self.Comments
-        data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
-
-        return data_dict
-
-    def get_values(self):
-        return list(self.all_values.astype(float))
+    def __dict__(self):
+        return {'$ref': str(self.id)}
 
 
 class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
@@ -454,18 +517,309 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
     WaterSchedule.$ref, WaterSupplyTemperature, WaterTemperatureInlet
     """
 
-    def __init__(self, Name, *args, idf=None,
-                 Category=None, DataSource=None, FlowRatePerFloorArea=None,
-                 IsOn=None, WaterSupplyTemperature=None,
-                 WaterTemperatureInlet=None, **kwargs):
+    def __init__(self, WaterSchedule=None, *args,
+                 Category=None, DataSource=None, FlowRatePerFloorArea=-0.03,
+                 IsOn=True, WaterSupplyTemperature=65,
+                 WaterTemperatureInlet=10, **kwargs):
+        """
+
+        Args:
+            WaterSchedule (YearSchedule):
+        """
         super(DomesticHotWaterSetting, self).__init__(*args, **kwargs)
-        self.idf = idf
         self.Category = Category
         self.DataSource = DataSource
         self.FlowRatePerFloorArea = FlowRatePerFloorArea
         self.IsOn = IsOn
         self.WaterSupplyTemperature = WaterSupplyTemperature
         self.WaterTemperatureInlet = WaterTemperatureInlet
+        self.WaterSchedule = WaterSchedule
+
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+        dhws = DomesticHotWaterSetting(*args, **kwargs)
+        wat_sch = kwargs.get('WaterSchedule', None)
+        dhws.WaterSchedule = dhws.get_ref(wat_sch)
+        return dhws
+
+    def to_json(self):
+        """Convert class properties to dict"""
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["FlowRatePerFloorArea"] = self.FlowRatePerFloorArea
+        data_dict["IsOn"] = self.IsOn
+        data_dict["WaterSchedule"] = self.WaterSchedule.__dict__()
+        data_dict["WaterSupplyTemperature"] = self.WaterSupplyTemperature
+        data_dict["WaterTemperatureInlet"] = self.WaterTemperatureInlet
+        data_dict["Category"] = self.Category
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
+
+    def __dict__(self):
+        return {'$ref': str(self.id)}
+
+
+class VentilationSetting(UmiBase, metaclass=Unique):
+    """$id, Afn, Infiltration, IsBuoyancyOn, IsInfiltrationOn, IsNatVentOn,
+    IsScheduledVentilationOn, IsWindOn, NatVentMaxOutdoorAirTemp,
+    NatVentMaxRelHumidity, NatVentMinOutdoorAirTemp, NatVentSchedule.$ref,
+    NatVentZoneTempSetpoint, ScheduledVentilationAch,
+    ScheduledVentilationSchedule.$ref, ScheduledVentilationSetpoint
+    """
+
+    def __init__(self, NatVentSchedule=None, ScheduledVentilationSchedule=None,
+                 *args,
+                 Afn=False, Infiltration=0.1, IsBuoyancyOn=True,
+                 IsInfiltrationOn=True,
+                 IsNatVentOn=False,
+                 IsScheduledVentilationOn=False, IsWindOn,
+                 NatVentMaxOutdoorAirTemp=30,
+                 NatVentMaxRelHumidity=90, NatVentMinOutdoorAirTemp=0,
+                 NatVentZoneTempSetpoint=18, ScheduledVentilationAch=0.6,
+                 ScheduledVentilationSetpoint=18, **kwargs):
+        super(VentilationSetting, self).__init__(*args, **kwargs)
+        self.Afn = Afn
+        self.Infiltration = Infiltration
+        self.IsBuoyancyOn = IsBuoyancyOn
+        self.IsInfiltrationOn = IsInfiltrationOn
+        self.IsNatVentOn = IsNatVentOn
+        self.IsScheduledVentilationOn = IsScheduledVentilationOn
+        self.IsWindOn = IsWindOn
+        self.NatVentMaxOutdoorAirTemp = NatVentMaxOutdoorAirTemp
+        self.NatVentMaxRelHumidity = NatVentMaxRelHumidity
+        self.NatVentMinOutdoorAirTemp = NatVentMinOutdoorAirTemp
+        self.NatVentZoneTempSetpoint = NatVentZoneTempSetpoint
+        self.ScheduledVentilationAch = ScheduledVentilationAch
+        self.ScheduledVentilationSetpoint = ScheduledVentilationSetpoint
+
+        self.ScheduledVentilationSchedule = ScheduledVentilationSchedule
+        self.NatVentSchedule = NatVentSchedule
+
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+        vs = VentilationSetting(*args, **kwargs)
+        vent_sch = kwargs.get('ScheduledVentilationSchedule', None)
+        vs.ScheduledVentilationSchedule = vs.get_ref(vent_sch)
+        nat_sch = kwargs.get('NatVentSchedule', None)
+        vs.NatVentSchedule = vs.get_ref(nat_sch)
+        return vs
+
+    def to_json(self):
+        """Convert class properties to dict"""
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["Afn"] = self.Afn
+        data_dict["IsBuoyancyOn"] = self.IsBuoyancyOn
+        data_dict["Infiltration"] = self.Infiltration
+        data_dict["IsInfiltrationOn"] = self.IsInfiltrationOn
+        data_dict["IsNatVentOn"] = self.IsNatVentOn
+        data_dict["IsScheduledVentilationOn"] = self.IsScheduledVentilationOn
+        data_dict["NatVentMaxRelHumidity"] = self.NatVentMaxRelHumidity
+        data_dict["NatVentMaxOutdoorAirTemp"] = self.NatVentMaxOutdoorAirTemp
+        data_dict["NatVentMinOutdoorAirTemp"] = self.NatVentMinOutdoorAirTemp
+        data_dict["NatVentSchedule"] = self.NatVentSchedule.__dict__()
+        data_dict["NatVentZoneTempSetpoint"] = self.NatVentZoneTempSetpoint
+        data_dict["ScheduledVentilationAch"] = self.ScheduledVentilationAch
+        data_dict["ScheduledVentilationSchedule"] = \
+            self.ScheduledVentilationSchedule.__dict__()
+        data_dict["ScheduledVentilationSetpoint"] = \
+            self.ScheduledVentilationSetpoint
+        data_dict["IsWindOn"] = self.IsWindOn
+        data_dict["Category"] = self.Category
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
+
+    def __dict__(self):
+        return {'$ref': str(self.id)}
+
+
+class ZoneConditioning(UmiBase, metaclass=Unique):
+    """$id, Category, Comments, CoolingCoeffOfPerf, CoolingLimitType,
+    CoolingSchedule.$ref, CoolingSetpoint, DataSource, EconomizerType,
+    HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible,
+    HeatRecoveryType, HeatingCoeffOfPerf, HeatingLimitType,
+    HeatingSchedule.$ref, HeatingSetpoint, IsCoolingOn, IsHeatingOn,
+    IsMechVentOn, MaxCoolFlow, MaxCoolingCapacity, MaxHeatFlow,
+    MaxHeatingCapacity, MechVentSchedule.$ref, MinFreshAirPerArea,
+    MinFreshAirPerPerson, Name"""
+
+    def __init__(self, *args,
+                 Category=None, Comments=None, CoolingCoeffOfPerf,
+                 CoolingLimitType='NoLimit',
+                 CoolingSetpoint=26, DataSource=None,
+                 EconomizerType='NoEconomizer',
+                 HeatRecoveryEfficiencyLatent=0.65,
+                 HeatRecoveryEfficiencySensible=0.7,
+                 HeatRecoveryType=None, HeatingCoeffOfPerf,
+                 HeatingLimitType='NoLimit',
+                 HeatingSetpoint=20, IsCoolingOn=True, IsHeatingOn=True,
+                 IsMechVentOn=True, MaxCoolFlow=100, MaxCoolingCapacity=100,
+                 MaxHeatFlow=100,
+                 MaxHeatingCapacity=100,
+                 MinFreshAirPerArea=0.001,
+                 MinFreshAirPerPerson=0.001,
+                 **kwargs):
+        super(ZoneConditioning, self).__init__(*args, **kwargs)
+        self.MechVentSchedule = None
+        self.HeatingSchedule = None
+        self.CoolingSchedule = None
+        self.Category = Category
+        self.Comments = Comments
+        self.CoolingCoeffOfPerf = CoolingCoeffOfPerf
+        self.CoolingLimitType = CoolingLimitType
+        self.CoolingSetpoint = CoolingSetpoint
+        self.DataSource = DataSource
+        self.EconomizerType = EconomizerType
+        self.HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencyLatent
+        self.HeatRecoveryEfficiencySensible = HeatRecoveryEfficiencySensible
+        self.HeatRecoveryType = HeatRecoveryType
+        self.HeatingCoeffOfPerf = HeatingCoeffOfPerf
+        self.HeatingLimitType = HeatingLimitType
+        self.HeatingSetpoint = HeatingSetpoint
+        self.IsCoolingOn = IsCoolingOn
+        self.IsHeatingOn = IsHeatingOn
+        self.IsMechVentOn = IsMechVentOn
+        self.MaxCoolFlow = MaxCoolFlow
+        self.MaxCoolingCapacity = MaxCoolingCapacity
+        self.MaxHeatFlow = MaxHeatFlow
+        self.MaxHeatingCapacity = MaxHeatingCapacity
+        self.MinFreshAirPerArea = MinFreshAirPerArea
+        self.MinFreshAirPerPerson = MinFreshAirPerPerson
+
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+        zc = ZoneConditioning(*args, **kwargs)
+
+        cool_schd = kwargs.get('CoolingSchedule', None)
+        zc.CoolingSchedule = zc.get_ref(cool_schd)
+        heat_schd = kwargs.get('HeatingSchedule', None)
+        zc.HeatingSchedule = zc.get_ref(heat_schd)
+        mech_schd = kwargs.get('MechVentSchedule', None)
+        zc.MechVentSchedule = zc.get_ref(mech_schd)
+        return zc
+
+    def to_json(self):
+        """Convert class properties to dict"""
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["CoolingSchedule"] = self.CoolingSchedule.__dict__()
+        data_dict["CoolingCoeffOfPerf"] = self.CoolingCoeffOfPerf
+        data_dict["CoolingSetpoint"] = self.CoolingSetpoint
+        data_dict["CoolingLimitType"] = self.CoolingLimitType
+        data_dict["EconomizerType"] = self.EconomizerType
+        data_dict["HeatingCoeffOfPerf"] = self.HeatingCoeffOfPerf
+        data_dict["HeatingLimitType"] = self.HeatingLimitType
+        data_dict["HeatingSchedule"] = self.HeatingSchedule.__dict__()
+        data_dict["HeatingSetpoint"] = self.HeatingSetpoint
+        data_dict[
+            "HeatRecoveryEfficiencyLatent"] = self.HeatRecoveryEfficiencyLatent
+        data_dict[
+            "HeatRecoveryEfficiencySensible"] = \
+            self.HeatRecoveryEfficiencySensible
+        data_dict["HeatRecoveryType"] = self.HeatRecoveryType
+        data_dict["IsCoolingOn"] = self.IsCoolingOn
+        data_dict["IsHeatingOn"] = self.IsHeatingOn
+        data_dict["IsMechVentOn"] = self.IsMechVentOn
+        data_dict["MaxCoolFlow"] = self.MaxCoolFlow
+        data_dict["MaxCoolingCapacity"] = self.MaxCoolingCapacity
+        data_dict["MaxHeatFlow"] = self.MaxHeatFlow
+        data_dict["MaxHeatingCapacity"] = self.MaxHeatingCapacity
+        data_dict["MechVentSchedule"] = self.MechVentSchedule.__dict__()
+        data_dict["MinFreshAirPerArea"] = self.MinFreshAirPerArea
+        data_dict["MinFreshAirPerPerson"] = self.MinFreshAirPerPerson
+        data_dict["Category"] = self.Category
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
+
+    def __dict__(self):
+        return {'$ref': str(self.id)}
+
+
+class ZoneLoad(UmiBase, metaclass=Unique):
+    """$id, Category, Comments, DataSource, DimmingType,
+    EquipmentAvailabilitySchedule.$ref, EquipmentPowerDensity,
+    IlluminanceTarget, IsEquipmentOn, IsLightingOn, IsPeopleOn,
+    LightingPowerDensity, LightsAvailabilitySchedule.$ref, Name,
+    OccupancySchedule.$ref, PeopleDensity"""
+
+    def __init__(self, *args,
+                 DimmingType='Continuous',
+                 EquipmentAvailabilitySchedule,
+                 EquipmentPowerDensity=12,
+                 IlluminanceTarget=500,
+                 LightingPowerDensity=12,
+                 LightsAvailabilitySchedule,
+                 OccupancySchedule,
+                 IsEquipmentOn=True,
+                 IsLightingOn=True,
+                 IsPeopleOn=True,
+                 PeopleDensity=0.2,
+                 **kwargs):
+        super(ZoneLoad, self).__init__(*args, **kwargs)
+        self.DimmingType = DimmingType
+        self.EquipmentAvailabilitySchedule = EquipmentAvailabilitySchedule
+        self.EquipmentPowerDensity = EquipmentPowerDensity
+        self.IlluminanceTarget = IlluminanceTarget
+        self.LightingPowerDensity = LightingPowerDensity
+        self.LightsAvailabilitySchedule = LightsAvailabilitySchedule
+        self.OccupancySchedule = OccupancySchedule
+        self.IsEquipmentOn = IsEquipmentOn
+        self.IsLightingOn = IsLightingOn
+        self.IsPeopleOn = IsPeopleOn
+        self.PeopleDensity = PeopleDensity
+
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+        zl = ZoneLoad(*args, **kwargs)
+
+        cool_schd = kwargs.get('EquipmentAvailabilitySchedule', None)
+        zl.EquipmentAvailabilitySchedule = zl.get_ref(cool_schd)
+        heat_schd = kwargs.get('LightsAvailabilitySchedule', None)
+        zl.LightsAvailabilitySchedule = zl.get_ref(heat_schd)
+        mech_schd = kwargs.get('OccupancySchedule', None)
+        zl.OccupancySchedule = zl.get_ref(mech_schd)
+
+        return zl
+
+    def to_json(self):
+        """Convert class properties to dict"""
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["DimmingType"] = self.DimmingType
+        data_dict["EquipmentAvailabilitySchedule"] = \
+            self.EquipmentAvailabilitySchedule.__dict__()
+        data_dict["EquipmentPowerDensity"] = self.EquipmentPowerDensity
+        data_dict["IlluminanceTarget"] = self.IlluminanceTarget
+        data_dict["LightingPowerDensity"] = self.LightingPowerDensity
+        data_dict["LightsAvailabilitySchedule"] = \
+            self.LightsAvailabilitySchedule.__dict__()
+        data_dict["OccupancySchedule"] = self.OccupancySchedule.__dict__()
+        data_dict["IsEquipmentOn"] = self.IsEquipmentOn
+        data_dict["IsLightingOn"] = self.IsLightingOn
+        data_dict["IsPeopleOn"] = self.IsPeopleOn
+        data_dict["PeopleDensity"] = self.PeopleDensity
+        data_dict["Category"] = self.Category
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
+
+    def __dict__(self):
+        return {'$ref': str(self.id)}
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
@@ -475,20 +829,57 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
     """
 
     def __init__(self, *args,
-                 Category='',
-                 PartitionRatio=0.35,
+                 Core=None,
+                 Perimeter=None,
+                 Structure=None,
+                 Windows=None,
                  Lifespan=60,
-                 sql=None,
+                 PartitionRatio=0.35,
                  **kwargs):
+        """
+
+        Args:
+            Structure (StructureDefinition):
+            Windows (WindowSetting):
+            Perimeter (Zone):
+            Core (Zone):
+        """
         super(BuildingTemplate, self).__init__(*args, **kwargs)
-
         self.PartitionRatio = PartitionRatio
-        self.Category = Category
         self.Lifespan = Lifespan
-        self.sql = sql
+        self.Core = Core
+        self.Perimeter = Perimeter
+        self.Structure = Structure
+        self.Windows = Windows
 
-        self.zone_refs()
-        self.windows()
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+
+        bt = BuildingTemplate(*args, **kwargs)
+
+        ref = kwargs.get('Core', None)
+        bt.Core = bt.get_ref(ref)
+        ref = kwargs.get('Perimeter', None)
+        bt.Perimeter = bt.get_ref(ref)
+        ref = kwargs.get('Structure', None)
+        bt.Structure = bt.get_ref(ref)
+        ref = kwargs.get('Windows', None)
+        try:
+            bt.Windows = WindowSetting.from_json(Name=ref.pop('Name'), **ref)
+        except:
+            bt.Windows = bt.get_ref(ref)
+
+        return bt
+
+    @classmethod
+    def from_idf(cls, *args, **kwargs):
+        bt = BuildingTemplate(Core=None, Perimeter=None, Structure=None,
+                              Windows=None, **kwargs)
+
+        bt.zone_refs()
+        bt.windows()
+
+        return bt
 
     def windows(self):
         """create windows"""
@@ -512,12 +903,13 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                         surfaces[zone.Name][azimuth]['shading'] = {}
                         if subs:
                             for sub in subs:
-                                surfaces[zone.Name][azimuth]['Name'] = sub.Name
+                                surfaces[zone.Name][azimuth][
+                                    'Name'] = surface.Name
                                 surfaces[zone.Name][azimuth][
                                     'Construction_Name'] = \
-                                    sub.Construction_Name
+                                    surface.Construction_Name
                                 surfaces[zone.Name][azimuth][
-                                    'window'] += sub.area
+                                    'window'] += surface.area
                                 surfaces[zone.Name][azimuth]['shading'] = \
                                     self.get_shading_control(sub)
                         wwr = surfaces[zone.Name][azimuth]['window'] / \
@@ -527,15 +919,16 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
                         if surfaces[zone.Name][azimuth]['window'] > 0:
                             window.append(
-                                Window(idf=self.idf,
-                                       Name=surfaces[zone.Name][azimuth][
-                                           'Name'],
-                                       **surfaces[zone.Name][azimuth][
-                                           'shading'],
-                                       Construction=
-                                       surfaces[zone.Name][azimuth][
-                                           'Construction_Name']
-                                       )
+                                WindowSetting.from_idf(idf=self.idf,
+                                                       Name=
+                                                surfaces[zone.Name][azimuth][
+                                                    'Name'],
+                                                       **surfaces[zone.Name][azimuth][
+                                                    'shading'],
+                                                       Construction=
+                                                surfaces[zone.Name][azimuth][
+                                                    'Construction_Name']
+                                                       )
                             )
                 except:
                     pass
@@ -545,7 +938,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         #     try:
         #         if surfaces[azim]['window'] > 0:
         #             window.append(
-        #                 Window(idf=self.idf,
+        #                 WindowSetting(idf=self.idf,
         #                        **surfaces[azim]['shading'],
         #                        **surfaces[azim]['window_name'])
         #             )
@@ -605,13 +998,14 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                                 Name=construction_name,
                                 Outside_Layer=construction_name)
 
-            self.Windows = Window(Name='Random Window', Comments=msg,
-                                  idf=self.idf, Construction=construction_name,
-                                  **kwargs)
+            self.Windows = WindowSetting.from_idf(Name='Random WindowSetting', Comments=msg,
+                                                  idf=self.idf,
+                                                  Construction=construction_name,
+                                                  **kwargs)
 
             # Todo: We should actually raise an error once this method is
             #  corrected. Use the error bellow
-            # raise ValueError('Could not create a Window for '
+            # raise ValueError('Could not create a WindowSetting for '
             #                  'building {}'.format(self.DataSource))
 
     def get_shading_control(self, sub):
@@ -657,13 +1051,14 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         core_zone_names = zone_info.loc[core_n, 'Zone Name']
         perim_zone_names = zone_info.loc[perim_n, 'Zone Name']
 
-        perim = Zone(Zone_Names=perim_zone_names.values, sql=self.sql,
-                     Name=perim_name, idf=self.idf)
+        perim = Zone.from_idf(Zone_Names=perim_zone_names.values, sql=self.sql,
+                              Name=perim_name, idf=self.idf)
 
         if not core_zone_names.empty:
             # if there are core zones, create core zone
-            core = Zone(Zone_Names=core_zone_names.values, sql=self.sql,
-                        Name=core_name, idf=self.idf)
+            core = Zone.from_idf(Zone_Names=core_zone_names.values,
+                                 sql=self.sql,
+                                 Name=core_name, idf=self.idf)
         else:
             # if there is no core, use the perim zone
             core = perim
@@ -683,18 +1078,12 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
-        data_dict["Core"] = {
-            "$ref": str(self.Core.id)
-        }
+        data_dict["Core"] = self.Core.__dict__()
         data_dict["Lifespan"] = self.Lifespan
         data_dict["PartitionRatio"] = self.PartitionRatio
-        data_dict["Perimeter"] = {
-            "$ref": str(self.Perimeter.id)
-        }
-        data_dict["Structure"] = {
-            "$ref": str(self.Structure.id)
-        }
-        data_dict["Windows"] = self.Windows.to_json()
+        data_dict["Perimeter"] = self.Perimeter.__dict__()
+        data_dict["Structure"] = self.Structure.__dict__()
+        data_dict["Windows"] = self.Windows.__dict__()
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
@@ -704,6 +1093,20 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
     def __hash__(self):
         return hash(self.Name)
+
+
+class MassRatio(object):
+    def __init__(self, HighLoadRatio=None, Material=None, NormalRatio=None):
+        self.HighLoadRatio = HighLoadRatio
+        self.Material = Material
+        self.NormalRatio = NormalRatio
+
+    def __dict__(self):
+        """dict representation of object"""
+        return collections.OrderedDict(HighLoadRatio=self.HighLoadRatio,
+                                       Material={'$ref': str(
+                                           self.Material.id)},
+                                       NormalRatio=self.NormalRatio)
 
 
 class StructureDefinition(UmiBase, metaclass=Unique):
@@ -719,7 +1122,7 @@ class StructureDefinition(UmiBase, metaclass=Unique):
                  Category='',
                  DisassemblyCarbon=0,
                  DisassemblyEnergy=0,
-                 MassRatios=0,
+                 MassRatios=None,
                  **kwargs):
         super(StructureDefinition, self).__init__(*args, **kwargs)
         self.AssemblyCarbon = AssemblyCarbon
@@ -730,6 +1133,37 @@ class StructureDefinition(UmiBase, metaclass=Unique):
         self.DisassemblyEnergy = DisassemblyEnergy
         self.MassRatios = MassRatios
 
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+        sd = StructureDefinition(*args, **kwargs)
+        massratios = kwargs.get('MassRatios', None)
+        sd.MassRatios = [MassRatio(HighLoadRatio=massratio['HighLoadRatio'],
+                                   Material=sd.get_ref(massratio['Material']),
+                                   NormalRatio=massratio['NormalRatio'])
+                         for massratio in massratios]
+        return sd
+
+    def to_json(self):
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["MassRatios"] = [mass.__dict__() for mass
+                                   in self.MassRatios]
+        data_dict["AssemblyCarbon"] = self.AssemblyCarbon
+        data_dict["AssemblyCost"] = self.AssemblyCost
+        data_dict["AssemblyEnergy"] = self.AssemblyEnergy
+        data_dict["DisassemblyCarbon"] = self.DisassemblyCarbon
+        data_dict["DisassemblyEnergy"] = self.DisassemblyEnergy
+        data_dict["Category"] = self.Category
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = self.Name
+
+        return data_dict
+
+    def __dict__(self):
+        return {'$ref': str(self.id)}
+
 
 class Zone(UmiBase, metaclass=Unique):
     """
@@ -739,21 +1173,46 @@ class Zone(UmiBase, metaclass=Unique):
     InternalMassExposedPerFloorArea, Loads.$ref, Name, Ventilation.$ref
     """
 
-    def __init__(self, *args, Category=None, Zone_Names,
+    def __init__(self, Conditioning=None, Constructions=None,
+                 DomesticHotWater=None, Loads=None, Ventilation=None,
+                 InternalMassConstruction=None, *args,
                  DaylightMeshResolution=1, DaylightWorkplaneHeight=0.8,
-                 InternalMassExposedPerFloorArea=1.05, sql=None, **kwargs):
+                 InternalMassExposedPerFloorArea=1.05, **kwargs):
+        """
+
+        Args:
+            Ventilation (VentilationSetting):
+            Loads (ZoneLoad):
+            InternalMassConstruction (OpaqueConstruction):
+            DomesticHotWater (DomesticHotWaterSetting):
+            Constructions (ZoneConstructionSet):
+            Conditioning (ZoneConditioning):
+        """
         super(Zone, self).__init__(*args, **kwargs)
-        self.Category = Category
-        self.Zone_Names = Zone_Names
-        self.sql = sql
-        self.InternalMassExposedPerFloorArea = InternalMassExposedPerFloorArea
-        self.conditioning()
-        self.constructions()
-        self.dhw()
-        self.internal_mass_construction()
-        self.DaylightWorkplaneHeight = DaylightWorkplaneHeight
+
+        self.Ventilation = Ventilation
+        self.Loads = Loads
+        self.Conditioning = Conditioning
+        self.Constructions = Constructions
         self.DaylightMeshResolution = DaylightMeshResolution
-        self.loads()
+        self.DaylightWorkplaneHeight = DaylightWorkplaneHeight
+        self.DomesticHotWater = DomesticHotWater
+        self.InternalMassConstruction = InternalMassConstruction
+        self.InternalMassExposedPerFloorArea = InternalMassExposedPerFloorArea
+
+    @classmethod
+    def from_idf(cls, *args, **kwargs):
+        z = Zone(*args, **kwargs)
+        z.Zone_Names = kwargs.get('Zone_Names', None)
+        z.sql = kwargs.get('sql', None)
+
+        z.conditioning()
+        z.constructions()
+        z.dhw()
+        z.internal_mass_construction()
+        z.loads()
+
+        return z
 
     def conditioning(self):
         """run conditioning and return id"""
@@ -762,14 +1221,13 @@ class Zone(UmiBase, metaclass=Unique):
     def constructions(self):
         """run construction sets and return id"""
         set_name = '_'.join([self.Name, 'constructions'])
-        self.ConstructionsSet = ZoneConstructionSet(Name=set_name,
-                                                    Zone_Names=self.Zone_Names,
-                                                    idf=self.idf,
-                                                    sql=self.sql)
+        self.Constructions = ZoneConstructionSet.from_idf(
+            Zone_Names=self.Zone_Names, sql=self.sql, Name=set_name,
+            idf=self.idf)
 
     def dhw(self):
         """run domestic hot water and return id"""
-        self.DomesticHotWater = []
+        self.DomesticHotWater = DomesticHotWaterSetting()
 
     def internal_mass_construction(self):
         """Group internal walls into a ThermalMass object for each Zones"""
@@ -778,11 +1236,12 @@ class Zone(UmiBase, metaclass=Unique):
         for zone in self.idf.idfobjects['ZONE']:
             for surface in zone.zonesurfaces:
                 if surface.fieldvalues[0] == 'InternalMass':
-                    oc = OpaqueConstruction(Name=surface.Construction_Name,
-                                            idf=self.idf,
-                                            Surface_Type='Wall',
-                                            Outside_Boundary_Condition='Outdoors',
-                                            )
+                    oc = OpaqueConstruction.from_idf(
+                        Name=surface.Construction_Name,
+                        idf=self.idf,
+                        Surface_Type='Wall',
+                        Outside_Boundary_Condition='Outdoors',
+                    )
                     self.InternalMassConstruction = oc
                     pass
                 else:
@@ -806,11 +1265,11 @@ class Zone(UmiBase, metaclass=Unique):
                         Zone_Name=zone.Name,
                         Surface_Area=10
                     )
-                    oc = OpaqueConstruction(Name=new.Name,
-                                            idf=self.idf,
-                                            Surface_Type='Wall',
-                                            Outside_Boundary_Condition='Outdoors'
-                                            )
+                    oc = OpaqueConstruction.from_idf(Name=new.Name,
+                                                     idf=self.idf,
+                                                     Surface_Type='Wall',
+                                                     Outside_Boundary_Condition='Outdoors'
+                                                     )
                     self.InternalMassConstruction = oc
                     self.InternalMassExposedPerFloorArea = \
                         self.idf.getobject('INTERNALMASS',
@@ -819,38 +1278,27 @@ class Zone(UmiBase, metaclass=Unique):
 
     def loads(self):
         """run loads and return id"""
-        self.Loads = []
+        self.Loads = ZoneLoad()
 
     def ventilation(self):
-        self.Ventilation = []
+        self.Ventilation = VentilationSetting()
 
     def to_json(self):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Conditioning"] = {
-            "$ref": "NotImplementedYet"  # str(self.Conditioning.id)
-        }
-        data_dict["Constructions"] = {
-            "$ref": "NotImplementedYet"  # str(self.ConstructionsSet.id)
-        }
+        data_dict["Conditioning"] = self.Conditioning.__dict__()
+        data_dict["Constructions"] = self.Constructions.__dict__()
         data_dict["DaylightMeshResolution"] = self.DaylightMeshResolution
         data_dict["DaylightWorkplaneHeight"] = self.DaylightWorkplaneHeight
-        data_dict["DomesticHotWater"] = {
-            "$ref": "NotImplementedYet"  # str(self.DomesticHotWater.id)
-        }
-        data_dict["InternalMassConstruction"] = {
-            "$ref": str(self.InternalMassConstruction.id)
-        }
+        data_dict["DomesticHotWater"] = self.DomesticHotWater.__dict__()
+        data_dict["InternalMassConstruction"] = \
+            self.InternalMassConstruction.__dict__()
         data_dict[
             "InternalMassExposedPerFloorArea"] = \
             self.InternalMassExposedPerFloorArea
-        data_dict["Loads"] = {
-            "$ref": "NotImplementedYet"  # str(self.Loads.id)
-        }
-        data_dict["Ventilation"] = {
-            "$ref": "NotImplementedYet"  # str(self.Ventilation.id)
-        }
+        data_dict["Loads"] = self.Loads.__dict__()
+        data_dict["Ventilation"] = self.Ventilation.__dict__()
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
@@ -858,35 +1306,85 @@ class Zone(UmiBase, metaclass=Unique):
 
         return data_dict
 
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+        zone = Zone(*args, **kwargs)
+
+        ref = kwargs.get('Conditioning', None)
+        zone.Conditioning = zone.get_ref(ref)
+        ref = kwargs.get('Constructions', None)
+        zone.Constructions = zone.get_ref(ref)
+        ref = kwargs.get('DomesticHotWater', None)
+        zone.DomesticHotWater = zone.get_ref(ref)
+        ref = kwargs.get('InternalMassConstruction', None)
+        zone.InternalMassConstruction = zone.get_ref(ref)
+        ref = kwargs.get('Loads', None)
+        zone.Loads = zone.get_ref(ref)
+        ref = kwargs.get('Ventilation', None)
+        zone.Ventilation = zone.get_ref(ref)
+
+        return zone
+
+    def __dict__(self):
+        return {'$ref': str(self.id)}
+
 
 class ZoneConstructionSet(UmiBase, metaclass=Unique):
     """Zone Specific Construction ids
 
     $id, Category, Comments, DataSource, Facade.$ref, Ground.$ref,
     IsFacadeAdiabatic, IsGroundAdiabatic, IsPartitionAdiabatic,
-    IsRoofAdiabatic, IsSlabAdiabatic, Name, Partition.$ref, Roof.$ref, Slab.$ref
+    IsRoofAdiabatic, IsSlabAdiabatic, Name, Partition.$ref, Roof.$ref,
+    Slab.$ref
     """
 
-    def __init__(self, Zone_Names,
-                 Category='',
-                 IsSlabAdiabatic=False,
-                 IsRoofAdiabatic=False,
-                 IsPartitionAdiabatic=False,
-                 IsGroundAdiabatic=False,
-                 IsFacadeAdiabatic=False,
-                 sql=None,
+    def __init__(self, Zone_Names=None, Slab=None, IsSlabAdiabatic=False,
+                 Roof=None, IsRoofAdiabatic=False, Partition=None,
+                 IsPartitionAdiabatic=False, Ground=None,
+                 IsGroundAdiabatic=False, Facade=None, IsFacadeAdiabatic=False,
                  **kwargs):
         super(ZoneConstructionSet, self).__init__(**kwargs)
-        self.Category = Category
+        self.Slab = Slab
         self.IsSlabAdiabatic = IsSlabAdiabatic
+        self.Roof = Roof
         self.IsRoofAdiabatic = IsRoofAdiabatic
+        self.Partition = Partition
         self.IsPartitionAdiabatic = IsPartitionAdiabatic
+        self.Ground = Ground
         self.IsGroundAdiabatic = IsGroundAdiabatic
+        self.Facade = Facade
         self.IsFacadeAdiabatic = IsFacadeAdiabatic
-        self.Zone_Names = Zone_Names
-        self.sql = sql
 
-        self.constructions()
+        self.Zone_Names = Zone_Names
+
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+        zc = ZoneConstructionSet(*args, **kwargs)
+
+        ref = kwargs.get('Facade', None)
+        zc.Facade = zc.get_ref(ref)
+
+        ref = kwargs.get('Ground', None)
+        zc.Ground = zc.get_ref(ref)
+
+        ref = kwargs.get('Partition', None)
+        zc.Partition = zc.get_ref(ref)
+
+        ref = kwargs.get('Roof', None)
+        zc.Roof = zc.get_ref(ref)
+
+        ref = kwargs.get('Slab', None)
+        zc.Slab = zc.get_ref(ref)
+
+        return zc
+
+    @classmethod
+    def from_idf(self, *args, **kwargs):
+        zc = ZoneConstructionSet(*args, **kwargs)
+
+        zc.constructions()
+
+        return zc
 
     def constructions(self):
         """G"""
@@ -913,11 +1411,11 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         # Here we create OpaqueConstruction using a apply.
         constructions_df['constructions'] = constructions_df.apply(
-            lambda x: OpaqueConstruction(Name=x.Construction_Name,
-                                         idf=self.idf,
-                                         Surface_Type=x.Surface_Type,
-                                         Outside_Boundary_Condition=x.Outside_Boundary_Condition,
-                                         Category=x.Category),
+            lambda x: OpaqueConstruction.from_idf(Name=x.Construction_Name,
+                                                  idf=self.idf,
+                                                  Surface_Type=x.Surface_Type,
+                                                  Outside_Boundary_Condition=x.Outside_Boundary_Condition,
+                                                  Category=x.Category),
             axis=1)
 
         partcond = (constructions_df.Type == 5) | (constructions_df.Type == 0)
@@ -978,41 +1476,80 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         return data_dict
 
+    def __dict__(self):
+        return {'$ref': str(self.id)}
 
-class OpaqueConstruction(UmiBase, metaclass=Unique):
-    """$id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
-    DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
-    """
 
-    def __init__(self, Surface_Type,
-                 Outside_Boundary_Condition,
-                 *args,
-                 AssemblyCarbon=0,
-                 AssemblyCost=0,
-                 AssemblyEnergy=0,
-                 DisassemblyCarbon=0,
-                 DisassemblyEnergy=0,
-                 Type=0,
-                 Category="Facade",
-                 IsAdiabatic=False,
-                 **kwargs):
-        super(OpaqueConstruction, self).__init__(*args, **kwargs)
-        self.Surface_Type = Surface_Type
-        self.Outside_Boundary_Condition = Outside_Boundary_Condition
-        self.IsAdiabatic = IsAdiabatic
-        self.Type = Type
-        self.Category = Category
+class ConstructionBase(UmiBase):
+    def __init__(self, AssemblyCarbon=0, AssemblyCost=0, AssemblyEnergy=0,
+                 DisassemblyCarbon=0, DisassemblyEnergy=0, *args, **kwargs):
+        super(ConstructionBase, self).__init__(*args, **kwargs)
         self.AssemblyCarbon = AssemblyCarbon
         self.AssemblyCost = AssemblyCost
         self.AssemblyEnergy = AssemblyEnergy
         self.DisassemblyCarbon = DisassemblyCarbon
         self.DisassemblyEnergy = DisassemblyEnergy
 
-        self.type_surface()
-        self.Layers = self.layers()
+
+class LayeredConstruction(ConstructionBase):
+    def __init__(self, *args, **kwargs):
+        super(LayeredConstruction, self).__init__(*args, **kwargs)
+        self.Layers = kwargs.get('Layers', None)
+
+
+class MaterialLayer(object):
+    def __init__(self, Material, Thickness):
+        """
+
+        Args:
+            Material (OpaqueMaterial):
+        """
+        self.Thickness = Thickness
+        self.Material = Material
+
+    def __dict__(self):
+        return collections.OrderedDict(Material={'$ref': str(self.Material.id)},
+                                       Thickness=self.Thickness)
+
+
+class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
+    """$id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
+    DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
+    """
+
+    def __init__(self,
+                 *args,
+                 Surface_Type=None,
+                 Outside_Boundary_Condition=None,
+                 IsAdiabatic=False,
+                 **kwargs):
+        super(OpaqueConstruction, self).__init__(*args, **kwargs)
+        self.Surface_Type = Surface_Type
+        self.Outside_Boundary_Condition = Outside_Boundary_Condition
+        self.IsAdiabatic = IsAdiabatic
+
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+        oc = OpaqueConstruction(*args, **kwargs)
+        layers = kwargs.get('Layers', None)
+
+        # resolve Material objects from ref
+        oc.Layers = [MaterialLayer(oc.get_ref(layer['Material']),
+                                   layer['Thickness'])
+                     for layer in layers]
+        return oc
+
+    @classmethod
+    def from_idf(cls, *args, **kwargs):
+        oc = OpaqueConstruction(*args, **kwargs)
+
+        oc.Layers = oc.layers()
+
+        return oc
 
     def layers(self):
         """Retrieve layers for the OpaqueConstruction"""
+        self.type_surface()
         c = self.idf.getobject('CONSTRUCTION', self.Name)
         layers = []
         for layer in c.fieldvalues[2:]:
@@ -1090,10 +1627,7 @@ class OpaqueConstruction(UmiBase, metaclass=Unique):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Layers"] = [{"Material": {"$ref": str(lay['Material'].id)},
-                                "Thickness": lay['Thickness']} for lay in
-                               self.Layers]
-        data_dict["Type"] = self.Type
+        data_dict["Layers"] = [lay.__dict__() for lay in self.Layers]
         data_dict["AssemblyCarbon"] = self.AssemblyCarbon
         data_dict["AssemblyCost"] = self.AssemblyCost
         data_dict["AssemblyEnergy"] = self.AssemblyEnergy
@@ -1105,6 +1639,9 @@ class OpaqueConstruction(UmiBase, metaclass=Unique):
         data_dict["Name"] = str(self.Name)
 
         return data_dict
+
+    def __dict__(self):
+        return {'$ref': str(self.id)}
 
 
 class OpaqueMaterial(UmiBase, metaclass=Unique):
@@ -1123,11 +1660,8 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                  Roughness,
                  SolarAbsorptance,
                  SpecificHeat,
-                 Type,
                  ThermalEmittance,
                  VisibleAbsorptance,
-                 VariableConductivity=False,
-                 VariableConductivityProperties='',
                  TransportCarbon=0,
                  TransportDistance=0,
                  TransportEnergy=0,
@@ -1136,13 +1670,8 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                  Cost=0,
                  Density=1,
                  EmbodiedCarbon=0.45,
-                 EmbodiedCarbonStdDev=0,
                  EmbodiedEnergy=0,
-                 EmbodiedEnergyStdDev=0,
-                 Life=1,
                  MoistureDiffusionResistance=50,
-                 PhaseChange=False,
-                 PhaseChangeProperties='',
                  **kwargs):
         super(OpaqueMaterial, self).__init__(*args, **kwargs)
 
@@ -1150,11 +1679,8 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.Roughness = Roughness
         self.SolarAbsorptance = SolarAbsorptance
         self.SpecificHeat = SpecificHeat
-        self.Type = Type
         self.ThermalEmittance = ThermalEmittance
         self.VisibleAbsorptance = VisibleAbsorptance
-        self.VariableConductivity = VariableConductivity
-        self.VariableConductivityProperties = VariableConductivityProperties
         self.TransportCarbon = TransportCarbon
         self.TransportDistance = TransportDistance
         self.TransportEnergy = TransportEnergy
@@ -1163,54 +1689,48 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.Cost = Cost
         self.Density = Density
         self.EmbodiedCarbon = EmbodiedCarbon
-        self.EmbodiedCarbonStdDev = EmbodiedCarbonStdDev
         self.EmbodiedEnergy = EmbodiedEnergy
-        self.EmbodiedEnergyStdDev = EmbodiedEnergyStdDev
-        self.Life = Life
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
-        self.PhaseChange = PhaseChange
-        self.PhaseChangeProperties = PhaseChangeProperties
 
     def to_json(self):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Conductivity"] = self.Conductivity
-        data_dict["Density"] = self.Density
-        data_dict["Roughness"] = self.Roughness
-        data_dict["SpecificHeat"] = self.SpecificHeat
-        data_dict["ThermalEmittance"] = self.ThermalEmittance
-        data_dict["SolarAbsorptance"] = self.SolarAbsorptance
-        data_dict["VisibleAbsorptance"] = self.VisibleAbsorptance
         data_dict[
             "MoistureDiffusionResistance"] = self.MoistureDiffusionResistance
-        data_dict["PhaseChange"] = self.PhaseChange
-        data_dict["PhaseChangeProperties"] = self.PhaseChangeProperties
-        data_dict["VariableConductivity"] = self.VariableConductivity
-        data_dict[
-            "VariableConductivityProperties"] = \
-            self.VariableConductivityProperties
-        data_dict["Type"] = self.Type
-        data_dict["EmbodiedEnergy"] = self.EmbodiedEnergy
-        data_dict["EmbodiedEnergyStdDev"] = self.EmbodiedEnergyStdDev
-        data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon
-        data_dict["EmbodiedCarbonStdDev"] = self.EmbodiedCarbonStdDev
+        data_dict["Roughness"] = self.Roughness
+        data_dict["SolarAbsorptance"] = self.SolarAbsorptance
+        data_dict["SpecificHeat"] = self.SpecificHeat
+        data_dict["ThermalEmittance"] = self.ThermalEmittance
+        data_dict["VisibleAbsorptance"] = self.VisibleAbsorptance
+        data_dict["Conductivity"] = self.Conductivity
         data_dict["Cost"] = self.Cost
-        data_dict["Life"] = self.Life
+        data_dict["Density"] = self.Density
+        data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon
+        data_dict["EmbodiedEnergy"] = self.EmbodiedEnergy
         data_dict["SubstitutionRatePattern"] = self.SubstitutionRatePattern
         data_dict["SubstitutionTimestep"] = self.SubstitutionTimestep
         data_dict["TransportCarbon"] = self.TransportCarbon
         data_dict["TransportDistance"] = self.TransportDistance
         data_dict["TransportEnergy"] = self.TransportEnergy
-        data_dict["Comment"] = self.Comments
+        data_dict["Category"] = self.Category
+        data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
         data_dict["Name"] = self.Name
 
         return data_dict
 
+    def __dict__(self):
+        return {'$ref': str(self.id)}
 
-class Window(UmiBase, metaclass=Unique):
+
+class WindowType(IntEnum):
+    External = 0
+    Internal = 1
+
+
+class WindowSetting(UmiBase, metaclass=Unique):
     """
     AfnDischargeC, AfnTempSetpoint, AfnWindowAvailability.$ref,
     Category, Comments, OpaqueConstruction.$ref, DataSource, IsShadingSystemOn,
@@ -1221,32 +1741,20 @@ class Window(UmiBase, metaclass=Unique):
     ZoneMixingFlowRate
     """
 
-    def __init__(self, Name, ZoneMixingAvailabilitySchedule,
-                 AfnWindowAvailability,
-                 ShadingSystemAvailabilitySchedule,
-                 *args,
-                 Construction=None,
-                 AfnDischargeC=0.65,
-                 AfnTempSetpoint=20,
-                 IsShadingSystemOn=False,
-                 IsVirtualPartition=False,
-                 IsZoneMixingOn=False,
-                 OperableArea=0.8,
-                 ShadingSystemSetpoint=350,
-                 ShadingSystemTransmittance=0.5,
-                 ShadingSystemType=0,
-                 Type=0,
+    def __init__(self, ZoneMixingAvailabilitySchedule, AfnWindowAvailability,
+                 ShadingSystemAvailabilitySchedule, Construction, *args,
+                 AfnDischargeC=0.65, AfnTempSetpoint=20,
+                 IsShadingSystemOn=False, IsVirtualPartition=False,
+                 IsZoneMixingOn=False, OperableArea=0.8,
+                 ShadingSystemSetpoint=180, ShadingSystemTransmittance=0.5,
+                 ShadingSystemType=0, Type=WindowType.External,
                  ZoneMixingDeltaTemperature=2,
-                 ZoneMixingFlowRate=0.001,
-                 Category='',
-                 **kwargs):
-        super(Window, self).__init__(*args, **kwargs)
-
-        self.Name = Name
+                 ZoneMixingFlowRate=0.001, **kwargs):
+        super(WindowSetting, self).__init__(*args, **kwargs)
         self.ZoneMixingAvailabilitySchedule = ZoneMixingAvailabilitySchedule
         self.ShadingSystemAvailabilitySchedule = \
             ShadingSystemAvailabilitySchedule
-        self.Construction = self.window_construction(Construction)
+        self.Construction = Construction
         self.AfnWindowAvailability = AfnWindowAvailability
         self.AfnDischargeC = AfnDischargeC
         self.AfnTempSetpoint = AfnTempSetpoint
@@ -1260,11 +1768,20 @@ class Window(UmiBase, metaclass=Unique):
         self.Type = Type
         self.ZoneMixingDeltaTemperature = ZoneMixingDeltaTemperature
         self.ZoneMixingFlowRate = ZoneMixingFlowRate
-        self.Category = Category
+
+    @classmethod
+    def from_idf(cls, *args, **kwargs):
+        w = WindowSetting(*args, **kwargs)
+
+        construction = kwargs.get('Construction', None)
+        w.Construction = w.window_construction(construction)
+
+        return w
 
     def window_construction(self, window_construction_name):
-        window_construction = WindowConstruction(Name=window_construction_name,
-                                                 idf=self.idf)
+        window_construction = WindowConstruction.from_idf(
+            Name=window_construction_name,
+            idf=self.idf)
 
         return window_construction
 
@@ -1293,7 +1810,6 @@ class Window(UmiBase, metaclass=Unique):
                     other.ZoneMixingDeltaTemperature)
             self.ZoneMixingFlowRate = max(self.ZoneMixingFlowRate,
                                           other.ZoneMixingFlowRate)
-            self.Category = self.Category
             return self
         else:
             raise NotImplementedError
@@ -1311,9 +1827,8 @@ class Window(UmiBase, metaclass=Unique):
         data_dict["$id"] = str(self.id)
         data_dict["AfnDischargeC"] = self.AfnDischargeC
         data_dict["AfnTempSetpoint"] = self.AfnTempSetpoint
-        data_dict["AfnWindowAvailability"] = {
-            "$ref": str(self.AfnWindowAvailability.id)
-        }
+        data_dict["AfnWindowAvailability"] = \
+            self.AfnWindowAvailability.__dict__()
         data_dict["Construction"] = {
             "$ref": str(self.Construction.id)
         }
@@ -1321,17 +1836,15 @@ class Window(UmiBase, metaclass=Unique):
         data_dict["IsVirtualPartition"] = self.IsVirtualPartition
         data_dict["IsZoneMixingOn"] = self.IsZoneMixingOn
         data_dict["OperableArea"] = self.OperableArea
-        data_dict["ShadingSystemAvailabilitySchedule"] = {
-            "$ref": str(self.ShadingSystemAvailabilitySchedule.id)
-        }
+        data_dict["ShadingSystemAvailabilitySchedule"] = \
+            self.ShadingSystemAvailabilitySchedule.__dict__()
         data_dict["ShadingSystemSetpoint"] = self.ShadingSystemSetpoint
         data_dict[
             "ShadingSystemTransmittance"] = self.ShadingSystemTransmittance
         data_dict["ShadingSystemType"] = self.ShadingSystemType
         data_dict["Type"] = self.Type
-        data_dict["ZoneMixingAvailabilitySchedule"] = {
-            "$ref": str(self.ZoneMixingAvailabilitySchedule.id)
-        }
+        data_dict["ZoneMixingAvailabilitySchedule"] = \
+            self.ZoneMixingAvailabilitySchedule.__dict__()
         data_dict[
             "ZoneMixingDeltaTemperature"] = self.ZoneMixingDeltaTemperature
         data_dict["ZoneMixingFlowRate"] = self.ZoneMixingFlowRate
@@ -1342,35 +1855,71 @@ class Window(UmiBase, metaclass=Unique):
 
         return data_dict
 
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+        w = WindowSetting(*args, **kwargs)
+
+        ref = kwargs.get('AfnWindowAvailability', None)
+        w.AfnWindowAvailability = w.get_ref(ref)
+        ref = kwargs.get('Construction', None)
+        w.Construction = w.get_ref(ref)
+        ref = kwargs.get('ShadingSystemAvailabilitySchedule', None)
+        w.ShadingSystemAvailabilitySchedule = w.get_ref(ref)
+        ref = kwargs.get('ZoneMixingAvailabilitySchedule', None)
+        w.ZoneMixingAvailabilitySchedule = w.get_ref(ref)
+        return w
+
+    def __dict__(self):
+        return {'$ref': str(self.id)}
+
 
 class WindowConstruction(UmiBase, metaclass=Unique):
     """$id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
     DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
     """
 
-    def __init__(self, Type=None, AssemblyCarbon=0, AssemblyCost=0,
+    def __init__(self, AssemblyCarbon=0, AssemblyCost=0,
                  AssemblyEnergy=0, DisassemblyCarbon=0,
-                 DisassemblyEnergy=0, Category=None,
+                 DisassemblyEnergy=0,
                  *args, **kwargs):
         super(WindowConstruction, self).__init__(*args, **kwargs)
-        self.Category = Category
         self.DisassemblyEnergy = DisassemblyEnergy
         self.DisassemblyCarbon = DisassemblyCarbon
         self.AssemblyEnergy = AssemblyEnergy
         self.AssemblyCost = AssemblyCost
         self.AssemblyCarbon = AssemblyCarbon
-        self.Type = Type
-        self.Layers = self.layers()
+        layers = kwargs.get('Layers', None)
+        if layers is None:
+            self.Layers = self.layers()
+        else:
+            self.Layers = layers
+
+    @classmethod
+    def from_json(cls, *args, **kwargs):
+        wc = WindowConstruction(*args, **kwargs)
+        layers = kwargs.get('Layers', None)
+
+        # resolve Material objects from ref
+        wc.Layers = [MaterialLayer(wc.get_ref(layer['Material']),
+                                   layer['Thickness'])
+                     for layer in layers]
+        return wc
+
+    @classmethod
+    def from_idf(cls, *args, **kwargs):
+        wc = WindowConstruction(*args, **kwargs)
+
+        wc.Layers = wc.layers()
+
+        return wc
 
     def to_json(self):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Layers"] = [{"Material": {"$ref": str(lay['Material'].id)},
-                                "Thickness": lay['Thickness']} for lay in
-                               self.Layers]
-        data_dict["Type"] = self.Type
+        data_dict["Layers"] = [layer.__dict__()
+                               for layer in self.Layers]
         data_dict["AssemblyCarbon"] = self.AssemblyCarbon
         data_dict["AssemblyCost"] = self.AssemblyCost
         data_dict["AssemblyEnergy"] = self.AssemblyEnergy
@@ -1394,42 +1943,30 @@ class WindowConstruction(UmiBase, metaclass=Unique):
             if material:
                 # Create the WindowMaterial:Glazing or the WindowMaterial:Gas
                 # and append to the list of layers
+                material_obj = GlazingMaterial(Name=material.Name,
+                                               Conductivity=material.Conductivity,
+                                               Optical=material.Optical_Data_Type,
+                                               OpticalData=material.Window_Glass_Spectral_Data_Set_Name,
+                                               SolarTransmittance=material.Solar_Transmittance_at_Normal_Incidence,
+                                               SolarReflectanceFront=material.Front_Side_Solar_Reflectance_at_Normal_Incidence,
+                                               SolarReflectanceBack=material.Back_Side_Solar_Reflectance_at_Normal_Incidence,
+                                               VisibleTransmittance=material.Visible_Transmittance_at_Normal_Incidence,
+                                               VisibleReflectanceFront=material.Front_Side_Visible_Reflectance_at_Normal_Incidence,
+                                               VisibleReflectanceBack=material.Back_Side_Visible_Reflectance_at_Normal_Incidence,
+                                               IRTransmittance=material.Infrared_Transmittance_at_Normal_Incidence,
+                                               IREmissivityFront=material.Front_Side_Infrared_Hemispherical_Emissivity,
+                                               IREmissivityBack=material.Back_Side_Infrared_Hemispherical_Emissivity,
+                                               DirtFactor=material.Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance,
+                                               Type='Uncoated', idf=self.idf) \
+                    if \
+                    material.obj[
+                        0].upper() == 'WindowMaterial:Glazing'.upper() else \
+                    GasMaterial(
+                        Name=material.Name, idf=self.idf,
+                        Gas_Type=material.Gas_Type)
+                material_layer = MaterialLayer(material_obj, material.Thickness)
                 layers.append(
-                    {
-                        'Material': GlazingMaterial(
-                            Name=material.Name,
-                            Conductivity=material.Conductivity,
-                            Optical=material.Optical_Data_Type,
-                            OpticalData=material.Window_Glass_Spectral_Data_Set_Name,
-                            SolarTransmittance=material
-                                .Solar_Transmittance_at_Normal_Incidence,
-                            SolarReflectanceFront=material
-                                .Front_Side_Solar_Reflectance_at_Normal_Incidence,
-                            SolarReflectanceBack=material
-                                .Back_Side_Solar_Reflectance_at_Normal_Incidence,
-                            VisibleTransmittance=material
-                                .Visible_Transmittance_at_Normal_Incidence,
-                            VisibleReflectanceFront=material
-                                .Front_Side_Visible_Reflectance_at_Normal_Incidence,
-                            VisibleReflectanceBack=material.Back_Side_Visible_Reflectance_at_Normal_Incidence,
-                            IRTransmittance=material
-                                .Infrared_Transmittance_at_Normal_Incidence,
-                            IREmissivityFront=material
-                                .Front_Side_Infrared_Hemispherical_Emissivity,
-                            IREmissivityBack=material
-                                .Back_Side_Infrared_Hemispherical_Emissivity,
-                            DirtFactor=material.Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance,
-                            Type='Uncoated',
-                            idf=self.idf
-                        )
-                        if material.obj[0].upper() ==
-                           'WindowMaterial:Glazing'.upper()
-                        else GasMaterial(Name=material.Name,
-                                         idf=self.idf,
-                                         Gas_Type=material.Gas_Type,
-                                         ),
-                        'Thickness': material.Thickness
-                    }
+                    material_layer
                 )
         return layers
 

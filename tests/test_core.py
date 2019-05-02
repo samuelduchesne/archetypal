@@ -28,7 +28,8 @@ def template(fresh_start, request):
     idf = ar.copy_file(idf)
     # idf = './input_data/AdultEducationCenter.idf'
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    a = ar.UmiTemplate(idf, wf)
+    a = ar.UmiTemplate(idf, wf, None, None, None, None, None, None, None, None,
+                       None, None, None, None, None, None, None)
 
     yield a
 
@@ -41,7 +42,8 @@ def test_template_withcache(config):
     idf = ar.copy_file(idf)
     # idf = './input_data/AdultEducationCenter.idf'
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    a = ar.UmiTemplate(idf, wf)
+    a = ar.UmiTemplate(idf, wf, None, None, None, None, None, None, None, None,
+                       None, None, None, None, None, None, None)
 
     yield a
 
@@ -147,8 +149,8 @@ def test_to_json_std(config):
     files = glob.glob("./input_data/necb/*idf")
     files = ar.copy_file(files)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    a = ar.UmiTemplate(files, wf, load=True, run_eplus_kwargs=dict(
-        verbose='q'))
+    a = ar.UmiTemplate(files, wf, None, None, None, None, None, None, None,
+                       None, None, None, None, None, None, None, None)
     json = a.to_json()
     print(json)
 
@@ -243,6 +245,8 @@ def test_necb(config):
                       "/NECB_2011_Montreal_idf/*idf")
     files = ar.copy_file(files)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    template = ar.UmiTemplate(files, wf, load=True)
+    template = ar.UmiTemplate(files, wf, None, None, None, None, None, None,
+                              None, None, None, None, None, None, None, None,
+                              None)
 
     return template

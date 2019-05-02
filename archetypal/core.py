@@ -14,7 +14,11 @@ from sklearn import preprocessing
 from . import settings, object_from_idf, object_from_idfs, \
     calc_simple_glazing, \
     iscore, weighted_mean, top, GasMaterial, UmiSchedule, BuildingTemplate, \
-    Window
+    WindowSetting, GlazingMaterial, OpaqueMaterial, OpaqueConstruction, \
+    WindowConstruction, StructureDefinition, DaySchedule, WeekSchedule, \
+    YearSchedule, DomesticHotWaterSetting, VentilationSetting, \
+    ZoneConditioning, \
+    ZoneConstructionSet, ZoneLoad, Zone, WindowSetting
 from .idf import run_eplus, load_idf
 from .plot import plot_energyprofile
 from .utils import log, label_surface, type_surface, layer_composition, \
@@ -27,8 +31,95 @@ class UmiTemplate:
 
     """
 
-    def __init__(self, idf_files, weather, load=False, name='unnamed',
-                 load_idf_kwargs={}, run_eplus_kwargs={}):
+    def __init__(self, name='unnamed', BuildingTemplates=None,
+                 GasMaterials=None, GlazingMaterials=None,
+                 OpaqueConstructions=None, OpaqueMaterials=None,
+                 WindowConstructions=None, StructureDefinitions=None,
+                 DaySchedules=None, WeekSchedules=None, YearSchedules=None,
+                 DomesticHotWaterSettings=None, VentilationSettings=None,
+                 WindowSettings=None, ZoneConditionings=None,
+                 ZoneConstructionSets=None, ZoneLoads=None, Zones=None):
+        """
+
+        Args:
+            name (str): The name of the template
+            Zones (list of Zone):
+            ZoneLoads (list of ZoneLoad):
+            ZoneConstructionSets (list of ZoneConstructionSet):
+            ZoneConditionings (list of ZoneConditioning):
+            WindowSettings (list of WindowSetting):
+            VentilationSettings (list of VentilationSetting):
+            DomesticHotWaterSettings (list of DomesticHotWaterSetting):
+            YearSchedules (list of YearSchedule):
+            WeekSchedules (list of WeekSchedule):
+            DaySchedules (list of DaySchedule):
+            StructureDefinitions (list of StructureDefinition):
+            WindowConstructions (list of WindowConstruction):
+            OpaqueMaterials (list of OpaqueMaterial):
+            OpaqueConstructions (list of OpaqueConstruction):
+            GlazingMaterials (list of GlazingMaterial):
+            GasMaterials (list of GasMaterial):
+            BuildingTemplates (list of BuildingTemplate):
+        """
+        if Zones is None:
+            Zones = []
+        if ZoneLoads is None:
+            ZoneLoads = []
+        if ZoneConstructionSets is None:
+            ZoneConstructionSets = []
+        if ZoneConditionings is None:
+            ZoneConditionings = []
+        if WindowSettings is None:
+            WindowSettings = []
+        if VentilationSettings is None:
+            VentilationSettings = []
+        if DomesticHotWaterSettings is None:
+            DomesticHotWaterSettings = []
+        if YearSchedules is None:
+            YearSchedules = []
+        if WeekSchedules is None:
+            WeekSchedules = []
+        if DaySchedules is None:
+            DaySchedules = []
+        if StructureDefinitions is None:
+            StructureDefinitions = []
+        if WindowConstructions is None:
+            WindowConstructions = []
+        if OpaqueMaterials is None:
+            OpaqueMaterials = []
+        if OpaqueConstructions is None:
+            OpaqueConstructions = []
+        if GlazingMaterials is None:
+            GlazingMaterials = []
+        if GasMaterials is None:
+            GasMaterials = []
+        if BuildingTemplates is None:
+            BuildingTemplates = []
+
+        self.idfs = None
+        self.idf_files = None
+        self.name = name
+        self.Zones = Zones
+        self.ZoneLoads = ZoneLoads
+        self.ZoneConstructionSets = ZoneConstructionSets
+        self.ZoneConditionings = ZoneConditionings
+        self.WindowSettings = WindowSettings
+        self.VentilationSettings = VentilationSettings
+        self.DomesticHotWaterSettings = DomesticHotWaterSettings
+        self.YearSchedules = YearSchedules
+        self.WeekSchedules = WeekSchedules
+        self.DaySchedules = DaySchedules
+        self.StructureDefinitions = StructureDefinitions
+        self.WindowConstructions = WindowConstructions
+        self.OpaqueMaterials = OpaqueMaterials
+        self.OpaqueConstructions = OpaqueConstructions
+        self.BuildingTemplates = BuildingTemplates
+        self.GasMaterials = GasMaterials
+        self.GlazingMaterials = GlazingMaterials
+
+    @classmethod
+    def from_idf(self, idf_files, weather, sql=None, load=False, name='unnamed',
+                 load_idf_kwargs=None, run_eplus_kwargs=None):
         """Initializes a UmiTemplate class
 
         Args:
@@ -38,39 +129,25 @@ class UmiTemplate:
             load:
             **load_idf_kwargs:
         """
-        self.idf_files = idf_files
+        # instanciate class
+        if run_eplus_kwargs is None:
+            run_eplus_kwargs = {}
+        if load_idf_kwargs is None:
+            load_idf_kwargs = {}
+        template = UmiTemplate(name)
 
-        idd_filename = load_idf_kwargs.pop('idd_filename', None)
-        as_dict = load_idf_kwargs.pop('as_dict', True)
-        processors = load_idf_kwargs.pop('processors', 1)
-        self.idfs = load_idf(self.idf_files, idd_filename, as_dict, processors)
-        self.weather = weather
-        self.name = name
-        # Umi stuff
-        self.materials_gas = None
-        self.materials_glazing = None
-        self.materials_opaque = None
-        self.constructions_opaque = None
-        self.constructions_windows = None
-        self.day_schedules = None
-        self.week_schedules = None
-        self.year_schedules = None
-        self.structure_definitions = None
-        self.zone_details = None
-        self.zone_loads = None
-        self.zone_conditioning = None
-        self.zones = None
-        self.zone_ventilation = None
-        self.windows_settings = None
-        self.building_templates = {}
-        self.zone_construction_sets = None
-        self.domestic_hot_water_settings = None
+        # fill in arguments
+        template.idf_files = idf_files
+        template.weather = weather
+        template.sql = sql
 
-        self.sql = None
+        template.idfs = load_idf(idf_files, **load_idf_kwargs)
 
         if load:
-            self.run_eplus(**run_eplus_kwargs)
-            self.read()
+            template.run_eplus(idf_files, weather, **run_eplus_kwargs)
+            template.read()
+
+        return template
 
     def read(self):
         """Initialize UMI objects"""
@@ -81,23 +158,18 @@ class UmiTemplate:
                    for idf in self.idfs
                    }
         for idf in in_dict:
-            self.building_templates[idf] = BuildingTemplate(**in_dict[idf])
-        # self.building_templates = parallel_process(in_dict, BuildingTemplate,
-        #                                            use_kwargs=True,
-        #                                            processors=len(in_dict))
-        # self.building_templates = [BuildingTemplate(Name=idf,
-        #                                             idf=self.idfs[idf],
-        #                                             sql=self.sql[idf])
-        #                            for idf in self.idfs]
+            building_template = BuildingTemplate.from_idf(**in_dict[idf])
+            self.BuildingTemplates.append(building_template)
 
-    def run_eplus(self, silent=True, **kwargs):
+    def run_eplus(self, idf_files, weather, **kwargs):
         """wrapper for :func:`run_eplus` function
 
         """
-        self.sql = run_eplus(self.idf_files, self.weather, output_report='sql',
-                             **kwargs)
-        if not silent:
-            return self.sql
+        sql_report = run_eplus(idf_files, weather, output_report='sql',
+                               **kwargs)
+        self.sql = sql_report
+
+        return sql_report
 
     def to_json(self, path_or_buf=None, indent=2):
         """Writes the umi template to json format"""
@@ -125,21 +197,82 @@ class UmiTemplate:
                                      'ZoneConstructionSets': [],
                                      'ZoneLoads': [],
                                      'Zones': [],
-                                     'BuildingTemplates': [],
-                                     'WindowSettings': []})
+                                     'WindowSettings': [],
+                                     'BuildingTemplates': []})
             jsonized = []
-            for bld in self.building_templates:
-                all_objs = self.building_templates[bld].all_objects
+            for bld in self.BuildingTemplates:
+                all_objs = bld.all_objects
                 for obj in all_objs:
                     if obj not in jsonized:
-                        if not isinstance(all_objs[obj], (Window, UmiSchedule)):
-                            jsonized.append(obj)
-                            catname = all_objs[obj].__class__.__name__ + 's'
-                            app_dict = all_objs[obj].to_json()
-                            data_dict[catname].append(app_dict)
+                        jsonized.append(obj)
+                        catname = all_objs[obj].__class__.__name__ + 's'
+                        app_dict = all_objs[obj].to_json()
+                        data_dict[catname].append(app_dict)
 
             # Write the dict to json using json.dumps
-            path_or_buf.write(json.dumps(data_dict, indent=indent))
+            response = json.dumps(data_dict, indent=indent)
+            path_or_buf.write(response)
+
+        return response
+
+    @classmethod
+    def from_json(cls, filename):
+        """Load umi template from json"""
+        name = os.path.basename(filename)
+        template = UmiTemplate(name)
+
+        import json
+
+        if os.path.isfile(filename):
+            if filename:
+                with open(filename, 'r') as f:
+                    datastore = json.load(f)
+
+            # with datastore, create each objects
+            template.GasMaterials = [GasMaterial.from_json(**store) for
+                                     store in datastore['GasMaterials']]
+            template.GlazingMaterials = [GlazingMaterial(**store) for
+                                         store in datastore["GlazingMaterials"]]
+            template.OpaqueMaterials = [OpaqueMaterial(**store) for
+                                        store in datastore["OpaqueMaterials"]]
+            template.OpaqueConstructions = [
+                OpaqueConstruction.from_json(
+                    **store) for store in datastore["OpaqueConstructions"]]
+            template.WindowConstructions = [
+                WindowConstruction.from_json(
+                    **store) for store in datastore["WindowConstructions"]]
+            template.StructureDefinitions = [
+                StructureDefinition.from_json(
+                    **store) for store in datastore["StructureDefinitions"]]
+            template.DaySchedules = [DaySchedule(**store)
+                                     for store in datastore["DaySchedules"]]
+            template.WeekSchedules = [WeekSchedule.from_json(**store)
+                                      for store in datastore["WeekSchedules"]]
+            template.YearSchedules = [YearSchedule.from_json(**store)
+                                      for store in datastore["YearSchedules"]]
+            template.DomesticHotWaterSettings = [
+                DomesticHotWaterSetting.from_json(**store)
+                for store in datastore["DomesticHotWaterSettings"]]
+            template.VentilationSettings = [
+                VentilationSetting.from_json(**store)
+                for store in datastore["VentilationSettings"]]
+            template.ZoneConditionings = [
+                ZoneConditioning.from_json(**store)
+                for store in datastore["ZoneConditionings"]]
+            template.ZoneConstructionSets = [
+                ZoneConstructionSet.from_json(
+                    **store) for store in datastore["ZoneConstructionSets"]]
+            template.ZoneLoads = [ZoneLoad.from_json(**store)
+                                  for store in datastore["ZoneLoads"]]
+            template.Zones = [Zone.from_json(**store)
+                              for store in datastore["Zones"]]
+            template.BuildingTemplates = [
+                BuildingTemplate.from_json(**store)
+                for store in datastore["BuildingTemplates"]]
+
+            return template
+        else:
+            return None
 
 
 class EnergyProfile(pd.Series):

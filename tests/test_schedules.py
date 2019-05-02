@@ -10,8 +10,8 @@ def test_schedules_in_necb_specific(config):
     import matplotlib.pyplot as plt
     for key in idfs:
         idf = idfs[key]
-        s = Schedule(idf, sch_name='NECB-A-Thermostat Setpoint-Heating',
-                     start_day_of_the_week=0)
+        s = Schedule(sch_name='NECB-A-Thermostat Setpoint-Heating',
+                     start_day_of_the_week=0, idf=idf)
         s.plot(slice=('2018/01/02', '2018/01/03'), drawstyle="steps-post")
         plt.show()
 
@@ -23,12 +23,11 @@ def test_make_umi_schedule(config):
     idf_file = copy_file(idf_file)[0]
     idf = load_idf(idf_file)['schedules.idf']
 
-    s = Schedule(idf, sch_name='POFF',
-                 start_day_of_the_week=0)
+    s = Schedule(sch_name='POFF', start_day_of_the_week=0, idf=idf)
     ep_year, ep_weeks, ep_days = s.to_year_week_day()
 
-    new = Schedule(idf, sch_name=ep_year.Name,
-                   start_day_of_the_week=s.startDayOfTheWeek)
+    new = Schedule(sch_name=ep_year.Name,
+                   start_day_of_the_week=s.startDayOfTheWeek, idf=idf)
 
     print(len(s.all_values))
     print(len(new.all_values))
@@ -94,7 +93,7 @@ def test_data(request, run_schedules_idf):
     # read original schedule
     idf = schedules_idf()
     schName = request.param
-    orig = Schedule(idf, sch_name=schName)
+    orig = Schedule(sch_name=schName, idf=idf)
 
     print('{name}\tType:{type}\t[{len}]\tValues:{'
           'values}'.format(name=orig.schName,
@@ -104,7 +103,7 @@ def test_data(request, run_schedules_idf):
 
     # create year:week:day version
     new_eps = orig.to_year_week_day()
-    new = Schedule(idf, sch_name=new_eps[0].Name)
+    new = Schedule(sch_name=new_eps[0].Name, idf=idf)
 
     index = orig.series.index
     epv = pd.read_csv(run_schedules_idf)

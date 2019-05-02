@@ -1,10 +1,50 @@
-from archetypal import load_umi_template, copy_file, UmiTemplate, settings, \
-    run_eplus
+import collections
+import io
+import os
+
+from archetypal import copy_file, UmiTemplate, settings
 
 
 # def test_load_umi_template(config):
 #     data_json = settings.umitemplate
 #     assert len(load_umi_template(data_json)) == 17
+
+def test_template_to_template(config):
+    """load the json into UmiTemplate object, then convert bacl to json and
+    compare"""
+    import json
+    file = '../data/BostonTemplateLibrary_2.json'
+    if file:
+        with open(file, 'r') as f:
+            a = json.load(f)
+            data_dict = collections.OrderedDict({'GasMaterials': [],
+                                                 'GlazingMaterials': [],
+                                                 'OpaqueMaterials': [],
+                                                 'OpaqueConstructions': [],
+                                                 'WindowConstructions': [],
+                                                 'StructureDefinitions': [],
+                                                 'DaySchedules': [],
+                                                 'WeekSchedules': [],
+                                                 'YearSchedules': [],
+                                                 'DomesticHotWaterSettings': [],
+                                                 'VentilationSettings': [],
+                                                 'ZoneConditionings': [],
+                                                 'ZoneConstructionSets': [],
+                                                 'ZoneLoads': [],
+                                                 'Zones': [],
+                                                 'WindowSettings': [],
+                                                 'BuildingTemplates': []})
+            data_dict.update(a)
+        path = os.path.join(settings.data_folder, 'a.json')
+        with io.open(path, 'w+', encoding='utf-8') as path_or_buf:
+            a = json.dumps(data_dict, indent=2)
+            path_or_buf.write(a)
+        with open(path, 'r') as f:
+            a = json.load(f)
+    b = UmiTemplate.from_json(file).to_json(os.path.join(settings.data_folder,
+                                                         'b.json'))
+    b = json.loads(b)
+    assert a == b
 
 
 def test_umi_routine(config):
@@ -17,7 +57,7 @@ def test_umi_routine(config):
     ]
     idf = copy_file(idf_source)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    a = UmiTemplate(idf, wf, load=True, run_eplus_kwargs=dict(
+    a = UmiTemplate.from_idf(idf, wf, load=True, run_eplus_kwargs=dict(
         prep_outputs=True), name='Mixed_Files')
     print(a.building_templates)
 
@@ -33,8 +73,8 @@ def test_umi_samples(config):
     # run_eplus(idf_source, weather_file='./input_data/CAN_PQ_Montreal.Intl.AP'
     #                                    '.716270_CWEC.epw')
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    a = UmiTemplate(idf_source, wf, load=True, run_eplus_kwargs=dict(
+    a = UmiTemplate.from_idf(idf_source, wf, load=True, run_eplus_kwargs=dict(
         prep_outputs=True, expandobjects=True), name='Umi_Samples')
-    print(a.building_templates)
+    print(a.BuildingTemplates)
 
     print(a.to_json())

@@ -1,4 +1,5 @@
 import collections
+import random
 from enum import IntEnum
 
 import eppy.modeleditor
@@ -56,10 +57,10 @@ class UmiBase(object):
 
     def __str__(self):
         """string representation of the object as id:Name"""
-        return ':'.join([str(self.id), self.Name])
+        return ':'.join([str(self.id), str(self.Name)])
 
-    def __repr__(self):
-        return str(self)
+    # def __repr__(self):
+    #     return str(self)
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -67,16 +68,15 @@ class UmiBase(object):
                 "Name": "{}".format(self.Name)}
 
     def get_ref(self, ref):
-        try:
-            key = (self.mro()[0].__name__)
-            return [self.all_objects[obj]
-                    for obj in self.all_objects
-                    if self.all_objects[obj].id == ref['$ref']][0]
-        except:
-            key = (self.__class__.__name__)
-            return [self.all_objects[obj]
-                    for obj in self.all_objects
-                    if self.all_objects[obj].id == ref['$ref']][0]
+        """Gets item matching ref id"""
+        return [self.all_objects[obj]
+                for obj in self.all_objects
+                if self.all_objects[obj].id == ref['$ref']][0]
+
+    def get_random_schedule(self):
+        """Return a random YearSchedule from cache"""
+        return random.choice([self.all_objects[obj] for obj in
+                              self.all_objects if 'YearSchedule' in obj])
 
     def __hash__(self):
         return hash(self.Name)
@@ -143,29 +143,6 @@ class GasMaterial(MaterialBase, metaclass=Unique):
         gm.Type = gas_type
 
         return gm
-
-    @staticmethod
-    def _gas_type(Gas_Type):
-        """Return the UMI gas type number
-
-        Args:
-            self (pandas.DataFrame):name
-
-        Returns:
-            int: UMI gas type number. The return number is specific to the
-            umi api.
-
-        """
-        if 'air' in Gas_Type.lower():
-            return GasType.air
-        elif 'argon' in Gas_Type.lower():
-            return GasType.argon
-        elif 'krypton' in Gas_Type.lower():
-            return GasType.krypton
-        elif 'xenon' in Gas_Type.lower():
-            return GasType.xenon
-        elif 'sf6' in Gas_Type.lower():
-            return GasType.sf6
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -288,14 +265,20 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         self.Type = self.schTypeLimitsName
 
     @classmethod
+    def random_constant_schedule(cls, seed=1, **kwargs):
+        randint = random.randint(25, 50)
+        name = 'Constant_value_{}'.format(randint)
+        random.seed(seed)
+
+        sched = cls.constant_schedule(Name=name, **kwargs)
+        sched = UmiSchedule(Name=name, idf=sched.idf)
+        return sched
+
+    @classmethod
     def from_idf(cls, *args, **kwargs):
         sched = UmiSchedule(*args, **kwargs)
         sched.develop()
         return sched
-
-    def __str__(self):
-        """string representation of the object as id:Name"""
-        return ':'.join([str(self.id), self.schName])
 
     def __repr__(self):
         return str(self)
@@ -571,12 +554,12 @@ class VentilationSetting(UmiBase, metaclass=Unique):
     ScheduledVentilationSchedule.$ref, ScheduledVentilationSetpoint
     """
 
-    def __init__(self, NatVentSchedule=None, ScheduledVentilationSchedule=None,
-                 *args,
+    def __init__(self, *args, NatVentSchedule=None,
+                 ScheduledVentilationSchedule=None,
                  Afn=False, Infiltration=0.1, IsBuoyancyOn=True,
                  IsInfiltrationOn=True,
                  IsNatVentOn=False,
-                 IsScheduledVentilationOn=False, IsWindOn,
+                 IsScheduledVentilationOn=False, IsWindOn=False,
                  NatVentMaxOutdoorAirTemp=30,
                  NatVentMaxRelHumidity=90, NatVentMinOutdoorAirTemp=0,
                  NatVentZoneTempSetpoint=18, ScheduledVentilationAch=0.6,
@@ -652,13 +635,13 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
     MinFreshAirPerPerson, Name"""
 
     def __init__(self, *args,
-                 Category=None, Comments=None, CoolingCoeffOfPerf,
+                 Category=None, Comments=None, CoolingCoeffOfPerf=None,
                  CoolingLimitType='NoLimit',
                  CoolingSetpoint=26, DataSource=None,
                  EconomizerType='NoEconomizer',
                  HeatRecoveryEfficiencyLatent=0.65,
                  HeatRecoveryEfficiencySensible=0.7,
-                 HeatRecoveryType=None, HeatingCoeffOfPerf,
+                 HeatRecoveryType=None, HeatingCoeffOfPerf=None,
                  HeatingLimitType='NoLimit',
                  HeatingSetpoint=20, IsCoolingOn=True, IsHeatingOn=True,
                  IsMechVentOn=True, MaxCoolFlow=100, MaxCoolingCapacity=100,
@@ -693,6 +676,14 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         self.MaxHeatingCapacity = MaxHeatingCapacity
         self.MinFreshAirPerArea = MinFreshAirPerArea
         self.MinFreshAirPerPerson = MinFreshAirPerPerson
+
+    @classmethod
+    def from_idf(cls, *args, **kwargs):
+        zc = ZoneConditioning(*args, **kwargs)
+        zc.MechVentSchedule = UmiSchedule.random_constant_schedule()
+        zc.HeatingSchedule = UmiSchedule.random_constant_schedule()
+        zc.CoolingSchedule = UmiSchedule.random_constant_schedule()
+        return zc
 
     @classmethod
     def from_json(cls, *args, **kwargs):
@@ -756,12 +747,12 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
     def __init__(self, *args,
                  DimmingType='Continuous',
-                 EquipmentAvailabilitySchedule,
+                 EquipmentAvailabilitySchedule=None,
                  EquipmentPowerDensity=12,
                  IlluminanceTarget=500,
                  LightingPowerDensity=12,
-                 LightsAvailabilitySchedule,
-                 OccupancySchedule,
+                 LightsAvailabilitySchedule=None,
+                 OccupancySchedule=None,
                  IsEquipmentOn=True,
                  IsLightingOn=True,
                  IsPeopleOn=True,
@@ -921,13 +912,16 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                             window.append(
                                 WindowSetting.from_idf(idf=self.idf,
                                                        Name=
-                                                surfaces[zone.Name][azimuth][
-                                                    'Name'],
-                                                       **surfaces[zone.Name][azimuth][
-                                                    'shading'],
+                                                       surfaces[zone.Name][
+                                                           azimuth][
+                                                           'Name'],
+                                                       **surfaces[zone.Name][
+                                                           azimuth][
+                                                           'shading'],
                                                        Construction=
-                                                surfaces[zone.Name][azimuth][
-                                                    'Construction_Name']
+                                                       surfaces[zone.Name][
+                                                           azimuth][
+                                                           'Construction_Name']
                                                        )
                             )
                 except:
@@ -998,7 +992,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                                 Name=construction_name,
                                 Outside_Layer=construction_name)
 
-            self.Windows = WindowSetting.from_idf(Name='Random WindowSetting', Comments=msg,
+            self.Windows = WindowSetting.from_idf(Name='Random WindowSetting',
+                                                  Comments=msg,
                                                   idf=self.idf,
                                                   Construction=construction_name,
                                                   **kwargs)
@@ -1208,6 +1203,7 @@ class Zone(UmiBase, metaclass=Unique):
 
         z.conditioning()
         z.constructions()
+        z.ventilation()
         z.dhw()
         z.internal_mass_construction()
         z.loads()
@@ -1216,7 +1212,8 @@ class Zone(UmiBase, metaclass=Unique):
 
     def conditioning(self):
         """run conditioning and return id"""
-        self.Conditioning = []
+        self.Conditioning = ZoneConditioning.from_idf(Name=random.randint(1,
+                                                                          999999))
 
     def constructions(self):
         """run construction sets and return id"""
@@ -1227,7 +1224,8 @@ class Zone(UmiBase, metaclass=Unique):
 
     def dhw(self):
         """run domestic hot water and return id"""
-        self.DomesticHotWater = DomesticHotWaterSetting()
+        self.DomesticHotWater = DomesticHotWaterSetting(Name=str(
+            random.randint(1, 999999)))
 
     def internal_mass_construction(self):
         """Group internal walls into a ThermalMass object for each Zones"""
@@ -1278,10 +1276,12 @@ class Zone(UmiBase, metaclass=Unique):
 
     def loads(self):
         """run loads and return id"""
-        self.Loads = ZoneLoad()
+        self.Loads = ZoneLoad(Name=str(
+            random.randint(1, 999999)))
 
     def ventilation(self):
-        self.Ventilation = VentilationSetting()
+        self.Ventilation = VentilationSetting(Name=str(
+            random.randint(1, 999999)))
 
     def to_json(self):
         data_dict = collections.OrderedDict()

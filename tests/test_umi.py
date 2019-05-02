@@ -59,7 +59,7 @@ def test_umi_routine(config):
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     a = UmiTemplate.from_idf(idf, wf, load=True, run_eplus_kwargs=dict(
         prep_outputs=True), name='Mixed_Files')
-    print(a.building_templates)
+    print(a.BuildingTemplates)
 
     print(a.to_json())
 

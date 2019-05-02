@@ -3,9 +3,11 @@ import logging as lg
 import uuid
 from datetime import datetime, timedelta
 
+import io
 import numpy as np
 import pandas as pd
 
+import archetypal
 from archetypal import log
 
 
@@ -48,6 +50,24 @@ class Schedule(object):
                 sch_type=self.schType)
         else:
             self.schTypeLimitsName = _type
+
+    @classmethod
+    def constant_schedule(cls, hourly_value=1, Name='AlwaysOn', **kwargs):
+        idftxt = "VERSION, 8.9;"  # Not an emplty string. has just the
+        # version number
+        # we can make a file handle of a string
+        fhandle = io.StringIO(idftxt)
+        # initialize the IDF object with the file handle
+        idf_scratch = archetypal.IDF(fhandle)
+
+        idf_scratch.add_object(ep_object='Schedule:Constant'.upper(),
+                               **dict(Name=Name,
+                                      Schedule_Type_Limits_Name='',
+                                      Hourly_Value=hourly_value),
+                               save=False)
+
+        sched = Schedule(sch_name=Name,idf=idf_scratch, **kwargs)
+        return sched
 
     @property
     def all_values(self):

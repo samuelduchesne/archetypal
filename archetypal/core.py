@@ -751,10 +751,6 @@ def conjunction(*conditions, logical=np.logical_and):
     return functools.reduce(logical, conditions)
 
 
-def or_conjunction(*conditions):
-    return functools.reduce(np.logical_or, conditions)
-
-
 def mean_profile(df: ReportData):
     """calculates"""
     return df[df.SCORES].mean()

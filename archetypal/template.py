@@ -88,6 +88,9 @@ class UmiBase(object):
     def __hash__(self):
         return hash(self.Name)
 
+    def to_dict(self):
+        return {'$ref': str(self.id)}
+
 
 class MaterialBase(UmiBase):
     def __init__(self, Name, Cost=0, EmbodiedCarbon=0, EmbodiedEnergy=0,
@@ -173,9 +176,6 @@ class GasMaterial(MaterialBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
-
-    def __dict__(self):
-        return {'$ref': str(self.id)}
 
 
 class GlazingMaterial(UmiBase, metaclass=Unique):
@@ -309,16 +309,22 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                                          Comments='Year Week Day schedules '
                                                   'created from: '
                                                   '{}'.format(self.Name)))
-        YearSchedule(Name=year.Name, id=self.id, idf=self.idf, epbunch=year,
-                     newweeks=newweeks,
-                     Comments='Year Week Day schedules created from: '
-                              '{}'.format(self.Name))
+        year = YearSchedule(Name=year.Name, id=self.id, idf=self.idf,
+                            epbunch=year,
+                            newweeks=newweeks,
+                            Comments='Year Week Day schedules created from: '
+                                     '{}'.format(self.Name))
+        return year
 
     def to_json(self):
         """UmiSchedule does not implement the to_json method because it is
         not used when generating the json file. Only Year-Week- and
         DaySchedule classes are used"""
         pass
+
+    def to_dict(self):
+        year_sched = self.develop()
+        return year_sched.to_dict()
 
 
 class YearScheduleParts():
@@ -338,7 +344,7 @@ class YearScheduleParts():
 
         return ysp
 
-    def __dict__(self):
+    def to_dict(self):
         return collections.OrderedDict(FromDay=self.FromDay,
                                        FromMonth=self.FromMonth,
                                        ToDay=self.ToDay,
@@ -346,7 +352,7 @@ class YearScheduleParts():
                                        Schedule={'$ref': str(self.Schedule.id)})
 
     def __str__(self):
-        return str(self.__dict__())
+        return str(self.to_dict())
 
 
 class DaySchedule(UmiSchedule):
@@ -371,7 +377,7 @@ class DaySchedule(UmiSchedule):
 
         return data_dict
 
-    def __dict__(self):
+    def to_dict(self):
         return {'$ref': str(self.id)}
 
 
@@ -406,7 +412,7 @@ class WeekSchedule(UmiSchedule):
         data_dict["$id"] = str(self.id)
         data_dict["Category"] = "Week"
         day: DaySchedule
-        data_dict["Days"] = [day.__dict__() for day in self.Days]
+        data_dict["Days"] = [day.to_dict() for day in self.Days]
         data_dict["Type"] = self.schLimitType
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
@@ -423,14 +429,14 @@ class WeekSchedule(UmiSchedule):
                 "{}_ScheduleDay_Name".format(day)]
             blocks.append(
                 {
-                    "$ref": self.all_objects[(week_day_schedule_name,
-                                              DaySchedule.__class__)].id
+                    "$ref": self.all_objects[('DaySchedule',
+                                              week_day_schedule_name)].id
                 }
             )
 
         return blocks
 
-    def __dict__(self):
+    def to_dict(self):
         return {'$ref': str(self.id)}
 
 
@@ -474,7 +480,7 @@ class YearSchedule(UmiSchedule):
 
         data_dict["$id"] = str(self.id)
         data_dict["Category"] = "Year"
-        data_dict["Parts"] = [part.__dict__() for part in self.Parts]
+        data_dict["Parts"] = [part.to_dict() for part in self.Parts]
         data_dict["Type"] = self.schLimitType
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
@@ -494,11 +500,11 @@ class YearSchedule(UmiSchedule):
             ToDay = epbunch['End_Day_{}'.format(i + 1)]
             parts.append(YearScheduleParts(FromDay, FromMonth, ToDay,
                                            ToMonth, self.all_objects[
-                                               (week_day_schedule_name,
-                                                WeekSchedule.__class__)]))
+                                               ('WeekSchedule',
+                                                week_day_schedule_name)]))
         return parts
 
-    def __dict__(self):
+    def to_dict(self):
         return {'$ref': str(self.id)}
 
 
@@ -539,7 +545,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         data_dict["$id"] = str(self.id)
         data_dict["FlowRatePerFloorArea"] = self.FlowRatePerFloorArea
         data_dict["IsOn"] = self.IsOn
-        data_dict["WaterSchedule"] = self.WaterSchedule.__dict__()
+        data_dict["WaterSchedule"] = self.WaterSchedule.to_dict()
         data_dict["WaterSupplyTemperature"] = self.WaterSupplyTemperature
         data_dict["WaterTemperatureInlet"] = self.WaterTemperatureInlet
         data_dict["Category"] = self.Category
@@ -548,9 +554,6 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
-
-    def __dict__(self):
-        return {'$ref': str(self.id)}
 
 
 class VentilationSetting(UmiBase, metaclass=Unique):
@@ -612,11 +615,11 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         data_dict["NatVentMaxRelHumidity"] = self.NatVentMaxRelHumidity
         data_dict["NatVentMaxOutdoorAirTemp"] = self.NatVentMaxOutdoorAirTemp
         data_dict["NatVentMinOutdoorAirTemp"] = self.NatVentMinOutdoorAirTemp
-        data_dict["NatVentSchedule"] = self.NatVentSchedule.__dict__()
+        data_dict["NatVentSchedule"] = self.NatVentSchedule.to_dict()
         data_dict["NatVentZoneTempSetpoint"] = self.NatVentZoneTempSetpoint
         data_dict["ScheduledVentilationAch"] = self.ScheduledVentilationAch
         data_dict["ScheduledVentilationSchedule"] = \
-            self.ScheduledVentilationSchedule.__dict__()
+            self.ScheduledVentilationSchedule.to_dict()
         data_dict["ScheduledVentilationSetpoint"] = \
             self.ScheduledVentilationSetpoint
         data_dict["IsWindOn"] = self.IsWindOn
@@ -626,9 +629,6 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
-
-    def __dict__(self):
-        return {'$ref': str(self.id)}
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
@@ -710,14 +710,14 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["CoolingSchedule"] = self.CoolingSchedule.__dict__()
+        data_dict["CoolingSchedule"] = self.CoolingSchedule.to_dict()
         data_dict["CoolingCoeffOfPerf"] = self.CoolingCoeffOfPerf
         data_dict["CoolingSetpoint"] = self.CoolingSetpoint
         data_dict["CoolingLimitType"] = self.CoolingLimitType
         data_dict["EconomizerType"] = self.EconomizerType
         data_dict["HeatingCoeffOfPerf"] = self.HeatingCoeffOfPerf
         data_dict["HeatingLimitType"] = self.HeatingLimitType
-        data_dict["HeatingSchedule"] = self.HeatingSchedule.__dict__()
+        data_dict["HeatingSchedule"] = self.HeatingSchedule.to_dict()
         data_dict["HeatingSetpoint"] = self.HeatingSetpoint
         data_dict[
             "HeatRecoveryEfficiencyLatent"] = self.HeatRecoveryEfficiencyLatent
@@ -732,7 +732,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         data_dict["MaxCoolingCapacity"] = self.MaxCoolingCapacity
         data_dict["MaxHeatFlow"] = self.MaxHeatFlow
         data_dict["MaxHeatingCapacity"] = self.MaxHeatingCapacity
-        data_dict["MechVentSchedule"] = self.MechVentSchedule.__dict__()
+        data_dict["MechVentSchedule"] = self.MechVentSchedule.to_dict()
         data_dict["MinFreshAirPerArea"] = self.MinFreshAirPerArea
         data_dict["MinFreshAirPerPerson"] = self.MinFreshAirPerPerson
         data_dict["Category"] = self.Category
@@ -741,9 +741,6 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
-
-    def __dict__(self):
-        return {'$ref': str(self.id)}
 
 
 class ZoneLoad(UmiBase, metaclass=Unique):
@@ -799,13 +796,13 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         data_dict["$id"] = str(self.id)
         data_dict["DimmingType"] = self.DimmingType
         data_dict["EquipmentAvailabilitySchedule"] = \
-            self.EquipmentAvailabilitySchedule.__dict__()
+            self.EquipmentAvailabilitySchedule.to_dict()
         data_dict["EquipmentPowerDensity"] = self.EquipmentPowerDensity
         data_dict["IlluminanceTarget"] = self.IlluminanceTarget
         data_dict["LightingPowerDensity"] = self.LightingPowerDensity
         data_dict["LightsAvailabilitySchedule"] = \
-            self.LightsAvailabilitySchedule.__dict__()
-        data_dict["OccupancySchedule"] = self.OccupancySchedule.__dict__()
+            self.LightsAvailabilitySchedule.to_dict()
+        data_dict["OccupancySchedule"] = self.OccupancySchedule.to_dict()
         data_dict["IsEquipmentOn"] = self.IsEquipmentOn
         data_dict["IsLightingOn"] = self.IsLightingOn
         data_dict["IsPeopleOn"] = self.IsPeopleOn
@@ -816,12 +813,6 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
-
-    def __dict__(self):
-        return {'$ref': str(self.id)}
-
-    def __hash__(self):
-        return hash(self.Name)
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
@@ -1083,12 +1074,12 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()
 
-        data_dict["Core"] = self.Core.__dict__()
+        data_dict["Core"] = self.Core.to_dict()
         data_dict["Lifespan"] = self.Lifespan
         data_dict["PartitionRatio"] = self.PartitionRatio
-        data_dict["Perimeter"] = self.Perimeter.__dict__()
-        data_dict["Structure"] = self.Structure.__dict__()
-        data_dict["Windows"] = self.Windows.__dict__()
+        data_dict["Perimeter"] = self.Perimeter.to_dict()
+        data_dict["Structure"] = self.Structure.to_dict()
+        data_dict["Windows"] = self.Windows.to_dict()
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
@@ -1103,7 +1094,7 @@ class MassRatio(object):
         self.Material = Material
         self.NormalRatio = NormalRatio
 
-    def __dict__(self):
+    def to_dict(self):
         """dict representation of object"""
         return collections.OrderedDict(HighLoadRatio=self.HighLoadRatio,
                                        Material={'$ref': str(
@@ -1149,7 +1140,7 @@ class StructureDefinition(UmiBase, metaclass=Unique):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["MassRatios"] = [mass.__dict__() for mass
+        data_dict["MassRatios"] = [mass.to_dict() for mass
                                    in self.MassRatios]
         data_dict["AssemblyCarbon"] = self.AssemblyCarbon
         data_dict["AssemblyCost"] = self.AssemblyCost
@@ -1163,9 +1154,6 @@ class StructureDefinition(UmiBase, metaclass=Unique):
 
         return data_dict
 
-    def __dict__(self):
-        return {'$ref': str(self.id)}
-
 
 class Zone(UmiBase, metaclass=Unique):
     """
@@ -1175,9 +1163,9 @@ class Zone(UmiBase, metaclass=Unique):
     InternalMassExposedPerFloorArea, Loads.$ref, Name, Ventilation.$ref
     """
 
-    def __init__(self, Conditioning=None, Constructions=None,
+    def __init__(self, *args, Conditioning=None, Constructions=None,
                  DomesticHotWater=None, Loads=None, Ventilation=None,
-                 InternalMassConstruction=None, *args,
+                 InternalMassConstruction=None,
                  DaylightMeshResolution=1, DaylightWorkplaneHeight=0.8,
                  InternalMassExposedPerFloorArea=1.05, **kwargs):
         """
@@ -1294,18 +1282,18 @@ class Zone(UmiBase, metaclass=Unique):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Conditioning"] = self.Conditioning.__dict__()
-        data_dict["Constructions"] = self.Constructions.__dict__()
+        data_dict["Conditioning"] = self.Conditioning.to_dict()
+        data_dict["Constructions"] = self.Constructions.to_dict()
         data_dict["DaylightMeshResolution"] = self.DaylightMeshResolution
         data_dict["DaylightWorkplaneHeight"] = self.DaylightWorkplaneHeight
-        data_dict["DomesticHotWater"] = self.DomesticHotWater.__dict__()
+        data_dict["DomesticHotWater"] = self.DomesticHotWater.to_dict()
         data_dict["InternalMassConstruction"] = \
-            self.InternalMassConstruction.__dict__()
+            self.InternalMassConstruction.to_dict()
         data_dict[
             "InternalMassExposedPerFloorArea"] = \
             self.InternalMassExposedPerFloorArea
-        data_dict["Loads"] = self.Loads.__dict__()
-        data_dict["Ventilation"] = self.Ventilation.__dict__()
+        data_dict["Loads"] = self.Loads.to_dict()
+        data_dict["Ventilation"] = self.Ventilation.to_dict()
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
@@ -1332,9 +1320,6 @@ class Zone(UmiBase, metaclass=Unique):
 
         return zone
 
-    def __dict__(self):
-        return {'$ref': str(self.id)}
-
 
 class ZoneConstructionSet(UmiBase, metaclass=Unique):
     """Zone Specific Construction ids
@@ -1345,12 +1330,12 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     Slab.$ref
     """
 
-    def __init__(self, Zone_Names=None, Slab=None, IsSlabAdiabatic=False,
+    def __init__(self, *args, Zone_Names=None, Slab=None, IsSlabAdiabatic=False,
                  Roof=None, IsRoofAdiabatic=False, Partition=None,
                  IsPartitionAdiabatic=False, Ground=None,
                  IsGroundAdiabatic=False, Facade=None, IsFacadeAdiabatic=False,
                  **kwargs):
-        super(ZoneConstructionSet, self).__init__(**kwargs)
+        super(ZoneConstructionSet, self).__init__(*args, **kwargs)
         self.Slab = Slab
         self.IsSlabAdiabatic = IsSlabAdiabatic
         self.Roof = Roof
@@ -1483,9 +1468,6 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         return data_dict
 
-    def __dict__(self):
-        return {'$ref': str(self.id)}
-
 
 class ConstructionBase(UmiBase):
     def __init__(self, AssemblyCarbon=0, AssemblyCost=0, AssemblyEnergy=0,
@@ -1514,7 +1496,7 @@ class MaterialLayer(object):
         self.Thickness = Thickness
         self.Material = Material
 
-    def __dict__(self):
+    def to_dict(self):
         return collections.OrderedDict(Material={'$ref': str(self.Material.id)},
                                        Thickness=self.Thickness)
 
@@ -1634,7 +1616,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Layers"] = [lay.__dict__() for lay in self.Layers]
+        data_dict["Layers"] = [lay.to_dict() for lay in self.Layers]
         data_dict["AssemblyCarbon"] = self.AssemblyCarbon
         data_dict["AssemblyCost"] = self.AssemblyCost
         data_dict["AssemblyEnergy"] = self.AssemblyEnergy
@@ -1646,9 +1628,6 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         data_dict["Name"] = str(self.Name)
 
         return data_dict
-
-    def __dict__(self):
-        return {'$ref': str(self.id)}
 
 
 class OpaqueMaterial(UmiBase, metaclass=Unique):
@@ -1727,9 +1706,6 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
-
-    def __dict__(self):
-        return {'$ref': str(self.id)}
 
 
 class WindowType(IntEnum):
@@ -1835,7 +1811,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         data_dict["AfnDischargeC"] = self.AfnDischargeC
         data_dict["AfnTempSetpoint"] = self.AfnTempSetpoint
         data_dict["AfnWindowAvailability"] = \
-            self.AfnWindowAvailability.__dict__()
+            self.AfnWindowAvailability.to_dict()
         data_dict["Construction"] = {
             "$ref": str(self.Construction.id)
         }
@@ -1844,14 +1820,14 @@ class WindowSetting(UmiBase, metaclass=Unique):
         data_dict["IsZoneMixingOn"] = self.IsZoneMixingOn
         data_dict["OperableArea"] = self.OperableArea
         data_dict["ShadingSystemAvailabilitySchedule"] = \
-            self.ShadingSystemAvailabilitySchedule.__dict__()
+            self.ShadingSystemAvailabilitySchedule.to_dict()
         data_dict["ShadingSystemSetpoint"] = self.ShadingSystemSetpoint
         data_dict[
             "ShadingSystemTransmittance"] = self.ShadingSystemTransmittance
         data_dict["ShadingSystemType"] = self.ShadingSystemType
         data_dict["Type"] = self.Type
         data_dict["ZoneMixingAvailabilitySchedule"] = \
-            self.ZoneMixingAvailabilitySchedule.__dict__()
+            self.ZoneMixingAvailabilitySchedule.to_dict()
         data_dict[
             "ZoneMixingDeltaTemperature"] = self.ZoneMixingDeltaTemperature
         data_dict["ZoneMixingFlowRate"] = self.ZoneMixingFlowRate
@@ -1875,9 +1851,6 @@ class WindowSetting(UmiBase, metaclass=Unique):
         ref = kwargs.get('ZoneMixingAvailabilitySchedule', None)
         w.ZoneMixingAvailabilitySchedule = w.get_ref(ref)
         return w
-
-    def __dict__(self):
-        return {'$ref': str(self.id)}
 
 
 class WindowConstruction(UmiBase, metaclass=Unique):
@@ -1925,7 +1898,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Layers"] = [layer.__dict__()
+        data_dict["Layers"] = [layer.to_dict()
                                for layer in self.Layers]
         data_dict["AssemblyCarbon"] = self.AssemblyCarbon
         data_dict["AssemblyCost"] = self.AssemblyCost

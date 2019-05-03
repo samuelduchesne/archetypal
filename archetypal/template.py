@@ -687,6 +687,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
     @classmethod
     def from_idf(cls, *args, **kwargs):
         zc = ZoneConditioning(*args, **kwargs)
+
         zc.MechVentSchedule = UmiSchedule.random_constant_schedule()
         zc.HeatingSchedule = UmiSchedule.random_constant_schedule()
         zc.CoolingSchedule = UmiSchedule.random_constant_schedule()
@@ -819,6 +820,9 @@ class ZoneLoad(UmiBase, metaclass=Unique):
     def __dict__(self):
         return {'$ref': str(self.id)}
 
+    def __hash__(self):
+        return hash(self.Name)
+
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
     """
@@ -837,10 +841,10 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         """
 
         Args:
-            Structure (StructureDefinition):
-            Windows (WindowSetting):
-            Perimeter (Zone):
-            Core (Zone):
+            Structure (StructureDefinition, optional):
+            Windows (WindowSetting, optional):
+            Perimeter (Zone, optional):
+            Core (Zone, optional):
         """
         super(BuildingTemplate, self).__init__(*args, **kwargs)
         self.PartitionRatio = PartitionRatio
@@ -1091,9 +1095,6 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
-
-    def __hash__(self):
-        return hash(self.Name)
 
 
 class MassRatio(object):

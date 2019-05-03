@@ -20,7 +20,7 @@ from sklearn import preprocessing
 
 from . import settings, object_from_idf, object_from_idfs, \
     calc_simple_glazing, \
-    iscore, weighted_mean, top, GasMaterial, UmiSchedule, BuildingTemplate, \
+    iscore, weighted_mean, top, GasMaterial, BuildingTemplate, \
     GlazingMaterial, OpaqueMaterial, OpaqueConstruction, \
     WindowConstruction, StructureDefinition, DaySchedule, WeekSchedule, \
     YearSchedule, DomesticHotWaterSetting, VentilationSetting, \
@@ -152,8 +152,25 @@ class UmiTemplate:
         if load:
             template.run_eplus(idf_files, weather, **run_eplus_kwargs)
             template.read()
+            template.fill()
 
         return template
+
+    def fill(self):
+        # Todo: Finish enumerating all UmiTempalate objects
+
+        if self.BuildingTemplates:
+            for bt in self.BuildingTemplates:
+                day_schedules = [bt.all_objects[obj]
+                                 for obj in bt.all_objects
+                                 if 'UmiSchedule' in obj]
+                self.DaySchedules.extend(day_schedules)
+
+                dhws = [bt.all_objects[obj]
+                        for obj in bt.all_objects
+                        if 'DomesticHotWaterSetting' in obj]
+                self.DomesticHotWaterSettings.extend(dhws)
+
 
     def read(self):
         """Initialize UMI objects"""

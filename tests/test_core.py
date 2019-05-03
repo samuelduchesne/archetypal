@@ -1,7 +1,7 @@
 import glob
-import pytest
 
 import archetypal as ar
+import pytest
 
 # configure archetypal
 ar.config(log_console=True, log_file=True, use_cache=True,
@@ -40,50 +40,60 @@ def test_template_withcache(config):
     idf = glob.glob('./input_data/umi_samples/*.idf')
     idf = ar.copy_file(idf)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    a = ar.UmiTemplate.from_idf(idf, wf)
+    a = ar.UmiTemplate.from_idf(idf, wf, load=True,
+                                run_eplus_kwargs=dict(prep_outputs=True,
+                                                      annual=True))
 
     yield a
 
 
 @pytest.fixture(scope='module')
 def sql(test_template_withcache):
-    sql = test_template_withcache.run_eplus(silent=False, processors=-1,
-                                            annual=True, prep_outputs=True)
+    sql = test_template_withcache.sql
     yield sql
 
 
 def test_materials_gas(test_template_withcache):
-    test_template_withcache.materials_gas = ar.materials_gas(test_template_withcache.idfs)
+    test_template_withcache.materials_gas = ar.materials_gas(
+        test_template_withcache.idfs)
     assert not test_template_withcache.materials_gas.empty
 
 
 def test_materials_glazing(test_template_withcache):
-    test_template_withcache.materials_glazing = ar.materials_glazing(test_template_withcache.idfs)
-    test_template_withcache.materials_glazing = ar.newrange(test_template_withcache.materials_gas,
-                                                            test_template_withcache.materials_glazing)
+    test_template_withcache.materials_glazing = ar.materials_glazing(
+        test_template_withcache.idfs)
+    test_template_withcache.materials_glazing = ar.newrange(
+        test_template_withcache.materials_gas,
+        test_template_withcache.materials_glazing)
     return test_template_withcache.materials_glazing
 
 
 def test_materials_opaque(test_template_withcache):
-    test_template_withcache.materials_opaque = ar.materials_opaque(test_template_withcache.idfs)
-    test_template_withcache.materials_opaque = ar.newrange(test_template_withcache.materials_glazing,
-                                                           test_template_withcache.materials_opaque)
+    test_template_withcache.materials_opaque = ar.materials_opaque(
+        test_template_withcache.idfs)
+    test_template_withcache.materials_opaque = ar.newrange(
+        test_template_withcache.materials_glazing,
+        test_template_withcache.materials_opaque)
     return test_template_withcache.materials_opaque
 
 
 def test_constructions_opaque(test_template_withcache):
-    test_template_withcache.constructions_opaque = ar.constructions_opaque(test_template_withcache.idfs,
-                                                                           test_template_withcache.materials_opaque)
-    test_template_withcache.constructions_opaque = ar.newrange(test_template_withcache.materials_opaque,
-                                                               test_template_withcache.constructions_opaque)
+    test_template_withcache.constructions_opaque = ar.constructions_opaque(
+        test_template_withcache.idfs,
+        test_template_withcache.materials_opaque)
+    test_template_withcache.constructions_opaque = ar.newrange(
+        test_template_withcache.materials_opaque,
+        test_template_withcache.constructions_opaque)
     return test_template_withcache.constructions_opaque
 
 
 def test_constructions_windows(test_template_withcache):
-    test_template_withcache.constructions_windows = ar.constructions_windows(test_template_withcache.idfs,
-                                                                             test_template_withcache.materials_glazing)
-    test_template_withcache.constructions_windows = ar.newrange(test_template_withcache.constructions_opaque,
-                                                                test_template_withcache.constructions_windows)
+    test_template_withcache.constructions_windows = ar.constructions_windows(
+        test_template_withcache.idfs,
+        test_template_withcache.materials_glazing)
+    test_template_withcache.constructions_windows = ar.newrange(
+        test_template_withcache.constructions_opaque,
+        test_template_withcache.constructions_windows)
     return test_template_withcache.constructions_windows
 
 
@@ -116,7 +126,6 @@ def test_zone_dhw(test_template_withcache, sql):
 
 
 def test_to_json(test_template_withcache):
-    test_template_withcache.read()
     json = test_template_withcache.to_json()
     print(json)
 
@@ -155,7 +164,7 @@ def test_parse_schedule_profile():
         if thisday is None:
             unique_day[hashed_day] = (i, day)
 
-    
+
 def test_energyprofile():
     idf = ['./input_data/regular/5ZoneNightVent1.idf',
            './input_data/regular/AdultEducationCenter.idf']

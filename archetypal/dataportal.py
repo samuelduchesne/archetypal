@@ -1,3 +1,11 @@
+################################################################################
+# Module: dataportal.py
+# Description: Various functions to acquire building archetype data using
+#              available APIs
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import hashlib
 import io
 import json
@@ -10,8 +18,6 @@ import zipfile
 import pandas as pd
 import pycountry as pycountry
 import requests
-
-import archetypal.dataportal
 from archetypal import log, settings, make_str
 
 # scipy and sklearn are optional dependencies for faster nearest node search
@@ -427,9 +433,10 @@ def nrel_api_cbr_request(data):
     Returns:
         dict: the json response
 
-    Examples
-        >>> archetypal.dataportal.nrel_api_cbr_request({'s': 'Commercial Reference',
-        >>>     'api_key': 'oGZdX1nhars1cTJYTm7M9T12T1ZOvikX9pH0Zudq'})
+    Examples:
+        >>> import archetypal as ar
+        >>> ar.dataportal.nrel_api_cbr_request({'s': 'Commercial'
+        >>> 'Reference', 'api_key': 'oGZdX1nhars1cTJYTm7M9T12T1ZOvikX9pH0Zudq'})
 
     Notes
         For a detailed description of data arguments, visit
@@ -468,9 +475,11 @@ def nrel_api_cbr_request(data):
             save_to_cache(prepared_url, response_json)
         except Exception:
             # deal with response satus_code here
-            log('Server at {} returned status code {} and no JSON data.'.format(
-                domain,
-                response.status_code), level=lg.ERROR)
+            log(
+                'Server at {} returned status code {} and no JSON data.'.format(
+                    domain,
+                    response.status_code),
+                level=lg.ERROR)
         else:
             return response_json
 
@@ -522,9 +531,11 @@ def nrel_bcl_api_request(data):
             save_to_cache(prepared_url, response_json)
         except Exception:
             # deal with response satus_code here
-            log('Server at {} returned status code {} and no JSON data.'.format(
-                domain,
-                response.status_code), level=lg.ERROR)
+            log(
+                'Server at {} returned status code {} and no JSON data.'.format(
+                    domain,
+                    response.status_code),
+                level=lg.ERROR)
             return response.content
         else:
             return response_json
@@ -575,10 +586,12 @@ def stat_can_request(data):
                                                                     '')
                 response_json = json.loads(response)
             except Exception:
-                log('Server at {} returned status code {} and no JSON '
+                log(
+                    'Server at {} returned status code {} and no JSON '
                     'data.'.format(
-                    domain,
-                    response.status_code), level=lg.ERROR)
+                        domain,
+                        response.status_code),
+                    level=lg.ERROR)
             else:
                 save_to_cache(prepared_url, response_json)
                 return response_json
@@ -633,10 +646,12 @@ def stat_can_geo_request(data):
                                                                     '')
                 response_json = json.loads(response)
             except Exception:
-                log('Server at {} returned status code {} and no JSON '
+                log(
+                    'Server at {} returned status code {} and no JSON '
                     'data.'.format(
-                    domain,
-                    response.status_code), level=lg.ERROR)
+                        domain,
+                        response.status_code),
+                    level=lg.ERROR)
             else:
                 save_to_cache(prepared_url, response_json)
                 return response_json

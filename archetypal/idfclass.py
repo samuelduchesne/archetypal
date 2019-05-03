@@ -1,8 +1,14 @@
+################################################################################
+# Module: idfclass.py
+# Description: Subclass of the IDF class from the eppy project
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import logging as lg
 import os
 
 import eppy.modeleditor
-
 from archetypal import log
 
 
@@ -52,7 +58,8 @@ class IDF(eppy.modeleditor.IDF):
 
     def get_schedule_type_limits_data_by_name(self, schedule_limit_name):
         """Returns the data for a particular 'ScheduleTypeLimits' object"""
-        schedule = self.getobject('ScheduleTypeLimits'.upper(), schedule_limit_name)
+        schedule = self.getobject('ScheduleTypeLimits'.upper(),
+                                  schedule_limit_name)
 
         if schedule is not None:
             lower_limit = schedule['Lower_Limit_Value']
@@ -66,7 +73,6 @@ class IDF(eppy.modeleditor.IDF):
             return lower_limit, upper_limit, numeric_type, unit_type
         else:
             return '', '', '', ''
-
 
     def get_schedule_data_by_name(self, sch_name, sch_type=None):
         """Returns the epbunch of a particular schedule name

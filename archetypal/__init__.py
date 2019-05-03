@@ -1,4 +1,9 @@
-""""""
+################################################################################
+# Module: __init__.py
+# Description: Archetypal: Retrieve, construct and analyse building archetypes
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
 
 __version__ = '1.2.0-dev'
 

@@ -357,7 +357,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     schedules = {}
 
     for schedule_name in used_schedules:
-        s = Schedule(idf, sch_name=schedule_name,
+        s = Schedule(schedule_name, idf,
                      start_day_of_the_week=idf.day_of_week_for_start_day)
 
         schedule_names.append(schedule_name)

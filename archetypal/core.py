@@ -21,7 +21,7 @@ from sklearn import preprocessing
 from . import settings, object_from_idf, object_from_idfs, \
     calc_simple_glazing, \
     iscore, weighted_mean, top, GasMaterial, UmiSchedule, BuildingTemplate, \
-    WindowSetting, GlazingMaterial, OpaqueMaterial, OpaqueConstruction, \
+    GlazingMaterial, OpaqueMaterial, OpaqueConstruction, \
     WindowConstruction, StructureDefinition, DaySchedule, WeekSchedule, \
     YearSchedule, DomesticHotWaterSetting, VentilationSetting, \
     ZoneConditioning, \

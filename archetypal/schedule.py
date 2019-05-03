@@ -6,15 +6,14 @@
 ################################################################################
 
 import functools
+import io
 import logging as lg
 import uuid
 from datetime import datetime, timedelta
 
-import io
+import archetypal
 import numpy as np
 import pandas as pd
-
-import archetypal
 from archetypal import log
 
 
@@ -73,7 +72,7 @@ class Schedule(object):
                                       Hourly_Value=hourly_value),
                                save=False)
 
-        sched = Schedule(sch_name=Name,idf=idf_scratch, **kwargs)
+        sched = Schedule(sch_name=Name, idf=idf_scratch, **kwargs)
         return sched
 
     @property

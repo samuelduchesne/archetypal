@@ -24,16 +24,15 @@ import warnings
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
+import archetypal as ar
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import shapely
+from archetypal import settings
 from lxml import objectify
 from pandas.io.json import json_normalize
 from shapely.geometry import Point
-
-import archetypal as ar
-from archetypal import settings
 
 
 def config(data_folder=settings.data_folder,
@@ -843,7 +842,7 @@ def rmse(data, targets):
     """calculate rmse with target values"""
     y = piecewise(data)
     predictions = y
-    error = np.sqrt(np.mean((predictions-targets)**2))
+    error = np.sqrt(np.mean((predictions - targets) ** 2))
     return error
 
 
@@ -869,7 +868,8 @@ def load_umi_template(json_template):
     """
 
     Args:
-        json_template: Absolute or relative filepath to an umi json_template file.
+        json_template: Absolute or relative filepath to an umi json_template
+        file.
 
     Returns:
         pandas.DataFrame: 17 DataFrames, one for each component groups
@@ -879,6 +879,7 @@ def load_umi_template(json_template):
         with open(json_template) as f:
             dicts = json.load(f, object_pairs_hook=OrderedDict)
 
-            return [{key: json_normalize(value)} for key, value in dicts.items()]
+            return [{key: json_normalize(value)} for key, value in
+                    dicts.items()]
     else:
         raise ValueError('File {} does not exist'.format(json_template))

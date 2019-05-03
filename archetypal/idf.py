@@ -17,13 +17,12 @@ from subprocess import check_call
 
 # import eppy.modeleditor
 import pandas as pd
-from eppy.EPlusInterfaceFunctions import parse_idd
-from eppy.easyopen import getiddfile
-from eppy.runner.run_functions import run, paths_from_version
-
 from archetypal import IDF
 from archetypal import settings
 from archetypal.utils import log, cd, EnergyPlusProcessError
+from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.easyopen import getiddfile
+from eppy.runner.run_functions import run, paths_from_version
 
 try:
     import multiprocessing as mp
@@ -473,50 +472,50 @@ def prepare_outputs(eplus_file, outputs=None, idd_filename=None):
 
     # SummaryReports
     idf[eplus_finename].add_object('Output:Table:SummaryReports'.upper(),
-                                    Report_1_Name='AllSummary')
+                                   Report_1_Name='AllSummary')
 
     # SQL output
     idf[eplus_finename].add_object('Output:SQLite'.upper(),
-                                    Option_Type='SimpleAndTabular')
+                                   Option_Type='SimpleAndTabular')
 
     # Output variables
     idf[eplus_finename].add_object('Output:Variable'.upper(),
-                                    Variable_Name='Air System Total Heating '
-                                                  'Energy',
-                                    Reporting_Frequency='hourly')
+                                   Variable_Name='Air System Total Heating '
+                                                 'Energy',
+                                   Reporting_Frequency='hourly')
     idf[eplus_finename].add_object('Output:Variable'.upper(),
-                                    Variable_Name='Air System Total Cooling '
-                                                  'Energy',
-                                    Reporting_Frequency='hourly')
+                                   Variable_Name='Air System Total Cooling '
+                                                 'Energy',
+                                   Reporting_Frequency='hourly')
 
     # Output meters
     idf[eplus_finename].add_object('OUTPUT:METER',
-                                    Key_Name='HeatRejection:EnergyTransfer',
-                                    Reporting_Frequency='hourly')
+                                   Key_Name='HeatRejection:EnergyTransfer',
+                                   Reporting_Frequency='hourly')
     idf[eplus_finename].add_object('OUTPUT:METER',
-                                    Key_Name='Heating:EnergyTransfer',
-                                    Reporting_Frequency='hourly')
+                                   Key_Name='Heating:EnergyTransfer',
+                                   Reporting_Frequency='hourly')
     idf[eplus_finename].add_object('OUTPUT:METER',
-                                    Key_Name='Cooling:EnergyTransfer',
-                                    Reporting_Frequency='hourly')
+                                   Key_Name='Cooling:EnergyTransfer',
+                                   Reporting_Frequency='hourly')
     idf[eplus_finename].add_object('OUTPUT:METER',
-                                    Key_Name='Heating:DistrictHeating',
-                                    Reporting_Frequency='hourly')
+                                   Key_Name='Heating:DistrictHeating',
+                                   Reporting_Frequency='hourly')
     idf[eplus_finename].add_object('OUTPUT:METER',
-                                    Key_Name='Heating:Electricity',
-                                    Reporting_Frequency='hourly')
+                                   Key_Name='Heating:Electricity',
+                                   Reporting_Frequency='hourly')
     idf[eplus_finename].add_object('OUTPUT:METER',
-                                    Key_Name='Heating:Gas',
-                                    Reporting_Frequency='hourly')
+                                   Key_Name='Heating:Gas',
+                                   Reporting_Frequency='hourly')
     idf[eplus_finename].add_object('OUTPUT:METER',
-                                    Key_Name='Cooling:DistrictCooling',
-                                    Reporting_Frequency='hourly')
+                                   Key_Name='Cooling:DistrictCooling',
+                                   Reporting_Frequency='hourly')
     idf[eplus_finename].add_object('OUTPUT:METER',
-                                    Key_Name='Cooling:Electricity',
-                                    Reporting_Frequency='hourly')
+                                   Key_Name='Cooling:Electricity',
+                                   Reporting_Frequency='hourly')
     idf[eplus_finename].add_object('OUTPUT:METER',
-                                    Key_Name='Cooling:Gas',
-                                    Reporting_Frequency='hourly')
+                                   Key_Name='Cooling:Gas',
+                                   Reporting_Frequency='hourly')
 
 
 def cache_runargs(eplus_file, runargs):

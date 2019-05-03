@@ -1,3 +1,10 @@
+################################################################################
+# Module: building.py
+# Description: Functions related to building
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import numpy as np
 
 from archetypal.core import EnergyProfile

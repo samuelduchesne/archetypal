@@ -1,8 +1,17 @@
+################################################################################
+# Module: schedule.py
+# Description: Functions for handling conversion of EnergyPlus schedule objects
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import functools
+import io
 import logging as lg
 import uuid
 from datetime import datetime, timedelta
 
+import archetypal
 import numpy as np
 import pandas as pd
 from archetypal import log
@@ -11,8 +20,8 @@ from archetypal import log
 class Schedule(object):
     """An object designed to handle any EnergyPlys schedule object"""
 
-    def __init__(self, idf, sch_name, start_day_of_the_week=None, strict=False,
-                 base_year=2018, schType=None, **kwargs):
+    def __init__(self, sch_name, idf=None, start_day_of_the_week=0,
+                 strict=False, base_year=2018, schType=None, **kwargs):
         """
 
         Args:
@@ -26,6 +35,7 @@ class Schedule(object):
             base_year (int): The base year of the schedule. Defaults to 2018
                 since the first day of that year is a Monday.
         """
+        super(Schedule, self).__init__(**kwargs)
         self.strict = strict
         self.idf = idf
         self.schName = sch_name
@@ -40,8 +50,30 @@ class Schedule(object):
         self.index_ = None
         self.values = None
         self.schType = schType
-        self.schTypeLimitsName = self.get_schedule_type_limits_name(
-            sch_type=self.schType)
+        _type = kwargs.get('Type', None)
+        if _type is None:
+            self.schTypeLimitsName = self.get_schedule_type_limits_name(
+                sch_type=self.schType)
+        else:
+            self.schTypeLimitsName = _type
+
+    @classmethod
+    def constant_schedule(cls, hourly_value=1, Name='AlwaysOn', **kwargs):
+        idftxt = "VERSION, 8.9;"  # Not an emplty string. has just the
+        # version number
+        # we can make a file handle of a string
+        fhandle = io.StringIO(idftxt)
+        # initialize the IDF object with the file handle
+        idf_scratch = archetypal.IDF(fhandle)
+
+        idf_scratch.add_object(ep_object='Schedule:Constant'.upper(),
+                               **dict(Name=Name,
+                                      Schedule_Type_Limits_Name='',
+                                      Hourly_Value=hourly_value),
+                               save=False)
+
+        sched = Schedule(sch_name=Name, idf=idf_scratch, **kwargs)
+        return sched
 
     @property
     def all_values(self):
@@ -80,7 +112,7 @@ class Schedule(object):
             sch_name = self.schName
         if sch_type is None:
             schedule_values = self.idf.get_schedule_data_by_name(sch_name,
-                                                             sch_type=sch_type)
+                                                                 sch_type=sch_type)
         try:
             schedule_limit_name = schedule_values.Schedule_Type_Limits_Name
         except:

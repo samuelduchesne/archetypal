@@ -1,3 +1,18 @@
+################################################################################
+# Module: utils.py
+# Description: Utility functions for configuration, logging
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+# OSMnx
+#
+# Copyright (c) 2019 Geoff Boeing https://geoffboeing.com/
+#
+# Part of the following code is a derivative work of the code from the OSMnx
+# project, which is licensed MIT License. This code therefore is also
+# licensed under the terms of the The MIT License (MIT).
+################################################################################
+
 import datetime as dt
 import json
 import logging as lg
@@ -9,16 +24,15 @@ import warnings
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
+import archetypal as ar
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import shapely
+from archetypal import settings
 from lxml import objectify
 from pandas.io.json import json_normalize
 from shapely.geometry import Point
-
-import archetypal as ar
-from archetypal import settings
 
 
 def config(data_folder=settings.data_folder,
@@ -510,40 +524,6 @@ def date_transform(date_str):
     return datetime.strptime('23:00', '%H:%M')
 
 
-def time2time(row):
-    """
-    Constructs an array of 24 hour schedule points from a
-    Shedule:Day:Interval object.
-
-    Args:
-        row (pandas.Series): a row
-
-    Returns:
-        numpy.ndarray: a numpy array of length 24
-
-    """
-    time_seg = []
-    for i in range(1, 25):
-        try:
-            time = row['Time_{}'.format(i)]  # Time_i
-            value = row['Value_Until_Time_{}'.format(i)]  # Value_Until_Time_i
-        except:
-            pass
-        else:
-            if str(time) != 'nan' and str(value) != 'nan':
-                time = date_transform(time).hour
-                times = np.ones(time + 1) * float(value)
-                time_seg.append(times)
-    arrays = time_seg
-    array = time_seg[0]
-    length = len(arrays[0])
-    for i, a in enumerate(arrays):
-        if i != 0:
-            array = np.append(array, a[length - 1:-1])
-            length = len(a)
-    return array[0:24]
-
-
 def iscore(row):
     """
     Helps to group by core and perimeter zones. If any of "has `core` in
@@ -828,7 +808,7 @@ def rmse(data, targets):
     """calculate rmse with target values"""
     y = piecewise(data)
     predictions = y
-    error = np.sqrt(np.mean((predictions-targets)**2))
+    error = np.sqrt(np.mean((predictions - targets) ** 2))
     return error
 
 
@@ -854,7 +834,8 @@ def load_umi_template(json_template):
     """
 
     Args:
-        json_template: Absolute or relative filepath to an umi json_template file.
+        json_template: Absolute or relative filepath to an umi json_template
+        file.
 
     Returns:
         pandas.DataFrame: 17 DataFrames, one for each component groups
@@ -864,6 +845,7 @@ def load_umi_template(json_template):
         with open(json_template) as f:
             dicts = json.load(f, object_pairs_hook=OrderedDict)
 
-            return [{key: json_normalize(value)} for key, value in dicts.items()]
+            return [{key: json_normalize(value)} for key, value in
+                    dicts.items()]
     else:
         raise ValueError('File {} does not exist'.format(json_template))

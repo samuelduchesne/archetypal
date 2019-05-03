@@ -90,9 +90,9 @@ class UmiBase(object):
 
 
 class MaterialBase(UmiBase):
-    def __init__(self, Name, Cost, EmbodiedCarbon, EmbodiedEnergy,
-                 SubstitutionTimestep, TransportCarbon, TransportDistance,
-                 TransportEnergy, SubstitutionRatePattern=None,
+    def __init__(self, Name, Cost=0, EmbodiedCarbon=0, EmbodiedEnergy=0,
+                 SubstitutionTimestep=0, TransportCarbon=0, TransportDistance=0,
+                 TransportEnergy=0, SubstitutionRatePattern=None,
                  Conductivity=2.4, Density=2400,
                  **kwargs):
         super(MaterialBase, self).__init__(Name, **kwargs)

@@ -455,9 +455,9 @@ def prepare_outputs(eplus_file, outputs=None, idd_filename=None):
         outputs (bool or list):
 
     Examples:
-        >>> outputs = [{'ep_object':'OUTPUT:DIAGNOSTICS',
+        >>> objects = [{'ep_object':'OUTPUT:DIAGNOSTICS',
         >>>             'kwargs':{'Key_1':'DisplayUnusedSchedules'}}]
-        >>> prepare_outputs(eplus_file, outputs=None)
+        >>> prepare_outputs(eplus_file, outputs=objects)
 
     """
 

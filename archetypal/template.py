@@ -145,7 +145,7 @@ class GasMaterial(MaterialBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-        gm = GasMaterial(*args, **kwargs)
+        gm = cls(*args, **kwargs)
         gas_type = kwargs.get('Name', None)
         gm.Type = gas_type
 
@@ -278,12 +278,12 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         random.seed(seed)
 
         sched = cls.constant_schedule(Name=name, **kwargs)
-        sched = UmiSchedule(Name=name, idf=sched.idf)
+        sched = cls(Name=name, idf=sched.idf)
         return sched
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
-        sched = UmiSchedule(*args, **kwargs)
+        sched = cls(*args, **kwargs)
         sched.develop()
         return sched
 
@@ -332,7 +332,7 @@ class YearScheduleParts():
 
     @classmethod
     def from_json(cls, all_objects, *args, **kwargs):
-        ysp = YearScheduleParts(*args, **kwargs)
+        ysp = cls(*args, **kwargs)
         ref = kwargs.get('Schedule', None)
         ysp.Schedule = all_objects.get_ref(ref)
 
@@ -394,7 +394,7 @@ class WeekSchedule(UmiSchedule):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-        wc = WeekSchedule(*args, **kwargs)
+        wc = cls(*args, **kwargs)
         days = kwargs.get('Days', None)
         wc.Days = [wc.get_ref(day) for day in days]
         return wc
@@ -460,7 +460,7 @@ class YearSchedule(UmiSchedule):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-        ys = YearSchedule(*args, **kwargs)
+        ys = cls(*args, **kwargs)
         parts = kwargs.get('Parts', None)
 
         ys.Parts = [YearScheduleParts.from_json(all_objects=ys, **part) for
@@ -527,7 +527,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-        dhws = DomesticHotWaterSetting(*args, **kwargs)
+        dhws = cls(*args, **kwargs)
         wat_sch = kwargs.get('WaterSchedule', None)
         dhws.WaterSchedule = dhws.get_ref(wat_sch)
         return dhws
@@ -591,7 +591,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-        vs = VentilationSetting(*args, **kwargs)
+        vs = cls(*args, **kwargs)
         vent_sch = kwargs.get('ScheduledVentilationSchedule', None)
         vs.ScheduledVentilationSchedule = vs.get_ref(vent_sch)
         nat_sch = kwargs.get('NatVentSchedule', None)
@@ -694,7 +694,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-        zc = ZoneConditioning(*args, **kwargs)
+        zc = cls(*args, **kwargs)
 
         cool_schd = kwargs.get('CoolingSchedule', None)
         zc.CoolingSchedule = zc.get_ref(cool_schd)
@@ -780,7 +780,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-        zl = ZoneLoad(*args, **kwargs)
+        zl = cls(*args, **kwargs)
 
         cool_schd = kwargs.get('EquipmentAvailabilitySchedule', None)
         zl.EquipmentAvailabilitySchedule = zl.get_ref(cool_schd)
@@ -852,8 +852,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-
-        bt = BuildingTemplate(*args, **kwargs)
+        bt = cls(*args, **kwargs)
 
         ref = kwargs.get('Core', None)
         bt.Core = bt.get_ref(ref)
@@ -871,8 +870,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
-        bt = BuildingTemplate(Core=None, Perimeter=None, Structure=None,
-                              Windows=None, **kwargs)
+        bt = cls(Core=None, Perimeter=None, Structure=None,
+                 Windows=None, **kwargs)
 
         bt.zone_refs()
         bt.windows()
@@ -1137,7 +1136,7 @@ class StructureDefinition(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-        sd = StructureDefinition(*args, **kwargs)
+        sd = cls(*args, **kwargs)
         massratios = kwargs.get('MassRatios', None)
         sd.MassRatios = [MassRatio(HighLoadRatio=massratio['HighLoadRatio'],
                                    Material=sd.get_ref(massratio['Material']),
@@ -1204,7 +1203,7 @@ class Zone(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
-        z = Zone(*args, **kwargs)
+        z = cls(*args, **kwargs)
         z.Zone_Names = kwargs.get('Zone_Names', None)
         z.sql = kwargs.get('sql', None)
 
@@ -1315,7 +1314,7 @@ class Zone(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-        zone = Zone(*args, **kwargs)
+        zone = cls(*args, **kwargs)
 
         ref = kwargs.get('Conditioning', None)
         zone.Conditioning = zone.get_ref(ref)
@@ -1366,7 +1365,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-        zc = ZoneConstructionSet(*args, **kwargs)
+        zc = cls(*args, **kwargs)
 
         ref = kwargs.get('Facade', None)
         zc.Facade = zc.get_ref(ref)
@@ -1386,8 +1385,8 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         return zc
 
     @classmethod
-    def from_idf(self, *args, **kwargs):
-        zc = ZoneConstructionSet(*args, **kwargs)
+    def from_idf(cls, *args, **kwargs):
+        zc = cls(*args, **kwargs)
 
         zc.constructions()
 
@@ -1537,7 +1536,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-        oc = OpaqueConstruction(*args, **kwargs)
+        oc = cls(*args, **kwargs)
         layers = kwargs.get('Layers', None)
 
         # resolve Material objects from ref
@@ -1548,7 +1547,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
-        oc = OpaqueConstruction(*args, **kwargs)
+        oc = cls(*args, **kwargs)
 
         oc.Layers = oc.layers()
 
@@ -1778,7 +1777,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
-        w = WindowSetting(*args, **kwargs)
+        w = cls(*args, **kwargs)
 
         construction = kwargs.get('Construction', None)
         w.Construction = w.window_construction(construction)
@@ -1864,7 +1863,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-        w = WindowSetting(*args, **kwargs)
+        w = cls(*args, **kwargs)
 
         ref = kwargs.get('AfnWindowAvailability', None)
         w.AfnWindowAvailability = w.get_ref(ref)
@@ -1903,7 +1902,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
-        wc = WindowConstruction(*args, **kwargs)
+        wc = cls(*args, **kwargs)
         layers = kwargs.get('Layers', None)
 
         # resolve Material objects from ref
@@ -1914,7 +1913,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
-        wc = WindowConstruction(*args, **kwargs)
+        wc = cls(*args, **kwargs)
 
         wc.Layers = wc.layers()
 

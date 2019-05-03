@@ -524,40 +524,6 @@ def date_transform(date_str):
     return datetime.strptime('23:00', '%H:%M')
 
 
-def time2time(row):
-    """
-    Constructs an array of 24 hour schedule points from a
-    Shedule:Day:Interval object.
-
-    Args:
-        row (pandas.Series): a row
-
-    Returns:
-        numpy.ndarray: a numpy array of length 24
-
-    """
-    time_seg = []
-    for i in range(1, 25):
-        try:
-            time = row['Time_{}'.format(i)]  # Time_i
-            value = row['Value_Until_Time_{}'.format(i)]  # Value_Until_Time_i
-        except:
-            pass
-        else:
-            if str(time) != 'nan' and str(value) != 'nan':
-                time = date_transform(time).hour
-                times = np.ones(time + 1) * float(value)
-                time_seg.append(times)
-    arrays = time_seg
-    array = time_seg[0]
-    length = len(arrays[0])
-    for i, a in enumerate(arrays):
-        if i != 0:
-            array = np.append(array, a[length - 1:-1])
-            length = len(a)
-    return array[0:24]
-
-
 def iscore(row):
     """
     Helps to group by core and perimeter zones. If any of "has `core` in

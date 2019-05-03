@@ -87,27 +87,6 @@ def test_constructions_windows(test_template_withcache):
     return test_template_withcache.constructions_windows
 
 
-def test_day_schedules(test_template_withcache):
-    test_template_withcache.day_schedules = ar.day_schedules(test_template_withcache.idfs)
-    return test_template_withcache.day_schedules
-
-
-def test_week_schedules(test_template_withcache):
-    test_template_withcache.week_schedules = ar.week_schedules(test_template_withcache.idfs,
-                                                               test_template_withcache.day_schedules)
-    test_template_withcache.week_schedules = ar.newrange(test_template_withcache.day_schedules,
-                                                         test_template_withcache.week_schedules)
-    return test_template_withcache.week_schedules
-
-
-def test_year_schedules(test_template_withcache):
-    test_template_withcache.year_schedules = ar.year_schedules(test_template_withcache.idfs,
-                                                               test_template_withcache.week_schedules)
-    test_template_withcache.year_schedules = ar.newrange(test_template_withcache.week_schedules,
-                                                         test_template_withcache.year_schedules)
-    return test_template_withcache.year_schedules
-
-
 # Zone
 def test_zone_information(test_template_withcache, sql):
     template.zone_details = ar.zone_information(sql)

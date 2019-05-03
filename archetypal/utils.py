@@ -17,6 +17,7 @@ import datetime as dt
 import json
 import logging as lg
 import os
+import re
 import sys
 import time
 import unicodedata
@@ -94,7 +95,7 @@ def config(data_folder=settings.data_folder,
         log('Configured archetypal')
 
 
-def log(message, level=None, name=None, filename=None):
+def log(message, level=None, name=None, filename=None, avoid_console=False):
     """
     Write a message to the log file and/or print to the the console.
 
@@ -103,6 +104,8 @@ def log(message, level=None, name=None, filename=None):
         level (int): one of the logger.level constants
         name (str): name of the logger
         filename (str): name of the log file
+        avoid_console (bool): If True, don't print to console for this message
+            only
 
     Returns:
         None
@@ -131,7 +134,7 @@ def log(message, level=None, name=None, filename=None):
 
     # if logging to console is turned on, convert message to ascii and print to
     # the console
-    if settings.log_console:
+    if settings.log_console and not avoid_console:
         # capture current stdout, then switch it to the console, print the
         # message, then switch back to what had been the stdout. this prevents
         # logging to notebook - instead, it goes to console
@@ -421,11 +424,9 @@ def get_row_prop(self, other, on, property):
         raise ValueError()
     else:
         if len(value_series) > 1:
-            log(
-                'Found more than one possible values for property {} for item '
+            log('Found more than one possible values for property {} for item '
                 '{}'.format(
-                    property, self[on]),
-                lg.WARNING)
+                property, self[on]), lg.WARNING)
             log('Taking the first occurrence...')
 
             index = value_series.index.values.astype(int)[0]
@@ -828,6 +829,46 @@ def piecewise(data):
     funcs = sf
     y = np.piecewise(x, conds, funcs)
     return y
+
+
+def checkStr(datafile, string):
+    """Find the last occurrence of a string and return its line number
+
+    Args:
+        datafile (list-like): a list-like object
+        string (str): the string to find in the txt file
+
+    Returns: the list index containing the string
+
+    """
+    value = []
+    count = 0
+    for line in datafile:
+        count = count + 1
+        match = re.search(string, str(line))
+        if match:
+            return count
+            break
+
+
+def write_lines(file_path, lines):
+    """Delete file if exists, then write lines in it
+
+    Args:
+        file_path (str): path of the file
+        lines (list of str): lines to be written in file
+
+    Returns:
+
+    """
+    # Delete temp file if exists
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    # Save lines in temp file
+    temp_idf_file = open(file_path, "w+")
+    for line in lines:
+        temp_idf_file.write("%s" % line)
+    temp_idf_file.close()
 
 
 def load_umi_template(json_template):

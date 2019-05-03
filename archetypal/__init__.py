@@ -17,3 +17,4 @@ from .core import *
 from .dataportal import *
 from .plot import *
 from .building import *
+from .trnsys import *

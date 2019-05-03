@@ -1,3 +1,10 @@
+################################################################################
+# Module: trnsys.py
+# Description: Convert EnergyPlus models to TrnBuild models
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import logging as lg
 import os
 import time

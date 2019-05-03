@@ -1,16 +1,16 @@
 import logging as lg
-import numpy as np
-import pandas as pd
 import os
 import time
 import uuid
-from eppy import modeleditor
-from geomeppy.geom.polygons import Polygon3D
-from geomeppy.utilities import almostequal
 from collections import OrderedDict
 
+import numpy as np
+import pandas as pd
+from eppy import modeleditor
+from geomeppy.geom.polygons import Polygon3D
+
 import archetypal as ar
-from archetypal import log, Schedule, run_eplus, copy_file, schedule_types
+from archetypal import log, Schedule
 
 
 def clear_name_idf_objects(idfFile):
@@ -47,7 +47,8 @@ def clear_name_idf_objects(idfFile):
             if not fenestration:
                 try:
                     old_name = epObject.Name
-                    # clean old name by removing spaces, "-", period, "{", "}", doubleunderscore
+                    # clean old name by removing spaces, "-", period, "{",
+                    # "}", doubleunderscore
                     new_name = old_name.replace(" ", "_").replace("-",
                                                                   "_").replace(
                         ".", "_").replace("{", "").replace("}", "").replace(
@@ -64,7 +65,8 @@ def clear_name_idf_objects(idfFile):
 
                         uniqueList.append(new_name)
 
-                    # print("changed layer {} with {}".format(old_name, new_name))
+                    # print("changed layer {} with {}".format(old_name,
+                    # new_name))
                     modeleditor.rename(idfFile, obj, old_name, new_name)
                 except:
                     pass
@@ -104,7 +106,8 @@ def closest_coords(surfList, to=[0, 0, 0]):
             tuple_list.append(surf.coords[i])
 
     nbdata = np.array(tuple_list)
-    # nbdata = np.array([buildingSurf.coords for buildingSurf in surfList]).reshape(size,len(to))
+    # nbdata = np.array([buildingSurf.coords for buildingSurf in
+    # surfList]).reshape(size,len(to))
     btree = cKDTree(data=nbdata, compact_nodes=True, balanced_tree=True)
     dist, idx = btree.query(np.array(to).T, k=1)
     x, y, z = nbdata[idx]
@@ -177,7 +180,8 @@ def parse_window_lib(window_file_path):
     df_windows.columns = columns
 
     # Select list of windows with all their characteristics (bunch)
-    bunch_delimiter = 'BERKELEY LAB WINDOW v7.4.6.0  DOE-2 Data File : Multi Band Calculation : generated with Trnsys18.std\n'
+    bunch_delimiter = 'BERKELEY LAB WINDOW v7.4.6.0  DOE-2 Data File : Multi ' \
+                      'Band Calculation : generated with Trnsys18.std\n'
     indices_bunch = [k for k, s in enumerate(all_lines) if
                      s == bunch_delimiter]
     detailed_windows = all_lines[0:indice_end[0]]
@@ -268,7 +272,8 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
     best_window_index = df_windows.loc[win_ids.index, :].apply(
         lambda x: (x.u_value - u_value) ** 2 + (x.g_value - shgc) ** 2 + (
                 x.t_vis - t_vis) ** 2, axis=1).idxmin()
-    win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win, t_vis_win, lay_win, width = \
+    win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win, \
+    t_vis_win, lay_win, width = \
         df_windows.loc[
             best_window_index, ['WinID', 'Description', 'Design', 'u_value',
                                 'g_value', 'T_sol', 'Rf_sol', 't_vis', 'Lay',
@@ -379,7 +384,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             2] in mat_name:
             construct_low_res.append(constructions[i])
 
-    # Remove constructions with only materials with resistance lower than 0.0007 from IDF
+    # Remove constructions with only materials with resistance lower than
+    # 0.0007 from IDF
     for construct in construct_low_res:
         idf.removeidfobject(construct)
 
@@ -417,8 +423,10 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             coordSys = "Relative"
             globGeomRule.Coordinate_System = 'Absolute'
 
-        if globGeomRule.Daylighting_Reference_Point_Coordinate_System == 'Relative':
-            globGeomRule.Daylighting_Reference_Point_Coordinate_System = 'Absolute'
+        if globGeomRule.Daylighting_Reference_Point_Coordinate_System == \
+                'Relative':
+            globGeomRule.Daylighting_Reference_Point_Coordinate_System = \
+                'Absolute'
 
         if globGeomRule.Rectangular_Surface_Coordinate_System == 'Relative':
             globGeomRule.Rectangular_Surface_Coordinate_System = 'Absolute'
@@ -445,10 +453,12 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             and Z_zones[0] == 0:
         coordSys = "World"
 
-    # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf) from IDF to lines (T3D)
+    # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf)
+    # from IDF to lines (T3D)
     # Get line number where to write
     variableDictNum = ar.checkStr(lines,
-                                  'ALL OBJECTS IN CLASS: OUTPUT:VARIABLEDICTIONARY')
+                                  'ALL OBJECTS IN CLASS: '
+                                  'OUTPUT:VARIABLEDICTIONARY')
 
     # Writing zones in lines
     for zone in zones:
@@ -472,16 +482,20 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                 # Change coordinates from relative to absolute
                 if coordSys == 'Relative':
 
-                    # Add zone coordinates to X, Y, Z vectors to fenestration surface
+                    # Add zone coordinates to X, Y, Z vectors to fenestration
+                    # surface
                     for j in range(1, len(
                             fenestrationSurf.coords) + 1):
-                        fenestrationSurf["Vertex_" + str(j) + "_Xcoordinate"] = \
+                        fenestrationSurf["Vertex_" + str(j) + "_Xcoordinate"]\
+                            = \
                             fenestrationSurf[
                                 "Vertex_" + str(j) + "_Xcoordinate"] + incrX
-                        fenestrationSurf["Vertex_" + str(j) + "_Ycoordinate"] = \
+                        fenestrationSurf["Vertex_" + str(j) + "_Ycoordinate"]\
+                            = \
                             fenestrationSurf[
                                 "Vertex_" + str(j) + "_Ycoordinate"] + incrY
-                        fenestrationSurf["Vertex_" + str(j) + "_Zcoordinate"] = \
+                        fenestrationSurf["Vertex_" + str(j) + "_Zcoordinate"]\
+                            = \
                             fenestrationSurf[
                                 "Vertex_" + str(j) + "_Zcoordinate"] + incrZ
 
@@ -537,14 +551,16 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                 if 'ground' in buildingSurfs[
                     i].Outside_Boundary_Condition.lower():
                     buildingSurfs[
-                        i].Outside_Boundary_Condition_Object = "BOUNDARY=INPUT 1*TGROUND"
+                        i].Outside_Boundary_Condition_Object = \
+                        "BOUNDARY=INPUT 1*TGROUND"
 
                 if 'adiabatic' in buildingSurfs[
                     i].Outside_Boundary_Condition.lower():
                     buildingSurfs[
                         i].Outside_Boundary_Condition = "OtherSideCoefficients"
                     buildingSurfs[
-                        i].Outside_Boundary_Condition_Object = "BOUNDARY=IDENTICAL"
+                        i].Outside_Boundary_Condition_Object = \
+                        "BOUNDARY=IDENTICAL"
 
                 # Change coordinates from relative to absolute
                 if coordSys == 'Relative':
@@ -747,7 +763,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             areaMethod = "AREA_RELATED"
             power = 0
             log(
-                "Could not find the Light Power Density, cause depend on the number of peoples (Watts/Person)",
+                "Could not find the Light Power Density, cause depend on the "
+                "number of peoples (Watts/Person)",
                 lg.WARNING, name="CoverterLog",
                 filename="CoverterLog")
 
@@ -755,7 +772,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
-                     ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : CATEGORY=LIGHTS\n')
+                     ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : '
+                                                                       'CATEGORY=LIGHTS\n')
 
     # Writing EQUIPMENT gains infos to lines
     for i in range(0, len(equipments)):
@@ -773,7 +791,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             areaMethod = "AREA_RELATED"
             power = 0
             log(
-                "Could not find the Equipment Power Density, cause depend on the number of peoples (Watts/Person)",
+                "Could not find the Equipment Power Density, cause depend on "
+                "the number of peoples (Watts/Person)",
                 lg.WARNING, name="CoverterLog",
                 filename="CoverterLog")
 
@@ -781,7 +800,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
-                     ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : CATEGORY=LIGHTS\n')
+                     ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : '
+                                                                       'CATEGORY=LIGHTS\n')
     # endregion
 
     # Write SCHEDULES from IDF to lines (T3D)
@@ -821,7 +841,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                      rotate(schedules[schedule_name][period][
                                                 i].fieldvalues[2:9], 1)) + '\n')
 
-    # Write WINDOWS chosen by the user (from Berkeley lab library) in lines (T3D)
+    # Write WINDOWS chosen by the user (from Berkeley lab library) in lines (
+    # T3D)
     # Get window from library
     # window = (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
     #                 t_vis_win, lay_win, width, window_bunches[win_id],
@@ -830,7 +851,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     # If tolerance was not respected to find a window, write in log a warning
     if len(window) > 11:
         log(
-            "WARNING : window tolerance was not respected. Final tolerance=  {:,.2f}".format(
+            "WARNING : window tolerance was not respected. Final tolerance=  "
+            "{:,.2f}".format(
                 window[-1]), lg.WARNING, name="CoverterLog",
             filename="CoverterLog")
     # Write in log (info) the characteristics of the window
@@ -845,17 +867,27 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     # Write
     lines.insert(windowNum + 2,
                  '!- WINID = ' + str(window[0]) + ': HINSIDE = 11:'
-                                                  ' HOUTSIDE = 64: SLOPE = -999: '
-                                                  'SPACID = 4: WWID = 0.77: WHEIG = 1.08: '
-                                                  'FFRAME = 0.15: UFRAME = 8.17: ABSFRAME = 0.6: '
-                                                  'RISHADE = 0: RESHADE = 0: REFLISHADE = 0.5: '
-                                                  'REFLOSHADE = 0.5: CCISHADE = 0.5: '
-                                                  'EPSFRAME = 0.9: EPSISHADE = 0.9: '
-                                                  'ITSHADECLOSE = INPUT 1 * SHADE_CLOSE: '
-                                                  'ITSHADEOPEN = INPUT 1 * SHADE_OPEN: '
-                                                  'FLOWTOAIRNODE = 1: PERT = 0: PENRT = 0: '
+                                                  ' HOUTSIDE = 64: SLOPE = '
+                                                  '-999: '
+                                                  'SPACID = 4: WWID = 0.77: '
+                                                  'WHEIG = 1.08: '
+                                                  'FFRAME = 0.15: UFRAME = '
+                                                  '8.17: ABSFRAME = 0.6: '
+                                                  'RISHADE = 0: RESHADE = 0: '
+                                                  'REFLISHADE = 0.5: '
+                                                  'REFLOSHADE = 0.5: CCISHADE '
+                                                  '= 0.5: '
+                                                  'EPSFRAME = 0.9: EPSISHADE '
+                                                  '= 0.9: '
+                                                  'ITSHADECLOSE = INPUT 1 * '
+                                                  'SHADE_CLOSE: '
+                                                  'ITSHADEOPEN = INPUT 1 * '
+                                                  'SHADE_OPEN: '
+                                                  'FLOWTOAIRNODE = 1: PERT = '
+                                                  '0: PENRT = 0: '
                                                   'RADMATERIAL = undefined: '
-                                                  'RADMATERIAL_SHD1 = undefined')
+                                                  'RADMATERIAL_SHD1 = '
+                                                  'undefined')
 
     # Get line number to write the EXTENSION_WINPOOL
     extWinpoolNum = ar.checkStr(lines,

@@ -1,3 +1,10 @@
+################################################################################
+# Module: idfclass.py
+# Description: Subclass of the IDF class from the eppy project
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import logging as lg
 import os
 

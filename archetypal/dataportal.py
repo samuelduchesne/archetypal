@@ -1,3 +1,11 @@
+################################################################################
+# Module: dataportal.py
+# Description: Various functions to acquire building archetype data using
+#              available APIs
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import hashlib
 import io
 import json

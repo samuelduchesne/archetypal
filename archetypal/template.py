@@ -1,3 +1,10 @@
+################################################################################
+# Module: template.py
+# Description: Handles creation and conversion to and from UmiTemplate files
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import collections
 import random
 from enum import IntEnum

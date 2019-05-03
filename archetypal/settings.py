@@ -1,3 +1,10 @@
+################################################################################
+# Module: settings.py
+# Description: Various settings used across the package
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import logging as lg
 
 # locations to save data, logs, images, and cache

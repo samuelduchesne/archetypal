@@ -1,3 +1,10 @@
+################################################################################
+# Module: core.py
+# Description:
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import functools
 import io
 import json

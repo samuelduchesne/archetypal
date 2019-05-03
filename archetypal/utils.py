@@ -1,3 +1,18 @@
+################################################################################
+# Module: utils.py
+# Description: Utility functions for configuration, logging
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+# OSMnx
+#
+# Copyright (c) 2019 Geoff Boeing https://geoffboeing.com/
+#
+# Part of the following code is a derivative work of the code from the OSMnx
+# project, which is licensed MIT License. This code therefore is also
+# licensed under the terms of the The MIT License (MIT).
+################################################################################
+
 import datetime as dt
 import json
 import logging as lg

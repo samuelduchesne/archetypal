@@ -1,3 +1,11 @@
+################################################################################
+# Module: idf.py
+# Description: Various functions for processing of EnergyPlus models and
+#              retrieving results in different forms
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import datetime
 import glob
 import hashlib

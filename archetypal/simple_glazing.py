@@ -1,4 +1,10 @@
-# coding=utf-8
+################################################################################
+# Module: simple_glazing.py
+# Description: Python implementation of the EnergyPlus Simple Window Model
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import logging as lg
 import math
 

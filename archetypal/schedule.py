@@ -1,3 +1,10 @@
+################################################################################
+# Module: schedule.py
+# Description: Functions for handling conversion of EnergyPlus schedule objects
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import functools
 import logging as lg
 import uuid

@@ -493,15 +493,15 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                     # surface
                     for j in range(1, len(
                             fenestrationSurf.coords) + 1):
-                        fenestrationSurf["Vertex_" + str(j) + "_Xcoordinate"]\
+                        fenestrationSurf["Vertex_" + str(j) + "_Xcoordinate"] \
                             = \
                             fenestrationSurf[
                                 "Vertex_" + str(j) + "_Xcoordinate"] + incrX
-                        fenestrationSurf["Vertex_" + str(j) + "_Ycoordinate"]\
+                        fenestrationSurf["Vertex_" + str(j) + "_Ycoordinate"] \
                             = \
                             fenestrationSurf[
                                 "Vertex_" + str(j) + "_Ycoordinate"] + incrY
-                        fenestrationSurf["Vertex_" + str(j) + "_Zcoordinate"]\
+                        fenestrationSurf["Vertex_" + str(j) + "_Zcoordinate"] \
                             = \
                             fenestrationSurf[
                                 "Vertex_" + str(j) + "_Zcoordinate"] + incrZ

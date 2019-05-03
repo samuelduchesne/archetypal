@@ -17,12 +17,13 @@ from subprocess import check_call
 
 # import eppy.modeleditor
 import pandas as pd
-from archetypal import IDF
-from archetypal import settings
-from archetypal.utils import log, cd, EnergyPlusProcessError
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run, paths_from_version
+
+from archetypal import IDF
+from archetypal import settings
+from archetypal.utils import log, cd, EnergyPlusProcessError
 
 try:
     import multiprocessing as mp

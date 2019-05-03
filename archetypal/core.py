@@ -171,7 +171,6 @@ class UmiTemplate:
                         if 'DomesticHotWaterSetting' in obj]
                 self.DomesticHotWaterSettings.extend(dhws)
 
-
     def read(self):
         """Initialize UMI objects"""
         # Umi stuff

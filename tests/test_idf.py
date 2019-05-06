@@ -26,7 +26,7 @@ def test_small_home_data(fresh_start):
                         prep_outputs=True, design_day=True)
 
 
-def test_necb(config, fresh_start):
+def test_necb(scratch_then_cache):
     import glob
     files = glob.glob("/Users/samuelduchesne/Dropbox/Polytechnique/Doc"
                       "/software/archetypal-dev/data/necb"
@@ -37,13 +37,14 @@ def test_necb(config, fresh_start):
                         design_day=True)
 
 
-def test_std(config, fresh_start):
+def test_std(scratch_then_cache):
     import glob
     files = glob.glob("./input_data/STD/*idf")
     files = copy_file(files)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return ar.run_eplus(files, wf, expandobjects=True, annual=True,
-                        verbose='q', prep_outputs=True, design_day=True)
+    return ar.run_eplus(files, wf, expandobjects=True, annual=False,
+                        verbose='q', prep_outputs=True, design_day=True,
+                        output_report='sql')
 
 
 @pytest.mark.parametrize('as_dict', [True, False])
@@ -77,7 +78,7 @@ def test_run_olderv(fresh_start, ep_version):
 @pytest.mark.xfail(raises=CalledProcessError)
 def test_run_olderv_problematic(fresh_start):
     """Will run eplus on a file that needs to be upgraded and that should
-    fail. Will be ignores in the test suit"""
+    fail. Will be ignored in the test suite"""
 
     file = './input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7' \
            '.2_5A_USA_IL_CHICAGO-OHARE.idf'

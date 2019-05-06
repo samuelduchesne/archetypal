@@ -17,13 +17,12 @@ from subprocess import check_call
 
 # import eppy.modeleditor
 import pandas as pd
-from eppy.EPlusInterfaceFunctions import parse_idd
-from eppy.easyopen import getiddfile
-from eppy.runner.run_functions import run, paths_from_version
-
 from archetypal import IDF
 from archetypal import settings
 from archetypal.utils import log, cd, EnergyPlusProcessError
+from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.easyopen import getiddfile
+from eppy.runner.run_functions import run, paths_from_version
 
 try:
     import multiprocessing as mp
@@ -247,6 +246,7 @@ def eppy_load(file, idd_filename):
         eppy.modeleditor.IDF: IDF object
 
     """
+    cache_filename = hash_file(file)
     # Initiate an eppy.modeleditor.IDF object
     idf_object = None
     IDF.setiddname(idd_filename, testing=True)
@@ -286,15 +286,17 @@ def eppy_load(file, idd_filename):
             IDF.iddname = idd_filename
         else:
             # when parsing is complete, save it to disk, then return object
-            save_idf_object_to_cache(idf_object, idf_object.idfname)
+            save_idf_object_to_cache(idf_object, idf_object.idfname, cache_filename)
     return idf_object
 
 
-def save_idf_object_to_cache(idf_object, idf_file, how=None):
+def save_idf_object_to_cache(idf_object, idf_file, cache_filename=None,
+                             how=None):
     """Saves the object to disk. Essentially uses the pickling functions of
     python.
 
     Args:
+        cache_filename:
         idf_object (eppy.modeleditor.IDF): an eppy IDF object
         idf_file (str): file path of idf file
         how (str, optional): How the pickling is done. Choices are 'json' or
@@ -307,12 +309,13 @@ def save_idf_object_to_cache(idf_object, idf_file, how=None):
     Todo:
         * Json dump does not work yet.
     """
-    # upper() can't tahe NoneType as input.
+    # upper() can't take NoneType as input.
     if how is None:
         how = ''
     # The main function
     if settings.use_cache:
-        cache_filename = hash_file(idf_file)
+        if cache_filename is None:
+            cache_filename = hash_file(idf_file)
         cache_dir = os.path.join(settings.cache_folder, cache_filename)
 
         # create the folder on the disk if it doesn't already exist
@@ -440,7 +443,7 @@ def load_idf_object_from_cache(idf_file, how=None):
                 with open(cache_fullpath_filename, 'rb') as file_handle:
                     idf = pickle.load(file_handle)
                 if idf.iddname is None:
-                    idf.setiddname(getiddfile(get_idf_version(idf_file)))
+                    idf.setiddname(getiddfile(idf.model.dt['VERSION'][0][1]))
                     idf.read()
                 log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(
                     os.path.basename(idf_file), time.time() - start_time))
@@ -562,6 +565,17 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         False)
         readvars (bool): Run ReadVarsESO after simulation (default: False)
         output_prefix (str): Prefix for output file names
+        verbose (str):
+        idf : str
+        output_suffix (str, optional): Suffix style for output file names
+            (default: L)
+                L: Legacy (e.g., eplustbl.csv)
+                C: Capital (e.g., eplusTable.csv)
+                D: Dash (e.g., eplus-table.csv)
+        version (bool, optional): Display version information (default: False)
+        verbose (str): Set verbosity of runtime messages (default: v)
+            v: verbose
+            q: quiet
     """
     if os.path.isfile(weather_file):
         pass
@@ -572,7 +586,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         # Treat str as an array
         eplus_files = [eplus_files]
 
-    # use aboslute paths
+    # use absolute paths
     for i, file in enumerate(eplus_files):
         eplus_files[i] = os.path.abspath(file)
 
@@ -580,6 +594,47 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
     if processors < 0:
         processors = min(len(eplus_files), mp.cpu_count())
     log('run_eplus() is using {} processors'.format(processors))
+
+    # <editor-fold desc="Try to get cached results">
+    processed_cache = []
+    for eplus_file in eplus_files:
+        # list arguments needed for cache retrieve function
+        processed_cache.append([eplus_file, output_report, kwargs])
+    try:
+        start_time = time.time()
+        # array = (eplus_file, output_report='sql', kwargs=None)
+        future_run = {os.path.basename(idf): {'eplus_file': idf,
+                                              'output_report':
+                                                  output_report,
+                                              **kwargs}
+                      for idf, output_report, kwargs in processed_cache
+                      }
+        cached_run_results = parallel_process(future_run, get_from_cache,
+                                              processors)
+
+        if not all(v is None for v in cached_run_results.values()):
+            # if not all cached results are none, at least one is found
+            log('Succesfully parsed cached results in '
+                'parallel in {:,.2f} seconds'.format(time.time() -
+                                                     start_time))
+    except Exception as e:
+        # catch other exceptions that could occur
+        raise Exception('{}'.format(e))
+
+    # If all runs are found, simply return it
+    runs_found = {k: v for k, v in cached_run_results.items() if v is not None}
+    runs_not_found = [k for k, v in cached_run_results.items() if v is None]
+
+    if not runs_not_found:
+        # If we found these runs in the cache, just return them instead of
+        # making a new eplus calls
+        return runs_found
+
+    # </editor-fold>
+
+    output_prefixes = {}
+    for file in eplus_files:
+        output_prefixes[file] = hash_file(file, kwargs)
 
     # Determine version of idf file by reading the text file
     if ep_version is None:
@@ -602,7 +657,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
             for eplus_file in eplus_files
         }
 
-    # Upgraded the file version if needed
+    # <editor-fold desc="Upgrade the file version if needed">
     for eplus_file in eplus_files:
         eplus_exe, eplus_home = paths_from_version(get_idf_version(eplus_file,
                                                                    doted=False))
@@ -624,6 +679,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
                 idd_filename[os.path.basename(eplus_file)] = getiddfile(
                     get_idf_version(eplus_file,
                                     doted=True))
+    # </editor-fold>
 
     # Output folder check
     if not output_folder:
@@ -651,50 +707,8 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
             function=prepare_outputs,
             use_kwargs=True,
             processors=processors)
-        # for eplus_file in eplus_files:
-        #     log('\nPreparing outputs...\n', lg.INFO)
-        #     prepare_outputs(eplus_file, prep_outputs)
-        #     log('Preparing outputs completed\n', lg.INFO)
 
-    # Try to get cached results
-
-    processed_cache = []
-    for eplus_file in eplus_files:
-        # list arguments needed for cache retrive function
-        processed_cache.append([eplus_file, output_report, kwargs])
-    try:
-        start_time = time.time()
-        # array = (eplus_file, output_report='sql', kwargs=None)
-        future_run = {os.path.basename(idf): {'eplus_file': idf,
-                                              'output_report':
-                                                  output_report,
-                                              **args}
-                      for idf, output_report, args in processed_cache
-                      }
-        cached_run_results = parallel_process(future_run, get_from_cache,
-                                              processors)
-
-        if not all(v is None for v in cached_run_results.values()):
-            # if not all cached results are none, at least one is found
-            log('Succesfully parsed cached results in '
-                'parallel in {:,.2f} seconds'.format(time.time() -
-                                                     start_time))
-    except Exception as e:
-        # catch other exceptions that could occur
-        raise Exception('{}'.format(e))
-
-    # Check if retrieved cached results exist than run for other files with
-    # no cached results
-    runs_found = {k: v for k, v in cached_run_results.items() if v is not None}
-    runs_not_found = [k for k, v in cached_run_results.items() if v is None]
-
-    #
-    if not runs_not_found:
-        # If we found these runs in the cache, just return them instead of
-        # making a new eplus call
-        return runs_found
-
-    else:
+    if runs_not_found:
         # continue with simulation of other files
         log('no cached results for {} run(s). Running Eplus for {} out '
             'of {} file(s)'.format(len(runs_not_found),
@@ -711,8 +725,8 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         for eplus_file in rerun_files:
             # hash the eplus_file (to make shorter than the often extremely
             # long name)
-            filename_prefix = kwargs.get('output_prefix', hash_file(
-                eplus_file, kwargs))
+            filename_prefix = kwargs.get('output_prefix',
+                                         output_prefixes[eplus_file])
 
             epw = os.path.abspath(weather_file)
 
@@ -753,6 +767,7 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
                     {'eplus_file': eplus_file,
                      'output_folder': output_folder,
                      'output_report': output_report,
+                     'filename_prefix': output_prefixes[eplus_file],
                      **kwargs}
                 for eplus_file in rerun_files}
         reruns = parallel_process(runs, get_report, processors,
@@ -890,11 +905,12 @@ def hash_file(eplus_file, kwargs=None):
     return hasher.hexdigest()
 
 
-def get_report(eplus_file, output_folder=None,
-               output_report='sql', **kwargs):
+def get_report(eplus_file, output_folder=None, output_report='sql',
+               filename_prefix=None, **kwargs):
     """Returns the specified report format (html or sql)
 
     Args:
+        filename_prefix:
         eplus_file (str): path of the idf file
         output_folder (str, optional): path to the output folder. Will
             default to the settings.cache_folder.
@@ -906,7 +922,8 @@ def get_report(eplus_file, output_folder=None,
 
     """
     # Hash the idf file with any kwargs used in the function
-    filename_prefix = hash_file(eplus_file, kwargs)
+    if filename_prefix is None:
+        filename_prefix = hash_file(eplus_file, kwargs)
     if output_report is None:
         return None
     elif 'htm' in output_report.lower():
@@ -1097,7 +1114,7 @@ def perform_transition(file):
         None
 
     """
-    versionid = get_idf_version(file, doted=False)
+    versionid = get_idf_version(file, doted=False)[0:5]
 
     trans_exec = {
         '1-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'

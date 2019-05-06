@@ -26,7 +26,7 @@ def test_small_home_data(fresh_start):
                         prep_outputs=True, design_day=True)
 
 
-def test_necb(config, fresh_start):
+def test_necb(scratch_then_cache):
     import glob
     files = glob.glob("/Users/samuelduchesne/Dropbox/Polytechnique/Doc"
                       "/software/archetypal-dev/data/necb"
@@ -37,13 +37,14 @@ def test_necb(config, fresh_start):
                         design_day=True)
 
 
-def test_std(config, fresh_start):
+def test_std(scratch_then_cache):
     import glob
     files = glob.glob("./input_data/STD/*idf")
     files = copy_file(files)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return ar.run_eplus(files, wf, expandobjects=True, annual=True,
-                        verbose='q', prep_outputs=True, design_day=True)
+    return ar.run_eplus(files, wf, expandobjects=True, annual=False,
+                        verbose='q', prep_outputs=True, design_day=True,
+                        output_report='sql')
 
 
 @pytest.mark.parametrize('as_dict', [True, False])

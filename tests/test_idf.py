@@ -78,7 +78,7 @@ def test_run_olderv(fresh_start, ep_version):
 @pytest.mark.xfail(raises=CalledProcessError)
 def test_run_olderv_problematic(fresh_start):
     """Will run eplus on a file that needs to be upgraded and that should
-    fail. Will be ignores in the test suit"""
+    fail. Will be ignored in the test suite"""
 
     file = './input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7' \
            '.2_5A_USA_IL_CHICAGO-OHARE.idf'

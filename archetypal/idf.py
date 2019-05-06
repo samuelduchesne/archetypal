@@ -246,6 +246,7 @@ def eppy_load(file, idd_filename):
         eppy.modeleditor.IDF: IDF object
 
     """
+    cache_filename = hash_file(file)
     # Initiate an eppy.modeleditor.IDF object
     idf_object = None
     IDF.setiddname(idd_filename, testing=True)
@@ -285,15 +286,17 @@ def eppy_load(file, idd_filename):
             IDF.iddname = idd_filename
         else:
             # when parsing is complete, save it to disk, then return object
-            save_idf_object_to_cache(idf_object, idf_object.idfname)
+            save_idf_object_to_cache(idf_object, idf_object.idfname, cache_filename)
     return idf_object
 
 
-def save_idf_object_to_cache(idf_object, idf_file, how=None):
+def save_idf_object_to_cache(idf_object, idf_file, cache_filename=None,
+                             how=None):
     """Saves the object to disk. Essentially uses the pickling functions of
     python.
 
     Args:
+        cache_filename:
         idf_object (eppy.modeleditor.IDF): an eppy IDF object
         idf_file (str): file path of idf file
         how (str, optional): How the pickling is done. Choices are 'json' or
@@ -306,12 +309,13 @@ def save_idf_object_to_cache(idf_object, idf_file, how=None):
     Todo:
         * Json dump does not work yet.
     """
-    # upper() can't tahe NoneType as input.
+    # upper() can't take NoneType as input.
     if how is None:
         how = ''
     # The main function
     if settings.use_cache:
-        cache_filename = hash_file(idf_file)
+        if cache_filename is None:
+            cache_filename = hash_file(idf_file)
         cache_dir = os.path.join(settings.cache_folder, cache_filename)
 
         # create the folder on the disk if it doesn't already exist
@@ -439,7 +443,7 @@ def load_idf_object_from_cache(idf_file, how=None):
                 with open(cache_fullpath_filename, 'rb') as file_handle:
                     idf = pickle.load(file_handle)
                 if idf.iddname is None:
-                    idf.setiddname(getiddfile(get_idf_version(idf_file)))
+                    idf.setiddname(getiddfile(idf.model.dt['VERSION'][0][1]))
                     idf.read()
                 log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(
                     os.path.basename(idf_file), time.time() - start_time))
@@ -1110,7 +1114,7 @@ def perform_transition(file):
         None
 
     """
-    versionid = get_idf_version(file, doted=False)
+    versionid = get_idf_version(file, doted=False)[0:5]
 
     trans_exec = {
         '1-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'

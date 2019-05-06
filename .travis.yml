@@ -1,0 +1,95 @@
+language: generic
+dist: trusty
+sudo: required
+
+matrix:
+  include:
+  # Linux, not on master
+  - if: branch != master
+    os: linux
+    env: PYTHON=2.7 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=bb7ca4f0da ENERGYPLUS_INSTALL_VERSION=9-0-1 NUMPY=True
+  - if: branch != master
+    os: linux
+    env: PYTHON=3.7 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=bb7ca4f0da ENERGYPLUS_INSTALL_VERSION=9-0-1 NUMPY=True
+  # Linux, on master
+  - if: branch = master
+    os: linux
+    env: PYTHON=2.7 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=bb7ca4f0da ENERGYPLUS_INSTALL_VERSION=9-0-1
+  - if: branch = master
+    os: linux
+    env: PYTHON=3.7 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=bb7ca4f0da ENERGYPLUS_INSTALL_VERSION=9-0-1
+  - if: branch = master
+    os: linux
+    env: PYTHON=2.7 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=bb7ca4f0da ENERGYPLUS_INSTALL_VERSION=9-0-1 NUMPY=True
+  - if: branch = master
+    os: linux
+    env: PYTHON=3.7 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=bb7ca4f0da ENERGYPLUS_INSTALL_VERSION=9-0-1 NUMPY=True
+  # OSX, only on master
+  - if: branch = master
+    os: osx
+    env: PYTHON=2.7 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=bb7ca4f0da ENERGYPLUS_INSTALL_VERSION=9-0-1
+  - if: branch = master
+    os: osx
+    env: PYTHON=3.7 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=bb7ca4f0da ENERGYPLUS_INSTALL_VERSION=9-0-1
+  - if: branch = master
+    os: osx
+    env: PYTHON=2.7 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=bb7ca4f0da ENERGYPLUS_INSTALL_VERSION=9-0-1 NUMPY=True
+  - if: branch = master
+    os: osx
+    env: PYTHON=3.7 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=bb7ca4f0da ENERGYPLUS_INSTALL_VERSION=9-0-1 NUMPY=True
+
+before_install:
+  # install EnergyPlus
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then EXT=dmg; PLATFORM=Darwin; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then EXT=sh; PLATFORM=Linux; fi
+  - ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
+  - ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-$ENERGYPLUS_VERSION-$ENERGYPLUS_SHA-$PLATFORM-x86_64
+  - ENERGYPLUS_DOWNLOAD_URL=$ENERGYPLUS_DOWNLOAD_BASE_URL/$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
+  - curl -SLO $ENERGYPLUS_DOWNLOAD_URL
+
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+        sudo hdiutil attach $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
+        sudo installer -pkg /Volumes/$ENERGYPLUS_DOWNLOAD_FILENAME/$ENERGYPLUS_DOWNLOAD_FILENAME.pkg -target /;
+    fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+        sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
+        echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
+    fi
+  - sudo rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
+
+  # install python
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+        brew update;
+        brew outdated pyenv || brew upgrade pyenv;
+        brew install pyenv-virtualenv;
+        pyenv install $PYTHON;
+        export PYENV_VERSION=$PYTHON;
+        export PATH="/Users/travis/.pyenv/shims:${PATH}";
+    fi
+
+  # actiate venv
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then pyenv-virtualenv venv; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then virtualenv venv; fi
+  - source venv/bin/activate;
+  - python --version;
+
+  # coverage and testing requirements
+  - pip install --upgrade setuptools
+  - pip install --upgrade pip
+  - pip install pytest-cov
+  - pip install codecov
+
+install:
+  - python setup.py install
+  # install numpy and remove tinynumpy if testing with numpy
+  - if [[ $NUMPY == numpy ]]; then pip install numpy; pip uninstall tinynumpy -y; fi
+
+script: py.test ./archetypal/tests --cov=./ -v
+
+after_success:
+  # coverage reporting on CodeCov
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]] &&
+       [[ $PYTHON == 3* ]] &&
+       [[ $ARCHETYPAL_INTEGRATION == True ]] &&
+       [[ $NUMPY == numpy ]]; then codecov; fi
+    

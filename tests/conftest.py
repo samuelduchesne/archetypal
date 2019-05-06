@@ -12,9 +12,12 @@ import osmnx as ox
 def fresh_start():
     """# remove the .temp folder if it already exists so we
     start fresh with tests"""
-    if os.path.exists(ar.settings.cache_folder):
-        shutil.rmtree(ar.settings.cache_folder)
-        assert not os.path.exists(ar.settings.cache_folder)
+    settings = [ar.settings.cache_folder, ar.settings.data_folder,
+                    ar.settings.imgs_folder, ar.settings.logs_folder]
+    for setting in settings:
+        if os.path.exists(setting):
+            shutil.rmtree(setting)
+            assert not os.path.exists(setting)
 
 
 # Parametrization of the fixture scratch_then_cache. The following array

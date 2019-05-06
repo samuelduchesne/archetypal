@@ -25,15 +25,16 @@ import warnings
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
-import archetypal as ar
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import shapely
-from archetypal import settings
 from lxml import objectify
 from pandas.io.json import json_normalize
 from shapely.geometry import Point
+
+import archetypal as ar
+from archetypal import settings
 
 
 def config(data_folder=settings.data_folder,

@@ -13,14 +13,16 @@
 # licensed under the terms of the The MIT License (MIT).
 ################################################################################
 
+import os
+import time
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib import cm
 from matplotlib.colors import LightSource
-import time
-import os
+
 from archetypal import settings, log
-import matplotlib.pyplot as plt
 
 
 def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,

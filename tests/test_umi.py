@@ -13,7 +13,7 @@ def test_template_to_template(config):
     """load the json into UmiTemplate object, then convert bacl to json and
     compare"""
     import json
-    file = '../data/BostonTemplateLibrary_2.json'
+    file = './input_data/umi_samples/BostonTemplateLibrary_2.json'
     if file:
         with open(file, 'r') as f:
             a = json.load(f)

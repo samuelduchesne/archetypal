@@ -6,11 +6,11 @@
 ################################################################################
 
 import numpy as np
+import pyomo.core as pyomo
+import pyomo.environ
+from pyomo.opt import SolverFactory
 
 from archetypal.core import EnergyProfile
-import pyomo.environ
-import pyomo.core as pyomo
-from pyomo.opt import SolverFactory
 
 
 def create_fake_profile(x=None, y1={}, y2={}, normalize=False,

@@ -11,9 +11,10 @@ import logging as lg
 import uuid
 from datetime import datetime, timedelta
 
-import archetypal
 import numpy as np
 import pandas as pd
+
+import archetypal
 from archetypal import log
 
 

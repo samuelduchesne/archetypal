@@ -7,10 +7,12 @@ matrix:
   # Linux, on develop
   - if: branch = develop
     os: linux
+    python: 3.6
     env: PYTHON=3.6 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
   # OSX, on develop
   - if: branch = develop
     os: osx
+    python: 3.6
     env: PYTHON=3.6 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0 NUMPY=True
 
 before_install:

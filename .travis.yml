@@ -45,7 +45,7 @@ before_install:
   fi
 
 # actiate venv
-- if [ "$TRAVIS_OS_NAME" == "osx" ]; then pyenv-virtualenv venv; fi
+- if [ "$TRAVIS_OS_NAME" == "osx" ]; then pyenv virtualenv venv; fi
 - if [ "$TRAVIS_OS_NAME" == "linux" ]; then virtualenv venv; fi
 - source venv/bin/activate;
 - python --version;

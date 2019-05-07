@@ -13,7 +13,7 @@ def fresh_start():
     """# remove the .temp folder if it already exists so we
     start fresh with tests"""
     settings = [ar.settings.cache_folder, ar.settings.data_folder,
-                    ar.settings.imgs_folder, ar.settings.logs_folder]
+                ar.settings.imgs_folder]
     for setting in settings:
         if os.path.exists(setting):
             shutil.rmtree(setting)
@@ -32,12 +32,18 @@ do = [True, False]
 def scratch_then_cache(request):
     """# remove the .temp folder if it already exists so we
     start fresh with tests"""
-    # request is a spacial paramter known to pytest. ot passes whatever is in
+    # request is a special parameter known to pytest. It passes whatever is in
     # params=do. Ids are there to give the test a human readable name.
+    dirs = [ar.settings.data_folder, ar.settings.cache_folder,
+            ar.settings.imgs_folder]
     if request.param:
-        if os.path.exists('.temp'):
-            shutil.rmtree('.temp')
-            assert not os.path.exists('.temp')
+        for dir in dirs:
+            if os.path.exists(dir):
+                try:
+                    shutil.rmtree(dir)
+                finally:
+                    assert not os.path.exists(dir)
+
 
 
 samples_ = ['regular', 'umi_samples']  # ['problematic', 'regular',

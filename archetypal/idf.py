@@ -16,6 +16,7 @@ from subprocess import CalledProcessError
 from subprocess import check_call
 
 # import eppy.modeleditor
+import eppy
 import pandas as pd
 from archetypal import IDF
 from archetypal import settings
@@ -286,7 +287,8 @@ def eppy_load(file, idd_filename):
             IDF.iddname = idd_filename
         else:
             # when parsing is complete, save it to disk, then return object
-            save_idf_object_to_cache(idf_object, idf_object.idfname, cache_filename)
+            save_idf_object_to_cache(idf_object, idf_object.idfname,
+                                     cache_filename)
     return idf_object
 
 
@@ -658,27 +660,15 @@ def run_eplus(eplus_files, weather_file, output_folder=None, ep_version=None,
         }
 
     # <editor-fold desc="Upgrade the file version if needed">
+    runs = {os.path.basename(eplus_file): eplus_file
+            for eplus_file in eplus_files}
+    parallel_process(runs, upgrade_idf, processors, use_kwargs=False)
     for eplus_file in eplus_files:
-        eplus_exe, eplus_home = paths_from_version(get_idf_version(eplus_file,
-                                                                   doted=False))
-        if not os.path.isdir(eplus_home):
-            log('The version of EnergyPlus-{0} needed for file {1} is not '
-                'installed at the original location on this machine. '
-                'Attempting to upgrade the file using the EnergyPlusUpdater '
-                'utility...'.format(versionids[os.path.basename(eplus_file)],
-                                    eplus_file))
-            try:
-                upgrade_idf(eplus_file)
-            except Exception as e:
-                # catch upgrade version exceptions
-                raise
-            else:
-                # update the versionid of the file
-                versionids[os.path.basename(eplus_file)] = get_idf_version(
-                    eplus_file, doted=True)
-                idd_filename[os.path.basename(eplus_file)] = getiddfile(
-                    get_idf_version(eplus_file,
-                                    doted=True))
+        # update the versionid of the file
+        versionids[os.path.basename(eplus_file)] = get_idf_version(
+            eplus_file, doted=True)
+        idd_filename[os.path.basename(eplus_file)] = getiddfile(
+            get_idf_version(eplus_file, doted=True))
     # </editor-fold>
 
     # Output folder check
@@ -871,7 +861,6 @@ def parallel_process(in_dict, function, processors, use_kwargs=True):
             else:
                 out[key] = futures[key]
         except Exception as e:
-            raise e
             out[futures[key]] = e
     return out
 
@@ -1096,91 +1085,71 @@ def upgrade_idf(files):
 
     for file in files:
         try:
-            perform_transition(file)
+            perform_transition(file, to_version=None)
         except KeyError as e:
             log('file already upgraded to latest version "{}"'.format(e))
-        # except Exception as e:
-        #     # Catch any unhandled errors
-        #     log('{}'.format(e))
 
 
-def perform_transition(file):
-    """Transition programm for idf version 1-0-0 to version 8-9-0.
+def perform_transition(file, to_version=None):
+    """Transition program for idf version 1-0-0 to version 8-9-0.
 
     Args:
         file (str): path of the idf file
 
     Returns:
         None
+        :param doted_version:
 
     """
     versionid = get_idf_version(file, doted=False)[0:5]
-
+    doted_version = get_idf_version(file, doted=True)
+    iddfile = getiddfile(doted_version)
+    if os.path.exists(iddfile):
+        pass
+        # might be an old version of E+
+    else:
+        iddfile = getoldiddfile(doted_version)
+    vupdater_path, _ = iddfile.split('bin')
+    # What is the latest E+ installed version
+    if to_version is None:
+        to_version = find_eplus_installs()
+    sourcedir, ver = vupdater_path.split('EnergyPlusV')
+    ep_installation_name = 'EnergyPlusV' + to_version
+    vupdater_path = os.path.join(sourcedir, ep_installation_name, 'PreProcess',
+                                 'IDFVersionUpdater')
     trans_exec = {
-        '1-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V1-0-0-to-V1-0-1',
-        '1-0-1': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V1-0-1-to-V1-0-2',
-        '1-0-2': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V1-0-2-to-V1-0-3',
-        '1-0-3': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V1-0-3-to-V1-1-0',
-        '1-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V1-1-0-to-V1-1-1',
-        '1-1-1': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V1-1-1-to-V1-2-0',
-        '1-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V1-2-0-to-V1-2-1',
-        '1-2-1': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V1-2-1-to-V1-2-2',
-        '1-2-2': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V1-2-2-to-V1-2-3',
-        '1-2-3': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V1-2-3-to-V1-3-0',
-        '1-3-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V1-3-0-to-V1-4-0',
-        '1-4-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V1-4-0-to-V2-0-0',
-        '2-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V2-0-0-to-V2-1-0',
-        '2-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V2-1-0-to-V2-2-0',
-        '2-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V2-2-0-to-V3-0-0',
-        '3-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V3-0-0-to-V3-1-0',
-        '3-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V3-1-0-to-V4-0-0',
-        '4-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V4-0-0-to-V5-0-0',
-        '5-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V5-0-0-to-V6-0-0',
-        '6-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V6-0-0-to-V7-0-0',
-        '7-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V7-0-0-to-V7-1-0',
-        '7-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V7-1-0-to-V7-2-0',
-        '7-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V7-2-0-to-V8-0-0',
-        '8-0-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V8-0-0-to-V8-1-0',
-        '8-1-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V8-1-0-to-V8-2-0',
-        '8-2-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V8-2-0-to-V8-3-0',
-        '8-3-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V8-3-0-to-V8-4-0',
-        '8-4-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V8-4-0-to-V8-5-0',
-        '8-5-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V8-5-0-to-V8-6-0',
-        '8-6-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V8-6-0-to-V8-7-0',
-        '8-7-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V8-7-0-to-V8-8-0',
-        '8-8-0': '/Applications/EnergyPlus-8-9-0/PreProcess/IDFVersionUpdater'
-                 '/Transition-V8-8-0-to-V8-9-0',
+        '1-0-0': os.path.join(vupdater_path, 'Transition-V1-0-0-to-V1-0-1'),
+        '1-0-1': os.path.join(vupdater_path, 'Transition-V1-0-1-to-V1-0-2'),
+        '1-0-2': os.path.join(vupdater_path, 'Transition-V1-0-2-to-V1-0-3'),
+        '1-0-3': os.path.join(vupdater_path, 'Transition-V1-0-3-to-V1-1-0'),
+        '1-1-0': os.path.join(vupdater_path, 'Transition-V1-1-0-to-V1-1-1'),
+        '1-1-1': os.path.join(vupdater_path, 'Transition-V1-1-1-to-V1-2-0'),
+        '1-2-0': os.path.join(vupdater_path, 'Transition-V1-2-0-to-V1-2-1'),
+        '1-2-1': os.path.join(vupdater_path, 'Transition-V1-2-1-to-V1-2-2'),
+        '1-2-2': os.path.join(vupdater_path, 'Transition-V1-2-2-to-V1-2-3'),
+        '1-2-3': os.path.join(vupdater_path, 'Transition-V1-2-3-to-V1-3-0'),
+        '1-3-0': os.path.join(vupdater_path, 'Transition-V1-3-0-to-V1-4-0'),
+        '1-4-0': os.path.join(vupdater_path, 'Transition-V1-4-0-to-V2-0-0'),
+        '2-0-0': os.path.join(vupdater_path, 'Transition-V2-0-0-to-V2-1-0'),
+        '2-1-0': os.path.join(vupdater_path, 'Transition-V2-1-0-to-V2-2-0'),
+        '2-2-0': os.path.join(vupdater_path, 'Transition-V2-2-0-to-V3-0-0'),
+        '3-0-0': os.path.join(vupdater_path, 'Transition-V3-0-0-to-V3-1-0'),
+        '3-1-0': os.path.join(vupdater_path, 'Transition-V3-1-0-to-V4-0-0'),
+        '4-0-0': os.path.join(vupdater_path, 'Transition-V4-0-0-to-V5-0-0'),
+        '5-0-0': os.path.join(vupdater_path, 'Transition-V5-0-0-to-V6-0-0'),
+        '6-0-0': os.path.join(vupdater_path, 'Transition-V6-0-0-to-V7-0-0'),
+        '7-0-0': os.path.join(vupdater_path, 'Transition-V7-0-0-to-V7-1-0'),
+        '7-1-0': os.path.join(vupdater_path, 'Transition-V7-1-0-to-V7-2-0'),
+        '7-2-0': os.path.join(vupdater_path, 'Transition-V7-2-0-to-V8-0-0'),
+        '8-0-0': os.path.join(vupdater_path, 'Transition-V8-0-0-to-V8-1-0'),
+        '8-1-0': os.path.join(vupdater_path, 'Transition-V8-1-0-to-V8-2-0'),
+        '8-2-0': os.path.join(vupdater_path, 'Transition-V8-2-0-to-V8-3-0'),
+        '8-3-0': os.path.join(vupdater_path, 'Transition-V8-3-0-to-V8-4-0'),
+        '8-4-0': os.path.join(vupdater_path, 'Transition-V8-4-0-to-V8-5-0'),
+        '8-5-0': os.path.join(vupdater_path, 'Transition-V8-5-0-to-V8-6-0'),
+        '8-6-0': os.path.join(vupdater_path, 'Transition-V8-6-0-to-V8-7-0'),
+        '8-7-0': os.path.join(vupdater_path, 'Transition-V8-7-0-to-V8-8-0'),
+        '8-8-0': os.path.join(vupdater_path, 'Transition-V8-8-0-to-V8-9-0'),
     }
     file = os.path.abspath(file)
     # store the directory we start in
@@ -1222,6 +1191,18 @@ def perform_transition(file):
             os.remove(file)
 
 
+def find_eplus_installs():
+    """
+
+    Returns:
+        (str): The version number of the latest E+ install
+
+    """
+    # Todo: Create a routine to find all available EnergyPlus version
+    #  installed on machine and return the latest version id, eg.: '8-9-0'
+    return '8-9-0'
+
+
 def get_idf_version(file, doted=True):
     """Get idf version quickly by reading first few lines of idf file
     containing the 'VERSION' identifier
@@ -1257,6 +1238,21 @@ def get_idf_version(file, doted=True):
             raise
         else:
             return versionid
+
+
+def getoldiddfile(versionid):
+    """find the IDD file of the E+ installation
+    E+ version 7 and earlier have the idd in /EnergyPlus-7-2-0/bin/Energy+.idd """
+    vlist = versionid.split('.')
+    if len(vlist) == 1:
+        vlist = vlist + ['0', '0']
+    elif len(vlist) == 2:
+        vlist = vlist + ['0']
+    ver_str = '-'.join(vlist)
+    eplus_exe, _ = eppy.runner.run_functions.install_paths(ver_str)
+    eplusfolder = os.path.dirname(eplus_exe)
+    iddfile = '{}/bin/Energy+.idd'.format(eplusfolder, )
+    return iddfile
 
 
 schedule_types = ['Schedule:Day:Hourly'.upper(),

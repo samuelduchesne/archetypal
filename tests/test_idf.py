@@ -26,11 +26,9 @@ def test_small_home_data(fresh_start):
                         prep_outputs=True, design_day=True)
 
 
-def test_necb(scratch_then_cache):
+def test_necb(config):
     import glob
-    files = glob.glob("/Users/samuelduchesne/Dropbox/Polytechnique/Doc"
-                      "/software/archetypal-dev/data/necb"
-                      "/NECB_2011_Montreal_idf/*idf")
+    files = glob.glob("./input_data/necb/*.idf")
     files = copy_file(files)
     wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     return ar.run_eplus(files, wf, expandobjects=True, verbose='q',

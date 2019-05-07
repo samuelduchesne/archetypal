@@ -1,72 +1,66 @@
-language: generic
-dist: trusty
-sudo: required
+dist: xenial
+language: python
+python:
+  - 3.6
+  - 3.7
 
 matrix:
   include:
-  # Linux, on develop
-  - if: branch = develop
-    os: linux
-    python: 3.6.0
-    env: PYTHON=3.6.0 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
-  # OSX, on develop
-  - if: branch = develop
-    os: osx
-    python: 3.6.0
-    env: PYTHON=3.6.0 ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0 NUMPY=True
+    # Linux, on develop
+    - if: branch = develop
+      os: linux
+      env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
+    # OSX, on develop
+    - if: branch = develop
+      os: osx
+      env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
+    # Windows, on develop
+    - if: branch = develop
+      os: windows
+      env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
+
 
 before_install:
-# install EnergyPlus
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then EXT=dmg; PLATFORM=Darwin; fi
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then EXT=sh; PLATFORM=Linux; fi
-- ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
-- ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-$ENERGYPLUS_VERSION-$ENERGYPLUS_SHA-$PLATFORM-x86_64
-- ENERGYPLUS_DOWNLOAD_URL=$ENERGYPLUS_DOWNLOAD_BASE_URL/$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
-- curl -SLO $ENERGYPLUS_DOWNLOAD_URL
-
-- if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-  sudo hdiutil attach $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-  sudo installer -pkg /Volumes/$ENERGYPLUS_DOWNLOAD_FILENAME/$ENERGYPLUS_DOWNLOAD_FILENAME.pkg -target /;
-  fi
-- if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-  sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-  echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-  fi
-- sudo rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
-
-# install python
-- if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-  brew update;
-  brew outdated pyenv || brew upgrade pyenv;
-  brew install pyenv-virtualenv;
-  pyenv install $PYTHON;
-  export PYENV_VERSION=$PYTHON;
-  export PATH="/Users/travis/.pyenv/shims:${PATH}";
-  fi
-
-# actiate venv
-- if [ "$TRAVIS_OS_NAME" == "osx" ]; then pyenv virtualenv venv; fi
-- if [ "$TRAVIS_OS_NAME" == "linux" ]; then virtualenv venv; fi
-- source venv/bin/activate;
-- python --version;
-
-# coverage and testing requirements
-- pip install --upgrade setuptools
-- pip install --upgrade pip
-- pip install pytest-cov
-- pip install codecov
+  # install EnergyPlus
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then EXT=dmg; PLATFORM=Darwin; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then EXT=sh; PLATFORM=Linux; fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then EXT=exe; PLATFORM=Windows; fi
+  - ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
+  - ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-$ENERGYPLUS_VERSION-$ENERGYPLUS_SHA-$PLATFORM-x86_64
+  - ENERGYPLUS_DOWNLOAD_URL=$ENERGYPLUS_DOWNLOAD_BASE_URL/$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
+  - curl -SLO $ENERGYPLUS_DOWNLOAD_URL
+  
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+    sudo hdiutil attach $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
+    sudo installer -pkg /Volumes/$ENERGYPLUS_DOWNLOAD_FILENAME/$ENERGYPLUS_DOWNLOAD_FILENAME.pkg -target /; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+    sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
+    echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
+  - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
+    sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
+    echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi
+  
+  - sudo rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
+  
+  # Install python
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set show_channel_urls true
+  - conda update -n base conda
+  - conda config --prepend channels conda-forge
+  - conda create -n TEST --strict-channel-priority python=$TRAVIS_PYTHON_VERSION --file requirements.txt
+  - source activate TEST
+  - conda info --all
 
 install:
-- python setup.py install
-# install numpy and remove tinynumpy if testing with numpy
-- if [[ $NUMPY == numpy ]]; then pip install numpy; pip uninstall tinynumpy -y; fi
+  - python setup.py install
+  - conda list
 
-script: py.test ./archetypal/tests --cov=./ -v
+script:
+  - coverage run --source archetypal -m pytest --verbose
 
 after_success:
-# coverage reporting on CodeCov
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]] &&
-  [[ $PYTHON == 3* ]] &&
-  [[ $ARCHETYPAL_INTEGRATION == True ]] &&
-  [[ $NUMPY == numpy ]]; then codecov; fi
-    
+  - coverage report -m
+  - coveralls

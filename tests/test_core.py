@@ -7,7 +7,7 @@ import pytest
 ar.config(log_console=True, log_file=True, use_cache=True,
           data_folder='.temp/data', logs_folder='.temp/logs',
           imgs_folder='.temp/imgs', cache_folder='.temp/cache',
-          umitemplate='../data/BostonTemplateLibrary.json',
+          umitemplate='./input_data/umi_samples/BostonTemplateLibrary_2.json',
           get_common_umi_objects=True)
 
 # # Uncomment this block to test different file variations

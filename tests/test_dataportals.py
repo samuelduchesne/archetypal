@@ -1,7 +1,5 @@
-import pandas as pd
-from shapely.geometry import Point
-
 import archetypal as ar
+import pandas as pd
 # configure archetypal
 from archetypal import download_bld_window
 

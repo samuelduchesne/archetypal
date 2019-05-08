@@ -1113,9 +1113,9 @@ def perform_transition(file, to_version=None):
     # What is the latest E+ installed version
     if to_version is None:
         to_version = find_eplus_installs(vupdater_path)
-    sourcedir, _ = vupdater_path.split('EnergyPlusV')
-    ep_installation_name = 'EnergyPlusV' + to_version
-    vupdater_path = os.path.join(sourcedir, ep_installation_name, 'PreProcess',
+    ep_installation_name = os.path.abspath(os.path.dirname(iddfile)).replace(
+        versionid, to_version)
+    vupdater_path = os.path.join(ep_installation_name, 'PreProcess',
                                  'IDFVersionUpdater')
     trans_exec = {
         '1-0-0': os.path.join(vupdater_path, 'Transition-V1-0-0-to-V1-0-1'),
@@ -1192,33 +1192,32 @@ def perform_transition(file, to_version=None):
 
 
 def find_eplus_installs(vupdater_path):
-    """
+    """Finds all installed versions of EnergyPlus in the default location and
+    returns the latest version number
+
+    Args:
+        vupdater_path (str): path of the current EnergyPlus install file
 
     Returns:
         (str): The version number of the latest E+ install
 
     """
-    list_eplus_dir = []
-    path_to_eplus, _ = vupdater_path.split('EnergyPlusV')
+    path_to_eplus, _ = vupdater_path.split('EnergyPlus')
 
     # Find all EnergyPlus folders
-    for fname in os.listdir(path_to_eplus):
-        if 'EnergyPlusV' in fname:
-            path = os.path.join(path_to_eplus, fname)
-            if os.path.isdir(path):
-                list_eplus_dir.append(path)
+    list_eplus_dir = glob.glob(os.path.join(path_to_eplus, 'EnergyPlus*'))
 
     # Find the most recent version of EnergyPlus installed from the version
     # number (at the end of the folder name)
-    v0 = (0,0,0) # Initialize the version number
+    v0 = (0, 0, 0)  # Initialize the version number
     # Find the most recent version in the different folders found
     for dir in list_eplus_dir:
         _, version = dir.split('EnergyPlusV')
-        ver = tuple(map(int,version.split('-')))
+        ver = tuple(map(int, version.split('-')))
         if ver > v0:
             v0 = ver
 
-    return '-'.join(tuple(map(str,v0)))
+    return '-'.join(tuple(map(str, v0)))
 
 
 def get_idf_version(file, doted=True):

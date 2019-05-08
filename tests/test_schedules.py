@@ -125,6 +125,6 @@ def run_schedules_idf():
                                      '.716270_CWEC.epw',
               annual=True, output_folder='tests/input_data/schedules',
               output_prefix='eprun', readvars=True)
-    csv = os.path.join(os.curdir, 'input_data', 'schedules', 'eprun',
+    csv = os.path.join('tests', 'input_data', 'schedules', 'eprun',
                        'eprunout.csv')
     yield csv

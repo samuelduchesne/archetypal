@@ -15,8 +15,7 @@ def test_trnbuild_from_idf(config):
     # Path to IDF file to convert
 
     window_file = 'W74-lib.dat'
-    window_filepath = os.path.join("..", "tests", "input_data", "trnsys",
-                                   window_file)
+    window_filepath = os.path.join("tests", "input_data", "trnsys", window_file)
 
     convert_idf_to_t3d("tests/input_data/trnsys/NECB 2011 - Small Office.idf",
                        window_filepath)
@@ -28,13 +27,12 @@ def test_trnbuild_from_idf_parallel(config):
     files = ["NECB 2011 - Small Office.idf"]
 
     window_file = 'W74-lib.dat'
-    window_filepath = os.path.join("..", "tests", "input_data", "trnsys",
-                                   window_file)
+    window_filepath = os.path.join("tests", "input_data", "trnsys", window_file)
 
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
     in_dict = {os.path.basename(file): {'idf_file': file_upper_path + file,
-                                        'window_lib' : window_filepath,
+                                        'window_lib': window_filepath,
                                         'output_folder': None} for
                file in files}
 
@@ -43,8 +41,7 @@ def test_trnbuild_from_idf_parallel(config):
 
 def test_trnbuild_parse_window_lib(config):
     file = 'W74-lib.dat'
-    window_filepath = os.path.join("..", "tests", "input_data", "trnsys",
-                                   file)
+    window_filepath = os.path.join("tests", "input_data", "trnsys", file)
     df, bunches = parse_window_lib(window_filepath)
 
     assert len(df) == len(bunches)
@@ -52,7 +49,6 @@ def test_trnbuild_parse_window_lib(config):
 
 def test_trnbuild_choose_window(config):
     file = 'W74-lib.dat'
-    window_filepath = os.path.join("..", "tests", "input_data", "trnsys",
-                                   file)
+    window_filepath = os.path.join("tests", "input_data", "trnsys", file)
     window = choose_window(2.2, 0.64, 0.8, 0.05,
-                                                    window_filepath)
+                           window_filepath)

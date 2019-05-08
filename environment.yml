@@ -3,6 +3,7 @@ channels:
   - https://conda.anaconda.org/conda-forge/noarch
   - https://conda.anaconda.org/conda-forge/osx-64
   - conda-forge
+  - defaults
 dependencies:
   - osmnx>=0.9
   - lxml
@@ -11,6 +12,7 @@ dependencies:
   - matplotlib>=2.1
   - requests>=2.18
   - pycountry
+  - scipy
   - scikit-learn
   - pandas>=0.21
   - numpy>=1.13

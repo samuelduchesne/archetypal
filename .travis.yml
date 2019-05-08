@@ -48,6 +48,7 @@ before_install:
   - conda update -n base conda
   - conda config --prepend channels conda-forge
   - conda env create python=$TRAVIS_PYTHON_VERSION -f environment.yml
+  - conda install --yes --file requirements-dev.txt
   - source activate TEST
   - conda info --all
 

@@ -1,4 +1,3 @@
-utm
 osmnx>=0.9
 lxml
 shapely

@@ -1,4 +1,4 @@
-name: archetypal-dev
+name: archetypal
 channels:
   - https://conda.anaconda.org/conda-forge/noarch
   - https://conda.anaconda.org/conda-forge/osx-64
@@ -19,3 +19,4 @@ dependencies:
     - eppy
     - geomeppy
     - pyomo
+    - utm

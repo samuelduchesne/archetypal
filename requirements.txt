@@ -1,1 +1,14 @@
 osmnx>=0.9
+lxml
+shapely
+geopandas
+geomeppy
+matplotlib
+eppy
+requests
+pycountry
+scikit-learn
+pandas
+pyomo
+numpy
+tqdm

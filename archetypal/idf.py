@@ -1212,7 +1212,7 @@ def find_eplus_installs(vupdater_path):
     v0 = (0, 0, 0)  # Initialize the version number
     # Find the most recent version in the different folders found
     for dir in list_eplus_dir:
-        _, version = dir.split('EnergyPlusV')
+        version = dir[-5:]
         ver = tuple(map(int, version.split('-')))
         if ver > v0:
             v0 = ver

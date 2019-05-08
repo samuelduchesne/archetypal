@@ -17,13 +17,16 @@ clean `virtual environment`_ using conda. Note that python version 3 is required
 
 .. code-block:: shell
 
-   cd <path of archetypal root folder>
-   conda env create --file environment.yml
+   conda config --set always_yes yes --set show_channel_urls true
+   conda update -n base conda
+   conda config --prepend channels conda-forge
+   conda create -n archetypal python=$TRAVIS_PYTHON_VERSION
+   conda env update -n archetypal -f environment.yml --prune
+   conda install --file requirements-dev.txt
    source activate archetypal
-   python setup.py
 
 
-To use the new environnement inside a `jupyter notebook`_, we recommend using the steps described by `Angelo
+To use the new environment inside a `jupyter notebook`_, we recommend using the steps described by `Angelo
 Basile`_, but instead of creating a python venv, we use conda's virtual environment functions:
 
 .. code-block:: shell
@@ -47,6 +50,6 @@ project, *archetypal* in this case.
 .. _start a jupyter notebook: https://jupyter.readthedocs.io/en/latest/running.html#starting-the-notebook-server
 .. _jupyter notebook: https://jupyter-notebook.readthedocs.io/en/stable/#
 .. _Angelo Basile: https://anbasile.github.io/programming/2017/06/25/jupyter-venv/
-.. _virtual environment: https://conda.io/docs/using/envs.html
+.. _virtual environment: https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#managing-environments
 .. _EnergyPlus: https://energyplus.net
 .. _umi: https://umidocs.readthedocs.io/en/latest/

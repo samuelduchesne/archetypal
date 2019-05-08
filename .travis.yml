@@ -49,7 +49,7 @@ before_install:
   - conda config --prepend channels conda-forge
   - conda create -n archetypal python=$TRAVIS_PYTHON_VERSION
   - conda env update -n archetypal -f environment.yml --prune
-  - conda install --file requirements-dev.txt
+  - conda install -n archetypal --file requirements-dev.txt
   - source activate archetypal
   - conda info --all
 
@@ -58,7 +58,6 @@ install:
   - conda list
 
 script:
-  - cd tests
   - coverage run --source archetypal -m pytest --verbose
 
 after_success:

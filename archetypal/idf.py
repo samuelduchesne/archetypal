@@ -1198,9 +1198,6 @@ def find_eplus_installs(vupdater_path):
         (str): The version number of the latest E+ install
 
     """
-    # Todo: Create a routine to find all available EnergyPlus version
-    #  installed on machine and return the latest version id, eg.: '8-9-0'
-
     list_eplus_dir = []
     path_to_eplus, _ = vupdater_path.split('EnergyPlusV')
 
@@ -1213,10 +1210,15 @@ def find_eplus_installs(vupdater_path):
 
     # Find the most recent version of EnergyPlus installed from the version
     # number (at the end of the folder name)
-    
+    v0 = (0,0,0) # Initialize the version number
+    # Find the most recent version in the different folders found
+    for dir in list_eplus_dir:
+        _, version = dir.split('EnergyPlusV')
+        ver = tuple(map(int,version.split('-')))
+        if ver > v0:
+            v0 = ver
 
-
-    return '8-9-0'
+    return '-'.join(tuple(map(str,v0)))
 
 
 def get_idf_version(file, doted=True):

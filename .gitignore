@@ -96,3 +96,5 @@ tests/\.temp/
 *.lp
 
 \.DS_Store
+
+tests/input_data/schedules/eprun/

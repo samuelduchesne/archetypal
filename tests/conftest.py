@@ -2,10 +2,9 @@ import glob
 import os
 import shutil
 
-import pytest
-
 import archetypal as ar
 import osmnx as ox
+import pytest
 
 
 @pytest.fixture(scope='session')
@@ -45,7 +44,6 @@ def scratch_then_cache(request):
                     assert not os.path.exists(dir)
 
 
-
 samples_ = ['regular', 'umi_samples']  # ['problematic', 'regular',
 
 
@@ -54,7 +52,7 @@ samples_ = ['regular', 'umi_samples']  # ['problematic', 'regular',
 
 @pytest.fixture(params=samples_, ids=samples_, scope='session')
 def idf_source(request):
-    return glob.glob('./input_data/{}/*.idf'.format(request.param))
+    return glob.glob('tests/input_data/{}/*.idf'.format(request.param))
 
 
 @pytest.fixture(scope='session')
@@ -62,14 +60,17 @@ def config():
     ar.config(log_console=True, log_file=True, use_cache=True,
               data_folder='.temp/data', logs_folder='.temp/logs',
               imgs_folder='.temp/imgs', cache_folder='.temp/cache',
-              umitemplate='../data/BostonTemplateLibrary.json')
+              umitemplate='tests/input_data/umi_samples'
+                          '/BostonTemplateLibrary_2.json')
 
 
 @pytest.fixture()
 def ox_config(config):
-    ox.config(log_console=ar.settings.log_console, log_file=ar.settings.log_file,
+    ox.config(log_console=ar.settings.log_console,
+              log_file=ar.settings.log_file,
               use_cache=ar.settings.use_cache,
-              data_folder=ar.settings.data_folder, logs_folder=ar.settings.logs_folder,
+              data_folder=ar.settings.data_folder,
+              logs_folder=ar.settings.logs_folder,
               imgs_folder=ar.settings.imgs_folder,
               cache_folder=ar.settings.cache_folder,
               log_name=ar.settings.log_name)

@@ -18,13 +18,13 @@ def test_trnbuild_from_idf(config):
     window_filepath = os.path.join("..", "tests", "input_data", "trnsys",
                                    window_file)
 
-    convert_idf_to_t3d("./input_data/trnsys/NECB 2011 - Small Office.idf",
+    convert_idf_to_t3d("tests/input_data/trnsys/NECB 2011 - Small Office.idf",
                        window_filepath)
 
 
 def test_trnbuild_from_idf_parallel(config):
     # List files here
-    file_upper_path = './input_data/trnsys/'
+    file_upper_path = 'tests/input_data/trnsys/'
     files = ["NECB 2011 - Small Office.idf"]
 
     window_file = 'W74-lib.dat'

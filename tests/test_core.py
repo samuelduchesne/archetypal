@@ -7,16 +7,16 @@ import pytest
 ar.config(log_console=True, log_file=True, use_cache=True,
           data_folder='.temp/data', logs_folder='.temp/logs',
           imgs_folder='.temp/imgs', cache_folder='.temp/cache',
-          umitemplate='./input_data/umi_samples/BostonTemplateLibrary_2.json',
+          umitemplate='tests/input_data/umi_samples/BostonTemplateLibrary_2.json',
           get_common_umi_objects=True)
 
 # # Uncomment this block to test different file variations
-# files_to_try = ['./input_data/problematic/*.idf',
-#                 './input_data/regular/*.idf',
-#                 './input_data/umi_samples/*.idf']
+# files_to_try = ['tests/input_data/problematic/*.idf',
+#                 'tests/input_data/regular/*.idf',
+#                 'tests/input_data/umi_samples/*.idf']
 # ids = ['problematic', 'regular', 'umi_samples']
 
-files_to_try = ['./input_data/regular/*.idf']
+files_to_try = ['tests/input_data/regular/*.idf']
 ids = ['regular']
 
 
@@ -26,8 +26,8 @@ def template(fresh_start, request):
     function to clear the cache folder"""
     idf = glob.glob(request.param)
     idf = ar.copy_file(idf)
-    # idf = './input_data/AdultEducationCenter.idf'
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    # idf = 'tests/input_data/AdultEducationCenter.idf'
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     a = ar.UmiTemplate.from_idf(idf, wf)
 
     yield a
@@ -37,9 +37,9 @@ def template(fresh_start, request):
 def test_template_withcache(config):
     """Instantiate an umi template placeholder. Does note call fresh_start
     function so that caching can be used"""
-    idf = glob.glob('./input_data/umi_samples/*.idf')
+    idf = glob.glob('tests/input_data/umi_samples/*.idf')
     idf = ar.copy_file(idf)
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     a = ar.UmiTemplate.from_idf(idf, wf, load=True,
                                 run_eplus_kwargs=dict(prep_outputs=True,
                                                       annual=True))
@@ -131,21 +131,21 @@ def test_to_json(test_template_withcache):
 
 
 def test_to_json_std(config):
-    files = glob.glob("./input_data/necb/*idf")
+    files = glob.glob("tests/input_data/necb/*idf")
     files = ar.copy_file(files)
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     a = ar.UmiTemplate.from_idf(files, wf)
     json = a.to_json()
     print(json)
 
 
 def test_parse_schedule_profile():
-    idf = './input_data/regular/5ZoneNightVent1.idf'
+    idf = 'tests/input_data/regular/5ZoneNightVent1.idf'
     outputs = {'ep_object': 'Output:Variable'.upper(),
                'kwargs': {'Key_Value': 'OCCUPY-1',
                           'Variable_Name': 'Schedule Value',
                           'Reporting_Frequency': 'Hourly'}}
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     idf = ar.copy_file(idf)
     sql = ar.run_eplus(idf, weather_file=wf, prep_outputs=[outputs],
                        annual=True)
@@ -166,13 +166,13 @@ def test_parse_schedule_profile():
 
 
 def test_energyprofile():
-    idf = ['./input_data/regular/5ZoneNightVent1.idf',
-           './input_data/regular/AdultEducationCenter.idf']
+    idf = ['tests/input_data/regular/5ZoneNightVent1.idf',
+           'tests/input_data/regular/AdultEducationCenter.idf']
     outputs = {'ep_object': 'Output:Variable'.upper(),
                'kwargs': {'Key_Value': 'OCCUPY-1',
                           'Variable_Name': 'Schedule Value',
                           'Reporting_Frequency': 'Hourly'}}
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     idf = ar.copy_file(idf)
     sql = ar.run_eplus(idf, weather_file=wf, prep_outputs=[outputs],
                        annual=True, expandobjects=True)
@@ -199,8 +199,8 @@ def test_energyprofile():
 
 
 def test_energyprofile2():
-    idf = ['./input_data/regular/5ZoneNightVent1.idf']
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    idf = ['tests/input_data/regular/5ZoneNightVent1.idf']
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     idf = ar.copy_file(idf)
     sql = ar.run_eplus(idf, weather_file=wf,
                        annual=True, expandobjects=True)
@@ -228,7 +228,7 @@ def test_necb(config):
                       "/software/archetypal-dev/data/necb"
                       "/NECB_2011_Montreal_idf/*idf")
     files = ar.copy_file(files)
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     template = ar.UmiTemplate(files, wf)
 
     return template

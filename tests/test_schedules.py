@@ -4,7 +4,7 @@ from archetypal import Schedule, load_idf, copy_file, run_eplus
 
 
 def test_schedules_in_necb_specific(config):
-    idf_file = './input_data/regular/NECB 2011-MediumOffice-NECB HDD ' \
+    idf_file = 'tests/input_data/regular/NECB 2011-MediumOffice-NECB HDD ' \
                'Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf'
     idfs = load_idf(idf_file)
     import matplotlib.pyplot as plt
@@ -19,7 +19,7 @@ def test_schedules_in_necb_specific(config):
 def test_make_umi_schedule(config):
     """Tests only a single schedule name"""
     import matplotlib.pyplot as plt
-    idf_file = './input_data/schedules/schedules.idf'
+    idf_file = 'tests/input_data/schedules/schedules.idf'
     idf_file = copy_file(idf_file)[0]
     idf = load_idf(idf_file)['schedules.idf']
 
@@ -39,7 +39,7 @@ def test_make_umi_schedule(config):
     assert (new.all_values == s.all_values).all()
 
 
-idf_file = './input_data/schedules/test_multizone_EP.idf'
+idf_file = 'tests/input_data/schedules/test_multizone_EP.idf'
 
 
 def schedules_idf():
@@ -121,9 +121,9 @@ def test_data(request, run_schedules_idf):
 @pytest.fixture(scope='module')
 def run_schedules_idf():
     import os
-    run_eplus(idf_file, weather_file='./input_data/CAN_PQ_Montreal.Intl.AP'
+    run_eplus(idf_file, weather_file='tests/input_data/CAN_PQ_Montreal.Intl.AP'
                                      '.716270_CWEC.epw',
-              annual=True, output_folder='./input_data/schedules',
+              annual=True, output_folder='tests/input_data/schedules',
               output_prefix='eprun', readvars=True)
     csv = os.path.join(os.curdir, 'input_data', 'schedules', 'eprun',
                        'eprunout.csv')

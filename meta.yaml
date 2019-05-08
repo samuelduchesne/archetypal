@@ -26,7 +26,6 @@ requirements:
     - numpy
     - pandas
     - geopandas
-    - networkx
     - matplotlib
     - shapely
     - descartes

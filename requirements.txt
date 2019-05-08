@@ -1,7 +1,4 @@
-osmnx>=0.9
-lxml
 shapely
-geopandas>=0.3
 geomeppy
 matplotlib>=2.1
 eppy

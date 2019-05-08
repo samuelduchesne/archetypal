@@ -18,7 +18,6 @@ import zipfile
 import pandas as pd
 import pycountry as pycountry
 import requests
-
 from archetypal import log, settings, make_str
 
 # scipy and sklearn are optional dependencies for faster nearest node search

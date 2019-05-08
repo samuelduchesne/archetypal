@@ -19,22 +19,18 @@ import logging as lg
 import os
 import re
 import sys
-import time
 import unicodedata
 import warnings
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
-import geopandas as gpd
+import archetypal as ar
 import numpy as np
 import pandas as pd
 import shapely
-from lxml import objectify
+from archetypal import settings
 from pandas.io.json import json_normalize
 from shapely.geometry import Point
-
-import archetypal as ar
-from archetypal import settings
 
 
 def config(data_folder=settings.data_folder,

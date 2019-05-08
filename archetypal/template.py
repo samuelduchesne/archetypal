@@ -11,7 +11,6 @@ from enum import IntEnum
 
 import eppy.modeleditor
 import numpy as np
-
 from archetypal import object_from_idfs, Schedule, calc_simple_glazing
 
 created_obj = {}

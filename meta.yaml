@@ -25,7 +25,6 @@ requirements:
     - requests
     - numpy
     - pandas
-    - geopandas
     - matplotlib
     - shapely
     - descartes

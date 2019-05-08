@@ -15,14 +15,14 @@
 
 import os
 import time
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from archetypal import settings, log
 from matplotlib import cm
 from matplotlib.colors import LightSource
-
-from archetypal import settings, log
 
 
 def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
@@ -132,6 +132,7 @@ def plot_energyprofile(energyprofile, kind='polygon', axis_off=True, cmap=None,
         return axes
 
     import matplotlib.pyplot as plt
+    # noinspection PyUnresolvedReferences
     from mpl_toolkits.mplot3d import Axes3D
 
     if isinstance(energyprofile.index, pd.MultiIndex):

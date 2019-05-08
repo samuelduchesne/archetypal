@@ -11,13 +11,12 @@ import time
 import uuid
 from collections import OrderedDict
 
+import archetypal as ar
 import numpy as np
 import pandas as pd
+from archetypal import log, Schedule
 from eppy import modeleditor
 from geomeppy.geom.polygons import Polygon3D
-
-import archetypal as ar
-from archetypal import log, Schedule
 
 
 def clear_name_idf_objects(idfFile):

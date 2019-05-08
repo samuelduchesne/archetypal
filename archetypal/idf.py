@@ -1109,11 +1109,11 @@ def perform_transition(file, to_version=None):
         # might be an old version of E+
     else:
         iddfile = getoldiddfile(doted_version)
-    vupdater_path, _ = iddfile.split('bin')
+    vupdater_path, _ = iddfile.split('Energy+')
     # What is the latest E+ installed version
     if to_version is None:
         to_version = find_eplus_installs(vupdater_path)
-    sourcedir, ver = vupdater_path.split('EnergyPlusV')
+    sourcedir, _ = vupdater_path.split('EnergyPlusV')
     ep_installation_name = 'EnergyPlusV' + to_version
     vupdater_path = os.path.join(sourcedir, ep_installation_name, 'PreProcess',
                                  'IDFVersionUpdater')

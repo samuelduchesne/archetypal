@@ -1112,7 +1112,7 @@ def perform_transition(file, to_version=None):
     vupdater_path, _ = iddfile.split('bin')
     # What is the latest E+ installed version
     if to_version is None:
-        to_version = find_eplus_installs()
+        to_version = find_eplus_installs(vupdater_path)
     sourcedir, ver = vupdater_path.split('EnergyPlusV')
     ep_installation_name = 'EnergyPlusV' + to_version
     vupdater_path = os.path.join(sourcedir, ep_installation_name, 'PreProcess',
@@ -1191,7 +1191,7 @@ def perform_transition(file, to_version=None):
             os.remove(file)
 
 
-def find_eplus_installs():
+def find_eplus_installs(vupdater_path):
     """
 
     Returns:
@@ -1210,10 +1210,7 @@ def find_eplus_installs():
 
     # Find the most recent version of EnergyPlus installed from the version
     # number (at the end of the folder name)
-
-    # Initialize the version number (EnergyPlus version is written as (e.g.
-    # : 8-9-0)
-    v0 = (0,0,0)
+    v0 = (0,0,0) # Initialize the version number
     # Find the most recent version in the different folders found
     for dir in list_eplus_dir:
         _, version = dir.split('EnergyPlusV')

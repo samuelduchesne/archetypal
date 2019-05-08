@@ -33,14 +33,20 @@ def test_template_to_template(config):
                                                  'WindowSettings': [],
                                                  'BuildingTemplates': []})
             data_dict.update(a)
-        path = os.path.join(settings.data_folder, 'a.json')
+
+        # Create data folder if does not exist
+        if not os.path.isdir(os.path.relpath(settings.data_folder)):
+            os.mkdir(os.path.relpath(settings.data_folder))
+
+        path = os.path.join(os.path.relpath(settings.data_folder), 'a.json')
         with io.open(path, 'w+', encoding='utf-8') as path_or_buf:
             a = json.dumps(data_dict, indent=2)
             path_or_buf.write(a)
         with open(path, 'r') as f:
             a = json.load(f)
-    b = UmiTemplate.from_json(file).to_json(os.path.join(settings.data_folder,
-                                                         'b.json'))
+    b = UmiTemplate.from_json(file).to_json(
+        os.path.join(os.path.relpath(settings.data_folder),
+                     'b.json'))
     b = json.loads(b)
     assert a == b
 

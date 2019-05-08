@@ -1,7 +1,7 @@
 import archetypal as ar
 import pandas as pd
 # configure archetypal
-from archetypal import download_bld_window
+from archetypal import download_bld_window, WindowSetting
 
 
 def test_tabula_available_country(config, scratch_then_cache):
@@ -51,8 +51,20 @@ def test_download_bld_window(scratch_then_cache):
 
     response = download_bld_window(u_factor=3.18, shgc=0.49, vis_trans=0.53,
                                    oauth_key=oauth_consumer_key, tolerance=0.05)
-
     assert response
+
+
+def test_download_and_load_bld_window(config):
+    """Download window and load its idf file"""
+    oauth_consumer_key = 'f2d08b2d6cf7c8abd7d7c580ede79fa4'
+
+    response = download_bld_window(u_factor=3.18, shgc=0.49, vis_trans=0.53,
+                                   oauth_key=oauth_consumer_key, tolerance=0.05)
+    idf = ar.load_idf(response[0], as_dict=False)
+
+    ws = WindowSetting.from_idf(idf=idf[0])
+
+    assert ws
 
 
 def test_statcan(config):

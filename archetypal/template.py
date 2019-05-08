@@ -12,7 +12,7 @@ from enum import IntEnum
 import eppy.modeleditor
 import numpy as np
 
-from archetypal import object_from_idfs, Schedule, calc_simple_glazing
+from archetypal import IDF, object_from_idfs, Schedule, calc_simple_glazing
 
 created_obj = {}
 
@@ -1724,8 +1724,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
     ZoneMixingFlowRate
     """
 
-    def __init__(self, ZoneMixingAvailabilitySchedule, AfnWindowAvailability,
-                 ShadingSystemAvailabilitySchedule, Construction, *args,
+    def __init__(self, *args, ZoneMixingAvailabilitySchedule=None,
+                 AfnWindowAvailability=None,
+                 ShadingSystemAvailabilitySchedule=None, Construction=None,
                  AfnDischargeC=0.65, AfnTempSetpoint=20,
                  IsShadingSystemOn=False, IsVirtualPartition=False,
                  IsZoneMixingOn=False, OperableArea=0.8,
@@ -1753,11 +1754,26 @@ class WindowSetting(UmiBase, metaclass=Unique):
         self.ZoneMixingFlowRate = ZoneMixingFlowRate
 
     @classmethod
-    def from_idf(cls, *args, **kwargs):
-        w = cls(*args, **kwargs)
+    def from_idf(cls, idf, **kwargs):
+        """Alternate constructor to create a ``WindowSetting`` from an IDF file
 
-        construction = kwargs.get('Construction', None)
-        w.Construction = w.window_construction(construction)
+        Args:
+            idf (IDF): IDF object loaded from eppy. Use `archetypal.load_idf
+            **kwargs: These arguments are passed to the main constructor,
+            and can be used to access multi-layer data, data stored within
+            archives (zip files),
+            etc.
+
+        Returns:
+
+        """
+        idf_constructions = idf.idfobjects['CONSTRUCTION'][0]
+        constr_name = kwargs.get('Construction', idf_constructions.Name)
+        name = kwargs.get('Name', idf_constructions.Name + '_WindowSetting')
+        kwargs['Name'] = name
+
+        w = cls(idf=idf, **kwargs)
+        w.Construction = w.window_construction(constr_name)
 
         return w
 

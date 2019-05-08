@@ -689,7 +689,7 @@ def download_bld_window(u_factor, shgc, vis_trans, oauth_key, tolerance=0.05,
             to. Defaults to settings.data_folder.
 
     Returns:
-        archetypal.IDF: a list of IDF files containing window objects
+        (list of archetypal.IDF): a list of IDF files containing window objects
             matching the  parameters.
 
     Note:

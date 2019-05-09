@@ -1,1 +1,12 @@
-osmnx>=0.9
+shapely
+geomeppy
+matplotlib>=2.1
+eppy
+requests>=2.18
+pycountry
+scikit-learn
+scipy
+pandas>=0.21
+pyomo
+numpy>=1.13
+tqdm

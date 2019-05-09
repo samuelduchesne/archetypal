@@ -9,7 +9,6 @@ import logging as lg
 import math
 
 import numpy as np
-
 from archetypal import log
 
 

@@ -38,6 +38,10 @@ def find_version(*file_paths):
 with codecs.open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
+with open('requirements.txt') as f:
+    requirements_lines = f.readlines()
+install_requires = [r.strip() for r in requirements_lines]
+
 setup(
     name='archetypal',
     version=find_version('archetypal', '__init__.py'),
@@ -50,28 +54,9 @@ setup(
     long_description=long_description,
     keywords='Building archetypes',
     python_requires='>=3.6',
-    install_requires=['numpy',
-                      'pandas',
-                      'eppy',
-                      'sphinx',
-                      'pycountry',
-                      'geopandas',
-                      'shapely',
-                      'osmnx',
-                      'pyproj',
-                      'rasterstats',
-                      'pyomo',
-                      'scikit-learn',
-                      'sqlalchemy',
-                      'geomeppy',
-                      'lxml',
-                      'decorator',
-                      'requests',
-                      'nose',
-                      'networkx',
-                      'tqdm'],
+    install_requires=install_requires,
     extras_requires={'dev': [],
-                     'tests': ['pytest', 'matplotlib'],
+                     'tests': ['coverage', 'coveralls', 'pytest', 'matplotlib'],
                      'docs': ['sphinx', 'nbsphinx', 'jupyter_client',
                               'ipykernel']},
     test_suite='tests'

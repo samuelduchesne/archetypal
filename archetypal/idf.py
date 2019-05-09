@@ -23,7 +23,7 @@ from archetypal import settings
 from archetypal.utils import log, cd, EnergyPlusProcessError
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
-from eppy.runner.run_functions import run, paths_from_version
+from eppy.runner.run_functions import run
 
 try:
     import multiprocessing as mp

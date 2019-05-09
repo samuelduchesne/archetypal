@@ -4,6 +4,7 @@
 # Web: https://github.com/samuelduchesne/archetypal
 #
 # Build an image from the dockerfile:
+# >>> cd ./docker
 # >>> docker build -t samuelduchese/archetypal .
 #
 # Push the built image to hub so others can pull/run it:
@@ -12,11 +13,11 @@
 # >>> docker push samuelduchesne/archetypal
 #
 # Run bash in this container and export final conda environment to a yml file:
-# >>> docker run --rm -it -u 0 --name archetypal -v "$PWD":/home/samueld/wip samuelduchesne/archetypal /bin/bash
-# >>> conda env export -n base > /home/samueld/wip/environment.yml
+# >>> docker run --rm -it -u 0 --name archetypal -v "$PWD":/home/archetypal/wip samuelduchesne/archetypal /bin/bash
+# >>> conda env export -n base > /home/archetypal/wip/environment.yml
 #
 # Run jupyter lab in this container:
-# >>> docker run --rm -it -p 8888:8888 -v "$PWD":/home/samueld/wip samuelduchesne/archetypal
+# >>> docker run --rm -it -p 8888:8888 -v "$PWD":/home/archetypal/wip samuelduchesne/archetypal
 #
 # Stop/delete all local docker containers/images:
 # >>> docker stop $(docker ps -aq)
@@ -30,7 +31,7 @@ LABEL url="https://github.com/samuelduchesne/archetypal"
 LABEL description="archetypal: Retrieve, construct, simulate, and analyse building archetypes"
 
 # Clone repo
-RUN git clone --depth=50 --branch=develop https://github.com/samuelduchesne/archetypal.git
+RUN git clone --branch=develop https://github.com/samuelduchesne/archetypal.git
 
 # Before install
 ENV ENERGYPLUS_VERSION=8.9.0
@@ -48,16 +49,15 @@ RUN curl -SLO $ENERGYPLUS_DOWNLOAD_URL && \
 
 # configure conda and install packages in one RUN to keep image tidy
 WORKDIR archetypal
-RUN conda update -n base conda && \
-    conda config --prepend channels conda-forge && \
+RUN conda config --set always_yes yes --set show_channel_urls true && \
+    conda update -n base conda && \
+    conda create -n archetypal && \
     conda env update -n archetypal -f environment.yml --prune && \
     conda install -n archetypal --file requirements-dev.txt && \
-    conda install --strict-channel-priority --update-all --force-reinstall --yes jupyterlab python-igraph && \
-    conda clean --yes --all && \
-    conda info --all && \
-    conda list && \
     echo "source activate archetypal" > ~/.bashrc && \
-    python setup.py install
+    python setup.py install && \
+    conda clean --all && \
+    conda info --all
 ENV PATH /opt/conda/envs/archetypal/bin:$PATH
 
 # launch notebook in the local working directory that we mount

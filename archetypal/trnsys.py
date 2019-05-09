@@ -516,6 +516,22 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                             fenestrationSurf[
                                 "Vertex_" + str(j) + "_Zcoordinate"] + incrZ
 
+                # Round vertex to 4 decimal digit max
+                for j in range(1, len(
+                        fenestrationSurf.coords) + 1):
+                    fenestrationSurf["Vertex_" + str(j) + "_Xcoordinate"] \
+                        = \
+                        round(fenestrationSurf[
+                                  "Vertex_" + str(j) + "_Xcoordinate"], 4)
+                    fenestrationSurf["Vertex_" + str(j) + "_Ycoordinate"] \
+                        = \
+                        round(fenestrationSurf[
+                                  "Vertex_" + str(j) + "_Ycoordinate"], 4)
+                    fenestrationSurf["Vertex_" + str(j) + "_Zcoordinate"] \
+                        = \
+                        round(fenestrationSurf[
+                                  "Vertex_" + str(j) + "_Zcoordinate"], 4)
+
                 lines.insert(variableDictNum + 2, fenestrationSurf)
 
         # Writing buildingSurface: Detailed in lines
@@ -596,12 +612,32 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                   "Vertex_" + str(j) + "_Zcoordinate"] \
                               + incrZ
 
+                # Round vertex to 4 decimal digit max
+                for j in range(1, len(buildingSurfs[i].coords) + 1):
+                    buildingSurfs[i]["Vertex_" + str(j) + "_Xcoordinate"] \
+                        = round(buildingSurfs[i][
+                                    "Vertex_" + str(j) + "_Xcoordinate"] \
+                                + incrX, 4)
+                    buildingSurfs[i]["Vertex_" + str(j) + "_Ycoordinate"] \
+                        = round(buildingSurfs[i][
+                                    "Vertex_" + str(j) + "_Ycoordinate"] \
+                                + incrY, 4)
+                    buildingSurfs[i]["Vertex_" + str(j) + "_Zcoordinate"] \
+                        = round(buildingSurfs[i][
+                                    "Vertex_" + str(j) + "_Zcoordinate"] \
+                                + incrZ, 4)
+
                 lines.insert(variableDictNum + 2, buildingSurfs[i])
 
         # Change coordinates from world (all zones to 0) to absolute
         if coordSys == 'World':
             zone.X_Origin, zone.Y_Origin, zone.Z_Origin = closest_coords(
                 surfList, to=zone_origin(zone))
+
+        # Round vertex to 4 decimal digit max
+        zone.X_Origin = round(zone.X_Origin, 4)
+        zone.Y_Origin = round(zone.Y_Origin, 4)
+        zone.Z_Origin = round(zone.Z_Origin, 4)
 
         lines.insert(variableDictNum + 2, zone)
     # endregion
@@ -637,7 +673,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                 if not indiceMat:
                     thickList.append(0.0)
                 else:
-                    thickList.append(materials[indiceMat[0]].Thickness)
+                    thickList.append(
+                        round(materials[indiceMat[0]].Thickness, 4))
 
                 layerList.append(constructions.list2[i][j])
 
@@ -813,7 +850,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                 lg.WARNING, name="ConverterLog",
                 filename="ConverterLog")
 
-        radFract = float(equipments[i].Fraction_Radiant)
+        radFract = round(float(equipments[i].Fraction_Radiant),4)
 
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +

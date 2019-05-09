@@ -5,8 +5,8 @@ import pytest
 
 # configure archetypal
 ar.config(log_console=True, log_file=True, use_cache=True,
-          data_folder='.temp/data', logs_folder='.temp/logs',
-          imgs_folder='.temp/imgs', cache_folder='.temp/cache',
+          data_folder='tests/temp/data', logs_folder='tests/temp/logs',
+          imgs_folder='tests/temp/imgs', cache_folder='tests/temp/cache',
           umitemplate='tests/input_data/umi_samples/BostonTemplateLibrary_2.json',
           get_common_umi_objects=True)
 

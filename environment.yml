@@ -1,17 +1,13 @@
 name: archetypal
 channels:
-  - https://conda.anaconda.org/conda-forge/noarch
-  - https://conda.anaconda.org/conda-forge/osx-64
-  - conda-forge
   - defaults
 dependencies:
-  - lxml
   - shapely
   - matplotlib>=2.1
   - requests>=2.18
   - pycountry
-  - scipy
   - scikit-learn
+  - scipy
   - pandas>=0.21
   - numpy>=1.13
   - tqdm

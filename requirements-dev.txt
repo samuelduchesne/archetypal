@@ -4,3 +4,5 @@ pytest
 scikit-learn
 scipy
 sphinx
+jupyterlab
+python-igraph

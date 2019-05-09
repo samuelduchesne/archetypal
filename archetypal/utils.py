@@ -1,24 +1,36 @@
+################################################################################
+# Module: utils.py
+# Description: Utility functions for configuration, logging
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+# OSMnx
+#
+# Copyright (c) 2019 Geoff Boeing https://geoffboeing.com/
+#
+# Part of the following code is a derivative work of the code from the OSMnx
+# project, which is licensed MIT License. This code therefore is also
+# licensed under the terms of the The MIT License (MIT).
+################################################################################
+
 import datetime as dt
 import json
 import logging as lg
 import os
+import re
 import sys
-import time
 import unicodedata
+import warnings
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
-import geopandas as gpd
+import archetypal as ar
 import numpy as np
 import pandas as pd
 import shapely
-from lxml import objectify
+from archetypal import settings
 from pandas.io.json import json_normalize
 from shapely.geometry import Point
-
-import archetypal as ar
-from . import load_umi_template
-from . import settings
 
 
 def config(data_folder=settings.data_folder,
@@ -80,7 +92,7 @@ def config(data_folder=settings.data_folder,
         log('Configured archetypal')
 
 
-def log(message, level=None, name=None, filename=None):
+def log(message, level=None, name=None, filename=None, avoid_console=False):
     """
     Write a message to the log file and/or print to the the console.
 
@@ -89,6 +101,8 @@ def log(message, level=None, name=None, filename=None):
         level (int): one of the logger.level constants
         name (str): name of the logger
         filename (str): name of the log file
+        avoid_console (bool): If True, don't print to console for this message
+            only
 
     Returns:
         None
@@ -117,19 +131,24 @@ def log(message, level=None, name=None, filename=None):
 
     # if logging to console is turned on, convert message to ascii and print to
     # the console
-    if settings.log_console:
+    if settings.log_console and not avoid_console:
         # capture current stdout, then switch it to the console, print the
         # message, then switch back to what had been the stdout. this prevents
         # logging to notebook - instead, it goes to console
-        standard_out = sys.stdout
-        sys.stdout = sys.__stdout__
+        if level != lg.WARNING:
+            standard_out = sys.stdout
+            sys.stdout = sys.__stdout__
 
-        # convert message to ascii for console display so it doesn't break
-        # windows terminals
-        message = unicodedata.normalize('NFKD', make_str(message)).encode(
-            'ascii', errors='replace').decode()
-        print(message)
-        sys.stdout = standard_out
+            # convert message to ascii for console display so it doesn't break
+            # windows terminals
+            message = unicodedata.normalize('NFKD', make_str(message)).encode(
+                'ascii', errors='replace').decode()
+            print(message)
+            sys.stdout = standard_out
+        else:
+            message = unicodedata.normalize('NFKD', make_str(message)).encode(
+                'ascii', errors='replace').decode()
+            warnings.warn(message)
 
 
 def get_logger(level=None, name=None, filename=None):
@@ -382,7 +401,7 @@ def get_row_prop(self, other, on, property):
     Todo:
         * Not used
         * This function may raise an error (it has to). Maybe we can do
-        things better.
+          things better.
 
     Args:
         self:
@@ -402,11 +421,9 @@ def get_row_prop(self, other, on, property):
         raise ValueError()
     else:
         if len(value_series) > 1:
-            log(
-                'Found more than one possible values for property {} for item '
+            log('Found more than one possible values for property {} for item '
                 '{}'.format(
-                    property, self[on]),
-                lg.WARNING)
+                property, self[on]), lg.WARNING)
             log('Taking the first occurrence...')
 
             index = value_series.index.values.astype(int)[0]
@@ -505,40 +522,6 @@ def date_transform(date_str):
     return datetime.strptime('23:00', '%H:%M')
 
 
-def time2time(row):
-    """
-    Constructs an array of 24 hour schedule points from a
-    Shedule:Day:Interval object.
-
-    Args:
-        row (pandas.Series): a row
-
-    Returns:
-        numpy.ndarray: a numpy array of length 24
-
-    """
-    time_seg = []
-    for i in range(1, 25):
-        try:
-            time = row['Time_{}'.format(i)]  # Time_i
-            value = row['Value_Until_Time_{}'.format(i)]  # Value_Until_Time_i
-        except:
-            pass
-        else:
-            if str(time) != 'nan' and str(value) != 'nan':
-                time = date_transform(time).hour
-                times = np.ones(time + 1) * float(value)
-                time_seg.append(times)
-    arrays = time_seg
-    array = time_seg[0]
-    length = len(arrays[0])
-    for i, a in enumerate(arrays):
-        if i != 0:
-            array = np.append(array, a[length - 1:-1])
-            length = len(a)
-    return array[0:24]
-
-
 def iscore(row):
     """
     Helps to group by core and perimeter zones. If any of "has `core` in
@@ -547,7 +530,7 @@ def iscore(row):
 
     Todo:
         * assumes a basement zone_loads will be considered as a core
-        zone_loads since no ext wall area for basements.
+          zone_loads since no ext wall area for basements.
 
     Args:
         row (pandas.Series): a row
@@ -556,13 +539,13 @@ def iscore(row):
         str: 'Core' or 'Perimeter'
 
     """
-    if any(['core' in row[('Zones', 'Zone Name')].lower(),
-            float(row[('Zones', 'Exterior Gross Wall Area {m2}')]) == 0]):
+    if any(['core' in row[('Zone', 'Zone Name')].lower(),
+            float(row[('Zone', 'Exterior Gross Wall Area {m2}')]) == 0]):
         # We look for the string `core` in the Zone_Name
         return 'Core'
-    elif row[('Zones', 'Part of Total Building Area')] == 'No':
+    elif row[('Zone', 'Part of Total Building Area')] == 'No':
         return np.NaN
-    elif 'plenum' in row[('Zones', 'Zone Name')].lower():
+    elif 'plenum' in row[('Zone', 'Zone Name')].lower():
         return np.NaN
     else:
         return 'Perimeter'
@@ -660,58 +643,26 @@ def safe_prod(x, df, weighting_variable):
         return 0
 
 
-def copy_file(files):
+def copy_file(files, where=None):
     """Handles a copy of test idf files"""
     import shutil, os
     if isinstance(files, str):
         files = [files]
     files = {os.path.basename(k): k for k in files}
+
+    # defaults to cache folder
+    if where is None:
+        where = ar.settings.cache_folder
+
     for file in files:
-        dst = os.path.join(ar.settings.cache_folder, file)
-        output_folder = ar.settings.cache_folder
+        dst = os.path.join(where, file)
+        output_folder = where
         if not os.path.isdir(output_folder):
             os.makedirs(output_folder)
         shutil.copyfile(files[file], dst)
         files[file] = dst
 
     return list(files.values())
-
-    # scratch_then_cache is not necessary if we want to see the results
-    # for file in files:
-    #     dirname = os.path.dirname(files[file])
-    #     if os.path.isdir(dirname):
-    #         shutil.rmtree(dirname)
-
-
-def landxml_to_point(xml_file, crs=None, save=False):
-    """Read in a LandXML 1.0 file and return a GeoSeries of points or a
-    Shapefile"""
-    # {'init': 'epsg:2950'}
-    if not crs:
-        # using default crs
-        log('no crs was defined for LandXML file. Using default', lg.WARNING)
-        crs = {'init': 'epsg:2950'}
-    start = time.time()
-    name, extension = os.path.splitext(os.path.basename(xml_file))
-    log('Treating {}...'.format(name))
-    with open(xml_file, "r") as xml_data:
-        xml = objectify.parse(xml_data)
-    # get the root of the file
-    root = xml.getroot()
-    # get all points
-    pnts = root['Surfaces']['Surface']['Definition']['Pnts'].getchildren()
-    # create GeoSeries from list of points by reading in x,y,z coordinates
-    gds = gpd.GeoSeries([Point([float(i) for i in pnt.text.split(' ')])
-                         for pnt in pnts])
-    # set the crs. Must be the same as xml file coordinates.
-    gds.crs = crs
-    to_name = name + '.shp'
-    if save:
-        # save to shapefile
-        gds.to_file(to_name)
-    else:
-        return gds
-    log('Completed {} in {:,.2f} seconds'.format(name, time.time() - start))
 
 
 class Error(Exception):
@@ -818,3 +769,90 @@ def project_geom(geom: shapely.geometry, from_crs=None, to_crs=None,
                             units='m', datum='WGS84'))
 
             return transform(project, geom)  # apply projection
+
+
+def rmse(data, targets):
+    """calculate rmse with target values"""
+    y = piecewise(data)
+    predictions = y
+    error = np.sqrt(np.mean((predictions - targets) ** 2))
+    return error
+
+
+def piecewise(data):
+    """returns a piecewise function from an array of the form
+    [hour1, hour2, ..., value1, value2, ...]
+    """
+    nb = int(len(data) / 2)
+    bins = data[0: nb]
+    sf = data[nb:]
+    x = np.linspace(0, 8760, 8760)
+    # build condition array
+    conds = [x < bins[0]]
+    conds.extend([np.logical_and(x >= i, x < j) for i, j in zip(bins[0:],
+                                                                bins[1:])])
+    # build function array. This is the value of y when the condition is met.
+    funcs = sf
+    y = np.piecewise(x, conds, funcs)
+    return y
+
+
+def checkStr(datafile, string):
+    """Find the last occurrence of a string and return its line number
+
+    Args:
+        datafile (list-like): a list-like object
+        string (str): the string to find in the txt file
+
+    Returns: the list index containing the string
+
+    """
+    value = []
+    count = 0
+    for line in datafile:
+        count = count + 1
+        match = re.search(string, str(line))
+        if match:
+            return count
+            break
+
+
+def write_lines(file_path, lines):
+    """Delete file if exists, then write lines in it
+
+    Args:
+        file_path (str): path of the file
+        lines (list of str): lines to be written in file
+
+    Returns:
+
+    """
+    # Delete temp file if exists
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    # Save lines in temp file
+    temp_idf_file = open(file_path, "w+")
+    for line in lines:
+        temp_idf_file.write("%s" % line)
+    temp_idf_file.close()
+
+
+def load_umi_template(json_template):
+    """
+
+    Args:
+        json_template: Absolute or relative filepath to an umi json_template
+        file.
+
+    Returns:
+        pandas.DataFrame: 17 DataFrames, one for each component groups
+
+    """
+    if os.path.isfile(json_template):
+        with open(json_template) as f:
+            dicts = json.load(f, object_pairs_hook=OrderedDict)
+
+            return [{key: json_normalize(value)} for key, value in
+                    dicts.items()]
+    else:
+        raise ValueError('File {} does not exist'.format(json_template))

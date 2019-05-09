@@ -1,21 +1,22 @@
 import glob
-import pytest
 
 import archetypal as ar
+import pytest
 
 # configure archetypal
 ar.config(log_console=True, log_file=True, use_cache=True,
           data_folder='.temp/data', logs_folder='.temp/logs',
           imgs_folder='.temp/imgs', cache_folder='.temp/cache',
-          umitemplate='../data/BostonTemplateLibrary.json')
+          umitemplate='tests/input_data/umi_samples/BostonTemplateLibrary_2.json',
+          get_common_umi_objects=True)
 
 # # Uncomment this block to test different file variations
-# files_to_try = ['./input_data/problematic/*.idf',
-#                 './input_data/regular/*.idf',
-#                 './input_data/umi_samples/*.idf']
+# files_to_try = ['tests/input_data/problematic/*.idf',
+#                 'tests/input_data/regular/*.idf',
+#                 'tests/input_data/umi_samples/*.idf']
 # ids = ['problematic', 'regular', 'umi_samples']
 
-files_to_try = ['./input_data/regular/*.idf']
+files_to_try = ['tests/input_data/regular/*.idf']
 ids = ['regular']
 
 
@@ -25,91 +26,78 @@ def template(fresh_start, request):
     function to clear the cache folder"""
     idf = glob.glob(request.param)
     idf = ar.copy_file(idf)
-    # idf = './input_data/AdultEducationCenter.idf'
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    a = ar.Template(idf, wf)
+    # idf = 'tests/input_data/AdultEducationCenter.idf'
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    a = ar.UmiTemplate.from_idf(idf, wf)
 
     yield a
 
 
-@pytest.fixture(scope='module')
-def test_template_withcache():
+@pytest.fixture(scope='session')
+def test_template_withcache(config):
     """Instantiate an umi template placeholder. Does note call fresh_start
     function so that caching can be used"""
-    idf = glob.glob('/Users/samuelduchesne/Dropbox/Polytechnique/Doc/software'
-                    '/archetypal-dev/data/necb/NECB_2011_Montreal_idf/*.idf')
+    idf = glob.glob('tests/input_data/umi_samples/*.idf')
     idf = ar.copy_file(idf)
-    # idf = './input_data/AdultEducationCenter.idf'
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    a = ar.Template(idf, wf)
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    a = ar.UmiTemplate.from_idf(idf, wf, load=True,
+                                run_eplus_kwargs=dict(prep_outputs=True,
+                                                      annual=True))
 
     yield a
 
 
 @pytest.fixture(scope='module')
 def sql(test_template_withcache):
-    sql = test_template_withcache.run_eplus(silent=False, processors=-1,
-                                            annual=True)
+    sql = test_template_withcache.sql
     yield sql
 
 
-def test_materials_gas(template):
-    template.materials_gas = ar.materials_gas(template.idfs)
-    assert not template.materials_gas.empty
+def test_materials_gas(test_template_withcache):
+    test_template_withcache.materials_gas = ar.materials_gas(
+        test_template_withcache.idfs)
+    assert not test_template_withcache.materials_gas.empty
 
 
-def test_materials_glazing(template):
-    template.materials_glazing = ar.materials_glazing(template.idfs)
-    template.materials_glazing = ar.newrange(template.materials_gas,
-                                             template.materials_glazing)
-    return template.materials_glazing
+def test_materials_glazing(test_template_withcache):
+    test_template_withcache.materials_glazing = ar.materials_glazing(
+        test_template_withcache.idfs)
+    test_template_withcache.materials_glazing = ar.newrange(
+        test_template_withcache.materials_gas,
+        test_template_withcache.materials_glazing)
+    return test_template_withcache.materials_glazing
 
 
-def test_materials_opaque(template):
-    template.materials_opaque = ar.materials_opaque(template.idfs)
-    template.materials_opaque = ar.newrange(template.materials_glazing,
-                                            template.materials_opaque)
-    return template.materials_opaque
+def test_materials_opaque(test_template_withcache):
+    test_template_withcache.materials_opaque = ar.materials_opaque(
+        test_template_withcache.idfs)
+    test_template_withcache.materials_opaque = ar.newrange(
+        test_template_withcache.materials_glazing,
+        test_template_withcache.materials_opaque)
+    return test_template_withcache.materials_opaque
 
 
-def test_constructions_opaque(template):
-    template.constructions_opaque = ar.constructions_opaque(template.idfs,
-                                                            template.materials_opaque)
-    template.constructions_opaque = ar.newrange(template.materials_opaque,
-                                                template.constructions_opaque)
-    return template.constructions_opaque
+def test_constructions_opaque(test_template_withcache):
+    test_template_withcache.constructions_opaque = ar.constructions_opaque(
+        test_template_withcache.idfs,
+        test_template_withcache.materials_opaque)
+    test_template_withcache.constructions_opaque = ar.newrange(
+        test_template_withcache.materials_opaque,
+        test_template_withcache.constructions_opaque)
+    return test_template_withcache.constructions_opaque
 
 
-def test_constructions_windows(template):
-    template.constructions_windows = ar.constructions_windows(template.idfs,
-                                                              template.materials_glazing)
-    template.constructions_windows = ar.newrange(template.constructions_opaque,
-                                                 template.constructions_windows)
-    return template.constructions_windows
+def test_constructions_windows(test_template_withcache):
+    test_template_withcache.constructions_windows = ar.constructions_windows(
+        test_template_withcache.idfs,
+        test_template_withcache.materials_glazing)
+    test_template_withcache.constructions_windows = ar.newrange(
+        test_template_withcache.constructions_opaque,
+        test_template_withcache.constructions_windows)
+    return test_template_withcache.constructions_windows
 
 
-def test_day_schedules(template):
-    template.day_schedules = ar.day_schedules(template.idfs)
-    return template.day_schedules
-
-
-def test_week_schedules(template):
-    template.week_schedules = ar.week_schedules(template.idfs,
-                                                template.day_schedules)
-    template.week_schedules = ar.newrange(template.day_schedules,
-                                          template.week_schedules)
-    return template.week_schedules
-
-
-def test_year_schedules(template):
-    template.year_schedules = ar.year_schedules(template.idfs,
-                                                template.week_schedules)
-    template.year_schedules = ar.newrange(template.week_schedules,
-                                          template.year_schedules)
-    return template.year_schedules
-
-
-# Zones
+# Zone
 def test_zone_information(test_template_withcache, sql):
     template.zone_details = ar.zone_information(sql)
 
@@ -131,29 +119,33 @@ def test_zone_condition_dev(test_template_withcache, sql):
     print(test_template_withcache.zone_conditioning)
 
 
+def test_zone_dhw(test_template_withcache, sql):
+    test_template_withcache.domestic_hot_water_settings = \
+        ar.zone_domestic_hot_water_settings(sql, test_template_withcache.idfs)
+    print(test_template_withcache.domestic_hot_water_settings)
+
+
 def test_to_json(test_template_withcache):
-    test_template_withcache.read()
-    json = test_template_withcache.to_json(orient='records')
+    json = test_template_withcache.to_json()
     print(json)
 
 
-def test_to_json_std():
-    files = glob.glob("./input_data/STD/*idf")
+def test_to_json_std(config):
+    files = glob.glob("tests/input_data/necb/*idf")
     files = ar.copy_file(files)
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    a = ar.Template(files, wf)
-    a.read()
-    json = a.to_json(orient='records')
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    a = ar.UmiTemplate.from_idf(files, wf)
+    json = a.to_json()
     print(json)
 
 
 def test_parse_schedule_profile():
-    idf = './input_data/regular/5ZoneNightVent1.idf'
+    idf = 'tests/input_data/regular/5ZoneNightVent1.idf'
     outputs = {'ep_object': 'Output:Variable'.upper(),
                'kwargs': {'Key_Value': 'OCCUPY-1',
                           'Variable_Name': 'Schedule Value',
                           'Reporting_Frequency': 'Hourly'}}
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     idf = ar.copy_file(idf)
     sql = ar.run_eplus(idf, weather_file=wf, prep_outputs=[outputs],
                        annual=True)
@@ -172,15 +164,15 @@ def test_parse_schedule_profile():
         if thisday is None:
             unique_day[hashed_day] = (i, day)
 
-    
+
 def test_energyprofile():
-    idf = ['./input_data/regular/5ZoneNightVent1.idf',
-           './input_data/regular/AdultEducationCenter.idf']
+    idf = ['tests/input_data/regular/5ZoneNightVent1.idf',
+           'tests/input_data/regular/AdultEducationCenter.idf']
     outputs = {'ep_object': 'Output:Variable'.upper(),
                'kwargs': {'Key_Value': 'OCCUPY-1',
                           'Variable_Name': 'Schedule Value',
                           'Reporting_Frequency': 'Hourly'}}
-    wf = './input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     idf = ar.copy_file(idf)
     sql = ar.run_eplus(idf, weather_file=wf, prep_outputs=[outputs],
                        annual=True, expandobjects=True)
@@ -193,10 +185,50 @@ def test_energyprofile():
                                      'Heating:Gas',
                                      'Heating:DistrictHeating'))
     hl = sv.heating_load(normalize=True, sort=False,
-                         concurrent_sort=True).plot3d(
+                         concurrent_sort=True)
+    dl = hl.discretize()
+    dl.duration_scaling_factor
+    assert hl.capacity_factor == 0.10376668840257346
+    hl.plot3d(
         save=True, axis_off=True, kind='polygon', cmap=None,
         fig_width=3, fig_height=8, edgecolors='k', linewidths=0.5)
+    #
+    # prob = ar.discretize(hl, bins=10)
+    # prob.duration.display()
+    # prob.amplitude.display()
 
-    prob = ar.discretize(hl, bins=10)
-    prob.duration.display()
-    prob.amplitude.display()
+
+def test_energyprofile2():
+    idf = ['tests/input_data/regular/5ZoneNightVent1.idf']
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    idf = ar.copy_file(idf)
+    sql = ar.run_eplus(idf, weather_file=wf,
+                       annual=True, expandobjects=True)
+    report = ar.get_from_reportdata(sql)
+
+    ep = ar.ReportData(report)
+    # sv = ep.sorted_values(name='Schedule Value', key_value='OCCUPY-1',
+    #                       by='TimeIndex')
+    sv = ep.filter_report_data(name=('Heating:Electricity',
+                                     'Heating:Gas',
+                                     'Heating:DistrictHeating'))
+    hl = sv.heating_load(normalize=True, sort=True)
+    dl = hl.discretize()
+    dl.duration_scaling_factor
+    assert hl.capacity_factor == 0.10376668840257346
+    hl.plot3d(
+        save=True, axis_off=True, kind='polygon', cmap=None,
+        fig_width=3, fig_height=8, edgecolors='k', linewidths=0.5)
+    #
+
+
+def test_necb(config):
+    import glob
+    files = glob.glob("/Users/samuelduchesne/Dropbox/Polytechnique/Doc"
+                      "/software/archetypal-dev/data/necb"
+                      "/NECB_2011_Montreal_idf/*idf")
+    files = ar.copy_file(files)
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+    template = ar.UmiTemplate(files, wf)
+
+    return template

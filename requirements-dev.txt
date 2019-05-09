@@ -1,0 +1,6 @@
+coverage
+coveralls
+pytest
+scikit-learn
+scipy
+sphinx

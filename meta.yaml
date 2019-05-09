@@ -1,0 +1,52 @@
+{% set name = "archetypal" %}
+{% set version = "0.9" %}
+{% set sha256 = "3e97f799769469412b12b8d71cc2342d0c93c9f6ea4ca36366c415eef9fbe344" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+#source:
+#  fn: {{ name }}-{{ version }}.tar.gz
+#  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+#  sha256: {{ sha256 }}
+
+build:
+  noarch: python
+  number: 0
+  script: python -m pip install --no-deps --ignore-installed .
+
+requirements:
+  build:
+    - python
+    - pip
+  run:
+    - python
+    - requests
+    - numpy
+    - pandas
+    - matplotlib
+    - shapely
+    - descartes
+    - geopy
+    - rtree
+    - folium
+
+test:
+  imports:
+    - archetypal
+
+about:
+  home: https://github.com/samuelduchesne/archetypal
+  license: MIT
+  license_family: MIT
+  license_file: LICENSE.txt
+  summary: 'Retrieve, construct, analyze, and visualize street networks from OpenStreetMap'
+  description: |
+    archetypal is a Python package.
+  doc_url: https://archetypal.readthedocs.io
+  dev_url: https://github.com/samuelduchesne/archetypal
+
+extra:
+  recipe-maintainers:
+    - samuelduchesne

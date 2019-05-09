@@ -1,3 +1,10 @@
+################################################################################
+# Module: core.py
+# Description:
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import functools
 import io
 import json
@@ -11,155 +18,283 @@ import numpy as np
 import pandas as pd
 from sklearn import preprocessing
 
-from . import settings, object_from_idf, object_from_idfs, simple_glazing, \
-    iscore, weighted_mean, top, run_eplus, \
-    load_idf
-from .utils import log, label_surface, type_surface, layer_composition, \
-    schedule_composition, time2time, \
-    year_composition, newrange
+from . import settings, object_from_idf, object_from_idfs, \
+    calc_simple_glazing, \
+    iscore, weighted_mean, top, GasMaterial, BuildingTemplate, \
+    GlazingMaterial, OpaqueMaterial, OpaqueConstruction, \
+    WindowConstruction, StructureDefinition, DaySchedule, WeekSchedule, \
+    YearSchedule, DomesticHotWaterSetting, VentilationSetting, \
+    ZoneConditioning, \
+    ZoneConstructionSet, ZoneLoad, Zone, WindowSetting
+from .idf import run_eplus, load_idf
 from .plot import plot_energyprofile
+from .utils import log, label_surface, type_surface, layer_composition, \
+    piecewise, rmse
 
-class Template:
+
+class UmiTemplate:
     """
 
     """
 
-    def __init__(self, idf_files, weather, load=False, **kwargs):
-        """Initializes a Template class
+    def __init__(self, name='unnamed', BuildingTemplates=None,
+                 GasMaterials=None, GlazingMaterials=None,
+                 OpaqueConstructions=None, OpaqueMaterials=None,
+                 WindowConstructions=None, StructureDefinitions=None,
+                 DaySchedules=None, WeekSchedules=None, YearSchedules=None,
+                 DomesticHotWaterSettings=None, VentilationSettings=None,
+                 WindowSettings=None, ZoneConditionings=None,
+                 ZoneConstructionSets=None, ZoneLoads=None, Zones=None):
+        """
 
         Args:
+            name (str): The name of the template
+            Zones (list of Zone):
+            ZoneLoads (list of ZoneLoad):
+            ZoneConstructionSets (list of ZoneConstructionSet):
+            ZoneConditionings (list of ZoneConditioning):
+            WindowSettings (list of WindowSetting):
+            VentilationSettings (list of VentilationSetting):
+            DomesticHotWaterSettings (list of DomesticHotWaterSetting):
+            YearSchedules (list of YearSchedule):
+            WeekSchedules (list of WeekSchedule):
+            DaySchedules (list of DaySchedule):
+            StructureDefinitions (list of StructureDefinition):
+            WindowConstructions (list of WindowConstruction):
+            OpaqueMaterials (list of OpaqueMaterial):
+            OpaqueConstructions (list of OpaqueConstruction):
+            GlazingMaterials (list of GlazingMaterial):
+            GasMaterials (list of GasMaterial):
+            BuildingTemplates (list of BuildingTemplate):
+        """
+        if Zones is None:
+            Zones = []
+        if ZoneLoads is None:
+            ZoneLoads = []
+        if ZoneConstructionSets is None:
+            ZoneConstructionSets = []
+        if ZoneConditionings is None:
+            ZoneConditionings = []
+        if WindowSettings is None:
+            WindowSettings = []
+        if VentilationSettings is None:
+            VentilationSettings = []
+        if DomesticHotWaterSettings is None:
+            DomesticHotWaterSettings = []
+        if YearSchedules is None:
+            YearSchedules = []
+        if WeekSchedules is None:
+            WeekSchedules = []
+        if DaySchedules is None:
+            DaySchedules = []
+        if StructureDefinitions is None:
+            StructureDefinitions = []
+        if WindowConstructions is None:
+            WindowConstructions = []
+        if OpaqueMaterials is None:
+            OpaqueMaterials = []
+        if OpaqueConstructions is None:
+            OpaqueConstructions = []
+        if GlazingMaterials is None:
+            GlazingMaterials = []
+        if GasMaterials is None:
+            GasMaterials = []
+        if BuildingTemplates is None:
+            BuildingTemplates = []
+
+        self.idfs = None
+        self.idf_files = None
+        self.name = name
+        self.Zones = Zones
+        self.ZoneLoads = ZoneLoads
+        self.ZoneConstructionSets = ZoneConstructionSets
+        self.ZoneConditionings = ZoneConditionings
+        self.WindowSettings = WindowSettings
+        self.VentilationSettings = VentilationSettings
+        self.DomesticHotWaterSettings = DomesticHotWaterSettings
+        self.YearSchedules = YearSchedules
+        self.WeekSchedules = WeekSchedules
+        self.DaySchedules = DaySchedules
+        self.StructureDefinitions = StructureDefinitions
+        self.WindowConstructions = WindowConstructions
+        self.OpaqueMaterials = OpaqueMaterials
+        self.OpaqueConstructions = OpaqueConstructions
+        self.BuildingTemplates = BuildingTemplates
+        self.GasMaterials = GasMaterials
+        self.GlazingMaterials = GlazingMaterials
+
+    @classmethod
+    def from_idf(self, idf_files, weather, sql=None, load=False, name='unnamed',
+                 load_idf_kwargs=None, run_eplus_kwargs=None):
+        """Initializes a UmiTemplate class
+
+        Args:
+            run_eplus_kwargs:
             idf_files:
             weather (str):
             load:
-            **kwargs:
+            **load_idf_kwargs:
         """
-        self.idf_files = idf_files
-        self.idfs = load_idf(self.idf_files, **kwargs)
-        self.weather = weather
+        # instanciate class
+        if run_eplus_kwargs is None:
+            run_eplus_kwargs = {}
+        if load_idf_kwargs is None:
+            load_idf_kwargs = {}
+        template = UmiTemplate(name)
 
-        # Umi stuff
-        self.materials_gas = None
-        self.materials_glazing = None
-        self.materials_opaque = None
-        self.constructions_opaque = None
-        self.constructions_windows = None
-        self.day_schedules = None
-        self.week_schedules = None
-        self.year_schedules = None
-        self.structure_definitions = None
-        self.zone_details = None
-        self.zone_loads = None
-        self.zone_conditioning = None
-        self.zones = None
-        self.zone_ventilation = None
-        self.windows_settings = None
-        self.building_templates = None
-        self.zone_construction_sets = None
-        self.domestic_hot_water_settings = None
+        # fill in arguments
+        template.idf_files = idf_files
+        template.weather = weather
+        template.sql = sql
+
+        template.idfs = load_idf(idf_files, **load_idf_kwargs)
 
         if load:
-            self.read()
+            template.run_eplus(idf_files, weather, **run_eplus_kwargs)
+            template.read()
+            template.fill()
 
-        self.sql = None
+        return template
+
+    def fill(self):
+        # Todo: Finish enumerating all UmiTempalate objects
+
+        if self.BuildingTemplates:
+            for bt in self.BuildingTemplates:
+                day_schedules = [bt.all_objects[obj]
+                                 for obj in bt.all_objects
+                                 if 'UmiSchedule' in obj]
+                self.DaySchedules.extend(day_schedules)
+
+                dhws = [bt.all_objects[obj]
+                        for obj in bt.all_objects
+                        if 'DomesticHotWaterSetting' in obj]
+                self.DomesticHotWaterSettings.extend(dhws)
 
     def read(self):
+        """Initialize UMI objects"""
         # Umi stuff
-        self.materials_gas = materials_gas(self.idfs)
-        self.materials_glazing = materials_glazing(self.idfs)
-        self.materials_glazing = newrange(self.materials_gas,
-                                          self.materials_glazing)
+        in_dict = {idf: {'Name': idf,
+                         'idf': self.idfs[idf],
+                         'sql': self.sql[idf]}
+                   for idf in self.idfs
+                   }
+        for idf in in_dict:
+            building_template = BuildingTemplate.from_idf(**in_dict[idf])
+            self.BuildingTemplates.append(building_template)
 
-        self.materials_opaque = materials_opaque(self.idfs)
-        self.materials_opaque = newrange(self.materials_glazing,
-                                         self.materials_opaque)
-
-        self.constructions_opaque = constructions_opaque(self.idfs,
-                                                         self.materials_opaque)
-        self.constructions_opaque = newrange(self.materials_opaque,
-                                             self.constructions_opaque)
-
-        self.constructions_windows = constructions_windows(self.idfs,
-                                                           self.materials_glazing)
-        self.constructions_windows = newrange(self.constructions_opaque,
-                                              self.constructions_windows)
-
-        self.structure_definitions = structure_definition(self.idfs)
-        self.structure_definitions = newrange(self.constructions_windows,
-                                              self.structure_definitions)
-
-        self.day_schedules = day_schedules(self.idfs)
-        self.day_schedules = newrange(self.structure_definitions,
-                                      self.day_schedules)
-
-        self.week_schedules = week_schedules(self.idfs, self.day_schedules)
-        self.week_schedules = newrange(self.day_schedules,
-                                       self.week_schedules)
-
-        self.year_schedules = year_schedules(self.idfs, self.week_schedules)
-        self.year_schedules = newrange(self.week_schedules,
-                                       self.year_schedules)
-
-    def run_eplus(self, silent=True, **kwargs):
+    def run_eplus(self, idf_files, weather, **kwargs):
         """wrapper for :func:`run_eplus` function
 
         """
-        self.sql = run_eplus(self.idf_files, self.weather, output_report='sql',
-                             **kwargs)
-        if not silent:
-            return self.sql
+        sql_report = run_eplus(idf_files, weather, output_report='sql',
+                               **kwargs)
+        self.sql = sql_report
 
-    def to_json(self, path_or_buf=None, orient=None, indent=2,
-                date_format=None):
+        return sql_report
+
+    def to_json(self, path_or_buf=None, indent=2):
         """Writes the umi template to json format"""
+        # todo: check is bools are created as lowercase 'false' pr 'true'
 
-        # from pandas.io import json
-        categories = [self.materials_gas,
-                      self.materials_glazing,
-                      self.materials_opaque,
-                      self.constructions_opaque,
-                      self.constructions_windows,
-                      self.structure_definitions,
-                      self.day_schedules,
-                      self.week_schedules,
-                      self.year_schedules,
-                      self.domestic_hot_water_settings,
-                      self.zone_ventilation,
-                      self.zone_conditioning,
-                      self.zone_construction_sets,
-                      self.zone_loads,
-                      self.zones,
-                      self.building_templates,
-                      self.windows_settings]
         if not path_or_buf:
-            path_or_buf = os.path.join(settings.data_folder, 'temp.json')
+            json_name = '%s.json' % self.name
+            path_or_buf = os.path.join(settings.data_folder, json_name)
             # create the folder on the disk if it doesn't already exist
             if not os.path.exists(settings.data_folder):
                 os.makedirs(settings.data_folder)
-        with io.open(path_or_buf, 'w', encoding='utf-8') as path_or_buf:
-            data_dict = OrderedDict()
-            for js in categories:
-                if isinstance(js, pd.DataFrame):
-                    if not js.columns.is_unique:
-                        raise ValueError('columns {} are not unique'.format(
-                            js.columns))
-                    else:
-                        # Firs keep only required columns
-                        cols = settings.common_umi_objects[js.name].copy()
-                        reset_index_cols_ = js.reset_index()[cols]
-                        # Than convert ints to strings. this is how umi needs
-                        # them
-                        reset_index_cols_['$id'] = reset_index_cols_[
-                            '$id'].apply(str)
-                        # transform to json and add to dict of objects
-                        data_dict[js.name] = json.loads(
-                            reset_index_cols_.to_json(orient=orient,
-                                                      date_format=date_format),
-                            object_pairs_hook=OrderedDict)
-                else:
-                    # do something with objects that are not DataFrames
-                    pass
+        with io.open(path_or_buf, 'w+', encoding='utf-8') as path_or_buf:
+            data_dict = OrderedDict({'GasMaterials': [],
+                                     'GlazingMaterials': [],
+                                     'OpaqueMaterials': [],
+                                     'OpaqueConstructions': [],
+                                     'WindowConstructions': [],
+                                     'StructureDefinitions': [],
+                                     'DaySchedules': [],
+                                     'WeekSchedules': [],
+                                     'YearSchedules': [],
+                                     'DomesticHotWaterSettings': [],
+                                     'VentilationSettings': [],
+                                     'ZoneConditionings': [],
+                                     'ZoneConstructionSets': [],
+                                     'ZoneLoads': [],
+                                     'Zones': [],
+                                     'WindowSettings': [],
+                                     'BuildingTemplates': []})
+            jsonized = []
+            for bld in self.BuildingTemplates:
+                all_objs = bld.all_objects
+                for obj in all_objs:
+                    if obj not in jsonized:
+                        jsonized.append(obj)
+                        catname = all_objs[obj].__class__.__name__ + 's'
+                        app_dict = all_objs[obj].to_json()
+                        data_dict[catname].append(app_dict)
+
             # Write the dict to json using json.dumps
-            path_or_buf.write(json.dumps(data_dict, indent=indent))
+            response = json.dumps(data_dict, indent=indent)
+            path_or_buf.write(response)
+
+        return response
+
+    @classmethod
+    def from_json(cls, filename):
+        """Load umi template from json"""
+        name = os.path.basename(filename)
+        template = UmiTemplate(name)
+
+        import json
+
+        if os.path.isfile(filename):
+            if filename:
+                with open(filename, 'r') as f:
+                    datastore = json.load(f)
+
+            # with datastore, create each objects
+            template.GasMaterials = [GasMaterial.from_json(**store) for
+                                     store in datastore['GasMaterials']]
+            template.GlazingMaterials = [GlazingMaterial(**store) for
+                                         store in datastore["GlazingMaterials"]]
+            template.OpaqueMaterials = [OpaqueMaterial(**store) for
+                                        store in datastore["OpaqueMaterials"]]
+            template.OpaqueConstructions = [
+                OpaqueConstruction.from_json(
+                    **store) for store in datastore["OpaqueConstructions"]]
+            template.WindowConstructions = [
+                WindowConstruction.from_json(
+                    **store) for store in datastore["WindowConstructions"]]
+            template.StructureDefinitions = [
+                StructureDefinition.from_json(
+                    **store) for store in datastore["StructureDefinitions"]]
+            template.DaySchedules = [DaySchedule(**store)
+                                     for store in datastore["DaySchedules"]]
+            template.WeekSchedules = [WeekSchedule.from_json(**store)
+                                      for store in datastore["WeekSchedules"]]
+            template.YearSchedules = [YearSchedule.from_json(**store)
+                                      for store in datastore["YearSchedules"]]
+            template.DomesticHotWaterSettings = [
+                DomesticHotWaterSetting.from_json(**store)
+                for store in datastore["DomesticHotWaterSettings"]]
+            template.VentilationSettings = [
+                VentilationSetting.from_json(**store)
+                for store in datastore["VentilationSettings"]]
+            template.ZoneConditionings = [
+                ZoneConditioning.from_json(**store)
+                for store in datastore["ZoneConditionings"]]
+            template.ZoneConstructionSets = [
+                ZoneConstructionSet.from_json(
+                    **store) for store in datastore["ZoneConstructionSets"]]
+            template.ZoneLoads = [ZoneLoad.from_json(**store)
+                                  for store in datastore["ZoneLoads"]]
+            template.Zones = [Zone.from_json(**store)
+                              for store in datastore["Zones"]]
+            template.BuildingTemplates = [
+                BuildingTemplate.from_json(**store)
+                for store in datastore["BuildingTemplates"]]
+
+            return template
+        else:
+            return None
 
 
 class EnergyProfile(pd.Series):
@@ -187,6 +322,8 @@ class EnergyProfile(pd.Series):
         super(EnergyProfile, self).__init__(data=data, index=index,
                                             dtype=dtype, name=name,
                                             copy=copy, fastpath=fastpath)
+        self.bin_edges_ = None
+        self.bin_scaling_factors_ = None
         self.profile_type = profile_type
         self.frequency = frequency
         self.base_year = base_year
@@ -238,8 +375,58 @@ class EnergyProfile(pd.Series):
             result = self._constructor(result)
         else:
             result = pd.Series(scaler.fit_transform(self.values.reshape(-1,
-                                                                   1)).ravel())
+                                                                        1)).ravel())
             result = self._constructor(result)
+        if inplace:
+            self._update_inplace(result)
+        else:
+            return result.__finalize__(self)
+
+    def discretize(self, n_bins=3, inplace=False, hour_of_min=None):
+        """Retruns a discretized EnergyProfile"""
+        try:
+            from scipy.optimize import minimize
+            from itertools import chain
+        except ImportError:
+            raise ImportError('The sklearn package must be installed to '
+                              'use this optional feature.')
+        if self.archetypes:
+            # if multiindex, group and apply operation on each group.
+            # combine at the end
+            results = {}
+            edges = {}
+            ampls = {}
+            for name, sub in self.groupby(level=0):
+                if not hour_of_min:
+                    hour_of_min = sub.time_at_min[1]
+
+                sf = [1 / (i * 1.01) for i in range(1, n_bins + 1)]
+                sf.extend([sub.min()])
+                sf_bounds = [(0, sub.max()) for i in range(0, n_bins + 1)]
+                hours = [hour_of_min - hour_of_min * 1 / (i * 1.01) for i in
+                         range(1, n_bins + 1)]
+                hours.extend([8760])
+                hours_bounds = [(0, 8760) for i in range(0, n_bins + 1)]
+
+                start_time = time.time()
+                log('discretizing EnergyProfile {}'.format(name), lg.DEBUG)
+                res = minimize(rmse, np.array(hours + sf), args=(self.values),
+                               method='L-BFGS-B',
+                               bounds=hours_bounds + sf_bounds,
+                               options=dict(disp=True))
+                log('Completed discretization in {:,.2f} seconds'.format(
+                    time.time() - start_time),
+                    lg.DEBUG)
+                edges[name] = res.x[0:n_bins + 1]
+                ampls[name] = res.x[n_bins + 1:]
+                results[name] = pd.Series(piecewise(res.x))
+            self.bin_edges_ = pd.Series(edges).apply(pd.Series)
+            self.bin_scaling_factors_ = pd.Series(ampls).apply(pd.Series)
+
+            result = self._constructor(pd.concat(results))
+        else:
+            pass
+            # Todo: Implement else method
         if inplace:
             self._update_inplace(result)
         else:
@@ -271,15 +458,46 @@ class EnergyProfile(pd.Series):
         if isinstance(self.index, pd.MultiIndex):
             return self.groupby(level=0).max()
         else:
-            datetimeindex = pd.DatetimeIndex(freq=self.frequency,
-                                             start='{}-01-01'.format(
-                                                 self.base_year),
-                                             periods=self.size)
+            datetimeindex = pd.date_range(freq=self.frequency,
+                                          start='{}-01-01'.format(
+                                              self.base_year),
+                                          periods=self.size)
             self_copy = self.copy()
             self_copy.index = datetimeindex
-            self_copy = self_copy.resample('M', how='mean')
+            self_copy = self_copy.resample('M').mean()
             self_copy.frequency = 'M'
             return EnergyProfile(self_copy, frequency='M', units=self.units)
+
+    @property
+    def capacity_factor(self):
+        max = self.max()
+        mean = self.mean()
+        return mean / max
+
+    @property
+    def bin_edges(self):
+        """"""
+        return self.bin_edges_
+
+    @property
+    def time_at_min(self):
+        return self.idxmin()
+
+    @property
+    def bin_scaling_factors(self):
+        return self.bin_scaling_factors_
+
+    @property
+    def duration_scaling_factor(self):
+        # todo Complete Function
+        if not self.bin_edges:
+            # if never discretized,
+            # run discretization with default values
+            self.discretize()
+        # Calculate
+        a = self.bin_scaling_factors
+        b = self.bin_edges
+        return None
 
 
 class EnergyProfiles(pd.DataFrame):
@@ -349,7 +567,8 @@ class ReportData(pd.DataFrame):
         log('Returned Heating Load in units of {}'.format(str(units)), lg.DEBUG)
         return EnergyProfile(hl, frequency=freq, units=units,
                              normalize=normalize, is_sorted=sort,
-                             ascending=ascending, concurrent_sort=concurrent_sort)
+                             ascending=ascending,
+                             concurrent_sort=concurrent_sort)
 
     def filter_report_data(self, archetype=None, reportdataindex=None,
                            timeindex=None, reportdatadictionaryindex=None,
@@ -547,10 +766,6 @@ def conjunction(*conditions, logical=np.logical_and):
     return functools.reduce(logical, conditions)
 
 
-def or_conjunction(*conditions):
-    return functools.reduce(np.logical_or, conditions)
-
-
 def mean_profile(df: ReportData):
     """calculates"""
     return df[df.SCORES].mean()
@@ -594,50 +809,15 @@ def materials_gas(idfs):
         idfs: parsed IDF files
 
     Returns:
-        padnas.DataFrame: Returns a DataFrame with the all necessary Umi columns
+        pandas.Series: Returns a Series of GasMaterial objects
     """
+    # First, get the list of materials (returns a DataFrame)
     materials_df = object_from_idfs(idfs, 'WINDOWMATERIAL:GAS')
-    cols = settings.common_umi_objects['GasMaterials'].copy()
 
-    # Add Type of gas column
-    materials_df['Type'] = 'Gas'
-    materials_df['GasType'] = materials_df.apply(lambda x: gas_type(x), axis=1)
-    materials_df['Cost'] = 0
-    materials_df['EmbodiedCarbon'] = 0
-    materials_df['EmbodiedCarbonStdDev'] = 0
-    materials_df['EmbodiedEnergy'] = 0
-    materials_df['EmbodiedEnergyStdDev'] = 0
-    materials_df[
-        'SubstitutionRatePattern'] = np.NaN  # ! Might have to change to an
-    # empty array
-    materials_df['SubstitutionTimestep'] = 0
-    materials_df['TransportCarbon'] = 0
-    materials_df['TransportDistance'] = 0
-    materials_df['TransportEnergy'] = 0
-    materials_df[
-        'Life'] = 1  # TODO: What does Life mean? Always 1 in Boston Template
-    materials_df['Comment'] = ''
-    try:
-        materials_df['DataSource'] = materials_df['Archetype']
-    except Exception as e:
-        log('An exception was raised while setting the DataSource of the '
-            'objects',
-            lg.WARNING)
-        log('{}'.format(e), lg.ERROR)
-        log('Falling back onto first IDF file containing this common object',
-            lg.WARNING)
-        materials_df['DataSource'] = 'First IDF file containing ' \
-                                     'this common object'
+    materials = materials_df.apply(lambda x: GasMaterial(**x), axis=1)
 
-    materials_df = materials_df.reset_index(drop=True).rename_axis(
-        '$id').reset_index()
-    log('Returning {} WINDOWMATERIAL:GAS objects in a DataFrame'.format(
-        len(materials_df)))
-    materials_df = materials_df[cols].set_index(
-        '$id')  # Keep only relevant columns
-    materials_df.name = 'GasMaterials'
-    materials_df.index += 1  # Shift index by one since umi is one-based indexed
-    return materials_df
+    log('Returning {} WINDOWMATERIAL:GAS objects'.format(len(materials)))
+    return materials
 
 
 def materials_glazing(idfs):
@@ -683,7 +863,7 @@ def materials_glazing(idfs):
     materials_df = materials_df.rename(columns=column_rename)
     materials_df = materials_df.reindex(columns=cols)
     materials_df = materials_df.fillna({'DirtFactor': 1.0})
-    materials_df['Comment'] = 'default'
+    materials_df['Comments'] = 'default'
     materials_df['Cost'] = 0
     try:
         materials_df['DataSource'] = materials_df['Archetype']
@@ -785,7 +965,7 @@ def materials_opaque(idfs):
         axis=1)
 
     # Fill other necessary columns
-    materials_df['Comment'] = 'default'
+    materials_df['Comments'] = 'default'
     materials_df['Cost'] = 0
     try:
         materials_df['DataSource'] = materials_df['Archetype']
@@ -829,7 +1009,7 @@ def materials_opaque(idfs):
 
 
 def constructions_opaque(idfs, opaquematerials=None):
-    """Opaque Construction group
+    """Opaque OpaqueConstruction group
 
     Args:
         idfs (list or dict): parsed IDF files opaquematerials
@@ -912,7 +1092,7 @@ def constructions_opaque(idfs, opaquematerials=None):
 
 
 def constructions_windows(idfs, material_glazing=None):
-    """Window Construction group
+    """Window OpaqueConstruction group
 
     Args:
         idfs (list or dict): parsed IDF files
@@ -1000,7 +1180,7 @@ def constructions_windows(idfs, material_glazing=None):
 
 def get_simple_glazing_system(idfs):
     """Retreives all simple glazing objects from a list of IDF files. Calls
-    :func:`simple_glazing` in order to calculate a new glazing system that
+    :func:`calc_simple_glazing` in order to calculate a new glazing system that
     has the same properties.
 
     Args:
@@ -1016,9 +1196,9 @@ def get_simple_glazing_system(idfs):
                                         first_occurrence_only=False)
 
         materials_with_sg = materials_df.set_index(['Archetype', 'Name']).apply(
-            lambda row: simple_glazing(row['Solar_Heat_Gain_Coefficient'],
-                                       row['UFactor'],
-                                       row['Visible_Transmittance']),
+            lambda row: calc_simple_glazing(row['Solar_Heat_Gain_Coefficient'],
+                                            row['UFactor'],
+                                            row['Visible_Transmittance']),
             axis=1).apply(pd.Series)
         materials_umi = materials_with_sg.reset_index()
         materials_umi['Optical'] = 'SpectralAverage'
@@ -1052,172 +1232,73 @@ def apply_window_perf(row):
                                             perfs['tvis'])
 
 
-def day_schedules(idfs):
-    """Parses daily schedules of type 'SCHEDULE:DAY:INTERVAL'
+def nominal_domestic_hot_water_settings(idfs):
+    water_use = object_from_idfs(idfs, 'WaterUse:Equipment'.upper(),
+                                 first_occurrence_only=False)
+    # WaterUseLEquipment can sometimes not have a Zone Name sepcified. This
+    # will break the code. Users must provide one.
+    condition = (water_use.Zone_Name.apply(
+        lambda x: x == '') | water_use.Zone_Name.isna())
+    if condition.any():
+        these_ones = water_use.loc[condition, 'Archetype'].unique()
+        raise ValueError('The WaterUse:Equipement Zone Name must not be '
+                         'empty.\nPlease provide a Zone Name for '
+                         'WaterUse:Equipement in idfs: '
+                         '{}\nbefore rerunning this function'.format(
+            these_ones))
 
-    Args:
-        idfs (list or dict): parsed IDF files
+    # Make sure the Zone_Name is in capitals
+    water_use.Zone_Name = water_use.Zone_Name.str.upper()
 
-    Returns:
+    # check if multiple WaterUse:Equipment for one zone.
+    # Todo: Multiple WaterUse:Equipement for the same zone should be
+    #  aggragated: PeakLoads summed and schedules merged.
+    to_drop = water_use.groupby(['Archetype', 'Zone_Name']).apply(lambda x:
+                                                                  x.duplicated(
+                                                                      subset='Zone_Name')).reset_index()
+    water_use = water_use.loc[~to_drop[0], :]
 
-    """
-    origin_time = time.time()
-    log('Initiating day_schedules...')
-    schedule = object_from_idfs(idfs, 'SCHEDULE:DAY:INTERVAL',
-                                first_occurrence_only=False)
-    cols = settings.common_umi_objects['DaySchedules'].copy()
-    if not schedule.empty:
-        schedule['Values'] = schedule.apply(lambda x: time2time(x), axis=1)
-
-        schedule.loc[:, 'Category'] = 'Day'
-        schedule.loc[:, 'Comments'] = 'Comments'
-        schedule.loc[:, 'DataSource'] = 'default'
-        schedule.loc[:, 'Type'] = schedule['Schedule_Type_Limits_Name']
-
-        schedule = (schedule.reset_index(drop=True)
-                    .rename_axis('$id').reset_index())
-        cols.append('Archetype')
-        log('Completed day_schedules in {:,.2f} seconds\n'.format(
-            time.time() - origin_time))
-        schedule = schedule[cols].set_index('$id')
-        schedule.name = 'DaySchedules'
-        return schedule
-    else:
-        log('Returning Empty DataFrame', lg.WARNING)
-        schedule = pd.DataFrame([], columns=cols)
-        schedule.name = 'DaySchedules'
-        return schedule
+    return water_use
 
 
-def week_schedules(idfs, dayschedules=None):
-    """Parses daily schedules of type 'SCHEDULE:WEEK:DAILY'
+def zone_domestic_hot_water_settings(df, idfs):
+    d = {'Zone': zone_information(df).reset_index().set_index(['Archetype',
+                                                               'Zone Name']),
+         'NominalDhw': nominal_domestic_hot_water_settings(idfs).reset_index(
+         ).set_index([
+             'Archetype', 'Zone_Name'])}
+    df = (pd.concat(d, axis=1, keys=d.keys())
+          .dropna(axis=0, how='all',
+                  subset=[('Zone', 'Type')])  # Drop rows that are all nans
+          .rename_axis(['Archetype', 'Zone Name'])
+          .reset_index(level=1, col_level=1,
+                       col_fill='Zone')  # Reset Index level to get Zone Name
+          .reset_index().set_index(['Archetype', ('Zone', 'RowName')])
+          .rename_axis(['Archetype', 'RowName']))
 
-    Args:
-        idfs (list or dict): parsed IDF files
-            dayschedules (pandas.DataFrame): DataFrame generated by
-            :func:`day_schedules`
+    df[('Zone', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
 
-    Returns:
+    df = df.reset_index().groupby(['Archetype', ('Zone', 'Zone Type')]).apply(
+        lambda x: domestichotwatersettings_aggregation(x.set_index([
+            'Archetype', 'RowName'])))
+    df.name = 'DomesticHotWaterSettings'
 
-    """
-    origin_time = time.time()
-    log('Initiating week_schedules...')
-    schedule = object_from_idfs(idfs, 'SCHEDULE:WEEK:DAILY',
-                                first_occurrence_only=False)
-    cols = settings.common_umi_objects['WeekSchedules'].copy()
-    if not schedule.empty:
-
-        if dayschedules is not None:
-            start_time = time.time()
-            df = (pd.DataFrame(schedule.set_index(['Archetype', 'Name'])
-                               .loc[:, schedule.set_index(['Archetype', 'Name'])
-                               .columns.str.contains('Schedule')]
-                               .stack(), columns=['Schedule'])
-                  .join(dayschedules.reset_index()
-                        .set_index(['Archetype', 'Name']),
-                        on=['Archetype', 'Schedule'])
-                  .loc[:, ['$id', 'Values']]
-                  .unstack(level=2)
-                  .apply(lambda x: schedule_composition(x),
-                         axis=1).rename('Days'))
-
-            schedule = schedule.join(df, on=['Archetype', 'Name'])
-            log('Completed week_schedules schedule composition in {:,'
-                '.2f} seconds'.format(time.time() - start_time))
-        else:
-            log('Could not create layer_composition because the necessary '
-                'lookup DataFrame "DaySchedules"  was '
-                'not provided', lg.WARNING)
-
-        schedule.loc[:, 'Category'] = 'Week'
-        schedule.loc[:, 'Comments'] = 'default'
-        schedule.loc[:, 'DataSource'] = schedule['Archetype']
-
-        # Copy the Schedule Type Over
-        schedule = schedule.join(
-            dayschedules.set_index(['Archetype', 'Name']).loc[:, ['Type']],
-            on=['Archetype', 'Monday_ScheduleDay_Name'])
-
-        schedule = schedule.reset_index(drop=True).rename_axis(
-            '$id').reset_index()
-        cols.append('Archetype')
-        log('Completed day_schedules in {:,.2f} seconds\n'.format(
-            time.time() - origin_time))
-        schedule = schedule[cols].set_index('$id')
-        schedule.name = 'WeekSchedules'
-        return schedule
-    else:
-        log('Returning Empty DataFrame', lg.WARNING)
-        schedule = pd.DataFrame([], columns=cols)
-        schedule.name = 'WeekSchedules'
-        return schedule
+    return df
 
 
-def year_schedules(idfs, weekschedule=None):
-    """Parses daily schedules of type 'SCHEDULE:YEAR'
+def domestichotwatersettings_aggregation(x):
+    area_m_ = [('Zone', 'Floor Area {m2}'),
+               ('Zone', 'Zone Multiplier')]  # Floor area and zone_loads
+    # multiplier
+    d = {('FlowRatePerFloorArea', 'weighted mean'):
+             weighted_mean(x[('NominalDhw', 'Peak_Flow_Rate')] * 3600,
+                           x, area_m_),
+         ('FlowRatePerFloorArea', 'top'):
+             top(x[('NominalDhw', 'Flow_Rate_Fraction_Schedule_Name')],
+                 x, area_m_)
+         }
 
-    Args:
-        idfs (list or dict): parsed IDF files
-            weekschedule (pandas.DataFrame): DataFrame generated by
-            :func:`week_schedules`
-
-    Returns:
-
-    """
-    origin_time = time.time()
-    log('Initiating week_schedules...')
-    schedule = object_from_idfs(idfs, 'SCHEDULE:YEAR',
-                                first_occurrence_only=False)
-    cols = settings.common_umi_objects['YearSchedules'].copy()
-    if not schedule.empty:
-
-        if weekschedule is not None:
-            start_time = time.time()
-            df = (pd.DataFrame(schedule
-                               .set_index(['Archetype', 'Name'])
-                               .drop(['index',
-                                      'key',
-                                      'Schedule_Type_Limits_Name'],
-                                     axis=1).stack(), columns=['Schedules'])
-                  .reset_index().join(weekschedule
-                                      .reset_index()
-                                      .set_index(['Archetype', 'Name']),
-                                      on=['Archetype', 'Schedules'])
-                  .set_index(['Archetype', 'Name', 'level_2'])
-                  .drop(['Category', 'Comments',
-                         'DataSource', 'Days', 'Type'], axis=1)
-                  .unstack()
-                  .apply(lambda x: year_composition(x), axis=1).rename('Parts'))
-
-            schedule = schedule.join(df, on=['Archetype', 'Name'])
-            log('Completed week_schedules schedule composition in {:,.2f} '
-                'seconds'.format(time.time() - start_time))
-        else:
-            log('Could not create layer_composition because the necessary '
-                'lookup DataFrame "WeekSchedule"  was '
-                'not provided', lg.WARNING)
-
-        schedule['Category'] = 'Year'
-        schedule['Comments'] = 'default'
-        schedule['DataSource'] = schedule['Archetype']
-
-        schedule = schedule.join(
-            weekschedule.set_index(['Archetype', 'Name']).loc[:, ['Type']],
-            on=['Archetype', 'ScheduleWeek_Name_1'])
-
-        schedule = schedule.reset_index(drop=True).rename_axis(
-            '$id').reset_index()
-        cols.append('Archetype')
-        log('Completed day_schedules in {:,.2f} seconds\n'.format(
-            time.time() - origin_time))
-        schedule = schedule[cols].set_index('$id')
-        schedule.name = 'YearSchedules'
-        return schedule
-    else:
-        log('Returning Empty DataFrame', lg.WARNING)
-        schedule = pd.DataFrame([], columns=cols)
-        schedule.name = 'YearSchedules'
-        return schedule
+    return pd.Series(d)
 
 
 def zone_loads(df):
@@ -1234,8 +1315,8 @@ def zone_loads(df):
     """
     # Loading each section in a dictionnary. Used to create a new DF using
     # pd.concat()
-    d = {'Zones': zone_information(df).reset_index().set_index(['Archetype',
-                                                                'Zone Name']),
+    d = {'Zone': zone_information(df).reset_index().set_index(['Archetype',
+                                                               'Zone Name']),
          'NominalLighting': nominal_lighting(df).reset_index().set_index(
              ['Archetype', 'Zone Name']),
          'NominalPeople': nominal_people(df).reset_index().set_index(
@@ -1247,15 +1328,15 @@ def zone_loads(df):
 
     df = (pd.concat(d, axis=1, keys=d.keys())
           .dropna(axis=0, how='all',
-                  subset=[('Zones', 'Type')])  # Drop rows that are all nans
+                  subset=[('Zone', 'Type')])  # Drop rows that are all nans
           .reset_index(level=1, col_level=1,
-                       col_fill='Zones')  # Reset Index level to get Zone Name
-          .reset_index().set_index(['Archetype', ('Zones', 'RowName')])
+                       col_fill='Zone')  # Reset Index level to get Zone Name
+          .reset_index().set_index(['Archetype', ('Zone', 'RowName')])
           .rename_axis(['Archetype', 'RowName']))
 
-    df[('Zones', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
+    df[('Zone', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
 
-    df = df.reset_index().groupby(['Archetype', ('Zones', 'Zone Type')]).apply(
+    df = df.reset_index().groupby(['Archetype', ('Zone', 'Zone Type')]).apply(
         lambda x: zoneloads_aggregation(x.set_index(['Archetype', 'RowName'])))
     df.name = 'ZoneLoads'
     return df
@@ -1295,22 +1376,22 @@ def zone_ventilation(df):
                    lambda e: ~e['Fan Type {Exhaust;Intake;Natural}']
                    .str.contains('Natural'), :]
                    if not _nom_vent.empty else None)
-    d = {'Zones': z_info,
+    d = {'Zone': z_info,
          'NominalInfiltration': nom_infil,
          'NominalScheduledVentilation': nom_vent,
          'NominalNaturalVentilation': nom_natvent}
 
     df = (pd.concat(d, axis=1, keys=d.keys())
           .dropna(axis=0, how='all',
-                  subset=[('Zones', 'Type')])  # Drop rows that are all nans
+                  subset=[('Zone', 'Type')])  # Drop rows that are all nans
           .reset_index(level=1, col_level=1,
-                       col_fill='Zones')  # Reset Index level to get Zone Name
-          .reset_index().set_index(['Archetype', ('Zones', 'RowName')])
+                       col_fill='Zone')  # Reset Index level to get Zone Name
+          .reset_index().set_index(['Archetype', ('Zone', 'RowName')])
           .rename_axis(['Archetype', 'RowName']))
 
-    df[('Zones', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
+    df[('Zone', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
 
-    df_g = df.reset_index().groupby(['Archetype', ('Zones', 'Zone Type')])
+    df_g = df.reset_index().groupby(['Archetype', ('Zone', 'Zone Type')])
     log('{} groups in zone ventiliation aggregation'.format(len(df_g)))
     log('groups are:\n{}'.format(pformat(df_g.groups, indent=3)))
     df = df_g.apply(lambda x: zoneventilation_aggregation(
@@ -1335,8 +1416,8 @@ def zoneloads_aggregation(x):
         pandas.Series: Series with a MultiIndex
 
     """
-    area_m_ = [('Zones', 'Floor Area {m2}'),
-               ('Zones',
+    area_m_ = [('Zone', 'Floor Area {m2}'),
+               ('Zone',
                 'Zone Multiplier')]  # Floor area and zone_loads multiplier
     d = {('NominalLighting', 'weighted mean'):
              weighted_mean(x[('NominalLighting', 'Lights/Floor Area {W/m2}')],
@@ -1360,34 +1441,34 @@ def zoneloads_aggregation(x):
                  x, area_m_)
          }
 
+    d['']
+
     return pd.Series(d)
 
 
 def zoneventilation_aggregation(df):
     """Set of different zoneventilation_aggregation (weighted mean and "top")
-    on multiple objects,
-    eg. ('NominalVentilation', 'ACH - Air Changes per Hour').
+    on multiple objects, eg. ('NominalVentilation', 'ACH - Air Changes per
+    Hour').
 
     All the DataFrame is passed to each function.
-
-    Returns a Series with a MultiIndex
 
     Args:
         df (pandas.DataFrame):
 
     Returns:
-        pandas.Series: Series with a MultiIndex
+        (pandas.Series): Series with a MultiIndex
 
     Todo: infiltration for plenums should not be taken into account
 
     """
     log('\naggregating zone ventilations '
         'for archetype "{}", zone "{}"'.format(df.index.values[0][0],
-                                               df[('Zones',
+                                               df[('Zone',
                                                    'Zone Type')].values[0]))
 
-    area_m_ = [('Zones', 'Floor Area {m2}'),
-               ('Zones', 'Zone Multiplier')]  # Floor area and zone_loads
+    area_m_ = [('Zone', 'Floor Area {m2}'),
+               ('Zone', 'Zone Multiplier')]  # Floor area and zone_loads
     # multiplier
 
     ach_ = safe_loc(df, ('NominalInfiltration',
@@ -1458,10 +1539,9 @@ def nominal_lighting(df):
         df
 
     References:
-        * `NominalLighting Table
-        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and
+        * `NominalLighting Table \
+        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and \
         -examples/eplusout-sql.html#nominallighting-table>`_
-
 
     """
     df = get_from_tabulardata(df)
@@ -1490,9 +1570,9 @@ def nominal_people(df):
         df
 
     References:
-        * `NominalPeople Table
-        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and
-        -examples/eplusout-sql.html#nominalpeople-table>`_
+        * `NominalPeople Table \
+        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and- \
+        examples/eplusout-sql.html#nominalpeople-table>`_
 
     """
     df = get_from_tabulardata(df)
@@ -1518,9 +1598,9 @@ def nominal_equipment(df):
         df
 
     References:
-        * `NominalElectricEquipment Table
-        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and
-        -examples/eplusout-sql.html#nominalelectricequipment-table>`_
+        * `NominalElectricEquipment Table \
+        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and \
+        -examples/eplusout-sql.html#nominalelectricequipment-table>`_ \
 
     """
     df = get_from_tabulardata(df)
@@ -1549,7 +1629,8 @@ def nominal_infiltration(df):
         df
 
     References:
-        * `<https://bigladdersoftware.com/epx/docs/8-9/output-details-and
+        * `Nominal Infiltration Table \
+        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and \
         -examples/eplusout-sql.html#nominalinfiltration-table>`_
 
     """
@@ -1577,8 +1658,9 @@ def nominal_ventilation(df):
         df
 
     References:
-        * `<https://bigladdersoftware.com/epx/docs/8-9/output-details-and
-        -examples/eplusout-sql.html#nominalinfiltration-table>`_
+        * `Nominal Ventilation Table \
+        <https://bigladdersoftware.com/epx/docs/8-9/output-details-and \
+        -examples/eplusout-sql.html#nominalventilation-table>`_
 
     """
     df = get_from_tabulardata(df)
@@ -1609,9 +1691,8 @@ def nominal_ventilation(df):
 
 def nominal_lighting_aggregation(x):
     """Aggregates the lighting equipments whithin a single zone_loads name (
-    implies
-    that .groupby(['Archetype',
-    'Zone Name']) is performed before calling this function).
+    implies that .groupby(['Archetype', 'Zone Name']) is performed before
+    calling this function).
 
     Args:
         x (pandas.DataFrame): x
@@ -1833,14 +1914,15 @@ def zone_information(df):
         df
 
     References:
-        * `<https://bigladdersoftware.com/epx/docs/8-3/output-details-and
+        * `Zone Loads Information \
+        <https://bigladdersoftware.com/epx/docs/8-3/output-details-and \
         -examples/eplusout.eio.html#zone_loads-information>`_
 
     """
     df = get_from_tabulardata(df)
     tbstr = df[(df.ReportName == 'Initialization Summary') &
                (df.TableName == 'Zone Information')].reset_index()
-    # Ignore Zones that are not part of building area
+    # Ignore Zone that are not part of building area
     pivoted = tbstr.pivot_table(index=['Archetype', 'RowName'],
                                 columns='ColumnName',
                                 values='Value',
@@ -1852,7 +1934,7 @@ def zone_information(df):
 def zoneconditioning_aggregation(x):
     """Aggregates the zones conditioning parameters whithin a single zone_loads
     name (implies that `.groupby(['Archetype',
-    ('Zones', 'Zone Type')])` is performed before calling this function).
+    ('Zone', 'Zone Type')])` is performed before calling this function).
 
     Args:
         x:
@@ -1861,7 +1943,7 @@ def zoneconditioning_aggregation(x):
 
     """
     d = {}
-    area_m_ = [('Zones', 'Zone Multiplier'), ('Zones', 'Floor Area {m2}')]
+    area_m_ = [('Zone', 'Zone Multiplier'), ('Zone', 'Floor Area {m2}')]
 
     d[('COP Heating', 'weighted mean {}')] = (
         weighted_mean(x[('COP', 'COP Heating')],
@@ -1886,13 +1968,13 @@ def zoneconditioning_aggregation(x):
     d[('MinFreshAirPerArea', 'weighted average {m3/s-m2}')] = \
         max(weighted_mean(
             x[('ZoneCooling', 'Minimum Outdoor Air Flow Rate')].astype(float)
-            / x.loc[:, ('Zones', 'Floor Area {m2}')].astype(float),
+            / x.loc[:, ('Zone', 'Floor Area {m2}')].astype(float),
             x,
             area_m_),
             weighted_mean(
                 x[('ZoneHeating', 'Minimum Outdoor Air Flow Rate')].astype(
                     float)
-                / x[('Zones', 'Floor Area {m2}')].astype(float),
+                / x[('Zone', 'Floor Area {m2}')].astype(float),
                 x,
                 area_m_))
 
@@ -1948,8 +2030,6 @@ def zone_cop(df):
     rdf = ReportData(get_from_reportdata(df))
     heating = rdf.filter_report_data(
         name='Air System Total Heating Energy').reset_index()
-    # heating = get_from_reportdata(df).loc[
-    #     lambda rd: rd.Name == 'Air System Total Heating Energy'].reset_index()
     heating_out_sys = heating.groupby(['Archetype', 'KeyValue']).sum()['Value']
     heating_out = heating.groupby(['Archetype']).sum()['Value']
     nu_heating = heating_out_sys / heating_out
@@ -1959,28 +2039,24 @@ def zone_cop(df):
         ['Archetype', 'TimeIndex']).Value.sum()
     heating_in = EnergyProfile(heating_in, frequency='1H', units='J',
                                is_sorted=False, concurrent_sort=False)
-    # heating_in = rdf.loc[
-    #     (lambda rd: ((rd.Name == 'Heating:Electricity') |
-    #                  (rd.Name == 'Heating:Gas') |
-    #                  (rd.Name == 'Heating:DistrictHeating'))),
-    #     ['Archetype', 'Value']].set_index('Archetype').sum(level='Archetype')[
-    #     'Value']
 
     # Cooling Energy
-    cooling = get_from_reportdata(df).loc[
-        lambda rd: rd.Name == 'Air System Total Cooling Energy'].reset_index()
+    cooling = rdf.filter_report_data(
+        name='Air System Total Cooling Energy').reset_index()
     cooling_out_sys = cooling.groupby(['Archetype', 'KeyValue']).sum()['Value']
     cooling_out = cooling.groupby(['Archetype']).sum()['Value']
     nu_cooling = cooling_out_sys / cooling_out
-    cooling_in = get_from_reportdata(df).loc[
-        (lambda rd: ((rd.Name == 'Cooling:Electricity') |
-                     (rd.Name == 'Cooling:Gas') |
-                     (rd.Name == 'Cooling:DistrictCooling'))),
-        ['Archetype', 'Value']].set_index('Archetype').sum(level='Archetype')[
-        'Value']
+    cooling_in = rdf.filter_report_data(name=('Cooling:Electricity',
+                                              'Cooling:Gas',
+                                              'Cooling:DistrictCooling')).groupby(
+        ['Archetype', 'TimeIndex']).Value.sum()
+    cooling_in = EnergyProfile(cooling_in, frequency='1H', units='J',
+                               is_sorted=False, concurrent_sort=False)
 
-    d = {'Heating': heating_out_sys / (nu_heating * heating_in),
-         'Cooling': cooling_out_sys / (nu_cooling * cooling_in)}
+    d = {'Heating': heating_out_sys / (nu_heating * heating_in.sum(
+        level='Archetype')),
+         'Cooling': cooling_out_sys / (nu_cooling * cooling_in.sum(
+             level='Archetype'))}
 
     # Zone to system correspondence
     df = get_from_tabulardata(df).loc[
@@ -2035,7 +2111,7 @@ def zone_setpoint(df):
 
 
 def zone_conditioning(df):
-    """Aggregation of zone_loads conditioning parameters. Imports Zones,
+    """Aggregation of zone_loads conditioning parameters. Imports Zone,
     NominalPeople, COP, ZoneCooling and ZoneHeating.
 
     Args:
@@ -2054,7 +2130,7 @@ def zone_conditioning(df):
     """
     # Loading each section in a dictionnary. Used to create
     # a new DF using pd.concat()
-    d = {'Zones': zone_information(df).reset_index().set_index(
+    d = {'Zone': zone_information(df).reset_index().set_index(
         ['Archetype', 'Zone Name']),
         'NominalPeople': nominal_people(df).reset_index().set_index(
             ['Archetype', 'Zone Name']),
@@ -2065,15 +2141,15 @@ def zone_conditioning(df):
 
     df = (pd.concat(d, axis=1, keys=d.keys())
           .dropna(axis=0, how='all',
-                  subset=[('Zones', 'Type')])  # Drop rows that are all nans
+                  subset=[('Zone', 'Type')])  # Drop rows that are all nans
           .reset_index(level=1, col_level=1,
-                       col_fill='Zones')  # Reset Index level to get Zone Name
-          .reset_index().set_index(['Archetype', ('Zones', 'RowName')])
+                       col_fill='Zone')  # Reset Index level to get Zone Name
+          .reset_index().set_index(['Archetype', ('Zone', 'RowName')])
           .rename_axis(['Archetype', 'RowName']))
 
-    df[('Zones', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
+    df[('Zone', 'Zone Type')] = df.apply(lambda x: iscore(x), axis=1)
 
-    df = df.reset_index().groupby(['Archetype', ('Zones', 'Zone Type')]).apply(
+    df = df.reset_index().groupby(['Archetype', ('Zone', 'Zone Type')]).apply(
         lambda x: zoneconditioning_aggregation(
             x.set_index(['Archetype', 'RowName'])))
 

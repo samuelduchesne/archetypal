@@ -2,19 +2,20 @@ import glob
 import os
 import shutil
 
-import pytest
-
 import archetypal as ar
-import osmnx as ox
+import pytest
 
 
 @pytest.fixture(scope='session')
 def fresh_start():
     """# remove the .temp folder if it already exists so we
     start fresh with tests"""
-    if os.path.exists('.temp'):
-        shutil.rmtree('.temp')
-        assert not os.path.exists('.temp')
+    settings = [ar.settings.cache_folder, ar.settings.data_folder,
+                ar.settings.imgs_folder]
+    for setting in settings:
+        if os.path.exists(setting):
+            shutil.rmtree(setting)
+            assert not os.path.exists(setting)
 
 
 # Parametrization of the fixture scratch_then_cache. The following array
@@ -29,12 +30,17 @@ do = [True, False]
 def scratch_then_cache(request):
     """# remove the .temp folder if it already exists so we
     start fresh with tests"""
-    # request is a spacial paramter known to pytest. ot passes whatever is in
+    # request is a special parameter known to pytest. It passes whatever is in
     # params=do. Ids are there to give the test a human readable name.
+    dirs = [ar.settings.data_folder, ar.settings.cache_folder,
+            ar.settings.imgs_folder]
     if request.param:
-        if os.path.exists('.temp'):
-            shutil.rmtree('.temp')
-            assert not os.path.exists('.temp')
+        for dir in dirs:
+            if os.path.exists(dir):
+                try:
+                    shutil.rmtree(dir)
+                finally:
+                    assert not os.path.exists(dir)
 
 
 samples_ = ['regular', 'umi_samples']  # ['problematic', 'regular',
@@ -45,25 +51,16 @@ samples_ = ['regular', 'umi_samples']  # ['problematic', 'regular',
 
 @pytest.fixture(params=samples_, ids=samples_, scope='session')
 def idf_source(request):
-    return glob.glob('./input_data/{}/*.idf'.format(request.param))
+    return glob.glob('tests/input_data/{}/*.idf'.format(request.param))
 
 
-@pytest.fixture()
+@pytest.fixture(scope='session')
 def config():
     ar.config(log_console=True, log_file=True, use_cache=True,
               data_folder='.temp/data', logs_folder='.temp/logs',
               imgs_folder='.temp/imgs', cache_folder='.temp/cache',
-              umitemplate='../data/BostonTemplateLibrary.json')
-
-
-@pytest.fixture()
-def ox_config(config):
-    ox.config(log_console=ar.settings.log_console, log_file=ar.settings.log_file,
-              use_cache=ar.settings.use_cache,
-              data_folder=ar.settings.data_folder, logs_folder=ar.settings.logs_folder,
-              imgs_folder=ar.settings.imgs_folder,
-              cache_folder=ar.settings.cache_folder,
-              log_name=ar.settings.log_name)
+              umitemplate='tests/input_data/umi_samples'
+                          '/BostonTemplateLibrary_2.json')
 
 
 # List fixtures that are located outiside of conftest.py so that they can be

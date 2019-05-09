@@ -9,18 +9,18 @@ Prior to installing this package, you must have the latest version of `EnergyPlu
 On Windows that would be in `C:\\EnergyPlusV8-X-X` and on MacOS that would be `/Applications/EnergyPlus-8-X-X`.
 
 
-Installating with Anaconda / conda
+Installation with Anaconda / conda
 ----------------------------------
 
-If you have any trouble with the installation, try installing archetypal in a new,
-clean `virtual environment`_ using conda. Note that python version 3 is required:
+It is highly recommended to use install archetypal on a fresh python virtual environment. If you have any trouble
+with the installation, try installing archetypal in a new, clean `virtual environment`_ using conda. Note that this
+pacakge was tested with python 3.6:
 
 .. code-block:: shell
 
-   conda config --set always_yes yes --set show_channel_urls true
    conda update -n base conda
    conda config --prepend channels conda-forge
-   conda create -n archetypal python=$TRAVIS_PYTHON_VERSION
+   conda create -n archetypal python=3.6
    conda env update -n archetypal -f environment.yml --prune
    conda install --file requirements-dev.txt
    source activate archetypal

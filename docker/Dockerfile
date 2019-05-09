@@ -12,11 +12,11 @@
 # >>> docker push samuelduchesne/archetypal
 #
 # Run bash in this container and export final conda environment to a yml file:
-# >>> docker run --rm -it -u 0 --name archetypal -v $(pwd):/home/samueld/work samuelduchesne/archetypal /bin/bash
-# >>> conda env export -n base > /home/samueld/work/environment.yml
+# >>> docker run --rm -it -u 0 --name archetypal -v "$PWD":/home/samueld/wip samuelduchesne/archetypal /bin/bash
+# >>> conda env export -n base > /home/samueld/wip/environment.yml
 #
 # Run jupyter lab in this container:
-# >>> docker run --rm -it -p 8888:8888 -v $(pwd):/home/samueld/work samuelduchesne/archetypal
+# >>> docker run --rm -it -p 8888:8888 -v "$PWD":/home/samueld/wip samuelduchesne/archetypal
 #
 # Stop/delete all local docker containers/images:
 # >>> docker stop $(docker ps -aq)
@@ -29,10 +29,25 @@ LABEL maintainer="Samuel Letellier-Duchesne <samuel.letellier-duchesne@polymtl.c
 LABEL url="https://github.com/samuelduchesne/archetypal"
 LABEL description="archetypal: Retrieve, construct, simulate, and analyse building archetypes"
 
+# Clone repo
 RUN git clone --depth=50 --branch=develop https://github.com/samuelduchesne/archetypal.git
-WORKDIR archetypal
+
+# Before install
+ENV ENERGYPLUS_VERSION=8.9.0
+ENV ENERGYPLUS_SHA=40101eaafd
+ENV ENERGYPLUS_INSTALL_VERSION=8-9-0
+ENV PLATFORM=Linux
+ENV EXT=sh
+ENV ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
+ENV ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-$ENERGYPLUS_VERSION-$ENERGYPLUS_SHA-$PLATFORM-x86_64
+ENV ENERGYPLUS_DOWNLOAD_URL=$ENERGYPLUS_DOWNLOAD_BASE_URL/$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
+RUN curl -SLO $ENERGYPLUS_DOWNLOAD_URL && \
+    chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT && \
+    echo "y\r" | ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT && \
+    rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
 
 # configure conda and install packages in one RUN to keep image tidy
+WORKDIR archetypal
 RUN conda update -n base conda && \
     conda config --prepend channels conda-forge && \
     conda env update -n archetypal -f environment.yml --prune && \
@@ -46,7 +61,7 @@ RUN conda update -n base conda && \
 ENV PATH /opt/conda/envs/archetypal/bin:$PATH
 
 # launch notebook in the local working directory that we mount
-WORKDIR /home/samueld/wip
+WORKDIR /home/archetypal/wip
 
 # set default command to launch when container is run
 CMD ["jupyter", "lab", "--ip='0.0.0.0'", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=''", "--NotebookApp.password=''"]

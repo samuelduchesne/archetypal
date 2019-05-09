@@ -2,13 +2,12 @@ name: archetypal
 channels:
   - defaults
 dependencies:
-  - lxml
   - shapely
   - matplotlib>=2.1
   - requests>=2.18
   - pycountry
-  - scipy
   - scikit-learn
+  - scipy
   - pandas>=0.21
   - numpy>=1.13
   - tqdm

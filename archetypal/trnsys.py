@@ -169,7 +169,7 @@ def parse_window_lib(window_file_path):
 
     # Save lines_for_df in text file
     # User did not provide an output folder path. We use the default setting
-    output_folder = ar.settings.data_folder
+    output_folder = os.path.relpath(ar.settings.data_folder)
 
     if not os.path.isdir(output_folder):
         os.mkdir(output_folder)
@@ -320,7 +320,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
     # Load IDF_T3D template
     ori_idf_filename = "originBUISketchUp.idf"
-    ori_idf_filepath = os.path.join("..", "tests", "input_data", "trnsys",
+    ori_idf_filepath = os.path.join("tests", "input_data", "trnsys",
                                     ori_idf_filename)
     # Read IDF_T3D template and write lines in variable
     lines = open(ori_idf_filepath).readlines()

@@ -11,13 +11,12 @@ import time
 import uuid
 from collections import OrderedDict
 
+import archetypal as ar
 import numpy as np
 import pandas as pd
+from archetypal import log, Schedule
 from eppy import modeleditor
 from geomeppy.geom.polygons import Polygon3D
-
-import archetypal as ar
-from archetypal import log, Schedule
 
 
 def clear_name_idf_objects(idfFile):
@@ -357,7 +356,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     schedules = {}
 
     for schedule_name in used_schedules:
-        s = Schedule(idf, sch_name=schedule_name,
+        s = Schedule(schedule_name, idf,
                      start_day_of_the_week=idf.day_of_week_for_start_day)
 
         schedule_names.append(schedule_name)

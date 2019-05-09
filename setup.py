@@ -55,9 +55,9 @@ setup(
     keywords='Building archetypes',
     python_requires='>=3.6',
     install_requires=install_requires,
-    extras_requires={'dev': [],
-                     'tests': ['pytest', 'matplotlib'],
-                     'docs': ['sphinx', 'nbsphinx', 'jupyter_client',
-                              'ipykernel']},
+    extras_require={'dev': [],
+                    'tests': ['coverage', 'coveralls', 'pytest', 'matplotlib'],
+                    'docs': ['sphinx', 'nbsphinx', 'jupyter_client',
+                             'ipykernel']},
     test_suite='tests'
 )

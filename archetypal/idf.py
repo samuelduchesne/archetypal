@@ -23,7 +23,7 @@ from archetypal import settings
 from archetypal.utils import log, cd, EnergyPlusProcessError
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
-from eppy.runner.run_functions import run, paths_from_version
+from eppy.runner.run_functions import run
 
 try:
     import multiprocessing as mp
@@ -1109,13 +1109,13 @@ def perform_transition(file, to_version=None):
         # might be an old version of E+
     else:
         iddfile = getoldiddfile(doted_version)
-    vupdater_path, _ = iddfile.split('bin')
+    vupdater_path, _ = iddfile.split('Energy+')
     # What is the latest E+ installed version
     if to_version is None:
-        to_version = find_eplus_installs()
-    sourcedir, ver = vupdater_path.split('EnergyPlusV')
-    ep_installation_name = 'EnergyPlusV' + to_version
-    vupdater_path = os.path.join(sourcedir, ep_installation_name, 'PreProcess',
+        to_version = find_eplus_installs(vupdater_path)
+    ep_installation_name = os.path.abspath(os.path.dirname(iddfile)).replace(
+        versionid, to_version)
+    vupdater_path = os.path.join(ep_installation_name, 'PreProcess',
                                  'IDFVersionUpdater')
     trans_exec = {
         '1-0-0': os.path.join(vupdater_path, 'Transition-V1-0-0-to-V1-0-1'),
@@ -1191,16 +1191,33 @@ def perform_transition(file, to_version=None):
             os.remove(file)
 
 
-def find_eplus_installs():
-    """
+def find_eplus_installs(vupdater_path):
+    """Finds all installed versions of EnergyPlus in the default location and
+    returns the latest version number
+
+    Args:
+        vupdater_path (str): path of the current EnergyPlus install file
 
     Returns:
         (str): The version number of the latest E+ install
 
     """
-    # Todo: Create a routine to find all available EnergyPlus version
-    #  installed on machine and return the latest version id, eg.: '8-9-0'
-    return '8-9-0'
+    path_to_eplus, _ = vupdater_path.split('EnergyPlus')
+
+    # Find all EnergyPlus folders
+    list_eplus_dir = glob.glob(os.path.join(path_to_eplus, 'EnergyPlus*'))
+
+    # Find the most recent version of EnergyPlus installed from the version
+    # number (at the end of the folder name)
+    v0 = (0, 0, 0)  # Initialize the version number
+    # Find the most recent version in the different folders found
+    for dir in list_eplus_dir:
+        version = dir[-5:]
+        ver = tuple(map(int, version.split('-')))
+        if ver > v0:
+            v0 = ver
+
+    return '-'.join(tuple(map(str, v0)))
 
 
 def get_idf_version(file, doted=True):

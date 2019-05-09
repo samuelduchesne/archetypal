@@ -47,8 +47,10 @@ before_install:
   - conda config --set always_yes yes --set show_channel_urls true
   - conda update -n base conda
   - conda config --prepend channels conda-forge
-  - conda create -n TEST --strict-channel-priority python=$TRAVIS_PYTHON_VERSION --file requirements.txt --file requirements-dev.txt
-  - source activate TEST
+  - conda create -n archetypal python=$TRAVIS_PYTHON_VERSION
+  - conda env update -n archetypal -f environment.yml --prune
+  - conda install -n archetypal --file requirements-dev.txt
+  - source activate archetypal
   - conda info --all
 
 install:

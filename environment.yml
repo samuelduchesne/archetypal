@@ -5,13 +5,13 @@ dependencies:
   - shapely
   - matplotlib>=2.1
   - requests>=2.18
-  - pycountry
   - scikit-learn
   - scipy
   - pandas>=0.21
   - numpy>=1.13
   - tqdm
   - pip:
+    - pycountry
     - eppy
     - geomeppy
     - pyomo

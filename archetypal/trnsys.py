@@ -169,7 +169,7 @@ def parse_window_lib(window_file_path):
 
     # Save lines_for_df in text file
     # User did not provide an output folder path. We use the default setting
-    output_folder = ar.settings.data_folder
+    output_folder = os.path.relpath(ar.settings.data_folder)
 
     if not os.path.isdir(output_folder):
         os.mkdir(output_folder)
@@ -315,11 +315,12 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     idf_dict = ar.load_idf(idf_file)
     idf = idf_dict[os.path.basename(idf_file)]
     log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
-        lg.INFO, name="CoverterLog", filename="CoverterLog", avoid_console=True)
+        lg.INFO, name="ConverterLog", filename="ConverterLog",
+        avoid_console=True)
 
     # Load IDF_T3D template
     ori_idf_filename = "originBUISketchUp.idf"
-    ori_idf_filepath = os.path.join("..", "tests", "input_data", "trnsys",
+    ori_idf_filepath = os.path.join("tests", "input_data", "trnsys",
                                     ori_idf_filename)
     # Read IDF_T3D template and write lines in variable
     lines = open(ori_idf_filepath).readlines()
@@ -328,8 +329,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     start_time = time.time()
     clear_name_idf_objects(idf)
     log("Cleaned IDF object names in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO, name="CoverterLog",
-        filename="CoverterLog")
+        time.time() - start_time), lg.INFO, name="ConverterLog",
+        filename="ConverterLog")
 
     # Get objects from IDF file
     materials = idf.idfobjects['MATERIAL']
@@ -367,8 +368,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         schedules[schedule_name]['days'] = days
 
     log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO, name="CoverterLog",
-        filename="CoverterLog")
+        time.time() - start_time), lg.INFO, name="ConverterLog",
+        filename="ConverterLog")
 
     # Get materials with resistance lower than 0.0007
     material_low_res = []
@@ -771,8 +772,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             log(
                 "Could not find the Light Power Density, cause depend on the "
                 "number of peoples (Watts/Person)",
-                lg.WARNING, name="CoverterLog",
-                filename="CoverterLog")
+                lg.WARNING, name="ConverterLog",
+                filename="ConverterLog")
 
         radFract = float(lights[i].Fraction_Radiant)
 
@@ -799,8 +800,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             log(
                 "Could not find the Equipment Power Density, cause depend on "
                 "the number of peoples (Watts/Person)",
-                lg.WARNING, name="CoverterLog",
-                filename="CoverterLog")
+                lg.WARNING, name="ConverterLog",
+                filename="ConverterLog")
 
         radFract = float(equipments[i].Fraction_Radiant)
 
@@ -859,13 +860,13 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         log(
             "WARNING : window tolerance was not respected. Final tolerance=  "
             "{:,.2f}".format(
-                window[-1]), lg.WARNING, name="CoverterLog",
-            filename="CoverterLog")
+                window[-1]), lg.WARNING, name="ConverterLog",
+            filename="ConverterLog")
     # Write in log (info) the characteristics of the window
     log(
         "Characterisitics of the chosen window are: u_value= {:,.2f}, "
         "SHGC= {:,.2f}, t_vis= {:,.2f}".format(window[3], window[4], window[7]),
-        lg.INFO, name="CoverterLog", filename="CoverterLog")
+        lg.INFO, name="ConverterLog", filename="ConverterLog")
 
     # Get line number where to write
     windowNum = ar.checkStr(lines,
@@ -916,7 +917,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     # Save file at output_folder
     if output_folder is None:
         # User did not provide an output folder path. We use the default setting
-        output_folder = ar.settings.data_folder
+        output_folder = os.path.relpath(ar.settings.data_folder)
 
     if not os.path.isdir(output_folder):
         os.mkdir(output_folder)
@@ -927,5 +928,5 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             converted_file.write(str(line))
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO, name="CoverterLog",
-        filename="CoverterLog")
+        time.time() - start_time), lg.INFO, name="ConverterLog",
+        filename="ConverterLog")

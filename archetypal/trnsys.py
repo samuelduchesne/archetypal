@@ -8,7 +8,7 @@
 import logging as lg
 import os
 import time
-import uuid
+import re
 from collections import OrderedDict
 
 import archetypal as ar
@@ -43,6 +43,7 @@ def clear_name_idf_objects(idfFile):
         epObjects = idfFile.idfobjects[obj]
 
         # For all objects in Category
+        count = 0
         for epObject in epObjects:
             # Do not take fenestration, to be treated later
             try:
@@ -53,23 +54,32 @@ def clear_name_idf_objects(idfFile):
             if not fenestration:
                 try:
                     old_name = epObject.Name
-                    # clean old name by removing spaces, "-", period, "{",
-                    # "}", doubleunderscore
-                    new_name = old_name.replace(" ", "_").replace("-",
-                                                                  "_").replace(
-                        ".", "_").replace("{", "").replace("}", "").replace(
-                        "__",
-                        "_")
-                    if len(new_name) > 13:
-                        # Trnbuild doen not like names longer than 13 characters
-                        # Replace with unique ID
-                        new_name = uuid.uuid4().hex[:13]
+                    # For TRNBuild compatibility we oblige the new name to
+                    # begin by a lowercase letter and the new name is max 10
+                    # characters. The new name is done with the first
+                    # uppercase of the epObject type and an increment depend
+                    # on the number of this epObject type. Making sure we
+                    # have an unique new name
+                    list_word_epObject_type = re.sub(r"([A-Z])", r" \1",
+                                                     epObject.fieldvalues[
+                                                         0]).split()
+                    # Making sure new name will be max 10 characters
+                    if len(list_word_epObject_type) > 4:
+                        list_word_epObject_type = list_word_epObject_type[:4]
 
-                        # Make sure uuid does not already exist
-                        while new_name in uniqueList:
-                            new_name = uuid.uuid4().hex[:13]
+                    first_letters = ''.join(word[0].lower() for word in
+                                            list_word_epObject_type)
+                    count += 1
+                    end_count = '%06d' % count
+                    new_name = first_letters + '_' + end_count
 
-                        uniqueList.append(new_name)
+                    # Make sure new name does not already exist
+                    while new_name in uniqueList:
+                        count += 1
+                        end_count = '%06d' % count
+                        new_name = first_letters + '_' + end_count
+
+                    uniqueList.append(new_name)
 
                     # print("changed layer {} with {}".format(old_name,
                     # new_name))

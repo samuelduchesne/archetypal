@@ -8,7 +8,7 @@ import pytest
 
 @pytest.fixture(scope='session')
 def fresh_start():
-    """# remove the .temp folder if it already exists so we
+    """# remove the tests/temp folder if it already exists so we
     start fresh with tests"""
     settings = [ar.settings.cache_folder, ar.settings.data_folder,
                 ar.settings.imgs_folder]
@@ -28,7 +28,7 @@ do = [True, False]
 @pytest.fixture(params=do, ids=['from_scratch', 'from_cache'],
                 scope='function')
 def scratch_then_cache(request):
-    """# remove the .temp folder if it already exists so we
+    """# remove the tests/temp folder if it already exists so we
     start fresh with tests"""
     # request is a special parameter known to pytest. It passes whatever is in
     # params=do. Ids are there to give the test a human readable name.
@@ -57,8 +57,8 @@ def idf_source(request):
 @pytest.fixture(scope='session')
 def config():
     ar.config(log_console=True, log_file=True, use_cache=True,
-              data_folder='.temp/data', logs_folder='.temp/logs',
-              imgs_folder='.temp/imgs', cache_folder='.temp/cache',
+              data_folder='tests/temp/data', logs_folder='tests/temp/logs',
+              imgs_folder='tests/temp/imgs', cache_folder='tests/temp/cache',
               umitemplate='tests/input_data/umi_samples'
                           '/BostonTemplateLibrary_2.json')
 

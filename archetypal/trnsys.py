@@ -11,12 +11,13 @@ import time
 import uuid
 from collections import OrderedDict
 
-import archetypal as ar
 import numpy as np
 import pandas as pd
-from archetypal import log, Schedule
 from eppy import modeleditor
 from geomeppy.geom.polygons import Polygon3D
+
+import archetypal as ar
+from archetypal import log, Schedule
 
 
 def clear_name_idf_objects(idfFile):
@@ -930,3 +931,49 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="ConverterLog",
         filename="ConverterLog")
+
+
+def trnbuild_idf(idf_file, template, dck=False, nonum=False, N=False,
+                 geo_floor=0.6, refarea=False, volume=False, capacitance=False):
+    """This program sorts and renumbers the IDF file and writes a B18 file
+    based on geometric information of the IDF file and the template B17
+    file. In addition, a template DCK file can be generated.
+
+    Args:
+        idf_file (str): path\filename.idf
+        template (str): path\NewFileTemplate.d18
+        dck (bool): create a template DCK
+        nonum (bool, optional): If True, no renumeration of surfaces
+        N (optional): BatchJob Modus
+        geo_floor (float, optional): generates GEOSURF values for
+            distributing direct solar radiation where 60 % is directed to the
+            floor, the rest to walls/windows. Default = 0.6
+        refarea (bool, optional): If True, floor reference area of airnodes is
+            updated
+        volume (bool, True): If True, volume of airnodes is updated
+        capacitance (bool, True): If True, capacitance of airnodes is updated
+
+    Returns:
+        (str): status
+
+    Raises:
+        CalledProcessError
+    """
+    args = locals().copy()
+    idf = args.pop('idf_file')
+    template = args.pop('template')
+
+    trnsysidf_exe = 'C:\Trnsys\Trnsys18\Building\trnsIDF\trnsysidf.exe'
+
+    cmd = [trnsysidf_exe]
+    cmd.extend([idf])
+    cmd.extend([template])
+    for arg in args:
+        if args[arg]:
+            if isinstance(args[arg], bool):
+                args[arg] = ''
+            cmd.extend(['/{}'.format(arg)])
+            if args[arg] != "":
+                cmd.extend([args[arg]])
+
+    print(cmd)

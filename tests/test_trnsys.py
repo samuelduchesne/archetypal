@@ -2,7 +2,7 @@ import math
 import os
 
 from archetypal import convert_idf_to_t3d, parallel_process, parse_window_lib, \
-    choose_window
+    choose_window, trnbuild_idf
 
 
 # Function round to hundreds
@@ -52,3 +52,7 @@ def test_trnbuild_choose_window(config):
     window_filepath = os.path.join("tests", "input_data", "trnsys", file)
     window = choose_window(2.2, 0.64, 0.8, 0.05,
                            window_filepath)
+
+def test_trnbuild_idf():
+    res = trnbuild_idf()
+    print(res)

@@ -308,6 +308,59 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
             t_vis_win, lay_win, width, window_bunches[win_id])
 
 
+def trnbuild_idf(idf_file, template, dck=False, nonum=False, N=False,
+                 geo_floor=0.6, refarea=False, volume=False, capacitance=False,
+                 trnidf_exe_dir=r"C:\Trnsys\Building\trnsIDF\trnsysidf.exe"):
+    """
+
+    Args:
+        iidf_file (str): path/filename.idf
+        template (str): path/NewFileTemplate.d18
+        dck (bool): create a template DCK
+        nonum (bool, optional): If True, no renumeration of surfaces
+        N (optional): BatchJob Modus
+        geo_floor (float, optional): generates GEOSURF values for
+            distributing direct solar radiation where 60 % is directed to the
+            floor, the rest to walls/windows. Default = 0.6
+        refarea (bool, optional): If True, floor reference area of airnodes is
+            updated
+        volume (bool, True): If True, volume of airnodes is updated
+        capacitance (bool, True): If True, capacitance of airnodes is updated
+        trnidf_exe_dir (str): Path of the trnsysidf.exe executable
+
+    Returns:
+        (str): status
+
+    Raises:
+        CalledProcessError
+
+    """
+
+    args = locals().copy()
+    idf = args.pop('idf_file')
+    template = args.pop('template')
+
+    trnsysidf_exe = trnidf_exe_dir
+
+    cmd = [trnsysidf_exe]
+    cmd.extend([idf])
+    cmd.extend([template])
+    for arg in args:
+        if args[arg]:
+            if isinstance(args[arg], bool):
+                args[arg] = ''
+            if args[arg] != "":
+                cmd.extend(['/{}={}'.format(arg, args[arg])])
+            else:
+                cmd.extend(['/{}'.format(arg)])
+
+    try:
+        subprocess.check_call(cmd, stdout=open(os.devnull, 'w'))
+    except subprocess.CalledProcessError:
+        raise
+    return 'OK'
+
+
 def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     """ Convert IDF file to T3D file to be able to load it in TRNBuild
 
@@ -983,58 +1036,4 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             converted_file.write(str(line))
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO, name="ConverterLog",
-        filename="ConverterLog")
-
-
-def trnbuild_idf(idf_file, template, dck=False, nonum=False, N=False,
-                 geo_floor=0.6, refarea=False, volume=False, capacitance=False,
-                 trnidf_exe_dir=r"C:\Trnsys\Building\trnsIDF\trnsysidf.exe"):
-    """
-
-    Args:
-        iidf_file (str): path/filename.idf
-        template (str): path/NewFileTemplate.d18
-        dck (bool): create a template DCK
-        nonum (bool, optional): If True, no renumeration of surfaces
-        N (optional): BatchJob Modus
-        geo_floor (float, optional): generates GEOSURF values for
-            distributing direct solar radiation where 60 % is directed to the
-            floor, the rest to walls/windows. Default = 0.6
-        refarea (bool, optional): If True, floor reference area of airnodes is
-            updated
-        volume (bool, True): If True, volume of airnodes is updated
-        capacitance (bool, True): If True, capacitance of airnodes is updated
-        trnidf_exe_dir (str): Path of the trnsysidf.exe executable
-
-    Returns:
-        (str): status
-
-    Raises:
-        CalledProcessError
-
-    """
-
-    args = locals().copy()
-    idf = args.pop('idf_file')
-    template = args.pop('template')
-
-    trnsysidf_exe = trnidf_exe_dir
-
-    cmd = [trnsysidf_exe]
-    cmd.extend([idf])
-    cmd.extend([template])
-    for arg in args:
-        if args[arg]:
-            if isinstance(args[arg], bool):
-                args[arg] = ''
-            if args[arg] != "":
-                cmd.extend(['/{}={}'.format(arg, args[arg])])
-            else:
-                cmd.extend(['/{}'.format(arg)])
-
-    try:
-        subprocess.check_call(cmd, stdout=open(os.devnull, 'w'))
-    except subprocess.CalledProcessError:
-        raise
-    return 'OK'
+        time.time() - start_time), lg.INFO)

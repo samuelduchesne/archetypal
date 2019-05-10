@@ -49,15 +49,16 @@ RUN curl -SLO $ENERGYPLUS_DOWNLOAD_URL && \
 
 # configure conda and install packages in one RUN to keep image tidy
 WORKDIR archetypal
-RUN conda config --set always_yes yes --set show_channel_urls true && \
-    conda update -n base conda && \
-    conda create -n archetypal && \
+RUN conda update -n base conda && \
+    conda config --append channels conda-forge && \
     conda env update -n archetypal -f environment.yml --prune && \
     conda install -n archetypal --file requirements-dev.txt && \
+    conda install --strict-channel-priority --update-all --force-reinstall --yes jupyterlab python-igraph && \
+    conda clean --yes --all && \
+    conda info --all && \
+    conda list && \
     echo "source activate archetypal" > ~/.bashrc && \
-    python setup.py install && \
-    conda clean --all && \
-    conda info --all
+    python setup.py install
 ENV PATH /opt/conda/envs/archetypal/bin:$PATH
 
 # launch notebook in the local working directory that we mount

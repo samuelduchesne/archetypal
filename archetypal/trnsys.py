@@ -314,7 +314,7 @@ def trnbuild_idf(idf_file, template, dck=False, nonum=False, N=False,
     """
 
     Args:
-        iidf_file (str): path/filename.idf
+        idf_file (str): path/filename.idf
         template (str): path/NewFileTemplate.d18
         dck (bool): create a template DCK
         nonum (bool, optional): If True, no renumeration of surfaces
@@ -912,8 +912,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                                                        'CATEGORY=LIGHTS\n')
         # endregion
 
-        # region Write SCHEDULES from IDF to lines (T3D)
-        # Get line number where to write
+    # region Write SCHEDULES from IDF to lines (T3D)
+    # Get line number where to write
     scheduleNum = ar.checkStr(lines, 'S c h e d u l e s')
 
     hour_list = list(range(25))
@@ -1024,10 +1024,16 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     if not os.path.isdir(output_folder):
         os.mkdir(output_folder)
 
-    with open(os.path.join(output_folder, "T3D_" + list(idf_dict.keys())[0]),
-              "w") as converted_file:
+    t3d_path = os.path.join(output_folder, "T3D_" + list(idf_dict.keys())[0])
+    with open(t3d_path, "w") as converted_file:
         for line in lines:
             converted_file.write(str(line))
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO)
+
+    # Run trnsidf to convert T3D to BUI
+    template = "C:\Trnsys\Building\\trnsIDF\\NewFileTemplate.d18"
+    trnbuild_idf(t3d_path, template, dck=False, nonum=False, N=False,
+                 geo_floor=0.6, refarea=False, volume=False, capacitance=False,
+                 trnidf_exe_dir=r"C:\TRNSYS18\Building\trnsIDF\trnsidf.exe")

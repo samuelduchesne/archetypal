@@ -17,8 +17,8 @@ import pandas as pd
 from eppy import modeleditor
 from geomeppy.geom.polygons import Polygon3D
 
+from archetypal import log, settings, Schedule
 import archetypal as ar
-from archetypal import log, Schedule
 
 
 def clear_name_idf_objects(idfFile):
@@ -181,7 +181,7 @@ def parse_window_lib(window_file_path):
 
     # Save lines_for_df in text file
     # User did not provide an output folder path. We use the default setting
-    output_folder = os.path.relpath(ar.settings.data_folder)
+    output_folder = os.path.relpath(settings.data_folder)
 
     if not os.path.isdir(output_folder):
         os.mkdir(output_folder)
@@ -380,8 +380,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     idf_dict = ar.load_idf(idf_file)
     idf = idf_dict[os.path.basename(idf_file)]
     log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
-        lg.INFO, name="ConverterLog", filename="ConverterLog",
-        avoid_console=True)
+        lg.INFO)
 
     # Load IDF_T3D template
     ori_idf_filename = "originBUISketchUp.idf"
@@ -394,8 +393,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     start_time = time.time()
     clear_name_idf_objects(idf)
     log("Cleaned IDF object names in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO, name="ConverterLog",
-        filename="ConverterLog")
+        time.time() - start_time), lg.INFO)
 
     # Get objects from IDF file
     materials = idf.idfobjects['MATERIAL']
@@ -434,8 +432,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         schedules[schedule_name]['days'] = days
 
     log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO, name="ConverterLog",
-        filename="ConverterLog")
+        time.time() - start_time), lg.INFO)
     # endregion
 
     # Get materials with resistance lower than 0.0007
@@ -878,8 +875,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             log(
                 "Could not find the Light Power Density, cause depend on the "
                 "number of peoples (Watts/Person)",
-                lg.WARNING, name="ConverterLog",
-                filename="ConverterLog")
+                lg.WARNING)
 
         radFract = float(lights[i].Fraction_Radiant)
 
@@ -906,8 +902,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             log(
                 "Could not find the Equipment Power Density, cause depend on "
                 "the number of peoples (Watts/Person)",
-                lg.WARNING, name="ConverterLog",
-                filename="ConverterLog")
+                lg.WARNING)
 
         radFract = round(float(equipments[i].Fraction_Radiant), 4)
 
@@ -967,13 +962,12 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         log(
             "WARNING : window tolerance was not respected. Final tolerance=  "
             "{:,.2f}".format(
-                window[-1]), lg.WARNING, name="ConverterLog",
-            filename="ConverterLog")
+                window[-1]), lg.WARNING)
     # Write in log (info) the characteristics of the window
     log(
         "Characterisitics of the chosen window are: u_value= {:,.2f}, "
         "SHGC= {:,.2f}, t_vis= {:,.2f}".format(window[3], window[4], window[7]),
-        lg.INFO, name="ConverterLog", filename="ConverterLog")
+        lg.INFO)
 
     # Get line number where to write
     windowNum = ar.checkStr(lines,
@@ -1025,7 +1019,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     # Save file at output_folder
     if output_folder is None:
         # User did not provide an output folder path. We use the default setting
-        output_folder = os.path.relpath(ar.settings.data_folder)
+        output_folder = os.path.relpath(settings.data_folder)
 
     if not os.path.isdir(output_folder):
         os.mkdir(output_folder)

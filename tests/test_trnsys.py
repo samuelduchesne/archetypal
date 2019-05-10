@@ -54,5 +54,7 @@ def test_trnbuild_choose_window(config):
                            window_filepath)
 
 def test_trnbuild_idf():
-    res = trnbuild_idf()
+    idf_file = "tests/input_data/trnsys/Building.idf"
+    template = "tests/input_data/trnsys/NewFileTemplate.d18"
+    res = trnbuild_idf(idf_file, template, nonum=True)
     print(res)

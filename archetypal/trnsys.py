@@ -7,6 +7,7 @@
 
 import logging as lg
 import os
+import subprocess
 import time
 import uuid
 from collections import OrderedDict
@@ -934,14 +935,13 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
 
 def trnbuild_idf(idf_file, template, dck=False, nonum=False, N=False,
-                 geo_floor=0.6, refarea=False, volume=False, capacitance=False):
-    """This program sorts and renumbers the IDF file and writes a B18 file
-    based on geometric information of the IDF file and the template B17
-    file. In addition, a template DCK file can be generated.
+                 geo_floor=0.6, refarea=False, volume=False, capacitance=False,
+                 trnidf_exe_dir=r"C:\Trnsys\Building\trnsIDF\trnsysidf.exe"):
+    """
 
     Args:
-        idf_file (str): path\filename.idf
-        template (str): path\NewFileTemplate.d18
+        iidf_file (str): path/filename.idf
+        template (str): path/NewFileTemplate.d18
         dck (bool): create a template DCK
         nonum (bool, optional): If True, no renumeration of surfaces
         N (optional): BatchJob Modus
@@ -952,18 +952,21 @@ def trnbuild_idf(idf_file, template, dck=False, nonum=False, N=False,
             updated
         volume (bool, True): If True, volume of airnodes is updated
         capacitance (bool, True): If True, capacitance of airnodes is updated
+        trnidf_exe_dir (str): Path of the trnsysidf.exe executable
 
     Returns:
         (str): status
 
     Raises:
         CalledProcessError
+
     """
+
     args = locals().copy()
     idf = args.pop('idf_file')
     template = args.pop('template')
 
-    trnsysidf_exe = 'C:\Trnsys\Trnsys18\Building\trnsIDF\trnsysidf.exe'
+    trnsysidf_exe = trnidf_exe_dir
 
     cmd = [trnsysidf_exe]
     cmd.extend([idf])
@@ -972,8 +975,13 @@ def trnbuild_idf(idf_file, template, dck=False, nonum=False, N=False,
         if args[arg]:
             if isinstance(args[arg], bool):
                 args[arg] = ''
-            cmd.extend(['/{}'.format(arg)])
             if args[arg] != "":
-                cmd.extend([args[arg]])
+                cmd.extend(['/{}={}'.format(arg, args[arg])])
+            else:
+                cmd.extend(['/{}'.format(arg)])
 
-    print(cmd)
+    try:
+        subprocess.check_call(cmd, stdout=open(os.devnull, 'w'))
+    except subprocess.CalledProcessError:
+        raise
+    return 'OK'

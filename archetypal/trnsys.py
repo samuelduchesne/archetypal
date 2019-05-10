@@ -361,6 +361,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     lights = idf.idfobjects['LIGHTS']
     equipments = idf.idfobjects['ELECTRICEQUIPMENT']
 
+    # region Get schedules from IDF
     start_time = time.time()
     schedule_names = []
     used_schedules = idf.get_used_schedules(yearly_only=True)
@@ -380,6 +381,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO, name="ConverterLog",
         filename="ConverterLog")
+    # endregion
 
     # Get materials with resistance lower than 0.0007
     material_low_res = []
@@ -486,12 +488,17 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         incrX, incrY, incrZ = zone_origin(zone)
 
         # Writing fenestrationSurface:Detailed in lines
+        count_fs = 0
         for fenestrationSurf in fenestrationSurfs:
+            count_fs += 1
             surfName = fenestrationSurf.Building_Surface_Name
             indiceSurf = [k for k, s in enumerate(buildingSurfs) if
                           surfName == s.Name]
             if buildingSurfs[indiceSurf[0]].Zone_Name == zone.Name:
 
+                # Clear fenestrationSurface:Detailed name
+                fenestrationSurf.Name = 'fs_' + '%06d' % count_fs
+                # Insure right construction name and number of vertices
                 fenestrationSurf.Construction_Name = "EXT_WINDOW1"
                 fenestrationSurf.Number_of_Vertices = len(
                     fenestrationSurf.coords)
@@ -616,16 +623,13 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                 for j in range(1, len(buildingSurfs[i].coords) + 1):
                     buildingSurfs[i]["Vertex_" + str(j) + "_Xcoordinate"] \
                         = round(buildingSurfs[i][
-                                    "Vertex_" + str(j) + "_Xcoordinate"] \
-                                + incrX, 4)
+                                    "Vertex_" + str(j) + "_Xcoordinate"], 4)
                     buildingSurfs[i]["Vertex_" + str(j) + "_Ycoordinate"] \
                         = round(buildingSurfs[i][
-                                    "Vertex_" + str(j) + "_Ycoordinate"] \
-                                + incrY, 4)
+                                    "Vertex_" + str(j) + "_Ycoordinate"], 4)
                     buildingSurfs[i]["Vertex_" + str(j) + "_Zcoordinate"] \
                         = round(buildingSurfs[i][
-                                    "Vertex_" + str(j) + "_Zcoordinate"] \
-                                + incrZ, 4)
+                                    "Vertex_" + str(j) + "_Zcoordinate"], 4)
 
                 lines.insert(variableDictNum + 2, buildingSurfs[i])
 
@@ -850,16 +854,16 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                 lg.WARNING, name="ConverterLog",
                 filename="ConverterLog")
 
-        radFract = round(float(equipments[i].Fraction_Radiant),4)
+        radFract = round(float(equipments[i].Fraction_Radiant), 4)
 
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
                      ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : '
                                                                        'CATEGORY=LIGHTS\n')
-    # endregion
+        # endregion
 
-    # Write SCHEDULES from IDF to lines (T3D)
-    # Get line number where to write
+        # region Write SCHEDULES from IDF to lines (T3D)
+        # Get line number where to write
     scheduleNum = ar.checkStr(lines, 'S c h e d u l e s')
 
     hour_list = list(range(25))
@@ -894,9 +898,10 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                      str(item) for item in
                                      rotate(schedules[schedule_name][period][
                                                 i].fieldvalues[2:9], 1)) + '\n')
+    # endregion
 
-    # Write WINDOWS chosen by the user (from Berkeley lab library) in lines (
-    # T3D)
+    # region Write WINDOWS chosen by the user (from Berkeley lab library) in
+    # lines (T3D)
     # Get window from library
     # window = (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
     #                 t_vis_win, lay_win, width, window_bunches[win_id],
@@ -960,6 +965,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                  str(window[4]) + ' ' + str(window[5]) + ' ' + str(window[6]) +
                  ' ' + str(window[7]) + ' ' + str(window[8]) + ' ' + str(
                      window[9]) + '\n')
+    # endregion
 
     # Save file at output_folder
     if output_folder is None:

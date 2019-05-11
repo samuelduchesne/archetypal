@@ -24,7 +24,7 @@ def test_trnbuild_from_idf(config):
 def test_trnbuild_from_idf_parallel(config):
     # List files here
     file_upper_path = 'tests/input_data/trnsys/'
-    files = ["NECB 2011 - Small Office.idf"]
+    files = ["NECB 2011 - Warehouse.idf"]
 
     window_file = 'W74-lib.dat'
     window_filepath = os.path.join("tests", "input_data", "trnsys", window_file)

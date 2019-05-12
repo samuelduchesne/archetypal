@@ -1,5 +1,8 @@
 import math
 import os
+import sys
+
+import pytest
 
 from archetypal import convert_idf_to_t3d, parallel_process, parse_window_lib, \
     choose_window, trnbuild_idf
@@ -53,6 +56,8 @@ def test_trnbuild_choose_window(config):
     window = choose_window(2.2, 0.64, 0.8, 0.05,
                            window_filepath)
 
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Runs only on Windows")
 def test_trnbuild_idf():
     idf_file = "tests/input_data/trnsys/Building.idf"
     template = "tests/input_data/trnsys/NewFileTemplate.d18"

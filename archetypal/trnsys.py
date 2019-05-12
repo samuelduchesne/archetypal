@@ -76,10 +76,9 @@ def clear_name_idf_objects(idfFile):
                     new_name = first_letters + '_' + end_count
 
                     # Make sure new name does not already exist
-                    while new_name in uniqueList:
-                        count += 1
-                        end_count = '%06d' % count
-                        new_name = first_letters + '_' + end_count
+                    new_name = ar.check_unique_name(first_letters, count,
+                                                     new_name,
+                                         uniqueList)
 
                     uniqueList.append(new_name)
 
@@ -532,6 +531,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                   'OUTPUT:VARIABLEDICTIONARY')
 
     # Writing zones in lines
+    count_fs = 0
     for zone in zones:
         zone.Direction_of_Relative_North = 0.0
         if zone.Multiplier == '':
@@ -540,7 +540,6 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         incrX, incrY, incrZ = zone_origin(zone)
 
         # Writing fenestrationSurface:Detailed in lines
-        count_fs = 0
         for fenestrationSurf in fenestrationSurfs:
             count_fs += 1
             surfName = fenestrationSurf.Building_Surface_Name

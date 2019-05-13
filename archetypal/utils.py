@@ -28,8 +28,7 @@ import numpy as np
 import pandas as pd
 from pandas.io.json import json_normalize
 
-import archetypal as ar
-from archetypal import settings
+from . import settings
 
 
 def config(data_folder=settings.data_folder,
@@ -44,7 +43,8 @@ def config(data_folder=settings.data_folder,
            log_filename=settings.log_filename,
            useful_idf_objects=settings.useful_idf_objects,
            umitemplate=settings.umitemplate,
-           get_common_umi_objects=False):
+           get_common_umi_objects=False,
+           trnsys_default_folder=settings.trnsys_default_folder):
     """
     Configurations
 
@@ -64,6 +64,7 @@ def config(data_folder=settings.data_folder,
         log_filename (str): name of the log file
         useful_idf_objects (list): a list of useful idf objects
         umitemplate (str): where the umitemplate is located
+        trnsys_default_folder (str): root folder of TRNSYS install
 
     Returns:
         None
@@ -82,6 +83,8 @@ def config(data_folder=settings.data_folder,
     settings.log_filename = log_filename
     settings.useful_idf_objects = useful_idf_objects
     settings.umitemplate = umitemplate
+    settings.trnsys_default_folder = validate_trnsys_folder(
+        trnsys_default_folder)
     if get_common_umi_objects:
         settings.common_umi_objects = get_list_of_common_umi_objects(
             settings.umitemplate)
@@ -89,6 +92,19 @@ def config(data_folder=settings.data_folder,
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
         log('Configured archetypal')
+
+
+def validate_trnsys_folder(trnsys_default_folder):
+    if sys.platform == 'win32':
+        if os.path.isdir(trnsys_default_folder):
+            return trnsys_default_folder
+        else:
+            raise ValueError('The provided TRNSYS path does not exist. Path={'
+                             '}'.format(trnsys_default_folder))
+    else:
+        return trnsys_default_folder
+
+
 
 
 def log(message, level=None, name=None, filename=None, avoid_console=False):
@@ -651,7 +667,7 @@ def copy_file(files, where=None):
 
     # defaults to cache folder
     if where is None:
-        where = ar.settings.cache_folder
+        where = settings.cache_folder
 
     for file in files:
         dst = os.path.join(where, file)
@@ -782,3 +798,27 @@ def load_umi_template(json_template):
                     dicts.items()]
     else:
         raise ValueError('File {} does not exist'.format(json_template))
+
+
+def check_unique_name(first_letters, count, name, unique_list):
+        """Making sure new_name does not already exist
+
+        Args:
+            first_letters (str): string at the beginning of the name, giving
+                a hint on what the variable is (e.g. : 'day_' for a schedule
+            day). DO NOT Include an underscore.
+            count (int): increment to create a unique id in the name
+            name (str): name that was just created. To be verified that it is
+                unique in this function
+            unique_list (list): list where unique names are stored
+
+        Returns:
+            new_name (str): name that is unique
+
+        """
+        while name in unique_list:
+            count += 1
+            end_count = '%06d' % count
+            name = first_letters + '_' + end_count
+
+        return name

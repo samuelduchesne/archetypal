@@ -7,16 +7,18 @@
 
 import logging as lg
 import os
+import subprocess
 import time
-import uuid
+import re
 from collections import OrderedDict
 
-import archetypal as ar
 import numpy as np
 import pandas as pd
-from archetypal import log, Schedule
 from eppy import modeleditor
 from geomeppy.geom.polygons import Polygon3D
+
+from archetypal import log, settings, Schedule
+import archetypal as ar
 
 
 def clear_name_idf_objects(idfFile):
@@ -43,6 +45,7 @@ def clear_name_idf_objects(idfFile):
         epObjects = idfFile.idfobjects[obj]
 
         # For all objects in Category
+        count = 0
         for epObject in epObjects:
             # Do not take fenestration, to be treated later
             try:
@@ -53,23 +56,31 @@ def clear_name_idf_objects(idfFile):
             if not fenestration:
                 try:
                     old_name = epObject.Name
-                    # clean old name by removing spaces, "-", period, "{",
-                    # "}", doubleunderscore
-                    new_name = old_name.replace(" ", "_").replace("-",
-                                                                  "_").replace(
-                        ".", "_").replace("{", "").replace("}", "").replace(
-                        "__",
-                        "_")
-                    if len(new_name) > 13:
-                        # Trnbuild doen not like names longer than 13 characters
-                        # Replace with unique ID
-                        new_name = uuid.uuid4().hex[:13]
+                    # For TRNBuild compatibility we oblige the new name to
+                    # begin by a lowercase letter and the new name is max 10
+                    # characters. The new name is done with the first
+                    # uppercase of the epObject type and an increment depend
+                    # on the number of this epObject type. Making sure we
+                    # have an unique new name
+                    list_word_epObject_type = re.sub(r"([A-Z])", r" \1",
+                                                     epObject.fieldvalues[
+                                                         0]).split()
+                    # Making sure new name will be max 10 characters
+                    if len(list_word_epObject_type) > 4:
+                        list_word_epObject_type = list_word_epObject_type[:4]
 
-                        # Make sure uuid does not already exist
-                        while new_name in uniqueList:
-                            new_name = uuid.uuid4().hex[:13]
+                    first_letters = ''.join(word[0].lower() for word in
+                                            list_word_epObject_type)
+                    count += 1
+                    end_count = '%06d' % count
+                    new_name = first_letters + '_' + end_count
 
-                        uniqueList.append(new_name)
+                    # Make sure new name does not already exist
+                    new_name = ar.check_unique_name(first_letters, count,
+                                                     new_name,
+                                         uniqueList)
+
+                    uniqueList.append(new_name)
 
                     # print("changed layer {} with {}".format(old_name,
                     # new_name))
@@ -169,7 +180,7 @@ def parse_window_lib(window_file_path):
 
     # Save lines_for_df in text file
     # User did not provide an output folder path. We use the default setting
-    output_folder = os.path.relpath(ar.settings.data_folder)
+    output_folder = os.path.relpath(settings.data_folder)
 
     if not os.path.isdir(output_folder):
         os.mkdir(output_folder)
@@ -296,6 +307,59 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
             t_vis_win, lay_win, width, window_bunches[win_id])
 
 
+def trnbuild_idf(idf_file, template, dck=False, nonum=False, N=False,
+                 geo_floor=0.6, refarea=False, volume=False, capacitance=False,
+                 trnidf_exe_dir=r"C:\Trnsys\Building\trnsIDF\trnsysidf.exe"):
+    """
+
+    Args:
+        idf_file (str): path/filename.idf
+        template (str): path/NewFileTemplate.d18
+        dck (bool): create a template DCK
+        nonum (bool, optional): If True, no renumeration of surfaces
+        N (optional): BatchJob Modus
+        geo_floor (float, optional): generates GEOSURF values for
+            distributing direct solar radiation where 60 % is directed to the
+            floor, the rest to walls/windows. Default = 0.6
+        refarea (bool, optional): If True, floor reference area of airnodes is
+            updated
+        volume (bool, True): If True, volume of airnodes is updated
+        capacitance (bool, True): If True, capacitance of airnodes is updated
+        trnidf_exe_dir (str): Path of the trnsysidf.exe executable
+
+    Returns:
+        (str): status
+
+    Raises:
+        CalledProcessError
+
+    """
+
+    args = locals().copy()
+    idf = args.pop('idf_file')
+    template = args.pop('template')
+
+    trnsysidf_exe = trnidf_exe_dir
+
+    cmd = [trnsysidf_exe]
+    cmd.extend([idf])
+    cmd.extend([template])
+    for arg in args:
+        if args[arg]:
+            if isinstance(args[arg], bool):
+                args[arg] = ''
+            if args[arg] != "":
+                cmd.extend(['/{}={}'.format(arg, args[arg])])
+            else:
+                cmd.extend(['/{}'.format(arg)])
+
+    try:
+        subprocess.check_call(cmd, stdout=open(os.devnull, 'w'))
+    except subprocess.CalledProcessError:
+        raise
+    return 'OK'
+
+
 def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     """ Convert IDF file to T3D file to be able to load it in TRNBuild
 
@@ -315,8 +379,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     idf_dict = ar.load_idf(idf_file)
     idf = idf_dict[os.path.basename(idf_file)]
     log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
-        lg.INFO, name="ConverterLog", filename="ConverterLog",
-        avoid_console=True)
+        lg.INFO)
 
     # Load IDF_T3D template
     ori_idf_filename = "originBUISketchUp.idf"
@@ -329,8 +392,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     start_time = time.time()
     clear_name_idf_objects(idf)
     log("Cleaned IDF object names in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO, name="ConverterLog",
-        filename="ConverterLog")
+        time.time() - start_time), lg.INFO)
 
     # Get objects from IDF file
     materials = idf.idfobjects['MATERIAL']
@@ -351,6 +413,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     lights = idf.idfobjects['LIGHTS']
     equipments = idf.idfobjects['ELECTRICEQUIPMENT']
 
+    # region Get schedules from IDF
     start_time = time.time()
     schedule_names = []
     used_schedules = idf.get_used_schedules(yearly_only=True)
@@ -368,8 +431,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         schedules[schedule_name]['days'] = days
 
     log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO, name="ConverterLog",
-        filename="ConverterLog")
+        time.time() - start_time), lg.INFO)
+    # endregion
 
     # Get materials with resistance lower than 0.0007
     material_low_res = []
@@ -468,6 +531,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                   'OUTPUT:VARIABLEDICTIONARY')
 
     # Writing zones in lines
+    count_fs = 0
     for zone in zones:
         zone.Direction_of_Relative_North = 0.0
         if zone.Multiplier == '':
@@ -477,11 +541,15 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
         # Writing fenestrationSurface:Detailed in lines
         for fenestrationSurf in fenestrationSurfs:
+            count_fs += 1
             surfName = fenestrationSurf.Building_Surface_Name
             indiceSurf = [k for k, s in enumerate(buildingSurfs) if
                           surfName == s.Name]
             if buildingSurfs[indiceSurf[0]].Zone_Name == zone.Name:
 
+                # Clear fenestrationSurface:Detailed name
+                fenestrationSurf.Name = 'fs_' + '%06d' % count_fs
+                # Insure right construction name and number of vertices
                 fenestrationSurf.Construction_Name = "EXT_WINDOW1"
                 fenestrationSurf.Number_of_Vertices = len(
                     fenestrationSurf.coords)
@@ -505,6 +573,22 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                             = \
                             fenestrationSurf[
                                 "Vertex_" + str(j) + "_Zcoordinate"] + incrZ
+
+                # Round vertex to 4 decimal digit max
+                for j in range(1, len(
+                        fenestrationSurf.coords) + 1):
+                    fenestrationSurf["Vertex_" + str(j) + "_Xcoordinate"] \
+                        = \
+                        round(fenestrationSurf[
+                                  "Vertex_" + str(j) + "_Xcoordinate"], 4)
+                    fenestrationSurf["Vertex_" + str(j) + "_Ycoordinate"] \
+                        = \
+                        round(fenestrationSurf[
+                                  "Vertex_" + str(j) + "_Ycoordinate"], 4)
+                    fenestrationSurf["Vertex_" + str(j) + "_Zcoordinate"] \
+                        = \
+                        round(fenestrationSurf[
+                                  "Vertex_" + str(j) + "_Zcoordinate"], 4)
 
                 lines.insert(variableDictNum + 2, fenestrationSurf)
 
@@ -586,12 +670,29 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                   "Vertex_" + str(j) + "_Zcoordinate"] \
                               + incrZ
 
+                # Round vertex to 4 decimal digit max
+                for j in range(1, len(buildingSurfs[i].coords) + 1):
+                    buildingSurfs[i]["Vertex_" + str(j) + "_Xcoordinate"] \
+                        = round(buildingSurfs[i][
+                                    "Vertex_" + str(j) + "_Xcoordinate"], 4)
+                    buildingSurfs[i]["Vertex_" + str(j) + "_Ycoordinate"] \
+                        = round(buildingSurfs[i][
+                                    "Vertex_" + str(j) + "_Ycoordinate"], 4)
+                    buildingSurfs[i]["Vertex_" + str(j) + "_Zcoordinate"] \
+                        = round(buildingSurfs[i][
+                                    "Vertex_" + str(j) + "_Zcoordinate"], 4)
+
                 lines.insert(variableDictNum + 2, buildingSurfs[i])
 
         # Change coordinates from world (all zones to 0) to absolute
         if coordSys == 'World':
             zone.X_Origin, zone.Y_Origin, zone.Z_Origin = closest_coords(
                 surfList, to=zone_origin(zone))
+
+        # Round vertex to 4 decimal digit max
+        zone.X_Origin = round(zone.X_Origin, 4)
+        zone.Y_Origin = round(zone.Y_Origin, 4)
+        zone.Z_Origin = round(zone.Z_Origin, 4)
 
         lines.insert(variableDictNum + 2, zone)
     # endregion
@@ -627,7 +728,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                 if not indiceMat:
                     thickList.append(0.0)
                 else:
-                    thickList.append(materials[indiceMat[0]].Thickness)
+                    thickList.append(
+                        round(materials[indiceMat[0]].Thickness, 4))
 
                 layerList.append(constructions.list2[i][j])
 
@@ -772,8 +874,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             log(
                 "Could not find the Light Power Density, cause depend on the "
                 "number of peoples (Watts/Person)",
-                lg.WARNING, name="ConverterLog",
-                filename="ConverterLog")
+                lg.WARNING)
 
         radFract = float(lights[i].Fraction_Radiant)
 
@@ -800,18 +901,17 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             log(
                 "Could not find the Equipment Power Density, cause depend on "
                 "the number of peoples (Watts/Person)",
-                lg.WARNING, name="ConverterLog",
-                filename="ConverterLog")
+                lg.WARNING)
 
-        radFract = float(equipments[i].Fraction_Radiant)
+        radFract = round(float(equipments[i].Fraction_Radiant), 4)
 
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
                      ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : '
                                                                        'CATEGORY=LIGHTS\n')
-    # endregion
+        # endregion
 
-    # Write SCHEDULES from IDF to lines (T3D)
+    # region Write SCHEDULES from IDF to lines (T3D)
     # Get line number where to write
     scheduleNum = ar.checkStr(lines, 'S c h e d u l e s')
 
@@ -847,9 +947,10 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                      str(item) for item in
                                      rotate(schedules[schedule_name][period][
                                                 i].fieldvalues[2:9], 1)) + '\n')
+    # endregion
 
-    # Write WINDOWS chosen by the user (from Berkeley lab library) in lines (
-    # T3D)
+    # region Write WINDOWS chosen by the user (from Berkeley lab library) in
+    # lines (T3D)
     # Get window from library
     # window = (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
     #                 t_vis_win, lay_win, width, window_bunches[win_id],
@@ -860,13 +961,12 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         log(
             "WARNING : window tolerance was not respected. Final tolerance=  "
             "{:,.2f}".format(
-                window[-1]), lg.WARNING, name="ConverterLog",
-            filename="ConverterLog")
+                window[-1]), lg.WARNING)
     # Write in log (info) the characteristics of the window
     log(
         "Characterisitics of the chosen window are: u_value= {:,.2f}, "
         "SHGC= {:,.2f}, t_vis= {:,.2f}".format(window[3], window[4], window[7]),
-        lg.INFO, name="ConverterLog", filename="ConverterLog")
+        lg.INFO)
 
     # Get line number where to write
     windowNum = ar.checkStr(lines,
@@ -913,20 +1013,26 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                  str(window[4]) + ' ' + str(window[5]) + ' ' + str(window[6]) +
                  ' ' + str(window[7]) + ' ' + str(window[8]) + ' ' + str(
                      window[9]) + '\n')
+    # endregion
 
     # Save file at output_folder
     if output_folder is None:
         # User did not provide an output folder path. We use the default setting
-        output_folder = os.path.relpath(ar.settings.data_folder)
+        output_folder = os.path.relpath(settings.data_folder)
 
     if not os.path.isdir(output_folder):
         os.mkdir(output_folder)
 
-    with open(os.path.join(output_folder, "T3D_" + list(idf_dict.keys())[0]),
-              "w") as converted_file:
+    t3d_path = os.path.join(output_folder, "T3D_" + list(idf_dict.keys())[0])
+    with open(t3d_path, "w") as converted_file:
         for line in lines:
             converted_file.write(str(line))
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO, name="ConverterLog",
-        filename="ConverterLog")
+        time.time() - start_time), lg.INFO)
+
+    # Run trnsidf to convert T3D to BUI
+    template = "C:\Trnsys\Building\\trnsIDF\\NewFileTemplate.d18"
+    trnbuild_idf(t3d_path, template, dck=False, nonum=False, N=False,
+                 geo_floor=0.6, refarea=False, volume=False, capacitance=False,
+                 trnidf_exe_dir=r"C:\TRNSYS18\Building\trnsIDF\trnsidf.exe")

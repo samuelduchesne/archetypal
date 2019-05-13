@@ -8,7 +8,6 @@
 import functools
 import io
 import logging as lg
-import uuid
 from datetime import datetime, timedelta
 
 import archetypal
@@ -698,9 +697,17 @@ class Schedule(object):
 
         ep_days = []
         dict_day = {}
+        count_day = 0
         for unique_day in unique_days:
-            name = 'day_' + str(uuid.uuid4().hex)
+            count_day += 1
+            name = 'day_' + '%06d' % count_day
+            name = archetypal.check_unique_name('day', count_day,
+                                                name,
+                                                archetypal.settings.unique_schedules)
+
             dict_day[name] = unique_day
+
+            archetypal.settings.unique_schedules.append(name)
 
             # Create idf_objects for schedule:day:hourly
             ep_day = self.idf.add_object(
@@ -722,8 +729,14 @@ class Schedule(object):
         # keys
         # {'name_week': {'dayName':[]}}
         dict_week = {}
+        count_week = 0
         for unique_week in unique_weeks:
-            week_id = 'week_' + str(uuid.uuid4().hex)
+            count_week += 1
+            week_id = 'week_' + '%05d' % count_week
+            week_id = archetypal.check_unique_name('week', count_week,
+                                                week_id,
+                                                archetypal.settings.unique_schedules)
+            archetypal.settings.unique_schedules.append(week_id)
             dict_week[week_id] = {}
             for i in list(range(0, 7)):
                 day_of_week = unique_week[..., i * 24:(i + 1) * 24]

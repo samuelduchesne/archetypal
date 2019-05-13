@@ -113,3 +113,9 @@ common_umi_objects = []
 
 # default crs for when creating plots and querying databases
 default_crs = {'init': 'epsg:4326'}
+
+# unique schedule number as list
+unique_schedules = []
+
+# TRNSYS default location
+trnsys_default_folder = r"C:\TRNSYS18"

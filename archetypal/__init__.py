@@ -7,6 +7,7 @@
 
 __version__ = '1.2.0-dev'
 
+from .settings import *
 from .utils import *
 from .simple_glazing import *
 from .idfclass import IDF

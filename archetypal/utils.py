@@ -782,3 +782,27 @@ def load_umi_template(json_template):
                     dicts.items()]
     else:
         raise ValueError('File {} does not exist'.format(json_template))
+
+
+def check_unique_name(first_letters, count, name, unique_list):
+        """Making sure new_name does not already exist
+
+        Args:
+            first_letters (str): string at the beginning of the name, giving
+            a hint on what the variable is (e.g. : 'day_' for a schedule
+            day). DO NOT Include an underscore.
+            count (int): increment to create a unique id in the name
+            name (str): name that was just created. To be verified that it is
+            unique in this function
+            unique_list (list): list where unique names are stored
+
+        Returns:
+            new_name (str): name that is unique
+
+        """
+        while name in unique_list:
+            count += 1
+            end_count = '%06d' % count
+            name = first_letters + '_' + end_count
+
+        return name

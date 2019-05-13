@@ -789,11 +789,11 @@ def check_unique_name(first_letters, count, name, unique_list):
 
         Args:
             first_letters (str): string at the beginning of the name, giving
-            a hint on what the variable is (e.g. : 'day_' for a schedule
+                a hint on what the variable is (e.g. : 'day_' for a schedule
             day). DO NOT Include an underscore.
             count (int): increment to create a unique id in the name
             name (str): name that was just created. To be verified that it is
-            unique in this function
+                unique in this function
             unique_list (list): list where unique names are stored
 
         Returns:

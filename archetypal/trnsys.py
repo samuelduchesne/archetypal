@@ -345,7 +345,10 @@ def trnbuild_idf(idf_file, template=os.path.join(
 
     trnsysidf_exe = trnidf_exe_dir
 
-    cmd = [trnsysidf_exe]
+    if sys.platform == 'win32':
+        cmd = [trnsysidf_exe]
+    else:
+        cmd = ['wine', trnsysidf_exe]
     cmd.extend([idf])
     cmd.extend([template])
     for arg in args:

@@ -28,8 +28,7 @@ import numpy as np
 import pandas as pd
 from pandas.io.json import json_normalize
 
-import archetypal as ar
-from archetypal import settings
+from . import settings
 
 
 def config(data_folder=settings.data_folder,
@@ -668,7 +667,7 @@ def copy_file(files, where=None):
 
     # defaults to cache folder
     if where is None:
-        where = ar.settings.cache_folder
+        where = settings.cache_folder
 
     for file in files:
         dst = os.path.join(where, file)

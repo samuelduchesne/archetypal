@@ -307,9 +307,12 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
             t_vis_win, lay_win, width, window_bunches[win_id])
 
 
-def trnbuild_idf(idf_file, template, dck=False, nonum=False, N=False,
+def trnbuild_idf(idf_file, template=os.path.join(
+    settings.trnsys_default_folder,
+    r"Building\trnsIDF\NewFileTemplate.d18"), dck=False, nonum=False, N=False,
                  geo_floor=0.6, refarea=False, volume=False, capacitance=False,
-                 trnidf_exe_dir=r"C:\Trnsys\Building\trnsIDF\trnsysidf.exe"):
+                 trnidf_exe_dir=os.path.join(settings.trnsys_default_folder,
+                                             r"Building\trnsIDF\trnsidf.exe")):
     """
 
     Args:
@@ -360,23 +363,51 @@ def trnbuild_idf(idf_file, template, dck=False, nonum=False, N=False,
     return 'OK'
 
 
-def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
-    """ Convert IDF file to T3D file to be able to load it in TRNBuild
+def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
+                            return_t3d=False, return_dck=False,
+                            output_folder=None,
+                            trnidf_exe_dir=os.path.join(
+                                settings.trnsys_default_folder,
+                                r"Building\trnsIDF\trnsidf.exe"),
+                            template=os.path.join(
+                                settings.trnsys_default_folder,
+                                r"Building\trnsIDF\NewFileTemplate.d18"),
+                            **kwargs):
+    """ Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
+
+    There are three optional outputs:
+    - the path to the TRNBuild file (.b18)
+    - the path to the TRNBuild input file (.idf)
+    - the path to the TRNSYS dck file (.dck)
 
     Args:
-        idf (str): File path of IDF file to convert to T3D
-        window_lib (str): File path of the window library (from Berkeley Lab)
-        output_folder (str): location where output file will be saved. If None,
-            saves to settings.data_folder
-
+        idf (str): File path of IDF file to convert to T3D.
+        window_lib (str): File path of the window library (from Berkeley Lab).
+        return_b18 (bool, optional): If True, also return the path to the
+            TRNBuild file (.b18).
+        return_t3d (bool, optional): If True, also return the path to the TRNBuild
+            input file (.idf).
+        return_dck (bool, optional): If True, also return the path to the TRNSYS
+            dck file (.dck).
+        output_folder (str, optional): location where output files will be
+        saved. If None, saves to settings.data_folder.
+        trnidf_exe_dir (str): Path to *trnsidf.exe*.
+        template (str): Path to d18 template file.
+        kwargs (dict): keyword arguments sent to trnbuild_idf(). See
+            trnbuild_idf() for parameter definition
     Returns:
-        (idf file) : Input file for TRNBuild
+        (str, optional): the path to the TRNBuild file (.b18). Only provided
+            if *return_b18* is True.
+        (str, optional): the path to the TRNBuild input file (.idf). Only
+            provided if *return_t3d* is True.
+        (str, optional): the path to the TRNSYS dck file (.dck). Only provided
+            if *return_dck* is True.
 
     """
 
     start_time = time.time()
     # Load IDF file(s)
-    idf_dict = ar.load_idf(idf_file)
+    idf_dict = load_idf(idf_file)
     idf = idf_dict[os.path.basename(idf_file)]
     log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
         lg.INFO)
@@ -1032,7 +1063,29 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         time.time() - start_time), lg.INFO)
 
     # Run trnsidf to convert T3D to BUI
-    template = "C:\Trnsys\Building\\trnsIDF\\NewFileTemplate.d18"
-    trnbuild_idf(t3d_path, template, dck=False, nonum=False, N=False,
-                 geo_floor=0.6, refarea=False, volume=False, capacitance=False,
-                 trnidf_exe_dir=r"C:\TRNSYS18\Building\trnsIDF\trnsidf.exe")
+    if sys.platform == 'win32':
+        dck = return_dck
+        nonum = kwargs.get('nonum', False)
+        N = kwargs.get('N', False)
+        geo_floor = kwargs.get('geo_floor', 0.6)
+        refarea = kwargs.get('refarea', False)
+        volume = kwargs.get('volume', False)
+        capacitance = kwargs.get('capacitance', False)
+        trnbuild_idf(t3d_path, template, dck=dck, nonum=nonum, N=N,
+                     geo_floor=geo_floor, refarea=refarea, volume=volume,
+                     capacitance=capacitance,
+                     trnidf_exe_dir=trnidf_exe_dir)
+
+        # Prepare return arguments
+        pre, ext = os.path.splitext(t3d_path)
+        b18_path = t3d_path
+        os.rename(b18_path, pre + 'b18')
+        dck_path = t3d_path
+        os.rename(dck_path, pre + 'dck')
+    else:
+        b18_path = None
+        dck_path = None
+
+    from itertools import compress
+    return tuple(compress([b18_path, t3d_path, dck_path],
+                          [return_b18, return_t3d, return_dck]))

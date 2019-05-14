@@ -473,11 +473,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
     log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
         lg.INFO)
 
-    # Load IDF_T3D template
-    ori_idf_filename = "originBUISketchUp.idf"
-    ori_idf_filepath = os.path.join("input_data_trn", ori_idf_filename)
     # Read IDF_T3D template and write lines in variable
-    lines = open(ori_idf_filepath).readlines()
+    import io
+    lines = io.TextIOWrapper(io.BytesIO(settings.template)).readlines()
 
     # Clean names of idf objects (e.g. 'MATERIAL')
     start_time = time.time()
@@ -555,13 +553,13 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
 
     # Write VERSION from IDF to lines (T3D)
     # Get line number where to write
-    with open(ori_idf_filepath) as ori:
-        versionNum = checkStr(ori,
-                              'ALL OBJECTS IN CLASS: VERSION')
+    versionNum = checkStr(lines,
+                          'ALL OBJECTS IN CLASS: VERSION')
     # Writing VERSION infos to lines
     for i in range(0, len(versions)):
         lines.insert(versionNum,
-                     ",".join(str(item) for item in versions.list2[i]) + ';')
+                     ",".join(str(item) for item in versions.list2[i]) + ';'
+                     + '\n')
 
     # Write BUILDING from IDF to lines (T3D)
     # Get line number where to write
@@ -1117,7 +1115,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
     t3d_path = os.path.join(output_folder, "T3D_" + list(idf_dict.keys())[0])
     with open(t3d_path, "w") as converted_file:
         for line in lines:
-            converted_file.write(str(line))
+            converted_file.writelines(str(line))
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO)

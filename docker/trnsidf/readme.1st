@@ -1,0 +1,24 @@
+***********************************************************
+* TRNsIDF.EXE  - translater from IDF created by Trnsys3d to B18
+***********************************************************
+This program sorts and renumbers the IDF file and writes
+a B18 file based on the geometric information of the IDF file and
+the template B17 file. In addition, an template DCK file can be generated. 
+
+
+CALL: 
+
+TRNSIDF.EXE  %1 %2 %3 %4 %5 %6 %7 %8 %9
+  %1 absolute path\filename.idf
+  %2 absoluter path\NewFileTemplate.d18 
+  %3 /dck       create a template DCK
+  %4 /nonum         (optional: no renumeration of surfaces)
+  %5 /N             (optional: BatchJob Modus)
+  %6 /geo_floor=0.6 (optional: generates GEOSURF values for distributing direct solar radiation where 60 % is directed to the floor, the rest to walls/windows)
+  %7 /refarea       (optional: floor reference area of airnodes is updated)  
+  %8 /volume        (optional: volume of airnodes is updated)
+  %9 /capacitance   (optional: capacitance of airnodes is updated)
+
+Note: if no path is defined, the directory of TRNSIDF.EXE is asumed. 
+
+

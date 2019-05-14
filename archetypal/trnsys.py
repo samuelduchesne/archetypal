@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import time
+import io
 from collections import OrderedDict
 
 import numpy as np
@@ -25,9 +26,10 @@ from archetypal import log, settings, Schedule, load_idf, checkStr, \
 
 def clear_name_idf_objects(idfFile):
     """Clean names of IDF objects :
-        - replace special characters or whitespaces with "_"
-        - limits length to 13 characters
-        - replace name by an unique id if needed
+        - replace variable names with a unique name, easy to refer to the
+        original object. For example : if object is the n-th "Schedule Type
+        Limit", then the new name will be "stl_00000n"
+        - limits length to 10 characters
 
     Args:
         idfFile (eppy.modeleditor.IDF): IDF object where to clean names
@@ -60,9 +62,9 @@ def clear_name_idf_objects(idfFile):
                     old_name = epObject.Name
                     # For TRNBuild compatibility we oblige the new name to
                     # begin by a lowercase letter and the new name is max 10
-                    # characters. The new name is done with the first
-                    # uppercase of the epObject type and an increment depend
-                    # on the number of this epObject type. Making sure we
+                    # characters. The new name is done with the uppercase of
+                    # the epObject type and an increment depending on the number
+                    # of this epObject type. Making sure we
                     # have an unique new name
                     list_word_epObject_type = re.sub(r"([A-Z])", r" \1",
                                                      epObject.fieldvalues[
@@ -84,8 +86,7 @@ def clear_name_idf_objects(idfFile):
 
                     uniqueList.append(new_name)
 
-                    # print("changed layer {} with {}".format(old_name,
-                    # new_name))
+                    # Changing the name in the IDF object
                     modeleditor.rename(idfFile, obj, old_name, new_name)
                 except:
                     pass
@@ -109,10 +110,11 @@ def closest_coords(surfList, to=[0, 0, 0]):
     """Find closest coordinates to given ones
 
     Args:
-        surfList (idf_MSequence): list of surface with coordinates of each one
+        surfList (idf_MSequence): list of surfaces with coordinates of each one
         to (list): list of coordinates we want to calculate the distance from
 
-    Returns: the closest point (its coordinates x, y, z) to the point chosen
+    Returns:
+        the closest point (its coordinates x, y, z) to the point chosen
         (input "to")
 
     """
@@ -125,8 +127,6 @@ def closest_coords(surfList, to=[0, 0, 0]):
             tuple_list.append(surf.coords[i])
 
     nbdata = np.array(tuple_list)
-    # nbdata = np.array([buildingSurf.coords for buildingSurf in
-    # surfList]).reshape(size,len(to))
     btree = cKDTree(data=nbdata, compact_nodes=True, balanced_tree=True)
     dist, idx = btree.query(np.array(to).T, k=1)
     x, y, z = nbdata[idx]
@@ -134,7 +134,7 @@ def closest_coords(surfList, to=[0, 0, 0]):
 
 
 def recursive_len(item):
-    """Calculate the number of elments in nested list
+    """Calculate the number of elements in nested list
 
     Args:
         item (list): list of lists (i.e. nested list)
@@ -149,7 +149,7 @@ def recursive_len(item):
 
 
 def rotate(l, n):
-    """
+    """Shift list elements to the left
 
     Args:
         l (list): list to rotate
@@ -162,8 +162,27 @@ def rotate(l, n):
 
 
 def parse_window_lib(window_file_path):
+    """Function that parse window library from Berkeley Lab in two parts.
+    First part is a dataframe with the window characteristics. Second part is a
+    dictionary with the description/properties of each window.
+
+    Args:
+        window_file_path (str): Path to the window library
+
+    Returns:
+        df_windows (dataframe): dataframe with the window characteristics in
+            the columns and the window id as rows
+        bunches (dict): dict with the window id as key and
+            description/properties of each window as value
+
+    """
+
     # Read window library and write lines in variable
-    all_lines = open(window_file_path).readlines()
+    if window_file_path is None:
+        all_lines = io.TextIOWrapper(io.BytesIO(
+            settings.template_winLib)).readlines()
+    else:
+        all_lines = open(window_file_path).readlines()
 
     # Select list of windows at the end of the file
     end = '*** END OF LIBRARY ***'
@@ -215,7 +234,15 @@ def parse_window_lib(window_file_path):
 
 
 def get_window_id(bunches):
-    """Return bunch of window properties with their window id"""
+    """Return bunch of window properties with their window id
+
+    Args:
+        bunches (dict): dict with the window id as key and
+            description/properties of each window as value
+
+    Returns:
+
+    """
     id_line = 'Window ID   :'
     for bunch in bunches:
         for line in bunch:
@@ -242,7 +269,8 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
             wanted by the user
         window_lib_path (.dat file): window library from Berkeley lab
 
-    Returns (tuple): The window chosen : window_ID, the "bunch" of
+    Returns
+        (tuple): The window chosen : window_ID, the "bunch" of
         description/properties from Berkeley lab, window u_value, window shgc,
         and window visible transmittance. If tolerance not respected return new
         tolerance used to find a window.
@@ -376,7 +404,7 @@ def trnbuild_idf(idf_file, template=os.path.join(
                 cmd.extend(['/{}'.format(arg)])
 
     try:
-        # execute de command
+        # execute the command
         log('Running cmd: {}'.format(cmd), lg.DEBUG)
         command_line_process = subprocess.Popen(cmd,
                                                 stdout=subprocess.PIPE,
@@ -389,10 +417,9 @@ def trnbuild_idf(idf_file, template=os.path.join(
         log('Trnsidf.exe failed', lg.ERROR)
         return False
     else:
+        # Send trnsidf log to logger
         pre, ext = os.path.splitext(idf)
-        b18_file = pre + '.b18'
         log_file = pre + '.log'
-        dck_file = pre + '.dck'
         if os.path.isfile(log_file):
             with open(log_file, 'r') as f:
                 log(f.read(), lg.DEBUG)
@@ -400,16 +427,13 @@ def trnbuild_idf(idf_file, template=os.path.join(
         return True
 
 
-def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
+def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
                             return_t3d=False, return_dck=False,
-                            output_folder=None,
-                            trnidf_exe_dir=os.path.join(
-                                settings.trnsys_default_folder,
-                                r"Building\trnsIDF\trnsidf.exe"),
-                            template=os.path.join(
-                                settings.trnsys_default_folder,
-                                r"Building\trnsIDF\NewFileTemplate.d18"),
-                            **kwargs):
+                            output_folder=None, trnidf_exe_dir=os.path.join(
+            settings.trnsys_default_folder,
+            r"Building\trnsIDF\trnsidf.exe"), template=os.path.join(
+            settings.trnsys_default_folder,
+            r"Building\trnsIDF\NewFileTemplate.d18"), **kwargs):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
 
     There are three optional outputs:
@@ -450,12 +474,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
     log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
         lg.INFO)
 
-    # Load IDF_T3D template
-    ori_idf_filename = "originBUISketchUp.idf"
-    ori_idf_filepath = os.path.join("tests", "input_data", "trnsys",
-                                    ori_idf_filename)
     # Read IDF_T3D template and write lines in variable
-    lines = open(ori_idf_filepath).readlines()
+    lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
     # Clean names of idf objects (e.g. 'MATERIAL')
     start_time = time.time()
@@ -533,13 +553,13 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
 
     # Write VERSION from IDF to lines (T3D)
     # Get line number where to write
-    with open(ori_idf_filepath) as ori:
-        versionNum = checkStr(ori,
-                              'ALL OBJECTS IN CLASS: VERSION')
+    versionNum = checkStr(lines,
+                          'ALL OBJECTS IN CLASS: VERSION')
     # Writing VERSION infos to lines
     for i in range(0, len(versions)):
         lines.insert(versionNum,
-                     ",".join(str(item) for item in versions.list2[i]) + ';')
+                     ",".join(str(item) for item in versions.list2[i]) + ';'
+                     + '\n')
 
     # Write BUILDING from IDF to lines (T3D)
     # Get line number where to write
@@ -978,7 +998,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
                      ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : '
                                                                        'CATEGORY=LIGHTS\n')
-        # endregion
+    # endregion
 
     # region Write SCHEDULES from IDF to lines (T3D)
     # Get line number where to write
@@ -1095,7 +1115,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
     t3d_path = os.path.join(output_folder, "T3D_" + list(idf_dict.keys())[0])
     with open(t3d_path, "w") as converted_file:
         for line in lines:
-            converted_file.write(str(line))
+            converted_file.writelines(str(line))
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO)
@@ -1115,10 +1135,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
 
     # Prepare return arguments
     pre, ext = os.path.splitext(t3d_path)
-    b18_path = t3d_path
-    os.rename(b18_path, pre + 'b18')
-    dck_path = t3d_path
-    os.rename(dck_path, pre + 'dck')
+    b18_path = pre + 'b18'
+    dck_path = pre + 'dck'
 
     from itertools import compress
     return tuple(compress([b18_path, t3d_path, dck_path],

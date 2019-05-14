@@ -18,6 +18,7 @@ import json
 import logging as lg
 import os
 import re
+import shutil
 import sys
 import unicodedata
 import warnings
@@ -707,7 +708,11 @@ class cd:
 
     def __enter__(self):
         self.savedPath = os.getcwd()
-        os.chdir(self.newPath)
+        if os.path.isdir(self.newPath):
+            os.chdir(self.newPath)
+        else:
+            os.mkdir(self.newPath)
+            os.chdir(self.newPath)
 
     def __exit__(self, etype, value, traceback):
         os.chdir(self.savedPath)

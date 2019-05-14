@@ -412,10 +412,9 @@ def trnbuild_idf(idf_file, template=os.path.join(
         log('Trnsidf.exe failed', lg.ERROR)
         return False
     else:
+        # Send trnsidf log to logger
         pre, ext = os.path.splitext(idf)
-        b18_file = pre + '.b18'
         log_file = pre + '.log'
-        dck_file = pre + '.dck'
         if os.path.isfile(log_file):
             with open(log_file, 'r') as f:
                 log(f.read(), lg.DEBUG)
@@ -998,7 +997,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
                      ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : '
                                                                        'CATEGORY=LIGHTS\n')
-        # endregion
+    # endregion
 
     # region Write SCHEDULES from IDF to lines (T3D)
     # Get line number where to write
@@ -1135,10 +1134,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
 
     # Prepare return arguments
     pre, ext = os.path.splitext(t3d_path)
-    b18_path = t3d_path
-    os.rename(b18_path, pre + 'b18')
-    dck_path = t3d_path
-    os.rename(dck_path, pre + 'dck')
+    b18_path = pre + 'b18'
+    dck_path = pre + 'dck'
 
     from itertools import compress
     return tuple(compress([b18_path, t3d_path, dck_path],

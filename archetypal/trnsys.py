@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import time
+import io
 from collections import OrderedDict
 
 import numpy as np
@@ -177,7 +178,11 @@ def parse_window_lib(window_file_path):
     """
 
     # Read window library and write lines in variable
-    all_lines = open(window_file_path).readlines()
+    if window_file_path is None:
+        all_lines = io.TextIOWrapper(io.BytesIO(
+            settings.template_winLib)).readlines()
+    else:
+        all_lines = open(window_file_path).readlines()
 
     # Select list of windows at the end of the file
     end = '*** END OF LIBRARY ***'
@@ -422,16 +427,13 @@ def trnbuild_idf(idf_file, template=os.path.join(
         return True
 
 
-def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
+def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
                             return_t3d=False, return_dck=False,
-                            output_folder=None,
-                            trnidf_exe_dir=os.path.join(
-                                settings.trnsys_default_folder,
-                                r"Building\trnsIDF\trnsidf.exe"),
-                            template=os.path.join(
-                                settings.trnsys_default_folder,
-                                r"Building\trnsIDF\NewFileTemplate.d18"),
-                            **kwargs):
+                            output_folder=None, trnidf_exe_dir=os.path.join(
+            settings.trnsys_default_folder,
+            r"Building\trnsIDF\trnsidf.exe"), template=os.path.join(
+            settings.trnsys_default_folder,
+            r"Building\trnsIDF\NewFileTemplate.d18"), **kwargs):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
 
     There are three optional outputs:
@@ -473,8 +475,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
         lg.INFO)
 
     # Read IDF_T3D template and write lines in variable
-    import io
-    lines = io.TextIOWrapper(io.BytesIO(settings.template)).readlines()
+    lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
     # Clean names of idf objects (e.g. 'MATERIAL')
     start_time = time.time()

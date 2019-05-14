@@ -7,10 +7,11 @@
 
 import logging as lg
 import os
+import re
+import shutil
 import subprocess
 import sys
 import time
-import re
 from collections import OrderedDict
 
 import numpy as np
@@ -314,7 +315,9 @@ def trnbuild_idf(idf_file, template=os.path.join(
                  geo_floor=0.6, refarea=False, volume=False, capacitance=False,
                  trnidf_exe_dir=os.path.join(settings.trnsys_default_folder,
                                              r"Building\trnsIDF\trnsidf.exe")):
-    """
+    """This program sorts and renumbers the IDF file and writes a B18 file
+    based on the geometric information of the IDF file and the template D18
+    file. In addition, an template DCK file can be generated.
 
     Args:
         idf_file (str): path/filename.idf
@@ -338,14 +341,28 @@ def trnbuild_idf(idf_file, template=os.path.join(
         CalledProcessError
 
     """
+    # first copy idf_file into output folder
+    if not os.path.isdir(settings.data_folder):
+        os.mkdir(settings.data_folder)
+    head, tail = os.path.split(idf_file)
+    new_idf_file = os.path.join(settings.data_folder, tail)
+    shutil.copyfile(idf_file, new_idf_file)
+    idf_file = os.path.abspath(new_idf_file)  # back to idf_file
+    del new_idf_file, head, tail
 
+    # Continue
     args = locals().copy()
-    idf = args.pop('idf_file')
-    template = args.pop('template')
+    idf = os.path.abspath(args.pop('idf_file'))
+    template = os.path.abspath(args.pop('template'))
+    trnsysidf_exe = os.path.abspath(args.pop('trnidf_exe_dir'))
 
-    trnsysidf_exe = trnidf_exe_dir
+    if not os.path.isfile(idf) or not os.path.isfile(template):
+        raise FileNotFoundError()
 
-    cmd = [trnsysidf_exe]
+    if sys.platform == 'win32':
+        cmd = [trnsysidf_exe]
+    else:
+        cmd = ['wine', trnsysidf_exe]
     cmd.extend([idf])
     cmd.extend([template])
     for arg in args:
@@ -358,10 +375,28 @@ def trnbuild_idf(idf_file, template=os.path.join(
                 cmd.extend(['/{}'.format(arg)])
 
     try:
-        subprocess.check_call(cmd, stdout=open(os.devnull, 'w'))
-    except subprocess.CalledProcessError:
-        raise
-    return 'OK'
+        # execute de command
+        log('Running cmd: {}'.format(cmd), lg.DEBUG)
+        command_line_process = subprocess.Popen(cmd,
+                                                stdout=subprocess.PIPE,
+                                                stderr=subprocess.STDOUT)
+        process_output, _ = command_line_process.communicate()
+        # process_output is now a string, not a file
+        log(process_output.decode('utf-8'), lg.DEBUG)
+    except subprocess.CalledProcessError as exception:
+        log('Exception occured: ' + str(exception), lg.ERROR)
+        log('Trnsidf.exe failed', lg.ERROR)
+        return False
+    else:
+        pre, ext = os.path.splitext(idf)
+        b18_file = pre + '.b18'
+        log_file = pre + '.log'
+        dck_file = pre + '.dck'
+        if os.path.isfile(log_file):
+            with open(log_file, 'r') as f:
+                log(f.read(), lg.DEBUG)
+
+        return True
 
 
 def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
@@ -374,7 +409,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
                                 settings.trnsys_default_folder,
                                 r"Building\trnsIDF\NewFileTemplate.d18"),
                             **kwargs):
-    """ Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
+    """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
 
     There are three optional outputs:
     - the path to the TRNBuild file (.b18)
@@ -386,7 +421,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
         window_lib (str): File path of the window library (from Berkeley Lab).
         return_b18 (bool, optional): If True, also return the path to the
             TRNBuild file (.b18).
-        return_t3d (bool, optional): If True, also return the path to the TRNBuild
+        return_t3d (bool, optional): If True, also return the path to the
+        TRNBuild
             input file (.idf).
         return_dck (bool, optional): If True, also return the path to the TRNSYS
             dck file (.dck).
@@ -945,7 +981,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
 
     # region Write SCHEDULES from IDF to lines (T3D)
     # Get line number where to write
-    scheduleNum = ar.checkStr(lines, 'S c h e d u l e s')
+    scheduleNum = checkStr(lines, 'S c h e d u l e s')
 
     hour_list = list(range(25))
     week_list = list(range(1, 8))
@@ -1064,28 +1100,24 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
         time.time() - start_time), lg.INFO)
 
     # Run trnsidf to convert T3D to BUI
-    if sys.platform == 'win32':
-        dck = return_dck
-        nonum = kwargs.get('nonum', False)
-        N = kwargs.get('N', False)
-        geo_floor = kwargs.get('geo_floor', 0.6)
-        refarea = kwargs.get('refarea', False)
-        volume = kwargs.get('volume', False)
-        capacitance = kwargs.get('capacitance', False)
-        trnbuild_idf(t3d_path, template, dck=dck, nonum=nonum, N=N,
-                     geo_floor=geo_floor, refarea=refarea, volume=volume,
-                     capacitance=capacitance,
-                     trnidf_exe_dir=trnidf_exe_dir)
+    dck = return_dck
+    nonum = kwargs.get('nonum', False)
+    N = kwargs.get('N', False)
+    geo_floor = kwargs.get('geo_floor', 0.6)
+    refarea = kwargs.get('refarea', False)
+    volume = kwargs.get('volume', False)
+    capacitance = kwargs.get('capacitance', False)
+    trnbuild_idf(t3d_path, template, dck=dck, nonum=nonum, N=N,
+                 geo_floor=geo_floor, refarea=refarea, volume=volume,
+                 capacitance=capacitance,
+                 trnidf_exe_dir=trnidf_exe_dir)
 
-        # Prepare return arguments
-        pre, ext = os.path.splitext(t3d_path)
-        b18_path = t3d_path
-        os.rename(b18_path, pre + 'b18')
-        dck_path = t3d_path
-        os.rename(dck_path, pre + 'dck')
-    else:
-        b18_path = None
-        dck_path = None
+    # Prepare return arguments
+    pre, ext = os.path.splitext(t3d_path)
+    b18_path = t3d_path
+    os.rename(b18_path, pre + 'b18')
+    dck_path = t3d_path
+    os.rename(dck_path, pre + 'dck')
 
     from itertools import compress
     return tuple(compress([b18_path, t3d_path, dck_path],

@@ -1,20 +1,7 @@
 dist: xenial
 language: python
-
-matrix:
-  include:
-    # Linux, on develop
-    - if: branch = develop
-      os: linux
-      env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
-    # OSX, on develop
-    - if: branch = develop
-      os: osx
-      env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
-    # Windows, on develop
-    - if: branch = develop
-      os: windows
-      env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
+os: linux
+env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
 
 addons:
   apt:

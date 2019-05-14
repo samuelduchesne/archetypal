@@ -73,7 +73,7 @@ def test_run_olderv(fresh_start, ep_version):
                  expandobjects=True, verbose='q', )
 
 
-@pytest.mark.xfail(raises=CalledProcessError)
+@pytest.mark.xfail(raises=(CalledProcessError, FileNotFoundError))
 def test_run_olderv_problematic(fresh_start):
     """Will run eplus on a file that needs to be upgraded and that should
     fail. Will be ignored in the test suite"""

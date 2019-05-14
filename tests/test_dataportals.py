@@ -1,6 +1,6 @@
 import archetypal as ar
 import pandas as pd
-# configure archetypal
+
 from archetypal import download_bld_window
 
 

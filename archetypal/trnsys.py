@@ -474,8 +474,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
 
     # Load IDF_T3D template
     ori_idf_filename = "originBUISketchUp.idf"
-    ori_idf_filepath = os.path.join("tests", "input_data", "trnsys",
-                                    ori_idf_filename)
+    ori_idf_filepath = os.path.join("input_data_trn", ori_idf_filename)
     # Read IDF_T3D template and write lines in variable
     lines = open(ori_idf_filepath).readlines()
 

@@ -16,6 +16,10 @@ matrix:
       os: windows
       env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
 
+addons:
+  apt:
+    packages:
+      wine
 
 before_install:
   # install EnergyPlus

@@ -8,6 +8,7 @@
 import logging as lg
 
 # locations to save data, logs, images, and cache
+import archetypal
 
 data_folder = 'data'
 logs_folder = 'logs'
@@ -119,3 +120,20 @@ unique_schedules = []
 
 # TRNSYS default location
 trnsys_default_folder = r"C:\TRNSYS18"
+
+# region read template - use io.BytesIO(settings.template) in code
+import pkg_resources
+
+resource_package = archetypal.__name__  # Could be any module/package name
+
+# originBUISketchUp.idf template
+resource_path = '/'.join(('templates', 'originBUISketchUp.idf'))
+# Do not use os.path.join()
+template_BUI = pkg_resources.resource_string(resource_package, resource_path)
+
+# window library ('W74-lib.dat') template
+resource_path = '/'.join(('templates', 'W74-lib.dat'))
+# Do not use os.path.join()
+template_winLib = pkg_resources.resource_string(resource_package,
+                                                resource_path)
+# endregion

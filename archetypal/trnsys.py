@@ -25,9 +25,10 @@ from archetypal import log, settings, Schedule, load_idf, checkStr, \
 
 def clear_name_idf_objects(idfFile):
     """Clean names of IDF objects :
-        - replace special characters or whitespaces with "_"
-        - limits length to 13 characters
-        - replace name by an unique id if needed
+        - replace variable names with a unique name, easy to refer to the
+        original object. For example : if object is the n-th "Schedule Type
+        Limit", then the new name will be "stl_00000n"
+        - limits length to 10 characters
 
     Args:
         idfFile (eppy.modeleditor.IDF): IDF object where to clean names
@@ -60,9 +61,9 @@ def clear_name_idf_objects(idfFile):
                     old_name = epObject.Name
                     # For TRNBuild compatibility we oblige the new name to
                     # begin by a lowercase letter and the new name is max 10
-                    # characters. The new name is done with the first
-                    # uppercase of the epObject type and an increment depend
-                    # on the number of this epObject type. Making sure we
+                    # characters. The new name is done with the uppercase of
+                    # the epObject type and an increment depending on the number
+                    # of this epObject type. Making sure we
                     # have an unique new name
                     list_word_epObject_type = re.sub(r"([A-Z])", r" \1",
                                                      epObject.fieldvalues[
@@ -84,8 +85,7 @@ def clear_name_idf_objects(idfFile):
 
                     uniqueList.append(new_name)
 
-                    # print("changed layer {} with {}".format(old_name,
-                    # new_name))
+                    # Changing the name in the IDF object
                     modeleditor.rename(idfFile, obj, old_name, new_name)
                 except:
                     pass
@@ -109,10 +109,11 @@ def closest_coords(surfList, to=[0, 0, 0]):
     """Find closest coordinates to given ones
 
     Args:
-        surfList (idf_MSequence): list of surface with coordinates of each one
+        surfList (idf_MSequence): list of surfaces with coordinates of each one
         to (list): list of coordinates we want to calculate the distance from
 
-    Returns: the closest point (its coordinates x, y, z) to the point chosen
+    Returns:
+        the closest point (its coordinates x, y, z) to the point chosen
         (input "to")
 
     """
@@ -125,8 +126,6 @@ def closest_coords(surfList, to=[0, 0, 0]):
             tuple_list.append(surf.coords[i])
 
     nbdata = np.array(tuple_list)
-    # nbdata = np.array([buildingSurf.coords for buildingSurf in
-    # surfList]).reshape(size,len(to))
     btree = cKDTree(data=nbdata, compact_nodes=True, balanced_tree=True)
     dist, idx = btree.query(np.array(to).T, k=1)
     x, y, z = nbdata[idx]
@@ -134,7 +133,7 @@ def closest_coords(surfList, to=[0, 0, 0]):
 
 
 def recursive_len(item):
-    """Calculate the number of elments in nested list
+    """Calculate the number of elements in nested list
 
     Args:
         item (list): list of lists (i.e. nested list)
@@ -149,7 +148,7 @@ def recursive_len(item):
 
 
 def rotate(l, n):
-    """
+    """Shift list elements to the left
 
     Args:
         l (list): list to rotate
@@ -162,6 +161,21 @@ def rotate(l, n):
 
 
 def parse_window_lib(window_file_path):
+    """Function that parse window library from Berkeley Lab in two parts.
+    First part is a dataframe with the window characteristics. Second part is a
+    dictionary with the description/properties of each window.
+
+    Args:
+        window_file_path (str): Path to the window library
+
+    Returns:
+        df_windows (dataframe): dataframe with the window characteristics in
+            the columns and the window id as rows
+        bunches (dict): dict with the window id as key and
+            description/properties of each window as value
+
+    """
+
     # Read window library and write lines in variable
     all_lines = open(window_file_path).readlines()
 
@@ -215,7 +229,15 @@ def parse_window_lib(window_file_path):
 
 
 def get_window_id(bunches):
-    """Return bunch of window properties with their window id"""
+    """Return bunch of window properties with their window id
+
+    Args:
+        bunches (dict): dict with the window id as key and
+            description/properties of each window as value
+
+    Returns:
+
+    """
     id_line = 'Window ID   :'
     for bunch in bunches:
         for line in bunch:
@@ -242,7 +264,8 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
             wanted by the user
         window_lib_path (.dat file): window library from Berkeley lab
 
-    Returns (tuple): The window chosen : window_ID, the "bunch" of
+    Returns
+        (tuple): The window chosen : window_ID, the "bunch" of
         description/properties from Berkeley lab, window u_value, window shgc,
         and window visible transmittance. If tolerance not respected return new
         tolerance used to find a window.
@@ -375,7 +398,7 @@ def trnbuild_idf(idf_file, template=os.path.join(
                 cmd.extend(['/{}'.format(arg)])
 
     try:
-        # execute de command
+        # execute the command
         log('Running cmd: {}'.format(cmd), lg.DEBUG)
         command_line_process = subprocess.Popen(cmd,
                                                 stdout=subprocess.PIPE,

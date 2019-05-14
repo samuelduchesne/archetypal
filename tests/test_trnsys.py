@@ -14,6 +14,7 @@ def round_up(n, decimals=0):
     return math.ceil(n * multiplier) / multiplier
 
 
+@pytest.mark.win32
 def test_trnbuild_from_idf(config):
     # Path to IDF file to convert
 
@@ -64,7 +65,7 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
         window_lib=window_filepath,
         template="tests/input_data/trnsys/NewFileTemplate.d18",
         trnidf_exe_dir='docker/trnsidf/trnsidf.exe') for
-               file in files}
+        file in files}
 
     parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
 

@@ -168,8 +168,7 @@ def log(message, level=None, name=None, filename=None, avoid_console=False):
 
 
 def get_logger(level=None, name=None, filename=None):
-    """
-    Create a logger or return the current one if already instantiated.
+    """Create a logger or return the current one if already instantiated.
 
     Args:
         level (int): one of the logger.level constants

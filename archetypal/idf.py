@@ -1094,24 +1094,26 @@ def perform_transition(file, to_version=None):
     """Transition program for idf version 1-0-0 to version 8-9-0.
 
     Args:
-        file (str): path of the idf file
+        file (str): path of idf file
+        to_version (str): EnergyPlus version in the form "X-X-X".
 
     Returns:
-        None
-        :param doted_version:
 
     """
     versionid = get_idf_version(file, doted=False)[0:5]
     doted_version = get_idf_version(file, doted=True)
     iddfile = getiddfile(doted_version)
     if os.path.exists(iddfile):
+        # if a E+ exists, pass
         pass
         # might be an old version of E+
-    else:
+    elif tuple(map(int, doted_version.split('.'))) < (8, 0):
+        # else if the version is an old E+ version (< 8.0)
         iddfile = getoldiddfile(doted_version)
     vupdater_path, _ = iddfile.split('Energy+')
-    # What is the latest E+ installed version
+    # use to_version
     if to_version is None:
+        # What is the latest E+ installed version
         to_version = find_eplus_installs(vupdater_path)
     ep_installation_name = os.path.abspath(os.path.dirname(iddfile)).replace(
         versionid, to_version)

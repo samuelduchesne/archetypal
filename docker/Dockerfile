@@ -66,6 +66,9 @@ RUN curl -SLO $ENERGYPLUS_DOWNLOAD_URL && \
     echo "y\r" | ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT && \
     rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
 
+# Add trnsidf
+COPY ./trnsidf /app/trnsidf
+
 # configure conda and install packages in one RUN to keep image tidy
 RUN git clone --branch=develop --verbose https://github.com/samuelduchesne/archetypal.git && \
     cd archetypal && \

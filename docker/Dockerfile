@@ -17,7 +17,10 @@
 # >>> conda env export -n base > /home/archetypal/wip/environment.yml
 #
 # Run jupyter lab in this container:
+# On Linux/MacOs
 # >>> docker run --rm -it -p 8888:8888 -v "$PWD":/home/archetypal/wip samuelduchesne/archetypal
+# On Windows (With PowerShell, use ${PWD})
+# >>> docker run --rm -it -p 8888:8888 -v %cd%:/home/archetypal/wip samuelduchesne/archetypal
 #
 # Stop/delete all local docker containers/images:
 # >>> docker stop $(docker ps -aq)
@@ -25,15 +28,34 @@
 # >>> docker rmi $(docker images -q)
 ########################################################################
 
-FROM continuumio/miniconda3
+FROM scottyhardy/docker-wine:latest
+
 LABEL maintainer="Samuel Letellier-Duchesne <samuel.letellier-duchesne@polymtl.ca>"
 LABEL url="https://github.com/samuelduchesne/archetypal"
 LABEL description="archetypal: Retrieve, construct, simulate, and analyse building archetypes"
 
-# Clone repo
-RUN git clone --branch=develop https://github.com/samuelduchesne/archetypal.git
+# Get git related dependecies
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
+ENV PATH /opt/conda/bin:$PATH
 
-# Before install
+RUN apt-get update --fix-missing && \
+    apt-get install -y wget bzip2 ca-certificates curl git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh -O ~/miniconda.sh && \
+    /bin/bash ~/miniconda.sh -b -p /opt/conda && \
+    rm ~/miniconda.sh && \
+    /opt/conda/bin/conda clean -tipsy && \
+    ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
+    echo "conda activate base" >> ~/.bashrc
+
+ENV TINI_VERSION v0.16.1
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
+RUN chmod +x /usr/bin/tini
+
+# Add EnergyPlus
 ENV ENERGYPLUS_VERSION=8.9.0
 ENV ENERGYPLUS_SHA=40101eaafd
 ENV ENERGYPLUS_INSTALL_VERSION=8-9-0
@@ -47,9 +69,13 @@ RUN curl -SLO $ENERGYPLUS_DOWNLOAD_URL && \
     echo "y\r" | ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT && \
     rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
 
+# Add trnsidf
+COPY ./trnsidf /app/trnsidf
+
 # configure conda and install packages in one RUN to keep image tidy
-WORKDIR archetypal
-RUN conda update -n base conda && \
+RUN git clone --branch=develop --verbose https://github.com/samuelduchesne/archetypal.git && \
+    cd archetypal && \
+    conda update -n base conda && \
     conda config --append channels conda-forge && \
     conda env update -n archetypal -f environment.yml --prune && \
     conda install -n archetypal --file requirements-dev.txt && \
@@ -63,7 +89,7 @@ ENV PATH /opt/conda/envs/archetypal/bin:$PATH
 
 # launch notebook in the local working directory that we mount
 WORKDIR /home/archetypal/wip
-
+ENTRYPOINT ["/usr/bin/entrypoint"]
 # set default command to launch when container is run
 CMD ["jupyter", "lab", "--ip='0.0.0.0'", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=''", "--NotebookApp.password=''"]
 

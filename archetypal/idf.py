@@ -861,6 +861,7 @@ def parallel_process(in_dict, function, processors, use_kwargs=True):
             else:
                 out[key] = futures[key]
         except Exception as e:
+            log(str(e), lg.ERROR)
             out[futures[key]] = e
     return out
 

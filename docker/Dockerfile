@@ -17,7 +17,10 @@
 # >>> conda env export -n base > /home/archetypal/wip/environment.yml
 #
 # Run jupyter lab in this container:
+# On Linux/MacOs
 # >>> docker run --rm -it -p 8888:8888 -v "$PWD":/home/archetypal/wip samuelduchesne/archetypal
+# On Windows (With PowerShell, use ${PWD})
+# >>> docker run --rm -it -p 8888:8888 -v %cd%:/home/archetypal/wip samuelduchesne/archetypal
 #
 # Stop/delete all local docker containers/images:
 # >>> docker stop $(docker ps -aq)
@@ -52,7 +55,7 @@ ENV TINI_VERSION v0.16.1
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
 RUN chmod +x /usr/bin/tini
 
-# Before install
+# Add EnergyPlus
 ENV ENERGYPLUS_VERSION=8.9.0
 ENV ENERGYPLUS_SHA=40101eaafd
 ENV ENERGYPLUS_INSTALL_VERSION=8-9-0

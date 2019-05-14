@@ -45,14 +45,11 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
     files = ["NECB 2011 - Warehouse.idf", "NECB 2011 - Small Office.idf"]
 
-    window_file = 'W74-lib.dat'
-    window_filepath = os.path.join(file_upper_path, window_file)
 
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
     in_dict = {os.path.basename(file): dict(
         idf_file=os.path.join(file_upper_path, file),
-        window_lib=window_filepath,
         template="tests/input_data/trnsys/NewFileTemplate.d18",
         trnidf_exe_dir='docker/trnsidf/trnsidf.exe') for
         file in files}

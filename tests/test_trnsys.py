@@ -43,7 +43,11 @@ def test_trnbuild_from_idf_parallel(config):
                                         'window_lib': window_filepath} for
                file in files}
 
-    parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
+    result = parallel_process(in_dict, convert_idf_to_trnbuild, 4,
+                            use_kwargs=True)
+
+    assert not any(isinstance(a, Exception) for a in result.values())
+
 
 
 @pytest.mark.darwin

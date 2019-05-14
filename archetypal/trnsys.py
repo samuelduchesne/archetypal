@@ -5,6 +5,7 @@
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
 
+import io
 import logging as lg
 import os
 import re
@@ -12,7 +13,6 @@ import shutil
 import subprocess
 import sys
 import time
-import io
 from collections import OrderedDict
 
 import numpy as np
@@ -1048,12 +1048,12 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
     # If tolerance was not respected to find a window, write in log a warning
     if len(window) > 11:
         log(
-            "WARNING : window tolerance was not respected. Final tolerance=  "
+            "Window tolerance was not respected. Final tolerance = "
             "{:,.2f}".format(
                 window[-1]), lg.WARNING)
     # Write in log (info) the characteristics of the window
     log(
-        "Characterisitics of the chosen window are: u_value= {:,.2f}, "
+        "Characterisitics of the chosen window are: u_value = {:,.2f}, "
         "SHGC= {:,.2f}, t_vis= {:,.2f}".format(window[3], window[4], window[7]),
         lg.INFO)
 

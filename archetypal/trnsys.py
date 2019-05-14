@@ -8,6 +8,7 @@
 import logging as lg
 import os
 import subprocess
+import sys
 import time
 import re
 from collections import OrderedDict
@@ -17,8 +18,8 @@ import pandas as pd
 from eppy import modeleditor
 from geomeppy.geom.polygons import Polygon3D
 
-from archetypal import log, settings, Schedule
-import archetypal as ar
+from archetypal import log, settings, Schedule, load_idf, checkStr, \
+    check_unique_name
 
 
 def clear_name_idf_objects(idfFile):
@@ -76,9 +77,9 @@ def clear_name_idf_objects(idfFile):
                     new_name = first_letters + '_' + end_count
 
                     # Make sure new name does not already exist
-                    new_name = ar.check_unique_name(first_letters, count,
-                                                     new_name,
-                                         uniqueList)
+                    new_name = check_unique_name(first_letters, count,
+                                                 new_name,
+                                                 uniqueList)
 
                     uniqueList.append(new_name)
 
@@ -307,9 +308,12 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
             t_vis_win, lay_win, width, window_bunches[win_id])
 
 
-def trnbuild_idf(idf_file, template, dck=False, nonum=False, N=False,
+def trnbuild_idf(idf_file, template=os.path.join(
+    settings.trnsys_default_folder,
+    r"Building\trnsIDF\NewFileTemplate.d18"), dck=False, nonum=False, N=False,
                  geo_floor=0.6, refarea=False, volume=False, capacitance=False,
-                 trnidf_exe_dir=r"C:\Trnsys\Building\trnsIDF\trnsysidf.exe"):
+                 trnidf_exe_dir=os.path.join(settings.trnsys_default_folder,
+                                             r"Building\trnsIDF\trnsidf.exe")):
     """
 
     Args:
@@ -341,7 +345,10 @@ def trnbuild_idf(idf_file, template, dck=False, nonum=False, N=False,
 
     trnsysidf_exe = trnidf_exe_dir
 
-    cmd = [trnsysidf_exe]
+    if sys.platform == 'win32':
+        cmd = [trnsysidf_exe]
+    else:
+        cmd = ['wine', trnsysidf_exe]
     cmd.extend([idf])
     cmd.extend([template])
     for arg in args:
@@ -360,23 +367,51 @@ def trnbuild_idf(idf_file, template, dck=False, nonum=False, N=False,
     return 'OK'
 
 
-def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
-    """ Convert IDF file to T3D file to be able to load it in TRNBuild
+def convert_idf_to_trnbuild(idf_file, window_lib, return_b18=True,
+                            return_t3d=False, return_dck=False,
+                            output_folder=None,
+                            trnidf_exe_dir=os.path.join(
+                                settings.trnsys_default_folder,
+                                r"Building\trnsIDF\trnsidf.exe"),
+                            template=os.path.join(
+                                settings.trnsys_default_folder,
+                                r"Building\trnsIDF\NewFileTemplate.d18"),
+                            **kwargs):
+    """ Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
+
+    There are three optional outputs:
+    - the path to the TRNBuild file (.b18)
+    - the path to the TRNBuild input file (.idf)
+    - the path to the TRNSYS dck file (.dck)
 
     Args:
-        idf (str): File path of IDF file to convert to T3D
-        window_lib (str): File path of the window library (from Berkeley Lab)
-        output_folder (str): location where output file will be saved. If None,
-            saves to settings.data_folder
-
+        idf (str): File path of IDF file to convert to T3D.
+        window_lib (str): File path of the window library (from Berkeley Lab).
+        return_b18 (bool, optional): If True, also return the path to the
+            TRNBuild file (.b18).
+        return_t3d (bool, optional): If True, also return the path to the TRNBuild
+            input file (.idf).
+        return_dck (bool, optional): If True, also return the path to the TRNSYS
+            dck file (.dck).
+        output_folder (str, optional): location where output files will be
+        saved. If None, saves to settings.data_folder.
+        trnidf_exe_dir (str): Path to *trnsidf.exe*.
+        template (str): Path to d18 template file.
+        kwargs (dict): keyword arguments sent to trnbuild_idf(). See
+            trnbuild_idf() for parameter definition
     Returns:
-        (idf file) : Input file for TRNBuild
+        (str, optional): the path to the TRNBuild file (.b18). Only provided
+            if *return_b18* is True.
+        (str, optional): the path to the TRNBuild input file (.idf). Only
+            provided if *return_t3d* is True.
+        (str, optional): the path to the TRNSYS dck file (.dck). Only provided
+            if *return_dck* is True.
 
     """
 
     start_time = time.time()
     # Load IDF file(s)
-    idf_dict = ar.load_idf(idf_file)
+    idf_dict = load_idf(idf_file)
     idf = idf_dict[os.path.basename(idf_file)]
     log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
         lg.INFO)
@@ -465,8 +500,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     # Write VERSION from IDF to lines (T3D)
     # Get line number where to write
     with open(ori_idf_filepath) as ori:
-        versionNum = ar.checkStr(ori,
-                                 'ALL OBJECTS IN CLASS: VERSION')
+        versionNum = checkStr(ori,
+                              'ALL OBJECTS IN CLASS: VERSION')
     # Writing VERSION infos to lines
     for i in range(0, len(versions)):
         lines.insert(versionNum,
@@ -474,16 +509,16 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
     # Write BUILDING from IDF to lines (T3D)
     # Get line number where to write
-    buildingNum = ar.checkStr(lines,
-                              'ALL OBJECTS IN CLASS: BUILDING')
+    buildingNum = checkStr(lines,
+                           'ALL OBJECTS IN CLASS: BUILDING')
     # Writing BUILDING infos to lines
     for building in buildings:
         lines.insert(buildingNum, building)
 
     # Write LOCATION and GLOBALGEOMETRYRULES from IDF to lines (T3D)
     # Get line number where to write
-    locationNum = ar.checkStr(lines,
-                              'ALL OBJECTS IN CLASS: LOCATION')
+    locationNum = checkStr(lines,
+                           'ALL OBJECTS IN CLASS: LOCATION')
 
     # Writing GLOBALGEOMETRYRULES infos to lines
     for globGeomRule in globGeomRules:
@@ -526,9 +561,9 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf)
     # from IDF to lines (T3D)
     # Get line number where to write
-    variableDictNum = ar.checkStr(lines,
-                                  'ALL OBJECTS IN CLASS: '
-                                  'OUTPUT:VARIABLEDICTIONARY')
+    variableDictNum = checkStr(lines,
+                               'ALL OBJECTS IN CLASS: '
+                               'OUTPUT:VARIABLEDICTIONARY')
 
     # Writing zones in lines
     count_fs = 0
@@ -699,7 +734,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
     # region Write CONSTRUCTION from IDF to lines (T3D)
     # Get line number where to write
-    constructionNum = ar.checkStr(lines, 'C O N S T R U C T I O N')
+    constructionNum = checkStr(lines, 'C O N S T R U C T I O N')
 
     # Writing CONSTRUCTION in lines
     for i in range(0, len(constructions.list2)):
@@ -755,8 +790,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
     # Write CONSTRUCTION from IDF to lines, at the end of the T3D file
     # Get line number where to write
-    constructionEndNum = ar.checkStr(lines,
-                                     'ALL OBJECTS IN CLASS: CONSTRUCTION')
+    constructionEndNum = checkStr(lines,
+                                  'ALL OBJECTS IN CLASS: CONSTRUCTION')
 
     # Writing CONSTRUCTION infos to lines
     for i in range(0, len(constructions)):
@@ -771,7 +806,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
     # region Write LAYER from IDF to lines (T3D)
     # Get line number where to write
-    layerNum = ar.checkStr(lines, 'L a y e r s')
+    layerNum = checkStr(lines, 'L a y e r s')
 
     # Writing MATERIAL infos to lines
     listLayerName = []
@@ -819,7 +854,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
     # region Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
     # Get line number where to write
-    gainNum = ar.checkStr(lines, 'G a i n s')
+    gainNum = checkStr(lines, 'G a i n s')
 
     # Writing PEOPLE gains infos to lines
     schedule_list_people = []
@@ -969,8 +1004,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         lg.INFO)
 
     # Get line number where to write
-    windowNum = ar.checkStr(lines,
-                            'W i n d o w s')
+    windowNum = checkStr(lines,
+                         'W i n d o w s')
     # Write
     lines.insert(windowNum + 2,
                  '!- WINID = ' + str(window[0]) + ': HINSIDE = 11:'
@@ -997,16 +1032,16 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                                   'undefined')
 
     # Get line number to write the EXTENSION_WINPOOL
-    extWinpoolNum = ar.checkStr(lines,
-                                '!-_EXTENSION_WINPOOL_START_')
+    extWinpoolNum = checkStr(lines,
+                             '!-_EXTENSION_WINPOOL_START_')
     count = 0
     for line in window[10]:
         lines.insert(extWinpoolNum + count, '!-' + line)
         count += 1
 
     # Get line number to write the Window description
-    winDescriptionNum = ar.checkStr(lines,
-                                    'WinID Description')
+    winDescriptionNum = checkStr(lines,
+                                 'WinID Description')
     lines.insert(winDescriptionNum + 1,
                  '!-' + str(window[0]) + ' ' + str(window[1])
                  + ' ' + str(window[2]) + ' ' + str(window[3]) + ' ' +
@@ -1032,7 +1067,29 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         time.time() - start_time), lg.INFO)
 
     # Run trnsidf to convert T3D to BUI
-    template = "C:\Trnsys\Building\\trnsIDF\\NewFileTemplate.d18"
-    trnbuild_idf(t3d_path, template, dck=False, nonum=False, N=False,
-                 geo_floor=0.6, refarea=False, volume=False, capacitance=False,
-                 trnidf_exe_dir=r"C:\TRNSYS18\Building\trnsIDF\trnsidf.exe")
+    if sys.platform == 'win32':
+        dck = return_dck
+        nonum = kwargs.get('nonum', False)
+        N = kwargs.get('N', False)
+        geo_floor = kwargs.get('geo_floor', 0.6)
+        refarea = kwargs.get('refarea', False)
+        volume = kwargs.get('volume', False)
+        capacitance = kwargs.get('capacitance', False)
+        trnbuild_idf(t3d_path, template, dck=dck, nonum=nonum, N=N,
+                     geo_floor=geo_floor, refarea=refarea, volume=volume,
+                     capacitance=capacitance,
+                     trnidf_exe_dir=trnidf_exe_dir)
+
+        # Prepare return arguments
+        pre, ext = os.path.splitext(t3d_path)
+        b18_path = t3d_path
+        os.rename(b18_path, pre + 'b18')
+        dck_path = t3d_path
+        os.rename(dck_path, pre + 'dck')
+    else:
+        b18_path = None
+        dck_path = None
+
+    from itertools import compress
+    return tuple(compress([b18_path, t3d_path, dck_path],
+                          [return_b18, return_t3d, return_dck]))

@@ -469,8 +469,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
 
     start_time = time.time()
     # Load IDF file(s)
-    idf_dict = load_idf(idf_file)
-    idf = idf_dict[os.path.basename(idf_file)]
+    idf = load_idf(idf_file)
     log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
         lg.INFO)
 

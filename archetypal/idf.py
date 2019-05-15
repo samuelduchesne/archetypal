@@ -1028,6 +1028,8 @@ def perform_transition(file, to_version=None):
         '8-6-0': os.path.join(vupdater_path, 'Transition-V8-6-0-to-V8-7-0'),
         '8-7-0': os.path.join(vupdater_path, 'Transition-V8-7-0-to-V8-8-0'),
         '8-8-0': os.path.join(vupdater_path, 'Transition-V8-8-0-to-V8-9-0'),
+        '8-9-0': os.path.join(vupdater_path, 'Transition-V8-9-0-to-V9-0-0'),
+        '9-0-0': os.path.join(vupdater_path, 'Transition-V9-0-0-to-V9-1-0'),
     }
     file = os.path.abspath(file)
     # store the directory we start in

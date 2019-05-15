@@ -18,7 +18,6 @@ import json
 import logging as lg
 import os
 import re
-import shutil
 import sys
 import unicodedata
 import warnings
@@ -29,7 +28,7 @@ import numpy as np
 import pandas as pd
 from pandas.io.json import json_normalize
 
-from . import settings
+from archetypal import settings
 
 
 def config(data_folder=settings.data_folder,
@@ -104,8 +103,6 @@ def validate_trnsys_folder(trnsys_default_folder):
                              '}'.format(trnsys_default_folder))
     else:
         return trnsys_default_folder
-
-
 
 
 def log(message, level=None, name=None, filename=None, avoid_console=False):
@@ -805,24 +802,24 @@ def load_umi_template(json_template):
 
 
 def check_unique_name(first_letters, count, name, unique_list):
-        """Making sure new_name does not already exist
+    """Making sure new_name does not already exist
 
-        Args:
-            first_letters (str): string at the beginning of the name, giving
-                a hint on what the variable is (e.g. : 'day_' for a schedule
-            day). DO NOT Include an underscore.
-            count (int): increment to create a unique id in the name
-            name (str): name that was just created. To be verified that it is
-                unique in this function
-            unique_list (list): list where unique names are stored
+    Args:
+        first_letters (str): string at the beginning of the name, giving
+            a hint on what the variable is (e.g. : 'day_' for a schedule
+        day). DO NOT Include an underscore.
+        count (int): increment to create a unique id in the name
+        name (str): name that was just created. To be verified that it is
+            unique in this function
+        unique_list (list): list where unique names are stored
 
-        Returns:
-            new_name (str): name that is unique
+    Returns:
+        new_name (str): name that is unique
 
-        """
-        while name in unique_list:
-            count += 1
-            end_count = '%06d' % count
-            name = first_letters + '_' + end_count
+    """
+    while name in unique_list:
+        count += 1
+        end_count = '%06d' % count
+        name = first_letters + '_' + end_count
 
-        return name
+    return name

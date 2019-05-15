@@ -20,7 +20,8 @@ def test_trnbuild_from_idf(config):
     files = ["NECB 2011 - Warehouse.idf", "NECB 2011 - Small Office.idf"]
 
     window_file = 'W74-lib.dat'
-    window_filepath = os.path.join(file_upper_path, window_file)
+    template_dir = os.path.join('archetypal', 'templates')
+    window_filepath = os.path.join(template_dir, window_file)
 
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments

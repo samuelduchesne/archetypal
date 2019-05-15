@@ -373,9 +373,9 @@ def trnbuild_idf(idf_file, template=os.path.join(
     if not os.path.isdir(settings.data_folder):
         os.mkdir(settings.data_folder)
     head, tail = os.path.split(idf_file)
-    new_idf_file = os.path.join(settings.data_folder, tail)
+    new_idf_file = os.path.relpath(os.path.join(settings.data_folder, tail))
     if new_idf_file != idf_file:
-        shutil.copyfile(idf_file, new_idf_file)
+        shutil.copy(idf_file, new_idf_file)
     idf_file = os.path.abspath(new_idf_file)  # back to idf_file
     del new_idf_file, head, tail
 

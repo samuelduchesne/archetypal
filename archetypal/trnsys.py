@@ -455,8 +455,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
         saved. If None, saves to settings.data_folder.
         trnidf_exe_dir (str): Path to *trnsidf.exe*.
         template (str): Path to d18 template file.
-        kwargs (dict): keyword arguments sent to trnbuild_idf(). See
-            trnbuild_idf() for parameter definition
+        kwargs (dict): keyword arguments sent to trnbuild_idf() or
+            choose_window(). See trnbuild_idf() or choose_window() for parameter
+            definition
     Returns:
         (str, optional): the path to the TRNBuild file (.b18). Only provided
             if *return_b18* is True.
@@ -1044,7 +1045,13 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
     # window = (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
     #                 t_vis_win, lay_win, width, window_bunches[win_id],
     #                 and maybe tolerance)
-    window = choose_window(2.2, 0.64, 0.8, 0.05, window_lib)
+
+    win_u_value = kwargs.get('u_value', 2.2)
+    win_shgc = kwargs.get('shgc', 0.64)
+    win_tvis = kwargs.get('t_vis', 0.8)
+    win_tolerance = kwargs.get('tolerance', 0.05)
+    window = choose_window(win_u_value, win_shgc, win_tvis, win_tolerance,
+                           window_lib)
     # If tolerance was not respected to find a window, write in log a warning
     if len(window) > 11:
         log(

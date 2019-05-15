@@ -1,12 +1,16 @@
+import os
+
 import pytest
 
-from archetypal import Schedule, load_idf, copy_file, run_eplus, plt
+from archetypal import Schedule, load_idf, copy_file, run_eplus
 
 
 def test_schedules_in_necb_specific(config):
-    idf_file = 'tests/input_data/regular/NECB 2011-MediumOffice-NECB HDD ' \
-               'Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf'
-    idfs = load_idf(idf_file)
+    files = [
+        'tests/input_data/regular/NECB 2011-MediumOffice-NECB HDD '
+        'Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf']
+    idfs = {os.path.basename(file): load_idf(file)
+            for file in files}
     import matplotlib.pyplot as plt
     for key in idfs:
         idf = idfs[key]
@@ -21,7 +25,7 @@ def test_make_umi_schedule(config):
     import matplotlib.pyplot as plt
     idf_file = 'tests/input_data/schedules/schedules.idf'
     idf_file = copy_file(idf_file)[0]
-    idf = load_idf(idf_file)['schedules.idf']
+    idf = load_idf(idf_file)
 
     s = Schedule(sch_name='POFF', start_day_of_the_week=0, idf=idf)
     ep_year, ep_weeks, ep_days = s.to_year_week_day()
@@ -43,7 +47,7 @@ idf_file = 'tests/input_data/schedules/test_multizone_EP.idf'
 
 
 def schedules_idf():
-    idf = load_idf(idf_file)['test_multizone_EP.idf']
+    idf = load_idf(idf_file)
     return idf
 
 
@@ -93,8 +97,8 @@ def test_ep_versus_schedule(test_data):
 
     print(diff)
     print(orig.series[mask])
-    assert (orig.all_values[0:52*7*24] == expected[0:52*7*24]).all()
-    assert (new.all_values[0:52*7*24] == expected[0:52*7*24]).all()
+    assert (orig.all_values[0:52 * 7 * 24] == expected[0:52 * 7 * 24]).all()
+    assert (new.all_values[0:52 * 7 * 24] == expected[0:52 * 7 * 24]).all()
 
 
 @pytest.fixture(params=schedules, ids=ids)

@@ -98,3 +98,4 @@ tests/\.temp/
 \.DS_Store
 
 tests/input_data/schedules/eprun/
+trnsidf.exe

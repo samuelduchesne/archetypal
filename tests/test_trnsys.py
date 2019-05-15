@@ -13,6 +13,7 @@ def round_up(n, decimals=0):
     multiplier = 10 ** decimals
     return math.ceil(n * multiplier) / multiplier
 
+
 @pytest.mark.win32
 def test_trnbuild_from_idf(config):
     # List files here
@@ -25,11 +26,12 @@ def test_trnbuild_from_idf(config):
 
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
-    in_dict = {os.path.basename(file): dict(
-        idf_file=os.path.join(file_upper_path, file)) for file in files}
+    kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
+                   'tolerance': 0.05}
 
     convert_idf_to_trnbuild(idf_file=os.path.join(file_upper_path, files[0]),
-                            window_lib=window_filepath)
+                            window_lib=window_filepath, **kwargs_dict)
+
 
 @pytest.mark.win32
 def test_trnbuild_from_idf_parallel(config):
@@ -61,7 +63,6 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
     files = ["NECB 2011 - Warehouse.idf", "NECB 2011 - Small Office.idf"]
-
 
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments

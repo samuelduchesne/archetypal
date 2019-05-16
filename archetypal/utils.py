@@ -821,3 +821,21 @@ def check_unique_name(first_letters, count, name, unique_list):
         name = first_letters + '_' + end_count
 
     return name
+
+def angle(v1, v2, acute=True):
+    """Calculate the angle between 2 vectors
+
+    Args:
+        v1 (Vector3D): vector 1
+        v2 (Vector3D): vector 2
+        acute (bool): If True, give the acute angle, else gives the obtuse one.
+
+    Returns:
+        angle (float): angle between the 2 vectors in degree
+
+    """
+    angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+    if (acute == True):
+        return angle
+    else:
+        return 2 * np.pi - angle

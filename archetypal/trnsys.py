@@ -21,7 +21,7 @@ from eppy import modeleditor
 from geomeppy.geom.polygons import Polygon3D
 
 from archetypal import log, settings, Schedule, load_idf, checkStr, \
-    check_unique_name
+    check_unique_name, angle
 
 
 def clear_name_idf_objects(idfFile):
@@ -619,6 +619,25 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
                                'ALL OBJECTS IN CLASS: '
                                'OUTPUT:VARIABLEDICTIONARY')
 
+    # Get all surfaces having Outside boundary condition with the ground.
+    # To be used to find the window's slopes
+    ground_surfs = [buildingSurf for buildingSurf in buildingSurfs if
+                    buildingSurf.Outside_Boundary_Condition.lower() == 'ground']
+    if ground_surfs:
+        ground = ground_surfs[0].coords
+    else:
+        ground = [tuple([0, 0, 0]), tuple([1, 0, 0]), tuple([0, 1, 0]),
+                  tuple([1, 1, 0])]
+
+    # Polygon from vector's ground surface
+    poly_ground = Polygon3D(ground)
+    # Normal vectors of the polygon
+    n_ground = poly_ground.normal_vector
+
+    # Initialize list of window's slopes
+    count_slope = 0
+    win_slope_dict = {}
+
     # Writing zones in lines
     count_fs = 0
     for zone in zones:
@@ -638,8 +657,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
 
                 # Clear fenestrationSurface:Detailed name
                 fenestrationSurf.Name = 'fs_' + '%06d' % count_fs
-                # Insure right construction name and number of vertices
-                fenestrationSurf.Construction_Name = "EXT_WINDOW1"
+                # Insure right number of vertices
                 fenestrationSurf.Number_of_Vertices = len(
                     fenestrationSurf.coords)
 
@@ -678,6 +696,32 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
                         = \
                         round(fenestrationSurf[
                                   "Vertex_" + str(j) + "_Zcoordinate"], 4)
+
+                # Polygon from vector's window surface
+                poly_window = Polygon3D(fenestrationSurf.coords)
+                # Normal vectors of the polygon
+                n_window = poly_window.normal_vector
+
+                # Calculate the slope between window and the ground (with
+                # normal vectors)
+                win_slope = 180 * angle(n_ground, n_window) / np.pi
+                if win_slope > 90:
+                    win_slope -= 180
+
+                # Add a construction name if slope does not already exist
+                if win_slope not in win_slope_dict.values():
+                    count_slope += 1
+                    # Insure right construction name
+                    fenestrationSurf.Construction_Name = "EXT_WINDOW{}".format(
+                        count_slope)
+                    # Append win_slope_dict
+                    win_slope_dict[
+                        fenestrationSurf.Construction_Name] = win_slope
+
+                else:
+                    fenestrationSurf.Construction_Name = \
+                        [key for key in win_slope_dict.keys() if
+                         win_slope == win_slope_dict[key]][0]
 
                 lines.insert(variableDictNum + 2, fenestrationSurf)
 
@@ -1066,30 +1110,35 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
     # Get line number where to write
     windowNum = checkStr(lines,
                          'W i n d o w s')
+
     # Write
-    lines.insert(windowNum + 2,
-                 '!- WINID = ' + str(window[0]) + ': HINSIDE = 11:'
-                                                  ' HOUTSIDE = 64: SLOPE = '
-                                                  '-999: '
-                                                  'SPACID = 4: WWID = 0.77: '
-                                                  'WHEIG = 1.08: '
-                                                  'FFRAME = 0.15: UFRAME = '
-                                                  '8.17: ABSFRAME = 0.6: '
-                                                  'RISHADE = 0: RESHADE = 0: '
-                                                  'REFLISHADE = 0.5: '
-                                                  'REFLOSHADE = 0.5: CCISHADE '
-                                                  '= 0.5: '
-                                                  'EPSFRAME = 0.9: EPSISHADE '
-                                                  '= 0.9: '
-                                                  'ITSHADECLOSE = INPUT 1 * '
-                                                  'SHADE_CLOSE: '
-                                                  'ITSHADEOPEN = INPUT 1 * '
-                                                  'SHADE_OPEN: '
-                                                  'FLOWTOAIRNODE = 1: PERT = '
-                                                  '0: PENRT = 0: '
-                                                  'RADMATERIAL = undefined: '
-                                                  'RADMATERIAL_SHD1 = '
-                                                  'undefined')
+    for key in win_slope_dict.keys():
+        lines.insert(windowNum + 1, "WINDOW " + str(key) + '\n')
+        lines.insert(windowNum + 2,
+                     '!- WINID = ' + str(window[0]) +
+                     ': HINSIDE = 11:'
+                     ' HOUTSIDE = 64: SLOPE '
+                     '= ' + str(win_slope_dict[key]) +
+                     ': '
+                     'SPACID = 4: WWID = 0.77: '
+                     'WHEIG = 1.08: '
+                     'FFRAME = 0.15: UFRAME = '
+                     '8.17: ABSFRAME = 0.6: '
+                     'RISHADE = 0: RESHADE = 0: '
+                     'REFLISHADE = 0.5: '
+                     'REFLOSHADE = 0.5: CCISHADE '
+                     '= 0.5: '
+                     'EPSFRAME = 0.9: EPSISHADE '
+                     '= 0.9: '
+                     'ITSHADECLOSE = INPUT 1 * '
+                     'SHADE_CLOSE: '
+                     'ITSHADEOPEN = INPUT 1 * '
+                     'SHADE_OPEN: '
+                     'FLOWTOAIRNODE = 1: PERT = '
+                     '0: PENRT = 0: '
+                     'RADMATERIAL = undefined: '
+                     'RADMATERIAL_SHD1 = '
+                     'undefined' + '\n')
 
     # Get line number to write the EXTENSION_WINPOOL
     extWinpoolNum = checkStr(lines,

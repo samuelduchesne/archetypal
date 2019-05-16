@@ -745,6 +745,10 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
                     buildingSurfs[i].Outside_Boundary_Condition_Object = zones[
                         indiceZone[0]].Name
 
+                    # Oblige same construction for adjacent surfaces
+                    buildingSurfs[i].Construction_Name = buildingSurfs[
+                        indiceSurf[0]].Construction_Name
+
                     # Polygon from vector's adjacent surfaces
                     poly1 = Polygon3D(buildingSurfs[i].coords)
                     poly2 = Polygon3D(buildingSurfs[indiceSurf[0]].coords)

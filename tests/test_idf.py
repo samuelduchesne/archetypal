@@ -68,7 +68,7 @@ def test_load_idf(config):
     assert isinstance(obj, dict)
 
 
-@pytest.mark.parametrize('ep_version', ['8-9-0', None],
+@pytest.mark.parametrize('ep_version', ['9-1-0', None],
                          ids=['specific-ep-version', 'no-specific-ep-version'])
 def test_run_olderv(fresh_start, ep_version):
     """Will run eplus on a file that needs to be upgraded with one that does
@@ -94,5 +94,5 @@ def test_run_olderv_problematic(fresh_start):
            '.2_5A_USA_IL_CHICAGO-OHARE.idf'
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     file = copy_file([file])[0]
-    ar.run_eplus(file, wf, ep_version='8-9-0', annual=True,
+    ar.run_eplus(file, wf, annual=True,
                  expandobjects=True, verbose='q', prep_outputs=True)

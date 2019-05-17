@@ -1037,18 +1037,22 @@ def perform_transition(file, to_version=None):
     run_dir = os.path.abspath(os.path.dirname(trans_exec[versionid]))
 
     # build a list of command line arguments
-
+    if versionid == to_version:
+        raise KeyError
     with cd(run_dir):
-        # we are now in run_dir
-        result = None
-        while result is None:
+        transitions = [key for key in trans_exec
+                       if tuple(map(int, key.split('-'))) <= \
+                       tuple(map(int, to_version.split('-')))
+                       and tuple(map(int, key.split('-'))) >= \
+                       tuple(map(int, versionid.split('-')))]
+        for trans in transitions:
             try:
-                trans_exec[versionid]
+                trans_exec[trans]
             except KeyError:
                 # there is no more updates to perfrom
                 result = 0
             else:
-                cmd = [trans_exec[versionid], file]
+                cmd = [trans_exec[trans], file]
                 try:
                     check_call(cmd)
                 except CalledProcessError as e:
@@ -1056,9 +1060,6 @@ def perform_transition(file, to_version=None):
                     # error log
                     log('{}'.format(e), lg.ERROR)
                     raise
-                else:
-                    # load new version id and continue loop
-                    versionid = get_idf_version(file, doted=False)
 
     log('Transition completed\n')
     # Clean 'idfnew' and 'idfold' files created by the transition porgram

@@ -38,7 +38,7 @@ def find_version(*file_paths):
 with codecs.open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-with open('requirements.txt') as f:
+with open(path.join(here, 'requirements.txt')) as f:
     requirements_lines = f.readlines()
 install_requires = [r.strip() for r in requirements_lines]
 

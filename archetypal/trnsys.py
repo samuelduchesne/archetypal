@@ -21,7 +21,8 @@ from eppy import modeleditor
 from geomeppy.geom.polygons import Polygon3D
 
 from archetypal import log, settings, Schedule, load_idf, checkStr, \
-    check_unique_name, angle
+    check_unique_name, angle, get_from_cache, load_idf_object_from_cache, \
+    hash_file, save_idf_object_to_cache
 
 
 def clear_name_idf_objects(idfFile):
@@ -467,21 +468,25 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
             if *return_dck* is True.
 
     """
-
+    # Check if cache exists
     start_time = time.time()
-    # Load IDF file(s)
-    idf = load_idf(idf_file)
-    log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
-        lg.INFO)
+    cache_filename = hash_file(idf_file)
+    idf = load_idf_object_from_cache(idf_file, how='pickle')
+    if not idf:
+        # Load IDF file(s)
+        idf = load_idf(idf_file)
+        log("IDF files loaded in {:,.2f} seconds".format(
+            time.time() - start_time),
+            lg.INFO)
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        start_time = time.time()
+        clear_name_idf_objects(idf)
+        save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
+        log("Cleaned IDF object names in {:,.2f} seconds".format(
+            time.time() - start_time), lg.INFO)
 
     # Read IDF_T3D template and write lines in variable
     lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
-
-    # Clean names of idf objects (e.g. 'MATERIAL')
-    start_time = time.time()
-    clear_name_idf_objects(idf)
-    log("Cleaned IDF object names in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO)
 
     # Get objects from IDF file
     materials = idf.idfobjects['MATERIAL']

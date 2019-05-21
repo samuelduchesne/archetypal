@@ -757,7 +757,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
                     n2 = poly2.normal_vector
                     # Verify if normal vectors of adjacent surfaces have
                     # opposite directions
-                    if (n1 + n2).x != 0 or (n1 + n2).y != 0 or (n1 + n2).z != 0:
+                    if round((n1 + n2).x, 2) != 0 or round((n1 + n2).y,
+                                                           2) != 0 or round(
+                        (n1 + n2).z, 2) != 0:
                         # If not, inverse vertice of buildingSurf
                         # (Vertex4 become Vertex1, Vertex2 become Vertex3, etc.)
                         for j, k in zip(range(1, len(

@@ -15,6 +15,7 @@ import sys
 import time
 from collections import OrderedDict
 
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
 from eppy import modeleditor
@@ -46,7 +47,7 @@ def clear_name_idf_objects(idfFile):
     uniqueList = []
 
     # For all categories of objects in the IDF file
-    for obj in idfFile.idfobjects:
+    for obj in tqdm(idfFile.idfobjects, desc='cleaning_names'):
         epObjects = idfFile.idfobjects[obj]
 
         # For all objects in Category
@@ -456,9 +457,11 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
         saved. If None, saves to settings.data_folder.
         trnidf_exe_dir (str): Path to *trnsidf.exe*.
         template (str): Path to d18 template file.
-        kwargs (dict): keyword arguments sent to trnbuild_idf() or
-            choose_window(). See trnbuild_idf() or choose_window() for parameter
-            definition
+        kwargs (dict): keyword arguments sent to
+            convert_idf_to_trnbuild() or trnbuild_idf() or
+            choose_window(). "ordered=True" to have the name of idf objects in
+            the outputfile in ascendant order. See trnbuild_idf() or
+            choose_window() for other parameter definition
     Returns:
         (str, optional): the path to the TRNBuild file (.b18). Only provided
             if *return_b18* is True.
@@ -507,6 +510,25 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
     lights = idf.idfobjects['LIGHTS']
     equipments = idf.idfobjects['ELECTRICEQUIPMENT']
 
+    ordered = kwargs.get('ordered', False)
+    if ordered:
+        materials = list(reversed(materials))
+        materialNoMass = list(reversed(materialNoMass))
+        materialAirGap = list(reversed(materialAirGap))
+        buildings = list(reversed(buildings))
+        locations = list(reversed(locations))
+        globGeomRules = list(reversed(globGeomRules))
+        constructions = list(reversed(constructions))
+        fenestrationSurfs = list(reversed(fenestrationSurfs))
+        buildingSurfs = list(reversed(buildingSurfs))
+        zones = list(reversed(zones))
+        scheduleYear = list(reversed(scheduleYear))
+        scheduleWeek = list(reversed(scheduleWeek))
+        scheduleDay = list(reversed(scheduleDay))
+        peoples = list(reversed(peoples))
+        lights = list(reversed(lights))
+        equipments = list(reversed(equipments))
+
     # region Get schedules from IDF
     start_time = time.time()
     schedule_names = []
@@ -544,8 +566,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
     # Get constructions with only materials with resistance lower than 0.0007
     construct_low_res = []
     for i in range(0, len(constructions)):
-        if len(constructions.list2[i]) == 3 and constructions.list2[i][
-            2] in mat_name:
+        if len(constructions[i].fieldvalues) == 3 and \
+                constructions[i].fieldvalues[
+                    2] in mat_name:
             construct_low_res.append(constructions[i])
 
     # Remove constructions with only materials with resistance lower than
@@ -563,8 +586,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
     # Writing VERSION infos to lines
     for i in range(0, len(versions)):
         lines.insert(versionNum,
-                     ",".join(str(item) for item in versions.list2[i]) + ';'
-                     + '\n')
+                     ",".join(str(item) for item in versions[i].fieldvalues)
+                     + ';' + '\n')
 
     # Write BUILDING from IDF to lines (T3D)
     # Get line number where to write
@@ -846,11 +869,11 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
     constructionNum = checkStr(lines, 'C O N S T R U C T I O N')
 
     # Writing CONSTRUCTION in lines
-    for i in range(0, len(constructions.list2)):
+    for i in range(0, len(constructions)):
 
         # Except fenestration construction
         fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
-                        s in constructions.list2[i][1].lower()]
+                        s in constructions[i].fieldvalues[1].lower()]
 
         if not fenestration:
             lines.insert(constructionNum + 1,
@@ -862,12 +885,12 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
         layerList = []
         thickList = []
 
-        for j in range(2, len(constructions.list2[i])):
+        for j in range(2, len(constructions[i].fieldvalues)):
 
-            if constructions.list2[i][j] not in mat_name:
+            if constructions[i].fieldvalues[j] not in mat_name:
 
                 indiceMat = [k for k, s in enumerate(materials) if
-                             constructions.list2[i][j] == s.Name]
+                             constructions[i].fieldvalues[j] == s.Name]
 
                 if not indiceMat:
                     thickList.append(0.0)
@@ -875,7 +898,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
                     thickList.append(
                         round(materials[indiceMat[0]].Thickness, 4))
 
-                layerList.append(constructions.list2[i][j])
+                layerList.append(constructions[i].fieldvalues[j])
 
             else:
                 continue
@@ -890,7 +913,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
                      '!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n')
 
         basement = [s for s in ['basement', 'floor'] if
-                    s in constructions.list2[i][1].lower()]
+                    s in constructions[i].fieldvalues[1].lower()]
         if not basement:
             lines.insert(constructionNum + 6, '!- HFRONT   = 11 : HBACK= 64\n')
         else:
@@ -907,7 +930,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
 
         # Except fenestration construction
         fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
-                        s in constructions.list2[i][1].lower()]
+                        s in constructions[i].fieldvalues[1].lower()]
         if not fenestration:
             lines.insert(constructionEndNum, constructions[i])
         else:
@@ -975,8 +998,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
         schWeekName = scheduleYear[indiceSchYear[0]].ScheduleWeek_Name_1
         indiceSchWeek = [k for k, s in enumerate(scheduleWeek) if scheduleYear[
             indiceSchYear[0]].ScheduleWeek_Name_1 == s.Name]
-        weekSch = list(
-            OrderedDict.fromkeys(scheduleWeek.list2[indiceSchWeek[0]][2::]))
+        weekSch = list(OrderedDict.fromkeys(
+            scheduleWeek[indiceSchWeek[0]].fieldvalues[2::]))
 
         lines.insert(gainNum + 1,
                      'GAIN PEOPLE' + '_' + peoples[i].Name + '\n')

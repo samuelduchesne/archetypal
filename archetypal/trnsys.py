@@ -480,7 +480,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     # Check if cache exists
     start_time = time.time()
     cache_filename = hash_file(idf_file)
-    idf = load_idf_object_from_cache(idf_file, how='pickle')
+    idf = load_idf_object_from_cache(idf_file, how='idf')
     if not idf:
         # Load IDF file(s)
         idf = load_idf(idf_file)
@@ -490,7 +490,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         # Clean names of idf objects (e.g. 'MATERIAL')
         start_time = time.time()
         clear_name_idf_objects(idf)
-        save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
+        idf.saveas(filename=os.path.join(settings.cache_folder, cache_filename,
+                                         cache_filename + '.idf'))
+        # save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
         log("Cleaned IDF object names in {:,.2f} seconds".format(
             time.time() - start_time), lg.INFO)
 

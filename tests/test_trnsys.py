@@ -15,8 +15,27 @@ def round_up(n, decimals=0):
 
 
 @pytest.mark.win32
+def test_trnbuild_from_idf(config):
+    # List files here
+    file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
+    files = ["NECB 2011 - Warehouse.idf", "NECB 2011 - Small Office.idf"]
+
+    window_file = 'W74-lib.dat'
+    template_dir = os.path.join('archetypal', 'templates')
+    window_filepath = os.path.join(template_dir, window_file)
+
+    # prepare args (key=value). Key is a unique id for the runs (here the
+    # file basename is used). Value is a dict of the function arguments
+    kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
+                   'tolerance': 0.05}
+
+    convert_idf_to_trnbuild(idf_file=os.path.join(file_upper_path, files[0]),
+                            window_lib=window_filepath, **kwargs_dict)
+
+
+@pytest.mark.win32
 @pytest.mark.xfail("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-                   "Skipping this test on Travis CI.")
+                   reason="Skipping this test on Travis CI.")
 def test_trnbuild_from_idf_parallel(config):
     # All IDF files
     idf_list = ["NECB 2011 - Warehouse.idf"]
@@ -41,14 +60,13 @@ def test_trnbuild_from_idf_parallel(config):
 @pytest.mark.darwin
 @pytest.mark.linux
 @pytest.mark.xfail("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-                   "Skipping this test on Travis CI.")
+                   reason="Skipping this test on Travis CI.")
 def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
     # All IDF files
     idf_list = ["NECB 2011 - Warehouse.idf"]
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
     files = ["NECB 2011 - Warehouse.idf", "NECB 2011 - Small Office.idf"]
-
 
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
@@ -66,7 +84,7 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
 
 @pytest.mark.win32
 @pytest.mark.xfail("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-                   "Skipping this test on Travis CI.")
+                   reason="Skipping this test on Travis CI.")
 def test_trnbuild_idf_win32(config):
     idf_file = "tests/input_data/trnsys/Building.idf"
     template = "tests/input_data/trnsys/NewFileTemplate.d18"
@@ -78,7 +96,7 @@ def test_trnbuild_idf_win32(config):
 @pytest.mark.darwin
 @pytest.mark.linux
 @pytest.mark.xfail("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-                   "Skipping this test on Travis CI.")
+                   reason="Skipping this test on Travis CI.")
 def test_trnbuild_idf_darwin_or_linux(config):
     idf_file = "tests/input_data/trnsys/Building.idf"
     template = "tests/input_data/trnsys/NewFileTemplate.d18"

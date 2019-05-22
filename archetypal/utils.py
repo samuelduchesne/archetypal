@@ -148,19 +148,17 @@ def log(message, level=None, name=None, filename=None, avoid_console=False):
         # capture current stdout, then switch it to the console, print the
         # message, then switch back to what had been the stdout. this prevents
         # logging to notebook - instead, it goes to console
-        if level != lg.WARNING:
-            standard_out = sys.stdout
-            sys.stdout = sys.__stdout__
+        standard_out = sys.stdout
+        sys.stdout = sys.__stdout__
 
-            # convert message to ascii for console display so it doesn't break
-            # windows terminals
-            message = unicodedata.normalize('NFKD', make_str(message)).encode(
-                'ascii', errors='replace').decode()
-            print(message)
-            sys.stdout = standard_out
-        else:
-            message = unicodedata.normalize('NFKD', make_str(message)).encode(
-                'ascii', errors='replace').decode()
+        # convert message to ascii for console display so it doesn't break
+        # windows terminals
+        message = unicodedata.normalize('NFKD', make_str(message)).encode(
+            'ascii', errors='replace').decode()
+        print(message)
+        sys.stdout = standard_out
+
+        if level == lg.WARNING:
             warnings.warn(message)
 
 
@@ -823,3 +821,21 @@ def check_unique_name(first_letters, count, name, unique_list):
         name = first_letters + '_' + end_count
 
     return name
+
+def angle(v1, v2, acute=True):
+    """Calculate the angle between 2 vectors
+
+    Args:
+        v1 (Vector3D): vector 1
+        v2 (Vector3D): vector 2
+        acute (bool): If True, give the acute angle, else gives the obtuse one.
+
+    Returns:
+        angle (float): angle between the 2 vectors in degree
+
+    """
+    angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+    if (acute == True):
+        return angle
+    else:
+        return 2 * np.pi - angle

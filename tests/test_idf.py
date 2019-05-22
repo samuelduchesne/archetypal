@@ -9,13 +9,6 @@ from archetypal import copy_file, CalledProcessError
 
 mpl.use('Agg')
 
-# configure archetypal
-ar.config(log_console=True, log_file=True, use_cache=True,
-          data_folder='tests/temp/data', logs_folder='tests/temp/logs',
-          imgs_folder='tests/temp/imgs', cache_folder='tests/temp/cache',
-          umitemplate='tests/input_data/umi_samples/BostonTemplateLibrary_2'
-                      '.json')
-
 
 # given, when, then
 # or

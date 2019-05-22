@@ -21,7 +21,8 @@ from eppy import modeleditor
 from geomeppy.geom.polygons import Polygon3D
 
 from archetypal import log, settings, Schedule, load_idf, checkStr, \
-    check_unique_name
+    check_unique_name, angle, get_from_cache, load_idf_object_from_cache, \
+    hash_file, save_idf_object_to_cache
 
 
 def clear_name_idf_objects(idfFile):
@@ -373,9 +374,9 @@ def trnbuild_idf(idf_file, template=os.path.join(
     if not os.path.isdir(settings.data_folder):
         os.mkdir(settings.data_folder)
     head, tail = os.path.split(idf_file)
-    new_idf_file = os.path.join(settings.data_folder, tail)
+    new_idf_file = os.path.relpath(os.path.join(settings.data_folder, tail))
     if new_idf_file != idf_file:
-        shutil.copyfile(idf_file, new_idf_file)
+        shutil.copy(idf_file, new_idf_file)
     idf_file = os.path.abspath(new_idf_file)  # back to idf_file
     del new_idf_file, head, tail
 
@@ -455,8 +456,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
         saved. If None, saves to settings.data_folder.
         trnidf_exe_dir (str): Path to *trnsidf.exe*.
         template (str): Path to d18 template file.
-        kwargs (dict): keyword arguments sent to trnbuild_idf(). See
-            trnbuild_idf() for parameter definition
+        kwargs (dict): keyword arguments sent to trnbuild_idf() or
+            choose_window(). See trnbuild_idf() or choose_window() for parameter
+            definition
     Returns:
         (str, optional): the path to the TRNBuild file (.b18). Only provided
             if *return_b18* is True.
@@ -466,21 +468,25 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
             if *return_dck* is True.
 
     """
-
+    # Check if cache exists
     start_time = time.time()
-    # Load IDF file(s)
-    idf = load_idf(idf_file)
-    log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
-        lg.INFO)
+    cache_filename = hash_file(idf_file)
+    idf = load_idf_object_from_cache(idf_file, how='pickle')
+    if not idf:
+        # Load IDF file(s)
+        idf = load_idf(idf_file)
+        log("IDF files loaded in {:,.2f} seconds".format(
+            time.time() - start_time),
+            lg.INFO)
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        start_time = time.time()
+        clear_name_idf_objects(idf)
+        save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
+        log("Cleaned IDF object names in {:,.2f} seconds".format(
+            time.time() - start_time), lg.INFO)
 
     # Read IDF_T3D template and write lines in variable
     lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
-
-    # Clean names of idf objects (e.g. 'MATERIAL')
-    start_time = time.time()
-    clear_name_idf_objects(idf)
-    log("Cleaned IDF object names in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO)
 
     # Get objects from IDF file
     materials = idf.idfobjects['MATERIAL']
@@ -618,6 +624,25 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
                                'ALL OBJECTS IN CLASS: '
                                'OUTPUT:VARIABLEDICTIONARY')
 
+    # Get all surfaces having Outside boundary condition with the ground.
+    # To be used to find the window's slopes
+    ground_surfs = [buildingSurf for buildingSurf in buildingSurfs if
+                    buildingSurf.Outside_Boundary_Condition.lower() == 'ground']
+    if ground_surfs:
+        ground = ground_surfs[0].coords
+    else:
+        ground = [tuple([0, 0, 0]), tuple([1, 0, 0]), tuple([0, 1, 0]),
+                  tuple([1, 1, 0])]
+
+    # Polygon from vector's ground surface
+    poly_ground = Polygon3D(ground)
+    # Normal vectors of the polygon
+    n_ground = poly_ground.normal_vector
+
+    # Initialize list of window's slopes
+    count_slope = 0
+    win_slope_dict = {}
+
     # Writing zones in lines
     count_fs = 0
     for zone in zones:
@@ -637,8 +662,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
 
                 # Clear fenestrationSurface:Detailed name
                 fenestrationSurf.Name = 'fs_' + '%06d' % count_fs
-                # Insure right construction name and number of vertices
-                fenestrationSurf.Construction_Name = "EXT_WINDOW1"
+                # Insure right number of vertices
                 fenestrationSurf.Number_of_Vertices = len(
                     fenestrationSurf.coords)
 
@@ -678,6 +702,32 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
                         round(fenestrationSurf[
                                   "Vertex_" + str(j) + "_Zcoordinate"], 4)
 
+                # Polygon from vector's window surface
+                poly_window = Polygon3D(fenestrationSurf.coords)
+                # Normal vectors of the polygon
+                n_window = poly_window.normal_vector
+
+                # Calculate the slope between window and the ground (with
+                # normal vectors)
+                win_slope = 180 * angle(n_ground, n_window) / np.pi
+                if win_slope > 90:
+                    win_slope -= 180
+
+                # Add a construction name if slope does not already exist
+                if win_slope not in win_slope_dict.values():
+                    count_slope += 1
+                    # Insure right construction name
+                    fenestrationSurf.Construction_Name = "EXT_WINDOW{}".format(
+                        count_slope)
+                    # Append win_slope_dict
+                    win_slope_dict[
+                        fenestrationSurf.Construction_Name] = win_slope
+
+                else:
+                    fenestrationSurf.Construction_Name = \
+                        [key for key in win_slope_dict.keys() if
+                         win_slope == win_slope_dict[key]][0]
+
                 lines.insert(variableDictNum + 2, fenestrationSurf)
 
         # Writing buildingSurface: Detailed in lines
@@ -700,6 +750,10 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
                     buildingSurfs[i].Outside_Boundary_Condition_Object = zones[
                         indiceZone[0]].Name
 
+                    # Oblige same construction for adjacent surfaces
+                    buildingSurfs[i].Construction_Name = buildingSurfs[
+                        indiceSurf[0]].Construction_Name
+
                     # Polygon from vector's adjacent surfaces
                     poly1 = Polygon3D(buildingSurfs[i].coords)
                     poly2 = Polygon3D(buildingSurfs[indiceSurf[0]].coords)
@@ -708,7 +762,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
                     n2 = poly2.normal_vector
                     # Verify if normal vectors of adjacent surfaces have
                     # opposite directions
-                    if (n1 + n2).x != 0 or (n1 + n2).y != 0 or (n1 + n2).z != 0:
+                    if round((n1 + n2).x, 2) != 0 or round((n1 + n2).y,
+                                                           2) != 0 or round(
+                        (n1 + n2).z, 2) != 0:
                         # If not, inverse vertice of buildingSurf
                         # (Vertex4 become Vertex1, Vertex2 become Vertex3, etc.)
                         for j, k in zip(range(1, len(
@@ -1043,7 +1099,13 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
     # window = (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
     #                 t_vis_win, lay_win, width, window_bunches[win_id],
     #                 and maybe tolerance)
-    window = choose_window(2.2, 0.64, 0.8, 0.05, window_lib)
+
+    win_u_value = kwargs.get('u_value', 2.2)
+    win_shgc = kwargs.get('shgc', 0.64)
+    win_tvis = kwargs.get('t_vis', 0.8)
+    win_tolerance = kwargs.get('tolerance', 0.05)
+    window = choose_window(win_u_value, win_shgc, win_tvis, win_tolerance,
+                           window_lib)
     # If tolerance was not respected to find a window, write in log a warning
     if len(window) > 11:
         log(
@@ -1059,30 +1121,35 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
     # Get line number where to write
     windowNum = checkStr(lines,
                          'W i n d o w s')
+
     # Write
-    lines.insert(windowNum + 2,
-                 '!- WINID = ' + str(window[0]) + ': HINSIDE = 11:'
-                                                  ' HOUTSIDE = 64: SLOPE = '
-                                                  '-999: '
-                                                  'SPACID = 4: WWID = 0.77: '
-                                                  'WHEIG = 1.08: '
-                                                  'FFRAME = 0.15: UFRAME = '
-                                                  '8.17: ABSFRAME = 0.6: '
-                                                  'RISHADE = 0: RESHADE = 0: '
-                                                  'REFLISHADE = 0.5: '
-                                                  'REFLOSHADE = 0.5: CCISHADE '
-                                                  '= 0.5: '
-                                                  'EPSFRAME = 0.9: EPSISHADE '
-                                                  '= 0.9: '
-                                                  'ITSHADECLOSE = INPUT 1 * '
-                                                  'SHADE_CLOSE: '
-                                                  'ITSHADEOPEN = INPUT 1 * '
-                                                  'SHADE_OPEN: '
-                                                  'FLOWTOAIRNODE = 1: PERT = '
-                                                  '0: PENRT = 0: '
-                                                  'RADMATERIAL = undefined: '
-                                                  'RADMATERIAL_SHD1 = '
-                                                  'undefined')
+    for key in win_slope_dict.keys():
+        lines.insert(windowNum + 1, "WINDOW " + str(key) + '\n')
+        lines.insert(windowNum + 2,
+                     '!- WINID = ' + str(window[0]) +
+                     ': HINSIDE = 11:'
+                     ' HOUTSIDE = 64: SLOPE '
+                     '= ' + str(win_slope_dict[key]) +
+                     ': '
+                     'SPACID = 4: WWID = 0.77: '
+                     'WHEIG = 1.08: '
+                     'FFRAME = 0.15: UFRAME = '
+                     '8.17: ABSFRAME = 0.6: '
+                     'RISHADE = 0: RESHADE = 0: '
+                     'REFLISHADE = 0.5: '
+                     'REFLOSHADE = 0.5: CCISHADE '
+                     '= 0.5: '
+                     'EPSFRAME = 0.9: EPSISHADE '
+                     '= 0.9: '
+                     'ITSHADECLOSE = INPUT 1 * '
+                     'SHADE_CLOSE: '
+                     'ITSHADEOPEN = INPUT 1 * '
+                     'SHADE_OPEN: '
+                     'FLOWTOAIRNODE = 1: PERT = '
+                     '0: PENRT = 0: '
+                     'RADMATERIAL = undefined: '
+                     'RADMATERIAL_SHD1 = '
+                     'undefined' + '\n')
 
     # Get line number to write the EXTENSION_WINPOOL
     extWinpoolNum = checkStr(lines,

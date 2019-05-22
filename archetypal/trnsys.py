@@ -429,7 +429,8 @@ def trnbuild_idf(idf_file, template=os.path.join(
         return True
 
 
-def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
+def convert_idf_to_trnbuild(idf_file, window_lib=None,
+                            return_idf=False, return_b18=True,
                             return_t3d=False, return_dck=False,
                             output_folder=None, trnidf_exe_dir=os.path.join(
             settings.trnsys_default_folder,
@@ -439,6 +440,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
 
     There are three optional outputs:
+    - the path to the modified IDF with the new names, coordinates, etc. of
+        the IDF objects. It is an input file for EnergyPlus (.idf)
     - the path to the TRNBuild file (.b18)
     - the path to the TRNBuild input file (.idf)
     - the path to the TRNSYS dck file (.dck)
@@ -446,6 +449,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
     Args:
         idf (str): File path of IDF file to convert to T3D.
         window_lib (str): File path of the window library (from Berkeley Lab).
+        return_idf (bool, optional) : If True, also return the path to the
+            modified IDF with the new names, coordinates, etc. of the IDF
+            objects. It is an input file for EnergyPlus (.idf)
         return_b18 (bool, optional): If True, also return the path to the
             TRNBuild file (.b18).
         return_t3d (bool, optional): If True, also return the path to the
@@ -474,7 +480,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
     # Check if cache exists
     start_time = time.time()
     cache_filename = hash_file(idf_file)
-    idf = load_idf_object_from_cache(idf_file, how='pickle')
+    idf = load_idf_object_from_cache(idf_file, how='idf')
     if not idf:
         # Load IDF file(s)
         idf = load_idf(idf_file)
@@ -484,7 +490,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
         # Clean names of idf objects (e.g. 'MATERIAL')
         start_time = time.time()
         clear_name_idf_objects(idf)
-        save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
+        idf.saveas(filename=os.path.join(settings.cache_folder, cache_filename,
+                                         cache_filename + '.idf'))
+        # save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
         log("Cleaned IDF object names in {:,.2f} seconds".format(
             time.time() - start_time), lg.INFO)
 
@@ -1193,7 +1201,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
                      window[9]) + '\n')
     # endregion
 
-    # Save file at output_folder
+    # Save T3D file at output_folder
     if output_folder is None:
         # User did not provide an output folder path. We use the default setting
         output_folder = os.path.relpath(settings.data_folder)
@@ -1208,6 +1216,14 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO)
+
+    # If asked by the user, save IDF file with modification done on the names,
+    # coordinates, etc. at
+    # output_folder
+    new_idf_path = os.path.join(output_folder, "MODIFIED_" +
+                                os.path.basename(idf_file))
+    if return_idf:
+        idf.saveas(filename=new_idf_path)
 
     # Run trnsidf to convert T3D to BUI
     dck = return_dck
@@ -1228,5 +1244,5 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None, return_b18=True,
     dck_path = pre + 'dck'
 
     from itertools import compress
-    return tuple(compress([b18_path, t3d_path, dck_path],
-                          [return_b18, return_t3d, return_dck]))
+    return tuple(compress([new_idf_path, b18_path, t3d_path, dck_path],
+                          [return_idf, return_b18, return_t3d, return_dck]))

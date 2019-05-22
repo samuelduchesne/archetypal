@@ -321,8 +321,9 @@ def load_idf_object_from_cache(idf_file, how=None):
     Args:
         idf_file (str): path to the idf file
         how (str, optional): How the pickling is done. Choices are 'json' or
-            'pickle'. json dump doen't quite work yet. 'pickle' will load from a
-            gzip'ed file instead of a regular binary file (.dat).
+            'pickle' or 'idf'. json dump doen't quite work yet. 'pickle' will
+            load from a gzip'ed file instead of a regular binary file (.dat).
+            'idf' will load from idf file saved in cache.
 
     Returns:
         None
@@ -371,10 +372,21 @@ def load_idf_object_from_cache(idf_file, how=None):
                     idf = pickle.load(file_handle)
                 if idf.iddname is None:
                     idf.setiddname(getiddfile(idf.model.dt['VERSION'][0][1]))
-                    idf.read()
+                    # idf.read()
                 log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(
                     os.path.basename(idf_file), time.time() -
                                                 start_time))
+                return idf
+        elif how.upper() == 'IDF':
+            cache_fullpath_filename = os.path.join(settings.cache_folder,
+                                                   cache_filename,
+                                                   os.extsep.join([
+                                                       cache_filename,
+                                                       'idf']))
+            if os.path.isfile(cache_fullpath_filename):
+                version = get_idf_version(cache_fullpath_filename, doted=True)
+                iddfilename = getiddfile(version)
+                idf = eppy_load(cache_fullpath_filename, iddfilename)
                 return idf
         else:
             cache_fullpath_filename = os.path.join(settings.cache_folder,

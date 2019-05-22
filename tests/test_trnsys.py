@@ -30,7 +30,8 @@ def test_trnbuild_from_idf(config):
                    'tolerance': 0.05, 'ordered':True}
 
     convert_idf_to_trnbuild(idf_file=os.path.join(file_upper_path, files[0]),
-                            window_lib=window_filepath, **kwargs_dict)
+                            window_lib=window_filepath, return_idf=True,
+                            **kwargs_dict)
 
 
 @pytest.mark.win32

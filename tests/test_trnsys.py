@@ -27,7 +27,7 @@ def test_trnbuild_from_idf(config):
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
     kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
-                   'tolerance': 0.05}
+                   'tolerance': 0.05, 'ordered':True}
 
     convert_idf_to_trnbuild(idf_file=os.path.join(file_upper_path, files[0]),
                             window_lib=window_filepath, **kwargs_dict)

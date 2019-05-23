@@ -1019,9 +1019,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         power = Schedule(sch_name='sc_000005', idf=idf).max
         # Write gain characteristics into lines
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
-            power * (1 - radFract)) + ' : RADIATIVE=' + str(
-            power * radFract) +
-                     ' : HUMIDITY=0.066 : ELPOWERFRAC=0 : ' + areaMethod + ' : CATEGORY=PEOPLE\n')
+            round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + str(
+            round(power * radFract, 3)) + ' : HUMIDITY=0.066 : ELPOWERFRAC=0 '
+                                          ': ' + areaMethod + ' : CATEGORY=PEOPLE\n')
 
     # Writing LIGHT gains infos to lines
     for i in range(0, len(lights)):
@@ -1053,11 +1053,10 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         else:
             radFract = float(radFract)
 
-
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
-            power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
-                     ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : '
-                                                                       'CATEGORY=LIGHTS\n')
+            round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + str(
+            round(power * radFract, 3)) + ' : HUMIDITY=0 : ELPOWERFRAC=1 : '
+                     + areaMethod + ' : CATEGORY=LIGHTS\n')
 
     # Writing EQUIPMENT gains infos to lines
     for i in range(0, len(equipments)):
@@ -1090,10 +1089,11 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         else:
             radFract = float(radFract)
 
-        lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
-            power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
-                     ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : '
-                                                                       'CATEGORY=LIGHTS\n')
+        lines.insert(gainNum + 2, ' CONVECTIVE=' + \
+                     str(round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + \
+                     str(round(power * radFract, 3)) + \
+                     ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + \
+                     areaMethod + ' : CATEGORY=LIGHTS\n')
     # endregion
 
     # region Write SCHEDULES from IDF to lines (T3D)

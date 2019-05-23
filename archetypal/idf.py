@@ -571,7 +571,7 @@ def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
         log('file already upgraded to latest version "{}"'.format(e))
 
     # update the versionid of the file
-    versionid = get_idf_version(eplus_file, doted=True)
+    versionid = get_idf_version(eplus_file, doted=False)
     idd_filename = getiddfile(get_idf_version(eplus_file, doted=True))
     # </editor-fold>
 
@@ -1002,12 +1002,13 @@ def perform_transition(file, to_version=None):
         # What is the latest E+ installed version
         to_version = find_eplus_installs(vupdater_path)
     if tuple(versionid.split('-')) > tuple(to_version.split('-')):
-        raise Exception(
+        log(
             'The version of the idf file "{}: v{}" is higher than any version '
             'of EnergyPlus installed on this machine. Please install '
             'EnergyPlus version "{}" or higher. Latest version found: '
             '{}'.format(os.path.basename(file), versionid, versionid,
-                        to_version))
+                        to_version), lg.WARNING)
+        return None
     ep_installation_name = os.path.abspath(os.path.dirname(iddfile)).replace(
         versionid, to_version)
     vupdater_path = os.path.join(ep_installation_name, 'PreProcess',
@@ -1058,7 +1059,7 @@ def perform_transition(file, to_version=None):
         raise KeyError
     with cd(run_dir):
         transitions = [key for key in trans_exec
-                       if tuple(map(int, key.split('-'))) <= \
+                       if tuple(map(int, key.split('-'))) < \
                        tuple(map(int, to_version.split('-')))
                        and tuple(map(int, key.split('-'))) >= \
                        tuple(map(int, versionid.split('-')))]

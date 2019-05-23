@@ -22,7 +22,7 @@ def test_trnbuild_from_idf(config):
                                                            "Small Office.idf",
              "NECB 2011 - "
              "Warehouse.idf"]
-    idf_file = os.path.join(file_upper_path, files[1])
+    idf_file = os.path.join(file_upper_path, files[0])
     idf_file = copy_file(idf_file)
 
     window_file = 'W74-lib.dat'

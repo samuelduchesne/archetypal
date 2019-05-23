@@ -519,6 +519,13 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     lights = idf.idfobjects['LIGHTS']
     equipments = idf.idfobjects['ELECTRICEQUIPMENT']
 
+    # Get all construction EXCEPT fenestration ones
+    constr_list = []
+    for buildingSurf in buildingSurfs:
+        constr_list.append(buildingSurf.Construction_Name)
+    constr_list = list(set(constr_list))
+    constr_list.sort()
+
     ordered = kwargs.get('ordered', False)
     if ordered:
         materials = list(reversed(materials))
@@ -537,6 +544,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         peoples = list(reversed(peoples))
         lights = list(reversed(lights))
         equipments = list(reversed(equipments))
+        constr_list = list(reversed(constr_list))
 
     # region Get schedules from IDF
     start_time = time.time()
@@ -878,28 +886,21 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     constructionNum = checkStr(lines, 'C O N S T R U C T I O N')
 
     # Writing CONSTRUCTION in lines
-    for i in range(0, len(constructions)):
-
-        # Except fenestration construction
-        fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
-                        s in constructions[i].fieldvalues[1].lower()]
-
-        if not fenestration:
-            lines.insert(constructionNum + 1,
-                         '!-CONSTRUCTION ' + constructions[i].Name + '\n')
-        else:
-            continue
+    for constr in constr_list:
+        construction = idf.getobject("CONSTRUCTION", constr)
+        lines.insert(constructionNum + 1,
+                     '!-CONSTRUCTION ' + construction.Name + '\n')
 
         # Create lists to append with layers and thickness of construction
         layerList = []
         thickList = []
 
-        for j in range(2, len(constructions[i].fieldvalues)):
+        for j in range(2, len(construction.fieldvalues)):
 
-            if constructions[i].fieldvalues[j] not in mat_name:
+            if construction.fieldvalues[j] not in mat_name:
 
                 indiceMat = [k for k, s in enumerate(materials) if
-                             constructions[i].fieldvalues[j] == s.Name]
+                             construction.fieldvalues[j] == s.Name]
 
                 if not indiceMat:
                     thickList.append(0.0)
@@ -907,7 +908,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                     thickList.append(
                         round(materials[indiceMat[0]].Thickness, 4))
 
-                layerList.append(constructions[i].fieldvalues[j])
+                layerList.append(construction.fieldvalues[j])
 
             else:
                 continue
@@ -922,11 +923,13 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                      '!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n')
 
         basement = [s for s in ['basement', 'floor'] if
-                    s in constructions[i].fieldvalues[1].lower()]
+                    s in construction.fieldvalues[1].lower()]
         if not basement:
-            lines.insert(constructionNum + 6, '!- HFRONT   = 11 : HBACK= 64\n')
+            lines.insert(constructionNum + 6,
+                         '!- HFRONT   = 11 : HBACK= 64\n')
         else:
-            lines.insert(constructionNum + 6, '!- HFRONT   = 11 : HBACK= 0\n')
+            lines.insert(constructionNum + 6,
+                         '!- HFRONT   = 11 : HBACK= 0\n')
     # endregion
 
     # Write CONSTRUCTION from IDF to lines, at the end of the T3D file
@@ -935,15 +938,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                                   'ALL OBJECTS IN CLASS: CONSTRUCTION')
 
     # Writing CONSTRUCTION infos to lines
-    for i in range(0, len(constructions)):
-
-        # Except fenestration construction
-        fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
-                        s in constructions[i].fieldvalues[1].lower()]
-        if not fenestration:
-            lines.insert(constructionEndNum, constructions[i])
-        else:
-            continue
+    for constr in constr_list:
+        construction = idf.getobject("CONSTRUCTION", constr)
+        lines.insert(constructionEndNum, construction)
 
     # region Write LAYER from IDF to lines (T3D)
     # Get line number where to write

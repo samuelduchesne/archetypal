@@ -13,7 +13,6 @@ import shutil
 import subprocess
 import sys
 import time
-from collections import OrderedDict
 
 from tqdm import tqdm
 import numpy as np

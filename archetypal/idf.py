@@ -1002,10 +1002,12 @@ def perform_transition(file, to_version=None):
         # What is the latest E+ installed version
         to_version = find_eplus_installs(vupdater_path)
     if tuple(versionid.split('-')) > tuple(to_version.split('-')):
-        raise Exception('The version of the idf file "{}" is higher than any '
-                        'version of EnergyPlus installed on this machine. '
-                        'Please install EnergyPlus version "{}" or '
-                        'higher'.format(os.path.basename(file), versionid))
+        raise Exception(
+            'The version of the idf file "{}: v{}" is higher than any version '
+            'of EnergyPlus installed on this machine. Please install '
+            'EnergyPlus version "{}" or higher. Latest version found: '
+            '{}'.format(os.path.basename(file), versionid, versionid,
+                        to_version))
     ep_installation_name = os.path.abspath(os.path.dirname(iddfile)).replace(
         versionid, to_version)
     vupdater_path = os.path.join(ep_installation_name, 'PreProcess',

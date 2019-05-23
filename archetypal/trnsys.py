@@ -997,36 +997,29 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     gainNum = checkStr(lines, 'G a i n s')
 
     # Writing PEOPLE gains infos to lines
-    schedule_list_people = []
     for i in range(0, len(peoples)):
-
-        schYearName = peoples[i].Activity_Level_Schedule_Name
-        indiceSchYear = [k for k, s in enumerate(scheduleYear) if
-                         peoples[i].Activity_Level_Schedule_Name == s.Name]
-        schWeekName = scheduleYear[indiceSchYear[0]].ScheduleWeek_Name_1
-        indiceSchWeek = [k for k, s in enumerate(scheduleWeek) if scheduleYear[
-            indiceSchYear[0]].ScheduleWeek_Name_1 == s.Name]
-        weekSch = list(OrderedDict.fromkeys(
-            scheduleWeek[indiceSchWeek[0]].fieldvalues[2::]))
-
+        # Write gain name in lines
         lines.insert(gainNum + 1,
                      'GAIN PEOPLE' + '_' + peoples[i].Name + '\n')
-
+        # Determine if gain is absolute or relative and write it into lines
         if peoples[i].Number_of_People_Calculation_Method == "People":
             areaMethod = "ABSOLUTE"
         else:
             areaMethod = "AREA_RELATED"
-
+        # Find the radiant fractions
         radFract = peoples[i].Fraction_Radiant
         if len(str(radFract)) == 0:
-            radFract = float(1 - peoples[i].Sensible_Heat_Fraction)
+            # Find the radiant fractions
+            try:
+                radFract = float(1 - peoples[i].Sensible_Heat_Fraction)
+            except Exception:
+                radFract = 0.3
+        else:
+            radFract = float(radFract)
 
-        for element in weekSch:
-            indiceSchElement = [p for p, s in enumerate(scheduleDay) if
-                                element == s.Name]
-            power = round(
-                float(scheduleDay[indiceSchElement[0]].Value_Until_Time_1),
-                4)
+        # Find the the total power of the people gain
+        power = Schedule(sch_name='sc_000005', idf=idf).max
+        # Write gain characteristics into lines
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(
             power * radFract) +
@@ -1034,10 +1027,10 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     # Writing LIGHT gains infos to lines
     for i in range(0, len(lights)):
-
+        # Write gain name in lines
         lines.insert(gainNum + 1, 'GAIN LIGHT' + '_' + lights[i].Name + '\n')
-
-        if lights[i].Design_Level_Calculation_Method == "Watts":
+        # Determine if gain is absolute or relative and write it into lines
+        if lights[i].Design_Level_Calculation_Method == "LightingLevel":
             areaMethod = "ABSOLUTE"
             power = round(float(lights[i].Lighting_Level), 4)
         elif lights[i].Design_Level_Calculation_Method == "Watts/Area":
@@ -1051,7 +1044,17 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                 "number of peoples (Watts/Person)",
                 lg.WARNING)
 
-        radFract = float(lights[i].Fraction_Radiant)
+        # Find the radiant fractions
+        radFract = lights[i].Fraction_Radiant
+        if len(str(radFract)) == 0:
+            # Find the radiant fractions
+            try:
+                radFract = float(1 - lights[i].Sensible_Heat_Fraction)
+            except Exception:
+                radFract = 0.42
+        else:
+            radFract = float(radFract)
+
 
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
@@ -1060,11 +1063,11 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     # Writing EQUIPMENT gains infos to lines
     for i in range(0, len(equipments)):
-
+        # Write gain name in lines
         lines.insert(gainNum + 1,
                      'GAIN EQUIPMENT' + '_' + equipments[i].Name + '\n')
-
-        if equipments[i].Design_Level_Calculation_Method == "Watts":
+        # Determine if gain is absolute or relative and write it into lines
+        if equipments[i].Design_Level_Calculation_Method == "EquipmentLevel":
             areaMethod = "ABSOLUTE"
             power = round(float(equipments[i].Design_Level), 4)
         elif equipments[i].Design_Level_Calculation_Method == "Watts/Area":
@@ -1078,7 +1081,16 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                 "the number of peoples (Watts/Person)",
                 lg.WARNING)
 
-        radFract = round(float(equipments[i].Fraction_Radiant), 4)
+        # Find the radiant fractions
+        radFract = equipments[i].Fraction_Radiant
+        if len(str(radFract)) == 0:
+            # Find the radiant fractions
+            try:
+                radFract = float(1 - equipments[i].Sensible_Heat_Fraction)
+            except Exception:
+                radFract = 0.42
+        else:
+            radFract = float(radFract)
 
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +

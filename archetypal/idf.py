@@ -321,8 +321,9 @@ def load_idf_object_from_cache(idf_file, how=None):
     Args:
         idf_file (str): path to the idf file
         how (str, optional): How the pickling is done. Choices are 'json' or
-            'pickle'. json dump doen't quite work yet. 'pickle' will load from a
-            gzip'ed file instead of a regular binary file (.dat).
+            'pickle' or 'idf'. json dump doen't quite work yet. 'pickle' will
+            load from a gzip'ed file instead of a regular binary file (.dat).
+            'idf' will load from idf file saved in cache.
 
     Returns:
         None
@@ -369,9 +370,23 @@ def load_idf_object_from_cache(idf_file, how=None):
                 with gzip.GzipFile(cache_fullpath_filename,
                                    'rb') as file_handle:
                     idf = pickle.load(file_handle)
+                if idf.iddname is None:
+                    idf.setiddname(getiddfile(idf.model.dt['VERSION'][0][1]))
+                    # idf.read()
                 log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(
                     os.path.basename(idf_file), time.time() -
                                                 start_time))
+                return idf
+        elif how.upper() == 'IDF':
+            cache_fullpath_filename = os.path.join(settings.cache_folder,
+                                                   cache_filename,
+                                                   os.extsep.join([
+                                                       cache_filename,
+                                                       'idf']))
+            if os.path.isfile(cache_fullpath_filename):
+                version = get_idf_version(cache_fullpath_filename, doted=True)
+                iddfilename = getiddfile(version)
+                idf = eppy_load(cache_fullpath_filename, iddfilename)
                 return idf
         else:
             cache_fullpath_filename = os.path.join(settings.cache_folder,
@@ -556,7 +571,7 @@ def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
         log('file already upgraded to latest version "{}"'.format(e))
 
     # update the versionid of the file
-    versionid = get_idf_version(eplus_file, doted=True)
+    versionid = get_idf_version(eplus_file, doted=False)
     idd_filename = getiddfile(get_idf_version(eplus_file, doted=True))
     # </editor-fold>
 
@@ -987,10 +1002,13 @@ def perform_transition(file, to_version=None):
         # What is the latest E+ installed version
         to_version = find_eplus_installs(vupdater_path)
     if tuple(versionid.split('-')) > tuple(to_version.split('-')):
-        raise Exception('The version of the idf file "{}" is higher than any '
-                        'version of EnergyPlus installed on this machine. '
-                        'Please install EnergyPlus version "{}" or '
-                        'higher'.format(os.path.basename(file), versionid))
+        log(
+            'The version of the idf file "{}: v{}" is higher than any version '
+            'of EnergyPlus installed on this machine. Please install '
+            'EnergyPlus version "{}" or higher. Latest version found: '
+            '{}'.format(os.path.basename(file), versionid, versionid,
+                        to_version), lg.WARNING)
+        return None
     ep_installation_name = os.path.abspath(os.path.dirname(iddfile)).replace(
         versionid, to_version)
     vupdater_path = os.path.join(ep_installation_name, 'PreProcess',
@@ -1041,7 +1059,7 @@ def perform_transition(file, to_version=None):
         raise KeyError
     with cd(run_dir):
         transitions = [key for key in trans_exec
-                       if tuple(map(int, key.split('-'))) <= \
+                       if tuple(map(int, key.split('-'))) < \
                        tuple(map(int, to_version.split('-')))
                        and tuple(map(int, key.split('-'))) >= \
                        tuple(map(int, versionid.split('-')))]

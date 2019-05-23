@@ -1,4 +1,5 @@
 import os
+import random
 
 import matplotlib as mpl
 # use agg backend so you don't need a display on travis-ci
@@ -14,7 +15,7 @@ mpl.use('Agg')
 # or
 # arrange, act, assert
 
-def test_small_home_data(fresh_start):
+def test_small_home_data(config, fresh_start):
     file = 'tests/input_data/regular/AdultEducationCenter.idf'
     file = copy_file(file)[0]
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
@@ -23,8 +24,9 @@ def test_small_home_data(fresh_start):
 
 
 def test_necb(config):
+    """Test one of the necb files"""
     import glob
-    files = glob.glob("tests/input_data/necb/*.idf")
+    files = random.choice(glob.glob("tests/input_data/necb/*.idf"))
     files = copy_file(files)
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     rundict = {file: dict(eplus_file=file, weather_file=wf,
@@ -32,20 +34,6 @@ def test_necb(config):
                           design_day=True
                           ) for file in files}
     result = {file: ar.run_eplus(**rundict[file]) for file in files}
-
-    assert not any(isinstance(a, Exception) for a in result.values())
-
-
-def test_std(scratch_then_cache, config):
-    import glob
-    files = glob.glob("tests/input_data/STD/*idf")
-    files = copy_file(files)
-    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    rundict = {file: dict(eplus_file=file, weather_file=wf,
-                          expandobjects=True, annual=True,
-                          verbose='q', prep_outputs=True, design_day=False,
-                          output_report='sql') for file in files}
-    result = ar.parallel_process(rundict, ar.run_eplus, use_kwargs=True)
 
     assert not any(isinstance(a, Exception) for a in result.values())
 
@@ -61,9 +49,19 @@ def test_load_idf(config):
     assert isinstance(obj, dict)
 
 
-@pytest.mark.parametrize('ep_version', ['9-1-0', None],
+def test_load_old(config):
+    files = ['tests/input_data/problematic/nat_ventilation_SAMPLE0.idf',
+             'tests/input_data/regular/5ZoneNightVent1.idf']
+
+    obj = {os.path.basename(file): ar.load_idf(file)
+           for file in files}
+
+    assert not any(isinstance(a, Exception) for a in obj.values())
+
+
+@pytest.mark.parametrize('ep_version', [ar.ep_version, None],
                          ids=['specific-ep-version', 'no-specific-ep-version'])
-def test_run_olderv(fresh_start, ep_version):
+def test_run_olderv(config, fresh_start, ep_version):
     """Will run eplus on a file that needs to be upgraded with one that does
     not"""
 
@@ -79,7 +77,7 @@ def test_run_olderv(fresh_start, ep_version):
 
 
 @pytest.mark.xfail(raises=(CalledProcessError, FileNotFoundError))
-def test_run_olderv_problematic(fresh_start):
+def test_run_olderv_problematic(config, fresh_start):
     """Will run eplus on a file that needs to be upgraded and that should
     fail. Will be ignored in the test suite"""
 

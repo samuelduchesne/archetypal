@@ -5,7 +5,7 @@ import pytest
 
 from archetypal import convert_idf_to_trnbuild, parallel_process, \
     parse_window_lib, \
-    choose_window, trnbuild_idf
+    choose_window, trnbuild_idf, copy_file
 
 
 # Function round to hundreds
@@ -18,7 +18,12 @@ def round_up(n, decimals=0):
 def test_trnbuild_from_idf(config):
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
-    files = ["NECB 2011 - Warehouse.idf", "NECB 2011 - Small Office.idf"]
+    files = ["ASHRAE90.1_Warehouse_STD2004_Rochester.idf", "NECB 2011 - "
+                                                           "Small Office.idf",
+             "NECB 2011 - "
+             "Warehouse.idf"]
+    idf_file = os.path.join(file_upper_path, files[1])
+    idf_file = copy_file(idf_file)
 
     window_file = 'W74-lib.dat'
     template_dir = os.path.join('archetypal', 'templates')
@@ -27,11 +32,10 @@ def test_trnbuild_from_idf(config):
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
     kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
-                   'tolerance': 0.05, 'ordered':True}
+                   'tolerance': 0.05, 'ordered': True}
 
-    convert_idf_to_trnbuild(idf_file=os.path.join(file_upper_path, files[0]),
-                            window_lib=window_filepath, return_idf=True,
-                            **kwargs_dict)
+    convert_idf_to_trnbuild(idf_file=idf_file[0], window_lib=window_filepath,
+                            return_idf=True, **kwargs_dict)
 
 
 @pytest.mark.win32

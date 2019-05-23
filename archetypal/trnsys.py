@@ -54,8 +54,10 @@ def clear_name_idf_objects(idfFile):
         for epObject in epObjects:
             # Do not take fenestration, to be treated later
             try:
-                fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
-                                s in epObject.Name.lower()]
+                fenestration = [s for s in ['fenestration', 'shgc', 'window',
+                                            'glazing'] if
+                                s in epObject.Name.lower() or s in
+                                epObject.key.lower()]
             except:
                 fenestration = []
             if not fenestration:

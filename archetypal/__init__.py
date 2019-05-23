@@ -5,7 +5,10 @@
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
 
-__version__ = '1.2.0-dev'
+# Version of the package
+__version__ = '1.2.0'
+# Latest version of EnergyPlus compatible with archetypal
+ep_version = '8-9-0'
 
 from .utils import *
 from .simple_glazing import *

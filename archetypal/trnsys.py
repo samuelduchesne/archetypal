@@ -5,25 +5,33 @@
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
 
+import io
 import logging as lg
 import os
+import re
+import shutil
+import subprocess
+import sys
 import time
-import uuid
 from collections import OrderedDict
 
-import archetypal as ar
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
-from archetypal import log, Schedule
 from eppy import modeleditor
 from geomeppy.geom.polygons import Polygon3D
+
+from archetypal import log, settings, Schedule, load_idf, checkStr, \
+    check_unique_name, angle, get_from_cache, load_idf_object_from_cache, \
+    hash_file, save_idf_object_to_cache
 
 
 def clear_name_idf_objects(idfFile):
     """Clean names of IDF objects :
-        - replace special characters or whitespaces with "_"
-        - limits length to 13 characters
-        - replace name by an unique id if needed
+        - replace variable names with a unique name, easy to refer to the
+        original object. For example : if object is the n-th "Schedule Type
+        Limit", then the new name will be "stl_00000n"
+        - limits length to 10 characters
 
     Args:
         idfFile (eppy.modeleditor.IDF): IDF object where to clean names
@@ -39,10 +47,11 @@ def clear_name_idf_objects(idfFile):
     uniqueList = []
 
     # For all categories of objects in the IDF file
-    for obj in idfFile.idfobjects:
+    for obj in tqdm(idfFile.idfobjects, desc='cleaning_names'):
         epObjects = idfFile.idfobjects[obj]
 
         # For all objects in Category
+        count = 0
         for epObject in epObjects:
             # Do not take fenestration, to be treated later
             try:
@@ -53,26 +62,33 @@ def clear_name_idf_objects(idfFile):
             if not fenestration:
                 try:
                     old_name = epObject.Name
-                    # clean old name by removing spaces, "-", period, "{",
-                    # "}", doubleunderscore
-                    new_name = old_name.replace(" ", "_").replace("-",
-                                                                  "_").replace(
-                        ".", "_").replace("{", "").replace("}", "").replace(
-                        "__",
-                        "_")
-                    if len(new_name) > 13:
-                        # Trnbuild doen not like names longer than 13 characters
-                        # Replace with unique ID
-                        new_name = uuid.uuid4().hex[:13]
+                    # For TRNBuild compatibility we oblige the new name to
+                    # begin by a lowercase letter and the new name is max 10
+                    # characters. The new name is done with the uppercase of
+                    # the epObject type and an increment depending on the number
+                    # of this epObject type. Making sure we
+                    # have an unique new name
+                    list_word_epObject_type = re.sub(r"([A-Z])", r" \1",
+                                                     epObject.fieldvalues[
+                                                         0]).split()
+                    # Making sure new name will be max 10 characters
+                    if len(list_word_epObject_type) > 4:
+                        list_word_epObject_type = list_word_epObject_type[:4]
 
-                        # Make sure uuid does not already exist
-                        while new_name in uniqueList:
-                            new_name = uuid.uuid4().hex[:13]
+                    first_letters = ''.join(word[0].lower() for word in
+                                            list_word_epObject_type)
+                    count += 1
+                    end_count = '%06d' % count
+                    new_name = first_letters + '_' + end_count
 
-                        uniqueList.append(new_name)
+                    # Make sure new name does not already exist
+                    new_name = check_unique_name(first_letters, count,
+                                                 new_name,
+                                                 uniqueList)
 
-                    # print("changed layer {} with {}".format(old_name,
-                    # new_name))
+                    uniqueList.append(new_name)
+
+                    # Changing the name in the IDF object
                     modeleditor.rename(idfFile, obj, old_name, new_name)
                 except:
                     pass
@@ -96,10 +112,11 @@ def closest_coords(surfList, to=[0, 0, 0]):
     """Find closest coordinates to given ones
 
     Args:
-        surfList (idf_MSequence): list of surface with coordinates of each one
+        surfList (idf_MSequence): list of surfaces with coordinates of each one
         to (list): list of coordinates we want to calculate the distance from
 
-    Returns: the closest point (its coordinates x, y, z) to the point chosen
+    Returns:
+        the closest point (its coordinates x, y, z) to the point chosen
         (input "to")
 
     """
@@ -112,8 +129,6 @@ def closest_coords(surfList, to=[0, 0, 0]):
             tuple_list.append(surf.coords[i])
 
     nbdata = np.array(tuple_list)
-    # nbdata = np.array([buildingSurf.coords for buildingSurf in
-    # surfList]).reshape(size,len(to))
     btree = cKDTree(data=nbdata, compact_nodes=True, balanced_tree=True)
     dist, idx = btree.query(np.array(to).T, k=1)
     x, y, z = nbdata[idx]
@@ -121,7 +136,7 @@ def closest_coords(surfList, to=[0, 0, 0]):
 
 
 def recursive_len(item):
-    """Calculate the number of elments in nested list
+    """Calculate the number of elements in nested list
 
     Args:
         item (list): list of lists (i.e. nested list)
@@ -136,7 +151,7 @@ def recursive_len(item):
 
 
 def rotate(l, n):
-    """
+    """Shift list elements to the left
 
     Args:
         l (list): list to rotate
@@ -149,8 +164,27 @@ def rotate(l, n):
 
 
 def parse_window_lib(window_file_path):
+    """Function that parse window library from Berkeley Lab in two parts.
+    First part is a dataframe with the window characteristics. Second part is a
+    dictionary with the description/properties of each window.
+
+    Args:
+        window_file_path (str): Path to the window library
+
+    Returns:
+        df_windows (dataframe): dataframe with the window characteristics in
+            the columns and the window id as rows
+        bunches (dict): dict with the window id as key and
+            description/properties of each window as value
+
+    """
+
     # Read window library and write lines in variable
-    all_lines = open(window_file_path).readlines()
+    if window_file_path is None:
+        all_lines = io.TextIOWrapper(io.BytesIO(
+            settings.template_winLib)).readlines()
+    else:
+        all_lines = open(window_file_path).readlines()
 
     # Select list of windows at the end of the file
     end = '*** END OF LIBRARY ***'
@@ -169,7 +203,7 @@ def parse_window_lib(window_file_path):
 
     # Save lines_for_df in text file
     # User did not provide an output folder path. We use the default setting
-    output_folder = os.path.relpath(ar.settings.data_folder)
+    output_folder = os.path.relpath(settings.data_folder)
 
     if not os.path.isdir(output_folder):
         os.mkdir(output_folder)
@@ -202,7 +236,15 @@ def parse_window_lib(window_file_path):
 
 
 def get_window_id(bunches):
-    """Return bunch of window properties with their window id"""
+    """Return bunch of window properties with their window id
+
+    Args:
+        bunches (dict): dict with the window id as key and
+            description/properties of each window as value
+
+    Returns:
+
+    """
     id_line = 'Window ID   :'
     for bunch in bunches:
         for line in bunch:
@@ -229,7 +271,8 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
             wanted by the user
         window_lib_path (.dat file): window library from Berkeley lab
 
-    Returns (tuple): The window chosen : window_ID, the "bunch" of
+    Returns
+        (tuple): The window chosen : window_ID, the "bunch" of
         description/properties from Berkeley lab, window u_value, window shgc,
         and window visible transmittance. If tolerance not respected return new
         tolerance used to find a window.
@@ -296,41 +339,165 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
             t_vis_win, lay_win, width, window_bunches[win_id])
 
 
-def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
-    """ Convert IDF file to T3D file to be able to load it in TRNBuild
+def trnbuild_idf(idf_file, template=os.path.join(
+    settings.trnsys_default_folder,
+    r"Building\trnsIDF\NewFileTemplate.d18"), dck=False, nonum=False, N=False,
+                 geo_floor=0.6, refarea=False, volume=False, capacitance=False,
+                 trnidf_exe_dir=os.path.join(settings.trnsys_default_folder,
+                                             r"Building\trnsIDF\trnsidf.exe")):
+    """This program sorts and renumbers the IDF file and writes a B18 file
+    based on the geometric information of the IDF file and the template D18
+    file. In addition, an template DCK file can be generated.
 
     Args:
-        idf (str): File path of IDF file to convert to T3D
-        window_lib (str): File path of the window library (from Berkeley Lab)
-        output_folder (str): location where output file will be saved. If None,
-            saves to settings.data_folder
+        idf_file (str): path/filename.idf
+        template (str): path/NewFileTemplate.d18
+        dck (bool): create a template DCK
+        nonum (bool, optional): If True, no renumeration of surfaces
+        N (optional): BatchJob Modus
+        geo_floor (float, optional): generates GEOSURF values for
+            distributing direct solar radiation where 60 % is directed to the
+            floor, the rest to walls/windows. Default = 0.6
+        refarea (bool, optional): If True, floor reference area of airnodes is
+            updated
+        volume (bool, True): If True, volume of airnodes is updated
+        capacitance (bool, True): If True, capacitance of airnodes is updated
+        trnidf_exe_dir (str): Path of the trnsysidf.exe executable
 
     Returns:
-        (idf file) : Input file for TRNBuild
+        (str): status
+
+    Raises:
+        CalledProcessError
 
     """
+    # first copy idf_file into output folder
+    if not os.path.isdir(settings.data_folder):
+        os.mkdir(settings.data_folder)
+    head, tail = os.path.split(idf_file)
+    new_idf_file = os.path.relpath(os.path.join(settings.data_folder, tail))
+    if new_idf_file != idf_file:
+        shutil.copy(idf_file, new_idf_file)
+    idf_file = os.path.abspath(new_idf_file)  # back to idf_file
+    del new_idf_file, head, tail
 
+    # Continue
+    args = locals().copy()
+    idf = os.path.abspath(args.pop('idf_file'))
+    template = os.path.abspath(args.pop('template'))
+    trnsysidf_exe = os.path.abspath(args.pop('trnidf_exe_dir'))
+
+    if not os.path.isfile(idf) or not os.path.isfile(template):
+        raise FileNotFoundError()
+
+    if sys.platform == 'win32':
+        cmd = [trnsysidf_exe]
+    else:
+        cmd = ['wine', trnsysidf_exe]
+    cmd.extend([idf])
+    cmd.extend([template])
+    for arg in args:
+        if args[arg]:
+            if isinstance(args[arg], bool):
+                args[arg] = ''
+            if args[arg] != "":
+                cmd.extend(['/{}={}'.format(arg, args[arg])])
+            else:
+                cmd.extend(['/{}'.format(arg)])
+
+    try:
+        # execute the command
+        log('Running cmd: {}'.format(cmd), lg.DEBUG)
+        command_line_process = subprocess.Popen(cmd,
+                                                stdout=subprocess.PIPE,
+                                                stderr=subprocess.STDOUT)
+        process_output, _ = command_line_process.communicate()
+        # process_output is now a string, not a file
+        log(process_output.decode('utf-8'), lg.DEBUG)
+    except subprocess.CalledProcessError as exception:
+        log('Exception occured: ' + str(exception), lg.ERROR)
+        log('Trnsidf.exe failed', lg.ERROR)
+        return False
+    else:
+        # Send trnsidf log to logger
+        pre, ext = os.path.splitext(idf)
+        log_file = pre + '.log'
+        if os.path.isfile(log_file):
+            with open(log_file, 'r') as f:
+                log(f.read(), lg.DEBUG)
+
+        return True
+
+
+def convert_idf_to_trnbuild(idf_file, window_lib=None,
+                            return_idf=False, return_b18=True,
+                            return_t3d=False, return_dck=False,
+                            output_folder=None, trnidf_exe_dir=os.path.join(
+            settings.trnsys_default_folder,
+            r"Building\trnsIDF\trnsidf.exe"), template=os.path.join(
+            settings.trnsys_default_folder,
+            r"Building\trnsIDF\NewFileTemplate.d18"), **kwargs):
+    """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
+
+    There are three optional outputs:
+    - the path to the modified IDF with the new names, coordinates, etc. of
+        the IDF objects. It is an input file for EnergyPlus (.idf)
+    - the path to the TRNBuild file (.b18)
+    - the path to the TRNBuild input file (.idf)
+    - the path to the TRNSYS dck file (.dck)
+
+    Args:
+        idf (str): File path of IDF file to convert to T3D.
+        window_lib (str): File path of the window library (from Berkeley Lab).
+        return_idf (bool, optional) : If True, also return the path to the
+            modified IDF with the new names, coordinates, etc. of the IDF
+            objects. It is an input file for EnergyPlus (.idf)
+        return_b18 (bool, optional): If True, also return the path to the
+            TRNBuild file (.b18).
+        return_t3d (bool, optional): If True, also return the path to the
+        TRNBuild
+            input file (.idf).
+        return_dck (bool, optional): If True, also return the path to the TRNSYS
+            dck file (.dck).
+        output_folder (str, optional): location where output files will be
+        saved. If None, saves to settings.data_folder.
+        trnidf_exe_dir (str): Path to *trnsidf.exe*.
+        template (str): Path to d18 template file.
+        kwargs (dict): keyword arguments sent to
+            convert_idf_to_trnbuild() or trnbuild_idf() or
+            choose_window(). "ordered=True" to have the name of idf objects in
+            the outputfile in ascendant order. See trnbuild_idf() or
+            choose_window() for other parameter definition
+    Returns:
+        (str, optional): the path to the TRNBuild file (.b18). Only provided
+            if *return_b18* is True.
+        (str, optional): the path to the TRNBuild input file (.idf). Only
+            provided if *return_t3d* is True.
+        (str, optional): the path to the TRNSYS dck file (.dck). Only provided
+            if *return_dck* is True.
+
+    """
+    # Check if cache exists
     start_time = time.time()
-    # Load IDF file(s)
-    idf_dict = ar.load_idf(idf_file)
-    idf = idf_dict[os.path.basename(idf_file)]
-    log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
-        lg.INFO, name="ConverterLog", filename="ConverterLog",
-        avoid_console=True)
+    cache_filename = hash_file(idf_file)
+    idf = load_idf_object_from_cache(idf_file, how='idf')
+    if not idf:
+        # Load IDF file(s)
+        idf = load_idf(idf_file)
+        log("IDF files loaded in {:,.2f} seconds".format(
+            time.time() - start_time),
+            lg.INFO)
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        start_time = time.time()
+        clear_name_idf_objects(idf)
+        idf.saveas(filename=os.path.join(settings.cache_folder, cache_filename,
+                                         cache_filename + '.idf'))
+        # save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
+        log("Cleaned IDF object names in {:,.2f} seconds".format(
+            time.time() - start_time), lg.INFO)
 
-    # Load IDF_T3D template
-    ori_idf_filename = "originBUISketchUp.idf"
-    ori_idf_filepath = os.path.join("tests", "input_data", "trnsys",
-                                    ori_idf_filename)
     # Read IDF_T3D template and write lines in variable
-    lines = open(ori_idf_filepath).readlines()
-
-    # Clean names of idf objects (e.g. 'MATERIAL')
-    start_time = time.time()
-    clear_name_idf_objects(idf)
-    log("Cleaned IDF object names in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO, name="ConverterLog",
-        filename="ConverterLog")
+    lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
     # Get objects from IDF file
     materials = idf.idfobjects['MATERIAL']
@@ -351,6 +518,26 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     lights = idf.idfobjects['LIGHTS']
     equipments = idf.idfobjects['ELECTRICEQUIPMENT']
 
+    ordered = kwargs.get('ordered', False)
+    if ordered:
+        materials = list(reversed(materials))
+        materialNoMass = list(reversed(materialNoMass))
+        materialAirGap = list(reversed(materialAirGap))
+        buildings = list(reversed(buildings))
+        locations = list(reversed(locations))
+        globGeomRules = list(reversed(globGeomRules))
+        constructions = list(reversed(constructions))
+        fenestrationSurfs = list(reversed(fenestrationSurfs))
+        buildingSurfs = list(reversed(buildingSurfs))
+        zones = list(reversed(zones))
+        scheduleYear = list(reversed(scheduleYear))
+        scheduleWeek = list(reversed(scheduleWeek))
+        scheduleDay = list(reversed(scheduleDay))
+        peoples = list(reversed(peoples))
+        lights = list(reversed(lights))
+        equipments = list(reversed(equipments))
+
+    # region Get schedules from IDF
     start_time = time.time()
     schedule_names = []
     used_schedules = idf.get_used_schedules(yearly_only=True)
@@ -368,8 +555,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         schedules[schedule_name]['days'] = days
 
     log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO, name="ConverterLog",
-        filename="ConverterLog")
+        time.time() - start_time), lg.INFO)
+    # endregion
 
     # Get materials with resistance lower than 0.0007
     material_low_res = []
@@ -387,8 +574,9 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     # Get constructions with only materials with resistance lower than 0.0007
     construct_low_res = []
     for i in range(0, len(constructions)):
-        if len(constructions.list2[i]) == 3 and constructions.list2[i][
-            2] in mat_name:
+        if len(constructions[i].fieldvalues) == 3 and \
+                constructions[i].fieldvalues[
+                    2] in mat_name:
             construct_low_res.append(constructions[i])
 
     # Remove constructions with only materials with resistance lower than
@@ -401,26 +589,26 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
     # Write VERSION from IDF to lines (T3D)
     # Get line number where to write
-    with open(ori_idf_filepath) as ori:
-        versionNum = ar.checkStr(ori,
-                                 'ALL OBJECTS IN CLASS: VERSION')
+    versionNum = checkStr(lines,
+                          'ALL OBJECTS IN CLASS: VERSION')
     # Writing VERSION infos to lines
     for i in range(0, len(versions)):
         lines.insert(versionNum,
-                     ",".join(str(item) for item in versions.list2[i]) + ';')
+                     ",".join(str(item) for item in versions[i].fieldvalues)
+                     + ';' + '\n')
 
     # Write BUILDING from IDF to lines (T3D)
     # Get line number where to write
-    buildingNum = ar.checkStr(lines,
-                              'ALL OBJECTS IN CLASS: BUILDING')
+    buildingNum = checkStr(lines,
+                           'ALL OBJECTS IN CLASS: BUILDING')
     # Writing BUILDING infos to lines
     for building in buildings:
         lines.insert(buildingNum, building)
 
     # Write LOCATION and GLOBALGEOMETRYRULES from IDF to lines (T3D)
     # Get line number where to write
-    locationNum = ar.checkStr(lines,
-                              'ALL OBJECTS IN CLASS: LOCATION')
+    locationNum = checkStr(lines,
+                           'ALL OBJECTS IN CLASS: LOCATION')
 
     # Writing GLOBALGEOMETRYRULES infos to lines
     for globGeomRule in globGeomRules:
@@ -463,11 +651,31 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
     # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf)
     # from IDF to lines (T3D)
     # Get line number where to write
-    variableDictNum = ar.checkStr(lines,
-                                  'ALL OBJECTS IN CLASS: '
-                                  'OUTPUT:VARIABLEDICTIONARY')
+    variableDictNum = checkStr(lines,
+                               'ALL OBJECTS IN CLASS: '
+                               'OUTPUT:VARIABLEDICTIONARY')
+
+    # Get all surfaces having Outside boundary condition with the ground.
+    # To be used to find the window's slopes
+    ground_surfs = [buildingSurf for buildingSurf in buildingSurfs if
+                    buildingSurf.Outside_Boundary_Condition.lower() == 'ground']
+    if ground_surfs:
+        ground = ground_surfs[0].coords
+    else:
+        ground = [tuple([0, 0, 0]), tuple([1, 0, 0]), tuple([0, 1, 0]),
+                  tuple([1, 1, 0])]
+
+    # Polygon from vector's ground surface
+    poly_ground = Polygon3D(ground)
+    # Normal vectors of the polygon
+    n_ground = poly_ground.normal_vector
+
+    # Initialize list of window's slopes
+    count_slope = 0
+    win_slope_dict = {}
 
     # Writing zones in lines
+    count_fs = 0
     for zone in zones:
         zone.Direction_of_Relative_North = 0.0
         if zone.Multiplier == '':
@@ -477,12 +685,15 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
         # Writing fenestrationSurface:Detailed in lines
         for fenestrationSurf in fenestrationSurfs:
+            count_fs += 1
             surfName = fenestrationSurf.Building_Surface_Name
             indiceSurf = [k for k, s in enumerate(buildingSurfs) if
                           surfName == s.Name]
             if buildingSurfs[indiceSurf[0]].Zone_Name == zone.Name:
 
-                fenestrationSurf.Construction_Name = "EXT_WINDOW1"
+                # Clear fenestrationSurface:Detailed name
+                fenestrationSurf.Name = 'fs_' + '%06d' % count_fs
+                # Insure right number of vertices
                 fenestrationSurf.Number_of_Vertices = len(
                     fenestrationSurf.coords)
 
@@ -506,6 +717,48 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                             fenestrationSurf[
                                 "Vertex_" + str(j) + "_Zcoordinate"] + incrZ
 
+                # Round vertex to 4 decimal digit max
+                for j in range(1, len(
+                        fenestrationSurf.coords) + 1):
+                    fenestrationSurf["Vertex_" + str(j) + "_Xcoordinate"] \
+                        = \
+                        round(fenestrationSurf[
+                                  "Vertex_" + str(j) + "_Xcoordinate"], 4)
+                    fenestrationSurf["Vertex_" + str(j) + "_Ycoordinate"] \
+                        = \
+                        round(fenestrationSurf[
+                                  "Vertex_" + str(j) + "_Ycoordinate"], 4)
+                    fenestrationSurf["Vertex_" + str(j) + "_Zcoordinate"] \
+                        = \
+                        round(fenestrationSurf[
+                                  "Vertex_" + str(j) + "_Zcoordinate"], 4)
+
+                # Polygon from vector's window surface
+                poly_window = Polygon3D(fenestrationSurf.coords)
+                # Normal vectors of the polygon
+                n_window = poly_window.normal_vector
+
+                # Calculate the slope between window and the ground (with
+                # normal vectors)
+                win_slope = 180 * angle(n_ground, n_window) / np.pi
+                if win_slope > 90:
+                    win_slope -= 180
+
+                # Add a construction name if slope does not already exist
+                if win_slope not in win_slope_dict.values():
+                    count_slope += 1
+                    # Insure right construction name
+                    fenestrationSurf.Construction_Name = "EXT_WINDOW{}".format(
+                        count_slope)
+                    # Append win_slope_dict
+                    win_slope_dict[
+                        fenestrationSurf.Construction_Name] = win_slope
+
+                else:
+                    fenestrationSurf.Construction_Name = \
+                        [key for key in win_slope_dict.keys() if
+                         win_slope == win_slope_dict[key]][0]
+
                 lines.insert(variableDictNum + 2, fenestrationSurf)
 
         # Writing buildingSurface: Detailed in lines
@@ -528,6 +781,10 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                     buildingSurfs[i].Outside_Boundary_Condition_Object = zones[
                         indiceZone[0]].Name
 
+                    # Oblige same construction for adjacent surfaces
+                    buildingSurfs[i].Construction_Name = buildingSurfs[
+                        indiceSurf[0]].Construction_Name
+
                     # Polygon from vector's adjacent surfaces
                     poly1 = Polygon3D(buildingSurfs[i].coords)
                     poly2 = Polygon3D(buildingSurfs[indiceSurf[0]].coords)
@@ -536,7 +793,9 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                     n2 = poly2.normal_vector
                     # Verify if normal vectors of adjacent surfaces have
                     # opposite directions
-                    if (n1 + n2).x != 0 or (n1 + n2).y != 0 or (n1 + n2).z != 0:
+                    if round((n1 + n2).x, 2) != 0 or round((n1 + n2).y,
+                                                           2) != 0 or round(
+                        (n1 + n2).z, 2) != 0:
                         # If not, inverse vertice of buildingSurf
                         # (Vertex4 become Vertex1, Vertex2 become Vertex3, etc.)
                         for j, k in zip(range(1, len(
@@ -586,6 +845,18 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                   "Vertex_" + str(j) + "_Zcoordinate"] \
                               + incrZ
 
+                # Round vertex to 4 decimal digit max
+                for j in range(1, len(buildingSurfs[i].coords) + 1):
+                    buildingSurfs[i]["Vertex_" + str(j) + "_Xcoordinate"] \
+                        = round(buildingSurfs[i][
+                                    "Vertex_" + str(j) + "_Xcoordinate"], 4)
+                    buildingSurfs[i]["Vertex_" + str(j) + "_Ycoordinate"] \
+                        = round(buildingSurfs[i][
+                                    "Vertex_" + str(j) + "_Ycoordinate"], 4)
+                    buildingSurfs[i]["Vertex_" + str(j) + "_Zcoordinate"] \
+                        = round(buildingSurfs[i][
+                                    "Vertex_" + str(j) + "_Zcoordinate"], 4)
+
                 lines.insert(variableDictNum + 2, buildingSurfs[i])
 
         # Change coordinates from world (all zones to 0) to absolute
@@ -593,19 +864,24 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             zone.X_Origin, zone.Y_Origin, zone.Z_Origin = closest_coords(
                 surfList, to=zone_origin(zone))
 
+        # Round vertex to 4 decimal digit max
+        zone.X_Origin = round(zone.X_Origin, 4)
+        zone.Y_Origin = round(zone.Y_Origin, 4)
+        zone.Z_Origin = round(zone.Z_Origin, 4)
+
         lines.insert(variableDictNum + 2, zone)
     # endregion
 
     # region Write CONSTRUCTION from IDF to lines (T3D)
     # Get line number where to write
-    constructionNum = ar.checkStr(lines, 'C O N S T R U C T I O N')
+    constructionNum = checkStr(lines, 'C O N S T R U C T I O N')
 
     # Writing CONSTRUCTION in lines
-    for i in range(0, len(constructions.list2)):
+    for i in range(0, len(constructions)):
 
         # Except fenestration construction
         fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
-                        s in constructions.list2[i][1].lower()]
+                        s in constructions[i].fieldvalues[1].lower()]
 
         if not fenestration:
             lines.insert(constructionNum + 1,
@@ -617,19 +893,20 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         layerList = []
         thickList = []
 
-        for j in range(2, len(constructions.list2[i])):
+        for j in range(2, len(constructions[i].fieldvalues)):
 
-            if constructions.list2[i][j] not in mat_name:
+            if constructions[i].fieldvalues[j] not in mat_name:
 
                 indiceMat = [k for k, s in enumerate(materials) if
-                             constructions.list2[i][j] == s.Name]
+                             constructions[i].fieldvalues[j] == s.Name]
 
                 if not indiceMat:
                     thickList.append(0.0)
                 else:
-                    thickList.append(materials[indiceMat[0]].Thickness)
+                    thickList.append(
+                        round(materials[indiceMat[0]].Thickness, 4))
 
-                layerList.append(constructions.list2[i][j])
+                layerList.append(constructions[i].fieldvalues[j])
 
             else:
                 continue
@@ -644,7 +921,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                      '!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n')
 
         basement = [s for s in ['basement', 'floor'] if
-                    s in constructions.list2[i][1].lower()]
+                    s in constructions[i].fieldvalues[1].lower()]
         if not basement:
             lines.insert(constructionNum + 6, '!- HFRONT   = 11 : HBACK= 64\n')
         else:
@@ -653,15 +930,15 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
     # Write CONSTRUCTION from IDF to lines, at the end of the T3D file
     # Get line number where to write
-    constructionEndNum = ar.checkStr(lines,
-                                     'ALL OBJECTS IN CLASS: CONSTRUCTION')
+    constructionEndNum = checkStr(lines,
+                                  'ALL OBJECTS IN CLASS: CONSTRUCTION')
 
     # Writing CONSTRUCTION infos to lines
     for i in range(0, len(constructions)):
 
         # Except fenestration construction
         fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
-                        s in constructions.list2[i][1].lower()]
+                        s in constructions[i].fieldvalues[1].lower()]
         if not fenestration:
             lines.insert(constructionEndNum, constructions[i])
         else:
@@ -669,7 +946,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
     # region Write LAYER from IDF to lines (T3D)
     # Get line number where to write
-    layerNum = ar.checkStr(lines, 'L a y e r s')
+    layerNum = checkStr(lines, 'L a y e r s')
 
     # Writing MATERIAL infos to lines
     listLayerName = []
@@ -717,7 +994,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
 
     # region Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
     # Get line number where to write
-    gainNum = ar.checkStr(lines, 'G a i n s')
+    gainNum = checkStr(lines, 'G a i n s')
 
     # Writing PEOPLE gains infos to lines
     schedule_list_people = []
@@ -729,8 +1006,8 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
         schWeekName = scheduleYear[indiceSchYear[0]].ScheduleWeek_Name_1
         indiceSchWeek = [k for k, s in enumerate(scheduleWeek) if scheduleYear[
             indiceSchYear[0]].ScheduleWeek_Name_1 == s.Name]
-        weekSch = list(
-            OrderedDict.fromkeys(scheduleWeek.list2[indiceSchWeek[0]][2::]))
+        weekSch = list(OrderedDict.fromkeys(
+            scheduleWeek[indiceSchWeek[0]].fieldvalues[2::]))
 
         lines.insert(gainNum + 1,
                      'GAIN PEOPLE' + '_' + peoples[i].Name + '\n')
@@ -772,8 +1049,7 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             log(
                 "Could not find the Light Power Density, cause depend on the "
                 "number of peoples (Watts/Person)",
-                lg.WARNING, name="ConverterLog",
-                filename="ConverterLog")
+                lg.WARNING)
 
         radFract = float(lights[i].Fraction_Radiant)
 
@@ -800,10 +1076,9 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
             log(
                 "Could not find the Equipment Power Density, cause depend on "
                 "the number of peoples (Watts/Person)",
-                lg.WARNING, name="ConverterLog",
-                filename="ConverterLog")
+                lg.WARNING)
 
-        radFract = float(equipments[i].Fraction_Radiant)
+        radFract = round(float(equipments[i].Fraction_Radiant), 4)
 
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
@@ -811,9 +1086,9 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                                                        'CATEGORY=LIGHTS\n')
     # endregion
 
-    # Write SCHEDULES from IDF to lines (T3D)
+    # region Write SCHEDULES from IDF to lines (T3D)
     # Get line number where to write
-    scheduleNum = ar.checkStr(lines, 'S c h e d u l e s')
+    scheduleNum = checkStr(lines, 'S c h e d u l e s')
 
     hour_list = list(range(25))
     week_list = list(range(1, 8))
@@ -847,86 +1122,127 @@ def convert_idf_to_t3d(idf_file, window_lib, output_folder=None):
                                      str(item) for item in
                                      rotate(schedules[schedule_name][period][
                                                 i].fieldvalues[2:9], 1)) + '\n')
+    # endregion
 
-    # Write WINDOWS chosen by the user (from Berkeley lab library) in lines (
-    # T3D)
+    # region Write WINDOWS chosen by the user (from Berkeley lab library) in
+    # lines (T3D)
     # Get window from library
     # window = (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
     #                 t_vis_win, lay_win, width, window_bunches[win_id],
     #                 and maybe tolerance)
-    window = choose_window(2.2, 0.64, 0.8, 0.05, window_lib)
+
+    win_u_value = kwargs.get('u_value', 2.2)
+    win_shgc = kwargs.get('shgc', 0.64)
+    win_tvis = kwargs.get('t_vis', 0.8)
+    win_tolerance = kwargs.get('tolerance', 0.05)
+    window = choose_window(win_u_value, win_shgc, win_tvis, win_tolerance,
+                           window_lib)
     # If tolerance was not respected to find a window, write in log a warning
     if len(window) > 11:
         log(
-            "WARNING : window tolerance was not respected. Final tolerance=  "
+            "Window tolerance was not respected. Final tolerance = "
             "{:,.2f}".format(
-                window[-1]), lg.WARNING, name="ConverterLog",
-            filename="ConverterLog")
+                window[-1]), lg.WARNING)
     # Write in log (info) the characteristics of the window
     log(
-        "Characterisitics of the chosen window are: u_value= {:,.2f}, "
+        "Characterisitics of the chosen window are: u_value = {:,.2f}, "
         "SHGC= {:,.2f}, t_vis= {:,.2f}".format(window[3], window[4], window[7]),
-        lg.INFO, name="ConverterLog", filename="ConverterLog")
+        lg.INFO)
 
     # Get line number where to write
-    windowNum = ar.checkStr(lines,
-                            'W i n d o w s')
+    windowNum = checkStr(lines,
+                         'W i n d o w s')
+
     # Write
-    lines.insert(windowNum + 2,
-                 '!- WINID = ' + str(window[0]) + ': HINSIDE = 11:'
-                                                  ' HOUTSIDE = 64: SLOPE = '
-                                                  '-999: '
-                                                  'SPACID = 4: WWID = 0.77: '
-                                                  'WHEIG = 1.08: '
-                                                  'FFRAME = 0.15: UFRAME = '
-                                                  '8.17: ABSFRAME = 0.6: '
-                                                  'RISHADE = 0: RESHADE = 0: '
-                                                  'REFLISHADE = 0.5: '
-                                                  'REFLOSHADE = 0.5: CCISHADE '
-                                                  '= 0.5: '
-                                                  'EPSFRAME = 0.9: EPSISHADE '
-                                                  '= 0.9: '
-                                                  'ITSHADECLOSE = INPUT 1 * '
-                                                  'SHADE_CLOSE: '
-                                                  'ITSHADEOPEN = INPUT 1 * '
-                                                  'SHADE_OPEN: '
-                                                  'FLOWTOAIRNODE = 1: PERT = '
-                                                  '0: PENRT = 0: '
-                                                  'RADMATERIAL = undefined: '
-                                                  'RADMATERIAL_SHD1 = '
-                                                  'undefined')
+    for key in win_slope_dict.keys():
+        lines.insert(windowNum + 1, "WINDOW " + str(key) + '\n')
+        lines.insert(windowNum + 2,
+                     '!- WINID = ' + str(window[0]) +
+                     ': HINSIDE = 11:'
+                     ' HOUTSIDE = 64: SLOPE '
+                     '= ' + str(win_slope_dict[key]) +
+                     ': '
+                     'SPACID = 4: WWID = 0.77: '
+                     'WHEIG = 1.08: '
+                     'FFRAME = 0.15: UFRAME = '
+                     '8.17: ABSFRAME = 0.6: '
+                     'RISHADE = 0: RESHADE = 0: '
+                     'REFLISHADE = 0.5: '
+                     'REFLOSHADE = 0.5: CCISHADE '
+                     '= 0.5: '
+                     'EPSFRAME = 0.9: EPSISHADE '
+                     '= 0.9: '
+                     'ITSHADECLOSE = INPUT 1 * '
+                     'SHADE_CLOSE: '
+                     'ITSHADEOPEN = INPUT 1 * '
+                     'SHADE_OPEN: '
+                     'FLOWTOAIRNODE = 1: PERT = '
+                     '0: PENRT = 0: '
+                     'RADMATERIAL = undefined: '
+                     'RADMATERIAL_SHD1 = '
+                     'undefined' + '\n')
 
     # Get line number to write the EXTENSION_WINPOOL
-    extWinpoolNum = ar.checkStr(lines,
-                                '!-_EXTENSION_WINPOOL_START_')
+    extWinpoolNum = checkStr(lines,
+                             '!-_EXTENSION_WINPOOL_START_')
     count = 0
     for line in window[10]:
         lines.insert(extWinpoolNum + count, '!-' + line)
         count += 1
 
     # Get line number to write the Window description
-    winDescriptionNum = ar.checkStr(lines,
-                                    'WinID Description')
+    winDescriptionNum = checkStr(lines,
+                                 'WinID Description')
     lines.insert(winDescriptionNum + 1,
                  '!-' + str(window[0]) + ' ' + str(window[1])
                  + ' ' + str(window[2]) + ' ' + str(window[3]) + ' ' +
                  str(window[4]) + ' ' + str(window[5]) + ' ' + str(window[6]) +
                  ' ' + str(window[7]) + ' ' + str(window[8]) + ' ' + str(
                      window[9]) + '\n')
+    # endregion
 
-    # Save file at output_folder
+    # Save T3D file at output_folder
     if output_folder is None:
         # User did not provide an output folder path. We use the default setting
-        output_folder = os.path.relpath(ar.settings.data_folder)
+        output_folder = os.path.relpath(settings.data_folder)
 
     if not os.path.isdir(output_folder):
         os.mkdir(output_folder)
 
-    with open(os.path.join(output_folder, "T3D_" + list(idf_dict.keys())[0]),
-              "w") as converted_file:
+    t3d_path = os.path.join(output_folder, "T3D_" + os.path.basename(idf_file))
+    with open(t3d_path, "w") as converted_file:
         for line in lines:
-            converted_file.write(str(line))
+            converted_file.writelines(str(line))
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO, name="ConverterLog",
-        filename="ConverterLog")
+        time.time() - start_time), lg.INFO)
+
+    # If asked by the user, save IDF file with modification done on the names,
+    # coordinates, etc. at
+    # output_folder
+    new_idf_path = os.path.join(output_folder, "MODIFIED_" +
+                                os.path.basename(idf_file))
+    if return_idf:
+        idf.saveas(filename=new_idf_path)
+
+    # Run trnsidf to convert T3D to BUI
+    dck = return_dck
+    nonum = kwargs.get('nonum', False)
+    N = kwargs.get('N', False)
+    geo_floor = kwargs.get('geo_floor', 0.6)
+    refarea = kwargs.get('refarea', False)
+    volume = kwargs.get('volume', False)
+    capacitance = kwargs.get('capacitance', False)
+    trnbuild_idf(t3d_path, template, dck=dck, nonum=nonum, N=N,
+                 geo_floor=geo_floor, refarea=refarea, volume=volume,
+                 capacitance=capacitance,
+                 trnidf_exe_dir=trnidf_exe_dir)
+
+    # Prepare return arguments
+    pre, ext = os.path.splitext(t3d_path)
+    b18_path = pre + 'b18'
+    dck_path = pre + 'dck'
+
+    from itertools import compress
+    return tuple(compress([new_idf_path, b18_path, t3d_path, dck_path],
+                          [return_idf, return_b18, return_t3d, return_dck]))

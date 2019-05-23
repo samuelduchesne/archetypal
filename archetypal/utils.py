@@ -28,7 +28,6 @@ import numpy as np
 import pandas as pd
 from pandas.io.json import json_normalize
 
-import archetypal as ar
 from archetypal import settings
 
 
@@ -44,7 +43,8 @@ def config(data_folder=settings.data_folder,
            log_filename=settings.log_filename,
            useful_idf_objects=settings.useful_idf_objects,
            umitemplate=settings.umitemplate,
-           get_common_umi_objects=False):
+           get_common_umi_objects=False,
+           trnsys_default_folder=settings.trnsys_default_folder):
     """
     Configurations
 
@@ -64,6 +64,7 @@ def config(data_folder=settings.data_folder,
         log_filename (str): name of the log file
         useful_idf_objects (list): a list of useful idf objects
         umitemplate (str): where the umitemplate is located
+        trnsys_default_folder (str): root folder of TRNSYS install
 
     Returns:
         None
@@ -82,6 +83,8 @@ def config(data_folder=settings.data_folder,
     settings.log_filename = log_filename
     settings.useful_idf_objects = useful_idf_objects
     settings.umitemplate = umitemplate
+    settings.trnsys_default_folder = validate_trnsys_folder(
+        trnsys_default_folder)
     if get_common_umi_objects:
         settings.common_umi_objects = get_list_of_common_umi_objects(
             settings.umitemplate)
@@ -89,6 +92,17 @@ def config(data_folder=settings.data_folder,
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
         log('Configured archetypal')
+
+
+def validate_trnsys_folder(trnsys_default_folder):
+    if sys.platform == 'win32':
+        if os.path.isdir(trnsys_default_folder):
+            return trnsys_default_folder
+        else:
+            raise ValueError('The provided TRNSYS path does not exist. Path={'
+                             '}'.format(trnsys_default_folder))
+    else:
+        return trnsys_default_folder
 
 
 def log(message, level=None, name=None, filename=None, avoid_console=False):
@@ -134,25 +148,22 @@ def log(message, level=None, name=None, filename=None, avoid_console=False):
         # capture current stdout, then switch it to the console, print the
         # message, then switch back to what had been the stdout. this prevents
         # logging to notebook - instead, it goes to console
-        if level != lg.WARNING:
-            standard_out = sys.stdout
-            sys.stdout = sys.__stdout__
+        standard_out = sys.stdout
+        sys.stdout = sys.__stdout__
 
-            # convert message to ascii for console display so it doesn't break
-            # windows terminals
-            message = unicodedata.normalize('NFKD', make_str(message)).encode(
-                'ascii', errors='replace').decode()
-            print(message)
-            sys.stdout = standard_out
-        else:
-            message = unicodedata.normalize('NFKD', make_str(message)).encode(
-                'ascii', errors='replace').decode()
+        # convert message to ascii for console display so it doesn't break
+        # windows terminals
+        message = unicodedata.normalize('NFKD', make_str(message)).encode(
+            'ascii', errors='replace').decode()
+        print(message)
+        sys.stdout = standard_out
+
+        if level == lg.WARNING:
             warnings.warn(message)
 
 
 def get_logger(level=None, name=None, filename=None):
-    """
-    Create a logger or return the current one if already instantiated.
+    """Create a logger or return the current one if already instantiated.
 
     Args:
         level (int): one of the logger.level constants
@@ -651,7 +662,7 @@ def copy_file(files, where=None):
 
     # defaults to cache folder
     if where is None:
-        where = ar.settings.cache_folder
+        where = settings.cache_folder
 
     for file in files:
         dst = os.path.join(where, file)
@@ -691,7 +702,11 @@ class cd:
 
     def __enter__(self):
         self.savedPath = os.getcwd()
-        os.chdir(self.newPath)
+        if os.path.isdir(self.newPath):
+            os.chdir(self.newPath)
+        else:
+            os.mkdir(self.newPath)
+            os.chdir(self.newPath)
 
     def __exit__(self, etype, value, traceback):
         os.chdir(self.savedPath)
@@ -782,3 +797,45 @@ def load_umi_template(json_template):
                     dicts.items()]
     else:
         raise ValueError('File {} does not exist'.format(json_template))
+
+
+def check_unique_name(first_letters, count, name, unique_list):
+    """Making sure new_name does not already exist
+
+    Args:
+        first_letters (str): string at the beginning of the name, giving
+            a hint on what the variable is (e.g. : 'day_' for a schedule
+        day). DO NOT Include an underscore.
+        count (int): increment to create a unique id in the name
+        name (str): name that was just created. To be verified that it is
+            unique in this function
+        unique_list (list): list where unique names are stored
+
+    Returns:
+        new_name (str): name that is unique
+
+    """
+    while name in unique_list:
+        count += 1
+        end_count = '%06d' % count
+        name = first_letters + '_' + end_count
+
+    return name
+
+def angle(v1, v2, acute=True):
+    """Calculate the angle between 2 vectors
+
+    Args:
+        v1 (Vector3D): vector 1
+        v2 (Vector3D): vector 2
+        acute (bool): If True, give the acute angle, else gives the obtuse one.
+
+    Returns:
+        angle (float): angle between the 2 vectors in degree
+
+    """
+    angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+    if (acute == True):
+        return angle
+    else:
+        return 2 * np.pi - angle

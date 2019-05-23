@@ -1,15 +1,17 @@
 import glob
 import os
 import shutil
+import sys
+
+import pytest
 
 import archetypal as ar
-import pytest
 
 
 @pytest.fixture(scope='session')
 def fresh_start():
     """# remove the tests/temp folder if it already exists so we
-    start fresh with tests"""
+    start fresh with tests. Needs to be called after `config`"""
     settings = [ar.settings.cache_folder, ar.settings.data_folder,
                 ar.settings.imgs_folder]
     for setting in settings:
@@ -57,8 +59,8 @@ def idf_source(request):
 @pytest.fixture(scope='session')
 def config():
     ar.config(log_console=True, log_file=True, use_cache=True,
-              data_folder='tests/temp/data', logs_folder='tests/temp/logs',
-              imgs_folder='tests/temp/imgs', cache_folder='tests/temp/cache',
+              data_folder='tests/.temp/data', logs_folder='tests/.temp/logs',
+              imgs_folder='tests/.temp/imgs', cache_folder='tests/.temp/cache',
               umitemplate='tests/input_data/umi_samples'
                           '/BostonTemplateLibrary_2.json')
 
@@ -68,3 +70,13 @@ def config():
 pytest_plugins = [
     "tests.test_dataportals",
 ]
+
+ALL = set("darwin linux win32".split())
+
+
+def pytest_runtest_setup(item):
+    supported_platforms = ALL.intersection(
+        mark.name for mark in item.iter_markers())
+    plat = sys.platform
+    if supported_platforms and plat not in supported_platforms:
+        pytest.skip("cannot run on platform %s" % (plat))

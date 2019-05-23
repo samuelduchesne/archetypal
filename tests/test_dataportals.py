@@ -1,7 +1,7 @@
 import archetypal as ar
 import pandas as pd
-# configure archetypal
-from archetypal import download_bld_window, WindowSetting
+
+from archetypal import download_bld_window
 
 
 def test_tabula_available_country(config, scratch_then_cache):

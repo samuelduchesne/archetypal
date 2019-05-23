@@ -1,67 +1,67 @@
-import archetypal as ar
+import os
+import random
+
 import matplotlib as mpl
 # use agg backend so you don't need a display on travis-ci
 import pytest
+
+import archetypal as ar
 from archetypal import copy_file, CalledProcessError
 
 mpl.use('Agg')
-
-# configure archetypal
-ar.config(log_console=True, log_file=True, use_cache=True,
-          data_folder='tests/temp/data', logs_folder='tests/temp/logs',
-          imgs_folder='tests/temp/imgs', cache_folder='tests/temp/cache',
-          umitemplate='tests/input_data/umi_samples/BostonTemplateLibrary_2'
-                      '.json')
 
 
 # given, when, then
 # or
 # arrange, act, assert
 
-def test_small_home_data(fresh_start):
+def test_small_home_data(config, fresh_start):
     file = 'tests/input_data/regular/AdultEducationCenter.idf'
-    file = copy_file(file)
+    file = copy_file(file)[0]
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     return ar.run_eplus(file, wf, expandobjects=True, verbose='q',
                         prep_outputs=True, design_day=True)
 
 
 def test_necb(config):
+    """Test one of the necb files"""
     import glob
-    files = glob.glob("tests/input_data/necb/*.idf")
+    files = random.choice(glob.glob("tests/input_data/necb/*.idf"))
     files = copy_file(files)
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return ar.run_eplus(files, wf, expandobjects=True, verbose='q',
-                        design_day=True)
+    rundict = {file: dict(eplus_file=file, weather_file=wf,
+                          expandobjects=True, verbose='q',
+                          design_day=True
+                          ) for file in files}
+    result = {file: ar.run_eplus(**rundict[file]) for file in files}
+
+    assert not any(isinstance(a, Exception) for a in result.values())
 
 
-def test_std(scratch_then_cache):
-    import glob
-    files = glob.glob("tests/input_data/STD/*idf")
-    files = copy_file(files)
-    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return ar.run_eplus(files, wf, expandobjects=True, annual=False,
-                        verbose='q', prep_outputs=True, design_day=True,
-                        output_report='sql')
-
-
-@pytest.mark.parametrize('as_dict', [True, False])
-@pytest.mark.parametrize('processors', [1, -1])
-def test_load_idf_asdict(as_dict, processors, fresh_start):
+def test_load_idf(config):
     """Will load an idf object"""
 
-    file1 = 'tests/input_data/regular/5ZoneNightVent1.idf'
-    file2 = 'tests/input_data/regular/AdultEducationCenter.idf'
-    obj = ar.load_idf([file1, file2], as_dict=as_dict, processors=processors)
-    if as_dict:
-        assert isinstance(obj, dict)
-    else:
-        assert isinstance(obj, list)
+    files = ['tests/input_data/regular/5ZoneNightVent1.idf',
+             'tests/input_data/regular/AdultEducationCenter.idf']
+
+    obj = {os.path.basename(file): ar.load_idf(file)
+           for file in files}
+    assert isinstance(obj, dict)
 
 
-@pytest.mark.parametrize('ep_version', ['8.9', None],
+def test_load_old(config):
+    files = ['tests/input_data/problematic/nat_ventilation_SAMPLE0.idf',
+             'tests/input_data/regular/5ZoneNightVent1.idf']
+
+    obj = {os.path.basename(file): ar.load_idf(file)
+           for file in files}
+
+    assert not any(isinstance(a, Exception) for a in obj.values())
+
+
+@pytest.mark.parametrize('ep_version', [ar.ep_version, None],
                          ids=['specific-ep-version', 'no-specific-ep-version'])
-def test_run_olderv(fresh_start, ep_version):
+def test_run_olderv(config, fresh_start, ep_version):
     """Will run eplus on a file that needs to be upgraded with one that does
     not"""
 
@@ -69,12 +69,15 @@ def test_run_olderv(fresh_start, ep_version):
              'tests/input_data/regular/5ZoneNightVent1.idf']
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     files = copy_file(files)
-    ar.run_eplus(files, wf, ep_version=ep_version, annual=True,
-                 expandobjects=True, verbose='q', )
+    rundict = {file: dict(eplus_file=file, weather_file=wf,
+                          ep_version=ep_version, annual=True, prep_outputs=True,
+                          expandobjects=True, verbose='q', output_report='sql')
+               for file in files}
+    result = {file: ar.run_eplus(**rundict[file]) for file in files}
 
 
-@pytest.mark.xfail(raises=CalledProcessError)
-def test_run_olderv_problematic(fresh_start):
+@pytest.mark.xfail(raises=(CalledProcessError, FileNotFoundError))
+def test_run_olderv_problematic(config, fresh_start):
     """Will run eplus on a file that needs to be upgraded and that should
     fail. Will be ignored in the test suite"""
 
@@ -82,5 +85,5 @@ def test_run_olderv_problematic(fresh_start):
            '.2_5A_USA_IL_CHICAGO-OHARE.idf'
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     file = copy_file([file])[0]
-    ar.run_eplus(file, wf, ep_version='8.9', annual=True,
+    ar.run_eplus(file, wf, annual=True,
                  expandobjects=True, verbose='q', prep_outputs=True)

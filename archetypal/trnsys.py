@@ -696,9 +696,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         for fenestrationSurf in fenestrationSurfs:
             count_fs += 1
             surfName = fenestrationSurf.Building_Surface_Name
-            indiceSurf = [k for k, s in enumerate(buildingSurfs) if
-                          surfName == s.Name]
-            if buildingSurfs[indiceSurf[0]].Zone_Name == zone.Name:
+            if idf.getobject("BUILDINGSURFACE:DETAILED",
+                             surfName).Zone_Name == zone.Name:
 
                 # Clear fenestrationSurface:Detailed name
                 fenestrationSurf.Name = 'fs_' + '%06d' % count_fs
@@ -782,21 +781,19 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                     i].Outside_Boundary_Condition.lower():
                     buildingSurfs[i].Outside_Boundary_Condition = "Zone"
                     surface = buildingSurfs[i].Outside_Boundary_Condition_Object
-                    indiceSurf = [k for k, s in enumerate(buildingSurfs) if
-                                  surface == s.Name]
-                    indiceZone = [k for k, s in enumerate(zones) if
-                                  buildingSurfs[
-                                      indiceSurf[0]].Zone_Name == s.Name]
-                    buildingSurfs[i].Outside_Boundary_Condition_Object = zones[
-                        indiceZone[0]].Name
+                    buildingSurfs[
+                        i].Outside_Boundary_Condition_Object = idf.getobject(
+                        'ZONE', idf.getobject('BUILDINGSURFACE:DETAILED',
+                                              surface).Zone_Name).Name
 
                     # Force same construction for adjacent surfaces
-                    buildingSurfs[i].Construction_Name = buildingSurfs[
-                        indiceSurf[0]].Construction_Name
+                    buildingSurfs[i].Construction_Name = idf.getobject(
+                        'BUILDINGSURFACE:DETAILED', surface).Construction_Name
 
                     # Polygon from vector's adjacent surfaces
                     poly1 = Polygon3D(buildingSurfs[i].coords)
-                    poly2 = Polygon3D(buildingSurfs[indiceSurf[0]].coords)
+                    poly2 = Polygon3D(idf.getobject('BUILDINGSURFACE:DETAILED',
+                                                    surface).coords)
                     # Normal vectors of each polygon
                     n1 = poly1.normal_vector
                     n2 = poly2.normal_vector
@@ -810,15 +807,15 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                         for j, k in zip(range(1, len(
                                 buildingSurfs[i].coords) + 1), range(
                             len(buildingSurfs[i].coords), 0, -1)):
-                            buildingSurfs[indiceSurf[0]][
+                            idf.getobject('BUILDINGSURFACE:DETAILED', surface)[
                                 "Vertex_" + str(j) + "_Xcoordinate"] \
                                 = buildingSurfs[i][
                                 "Vertex_" + str(k) + "_Xcoordinate"]
-                            buildingSurfs[indiceSurf[0]][
+                            idf.getobject('BUILDINGSURFACE:DETAILED', surface)[
                                 "Vertex_" + str(j) + "_Ycoordinate"] \
                                 = buildingSurfs[i][
                                 "Vertex_" + str(k) + "_Ycoordinate"]
-                            buildingSurfs[indiceSurf[0]][
+                            idf.getobject('BUILDINGSURFACE:DETAILED', surface)[
                                 "Vertex_" + str(j) + "_Zcoordinate"] \
                                 = buildingSurfs[i][
                                 "Vertex_" + str(k) + "_Zcoordinate"]

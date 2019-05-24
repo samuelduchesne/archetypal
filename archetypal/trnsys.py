@@ -50,7 +50,7 @@ def clear_name_idf_objects(idfFile):
         epObjects = idfFile.idfobjects[obj]
 
         # For all objects in Category
-        count = 0
+        count_name = 0
         for epObject in epObjects:
             # Do not take fenestration, to be treated later
             try:
@@ -78,14 +78,14 @@ def clear_name_idf_objects(idfFile):
 
                     first_letters = ''.join(word[0].lower() for word in
                                             list_word_epObject_type)
-                    count += 1
-                    end_count = '%06d' % count
+                    end_count = '%06d' % count_name
                     new_name = first_letters + '_' + end_count
 
                     # Make sure new name does not already exist
-                    new_name = check_unique_name(first_letters, count,
-                                                 new_name,
-                                                 uniqueList)
+                    new_name, count_name = check_unique_name(first_letters,
+                                                             count_name,
+                                                             new_name,
+                                                             uniqueList)
 
                     uniqueList.append(new_name)
 

@@ -730,12 +730,11 @@ class Schedule(object):
         dict_day = {}
         count_day = 0
         for unique_day in unique_days:
-            count_day += 1
-            name = 'day_' + '%06d' % count_day
-            name = archetypal.check_unique_name('day', count_day,
-                                                name,
-                                                archetypal.settings.unique_schedules)
-
+            name = 'd_' + self.schName + '_' + '%03d' % count_day
+            name, count_day = archetypal.check_unique_name('d', count_day,
+                                                           name,
+                                                           archetypal.settings.unique_schedules,
+                                                           suffix=True)
             dict_day[name] = unique_day
 
             archetypal.settings.unique_schedules.append(name)
@@ -762,12 +761,14 @@ class Schedule(object):
         dict_week = {}
         count_week = 0
         for unique_week in unique_weeks:
-            count_week += 1
-            week_id = 'week_' + '%05d' % count_week
-            week_id = archetypal.check_unique_name('week', count_week,
-                                                week_id,
-                                                archetypal.settings.unique_schedules)
+            week_id = 'w_' + self.schName + '_' + '%03d' % count_week
+            week_id, count_week = archetypal.check_unique_name('w',
+                                                               count_week,
+                                                               week_id,
+                                                               archetypal.settings.unique_schedules,
+                                                               suffix=True)
             archetypal.settings.unique_schedules.append(week_id)
+
             dict_week[week_id] = {}
             for i in list(range(0, 7)):
                 day_of_week = unique_week[..., i * 24:(i + 1) * 24]

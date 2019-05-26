@@ -1,3 +1,4 @@
+path
 shapely
 geomeppy
 matplotlib>=2.1

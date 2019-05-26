@@ -3,9 +3,10 @@ import random
 
 import matplotlib as mpl
 import pytest
+from path import Path
 
 import archetypal as ar
-from archetypal import CalledProcessError
+from archetypal import EnergyPlusProcessError, parallel_process
 
 # use agg backend so you don't need a display on travis-ci
 mpl.use('Agg')
@@ -15,11 +16,14 @@ mpl.use('Agg')
 # or
 # arrange, act, assert
 
-def test_small_home_data(config):
+@pytest.mark.parametrize('report', ['sql', 'htm'],
+                         ids=['sql', 'html'])
+def test_small_home_data(config, report):
     file = 'tests/input_data/regular/AdultEducationCenter.idf'
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    return ar.run_eplus(file, wf, expandobjects=True, verbose='q',
-                        prep_outputs=True, design_day=True, output_report='sql')
+    return ar.run_eplus(file, wf, expandobjects=True, verbose='v',
+                        prep_outputs=True, design_day=True,
+                        output_report=report)
 
 
 def test_necb(config):
@@ -28,10 +32,23 @@ def test_necb(config):
     file = random.choice(glob.glob("tests/input_data/necb/*.idf"))
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     rundict = {file: dict(eplus_file=file, weather_file=wf,
-                          expandobjects=True, verbose='q',
+                          expandobjects=True, verbose='v',
                           design_day=True, output_report='sql',
                           ) for file in [file]}
     result = {file: ar.run_eplus(**rundict[file]) for file in [file]}
+
+    assert not any(isinstance(a, Exception) for a in result.values())
+
+
+def test_necb_parallel(config):
+    """Test one of the necb files"""
+    files = Path("tests/input_data/necb").glob("*.idf")
+    wf = Path('tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
+    rundict = {file: dict(eplus_file=file, weather_file=wf,
+                          expandobjects=True, verbose='v',
+                          design_day=True, output_report='sql',
+                          ) for file in files}
+    result = parallel_process(rundict, ar.run_eplus, use_kwargs=True)
 
     assert not any(isinstance(a, Exception) for a in result.values())
 
@@ -75,7 +92,7 @@ def test_run_olderv(config, ep_version):
     assert not any(isinstance(a, Exception) for a in result.values())
 
 
-@pytest.mark.xfail(raises=(CalledProcessError, FileNotFoundError))
+@pytest.mark.xfail(raises=(EnergyPlusProcessError))
 def test_run_olderv_problematic(config):
     """Will run eplus on a file that needs to be upgraded and that should
     fail. Will be ignored in the test suite"""

@@ -73,10 +73,10 @@ def config(data_folder=settings.data_folder,
     """
     # set each global variable to the passed-in parameter value
     settings.use_cache = use_cache
-    settings.cache_folder = Path(cache_folder)
-    settings.data_folder = Path(data_folder)
-    settings.imgs_folder = Path(imgs_folder)
-    settings.logs_folder = Path(logs_folder)
+    settings.cache_folder = Path(cache_folder).abspath()
+    settings.data_folder = Path(data_folder).abspath()
+    settings.imgs_folder = Path(imgs_folder).abspath()
+    settings.logs_folder = Path(logs_folder).abspath()
     settings.log_console = log_console
     settings.log_file = log_file
     settings.log_level = log_level
@@ -106,9 +106,9 @@ def validate_trnsys_folder(trnsys_default_folder):
         return trnsys_default_folder
 
 
-def log(message, level=None, name=None, filename=None, avoid_console=False):
-    """
-    Write a message to the log file and/or print to the the console.
+def log(message, level=None, name=None, filename=None, avoid_console=False,
+        log_dir=None):
+    """Write a message to the log file and/or print to the the console.
 
     Args:
         message (str): the content of the message to log
@@ -117,10 +117,8 @@ def log(message, level=None, name=None, filename=None, avoid_console=False):
         filename (str): name of the log file
         avoid_console (bool): If True, don't print to console for this message
             only
-
-    Returns:
-        None
-
+        log_dir (str, optional): directory of log file. Defaults to
+            settings.log_folder
     """
     if level is None:
         level = settings.log_level
@@ -133,7 +131,8 @@ def log(message, level=None, name=None, filename=None, avoid_console=False):
     if settings.log_file:
         # get the current logger (or create a new one, if none), then log
         # message at requested level
-        logger = get_logger(level=level, name=name, filename=filename)
+        logger = get_logger(level=level, name=name, filename=filename,
+                            log_dir=log_dir)
         if level == lg.DEBUG:
             logger.debug(message)
         elif level == lg.INFO:
@@ -163,13 +162,15 @@ def log(message, level=None, name=None, filename=None, avoid_console=False):
             warnings.warn(message)
 
 
-def get_logger(level=None, name=None, filename=None):
+def get_logger(level=None, name=None, filename=None, log_dir=None):
     """Create a logger or return the current one if already instantiated.
 
     Args:
-        level (int): one of the logger.level constants
-        name (str): name of the logger
-        filename (str): name of the log file
+        level (int): one of the logger.level constants.
+        name (str): name of the logger.
+        filename (str): name of the log file.
+        log_dir (str, optional): directory of the log file. Defaults to
+            settings.log_folder.
 
     Returns:
         logging.Logger: a Logger
@@ -190,7 +191,11 @@ def get_logger(level=None, name=None, filename=None):
 
         # get today's date and construct a log filename
         todays_date = dt.datetime.today().strftime('%Y_%m_%d')
-        log_filename = os.path.join(settings.logs_folder,
+
+        if not log_dir:
+            log_dir = settings.logs_folder
+
+        log_filename = os.path.join(log_dir,
                                     '{}_{}.log'.format(filename, todays_date))
 
         # if the logs folder does not already exist, create it

@@ -9,11 +9,11 @@
 import datetime
 import glob
 import hashlib
+import inspect
 import logging as lg
 import multiprocessing
 import os
 import subprocess
-import tempfile
 import time
 from subprocess import CalledProcessError
 
@@ -436,6 +436,10 @@ def prepare_outputs(eplus_file, outputs=None, idd_filename=None,
     idf.add_object('Output:Table:SummaryReports'.upper(),
                    Report_1_Name='AllSummary', save=save)
 
+    # OutputControl:Table:Style
+    idf.add_object('OutputControl:Table:Style'.upper(),
+                   Column_Separator='CommaAndHTML', save=save)
+
     # SQL output
     idf.add_object('Output:SQLite'.upper(),
                    Option_Type='SimpleAndTabular', save=save)
@@ -490,28 +494,26 @@ def cache_runargs(eplus_file, runargs):
         json.dump(runargs, fp, sort_keys=True, indent=4)
 
 
-def run_eplus(eplus_file, weather_file, output_folder=None,
+def run_eplus(eplus_file, weather_file, output_directory=None,
               ep_version=None, output_report=None, prep_outputs=False,
-              simulname=None, keep_data=True, **kwargs):
+              simulname=None, keep_data=True, annual=False,
+              design_day=False, epmacro=False, expandobjects=False,
+              readvars=False, output_prefix=None, output_suffix=None,
+              version=None, verbose='v', keep_data_err=True):
     """Run an energy plus file and return the SummaryReports Tables in a list
     of [(title, table), .....]
 
     Args:
         eplus_file (str): path to the idf file.
         weather_file (str): path to the EPW weather file
-        output_folder (str, optional): path to the output folder. Will default
+        output_directory (str, optional): path to the output folder. Will
+        default
             to the settings.cache_folder.
         ep_version (str, optional): EnergyPlus version to use, eg: 8-9-0
         output_report: 'htm' or 'sql'.
         prep_outputs (bool or list, optional): if true, meters and variable
             outputs will be appended to the idf files. see
             :func:`prepare_outputs`
-        **kwargs: keyword arguments to pass to other functions (see below)
-
-    Returns:
-        dict: dict of [(title, table), .....]
-
-    Keyword Args:
         annual (bool): If True then force annual simulation (default: False)
         design_day (bool): Force design-day-only simulation (default: False)
         epmacro (bool): Run EPMacro prior to simulation (default: False)
@@ -519,8 +521,6 @@ def run_eplus(eplus_file, weather_file, output_folder=None,
             False)
         readvars (bool): Run ReadVarsESO after simulation (default: False)
         output_prefix (str): Prefix for output file names
-        verbose (str):
-        idf : str
         output_suffix (str, optional): Suffix style for output file names
             (default: L)
                 L: Legacy (e.g., eplustbl.csv)
@@ -530,24 +530,35 @@ def run_eplus(eplus_file, weather_file, output_folder=None,
         verbose (str): Set verbosity of runtime messages (default: v)
             v: verbose
             q: quiet
+
+    Raises:
+        EnergyPlusProcessError.
+
+    Returns:
+        dict: dict of [(title, table), .....]
     """
     eplus_file = Path(eplus_file)
     weather_file = Path(weather_file)
+
+    frame = inspect.currentframe()
+    args, _, _, values = inspect.getargvalues(frame)
+    args = {arg: values[arg] for arg in args}
+
     if not simulname:
-        cache_filename = hash_file(eplus_file, kwargs)
+        cache_filename = hash_file(eplus_file, args)
         simulname = cache_filename
     else:
         cache_filename = simulname
-    if not output_folder:
-        output_folder = settings.cache_folder / cache_filename
+    if not output_directory:
+        output_directory = settings.cache_folder / cache_filename
     else:
-        output_folder = Path(output_folder)
+        output_directory = Path(output_directory)
 
     # <editor-fold desc="Try to get cached results">
     try:
         start_time = time.time()
-        cached_run_results = get_from_cache(eplus_file, output_report,
-                                            output_folder, **kwargs)
+        cached_run_results = get_from_cache(cache_filename=cache_filename,
+                                            **args)
     except Exception as e:
         # catch other exceptions that could occur
         raise Exception('{}'.format(e))
@@ -555,7 +566,7 @@ def run_eplus(eplus_file, weather_file, output_folder=None,
         if cached_run_results:
             # if cached run found, simply return it
             log('Succesfully parsed cached idf run in {:,.2f} seconds'.format(
-                time.time() - start_time))
+                time.time() - start_time), name=eplus_file.basename())
             return cached_run_results
 
     runs_not_found = eplus_file
@@ -566,7 +577,7 @@ def run_eplus(eplus_file, weather_file, output_folder=None,
         # replace the dots with "-"
         ep_version = ep_version.replace(".", "-")
     eplus_file = idf_version_updater(eplus_file, to_version=ep_version,
-                                     out_dir=output_folder)
+                                     out_dir=output_directory)
     # In case the file has been updated, update the versionid of the file
     # and the idd_file
     versionid = get_idf_version(eplus_file, doted=False)
@@ -576,179 +587,96 @@ def run_eplus(eplus_file, weather_file, output_folder=None,
     # Prepare outputs e.g. sql table
     if prep_outputs:
         # Check if idf file has necessary objects (eg specific outputs)
-        prepare_outputs(eplus_file, prep_outputs, idd_file, output_folder)
+        prepare_outputs(eplus_file, prep_outputs, idd_file, output_directory)
 
     if runs_not_found:
         # continue with simulation of other files
         log('no cached run for {}. Running EnergyPlus...'.format(
-            os.path.basename(eplus_file)))
+            os.path.basename(eplus_file)), name=eplus_file.basename())
 
         start_time = time.time()
-        processed_runs = {}
-
-        # used the hash of the original file (unmodified)
-        filename_prefix = kwargs.get('output_prefix', cache_filename)
-        runargs = {'idf': eplus_file.abspath(),
-                   'weather': weather_file.abspath(),
-                   'verbose': 'q',
-                   'output_directory': output_folder.abspath(),
-                   'ep_version': versionid,
-                   'output_prefix': filename_prefix,
-                   'idd': idd_file.abspath()}
-        runargs.update(kwargs)
-
-        # save runargs
-        cache_runargs(eplus_file, runargs.copy())
 
         # run the EnergyPlus Simulation
         with tempdir(prefix="eplus_run_", suffix=simulname,
-                     dir=output_folder) as tmp:
-            runargs['idf'] = runargs['idf'].copy(tmp)
-            runargs['output_directory'] = tmp
+                     dir=output_directory) as tmp:
+            log("temporary dir (%s) created" % tmp, lg.DEBUG,
+                name=eplus_file.basename())
 
-            _multirunner(**runargs)
+            # used the hash of the original file (unmodified)
+            if not output_prefix:
+                output_prefix = cache_filename
+            runargs = {'tmp': tmp,
+                       'eplus_file': eplus_file.copy(tmp),
+                       'weather': weather_file.copy(tmp),
+                       'verbose': verbose,
+                       'output_directory': output_directory,
+                       'ep_version': versionid,
+                       'output_prefix': output_prefix,
+                       'idd': idd_file.copy(tmp),
+                       'annual': annual,
+                       'epmacro': epmacro,
+                       'readvars': readvars,
+                       'output_suffix': output_suffix,
+                       'version': version,
+                       'simulname': simulname,
+                       'expandobjects': expandobjects,
+                       'design_day': design_day,
+                       'keep_data_err': keep_data_err,
+                       'output_report': output_report}
 
-            log('EnergyPlus Completed Successfully in {:,.2f} seconds'.format(
-                time.time() - start_time))
+            # save runargs
+            cache_runargs(eplus_file, runargs.copy())
+
+            _run_exec(**runargs)
+
+            log('EnergyPlus Completed in {:,.2f} seconds'.format(
+                time.time() - start_time), name=eplus_file.basename())
 
             log(
                 "Files generated at the end of the simulation: %s" % " ".join(
                     tmp.files()),
-                lg.DEBUG
+                lg.DEBUG, name=eplus_file.basename()
             )
 
             # Return summary DataFrames
-            cacheargs = {'eplus_file': eplus_file,
-                         'output_folder': tmp,
-                         'output_report': output_report,
-                         'filename_prefix': cache_filename,
-                         **kwargs}
-
-            cached_run_results = get_report(**cacheargs)
+            runargs['output_directory'] = tmp
+            cached_run_results = get_report(**runargs)
 
             if keep_data:
-                (output_folder / "output_data").rmtree_p()
-                tmp.copytree(output_folder / "output_data")
+                (output_directory / "output_data").rmtree_p()
+                tmp.copytree(output_directory / "output_data")
 
             return cached_run_results
 
 
-def _multirunner(**kwargs):
-    """Wrapper around the :func:`eppy.runner.run_functions.run` to be used when
-    running EnergyPlus.
+def _run_exec(tmp, eplus_file, weather, output_directory, annual, design_day,
+              idd, epmacro, expandobjects, readvars, output_prefix,
+              output_suffix, version, verbose, ep_version, simulname,
+              keep_data_err, output_report):
+    """Wrapper around the EnergyPlus command line interface.
+
+    Adapted from :func:`eppy.runner.runfunctions.run`.
     """
-    try:
-        run(**kwargs)
-    except TypeError as e:
-        log('{}'.format(e), lg.ERROR)
-        raise TypeError('{}'.format(e))
-    except CalledProcessError as e:
-        # Get error file
-        log('{}'.format(e), lg.ERROR)
 
-        output_dir = kwargs['output_directory']
-        error_filename = output_dir / output_dir.basename() + 'out.err'
-        if os.path.isfile(error_filename):
-            idf_name = os.path.basename(kwargs['idf'])
-            with open(error_filename, 'r') as fin:
-                log('\nError File for "{}" begins here...\n'.format(
-                    idf_name), lg.ERROR)
-                log(fin.read(), lg.ERROR)
-                log('Error File for "{}" ends here...\n'.format(
-                    idf_name), lg.ERROR)
-            with open(error_filename, 'r') as stderr:
-                raise EnergyPlusProcessError(cmd=e.cmd,
-                                             idf=idf_name,
-                                             stderr=stderr.read())
-        else:
-            log('Could not find error file', lg.ERROR)
-
-
-def run(idf=None, weather=None, output_directory='', annual=False,
-        design_day=False, idd=None, epmacro=False, expandobjects=False,
-        readvars=False, output_prefix=None, output_suffix=None, version=False,
-        verbose='v', ep_version=None):
-    """
-    Wrapper around the EnergyPlus command line interface.
-
-    Parameters
-    ----------
-    idf : str
-        Full or relative path to the IDF file to be run, or an IDF object.
-
-    weather : str
-        Full or relative path to the weather file.
-
-    output_directory : str, optional
-        Full or relative path to an output directory (default: 'run_outputs)
-
-    annual : bool, optional
-        If True then force annual simulation (default: False)
-
-    design_day : bool, optional
-        Force design-day-only simulation (default: False)
-
-    idd : str, optional
-        Input data dictionary (default: Energy+.idd in EnergyPlus directory)
-
-    epmacro : str, optional
-        Run EPMacro prior to simulation (default: False).
-
-    expandobjects : bool, optional
-        Run ExpandObjects prior to simulation (default: False)
-
-    readvars : bool, optional
-        Run ReadVarsESO after simulation (default: False)
-
-    output_prefix : str, optional
-        Prefix for output file names (default: eplus)
-
-    output_suffix : str, optional
-        Suffix style for output file names (default: L)
-            L: Legacy (e.g., eplustbl.csv)
-            C: Capital (e.g., eplusTable.csv)
-            D: Dash (e.g., eplus-table.csv)
-
-    version : bool, optional
-        Display version information (default: False)
-
-    verbose: str
-        Set verbosity of runtime messages (default: v)
-            v: verbose
-            q: quiet
-
-    ep_version: str
-        EnergyPlus version, used to find install directory. Required if run() is
-        called with an IDF file path rather than an IDF object.
-
-    Returns
-    -------
-    str : status
-
-    Raises
-    ------
-    CalledProcessError
-
-    AttributeError
-        If no ep_version parameter is passed when calling with an IDF file path
-        rather than an IDF object.
-
-
-    """
     args = locals().copy()
     # get unneeded params out of args ready to pass the rest to energyplus.exe
     verbose = args.pop('verbose')
-    idf = args.pop('idf')
+    eplus_file = args.pop('eplus_file')
     iddname = args.get('idd')
+    simulname = args.pop('simulname')
+    tmp = args.pop('tmp')
+    keep_data_err = args.pop('keep_data_err')
+    output_directory = args.pop('output_directory')
+    output_report = args.pop('output_report')
     try:
-        idf_path = os.path.abspath(idf.idfname)
+        idf_path = os.path.abspath(eplus_file.idfname)
     except AttributeError:
-        idf_path = os.path.abspath(idf)
+        idf_path = os.path.abspath(eplus_file)
     ep_version = args.pop('ep_version')
     # get version from IDF object or by parsing the IDF file for it
     if not ep_version:
         try:
-            ep_version = '-'.join(str(x) for x in idf.idd_version[:3])
+            ep_version = '-'.join(str(x) for x in eplus_file.idd_version[:3])
         except AttributeError:
             raise AttributeError(
                 "The ep_version must be set when passing an IDF path. \
@@ -767,34 +695,49 @@ def run(idf=None, weather=None, output_directory='', annual=False,
         args['weather'] = os.path.abspath(args['weather'])
     else:
         args['weather'] = os.path.join(eplus_weather_path, args['weather'])
-    args['output_directory'] = os.path.abspath(args['output_directory'])
+    # args['output_directory'] = tmp.abspath()
 
-    # store the directory we start in
-    cwd = os.getcwd()
-    run_dir = os.path.abspath(tempfile.mkdtemp())
-    os.chdir(run_dir)
+    with tmp.abspath():
+        # build a list of command line arguments
+        cmd = [eplus_exe_path]
+        for arg in args:
+            if args[arg]:
+                if isinstance(args[arg], bool):
+                    args[arg] = ''
+                cmd.extend(['--{}'.format(arg.replace('_', '-'))])
+                if args[arg] != "":
+                    cmd.extend([args[arg]])
+        cmd.extend([idf_path])
 
-    # build a list of command line arguments
-    cmd = [eplus_exe_path]
-    for arg in args:
-        if args[arg]:
-            if isinstance(args[arg], bool):
-                args[arg] = ''
-            cmd.extend(['--{}'.format(arg.replace('_', '-'))])
-            if args[arg] != "":
-                cmd.extend([args[arg]])
-    cmd.extend([idf_path])
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT
+        )
+        with process.stdout:
+            _log_subprocess_output(process.stdout,
+                                   name=eplus_file.basename(),
+                                   verbose=verbose)
+        if process.wait() != 0:
+            error_filename = tmp / simulname + 'out.err'
+            with open(error_filename, 'r') as stderr:
+                if keep_data_err:
+                    failed_dir = output_directory / "failed"
+                    tmp.copytree(failed_dir / tmp.basename())
+                tmp.rmtree_p()
+                raise EnergyPlusProcessError(cmd=cmd,
+                                             idf=eplus_file.basename(),
+                                             stderr=stderr.read())
 
-    try:
+
+def _log_subprocess_output(pipe, name, verbose):
+    for line in iter(pipe.readline, b""):
         if verbose == 'v':
-            subprocess.check_call(cmd)
-        elif verbose == 'q':
-            subprocess.check_call(cmd, stdout=open(os.devnull, 'w'))
-        os.chdir(cwd)
-    except CalledProcessError:
-        # potentially catch contents of std out and put it in the error
-        raise
-    return 'OK'
+            log(line.decode().strip("\n"),
+                level=lg.DEBUG,
+                name="eplus_run_" + name,
+                filename="eplus_run_" + name,
+                log_dir=os.getcwd())
 
 
 def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
@@ -821,7 +764,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         >>>                      prep_outputs=True, expandobjects=True,
         >>>                      verbose='q', output_report='sql')
         >>>           for file in files}
-        >>> result = {file: ar.run_eplus(**rundict[file]) for file in files}
+        >>> result = parallel_process(rundict, ar.run_eplus, use_kwargs=True)
 
     """
     from tqdm import tqdm
@@ -907,14 +850,14 @@ def hash_file(eplus_file, kwargs=None):
     return hasher.hexdigest()
 
 
-def get_report(eplus_file, output_folder=None, output_report='sql',
-               filename_prefix=None, **kwargs):
+def get_report(eplus_file, output_directory=None, output_report='sql',
+               simulname=None, **kwargs):
     """Returns the specified report format (html or sql)
 
     Args:
-        filename_prefix:
+        simulname:
         eplus_file (str): path of the idf file
-        output_folder (str, optional): path to the output folder. Will
+        output_directory (str, optional): path to the output folder. Will
             default to the settings.cache_folder.
         output_report: 'html' or 'sql'
         **kwargs: keyword arguments to pass to hasher.
@@ -924,16 +867,14 @@ def get_report(eplus_file, output_folder=None, output_report='sql',
 
     """
     # Hash the idf file with any kwargs used in the function
-    if filename_prefix is None:
-        filename_prefix = hash_file(eplus_file, kwargs)
+    if simulname is None:
+        simulname = hash_file(eplus_file, kwargs)
     if output_report is None:
         return None
     elif 'htm' in output_report.lower():
         # Get the html report
-        fullpath_filename = os.path.join(output_folder, filename_prefix,
-                                         os.extsep.join(
-                                             [filename_prefix + 'tbl', 'htm']))
-        if os.path.isfile(fullpath_filename):
+        fullpath_filename = output_directory / simulname + 'tbl.htm'
+        if fullpath_filename.exists():
             return get_html_report(fullpath_filename)
         else:
             raise FileNotFoundError(
@@ -941,7 +882,7 @@ def get_report(eplus_file, output_folder=None, output_report='sql',
 
     elif 'sql' in output_report.lower():
         # Get the sql report
-        fullpath_filename = output_folder / filename_prefix + 'out.sql'
+        fullpath_filename = output_directory / simulname + 'out.sql'
         if fullpath_filename.exists():
             return get_sqlite_report(fullpath_filename)
         else:
@@ -972,7 +913,9 @@ def get_from_cache(eplus_file, output_report='sql', output_folder=None,
 
     if settings.use_cache:
         # determine the filename by hashing the eplus_file
-        cache_filename_prefix = hash_file(eplus_file, kwargs)
+        cache_filename_prefix = kwargs.pop('cache_filename',
+                                           hash_file(eplus_file, kwargs))
+
         if output_report is None:
             return None
 
@@ -984,8 +927,8 @@ def get_from_cache(eplus_file, output_report='sql', output_folder=None,
 
             cache_fullpath_filename = output_folder / \
                                       "output_data" / \
-                                      cache_filename_prefix + "tbl.html"
-            if os.path.isfile(cache_fullpath_filename):
+                                      cache_filename_prefix + "tbl.htm"
+            if cache_fullpath_filename.exists():
                 return get_html_report(cache_fullpath_filename)
 
         elif 'sql' in output_report.lower():
@@ -1115,7 +1058,7 @@ def idf_version_updater(idf_file,
             (default: None)
 
     Returns:
-        str: The path of the transitioned idf file.
+        Path: The path of the transitioned idf file.
 
     Hint:
         If attempting to upgrade an earlier version of EnergyPlus (

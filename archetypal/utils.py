@@ -27,6 +27,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 from pandas.io.json import json_normalize
+from path import Path
 
 from archetypal import settings
 
@@ -72,10 +73,10 @@ def config(data_folder=settings.data_folder,
     """
     # set each global variable to the passed-in parameter value
     settings.use_cache = use_cache
-    settings.cache_folder = cache_folder
-    settings.data_folder = data_folder
-    settings.imgs_folder = imgs_folder
-    settings.logs_folder = logs_folder
+    settings.cache_folder = Path(cache_folder)
+    settings.data_folder = Path(data_folder)
+    settings.imgs_folder = Path(imgs_folder)
+    settings.logs_folder = Path(logs_folder)
     settings.log_console = log_console
     settings.log_file = log_file
     settings.log_level = log_level
@@ -822,6 +823,7 @@ def check_unique_name(first_letters, count, name, unique_list):
 
     return name
 
+
 def angle(v1, v2, acute=True):
     """Calculate the angle between 2 vectors
 
@@ -834,7 +836,8 @@ def angle(v1, v2, acute=True):
         angle (float): angle between the 2 vectors in degree
 
     """
-    angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+    angle = np.arccos(
+        np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
     if (acute == True):
         return angle
     else:

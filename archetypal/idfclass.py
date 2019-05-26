@@ -41,7 +41,7 @@ class IDF(eppy.modeleditor.IDF):
         # If True, delete the object
         if sum([str(obj).upper() == str(new_object).upper() for obj in
                 objs]) > 1:
-            log('object "{}" already exists in idf file'.format(ep_object),
+            log('object "{}" already exists'.format(ep_object),
                 lg.WARNING)
             # Remove the newly created object since the function
             # `idf.newidfobject()` automatically adds it
@@ -50,7 +50,7 @@ class IDF(eppy.modeleditor.IDF):
                 return []
         else:
             if save:
-                log('object "{}" added to the idf file'.format(ep_object))
+                log('object "{}" added'.format(ep_object))
                 self.save()
             else:
                 # return the ep_object

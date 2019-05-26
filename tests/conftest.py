@@ -15,7 +15,7 @@ def fresh_start():
     settings = [ar.settings.cache_folder, ar.settings.data_folder,
                 ar.settings.imgs_folder]
     for setting in settings:
-        if os.path.exists(setting):
+        if os.path.isdir(setting):
             shutil.rmtree(setting)
             assert not os.path.exists(setting)
 

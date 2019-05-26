@@ -9,6 +9,7 @@ import logging as lg
 import os
 
 import eppy.modeleditor
+
 from archetypal import log
 
 
@@ -23,15 +24,18 @@ class IDF(eppy.modeleditor.IDF):
 
     def add_object(self, ep_object, save=True, **kwargs):
         """Add a new object to an idf file. The function will test if the
-        object exists to prevent duplicates.
+        object exists to prevent duplicates. By default, the idf with the new
+        object is saved to disk (save=True)
 
         Args:
+            save (bool): Save the IDF as a text file with the current idfname of
+                the IDF.
             ep_object (str): the object name to add, eg. 'OUTPUT:METER' (Must
-                be in all_caps)
+                be in all_caps).
             **kwargs: keyword arguments to pass to other functions.
 
         Returns:
-            eppy.modeleditor.IDF: the IDF object
+            IDF: the IDF object
         """
         # get list of objects
         objs = self.idfobjects[ep_object]  # a list

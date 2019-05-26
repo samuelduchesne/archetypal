@@ -2,12 +2,12 @@ import os
 import random
 
 import matplotlib as mpl
-# use agg backend so you don't need a display on travis-ci
 import pytest
 
 import archetypal as ar
-from archetypal import copy_file, CalledProcessError
+from archetypal import CalledProcessError
 
+# use agg backend so you don't need a display on travis-ci
 mpl.use('Agg')
 
 
@@ -17,7 +17,6 @@ mpl.use('Agg')
 
 def test_small_home_data(config):
     file = 'tests/input_data/regular/AdultEducationCenter.idf'
-    # file = copy_file(file)[0]
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     return ar.run_eplus(file, wf, expandobjects=True, verbose='q',
                         prep_outputs=True, design_day=True, output_report='sql')
@@ -48,7 +47,7 @@ def test_load_idf(config):
     assert isinstance(obj, dict)
 
 
-def test_load_old(config, fresh_start):
+def test_load_old(config):
     files = ['tests/input_data/problematic/nat_ventilation_SAMPLE0.idf',
              'tests/input_data/regular/5ZoneNightVent1.idf']
 
@@ -60,29 +59,29 @@ def test_load_old(config, fresh_start):
 
 @pytest.mark.parametrize('ep_version', [ar.ep_version, None],
                          ids=['specific-ep-version', 'no-specific-ep-version'])
-def test_run_olderv(config, fresh_start, ep_version):
+def test_run_olderv(config, ep_version):
     """Will run eplus on a file that needs to be upgraded with one that does
     not"""
 
     files = ['tests/input_data/problematic/nat_ventilation_SAMPLE0.idf',
              'tests/input_data/regular/5ZoneNightVent1.idf']
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    # files = copy_file(files)
     rundict = {file: dict(eplus_file=file, weather_file=wf,
                           ep_version=ep_version, annual=True, prep_outputs=True,
                           expandobjects=True, verbose='q', output_report='sql')
                for file in files}
     result = {file: ar.run_eplus(**rundict[file]) for file in files}
 
+    assert not any(isinstance(a, Exception) for a in result.values())
 
-# @pytest.mark.xfail(raises=(CalledProcessError, FileNotFoundError))
-def test_run_olderv_problematic(config, fresh_start):
+
+@pytest.mark.xfail(raises=(CalledProcessError, FileNotFoundError))
+def test_run_olderv_problematic(config):
     """Will run eplus on a file that needs to be upgraded and that should
     fail. Will be ignored in the test suite"""
 
     file = 'tests/input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7' \
            '.2_5A_USA_IL_CHICAGO-OHARE.idf'
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    # file = copy_file([file])[0]
     ar.run_eplus(file, wf, annual=True,
                  expandobjects=True, verbose='v', prep_outputs=True)

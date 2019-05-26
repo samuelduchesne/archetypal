@@ -138,7 +138,7 @@ def run_schedules_idf(config):
     import os
     run_eplus(idf_file, weather_file='tests/input_data/CAN_PQ_Montreal.Intl.AP'
                                      '.716270_CWEC.epw',
-              annual=True, output_directory='tests/input_data/schedules',
+              annual=True, output_directory=None,
               output_prefix='eprun', readvars=True)
     csv = os.path.join('tests', 'input_data', 'schedules', 'eprun',
                        'eprunout.csv')

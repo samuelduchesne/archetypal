@@ -544,11 +544,11 @@ def run_eplus(eplus_file, weather_file, output_directory=None,
     args, _, _, values = inspect.getargvalues(frame)
     args = {arg: values[arg] for arg in args}
 
-    if not simulname:
+    if not output_prefix:
         cache_filename = hash_file(eplus_file, args)
-        simulname = cache_filename
+        output_prefix = cache_filename
     else:
-        cache_filename = simulname
+        cache_filename = output_prefix
     if not output_directory:
         output_directory = settings.cache_folder / cache_filename
     else:
@@ -597,14 +597,11 @@ def run_eplus(eplus_file, weather_file, output_directory=None,
         start_time = time.time()
 
         # run the EnergyPlus Simulation
-        with tempdir(prefix="eplus_run_", suffix=simulname,
+        with tempdir(prefix="eplus_run_", suffix=output_prefix,
                      dir=output_directory) as tmp:
             log("temporary dir (%s) created" % tmp, lg.DEBUG,
                 name=eplus_file.basename())
 
-            # used the hash of the original file (unmodified)
-            if not output_prefix:
-                output_prefix = cache_filename
             runargs = {'tmp': tmp,
                        'eplus_file': eplus_file.copy(tmp),
                        'weather': weather_file.copy(tmp),
@@ -618,7 +615,6 @@ def run_eplus(eplus_file, weather_file, output_directory=None,
                        'readvars': readvars,
                        'output_suffix': output_suffix,
                        'version': version,
-                       'simulname': simulname,
                        'expandobjects': expandobjects,
                        'design_day': design_day,
                        'keep_data_err': keep_data_err,
@@ -651,7 +647,7 @@ def run_eplus(eplus_file, weather_file, output_directory=None,
 
 def _run_exec(tmp, eplus_file, weather, output_directory, annual, design_day,
               idd, epmacro, expandobjects, readvars, output_prefix,
-              output_suffix, version, verbose, ep_version, simulname,
+              output_suffix, version, verbose, ep_version,
               keep_data_err, output_report):
     """Wrapper around the EnergyPlus command line interface.
 
@@ -663,11 +659,11 @@ def _run_exec(tmp, eplus_file, weather, output_directory, annual, design_day,
     verbose = args.pop('verbose')
     eplus_file = args.pop('eplus_file')
     iddname = args.get('idd')
-    simulname = args.pop('simulname')
     tmp = args.pop('tmp')
     keep_data_err = args.pop('keep_data_err')
     output_directory = args.pop('output_directory')
     output_report = args.pop('output_report')
+    idd = args.pop('idd')
     try:
         idf_path = os.path.abspath(eplus_file.idfname)
     except AttributeError:
@@ -719,11 +715,12 @@ def _run_exec(tmp, eplus_file, weather, output_directory, annual, design_day,
                                    name=eplus_file.basename(),
                                    verbose=verbose)
         if process.wait() != 0:
-            error_filename = tmp / simulname + 'out.err'
+            error_filename = output_prefix + 'out.err'
             with open(error_filename, 'r') as stderr:
                 if keep_data_err:
                     failed_dir = output_directory / "failed"
-                    tmp.copytree(failed_dir / tmp.basename())
+                    failed_dir.mkdir_p()
+                    tmp.copytree(failed_dir / output_prefix)
                 tmp.rmtree_p()
                 raise EnergyPlusProcessError(cmd=cmd,
                                              idf=eplus_file.basename(),

@@ -820,10 +820,11 @@ def load_umi_template(json_template):
         raise ValueError('File {} does not exist'.format(json_template))
 
 
-def check_unique_name(first_letters, count, name, unique_list):
+def check_unique_name(first_letters, count, name, unique_list, suffix=False):
     """Making sure new_name does not already exist
 
     Args:
+        suffix:
         first_letters (str): string at the beginning of the name, giving
             a hint on what the variable is (e.g. : 'day_' for a schedule
         day). DO NOT Include an underscore.
@@ -831,17 +832,24 @@ def check_unique_name(first_letters, count, name, unique_list):
         name (str): name that was just created. To be verified that it is
             unique in this function
         unique_list (list): list where unique names are stored
+        suffix (bool): If True, add a suffix of 3 numbers at the end of the name
 
     Returns:
         new_name (str): name that is unique
 
     """
-    while name in unique_list:
-        count += 1
-        end_count = '%06d' % count
-        name = first_letters + '_' + end_count
+    if suffix:
+        while name in unique_list:
+            count += 1
+            end_count = '%03d' % count
+            name = name[:-3] + end_count
+    else:
+        while name in unique_list:
+            count += 1
+            end_count = '%06d' % count
+            name = first_letters + '_' + end_count
 
-    return name
+    return name, count
 
 
 def angle(v1, v2, acute=True):

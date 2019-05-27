@@ -49,8 +49,7 @@ install:
   - conda list
 
 script:
-  - coverage run --source archetypal -m pytest --verbose
-  - coverage combine
+  - pytest --cov=archetypal --verbose tests/
 
 after_success:
   - coverage report -m

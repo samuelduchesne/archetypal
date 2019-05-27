@@ -429,7 +429,7 @@ class Schedule(object):
                             if value.lower() == 'allotherdays':
                                 # Apply condition to slice
                                 how = self.field_set(value, slicer_)
-                                # Reset though condition
+                                # Reset through condition
                                 through_conditions = how
                                 for_condition = how
                             else:
@@ -438,7 +438,7 @@ class Schedule(object):
                     elif value.lower() == 'allotherdays':
                         # Apply condition to slice
                         how = self.field_set(value, slicer_)
-                        # Reset though condition
+                        # Reset through condition
                         through_conditions = how
                         for_condition = how
                     else:

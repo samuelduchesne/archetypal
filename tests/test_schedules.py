@@ -44,10 +44,10 @@ def test_make_umi_schedule(config):
 
 
 config(log_console=True, log_file=True, use_cache=True,
-              data_folder='tests/.temp/data', logs_folder='tests/.temp/logs',
-              imgs_folder='tests/.temp/imgs', cache_folder='tests/.temp/cache',
-              umitemplate='tests/input_data/umi_samples'
-                          '/BostonTemplateLibrary_2.json')
+       data_folder='tests/.temp/data', logs_folder='tests/.temp/logs',
+       imgs_folder='tests/.temp/imgs', cache_folder='tests/.temp/cache',
+       umitemplate='tests/input_data/umi_samples'
+                   '/BostonTemplateLibrary_2.json')
 idf_file = 'tests/input_data/schedules/schedules.idf'
 idf = load_idf(idf_file, include='tests/input_data/schedules/*CTZ06.csv')
 schedules = list(idf.get_all_schedules(yearly_only=True).keys())
@@ -120,7 +120,7 @@ def test_schedules(request, run_schedules_idf):
     index = orig.series.index
     epv = run_schedules_idf
     epv.columns = epv.columns.str.strip()
-    epv = epv.loc[:, schName.upper() + ':Schedule Value [](Hourly)'].values
+    epv = epv.filter(like=schName.upper() + ":", axis=1).iloc[:, 0].values
     expected = pd.Series(epv, index=index)
 
     print('Year: {}'.format(new_eps[0].Name))

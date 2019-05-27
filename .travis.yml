@@ -49,7 +49,7 @@ install:
   - conda list
 
 script:
-  - coverage run --source archetypal -m pytest --verbose
+  - pytest --cov=archetypal --verbose tests/test_idf.py
 
 after_success:
   - coverage report -m

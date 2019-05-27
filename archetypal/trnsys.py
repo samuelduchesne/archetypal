@@ -21,8 +21,8 @@ from eppy import modeleditor
 from geomeppy.geom.polygons import Polygon3D
 
 from archetypal import log, settings, Schedule, load_idf, checkStr, \
-    check_unique_name, angle, get_from_cache, load_idf_object_from_cache, \
-    hash_file, save_idf_object_to_cache
+    check_unique_name, angle, load_idf_object_from_cache, \
+    hash_file
 
 
 def clear_name_idf_objects(idfFile):
@@ -44,6 +44,7 @@ def clear_name_idf_objects(idfFile):
             'SCHEDULE:DAY:INTERVAL', 'SCHEDULE:COMPACT', 'PEOPLE', 'LIGHTS',
             'ELECTRICEQUIPMENT']
     uniqueList = []
+    old_name_list = []
 
     # For all categories of objects in the IDF file
     for obj in tqdm(idfFile.idfobjects, desc='cleaning_names'):
@@ -88,6 +89,7 @@ def clear_name_idf_objects(idfFile):
                                                              uniqueList)
 
                     uniqueList.append(new_name)
+                    old_name_list.append(old_name)
 
                     # Changing the name in the IDF object
                     modeleditor.rename(idfFile, obj, old_name, new_name)
@@ -95,6 +97,27 @@ def clear_name_idf_objects(idfFile):
                     pass
             else:
                 continue
+
+    d = {"Old names": old_name_list, "New names": uniqueList}
+    from tabulate import tabulate
+    log_name = os.path.basename(idfFile.idfname) + "_clear_names.log"
+    log_msg = "Here is the equivalence between the old names and the new " \
+              "ones." + "\n\n" + tabulate(d, headers="keys")
+    log(log_msg, name=log_name, level=lg.INFO)
+
+    # path_clear_names_log = os.path.join(
+    #     settings.logs_folder, log_name)
+    # if not os.path.isdir(settings.logs_folder):
+    #     os.mkdir(settings.logs_folder)
+    #     f = open(path_clear_names_log, "w+")
+    #     f.write(
+    #         "This file is a census of old names and new names of the IDF objects." + "\n")
+    #     f.write(
+    #         "Here an example how the names are written: oldname : newname" + "\n\n")
+    #     f.close()
+    #     from tabulate import tabulate
+    #     with open(path_clear_names_log, "a+") as log:
+    #         log.write(tabulate(d, headers="keys"))
 
 
 def zone_origin(zone_object):

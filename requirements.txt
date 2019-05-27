@@ -10,3 +10,4 @@ pandas>=0.21
 pyomo
 numpy>=1.13
 tqdm
+tabulate

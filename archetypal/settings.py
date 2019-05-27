@@ -86,7 +86,7 @@ available_sqlite_tables = dict(
     ZoneGroups={'PrimaryKey': ['ZoneGroupIndex'],
                 'ParseDates': []},
     Zones={'PrimaryKey': ['ZoneIndex'],
-          'ParseDates': []},
+           'ParseDates': []},
     ZoneLists={'PrimaryKey': ['ZoneListIndex'],
                'ParseDates': []},
     ZoneSizes={'PrimaryKey': ['ZoneSizesIndex'],

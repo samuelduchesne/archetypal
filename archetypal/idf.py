@@ -629,13 +629,13 @@ def run_eplus(eplus_file, weather_file, output_directory=None,
             if include:
                 include = [file.copy(tmp) for file in include]
             runargs = {'tmp': tmp,
-                       'eplus_file': eplus_file.copy(tmp),
-                       'weather': weather_file.copy(tmp),
+                       'eplus_file': Path(eplus_file.copy(tmp)),
+                       'weather': Path(weather_file.copy(tmp)),
                        'verbose': verbose,
                        'output_directory': output_directory,
                        'ep_version': versionid,
                        'output_prefix': output_prefix,
-                       'idd': idd_file.copy(tmp),
+                       'idd': Path(idd_file.copy(tmp)),
                        'annual': annual,
                        'epmacro': epmacro,
                        'readvars': readvars,
@@ -1144,7 +1144,7 @@ def idf_version_updater(idf_file,
     with tempdir(prefix="transition_run_", suffix=simulname, dir=out_dir) as \
             tmp:
         log("temporary dir (%s) created" % tmp, lg.DEBUG)
-        idf_file = idf_file.copy(tmp).abspath()  # copy and return abspath
+        idf_file = Path(idf_file.copy(tmp)).abspath()  # copy and return abspath
 
         versionid = get_idf_version(idf_file, doted=False)[0:5]
         doted_version = get_idf_version(idf_file, doted=True)
@@ -1217,7 +1217,7 @@ def idf_version_updater(idf_file,
             # perform transition
             log('file {} already upgraded to latest version "{}"'.format(
                 idf_file, versionid))
-            idf_file = idf_file.copy(out_dir)
+            idf_file = Path(idf_file.copy(out_dir))
             return idf_file
 
         # build a list of command line arguments
@@ -1249,7 +1249,7 @@ def idf_version_updater(idf_file,
                             lg.ERROR)
         for f in tmp.files('*.idfnew'):
             f.copy(out_dir / idf_file.basename())
-        return out_dir / idf_file.basename()
+        return Path(out_dir / idf_file.basename())
 
 
 def find_eplus_installs(iddfile):

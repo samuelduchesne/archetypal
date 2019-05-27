@@ -4,16 +4,22 @@
 # https://aka.ms/yaml
 
 trigger:
-- master
+- develop
 
-pool:
-  vmImage: 'ubuntu-latest'
+# All tasks on Windows
+- job: test_all_windows
+  displayName: Test all tests (Windows)
+  condition: and(succeeded(), not(variables.task), eq(variables.os, 'Windows_NT'))
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps:
+  - template: .travis.yml
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+# All tasks on Linux
+- job: test_all_linux
+  displayName: Test all tests (Linux)
+  condition: and(succeeded(), not(variables.task), eq(variables.os, 'Linux'))
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+  - template: .travis.yml

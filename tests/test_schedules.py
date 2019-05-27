@@ -48,7 +48,7 @@ config(log_console=True, log_file=True, use_cache=True,
               imgs_folder='tests/.temp/imgs', cache_folder='tests/.temp/cache',
               umitemplate='tests/input_data/umi_samples'
                           '/BostonTemplateLibrary_2.json')
-idf_file = 'tests/input_data/schedules/test_multizone_EP.idf'
+idf_file = 'tests/input_data/schedules/schedules.idf'
 idf = load_idf(idf_file, include='tests/input_data/schedules/*CTZ06.csv')
 schedules = list(idf.get_all_schedules(yearly_only=True).keys())
 ids = [i.replace(" ", "_") for i in schedules]

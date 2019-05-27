@@ -11,6 +11,35 @@ Version,
     8.9;                     !- Version Identifier
 
 
+!-   ===========  ALL OBJECTS IN CLASS: SIMULATIONCONTROL ===========
+
+SimulationControl,
+    No,                      !- Do Zone Sizing Calculation
+    No,                      !- Do System Sizing Calculation
+    No,                      !- Do Plant Sizing Calculation
+    No,                      !- Run Simulation for Sizing Periods
+    Yes;                     !- Run Simulation for Weather File Run Periods
+
+
+!-   ===========  ALL OBJECTS IN CLASS: BUILDING ===========
+
+Building,
+    Untitled,                !- Name
+    0.0,                     !- North Axis {deg}
+    City,                    !- Terrain
+    0.04,                    !- Loads Convergence Tolerance Value
+    0.4,                     !- Temperature Convergence Tolerance Value {deltaC}
+    FullInteriorAndExterior, !- Solar Distribution
+    25,                      !- Maximum Number of Warmup Days
+    ;                        !- Minimum Number of Warmup Days
+
+
+!-   ===========  ALL OBJECTS IN CLASS: TIMESTEP ===========
+
+Timestep,
+    4;                       !- Number of Timesteps per Hour
+
+
 !-   ===========  ALL OBJECTS IN CLASS: SIZINGPERIOD:DESIGNDAY ===========
 
 SizingPeriod:DesignDay,
@@ -77,9 +106,9 @@ RunPeriod,
     1,                       !- Begin Day of Month
     12,                      !- End Month
     31,                      !- End Day of Month
-    Tuesday,                 !- Day of Week for Start Day
-    Yes,                     !- Use Weather File Holidays and Special Days
-    Yes,                     !- Use Weather File Daylight Saving Period
+    Monday,                  !- Day of Week for Start Day
+    No,                      !- Use Weather File Holidays and Special Days
+    No,                      !- Use Weather File Daylight Saving Period
     No,                      !- Apply Weekend Holiday Rule
     Yes,                     !- Use Weather File Rain Indicators
     Yes;                     !- Use Weather File Snow Indicators
@@ -114,7 +143,6 @@ RunPeriodControl:SpecialDays,
 
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULETYPELIMITS ===========
 
-! Not limited
 ScheduleTypeLimits,
     Any Number;              !- Name
 
@@ -131,23 +159,25 @@ ScheduleTypeLimits,
     CONTINUOUS;              !- Numeric Type
 
 ScheduleTypeLimits,
+    On/Off,                  !- Name
+    0,                       !- Lower Limit Value
+    1,                       !- Upper Limit Value
+    DISCRETE;                !- Numeric Type
+
+ScheduleTypeLimits,
     Control Type,            !- Name
     0,                       !- Lower Limit Value
     4,                       !- Upper Limit Value
     DISCRETE;                !- Numeric Type
 
 ScheduleTypeLimits,
-    On/Off,                  !- Name
-    0,                       !- Lower Limit Value
-    1,                       !- Upper Limit Value
-    DISCRETE;                !- Numeric Type
+    Humidity,                !- Name
+    10,                      !- Lower Limit Value
+    90,                      !- Upper Limit Value
+    CONTINUOUS;              !- Numeric Type
 
 ScheduleTypeLimits,
-    On/Off,                  !- Name
-    0,                       !- Lower Limit Value
-    1,                       !- Upper Limit Value
-    DISCRETE,                !- Numeric Type
-    Availability;            !- Unit Type
+    Number;                  !- Name
 
 ScheduleTypeLimits,
     Percent,                 !- Name
@@ -234,11 +264,53 @@ Schedule:Day:List,
     No,                      !- Interpolate to Timestep
     30,                      !- Minutes per Item
     0.0,                     !- Value 1
-    0.5,                     !- N3
-    0,                       !- N4
-    0,                       !- N5
-    0,                       !- N6
-    0;                       !- N7
+    0.25,                    !- N3
+    0.3,                     !- N4
+    0.7,                     !- N5
+    1.0,                     !- N6
+    1.0,                     !- N7
+    0.0,                     !- N8
+    0.25,                    !- N9
+    0.3,                     !- N10
+    0.7,                     !- N11
+    1.0,                     !- N12
+    1.0,                     !- N13
+    0.0,                     !- N14
+    0.25,                    !- N15
+    0.3,                     !- N16
+    0.7,                     !- N17
+    1.0,                     !- N18
+    1.0,                     !- N19
+    0.0,                     !- N20
+    0.25,                    !- N21
+    0.3,                     !- N22
+    0.7,                     !- N23
+    1.0,                     !- N24
+    1.0,                     !- N25
+    0.0,                     !- N26
+    0.25,                    !- N27
+    0.3,                     !- N28
+    0.7,                     !- N29
+    1.0,                     !- N30
+    1.0,                     !- N31
+    0.0,                     !- N32
+    0.25,                    !- N33
+    0.3,                     !- N34
+    0.7,                     !- N35
+    1.0,                     !- N36
+    1.0,                     !- N37
+    0.0,                     !- N38
+    0.25,                    !- N39
+    0.3,                     !- N40
+    0.7,                     !- N41
+    1.0,                     !- N42
+    1.0,                     !- N43
+    0.0,                     !- N44
+    0.25,                    !- N45
+    0.3,                     !- N46
+    0.7,                     !- N47
+    1.0,                     !- N48
+    1.0;                     !- N49
 
 
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:WEEK:DAILY ===========
@@ -340,7 +412,7 @@ Schedule:Compact,
     1.0,                     !- Field 10
     Until: 24:00,            !- Field 11
     .1,                      !- Field 12
-    For: Weekends,           !- Field 13
+    For: Weekends Holidays,  !- Field 13
     Until: 24:00,            !- Field 14
     .1,                      !- Field 15
     For: AllOtherDays,       !- Field 16
@@ -375,9 +447,334 @@ Schedule:Compact,
     1.0,                     !- Field 13
     Until: 24:00,            !- Field 14
     0.0,                     !- Field 15
-    For: Holidays AllOtherDays,  !- Field 16
+    For: AllOtherDays,       !- Field 16
     Until: 24:00,            !- Field 17
     0.0;                     !- Field 18
+
+Schedule:Compact,
+    Office Lights Schedule,  !- Name
+    Fraction,                !- Schedule Type Limits Name
+    Through: 12/31,          !- Field 1
+    For: Weekdays,           !- Field 2
+    Until: 05:00,            !- Field 3
+    0.05,                    !- Field 4
+    Until: 07:00,            !- Field 5
+    0.1,                     !- Field 6
+    Until: 08:00,            !- Field 7
+    0.3,                     !- Field 8
+    Until: 17:00,            !- Field 9
+    0.9,                     !- Field 10
+    Until: 18:00,            !- Field 11
+    0.5,                     !- Field 12
+    Until: 20:00,            !- Field 13
+    0.3,                     !- Field 14
+    Until: 22:00,            !- Field 15
+    0.2,                     !- Field 16
+    Until: 23:00,            !- Field 17
+    0.1,                     !- Field 18
+    Until: 24:00,            !- Field 19
+    0.05,                    !- Field 20
+    For: SummerDesignDay,    !- Field 21
+    Until: 24:00,            !- Field 22
+    1.0,                     !- Field 23
+    For: Saturday,           !- Field 24
+    Until: 06:00,            !- Field 25
+    0.05,                    !- Field 26
+    Until: 08:00,            !- Field 27
+    0.1,                     !- Field 28
+    Until: 12:00,            !- Field 29
+    0.3,                     !- Field 30
+    Until: 17:00,            !- Field 31
+    0.15,                    !- Field 32
+    Until: 24:00,            !- Field 33
+    0.05,                    !- Field 34
+    For: WinterDesignDay,    !- Field 35
+    Until: 24:00,            !- Field 36
+    0.0,                     !- Field 37
+    For: AllOtherDays,       !- Field 38
+    Until: 24:00,            !- Field 39
+    0.05;                    !- Field 40
+
+Schedule:Compact,
+    Office Equipment Schedule,  !- Name
+    Fraction,                !- Schedule Type Limits Name
+    Through: 12/31,          !- Field 1
+    For: Weekdays,           !- Field 2
+    Until: 08:00,            !- Field 3
+    0.40,                    !- Field 4
+    Until: 12:00,            !- Field 5
+    0.90,                    !- Field 6
+    Until: 13:00,            !- Field 7
+    0.80,                    !- Field 8
+    Until: 17:00,            !- Field 9
+    0.90,                    !- Field 10
+    Until: 18:00,            !- Field 11
+    0.50,                    !- Field 12
+    Until: 24:00,            !- Field 13
+    0.40,                    !- Field 14
+    For: SummerDesignDay,    !- Field 15
+    Until: 24:00,            !- Field 16
+    1.0,                     !- Field 17
+    For: Saturday,           !- Field 18
+    Until: 06:00,            !- Field 19
+    0.30,                    !- Field 20
+    Until: 08:00,            !- Field 21
+    0.4,                     !- Field 22
+    Until: 12:00,            !- Field 23
+    0.5,                     !- Field 24
+    Until: 17:00,            !- Field 25
+    0.35,                    !- Field 26
+    Until: 24:00,            !- Field 27
+    0.30,                    !- Field 28
+    For: WinterDesignDay,    !- Field 29
+    Until: 24:00,            !- Field 30
+    0.0,                     !- Field 31
+    For: Sunday AllOtherDays,!- Field 32
+    Until: 24:00,            !- Field 33
+    0.30;                    !- Field 34
+
+Schedule:Compact,
+    Office Occupancy Schedule,  !- Name
+    Fraction,                !- Schedule Type Limits Name
+    Through: 12/31,          !- Field 1
+    For: Weekdays,           !- Field 2
+    Until: 06:00,            !- Field 3
+    0.0,                     !- Field 4
+    Until: 07:00,            !- Field 5
+    0.1,                     !- Field 6
+    Until: 08:00,            !- Field 7
+    0.2,                     !- Field 8
+    Until: 12:00,            !- Field 9
+    0.95,                    !- Field 10
+    Until: 13:00,            !- Field 11
+    0.5,                     !- Field 12
+    Until: 17:00,            !- Field 13
+    0.95,                    !- Field 14
+    Until: 18:00,            !- Field 15
+    0.3,                     !- Field 16
+    Until: 20:00,            !- Field 17
+    0.1,                     !- Field 18
+    Until: 24:00,            !- Field 19
+    0.05,                    !- Field 20
+    For: SummerDesignDay,    !- Field 21
+    Until: 06:00,            !- Field 22
+    0.0,                     !- Field 23
+    Until: 22:00,            !- Field 24
+    1.0,                     !- Field 25
+    Until: 24:00,            !- Field 26
+    0.05,                    !- Field 27
+    For: Saturday,           !- Field 28
+    Until: 06:00,            !- Field 29
+    0.0,                     !- Field 30
+    Until: 08:00,            !- Field 31
+    0.1,                     !- Field 32
+    Until: 12:00,            !- Field 33
+    0.3,                     !- Field 34
+    Until: 17:00,            !- Field 35
+    0.1,                     !- Field 36
+    Until: 19:00,            !- Field 37
+    0.0,                     !- Field 38
+    Until: 24:00,            !- Field 39
+    0.0,                     !- Field 40
+    For: WinterDesignDay,    !- Field 41
+    Until: 24:00,            !- Field 42
+    0.0,                     !- Field 43
+    For: Sunday AllOtherDays,!- Field 44
+    Until: 06:00,            !- Field 45
+    0.0,                     !- Field 46
+    Until: 18:00,            !- Field 47
+    0.0,                     !- Field 48
+    Until: 24:00,            !- Field 49
+    0.0;                     !- Field 50
+
+Schedule:Compact,
+    Infiltration Schedule,   !- Name
+    Fraction,                !- Schedule Type Limits Name
+    Through: 12/31,          !- Field 1
+    For: Weekdays SummerDesignDay,  !- Field 2
+    Until: 06:00,            !- Field 3
+    1.0,                     !- Field 4
+    Until: 22:00,            !- Field 5
+    0.0,                     !- Field 6
+    Until: 24:00,            !- Field 7
+    1.0,                     !- Field 8
+    For: Saturday WinterDesignDay,  !- Field 9
+    Until: 06:00,            !- Field 10
+    1.0,                     !- Field 11
+    Until: 18:00,            !- Field 12
+    0.0,                     !- Field 13
+    Until: 24:00,            !- Field 14
+    1.0,                     !- Field 15
+    For: Sunday AllOtherDays,!- Field 16
+    Until: 24:00,            !- Field 17
+    1.0;                     !- Field 18
+
+Schedule:Compact,
+    Infiltration Half On Schedule,  !- Name
+    Fraction,                !- Schedule Type Limits Name
+    Through: 12/31,          !- Field 1
+    For: Weekdays SummerDesignDay,  !- Field 2
+    Until: 06:00,            !- Field 3
+    1.0,                     !- Field 4
+    Until: 22:00,            !- Field 5
+    0.5,                     !- Field 6
+    Until: 24:00,            !- Field 7
+    1.0,                     !- Field 8
+    For: Saturday WinterDesignDay,  !- Field 9
+    Until: 06:00,            !- Field 10
+    1.0,                     !- Field 11
+    Until: 18:00,            !- Field 12
+    0.5,                     !- Field 13
+    Until: 24:00,            !- Field 14
+    1.0,                     !- Field 15
+    For: Sunday AllOtherDays,!- Field 16
+    Until: 24:00,            !- Field 17
+    1.0;                     !- Field 18
+
+Schedule:Compact,
+    Infiltration Quarter On Schedule,  !- Name
+    Fraction,                !- Schedule Type Limits Name
+    Through: 12/31,          !- Field 1
+    For: Weekdays SummerDesignDay,  !- Field 2
+    Until: 06:00,            !- Field 3
+    1.0,                     !- Field 4
+    Until: 22:00,            !- Field 5
+    0.25,                    !- Field 6
+    Until: 24:00,            !- Field 7
+    1.0,                     !- Field 8
+    For: Saturday WinterDesignDay,  !- Field 9
+    Until: 06:00,            !- Field 10
+    1.0,                     !- Field 11
+    Until: 18:00,            !- Field 12
+    0.25,                    !- Field 13
+    Until: 24:00,            !- Field 14
+    1.0,                     !- Field 15
+    For: Sunday AllOtherDays,!- Field 16
+    Until: 24:00,            !- Field 17
+    1.0;                     !- Field 18
+
+Schedule:Compact,
+    Hours of Operation Schedule,  !- Name
+    On/Off,                  !- Schedule Type Limits Name
+    Through: 12/31,          !- Field 1
+    For: Weekdays SummerDesignDay,  !- Field 2
+    Until: 06:00,            !- Field 3
+    0.0,                     !- Field 4
+    Until: 22:00,            !- Field 5
+    1.0,                     !- Field 6
+    Until: 24:00,            !- Field 7
+    0.0,                     !- Field 8
+    For: Saturday WinterDesignDay,  !- Field 9
+    Until: 06:00,            !- Field 10
+    0.0,                     !- Field 11
+    Until: 18:00,            !- Field 12
+    1.0,                     !- Field 13
+    Until: 24:00,            !- Field 14
+    0.0,                     !- Field 15
+    For: Sunday AllOtherDays,!- Field 16
+    Until: 24:00,            !- Field 17
+    0.0;                     !- Field 18
+
+Schedule:Compact,
+    Always On,               !- Name
+    Fraction,                !- Schedule Type Limits Name
+    Through: 12/31,          !- Field 1
+    For: AllDays,            !- Field 2
+    Until: 24:00,            !- Field 3
+    1.0;                     !- Field 4
+
+Schedule:Compact,
+    Always Off,              !- Name
+    Fraction,                !- Schedule Type Limits Name
+    Through: 12/31,          !- Field 1
+    For: AllDays,            !- Field 2
+    Until: 24:00,            !- Field 3
+    0.0;                     !- Field 4
+
+Schedule:Compact,
+    Heating Setpoint Schedule,  !- Name
+    Temperature,             !- Schedule Type Limits Name
+    Through: 12/31,          !- Field 1
+    For: Weekdays,           !- Field 2
+    Until: 05:00,            !- Field 3
+    15.6,                    !- Field 4
+    Until: 19:00,            !- Field 5
+    21.0,                    !- Field 6
+    Until: 24:00,            !- Field 7
+    15.6,                    !- Field 8
+    For: SummerDesignDay,    !- Field 9
+    Until: 24:00,            !- Field 10
+    15.6,                    !- Field 11
+    For: Saturday,           !- Field 12
+    Until: 06:00,            !- Field 13
+    15.6,                    !- Field 14
+    Until: 17:00,            !- Field 15
+    21.0,                    !- Field 16
+    Until: 24:00,            !- Field 17
+    15.6,                    !- Field 18
+    For: WinterDesignDay,    !- Field 19
+    Until: 24:00,            !- Field 20
+    21.0,                    !- Field 21
+    For: Sunday AllOtherDays,!- Field 22
+    Until: 24:00,            !- Field 23
+    15.6;                    !- Field 24
+
+Schedule:Compact,
+    Cooling Setpoint Schedule,  !- Name
+    Temperature,             !- Schedule Type Limits Name
+    Through: 12/31,          !- Field 1
+    For: Weekdays SummerDesignDay,  !- Field 2
+    Until: 06:00,            !- Field 3
+    30.0,                    !- Field 4
+    Until: 22:00,            !- Field 5
+    24.0,                    !- Field 6
+    Until: 24:00,            !- Field 7
+    30.0,                    !- Field 8
+    For: Saturday,           !- Field 9
+    Until: 06:00,            !- Field 10
+    30.0,                    !- Field 11
+    Until: 18:00,            !- Field 12
+    24.0,                    !- Field 13
+    Until: 24:00,            !- Field 14
+    30.0,                    !- Field 15
+    For WinterDesignDay,     !- Field 16
+    Until: 24:00,            !- Field 17
+    30.0,                    !- Field 18
+    For: Sunday AllOtherDays,!- Field 19
+    Until: 24:00,            !- Field 20
+    30.0;                    !- Field 21
+
+Schedule:Compact,
+    Office Activity Schedule,!- Name
+    Any Number,              !- Schedule Type Limits Name
+    Through: 12/31,          !- Field 1
+    For: AllDays,            !- Field 2
+    Until: 24:00,            !- Field 3
+    120.;                    !- Field 4
+
+Schedule:Compact,
+    Office Work Eff. Schedule,  !- Name
+    Fraction,                !- Schedule Type Limits Name
+    Through: 12/31,          !- Field 1
+    For: AllDays,            !- Field 2
+    Until: 24:00,            !- Field 3
+    0.0;                     !- Field 4
+
+Schedule:Compact,
+    Office Clothing Schedule,!- Name
+    Any Number,              !- Schedule Type Limits Name
+    Through: 04/30,          !- Field 1
+    For: AllDays,            !- Field 2
+    Until: 24:00,            !- Field 3
+    1.0,                     !- Field 4
+    Through: 09/30,          !- Field 5
+    For: AllDays,            !- Field 6
+    Until: 24:00,            !- Field 7
+    0.5,                     !- Field 8
+    Through: 12/31,          !- Field 9
+    For: AllDays,            !- Field 10
+    Until: 24:00,            !- Field 11
+    1.0;                     !- Field 12
 
 
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:CONSTANT ===========
@@ -407,4 +804,551 @@ Schedule:File,
     ,                        !- Column Separator
     ,                        !- Interpolate to Timestep
     60;                      !- Minutes per Item
+
+
+!-   ===========  ALL OBJECTS IN CLASS: MATERIAL ===========
+
+Material,
+    F08 Metal surface,       !- Name
+    Smooth,                  !- Roughness
+    0.0008,                  !- Thickness {m}
+    45.28,                   !- Conductivity {W/m-K}
+    7824,                    !- Density {kg/m3}
+    500;                     !- Specific Heat {J/kg-K}
+
+Material,
+    I01 25mm insulation board,  !- Name
+    MediumRough,             !- Roughness
+    0.0254,                  !- Thickness {m}
+    0.03,                    !- Conductivity {W/m-K}
+    43,                      !- Density {kg/m3}
+    1210;                    !- Specific Heat {J/kg-K}
+
+Material,
+    I02 50mm insulation board,  !- Name
+    MediumRough,             !- Roughness
+    0.0508,                  !- Thickness {m}
+    0.03,                    !- Conductivity {W/m-K}
+    43,                      !- Density {kg/m3}
+    1210;                    !- Specific Heat {J/kg-K}
+
+Material,
+    G01a 19mm gypsum board,  !- Name
+    MediumSmooth,            !- Roughness
+    0.019,                   !- Thickness {m}
+    0.16,                    !- Conductivity {W/m-K}
+    800,                     !- Density {kg/m3}
+    1090;                    !- Specific Heat {J/kg-K}
+
+Material,
+    M11 100mm lightweight concrete,  !- Name
+    MediumRough,             !- Roughness
+    0.1016,                  !- Thickness {m}
+    0.53,                    !- Conductivity {W/m-K}
+    1280,                    !- Density {kg/m3}
+    840;                     !- Specific Heat {J/kg-K}
+
+Material,
+    F16 Acoustic tile,       !- Name
+    MediumSmooth,            !- Roughness
+    0.0191,                  !- Thickness {m}
+    0.06,                    !- Conductivity {W/m-K}
+    368,                     !- Density {kg/m3}
+    590;                     !- Specific Heat {J/kg-K}
+
+Material,
+    M01 100mm brick,         !- Name
+    MediumRough,             !- Roughness
+    0.1016,                  !- Thickness {m}
+    0.89,                    !- Conductivity {W/m-K}
+    1920,                    !- Density {kg/m3}
+    790;                     !- Specific Heat {J/kg-K}
+
+Material,
+    M15 200mm heavyweight concrete,  !- Name
+    MediumRough,             !- Roughness
+    0.2032,                  !- Thickness {m}
+    1.95,                    !- Conductivity {W/m-K}
+    2240,                    !- Density {kg/m3}
+    900;                     !- Specific Heat {J/kg-K}
+
+Material,
+    M05 200mm concrete block,!- Name
+    MediumRough,             !- Roughness
+    0.2032,                  !- Thickness {m}
+    1.11,                    !- Conductivity {W/m-K}
+    800,                     !- Density {kg/m3}
+    920;                     !- Specific Heat {J/kg-K}
+
+Material,
+    G05 25mm wood,           !- Name
+    MediumSmooth,            !- Roughness
+    0.0254,                  !- Thickness {m}
+    0.15,                    !- Conductivity {W/m-K}
+    608,                     !- Density {kg/m3}
+    1630;                    !- Specific Heat {J/kg-K}
+
+
+!-   ===========  ALL OBJECTS IN CLASS: MATERIAL:AIRGAP ===========
+
+Material:AirGap,
+    F04 Wall air space resistance,  !- Name
+    0.15;                    !- Thermal Resistance {m2-K/W}
+
+Material:AirGap,
+    F05 Ceiling air space resistance,  !- Name
+    0.18;                    !- Thermal Resistance {m2-K/W}
+
+
+!-   ===========  ALL OBJECTS IN CLASS: WINDOWMATERIAL:GLAZING ===========
+
+WindowMaterial:Glazing,
+    Clear 3mm,               !- Name
+    SpectralAverage,         !- Optical Data Type
+    ,                        !- Window Glass Spectral Data Set Name
+    0.003,                   !- Thickness {m}
+    0.837,                   !- Solar Transmittance at Normal Incidence
+    0.075,                   !- Front Side Solar Reflectance at Normal Incidence
+    0.075,                   !- Back Side Solar Reflectance at Normal Incidence
+    0.898,                   !- Visible Transmittance at Normal Incidence
+    0.081,                   !- Front Side Visible Reflectance at Normal Incidence
+    0.081,                   !- Back Side Visible Reflectance at Normal Incidence
+    0,                       !- Infrared Transmittance at Normal Incidence
+    0.84,                    !- Front Side Infrared Hemispherical Emissivity
+    0.84,                    !- Back Side Infrared Hemispherical Emissivity
+    0.9;                     !- Conductivity {W/m-K}
+
+
+!-   ===========  ALL OBJECTS IN CLASS: WINDOWMATERIAL:GAS ===========
+
+WindowMaterial:Gas,
+    Air 13mm,                !- Name
+    Air,                     !- Gas Type
+    0.0127;                  !- Thickness {m}
+
+
+!-   ===========  ALL OBJECTS IN CLASS: CONSTRUCTION ===========
+
+Construction,
+    Exterior Floor,          !- Name
+    I02 50mm insulation board,  !- Outside Layer
+    M15 200mm heavyweight concrete;  !- Layer 2
+
+Construction,
+    Interior Floor,          !- Name
+    F16 Acoustic tile,       !- Outside Layer
+    F05 Ceiling air space resistance,  !- Layer 2
+    M11 100mm lightweight concrete;  !- Layer 3
+
+Construction,
+    Exterior Wall,           !- Name
+    M01 100mm brick,         !- Outside Layer
+    M15 200mm heavyweight concrete,  !- Layer 2
+    I02 50mm insulation board,  !- Layer 3
+    F04 Wall air space resistance,  !- Layer 4
+    G01a 19mm gypsum board;  !- Layer 5
+
+Construction,
+    Interior Wall,           !- Name
+    G01a 19mm gypsum board,  !- Outside Layer
+    F04 Wall air space resistance,  !- Layer 2
+    G01a 19mm gypsum board;  !- Layer 3
+
+Construction,
+    Exterior Roof,           !- Name
+    M11 100mm lightweight concrete,  !- Outside Layer
+    F05 Ceiling air space resistance,  !- Layer 2
+    F16 Acoustic tile;       !- Layer 3
+
+Construction,
+    Interior Ceiling,        !- Name
+    M11 100mm lightweight concrete,  !- Outside Layer
+    F05 Ceiling air space resistance,  !- Layer 2
+    F16 Acoustic tile;       !- Layer 3
+
+Construction,
+    Exterior Window,         !- Name
+    Clear 3mm,               !- Outside Layer
+    Air 13mm,                !- Layer 2
+    Clear 3mm;               !- Layer 3
+
+Construction,
+    Interior Window,         !- Name
+    Clear 3mm;               !- Outside Layer
+
+Construction,
+    Exterior Door,           !- Name
+    F08 Metal surface,       !- Outside Layer
+    I01 25mm insulation board;  !- Layer 2
+
+Construction,
+    Interior Door,           !- Name
+    G05 25mm wood;           !- Outside Layer
+
+
+!-   ===========  ALL OBJECTS IN CLASS: GLOBALGEOMETRYRULES ===========
+
+GlobalGeometryRules,
+    UpperLeftCorner,         !- Starting Vertex Position
+    Counterclockwise,        !- Vertex Entry Direction
+    Relative;                !- Coordinate System
+
+
+!-   ===========  ALL OBJECTS IN CLASS: ZONE ===========
+
+Zone,
+    ZONE_1,                  !- Name
+    0.0,                     !- Direction of Relative North {deg}
+    0.0,                     !- X Origin {m}
+    0.0,                     !- Y Origin {m}
+    0.0,                     !- Z Origin {m}
+    ,                        !- Type
+    1;                       !- Multiplier
+
+Zone,
+    ZONE_2,                  !- Name
+    0.0,                     !- Direction of Relative North {deg}
+    2.0,                     !- X Origin {m}
+    0.0,                     !- Y Origin {m}
+    0.0,                     !- Z Origin {m}
+    ,                        !- Type
+    1;                       !- Multiplier
+
+
+!-   ===========  ALL OBJECTS IN CLASS: BUILDINGSURFACE:DETAILED ===========
+
+BuildingSurface:Detailed,
+    502C53,                  !- Name
+    Floor,                   !- Surface Type
+    Exterior Floor,          !- Construction Name
+    ZONE_1,                  !- Zone Name
+    Ground,                  !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    0.0,                     !- View Factor to Ground
+    4,                       !- Number of Vertices
+    2.000000000000,          !- Vertex 1 X-coordinate {m}
+    2.000000000000,          !- Vertex 1 Y-coordinate {m}
+    0.000000000000,          !- Vertex 1 Z-coordinate {m}
+    2.000000000000,          !- Vertex 2 X-coordinate {m}
+    0.000000000000,          !- Vertex 2 Y-coordinate {m}
+    0.000000000000,          !- Vertex 2 Z-coordinate {m}
+    0.000000000000,          !- Vertex 3 X-coordinate {m}
+    0.000000000000,          !- Vertex 3 Y-coordinate {m}
+    0.000000000000,          !- Vertex 3 Z-coordinate {m}
+    0.000000000000,          !- Vertex 4 X-coordinate {m}
+    2.000000000000,          !- Vertex 4 Y-coordinate {m}
+    0.000000000000;          !- Vertex 4 Z-coordinate {m}
+
+BuildingSurface:Detailed,
+    A9B261,                  !- Name
+    Wall,                    !- Surface Type
+    Exterior Wall,           !- Construction Name
+    ZONE_1,                  !- Zone Name
+    Outdoors,                !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    SunExposed,              !- Sun Exposure
+    WindExposed,             !- Wind Exposure
+    ,                        !- View Factor to Ground
+    4,                       !- Number of Vertices
+    2.000000000000,          !- Vertex 1 X-coordinate {m}
+    2.000000000000,          !- Vertex 1 Y-coordinate {m}
+    2.000000000000,          !- Vertex 1 Z-coordinate {m}
+    2.000000000000,          !- Vertex 2 X-coordinate {m}
+    2.000000000000,          !- Vertex 2 Y-coordinate {m}
+    0.000000000000,          !- Vertex 2 Z-coordinate {m}
+    0.000000000000,          !- Vertex 3 X-coordinate {m}
+    2.000000000000,          !- Vertex 3 Y-coordinate {m}
+    0.000000000000,          !- Vertex 3 Z-coordinate {m}
+    0.000000000000,          !- Vertex 4 X-coordinate {m}
+    2.000000000000,          !- Vertex 4 Y-coordinate {m}
+    2.000000000000;          !- Vertex 4 Z-coordinate {m}
+
+BuildingSurface:Detailed,
+    CB5D0B,                  !- Name
+    Wall,                    !- Surface Type
+    Exterior Wall,           !- Construction Name
+    ZONE_1,                  !- Zone Name
+    Outdoors,                !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    SunExposed,              !- Sun Exposure
+    WindExposed,             !- Wind Exposure
+    ,                        !- View Factor to Ground
+    4,                       !- Number of Vertices
+    0.000000000000,          !- Vertex 1 X-coordinate {m}
+    0.000000000000,          !- Vertex 1 Y-coordinate {m}
+    2.000000000000,          !- Vertex 1 Z-coordinate {m}
+    0.000000000000,          !- Vertex 2 X-coordinate {m}
+    0.000000000000,          !- Vertex 2 Y-coordinate {m}
+    0.000000000000,          !- Vertex 2 Z-coordinate {m}
+    2.000000000000,          !- Vertex 3 X-coordinate {m}
+    0.000000000000,          !- Vertex 3 Y-coordinate {m}
+    0.000000000000,          !- Vertex 3 Z-coordinate {m}
+    2.000000000000,          !- Vertex 4 X-coordinate {m}
+    0.000000000000,          !- Vertex 4 Y-coordinate {m}
+    2.000000000000;          !- Vertex 4 Z-coordinate {m}
+
+BuildingSurface:Detailed,
+    F26B56,                  !- Name
+    Wall,                    !- Surface Type
+    Interior Wall,           !- Construction Name
+    ZONE_1,                  !- Zone Name
+    Surface,                 !- Outside Boundary Condition
+    BA3AB8,                  !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    ,                        !- View Factor to Ground
+    4,                       !- Number of Vertices
+    2.000000000000,          !- Vertex 1 X-coordinate {m}
+    0.000000000000,          !- Vertex 1 Y-coordinate {m}
+    2.000000000000,          !- Vertex 1 Z-coordinate {m}
+    2.000000000000,          !- Vertex 2 X-coordinate {m}
+    0.000000000000,          !- Vertex 2 Y-coordinate {m}
+    0.000000000000,          !- Vertex 2 Z-coordinate {m}
+    2.000000000000,          !- Vertex 3 X-coordinate {m}
+    2.000000000000,          !- Vertex 3 Y-coordinate {m}
+    0.000000000000,          !- Vertex 3 Z-coordinate {m}
+    2.000000000000,          !- Vertex 4 X-coordinate {m}
+    2.000000000000,          !- Vertex 4 Y-coordinate {m}
+    2.000000000000;          !- Vertex 4 Z-coordinate {m}
+
+BuildingSurface:Detailed,
+    704B16,                  !- Name
+    Roof,                    !- Surface Type
+    Exterior Roof,           !- Construction Name
+    ZONE_1,                  !- Zone Name
+    Outdoors,                !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    SunExposed,              !- Sun Exposure
+    WindExposed,             !- Wind Exposure
+    ,                        !- View Factor to Ground
+    4,                       !- Number of Vertices
+    0.000000000000,          !- Vertex 1 X-coordinate {m}
+    2.000000000000,          !- Vertex 1 Y-coordinate {m}
+    2.000000000000,          !- Vertex 1 Z-coordinate {m}
+    0.000000000000,          !- Vertex 2 X-coordinate {m}
+    0.000000000000,          !- Vertex 2 Y-coordinate {m}
+    2.000000000000,          !- Vertex 2 Z-coordinate {m}
+    2.000000000000,          !- Vertex 3 X-coordinate {m}
+    0.000000000000,          !- Vertex 3 Y-coordinate {m}
+    2.000000000000,          !- Vertex 3 Z-coordinate {m}
+    2.000000000000,          !- Vertex 4 X-coordinate {m}
+    2.000000000000,          !- Vertex 4 Y-coordinate {m}
+    2.000000000000;          !- Vertex 4 Z-coordinate {m}
+
+BuildingSurface:Detailed,
+    4B7F67,                  !- Name
+    Wall,                    !- Surface Type
+    Exterior Wall,           !- Construction Name
+    ZONE_1,                  !- Zone Name
+    Outdoors,                !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    SunExposed,              !- Sun Exposure
+    WindExposed,             !- Wind Exposure
+    ,                        !- View Factor to Ground
+    4,                       !- Number of Vertices
+    0.000000000000,          !- Vertex 1 X-coordinate {m}
+    2.000000000000,          !- Vertex 1 Y-coordinate {m}
+    2.000000000000,          !- Vertex 1 Z-coordinate {m}
+    0.000000000000,          !- Vertex 2 X-coordinate {m}
+    2.000000000000,          !- Vertex 2 Y-coordinate {m}
+    0.000000000000,          !- Vertex 2 Z-coordinate {m}
+    0.000000000000,          !- Vertex 3 X-coordinate {m}
+    0.000000000000,          !- Vertex 3 Y-coordinate {m}
+    0.000000000000,          !- Vertex 3 Z-coordinate {m}
+    0.000000000000,          !- Vertex 4 X-coordinate {m}
+    0.000000000000,          !- Vertex 4 Y-coordinate {m}
+    2.000000000000;          !- Vertex 4 Z-coordinate {m}
+
+BuildingSurface:Detailed,
+    E46863,                  !- Name
+    Floor,                   !- Surface Type
+    Exterior Floor,          !- Construction Name
+    ZONE_2,                  !- Zone Name
+    Ground,                  !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    0.0,                     !- View Factor to Ground
+    4,                       !- Number of Vertices
+    2.000000000000,          !- Vertex 1 X-coordinate {m}
+    2.000000000000,          !- Vertex 1 Y-coordinate {m}
+    0.000000000000,          !- Vertex 1 Z-coordinate {m}
+    2.000000000000,          !- Vertex 2 X-coordinate {m}
+    0.000000000000,          !- Vertex 2 Y-coordinate {m}
+    0.000000000000,          !- Vertex 2 Z-coordinate {m}
+    0.000000000000,          !- Vertex 3 X-coordinate {m}
+    0.000000000000,          !- Vertex 3 Y-coordinate {m}
+    0.000000000000,          !- Vertex 3 Z-coordinate {m}
+    0.000000000000,          !- Vertex 4 X-coordinate {m}
+    2.000000000000,          !- Vertex 4 Y-coordinate {m}
+    0.000000000000;          !- Vertex 4 Z-coordinate {m}
+
+BuildingSurface:Detailed,
+    E01C93,                  !- Name
+    Wall,                    !- Surface Type
+    Exterior Wall,           !- Construction Name
+    ZONE_2,                  !- Zone Name
+    Outdoors,                !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    SunExposed,              !- Sun Exposure
+    WindExposed,             !- Wind Exposure
+    ,                        !- View Factor to Ground
+    4,                       !- Number of Vertices
+    2.000000000000,          !- Vertex 1 X-coordinate {m}
+    2.000000000000,          !- Vertex 1 Y-coordinate {m}
+    2.000000000000,          !- Vertex 1 Z-coordinate {m}
+    2.000000000000,          !- Vertex 2 X-coordinate {m}
+    2.000000000000,          !- Vertex 2 Y-coordinate {m}
+    0.000000000000,          !- Vertex 2 Z-coordinate {m}
+    0.000000000000,          !- Vertex 3 X-coordinate {m}
+    2.000000000000,          !- Vertex 3 Y-coordinate {m}
+    0.000000000000,          !- Vertex 3 Z-coordinate {m}
+    0.000000000000,          !- Vertex 4 X-coordinate {m}
+    2.000000000000,          !- Vertex 4 Y-coordinate {m}
+    2.000000000000;          !- Vertex 4 Z-coordinate {m}
+
+BuildingSurface:Detailed,
+    9A8802,                  !- Name
+    Roof,                    !- Surface Type
+    Exterior Roof,           !- Construction Name
+    ZONE_2,                  !- Zone Name
+    Outdoors,                !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    SunExposed,              !- Sun Exposure
+    WindExposed,             !- Wind Exposure
+    ,                        !- View Factor to Ground
+    4,                       !- Number of Vertices
+    0.000000000000,          !- Vertex 1 X-coordinate {m}
+    2.000000000000,          !- Vertex 1 Y-coordinate {m}
+    2.000000000000,          !- Vertex 1 Z-coordinate {m}
+    0.000000000000,          !- Vertex 2 X-coordinate {m}
+    0.000000000000,          !- Vertex 2 Y-coordinate {m}
+    2.000000000000,          !- Vertex 2 Z-coordinate {m}
+    2.000000000000,          !- Vertex 3 X-coordinate {m}
+    0.000000000000,          !- Vertex 3 Y-coordinate {m}
+    2.000000000000,          !- Vertex 3 Z-coordinate {m}
+    2.000000000000,          !- Vertex 4 X-coordinate {m}
+    2.000000000000,          !- Vertex 4 Y-coordinate {m}
+    2.000000000000;          !- Vertex 4 Z-coordinate {m}
+
+BuildingSurface:Detailed,
+    CB147E,                  !- Name
+    Wall,                    !- Surface Type
+    Exterior Wall,           !- Construction Name
+    ZONE_2,                  !- Zone Name
+    Outdoors,                !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    SunExposed,              !- Sun Exposure
+    WindExposed,             !- Wind Exposure
+    ,                        !- View Factor to Ground
+    4,                       !- Number of Vertices
+    0.000000000000,          !- Vertex 1 X-coordinate {m}
+    0.000000000000,          !- Vertex 1 Y-coordinate {m}
+    2.000000000000,          !- Vertex 1 Z-coordinate {m}
+    0.000000000000,          !- Vertex 2 X-coordinate {m}
+    0.000000000000,          !- Vertex 2 Y-coordinate {m}
+    0.000000000000,          !- Vertex 2 Z-coordinate {m}
+    2.000000000000,          !- Vertex 3 X-coordinate {m}
+    0.000000000000,          !- Vertex 3 Y-coordinate {m}
+    0.000000000000,          !- Vertex 3 Z-coordinate {m}
+    2.000000000000,          !- Vertex 4 X-coordinate {m}
+    0.000000000000,          !- Vertex 4 Y-coordinate {m}
+    2.000000000000;          !- Vertex 4 Z-coordinate {m}
+
+BuildingSurface:Detailed,
+    2142B8,                  !- Name
+    Wall,                    !- Surface Type
+    Exterior Wall,           !- Construction Name
+    ZONE_2,                  !- Zone Name
+    Outdoors,                !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    SunExposed,              !- Sun Exposure
+    WindExposed,             !- Wind Exposure
+    ,                        !- View Factor to Ground
+    4,                       !- Number of Vertices
+    2.000000000000,          !- Vertex 1 X-coordinate {m}
+    0.000000000000,          !- Vertex 1 Y-coordinate {m}
+    2.000000000000,          !- Vertex 1 Z-coordinate {m}
+    2.000000000000,          !- Vertex 2 X-coordinate {m}
+    0.000000000000,          !- Vertex 2 Y-coordinate {m}
+    0.000000000000,          !- Vertex 2 Z-coordinate {m}
+    2.000000000000,          !- Vertex 3 X-coordinate {m}
+    2.000000000000,          !- Vertex 3 Y-coordinate {m}
+    0.000000000000,          !- Vertex 3 Z-coordinate {m}
+    2.000000000000,          !- Vertex 4 X-coordinate {m}
+    2.000000000000,          !- Vertex 4 Y-coordinate {m}
+    2.000000000000;          !- Vertex 4 Z-coordinate {m}
+
+BuildingSurface:Detailed,
+    BA3AB8,                  !- Name
+    Wall,                    !- Surface Type
+    Interior Wall,           !- Construction Name
+    ZONE_2,                  !- Zone Name
+    Surface,                 !- Outside Boundary Condition
+    F26B56,                  !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    ,                        !- View Factor to Ground
+    4,                       !- Number of Vertices
+    0.000000000000,          !- Vertex 1 X-coordinate {m}
+    2.000000000000,          !- Vertex 1 Y-coordinate {m}
+    2.000000000000,          !- Vertex 1 Z-coordinate {m}
+    0.000000000000,          !- Vertex 2 X-coordinate {m}
+    2.000000000000,          !- Vertex 2 Y-coordinate {m}
+    0.000000000000,          !- Vertex 2 Z-coordinate {m}
+    0.000000000000,          !- Vertex 3 X-coordinate {m}
+    0.000000000000,          !- Vertex 3 Y-coordinate {m}
+    0.000000000000,          !- Vertex 3 Z-coordinate {m}
+    0.000000000000,          !- Vertex 4 X-coordinate {m}
+    0.000000000000,          !- Vertex 4 Y-coordinate {m}
+    2.000000000000;          !- Vertex 4 Z-coordinate {m}
+
+
+!-   ===========  ALL OBJECTS IN CLASS: FENESTRATIONSURFACE:DETAILED ===========
+
+FenestrationSurface:Detailed,
+    D1468F,                  !- Name
+    Window,                  !- Surface Type
+    Exterior Window,         !- Construction Name
+    CB5D0B,                  !- Building Surface Name
+    ,                        !- Outside Boundary Condition Object
+    ,                        !- View Factor to Ground
+    ,                        !- Shading Control Name
+    ,                        !- Frame and Divider Name
+    ,                        !- Multiplier
+    4,                       !- Number of Vertices
+    0.709777895370,          !- Vertex 1 X-coordinate {m}
+    0.000000000000,          !- Vertex 1 Y-coordinate {m}
+    1.473204552997,          !- Vertex 1 Z-coordinate {m}
+    0.709777895370,          !- Vertex 2 X-coordinate {m}
+    0.000000000000,          !- Vertex 2 Y-coordinate {m}
+    0.653204552997,          !- Vertex 2 Z-coordinate {m}
+    1.389777895370,          !- Vertex 3 X-coordinate {m}
+    0.000000000000,          !- Vertex 3 Y-coordinate {m}
+    0.653204552997,          !- Vertex 3 Z-coordinate {m}
+    1.389777895370,          !- Vertex 4 X-coordinate {m}
+    0.000000000000,          !- Vertex 4 Y-coordinate {m}
+    1.473204552997;          !- Vertex 4 Z-coordinate {m}
+
+
+!-   ===========  ALL OBJECTS IN CLASS: OUTPUT:VARIABLEDICTIONARY ===========
+
+Output:VariableDictionary,
+    IDF;                     !- Key Field
+
+
+!-   ===========  ALL OBJECTS IN CLASS: OUTPUT:SCHEDULES ===========
+
+Output:Schedules,
+    Hourly;                  !- Key Field
+
+
+!-   ===========  ALL OBJECTS IN CLASS: OUTPUT:VARIABLE ===========
+
+Output:Variable,
+    *,                       !- Key Value
+    Schedule Value,          !- Variable Name
+    Hourly;                  !- Reporting Frequency
 

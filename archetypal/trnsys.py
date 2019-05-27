@@ -105,20 +105,6 @@ def clear_name_idf_objects(idfFile):
               "ones." + "\n\n" + tabulate(d, headers="keys")
     log(log_msg, name=log_name, level=lg.INFO)
 
-    # path_clear_names_log = os.path.join(
-    #     settings.logs_folder, log_name)
-    # if not os.path.isdir(settings.logs_folder):
-    #     os.mkdir(settings.logs_folder)
-    #     f = open(path_clear_names_log, "w+")
-    #     f.write(
-    #         "This file is a census of old names and new names of the IDF objects." + "\n")
-    #     f.write(
-    #         "Here an example how the names are written: oldname : newname" + "\n\n")
-    #     f.close()
-    #     from tabulate import tabulate
-    #     with open(path_clear_names_log, "a+") as log:
-    #         log.write(tabulate(d, headers="keys"))
-
 
 def zone_origin(zone_object):
     """ Return coordinates of a zone

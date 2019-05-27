@@ -215,7 +215,7 @@ def eppy_load(file, idd_filename, output_folder=None, include=None):
     try:
         # first copy the file
         try:
-            file = file.copy(output_folder)
+            file = Path(file.copy(output_folder))
         except:
             # The file already exists at the location
             pass

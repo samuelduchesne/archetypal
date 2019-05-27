@@ -193,53 +193,16 @@ class UmiTemplate:
 
         return sql_report
 
-    def to_json(self, path_or_buf=None, indent=2):
-        """Writes the umi template to json format"""
-        # todo: check is bools are created as lowercase 'false' pr 'true'
-
-        if not path_or_buf:
-            json_name = '%s.json' % self.name
-            path_or_buf = os.path.join(settings.data_folder, json_name)
-            # create the folder on the disk if it doesn't already exist
-            if not os.path.exists(settings.data_folder):
-                os.makedirs(settings.data_folder)
-        with io.open(path_or_buf, 'w+', encoding='utf-8') as path_or_buf:
-            data_dict = OrderedDict({'GasMaterials': [],
-                                     'GlazingMaterials': [],
-                                     'OpaqueMaterials': [],
-                                     'OpaqueConstructions': [],
-                                     'WindowConstructions': [],
-                                     'StructureDefinitions': [],
-                                     'DaySchedules': [],
-                                     'WeekSchedules': [],
-                                     'YearSchedules': [],
-                                     'DomesticHotWaterSettings': [],
-                                     'VentilationSettings': [],
-                                     'ZoneConditionings': [],
-                                     'ZoneConstructionSets': [],
-                                     'ZoneLoads': [],
-                                     'Zones': [],
-                                     'WindowSettings': [],
-                                     'BuildingTemplates': []})
-            jsonized = []
-            for bld in self.BuildingTemplates:
-                all_objs = bld.all_objects
-                for obj in all_objs:
-                    if obj not in jsonized:
-                        jsonized.append(obj)
-                        catname = all_objs[obj].__class__.__name__ + 's'
-                        app_dict = all_objs[obj].to_json()
-                        data_dict[catname].append(app_dict)
-
-            # Write the dict to json using json.dumps
-            response = json.dumps(data_dict, indent=indent)
-            path_or_buf.write(response)
-
-        return response
-
     @classmethod
     def from_json(cls, filename):
-        """Load umi template from json"""
+        """Initializes a UmiTemplate class from a json file
+
+        Args:
+            filename (str):
+
+        Returns:
+            UmiTemplate: The template object
+        """
         name = os.path.basename(filename)
         template = UmiTemplate(name)
 
@@ -295,6 +258,50 @@ class UmiTemplate:
             return template
         else:
             return None
+
+    def to_json(self, path_or_buf=None, indent=2):
+        """Writes the umi template to json format"""
+        # todo: check is bools are created as lowercase 'false' pr 'true'
+
+        if not path_or_buf:
+            json_name = '%s.json' % self.name
+            path_or_buf = os.path.join(settings.data_folder, json_name)
+            # create the folder on the disk if it doesn't already exist
+            if not os.path.exists(settings.data_folder):
+                os.makedirs(settings.data_folder)
+        with io.open(path_or_buf, 'w+', encoding='utf-8') as path_or_buf:
+            data_dict = OrderedDict({'GasMaterials': [],
+                                     'GlazingMaterials': [],
+                                     'OpaqueMaterials': [],
+                                     'OpaqueConstructions': [],
+                                     'WindowConstructions': [],
+                                     'StructureDefinitions': [],
+                                     'DaySchedules': [],
+                                     'WeekSchedules': [],
+                                     'YearSchedules': [],
+                                     'DomesticHotWaterSettings': [],
+                                     'VentilationSettings': [],
+                                     'ZoneConditionings': [],
+                                     'ZoneConstructionSets': [],
+                                     'ZoneLoads': [],
+                                     'Zones': [],
+                                     'WindowSettings': [],
+                                     'BuildingTemplates': []})
+            jsonized = []
+            for bld in self.BuildingTemplates:
+                all_objs = bld.all_objects
+                for obj in all_objs:
+                    if obj not in jsonized:
+                        jsonized.append(obj)
+                        catname = all_objs[obj].__class__.__name__ + 's'
+                        app_dict = all_objs[obj].to_json()
+                        data_dict[catname].append(app_dict)
+
+            # Write the dict to json using json.dumps
+            response = json.dumps(data_dict, indent=indent)
+            path_or_buf.write(response)
+
+        return response
 
 
 class EnergyProfile(pd.Series):

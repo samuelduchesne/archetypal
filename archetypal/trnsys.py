@@ -13,7 +13,6 @@ import shutil
 import subprocess
 import sys
 import time
-from collections import OrderedDict
 
 from tqdm import tqdm
 import numpy as np
@@ -22,8 +21,8 @@ from eppy import modeleditor
 from geomeppy.geom.polygons import Polygon3D
 
 from archetypal import log, settings, Schedule, load_idf, checkStr, \
-    check_unique_name, angle, get_from_cache, load_idf_object_from_cache, \
-    hash_file, save_idf_object_to_cache
+    check_unique_name, angle, load_idf_object_from_cache, \
+    hash_file
 
 
 def clear_name_idf_objects(idfFile):
@@ -45,18 +44,21 @@ def clear_name_idf_objects(idfFile):
             'SCHEDULE:DAY:INTERVAL', 'SCHEDULE:COMPACT', 'PEOPLE', 'LIGHTS',
             'ELECTRICEQUIPMENT']
     uniqueList = []
+    old_name_list = []
 
     # For all categories of objects in the IDF file
     for obj in tqdm(idfFile.idfobjects, desc='cleaning_names'):
         epObjects = idfFile.idfobjects[obj]
 
         # For all objects in Category
-        count = 0
+        count_name = 0
         for epObject in epObjects:
             # Do not take fenestration, to be treated later
             try:
-                fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
-                                s in epObject.Name.lower()]
+                fenestration = [s for s in ['fenestration', 'shgc', 'window',
+                                            'glazing'] if
+                                s in epObject.Name.lower() or s in
+                                epObject.key.lower()]
             except:
                 fenestration = []
             if not fenestration:
@@ -77,16 +79,17 @@ def clear_name_idf_objects(idfFile):
 
                     first_letters = ''.join(word[0].lower() for word in
                                             list_word_epObject_type)
-                    count += 1
-                    end_count = '%06d' % count
+                    end_count = '%06d' % count_name
                     new_name = first_letters + '_' + end_count
 
                     # Make sure new name does not already exist
-                    new_name = check_unique_name(first_letters, count,
-                                                 new_name,
-                                                 uniqueList)
+                    new_name, count_name = check_unique_name(first_letters,
+                                                             count_name,
+                                                             new_name,
+                                                             uniqueList)
 
                     uniqueList.append(new_name)
+                    old_name_list.append(old_name)
 
                     # Changing the name in the IDF object
                     modeleditor.rename(idfFile, obj, old_name, new_name)
@@ -94,6 +97,13 @@ def clear_name_idf_objects(idfFile):
                     pass
             else:
                 continue
+
+    d = {"Old names": old_name_list, "New names": uniqueList}
+    from tabulate import tabulate
+    log_name = os.path.basename(idfFile.idfname) + "_clear_names.log"
+    log_msg = "Here is the equivalence between the old names and the new " \
+              "ones." + "\n\n" + tabulate(d, headers="keys")
+    log(log_msg, name=log_name, level=lg.INFO)
 
 
 def zone_origin(zone_object):
@@ -518,6 +528,13 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     lights = idf.idfobjects['LIGHTS']
     equipments = idf.idfobjects['ELECTRICEQUIPMENT']
 
+    # Get all construction EXCEPT fenestration ones
+    constr_list = []
+    for buildingSurf in buildingSurfs:
+        constr_list.append(buildingSurf.Construction_Name)
+    constr_list = list(set(constr_list))
+    constr_list.sort()
+
     ordered = kwargs.get('ordered', False)
     if ordered:
         materials = list(reversed(materials))
@@ -536,6 +553,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         peoples = list(reversed(peoples))
         lights = list(reversed(lights))
         equipments = list(reversed(equipments))
+        constr_list = list(reversed(constr_list))
 
     # region Get schedules from IDF
     start_time = time.time()
@@ -687,9 +705,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         for fenestrationSurf in fenestrationSurfs:
             count_fs += 1
             surfName = fenestrationSurf.Building_Surface_Name
-            indiceSurf = [k for k, s in enumerate(buildingSurfs) if
-                          surfName == s.Name]
-            if buildingSurfs[indiceSurf[0]].Zone_Name == zone.Name:
+            if idf.getobject("BUILDINGSURFACE:DETAILED",
+                             surfName).Zone_Name == zone.Name:
 
                 # Clear fenestrationSurface:Detailed name
                 fenestrationSurf.Name = 'fs_' + '%06d' % count_fs
@@ -773,21 +790,19 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                     i].Outside_Boundary_Condition.lower():
                     buildingSurfs[i].Outside_Boundary_Condition = "Zone"
                     surface = buildingSurfs[i].Outside_Boundary_Condition_Object
-                    indiceSurf = [k for k, s in enumerate(buildingSurfs) if
-                                  surface == s.Name]
-                    indiceZone = [k for k, s in enumerate(zones) if
-                                  buildingSurfs[
-                                      indiceSurf[0]].Zone_Name == s.Name]
-                    buildingSurfs[i].Outside_Boundary_Condition_Object = zones[
-                        indiceZone[0]].Name
+                    buildingSurfs[
+                        i].Outside_Boundary_Condition_Object = idf.getobject(
+                        'ZONE', idf.getobject('BUILDINGSURFACE:DETAILED',
+                                              surface).Zone_Name).Name
 
-                    # Oblige same construction for adjacent surfaces
-                    buildingSurfs[i].Construction_Name = buildingSurfs[
-                        indiceSurf[0]].Construction_Name
+                    # Force same construction for adjacent surfaces
+                    buildingSurfs[i].Construction_Name = idf.getobject(
+                        'BUILDINGSURFACE:DETAILED', surface).Construction_Name
 
                     # Polygon from vector's adjacent surfaces
                     poly1 = Polygon3D(buildingSurfs[i].coords)
-                    poly2 = Polygon3D(buildingSurfs[indiceSurf[0]].coords)
+                    poly2 = Polygon3D(idf.getobject('BUILDINGSURFACE:DETAILED',
+                                                    surface).coords)
                     # Normal vectors of each polygon
                     n1 = poly1.normal_vector
                     n2 = poly2.normal_vector
@@ -801,15 +816,15 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                         for j, k in zip(range(1, len(
                                 buildingSurfs[i].coords) + 1), range(
                             len(buildingSurfs[i].coords), 0, -1)):
-                            buildingSurfs[indiceSurf[0]][
+                            idf.getobject('BUILDINGSURFACE:DETAILED', surface)[
                                 "Vertex_" + str(j) + "_Xcoordinate"] \
                                 = buildingSurfs[i][
                                 "Vertex_" + str(k) + "_Xcoordinate"]
-                            buildingSurfs[indiceSurf[0]][
+                            idf.getobject('BUILDINGSURFACE:DETAILED', surface)[
                                 "Vertex_" + str(j) + "_Ycoordinate"] \
                                 = buildingSurfs[i][
                                 "Vertex_" + str(k) + "_Ycoordinate"]
-                            buildingSurfs[indiceSurf[0]][
+                            idf.getobject('BUILDINGSURFACE:DETAILED', surface)[
                                 "Vertex_" + str(j) + "_Zcoordinate"] \
                                 = buildingSurfs[i][
                                 "Vertex_" + str(k) + "_Zcoordinate"]
@@ -877,28 +892,21 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     constructionNum = checkStr(lines, 'C O N S T R U C T I O N')
 
     # Writing CONSTRUCTION in lines
-    for i in range(0, len(constructions)):
-
-        # Except fenestration construction
-        fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
-                        s in constructions[i].fieldvalues[1].lower()]
-
-        if not fenestration:
-            lines.insert(constructionNum + 1,
-                         '!-CONSTRUCTION ' + constructions[i].Name + '\n')
-        else:
-            continue
+    for constr in constr_list:
+        construction = idf.getobject("CONSTRUCTION", constr)
+        lines.insert(constructionNum + 1,
+                     '!-CONSTRUCTION ' + construction.Name + '\n')
 
         # Create lists to append with layers and thickness of construction
         layerList = []
         thickList = []
 
-        for j in range(2, len(constructions[i].fieldvalues)):
+        for j in range(2, len(construction.fieldvalues)):
 
-            if constructions[i].fieldvalues[j] not in mat_name:
+            if construction.fieldvalues[j] not in mat_name:
 
                 indiceMat = [k for k, s in enumerate(materials) if
-                             constructions[i].fieldvalues[j] == s.Name]
+                             construction.fieldvalues[j] == s.Name]
 
                 if not indiceMat:
                     thickList.append(0.0)
@@ -906,7 +914,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                     thickList.append(
                         round(materials[indiceMat[0]].Thickness, 4))
 
-                layerList.append(constructions[i].fieldvalues[j])
+                layerList.append(construction.fieldvalues[j])
 
             else:
                 continue
@@ -921,11 +929,13 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                      '!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n')
 
         basement = [s for s in ['basement', 'floor'] if
-                    s in constructions[i].fieldvalues[1].lower()]
+                    s in construction.fieldvalues[1].lower()]
         if not basement:
-            lines.insert(constructionNum + 6, '!- HFRONT   = 11 : HBACK= 64\n')
+            lines.insert(constructionNum + 6,
+                         '!- HFRONT   = 11 : HBACK= 64\n')
         else:
-            lines.insert(constructionNum + 6, '!- HFRONT   = 11 : HBACK= 0\n')
+            lines.insert(constructionNum + 6,
+                         '!- HFRONT   = 11 : HBACK= 0\n')
     # endregion
 
     # Write CONSTRUCTION from IDF to lines, at the end of the T3D file
@@ -934,15 +944,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                                   'ALL OBJECTS IN CLASS: CONSTRUCTION')
 
     # Writing CONSTRUCTION infos to lines
-    for i in range(0, len(constructions)):
-
-        # Except fenestration construction
-        fenestration = [s for s in ['fenestration', 'shgc', 'window'] if
-                        s in constructions[i].fieldvalues[1].lower()]
-        if not fenestration:
-            lines.insert(constructionEndNum, constructions[i])
-        else:
-            continue
+    for constr in constr_list:
+        construction = idf.getobject("CONSTRUCTION", constr)
+        lines.insert(constructionEndNum, construction)
 
     # region Write LAYER from IDF to lines (T3D)
     # Get line number where to write
@@ -997,47 +1001,40 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     gainNum = checkStr(lines, 'G a i n s')
 
     # Writing PEOPLE gains infos to lines
-    schedule_list_people = []
     for i in range(0, len(peoples)):
-
-        schYearName = peoples[i].Activity_Level_Schedule_Name
-        indiceSchYear = [k for k, s in enumerate(scheduleYear) if
-                         peoples[i].Activity_Level_Schedule_Name == s.Name]
-        schWeekName = scheduleYear[indiceSchYear[0]].ScheduleWeek_Name_1
-        indiceSchWeek = [k for k, s in enumerate(scheduleWeek) if scheduleYear[
-            indiceSchYear[0]].ScheduleWeek_Name_1 == s.Name]
-        weekSch = list(OrderedDict.fromkeys(
-            scheduleWeek[indiceSchWeek[0]].fieldvalues[2::]))
-
+        # Write gain name in lines
         lines.insert(gainNum + 1,
                      'GAIN PEOPLE' + '_' + peoples[i].Name + '\n')
-
+        # Determine if gain is absolute or relative and write it into lines
         if peoples[i].Number_of_People_Calculation_Method == "People":
             areaMethod = "ABSOLUTE"
         else:
             areaMethod = "AREA_RELATED"
-
+        # Find the radiant fractions
         radFract = peoples[i].Fraction_Radiant
         if len(str(radFract)) == 0:
-            radFract = float(1 - peoples[i].Sensible_Heat_Fraction)
+            # Find the radiant fractions
+            try:
+                radFract = float(1 - peoples[i].Sensible_Heat_Fraction)
+            except Exception:
+                radFract = 0.3
+        else:
+            radFract = float(radFract)
 
-        for element in weekSch:
-            indiceSchElement = [p for p, s in enumerate(scheduleDay) if
-                                element == s.Name]
-            power = round(
-                float(scheduleDay[indiceSchElement[0]].Value_Until_Time_1),
-                4)
+        # Find the the total power of the people gain
+        power = Schedule(sch_name='sc_000005', idf=idf).max
+        # Write gain characteristics into lines
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
-            power * (1 - radFract)) + ' : RADIATIVE=' + str(
-            power * radFract) +
-                     ' : HUMIDITY=0.066 : ELPOWERFRAC=0 : ' + areaMethod + ' : CATEGORY=PEOPLE\n')
+            round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + str(
+            round(power * radFract, 3)) + ' : HUMIDITY=0.066 : ELPOWERFRAC=0 '
+                                          ': ' + areaMethod + ' : CATEGORY=PEOPLE\n')
 
     # Writing LIGHT gains infos to lines
     for i in range(0, len(lights)):
-
+        # Write gain name in lines
         lines.insert(gainNum + 1, 'GAIN LIGHT' + '_' + lights[i].Name + '\n')
-
-        if lights[i].Design_Level_Calculation_Method == "Watts":
+        # Determine if gain is absolute or relative and write it into lines
+        if lights[i].Design_Level_Calculation_Method == "LightingLevel":
             areaMethod = "ABSOLUTE"
             power = round(float(lights[i].Lighting_Level), 4)
         elif lights[i].Design_Level_Calculation_Method == "Watts/Area":
@@ -1051,20 +1048,29 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                 "number of peoples (Watts/Person)",
                 lg.WARNING)
 
-        radFract = float(lights[i].Fraction_Radiant)
+        # Find the radiant fractions
+        radFract = lights[i].Fraction_Radiant
+        if len(str(radFract)) == 0:
+            # Find the radiant fractions
+            try:
+                radFract = float(1 - lights[i].Sensible_Heat_Fraction)
+            except Exception:
+                radFract = 0.42
+        else:
+            radFract = float(radFract)
 
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
-            power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
-                     ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : '
-                                                                       'CATEGORY=LIGHTS\n')
+            round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + str(
+            round(power * radFract, 3)) + ' : HUMIDITY=0 : ELPOWERFRAC=1 : '
+                     + areaMethod + ' : CATEGORY=LIGHTS\n')
 
     # Writing EQUIPMENT gains infos to lines
     for i in range(0, len(equipments)):
-
+        # Write gain name in lines
         lines.insert(gainNum + 1,
                      'GAIN EQUIPMENT' + '_' + equipments[i].Name + '\n')
-
-        if equipments[i].Design_Level_Calculation_Method == "Watts":
+        # Determine if gain is absolute or relative and write it into lines
+        if equipments[i].Design_Level_Calculation_Method == "EquipmentLevel":
             areaMethod = "ABSOLUTE"
             power = round(float(equipments[i].Design_Level), 4)
         elif equipments[i].Design_Level_Calculation_Method == "Watts/Area":
@@ -1078,12 +1084,22 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                 "the number of peoples (Watts/Person)",
                 lg.WARNING)
 
-        radFract = round(float(equipments[i].Fraction_Radiant), 4)
+        # Find the radiant fractions
+        radFract = equipments[i].Fraction_Radiant
+        if len(str(radFract)) == 0:
+            # Find the radiant fractions
+            try:
+                radFract = float(1 - equipments[i].Sensible_Heat_Fraction)
+            except Exception:
+                radFract = 0.42
+        else:
+            radFract = float(radFract)
 
-        lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
-            power * (1 - radFract)) + ' : RADIATIVE=' + str(power * radFract) +
-                     ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + areaMethod + ' : '
-                                                                       'CATEGORY=LIGHTS\n')
+        lines.insert(gainNum + 2, ' CONVECTIVE=' + \
+                     str(round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + \
+                     str(round(power * radFract, 3)) + \
+                     ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + \
+                     areaMethod + ' : CATEGORY=LIGHTS\n')
     # endregion
 
     # region Write SCHEDULES from IDF to lines (T3D)

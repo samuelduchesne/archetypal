@@ -376,15 +376,16 @@ class Schedule(object):
         field_sets = ['through', 'for', 'interpolate', 'until', 'value']
         fields = values.fieldvalues[3:]
 
-        index = pd.date_range(start=self.startDate, periods=8760, freq='1H')
-        zeros = np.zeros(8760)
+        index = pd.date_range(start=self.startDate, periods=8760, freq='H')
+        zeros = np.zeros(len(index))
 
-        slicer_ = pd.Series([False] * 8760, index=index)
+        slicer_ = pd.Series([False] * len(index), index=index)
         series = pd.Series(zeros, index=index)
 
         from_day = self.startDate
         ep_from_day = datetime(self.year, 1, 1)
         from_time = '00:00'
+        how_interpolate = None
         for field in fields:
             if any([spe in field.lower() for spe in field_sets]):
                 f_set, hour, minute, value = self.field_interpreter(field)
@@ -450,14 +451,34 @@ class Schedule(object):
 
                     # update in memory slice
                     # self.sliced_day_.loc[all_conditions] = True
-                elif f_set.lower() == 'interpolate':
-                    raise NotImplementedError('Archetypal does not support '
-                                              '"interpolate" statements yet')
+                elif 'interpolate' in f_set.lower():
+                    # we need to upsample to series to 8760 * 60 values
+                    new_idx = pd.date_range(start=self.startDate,
+                                            periods=525600, closed='left',
+                                            freq='T')
+                    series = series.resample('T').pad()
+                    series = series.reindex(new_idx)
+                    series.fillna(method='pad', inplace=True)
+                    through_conditions = through_conditions.resample('T').pad()
+                    through_conditions = through_conditions.reindex(new_idx)
+                    through_conditions.fillna(method='pad', inplace=True)
+                    for_condition = for_condition.resample('T').pad()
+                    for_condition = for_condition.reindex(new_idx)
+                    for_condition.fillna(method='pad', inplace=True)
+                    how_interpolate = value.lower()
                 elif f_set.lower() == 'until':
                     until_condition = self.invalidate_condition(series)
-                    until_time = str(int(hour) - 1) + ':' + minute
+                    if series.index.freq.name == 'T':
+                        # until_time = str(int(hour) - 1) + ':' + minute
+                        until_time = timedelta(hours=int(hour),
+                                               minutes=int(minute)) - timedelta(
+                            minutes=1)
+
+                    else:
+                        until_time = str(int(hour) - 1) + ':' + minute
                     until_condition.loc[until_condition.between_time(from_time,
-                                                                     until_time).index] = True
+                                                                     str(
+                                                                         until_time)).index] = True
                     all_conditions = for_condition & through_conditions & \
                                      until_condition
 
@@ -479,8 +500,10 @@ class Schedule(object):
 
                 # update in memory slice
                 slicer_.loc[all_conditions] = True
-
-        return series.values
+        if how_interpolate:
+            return series.resample('H').mean().values
+        else:
+            return series.values
 
     def field_interpreter(self, field):
         """dealing with a Field-Set (Through, For, Interpolate,
@@ -512,6 +535,14 @@ class Schedule(object):
                       'that is not understood: "{field}"'.format(
                     sch=self.schName, field=field)
                 raise NotImplementedError(msg)
+        elif 'interpolate' in field.lower():
+            msg = 'The schedule "{sch}" contains sub-hourly values (' \
+                  'Field-Set="{field}"). The average over the hour is ' \
+                  'taken'.format(sch=self.schName, field=field)
+            log(msg, lg.WARNING)
+            f_set, value = field.split(':')
+            hour = None
+            minute = None
         elif 'until' in field.lower():
             if ':' in field.lower():
                 # parse colon
@@ -545,7 +576,7 @@ class Schedule(object):
                 raise NotImplementedError(msg)
         else:
             # deal with the data value
-            f_set = None
+            f_set = field
             hour = None
             minute = None
             value = field[len(field) + 1:].strip()
@@ -699,12 +730,11 @@ class Schedule(object):
         dict_day = {}
         count_day = 0
         for unique_day in unique_days:
-            count_day += 1
-            name = 'day_' + '%06d' % count_day
-            name = archetypal.check_unique_name('day', count_day,
-                                                name,
-                                                archetypal.settings.unique_schedules)
-
+            name = 'd_' + self.schName + '_' + '%03d' % count_day
+            name, count_day = archetypal.check_unique_name('d', count_day,
+                                                           name,
+                                                           archetypal.settings.unique_schedules,
+                                                           suffix=True)
             dict_day[name] = unique_day
 
             archetypal.settings.unique_schedules.append(name)
@@ -731,12 +761,14 @@ class Schedule(object):
         dict_week = {}
         count_week = 0
         for unique_week in unique_weeks:
-            count_week += 1
-            week_id = 'week_' + '%05d' % count_week
-            week_id = archetypal.check_unique_name('week', count_week,
-                                                week_id,
-                                                archetypal.settings.unique_schedules)
+            week_id = 'w_' + self.schName + '_' + '%03d' % count_week
+            week_id, count_week = archetypal.check_unique_name('w',
+                                                               count_week,
+                                                               week_id,
+                                                               archetypal.settings.unique_schedules,
+                                                               suffix=True)
             archetypal.settings.unique_schedules.append(week_id)
+
             dict_week[week_id] = {}
             for i in list(range(0, 7)):
                 day_of_week = unique_week[..., i * 24:(i + 1) * 24]
@@ -920,7 +952,7 @@ class Schedule(object):
             # return only weekends
             return lambda x: x.index.dayofweek >= 5
         elif field.lower() == 'alldays':
-            log('For schdedule "{}", the field-set "AllDays" may be overridden '
+            log('For schedule "{}", the field-set "AllDays" may be overridden '
                 'by the "AllOtherDays" field-set'.format(
                 self.schName), lg.WARNING)
             # return all days := equivalenet to .loc[:]

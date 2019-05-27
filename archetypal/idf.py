@@ -28,11 +28,6 @@ from archetypal import IDF, close_logger
 from archetypal import settings
 from archetypal.utils import log, cd, EnergyPlusProcessError
 
-try:
-    import multiprocessing as mp
-except ImportError:
-    pass
-
 EPLUS_PATH = None
 
 

@@ -149,7 +149,7 @@ def object_from_idf(idf, ep_object):
         return df
 
 
-def load_idf(eplus_file, idd_filename=None, output_folder=None):
+def load_idf(eplus_file, idd_filename=None, output_folder=None, include=None):
     """Returns a parsed IDF object from file. If
     *archetypal.settings.use_cache* is true, then the idf object is loaded
     from cache.
@@ -159,6 +159,9 @@ def load_idf(eplus_file, idd_filename=None, output_folder=None):
         eplus_file (str): path of the idf file.
         idd_filename (str, optional): name of the EnergyPlus IDD file. If
             None, the function tries to find it.
+        include (str, optional): List input files that need to be copied to
+            the simulation directory.if a string is provided, it should be in
+            a glob form (see pathlib.Path.glob).
 
     Returns:
         (IDF): The parsed IDF object
@@ -177,20 +180,26 @@ def load_idf(eplus_file, idd_filename=None, output_folder=None):
         return idf
     else:
         # Else, run eppy to load the idf objects
-        idf = eppy_load(eplus_file, idd_filename, output_folder=output_folder)
+        idf = eppy_load(eplus_file, idd_filename,
+                        output_folder=output_folder, include=include)
         log('Eppy load completed in {:,.2f} seconds\n'.format(
             time.time() - start_time))
         return idf
 
 
-def eppy_load(file, idd_filename, output_folder=None):
+def eppy_load(file, idd_filename, output_folder=None, include=None):
     """Uses package eppy to parse an idf file. Will also try to upgrade the
     idf file using the EnergyPlus Transition executables if the version of
     EnergyPlus is not installed on the machine.
 
     Args:
-        file (str): path of the idf file
-        idd_filename: path of the EnergyPlus IDD file
+        file (str): path of the idf file.
+        idd_filename: path of the EnergyPlus IDD file.
+        output_folder (str): path to the output folder. Will
+            default to the settings.cache_folder.
+        include (str, optional): List input files that need to be copied to
+            the simulation directory.if a string is provided, it should be in
+            a glob form (see pathlib.Path.glob).
 
     Returns:
         eppy.modeleditor.IDF: IDF object
@@ -203,6 +212,9 @@ def eppy_load(file, idd_filename, output_folder=None):
     IDF.setiddname(idd_filename, testing=True)
     if not output_folder:
         output_folder = settings.cache_folder / cache_filename
+    else:
+        output_folder = Path(output_folder)
+
     output_folder.makedirs_p()
 
     try:
@@ -236,6 +248,9 @@ def eppy_load(file, idd_filename, output_folder=None):
     # when parsing is complete, save it to disk, then return object
     save_idf_object_to_cache(idf_object, idf_object.idfname,
                              output_folder)
+    if include:
+        include = Path().abspath().glob(include)
+        [file.copy(output_folder) for file in include]
     return idf_object
 
 
@@ -499,7 +514,8 @@ def run_eplus(eplus_file, weather_file, output_directory=None,
               simulname=None, keep_data=True, annual=False,
               design_day=False, epmacro=False, expandobjects=False,
               readvars=False, output_prefix=None, output_suffix=None,
-              version=None, verbose='v', keep_data_err=True):
+              version=None, verbose='v', keep_data_err=True, include=None,
+              custom_processes=None):
     """Run an energy plus file and return the SummaryReports Tables in a list
     of [(title, table), .....]
 
@@ -507,8 +523,7 @@ def run_eplus(eplus_file, weather_file, output_directory=None,
         eplus_file (str): path to the idf file.
         weather_file (str): path to the EPW weather file
         output_directory (str, optional): path to the output folder. Will
-        default
-            to the settings.cache_folder.
+            default to the settings.cache_folder.
         ep_version (str, optional): EnergyPlus version to use, eg: 8-9-0
         output_report: 'htm' or 'sql'.
         prep_outputs (bool or list, optional): if true, meters and variable
@@ -520,7 +535,7 @@ def run_eplus(eplus_file, weather_file, output_directory=None,
         expandobjects (bool): Run ExpandObjects prior to simulation (default:
             False)
         readvars (bool): Run ReadVarsESO after simulation (default: False)
-        output_prefix (str): Prefix for output file names
+        output_prefix (str, optional): Prefix for output file names.
         output_suffix (str, optional): Suffix style for output file names
             (default: L)
                 L: Legacy (e.g., eplustbl.csv)
@@ -530,6 +545,17 @@ def run_eplus(eplus_file, weather_file, output_directory=None,
         verbose (str): Set verbosity of runtime messages (default: v)
             v: verbose
             q: quiet
+        include (str, optional): List input files that need to be copied to
+            the simulation directory.if a string is provided, it should be in
+            a glob form (see pathlib.Path.glob).
+        custom_processes (None or dict(Callback)): if provided, it has to be
+            a dictionnary with the keys beeing a glob (see
+            pathlib.Path.glob), and the value a Callback taking as signature
+            `callback(file: str, working_dir, simulname) -> Any` All the file
+            matching this glob will be processed by this callback. Note: they
+            still be processed by pandas.read_csv (if they are csv files),
+            resulting in duplicate. The only way to bypass this behavior is
+            to add the key "*.csv" to that dictionnary.
 
     Raises:
         EnergyPlusProcessError.
@@ -544,11 +570,9 @@ def run_eplus(eplus_file, weather_file, output_directory=None,
     args, _, _, values = inspect.getargvalues(frame)
     args = {arg: values[arg] for arg in args}
 
+    cache_filename = hash_file(eplus_file, args)
     if not output_prefix:
-        cache_filename = hash_file(eplus_file, args)
         output_prefix = cache_filename
-    else:
-        cache_filename = output_prefix
     if not output_directory:
         output_directory = settings.cache_folder / cache_filename
     else:
@@ -595,13 +619,15 @@ def run_eplus(eplus_file, weather_file, output_directory=None,
             os.path.basename(eplus_file)), name=eplus_file.basename())
 
         start_time = time.time()
-
+        if include:
+            include = Path().abspath().glob(include)
         # run the EnergyPlus Simulation
         with tempdir(prefix="eplus_run_", suffix=output_prefix,
                      dir=output_directory) as tmp:
             log("temporary dir (%s) created" % tmp, lg.DEBUG,
                 name=eplus_file.basename())
-
+            if include:
+                include = [file.copy(tmp) for file in include]
             runargs = {'tmp': tmp,
                        'eplus_file': eplus_file.copy(tmp),
                        'weather': weather_file.copy(tmp),
@@ -618,7 +644,8 @@ def run_eplus(eplus_file, weather_file, output_directory=None,
                        'expandobjects': expandobjects,
                        'design_day': design_day,
                        'keep_data_err': keep_data_err,
-                       'output_report': output_report}
+                       'output_report': output_report,
+                       'include': include}
 
             # save runargs
             cache_runargs(eplus_file, runargs.copy())
@@ -634,21 +661,64 @@ def run_eplus(eplus_file, weather_file, output_directory=None,
                 lg.DEBUG, name=eplus_file.basename()
             )
 
+            processes = {"*.csv": _process_csv}  # output_prefix +
+            if custom_processes is not None:
+                processes.update(custom_processes)
+
+            results = []
+
+            for glob, process in processes.items():
+                results.extend(
+                    [
+                        (
+                            file.basename(),
+                            process(file, working_dir=os.getcwd(),
+                                    simulname=output_prefix),
+                        )
+                        for file in tmp.files(glob)
+                    ]
+                )
+
             # Return summary DataFrames
             runargs['output_directory'] = tmp
             cached_run_results = get_report(**runargs)
+
+            if cached_run_results:
+                results.extend(cached_run_results)
 
             if keep_data:
                 (output_directory / "output_data").rmtree_p()
                 tmp.copytree(output_directory / "output_data")
 
-            return cached_run_results
+            return results
+
+
+def _process_csv(file, working_dir, simulname):
+    try:
+        log(
+            "looking for csv output, return the csv files " "in DataFrames if "
+            "any"
+        )
+        if "table" in file.basename():
+            tables_out = working_dir.abspath() / "tables"
+            tables_out.makedirs_p()
+            file.copy(
+                tables_out / "%s_%s.csv" % (
+                    file.basename().stripext(), simulname)
+            )
+            return
+        log("try to store file %s in DataFrame" % (file))
+        df = pd.read_csv(file, sep=",", encoding="us-ascii")
+        log("file %s stored" % file)
+        return df
+    except Exception:
+        pass
 
 
 def _run_exec(tmp, eplus_file, weather, output_directory, annual, design_day,
               idd, epmacro, expandobjects, readvars, output_prefix,
               output_suffix, version, verbose, ep_version,
-              keep_data_err, output_report):
+              keep_data_err, output_report, include):
     """Wrapper around the EnergyPlus command line interface.
 
     Adapted from :func:`eppy.runner.runfunctions.run`.
@@ -664,6 +734,7 @@ def _run_exec(tmp, eplus_file, weather, output_directory, annual, design_day,
     output_directory = args.pop('output_directory')
     output_report = args.pop('output_report')
     idd = args.pop('idd')
+    include = args.pop('include')
     try:
         idf_path = os.path.abspath(eplus_file.idfname)
     except AttributeError:
@@ -848,11 +919,11 @@ def hash_file(eplus_file, kwargs=None):
 
 
 def get_report(eplus_file, output_directory=None, output_report='sql',
-               simulname=None, **kwargs):
+               output_prefix=None, **kwargs):
     """Returns the specified report format (html or sql)
 
     Args:
-        simulname:
+        output_prefix:
         eplus_file (str): path of the idf file
         output_directory (str, optional): path to the output folder. Will
             default to the settings.cache_folder.
@@ -864,13 +935,13 @@ def get_report(eplus_file, output_directory=None, output_report='sql',
 
     """
     # Hash the idf file with any kwargs used in the function
-    if simulname is None:
-        simulname = hash_file(eplus_file, kwargs)
+    if output_prefix is None:
+        output_prefix = hash_file(eplus_file, kwargs)
     if output_report is None:
         return None
     elif 'htm' in output_report.lower():
         # Get the html report
-        fullpath_filename = output_directory / simulname + 'tbl.htm'
+        fullpath_filename = output_directory / output_prefix + 'tbl.htm'
         if fullpath_filename.exists():
             return get_html_report(fullpath_filename)
         else:
@@ -879,7 +950,7 @@ def get_report(eplus_file, output_directory=None, output_report='sql',
 
     elif 'sql' in output_report.lower():
         # Get the sql report
-        fullpath_filename = output_directory / simulname + 'out.sql'
+        fullpath_filename = output_directory / output_prefix + 'out.sql'
         if fullpath_filename.exists():
             return get_sqlite_report(fullpath_filename)
         else:

@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from archetypal import Schedule, load_idf, copy_file, run_eplus
+from archetypal import Schedule, load_idf, copy_file, run_eplus, config
 
 
 def test_schedules_in_necb_specific(config):
@@ -43,15 +43,13 @@ def test_make_umi_schedule(config):
     assert (new.all_values == s.all_values).all()
 
 
+config(log_console=True, log_file=True, use_cache=True,
+              data_folder='tests/.temp/data', logs_folder='tests/.temp/logs',
+              imgs_folder='tests/.temp/imgs', cache_folder='tests/.temp/cache',
+              umitemplate='tests/input_data/umi_samples'
+                          '/BostonTemplateLibrary_2.json')
 idf_file = 'tests/input_data/schedules/test_multizone_EP.idf'
-
-
-def schedules_idf():
-    idf = load_idf(idf_file)
-    return idf
-
-
-idf = schedules_idf()
+idf = load_idf(idf_file, include='tests/input_data/schedules/*CTZ06.csv')
 schedules = list(idf.get_all_schedules(yearly_only=True).keys())
 ids = [i.replace(" ", "_") for i in schedules]
 schedules = [pytest.param(schedule,
@@ -106,7 +104,6 @@ def test_schedules(request, run_schedules_idf):
     """Create the test_data"""
     import pandas as pd
     # read original schedule
-    idf = schedules_idf()
     schName = request.param
     orig = Schedule(sch_name=schName, idf=idf)
 
@@ -121,7 +118,7 @@ def test_schedules(request, run_schedules_idf):
     new = Schedule(sch_name=new_eps[0].Name, idf=idf)
 
     index = orig.series.index
-    epv = pd.read_csv(run_schedules_idf)
+    epv = run_schedules_idf
     epv.columns = epv.columns.str.strip()
     epv = epv.loc[:, schName.upper() + ':Schedule Value [](Hourly)'].values
     expected = pd.Series(epv, index=index)
@@ -135,14 +132,14 @@ def test_schedules(request, run_schedules_idf):
 
 @pytest.fixture(scope='module')
 def run_schedules_idf(config):
-    import os
-    run_eplus(idf_file, weather_file='tests/input_data/CAN_PQ_Montreal.Intl.AP'
-                                     '.716270_CWEC.epw',
-              annual=True, output_directory=None,
-              output_prefix='eprun', readvars=True)
-    csv = os.path.join('tests', 'input_data', 'schedules', 'eprun',
-                       'eprunout.csv')
-    yield csv
+    res = run_eplus(idf_file,
+                    weather_file='tests/input_data/CAN_PQ_Montreal.Intl.AP'
+                                 '.716270_CWEC.epw',
+                    annual=True, output_directory=None,
+                    output_prefix='eprun', readvars=True,
+                    include='tests/input_data/schedules/*CTZ06.csv')
+
+    yield res[0][1]
 
 
 def test_ep_versus_schedule(test_schedules):

@@ -18,14 +18,14 @@ import numpy as np
 import pandas as pd
 from sklearn import preprocessing
 
-from . import settings, object_from_idf, object_from_idfs, \
+from archetypal import settings, object_from_idf, object_from_idfs, \
     calc_simple_glazing, \
     iscore, weighted_mean, top, GasMaterial, BuildingTemplate, \
     GlazingMaterial, OpaqueMaterial, OpaqueConstruction, \
     WindowConstruction, StructureDefinition, DaySchedule, WeekSchedule, \
     YearSchedule, DomesticHotWaterSetting, VentilationSetting, \
     ZoneConditioning, \
-    ZoneConstructionSet, ZoneLoad, Zone, WindowSetting
+    ZoneConstructionSet, ZoneLoad, Zone, WindowSetting, parallel_process
 from .idf import run_eplus, load_idf
 from .plot import plot_energyprofile
 from .utils import log, label_surface, type_surface, layer_composition, \

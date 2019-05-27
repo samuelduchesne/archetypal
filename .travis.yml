@@ -49,9 +49,9 @@ install:
   - conda list
 
 script:
-  - coverage run --concurrency=multiprocessing --source archetypal -m pytest --verbose
+  - coverage run --source archetypal -m pytest --verbose
+  - coverage combine
 
 after_success:
-  - coverage combine
   - coverage report -m
   - coveralls

@@ -24,7 +24,7 @@ from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from path import Path, tempdir
 
-from archetypal import IDF
+from archetypal import IDF, close_logger
 from archetypal import settings
 from archetypal.utils import log, cd, EnergyPlusProcessError
 
@@ -799,13 +799,16 @@ def _run_exec(tmp, eplus_file, weather, output_directory, annual, design_day,
 
 
 def _log_subprocess_output(pipe, name, verbose):
+    logger = None
     for line in iter(pipe.readline, b""):
         if verbose == 'v':
-            log(line.decode().strip("\n"),
-                level=lg.DEBUG,
-                name="eplus_run_" + name,
-                filename="eplus_run_" + name,
-                log_dir=os.getcwd())
+            logger = log(line.decode().strip("\n"),
+                         level=lg.DEBUG,
+                         name="eplus_run_" + name,
+                         filename="eplus_run_" + name,
+                         log_dir=os.getcwd())
+    if logger:
+        close_logger(logger)
 
 
 def parallel_process(in_dict, function, processors=-1, use_kwargs=True):

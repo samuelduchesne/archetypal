@@ -141,6 +141,7 @@ def log(message, level=None, name=None, filename=None, avoid_console=False,
             logger.warning(message)
         elif level == lg.ERROR:
             logger.error(message)
+        return logger
 
     # if logging to console is turned on, convert message to ascii and print to
     # the console
@@ -212,6 +213,20 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
         logger.handler_set = True
 
     return logger
+
+
+def close_logger(logger=None, level=None, name=None, filename=None,
+                 log_dir=None):
+    if not logger:
+        # try get logger by name
+        logger = get_logger(level=level,
+                            name=name,
+                            filename=filename,
+                            log_dir=log_dir)
+    handlers = logger.handlers[:]
+    for handler in handlers:
+        handler.close()
+        logger.removeHandler(handler)
 
 
 def make_str(value):

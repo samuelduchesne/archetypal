@@ -443,7 +443,7 @@ class Schedule(object):
                         for_condition = how
                     else:
                         # Apply condition to slice
-                        how = self.field_set(value)
+                        how = self.field_set(value, slicer_)
                         for_condition.loc[how] = True
 
                     # Combine the for_condition with all_conditions
@@ -526,6 +526,15 @@ class Schedule(object):
             if ':' in field.lower():
                 # parse colon
                 f_set, statement = field.split(':')
+                value = statement.strip()
+                hour = None
+                minute = None
+            elif 'designday' in field.lower():
+                # get epBunch of the sizing period
+                statement = [s for s in field.split() if "designday" in
+                             s.lower()][0]
+                f_set = [s for s in field.split() if "for" in
+                         s.lower()][0]
                 value = statement.strip()
                 hour = None
                 minute = None
@@ -989,10 +998,12 @@ class Schedule(object):
             return lambda x: x.index.dayofweek == 5
         elif field.lower() == 'summerdesignday':
             # return design_day(self, field)
-            return None
+            field = 'summerdesignday'
+            return self.design_day(field, slicer_)
         elif field.lower() == 'winterdesignday':
             # return design_day(self, field)
-            return None
+            field = 'winterdesignday'
+            return self.design_day(field, slicer_)
         elif field.lower() == 'holiday' or field.lower() == 'holidays':
             field = 'holiday'
             return self.special_day(field, slicer_)
@@ -1083,24 +1094,41 @@ class Schedule(object):
             )
             raise ValueError(msg)
 
+    def design_day(self, field, slicer_):
+        # try to get the SizingPeriod:DesignDay for the corresponding Day Type
+        sp_slicer_ = slicer_.copy()
+        sp_slicer_.loc[:] = False
+        dds = self.idf.idfobjects['SizingPeriod:DesignDay'.upper()]
+        dd = [dd for dd in dds if dd.Day_Type.lower() == field]
+        if len(dd) > 0:
+            for dd in dd:
+                # should have found only one design day matching the Day Type
+                month = dd.Month
+                day = dd.Day_of_Month
+                data = str(month) + "/" + str(day)
+                ep_start_date = self.date_field_interpretation(data)
+                ep_orig = datetime(self.year, 1, 1)
+                days_to_speciald = (ep_start_date - ep_orig).days
+                duration = 1  # Duration of 1 day
+                from_date = self.startDate + timedelta(days=days_to_speciald)
+                to_date = from_date + timedelta(days=duration) + timedelta(
+                    hours=-1)
 
-def design_day(schedule, field):
-    # try to get the SizingPeriod:DesignDay for the corresponding Day Type
-    dds = schedule.idf.idfobjects['SizingPeriod:DesignDay'.upper()]
-    dd = [dd for dd in dds if dd.Day_Type.lower() == field]
-    if len(dd) > 0:
-        # should have found only one design day matching the Day Type
+                sp_slicer_.loc[from_date:to_date] = True
+            return sp_slicer_
+        elif not self.strict:
+            return sp_slicer_
+        else:
+            msg = 'Could not find a "SizingPeriod:DesignDay" object ' \
+                  'needed for schedule "{}" with Day Type "{}"'.format(
+                self.schName, field.capitalize()
+            )
+            raise ValueError(msg)
 
-        data = [dd[0].Month, dd[0].Day_of_Month]
-        date = '/'.join([str(item).zfill(2) for item in data])
-        date = schedule.date_field_interpretation(date)
-        return lambda x: x.index == date
-    else:
-        msg = 'Could not find a "SizingPeriod:DesignDay" object ' \
-              'needed for schedule "{}" with Day Type "{}"'.format(
-            schedule.schName, field.capitalize()
-        )
-        raise ValueError(msg)
+            data = [dd[0].Month, dd[0].Day_of_Month]
+            date = '/'.join([str(item).zfill(2) for item in data])
+            date = self.date_field_interpretation(date)
+            return lambda x: x.index == date
 
 
 def _conjunction(*conditions, logical=np.logical_and):

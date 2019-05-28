@@ -1,12 +1,12 @@
 import os
 import random
+import subprocess
 
 import matplotlib as mpl
 # use agg backend so you don't need a display on travis-ci
 import pytest
 
 import archetypal as ar
-from archetypal import copy_file, CalledProcessError
 
 mpl.use('Agg')
 
@@ -17,7 +17,7 @@ mpl.use('Agg')
 
 def test_small_home_data(config, fresh_start):
     file = 'tests/input_data/regular/AdultEducationCenter.idf'
-    file = copy_file(file)[0]
+    file = ar.copy_file(file)[0]
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     return ar.run_eplus(file, wf, expandobjects=True, verbose='q',
                         prep_outputs=True, design_day=True)
@@ -27,7 +27,7 @@ def test_necb(config):
     """Test one of the necb files"""
     import glob
     files = random.choice(glob.glob("tests/input_data/necb/*.idf"))
-    files = copy_file(files)
+    files = ar.copy_file(files)
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     rundict = {file: dict(eplus_file=file, weather_file=wf,
                           expandobjects=True, verbose='q',
@@ -68,7 +68,7 @@ def test_run_olderv(config, fresh_start, ep_version):
     files = ['tests/input_data/problematic/nat_ventilation_SAMPLE0.idf',
              'tests/input_data/regular/5ZoneNightVent1.idf']
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    files = copy_file(files)
+    files = ar.copy_file(files)
     rundict = {file: dict(eplus_file=file, weather_file=wf,
                           ep_version=ep_version, annual=True, prep_outputs=True,
                           expandobjects=True, verbose='q', output_report='sql')
@@ -76,7 +76,7 @@ def test_run_olderv(config, fresh_start, ep_version):
     result = {file: ar.run_eplus(**rundict[file]) for file in files}
 
 
-@pytest.mark.xfail(raises=(CalledProcessError, FileNotFoundError))
+@pytest.mark.xfail(raises=(subprocess.CalledProcessError, FileNotFoundError))
 def test_run_olderv_problematic(config, fresh_start):
     """Will run eplus on a file that needs to be upgraded and that should
     fail. Will be ignored in the test suite"""
@@ -84,6 +84,6 @@ def test_run_olderv_problematic(config, fresh_start):
     file = 'tests/input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7' \
            '.2_5A_USA_IL_CHICAGO-OHARE.idf'
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    file = copy_file([file])[0]
+    file = ar.copy_file([file])[0]
     ar.run_eplus(file, wf, annual=True,
                  expandobjects=True, verbose='q', prep_outputs=True)

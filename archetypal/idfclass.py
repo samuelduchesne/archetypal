@@ -32,7 +32,14 @@ class IDF(eppy.modeleditor.IDF):
     def __init__(self, *args, **kwargs):
         super(IDF, self).__init__(*args, **kwargs)
         self.schedules_dict = self.get_all_schedules()
-        self.sql = None
+        self.name = os.path.basename(self.idfname)
+
+    @property
+    def sql(self):
+        if not self.sql:
+            return self.run_eplus()
+        else:
+            return self.sql
 
     def run_eplus(self, weather_file=None, output_folder=None, ep_version=None,
                   output_report='sql', prep_outputs=True, **kwargs):
@@ -66,7 +73,8 @@ class IDF(eppy.modeleditor.IDF):
             ep_version = '-'.join(map(str, self.idd_version))
         eplus_file = self.idfname
         results = run_eplus(eplus_file, weather_file, output_folder, ep_version,
-                            output_report, prep_outputs, **kwargs)
+                            output_report, prep_outputs,
+                            design_day=True, **kwargs)
         if output_report != 'sql':
             # user wants something more than the sql
             return results
@@ -249,6 +257,10 @@ class IDF(eppy.modeleditor.IDF):
             else:
                 return os.path.basename(self.idfname)
 
+    @sql.setter
+    def sql(self, value):
+        self._sql = value
+
 
 def object_from_idfs(idfs, ep_object, first_occurrence_only=False,
                      processors=1):
@@ -363,15 +375,18 @@ def object_from_idf(idf, ep_object):
         return df
 
 
-def load_idf(eplus_file, idd_filename=None):
+def load_idf(eplus_file, idd_filename=None, weather_file=None):
     """Returns a parsed IDF object from file. If
     *archetypal.settings.use_cache* is true, then the idf object is loaded
     from cache.
 
     Args:
+        weather_file:
         eplus_file (str): path of the idf file.
         idd_filename (str, optional): name of the EnergyPlus IDD file. If
             None, the function tries to find it.
+        weather_file (str, optional): path to the EnergyPlus weather file (
+            .epw)
 
     Returns:
         (IDF): The parsed IDF object
@@ -390,11 +405,11 @@ def load_idf(eplus_file, idd_filename=None):
         return idf
     else:
         # Else, run eppy to load the idf objects
-        idf = eppy_load(eplus_file, idd_filename)
+        idf = eppy_load(eplus_file, idd_filename, weather_file=weather_file)
         return idf
 
 
-def eppy_load(file, idd_filename):
+def eppy_load(file, idd_filename, weather_file=None):
     """Uses package eppy to parse an idf file. Will also try to upgrade the
     idf file using the EnergyPlus Transition
     executables.
@@ -402,6 +417,8 @@ def eppy_load(file, idd_filename):
     Args:
         file (str): path of the idf file
         idd_filename: path of the EnergyPlus IDD file
+        weather_file (str, optional): path to the EnergyPlus weather file (
+            .epw)
 
     Returns:
         eppy.modeleditor.IDF: IDF object
@@ -413,7 +430,7 @@ def eppy_load(file, idd_filename):
     IDF.setiddname(idd_filename, testing=True)
     while idf_object is None:
         try:
-            idf_object = IDF(file)
+            idf_object = IDF(idfname=file, epw=weather_file)
             # Check version of IDF file against version of IDD file
             idf_version = idf_object.idfobjects['VERSION'][
                 0].Version_Identifier

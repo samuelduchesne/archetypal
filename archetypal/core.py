@@ -18,6 +18,10 @@ import numpy as np
 import pandas as pd
 from sklearn import preprocessing
 
+from archetypal import log, label_surface, type_surface, layer_composition, \
+    piecewise, rmse
+from archetypal import plot_energyprofile
+from archetypal import run_eplus, load_idf
 from archetypal import settings, object_from_idf, object_from_idfs, \
     calc_simple_glazing, \
     iscore, weighted_mean, top, GasMaterial, BuildingTemplate, \
@@ -26,10 +30,6 @@ from archetypal import settings, object_from_idf, object_from_idfs, \
     YearSchedule, DomesticHotWaterSetting, VentilationSetting, \
     ZoneConditioning, \
     ZoneConstructionSet, ZoneLoad, Zone, WindowSetting, parallel_process
-from .idf import run_eplus, load_idf
-from .plot import plot_energyprofile
-from .utils import log, label_surface, type_surface, layer_composition, \
-    piecewise, rmse
 
 
 class UmiTemplate:
@@ -126,35 +126,57 @@ class UmiTemplate:
     @classmethod
     def from_idf(self, idf_files, weather, sql=None, load=False, name='unnamed',
                  load_idf_kwargs=None, run_eplus_kwargs=None):
-        """Initializes a UmiTemplate class
+        """Initializes a UmiTemplate class from one or more idf_files.
+
+        Iterates over each building zones and creates corresponding objects
+        from the building object to material objects.
 
         Args:
-            run_eplus_kwargs:
-            idf_files:
+            idf_files (str or list):
             weather (str):
-            load:
-            **load_idf_kwargs:
+            load (bool):
+            run_eplus_kwargs (dict):
+            load_idf_kwargs (dict):
         """
         # instanciate class
         if run_eplus_kwargs is None:
             run_eplus_kwargs = {}
         if load_idf_kwargs is None:
             load_idf_kwargs = {}
-        template = UmiTemplate(name)
+        t = UmiTemplate(name)
 
         # fill in arguments
-        template.idf_files = idf_files
-        template.weather = weather
-        template.sql = sql
+        t.idf_files = idf_files
+        t.weather = weather
+        t.sql = sql
 
-        template.idfs = load_idf(idf_files, **load_idf_kwargs)
+        t.idfs = [load_idf(idf_file) for idf_file
+                  in idf_files]
+
+        # For each idf load
+        gms, glazms, oms = [], [], []
+        for idf in t.idfs:
+            b = BuildingTemplate.from_idf(idf)
+            # with each idf, append each objects
+            gms.extend(GasMaterial.from_idf(idf))
+            glazms.extend(GlazingMaterial.from_idf(idf))
+            oms.extend(OpaqueMaterial.from_idf(idf))
+        # use set() to remove duplicates
+        t.GasMaterials.extend(set(gms))
+        t.GlazingMaterials.extend(set(glazms))
+        t.OpaqueMaterials.extend(set(oms))
 
         if load:
-            template.run_eplus(idf_files, weather, **run_eplus_kwargs)
-            template.read()
-            template.fill()
+            rundict = {idf_file: dict(eplus_file=idf_file,
+                                      weather_file=weather,
+                                      output_report='sql',
+                                      **run_eplus_kwargs) for idf_file in
+                       idf_files}
+            t.sql = parallel_process(rundict, run_eplus, use_kwargs=True)
+            t.read()
+            t.fill()
 
-        return template
+        return t
 
     def fill(self):
         # Todo: Finish enumerating all UmiTempalate objects
@@ -204,60 +226,56 @@ class UmiTemplate:
             UmiTemplate: The template object
         """
         name = os.path.basename(filename)
-        template = UmiTemplate(name)
+        t = UmiTemplate(name)
 
         import json
 
-        if os.path.isfile(filename):
-            if filename:
-                with open(filename, 'r') as f:
-                    datastore = json.load(f)
+        with open(filename, 'r') as f:
+            datastore = json.load(f)
 
             # with datastore, create each objects
-            template.GasMaterials = [GasMaterial.from_json(**store) for
-                                     store in datastore['GasMaterials']]
-            template.GlazingMaterials = [GlazingMaterial(**store) for
-                                         store in datastore["GlazingMaterials"]]
-            template.OpaqueMaterials = [OpaqueMaterial(**store) for
-                                        store in datastore["OpaqueMaterials"]]
-            template.OpaqueConstructions = [
+            t.GasMaterials = [GasMaterial.from_json(**store) for
+                              store in datastore['GasMaterials']]
+            t.GlazingMaterials = [GlazingMaterial(**store) for
+                                  store in datastore["GlazingMaterials"]]
+            t.OpaqueMaterials = [OpaqueMaterial(**store) for
+                                 store in datastore["OpaqueMaterials"]]
+            t.OpaqueConstructions = [
                 OpaqueConstruction.from_json(
                     **store) for store in datastore["OpaqueConstructions"]]
-            template.WindowConstructions = [
+            t.WindowConstructions = [
                 WindowConstruction.from_json(
                     **store) for store in datastore["WindowConstructions"]]
-            template.StructureDefinitions = [
+            t.StructureDefinitions = [
                 StructureDefinition.from_json(
                     **store) for store in datastore["StructureDefinitions"]]
-            template.DaySchedules = [DaySchedule(**store)
-                                     for store in datastore["DaySchedules"]]
-            template.WeekSchedules = [WeekSchedule.from_json(**store)
-                                      for store in datastore["WeekSchedules"]]
-            template.YearSchedules = [YearSchedule.from_json(**store)
-                                      for store in datastore["YearSchedules"]]
-            template.DomesticHotWaterSettings = [
+            t.DaySchedules = [DaySchedule(**store)
+                              for store in datastore["DaySchedules"]]
+            t.WeekSchedules = [WeekSchedule.from_json(**store)
+                               for store in datastore["WeekSchedules"]]
+            t.YearSchedules = [YearSchedule.from_json(**store)
+                               for store in datastore["YearSchedules"]]
+            t.DomesticHotWaterSettings = [
                 DomesticHotWaterSetting.from_json(**store)
                 for store in datastore["DomesticHotWaterSettings"]]
-            template.VentilationSettings = [
+            t.VentilationSettings = [
                 VentilationSetting.from_json(**store)
                 for store in datastore["VentilationSettings"]]
-            template.ZoneConditionings = [
+            t.ZoneConditionings = [
                 ZoneConditioning.from_json(**store)
                 for store in datastore["ZoneConditionings"]]
-            template.ZoneConstructionSets = [
+            t.ZoneConstructionSets = [
                 ZoneConstructionSet.from_json(
                     **store) for store in datastore["ZoneConstructionSets"]]
-            template.ZoneLoads = [ZoneLoad.from_json(**store)
-                                  for store in datastore["ZoneLoads"]]
-            template.Zones = [Zone.from_json(**store)
-                              for store in datastore["Zones"]]
-            template.BuildingTemplates = [
+            t.ZoneLoads = [ZoneLoad.from_json(**store)
+                           for store in datastore["ZoneLoads"]]
+            t.Zones = [Zone.from_json(**store)
+                       for store in datastore["Zones"]]
+            t.BuildingTemplates = [
                 BuildingTemplate.from_json(**store)
                 for store in datastore["BuildingTemplates"]]
 
-            return template
-        else:
-            return None
+            return t
 
     def to_json(self, path_or_buf=None, indent=2):
         """Writes the umi template to json format"""
@@ -957,7 +975,7 @@ def materials_opaque(idfs):
 
     # Fill nan values (nomass materials) with defaults
     materials_df = materials_df.fillna(
-        {'Thickness': 0.0127,  # half inch tichness
+        {'Thickness': 0.0127,  # half inch thickness
          'Density': 1,  # 1 kg/m3, smallest value umi allows
          'SpecificHeat': 100,  # 100 J/kg-K, smallest value umi allows
          'SolarAbsorptance': 0.7,  # default value

@@ -60,7 +60,7 @@ def test_download_and_load_bld_window(config):
 
     response = download_bld_window(u_factor=3.18, shgc=0.49, vis_trans=0.53,
                                    oauth_key=oauth_consumer_key, tolerance=0.05)
-    idf = ar.load_idf(response[0], as_dict=False)
+    idf = ar.load_idf(response[0])
 
     ws = WindowSetting.from_idf(idf=idf[0])
 

@@ -131,8 +131,8 @@ def test_to_json(test_template_withcache):
 
 
 def test_to_json_std(config):
-    files = glob.glob("tests/input_data/necb/*idf")
-    files = ar.copy_file(files)
+    files = glob.glob("tests/input_data/necb/*Office*idf")
+    files = ar.copy_file(files)[1:4]
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     a = ar.UmiTemplate.from_idf(files, wf)
     json = a.to_json()

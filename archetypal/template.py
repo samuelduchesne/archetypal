@@ -6,12 +6,14 @@
 ################################################################################
 
 import collections
+import logging as lg
 import random
 from enum import IntEnum
 
 import eppy.modeleditor
 import numpy as np
-from archetypal import object_from_idfs, Schedule, calc_simple_glazing
+
+from archetypal import object_from_idfs, Schedule, calc_simple_glazing, log
 
 created_obj = {}
 
@@ -129,6 +131,16 @@ class MaterialBase(UmiBase):
         else:
             raise NotImplementedError
 
+    def __hash__(self):
+        return hash((self.Density,
+                     self.EmbodiedCarbon,
+                     self.EmbodiedEnergy,
+                     ' '.join(map(str, self.SubstitutionRatePattern)),
+                     self.SubstitutionTimestep,
+                     self.TransportCarbon,
+                     self.TransportDistance,
+                     self.TransportEnergy))
+
 
 class GasMaterial(MaterialBase, metaclass=Unique):
     """
@@ -151,6 +163,25 @@ class GasMaterial(MaterialBase, metaclass=Unique):
         gas_type = kwargs.get('Name', None)
         gm.Type = gas_type
 
+        return gm
+
+    @classmethod
+    def from_idf(cls, idf, *args, **kwargs):
+        gms = idf.idfobjects['WindowMaterial:Gas'.upper()]
+        # returns Idf_MSequence
+
+        return [cls.from_ep_bunch(gm, *args, **kwargs) for gm in gms]
+
+    @classmethod
+    def from_ep_bunch(cls, ep_bunch, *args, **kwargs):
+        """
+
+        Args:
+            ep_bunch (ep_bunch):
+        """
+        type = ep_bunch.Gas_Type
+        name = ep_bunch.Name
+        gm = cls(Type=type.upper(), Name=name)
         return gm
 
     def to_json(self):
@@ -257,6 +288,60 @@ class GlazingMaterial(UmiBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
+
+    @classmethod
+    def from_idf(cls, idf, *args, **kwargs):
+        glazms = idf.idfobjects['WindowMaterial:Glazing'.upper()]
+
+        return [cls.from_ep_bunch(glazm, *args, **kwargs) for glazm in glazms]
+
+    @classmethod
+    def from_ep_bunch(cls, epbunch, *args, **kwargs):
+        # Get parameter values from ep_bunch
+        Name = epbunch.Name
+        Density = 2500
+        Conductivity = epbunch.Conductivity
+        Optical = epbunch.Optical_Data_Type
+        OpticalData = epbunch.Window_Glass_Spectral_Data_Set_Name
+        SolarTransmittance = epbunch.Solar_Transmittance_at_Normal_Incidence
+        SolarReflectanceFront = \
+            epbunch.Front_Side_Solar_Reflectance_at_Normal_Incidence
+        SolarReflectanceBack = \
+            epbunch.Back_Side_Solar_Reflectance_at_Normal_Incidence
+        VisibleTransmittance = epbunch.Visible_Transmittance_at_Normal_Incidence
+        VisibleReflectanceFront = \
+            epbunch.Front_Side_Visible_Reflectance_at_Normal_Incidence
+        VisibleReflectanceBack = \
+            epbunch.Back_Side_Visible_Reflectance_at_Normal_Incidence
+        IRTransmittance = epbunch.Infrared_Transmittance_at_Normal_Incidence
+        IREmissivityFront = epbunch.Front_Side_Infrared_Hemispherical_Emissivity
+        IREmissivityBack = epbunch.Back_Side_Infrared_Hemispherical_Emissivity
+        DirtFactor = \
+            epbunch.Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance
+        Type = None
+        EmbodiedEnergy = 0
+        EmbodiedEnergyStdDev = 0
+        EmbodiedCarbon = 0
+        EmbodiedCarbonStdDev = 0
+        Cost = 0.0
+        Life = 1
+        SubstitutionRatePattern = [0.2]
+        SubstitutionTimestep = 50
+        TransportCarbon = None
+        TransportDistance = None
+        TransportEnergy = 0
+
+        return cls(Density, Conductivity, Optical,
+                   OpticalData, SolarTransmittance,
+                   SolarReflectanceFront, SolarReflectanceBack,
+                   VisibleTransmittance, VisibleReflectanceFront,
+                   VisibleReflectanceBack, IRTransmittance,
+                   IREmissivityFront, IREmissivityBack, DirtFactor,
+                   Type, EmbodiedEnergy, EmbodiedEnergyStdDev,
+                   EmbodiedCarbon, EmbodiedCarbonStdDev, Cost, Life,
+                   SubstitutionRatePattern, SubstitutionTimestep,
+                   TransportCarbon, TransportDistance,
+                   TransportEnergy, Name=Name, *args, **kwargs)
 
 
 class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
@@ -863,13 +948,15 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         return bt
 
     @classmethod
-    def from_idf(cls, *args, **kwargs):
-        bt = cls(Core=None, Perimeter=None, Structure=None,
-                 Windows=None, **kwargs)
+    def from_idf(cls, idf, **kwargs):
+        name = idf.idfobjects['BUILDING'][0].Name
+        core = [Zone.from_ep_bunch(zone) for zone in idf.idfobjects['ZONE']]
+        perimeter = None
+        structure = None
+        windows = None
 
-        bt.zone_refs()
-        bt.windows()
-
+        bt = cls(Core=core, Perimeter=perimeter, Structure=structure,
+                 Windows=windows, Name=name, **kwargs)
         return bt
 
     def windows(self):
@@ -1190,6 +1277,14 @@ class Zone(UmiBase, metaclass=Unique):
         self.InternalMassExposedPerFloorArea = InternalMassExposedPerFloorArea
 
     @classmethod
+    def from_ep_bunch(cls, zone):
+        name = zone.Name
+        zone_constructions = ZoneConstructionSet.from_epbunch(zone)
+        z = cls(Name=name, Constructions=zone_constructions)
+
+        return z
+
+    @classmethod
     def from_idf(cls, *args, **kwargs):
         z = cls(*args, **kwargs)
         z.Zone_Names = kwargs.get('Zone_Names', None)
@@ -1334,6 +1429,16 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
                  IsPartitionAdiabatic=False, Ground=None,
                  IsGroundAdiabatic=False, Facade=None, IsFacadeAdiabatic=False,
                  **kwargs):
+        """
+
+        Args:
+            Facade (OpaqueConstruction):
+            Ground (OpaqueConstruction):
+            Partition (OpaqueConstruction):
+            Roof (OpaqueConstruction):
+            Slab (OpaqueConstruction):
+
+        """
         super(ZoneConstructionSet, self).__init__(*args, **kwargs)
         self.Slab = Slab
         self.IsSlabAdiabatic = IsSlabAdiabatic
@@ -1467,6 +1572,96 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         return data_dict
 
+    @classmethod
+    def from_epbunch(cls, zone):
+        name = zone.Name
+        # dispatch surfaces
+        facade, ground, partition, roof, slab = [], [], [], [], []
+        for surf in zone.zonesurfaces:
+            for f, g, p, r, s in ZoneConstructionSet.dispath_surfaces(surf,
+                                                                      zone):
+                facade.append(f)
+                ground.append(g)
+                partition.append(p)
+                roof.append(r)
+                slab.append(s)
+        z_set = cls(Facade=facade, Ground=ground, Partition=partition,
+                    Roof=roof, Slab=slab, Name=name)
+        return z_set
+
+    @classmethod
+    def dispath_surfaces(cls, surf, zone):
+        dispatch = {
+            ('Wall', 'Outdoors'): cls._do_facade,
+            ('Floor', 'Ground'): cls._do_ground,
+            ('Floor', 'Foundation'): cls._do_ground,
+            ('Floor', 'Surface'): cls._do_slab,
+            ('Floor', 'Adiabatic'): cls._do_slab,
+            ('Wall', 'Adiabatic'): cls._do_partition,
+            ('Wall', 'Surface'): cls._do_partition,
+            ('Wall', 'Zone'): cls._do_partition,
+            ('Wall', 'Ground'): cls._do_basement,
+            ('Roof', 'Outdoors'): cls._do_roof,
+            ('Ceiling', 'Adiabatic'): cls._do_slab,
+            ('Ceiling', 'Surface'): cls._do_slab,
+            ('Ceiling', 'Zone'): cls._do_slab,
+        }
+        a, b = surf.Surface_Type, surf.Outside_Boundary_Condition
+        try:
+            yield dispatch[a, b](surf), dispatch[a, b](surf), \
+                  dispatch[a, b](surf), dispatch[a, b](surf), \
+                  dispatch[a, b](surf)
+        except KeyError as e:
+            raise NotImplementedError(
+                "surface '%s' in zone '%s' not supported by surface dispatcher "
+                "with keys %s" % (surf.Name, zone.Name, e))
+
+    @staticmethod
+    def _do_facade(surf):
+        log('surface "%s" assigned as a Facade' % surf.Name, lg.DEBUG)
+        return OpaqueConstruction.from_epbunch(
+            surf.theidf.getobject('Construction'.upper(),
+                                  surf.Construction_Name))
+
+    @staticmethod
+    def _do_ground(surf):
+        log('surface "%s" assigned as a Ground' % surf.Name, lg.DEBUG,
+            name=surf.theidf.name)
+        return OpaqueConstruction.from_epbunch(
+            surf.theidf.getobject('Construction'.upper(),
+                                  surf.Construction_Name))
+
+    @staticmethod
+    def _do_partition(surf):
+        log('surface "%s" assigned as a Partition' % surf.Name, lg.DEBUG,
+            name=surf.theidf.name)
+        return OpaqueConstruction.from_epbunch(
+            surf.theidf.getobject('Construction'.upper(),
+                                  surf.Construction_Name))
+
+    @staticmethod
+    def _do_roof(surf):
+        log('surface "%s" assigned as a Roof' % surf.Name, lg.DEBUG,
+            name=surf.theidf.name)
+        return OpaqueConstruction.from_epbunch(
+            surf.theidf.getobject('Construction'.upper(),
+                                  surf.Construction_Name))
+
+    @staticmethod
+    def _do_slab(surf):
+        log('surface "%s" assigned as a Slab' % surf.Name, lg.DEBUG,
+            name=surf.theidf.name)
+        return OpaqueConstruction.from_epbunch(
+            surf.theidf.getobject('Construction'.upper(),
+                                  surf.Construction_Name))
+
+    @staticmethod
+    def _do_basement(surf):
+        log('surface "%s" ignored because basement facades are not supported' %
+            surf.Name, lg.WARNING,
+            name=surf.theidf.name)
+
+
 
 class ConstructionBase(UmiBase):
     def __init__(self, AssemblyCarbon=0, AssemblyCost=0, AssemblyEnergy=0,
@@ -1528,50 +1723,41 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return oc
 
     @classmethod
+    def from_epbunch(cls, epbunch):
+        # from the construction
+        name = epbunch.Name
+        c = cls(Name=name)
+        c.Layers = c.layers(epbunch)
+        return c
+
+    @classmethod
     def from_idf(cls, *args, **kwargs):
         oc = cls(*args, **kwargs)
-
-        oc.Layers = oc.layers()
+        c = oc.idf.getobject('CONSTRUCTION', oc.Name)
+        oc.Layers = oc.layers(c)
 
         return oc
 
-    def layers(self):
+    def layers(self, c):
         """Retrieve layers for the OpaqueConstruction"""
-        self.type_surface()
-        c = self.idf.getobject('CONSTRUCTION', self.Name)
         layers = []
+        field_idd = c.getfieldidd('Outside_Layer')
+        validobjects = field_idd['validobjects']  # plausible layer types
         for layer in c.fieldvalues[2:]:
-            # Loop through the layers from the outside layer towards the
-            # indoor layers and get the material they are made of.
-            material = self.idf.getobject('MATERIAL', layer)
-            if material is None:
-                # if the material was not found, mostevidently means it is a
-                # nomass layer.
-                material = self.idf.getobject('MATERIAL:NOMASS', layer)
-
-                # Nomass layers are not supported by umi. Create a fake half
-                # inch thickness and calculate conductivity using the thermal
-                # resistance.
-                thickness = 0.0127  # half inch layer tickness
-                conductivity = thickness / material.Thermal_Resistance
-                specific_heat = 100  # The lowest possible value
-            else:
-                # This is a regular mass layer. Get its properties
-                thickness = material.Thickness
-                conductivity = material.Conductivity
-                specific_heat = material.Specific_Heat
-
-            # Create the OpaqueMaterial and append to the list of layers
-            layers.append({'Material': OpaqueMaterial(Name=material.Name,
-                                                      Roughness=material.Roughness,
-                                                      SolarAbsorptance=material.Solar_Absorptance,
-                                                      SpecificHeat=specific_heat,
-                                                      Type='Material',
-                                                      Conductivity=conductivity,
-                                                      ThermalEmittance=material.Thermal_Absorptance,
-                                                      VisibleAbsorptance=material.Visible_Absorptance,
-                                                      idf=self.idf),
-                           'Thickness': thickness})
+            # Iterate over the constructions layers
+            found = False
+            for key in validobjects:
+                try:
+                    material = c.theidf.getobject(key, layer)
+                    o = OpaqueMaterial.from_ep_bunch(material)
+                    found = True
+                except AttributeError:
+                    pass
+                else:
+                    layers.append({'Material': o,
+                                   'Thickness': o.Thickness})
+            if not found:
+                raise AttributeError("%s material not found in IDF" % layer)
         return layers
 
     def type_surface(self):
@@ -1640,8 +1826,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
     VariableConductivityProperties, VisibleAbsorptance
     """
 
-    def __init__(self, *args,
-                 Conductivity,
+    def __init__(self, Conductivity,
                  Roughness,
                  SolarAbsorptance,
                  SpecificHeat,
@@ -1657,7 +1842,8 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                  EmbodiedCarbon=0.45,
                  EmbodiedEnergy=0,
                  MoistureDiffusionResistance=50,
-                 **kwargs):
+                 Thickness=None,
+                 *args, **kwargs):
         super(OpaqueMaterial, self).__init__(*args, **kwargs)
 
         self.Conductivity = Conductivity
@@ -1676,6 +1862,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.EmbodiedCarbon = EmbodiedCarbon
         self.EmbodiedEnergy = EmbodiedEnergy
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
+        self.Thickness = Thickness
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -1705,6 +1892,57 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
+
+    @classmethod
+    def from_idf(cls, idf, *args, **kwargs):
+        all_ = []
+        all_.extend(idf.idfobjects['Material'.upper()])
+        all_.extend(idf.idfobjects['Material:NoMass'.upper()])
+
+        return [cls.from_ep_bunch(om, *args, **kwargs) for om in all_]
+
+    @classmethod
+    def from_ep_bunch(cls, epbunch, *args, **kwargs):
+        if epbunch.key.upper() == 'MATERIAL':
+            # do MATERIAL
+            Name = epbunch.Name
+            Conductivity = epbunch.Conductivity
+            Roughness = epbunch.Roughness
+            SolarAbsorptance = epbunch.Solar_Absorptance
+            SpecificHeat = epbunch.Specific_Heat
+            ThermalEmittance = epbunch.Thermal_Absorptance
+            VisibleAbsorptance = epbunch.Visible_Absorptance
+            Thickness = epbunch.Thickness
+            return cls(Conductivity,
+                       Roughness,
+                       SolarAbsorptance,
+                       SpecificHeat,
+                       ThermalEmittance,
+                       VisibleAbsorptance,
+                       Thickness=Thickness,
+                       Name=Name,
+                       *args, **kwargs)
+        elif epbunch.key.upper() == 'MATERIAL:NOMASS':
+            # do MATERIAL:NOMASS
+            Name = epbunch.Name
+            Thickness = 0.0127  # half inch thickness
+            Conductivity = Thickness / epbunch.Thermal_Resistance
+            Roughness = epbunch.Roughness
+            SolarAbsorptance = epbunch.Solar_Absorptance
+            ThermalEmittance = epbunch.Thermal_Absorptance
+            VisibleAbsorptance = epbunch.Visible_Absorptance
+            Density = 1  # 1 kg/m3, smallest value umi allows
+            SpecificHeat = 100  # 100 J/kg-K, smallest value umi allows
+            return cls(Conductivity,
+                       Roughness,
+                       SolarAbsorptance,
+                       SpecificHeat,
+                       ThermalEmittance,
+                       VisibleAbsorptance,
+                       Thickness=Thickness,
+                       Density=Density,
+                       Name=Name,
+                       *args, **kwargs)
 
 
 class WindowType(IntEnum):

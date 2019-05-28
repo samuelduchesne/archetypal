@@ -87,3 +87,13 @@ def test_run_olderv_problematic(config, fresh_start):
     file = ar.copy_file([file])[0]
     ar.run_eplus(file, wf, annual=True,
                  expandobjects=True, verbose='q', prep_outputs=True)
+
+
+def test_run_eplus_from_idf(config):
+    file = 'tests/input_data/regular/5ZoneNightVent1.idf'
+    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+
+    idf = ar.load_idf(file, weather_file=wf)
+    sql = idf.run_eplus()
+
+    assert sql

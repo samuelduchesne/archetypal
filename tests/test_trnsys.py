@@ -14,13 +14,12 @@ def round_up(n, decimals=0):
     return math.ceil(n * multiplier) / multiplier
 
 
-@pytest.mark.win32
 def test_trnbuild_from_idf(config):
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
-    files = ["ASHRAE90.1_RetailStandalone_STD2004_Rochester.idf",
+    files = ["ASHRAE90.1_RetailStripmall_STD2004_Rochester.idf",
              "NECB 2011 - "
-                                                           "Small Office.idf",
+             "Small Office.idf",
              "NECB 2011 - "
              "Warehouse.idf"]
     idf_file = os.path.join(file_upper_path, files[0])

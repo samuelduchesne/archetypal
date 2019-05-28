@@ -434,7 +434,8 @@ class Schedule(object):
                                 for_condition = how
                             else:
                                 how = self.field_set(value, slicer_)
-                                for_condition.loc[how] = True
+                                if not how is None:
+                                    for_condition.loc[how] = True
                     elif value.lower() == 'allotherdays':
                         # Apply condition to slice
                         how = self.field_set(value, slicer_)

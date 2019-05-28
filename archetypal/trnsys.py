@@ -487,6 +487,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
             if *return_dck* is True.
 
     """
+
     # Check if cache exists
     start_time = time.time()
     cache_filename = hash_file(idf_file)
@@ -680,8 +681,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     if ground_surfs:
         ground = ground_surfs[0].coords
     else:
-        ground = [tuple([0, 0, 0]), tuple([1, 0, 0]), tuple([0, 1, 0]),
-                  tuple([1, 1, 0])]
+        ground = [(45,28,0), (45,4,0), (4,4,0), (4,28,0)]
 
     # Polygon from vector's ground surface
     poly_ground = Polygon3D(ground)

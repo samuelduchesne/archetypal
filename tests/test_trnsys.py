@@ -17,7 +17,7 @@ def round_up(n, decimals=0):
 def test_trnbuild_from_idf(config):
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
-    files = ["ASHRAE90.1_RetailStripmall_STD2004_Rochester.idf",
+    files = ["ASHRAE90.1_OutPatientHealthCare_STD2004_Rochester.idf",
              "NECB 2011 - "
              "Small Office.idf",
              "NECB 2011 - "
@@ -35,7 +35,7 @@ def test_trnbuild_from_idf(config):
                    'tolerance': 0.05, 'ordered': True}
 
     convert_idf_to_trnbuild(idf_file=idf_file[0], window_lib=window_filepath,
-                            return_idf=True, **kwargs_dict)
+                            **kwargs_dict)
 
 
 @pytest.mark.win32

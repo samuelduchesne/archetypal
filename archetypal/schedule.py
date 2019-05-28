@@ -509,6 +509,12 @@ class Schedule(object):
         """dealing with a Field-Set (Through, For, Interpolate,
         # Until, Value) and return the parsed string"""
 
+        values_sets = ['weekdays', 'weekends', 'alldays', 'allotherdays',
+                       'sunday', 'monday', 'tuesday', 'wednesday',
+                       'thursday', 'friday', 'saturday', 'summerdesignday',
+                       'winterdesignday', 'holiday']
+        keywords = None
+
         if 'through' in field.lower():
             # deal with through
             if ':' in field.lower():
@@ -523,16 +529,16 @@ class Schedule(object):
                     sch=self.schName, field=field)
                 raise NotImplementedError(msg)
         elif 'for' in field.lower():
+            keywords = [word for word in values_sets if word in field.lower()]
             if ':' in field.lower():
                 # parse colon
                 f_set, statement = field.split(':')
                 value = statement.strip()
                 hour = None
                 minute = None
-            elif 'designday' in field.lower():
+            elif keywords:
                 # get epBunch of the sizing period
-                statement = [s for s in field.split() if "designday" in
-                             s.lower()][0]
+                statement = " ".join(keywords)
                 f_set = [s for s in field.split() if "for" in
                          s.lower()][0]
                 value = statement.strip()
@@ -998,12 +1004,10 @@ class Schedule(object):
             return lambda x: x.index.dayofweek == 5
         elif field.lower() == 'summerdesignday':
             # return design_day(self, field)
-            field = 'summerdesignday'
-            return self.design_day(field, slicer_)
+            return None
         elif field.lower() == 'winterdesignday':
             # return design_day(self, field)
-            field = 'winterdesignday'
-            return self.design_day(field, slicer_)
+            return None
         elif field.lower() == 'holiday' or field.lower() == 'holidays':
             field = 'holiday'
             return self.special_day(field, slicer_)

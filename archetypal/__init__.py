@@ -12,8 +12,7 @@ ep_version = '8-9-0'
 
 from .utils import *
 from .simple_glazing import *
-from .idfclass import IDF
-from .idf import *
+from .idfclass import *
 from .schedule import Schedule
 from .dataportal import *
 from .plot import *

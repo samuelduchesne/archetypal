@@ -4,8 +4,7 @@ import os
 import pytest
 
 from archetypal import convert_idf_to_trnbuild, parallel_process, \
-    parse_window_lib, \
-    choose_window, trnbuild_idf, copy_file
+    trnbuild_idf, copy_file
 
 
 # Function round to hundreds
@@ -20,7 +19,7 @@ def test_trnbuild_from_idf(config):
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
     files = ["ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
              "NECB 2011 - "
-                                                           "Small Office.idf",
+             "Small Office.idf",
              "NECB 2011 - "
              "Warehouse.idf"]
     idf_file = os.path.join(file_upper_path, files[0])

@@ -1022,7 +1022,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
             radFract = float(radFract)
 
         # Find the the total power of the people gain
-        power = Schedule(sch_name='sc_000005', idf=idf).max
+        power = Schedule(sch_name=peoples[i].Activity_Level_Schedule_Name,
+                         idf=idf).max
         # Write gain characteristics into lines
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + str(
@@ -1031,22 +1032,31 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     # Writing LIGHT gains infos to lines
     for i in range(0, len(lights)):
-        # Write gain name in lines
-        lines.insert(gainNum + 1, 'GAIN LIGHT' + '_' + lights[i].Name + '\n')
         # Determine if gain is absolute or relative and write it into lines
         if lights[i].Design_Level_Calculation_Method == "LightingLevel":
             areaMethod = "ABSOLUTE"
-            power = round(float(lights[i].Lighting_Level), 4)
+            try:
+                power = round(float(lights[i].Lighting_Level), 4)
+            except Exception:
+                log(
+                    "Could not find the Light Power Density in the IDF file",
+                    lg.WARNING)
+                continue
         elif lights[i].Design_Level_Calculation_Method == "Watts/Area":
             areaMethod = "AREA_RELATED"
-            power = round(float(lights[i].Watts_per_Zone_Floor_Area), 4)
+            try:
+                power = round(float(lights[i].Watts_per_Zone_Floor_Area), 4)
+            except Exception:
+                log(
+                    "Could not find the Light Power Density in the IDF file",
+                    lg.WARNING)
+                continue
         else:
-            areaMethod = "AREA_RELATED"
-            power = 0
             log(
                 "Could not find the Light Power Density, cause depend on the "
                 "number of peoples (Watts/Person)",
                 lg.WARNING)
+            continue
 
         # Find the radiant fractions
         radFract = lights[i].Fraction_Radiant
@@ -1059,6 +1069,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         else:
             radFract = float(radFract)
 
+        # Write gain from light in lines
+        lines.insert(gainNum + 1,
+                     'GAIN LIGHT' + '_' + lights[i].Name + '\n')
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + str(
             round(power * radFract, 3)) + ' : HUMIDITY=0 : ELPOWERFRAC=1 : '
@@ -1066,23 +1079,31 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     # Writing EQUIPMENT gains infos to lines
     for i in range(0, len(equipments)):
-        # Write gain name in lines
-        lines.insert(gainNum + 1,
-                     'GAIN EQUIPMENT' + '_' + equipments[i].Name + '\n')
         # Determine if gain is absolute or relative and write it into lines
         if equipments[i].Design_Level_Calculation_Method == "EquipmentLevel":
             areaMethod = "ABSOLUTE"
-            power = round(float(equipments[i].Design_Level), 4)
+            try:
+                power = round(float(equipments[i].Design_Level), 4)
+            except Exception:
+                log(
+                    "Could not find the Light Power Density in the IDF file",
+                    lg.WARNING)
+                continue
         elif equipments[i].Design_Level_Calculation_Method == "Watts/Area":
             areaMethod = "AREA_RELATED"
-            power = round(float(equipments[i].Watts_per_Zone_Floor_Area), 4)
+            try:
+                power = round(float(equipments[i].Watts_per_Zone_Floor_Area), 4)
+            except Exception:
+                log(
+                    "Could not find the Light Power Density in the IDF file",
+                    lg.WARNING)
+                continue
         else:
-            areaMethod = "AREA_RELATED"
-            power = 0
             log(
                 "Could not find the Equipment Power Density, cause depend on "
                 "the number of peoples (Watts/Person)",
                 lg.WARNING)
+            continue
 
         # Find the radiant fractions
         radFract = equipments[i].Fraction_Radiant
@@ -1095,6 +1116,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         else:
             radFract = float(radFract)
 
+        # Write gain from equipment in lines
+        lines.insert(gainNum + 1,
+                     'GAIN EQUIPMENT' + '_' + equipments[i].Name + '\n')
         lines.insert(gainNum + 2, ' CONVECTIVE=' + \
                      str(round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + \
                      str(round(power * radFract, 3)) + \

@@ -8,7 +8,7 @@ from archetypal import copy_file, UmiTemplate, settings
 
 @pytest.mark.xfail(raises=AssertionError)
 def test_template_to_template(config):
-    """load the json into UmiTemplate object, then convert bacl to json and
+    """load the json into UmiTemplate object, then convert back to json and
     compare"""
     import json
     file = 'tests/input_data/umi_samples/BostonTemplateLibrary_2.json'

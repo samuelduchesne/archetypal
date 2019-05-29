@@ -26,7 +26,8 @@ from archetypal import log, settings, EnergyPlusProcessError, cd
 
 
 class IDF(geomeppy.IDF):
-    """Wrapper over the eppy.modeleditor.IDF class
+    """Wrapper over the geomeppy.IDF class and subsequently the
+    eppy.modeleditor.IDF class
 
     """
 

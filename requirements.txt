@@ -1,3 +1,4 @@
+networkx
 shapely
 geomeppy
 matplotlib>=2.1

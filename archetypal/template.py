@@ -15,7 +15,7 @@ import networkx
 import numpy as np
 
 from archetypal import object_from_idfs, Schedule, calc_simple_glazing, log, \
-    save_and_show
+    save_and_show, IDF
 
 created_obj = {}
 
@@ -45,6 +45,19 @@ class UmiBase(object):
                  DataSource=None,
                  sql=None,
                  **kwargs):
+        """The UmiBase class handles common properties to all Template objects.
+
+        Args:
+            Name (str): Unique, the name of the object.
+            idf (IDF): The idf object associated to this object.
+            Category (str): Group objects by assigning the same category
+                identifier. Thies can be any string.
+            Comments (str): A comment displayed in the UmiTemplate.
+            DataSource (str): A description of the datasource of the object.
+                This helps identify from which data is the current object
+                created.
+            sql (dict of pandas.DataFrame):
+        """
         super(UmiBase, self).__init__()
         self.Name = Name
         self.idf = idf
@@ -924,6 +937,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             Core (Zone, optional)):
         """
         super(BuildingTemplate, self).__init__(*args, **kwargs)
+        self._zone_graph = None
+        self.Zones = None
         self.PartitionRatio = PartitionRatio
         self.Lifespan = Lifespan
         self.Core = Core
@@ -933,119 +948,66 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
     @property
     def zone_graph(self):
-        idf = self.idf
+        if self._zone_graph is None:
+            idf = self.idf
 
-        G = networkx.Graph(name=idf.name)
+            G = ZoneGraph(name=idf.name)
 
-        def is_core(zone):
-            # if all surfaces don't have boundary condition == "Outdoors"
-            return any([True if s.Outside_Boundary_Condition.lower() ==
-                                'outdoors' else False for s in
-                        zone.zonesurfaces])
+            def is_core(zone):
+                # if all surfaces don't have boundary condition == "Outdoors"
+                return any([True if s.Outside_Boundary_Condition.lower() ==
+                                    'outdoors' else False for s in
+                            zone.zonesurfaces])
 
-        for zone in idf.idfobjects['ZONE']:
+            for zone in idf.idfobjects['ZONE']:
 
-            G.add_node(zone.Name, epbunch=zone, core=is_core(zone))
+                G.add_node(zone.Name, epbunch=zone, core=is_core(zone))
 
-            for surface in zone.zonesurfaces:
-                obco_name = surface.Outside_Boundary_Condition_Object
-                field_idd = surface.getfieldidd(
-                    'Outside_Boundary_Condition_Object')
-                validobjects = field_idd['validobjects']
+                for surface in zone.zonesurfaces:
+                    obco_name = surface.Outside_Boundary_Condition_Object
+                    field_idd = surface.getfieldidd(
+                        'Outside_Boundary_Condition_Object')
+                    validobjects = field_idd['validobjects']
 
-                for key in validobjects:
-                    obco_ = idf.getobject(key, obco_name)
-                    if obco_:
-                        epbunch = idf.getobject('ZONE', obco_.Zone_Name)
-                        if epbunch:
-                            G.add_node(epbunch.Name, epbunch=epbunch,
-                                       core=is_core(epbunch))
-                            G.add_edge(zone.Name, epbunch.Name)
-                            break
+                    for key in validobjects:
+                        obco_ = idf.getobject(key, obco_name)
+                        if obco_:
+                            epbunch = idf.getobject('ZONE', obco_.Zone_Name)
+                            if epbunch:
+                                G.add_node(epbunch.Name, epbunch=epbunch,
+                                           core=is_core(epbunch))
+                                G.add_edge(zone.Name, epbunch.Name)
+                                break
+            log(networkx.info(G), lg.DEBUG)
+            self._zone_graph = G
+        return self._zone_graph
 
-        log(networkx.info(G), lg.DEBUG)
-        return G
-
-    def plot(self, fig_height=None, fig_width=6, show=True, axis_off=True,
-             cmap='plasma', save=False, close=False, dpi=300,
-             file_format='png', view_angle=30, filename=None, **kwargs):
+    def view_building(self, fig_height=None, fig_width=6, ax=None, show=True,
+                      axis_off=False, cmap='plasma', save=False, close=False,
+                      dpi=300, file_format='png', view_angle=30, filename=None,
+                      opacity=0.5):
+        from geomeppy.view_geometry import _get_collections, _get_limits
         from mpl_toolkits.mplot3d import Axes3D
         import matplotlib.pyplot as plt
-        import numpy as np
 
-        def avg(zone):
-            X, Y, Z, dem = 0, 0, 0, 0
-            from geomeppy.geom.polygons import Polygon3D, Vector3D
-            from geomeppy.recipes import translate_coords
-            ggr = zone.theidf.idfobjects["GLOBALGEOMETRYRULES"][0]
+        if fig_height is None:
+            fig_height = fig_width
 
-            for surface in zone.zonesurfaces:
-                dem += 1
-                if ggr.Coordinate_System.lower() == 'relative':
-                    zone = zone.theidf.getobject('ZONE', surface.Zone_Name)
-                    poly3d = Polygon3D(surface.coords)
-                    origin = (zone.X_Origin, zone.Y_Origin, zone.Z_Origin)
-                    coords = translate_coords(poly3d, Vector3D(*origin))
-                    poly3d = Polygon3D(coords)
-                else:
-                    poly3d = Polygon3D(surface.coords)
-                x, y, z = poly3d.centroid
-                X += x
-                Y += y
-                Z += z
-            return X / dem, Y / dem, Z / dem
-
-        G = self.zone_graph
-
-        # Get node positions
-        pos = {e[0]: avg(e[1]) for e in G.nodes(data='epbunch')}
-
-        # Get the maximum number of edges adjacent to a single node
-        edge_max = max([G.degree(i) for i in G.nodes])
-
-        # Define color range proportional to number of edges adjacent to a
-        # single node
-        colors = {i: plt.cm.get_cmap(cmap)(G.degree(i) / edge_max) for i in
-                  G.nodes}
-
-        # 3D network plot
-        with plt.style.context(('ggplot')):
-            if fig_height is None:
-                fig_height = fig_width
-
+        if ax:
+            fig = plt.gcf()
+        else:
             fig = plt.figure(figsize=(fig_width, fig_height), dpi=dpi)
             ax = Axes3D(fig)
 
-            # Loop on the pos dictionary to extract the x,y,z coordinates of
-            # each node
-            for key, value in pos.items():
-                xi = value[0]
-                yi = value[1]
-                zi = value[2]
+        collections = _get_collections(self.idf, opacity=opacity)
+        for c in collections:
+            ax.add_collection3d(c)
 
-                # Scatter plot
-                ax.scatter(xi, yi, zi, color=colors[key], s=20 + 20 * G.degree(
-                    key), edgecolors='k', alpha=0.7)
-
-            # Loop on the list of edges to get the x,y,z, coordinates of the
-            # connected nodes
-            # Those two points are the extrema of the line to be plotted
-            for i, j in enumerate(G.edges()):
-                x = np.array((pos[j[0]][0], pos[j[1]][0]))
-                y = np.array((pos[j[0]][1], pos[j[1]][1]))
-                z = np.array((pos[j[0]][2], pos[j[1]][2]))
-
-                # Plot the connecting lines
-                ax.plot(x, y, z, c='black', alpha=0.5)
-
-        # Set the initial view
-        ax.view_init(30, view_angle)
-
-        # Hide the axes
-        ax.set_axis_off()
-
-        if filename is None:
-            filename = 'unnamed'
+        # calculate and set the axis limits
+        limits = _get_limits(idf=self.idf)
+        ax.set_xlim(limits["x"])
+        ax.set_ylim(limits["y"])
+        ax.set_zlim(limits["z"])
 
         fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
                                 close=close, filename=filename,
@@ -1862,7 +1824,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
         return oc
 
-    def layers(self, c):
+    @staticmethod
+    def layers(c):
         """Retrieve layers for the OpaqueConstruction"""
         layers = []
         field_idd = c.getfieldidd('Outside_Layer')
@@ -2310,6 +2273,166 @@ class WindowConstruction(UmiBase, metaclass=Unique):
                     material_layer
                 )
         return layers
+
+
+class ZoneGraph(networkx.Graph):
+    """
+    Base class for undirected graphs.
+
+    A Graph stores nodes and edges with optional data, or attributes.
+
+    Graphs hold undirected edges.  Self loops are allowed but multiple
+    (parallel) edges are not.
+
+    Nodes can be arbitrary (hashable) Python objects with optional
+    key/value attributes. By convention `None` is not used as a node.
+
+    Edges are represented as links between nodes with optional
+    key/value attributes.
+    """
+
+    def __init__(self, incoming_graph_data=None, **attr):
+        """Initialize a graph with edges, name, or graph attributes.
+
+        Wrapper around the :class:`networkx.classes.graph.Graph` class.
+
+        Args:
+            incoming_graph_data : input graph (optional, default: None)
+                Data to initialize graph. If None (default) an empty graph is
+                created.  The data can be an edge list, or any NetworkX graph
+                object.  If the corresponding optional Python packages are
+                installed the data can also be a NumPy matrix or 2d ndarray,
+                a SciPy sparse matrix, or a PyGraphviz graph.
+            attr : keyword arguments, optional (default= no attributes)
+                Attributes to add to graph as key=value pairs.
+        """
+        super(ZoneGraph, self).__init__(incoming_graph_data=incoming_graph_data,
+                                        **attr)
+
+    def plot_graph(self, fig_height=None, fig_width=6, save=False, show=True,
+                   close=False, ax=None, axis_off=False, cmap='plasma', dpi=300,
+                   file_format='png', azim=-60, elev=30, proj_type='persp',
+                   filename=None):
+        """Plot the :class:`archetypal.template.ZoneGraph` in a 3D plot.
+
+        The size of the node is relative to its
+        :func:`networkx.Graph.degree`. The node degree is the number of edges
+        adjacent to the node.
+
+
+
+        Args:
+            fig_height (float): matplotlib figure height in inches.
+            fig_width (float): matplotlib figure width in inches.
+            save (bool): if True, save the figure as an image file to disk.
+            show (bool): if True, show the figure.
+            close (bool): close the figure (only if show equals False) to
+                prevent display
+            ax (matplotlib.axes._axes.Axes, optional): An existing axes
+                object on which to plot this graph.
+            axis_off (bool): If True, turn off the matplotlib axis.
+            cmap (str): The name a registered
+                :class:`matplotlib.colors.Colormap`.
+            dpi (int): the resolution of the image file if saving.
+            file_format (str): the format of the file to save (e.g., 'jpg',
+                'png', 'svg', 'pdf')
+            azim (float): Azimuthal viewing angle, defaults to -60.
+            elev (float): Elevation viewing angle, defaults to 30.
+            proj_type (str): Type of projection, accepts 'persp' and 'ortho'.
+            filename (str): the name of the file if saving.
+
+        Returns:
+            fig, ax: fig, ax
+
+        """
+        from mpl_toolkits.mplot3d import Axes3D
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        def avg(zone):
+            X, Y, Z, dem = 0, 0, 0, 0
+            from geomeppy.geom.polygons import Polygon3D, Vector3D
+            from geomeppy.recipes import translate_coords
+
+            ggr = zone.theidf.idfobjects["GLOBALGEOMETRYRULES"][0]
+
+            for surface in zone.zonesurfaces:
+                dem += 1
+                if ggr.Coordinate_System.lower() == 'relative':
+                    zone = zone.theidf.getobject('ZONE', surface.Zone_Name)
+                    poly3d = Polygon3D(surface.coords)
+                    origin = (zone.X_Origin, zone.Y_Origin, zone.Z_Origin)
+                    coords = translate_coords(poly3d, Vector3D(*origin))
+                    poly3d = Polygon3D(coords)
+                else:
+                    poly3d = Polygon3D(surface.coords)
+                x, y, z = poly3d.centroid
+                X += x
+                Y += y
+                Z += z
+            return X / dem, Y / dem, Z / dem
+
+        # Get node positions in a dictionary
+        pos = {e[0]: avg(e[1]) for e in self.nodes(data='epbunch')}
+
+        # Get the maximum number of edges adjacent to a single node
+        edge_max = max([self.degree(i) for i in self.nodes])
+
+        # Define color range proportional to number of edges adjacent to a
+        # single node
+        colors = {i: plt.cm.get_cmap(cmap)(self.degree(i) / edge_max) for i in
+                  self.nodes}
+
+        # 3D network plot
+        with plt.style.context(('ggplot')):
+            if fig_height is None:
+                fig_height = fig_width
+
+            if ax:
+                fig = plt.gcf()
+            else:
+                fig = plt.figure(figsize=(fig_width, fig_height), dpi=dpi)
+                ax = Axes3D(fig)
+
+            # Loop on the pos dictionary to extract the x,y,z coordinates of
+            # each node
+            for key, value in pos.items():
+                xi = value[0]
+                yi = value[1]
+                zi = value[2]
+
+                # Scatter plot
+                ax.scatter(xi, yi, zi, color=colors[key],
+                           s=20 + 20 * self.degree(
+                               key), edgecolors='k', alpha=0.7)
+
+            # Loop on the list of edges to get the x,y,z, coordinates of the
+            # connected nodes
+            # Those two points are the extrema of the line to be plotted
+            for i, j in enumerate(self.edges()):
+                x = np.array((pos[j[0]][0], pos[j[1]][0]))
+                y = np.array((pos[j[0]][1], pos[j[1]][1]))
+                z = np.array((pos[j[0]][2], pos[j[1]][2]))
+
+                # Plot the connecting lines
+                ax.plot(x, y, z, c='black', alpha=0.5)
+
+        # Set the initial view
+        ax.view_init(elev, azim)
+        ax.set_proj_type(proj_type)
+
+        # Hide the axes
+        if axis_off:
+            ax.set_axis_off()
+
+        if filename is None:
+            filename = 'unnamed'
+
+        fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
+                                close=close, filename=filename,
+                                file_format=file_format, dpi=dpi,
+                                axis_off=axis_off, extent=None)
+        return fig, ax
 
 
 def label_surface(row):

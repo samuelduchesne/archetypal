@@ -41,7 +41,7 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
         close (bool): close the figure (only if show equals False) to prevent
             display
         filename (string): the name of the file to save
-        file_format (string): the format of the file to save (e.g., 'jpg',
+        file_format (str): the format of the file to save (e.g., 'jpg',
             'png', 'svg')
         dpi (int): the resolution of the image file if saving (Dots per inch)
         axis_off (bool): if True matplotlib axis was turned off by plot_graph so

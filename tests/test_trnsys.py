@@ -4,8 +4,7 @@ import os
 import pytest
 
 from archetypal import convert_idf_to_trnbuild, parallel_process, \
-    parse_window_lib, \
-    choose_window, trnbuild_idf, copy_file
+    trnbuild_idf, copy_file
 
 
 # Function round to hundreds

@@ -14,15 +14,14 @@ import subprocess
 import sys
 import time
 
-from tqdm import tqdm
 import numpy as np
 import pandas as pd
 from eppy import modeleditor
 from geomeppy.geom.polygons import Polygon3D
+from tqdm import tqdm
 
-from archetypal import log, settings, Schedule, load_idf, checkStr, \
-    check_unique_name, angle, load_idf_object_from_cache, \
-    hash_file
+from archetypal import log, settings, Schedule, checkStr, \
+    check_unique_name, angle, load_idf, load_idf_object_from_cache, hash_file
 
 
 def clear_name_idf_objects(idfFile):
@@ -1028,7 +1027,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + str(
             round(power * radFract, 3)) + ' : HUMIDITY=0.066 : ELPOWERFRAC=0 '
-                                          ': ' + areaMethod + ' : CATEGORY=PEOPLE\n')
+                                          ': ' + areaMethod + ' : '
+                                                              'CATEGORY=PEOPLE\n')
 
     # Writing LIGHT gains infos to lines
     for i in range(0, len(lights)):

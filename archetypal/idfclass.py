@@ -249,6 +249,41 @@ class IDF(eppy.modeleditor.IDF):
             else:
                 return os.path.basename(self.idfname)
 
+    def rename(self, objkey, objname, newname):
+        """rename all the references to this objname
+
+        Function comes from eppy.modeleditor and was modify to compare
+        the name to rename as a lower string
+        (see idfobject[idfobject.objls[findex]].lower() == objname.lower())
+
+        Args:
+            objkey (EpBunch): EpBunch we want to rename and rename all the
+                occurrences where this object is in the IDF file
+            objname (str): The name of the EpBunch to rename
+            newname (str): New name used to rename the EpBunch
+
+        Returns:
+            theobject (EpBunch): The IDF objects renameds
+
+        """
+
+        refnames = eppy.modeleditor.getrefnames(self, objkey)
+        for refname in refnames:
+            objlists = eppy.modeleditor.getallobjlists(self, refname)
+            # [('OBJKEY', refname, fieldindexlist), ...]
+            for robjkey, refname, fieldindexlist in objlists:
+                idfobjects = self.idfobjects[robjkey]
+                for idfobject in idfobjects:
+                    for findex in fieldindexlist:  # for each field
+                        if idfobject[idfobject.objls[findex]].lower() == \
+                                objname.lower():
+                            idfobject[idfobject.objls[findex]] = newname
+        theobject = self.getobject(objkey, objname)
+        fieldname = [item for item in theobject.objls if item.endswith('Name')][
+            0]
+        theobject[fieldname] = newname
+        return theobject
+
 
 def object_from_idfs(idfs, ep_object, first_occurrence_only=False,
                      processors=1):

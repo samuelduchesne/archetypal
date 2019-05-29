@@ -91,7 +91,7 @@ def clear_name_idf_objects(idfFile):
                     old_name_list.append(old_name)
 
                     # Changing the name in the IDF object
-                    modeleditor.rename(idfFile, obj, old_name, new_name)
+                    idfFile.rename(obj, old_name, new_name)
                 except:
                     pass
             else:

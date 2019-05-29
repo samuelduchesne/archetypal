@@ -2439,27 +2439,31 @@ class ZoneGraph(networkx.Graph):
         import numpy as np
 
         def avg(zone):
-            X, Y, Z, dem = 0, 0, 0, 0
+            """calculate the zone centroid coordinates"""
+            x_, y_, z_, dem = 0, 0, 0, 0
             from geomeppy.geom.polygons import Polygon3D, Vector3D
             from geomeppy.recipes import translate_coords
 
             ggr = zone.theidf.idfobjects["GLOBALGEOMETRYRULES"][0]
 
             for surface in zone.zonesurfaces:
-                dem += 1
+                dem += 1  # Counter for average calc at return
                 if ggr.Coordinate_System.lower() == 'relative':
+                    # add zone origin to surface coordinates and create
+                    # Polygon3D from updated coords.
                     zone = zone.theidf.getobject('ZONE', surface.Zone_Name)
                     poly3d = Polygon3D(surface.coords)
                     origin = (zone.X_Origin, zone.Y_Origin, zone.Z_Origin)
                     coords = translate_coords(poly3d, Vector3D(*origin))
                     poly3d = Polygon3D(coords)
                 else:
+                    # Polygon3D from surface coords
                     poly3d = Polygon3D(surface.coords)
                 x, y, z = poly3d.centroid
-                X += x
-                Y += y
-                Z += z
-            return X / dem, Y / dem, Z / dem
+                x_ += x
+                y_ += y
+                z_ += z
+            return x_ / dem, y_ / dem, z_ / dem
 
         # Get node positions in a dictionary
         pos = {name: avg(epbunch) for name, epbunch in

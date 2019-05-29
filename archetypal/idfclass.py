@@ -16,6 +16,7 @@ from subprocess import CalledProcessError, check_call
 
 import eppy
 import eppy.modeleditor
+import geomeppy
 import pandas as pd
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
@@ -24,7 +25,7 @@ from eppy.runner.run_functions import run
 from archetypal import log, settings, EnergyPlusProcessError, cd
 
 
-class IDF(eppy.modeleditor.IDF):
+class IDF(geomeppy.IDF):
     """Wrapper over the eppy.modeleditor.IDF class
 
     """

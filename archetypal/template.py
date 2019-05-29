@@ -11,9 +11,11 @@ import random
 from enum import IntEnum
 
 import eppy.modeleditor
+import networkx
 import numpy as np
 
-from archetypal import object_from_idfs, Schedule, calc_simple_glazing, log
+from archetypal import object_from_idfs, Schedule, calc_simple_glazing, log, \
+    save_and_show
 
 created_obj = {}
 
@@ -919,7 +921,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             Structure (StructureDefinition, optional):
             Windows (WindowSetting, optional):
             Perimeter (Zone, optional):
-            Core (Zone, optional):
+            Core (Zone, optional)):
         """
         super(BuildingTemplate, self).__init__(*args, **kwargs)
         self.PartitionRatio = PartitionRatio
@@ -928,6 +930,128 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         self.Perimeter = Perimeter
         self.Structure = Structure
         self.Windows = Windows
+
+    @property
+    def zone_graph(self):
+        idf = self.idf
+
+        G = networkx.Graph(name=idf.name)
+
+        def is_core(zone):
+            # if all surfaces don't have boundary condition == "Outdoors"
+            return any([True if s.Outside_Boundary_Condition.lower() ==
+                                'outdoors' else False for s in
+                        zone.zonesurfaces])
+
+        for zone in idf.idfobjects['ZONE']:
+
+            G.add_node(zone.Name, epbunch=zone, core=is_core(zone))
+
+            for surface in zone.zonesurfaces:
+                obco_name = surface.Outside_Boundary_Condition_Object
+                field_idd = surface.getfieldidd(
+                    'Outside_Boundary_Condition_Object')
+                validobjects = field_idd['validobjects']
+
+                for key in validobjects:
+                    obco_ = idf.getobject(key, obco_name)
+                    if obco_:
+                        epbunch = idf.getobject('ZONE', obco_.Zone_Name)
+                        if epbunch:
+                            G.add_node(epbunch.Name, epbunch=epbunch,
+                                       core=is_core(epbunch))
+                            G.add_edge(zone.Name, epbunch.Name)
+                            break
+
+        log(networkx.info(G), lg.DEBUG)
+        return G
+
+    def plot(self, fig_height=None, fig_width=6, show=True, axis_off=True,
+             cmap='plasma', save=False, close=False, dpi=300,
+             file_format='png', view_angle=30, filename=None, **kwargs):
+        from mpl_toolkits.mplot3d import Axes3D
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        def avg(zone):
+            X, Y, Z, dem = 0, 0, 0, 0
+            from geomeppy.geom.polygons import Polygon3D, Vector3D
+            from geomeppy.recipes import translate_coords
+            ggr = zone.theidf.idfobjects["GLOBALGEOMETRYRULES"][0]
+
+            for surface in zone.zonesurfaces:
+                dem += 1
+                if ggr.Coordinate_System.lower() == 'relative':
+                    zone = zone.theidf.getobject('ZONE', surface.Zone_Name)
+                    poly3d = Polygon3D(surface.coords)
+                    origin = (zone.X_Origin, zone.Y_Origin, zone.Z_Origin)
+                    coords = translate_coords(poly3d, Vector3D(*origin))
+                    poly3d = Polygon3D(coords)
+                else:
+                    poly3d = Polygon3D(surface.coords)
+                x, y, z = poly3d.centroid
+                X += x
+                Y += y
+                Z += z
+            return X / dem, Y / dem, Z / dem
+
+        G = self.zone_graph
+
+        # Get node positions
+        pos = {e[0]: avg(e[1]) for e in G.nodes(data='epbunch')}
+
+        # Get the maximum number of edges adjacent to a single node
+        edge_max = max([G.degree(i) for i in G.nodes])
+
+        # Define color range proportional to number of edges adjacent to a
+        # single node
+        colors = {i: plt.cm.get_cmap(cmap)(G.degree(i) / edge_max) for i in
+                  G.nodes}
+
+        # 3D network plot
+        with plt.style.context(('ggplot')):
+            if fig_height is None:
+                fig_height = fig_width
+
+            fig = plt.figure(figsize=(fig_width, fig_height), dpi=dpi)
+            ax = Axes3D(fig)
+
+            # Loop on the pos dictionary to extract the x,y,z coordinates of
+            # each node
+            for key, value in pos.items():
+                xi = value[0]
+                yi = value[1]
+                zi = value[2]
+
+                # Scatter plot
+                ax.scatter(xi, yi, zi, color=colors[key], s=20 + 20 * G.degree(
+                    key), edgecolors='k', alpha=0.7)
+
+            # Loop on the list of edges to get the x,y,z, coordinates of the
+            # connected nodes
+            # Those two points are the extrema of the line to be plotted
+            for i, j in enumerate(G.edges()):
+                x = np.array((pos[j[0]][0], pos[j[1]][0]))
+                y = np.array((pos[j[0]][1], pos[j[1]][1]))
+                z = np.array((pos[j[0]][2], pos[j[1]][2]))
+
+                # Plot the connecting lines
+                ax.plot(x, y, z, c='black', alpha=0.5)
+
+        # Set the initial view
+        ax.view_init(30, view_angle)
+
+        # Hide the axes
+        ax.set_axis_off()
+
+        if filename is None:
+            filename = 'unnamed'
+
+        fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
+                                close=close, filename=filename,
+                                file_format=file_format, dpi=dpi,
+                                axis_off=axis_off, extent=None)
+        return fig, ax
 
     @classmethod
     def from_json(cls, *args, **kwargs):
@@ -950,13 +1074,14 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
     @classmethod
     def from_idf(cls, idf, **kwargs):
         name = idf.idfobjects['BUILDING'][0].Name
-        core = [Zone.from_ep_bunch(zone) for zone in idf.idfobjects['ZONE']]
+        core = None
         perimeter = None
         structure = None
         windows = None
 
         bt = cls(Core=core, Perimeter=perimeter, Structure=structure,
-                 Windows=windows, Name=name, **kwargs)
+                 Windows=windows, Name=name, idf=idf, **kwargs)
+        # G = bt.zone_graph
         return bt
 
     def windows(self):
@@ -1660,7 +1785,6 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         log('surface "%s" ignored because basement facades are not supported' %
             surf.Name, lg.WARNING,
             name=surf.theidf.name)
-
 
 
 class ConstructionBase(UmiBase):

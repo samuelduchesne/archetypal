@@ -8,6 +8,7 @@
 import collections
 import logging as lg
 import random
+import time
 from enum import IntEnum
 
 import eppy.modeleditor
@@ -948,16 +949,23 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
     @property
     def zone_graph(self):
+        """Create a graph representation of the building zones. An edge
+        between two zones represents the adjacency of the two zones
+
+        Returns:
+            ZoneGraph: The building's zone graph object
+        """
         if self._zone_graph is None:
+            start_time = time.time()
             idf = self.idf
 
             G = ZoneGraph(name=idf.name)
 
-            def is_core(zone):
+            def is_core(this_zone):
                 # if all surfaces don't have boundary condition == "Outdoors"
-                return any([True if s.Outside_Boundary_Condition.lower() ==
-                                    'outdoors' else False for s in
-                            zone.zonesurfaces])
+                return not any([True if s.Outside_Boundary_Condition.lower() ==
+                                        'outdoors' else False for s in
+                                this_zone.zonesurfaces])
 
             for zone in idf.idfobjects['ZONE']:
 
@@ -976,16 +984,50 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                             if epbunch:
                                 G.add_node(epbunch.Name, epbunch=epbunch,
                                            core=is_core(epbunch))
-                                G.add_edge(zone.Name, epbunch.Name)
+
+                                G.add_edge(zone.Name, epbunch.Name,
+                                           this_construction=surface.Construction_Name,
+                                           their_construction=obco_.Construction_Name,
+                                           is_different_construction=surface.Construction_Name != obco_.Construction_Name)
                                 break
+            log("Created zone graph in {:,.2f} seconds".format(
+                time.time() - start_time))
             log(networkx.info(G), lg.DEBUG)
             self._zone_graph = G
         return self._zone_graph
 
-    def view_building(self, fig_height=None, fig_width=6, ax=None, show=True,
-                      axis_off=False, cmap='plasma', save=False, close=False,
-                      dpi=300, file_format='png', view_angle=30, filename=None,
-                      opacity=0.5):
+    def view_building(self, fig_height=None, fig_width=6, plot_graph=False,
+                      save=False, show=True, close=False, ax=None,
+                      axis_off=False, cmap='plasma', dpi=300, file_format='png',
+                      azim=-60, elev=30, filename=None, opacity=0.5,
+                      proj_type='persp', **kwargs):
+        """
+
+        Args:
+            fig_height (float): matplotlib figure height in inches.
+            fig_width (float): matplotlib figure width in inches.
+            plot_graph (bool): if True, add the graph plot to this plot.
+            save (bool): if True, save the figure as an image file to disk.
+            show (bool): if True, show the figure.
+            close (bool): close the figure (only if show equals False) to
+                prevent display.
+            ax (matplotlib.axes._axes.Axes, optional): An existing axes
+                object on which to plot this graph.
+            axis_off (bool): If True, turn off the matplotlib axis.
+            cmap (str): The name a registered
+                :class:`matplotlib.colors.Colormap`.
+            dpi (int): the resolution of the image file if saving.
+            file_format (str): the format of the file to save (e.g., 'jpg',
+                'png', 'svg', 'pdf')
+            azim (float): Azimuthal viewing angle, defaults to -60.
+            elev (float): Elevation viewing angle, defaults to 30.
+            proj_type (str): Type of projection, accepts 'persp' and 'ortho'.
+            filename (str): the name of the file if saving.
+            opacity (float): 0.0 transparent through 1.0 opaque
+
+        Returns:
+
+        """
         from geomeppy.view_geometry import _get_collections, _get_limits
         from mpl_toolkits.mplot3d import Axes3D
         import matplotlib.pyplot as plt
@@ -1003,11 +1045,19 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         for c in collections:
             ax.add_collection3d(c)
 
+        # Set the initial view
+        ax.view_init(elev, azim)
+        ax.set_proj_type(proj_type)
+
         # calculate and set the axis limits
         limits = _get_limits(idf=self.idf)
         ax.set_xlim(limits["x"])
         ax.set_ylim(limits["y"])
         ax.set_zlim(limits["z"])
+
+        if plot_graph:
+            annotate = kwargs.get('annotate', False)
+            self.zone_graph.plot_graph(ax=ax, annotate=annotate)
 
         fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
                                 close=close, filename=filename,
@@ -2312,7 +2362,7 @@ class ZoneGraph(networkx.Graph):
     def plot_graph(self, fig_height=None, fig_width=6, save=False, show=True,
                    close=False, ax=None, axis_off=False, cmap='plasma', dpi=300,
                    file_format='png', azim=-60, elev=30, proj_type='persp',
-                   filename=None):
+                   filename=None, annotate=False, plt_style='ggplot'):
         """Plot the :class:`archetypal.template.ZoneGraph` in a 3D plot.
 
         The size of the node is relative to its
@@ -2327,7 +2377,7 @@ class ZoneGraph(networkx.Graph):
             save (bool): if True, save the figure as an image file to disk.
             show (bool): if True, show the figure.
             close (bool): close the figure (only if show equals False) to
-                prevent display
+                prevent display.
             ax (matplotlib.axes._axes.Axes, optional): An existing axes
                 object on which to plot this graph.
             axis_off (bool): If True, turn off the matplotlib axis.
@@ -2340,6 +2390,18 @@ class ZoneGraph(networkx.Graph):
             elev (float): Elevation viewing angle, defaults to 30.
             proj_type (str): Type of projection, accepts 'persp' and 'ortho'.
             filename (str): the name of the file if saving.
+            annotate (bool or str): If True, annotates the node with the
+                Zone Name. Pass a field_name to retrieve data from the
+                epbunch of the zone.
+            plt_style (str, dict, or list): A style specification. Valid
+                options are:
+                    - str: The name of a style or a path/URL to a style file.
+                        For a list of available style names,
+                        see `style.available`.
+                    - dict: Dictionary with valid key/value pairs for
+                        :attr:`matplotlib.rcParams`.
+                    - list: A list of style specifiers (str or dict) applied from
+                        first to last in the list.
 
         Returns:
             fig, ax: fig, ax
@@ -2373,18 +2435,41 @@ class ZoneGraph(networkx.Graph):
             return X / dem, Y / dem, Z / dem
 
         # Get node positions in a dictionary
-        pos = {e[0]: avg(e[1]) for e in self.nodes(data='epbunch')}
+        pos = {name: avg(epbunch) for name, epbunch in
+               self.nodes(data='epbunch')}
 
         # Get the maximum number of edges adjacent to a single node
-        edge_max = max([self.degree(i) for i in self.nodes])
+        edge_max = max(1, max([self.degree(i) for i in self.nodes]))  # min = 1
 
         # Define color range proportional to number of edges adjacent to a
         # single node
         colors = {i: plt.cm.get_cmap(cmap)(self.degree(i) / edge_max) for i in
                   self.nodes}
 
+        if annotate:
+            # annotate can be bool or str.
+            if isinstance(annotate, bool):
+                # if True, default to 'Name' field
+                annotate = 'Name'
+            if isinstance(annotate, str):
+                # create dict of the form {id: (x, y, z, label, zdir)}. zdir is
+                # None by default.
+                labels = {name: (*pos[name], data[annotate], None)
+                          for name, data in self.nodes(data='epbunch')
+                          }
+            if isinstance(annotate, tuple):
+                data, key = annotate
+                if key:
+                    labels = {name: (*pos[name], data[key], None)
+                              for name, data in self.nodes(data=data)
+                              }
+                else:
+                    labels = {name: (*pos[name], data, None)
+                              for name, data in self.nodes(data=data)
+                              }
+
         # 3D network plot
-        with plt.style.context(('ggplot')):
+        with plt.style.context((plt_style)):
             if fig_height is None:
                 fig_height = fig_width
 
@@ -2405,7 +2490,9 @@ class ZoneGraph(networkx.Graph):
                 ax.scatter(xi, yi, zi, color=colors[key],
                            s=20 + 20 * self.degree(
                                key), edgecolors='k', alpha=0.7)
-
+                if annotate:
+                    # Add node label
+                    ax.text(*labels[key], fontsize=4)
             # Loop on the list of edges to get the x,y,z, coordinates of the
             # connected nodes
             # Those two points are the extrema of the line to be plotted
@@ -2433,6 +2520,14 @@ class ZoneGraph(networkx.Graph):
                                 file_format=file_format, dpi=dpi,
                                 axis_off=axis_off, extent=None)
         return fig, ax
+
+    @property
+    def core_graph(self):
+        nodes = [i for i, data in self.nodes(data='core') if data]
+        return self.subgraph(nodes).copy()
+
+    def info(self, node=None):
+        return print(networkx.info(G=self, n=node))
 
 
 def label_surface(row):

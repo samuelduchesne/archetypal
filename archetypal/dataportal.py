@@ -123,16 +123,19 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
     """
 
     Args:
-        code_building (str) : Whole building code e.g.:
-            "AT.MT.AB.02.Gen.ReEx.001.001"
-             |  |  |  |   |   |    |   |__code_variantnumber
-             |  |  |  |   |   |    |______code_num
-             |  |  |  |   |   |___________code_type
-             |  |  |  |   |_______________code_additional_parameter
-             |  |  |  |___________________code_construcionyearclass
-             |  |  |______________________code_buildingsizeclass
-             |  |_________________________code_typologyregion
-             |____________________________code_country
+        code_building (str) : The building code string.
+            ::
+                Whole building code e.g.:
+
+                AT.MT.AB.02.Gen.ReEx.001.001"
+                 |  |  |  |   |   |   |   |___code_variantnumber
+                 |  |  |  |   |   |   |_______code_num
+                 |  |  |  |   |   |___________code_type
+                 |  |  |  |   |_______________code_additional_parameter
+                 |  |  |  |___________________code_construcionyearclass
+                 |  |  |______________________code_buildingsizeclass
+                 |  |_________________________code_typologyregion
+                 |____________________________code_country
         code_country (str): Country name or International Country Code (ISO
             3166-1-alpha-2 code). Input as 'France' will work equally as 'FR'.
         code_typologyregion (str): N for national; otherwise specific codes

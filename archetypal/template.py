@@ -366,6 +366,12 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
     """
 
     def __init__(self, *args, **kwargs):
+        """
+
+        Args:
+            *args:
+            **kwargs:
+        """
         kwargs['sch_name'] = kwargs.get('Name', None)
         super(UmiSchedule, self).__init__(*args, **kwargs)
 
@@ -460,6 +466,12 @@ class DaySchedule(UmiSchedule):
     """
 
     def __init__(self, *args, **kwargs):
+        """
+
+        Args:
+            *args:
+            **kwargs:
+        """
         super(DaySchedule, self).__init__(*args, **kwargs)
         self.Values = kwargs.get('Values', None)
 
@@ -485,6 +497,12 @@ class WeekSchedule(UmiSchedule):
     """$id, Category, Comments, DataSource, Days, Name, Type"""
 
     def __init__(self, *args, **kwargs):
+        """
+
+        Args:
+            *args:
+            **kwargs:
+        """
         super(WeekSchedule, self).__init__(*args, **kwargs)
 
         days = kwargs.get('Days', None)
@@ -545,6 +563,12 @@ class YearSchedule(UmiSchedule):
     """
 
     def __init__(self, *args, **kwargs):
+        """
+
+        Args:
+            *args:
+            **kwargs:
+        """
         super(YearSchedule, self).__init__(*args, **kwargs)
         self.Comments = kwargs.get('Comments', '')
         self.epbunch = kwargs.get('epbunch', None)
@@ -2369,7 +2393,10 @@ class ZoneGraph(networkx.Graph):
         :func:`networkx.Graph.degree`. The node degree is the number of edges
         adjacent to the node.
 
-
+        The nodes are positioned in 3d space according to the mean value of
+        the surfaces centroids. For concave volumes, this corresponds to the
+        center of gravity of the volume. Some weird positioning can occur for
+        convex volumes.
 
         Args:
             fig_height (float): matplotlib figure height in inches.
@@ -2395,13 +2422,13 @@ class ZoneGraph(networkx.Graph):
                 epbunch of the zone.
             plt_style (str, dict, or list): A style specification. Valid
                 options are:
-                    - str: The name of a style or a path/URL to a style file.
-                        For a list of available style names,
-                        see `style.available`.
-                    - dict: Dictionary with valid key/value pairs for
-                        :attr:`matplotlib.rcParams`.
-                    - list: A list of style specifiers (str or dict) applied from
-                        first to last in the list.
+                - str: The name of a style or a path/URL to a style file.
+                For a list of available style names,
+                see `style.available`.
+                - dict: Dictionary with valid key/value pairs for
+                :attr:`matplotlib.rcParams`.
+                - list: A list of style specifiers (str or dict) applied from
+                first to last in the list.
 
         Returns:
             fig, ax: fig, ax

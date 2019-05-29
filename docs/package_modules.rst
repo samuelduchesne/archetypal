@@ -13,7 +13,7 @@ Schedules Module
 IDF operations
 --------------
 
-.. automodule:: archetypal.idf
+.. automodule:: archetypal.idfclass
    :members:
 
 Core
@@ -38,3 +38,9 @@ Data Portals
 ------------
 
 .. automodule:: archetypal.dataportal
+
+
+Template
+--------
+
+.. automodule:: archetypal.template

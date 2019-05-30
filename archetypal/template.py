@@ -12,6 +12,8 @@ import time
 from enum import IntEnum
 
 import eppy.modeleditor
+import matplotlib.collections
+import matplotlib.colors
 import networkx
 import numpy as np
 import tabulate
@@ -3161,14 +3163,17 @@ class ZoneGraph(networkx.Graph):
                      node_labels_to_integers=False, legend=False,
                      with_labels=True, arrows=True, save=False, show=True,
                      close=False, ax=None, axis_off=False, cmap='plasma',
-                     dpi=300, file_format='png', filename=None,
+                     dpi=300, file_format='png', filename='unnamed',
                      plt_style='ggplot', extent='tight', **kwargs):
         """
         Examples:
             >>> G = BuildingTemplate().zone_graph
-            >>> G.plot_graph2d(networkx.drawing.circular_layout,save=True,
-            extent=(1,
-            >>>                None, 2))
+            >>> G.plot_graph2d(nx.nx_agraph.graphviz_layout, ('dot'),
+            >>>                font_color='w', legend=True, font_size=8,
+            >>>                color_nodes='core',
+            >>>                node_labels_to_integers=True,
+            >>>                plt_style='seaborn', save=True,
+            >>>                filename='test'
 
         Args:
             layout_function (func): One of the networkx layout functions.
@@ -3241,27 +3246,37 @@ class ZoneGraph(networkx.Graph):
                 mapping = dict(zip(sorted(groups), count()))
                 colors = [mapping[G.node[n][color_nodes]] for n in
                           tree.nodes]
-            else:
-                color_nodes = None  # for the legend title
-                colors = '#1f78b4'
+                colors = [discrete_cmap(len(groups), cmap).colors[i] for i in
+                          colors]
 
-            scatter = networkx.draw_networkx_nodes(tree, pos=pos, ax=ax,
-                                         node_color=kwargs.pop('node_color',
-                                                               colors),
-                                                   **kwargs)
+            paths_ = []
+            for nt in tree:
+                # choose nodes and color for each iteration
+                nlist = [nt]
+                label = '%s: %s' % (nt, G.nodes(data='name')[nt])
+                if color_nodes:
+                    node_color = [colors[nt]]
+                else:
+                    node_color = '#1f78b4'
+                # draw the graph
+                sc = networkx.draw_networkx_nodes(tree,
+                                                  pos=pos,
+                                                  nodelist=nlist,
+                                                  ax=ax,
+                                                  node_color=node_color,
+                                                  label=label,
+                                                  **kwargs)
+                paths_.extend(sc.get_paths())
+            scatter = matplotlib.collections.PathCollection(paths_)
             networkx.draw_networkx_edges(tree, pos, ax=ax, arrows=arrows,
                                          **kwargs)
             if with_labels:
                 networkx.draw_networkx_labels(G, pos, **kwargs)
 
             if legend:
-                labels = {i: str(data) for i, data in G.nodes(data=color_nodes)}
-                # func = lambda x: np.array([labels[i] for i in x])
-                func = lambda x: x
                 bbox = kwargs.get('bbox_to_anchor', (1, 1))
-                legend1 = ax.legend(*scatter.legend_elements(num=len(groups),
-                                                             func=func),
-                                    title=color_nodes, bbox_to_anchor=bbox)
+                legend1 = ax.legend(title=color_nodes, bbox_to_anchor=bbox,
+                                    markerscale=.5)
                 ax.add_artist(legend1)
 
             fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
@@ -3434,3 +3449,18 @@ def iscore(row):
         return np.NaN
     else:
         return 'Perimeter'
+
+
+def discrete_cmap(N, base_cmap=None):
+    """Create an N-bin discrete colormap from the specified input map"""
+
+    # Note that if base_cmap is a string or None, you can simply do
+    #    return plt.cm.get_cmap(base_cmap, N)
+    # The following works for string, None, or a colormap instance:
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    base = plt.cm.get_cmap(base_cmap)
+    color_list = base(np.linspace(0, 1, N))
+    cmap_name = base.name + str(N)
+    return matplotlib.colors.ListedColormap(color_list, cmap_name, N)

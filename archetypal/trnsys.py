@@ -815,7 +815,7 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
                              surfName).Zone_Name == zone.Name:
 
                 # Clear fenestrationSurface:Detailed name
-                fenestrationSurf.Name = 'fs_' + '%06d' % count_fs
+                fenestrationSurf.Name = 'fsd_' + '%06d' % count_fs
                 # Insure right number of vertices
                 fenestrationSurf.Number_of_Vertices = len(
                     fenestrationSurf.coords)

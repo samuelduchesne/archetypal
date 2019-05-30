@@ -16,12 +16,12 @@ def round_up(n, decimals=0):
 def test_trnbuild_from_idf(config):
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
-    files = ["ASHRAE90.1_ApartmentHighRise_STD2004_Rochester.idf",
+    files = ["ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
              "NECB 2011 - "
-             "Small Office.idf",
+             "MidRise Apartment.idf",
              "NECB 2011 - "
              "Warehouse.idf"]
-    idf_file = os.path.join(file_upper_path, files[2])
+    idf_file = os.path.join(file_upper_path, files[0])
     idf_file = copy_file(idf_file)
 
     window_file = 'W74-lib.dat'

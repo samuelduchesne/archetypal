@@ -15,6 +15,7 @@ import eppy.modeleditor
 import networkx
 import numpy as np
 import tabulate
+from eppy.bunch_subclass import BadEPFieldError
 
 from archetypal import object_from_idfs, Schedule, calc_simple_glazing, log, \
     save_and_show, IDF
@@ -812,6 +813,15 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
 
         return data_dict
 
+    @classmethod
+    def from_epbunch(cls, zone):
+        # Todo: Create DHW settings fom epbunch
+        """
+        Args:
+            zone:
+        """
+        pass
+
 
 class VentilationSetting(UmiBase, metaclass=Unique):
     """
@@ -912,6 +922,15 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
+
+    @classmethod
+    def from_epbunch(cls, zone):
+        # todo: create zone ventilation settings from epbunch
+        """
+        Args:
+            zone:
+        """
+        pass
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
@@ -1070,6 +1089,15 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
         return data_dict
 
+    @classmethod
+    def from_epbunch(cls, zone):
+        # Todo: Create zone conditioning form epbunch
+        """
+        Args:
+            zone:
+        """
+        pass
+
 
 class ZoneLoad(UmiBase, metaclass=Unique):
     """
@@ -1165,6 +1193,15 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
         return data_dict
 
+    @classmethod
+    def from_epbunch(cls, zone):
+        # Todo: Create zone load from epbunch
+        """
+        Args:
+            zone:
+        """
+        pass
+
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
     """Category, Comments, Core.$ref, DataSource, Lifespan, Name,
@@ -1205,13 +1242,15 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         self.Structure = Structure
         self.Windows = Windows
 
-    @property
-    def zone_graph(self, log_adj_report=True):
+    def zone_graph(self, log_adj_report=True, skeleton=False):
         """Create a graph representation of the building zones. An edge between
         two zones represents the adjacency of the two zones
 
         Args:
-            log_adj_report (bool):
+            log_adj_report (bool, optional): If True, prints an adjacency
+                report in the log.
+            skeleton (bool, optional): If True, create a zone graph without
+                creating hierarchical obejcts, eg. zones > zoneloads > ect.
 
         Returns:
             ZoneGraph: The building's zone graph object
@@ -1224,49 +1263,64 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
             def is_core(this_zone):
                 # if all surfaces don't have boundary condition == "Outdoors"
-                return not any([True if s.Outside_Boundary_Condition.lower() ==
-                                        'outdoors' else False for s in
-                                this_zone.zonesurfaces])
+                try:
+                    return not any(
+                        [True if s.Outside_Boundary_Condition.lower() ==
+                                 'outdoors' else False for s in
+                         this_zone.zonesurfaces])
+                except BadEPFieldError:
+                    pass  # pass surfaces that don't have an OBC,
+                    # eg. InternalMass
 
             counter = 0
             for zone in idf.idfobjects['ZONE']:
                 from collections import defaultdict
                 # initialize the adjacency report dictionary. default list.
                 adj_report = defaultdict(list)
+                zone_obj = None
+                if not skeleton:
+                    zone_obj = Zone.from_ep_bunch(zone)
                 G.add_node(zone.Name, epbunch=zone, core=is_core(zone),
-                           zone=Zone.from_idf(Name=zone.Name, idf=zone.theidf))
+                           zone=zone_obj)
 
                 zonesurfaces = zone.zonesurfaces
                 for surface in zonesurfaces:
-                    obco_name = surface.Outside_Boundary_Condition_Object
-                    field_idd = surface.getfieldidd(
-                        'Outside_Boundary_Condition_Object')
-                    validobjects = field_idd['validobjects']
+                    if surface.key.upper() == 'INTERNALMASS':
+                        # Todo deal with internal mass surfaces
+                        pass
+                    else:
+                        obco_name = surface.Outside_Boundary_Condition_Object
+                        field_idd = surface.getfieldidd(
+                            'Outside_Boundary_Condition_Object')
+                        validobjects = field_idd['validobjects']
 
-                    for key in validobjects:
-                        obco_ = idf.getobject(key, obco_name)
-                        if obco_:
-                            adj_zone = idf.getobject('ZONE', obco_.Zone_Name)
-                            if adj_zone:
-                                counter += 1
-                                G.add_node(adj_zone.Name, epbunch=adj_zone,
-                                           core=is_core(adj_zone),
-                                           zone=Zone.from_idf(Name=zone.Name,
-                                                              idf=zone.theidf))
+                        for key in validobjects:
+                            obco_ = idf.getobject(key, obco_name)
+                            if obco_:
+                                adj_zone = idf.getobject('ZONE',
+                                                         obco_.Zone_Name)
+                                if adj_zone:
+                                    counter += 1
+                                    zone_obj = None
+                                    if not skeleton:
+                                        zone_obj = Zone.from_ep_bunch(adj_zone)
+                                    G.add_node(adj_zone.Name, epbunch=adj_zone,
+                                               core=is_core(adj_zone),
+                                               zone=zone_obj)
 
-                                G.add_edge(zone.Name, adj_zone.Name,
-                                           this_construction=surface.Construction_Name,
-                                           their_construction=obco_.Construction_Name,
-                                           is_different_construction=surface.Construction_Name != obco_.Construction_Name)
-                                adj_report['#'].append(counter)
-                                adj_report['Zone Name'].append(zone.Name)
-                                adj_report['Surface Type'].append(
-                                    surface.Surface_Type)
-                                adj_report['Adjacent Zone'].append(
-                                    adj_zone.Name)
-                                adj_report['Surface Type_'].append(
-                                    obco_.Surface_Type)
-                                break
+                                    G.add_edge(zone.Name, adj_zone.Name,
+                                               this_construction=surface.Construction_Name,
+                                               their_construction=obco_.Construction_Name,
+                                               is_different_construction=surface.Construction_Name != obco_.Construction_Name)
+                                    adj_report['#'].append(counter)
+                                    adj_report['Zone Name'].append(zone.Name)
+                                    adj_report['Surface Type'].append(
+                                        surface.Surface_Type)
+                                    adj_report['Adjacent Zone'].append(
+                                        adj_zone.Name)
+                                    adj_report['Surface Type_'].append(
+                                        obco_.Surface_Type)
+                                    break
                 if log_adj_report:
                     msg = 'Printing Adjacency Report for zone %s\n' % zone.Name
                     msg += tabulate.tabulate(adj_report, headers='keys')
@@ -1758,7 +1812,7 @@ class Zone(UmiBase, metaclass=Unique):
             DaylightWorkplaneHeight (float):
             **kwargs:
         """
-        super(Zone, self).__init__(*args, **kwargs)
+        super(Zone, self).__init__(**kwargs)
 
         self.Ventilation = Ventilation
         self.Loads = Loads
@@ -1772,13 +1826,24 @@ class Zone(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_ep_bunch(cls, zone):
-        """
+        """Create a Zone object from an eppy 'ZONE' epbunch.
+
         Args:
             zone (epbunch):
         """
         name = zone.Name
-        zone_constructions = ZoneConstructionSet.from_epbunch(zone)
-        z = cls(Name=name, Constructions=zone_constructions)
+        constructions = ZoneConstructionSet.from_epbunch(zone)
+        conditioning = ZoneConditioning.from_epbunch(zone)
+        ventilation = VentilationSetting.from_epbunch(zone)
+        dhw = DomesticHotWaterSetting.from_epbunch(zone)
+        loads = ZoneLoad.from_epbunch(zone)
+
+        z = cls(Name=name,
+                Constructions=constructions,
+                Conditioning=conditioning,
+                Ventilation=ventilation,
+                DomesticHotWater=dhw,
+                Loads=loads)
 
         return z
 
@@ -1797,7 +1862,7 @@ class Zone(UmiBase, metaclass=Unique):
         z.constructions()
         z.ventilation()
         z.dhw()
-        z.internal_mass_construction()
+        # z.internal_mass_construction()
         z.loads()
 
         return z
@@ -1825,7 +1890,7 @@ class Zone(UmiBase, metaclass=Unique):
         surfaces = {}
         for zone in self.idf.idfobjects['ZONE']:
             for surface in zone.zonesurfaces:
-                if surface.fieldvalues[0] == 'InternalMass':
+                if surface.key.upper() == 'INTERNALMASS':
                     oc = OpaqueConstruction.from_idf(
                         Name=surface.Construction_Name,
                         idf=self.idf,
@@ -1833,7 +1898,6 @@ class Zone(UmiBase, metaclass=Unique):
                         Outside_Boundary_Condition='Outdoors',
                     )
                     self.InternalMassConstruction = oc
-                    pass
                 else:
                     # Todo: Create Equivalent InternalMassConstruction from
                     #  partitions. For now, creating dummy InternalMass
@@ -1927,7 +1991,11 @@ class Zone(UmiBase, metaclass=Unique):
         Args:
             other:
         """
-        bundled_self = None
+        bundled_self: Zone = None
+
+        # append the comment with debugging information
+        bundled_self.Comments += "message"  # message detailing operation
+
         return bundled_self
 
     def __iadd__(self, other):
@@ -2124,6 +2192,8 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
                 partition.append(p)
                 roof.append(r)
                 slab.append(s)
+
+        # Todo: We are giving lists but only one should be given.
         z_set = cls(Facade=facade, Ground=ground, Partition=partition,
                     Roof=roof, Slab=slab, Name=name)
         return z_set

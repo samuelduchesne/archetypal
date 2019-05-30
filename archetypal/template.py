@@ -1244,11 +1244,12 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         self.Structure = Structure
         self.Windows = Windows
 
-    def zone_graph(self, log_adj_report=True, skeleton=False):
+    def zone_graph(self, log_adj_report=True, skeleton=False, force=False):
         """Create a graph representation of the building zones. An edge between
         two zones represents the adjacency of the two zones
 
         Args:
+            force (bool): If True, will recalculate the graph.
             log_adj_report (bool, optional): If True, prints an adjacency report
                 in the log.
             skeleton (bool, optional): If True, create a zone graph without
@@ -1257,7 +1258,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         Returns:
             ZoneGraph: The building's zone graph object
         """
-        if self._zone_graph is None:
+        if self._zone_graph is None or force is True:
             start_time = time.time()
             idf = self.idf
 

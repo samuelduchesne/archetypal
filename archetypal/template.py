@@ -1336,7 +1336,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
         if plot_graph:
             annotate = kwargs.get('annotate', False)
-            self.zone_graph.plot_graph(ax=ax, annotate=annotate)
+            self.zone_graph.plot_graph3d(ax=ax, annotate=annotate)
 
         fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
                                 close=close, filename=filename,
@@ -2917,10 +2917,11 @@ class ZoneGraph(networkx.Graph):
         super(ZoneGraph, self).__init__(incoming_graph_data=incoming_graph_data,
                                         **attr)
 
-    def plot_graph(self, fig_height=None, fig_width=6, save=False, show=True,
-                   close=False, ax=None, axis_off=False, cmap='plasma', dpi=300,
-                   file_format='png', azim=-60, elev=30, proj_type='persp',
-                   filename=None, annotate=False, plt_style='ggplot'):
+    def plot_graph3d(self, fig_height=None, fig_width=6, save=False, show=True,
+                     close=False, ax=None, axis_off=False, cmap='plasma',
+                     dpi=300,
+                     file_format='png', azim=-60, elev=30, proj_type='persp',
+                     filename=None, annotate=False, plt_style='ggplot'):
         """Plot the :class:`archetypal.template.ZoneGraph` in a 3D plot.
 
         The size of the node is relative to its
@@ -3081,6 +3082,122 @@ class ZoneGraph(networkx.Graph):
                                 file_format=file_format, dpi=dpi,
                                 axis_off=axis_off, extent=None)
         return fig, ax
+
+    def plot_graph2d(self, layout_function, *func_args, color_nodes=None,
+                     fig_height=None, fig_width=6,
+                     node_labels_to_integers=False, legend=False, save=False,
+                     show=True, close=False, ax=None, axis_off=False,
+                     cmap='plasma', dpi=300, file_format='png', filename=None,
+                     plt_style='ggplot', with_labels=True, arrows=True,
+                     **kwargs):
+        """
+        Examples:
+            >>> G = BuildingTemplate().zone_graph
+            >>> G.plot_graph2d(networkx.drawing.circular_layout,(1,
+            >>>                None, 2),save=True)
+
+        Args:
+            layout_function (func): One of the networkx layout functions.
+            *func_args: The layout function arguments as a tuple. The first
+                argument (self) is already supplied.
+            color_nodes (bool or str): False by default. If a string is passed
+                the nodes are colored according to a data attribute of the
+                graph. By default, the original node names is accessed with the
+                'name' attribute.
+            fig_height (float): matplotlib figure height in inches.
+            fig_width (float): matplotlib figure width in inches.
+            node_labels_to_integers:
+            legend:
+            save (bool): if True, save the figure as an image file to disk.
+            show (bool): if True, show the figure.
+            close (bool): close the figure (only if show equals False) to
+                prevent display.
+            ax (matplotlib.axes._axes.Axes, optional): An existing axes object
+                on which to plot this graph.
+            axis_off (bool): If True, turn off the matplotlib axis.
+            cmap (str): The name a registered
+                :class:`matplotlib.colors.Colormap`.
+            dpi (int): the resolution of the image file if saving.
+            file_format (str): the format of the file to save (e.g., 'jpg',
+                'png', 'svg', 'pdf')
+            filename (str): the name of the file if saving.
+            plt_style (str, dict, or list): A style specification. Valid options
+                are: - str: The name of a style or a path/URL to a style file.
+                For a list of available style names, see `style.available` . -
+                dict: Dictionary with valid key/value pairs for
+                :attr:`matplotlib.rcParams`. - list: A list of style specifiers
+                (str or dict) applied from first to last in the list.
+            with_labels (bool, optional): Set to True to draw labels on the
+            arrows (bool, optional): If True, draw arrowheads. Note: Arrows will
+                be the same color as edges.
+            **kwargs: keywords passed to :func:`networkx.draw_networkx`
+
+        Returns:
+            fig, ax
+        """
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            raise ImportError("Matplotlib required for draw()")
+        except RuntimeError:
+            print("Matplotlib unable to open display")
+            raise
+        # fill kwargs
+        kwargs['cmap'] = cmap
+        G = self.copy()
+        if node_labels_to_integers:
+            G = networkx.convert_node_labels_to_integers(G,
+                                                         label_attribute='name')
+        tree = networkx.dfs_tree(G)
+        pos = layout_function(tree, *func_args)
+        with plt.style.context((plt_style)):
+            if ax:
+                fig = plt.gcf()
+            else:
+                if fig_height is None:
+                    fig_height = fig_width
+                fig, ax = plt.subplots(1, figsize=(fig_width, fig_height),
+                                       dpi=dpi)
+
+            if isinstance(color_nodes, str):
+                from itertools import count
+                groups = set(networkx.get_node_attributes(G,
+                                                          color_nodes).values())
+                mapping = dict(zip(sorted(groups), count()))
+                colors = [mapping[G.node[n][color_nodes]] for n in
+                          tree.nodes]
+
+            for nt in tree:
+                # choose nodes and color for each iteration
+                nlist = [nt]
+                label = '%s: %s' % (nt, G.nodes(data='name')[nt])
+                if color_nodes:
+                    node_color = [colors[nt]]
+                else:
+                    node_color = '#1f78b4'
+                # draw the graph
+                networkx.draw_networkx_nodes(tree,
+                                             pos=pos,
+                                             nodelist=nlist,
+                                             ax=ax,
+                                             node_color=node_color,
+                                             label=label,
+                                             **kwargs)
+
+            networkx.draw_networkx_edges(tree, pos, ax=ax, arrows=arrows,
+                                         **kwargs)
+            if with_labels:
+                networkx.draw_networkx_labels(G, pos, **kwargs)
+
+            if legend:
+                bbox = kwargs.get('bbox_to_anchor', (1, 1))
+                ax.legend(scatterpoints=1, bbox_to_anchor=bbox)
+
+            fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
+                                    close=close, filename=filename,
+                                    file_format=file_format, dpi=dpi,
+                                    axis_off=axis_off, extent=None)
+            return fig, ax
 
     @property
     def core_graph(self):

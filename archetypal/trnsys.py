@@ -223,7 +223,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     # endregion
 
     # region Write CONSTRUCTION from IDF to lines (T3D)
-    _wrtie_contructions(constr_list, idf, lines, mat_name, materials)
+    _write_constructions(constr_list, idf, lines, mat_name, materials)
     # endregion
 
     # Write CONSTRUCTION from IDF to lines, at the end of the T3D file
@@ -740,7 +740,7 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
                                               variableDictNum, win_slope_dict,
                                               zones):
     """Does several actions on the zones, fenestration and building surfaces.
-    Then, writes zone, fenestration and building surfaces informations.
+    Then, writes zone, fenestration and building surfaces information in lines.
     - Zones:
         1) If the geometry global rule is 'World', convert zone's
     coordinates to absolute.
@@ -775,12 +775,15 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
         count_fs (int): Count of the number of fenestration surfaces.
         count_slope (int): Count of the different window's slopes
         fenestrationSurfs (idf_MSequence): IDF object from idf.idfobjects()
-        idf (:
-        lines:
-        n_ground:
-        variableDictNum:
-        win_slope_dict:
-        zones:
+        idf (archetypal.idfclass.IDF): IDF object
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+        n_ground (Vector 3D): Normal vector of the ground surface
+        variableDictNum (int): Line number where to write the zones,
+            fenestration and building surfaces
+        win_slope_dict (dict): Dictionary with window's names as key and
+            window's slope as value
+        zones (idf_MSequence): IDF object from idf.idfobjects()
 
     Returns:
 
@@ -887,8 +890,22 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
 
 
 def _modify_adj_surface(buildingSurf, idf):
+    """If necessary, modify outside boundary conditions and vertices of the
+    adjacent building surface
+
+    Args:
+        buildingSurf (EpBunch): Building surface object to modify
+        idf (archetypal.idfclass.IDF): IDF object
+
+    Returns:
+
+    """
+    # Force outside boundary condition to "Zone"
     buildingSurf.Outside_Boundary_Condition = "Zone"
+    # Get the surface EpBunch that is adjacent to the building surface
     outside_bound_surf = buildingSurf.Outside_Boundary_Condition_Object
+    # Replace the Outside_Boundary_Condition_Object that was the
+    # outside_bound_surf, by the adjacent zone name
     buildingSurf.Outside_Boundary_Condition_Object = idf.getobject(
         'ZONE', idf.getobject('BUILDINGSURFACE:DETAILED',
                               outside_bound_surf).Zone_Name).Name
@@ -916,6 +933,20 @@ def _modify_adj_surface(buildingSurf, idf):
 
 def _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf,
                            idfobject_key):
+    """Inverses the vertices of a surface (last vertex becomes the first one,
+    etc.)
+
+    Args:
+        buildingSurf (EpBunch): Building surface object to modify
+        idf (archetypal.idfclass.IDF): IDF object
+        outside_bound_surf (str): Name of the adjacent surface to the
+            buildingSurf
+        idfobject_key (str): Section name of the IDF where to find the
+            outside_bound_surf
+
+    Returns:
+
+    """
     for j, k in zip(range(1, len(
             buildingSurf.coords) + 1), range(
         len(buildingSurf.coords), 0, -1)):
@@ -936,24 +967,45 @@ def _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf,
             "Vertex_" + str(k) + "_Zcoordinate"]
 
 
-def _round_vertex(surface):
+def _round_vertex(surface, nbr_decimal=4):
+    """Round vertex to the number of decimal (nbr_decimal) wanted
+
+    Args:
+        nbr_decimal (int): Number of decimal to round
+        surface (EpBunch): Surface object to which we want to round its vertices
+
+    Returns:
+
+    """
     for j in range(1, len(
             surface.coords) + 1):
         surface["Vertex_" + str(j) + "_Xcoordinate"] \
             = \
             round(surface[
-                      "Vertex_" + str(j) + "_Xcoordinate"], 4)
+                      "Vertex_" + str(j) + "_Xcoordinate"], nbr_decimal)
         surface["Vertex_" + str(j) + "_Ycoordinate"] \
             = \
             round(surface[
-                      "Vertex_" + str(j) + "_Ycoordinate"], 4)
+                      "Vertex_" + str(j) + "_Ycoordinate"], nbr_decimal)
         surface["Vertex_" + str(j) + "_Zcoordinate"] \
             = \
             round(surface[
-                      "Vertex_" + str(j) + "_Zcoordinate"], 4)
+                      "Vertex_" + str(j) + "_Zcoordinate"], nbr_decimal)
 
 
 def _relative_to_absolute(surface, incrX, incrY, incrZ):
+    """Convert relative coordinates to absolute ones
+
+    Args:
+        surface (EpBunch): Surface object to which we want to convert its
+            vertices
+        incrX (str): X coordinate of the surface's zone
+        incrY (str): Y coordinate of the surface's zone
+        incrZ (str): Z coordinate of the surface's zone
+
+    Returns:
+
+    """
     for j in range(1, len(
             surface.coords) + 1):
         surface["Vertex_" + str(j) + "_Xcoordinate"] \
@@ -971,6 +1023,20 @@ def _relative_to_absolute(surface, incrX, incrY, incrZ):
 
 
 def _write_winPool(lines, window):
+    """Write the window pool (from Berkeley Lab window library) in lines
+
+    Args:
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+        window (tuple): Information to write in the window pool extension (
+        in lines). Example of the tuple : (ID, name, design, u_value, shgc,
+        solar transmittance, solar refraction, visible transmittance, number
+        of layers, width (mm), properties from Berkeley Lab library,
+        tolerance (optional) )
+
+    Returns:
+
+    """
     # Get line number to write the EXTENSION_WINPOOL
     extWinpoolNum = checkStr(lines,
                              '!-_EXTENSION_WINPOOL_START_')
@@ -990,6 +1056,22 @@ def _write_winPool(lines, window):
 
 
 def _write_window(lines, win_slope_dict, window):
+    """Write window information in lines
+
+    Args:
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+        win_slope_dict (dict): Dictionary with window's names as key and
+            window's slope as value
+        window (tuple): Information to write in the window pool extension (
+        in lines). Example of the tuple : (ID, name, design, u_value, shgc,
+        solar transmittance, solar refraction, visible transmittance, number
+        of layers, width (mm), properties from Berkeley Lab library,
+        tolerance (optional) )
+
+    Returns:
+
+    """
     # Get line number where to write
     windowNum = checkStr(lines,
                          'W i n d o w s')
@@ -1024,6 +1106,18 @@ def _write_window(lines, win_slope_dict, window):
 
 
 def _write_schedules(lines, schedule_names, schedules):
+    """Write schedules information in lines
+
+    Args:
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+        schedule_names (list): Names of all the schedules to be written in lines
+        schedules (dict): Dictionary with the schedule names as key and with
+        the different year, weeks and days schedules as values
+
+    Returns:
+
+    """
     # Get line number where to write
     scheduleNum = checkStr(lines, 'S c h e d u l e s')
     hour_list = list(range(25))
@@ -1061,6 +1155,19 @@ def _write_schedules(lines, schedule_names, schedules):
 
 
 def _write_gains(equipments, idf, lights, lines, peoples):
+    """Write gains in lines
+
+    Args:
+        equipments (idf_MSequence): IDF object from idf.idfobjects()
+        idf (archetypal.idfclass.IDF): IDF object
+        lights (idf_MSequence): IDF object from idf.idfobjects()
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+        peoples (idf_MSequence): IDF object from idf.idfobjects()
+
+    Returns:
+
+    """
     # Get line number where to write
     gainNum = checkStr(lines, 'G a i n s')
     # Writing PEOPLE gains infos to lines
@@ -1072,6 +1179,17 @@ def _write_gains(equipments, idf, lights, lines, peoples):
 
 
 def _write_equipment_gain(equipments, gainNum, lines):
+    """Write equipment gains in lines
+
+    Args:
+        equipments (idf_MSequence): IDF object from idf.idfobjects()
+        gainNum (int): Line number where to write the equipment gains
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+
+    Returns:
+
+    """
     for i in range(0, len(equipments)):
         # Determine if gain is absolute or relative and write it into lines
         if equipments[i].Design_Level_Calculation_Method == "EquipmentLevel":
@@ -1121,6 +1239,17 @@ def _write_equipment_gain(equipments, gainNum, lines):
 
 
 def _write_light_gain(gainNum, lights, lines):
+    """Write gain from lights in lines
+
+    Args:
+        gainNum (int): Line number where to write the equipment gains
+        lights (idf_MSequence): IDF object from idf.idfobjects()
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+
+    Returns:
+
+    """
     for i in range(0, len(lights)):
         # Determine if gain is absolute or relative and write it into lines
         if lights[i].Design_Level_Calculation_Method == "LightingLevel":
@@ -1169,6 +1298,18 @@ def _write_light_gain(gainNum, lights, lines):
 
 
 def _write_people_gain(gainNum, idf, lines, peoples):
+    """
+
+    Args:
+        gainNum (int): Line number where to write the equipment gains
+        idf (archetypal.idfclass.IDF): IDF object
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+        peoples (idf_MSequence): IDF object from idf.idfobjects()
+
+    Returns:
+
+    """
     for i in range(0, len(peoples)):
         # Write gain name in lines
         lines.insert(gainNum + 1,
@@ -1201,6 +1342,18 @@ def _write_people_gain(gainNum, idf, lines, peoples):
 
 
 def _write_materials(lines, materialAirGap, materialNoMass, materials):
+    """Write materials (LAYER in TRNBuild) in lines
+
+    Args:
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+        materialAirGap (idf_MSequence): IDF object from idf.idfobjects()
+        materialNoMass (idf_MSequence): IDF object from idf.idfobjects()
+        materials (idf_MSequence): IDF object from idf.idfobjects()
+
+    Returns:
+
+    """
     # Get line number where to write
     layerNum = checkStr(lines, 'L a y e r s')
     listLayerName = []
@@ -1213,6 +1366,19 @@ def _write_materials(lines, materialAirGap, materialNoMass, materials):
 
 
 def _write_material_airgap(layerNum, lines, listLayerName, materialAirGap):
+    """
+
+    Args:
+        layerNum (int): Line number where to write the material
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+        listLayerName (list): list of material's names. To be appended when
+        writing a new material (material airgap or no mass or 'normal')
+        materialAirGap (idf_MSequence): IDF object from idf.idfobjects()
+
+    Returns:
+
+    """
     for i in range(0, len(materialAirGap)):
 
         duplicate = [s for s in listLayerName if s == materialAirGap[i].Name]
@@ -1229,6 +1395,19 @@ def _write_material_airgap(layerNum, lines, listLayerName, materialAirGap):
 
 
 def _write_material_nomass(layerNum, lines, listLayerName, materialNoMass):
+    """
+
+    Args:
+        layerNum (int): Line number where to write the material
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+        listLayerName (list): list of material's names. To be appended when
+        writing a new material (material airgap or no mass or 'normal')
+        materialNoMass (idf_MSequence): IDF object from idf.idfobjects()
+
+    Returns:
+
+    """
     for i in range(0, len(materialNoMass)):
 
         duplicate = [s for s in listLayerName if s == materialNoMass[i].Name]
@@ -1245,6 +1424,19 @@ def _write_material_nomass(layerNum, lines, listLayerName, materialNoMass):
 
 
 def _write_material(layerNum, lines, listLayerName, materials):
+    """
+
+    Args:
+        layerNum (int): Line number where to write the material
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+        listLayerName (list): list of material's names. To be appended when
+        writing a new material (material airgap or no mass or 'normal')
+        materials (idf_MSequence): IDF object from idf.idfobjects()
+
+    Returns:
+
+    """
     for i in range(0, len(materials)):
         lines.insert(layerNum + 1, '!-LAYER ' + materials[i].Name + '\n')
         listLayerName.append(materials[i].Name)
@@ -1258,6 +1450,17 @@ def _write_material(layerNum, lines, listLayerName, materials):
 
 
 def _write_constructions_end(constr_list, idf, lines):
+    """Write constructions at the end of lines (IDF format)
+
+    Args:
+        constr_list (list): list of construction names to be written
+        idf (archetypal.idfclass.IDF): IDF object
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+
+    Returns:
+
+    """
     # Get line number where to write
     constructionEndNum = checkStr(lines,
                                   'ALL OBJECTS IN CLASS: CONSTRUCTION')
@@ -1267,7 +1470,20 @@ def _write_constructions_end(constr_list, idf, lines):
         lines.insert(constructionEndNum, construction)
 
 
-def _wrtie_contructions(constr_list, idf, lines, mat_name, materials):
+def _write_constructions(constr_list, idf, lines, mat_name, materials):
+    """Write constructions in lines (TRNBuild format)
+
+    Args:
+        constr_list(list): list of construction names to be written
+        idf (archetypal.idfclass.IDF): IDF object
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+        mat_name (list): list of material names to be written
+        materials (idf_MSequence): IDF object from idf.idfobjects()
+
+    Returns:
+
+    """
     # Get line number where to write
     constructionNum = checkStr(lines, 'C O N S T R U C T I O N')
     # Writing CONSTRUCTION in lines
@@ -1318,6 +1534,14 @@ def _wrtie_contructions(constr_list, idf, lines, mat_name, materials):
 
 
 def _get_ground_vertex(buildingSurfs):
+    """Find the normal vertex of ground surface
+
+    Args:
+        buildingSurfs (idf_MSequence): IDF object from idf.idfobjects()
+
+    Returns:
+
+    """
     ground_surfs = [buildingSurf for buildingSurf in buildingSurfs if
                     buildingSurf.Outside_Boundary_Condition.lower() == 'ground']
     if ground_surfs:
@@ -1350,6 +1574,17 @@ def _is_coordSys_world(coordSys, zones):
 
 
 def _write_location_geomrules(globGeomRules, lines, locations):
+    """
+
+    Args:
+        globGeomRules (idf_MSequence): IDF object from idf.idfobjects()
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+        locations (idf_MSequence): IDF object from idf.idfobjects()
+
+    Returns:
+
+    """
     # Get line number where to write
     locationNum = checkStr(lines,
                            'ALL OBJECTS IN CLASS: LOCATION')
@@ -1377,6 +1612,16 @@ def _write_location_geomrules(globGeomRules, lines, locations):
 
 
 def _write_building(buildings, lines):
+    """
+
+    Args:
+        buildings (idf_MSequence): IDF object from idf.idfobjects()
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+
+    Returns:
+
+    """
     # Get line number where to write
     buildingNum = checkStr(lines,
                            'ALL OBJECTS IN CLASS: BUILDING')
@@ -1386,6 +1631,16 @@ def _write_building(buildings, lines):
 
 
 def _write_version(lines, versions):
+    """
+
+    Args:
+        lines (list): Text to create the T3D file (IDF file to import in
+            TRNBuild). To be appended (insert) here
+        versions (idf_MSequence): IDF object from idf.idfobjects()
+
+    Returns:
+
+    """
     # Get line number where to write
     versionNum = checkStr(lines,
                           'ALL OBJECTS IN CLASS: VERSION')

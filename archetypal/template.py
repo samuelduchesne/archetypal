@@ -2200,27 +2200,27 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
                     Roof=roof, Slab=slab, Name=name)
         return z_set
 
-    @classmethod
-    def dispath_surfaces(cls, surf, zone):
+    @staticmethod
+    def dispath_surfaces(surf, zone):
         """
         Args:
             surf (EpBunch):
             zone (EpBunch):
         """
         dispatch = {
-            ('Wall', 'Outdoors'): cls._do_facade,
-            ('Floor', 'Ground'): cls._do_ground,
-            ('Floor', 'Foundation'): cls._do_ground,
-            ('Floor', 'Surface'): cls._do_slab,
-            ('Floor', 'Adiabatic'): cls._do_slab,
-            ('Wall', 'Adiabatic'): cls._do_partition,
-            ('Wall', 'Surface'): cls._do_partition,
-            ('Wall', 'Zone'): cls._do_partition,
-            ('Wall', 'Ground'): cls._do_basement,
-            ('Roof', 'Outdoors'): cls._do_roof,
-            ('Ceiling', 'Adiabatic'): cls._do_slab,
-            ('Ceiling', 'Surface'): cls._do_slab,
-            ('Ceiling', 'Zone'): cls._do_slab,
+            ('Wall', 'Outdoors'): ZoneConstructionSet._do_facade,
+            ('Floor', 'Ground'): ZoneConstructionSet._do_ground,
+            ('Floor', 'Foundation'): ZoneConstructionSet._do_ground,
+            ('Floor', 'Surface'): ZoneConstructionSet._do_slab,
+            ('Floor', 'Adiabatic'): ZoneConstructionSet._do_slab,
+            ('Wall', 'Adiabatic'): ZoneConstructionSet._do_partition,
+            ('Wall', 'Surface'): ZoneConstructionSet._do_partition,
+            ('Wall', 'Zone'): ZoneConstructionSet._do_partition,
+            ('Wall', 'Ground'): ZoneConstructionSet._do_basement,
+            ('Roof', 'Outdoors'): ZoneConstructionSet._do_roof,
+            ('Ceiling', 'Adiabatic'): ZoneConstructionSet._do_slab,
+            ('Ceiling', 'Surface'): ZoneConstructionSet._do_slab,
+            ('Ceiling', 'Zone'): ZoneConstructionSet._do_slab,
         }
         a, b = surf.Surface_Type, surf.Outside_Boundary_Condition
         try:

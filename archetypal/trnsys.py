@@ -809,11 +809,10 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
 
         # Writing fenestrationSurface:Detailed in lines
         for fenestrationSurf in fenestrationSurfs:
-            count_fs += 1
             surfName = fenestrationSurf.Building_Surface_Name
             if idf.getobject("BUILDINGSURFACE:DETAILED",
                              surfName).Zone_Name == zone.Name:
-
+                count_fs += 1
                 # Clear fenestrationSurface:Detailed name
                 fenestrationSurf.Name = 'fsd_' + '%06d' % count_fs
                 # Insure right number of vertices

@@ -7,14 +7,16 @@
 
 import logging as lg
 
+from path import Path
+
 # locations to save data, logs, images, and cache
 import archetypal
 
-data_folder = 'data'
-logs_folder = 'logs'
-imgs_folder = 'images'
-cache_folder = 'cache'
-umitemplate = 'data/BostonTemplateLibrary.json'
+data_folder = Path('data')
+logs_folder = Path('logs')
+imgs_folder = Path('images')
+cache_folder = Path('cache')
+umitemplate = Path('data/BostonTemplateLibrary.json')
 
 # cache server responses
 use_cache = False
@@ -87,7 +89,7 @@ available_sqlite_tables = dict(
     ZoneGroups={'PrimaryKey': ['ZoneGroupIndex'],
                 'ParseDates': []},
     Zones={'PrimaryKey': ['ZoneIndex'],
-          'ParseDates': []},
+           'ParseDates': []},
     ZoneLists={'PrimaryKey': ['ZoneListIndex'],
                'ParseDates': []},
     ZoneSizes={'PrimaryKey': ['ZoneSizesIndex'],

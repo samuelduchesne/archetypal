@@ -137,20 +137,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     # region Get schedules from IDF
     start_time = time.time()
-    schedule_names = []
-    used_schedules = idf.get_used_schedules(yearly_only=True)
-    schedules = {}
-
-    for schedule_name in used_schedules:
-        s = Schedule(schedule_name, idf,
-                     start_day_of_the_week=idf.day_of_week_for_start_day)
-
-        schedule_names.append(schedule_name)
-        schedules[schedule_name] = {}
-        year, weeks, days = s.to_year_week_day()
-        schedules[schedule_name]['year'] = year
-        schedules[schedule_name]['weeks'] = weeks
-        schedules[schedule_name]['days'] = days
+    schedule_names, schedules = _get_schedules(idf)
 
     log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO)
@@ -318,6 +305,31 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     from itertools import compress
     return tuple(compress([new_idf_path, b18_path, t3d_path, dck_path],
                           [return_idf, return_b18, return_t3d, return_dck]))
+
+
+def _get_schedules(idf):
+    """Get schedules from IDF
+
+    Args:
+        idf (archetypal.idfclass.IDF): IDF object
+
+    Returns:
+
+    """
+    schedule_names = []
+    used_schedules = idf.get_used_schedules(yearly_only=True)
+    schedules = {}
+    for schedule_name in used_schedules:
+        s = Schedule(schedule_name, idf,
+                     start_day_of_the_week=idf.day_of_week_for_start_day)
+
+        schedule_names.append(schedule_name)
+        schedules[schedule_name] = {}
+        year, weeks, days = s.to_year_week_day()
+        schedules[schedule_name]['year'] = year
+        schedules[schedule_name]['weeks'] = weeks
+        schedules[schedule_name]['days'] = days
+    return schedule_names, schedules
 
 
 def clear_name_idf_objects(idfFile):

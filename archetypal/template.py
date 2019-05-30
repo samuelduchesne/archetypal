@@ -991,11 +991,16 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                                         'outdoors' else False for s in
                                 this_zone.zonesurfaces])
 
+            counter = 0
             for zone in idf.idfobjects['ZONE']:
+                from collections import defaultdict
+                # initialize the adjacency report dictionary. default list.
+                adj_report = defaultdict(list)
+                G.add_node(zone.Name, epbunch=zone, core=is_core(zone),
+                           zone=Zone.from_idf(Name=zone.Name, idf=zone.theidf))
 
-                G.add_node(zone.Name, epbunch=zone, core=is_core(zone))
-
-                for surface in zone.zonesurfaces:
+                zonesurfaces = zone.zonesurfaces
+                for surface in zonesurfaces:
                     obco_name = surface.Outside_Boundary_Condition_Object
                     field_idd = surface.getfieldidd(
                         'Outside_Boundary_Condition_Object')
@@ -1004,16 +1009,31 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                     for key in validobjects:
                         obco_ = idf.getobject(key, obco_name)
                         if obco_:
-                            epbunch = idf.getobject('ZONE', obco_.Zone_Name)
-                            if epbunch:
-                                G.add_node(epbunch.Name, epbunch=epbunch,
-                                           core=is_core(epbunch))
+                            adj_zone = idf.getobject('ZONE', obco_.Zone_Name)
+                            if adj_zone:
+                                counter += 1
+                                G.add_node(adj_zone.Name, epbunch=adj_zone,
+                                           core=is_core(adj_zone),
+                                           zone=Zone.from_idf(Name=zone.Name,
+                                                              idf=zone.theidf))
 
-                                G.add_edge(zone.Name, epbunch.Name,
+                                G.add_edge(zone.Name, adj_zone.Name,
                                            this_construction=surface.Construction_Name,
                                            their_construction=obco_.Construction_Name,
                                            is_different_construction=surface.Construction_Name != obco_.Construction_Name)
+                                adj_report['#'].append(counter)
+                                adj_report['Zone Name'].append(zone.Name)
+                                adj_report['Surface Type'].append(
+                                    surface.Surface_Type)
+                                adj_report['Adjacent Zone'].append(
+                                    adj_zone.Name)
+                                adj_report['Surface Type_'].append(
+                                    obco_.Surface_Type)
                                 break
+                if log_adj_report:
+                    msg = 'Printing Adjacency Report for zone %s\n' % zone.Name
+                    msg += tabulate.tabulate(adj_report, headers='keys')
+                    log(msg)
             log("Created zone graph in {:,.2f} seconds".format(
                 time.time() - start_time))
             log(networkx.info(G), lg.DEBUG)
@@ -1117,8 +1137,54 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
         bt = cls(Core=core, Perimeter=perimeter, Structure=structure,
                  Windows=windows, Name=name, idf=idf, **kwargs)
-        # G = bt.zone_graph
+
         return bt
+
+    def reduce(self):
+        """
+        Returns:
+            BuildingTemplate: The reduced BuildingTemplate
+        """
+
+        # Determine if core graph is not empty
+        core = self.zone_graph.core_graph
+        perim = self.zone_graph.perim_graph
+
+        self.Core = self.graph_reduce(core)
+        self.Perimeter = self.graph_reduce(core)
+
+    def graph_reduce(self, G):
+        """
+        Args:
+            G (ZoneGraph):
+
+        Returns:
+            Zone: The reduced zone
+        """
+        if networkx.is_empty(G):
+            log('No core zones for building %s' % self.Name)
+            return None
+        else:
+            log('starting reduce process for building %s' % self.Name)
+            start_time = time.time()
+
+            # start from the highest degree node
+            subgraphs = sorted(networkx.connected_component_subgraphs(G),
+                               key=len, reverse=True)
+            for subG in subgraphs:
+                s = sorted(subG.degree(), key=lambda x: x[1], reverse=True)
+                source = s[0][0]  # highest degree node
+
+                # Starting Zone object. Retreived from datat='zone' in ZoneGraph
+                bundle_zone: Zone = subG.nodes(data='zone')[source]
+
+                for prev_z, next_z in networkx.dfs_edges(subG, source=source):
+                    # 'add' next zone to previous bundle
+                    bundle_zone += subG.nodes(data='zone')[next_z]
+
+            log('completed zone reduction for building {} in'
+                '{:,.2f} seconds'.format(self.Name, time.time() - start_time))
+            return bundle_zone
 
     def windows(self):
         """create windows"""

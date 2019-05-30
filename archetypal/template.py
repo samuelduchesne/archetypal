@@ -1247,8 +1247,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         two zones represents the adjacency of the two zones
 
         Args:
-            log_adj_report (bool, optional): If True, prints an adjacency
-                report in the log.
+            log_adj_report (bool, optional): If True, prints an adjacency report
+                in the log.
             skeleton (bool, optional): If True, create a zone graph without
                 creating hierarchical obejcts, eg. zones > zoneloads > ect.
 
@@ -3158,16 +3158,17 @@ class ZoneGraph(networkx.Graph):
 
     def plot_graph2d(self, layout_function, *func_args, color_nodes=None,
                      fig_height=None, fig_width=6,
-                     node_labels_to_integers=False, legend=False, save=False,
-                     show=True, close=False, ax=None, axis_off=False,
-                     cmap='plasma', dpi=300, file_format='png', filename=None,
-                     plt_style='ggplot', with_labels=True, arrows=True,
-                     **kwargs):
+                     node_labels_to_integers=False, legend=False,
+                     with_labels=True, arrows=True, save=False, show=True,
+                     close=False, ax=None, axis_off=False, cmap='plasma',
+                     dpi=300, file_format='png', filename=None,
+                     plt_style='ggplot', extent='tight', **kwargs):
         """
         Examples:
             >>> G = BuildingTemplate().zone_graph
-            >>> G.plot_graph2d(networkx.drawing.circular_layout,(1,
-            >>>                None, 2),save=True)
+            >>> G.plot_graph2d(networkx.drawing.circular_layout,save=True,
+            extent=(1,
+            >>>                None, 2))
 
         Args:
             layout_function (func): One of the networkx layout functions.
@@ -3181,6 +3182,9 @@ class ZoneGraph(networkx.Graph):
             fig_width (float): matplotlib figure width in inches.
             node_labels_to_integers:
             legend:
+            with_labels (bool, optional): Set to True to draw labels on the
+            arrows (bool, optional): If True, draw arrowheads. Note: Arrows will
+                be the same color as edges.
             save (bool): if True, save the figure as an image file to disk.
             show (bool): if True, show the figure.
             close (bool): close the figure (only if show equals False) to
@@ -3200,9 +3204,7 @@ class ZoneGraph(networkx.Graph):
                 dict: Dictionary with valid key/value pairs for
                 :attr:`matplotlib.rcParams`. - list: A list of style specifiers
                 (str or dict) applied from first to last in the list.
-            with_labels (bool, optional): Set to True to draw labels on the
-            arrows (bool, optional): If True, draw arrowheads. Note: Arrows will
-                be the same color as edges.
+            extent:
             **kwargs: keywords passed to :func:`networkx.draw_networkx`
 
         Returns:
@@ -3244,22 +3246,28 @@ class ZoneGraph(networkx.Graph):
                 colors = '#1f78b4'
 
             scatter = networkx.draw_networkx_nodes(tree, pos=pos, ax=ax,
-                                         node_color=colors, **kwargs)
+                                         node_color=kwargs.pop('node_color',
+                                                               colors),
+                                                   **kwargs)
             networkx.draw_networkx_edges(tree, pos, ax=ax, arrows=arrows,
                                          **kwargs)
             if with_labels:
                 networkx.draw_networkx_labels(G, pos, **kwargs)
 
             if legend:
+                labels = {i: str(data) for i, data in G.nodes(data=color_nodes)}
+                # func = lambda x: np.array([labels[i] for i in x])
+                func = lambda x: x
                 bbox = kwargs.get('bbox_to_anchor', (1, 1))
-                legend1 = ax.legend(*scatter.legend_elements(),
+                legend1 = ax.legend(*scatter.legend_elements(num=len(groups),
+                                                             func=func),
                                     title=color_nodes, bbox_to_anchor=bbox)
                 ax.add_artist(legend1)
 
             fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
                                     close=close, filename=filename,
                                     file_format=file_format, dpi=dpi,
-                                    axis_off=axis_off, extent=None)
+                                    axis_off=axis_off, extent=extent)
             return fig, ax
 
     @property

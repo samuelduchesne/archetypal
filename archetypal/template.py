@@ -14,6 +14,7 @@ from enum import IntEnum
 import eppy.modeleditor
 import networkx
 import numpy as np
+import tabulate
 
 from archetypal import object_from_idfs, Schedule, calc_simple_glazing, log, \
     save_and_show, IDF
@@ -24,6 +25,11 @@ created_obj = {}
 class Unique(type):
 
     def __call__(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         key = (cls.mro()[0].__name__, kwargs['Name'])
         if key not in created_obj:
             self = cls.__new__(cls, *args, **kwargs)
@@ -33,6 +39,12 @@ class Unique(type):
         return created_obj[key]
 
     def __init__(cls, name, bases, attributes):
+        """
+        Args:
+            name:
+            bases:
+            attributes:
+        """
         super().__init__(name, bases, attributes)
         cls._cache = {}
 
@@ -58,6 +70,7 @@ class UmiBase(object):
                 This helps identify from which data is the current object
                 created.
             sql (dict of pandas.DataFrame):
+            **kwargs:
         """
         super(UmiBase, self).__init__()
         self.Name = Name
@@ -92,7 +105,11 @@ class UmiBase(object):
                 "Name": "{}".format(self.Name)}
 
     def get_ref(self, ref):
-        """Gets item matching ref id"""
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
         return [self.all_objects[obj]
                 for obj in self.all_objects
                 if self.all_objects[obj].id == ref['$ref']][0]
@@ -110,12 +127,26 @@ class UmiBase(object):
 
 
 class MaterialBase(UmiBase):
-    def __init__(self, Name, Cost=0, EmbodiedCarbon=0, EmbodiedEnergy=0,
+    def __init__(self, Cost=0, EmbodiedCarbon=0, EmbodiedEnergy=0,
                  SubstitutionTimestep=0, TransportCarbon=0, TransportDistance=0,
                  TransportEnergy=0, SubstitutionRatePattern=None,
                  Conductivity=2.4, Density=2400,
                  **kwargs):
-        super(MaterialBase, self).__init__(Name, **kwargs)
+        """
+        Args:
+            Cost (float):
+            EmbodiedCarbon (float):
+            EmbodiedEnergy (float):
+            SubstitutionTimestep (float):
+            TransportCarbon (float):
+            TransportDistance (float):
+            TransportEnergy (float):
+            SubstitutionRatePattern (list):
+            Conductivity (float):
+            Density (float):
+            **kwargs: Keywords passed to the base class :class:`UmiBase`
+        """
+        super(MaterialBase, self).__init__(**kwargs)
         if SubstitutionRatePattern is None:
             SubstitutionRatePattern = [1.0]
         self.Conductivity = Conductivity
@@ -170,11 +201,23 @@ class GasMaterial(MaterialBase, metaclass=Unique):
                  Category='Gases',
                  Type="Gas",
                  **kwargs):
+        """
+        Args:
+            *args:
+            Category:
+            Type:
+            **kwargs:
+        """
         super(GasMaterial, self).__init__(*args, Category=Category, **kwargs)
         self.Type = Type
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         gm = cls(*args, **kwargs)
         gas_type = kwargs.get('Name', None)
         gm.Type = gas_type
@@ -183,6 +226,12 @@ class GasMaterial(MaterialBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, idf, *args, **kwargs):
+        """
+        Args:
+            idf:
+            *args:
+            **kwargs:
+        """
         gms = idf.idfobjects['WindowMaterial:Gas'.upper()]
         # returns Idf_MSequence
 
@@ -191,9 +240,10 @@ class GasMaterial(MaterialBase, metaclass=Unique):
     @classmethod
     def from_ep_bunch(cls, ep_bunch, *args, **kwargs):
         """
-
         Args:
             ep_bunch (ep_bunch):
+            *args:
+            **kwargs:
         """
         type = ep_bunch.Gas_Type
         name = ep_bunch.Name
@@ -224,15 +274,9 @@ class GasMaterial(MaterialBase, metaclass=Unique):
         return data_dict
 
 
-class GlazingMaterial(UmiBase, metaclass=Unique):
-    """$id, Comment, Conductivity, Cost, DataSource, Density, DirtFactor,
-    EmbodiedCarbon, EmbodiedCarbonStdDev, EmbodiedEnergy,
-    EmbodiedEnergyStdDev, IREmissivityBack, IREmissivityFront,
-    IRTransmittance, Life, Name, Optical, OpticalData, SolarReflectanceBack,
-    SolarReflectanceFront, SolarTransmittance, SubstitutionRatePattern,
-    SubstitutionTimestep, TransportCarbon, TransportDistance,
-    TransportEnergy, Type, VisibleReflectanceBack, VisibleReflectanceFront,
-    VisibleTransmittance
+class GlazingMaterial(MaterialBase, metaclass=Unique):
+    """
+
     """
 
     def __init__(self, Density=2500, Conductivity=None, Optical=None,
@@ -245,8 +289,39 @@ class GlazingMaterial(UmiBase, metaclass=Unique):
                  EmbodiedCarbon=0, EmbodiedCarbonStdDev=0, Cost=0.0, Life=1,
                  SubstitutionRatePattern=[0.2], SubstitutionTimestep=50,
                  TransportCarbon=None, TransportDistance=None,
-                 TransportEnergy=0, *args, **kwargs):
-        super(GlazingMaterial, self).__init__(*args, **kwargs)
+                 TransportEnergy=0, **kwargs):
+        """
+        Args:
+            Density:
+            Conductivity:
+            Optical:
+            OpticalData:
+            SolarTransmittance:
+            SolarReflectanceFront:
+            SolarReflectanceBack:
+            VisibleTransmittance:
+            VisibleReflectanceFront:
+            VisibleReflectanceBack:
+            IRTransmittance:
+            IREmissivityFront:
+            IREmissivityBack:
+            DirtFactor:
+            Type:
+            EmbodiedEnergy:
+            EmbodiedEnergyStdDev:
+            EmbodiedCarbon:
+            EmbodiedCarbonStdDev:
+            Cost:
+            Life:
+            SubstitutionRatePattern:
+            SubstitutionTimestep:
+            TransportCarbon:
+            TransportDistance:
+            TransportEnergy:
+            *args:
+            **kwargs:
+        """
+        super(GlazingMaterial, self).__init__(**kwargs)
         self.TransportEnergy = TransportEnergy
         self.TransportDistance = TransportDistance
         self.TransportCarbon = TransportCarbon
@@ -307,6 +382,12 @@ class GlazingMaterial(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, idf, *args, **kwargs):
+        """
+        Args:
+            idf:
+            *args:
+            **kwargs:
+        """
         glazms = idf.idfobjects['WindowMaterial:Glazing'.upper()]
 
         return [cls.from_ep_bunch(glazm, *args, **kwargs) for glazm in glazms]
@@ -314,6 +395,12 @@ class GlazingMaterial(UmiBase, metaclass=Unique):
     @classmethod
     def from_ep_bunch(cls, epbunch, *args, **kwargs):
         # Get parameter values from ep_bunch
+        """
+        Args:
+            epbunch:
+            *args:
+            **kwargs:
+        """
         Name = epbunch.Name
         Density = 2500
         Conductivity = epbunch.Conductivity
@@ -367,7 +454,6 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
     def __init__(self, *args, **kwargs):
         """
-
         Args:
             *args:
             **kwargs:
@@ -379,6 +465,11 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
     @classmethod
     def random_constant_schedule(cls, seed=1, **kwargs):
+        """
+        Args:
+            seed:
+            **kwargs:
+        """
         randint = random.randint(25, 50)
         name = 'Constant_value_{}'.format(randint)
         random.seed(seed)
@@ -389,6 +480,11 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         sched = cls(*args, **kwargs)
         sched.develop()
         return sched
@@ -423,9 +519,10 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         return year
 
     def to_json(self):
-        """UmiSchedule does not implement the to_json method because it is
-        not used when generating the json file. Only Year-Week- and
-        DaySchedule classes are used"""
+        """UmiSchedule does not implement the to_json method because it is not
+        used when generating the json file. Only Year-Week- and DaySchedule
+        classes are used
+        """
         pass
 
     def to_dict(self):
@@ -436,6 +533,14 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 class YearScheduleParts():
     def __init__(self, FromDay=None, FromMonth=None, ToDay=None, ToMonth=None,
                  Schedule=None):
+        """
+        Args:
+            FromDay:
+            FromMonth:
+            ToDay:
+            ToMonth:
+            Schedule:
+        """
         self.FromDay = FromDay
         self.FromMonth = FromMonth
         self.ToDay = ToDay
@@ -444,6 +549,12 @@ class YearScheduleParts():
 
     @classmethod
     def from_json(cls, all_objects, *args, **kwargs):
+        """
+        Args:
+            all_objects:
+            *args:
+            **kwargs:
+        """
         ysp = cls(*args, **kwargs)
         ref = kwargs.get('Schedule', None)
         ysp.Schedule = all_objects.get_ref(ref)
@@ -462,12 +573,12 @@ class YearScheduleParts():
 
 
 class DaySchedule(UmiSchedule):
-    """$id, Category, Comments, DataSource, Name, Type, Values
+    """
+    $id, Category, Comments, DataSource, Name, Type, Values
     """
 
     def __init__(self, *args, **kwargs):
         """
-
         Args:
             *args:
             **kwargs:
@@ -494,11 +605,12 @@ class DaySchedule(UmiSchedule):
 
 
 class WeekSchedule(UmiSchedule):
-    """$id, Category, Comments, DataSource, Days, Name, Type"""
+    """
+    $id, Category, Comments, DataSource, Days, Name, Type
+    """
 
     def __init__(self, *args, **kwargs):
         """
-
         Args:
             *args:
             **kwargs:
@@ -518,6 +630,11 @@ class WeekSchedule(UmiSchedule):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         wc = cls(*args, **kwargs)
         days = kwargs.get('Days', None)
         wc.Days = [wc.get_ref(day) for day in days]
@@ -539,6 +656,10 @@ class WeekSchedule(UmiSchedule):
         return data_dict
 
     def get_days(self, epbunch):
+        """
+        Args:
+            epbunch:
+        """
         blocks = []
         dayname = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
                    'Thursday', 'Friday', 'Saturday']
@@ -559,12 +680,12 @@ class WeekSchedule(UmiSchedule):
 
 
 class YearSchedule(UmiSchedule):
-    """$id, Category, Comments, DataSource, Name, Parts, Type
+    """
+    $id, Category, Comments, DataSource, Name, Parts, Type
     """
 
     def __init__(self, *args, **kwargs):
         """
-
         Args:
             *args:
             **kwargs:
@@ -590,6 +711,11 @@ class YearSchedule(UmiSchedule):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         ys = cls(*args, **kwargs)
         parts = kwargs.get('Parts', None)
 
@@ -613,6 +739,10 @@ class YearSchedule(UmiSchedule):
         return data_dict
 
     def get_parts(self, epbunch):
+        """
+        Args:
+            epbunch:
+        """
         parts = []
         for i in range(int(len(epbunch.fieldvalues[3:]) / 5)):
             week_day_schedule_name = epbunch[
@@ -633,20 +763,24 @@ class YearSchedule(UmiSchedule):
 
 
 class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
-    """$id, Category, Comments, DataSource, FlowRatePerFloorArea, IsOn, Name,
+    """
+    $id, Category, Comments, DataSource, FlowRatePerFloorArea, IsOn, Name,
     WaterSchedule.$ref, WaterSupplyTemperature, WaterTemperatureInlet
     """
 
-    def __init__(self, WaterSchedule=None, *args,
-                 Category=None, DataSource=None, FlowRatePerFloorArea=-0.03,
-                 IsOn=True, WaterSupplyTemperature=65,
+    def __init__(self, IsOn=True, WaterSchedule=None,
+                 FlowRatePerFloorArea=-0.03, WaterSupplyTemperature=65,
                  WaterTemperatureInlet=10, **kwargs):
         """
-
         Args:
+            IsOn (bool):
             WaterSchedule (YearSchedule):
+            FlowRatePerFloorArea (float):
+            WaterSupplyTemperature (float):
+            WaterTemperatureInlet (float):
+            **kwargs:
         """
-        super(DomesticHotWaterSetting, self).__init__(*args, **kwargs)
+        super(DomesticHotWaterSetting, self).__init__(**kwargs)
         self.Category = Category
         self.DataSource = DataSource
         self.FlowRatePerFloorArea = FlowRatePerFloorArea
@@ -657,6 +791,11 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         dhws = cls(*args, **kwargs)
         wat_sch = kwargs.get('WaterSchedule', None)
         dhws.WaterSchedule = dhws.get_ref(wat_sch)
@@ -681,7 +820,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
 
 
 class VentilationSetting(UmiBase, metaclass=Unique):
-    """$id, Afn, Infiltration, IsBuoyancyOn, IsInfiltrationOn, IsNatVentOn,
+    """
+    $id, Afn, Infiltration, IsBuoyancyOn, IsInfiltrationOn, IsNatVentOn,
     IsScheduledVentilationOn, IsWindOn, NatVentMaxOutdoorAirTemp,
     NatVentMaxRelHumidity, NatVentMinOutdoorAirTemp, NatVentSchedule.$ref,
     NatVentZoneTempSetpoint, ScheduledVentilationAch,
@@ -698,6 +838,26 @@ class VentilationSetting(UmiBase, metaclass=Unique):
                  NatVentMaxRelHumidity=90, NatVentMinOutdoorAirTemp=0,
                  NatVentZoneTempSetpoint=18, ScheduledVentilationAch=0.6,
                  ScheduledVentilationSetpoint=18, **kwargs):
+        """
+        Args:
+            *args:
+            NatVentSchedule:
+            ScheduledVentilationSchedule:
+            Afn:
+            Infiltration:
+            IsBuoyancyOn:
+            IsInfiltrationOn:
+            IsNatVentOn:
+            IsScheduledVentilationOn:
+            IsWindOn:
+            NatVentMaxOutdoorAirTemp:
+            NatVentMaxRelHumidity:
+            NatVentMinOutdoorAirTemp:
+            NatVentZoneTempSetpoint:
+            ScheduledVentilationAch:
+            ScheduledVentilationSetpoint:
+            **kwargs:
+        """
         super(VentilationSetting, self).__init__(*args, **kwargs)
         self.Afn = Afn
         self.Infiltration = Infiltration
@@ -718,6 +878,11 @@ class VentilationSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         vs = cls(*args, **kwargs)
         vent_sch = kwargs.get('ScheduledVentilationSchedule', None)
         vs.ScheduledVentilationSchedule = vs.get_ref(vent_sch)
@@ -756,41 +921,76 @@ class VentilationSetting(UmiBase, metaclass=Unique):
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
-    """$id, Category, Comments, CoolingCoeffOfPerf, CoolingLimitType,
-    CoolingSchedule.$ref, CoolingSetpoint, DataSource, EconomizerType,
-    HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible,
-    HeatRecoveryType, HeatingCoeffOfPerf, HeatingLimitType,
-    HeatingSchedule.$ref, HeatingSetpoint, IsCoolingOn, IsHeatingOn,
-    IsMechVentOn, MaxCoolFlow, MaxCoolingCapacity, MaxHeatFlow,
-    MaxHeatingCapacity, MechVentSchedule.$ref, MinFreshAirPerArea,
-    MinFreshAirPerPerson, Name"""
+    """HVAC settings for the zone"""
 
-    def __init__(self, *args,
-                 Category=None, Comments=None, CoolingCoeffOfPerf=None,
-                 CoolingLimitType='NoLimit',
-                 CoolingSetpoint=26, DataSource=None,
-                 EconomizerType='NoEconomizer',
+    def __init__(self, CoolingCoeffOfPerf=None, CoolingLimitType='NoLimit',
+                 CoolingSetpoint=26, EconomizerType='NoEconomizer',
                  HeatRecoveryEfficiencyLatent=0.65,
-                 HeatRecoveryEfficiencySensible=0.7,
-                 HeatRecoveryType=None, HeatingCoeffOfPerf=None,
-                 HeatingLimitType='NoLimit',
+                 HeatRecoveryEfficiencySensible=0.7, HeatRecoveryType=None,
+                 HeatingCoeffOfPerf=None, HeatingLimitType='NoLimit',
                  HeatingSetpoint=20, IsCoolingOn=True, IsHeatingOn=True,
                  IsMechVentOn=True, MaxCoolFlow=100, MaxCoolingCapacity=100,
-                 MaxHeatFlow=100,
-                 MaxHeatingCapacity=100,
-                 MinFreshAirPerArea=0.001,
-                 MinFreshAirPerPerson=0.001,
+                 MaxHeatFlow=100, MaxHeatingCapacity=100,
+                 MinFreshAirPerArea=0, MinFreshAirPerPerson=0.00944,
                  **kwargs):
+        """Initialize a new ZoneCondition object
+
+        Args:
+            CoolingCoeffOfPerf (float): Performance factor of cooling system.
+                This value is used in deriving the total cooling energy use by
+                dividing the cooling load by the COP.
+            CoolingLimitType (str): The input must be either LimitFlowRate,
+                LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
+            CoolingSetpoint (float): The temperature above which zone heating is
+                turned on.
+            EconomizerType (str): Specifies if there is an outdoor air
+                economizer. The choices are: NoEconomizer, DifferentialDryBulb,
+                or DifferentialEnthalpy.
+            HeatRecoveryEfficiencyLatent (float): The latent heat recovery
+                effectiveness, where effectiveness is defined as the change in
+                supply humidity ratio divided by the difference in entering
+                supply and relief air humidity ratios. The default is 0.65.
+            HeatRecoveryEfficiencySensible (float): The sensible heat recovery
+                effectiveness, where effectiveness is defined as the change in
+                supply temperature divided by the difference in entering supply
+                and relief air temperatures. The default is 0.70.
+            HeatRecoveryType (str): Select from None, Sensible, or Enthalpy.
+            HeatingCoeffOfPerf (float): Efficiency of heating system.
+            HeatingLimitType (str): The input must be either LimitFlowRate,
+                LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
+            HeatingSetpoint (float): The temperature below which zone heating is
+                turned on.
+            IsCoolingOn (bool): Whether or not this cooling is available.
+            IsHeatingOn (bool): Whether or not this cooling is available.
+            IsMechVentOn (bool): If True, an outdoor air quantity for use by the
+                model is calculated.
+            MaxCoolFlow (float): The maximum cooling supply air flow rate in
+                cubic meters per second if Cooling Limit is set to LimitFlowRate
+                or LimitFlowRateAndCapacity
+            MaxCoolingCapacity (float): The maximum allowed total (sensible plus
+                latent) cooling capacity in Watts per square meter.
+            MaxHeatFlow (float): The maximum heating supply air flow rate in
+                cubic meters per second if heating limit is set to LimitFlowRate
+                or LimitFlowRateAndCapacity
+            MaxHeatingCapacity (float): The maximum allowed sensible heating
+                capacity in Watts if Heating Limit is set to LimitCapacity or
+                LimitFlowRateAndCapacity
+            MinFreshAirPerArea (flaot): The design outdoor air volume flow rate
+                per square meter of floor area (units are m3/s-m2). This input
+                is used if Outdoor Air Method is Flow/Area, Sum or Maximum
+            MinFreshAirPerPerson (float): The design outdoor air volume flow
+                rate per person for this zone in cubic meters per second per
+                person. The default is 0.00944 (20 cfm per person).
+            **kwargs: Other arguments passed to the base class
+                :class:`archetypal.template.UmiBase`
+        """
         super(ZoneConditioning, self).__init__(*args, **kwargs)
         self.MechVentSchedule = None
         self.HeatingSchedule = None
         self.CoolingSchedule = None
-        self.Category = Category
-        self.Comments = Comments
         self.CoolingCoeffOfPerf = CoolingCoeffOfPerf
         self.CoolingLimitType = CoolingLimitType
         self.CoolingSetpoint = CoolingSetpoint
-        self.DataSource = DataSource
         self.EconomizerType = EconomizerType
         self.HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencyLatent
         self.HeatRecoveryEfficiencySensible = HeatRecoveryEfficiencySensible
@@ -810,7 +1010,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
-        zc = ZoneConditioning(*args, **kwargs)
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
+        zc = ZoneConditioning(**kwargs)
 
         zc.MechVentSchedule = UmiSchedule.random_constant_schedule()
         zc.HeatingSchedule = UmiSchedule.random_constant_schedule()
@@ -819,6 +1024,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         zc = cls(*args, **kwargs)
 
         cool_schd = kwargs.get('CoolingSchedule', None)
@@ -868,11 +1078,13 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
 
 class ZoneLoad(UmiBase, metaclass=Unique):
-    """$id, Category, Comments, DataSource, DimmingType,
+    """
+    $id, Category, Comments, DataSource, DimmingType,
     EquipmentAvailabilitySchedule.$ref, EquipmentPowerDensity,
     IlluminanceTarget, IsEquipmentOn, IsLightingOn, IsPeopleOn,
     LightingPowerDensity, LightsAvailabilitySchedule.$ref, Name,
-    OccupancySchedule.$ref, PeopleDensity"""
+    OccupancySchedule.$ref, PeopleDensity
+    """
 
     def __init__(self, *args,
                  DimmingType='Continuous',
@@ -887,6 +1099,22 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                  IsPeopleOn=True,
                  PeopleDensity=0.2,
                  **kwargs):
+        """
+        Args:
+            *args:
+            DimmingType:
+            EquipmentAvailabilitySchedule:
+            EquipmentPowerDensity:
+            IlluminanceTarget:
+            LightingPowerDensity:
+            LightsAvailabilitySchedule:
+            OccupancySchedule:
+            IsEquipmentOn:
+            IsLightingOn:
+            IsPeopleOn:
+            PeopleDensity:
+            **kwargs:
+        """
         super(ZoneLoad, self).__init__(*args, **kwargs)
         self.DimmingType = DimmingType
         self.EquipmentAvailabilitySchedule = EquipmentAvailabilitySchedule
@@ -902,6 +1130,11 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         zl = cls(*args, **kwargs)
 
         cool_schd = kwargs.get('EquipmentAvailabilitySchedule', None)
@@ -940,8 +1173,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
-    """
-    Category, Comments, Core.$ref, DataSource, Lifespan, Name,
+    """Category, Comments, Core.$ref, DataSource, Lifespan, Name,
     PartitionRatio, Perimeter.$ref, Structure.$ref
     """
 
@@ -954,12 +1186,15 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                  PartitionRatio=0.35,
                  **kwargs):
         """
-
         Args:
-            Structure (StructureDefinition, optional):
-            Windows (WindowSetting, optional):
-            Perimeter (Zone, optional):
+            *args:
             Core (Zone, optional)):
+            Perimeter (Zone, optional):
+            Structure (StructureDefinition):
+            Windows (WindowSettingw, optional):
+            Lifespan:
+            PartitionRatio:
+            **kwargs:
         """
         super(BuildingTemplate, self).__init__(*args, **kwargs)
         self._zone_graph = None
@@ -972,9 +1207,12 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         self.Windows = Windows
 
     @property
-    def zone_graph(self):
-        """Create a graph representation of the building zones. An edge
-        between two zones represents the adjacency of the two zones
+    def zone_graph(self, log_adj_report=True):
+        """Create a graph representation of the building zones. An edge between
+        two zones represents the adjacency of the two zones
+
+        Args:
+            log_adj_report (bool):
 
         Returns:
             ZoneGraph: The building's zone graph object
@@ -1046,7 +1284,6 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                       azim=-60, elev=30, filename=None, opacity=0.5,
                       proj_type='persp', **kwargs):
         """
-
         Args:
             fig_height (float): matplotlib figure height in inches.
             fig_width (float): matplotlib figure width in inches.
@@ -1055,8 +1292,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             show (bool): if True, show the figure.
             close (bool): close the figure (only if show equals False) to
                 prevent display.
-            ax (matplotlib.axes._axes.Axes, optional): An existing axes
-                object on which to plot this graph.
+            ax (matplotlib.axes._axes.Axes, optional): An existing axes object
+                on which to plot this graph.
             axis_off (bool): If True, turn off the matplotlib axis.
             cmap (str): The name a registered
                 :class:`matplotlib.colors.Colormap`.
@@ -1065,12 +1302,10 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                 'png', 'svg', 'pdf')
             azim (float): Azimuthal viewing angle, defaults to -60.
             elev (float): Elevation viewing angle, defaults to 30.
-            proj_type (str): Type of projection, accepts 'persp' and 'ortho'.
             filename (str): the name of the file if saving.
             opacity (float): 0.0 transparent through 1.0 opaque
-
-        Returns:
-
+            proj_type (str): Type of projection, accepts 'persp' and 'ortho'.
+            **kwargs:
         """
         from geomeppy.view_geometry import _get_collections, _get_limits
         from mpl_toolkits.mplot3d import Axes3D
@@ -1111,6 +1346,11 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         bt = cls(*args, **kwargs)
 
         ref = kwargs.get('Core', None)
@@ -1129,6 +1369,11 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, idf, **kwargs):
+        """
+        Args:
+            idf:
+            **kwargs:
+        """
         name = idf.idfobjects['BUILDING'][0].Name
         core = None
         perimeter = None
@@ -1318,6 +1563,10 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             #                  'building {}'.format(self.DataSource))
 
     def get_shading_control(self, sub):
+        """
+        Args:
+            sub:
+        """
         scn = sub.Shading_Control_Name
         obj = self.idf.getobject('WindowProperty:ShadingControl'.upper(), scn)
         if obj:
@@ -1373,8 +1622,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             core = perim
 
         structure_name = '_'.join([self.Name, 'structure'])
-        structure = StructureDefinition(Name=structure_name,
-                                        idf=self.idf,
+        structure = StructureDefinition(Name=structure_name, idf=self.idf,
                                         sql=self.sql)
 
         self.Zones = [core, perim]
@@ -1403,6 +1651,12 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
 class MassRatio(object):
     def __init__(self, HighLoadRatio=None, Material=None, NormalRatio=None):
+        """
+        Args:
+            HighLoadRatio:
+            Material:
+            NormalRatio:
+        """
         self.HighLoadRatio = HighLoadRatio
         self.Material = Material
         self.NormalRatio = NormalRatio
@@ -1421,26 +1675,35 @@ class StructureDefinition(UmiBase, metaclass=Unique):
     DataSource, DisassemblyCarbon, DisassemblyEnergy, MassRatios, Name,
     """
 
-    def __init__(self, *args,
-                 AssemblyCarbon=0,
-                 AssemblyCost=0,
-                 AssemblyEnergy=0,
-                 Category='',
-                 DisassemblyCarbon=0,
-                 DisassemblyEnergy=0,
-                 MassRatios=None,
-                 **kwargs):
+    def __init__(self, *args, AssemblyCarbon=0, AssemblyCost=0,
+                 AssemblyEnergy=0, DisassemblyCarbon=0, DisassemblyEnergy=0,
+                 MassRatios=None, **kwargs):
+        """
+        Args:
+            *args:
+            AssemblyCarbon:
+            AssemblyCost:
+            AssemblyEnergy:
+            DisassemblyCarbon:
+            DisassemblyEnergy:
+            MassRatios:
+            **kwargs:
+        """
         super(StructureDefinition, self).__init__(*args, **kwargs)
         self.AssemblyCarbon = AssemblyCarbon
         self.AssemblyCost = AssemblyCost
         self.AssemblyEnergy = AssemblyEnergy
-        self.Category = Category
         self.DisassemblyCarbon = DisassemblyCarbon
         self.DisassemblyEnergy = DisassemblyEnergy
         self.MassRatios = MassRatios
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         sd = cls(*args, **kwargs)
         massratios = kwargs.get('MassRatios', None)
         sd.MassRatios = [MassRatio(HighLoadRatio=massratio['HighLoadRatio'],
@@ -1469,27 +1732,28 @@ class StructureDefinition(UmiBase, metaclass=Unique):
 
 
 class Zone(UmiBase, metaclass=Unique):
-    """
-    $id, Category, Comments, Conditioning.$ref, Constructions.$ref,
-    DataSource, DaylightMeshResolution, DaylightWorkplaneHeight,
-    DomesticHotWater.$ref, InternalMassConstruction.$ref,
-    InternalMassExposedPerFloorArea, Loads.$ref, Name, Ventilation.$ref
+    """Zone containing HVAC settings: Conditioning, Domestic Hot Water, Loads,
+    Ventilation, adn Consructions
     """
 
-    def __init__(self, *args, Conditioning=None, Constructions=None,
+    def __init__(self, Conditioning=None, Constructions=None,
                  DomesticHotWater=None, Loads=None, Ventilation=None,
                  InternalMassConstruction=None,
-                 DaylightMeshResolution=1, DaylightWorkplaneHeight=0.8,
-                 InternalMassExposedPerFloorArea=1.05, **kwargs):
-        """
+                 InternalMassExposedPerFloorArea=1.05, DaylightMeshResolution=1,
+                 DaylightWorkplaneHeight=0.8, **kwargs):
+        """Initialize :class:`Zone` object.
 
         Args:
-            Ventilation (VentilationSetting):
-            Loads (ZoneLoad):
-            InternalMassConstruction (OpaqueConstruction):
-            DomesticHotWater (DomesticHotWaterSetting):
-            Constructions (ZoneConstructionSet):
             Conditioning (ZoneConditioning):
+            Constructions (ZoneConstructionSet):
+            DomesticHotWater (DomesticHotWaterSetting):
+            Loads (ZoneLoad):
+            Ventilation (VentilationSetting):
+            InternalMassConstruction (OpaqueConstruction):
+            InternalMassExposedPerFloorArea:
+            DaylightMeshResolution (float):
+            DaylightWorkplaneHeight (float):
+            **kwargs:
         """
         super(Zone, self).__init__(*args, **kwargs)
 
@@ -1505,6 +1769,10 @@ class Zone(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_ep_bunch(cls, zone):
+        """
+        Args:
+            zone:
+        """
         name = zone.Name
         zone_constructions = ZoneConstructionSet.from_epbunch(zone)
         z = cls(Name=name, Constructions=zone_constructions)
@@ -1513,6 +1781,11 @@ class Zone(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         z = cls(*args, **kwargs)
         z.Zone_Names = kwargs.get('Zone_Names', None)
         z.sql = kwargs.get('sql', None)
@@ -1624,6 +1897,11 @@ class Zone(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         zone = cls(*args, **kwargs)
 
         ref = kwargs.get('Conditioning', None)
@@ -1641,15 +1919,26 @@ class Zone(UmiBase, metaclass=Unique):
 
         return zone
 
+    def __add__(self, other):
+        """
+        Args:
+            other:
+        """
+        bundled_self = None
+        return bundled_self
+
+    def __iadd__(self, other):
+        """Unlike regular iadd operations, this one does not return self since
+        we need to create a new zone with different properties
+
+        Args:
+            other:
+        """
+        return self.__add__(other)
+
 
 class ZoneConstructionSet(UmiBase, metaclass=Unique):
-    """Zone Specific Construction ids
-
-    $id, Category, Comments, DataSource, Facade.$ref, Ground.$ref,
-    IsFacadeAdiabatic, IsGroundAdiabatic, IsPartitionAdiabatic,
-    IsRoofAdiabatic, IsSlabAdiabatic, Name, Partition.$ref, Roof.$ref,
-    Slab.$ref
-    """
+    """Zone-specific :class:`Construction` ids"""
 
     def __init__(self, *args, Zone_Names=None, Slab=None, IsSlabAdiabatic=False,
                  Roof=None, IsRoofAdiabatic=False, Partition=None,
@@ -1657,14 +1946,20 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
                  IsGroundAdiabatic=False, Facade=None, IsFacadeAdiabatic=False,
                  **kwargs):
         """
-
         Args:
-            Facade (OpaqueConstruction):
-            Ground (OpaqueConstruction):
-            Partition (OpaqueConstruction):
-            Roof (OpaqueConstruction):
+            *args:
+            Zone_Names:
             Slab (OpaqueConstruction):
-
+            IsSlabAdiabatic:
+            Roof (OpaqueConstruction):
+            IsRoofAdiabatic:
+            Partition (OpaqueConstruction):
+            IsPartitionAdiabatic:
+            Ground (OpaqueConstruction):
+            IsGroundAdiabatic:
+            Facade (OpaqueConstruction):
+            IsFacadeAdiabatic:
+            **kwargs:
         """
         super(ZoneConstructionSet, self).__init__(*args, **kwargs)
         self.Slab = Slab
@@ -1682,6 +1977,11 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         zc = cls(*args, **kwargs)
 
         ref = kwargs.get('Facade', None)
@@ -1703,6 +2003,11 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         zc = cls(*args, **kwargs)
 
         zc.constructions()
@@ -1801,6 +2106,10 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_epbunch(cls, zone):
+        """
+        Args:
+            zone:
+        """
         name = zone.Name
         # dispatch surfaces
         facade, ground, partition, roof, slab = [], [], [], [], []
@@ -1818,6 +2127,11 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     @classmethod
     def dispath_surfaces(cls, surf, zone):
+        """
+        Args:
+            surf:
+            zone:
+        """
         dispatch = {
             ('Wall', 'Outdoors'): cls._do_facade,
             ('Floor', 'Ground'): cls._do_ground,
@@ -1845,6 +2159,10 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     @staticmethod
     def _do_facade(surf):
+        """
+        Args:
+            surf:
+        """
         log('surface "%s" assigned as a Facade' % surf.Name, lg.DEBUG)
         return OpaqueConstruction.from_epbunch(
             surf.theidf.getobject('Construction'.upper(),
@@ -1852,6 +2170,10 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     @staticmethod
     def _do_ground(surf):
+        """
+        Args:
+            surf:
+        """
         log('surface "%s" assigned as a Ground' % surf.Name, lg.DEBUG,
             name=surf.theidf.name)
         return OpaqueConstruction.from_epbunch(
@@ -1860,6 +2182,10 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     @staticmethod
     def _do_partition(surf):
+        """
+        Args:
+            surf:
+        """
         log('surface "%s" assigned as a Partition' % surf.Name, lg.DEBUG,
             name=surf.theidf.name)
         return OpaqueConstruction.from_epbunch(
@@ -1868,6 +2194,10 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     @staticmethod
     def _do_roof(surf):
+        """
+        Args:
+            surf:
+        """
         log('surface "%s" assigned as a Roof' % surf.Name, lg.DEBUG,
             name=surf.theidf.name)
         return OpaqueConstruction.from_epbunch(
@@ -1876,6 +2206,10 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     @staticmethod
     def _do_slab(surf):
+        """
+        Args:
+            surf:
+        """
         log('surface "%s" assigned as a Slab' % surf.Name, lg.DEBUG,
             name=surf.theidf.name)
         return OpaqueConstruction.from_epbunch(
@@ -1884,6 +2218,10 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     @staticmethod
     def _do_basement(surf):
+        """
+        Args:
+            surf:
+        """
         log('surface "%s" ignored because basement facades are not supported' %
             surf.Name, lg.WARNING,
             name=surf.theidf.name)
@@ -1892,6 +2230,16 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 class ConstructionBase(UmiBase):
     def __init__(self, AssemblyCarbon=0, AssemblyCost=0, AssemblyEnergy=0,
                  DisassemblyCarbon=0, DisassemblyEnergy=0, *args, **kwargs):
+        """
+        Args:
+            AssemblyCarbon:
+            AssemblyCost:
+            AssemblyEnergy:
+            DisassemblyCarbon:
+            DisassemblyEnergy:
+            *args:
+            **kwargs:
+        """
         super(ConstructionBase, self).__init__(*args, **kwargs)
         self.AssemblyCarbon = AssemblyCarbon
         self.AssemblyCost = AssemblyCost
@@ -1902,6 +2250,11 @@ class ConstructionBase(UmiBase):
 
 class LayeredConstruction(ConstructionBase):
     def __init__(self, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         super(LayeredConstruction, self).__init__(*args, **kwargs)
         self.Layers = kwargs.get('Layers', None)
 
@@ -1909,9 +2262,9 @@ class LayeredConstruction(ConstructionBase):
 class MaterialLayer(object):
     def __init__(self, Material, Thickness):
         """
-
         Args:
             Material (OpaqueMaterial):
+            Thickness:
         """
         self.Thickness = Thickness
         self.Material = Material
@@ -1922,7 +2275,8 @@ class MaterialLayer(object):
 
 
 class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
-    """$id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
+    """
+    $id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
     DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
     """
 
@@ -1932,6 +2286,14 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                  Outside_Boundary_Condition=None,
                  IsAdiabatic=False,
                  **kwargs):
+        """
+        Args:
+            *args:
+            Surface_Type:
+            Outside_Boundary_Condition:
+            IsAdiabatic:
+            **kwargs:
+        """
         super(OpaqueConstruction, self).__init__(*args, **kwargs)
         self.Surface_Type = Surface_Type
         self.Outside_Boundary_Condition = Outside_Boundary_Condition
@@ -1939,6 +2301,11 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         oc = cls(*args, **kwargs)
         layers = kwargs.get('Layers', None)
 
@@ -1951,6 +2318,10 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     @classmethod
     def from_epbunch(cls, epbunch):
         # from the construction
+        """
+        Args:
+            epbunch:
+        """
         name = epbunch.Name
         c = cls(Name=name)
         c.Layers = c.layers(epbunch)
@@ -1958,6 +2329,11 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         oc = cls(*args, **kwargs)
         c = oc.idf.getobject('CONSTRUCTION', oc.Name)
         oc.Layers = oc.layers(c)
@@ -1966,7 +2342,11 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @staticmethod
     def layers(c):
-        """Retrieve layers for the OpaqueConstruction"""
+        """Retrieve layers for the OpaqueConstruction
+
+        Args:
+            c:
+        """
         layers = []
         field_idd = c.getfieldidd('Outside_Layer')
         validobjects = field_idd['validobjects']  # plausible layer types
@@ -2048,9 +2428,9 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
     EmbodiedCarbonStdDev, EmbodiedEnergy, EmbodiedEnergyStdDev, Life,
     MoistureDiffusionResistance, Name, PhaseChange, PhaseChangeProperties,
     Roughness, SolarAbsorptance, SpecificHeat, SubstitutionRatePattern,
-    SubstitutionTimestep, ThermalEmittance, TransportCarbon,
-    TransportDistance, TransportEnergy, Type, VariableConductivity,
-    VariableConductivityProperties, VisibleAbsorptance
+    SubstitutionTimestep, ThermalEmittance, TransportCarbon, TransportDistance,
+    TransportEnergy, Type, VariableConductivity, VariableConductivityProperties,
+    VisibleAbsorptance
     """
 
     def __init__(self, Conductivity,
@@ -2071,6 +2451,28 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                  MoistureDiffusionResistance=50,
                  Thickness=None,
                  *args, **kwargs):
+        """
+        Args:
+            Conductivity:
+            Roughness:
+            SolarAbsorptance:
+            SpecificHeat:
+            ThermalEmittance:
+            VisibleAbsorptance:
+            TransportCarbon:
+            TransportDistance:
+            TransportEnergy:
+            SubstitutionRatePattern:
+            SubstitutionTimestep:
+            Cost:
+            Density:
+            EmbodiedCarbon:
+            EmbodiedEnergy:
+            MoistureDiffusionResistance:
+            Thickness:
+            *args:
+            **kwargs:
+        """
         super(OpaqueMaterial, self).__init__(*args, **kwargs)
 
         self.Conductivity = Conductivity
@@ -2122,6 +2524,12 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, idf, *args, **kwargs):
+        """
+        Args:
+            idf:
+            *args:
+            **kwargs:
+        """
         all_ = []
         all_.extend(idf.idfobjects['Material'.upper()])
         all_.extend(idf.idfobjects['Material:NoMass'.upper()])
@@ -2130,6 +2538,12 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_ep_bunch(cls, epbunch, *args, **kwargs):
+        """
+        Args:
+            epbunch:
+            *args:
+            **kwargs:
+        """
         if epbunch.key.upper() == 'MATERIAL':
             # do MATERIAL
             Name = epbunch.Name
@@ -2178,9 +2592,8 @@ class WindowType(IntEnum):
 
 
 class WindowSetting(UmiBase, metaclass=Unique):
-    """
-    AfnDischargeC, AfnTempSetpoint, AfnWindowAvailability.$ref,
-    Category, Comments, OpaqueConstruction.$ref, DataSource, IsShadingSystemOn,
+    """AfnDischargeC, AfnTempSetpoint, AfnWindowAvailability.$ref, Category,
+    Comments, OpaqueConstruction.$ref, DataSource, IsShadingSystemOn,
     IsVirtualPartition, IsZoneMixingOn, Name, OperableArea,
     ShadingSystemAvailabilitySchedule.$ref, ShadingSystemSetpoint,
     ShadingSystemTransmittance, ShadingSystemType, Type,
@@ -2197,6 +2610,27 @@ class WindowSetting(UmiBase, metaclass=Unique):
                  ShadingSystemType=0, Type=WindowType.External,
                  ZoneMixingDeltaTemperature=2,
                  ZoneMixingFlowRate=0.001, **kwargs):
+        """
+        Args:
+            ZoneMixingAvailabilitySchedule:
+            AfnWindowAvailability:
+            ShadingSystemAvailabilitySchedule:
+            Construction:
+            *args:
+            AfnDischargeC:
+            AfnTempSetpoint:
+            IsShadingSystemOn:
+            IsVirtualPartition:
+            IsZoneMixingOn:
+            OperableArea:
+            ShadingSystemSetpoint:
+            ShadingSystemTransmittance:
+            ShadingSystemType:
+            Type:
+            ZoneMixingDeltaTemperature:
+            ZoneMixingFlowRate:
+            **kwargs:
+        """
         super(WindowSetting, self).__init__(*args, **kwargs)
         self.ZoneMixingAvailabilitySchedule = ZoneMixingAvailabilitySchedule
         self.ShadingSystemAvailabilitySchedule = \
@@ -2218,6 +2652,11 @@ class WindowSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         w = cls(*args, **kwargs)
 
         construction = kwargs.get('Construction', None)
@@ -2226,6 +2665,10 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return w
 
     def window_construction(self, window_construction_name):
+        """
+        Args:
+            window_construction_name:
+        """
         window_construction = WindowConstruction.from_idf(
             Name=window_construction_name,
             idf=self.idf)
@@ -2304,6 +2747,11 @@ class WindowSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         w = cls(*args, **kwargs)
 
         ref = kwargs.get('AfnWindowAvailability', None)
@@ -2318,7 +2766,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
 
 
 class WindowConstruction(UmiBase, metaclass=Unique):
-    """$id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
+    """
+    $id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
     DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
     """
 
@@ -2326,6 +2775,16 @@ class WindowConstruction(UmiBase, metaclass=Unique):
                  AssemblyEnergy=0, DisassemblyCarbon=0,
                  DisassemblyEnergy=0,
                  *args, **kwargs):
+        """
+        Args:
+            AssemblyCarbon:
+            AssemblyCost:
+            AssemblyEnergy:
+            DisassemblyCarbon:
+            DisassemblyEnergy:
+            *args:
+            **kwargs:
+        """
         super(WindowConstruction, self).__init__(*args, **kwargs)
         self.DisassemblyEnergy = DisassemblyEnergy
         self.DisassemblyCarbon = DisassemblyCarbon
@@ -2340,6 +2799,11 @@ class WindowConstruction(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_json(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         wc = cls(*args, **kwargs)
         layers = kwargs.get('Layers', None)
 
@@ -2351,6 +2815,11 @@ class WindowConstruction(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         wc = cls(*args, **kwargs)
 
         wc.Layers = wc.layers()
@@ -2416,19 +2885,18 @@ class WindowConstruction(UmiBase, metaclass=Unique):
 
 
 class ZoneGraph(networkx.Graph):
-    """
-    Base class for undirected graphs.
+    """Base class for undirected graphs.
 
     A Graph stores nodes and edges with optional data, or attributes.
 
-    Graphs hold undirected edges.  Self loops are allowed but multiple
+    Graphs hold undirected edges. Self loops are allowed but multiple
     (parallel) edges are not.
 
-    Nodes can be arbitrary (hashable) Python objects with optional
-    key/value attributes. By convention `None` is not used as a node.
+    Nodes can be arbitrary (hashable) Python objects with optional key/value
+    attributes. By convention `None` is not used as a node.
 
-    Edges are represented as links between nodes with optional
-    key/value attributes.
+    Edges are represented as links between nodes with optional key/value
+    attributes.
     """
 
     def __init__(self, incoming_graph_data=None, **attr):
@@ -2437,13 +2905,13 @@ class ZoneGraph(networkx.Graph):
         Wrapper around the :class:`networkx.classes.graph.Graph` class.
 
         Args:
-            incoming_graph_data : input graph (optional, default: None)
-                Data to initialize graph. If None (default) an empty graph is
-                created.  The data can be an edge list, or any NetworkX graph
-                object.  If the corresponding optional Python packages are
-                installed the data can also be a NumPy matrix or 2d ndarray,
-                a SciPy sparse matrix, or a PyGraphviz graph.
-            attr : keyword arguments, optional (default= no attributes)
+            incoming_graph_data: input graph (optional, default: None) Data to
+                initialize graph. If None (default) an empty graph is created.
+                The data can be an edge list, or any NetworkX graph object. If
+                the corresponding optional Python packages are installed the
+                data can also be a NumPy matrix or 2d ndarray, a SciPy sparse
+                matrix, or a PyGraphviz graph.
+            attr: keyword arguments, optional (default= no attributes)
                 Attributes to add to graph as key=value pairs.
         """
         super(ZoneGraph, self).__init__(incoming_graph_data=incoming_graph_data,
@@ -2471,8 +2939,8 @@ class ZoneGraph(networkx.Graph):
             show (bool): if True, show the figure.
             close (bool): close the figure (only if show equals False) to
                 prevent display.
-            ax (matplotlib.axes._axes.Axes, optional): An existing axes
-                object on which to plot this graph.
+            ax (matplotlib.axes._axes.Axes, optional): An existing axes object
+                on which to plot this graph.
             axis_off (bool): If True, turn off the matplotlib axis.
             cmap (str): The name a registered
                 :class:`matplotlib.colors.Colormap`.
@@ -2483,22 +2951,18 @@ class ZoneGraph(networkx.Graph):
             elev (float): Elevation viewing angle, defaults to 30.
             proj_type (str): Type of projection, accepts 'persp' and 'ortho'.
             filename (str): the name of the file if saving.
-            annotate (bool or str): If True, annotates the node with the
-                Zone Name. Pass a field_name to retrieve data from the
-                epbunch of the zone.
-            plt_style (str, dict, or list): A style specification. Valid
-                options are:
-                - str: The name of a style or a path/URL to a style file.
-                For a list of available style names,
-                see `style.available`.
-                - dict: Dictionary with valid key/value pairs for
-                :attr:`matplotlib.rcParams`.
-                - list: A list of style specifiers (str or dict) applied from
-                first to last in the list.
+            annotate (bool or str): If True, annotates the node with the Zone
+                Name. Pass a field_name to retrieve data from the epbunch of the
+                zone.
+            plt_style (str, dict, or list): A style specification. Valid options
+                are: - str: The name of a style or a path/URL to a style file.
+                For a list of available style names, see `style.available` . -
+                dict: Dictionary with valid key/value pairs for
+                :attr:`matplotlib.rcParams`. - list: A list of style specifiers
+                (str or dict) applied from first to last in the list.
 
         Returns:
             fig, ax: fig, ax
-
         """
         from mpl_toolkits.mplot3d import Axes3D
         import matplotlib.pyplot as plt
@@ -2620,15 +3084,31 @@ class ZoneGraph(networkx.Graph):
 
     @property
     def core_graph(self):
+        """Returns a copy of the ZoneGraph containing only core zones"""
         nodes = [i for i, data in self.nodes(data='core') if data]
         return self.subgraph(nodes).copy()
 
+    @property
+    def perim_graph(self):
+        """Returns a copy of the ZoneGraph containing only perimeter zones"""
+        nodes = [i for i, data in self.nodes(data='core') if not data]
+        return self.subgraph(nodes).copy()
+
     def info(self, node=None):
-        return print(networkx.info(G=self, n=node))
+        """Print short summary of information for the graph or the node n.
+
+        Args:
+            node (any hashable): A node in the graph
+        """
+        return log(networkx.info(G=self, n=node))
 
 
 def label_surface(row):
-    """Takes a boundary and returns its corresponding umi-Category"""
+    """Takes a boundary and returns its corresponding umi-Category
+
+    Args:
+        row:
+    """
     # Floors
     if row['Surface_Type'] == 'Floor':
         if row['Outside_Boundary_Condition'] == 'Surface':
@@ -2659,7 +3139,11 @@ def label_surface(row):
 
 
 def type_surface(row):
-    """Takes a boundary and returns its corresponding umi-type"""
+    """Takes a boundary and returns its corresponding umi-type
+
+    Args:
+        row:
+    """
 
     # Floors
     if row['Surface_Type'] == 'Floor':
@@ -2702,10 +3186,10 @@ def zone_information(df):
         df
 
     References:
-        * `Zone Loads Information \
-        <https://bigladdersoftware.com/epx/docs/8-3/output-details-and \
-        -examples/eplusout.eio.html#zone_loads-information>`_
+        * ` Zone Loads Information
 
+        < https://bigladdersoftware.com/epx/docs/8-3/output-details-and
+        -examples/eplusout.eio.html#zone_loads-information>`_
     """
     df = get_from_tabulardata(df)
     tbstr = df[(df.ReportName == 'Initialization Summary') &
@@ -2738,21 +3222,19 @@ def get_from_tabulardata(sql):
 
 
 def iscore(row):
-    """
-    Helps to group by core and perimeter zones. If any of "has `core` in
-    name" and "ExtGrossWallArea == 0" is true,
-    will consider zone_loads as core, else as perimeter.
+    """Helps to group by core and perimeter zones. If any of "has `core` in
+    name" and "ExtGrossWallArea == 0" is true, will consider zone_loads as core,
+    else as perimeter.
 
     Todo:
-        * assumes a basement zone_loads will be considered as a core
-          zone_loads since no ext wall area for basements.
+        * assumes a basement zone_loads will be considered as a core zone_loads
+          since no ext wall area for basements.
 
     Args:
         row (pandas.Series): a row
 
     Returns:
         str: 'Core' or 'Perimeter'
-
     """
     if any(['core' in row['Zone Name'].lower(),
             float(row['Exterior Gross Wall Area {m2}']) == 0]):

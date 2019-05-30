@@ -1,6 +1,14 @@
 Packages
 ========
 
+Template
+--------
+
+.. autosummary::
+    :toctree: stubs
+
+    archetypal.template
+
 
 Schedules Module
 ----------------
@@ -38,9 +46,3 @@ Data Portals
 ------------
 
 .. automodule:: archetypal.dataportal
-
-
-Template
---------
-
-.. automodule:: archetypal.template

@@ -275,9 +275,6 @@ class GasMaterial(MaterialBase, metaclass=Unique):
 
 
 class GlazingMaterial(MaterialBase, metaclass=Unique):
-    """
-
-    """
 
     def __init__(self, Density=2500, Conductivity=None, Optical=None,
                  OpticalData=None, SolarTransmittance=None,
@@ -318,7 +315,6 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
             TransportCarbon:
             TransportDistance:
             TransportEnergy:
-            *args:
             **kwargs:
         """
         super(GlazingMaterial, self).__init__(**kwargs)
@@ -781,8 +777,6 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             **kwargs:
         """
         super(DomesticHotWaterSetting, self).__init__(**kwargs)
-        self.Category = Category
-        self.DataSource = DataSource
         self.FlowRatePerFloorArea = FlowRatePerFloorArea
         self.IsOn = IsOn
         self.WaterSupplyTemperature = WaterSupplyTemperature
@@ -984,7 +978,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             **kwargs: Other arguments passed to the base class
                 :class:`archetypal.template.UmiBase`
         """
-        super(ZoneConditioning, self).__init__(*args, **kwargs)
+        super(ZoneConditioning, self).__init__(**kwargs)
         self.MechVentSchedule = None
         self.HeatingSchedule = None
         self.CoolingSchedule = None
@@ -1185,13 +1179,18 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                  Lifespan=60,
                  PartitionRatio=0.35,
                  **kwargs):
-        """
+        """High :param * args: :param Core: :type Core: Zone, optional) :param
+        Perimeter: :type Perimeter: Zone, optional :param Structure: :type
+        Structure: StructureDefinition :param Windows: :type Windows:
+        WindowSettingw, optional :param Lifespan: :param PartitionRatio: :param
+        ** kwargs:
+
         Args:
             *args:
-            Core (Zone, optional)):
-            Perimeter (Zone, optional):
-            Structure (StructureDefinition):
-            Windows (WindowSettingw, optional):
+            Core:
+            Perimeter:
+            Structure:
+            Windows:
             Lifespan:
             PartitionRatio:
             **kwargs:
@@ -1386,10 +1385,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         return bt
 
     def reduce(self):
-        """
-        Returns:
-            BuildingTemplate: The reduced BuildingTemplate
-        """
+        """Reduce the building to its simplest core and perimeter zones."""
 
         # Determine if core graph is not empty
         core = self.zone_graph.core_graph
@@ -1399,7 +1395,14 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         self.Perimeter = self.graph_reduce(core)
 
     def graph_reduce(self, G):
-        """
+        """Using the depth first search algorithm, iterate over the zone
+        adjacency graph and compute the equivalent zone yield by the 'addition'
+        of two consecutive zones.
+
+        'Adding' two zones together means both zones properties are
+        weighted-averaged by zone area. All dependent objects implement the
+        :func:`operator.add` method.
+
         Args:
             G (ZoneGraph):
 
@@ -1771,7 +1774,7 @@ class Zone(UmiBase, metaclass=Unique):
     def from_ep_bunch(cls, zone):
         """
         Args:
-            zone:
+            zone (epbunch):
         """
         name = zone.Name
         zone_constructions = ZoneConstructionSet.from_epbunch(zone)

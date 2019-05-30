@@ -8,12 +8,13 @@
 import functools
 import io
 import logging as lg
+import tempfile
 from datetime import datetime, timedelta
 
 import archetypal
 import numpy as np
 import pandas as pd
-from archetypal import log
+from archetypal import log, settings
 
 
 class Schedule(object):
@@ -61,9 +62,12 @@ class Schedule(object):
         idftxt = "VERSION, 8.9;"  # Not an emplty string. has just the
         # version number
         # we can make a file handle of a string
-        fhandle = io.StringIO(idftxt)
+        fd, name = tempfile.mkstemp(suffix='_schedule.idf', prefix='temp_',
+                                   dir=settings.cache_folder, text=True)
+        with open(name, 'w') as f:
+            f.write(idftxt)
         # initialize the IDF object with the file handle
-        idf_scratch = archetypal.IDF(fhandle)
+        idf_scratch = archetypal.IDF(name)
 
         idf_scratch.add_object(ep_object='Schedule:Constant'.upper(),
                                **dict(Name=Name,

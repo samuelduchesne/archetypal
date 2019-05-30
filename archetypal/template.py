@@ -17,7 +17,7 @@ import matplotlib.colors
 import networkx
 import numpy as np
 import tabulate
-from eppy.bunch_subclass import BadEPFieldError
+from eppy.bunch_subclass import EpBunch, BadEPFieldError
 
 from archetypal import object_from_idfs, Schedule, calc_simple_glazing, log, \
     save_and_show, IDF
@@ -396,7 +396,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         # Get parameter values from ep_bunch
         """
         Args:
-            epbunch:
+            epbunch (EpBunch):
             *args:
             **kwargs:
         """
@@ -657,7 +657,7 @@ class WeekSchedule(UmiSchedule):
     def get_days(self, epbunch):
         """
         Args:
-            epbunch:
+            epbunch (EpBunch):
         """
         blocks = []
         dayname = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
@@ -740,7 +740,7 @@ class YearSchedule(UmiSchedule):
     def get_parts(self, epbunch):
         """
         Args:
-            epbunch:
+            epbunch (EpBunch):
         """
         parts = []
         for i in range(int(len(epbunch.fieldvalues[3:]) / 5)):
@@ -820,7 +820,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         # Todo: Create DHW settings fom epbunch
         """
         Args:
-            zone:
+            zone (EpBunch):
         """
         pass
 
@@ -930,7 +930,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         # todo: create zone ventilation settings from epbunch
         """
         Args:
-            zone:
+            zone (EpBunch):
         """
         pass
 
@@ -1200,7 +1200,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         # Todo: Create zone load from epbunch
         """
         Args:
-            zone:
+            zone (EpBunch):
         """
         pass
 
@@ -1452,8 +1452,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
     def graph_reduce(self, G):
         """Using the depth first search algorithm, iterate over the zone
-        adjacency graph and compute the equivalent zone yield by the 'addition'
-        of two consecutive zones.
+        adjacency graph and compute the equivalent zone yielded by the
+        'addition' of two consecutive zones.
 
         'Adding' two zones together means both zones properties are
         weighted-averaged by zone area. All dependent objects implement the
@@ -1831,7 +1831,7 @@ class Zone(UmiBase, metaclass=Unique):
         """Create a Zone object from an eppy 'ZONE' epbunch.
 
         Args:
-            zone (epbunch):
+            zone (EpBunch):
         """
         name = zone.Name
         constructions = ZoneConstructionSet.from_epbunch(zone)
@@ -1991,7 +1991,7 @@ class Zone(UmiBase, metaclass=Unique):
     def __add__(self, other):
         """
         Args:
-            other:
+            other (Zone):
         """
         bundled_self: Zone = None
 
@@ -2181,7 +2181,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     def from_epbunch(cls, zone):
         """
         Args:
-            zone:
+            zone (EpBunch):
         """
         name = zone.Name
         # dispatch surfaces
@@ -2204,8 +2204,8 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     def dispath_surfaces(cls, surf, zone):
         """
         Args:
-            surf:
-            zone:
+            surf (EpBunch):
+            zone (EpBunch):
         """
         dispatch = {
             ('Wall', 'Outdoors'): cls._do_facade,
@@ -2236,7 +2236,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     def _do_facade(surf):
         """
         Args:
-            surf:
+            surf (EpBunch):
         """
         log('surface "%s" assigned as a Facade' % surf.Name, lg.DEBUG)
         return OpaqueConstruction.from_epbunch(
@@ -2247,7 +2247,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     def _do_ground(surf):
         """
         Args:
-            surf:
+            surf (EpBunch):
         """
         log('surface "%s" assigned as a Ground' % surf.Name, lg.DEBUG,
             name=surf.theidf.name)
@@ -2259,7 +2259,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     def _do_partition(surf):
         """
         Args:
-            surf:
+            surf (EpBunch):
         """
         log('surface "%s" assigned as a Partition' % surf.Name, lg.DEBUG,
             name=surf.theidf.name)
@@ -2271,7 +2271,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     def _do_roof(surf):
         """
         Args:
-            surf:
+            surf (EpBunch):
         """
         log('surface "%s" assigned as a Roof' % surf.Name, lg.DEBUG,
             name=surf.theidf.name)
@@ -2283,7 +2283,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     def _do_slab(surf):
         """
         Args:
-            surf:
+            surf (EpBunch):
         """
         log('surface "%s" assigned as a Slab' % surf.Name, lg.DEBUG,
             name=surf.theidf.name)
@@ -2295,7 +2295,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     def _do_basement(surf):
         """
         Args:
-            surf:
+            surf (EpBunch):
         """
         log('surface "%s" ignored because basement facades are not supported' %
             surf.Name, lg.WARNING,

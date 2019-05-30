@@ -3239,24 +3239,12 @@ class ZoneGraph(networkx.Graph):
                 mapping = dict(zip(sorted(groups), count()))
                 colors = [mapping[G.node[n][color_nodes]] for n in
                           tree.nodes]
+            else:
+                color_nodes = None  # for the legend title
+                colors = '#1f78b4'
 
-            for nt in tree:
-                # choose nodes and color for each iteration
-                nlist = [nt]
-                label = '%s: %s' % (nt, G.nodes(data='name')[nt])
-                if color_nodes:
-                    node_color = [colors[nt]]
-                else:
-                    node_color = '#1f78b4'
-                # draw the graph
-                networkx.draw_networkx_nodes(tree,
-                                             pos=pos,
-                                             nodelist=nlist,
-                                             ax=ax,
-                                             node_color=node_color,
-                                             label=label,
-                                             **kwargs)
-
+            scatter = networkx.draw_networkx_nodes(tree, pos=pos, ax=ax,
+                                         node_color=colors, **kwargs)
             networkx.draw_networkx_edges(tree, pos, ax=ax, arrows=arrows,
                                          **kwargs)
             if with_labels:
@@ -3264,7 +3252,9 @@ class ZoneGraph(networkx.Graph):
 
             if legend:
                 bbox = kwargs.get('bbox_to_anchor', (1, 1))
-                ax.legend(scatterpoints=1, bbox_to_anchor=bbox)
+                legend1 = ax.legend(*scatter.legend_elements(),
+                                    title=color_nodes, bbox_to_anchor=bbox)
+                ax.add_artist(legend1)
 
             fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
                                     close=close, filename=filename,

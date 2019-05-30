@@ -3279,6 +3279,9 @@ class ZoneGraph(networkx.Graph):
                                     markerscale=.5)
                 ax.add_artist(legend1)
 
+            #clear axis
+            ax.axis('off')
+
             fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
                                     close=close, filename=filename,
                                     file_format=file_format, dpi=dpi,

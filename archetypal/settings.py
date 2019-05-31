@@ -140,6 +140,6 @@ template_winLib = pkg_resources.resource_string(resource_package,
 # NewFileTemplate.d18 ('W74-lib.dat') template
 resource_path = '/'.join(('templates', 'NewFileTemplate.d18'))
 # Do not use os.path.join()
-template_d18 = pkg_resources.resource_string(resource_package,
+path_template_d18 = pkg_resources.resource_filename(resource_package,
                                                 resource_path)
 # endregion

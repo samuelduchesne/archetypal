@@ -28,9 +28,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                             return_t3d=False, return_dck=False,
                             output_folder=None, trnidf_exe_dir=os.path.join(
             settings.trnsys_default_folder,
-            r"Building\trnsIDF\trnsidf.exe"), template=os.path.join(
-            settings.trnsys_default_folder,
-            r"Building\trnsIDF\NewFileTemplate.d18"), **kwargs):
+            r"Building\trnsIDF\trnsidf.exe"), template=settings.path_template_d18,
+            **kwargs):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
 
     There are three optional outputs:

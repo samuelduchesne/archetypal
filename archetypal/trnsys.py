@@ -467,8 +467,9 @@ def rotate(l, n):
     Args:
         l (list): list to rotate
         n (int): number to shift list to the left
+
     Returns:
-         list: shifted list.
+        list: shifted list.
     """
     return l[n:] + l[:n]
 
@@ -484,8 +485,8 @@ def parse_window_lib(window_file_path):
     Returns:
         tuple: a tuple of:
 
-            * dataframe: df_windows, a dataframe with the window
-              characteristics in the columns and the window id as rows
+            * dataframe: df_windows, a dataframe with the window characteristics
+              in the columns and the window id as rows
             * dict: bunches, a dict with the window id as key and
               description/properties of each window as value
     """
@@ -576,6 +577,24 @@ def chunks(l, n):
 def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
     """Return window object from TRNBuild library
 
+    Returns
+        (tuple): A tuple of:
+
+            * window_ID
+            * window's description (label)
+            * window's design (width of layers)
+            * window u-value
+            * window shgc
+            * window solar transmittance
+            * window solar refraction
+            * window visible transmittance
+            * number of layers of the window
+            * window width
+            * the "bunch" of description/properties from Berkeley lab
+
+            If tolerance not respected return new tolerance used to find a
+            window.
+
     Args:
         u_value (float): U_value of the glazing
         shgc (float): SHGC of the glazing
@@ -583,19 +602,6 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
         tolerance (float): Maximum tolerance on u_value, shgc and tvis wanted by
             the user
         window_lib_path (.dat file): window library from Berkeley lab
-
-    Returns
-        (tuple): A tuple of:
-
-            * window_ID,
-            * the "bunch" of description/properties from Berkeley lab
-            * window u_value
-            * window shgc
-            * window visible transmittance.
-
-            todo: fix missing return description.
-
-            If tolerance not respected return new tolerance used to find a window.
     """
     # Init "warn" variable (0 or 1) to log a warning if tolerance not respected
     warn = 0
@@ -687,7 +693,8 @@ def trnbuild_idf(idf_file, template=os.path.join(
         str: status
 
     Raises:
-        CalledProcessError: Todo: when?
+        CalledProcessError: When could not run command with trnsidf.exe (to
+        create BUI file from IDF (T3D) file
     """
     # first copy idf_file into output folder
     if not os.path.isdir(settings.data_folder):

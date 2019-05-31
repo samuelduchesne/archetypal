@@ -12,7 +12,8 @@ def round_up(n, decimals=0):
     multiplier = 10 ** decimals
     return math.ceil(n * multiplier) / multiplier
 
-
+@pytest.mark.xfail("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
+                   reason="Skipping this test on Travis CI.")
 def test_trnbuild_from_idf(config):
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')

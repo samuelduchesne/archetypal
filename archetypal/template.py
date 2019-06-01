@@ -2763,6 +2763,9 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
         self.Thickness = Thickness
 
+    def __add__(self, other):
+        return None
+
     def to_json(self):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()

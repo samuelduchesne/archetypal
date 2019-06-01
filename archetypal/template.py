@@ -1239,14 +1239,13 @@ def resolve_obco(this):
     surface and, if possible, the zone.
 
     Args:
-        this (EpBunch): The surface for which we are identifying the
-            boundary object.
+        this (EpBunch): The surface for which we are identifying the boundary
+            object.
 
     Returns:
         (EpBunch, EpBunch): A tuple of:
 
-            EpBunch: The other surface
-            EpBunch: The other zone
+            EpBunch: The other surface EpBunch: The other zone
 
     Notes:
         Info on the Outside Boundary Condition Object of a surface of type
@@ -2570,6 +2569,10 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @classmethod
     def _internalmass_layer(cls, epbunch):
+        """
+        Args:
+            epbunch:
+        """
         validobjects = epbunch.getfieldidd_item('Construction_Name',
                                                 'validobjects')
         found = False
@@ -2685,57 +2688,62 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
 
 class OpaqueMaterial(UmiBase, metaclass=Unique):
-    """
-    $id, Comments, Conductivity, Cost, DataSource, Density, EmbodiedCarbon,
-    EmbodiedCarbonStdDev, EmbodiedEnergy, EmbodiedEnergyStdDev, Life,
-    MoistureDiffusionResistance, Name, PhaseChange, PhaseChangeProperties,
-    Roughness, SolarAbsorptance, SpecificHeat, SubstitutionRatePattern,
-    SubstitutionTimestep, ThermalEmittance, TransportCarbon, TransportDistance,
-    TransportEnergy, Type, VariableConductivity, VariableConductivityProperties,
-    VisibleAbsorptance
-    """
+    """Use this component to create a custom opaque material."""
 
-    def __init__(self, Conductivity,
-                 Roughness,
-                 SolarAbsorptance,
-                 SpecificHeat,
-                 ThermalEmittance,
-                 VisibleAbsorptance,
-                 TransportCarbon=0,
-                 TransportDistance=0,
-                 TransportEnergy=0,
-                 SubstitutionRatePattern=[0.5, 1],
-                 SubstitutionTimestep=20,
-                 Cost=0,
-                 Density=1,
-                 EmbodiedCarbon=0.45,
-                 EmbodiedEnergy=0,
-                 MoistureDiffusionResistance=50,
-                 Thickness=None,
-                 *args, **kwargs):
-        """
+    def __init__(self, Conductivity, SpecificHeat, SolarAbsorptance=0.7,
+                 ThermalEmittance=0.9, VisibleAbsorptance=0.7,
+                 Roughness='Rough', Cost=0, Density=1, Thickness=None,
+                 MoistureDiffusionResistance=50, EmbodiedCarbon=0.45,
+                 EmbodiedEnergy=0, TransportCarbon=0, TransportDistance=0,
+                 TransportEnergy=0, SubstitutionRatePattern=[0.5, 1],
+                 SubstitutionTimestep=20, **kwargs):
+        """A custom opaque material.
+
         Args:
-            Conductivity:
-            Roughness:
-            SolarAbsorptance:
-            SpecificHeat:
-            ThermalEmittance:
-            VisibleAbsorptance:
+            Conductivity (float): A number representing the conductivity of the
+                material in W/m-K. This is essentially the heat flow in Watts
+                across one meter thick of the material when the temperature
+                difference on either side is 1 Kelvin. Modeling layers with
+                conductivity higher than 5.0 W/(m-K) is not recommended
+            SpecificHeat (float): A number representing the specific heat
+                capacity of the material in J/kg-K. This is essentially the
+                number of joules needed to raise one kg of the material by 1
+                degree Kelvin. Only values of specific heat of 100 or larger are
+                allowed. Typical ranges are from 800 to 2000 J/(kg-K).
+            SolarAbsorptance (float): An number between 0 and 1 that represents
+                the abstorptance of solar radiation by the material. The default
+                is set to 0.7, which is common for most non-metallic materials.
+            ThermalEmittance (float): An number between 0 and 1 that represents
+                the thermal abstorptance of the material. The default is set to
+                0.9, which is common for most non-metallic materials. For long
+                wavelength radiant exchange, thermal emissivity and thermal
+                emittance are equal to thermal absorptance.
+            VisibleAbsorptance (float): An number between 0 and 1 that
+                represents the abstorptance of visible light by the material.
+                The default is set to 0.7, which is common for most non-metallic
+                materials.
+            Roughness (str): A text value that indicated the roughness of your
+                material. This can be either "VeryRough", "Rough",
+                "MediumRough", "MediumSmooth", "Smooth", and "VerySmooth". The
+                default is set to "Rough".
+            Cost: # todo: defined parameter
+            Density: A number representing the density of the material in kg/m3.
+                This is essentially the mass of one cubic meter of the material.
+            Thickness (float): This field characterizes the thickness of the
+                material layer in meters. This should be the dimension of the
+                layer in the direction perpendicular to the main path of heat
+                conduction. This value must be a positive.
+            MoistureDiffusionResistance:
+            EmbodiedCarbon:
+            EmbodiedEnergy:
             TransportCarbon:
             TransportDistance:
             TransportEnergy:
             SubstitutionRatePattern:
             SubstitutionTimestep:
-            Cost:
-            Density:
-            EmbodiedCarbon:
-            EmbodiedEnergy:
-            MoistureDiffusionResistance:
-            Thickness:
-            *args:
             **kwargs:
         """
-        super(OpaqueMaterial, self).__init__(*args, **kwargs)
+        super(OpaqueMaterial, self).__init__(**kwargs)
 
         self.Conductivity = Conductivity
         self.Roughness = Roughness
@@ -3500,11 +3508,11 @@ def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):
     """
     Args:
         adj_report (dict): the report dict to append to.
-        adj_zone (EpBunch):
-        counter (int): Counter.
-        adj_surf:
-        surface (EpBunch):
         zone (EpBunch):
+        surface (EpBunch):
+        adj_zone (EpBunch):
+        adj_surf:
+        counter (int): Counter.
     """
     adj_report['#'].append(counter)
     adj_report['Zone Name'].append(zone.Name)

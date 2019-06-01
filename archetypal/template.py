@@ -832,7 +832,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             zone:
         """
         # todo: to finish
-        name = zone.Name + "_" + type(cls).__name__
+        name = zone.Name + "_DHW"
         z_dhw = cls(Name=name)
         return z_dhw
 
@@ -953,7 +953,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
             zone:
         """
         # todo: to finish
-        name = zone.Name + "_" + type(cls).__name__
+        name = zone.Name + "_VentilationSetting"
         z_vent = cls(Name=name)
         return z_vent
 
@@ -1121,7 +1121,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             zone (Zone):
         """
         # todo: to finish
-        name = zone.Name + "_" + type(cls).__name__
+        name = zone.Name + "_ZoneConditioning"
 
         z_cond = cls(Name=name)
 
@@ -1229,9 +1229,62 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             zone:
         """
         # todo: to finish
-        name = zone.Name + type(cls).__name__
+        name = zone.Name + "_ZoneLoad"
         z_load = cls(Name=name)
         return z_load
+
+
+def resolve_obco(this):
+    """Resolve the outside boundary condition of a surface and return the other
+    surface and, if possible, the zone.
+
+    Args:
+        this (EpBunch): The surface for which we are identifying the
+            boundary object.
+
+    Returns:
+        (EpBunch, EpBunch): A tuple of:
+
+            EpBunch: The other surface
+            EpBunch: The other zone
+
+    Notes:
+        Info on the Outside Boundary Condition Object of a surface of type
+        BuildingSurface:Detailed:
+
+        Non-blank only if the field `Outside Boundary Condition` is *Surface*,
+        *Zone*, *OtherSideCoefficients* or *OtherSideConditionsModel*. If
+        Surface, specify name of corresponding surface in adjacent zone or
+        specify current surface name for internal partition separating like
+        zones. If Zone, specify the name of the corresponding zone and the
+        program will generate the corresponding interzone surface. If
+        Foundation, specify the name of the corresponding Foundation object and
+        the program will calculate the heat transfer appropriately. If
+        OtherSideCoefficients, specify name of
+        SurfaceProperty:OtherSideCoefficients. If OtherSideConditionsModel,
+        specify name of SurfaceProperty:OtherSideConditionsModel.
+    """
+
+    # other belongs to which zone?
+    # for key in this.getfieldidd_item('Outside_Boundary_Condition_Object',
+    #                                  'validobjects'):
+
+    obc = this.Outside_Boundary_Condition
+    obcos = this.getreferingobjs(
+        fields=['Outside_Boundary_Condition_Object'],
+        iddgroups=['Thermal Zones and Surfaces']
+    )
+    if obc.upper() == 'ZONE':
+        for adj_zone in obcos:
+            # adj_zone = this.theidf.getobject('ZONE', obco['Name'])
+            return None, adj_zone
+
+    elif obc.upper() == 'SURFACE':
+        for obco in obcos:
+            adj_zone = obco.theidf.getobject('ZONE', obco['Zone_Name'])
+            return obco, adj_zone
+    else:
+        return None, None
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
@@ -2036,7 +2089,7 @@ class Zone(UmiBase, metaclass=Unique):
         Args:
             zone (EpBunch):
         """
-        name = zone.Name + "_" + type(cls).__name__
+        name = zone.Name + "_Zone"
         z = cls(Name=name, idf=zone.theidf)
 
         z._epbunch = zone
@@ -2247,11 +2300,12 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         Args:
             zone (Zone):
         """
-        name = zone.Name
+        name = zone.Name + "_ZoneConstructionSet"
         # dispatch surfaces
         facade, ground, partition, roof, slab = [], [], [], [], []
         for surf in zone._zonesurfaces:
             for disp_surf in surface_dispatcher(surf, zone):
+
                 if disp_surf.Surface_Type == 'Facade':
                     facade.append(disp_surf)
                 elif disp_surf.Surface_Type == 'Ground':

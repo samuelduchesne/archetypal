@@ -412,19 +412,29 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         self.Conductivity = Conductivity
 
     def __add__(self, other):
-        comments = self._str_mean(other, attr='Comments', append=True)
-        self.__dict__.pop('Comments')
-        name = " + ".join([self.__dict__.pop('Name'), other.Name])
-        idf = self.__dict__.pop('idf')
-        sql = self.__dict__.pop('sql')
+        """
+        Args:
+            other (GlazingMaterial):
+        """
+        if not isinstance(other, GlazingMaterial):
+            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
+                                                 other.__class__.__name__)
+            raise NotImplementedError(msg)
 
-        # iterate over attributes and appy either float_mean or str_mean.
+        name = " + ".join([self.__dict__.pop('Name'), other.Name])
+        comments = self._str_mean(other, attr='Comments', append=True)
+        idf = self.__dict__.get('idf')
+        sql = self.__dict__.get('sql')
+
+        # iterate over attributes and apply either float_mean or str_mean.
         new_attr = {}
         for attr in self.__dict__:
-            if isinstance(self.__dict__[attr], float):
-                new_attr[attr] = self._float_mean(other, attr=attr)
-            elif isinstance(self.__dict__[attr], str):
-                new_attr[attr] = self._str_mean(other, attr=attr, append=False)
+            if attr not in ['Comments', 'idf', 'sql']:
+                if isinstance(self.__dict__[attr], float):
+                    new_attr[attr] = self._float_mean(other, attr=attr)
+                elif isinstance(self.__dict__[attr], str):
+                    new_attr[attr] = self._str_mean(other, attr=attr,
+                                                    append=False)
 
         # create a new object from combined attrobutes
         new_obj = self.__class__(Name=name, idf=idf, sql=sql,
@@ -2625,6 +2635,10 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         Args:
             other (OpaqueConstruction):
         """
+        if not isinstance(other, OpaqueConstruction):
+            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
+                                                 other.__class__.__name__)
+            raise NotImplementedError(msg)
         # the new object's name
         name = " + ".join([self.Name, other.Name])
 
@@ -2891,6 +2905,10 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         Args:
             other (OpaqueMaterial): The other OpaqueMaterial object to add from.
         """
+        if not isinstance(other, OpaqueMaterial):
+            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
+                                                 other.__class__.__name__)
+            raise NotImplementedError(msg)
         name = " + ".join([self.Name, other.Name])
         new_attr = dict(Category=self._str_mean(other, attr='Category',
                                                 append=False),

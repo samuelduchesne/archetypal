@@ -2764,7 +2764,77 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.Thickness = Thickness
 
     def __add__(self, other):
-        return None
+        """Add method creates a new object from self + other"""
+        name = self.Name + "+" + other.Name
+        new_attr = dict(Category=self.str_mean(other, attr='Category',
+                                               append=False),
+                        Comments=self.str_mean(other, attr='Comments',
+                                               append=True),
+                        DataSource=self.str_mean(other, attr='DataSource',
+                                                 append=True),
+                        Conductivity=self.float_mean(other, 'Conductivity'),
+                        Roughness=self.str_mean(other, attr='Roughness',
+                                                append=False),
+                        SolarAbsorptance=self.float_mean(other,
+                                                         'SolarAbsorptance'),
+                        SpecificHeat=self.float_mean(other, 'SpecificHeat'),
+                        ThermalEmittance=self.float_mean(other,
+                                                         'ThermalEmittance'),
+                        VisibleAbsorptance=self.float_mean(other,
+                                                           'VisibleAbsorptance'),
+                        TransportCarbon=self.float_mean(other,
+                                                        'TransportCarbon'),
+                        TransportDistance=self.float_mean(other,
+                                                          'TransportDistance'),
+                        TransportEnergy=self.float_mean(other,
+                                                        'TransportEnergy'),
+                        SubstitutionRatePattern=self.float_mean(other,
+                                                                'SubstitutionRatePattern'),
+                        SubstitutionTimestep=self.float_mean(other,
+                                                             'SubstitutionTimestep'),
+                        Cost=self.float_mean(other, 'Cost'),
+                        Density=self.float_mean(other, 'Density'),
+                        EmbodiedCarbon=self.float_mean(other, 'EmbodiedCarbon'),
+                        EmbodiedEnergy=self.float_mean(other, 'EmbodiedEnergy'),
+                        MoistureDiffusionResistance=self.float_mean(other,
+                                                                    'MoistureDiffusionResistance'),
+                        Thickness=self.float_mean(other, 'Thickness'))
+
+        new_obj = self.__class__(Name=name, **new_attr)
+
+        return new_obj
+
+    def __iadd__(self, other):
+        new_obj = self + other
+        new_obj.__dict__.pop('id')
+        name = new_obj.__dict__.pop('Name')
+        self.__dict__.update(**new_obj.__dict__)
+        self.all_objects.pop(('OpaqueMaterial', name))
+        return self
+
+    def float_mean(self, other, attr, weights=None):
+        if self.__dict__[attr] is None and other.__dict__[attr] is None:
+            return None
+        else:
+            return np.average([self.__dict__[attr],
+                               other.__dict__[attr]], weights=weights)
+
+    def str_mean(self, other, attr, append=False):
+        # if self has info, but other is none, use self
+        if self.__dict__[attr] is not None and other.__dict__[attr] is None:
+            return self.__dict__[attr]
+        # if self is none, but other is not none, use other
+        elif self.__dict__[attr] is None and other.__dict__[attr] is not None:
+            return other.__dict__[attr]
+        # if both are not note, impose self
+        elif self.__dict__[attr] and other.__dict__[attr]:
+            if append:
+                return self.__dict__[attr] + other.__dict__[attr]
+            else:
+                return self.__dict__[attr]
+        # if both are None, return None
+        else:
+            return None
 
     def to_json(self):
         """Convert class properties to dict"""

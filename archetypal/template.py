@@ -332,8 +332,7 @@ class GasMaterial(MaterialBase, metaclass=Unique):
 
 class GlazingMaterial(MaterialBase, metaclass=Unique):
 
-    def __init__(self, Density=2500, Conductivity=None, Optical=None,
-                 OpticalData=None, SolarTransmittance=None,
+    def __init__(self, Density=2500, Conductivity=None, SolarTransmittance=None,
                  SolarReflectanceFront=None, SolarReflectanceBack=None,
                  VisibleTransmittance=None, VisibleReflectanceFront=None,
                  VisibleReflectanceBack=None, IRTransmittance=None,
@@ -345,32 +344,45 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
                  TransportEnergy=0, **kwargs):
         """
         Args:
-            Density:
-            Conductivity:
-            Optical:
-            OpticalData:
-            SolarTransmittance:
-            SolarReflectanceFront:
-            SolarReflectanceBack:
-            VisibleTransmittance:
-            VisibleReflectanceFront:
-            VisibleReflectanceBack:
-            IRTransmittance:
-            IREmissivityFront:
-            IREmissivityBack:
-            DirtFactor:
-            Type:
-            EmbodiedEnergy:
-            EmbodiedEnergyStdDev:
-            EmbodiedCarbon:
-            EmbodiedCarbonStdDev:
-            Cost:
-            Life:
-            SubstitutionRatePattern:
-            SubstitutionTimestep:
-            TransportCarbon:
-            TransportDistance:
-            TransportEnergy:
+            Density (float): A number representing the density of the material
+                in kg/m3. This is essentially the mass of one cubic meter of the
+                material.
+            Conductivity (float): Thermal conductivity (W/m-K).
+            SolarTransmittance (float): Transmittance at normal incidence
+                averaged over the solar spectrum.
+            SolarReflectanceFront (float): Front-side reflectance at normal
+                incidence averaged over the solar spectrum.
+            SolarReflectanceBack (float): Back-side reflectance at normal
+                incidence averaged over the solar spectrum.
+            VisibleTransmittance (float): Transmittance at normal incidence
+                averaged over the solar spectrum and weighted by the response of
+                the human eye.
+            VisibleReflectanceFront (float): Front-side reflectance at normal
+                incidence averaged over the solar spectrum and weighted by the
+                response of the human eye.
+            VisibleReflectanceBack (float): Back-side reflectance at normal
+                incidence averaged over the solar spectrum and weighted by the
+                response of the human eye.
+            IRTransmittance (float): Long-wave transmittance at normal
+                incidence.
+            IREmissivityFront (float): Front-side long-wave emissivity.
+            IREmissivityBack (float): Back-side long-wave emissivity.
+            DirtFactor (float): This is a factor that corrects for the presence
+                of dirt on the glass. Using a material with dirt correction
+                factor < 1.0 in the construction for an interior window will
+                result in an error message.
+            Type: # todo: defined parameter
+            EmbodiedEnergy: # todo: defined parameter
+            EmbodiedEnergyStdDev: # todo: defined parameter
+            EmbodiedCarbon: # todo: defined parameter
+            EmbodiedCarbonStdDev: # todo: defined parameter
+            Cost: # todo: defined parameter
+            Life: # todo: defined parameter
+            SubstitutionRatePattern: # todo: defined parameter
+            SubstitutionTimestep: # todo: defined parameter
+            TransportCarbon: # todo: defined parameter
+            TransportDistance: # todo: defined parameter
+            TransportEnergy: # todo: defined parameter
             **kwargs:
         """
         super(GlazingMaterial, self).__init__(**kwargs)
@@ -396,10 +408,29 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         self.SolarReflectanceBack = SolarReflectanceBack
         self.SolarReflectanceFront = SolarReflectanceFront
         self.SolarTransmittance = SolarTransmittance
-        self.OpticalData = OpticalData
-        self.Optical = Optical
         self.Density = Density
         self.Conductivity = Conductivity
+
+    def __add__(self, other):
+        comments = self._str_mean(other, attr='Comments', append=True)
+        self.__dict__.pop('Comments')
+        name = " + ".join([self.__dict__.pop('Name'), other.Name])
+        idf = self.__dict__.pop('idf')
+        sql = self.__dict__.pop('sql')
+
+        # iterate over attributes and appy either float_mean or str_mean.
+        new_attr = {}
+        for attr in self.__dict__:
+            if isinstance(self.__dict__[attr], float):
+                new_attr[attr] = self._float_mean(other, attr=attr)
+            elif isinstance(self.__dict__[attr], str):
+                new_attr[attr] = self._str_mean(other, attr=attr, append=False)
+
+        # create a new object from combined attrobutes
+        new_obj = self.__class__(Name=name, idf=idf, sql=sql,
+                                 Comments=comments, **new_attr)
+
+        return new_obj
 
     def to_json(self):
         data_dict = collections.OrderedDict()
@@ -2756,7 +2787,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                 material in W/m-K. This is essentially the heat flow in Watts
                 across one meter thick of the material when the temperature
                 difference on either side is 1 Kelvin. Modeling layers with
-                conductivity higher than 5.0 W/(m-K) is not recommended
+                conductivity higher than 5.0 W/(m-K) is not recommended.
             SpecificHeat (float): A number representing the specific heat
                 capacity of the material in J/kg-K. This is essentially the
                 number of joules needed to raise one kg of the material by 1
@@ -2785,14 +2816,14 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                 material layer in meters. This should be the dimension of the
                 layer in the direction perpendicular to the main path of heat
                 conduction. This value must be a positive.
-            MoistureDiffusionResistance:
-            EmbodiedCarbon:
-            EmbodiedEnergy:
-            TransportCarbon:
-            TransportDistance:
-            TransportEnergy:
-            SubstitutionRatePattern:
-            SubstitutionTimestep:
+            MoistureDiffusionResistance: # todo: defined parameter
+            EmbodiedCarbon: # todo: defined parameter
+            EmbodiedEnergy: # todo: defined parameter
+            TransportCarbon: # todo: defined parameter
+            TransportDistance: # todo: defined parameter
+            TransportEnergy: # todo: defined parameter
+            SubstitutionRatePattern: # todo: defined parameter
+            SubstitutionTimestep: # todo: defined parameter
             **kwargs:
         """
         super(OpaqueMaterial, self).__init__(**kwargs)
@@ -2832,28 +2863,30 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                         Roughness=self._str_mean(other, attr='Roughness',
                                                  append=False),
                         SolarAbsorptance=self._float_mean(other,
-                                                         'SolarAbsorptance'),
+                                                          'SolarAbsorptance'),
                         SpecificHeat=self._float_mean(other, 'SpecificHeat'),
                         ThermalEmittance=self._float_mean(other,
-                                                         'ThermalEmittance'),
+                                                          'ThermalEmittance'),
                         VisibleAbsorptance=self._float_mean(other,
-                                                           'VisibleAbsorptance'),
+                                                            'VisibleAbsorptance'),
                         TransportCarbon=self._float_mean(other,
-                                                        'TransportCarbon'),
+                                                         'TransportCarbon'),
                         TransportDistance=self._float_mean(other,
-                                                          'TransportDistance'),
+                                                           'TransportDistance'),
                         TransportEnergy=self._float_mean(other,
-                                                        'TransportEnergy'),
+                                                         'TransportEnergy'),
                         SubstitutionRatePattern=self._float_mean(other,
-                                                                'SubstitutionRatePattern'),
+                                                                 'SubstitutionRatePattern'),
                         SubstitutionTimestep=self._float_mean(other,
-                                                             'SubstitutionTimestep'),
+                                                              'SubstitutionTimestep'),
                         Cost=self._float_mean(other, 'Cost'),
                         Density=self._float_mean(other, 'Density'),
-                        EmbodiedCarbon=self._float_mean(other, 'EmbodiedCarbon'),
-                        EmbodiedEnergy=self._float_mean(other, 'EmbodiedEnergy'),
+                        EmbodiedCarbon=self._float_mean(other,
+                                                        'EmbodiedCarbon'),
+                        EmbodiedEnergy=self._float_mean(other,
+                                                        'EmbodiedEnergy'),
                         MoistureDiffusionResistance=self._float_mean(other,
-                                                                    'MoistureDiffusionResistance'),
+                                                                     'MoistureDiffusionResistance'),
                         Thickness=self._float_mean(other, 'Thickness'))
 
         new_obj = self.__class__(Name=name, **new_attr)

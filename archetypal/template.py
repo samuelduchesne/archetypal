@@ -129,6 +129,33 @@ class UmiBase(object):
     def to_dict(self):
         return {'$ref': str(self.id)}
 
+    def float_mean(self, other, attr, weights=None):
+        """Calculates the average attribute value of two floats. Can provide
+        weights."""
+        if self.__dict__[attr] is None and other.__dict__[attr] is None:
+            return None
+        else:
+            return np.average([self.__dict__[attr],
+                               other.__dict__[attr]], weights=weights)
+
+    def str_mean(self, other, attr, append=False):
+        """Returns the combined string attributes"""
+        # if self has info, but other is none, use self
+        if self.__dict__[attr] is not None and other.__dict__[attr] is None:
+            return self.__dict__[attr]
+        # if self is none, but other is not none, use other
+        elif self.__dict__[attr] is None and other.__dict__[attr] is not None:
+            return other.__dict__[attr]
+        # if both are not note, impose self
+        elif self.__dict__[attr] and other.__dict__[attr]:
+            if append:
+                return self.__dict__[attr] + other.__dict__[attr]
+            else:
+                return self.__dict__[attr]
+        # if both are None, return None
+        else:
+            return None
+
 
 class MaterialBase(UmiBase):
     def __init__(self, Cost=0, EmbodiedCarbon=0, EmbodiedEnergy=0,
@@ -2811,30 +2838,6 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.__dict__.update(**new_obj.__dict__)
         self.all_objects.pop(('OpaqueMaterial', name))
         return self
-
-    def float_mean(self, other, attr, weights=None):
-        if self.__dict__[attr] is None and other.__dict__[attr] is None:
-            return None
-        else:
-            return np.average([self.__dict__[attr],
-                               other.__dict__[attr]], weights=weights)
-
-    def str_mean(self, other, attr, append=False):
-        # if self has info, but other is none, use self
-        if self.__dict__[attr] is not None and other.__dict__[attr] is None:
-            return self.__dict__[attr]
-        # if self is none, but other is not none, use other
-        elif self.__dict__[attr] is None and other.__dict__[attr] is not None:
-            return other.__dict__[attr]
-        # if both are not note, impose self
-        elif self.__dict__[attr] and other.__dict__[attr]:
-            if append:
-                return self.__dict__[attr] + other.__dict__[attr]
-            else:
-                return self.__dict__[attr]
-        # if both are None, return None
-        else:
-            return None
 
     def to_json(self):
         """Convert class properties to dict"""

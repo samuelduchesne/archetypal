@@ -173,6 +173,14 @@ class UmiBase(object):
         else:
             return None
 
+    def __iadd__(self, other):
+        new_obj = self + other
+        new_obj.__dict__.pop('id')
+        name = new_obj.__dict__.pop('Name')
+        self.__dict__.update(**new_obj.__dict__)
+        self.all_objects.pop((self.__class__.__name__, name))
+        return self
+
 
 class MaterialBase(UmiBase):
     def __init__(self, Cost=0, EmbodiedCarbon=0, EmbodiedEnergy=0,
@@ -2851,14 +2859,6 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         new_obj = self.__class__(Name=name, **new_attr)
 
         return new_obj
-
-    def __iadd__(self, other):
-        new_obj = self + other
-        new_obj.__dict__.pop('id')
-        name = new_obj.__dict__.pop('Name')
-        self.__dict__.update(**new_obj.__dict__)
-        self.all_objects.pop(('OpaqueMaterial', name))
-        return self
 
     def to_json(self):
         """Convert class properties to dict"""

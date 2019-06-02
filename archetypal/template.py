@@ -2567,14 +2567,14 @@ class ConstructionBase(UmiBase):
 
 
 class LayeredConstruction(ConstructionBase):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, Layers, **kwargs):
         """
         Args:
-            *args:
+            Layers (list of MaterialLayer):
             **kwargs:
         """
-        super(LayeredConstruction, self).__init__(*args, **kwargs)
-        self.Layers = kwargs.get('Layers', None)
+        super(LayeredConstruction, self).__init__(Layers=Layers, **kwargs)
+        self.Layers = Layers
 
 
 class MaterialLayer(object):
@@ -2582,7 +2582,8 @@ class MaterialLayer(object):
         """
         Args:
             Material (OpaqueMaterial):
-            Thickness:
+            Thickness (float): The thickness of the material in the
+                construction.
         """
         self.Thickness = Thickness
         self.Material = Material
@@ -2598,24 +2599,62 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
     """
 
-    def __init__(self,
-                 *args,
-                 Surface_Type=None,
+    def __init__(self, Layers, Surface_Type=None,
                  Outside_Boundary_Condition=None,
-                 IsAdiabatic=False,
-                 **kwargs):
+                 IsAdiabatic=False, **kwargs):
         """
         Args:
-            *args:
+            Layers:
             Surface_Type:
             Outside_Boundary_Condition:
             IsAdiabatic:
             **kwargs:
         """
-        super(OpaqueConstruction, self).__init__(*args, **kwargs)
+        super(OpaqueConstruction, self).__init__(Layers, **kwargs)
         self.Surface_Type = Surface_Type
         self.Outside_Boundary_Condition = Outside_Boundary_Condition
         self.IsAdiabatic = IsAdiabatic
+
+    def __add__(self, other):
+        """Combine two OpaqueConstruction together.
+
+        Info:
+            The returned OpaqueConstruction assumes the thickness of each
+            constructions' materials is distributed equally.
+
+        Args:
+            other (OpaqueConstruction):
+        """
+        # the new object's name
+        name = " + ".join([self.Name, other.Name])
+
+        # thicknesses & materials for self
+        self_t = np.array([mat.Thickness for mat in self.Layers])
+        self_m = [mat.Material for mat in self.Layers]
+
+        # thicknesses & materials for other
+        other_t = np.array([mat.Thickness for mat in other.Layers])
+        other_m = [mat.Material for mat in self.Layers]
+
+        # thicknesses & materials for the new OpaqueConstruction
+        new_t = np.append(self_t, other_t)
+        new_t = new_t / 2
+        new_m = self_m + other_m
+
+        # layers for the new OpaqueConstruction
+        layers = [MaterialLayer(mat, t) for mat, t in zip(new_m, new_t)]
+        
+        new_attr = dict(Layers=layers,
+                        Category=self._str_mean(other, attr='Category',
+                                                append=False),
+                        Comments=self._str_mean(other, attr='Comments',
+                                                append=True),
+                        DataSource=self._str_mean(other, attr='DataSource',
+                                                  append=False)
+                        )
+        new_obj = self.__class__(Name=name, **new_attr)
+
+        return new_obj
 
     @classmethod
     def from_json(cls, *args, **kwargs):
@@ -2624,13 +2663,14 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             *args:
             **kwargs:
         """
-        oc = cls(*args, **kwargs)
-        layers = kwargs.get('Layers', None)
-
         # resolve Material objects from ref
-        oc.Layers = [MaterialLayer(oc.get_ref(layer['Material']),
-                                   layer['Thickness'])
-                     for layer in layers]
+        layers = kwargs.pop('Layers')
+        oc = cls(Layers=None, **kwargs)
+        lys = [MaterialLayer(oc.get_ref(layer['Material']),
+                             layer['Thickness'])
+               for layer in layers]
+        oc.Layers = lys
+
         return oc
 
     @classmethod
@@ -2641,14 +2681,13 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             epbunch (EpBunch):
         """
         name = epbunch.Name
-        c = cls(Name=name)
         # treat internalmass and surfaces differently
         if epbunch.key.lower() == 'internalmass':
-            c.Layers = c._internalmass_layer(epbunch)
-            return c
+            layers = cls._internalmass_layer(epbunch)
+            return cls(Name=name, Layers=layers)
         else:
-            c.Layers = c._surface_layers(epbunch)
-            return c
+            layers = cls._surface_layers(epbunch)
+            return cls(Name=name, Layers=layers)
 
     @classmethod
     def _internalmass_layer(cls, epbunch):
@@ -2668,8 +2707,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             except AttributeError:
                 pass
             else:
-                layers = [{'Material': om,
-                           'Thickness': om.Thickness}]
+                layers = [MaterialLayer(**dict(Material=om,
+                                               Thickness=om.Thickness))]
                 return layers
         if not found:
             raise AttributeError("%s internalmass not found in IDF",
@@ -2696,8 +2735,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 except AttributeError:
                     pass
                 else:
-                    layers.append({'Material': o,
-                                   'Thickness': o.Thickness})
+                    layers.append(MaterialLayer(**dict(Material=o,
+                                                       Thickness=o.Thickness)))
             if not found:
                 raise AttributeError("%s material not found in IDF" % layer)
         return layers
@@ -2852,13 +2891,13 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         Args:
             other (OpaqueMaterial): The other OpaqueMaterial object to add from.
         """
-        name = self.Name + "+" + other.Name
+        name = " + ".join([self.Name, other.Name])
         new_attr = dict(Category=self._str_mean(other, attr='Category',
                                                 append=False),
                         Comments=self._str_mean(other, attr='Comments',
                                                 append=True),
                         DataSource=self._str_mean(other, attr='DataSource',
-                                                  append=True),
+                                                  append=False),
                         Conductivity=self._float_mean(other, 'Conductivity'),
                         Roughness=self._str_mean(other, attr='Roughness',
                                                  append=False),

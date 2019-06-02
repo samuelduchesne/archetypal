@@ -129,17 +129,34 @@ class UmiBase(object):
     def to_dict(self):
         return {'$ref': str(self.id)}
 
-    def float_mean(self, other, attr, weights=None):
+    def _float_mean(self, other, attr, weights=None):
         """Calculates the average attribute value of two floats. Can provide
-        weights."""
+        weights.
+
+        Args:
+            other (UmiBase): The other UmiBase object to calculate average value
+                with.
+            attr (str): The attribute of the UmiBase object.
+            weights (iterable, optional): Weights of [self, other] to calculate
+                weighted average.
+        """
         if self.__dict__[attr] is None and other.__dict__[attr] is None:
             return None
         else:
             return np.average([self.__dict__[attr],
                                other.__dict__[attr]], weights=weights)
 
-    def str_mean(self, other, attr, append=False):
-        """Returns the combined string attributes"""
+    def _str_mean(self, other, attr, append=False):
+        """Returns the combined string attributes
+
+        Args:
+            other (UmiBase): The other UmiBase object to calculate combined
+                string.
+            attr (str): The attribute of the UmiBase object.
+            append (bool): Whether or not the attributes should be combined
+                together. If False, the attribute of self will is used (other is
+                ignored).
+        """
         # if self has info, but other is none, use self
         if self.__dict__[attr] is not None and other.__dict__[attr] is None:
             return self.__dict__[attr]
@@ -2791,41 +2808,45 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.Thickness = Thickness
 
     def __add__(self, other):
-        """Add method creates a new object from self + other"""
+        """Add method creates a new object from self + other
+
+        Args:
+            other (OpaqueMaterial): The other OpaqueMaterial object to add from.
+        """
         name = self.Name + "+" + other.Name
-        new_attr = dict(Category=self.str_mean(other, attr='Category',
-                                               append=False),
-                        Comments=self.str_mean(other, attr='Comments',
-                                               append=True),
-                        DataSource=self.str_mean(other, attr='DataSource',
-                                                 append=True),
-                        Conductivity=self.float_mean(other, 'Conductivity'),
-                        Roughness=self.str_mean(other, attr='Roughness',
+        new_attr = dict(Category=self._str_mean(other, attr='Category',
                                                 append=False),
-                        SolarAbsorptance=self.float_mean(other,
+                        Comments=self._str_mean(other, attr='Comments',
+                                                append=True),
+                        DataSource=self._str_mean(other, attr='DataSource',
+                                                  append=True),
+                        Conductivity=self._float_mean(other, 'Conductivity'),
+                        Roughness=self._str_mean(other, attr='Roughness',
+                                                 append=False),
+                        SolarAbsorptance=self._float_mean(other,
                                                          'SolarAbsorptance'),
-                        SpecificHeat=self.float_mean(other, 'SpecificHeat'),
-                        ThermalEmittance=self.float_mean(other,
+                        SpecificHeat=self._float_mean(other, 'SpecificHeat'),
+                        ThermalEmittance=self._float_mean(other,
                                                          'ThermalEmittance'),
-                        VisibleAbsorptance=self.float_mean(other,
+                        VisibleAbsorptance=self._float_mean(other,
                                                            'VisibleAbsorptance'),
-                        TransportCarbon=self.float_mean(other,
+                        TransportCarbon=self._float_mean(other,
                                                         'TransportCarbon'),
-                        TransportDistance=self.float_mean(other,
+                        TransportDistance=self._float_mean(other,
                                                           'TransportDistance'),
-                        TransportEnergy=self.float_mean(other,
+                        TransportEnergy=self._float_mean(other,
                                                         'TransportEnergy'),
-                        SubstitutionRatePattern=self.float_mean(other,
+                        SubstitutionRatePattern=self._float_mean(other,
                                                                 'SubstitutionRatePattern'),
-                        SubstitutionTimestep=self.float_mean(other,
+                        SubstitutionTimestep=self._float_mean(other,
                                                              'SubstitutionTimestep'),
-                        Cost=self.float_mean(other, 'Cost'),
-                        Density=self.float_mean(other, 'Density'),
-                        EmbodiedCarbon=self.float_mean(other, 'EmbodiedCarbon'),
-                        EmbodiedEnergy=self.float_mean(other, 'EmbodiedEnergy'),
-                        MoistureDiffusionResistance=self.float_mean(other,
+                        Cost=self._float_mean(other, 'Cost'),
+                        Density=self._float_mean(other, 'Density'),
+                        EmbodiedCarbon=self._float_mean(other, 'EmbodiedCarbon'),
+                        EmbodiedEnergy=self._float_mean(other, 'EmbodiedEnergy'),
+                        MoistureDiffusionResistance=self._float_mean(other,
                                                                     'MoistureDiffusionResistance'),
-                        Thickness=self.float_mean(other, 'Thickness'))
+                        Thickness=self._float_mean(other, 'Thickness'))
 
         new_obj = self.__class__(Name=name, **new_attr)
 

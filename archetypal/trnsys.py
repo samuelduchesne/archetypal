@@ -1518,9 +1518,8 @@ def _is_coordSys_world(coordSys, zones):
         Y_zones.append(y)
         Z_zones.append(z)
     # If 2 zones have same coords and are equal to 0 -> coordSys = "World"
-    if X_zones[0] == X_zones[1] and Y_zones[0] == Y_zones[1] and \
-            Z_zones[0] == Z_zones[1] and X_zones[0] == 0 and Y_zones[0] == 0 \
-            and Z_zones[0] == 0:
+    if X_zones == Y_zones and X_zones == Z_zones and Y_zones == Z_zones and \
+            X_zones[0] == 0 and Y_zones[0] == 0 and Z_zones[0] == 0:
         coordSys = "World"
     return coordSys
 

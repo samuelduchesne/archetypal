@@ -19,3 +19,4 @@ from .plot import *
 from .trnsys import *
 from .template import *
 from .core import *
+from .building import *

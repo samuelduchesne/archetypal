@@ -185,6 +185,14 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     # Determine if coordsSystem is "World" (all zones at (0,0,0))
     coordSys = _is_coordSys_world(coordSys, zones)
 
+    # Change coordinates from relative to absolute for building surfaces
+    if coordSys == 'Relative':
+        # Add zone coordinates to X, Y, Z vectors
+        for buildingSurf in buildingSurfs:
+            surf_zone = buildingSurf.Zone_Name
+            incrX, incrY, incrZ = zone_origin(idf.getobject("ZONE", surf_zone))
+            _relative_to_absolute(buildingSurf, incrX, incrY, incrZ)
+
     # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf)
     # from IDF to lines (T3D)
     # Get line number where to write
@@ -882,11 +890,6 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
                         "OtherSideCoefficients"
                     buildingSurf.Outside_Boundary_Condition_Object = \
                         "BOUNDARY=IDENTICAL"
-
-                # Change coordinates from relative to absolute
-                if coordSys == 'Relative':
-                    # Add zone coordinates to X, Y, Z vectors
-                    _relative_to_absolute(buildingSurf, incrX, incrY, incrZ)
 
                 # Round vertex to 4 decimal digit max
                 _round_vertex(buildingSurf)

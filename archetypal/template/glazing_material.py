@@ -1,3 +1,10 @@
+################################################################################
+# Module: archetypal.template
+# Description:
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import collections
 
 from archetypal.template import MaterialBase, Unique
@@ -202,12 +209,11 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         Life = 1
         SubstitutionRatePattern = [0.2]
         SubstitutionTimestep = 50
-        TransportCarbon = None
-        TransportDistance = None
+        TransportCarbon = 0
+        TransportDistance = 0
         TransportEnergy = 0
 
-        return cls(Density, Conductivity, Optical,
-                   OpticalData, SolarTransmittance,
+        return cls(Density, Conductivity, SolarTransmittance,
                    SolarReflectanceFront, SolarReflectanceBack,
                    VisibleTransmittance, VisibleReflectanceFront,
                    VisibleReflectanceBack, IRTransmittance,
@@ -216,4 +222,4 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
                    EmbodiedCarbon, EmbodiedCarbonStdDev, Cost, Life,
                    SubstitutionRatePattern, SubstitutionTimestep,
                    TransportCarbon, TransportDistance,
-                   TransportEnergy, Name=Name, *args, **kwargs)
+                   TransportEnergy, Name=Name, **kwargs)

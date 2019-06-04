@@ -1,3 +1,10 @@
+################################################################################
+# Module: archetypal.template
+# Description:
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import collections
 
 from archetypal.template import MaterialBase, Unique

@@ -1,3 +1,10 @@
+################################################################################
+# Module: archetypal.template
+# Description:
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import collections
 import functools
 import logging as lg
@@ -1032,8 +1039,8 @@ class ZoneGraph(networkx.Graph):
 
                 # Scatter plot
                 ax.scatter(xi, yi, zi, color=colors[key],
-                           s=20 + 20 * self.degree(
-                               key), edgecolors='k', alpha=0.7)
+                           s=20 + 20 * self.degree(key),
+                           edgecolors='k', alpha=0.7)
                 if annotate:
                     # Add node label
                     ax.text(*labels[key], fontsize=4)

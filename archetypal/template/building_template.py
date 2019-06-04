@@ -1,6 +1,6 @@
 ################################################################################
-# Module: template
-# Description: Handles creation and conversion to and from UmiTemplate files
+# Module: archetypal.template
+# Description:
 # License: MIT, see full license in LICENSE.txt
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
@@ -273,8 +273,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         """Reduce the building to its simplest core and perimeter zones."""
 
         # Determine if core graph is not empty
-        core = self.zone_graph.core_graph
-        perim = self.zone_graph.perim_graph
+        core = self.zone_graph().core_graph
+        perim = self.zone_graph().perim_graph
 
         self.Core = self.graph_reduce(core)
         self.Perimeter = self.graph_reduce(core)

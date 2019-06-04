@@ -1,9 +1,9 @@
 import glob
-
 import archetypal as ar
 import pytest
 
 # configure archetypal
+
 ar.config(log_console=True, log_file=True, use_cache=True,
           data_folder='tests/temp/data', logs_folder='tests/temp/logs',
           imgs_folder='tests/temp/imgs', cache_folder='tests/temp/cache',
@@ -148,7 +148,7 @@ def test_parse_schedule_profile():
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
     idf = ar.copy_file(idf)
     sql = ar.run_eplus(idf, weather_file=wf, prep_outputs=[outputs],
-                       annual=True)
+                       annual=True, output_report='sql')
     report = ar.get_from_reportdata(sql)
     array = report.loc[(report.Name == 'Schedule Value') &
                        (report['KeyValue'] == 'OCCUPY-1')].sort_values(
@@ -165,70 +165,3 @@ def test_parse_schedule_profile():
             unique_day[hashed_day] = (i, day)
 
 
-def test_energyprofile():
-    idf = ['tests/input_data/regular/5ZoneNightVent1.idf',
-           'tests/input_data/regular/AdultEducationCenter.idf']
-    outputs = {'ep_object': 'Output:Variable'.upper(),
-               'kwargs': {'Key_Value': 'OCCUPY-1',
-                          'Variable_Name': 'Schedule Value',
-                          'Reporting_Frequency': 'Hourly'}}
-    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    idf = ar.copy_file(idf)
-    sql = ar.run_eplus(idf, weather_file=wf, prep_outputs=[outputs],
-                       annual=True, expandobjects=True)
-    report = ar.get_from_reportdata(sql)
-
-    ep = ar.ReportData(report)
-    # sv = ep.sorted_values(name='Schedule Value', key_value='OCCUPY-1',
-    #                       by='TimeIndex')
-    sv = ep.filter_report_data(name=('Heating:Electricity',
-                                     'Heating:Gas',
-                                     'Heating:DistrictHeating'))
-    hl = sv.heating_load(normalize=True, sort=False,
-                         concurrent_sort=True)
-    dl = hl.discretize()
-    dl.duration_scaling_factor
-    assert hl.capacity_factor == 0.10376668840257346
-    hl.plot3d(
-        save=True, axis_off=True, kind='polygon', cmap=None,
-        fig_width=3, fig_height=8, edgecolors='k', linewidths=0.5)
-    #
-    # prob = ar.discretize(hl, bins=10)
-    # prob.duration.display()
-    # prob.amplitude.display()
-
-
-def test_energyprofile2():
-    idf = ['tests/input_data/regular/5ZoneNightVent1.idf']
-    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    idf = ar.copy_file(idf)
-    sql = ar.run_eplus(idf, weather_file=wf,
-                       annual=True, expandobjects=True)
-    report = ar.get_from_reportdata(sql)
-
-    ep = ar.ReportData(report)
-    # sv = ep.sorted_values(name='Schedule Value', key_value='OCCUPY-1',
-    #                       by='TimeIndex')
-    sv = ep.filter_report_data(name=('Heating:Electricity',
-                                     'Heating:Gas',
-                                     'Heating:DistrictHeating'))
-    hl = sv.heating_load(normalize=True, sort=True)
-    dl = hl.discretize()
-    dl.duration_scaling_factor
-    assert hl.capacity_factor == 0.10376668840257346
-    hl.plot3d(
-        save=True, axis_off=True, kind='polygon', cmap=None,
-        fig_width=3, fig_height=8, edgecolors='k', linewidths=0.5)
-    #
-
-
-def test_necb(config):
-    import glob
-    files = glob.glob("/Users/samuelduchesne/Dropbox/Polytechnique/Doc"
-                      "/software/archetypal-dev/data/necb"
-                      "/NECB_2011_Montreal_idf/*idf")
-    files = ar.copy_file(files)
-    wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-    template = ar.UmiTemplate(files, wf)
-
-    return template

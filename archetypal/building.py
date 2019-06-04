@@ -8,14 +8,13 @@
 import numpy as np
 import pyomo.core as pyomo
 import pyomo.environ
-from archetypal.core import EnergyProfile
 from pyomo.opt import SolverFactory
 
 
 def create_fake_profile(x=None, y1={}, y2={}, normalize=False,
                         profile_type='undefined', sorted=False,
                         ascending=False, units='J'):
-    """Utility that generates a generic EnergyProfile isntance
+    """Utility that generates a generic EnergySeries isntance
 
     Args:
         x (np.ndarray): is a linspace. Default is np.linspace(0, 8759, 8760)
@@ -28,7 +27,7 @@ def create_fake_profile(x=None, y1={}, y2={}, normalize=False,
         sorted (bool): id True, series will be sorted.
 
     Returns:
-        EnergyProfile: the EnergyProfile
+        EnergySeries: the EnergySeries
     """
     if x is None:
         x = np.linspace(0, 8759, 8760)
@@ -47,10 +46,10 @@ def create_fake_profile(x=None, y1={}, y2={}, normalize=False,
     y2 = A * np.sin(w * x + phy) + s
 
     y = y1 + y2
-    return EnergyProfile(y, index=x, frequency='1H', units=units,
-                         profile_type=profile_type, normalize=normalize,
-                         is_sorted=sorted,
-                         ascending=ascending)
+    return EnergySeries(y, index=x, frequency='1H', from_units=units,
+                        profile_type=profile_type, normalize=normalize,
+                        is_sorted=sorted,
+                        ascending=ascending)
 
 
 def discretize(profile, bins=5):

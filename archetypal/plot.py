@@ -127,7 +127,7 @@ def plot_energyprofile(energyprofile, kind='polygon', axis_off=True, cmap=None,
 
     """
     if energyprofile.empty:
-        warnings.warn("The EnergyProgile you are attempting to plot is "
+        warnings.warn("The EnergySeries you are attempting to plot is "
                       "empty. Nothing has been displayed.", UserWarning)
         return axes
 

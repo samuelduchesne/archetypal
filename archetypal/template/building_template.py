@@ -14,10 +14,10 @@ import tabulate
 from eppy.bunch_subclass import BadEPFieldError
 from tqdm import tqdm
 
-from archetypal.template import UmiBase, Unique, ZoneGraph, Zone, resolve_obco, \
-    WindowSetting, UmiSchedule, GlazingMaterial, zone_information, iscore, \
-    StructureDefinition
 from archetypal import log, save_and_show, calc_simple_glazing
+from archetypal.template import UmiBase, Unique, ZoneGraph, Zone, \
+    resolve_obco, WindowSetting, UmiSchedule, GlazingMaterial, \
+    zone_information, iscore, StructureDefinition
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):

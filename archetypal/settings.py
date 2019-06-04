@@ -129,12 +129,12 @@ import pkg_resources
 resource_package = archetypal.__name__  # Could be any module/package name
 
 # originBUISketchUp.idf template
-resource_path = '/'.join(('templates', 'originBUISketchUp.idf'))
+resource_path = '/'.join(('ressources', 'originBUISketchUp.idf'))
 # Do not use os.path.join()
 template_BUI = pkg_resources.resource_string(resource_package, resource_path)
 
 # window library ('W74-lib.dat') template
-resource_path = '/'.join(('templates', 'W74-lib.dat'))
+resource_path = '/'.join(('ressources', 'W74-lib.dat'))
 # Do not use os.path.join()
 template_winLib = pkg_resources.resource_string(resource_package,
                                                 resource_path)

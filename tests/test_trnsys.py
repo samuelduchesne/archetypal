@@ -26,7 +26,7 @@ def test_trnbuild_from_idf(config):
     idf_file = copy_file(idf_file)
 
     window_file = 'W74-lib.dat'
-    template_dir = os.path.join('archetypal', 'templates')
+    template_dir = os.path.join('archetypal', 'ressources')
     window_filepath = os.path.join(template_dir, window_file)
 
     # prepare args (key=value). Key is a unique id for the runs (here the

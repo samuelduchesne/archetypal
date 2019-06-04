@@ -24,11 +24,11 @@ from archetypal import run_eplus, load_idf
 from archetypal import settings, object_from_idf, object_from_idfs, \
     calc_simple_glazing, \
     iscore, weighted_mean, top, GasMaterial, BuildingTemplate, \
-    GlazingMaterial, OpaqueMaterial, OpaqueConstruction, \
-    WindowConstruction, StructureDefinition, DaySchedule, WeekSchedule, \
+    GlazingMaterial, OpaqueMaterial, WindowConstruction, StructureDefinition, DaySchedule, WeekSchedule, \
     YearSchedule, DomesticHotWaterSetting, VentilationSetting, \
     ZoneConditioning, \
     ZoneConstructionSet, ZoneLoad, Zone, WindowSetting, parallel_process
+from archetypal.template.opaque_construction import OpaqueConstruction
 
 
 class UmiTemplate:

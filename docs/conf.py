@@ -208,9 +208,12 @@ intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
                        'eppy': ('https://eppy.readthedocs.io/en/latest/', None),
                        'numpy': ('https://docs.scipy.org/doc/numpy/', None),
                        'networkx': (
-                       'https://networkx.github.io/documentation/stable/index'
-                       '.html',
-                       'https://networkx.github.io/objects.inv')}
+                           'https://networkx.github.io/documentation/stable'
+                           '/index'
+                           '.html',
+                           'https://networkx.github.io/objects.inv'),
+                       'umidocs': (
+                       'https://umidocs.readthedocs.io/en/latest/', None)}
 
 # -- Options for todo extension ----------------------------------------------
 

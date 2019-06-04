@@ -1,3 +1,5 @@
+import pytest
+
 import archetypal as ar
 
 
@@ -92,3 +94,41 @@ def test_iadd_opaque_construction():
     assert oc_a
     assert oc_a.id == id_  # id should not change
     assert oc_a.id != oc_b.id
+
+
+@pytest.fixture(scope='session')
+def small_idf():
+    file = "tests/input_data/umi_samples/B_Off_0.idf"
+    idf = ar.load_idf(file)
+    yield idf
+
+
+def test_add_zoneconstructionset(small_idf):
+    """Test __add__() for ZoneConstructionSet"""
+    idf = small_idf
+    zone_core = idf.getobject('ZONE', 'core')
+    zone_perim = idf.getobject('ZONE', 'perim')
+
+    z_core = ar.ZoneConstructionSet.from_zone(
+        ar.Zone.from_zone_epbunch(zone_core))
+    z_perim = ar.ZoneConstructionSet.from_zone(
+        ar.Zone.from_zone_epbunch(zone_perim))
+    z_new = z_core + z_perim
+    assert z_new
+
+
+def test_iadd_zoneconstructionset(small_idf):
+    idf = small_idf
+    zone_core = idf.getobject('ZONE', 'core')
+    zone_perim = idf.getobject('ZONE', 'perim')
+
+    z_core = ar.ZoneConstructionSet.from_zone(
+        ar.Zone.from_zone_epbunch(zone_core))
+    z_perim = ar.ZoneConstructionSet.from_zone(
+        ar.Zone.from_zone_epbunch(zone_perim))
+    id_ = z_core.id
+    z_core += z_perim
+
+    assert z_core
+    assert z_core.id == id_  # id should not change
+    assert z_core.id != z_perim.id

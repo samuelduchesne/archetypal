@@ -388,10 +388,17 @@ def _add_change_adj_surf(buildingSurfs, idf):
     for adj_surf_to_make in adj_surfs_to_make:
         buildSurf = idf.getobject("BUILDINGSURFACE:DETAILED",
                                   adj_surf_to_make)
+        surf_type = buildSurf.Surface_Type
+        if surf_type.lower() == "wall":
+            surf_type_bound = "Wall"
+        if surf_type.lower() == "floor":
+            surf_type_bound = "Ceiling"
+        if surf_type.lower() == "ceiling":
+            surf_type_bound = "Floor"
         # Create a new surface
         idf.newidfobject("BUILDINGSURFACE:DETAILED",
                          Name=buildSurf.Name + "_adj",
-                         Surface_Type='Wall',
+                         Surface_Type=surf_type_bound,
                          Construction_Name=buildSurf.Construction_Name,
                          Zone_Name=buildSurf.Outside_Boundary_Condition_Object,
                          Outside_Boundary_Condition="Zone",

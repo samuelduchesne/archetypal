@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 import archetypal as ar
@@ -5,8 +6,8 @@ import archetypal as ar
 
 def test_add_materials():
     """test __add__() for OpaqueMaterial"""
-    mat_a = ar.OpaqueMaterial(Name='mat_a', Conductivity=100, SpecificHeat=4.18)
-    mat_b = ar.OpaqueMaterial(Name='mat_b', Conductivity=200, SpecificHeat=4.18)
+    mat_a = ar.OpaqueMaterial(Conductivity=100, SpecificHeat=4.18, Name='mat_a')
+    mat_b = ar.OpaqueMaterial(Conductivity=200, SpecificHeat=4.18, Name='mat_b')
     mat_c = mat_a + mat_b
     assert mat_c
     assert mat_c.Conductivity == 150
@@ -15,12 +16,12 @@ def test_add_materials():
 
 def test_iadd_materials():
     """test __iadd__() for OpaqueMaterial"""
-    mat_a = ar.OpaqueMaterial(Name='mat_ia', Conductivity=100,
-                              SpecificHeat=4.18)
+    mat_a = ar.OpaqueMaterial(Conductivity=100, SpecificHeat=4.18,
+                              Name='mat_ia')
     id_ = mat_a.id  # storing mat_a's id.
 
-    mat_b = ar.OpaqueMaterial(Name='mat_ib', Conductivity=200,
-                              SpecificHeat=4.18)
+    mat_b = ar.OpaqueMaterial(Conductivity=200, SpecificHeat=4.18,
+                              Name='mat_ib')
     mat_a += mat_b
     assert mat_a
     assert mat_a.Conductivity == 150
@@ -59,8 +60,8 @@ def test_iadd_glazing_material():
 
 def test_add_opaque_construction():
     """Test __add__() for OpaqueConstruction"""
-    mat_a = ar.OpaqueMaterial(Name='mat_a', Conductivity=100, SpecificHeat=4.18)
-    mat_b = ar.OpaqueMaterial(Name='mat_b', Conductivity=200, SpecificHeat=4.18)
+    mat_a = ar.OpaqueMaterial(Conductivity=100, SpecificHeat=4.18, Name='mat_a')
+    mat_b = ar.OpaqueMaterial(Conductivity=200, SpecificHeat=4.18, Name='mat_b')
     thickness = 0.10
     layers = [ar.MaterialLayer(mat_a, thickness),
               ar.MaterialLayer(mat_b, thickness)]
@@ -76,10 +77,10 @@ def test_add_opaque_construction():
 
 def test_iadd_opaque_construction():
     """Test __iadd__() for OpaqueConstruction"""
-    mat_a = ar.OpaqueMaterial(Name='mat_ia', Conductivity=100,
-                              SpecificHeat=4.18)
-    mat_b = ar.OpaqueMaterial(Name='mat_ib', Conductivity=200,
-                              SpecificHeat=4.18)
+    mat_a = ar.OpaqueMaterial(Conductivity=100, SpecificHeat=4.18,
+                              Name='mat_ia')
+    mat_b = ar.OpaqueMaterial(Conductivity=200, SpecificHeat=4.18,
+                              Name='mat_ib')
     thickness = 0.10
     layers = [ar.MaterialLayer(mat_a, thickness),
               ar.MaterialLayer(mat_b, thickness)]
@@ -118,6 +119,7 @@ def test_add_zoneconstructionset(small_idf):
 
 
 def test_iadd_zoneconstructionset(small_idf):
+    """Test __iadd__() for ZoneConstructionSet"""
     idf = small_idf
     zone_core = idf.getobject('ZONE', 'core')
     zone_perim = idf.getobject('ZONE', 'perim')
@@ -132,3 +134,44 @@ def test_iadd_zoneconstructionset(small_idf):
     assert z_core
     assert z_core.id == id_  # id should not change
     assert z_core.id != z_perim.id
+
+
+def test_add_zone(small_idf):
+    """Test __add__() for Zone"""
+    zone_core = small_idf.getobject('ZONE', 'core')
+    zone_perim = small_idf.getobject('ZONE', 'perim')
+
+    z_core = ar.Zone.from_zone_epbunch(zone_core)
+    z_perim = ar.Zone.from_zone_epbunch(zone_perim)
+
+    z_new = z_core + z_perim
+
+    assert z_new
+    np.testing.assert_almost_equal(actual=z_core.volume + z_perim.volume,
+                                   desired=z_new.volume, decimal=3)
+    np.testing.assert_almost_equal(actual=z_core.area + z_perim.area,
+                                   desired=z_new.area, decimal=3)
+
+
+def test_iadd_zone(small_idf):
+    """Test __iadd__() for Zone"""
+    zone_core = small_idf.getobject('ZONE', 'core')
+    zone_perim = small_idf.getobject('ZONE', 'perim')
+
+    z_core = ar.Zone.from_zone_epbunch(zone_core)
+    z_perim = ar.Zone.from_zone_epbunch(zone_perim)
+    volume = z_core.volume + z_perim.volume  # save volume before changing
+    area = z_core.area + z_perim.area  # save area before changing
+
+    id_ = z_core.id
+    z_core += z_perim
+
+    assert z_core
+    assert z_core.id == id_
+    assert z_core.id != z_perim.id
+
+    np.testing.assert_almost_equal(actual=volume,
+                                   desired=z_core.volume, decimal=3)
+
+    np.testing.assert_almost_equal(actual=area,
+                                   desired=z_core.area, decimal=3)

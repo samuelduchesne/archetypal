@@ -35,6 +35,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         self.WaterTemperatureInlet = WaterTemperatureInlet
         self.WaterSchedule = WaterSchedule
 
+        self._belongs_to_zone = kwargs.get('zone', None)
+
     @classmethod
     def from_json(cls, *args, **kwargs):
         """
@@ -81,5 +83,5 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         """
         # todo: to finish
         name = zone.Name + "_DHW"
-        z_dhw = cls(Name=name)
+        z_dhw = cls(Name=name, zone=zone)
         return z_dhw

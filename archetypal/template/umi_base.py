@@ -128,11 +128,8 @@ class UmiBase(object):
         if self.__dict__[attr] is None and other.__dict__[attr] is None:
             return None
         else:
-            try:
-                return np.average([self.__dict__[attr],
-                                   other.__dict__[attr]], weights=weights)
-            except:
-                pass
+            return np.average([self.__dict__[attr],
+                               other.__dict__[attr]], weights=weights)
 
     def _str_mean(self, other, attr, append=False):
         """Returns the combined string attributes

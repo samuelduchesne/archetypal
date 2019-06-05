@@ -98,6 +98,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         self.MinFreshAirPerArea = MinFreshAirPerArea
         self.MinFreshAirPerPerson = MinFreshAirPerPerson
 
+        self._belongs_to_zone = kwargs.get('zone', None)
+
+    def __add__(self, other):
+        return self.combine(other)
+
     @classmethod
     def from_idf(cls, *args, **kwargs):
         """
@@ -175,6 +180,63 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         # todo: to finish
         name = zone.Name + "_ZoneConditioning"
 
-        z_cond = cls(Name=name)
+        z_cond = cls(Name=name, zone=zone)
 
         return z_cond
+
+    def combine(self, other):
+        """Combine two ZoneConditioning objects together.
+
+        Args:
+            other (ZoneConditioning):
+
+        Returns:
+
+        """
+        # Check if other is the same type as self
+        if not isinstance(other, self.__class__):
+            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
+                                                 other.__class__.__name__)
+            raise NotImplementedError(msg)
+
+        # Check if other is not the same as self
+        if self == other:
+            return self
+
+        # the new object's name
+        name = " + ".join([self.Name, other.Name])
+
+        weights = [self._belongs_to_zone.volume,
+                   other._belongs_to_zone.volume]
+        a = self._float_mean(other, 'CoolingCoeffOfPerf', weights)
+        b = self._str_mean(other, 'CoolingLimitType')
+        c = self._float_mean(other, 'CoolingSetpoint', weights)
+        d = self._str_mean(other, 'EconomizerType')
+        e = self._float_mean(other, 'HeatRecoveryEfficiencyLatent', weights)
+        f = self._float_mean(other, 'HeatRecoveryEfficiencySensible',
+                             weights)
+        g = self._str_mean(other, 'HeatRecoveryType')
+        h = self._float_mean(other, 'HeatingCoeffOfPerf', weights)
+        i = self._str_mean(other, 'HeatingLimitType')
+        j = self._float_mean(other, 'HeatingSetpoint', weights)
+        k = any((self.IsCoolingOn, other.IsCoolingOn))
+        l = any((self.IsHeatingOn, other.IsHeatingOn))
+        m = any((self.IsMechVentOn, other.IsMechVentOn))
+        n = self._float_mean(other, 'MaxCoolFlow', weights)
+        o = self._float_mean(other, 'MaxCoolingCapacity', weights)
+        p = self._float_mean(other, 'MaxHeatFlow', weights)
+        q = self._float_mean(other, 'MaxHeatingCapacity', weights)
+        r = self._float_mean(other, 'MinFreshAirPerArea', weights)
+        s = self._float_mean(other, 'MinFreshAirPerPerson', weights)
+
+        attr = dict(CoolingCoeffOfPerf=a, CoolingLimitType=b, CoolingSetpoint=c,
+                    EconomizerType=d, HeatRecoveryEfficiencyLatent=e,
+                    HeatRecoveryEfficiencySensible=f, HeatRecoveryType=g,
+                    HeatingCoeffOfPerf=h, HeatingLimitType=i, HeatingSetpoint=j,
+                    IsCoolingOn=k, IsHeatingOn=l, IsMechVentOn=m, MaxCoolFlow=n,
+                    MaxCoolingCapacity=o, MaxHeatFlow=p, MaxHeatingCapacity=q,
+                    MinFreshAirPerArea=r, MinFreshAirPerPerson=s)
+
+        # create a new object with the previous attributes
+        new_obj = self.__class__(Name=name, **attr)
+        return new_obj

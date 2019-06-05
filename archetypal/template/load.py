@@ -61,6 +61,8 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         self.IsPeopleOn = IsPeopleOn
         self.PeopleDensity = PeopleDensity
 
+        self._belongs_to_zone = kwargs.get('zone', None)
+
     @classmethod
     def from_json(cls, *args, **kwargs):
         """
@@ -112,5 +114,5 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         """
         # todo: to finish
         name = zone.Name + "_ZoneLoad"
-        z_load = cls(Name=name)
+        z_load = cls(Name=name, zone=zone)
         return z_load

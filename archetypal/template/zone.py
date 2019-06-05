@@ -57,8 +57,10 @@ class Zone(UmiBase, metaclass=Unique):
         self.InternalMassConstruction = InternalMassConstruction
         self.InternalMassExposedPerFloorArea = InternalMassExposedPerFloorArea
 
-        self._epbunch = None
-        self._zonesurfaces = None
+        self._epbunch = kwargs.get('epbunch', None)
+        self._zonesurfaces = kwargs.get('zonesurfaces', None)
+        self._area = kwargs.get('area', None)
+        self._volume = kwargs.get('volume', None)
 
     def __add__(self, other):
         """
@@ -68,21 +70,24 @@ class Zone(UmiBase, metaclass=Unique):
         # create the new merged zone from self
         return self.combine(other)
 
-    def __iadd__(self, other):
-        """Unlike regular iadd operations, this one does not return self since
-        we need to create a new zone with different properties
-
-        Args:
-            other:
-        """
-        return self.__add__(other)
-
     @property
     def area(self):
-        zone_surfs = self._epbunch.zonesurfaces
-        floors = [s for s in zone_surfs if s.Surface_Type.upper() == 'FLOOR']
-        area = sum([floor.area for floor in floors])
-        return area
+        if not self._area:
+            zone_surfs = [surf for surf in self._epbunch.zonesurfaces if
+                          surf.key.lower() != 'internalmass']
+            floors = [s for s in zone_surfs if
+                      s.Surface_Type.upper() == 'FLOOR']
+            area = sum([floor.area for floor in floors])
+            return area
+        else:
+            return self._area
+
+    @property
+    def volume(self):
+        if not self._volume:
+            return self._epbunch.Volume
+        else:
+            return self._volume
 
     def _conditioning(self):
         """run _conditioning and return id"""
@@ -250,6 +255,7 @@ class Zone(UmiBase, metaclass=Unique):
         imcs = set([OpaqueConstruction.from_epbunch(i) for i in im])
         if imcs:
             imc = functools.reduce(lambda a, b: a + b, imcs)
+            imc._belongs_to_zone = zone
         else:
             imc = []
         z.InternalMassConstruction = imc
@@ -274,20 +280,23 @@ class Zone(UmiBase, metaclass=Unique):
         incoming_zone_data = self.__dict__.copy()
         incoming_zone_data.pop('Name')
 
-        bs = Zone(**incoming_zone_data, Name='+'.join([self.Name, other.Name]))
+        # the new object's name
+        name = '+'.join([self.Name, other.Name])
 
-        bs.Category += other.Category
-        bs.Conditioning += other.Conditioning
-        bs.Constructions += other.Constructions
-        bs.DaylightMeshResolution = (bs.DaylightMeshResolution *
-                                     bs.area +
-                                     other.DaylightMeshResolution
-                                     * bs.area) / (
-                                            bs.area + other.area)
-        # append the comment with debugging information
-        bs.Comments += "message"  # message detailing
-        # operation
-        return bs
+        weights = [self.volume, other.volume]
+        attr = dict(Category=self._str_mean(other, attr='Category',
+                                            append=False),
+                    Comments=self._str_mean(other, attr='Comments',
+                                            append=True),
+                    Conditioning=self.Conditioning + other.Conditioning,
+                    Constructions=self.Constructions + other.Constructions,
+                    DaylightMeshResolution=self._float_mean(other,
+                                                            'DaylightMeshResolution',
+                                                            weights=weights),
+                    area=self.area + other.area,
+                    volume=self.volume + other.volume)
+        new_obj = self.__class__(Name=name, **attr)
+        return new_obj
 
 
 def resolve_obco(this):
@@ -556,6 +565,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         self.IsFacadeAdiabatic = IsFacadeAdiabatic
 
         self.Zone_Names = Zone_Names
+        self._belongs_to_zone = kwargs.get('zone', None)
 
     def __add__(self, other):
         """Overload + to implement self.combine."""
@@ -777,8 +787,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             slab = OpaqueConstruction.generic()
 
         z_set = cls(Facade=facade, Ground=ground, Partition=partition,
-                    Roof=roof, Slab=slab, Name=name)
-
+                    Roof=roof, Slab=slab, Name=name, zone=zone)
         return z_set
 
     @staticmethod

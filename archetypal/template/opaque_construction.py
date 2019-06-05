@@ -225,7 +225,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                     pass
                 else:
                     layers.append(MaterialLayer(**dict(Material=o,
-                                                       Thickness=o.Thickness)))
+                                                       Thickness=material.Thickness)))
             if not found:
                 raise AttributeError("%s material not found in IDF" % layer)
         return layers
@@ -300,7 +300,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     @classmethod
     def generic(cls):
         # Generic Plaster Board
-        om = OpaqueMaterial(Name='generic_Material', Density=800,
-                            Conductivity=0.17, SpecificHeat=800)
+        om = OpaqueMaterial(Conductivity=0.17, SpecificHeat=800, Density=800,
+                            Name='generic_Material')
         layers = [MaterialLayer(om, 0.0127)]  # half inch
         return cls(Name='generic plaster board half inch', Layers=layers)

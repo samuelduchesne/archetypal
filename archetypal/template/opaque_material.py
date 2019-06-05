@@ -15,7 +15,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
 
     def __init__(self, Conductivity, SpecificHeat, SolarAbsorptance=0.7,
                  ThermalEmittance=0.9, VisibleAbsorptance=0.7,
-                 Roughness='Rough', Cost=0, Density=1, Thickness=None,
+                 Roughness='Rough', Cost=0, Density=1,
                  MoistureDiffusionResistance=50, EmbodiedCarbon=0.45,
                  EmbodiedEnergy=0, TransportCarbon=0, TransportDistance=0,
                  TransportEnergy=0, SubstitutionRatePattern=[0.5, 1],
@@ -52,10 +52,6 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             Cost: # todo: defined parameter
             Density: A number representing the density of the material in kg/m3.
                 This is essentially the mass of one cubic meter of the material.
-            Thickness (float): This field characterizes the thickness of the
-                material layer in meters. This should be the dimension of the
-                layer in the direction perpendicular to the main path of heat
-                conduction. This value must be a positive.
             MoistureDiffusionResistance: # todo: defined parameter
             EmbodiedCarbon: # todo: defined parameter
             EmbodiedEnergy: # todo: defined parameter
@@ -84,7 +80,6 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.EmbodiedCarbon = EmbodiedCarbon
         self.EmbodiedEnergy = EmbodiedEnergy
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
-        self.Thickness = Thickness
 
     def __add__(self, other):
         """Overload + to implement self.combine.
@@ -146,8 +141,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                         EmbodiedEnergy=self._float_mean(other,
                                                         'EmbodiedEnergy'),
                         MoistureDiffusionResistance=self._float_mean(other,
-                                                                     'MoistureDiffusionResistance'),
-                        Thickness=self._float_mean(other, 'Thickness'))
+                                                                     'MoistureDiffusionResistance'))
         new_obj = self.__class__(Name=name, **new_attr)
         return new_obj
 

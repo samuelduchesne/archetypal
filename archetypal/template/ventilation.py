@@ -67,6 +67,8 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         self.ScheduledVentilationSchedule = ScheduledVentilationSchedule
         self.NatVentSchedule = NatVentSchedule
 
+        self._belongs_to_zone = kwargs.get('zone', None)
+
     @classmethod
     def from_json(cls, *args, **kwargs):
         """
@@ -127,5 +129,5 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         """
         # todo: to finish
         name = zone.Name + "_VentilationSetting"
-        z_vent = cls(Name=name)
+        z_vent = cls(Name=name, zone=zone)
         return z_vent

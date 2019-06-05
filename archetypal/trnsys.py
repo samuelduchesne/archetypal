@@ -373,7 +373,6 @@ def _add_change_adj_surf(buildingSurfs, idf):
     # If adjacent surface found, check if Outside boundary
     # condition is a Zone and not "Outdoors"
     for key, value in adj_surfs_to_change.items():
-        buildSurf = idf.getobject("BUILDINGSURFACE:DETAILED", value)
         idf.getobject("BUILDINGSURFACE:DETAILED",
                       value).Outside_Boundary_Condition = "Zone"
         idf.getobject("BUILDINGSURFACE:DETAILED",

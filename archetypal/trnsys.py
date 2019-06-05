@@ -173,100 +173,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     # Write data from IDF file to T3D file
     start_time = time.time()
 
-    # Add adjacent surface if needed
-    adj_surfs_to_change = {}
-    adj_surfs_to_make = []
-    for buildingSurf in buildingSurfs:
-        if 'zone' in buildingSurf.Outside_Boundary_Condition.lower():
-            # Get the surface EpBunch that is adjacent to the building surface
-            outside_bound_zone = \
-                buildingSurf.Outside_Boundary_Condition_Object
-            surfs_in_bound_zone = [surf for surf in buildingSurfs if
-                                   surf.Zone_Name == outside_bound_zone]
-            poly_buildingSurf = Polygon3D(buildingSurf.coords)
-            n_buildingSurf = poly_buildingSurf.normal_vector
-            area_build = poly_buildingSurf.area
-            centroid_build = poly_buildingSurf.centroid
-            # Check if buildingSurf has an adjacent surface
-            for surf in surfs_in_bound_zone:
-                if surf.Outside_Boundary_Condition.lower() == "outdoors":
-                    poly_surf_bound = Polygon3D(surf.coords)
-                    n_surf_bound = poly_surf_bound.normal_vector
-                    area_bound = poly_surf_bound.area
-                    centroid_bound = poly_surf_bound.centroid
-                    # Check if boundary surface already exist: sum of normal
-                    # vectors must be equal to 0 AND surfaces must have the
-                    # same centroid AND surfaces must have the same area
-                    if round(n_surf_bound.x + n_buildingSurf.x, 3) == 0 \
-                            and \
-                            round(n_surf_bound.y + n_buildingSurf.y, 3) == 0 \
-                            and \
-                            round(n_surf_bound.z + n_buildingSurf.z, 3) == 0 \
-                            and \
-                            round(centroid_bound.x, 3) == round(
-                        centroid_build.x, 3) \
-                            and \
-                            round(centroid_bound.y, 3) == round(
-                        centroid_build.y, 3) \
-                            and \
-                            round(centroid_bound.z, 3) == round(
-                        centroid_build.z, 3) \
-                            and \
-                            round(area_bound, 3) == round(area_build, 3):
-                        # If boundary surface exists, append the list of surface
-                        # to change
-                        if not surf.Name in adj_surfs_to_change:
-                            adj_surfs_to_change[buildingSurf.Name] = surf.Name
-                            break
-            # If boundary surface does not exist, append the list of surface
-            # to create
-            if not adj_surfs_to_change:
-                if not buildingSurf.Name in adj_surfs_to_make:
-                    adj_surfs_to_make.append(buildingSurf.Name)
-
-    # If adjacent surface found, check if Outside boundary
-    # condition is a Zone and not "Outdoors"
-    for key, value in adj_surfs_to_change.items():
-        buildSurf = idf.getobject("BUILDINGSURFACE:DETAILED", value)
-        idf.getobject("BUILDINGSURFACE:DETAILED",
-                      value).Outside_Boundary_Condition = "Zone"
-        idf.getobject("BUILDINGSURFACE:DETAILED",
-                      value).Outside_Boundary_Condition_Object = \
-            idf.getobject("BUILDINGSURFACE:DETAILED",
-                          key).Zone_Name
-        idf.getobject("BUILDINGSURFACE:DETAILED",
-                      value).Construction_Name = \
-            idf.getobject("BUILDINGSURFACE:DETAILED",
-                          key).Construction_Name
-
-    # If did not find any adjacent surface
-    for adj_surf_to_make in adj_surfs_to_make:
-        buildSurf = idf.getobject("BUILDINGSURFACE:DETAILED",
-                                  adj_surf_to_make)
-        # Create a new surface
-        idf.newidfobject("BUILDINGSURFACE:DETAILED",
-                         Name=buildSurf.Name + "_adj",
-                         Surface_Type='Wall',
-                         Construction_Name=buildSurf.Construction_Name,
-                         Zone_Name=buildSurf.Outside_Boundary_Condition_Object,
-                         Outside_Boundary_Condition="Zone",
-                         Outside_Boundary_Condition_Object=buildSurf.Zone_Name,
-                         Sun_Exposure="NoSun",
-                         Wind_Exposure="NoWind",
-                         View_Factor_to_Ground="autocalculate",
-                         Number_of_Vertices=buildSurf.Number_of_Vertices,
-                         Vertex_1_Xcoordinate=buildSurf.Vertex_4_Xcoordinate,
-                         Vertex_1_Ycoordinate=buildSurf.Vertex_4_Ycoordinate,
-                         Vertex_1_Zcoordinate=buildSurf.Vertex_4_Zcoordinate,
-                         Vertex_2_Xcoordinate=buildSurf.Vertex_3_Xcoordinate,
-                         Vertex_2_Ycoordinate=buildSurf.Vertex_3_Ycoordinate,
-                         Vertex_2_Zcoordinate=buildSurf.Vertex_3_Zcoordinate,
-                         Vertex_3_Xcoordinate=buildSurf.Vertex_2_Xcoordinate,
-                         Vertex_3_Ycoordinate=buildSurf.Vertex_2_Ycoordinate,
-                         Vertex_3_Zcoordinate=buildSurf.Vertex_2_Zcoordinate,
-                         Vertex_4_Xcoordinate=buildSurf.Vertex_1_Xcoordinate,
-                         Vertex_4_Ycoordinate=buildSurf.Vertex_1_Ycoordinate,
-                         Vertex_4_Zcoordinate=buildSurf.Vertex_1_Zcoordinate)
+    # Adds or changes adjacent surface if needed
+    _add_change_adj_surf(buildingSurfs, idf)
     buildingSurfs = idf.idfobjects["BUILDINGSURFACE:DETAILED"]
 
     # Write VERSION from IDF to lines (T3D)
@@ -410,6 +318,100 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     from itertools import compress
     return tuple(compress([new_idf_path, b18_path, t3d_path, dck_path],
                           [return_idf, return_b18, return_t3d, return_dck]))
+
+
+def _add_change_adj_surf(buildingSurfs, idf):
+    adj_surfs_to_change = {}
+    adj_surfs_to_make = []
+    for buildingSurf in buildingSurfs:
+        if 'zone' in buildingSurf.Outside_Boundary_Condition.lower():
+            # Get the surface EpBunch that is adjacent to the building surface
+            outside_bound_zone = \
+                buildingSurf.Outside_Boundary_Condition_Object
+            surfs_in_bound_zone = [surf for surf in buildingSurfs if
+                                   surf.Zone_Name == outside_bound_zone]
+            poly_buildingSurf = Polygon3D(buildingSurf.coords)
+            n_buildingSurf = poly_buildingSurf.normal_vector
+            area_build = poly_buildingSurf.area
+            centroid_build = poly_buildingSurf.centroid
+            # Check if buildingSurf has an adjacent surface
+            for surf in surfs_in_bound_zone:
+                if surf.Outside_Boundary_Condition.lower() == "outdoors":
+                    poly_surf_bound = Polygon3D(surf.coords)
+                    n_surf_bound = poly_surf_bound.normal_vector
+                    area_bound = poly_surf_bound.area
+                    centroid_bound = poly_surf_bound.centroid
+                    # Check if boundary surface already exist: sum of normal
+                    # vectors must be equal to 0 AND surfaces must have the
+                    # same centroid AND surfaces must have the same area
+                    if round(n_surf_bound.x + n_buildingSurf.x, 3) == 0 \
+                            and \
+                            round(n_surf_bound.y + n_buildingSurf.y, 3) == 0 \
+                            and \
+                            round(n_surf_bound.z + n_buildingSurf.z, 3) == 0 \
+                            and \
+                            round(centroid_bound.x, 3) == round(
+                        centroid_build.x, 3) \
+                            and \
+                            round(centroid_bound.y, 3) == round(
+                        centroid_build.y, 3) \
+                            and \
+                            round(centroid_bound.z, 3) == round(
+                        centroid_build.z, 3) \
+                            and \
+                            round(area_bound, 3) == round(area_build, 3):
+                        # If boundary surface exists, append the list of surface
+                        # to change
+                        if not surf.Name in adj_surfs_to_change:
+                            adj_surfs_to_change[buildingSurf.Name] = surf.Name
+                            break
+            # If boundary surface does not exist, append the list of surface
+            # to create
+            if not adj_surfs_to_change:
+                if not buildingSurf.Name in adj_surfs_to_make:
+                    adj_surfs_to_make.append(buildingSurf.Name)
+    # If adjacent surface found, check if Outside boundary
+    # condition is a Zone and not "Outdoors"
+    for key, value in adj_surfs_to_change.items():
+        buildSurf = idf.getobject("BUILDINGSURFACE:DETAILED", value)
+        idf.getobject("BUILDINGSURFACE:DETAILED",
+                      value).Outside_Boundary_Condition = "Zone"
+        idf.getobject("BUILDINGSURFACE:DETAILED",
+                      value).Outside_Boundary_Condition_Object = \
+            idf.getobject("BUILDINGSURFACE:DETAILED",
+                          key).Zone_Name
+        idf.getobject("BUILDINGSURFACE:DETAILED",
+                      value).Construction_Name = \
+            idf.getobject("BUILDINGSURFACE:DETAILED",
+                          key).Construction_Name
+    # If did not find any adjacent surface
+    for adj_surf_to_make in adj_surfs_to_make:
+        buildSurf = idf.getobject("BUILDINGSURFACE:DETAILED",
+                                  adj_surf_to_make)
+        # Create a new surface
+        idf.newidfobject("BUILDINGSURFACE:DETAILED",
+                         Name=buildSurf.Name + "_adj",
+                         Surface_Type='Wall',
+                         Construction_Name=buildSurf.Construction_Name,
+                         Zone_Name=buildSurf.Outside_Boundary_Condition_Object,
+                         Outside_Boundary_Condition="Zone",
+                         Outside_Boundary_Condition_Object=buildSurf.Zone_Name,
+                         Sun_Exposure="NoSun",
+                         Wind_Exposure="NoWind",
+                         View_Factor_to_Ground="autocalculate",
+                         Number_of_Vertices=buildSurf.Number_of_Vertices,
+                         Vertex_1_Xcoordinate=buildSurf.Vertex_4_Xcoordinate,
+                         Vertex_1_Ycoordinate=buildSurf.Vertex_4_Ycoordinate,
+                         Vertex_1_Zcoordinate=buildSurf.Vertex_4_Zcoordinate,
+                         Vertex_2_Xcoordinate=buildSurf.Vertex_3_Xcoordinate,
+                         Vertex_2_Ycoordinate=buildSurf.Vertex_3_Ycoordinate,
+                         Vertex_2_Zcoordinate=buildSurf.Vertex_3_Zcoordinate,
+                         Vertex_3_Xcoordinate=buildSurf.Vertex_2_Xcoordinate,
+                         Vertex_3_Ycoordinate=buildSurf.Vertex_2_Ycoordinate,
+                         Vertex_3_Zcoordinate=buildSurf.Vertex_2_Zcoordinate,
+                         Vertex_4_Xcoordinate=buildSurf.Vertex_1_Xcoordinate,
+                         Vertex_4_Ycoordinate=buildSurf.Vertex_1_Ycoordinate,
+                         Vertex_4_Zcoordinate=buildSurf.Vertex_1_Zcoordinate)
 
 
 def _get_schedules(idf):
@@ -987,6 +989,21 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
                         "OtherSideCoefficients"
                     buildingSurf.Outside_Boundary_Condition_Object = \
                         "BOUNDARY=IDENTICAL"
+
+                if 'othersidecoefficients' in \
+                        buildingSurf.Outside_Boundary_Condition.lower():
+                    buildingSurf.Outside_Boundary_Condition = \
+                        "OtherSideCoefficients"
+                    buildingSurf.Outside_Boundary_Condition_Object = \
+                        "BOUNDARY=INPUT 1*TBOUNDARY"
+
+                if 'othersideconditionsmodel' in \
+                        buildingSurf.Outside_Boundary_Condition.lower():
+                    msg = 'Surface {"buildSurfName"} has ' \
+                          '"OtherSideConditionsModel" as an outside ' \
+                          'boundary condition, that is not implemented'.format(
+                        buildSurfName=buildingSurf.Name)
+                    raise NotImplementedError(msg)
 
                 # Round vertex to 4 decimal digit max
                 _round_vertex(buildingSurf)

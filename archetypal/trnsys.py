@@ -173,10 +173,6 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     # Write data from IDF file to T3D file
     start_time = time.time()
 
-    # Adds or changes adjacent surface if needed
-    _add_change_adj_surf(buildingSurfs, idf)
-    buildingSurfs = idf.idfobjects["BUILDINGSURFACE:DETAILED"]
-
     # Write VERSION from IDF to lines (T3D)
     _write_version(lines, versions)
 
@@ -197,6 +193,10 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
             surf_zone = buildingSurf.Zone_Name
             incrX, incrY, incrZ = zone_origin(idf.getobject("ZONE", surf_zone))
             _relative_to_absolute(buildingSurf, incrX, incrY, incrZ)
+
+    # Adds or changes adjacent surface if needed
+    _add_change_adj_surf(buildingSurfs, idf)
+    buildingSurfs = idf.idfobjects["BUILDINGSURFACE:DETAILED"]
 
     # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf)
     # from IDF to lines (T3D)

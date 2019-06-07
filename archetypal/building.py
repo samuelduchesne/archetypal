@@ -6,9 +6,11 @@
 ################################################################################
 
 import numpy as np
+import pandas
 import pyomo.core as pyomo
 import pyomo.environ
 from pyomo.opt import SolverFactory
+from .energyseries import EnergySeries
 
 
 def create_fake_profile(x=None, y1={}, y2={}, normalize=False,

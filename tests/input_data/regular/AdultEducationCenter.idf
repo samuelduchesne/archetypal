@@ -12,7 +12,7 @@ SimulationControl,
 
 Building,
     Adult Education Center,    !- Name
-    0.0,                      !- North Axis
+    0,                        !- North Axis
     Suburbs,                  !- Terrain
     0.04,                     !- Loads Convergence Tolerance Value
     0.4,                      !- Temperature Convergence Tolerance Value
@@ -36,8 +36,8 @@ Site:Location,
     CHICAGO_IL_USA Design_Conditions,    !- Name
     41.78,                    !- Latitude
     -87.75,                   !- Longitude
-    -6.0,                     !- Time Zone
-    190.0;                    !- Elevation
+    -6,                       !- Time Zone
+    190;                      !- Elevation
 
 SizingPeriod:DesignDay,
     CHICAGO Ann Htg 99% Condns DB,    !- Name
@@ -45,7 +45,7 @@ SizingPeriod:DesignDay,
     21,                       !- Day of Month
     WinterDesignDay,          !- Day Type
     -17.3,                    !- Maximum DryBulb Temperature
-    0.0,                      !- Daily DryBulb Temperature Range
+    0,                        !- Daily DryBulb Temperature Range
     ,                         !- DryBulb Temperature Range Modifier Type
     ,                         !- DryBulb Temperature Range Modifier Day Schedule Name
     Wetbulb,                  !- Humidity Condition Type
@@ -54,9 +54,9 @@ SizingPeriod:DesignDay,
     ,                         !- Humidity Ratio at Maximum DryBulb
     ,                         !- Enthalpy at Maximum DryBulb
     ,                         !- Daily WetBulb Temperature Range
-    99063.0,                  !- Barometric Pressure
+    99063,                    !- Barometric Pressure
     4.9,                      !- Wind Speed
-    270.0,                    !- Wind Direction
+    270,                      !- Wind Direction
     No,                       !- Rain Indicator
     No,                       !- Snow Indicator
     No,                       !- Daylight Saving Time Indicator
@@ -65,7 +65,7 @@ SizingPeriod:DesignDay,
     ,                         !- Diffuse Solar Day Schedule Name
     ,                         !- ASHRAE Clear Sky Optical Depth for Beam Irradiance taub
     ,                         !- ASHRAE Clear Sky Optical Depth for Diffuse Irradiance taud
-    0.0;                      !- Sky Clearness
+    0;                        !- Sky Clearness
 
 SizingPeriod:DesignDay,
     CHICAGO Ann Clg 1% Condns DB=>MWB,    !- Name
@@ -77,14 +77,14 @@ SizingPeriod:DesignDay,
     ,                         !- DryBulb Temperature Range Modifier Type
     ,                         !- DryBulb Temperature Range Modifier Day Schedule Name
     Wetbulb,                  !- Humidity Condition Type
-    23.0,                     !- Wetbulb or DewPoint at Maximum DryBulb
+    23,                       !- Wetbulb or DewPoint at Maximum DryBulb
     ,                         !- Humidity Condition Day Schedule Name
     ,                         !- Humidity Ratio at Maximum DryBulb
     ,                         !- Enthalpy at Maximum DryBulb
     ,                         !- Daily WetBulb Temperature Range
-    99063.0,                  !- Barometric Pressure
+    99063,                    !- Barometric Pressure
     5.3,                      !- Wind Speed
-    230.0,                    !- Wind Direction
+    230,                      !- Wind Direction
     No,                       !- Rain Indicator
     No,                       !- Snow Indicator
     No,                       !- Daylight Saving Time Indicator
@@ -93,7 +93,7 @@ SizingPeriod:DesignDay,
     ,                         !- Diffuse Solar Day Schedule Name
     ,                         !- ASHRAE Clear Sky Optical Depth for Beam Irradiance taub
     ,                         !- ASHRAE Clear Sky Optical Depth for Diffuse Irradiance taud
-    1.0;                      !- Sky Clearness
+    1;                        !- Sky Clearness
 
 RunPeriod,
     ,                         !- Name
@@ -306,56 +306,56 @@ Material,
     MediumSmooth,             !- Roughness
     0.0254,                   !- Thickness
     0.15,                     !- Conductivity
-    608.0,                    !- Density
-    1630.0;                   !- Specific Heat
+    608,                      !- Density
+    1630;                     !- Specific Heat
 
 Material,
     G01a 19mm gypsum board,    !- Name
     MediumSmooth,             !- Roughness
     0.019,                    !- Thickness
     0.16,                     !- Conductivity
-    800.0,                    !- Density
-    1090.0;                   !- Specific Heat
+    800,                      !- Density
+    1090;                     !- Specific Heat
 
 Material,
     M01 100mm brick,          !- Name
     MediumRough,              !- Roughness
     0.1016,                   !- Thickness
     0.89,                     !- Conductivity
-    1920.0,                   !- Density
-    790.0;                    !- Specific Heat
+    1920,                     !- Density
+    790;                      !- Specific Heat
 
 Material,
     I02 50mm insulation board,    !- Name
     MediumRough,              !- Roughness
     0.0508,                   !- Thickness
     0.03,                     !- Conductivity
-    43.0,                     !- Density
-    1210.0;                   !- Specific Heat
+    43,                       !- Density
+    1210;                     !- Specific Heat
 
 Material,
     M14a 100mm heavyweight concrete,    !- Name
     MediumRough,              !- Roughness
     0.1016,                   !- Thickness
     1.95,                     !- Conductivity
-    2240.0,                   !- Density
-    900.0;                    !- Specific Heat
+    2240,                     !- Density
+    900;                      !- Specific Heat
 
 Material,
     F16 Acoustic tile,        !- Name
     MediumSmooth,             !- Roughness
     0.0191,                   !- Thickness
     0.06,                     !- Conductivity
-    368.0,                    !- Density
-    590.0;                    !- Specific Heat
+    368,                      !- Density
+    590;                      !- Specific Heat
 
 Material,
     M05 200mm concrete block,    !- Name
     MediumRough,              !- Roughness
     0.2032,                   !- Thickness
     1.11,                     !- Conductivity
-    800.0,                    !- Density
-    920.0;                    !- Specific Heat
+    800,                      !- Density
+    920;                      !- Specific Heat
 
 Material:AirGap,
     F04 Wall air space resistance,    !- Name
@@ -376,7 +376,7 @@ WindowMaterial:Glazing,
     0.898,                    !- Visible Transmittance at Normal Incidence
     0.081,                    !- Front Side Visible Reflectance at Normal Incidence
     0.081,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -431,10 +431,10 @@ GlobalGeometryRules,
 
 Zone,
     Full Building - 1 Zone,    !- Name
-    0.0,                      !- Direction of Relative North
-    0.0,                      !- X Origin
-    0.0,                      !- Y Origin
-    0.0,                      !- Z Origin
+    0,                        !- Direction of Relative North
+    0,                        !- X Origin
+    0,                        !- Y Origin
+    0,                        !- Z Origin
     1,                        !- Type
     1,                        !- Multiplier
     Autocalculate,            !- Ceiling Height
@@ -451,17 +451,17 @@ BuildingSurface:Detailed,
     WindExposed,              !- Wind Exposure
     0.5,                      !- View Factor to Ground
     4.0,                      !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Ycoordinate
     3.048,                    !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Zcoordinate
     15.24,                    !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Zcoordinate
     15.24,                    !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
 
 BuildingSurface:Detailed,
@@ -476,14 +476,14 @@ BuildingSurface:Detailed,
     0.5,                      !- View Factor to Ground
     4.0,                      !- Number of Vertices
     15.24,                    !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Ycoordinate
     3.048,                    !- Vertex 1 Zcoordinate
     15.24,                    !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Zcoordinate
     15.24,                    !- Vertex 3 Xcoordinate
     4.8768,                   !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     15.24,                    !- Vertex 4 Xcoordinate
     4.8768,                   !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
@@ -504,10 +504,10 @@ BuildingSurface:Detailed,
     3.048,                    !- Vertex 1 Zcoordinate
     15.24,                    !- Vertex 2 Xcoordinate
     4.8768,                   !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     49.6824,                  !- Vertex 3 Xcoordinate
     4.876801,                 !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     49.6824,                  !- Vertex 4 Xcoordinate
     4.876801,                 !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
@@ -528,10 +528,10 @@ BuildingSurface:Detailed,
     3.048,                    !- Vertex 1 Zcoordinate
     49.6824,                  !- Vertex 2 Xcoordinate
     4.8768,                   !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     49.6824,                  !- Vertex 3 Xcoordinate
     18.07464,                 !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     49.6824,                  !- Vertex 4 Xcoordinate
     18.07464,                 !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
@@ -552,10 +552,10 @@ BuildingSurface:Detailed,
     3.048,                    !- Vertex 1 Zcoordinate
     49.6824,                  !- Vertex 2 Xcoordinate
     18.07464,                 !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     39.3192,                  !- Vertex 3 Xcoordinate
     18.07464,                 !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     39.3192,                  !- Vertex 4 Xcoordinate
     18.07464,                 !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
@@ -576,10 +576,10 @@ BuildingSurface:Detailed,
     3.048,                    !- Vertex 1 Zcoordinate
     39.3192,                  !- Vertex 2 Xcoordinate
     18.07464,                 !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     39.3192,                  !- Vertex 3 Xcoordinate
     37.88664,                 !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     39.3192,                  !- Vertex 4 Xcoordinate
     37.88664,                 !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
@@ -600,10 +600,10 @@ BuildingSurface:Detailed,
     3.048,                    !- Vertex 1 Zcoordinate
     39.3192,                  !- Vertex 2 Xcoordinate
     37.88664,                 !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     27.432,                   !- Vertex 3 Xcoordinate
     37.88664,                 !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     27.432,                   !- Vertex 4 Xcoordinate
     37.88664,                 !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
@@ -624,10 +624,10 @@ BuildingSurface:Detailed,
     3.048,                    !- Vertex 1 Zcoordinate
     27.432,                   !- Vertex 2 Xcoordinate
     37.88664,                 !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     27.432,                   !- Vertex 3 Xcoordinate
     18.07464,                 !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     27.432,                   !- Vertex 4 Xcoordinate
     18.07464,                 !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
@@ -648,10 +648,10 @@ BuildingSurface:Detailed,
     3.048,                    !- Vertex 1 Zcoordinate
     27.432,                   !- Vertex 2 Xcoordinate
     18.07464,                 !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     21.336,                   !- Vertex 3 Xcoordinate
     18.07464,                 !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     21.336,                   !- Vertex 4 Xcoordinate
     18.07464,                 !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
@@ -672,10 +672,10 @@ BuildingSurface:Detailed,
     3.048,                    !- Vertex 1 Zcoordinate
     21.336,                   !- Vertex 2 Xcoordinate
     18.07464,                 !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     21.336,                   !- Vertex 3 Xcoordinate
     15.02664,                 !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     21.336,                   !- Vertex 4 Xcoordinate
     15.02664,                 !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
@@ -696,10 +696,10 @@ BuildingSurface:Detailed,
     3.048,                    !- Vertex 1 Zcoordinate
     21.336,                   !- Vertex 2 Xcoordinate
     15.02664,                 !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     15.24,                    !- Vertex 3 Xcoordinate
     15.02664,                 !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     15.24,                    !- Vertex 4 Xcoordinate
     15.02664,                 !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
@@ -720,10 +720,10 @@ BuildingSurface:Detailed,
     3.048,                    !- Vertex 1 Zcoordinate
     15.24,                    !- Vertex 2 Xcoordinate
     15.02664,                 !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     15.24,                    !- Vertex 3 Xcoordinate
     37.97808,                 !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     15.24,                    !- Vertex 4 Xcoordinate
     37.97808,                 !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
@@ -744,11 +744,11 @@ BuildingSurface:Detailed,
     3.048,                    !- Vertex 1 Zcoordinate
     15.24,                    !- Vertex 2 Xcoordinate
     37.97808,                 !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     37.97808,                 !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     37.97808,                 !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
 
@@ -763,17 +763,17 @@ BuildingSurface:Detailed,
     WindExposed,              !- Wind Exposure
     0.5,                      !- View Factor to Ground
     4.0,                      !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     37.97808,                 !- Vertex 1 Ycoordinate
     3.048,                    !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     37.97808,                 !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 4 Ycoordinate
     3.048;                    !- Vertex 4 Zcoordinate
 
 BuildingSurface:Detailed,
@@ -785,20 +785,20 @@ BuildingSurface:Detailed,
     Zn001:Flr001,             !- Outside Boundary Condition Object
     NoSun,                    !- Sun Exposure
     NoWind,                   !- Wind Exposure
-    1.0,                      !- View Factor to Ground
+    1,                        !- View Factor to Ground
     4.0,                      !- Number of Vertices
     35.3568,                  !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
-    0.0,                      !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Zcoordinate
+    0,                        !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     35.3568,                  !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     35.3568,                  !- Vertex 4 Xcoordinate
     35.3568,                  !- Vertex 4 Ycoordinate
-    0.0;                      !- Vertex 4 Zcoordinate
+    0;                        !- Vertex 4 Zcoordinate
 
 BuildingSurface:Detailed,
     Zn001:Roof001,            !- Name
@@ -809,16 +809,16 @@ BuildingSurface:Detailed,
     ,                         !- Outside Boundary Condition Object
     SunExposed,               !- Sun Exposure
     WindExposed,              !- Wind Exposure
-    0.0,                      !- View Factor to Ground
+    0,                        !- View Factor to Ground
     4.0,                      !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     35.3568,                  !- Vertex 1 Ycoordinate
     3.048,                    !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Ycoordinate
     3.048,                    !- Vertex 2 Zcoordinate
     35.3568,                  !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Ycoordinate
     3.048,                    !- Vertex 3 Zcoordinate
     35.3568,                  !- Vertex 4 Xcoordinate
     35.3568,                  !- Vertex 4 Ycoordinate
@@ -836,16 +836,16 @@ FenestrationSurface:Detailed,
     1.0,                      !- Multiplier
     4.0,                      !- Number of Vertices
     1.70688,                  !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Ycoordinate
     2.7432,                   !- Vertex 1 Zcoordinate
     1.70688,                  !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Ycoordinate
     0.67056,                  !- Vertex 2 Zcoordinate
     4.4196,                   !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Ycoordinate
     0.67056,                  !- Vertex 3 Zcoordinate
     4.4196,                   !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 4 Ycoordinate
     2.7432;                   !- Vertex 4 Zcoordinate
 
 FenestrationSurface:Detailed,
@@ -1123,16 +1123,16 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     1.0,                      !- Multiplier
     4.0,                      !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     37.7952,                  !- Vertex 1 Ycoordinate
     3.01752,                  !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     37.7952,                  !- Vertex 2 Ycoordinate
     0.030480001,              !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     27.40152,                 !- Vertex 3 Ycoordinate
     0.030480001,              !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     27.40152,                 !- Vertex 4 Ycoordinate
     3.01752;                  !- Vertex 4 Zcoordinate
 
@@ -1153,7 +1153,7 @@ People,
     Full Building - 1 Zone,    !- Zone or ZoneList Name
     Office Occupancy,         !- Number of People Schedule Name
     People,                   !- Number of People Calculation Method
-    205.0,                    !- Number of People
+    205,                      !- Number of People
     ,                         !- People per Zone Floor Area
     ,                         !- Zone Floor Area per Person
     0.7,                      !- Fraction Radiant
@@ -1165,13 +1165,13 @@ Lights,
     Full Building - 1 Zone,    !- Zone or ZoneList Name
     Office Lighting and Receptacles,    !- Schedule Name
     LightingLevel,            !- Design Level Calculation Method
-    26360.0,                  !- Lighting Level
+    26360,                    !- Lighting Level
     ,                         !- Watts per Zone Floor Area
     ,                         !- Watts per Person
-    0.0,                      !- Return Air Fraction
+    0,                        !- Return Air Fraction
     0.2,                      !- Fraction Radiant
     0.2,                      !- Fraction Visible
-    0.0,                      !- Fraction Replaceable
+    0,                        !- Fraction Replaceable
     General;                  !- EndUse Subcategory
 
 ZoneInfiltration:DesignFlowRate,
@@ -1186,7 +1186,7 @@ ZoneInfiltration:DesignFlowRate,
     0.606,                    !- Constant Term Coefficient
     0.036359996,              !- Temperature Term Coefficient
     0.1177165,                !- Velocity Term Coefficient
-    0.0;                      !- Velocity Squared Term Coefficient
+    0;                        !- Velocity Squared Term Coefficient
 
 HVACTemplate:Thermostat,
     All Zones,                !- Name
@@ -1269,6 +1269,11 @@ OUTPUT:VARIABLE,
     *,                        !- Key Value
     Air System Total Cooling Energy,    !- Variable Name
     hourly;                   !- Reporting Frequency
+
+OUTPUT:VARIABLE,
+    OCCUPY-1,                 !- Key Value
+    Schedule Value,           !- Variable Name
+    Hourly;                   !- Reporting Frequency
 
 Output:Meter,
     DistrictHeating:Facility,    !- Key Name

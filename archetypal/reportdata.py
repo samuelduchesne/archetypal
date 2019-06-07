@@ -65,7 +65,7 @@ class ReportData(pd.DataFrame):
             lg.DEBUG)
         return EnergySeries(hl, frequency=freq, from_units=units[0],
                             normalize=normalize, is_sorted=sort,
-                            ascending=ascending,
+                            ascending=ascending, to_units='kWh',
                             concurrent_sort=concurrent_sort)
 
     def filter_report_data(self, archetype=None, reportdataindex=None,

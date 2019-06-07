@@ -1,3 +1,4 @@
+import copy
 import logging as lg
 import os
 import time
@@ -6,6 +7,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import pint
+import tsam.timeseriesaggregation as tsam
 from matplotlib import pyplot as plt, cm
 from matplotlib.colors import LightSource
 from pandas import Series, DataFrame, concat, MultiIndex, date_range
@@ -87,8 +89,16 @@ class EnergySeries(Series):
         if normalize:
             self.normalize(inplace=True)
 
+        # handle unit conversion
+        if to_units and from_units:
+            self.unit_conversion(to_units=to_units, inplace=True)
+
     def unit_conversion(self, to_units=None, inplace=False):
-        """returns the multiplier to convert from_units"""
+        """returns the multiplier to convert from_units
+
+        Args:
+            to_units (pint.Unit):
+        """
         from pint import UnitRegistry
         a = UnitRegistry()
         if to_units is None:
@@ -273,6 +283,9 @@ class EnergySeries(Series):
         from there.
         """
         return plot_energyseries(self, *args, **kwargs)
+
+    def plot2d(self, *args, **kwargs):
+        return plot_energyseries_map(self, *args, **kwargs)
 
     @property
     def units(self):
@@ -536,6 +549,50 @@ def plot_energyseries(energy_series, kind='polygon', axis_off=True, cmap=None,
     return fig, axes
 
 
+def plot_energyseries_map(data, periodlength=24, subplots=False,
+                          vmin=None, vmax=None, axis_off=True,
+                          cmap='RdBu', fig_height=None, fig_width=6, show=True,
+                          view_angle=-60, save=False, close=False, dpi=300,
+                          file_format='png', color=None, axes=None,
+                          filename='untitled', extent='tight', **kwargs):
+    """
+
+    Args:
+        data (EnergySeries):
+    """
+    if fig_height is None:
+        fig_height = fig_width / 3
+
+    if not axes:
+        if subplots:
+            n = data.shape[1]
+        else:
+            n = 1
+        fig, axes = plt.subplots(nrows=n, ncols=1,
+                                 figsize=(fig_width,fig_height),
+                                 dpi=dpi)
+    else:
+        fig = plt.gcf()
+
+    stacked, timeindex = tsam.unstackToPeriods(copy.deepcopy(data),
+                                               periodlength)
+    cmap = plt.get_cmap(cmap)
+    cax = axes.imshow(stacked.values.T, interpolation='nearest', vmin=vmin,
+                      vmax=vmax, cmap=cmap)
+    axes.set_aspect('auto')
+    axes.set_ylabel('Hour')
+    plt.xlabel('Day')
+
+    fig.subplots_adjust(right=1.2)
+    cbar = plt.colorbar(cax)
+    cbar.set_label('{} [{:~P}]'.format(data.name, data.units))
+
+    fig, axes = save_and_show(fig, axes, save, show, close, filename,
+                            file_format, dpi, axis_off, extent)
+
+    return fig, axes
+
+
 def _plot_poly_collection(ax, verts, zs=None, color=None, cmap=None,
                           vmin=None, vmax=None, **kwargs):
     from matplotlib.collections import PolyCollection
@@ -582,3 +639,4 @@ def _polygon_under_graph(xlist, ylist):
 
 
 EnergySeries.plot3d.__doc__ = plot_energyseries.__doc__
+EnergySeries.plot2d.__doc__ = plot_energyseries_map.__doc__

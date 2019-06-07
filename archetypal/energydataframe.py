@@ -1,5 +1,5 @@
+import pandas as pd
 from pandas import DataFrame
-
 from archetypal import EnergySeries
 
 

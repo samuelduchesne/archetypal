@@ -17,7 +17,7 @@ def round_up(n, decimals=0):
 def test_trnbuild_from_idf(config):
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
-    files = ["ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
+    files = ["ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
              "NECB 2011 - "
              "Full Service Restaurant.idf",
              "NECB 2011 - "

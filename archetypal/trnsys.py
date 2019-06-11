@@ -173,10 +173,6 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     # Write data from IDF file to T3D file
     start_time = time.time()
 
-    # Adds or changes adjacent surface if needed
-    _add_change_adj_surf(buildingSurfs, idf)
-    buildingSurfs = idf.idfobjects["BUILDINGSURFACE:DETAILED"]
-
     # Write VERSION from IDF to lines (T3D)
     _write_version(lines, versions)
 
@@ -197,6 +193,10 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
             surf_zone = buildingSurf.Zone_Name
             incrX, incrY, incrZ = zone_origin(idf.getobject("ZONE", surf_zone))
             _relative_to_absolute(buildingSurf, incrX, incrY, incrZ)
+
+    # Adds or changes adjacent surface if needed
+    _add_change_adj_surf(buildingSurfs, idf)
+    buildingSurfs = idf.idfobjects["BUILDINGSURFACE:DETAILED"]
 
     # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf)
     # from IDF to lines (T3D)
@@ -373,7 +373,6 @@ def _add_change_adj_surf(buildingSurfs, idf):
     # If adjacent surface found, check if Outside boundary
     # condition is a Zone and not "Outdoors"
     for key, value in adj_surfs_to_change.items():
-        buildSurf = idf.getobject("BUILDINGSURFACE:DETAILED", value)
         idf.getobject("BUILDINGSURFACE:DETAILED",
                       value).Outside_Boundary_Condition = "Zone"
         idf.getobject("BUILDINGSURFACE:DETAILED",
@@ -388,10 +387,17 @@ def _add_change_adj_surf(buildingSurfs, idf):
     for adj_surf_to_make in adj_surfs_to_make:
         buildSurf = idf.getobject("BUILDINGSURFACE:DETAILED",
                                   adj_surf_to_make)
+        surf_type = buildSurf.Surface_Type
+        if surf_type.lower() == "wall":
+            surf_type_bound = "Wall"
+        if surf_type.lower() == "floor":
+            surf_type_bound = "Ceiling"
+        if surf_type.lower() == "ceiling":
+            surf_type_bound = "Floor"
         # Create a new surface
         idf.newidfobject("BUILDINGSURFACE:DETAILED",
                          Name=buildSurf.Name + "_adj",
-                         Surface_Type='Wall',
+                         Surface_Type=surf_type_bound,
                          Construction_Name=buildSurf.Construction_Name,
                          Zone_Name=buildSurf.Outside_Boundary_Condition_Object,
                          Outside_Boundary_Condition="Zone",

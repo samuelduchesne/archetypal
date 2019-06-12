@@ -49,7 +49,7 @@ class ReportData(pd.DataFrame):
                 Load Duration Curve is needed, use ascending=False.
 
         Returns:
-            pd.Series: the Value series of the Heating Load with a Archetype,
+            EnergySeries: the Value series of the Heating Load with a Archetype,
                 TimeIndex as MultiIndex.
         """
         hl = self.filter_report_data(name=('Heating:Electricity',

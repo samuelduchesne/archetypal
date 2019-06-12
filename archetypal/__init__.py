@@ -15,7 +15,7 @@ from .simple_glazing import *
 from .idfclass import *
 from .energyseries import EnergySeries
 from .energydataframe import EnergyDataFrame
-from .reportdata import *
+from .reportdata import ReportData
 from .schedule import Schedule
 from .dataportal import *
 from .plot import *

@@ -27,7 +27,7 @@ class EnergySeries(Series):
 
     _metadata = ['bin_edges_', 'bin_scaling_factors_', 'profile_type',
                  'base_year', 'frequency', 'from_units',
-                 'is_sorted', 'to_units', 'archetypes', 'converted_',
+                 'is_sorted', 'to_units', 'converted_',
                  'concurrent_sort_']
 
     def __finalize__(self, other, method=None, **kwargs):
@@ -38,11 +38,11 @@ class EnergySeries(Series):
         return self
 
     def __new__(cls, data, frequency=None, from_units=None,
-                 profile_type='undefinded',
-                 index=None, dtype=None, copy=True, name=None,
-                 fastpath=False, base_year=2017, normalize=False,
-                 is_sorted=False, ascending=False, archetypes=None,
-                 concurrent_sort=False, to_units='kW'):
+                profile_type='undefinded',
+                index=None, dtype=None, copy=True, name=None,
+                fastpath=False, base_year=2017, normalize=False,
+                is_sorted=False, ascending=False, archetypes=None,
+                concurrent_sort=False, to_units='kW'):
         arr = Series.__new__(cls)
         if type(arr) is EnergySeries:
             return arr
@@ -276,6 +276,23 @@ class EnergySeries(Series):
             result.__class__ = EnergySeries
             return result.__finalize__(self)
 
+    def unstack(self, level=-1, fill_value=None):
+        """"""
+        from pandas.core.reshape.reshape import unstack
+        result = unstack(self, level, fill_value)
+        result.__class__ = archetypal.EnergyDataFrame
+        return result.__finalize__(self)
+
+    def stack(self, level=-1, dropna=True):
+        from pandas.core.reshape.reshape import stack, stack_multiple
+
+        if isinstance(level, (tuple, list)):
+            result = stack_multiple(self, level, dropna=dropna)
+            return self.__finalize__(result)
+        else:
+            result = stack(self, level, dropna=dropna)
+            return self.__finalize__(result)
+
     def plot3d(self, *args, **kwargs):
         """Generate a plot of the EnergySeries.
 
@@ -285,7 +302,7 @@ class EnergySeries(Series):
         return plot_energyseries(self, *args, **kwargs)
 
     def plot2d(self, *args, **kwargs):
-        return plot_energyseries_map(self, *args, **kwargs)
+        return plot_energyseries_map(self, **kwargs)
 
     @property
     def units(self):
@@ -343,6 +360,13 @@ class EnergySeries(Series):
         newdata = self.sort_values(ascending=False)
         newdata.index = range(0, nb_points)
         return newdata.__finalize__(self)
+
+    @property
+    def nseries(self):
+        if self.data.ndim == 1:
+            return 1
+        else:
+            return self.data.shape[1]
 
 
 def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
@@ -549,36 +573,47 @@ def plot_energyseries(energy_series, kind='polygon', axis_off=True, cmap=None,
     return fig, axes
 
 
-def plot_energyseries_map(data, periodlength=24, subplots=False,
-                          vmin=None, vmax=None, axis_off=True,
-                          cmap='RdBu', fig_height=None, fig_width=6, show=True,
+def plot_energyseries_map(data, periodlength=24, subplots=False, vmin=None,
+                          vmax=None, axis_off=True, cmap='RdBu',
+                          fig_height=None, fig_width=6, show=True,
                           view_angle=-60, save=False, close=False, dpi=300,
-                          file_format='png', color=None, axes=None,
-                          filename='untitled', extent='tight', **kwargs):
+                          file_format='png', color=None, ax=None,
+                          filename='untitled', extent='tight', sharex=False,
+                          sharey=False, layout=None, layout_type='vertical',
+                          **kwargs):
     """
 
     Args:
-        data (EnergySeries):
+        data (EnergySeries or EnergyDataFrame):
     """
     if fig_height is None:
         fig_height = fig_width / 3
+    figsize = (fig_width, fig_height)
+    nseries = data.nseries
+    # fig, axes = _setup_subplots(subplots, nseries, sharex, sharey, figsize, ax,
+    #                           layout, layout_type)
 
-    if not axes:
+    if not ax:
         if subplots:
+            if isinstance(data, EnergySeries):
+                data = data.unstack(level=0)
             n = data.shape[1]
         else:
             n = 1
         fig, axes = plt.subplots(nrows=n, ncols=1,
-                                 figsize=(fig_width,fig_height),
+                                 figsize=(fig_width, fig_height),
                                  dpi=dpi)
     else:
-        fig = plt.gcf()
+        fig = ax.get_figure()
+        if figsize is not None:
+            fig.set_size_inches(figsize)
+        axes = ax
 
     stacked, timeindex = tsam.unstackToPeriods(copy.deepcopy(data),
                                                periodlength)
     cmap = plt.get_cmap(cmap)
-    cax = axes.imshow(stacked.values.T, interpolation='nearest', vmin=vmin,
-                      vmax=vmax, cmap=cmap)
+    cax = ax.imshow(stacked.values.T, interpolation='nearest', vmin=vmin,
+                    vmax=vmax, cmap=cmap)
     axes.set_aspect('auto')
     axes.set_ylabel('Hour')
     plt.xlabel('Day')

@@ -57,13 +57,14 @@ class ReportData(pd.DataFrame):
                                            'Heating:DistrictHeating'))
         freq = list(set(hl.ReportingFrequency))
         units = list(set(hl.Units))
+        freq_map = dict(Hourly='H', Daily='D', Monthly='M')
         if len(units) > 1:
             raise MixedUnitsError()
 
         hl = hl.groupby(['Archetype', 'TimeIndex']).Value.sum()
-        log('Returned Heating Load in from_units of {}'.format(str(units)),
+        log('Returned Heating Load in units of {}'.format(str(units)),
             lg.DEBUG)
-        return EnergySeries(hl, frequency=freq, from_units=units[0],
+        return EnergySeries(hl, frequency=freq_map[freq[0]], units=units[0],
                             normalize=normalize, is_sorted=sort,
                             ascending=ascending, to_units='kWh',
                             concurrent_sort=concurrent_sort)
@@ -232,8 +233,7 @@ class ReportData(pd.DataFrame):
         if inplace:
             return filtered_df._update_inplace(filtered_df)
         else:
-            return filtered_df._constructor(filtered_df).__finalize__(
-                filtered_df)
+            return filtered_df._constructor(filtered_df).__finalize__(self)
 
     def sorted_values(self, key_value=None, name=None,
                       by='TimeIndex', ascending=True):

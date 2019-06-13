@@ -13,11 +13,11 @@ class EnergyDataFrame(DataFrame):
 
 
     """
-    _metadata = ['profile_type', 'base_year', 'frequency', 'from_units',
+    _metadata = ['profile_type', 'base_year', 'frequency', 'units',
                  'is_sorted', 'to_units']
 
     def __init__(self, *args, **kwargs):
-        from_units = kwargs.pop('from_units', None)
+        from_units = kwargs.pop('units', None)
         super(EnergyDataFrame, self).__init__(*args, **kwargs)
         self.from_units = from_units
         if from_units is not None:

@@ -26,7 +26,7 @@ class EnergySeries(Series):
         return EnergySeries
 
     _metadata = ['bin_edges_', 'bin_scaling_factors_', 'profile_type',
-                 'base_year', 'frequency', 'from_units',
+                 'base_year', 'frequency', 'units',
                  'is_sorted', 'to_units', 'converted_',
                  'concurrent_sort_']
 
@@ -37,24 +37,44 @@ class EnergySeries(Series):
             object.__setattr__(self, name, getattr(other, name, None))
         return self
 
-    def __new__(cls, data, frequency=None, from_units=None,
+    def __new__(cls, data, frequency=None, units=None,
                 profile_type='undefinded',
                 index=None, dtype=None, copy=True, name=None,
-                fastpath=False, base_year=2017, normalize=False,
+                fastpath=False, base_year=2018, normalize=False,
                 is_sorted=False, ascending=False, archetypes=None,
-                concurrent_sort=False, to_units='kW'):
+                concurrent_sort=False, to_units=None, use_timeindex=True):
         arr = Series.__new__(cls)
         if type(arr) is EnergySeries:
             return arr
         else:
             return arr.view(EnergySeries)
 
-    def __init__(self, data, frequency=None, from_units=None,
+    def __init__(self, data, frequency=None, units=None,
                  profile_type='undefinded',
                  index=None, dtype=None, copy=True, name=None,
-                 fastpath=False, base_year=2017, normalize=False,
+                 fastpath=False, base_year=2018, normalize=False,
                  is_sorted=False, ascending=False, archetypes=None,
-                 concurrent_sort=False, to_units='kW'):
+                 concurrent_sort=False, to_units=None, use_timeindex=True):
+        """
+
+        Args:
+            data:
+            frequency:
+            units:
+            profile_type:
+            index:
+            dtype:
+            copy:
+            name:
+            fastpath:
+            base_year:
+            normalize:
+            is_sorted:
+            ascending:
+            archetypes:
+            concurrent_sort:
+            to_units:
+        """
         super(EnergySeries, self).__init__(data=data, index=index,
                                            dtype=dtype, name=name,
                                            copy=copy, fastpath=fastpath)
@@ -63,9 +83,9 @@ class EnergySeries(Series):
         self.profile_type = profile_type
         self.frequency = frequency
         self.base_year = base_year
-        self.from_units = pint.UnitRegistry().parse_expression(from_units)
+        self.units = pint.UnitRegistry().parse_expression(units).units
         self.archetypes = archetypes
-        self.to_units = pint.UnitRegistry().parse_expression(to_units)
+        self.to_units = pint.UnitRegistry().parse_expression(to_units).units
         self.converted_ = False
         self.concurrent_sort_ = concurrent_sort
         # handle sorting of the data
@@ -90,29 +110,38 @@ class EnergySeries(Series):
             self.normalize(inplace=True)
 
         # handle unit conversion
-        if to_units and from_units:
+        if to_units and units:
             self.unit_conversion(to_units=to_units, inplace=True)
 
+        # handle DateTimeIndex
+        if index is None and use_timeindex:
+            start_date = str(self.base_year) + '0101'
+            if isinstance(self.index, MultiIndex):
+                newindex = self.index  # todo: finish this
+            else:
+                newindex = pd.date_range(start=start_date, freq=self.frequency,
+                                         periods=len(self))
+            self.index = newindex
+
     def unit_conversion(self, to_units=None, inplace=False):
-        """returns the multiplier to convert from_units
+        """returns the multiplier to convert units
 
         Args:
             to_units (pint.Unit):
         """
         from pint import UnitRegistry
-        a = UnitRegistry()
+        reg = UnitRegistry()
         if to_units is None:
             to_units = self.to_units
         else:
-            to_units = a.parse_expression(to_units)
-        to_multiple = self.from_units.to(
-            to_units.units).m
+            to_units = reg.parse_expression(to_units).units
+        to_multiple = reg(str(self.units)).to(to_units).m
         result = self.apply(lambda x: x * to_multiple)
         result.__class__ = EnergySeries
         result.converted_ = True
-        result.from_units = to_units
+        result.units = to_units
         if inplace:
-            self.update(result)
+            self._data = result._data
             self.__finalize__(result)
         else:
             return result
@@ -146,7 +175,7 @@ class EnergySeries(Series):
             result = Series(scaler.fit_transform(self.values.reshape(-1,
                                                                      1)).ravel())
             result = self._constructor(result)
-            result.from_units = pint.UnitRegistry().dimensionless
+            result.units = pint.UnitRegistry().dimensionless
         if inplace:
             self._update_inplace(result)
         else:
@@ -186,6 +215,49 @@ class EnergySeries(Series):
             return result
         else:
             raise ValueError('Please provide a SCOPH or a SCOPC')
+
+    def discretize_tsam(self, resolution=None, noTypicalPeriods=10,
+                        hoursPerPeriod=24,
+                        clusterMethod='hierarchical', evalSumPeriods=False,
+                        sortValues=False, sameMean=False,
+                        rescaleClusterPeriods=True,
+                        weightDict=None, extremePeriodMethod='None',
+                        solver='glpk', roundOutput=None, addPeakMin=None,
+                        addPeakMax=None, addMeanMin=None, addMeanMax=None):
+        """uses tsam"""
+        try:
+            import tsam.timeseriesaggregation as tsam
+        except ImportError:
+            raise ImportError("tsam is required for discretize_tsam()")
+        if not isinstance(self.index, pd.DatetimeIndex):
+            raise TypeError('To use tsam, index of series must be a '
+                            'DateTimeIndex')
+        if isinstance(self, Series):
+            timeSeries = pd.DataFrame(self)
+        else:
+            timeSeries = self.copy()
+        agg = tsam.TimeSeriesAggregation(timeSeries, resolution=resolution,
+                                         noTypicalPeriods=noTypicalPeriods,
+                                         hoursPerPeriod=hoursPerPeriod,
+                                         clusterMethod=clusterMethod,
+                                         evalSumPeriods=evalSumPeriods,
+                                         sortValues=sortValues,
+                                         sameMean=sameMean,
+                                         rescaleClusterPeriods=rescaleClusterPeriods,
+                                         weightDict=weightDict,
+                                         extremePeriodMethod=extremePeriodMethod,
+                                         solver=solver,
+                                         roundOutput=roundOutput,
+                                         addPeakMin=addPeakMin,
+                                         addPeakMax=addPeakMax,
+                                         addMeanMin=addMeanMin,
+                                         addMeanMax=addMeanMax)
+
+        agg.createTypicalPeriods()
+        results = agg.predictOriginalData()
+        results = EnergySeries(results.iloc[:, 0])
+        # results._internal_names += agg.clusterOrder
+        return results.__finalize__(self)
 
     def discretize(self, n_bins=3, inplace=False):
         """Retruns a discretized pandas.Series
@@ -304,9 +376,9 @@ class EnergySeries(Series):
     def plot2d(self, *args, **kwargs):
         return plot_energyseries_map(self, **kwargs)
 
-    @property
-    def units(self):
-        return self.from_units.units
+    # @property
+    # def units(self):
+    #     return self.units.units
 
     @property
     def p_max(self):
@@ -329,7 +401,7 @@ class EnergySeries(Series):
             self_copy = self_copy.resample('M').mean()
             self_copy.frequency = 'M'
             return EnergySeries(self_copy, frequency='M',
-                                from_units=self.from_units)
+                                units=self.units)
 
     @property
     def capacity_factor(self):
@@ -357,8 +429,7 @@ class EnergySeries(Series):
     @property
     def ldc(self):
         nb_points = len(self)
-        newdata = self.sort_values(ascending=False)
-        newdata.index = range(0, nb_points)
+        newdata = self.sort_values(ascending=False).reset_index(drop=True)
         return newdata.__finalize__(self)
 
     @property
@@ -376,7 +447,7 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
     Args:
         extent:
         fig (matplotlib.figure.Figure): the figure
-        ax (matplotlib.axes.Axes): the axes
+        ax (matplotlib.axes.Axes or list(matplotlib.axes.Axes)): the axes
         save (bool): whether to save the figure to disk or not
         show (bool): whether to display the figure or not
         close (bool): close the figure (only if show equals False) to prevent
@@ -506,15 +577,16 @@ def plot_energyseries(energy_series, kind='polygon', axis_off=True, cmap=None,
         vmax = values.max() if vmax is None else vmax
 
         if kind == 'polygon':
-            z = values.reshape(365, 24)
+            import tsam.timeseriesaggregation as tsam
+            z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=24)
             nrows, ncols = z.shape
-            xs = np.linspace(0, 23, ncols)
-            # y = np.linspace(0, 364, nrows)
-            # The ith polygon will appear on the plane y = zs[i]
-            zs = np.linspace(0, 364, nrows)
+
+            xs = z.columns
+            zs = z.index.values
+
             verts = []
             for i in zs:
-                ys = z[int(i), :]
+                ys = z.iloc[int(i), :]
                 verts.append(_polygon_under_graph(xs, ys))
 
             _plot_poly_collection(ax, verts, zs,
@@ -523,12 +595,14 @@ def plot_energyseries(energy_series, kind='polygon', axis_off=True, cmap=None,
                                   linewidths=kwargs.get('linewidths', None),
                                   cmap=cmap)
         elif kind == 'surface':
-            z = values.reshape(365, 24)
+            import tsam.timeseriesaggregation as tsam
+            z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=24)
             nrows, ncols = z.shape
-            x = np.linspace(1, 24, ncols)
-            y = np.linspace(1, 365, nrows)
+            x = z.columns
+            y = z.index.values
+
             x, y = np.meshgrid(x, y)
-            _plot_surface(ax, x, y, z, cmap=cmap, **kwargs)
+            _plot_surface(ax, x, y, z.values, cmap=cmap, **kwargs)
         else:
             raise NameError('plot kind "{}" is not supported'.format(kind))
 
@@ -536,9 +610,9 @@ def plot_energyseries(energy_series, kind='polygon', axis_off=True, cmap=None,
             filename = 'unnamed'
 
         # set the extent of the figure
-        ax.set_xlim3d(-1, 24)
+        ax.set_xlim3d(-1, ncols)
         ax.set_xlabel('X')
-        ax.set_ylim3d(-1, 365)
+        ax.set_ylim3d(-1, nrows)
         ax.set_ylabel('Y')
         ax.set_zlim3d(vmin, vmax)
         ax.set_zlabel('Z')
@@ -589,9 +663,6 @@ def plot_energyseries_map(data, periodlength=24, subplots=False, vmin=None,
     if fig_height is None:
         fig_height = fig_width / 3
     figsize = (fig_width, fig_height)
-    nseries = data.nseries
-    # fig, axes = _setup_subplots(subplots, nseries, sharex, sharey, figsize, ax,
-    #                           layout, layout_type)
 
     if not ax:
         if subplots:
@@ -612,8 +683,8 @@ def plot_energyseries_map(data, periodlength=24, subplots=False, vmin=None,
     stacked, timeindex = tsam.unstackToPeriods(copy.deepcopy(data),
                                                periodlength)
     cmap = plt.get_cmap(cmap)
-    cax = ax.imshow(stacked.values.T, interpolation='nearest', vmin=vmin,
-                    vmax=vmax, cmap=cmap)
+    cax = axes.imshow(stacked.values.T, interpolation='nearest', vmin=vmin,
+                      vmax=vmax, cmap=cmap)
     axes.set_aspect('auto')
     axes.set_ylabel('Hour')
     plt.xlabel('Day')
@@ -623,7 +694,7 @@ def plot_energyseries_map(data, periodlength=24, subplots=False, vmin=None,
     cbar.set_label('{} [{:~P}]'.format(data.name, data.units))
 
     fig, axes = save_and_show(fig, axes, save, show, close, filename,
-                            file_format, dpi, axis_off, extent)
+                              file_format, dpi, axis_off, extent)
 
     return fig, axes
 

@@ -1591,7 +1591,7 @@ def zone_cop(df):
                                               'Heating:Gas',
                                               'Heating:DistrictHeating')).groupby(
         ['Archetype', 'TimeIndex']).Value.sum()
-    heating_in = EnergySeries(heating_in, frequency='1H', from_units='J',
+    heating_in = EnergySeries(heating_in, frequency='1H', units='J',
                               is_sorted=False, concurrent_sort=False)
 
     # Cooling Energy
@@ -1604,7 +1604,7 @@ def zone_cop(df):
                                               'Cooling:Gas',
                                               'Cooling:DistrictCooling')).groupby(
         ['Archetype', 'TimeIndex']).Value.sum()
-    cooling_in = EnergySeries(cooling_in, frequency='1H', from_units='J',
+    cooling_in = EnergySeries(cooling_in, frequency='1H', units='J',
                               is_sorted=False, concurrent_sort=False)
 
     d = {'Heating': heating_out_sys / (nu_heating * heating_in.sum(

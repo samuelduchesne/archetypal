@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from pandas import DataFrame, Series
+from pandas import DataFrame, Series, DatetimeIndex
 from pandas.plotting._tools import _subplots, _flatten
 
 from archetypal import EnergySeries
@@ -71,6 +71,46 @@ class EnergyDataFrame(DataFrame):
         else:
             result = stack(self, level, dropna=dropna)
             return result.__finalize__(self)
+
+    def discretize_tsam(self, resolution=None, noTypicalPeriods=10,
+                        hoursPerPeriod=24,
+                        clusterMethod='hierarchical', evalSumPeriods=False,
+                        sortValues=False, sameMean=False,
+                        rescaleClusterPeriods=True,
+                        weightDict=None, extremePeriodMethod='None',
+                        solver='glpk', roundOutput=None, addPeakMin=None,
+                        addPeakMax=None, addMeanMin=None, addMeanMax=None):
+        """uses tsam"""
+        try:
+            import tsam.timeseriesaggregation as tsam
+        except ImportError:
+            raise ImportError("tsam is required for discretize_tsam()")
+        if not isinstance(self.index, DatetimeIndex):
+            raise TypeError('To use tsam, index of series must be a '
+                            'DateTimeIndex')
+        timeSeries = self.copy()
+        agg = tsam.TimeSeriesAggregation(timeSeries, resolution=resolution,
+                                         noTypicalPeriods=noTypicalPeriods,
+                                         hoursPerPeriod=hoursPerPeriod,
+                                         clusterMethod=clusterMethod,
+                                         evalSumPeriods=evalSumPeriods,
+                                         sortValues=sortValues,
+                                         sameMean=sameMean,
+                                         rescaleClusterPeriods=rescaleClusterPeriods,
+                                         weightDict=weightDict,
+                                         extremePeriodMethod=extremePeriodMethod,
+                                         solver=solver,
+                                         roundOutput=roundOutput,
+                                         addPeakMin=addPeakMin,
+                                         addPeakMax=addPeakMax,
+                                         addMeanMin=addMeanMin,
+                                         addMeanMax=addMeanMax)
+
+        agg.createTypicalPeriods()
+        results = agg.predictOriginalData()
+        results = EnergyDataFrame(results)
+        results.__dict__['agg'] = agg
+        return results.__finalize__(self)
 
 
 def plot_energydataframe_map(data, periodlength=24, subplots=False, vmin=None,

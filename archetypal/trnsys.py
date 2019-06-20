@@ -394,6 +394,8 @@ def _add_change_adj_surf(buildingSurfs, idf):
             surf_type_bound = "Ceiling"
         if surf_type.lower() == "ceiling":
             surf_type_bound = "Floor"
+        if surf_type.lower() == "roof":
+            surf_type_bound = "Floor"
         # Create a new surface
         idf.newidfobject("BUILDINGSURFACE:DETAILED",
                          Name=buildSurf.Name + "_adj",

@@ -977,22 +977,25 @@ class ZoneGraph(networkx.Graph):
             ggr = zone.theidf.idfobjects["GLOBALGEOMETRYRULES"][0]
 
             for surface in zone.zonesurfaces:
-                dem += 1  # Counter for average calc at return
-                if ggr.Coordinate_System.lower() == 'relative':
-                    # add zone origin to surface coordinates and create
-                    # Polygon3D from updated coords.
-                    zone = zone.theidf.getobject('ZONE', surface.Zone_Name)
-                    poly3d = Polygon3D(surface.coords)
-                    origin = (zone.X_Origin, zone.Y_Origin, zone.Z_Origin)
-                    coords = translate_coords(poly3d, Vector3D(*origin))
-                    poly3d = Polygon3D(coords)
+                if surface.key.lower() == 'internalmass':
+                    pass
                 else:
-                    # Polygon3D from surface coords
-                    poly3d = Polygon3D(surface.coords)
-                x, y, z = poly3d.centroid
-                x_ += x
-                y_ += y
-                z_ += z
+                    dem += 1  # Counter for average calc at return
+                    if ggr.Coordinate_System.lower() == 'relative':
+                        # add zone origin to surface coordinates and create
+                        # Polygon3D from updated coords.
+                        zone = zone.theidf.getobject('ZONE', surface.Zone_Name)
+                        poly3d = Polygon3D(surface.coords)
+                        origin = (zone.X_Origin, zone.Y_Origin, zone.Z_Origin)
+                        coords = translate_coords(poly3d, Vector3D(*origin))
+                        poly3d = Polygon3D(coords)
+                    else:
+                        # Polygon3D from surface coords
+                        poly3d = Polygon3D(surface.coords)
+                    x, y, z = poly3d.centroid
+                    x_ += x
+                    y_ += y
+                    z_ += z
             return x_ / dem, y_ / dem, z_ / dem
 
         # Get node positions in a dictionary

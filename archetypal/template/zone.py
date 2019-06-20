@@ -374,7 +374,8 @@ def surface_dispatcher(surf, zone):
         ('Ceiling', 'Zone'): ZoneConstructionSet._do_slab,
     }
     if surf.key.upper() != 'INTERNALMASS':
-        a, b = surf['Surface_Type'], surf['Outside_Boundary_Condition']
+        a, b = surf['Surface_Type'].capitalize(), surf[
+            'Outside_Boundary_Condition']
         try:
             yield dispatch[a, b](surf)
         except KeyError as e:

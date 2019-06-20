@@ -394,6 +394,8 @@ def _add_change_adj_surf(buildingSurfs, idf):
             surf_type_bound = "Ceiling"
         if surf_type.lower() == "ceiling":
             surf_type_bound = "Floor"
+        if surf_type.lower() == "roof":
+            surf_type_bound = "Floor"
         # Create a new surface
         idf.newidfobject("BUILDINGSURFACE:DETAILED",
                          Name=buildSurf.Name + "_adj",
@@ -1044,31 +1046,50 @@ def _modify_adj_surface(buildingSurf, idf):
     buildingSurf.Outside_Boundary_Condition = "Zone"
     # Get the surface EpBunch that is adjacent to the building surface
     outside_bound_surf = buildingSurf.Outside_Boundary_Condition_Object
-    # Replace the Outside_Boundary_Condition_Object that was the
-    # outside_bound_surf, by the adjacent zone name
-    buildingSurf.Outside_Boundary_Condition_Object = idf.getobject(
-        'ZONE', idf.getobject('BUILDINGSURFACE:DETAILED',
-                              outside_bound_surf).Zone_Name).Name
-    # Force same construction for adjacent surfaces
-    buildingSurf.Construction_Name = idf.getobject(
-        'BUILDINGSURFACE:DETAILED',
-        outside_bound_surf).Construction_Name
-    # Polygon from vector's adjacent surfaces
-    poly1 = Polygon3D(buildingSurf.coords)
-    poly2 = Polygon3D(idf.getobject('BUILDINGSURFACE:DETAILED',
-                                    outside_bound_surf).coords)
-    # Normal vectors of each polygon
-    n1 = poly1.normal_vector
-    n2 = poly2.normal_vector
-    # Verify if normal vectors of adjacent surfaces have
-    # opposite directions
-    if round((n1 + n2).x, 2) != 0 or round((n1 + n2).y,
-                                           2) != 0 or round(
-        (n1 + n2).z, 2) != 0:
-        # If not, inverse vertice of buildingSurf
-        # (Vertex4 become Vertex1, Vertex2 become Vertex3, etc.)
-        _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf,
-                               'BUILDINGSURFACE:DETAILED')
+    # If outside_bound_surf is the same surface as buildingSurf, raises error
+    if outside_bound_surf == buildingSurf.Name:
+        msg = 'The IDF file "{idfname}" could not be converted. The problem ' \
+              'comes from adjacent surfaces that have themselves as an ' \
+              'Outside Boundary Condition Object. For example, surf_1 has ' \
+              '"Surface" as Outside Boundary Condition, but the Outside ' \
+              'Boundary Condition Object is surf_1 too. This comes from the ' \
+              'EnergyPlus IDF. Here it is surface ' \
+              '"{surfname}" that have "{outside_bound}" as Outside ' \
+              'Boundary Condition Object.'.format(
+            idfname=os.path.basename(
+            idf.idfname), surfname=buildingSurf.Name, outside_bound=outside_bound_surf)
+        raise NotImplementedError(msg)
+    else:
+        # Replace the Outside_Boundary_Condition_Object that was the
+        # outside_bound_surf, by the adjacent zone name
+        buildingSurf.Outside_Boundary_Condition_Object = idf.getobject(
+            'ZONE', idf.getobject('BUILDINGSURFACE:DETAILED',
+                                  outside_bound_surf).Zone_Name).Name
+        # Force same construction for adjacent surfaces
+        buildingSurf.Construction_Name = idf.getobject(
+            'BUILDINGSURFACE:DETAILED',
+            outside_bound_surf).Construction_Name
+        # Polygon from vector's adjacent surfaces
+        poly1 = Polygon3D(buildingSurf.coords)
+        poly2 = Polygon3D(idf.getobject('BUILDINGSURFACE:DETAILED',
+                                        outside_bound_surf).coords)
+        # Normal vectors of each polygon
+        n1 = poly1.normal_vector
+        n2 = poly2.normal_vector
+        # Verify if normal vectors of adjacent surfaces have
+        # opposite directions
+        if round((n1 + n2).x, 2) != 0 or round((n1 + n2).y,
+                                               2) != 0 or round(
+            (n1 + n2).z, 2) != 0:
+            # If not, inverse vertice of buildingSurf
+            # (Vertex4 become Vertex1, Vertex2 become Vertex3, etc.)
+            _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf,
+                                   'BUILDINGSURFACE:DETAILED')
+
+    a = idf.getobject(
+    'BUILDINGSURFACE:DETAILED',
+    outside_bound_surf)
+    b=1
 
 
 def _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf,

@@ -644,12 +644,9 @@ def parse_window_lib(window_file_path):
     # Select list of windows with all their characteristics (bunch)
     bunch_delimiter = 'BERKELEY LAB WINDOW v7.4.6.0  DOE-2 Data File : Multi ' \
                       'Band Calculation : generated with Trnsys18.std\n'
-    indices_bunch = [k for k, s in enumerate(all_lines) if
-                     s == bunch_delimiter]
     detailed_windows = all_lines[0:indice_end[0]]
 
     # 1 window = 55 lines
-    window_count = (len(detailed_windows) - 1) / 55
     bunches_list = list(chunks(detailed_windows, 55))
 
     bunches = dict(get_window_id(bunches_list))

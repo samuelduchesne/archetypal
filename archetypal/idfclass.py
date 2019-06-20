@@ -1261,8 +1261,8 @@ def perform_transition(file, to_version=None):
             '{}'.format(os.path.basename(file), versionid, versionid,
                         to_version), lg.WARNING)
         return None
-    ep_installation_name = os.path.abspath(os.path.dirname(iddfile)).replace(
-        versionid, to_version)
+    ep_installation_name = os.path.abspath(os.path.dirname(getiddfile(
+        to_version.replace('-', '.'))))
     vupdater_path = os.path.join(ep_installation_name, 'PreProcess',
                                  'IDFVersionUpdater')
     trans_exec = {

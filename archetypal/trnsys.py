@@ -447,18 +447,14 @@ def _get_schedules(idf):
 def clear_name_idf_objects(idfFile):
     """Clean names of IDF objects.
 
-    replace variable names with a unique name, easy to refer to the original
+    Replaces variable names with a unique name, easy to refer to the original
     object. For example : if object is the n-th "Schedule Type Limit", then the
     new name will be "stl_00000n" - limits length to 10 characters
 
     Args:
         idfFile (archetypal.idfclass.IDF): IDF object where to clean names
     """
-    objs = ['MATERIAL', 'MATERIAL:NOMASS', 'MATERIAL:AIRGAP', 'CONSTRUCTION',
-            'FENESTRATIONSURFACE:DETAILED', 'BUILDINGSURFACE:DETAILED', 'ZONE',
-            'BUILDING', 'SITE:LOCATION', 'SCHEDULE:YEAR', 'SCHEDULE:WEEK:DAILY',
-            'SCHEDULE:DAY:INTERVAL', 'SCHEDULE:COMPACT', 'PEOPLE', 'LIGHTS',
-            'ELECTRICEQUIPMENT']
+
     uniqueList = []
     old_name_list = []
 

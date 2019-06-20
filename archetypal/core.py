@@ -918,18 +918,8 @@ def zone_ventilation(df):
     nom_infil = (_nom_infil.reset_index().set_index(['Archetype',
                                                      'Zone Name'])
                  if not _nom_infil.empty else None)
-    _nom_vent = nominal_ventilation(df)
-    nom_vent = (_nom_vent.reset_index().set_index(['Archetype',
-                                                   'Zone Name']).loc[
-                lambda e: e['Fan Type {Exhaust;Intake;Natural}']
-                .str.contains('Natural'), :]
-                if not _nom_vent.empty else None)
-    _nom_natvent = _nom_vent  # we can reuse _nom_vent
-    nom_natvent = (_nom_natvent.reset_index().set_index(['Archetype',
-                                                         'Zone Name']).loc[
-                   lambda e: ~e['Fan Type {Exhaust;Intake;Natural}']
-                   .str.contains('Natural'), :]
-                   if not _nom_vent.empty else None)
+    nom_vent = nominal_mech_ventilation(df)
+    nom_natvent = nominal_nat_ventilation(df)
     d = {'Zone': z_info,
          'NominalInfiltration': nom_infil,
          'NominalScheduledVentilation': nom_vent,
@@ -952,6 +942,26 @@ def zone_ventilation(df):
         x.set_index(['Archetype', 'RowName'])))
 
     return df
+
+
+def nominal_nat_ventilation(df):
+    _nom_natvent = nominal_ventilation(df)
+    nom_natvent = (_nom_natvent.reset_index().set_index(['Archetype',
+                                                         'Zone Name']).loc[
+                   lambda e: ~e['Fan Type {Exhaust;Intake;Natural}']
+                   .str.contains('Natural'), :]
+                   if not _nom_natvent.empty else None)
+    return nom_natvent
+
+
+def nominal_mech_ventilation(df):
+    _nom_vent = nominal_ventilation(df)
+    nom_vent = (_nom_vent.reset_index().set_index(['Archetype',
+                                                   'Zone Name']).loc[
+                lambda e: e['Fan Type {Exhaust;Intake;Natural}']
+                .str.contains('Natural'), :]
+                if not _nom_vent.empty else None)
+    return nom_vent
 
 
 def zoneloads_aggregation(x):

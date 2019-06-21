@@ -43,6 +43,26 @@ class IDF(geomeppy.IDF):
         else:
             return self.sql
 
+    @sql.setter
+    def sql(self, value):
+        self._sql = value
+
+    @property
+    def area_conditioned(self):
+        """Returns the total conditioned area of a building (taking into
+        account zone multipliers"""
+        area = 0
+        surfaces = [s for s in self.idfobjects[
+            'BuildingSurface:Detailed'.upper()]
+            if s.tilt == 180]
+        for surf in surfaces:
+            zone = surfaces[0].get_referenced_object("Zone_Name")
+            part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
+            multiplier = float(zone.Multiplier)
+
+            area += surf.area * multiplier * part_of
+        return area
+
     def run_eplus(self, weather_file=None, output_folder=None, ep_version=None,
                   output_report='sql', prep_outputs=True, **kwargs):
         """wrapper around the :func:`archetypal.run_eplus()` method.
@@ -146,11 +166,11 @@ class IDF(geomeppy.IDF):
         """
         if sch_type is None:
             try:
-                return self.schedules_dict[sch_name]
+                return self.schedules_dict[sch_name.upper()]
             except:
                 try:
                     schedules_dict = self.get_all_schedules()
-                    return schedules_dict[sch_name]
+                    return schedules_dict[sch_name.upper()]
                 except KeyError:
                     raise KeyError('Unable to find schedule "{}" of type "{}" '
                                    'in idf file "{}"'.format(
@@ -187,7 +207,7 @@ class IDF(geomeppy.IDF):
             for sched in self.idfobjects[sched_type]:
                 try:
                     if sched.key.upper() in schedule_types:
-                        scheds[sched.Name] = sched
+                        scheds[sched.Name.upper()] = sched
                 except:
                     pass
         return scheds
@@ -258,10 +278,6 @@ class IDF(geomeppy.IDF):
                 return bld[0].Name
             else:
                 return os.path.basename(self.idfname)
-
-    @sql.setter
-    def sql(self, value):
-        self._sql = value
 
 
 def object_from_idfs(idfs, ep_object, first_occurrence_only=False,

@@ -28,7 +28,6 @@ BUI file
 
 Internal thermal gains such as “people”, “lights” and “equipment” are translated from the IDF file to the BUI file.
 
-
 Methodology
 -----------
 
@@ -48,7 +47,16 @@ necessary and re-transcribe them in the T3D file
 The operation to convert the T3D file to the BUI one is just done by running the trnsidf.exe executable with a command
 line.
 
-.. [#] Archetype: building model representing a type of building based on its geometry, thermal properties and its usage. Usually used to create urban building model by assigning different archetypes to represent at best the building stock we want to model.
+How to convert an IDF file
+---------------------------
+
+
+
+
+
+.. [#] Archetype: building model representing a type of building based on its geometry, thermal properties and its
+    usage. Usually used to create urban building model by assigning different archetypes to represent at best the building
+    stock we want to model.
 
 .. _schedules: https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-schedules.html#group-schedules
 

@@ -43,7 +43,6 @@ def config(data_folder=settings.data_folder,
            log_filename=settings.log_filename,
            useful_idf_objects=settings.useful_idf_objects,
            umitemplate=settings.umitemplate,
-           get_common_umi_objects=False,
            trnsys_default_folder=settings.trnsys_default_folder):
     """
     Configurations
@@ -85,9 +84,6 @@ def config(data_folder=settings.data_folder,
     settings.umitemplate = umitemplate
     settings.trnsys_default_folder = validate_trnsys_folder(
         trnsys_default_folder)
-    if get_common_umi_objects:
-        settings.common_umi_objects = get_list_of_common_umi_objects(
-            settings.umitemplate)
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:

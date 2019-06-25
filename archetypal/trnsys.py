@@ -26,7 +26,7 @@ from archetypal import log, settings, Schedule, checkStr, \
 def convert_idf_to_trnbuild(idf_file, window_lib=None,
                             return_idf=False, return_b18=True,
                             return_t3d=False, return_dck=False,
-                            output_folder=None, trnidf_exe_dir=os.path.join(
+                            output_folder=None, trnsidf_exe_dir=os.path.join(
             settings.trnsys_default_folder,
             r"Building\trnsIDF\trnsidf.exe"),
                             template=settings.path_template_d18,
@@ -42,6 +42,15 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     * the path to the TRNBuild input file (.idf)
     * the path to the TRNSYS dck file (.dck)
 
+    Example:
+        >>> # Exemple of setting kwargs to be unwrapped in the function
+        >>> kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
+                           'tolerance': 0.05, 'ordered': True}
+        >>> # Exemple how to call the function
+        >>> convert_idf_to_trnbuild(idf_file=idf_file,
+            window_lib=window_filepath,
+            **kwargs_dict)
+
     Args:
         idf_file:
         window_lib (str): File path of the window library (from Berkeley Lab).
@@ -54,7 +63,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         return_dck (bool, optional): If True, also return the path to the TRNSYS
             dck file (.dck).
         output_folder (str, optional): location where output files will be
-        trnidf_exe_dir (str): Path to *trnsidf.exe*.
+        trnsidf_exe_dir (str): Path to *trnsidf.exe*.
         template (str): Path to d18 template file.
         kwargs (dict): keyword arguments sent to
             :func:`convert_idf_to_trnbuild()` or :func:`trnbuild_idf()` or
@@ -73,16 +82,16 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
             * retrun_trn (str): the path to the TRNSYS dck file (.dck). Only
               provided if *return_dck* is True.
 
-    Example:
-        >>> # Exemple of setting kwargs to be unwrapped in the function
-        >>> kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
-                   'tolerance': 0.05, 'ordered': True}
-        >>> # Exemple how to call the function
-        >>> convert_idf_to_trnbuild(idf_file=idf_file,
-            window_lib=window_filepath,
-            **kwargs_dict)
-
+    Todo:
+        - Add console info at beginning of each steps of this method
+        - Add console info about the outputs of the function at the end when
+        it is completed.
+        - Add option to hide name conversion report
     """
+
+    idf_file, window_lib, output_folder, trnsidf_exe_dir, template = \
+        _assert_files(idf_file, window_lib, output_folder, trnsidf_exe_dir,
+                      template)
 
     # Check if cache exists
     start_time = time.time()
@@ -97,8 +106,11 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         # Clean names of idf objects (e.g. 'MATERIAL')
         start_time = time.time()
         clear_name_idf_objects(idf)
-        idf.saveas(filename=os.path.join(settings.cache_folder, cache_filename,
-                                         cache_filename + '.idf'))
+        path = os.path.join(settings.cache_folder, cache_filename,
+                            cache_filename + '.idf')
+        if not os.path.exists(path):
+            os.makedirs(os.path.dirname(path))
+        idf.saveas(filename=path)
         # save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
         log("Cleaned IDF object names in {:,.2f} seconds".format(
             time.time() - start_time), lg.INFO)
@@ -318,7 +330,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     trnbuild_idf(t3d_path, template, dck=dck, nonum=nonum, N=N,
                  geo_floor=geo_floor, refarea=refarea, volume=volume,
                  capacitance=capacitance,
-                 trnidf_exe_dir=trnidf_exe_dir)
+                 trnidf_exe_dir=trnsidf_exe_dir)
 
     # Prepare return arguments
     pre, ext = os.path.splitext(t3d_path)
@@ -330,18 +342,37 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                           [return_idf, return_b18, return_t3d, return_dck]))
 
 
+def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe_dir,
+                  template):
+    """Ensure the files and directory are here"""
+    if not os.path.isfile(idf_file):
+        raise IOError("idf_file file not found")
+
+    if window_lib:
+        if not os.path.isfile(window_lib):
+            raise IOError("window_lib file not found")
+
+    if not os.path.exists(output_folder):
+        raise IOError("output_folder directory does not exist")
+
+    if not os.path.isfile(trnsidf_exe_dir):
+        raise IOError("trnsidf.exe not found")
+
+    if not os.path.isfile(template):
+        raise IOError("template file not found")
+
+    return idf_file, window_lib, output_folder, trnsidf_exe_dir, template
+
+
 def _add_change_adj_surf(buildingSurfs, idf):
     """Adds or changes adjacent surfaces if needed
 
     Args:
         buildingSurfs (idf_MSequence): IDF object from idf.idfobjects(). List of
-            building surfaces ("BUILDINGSURFACE:DETAILED" in the IDF).
-            Building surfaces to iterate over and determine if either a change on
-            an adjacent surface is needed or  the creation of a new one
+            building surfaces ("BUILDINGSURFACE:DETAILED" in the IDF). Building
+            surfaces to iterate over and determine if either a change on an
+            adjacent surface is needed or the creation of a new one
         idf (archetypal.idfclass.IDF): IDF object
-
-    Returns:
-
     """
     adj_surfs_to_change = {}
     adj_surfs_to_make = []
@@ -803,6 +834,18 @@ def trnbuild_idf(idf_file, template=os.path.join(
     on the geometric information of the IDF file and the template D18 file. In
     addition, an template DCK file can be generated.
 
+    Example:
+        >>> # Exemple of setting kwargs to be unwrapped in the function
+        >>> kwargs_dict = {'dck': True, 'geo_floor': 0.57}
+        >>> # Exemple how to call the function
+        >>> trnbuild_idf(idf_file, template=os.path.join(
+            settings.trnsys_default_folder,
+            r"Building\\trnsIDF\\NewFileTemplate.d18"),
+            trnidf_exe_dir=os.path.join(settings.trnsys_default_folder,
+            r"Building\\trnsIDF\\trnsidf.exe"), **kwargs_dict)
+        >>> INFO: Where settings.trnsys_default_folder must be defined inside
+            the configuration file of the package
+
     Args:
         idf_file (str): path/filename.idf
         template (str): path/NewFileTemplate.d18
@@ -822,20 +865,9 @@ def trnbuild_idf(idf_file, template=os.path.join(
         str: status
 
     Raises:
-        CalledProcessError: When could not run command with trnsidf.exe (to
-        create BUI file from IDF (T3D) file
+        * CalledProcessError: When could not run command with trnsidf.exe (to
 
-    Example:
-        >>> # Exemple of setting kwargs to be unwrapped in the function
-        >>> kwargs_dict = {'dck': True, 'geo_floor': 0.57}
-        >>> # Exemple how to call the function
-        >>> trnbuild_idf(idf_file, template=os.path.join(
-            settings.trnsys_default_folder,
-            r"Building\\trnsIDF\\NewFileTemplate.d18"),
-            trnidf_exe_dir=os.path.join(settings.trnsys_default_folder,
-            r"Building\\trnsIDF\\trnsidf.exe"), **kwargs_dict)
-        >>> INFO: Where settings.trnsys_default_folder must be defined inside
-            the configuration file of the package
+        * create BUI file from IDF (T3D) file
     """
     # first copy idf_file into output folder
     if not os.path.isdir(settings.data_folder):
@@ -937,8 +969,8 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
         count_fs (int): Count of the number of fenestration surfaces.
         count_slope (int): Count of the different window's slopes
         fenestrationSurfs (idf_MSequence): IDF object from idf.idfobjects().
-            List of fenestration surfaces ("FENESTRATIONSURFACE:DETAILED" in
-            the IDF).
+            List of fenestration surfaces ("FENESTRATIONSURFACE:DETAILED" in the
+            IDF).
         idf (archetypal.idfclass.IDF): IDF object
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
@@ -1088,7 +1120,8 @@ def _modify_adj_surface(buildingSurf, idf):
               '"{surfname}" that have "{outside_bound}" as Outside ' \
               'Boundary Condition Object.'.format(
             idfname=os.path.basename(
-            idf.idfname), surfname=buildingSurf.Name, outside_bound=outside_bound_surf)
+                idf.idfname), surfname=buildingSurf.Name,
+            outside_bound=outside_bound_surf)
         raise NotImplementedError(msg)
     else:
         # Replace the Outside_Boundary_Condition_Object that was the
@@ -1118,9 +1151,9 @@ def _modify_adj_surface(buildingSurf, idf):
                                    'BUILDINGSURFACE:DETAILED')
 
     a = idf.getobject(
-    'BUILDINGSURFACE:DETAILED',
-    outside_bound_surf)
-    b=1
+        'BUILDINGSURFACE:DETAILED',
+        outside_bound_surf)
+    b = 1
 
 
 def _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf,
@@ -1326,8 +1359,8 @@ def _write_gains(equipments, idf, lights, lines, peoples):
         equipments (idf_MSequence): IDF object from idf.idfobjects(). List of
             equipments ("ELECTRICEQUIPMENT" in the IDF).
         idf (archetypal.idfclass.IDF): IDF object
-        lights (idf_MSequence): IDF object from idf.idfobjects(). List of
-            lights ("LIGHTS" in the IDF).
+        lights (idf_MSequence): IDF object from idf.idfobjects(). List of lights
+            ("LIGHTS" in the IDF).
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
         peoples (idf_MSequence): IDF object from idf.idfobjects()
@@ -1405,8 +1438,8 @@ def _write_light_gain(gainNum, lights, lines):
 
     Args:
         gainNum (int): Line number where to write the equipment gains
-        lights (idf_MSequence): IDF object from idf.idfobjects(). List of
-            lights ("LIGHTS" in the IDF).
+        lights (idf_MSequence): IDF object from idf.idfobjects(). List of lights
+            ("LIGHTS" in the IDF).
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
     """
@@ -1503,10 +1536,8 @@ def _write_materials(lines, materialAirGap, materialNoMass, materials):
     Args:
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
-        materialAirGap (idf_MSequence): IDF object from idf.idfobjects(). List of
-            air gap materials ("MATERIAL:AIRGAP" in the IDF).
-        materialNoMass (idf_MSequence): IDF object from idf.idfobjects(). List of
-            material no mass ("MATERIAL:NOMASS" in the IDF)
+        materialAirGap (idf_MSequence): IDF object from idf.idfobjects().
+        materialNoMass (idf_MSequence): IDF object from idf.idfobjects().
         materials (idf_MSequence): IDF object from idf.idfobjects(). List of
             materials ("MATERIAL" in the IDF)
     """
@@ -1528,8 +1559,7 @@ def _write_material_airgap(layerNum, lines, listLayerName, materialAirGap):
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
         listLayerName (list): list of material's names. To be appended when
-        materialAirGap materialAirGap (idf_MSequence): IDF object from idf.idfobjects(). List of
-            air gap materials ("MATERIAL:AIRGAP" in the IDF).
+        materialAirGap (materialAirGap): IDF object from
     """
     for i in range(0, len(materialAirGap)):
 
@@ -1553,8 +1583,7 @@ def _write_material_nomass(layerNum, lines, listLayerName, materialNoMass):
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
         listLayerName (list): list of material's names. To be appended when
-        materialNoMass (idf_MSequence): IDF object from idf.idfobjects(). List of
-            material no mass ("MATERIAL:NOMASS" in the IDF)
+        materialNoMass (idf_MSequence): IDF object from idf.idfobjects().
     """
     for i in range(0, len(materialNoMass)):
 
@@ -1695,11 +1724,11 @@ def _get_ground_vertex(buildingSurfs):
 def _is_coordSys_world(coordSys, zones):
     """
     Args:
-        coordSys (str): If already assigned ('Relative' or 'Absolute),
-            function returns the value
+        coordSys (str): If already assigned ('Relative' or 'Absolute), function
+            returns the value
         zones (idf_MSequence): IDF object from idf.idfobjects(). List of zones
-            ("ZONES" in the IDF). Zones object to iterate over, to determine
-            if the coordinate system is 'World'
+            ("ZONES" in the IDF). Zones object to iterate over, to determine if
+            the coordinate system is 'World'
     """
     X_zones = []
     Y_zones = []
@@ -1721,13 +1750,12 @@ def _write_location_geomrules(globGeomRules, lines, locations):
     """
     Args:
         globGeomRules (idf_MSequence): IDF object from idf.idfobjects(). List of
-            global geometry rules ("GLOBALGEOMETRYRULES" in the IDF).
-            Normally there should be only one global geometry rules.
+            global geometry rules ("GLOBALGEOMETRYRULES" in the IDF). Normally
+            there should be only one global geometry rules.
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
-        locations (idf_MSequence): IDF object from idf.idfobjects(). List of
-            the building locations ("SITE:LOCATION" in the IDF). Normally
-            there
+        locations (idf_MSequence): IDF object from idf.idfobjects(). List of the
+            building locations ("SITE:LOCATION" in the IDF). Normally there
             should be only one location.
     """
     # Get line number where to write
@@ -1776,9 +1804,9 @@ def _write_version(lines, versions):
     Args:
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
-        versions (idf_MSequence): IDF object from idf.idfobjects(). List of
-            the IDF file versions ("VERSION" in the IDF).
-            Normally there should be only one version.
+        versions (idf_MSequence): IDF object from idf.idfobjects(). List of the
+            IDF file versions ("VERSION" in the IDF). Normally there should be
+            only one version.
     """
     # Get line number where to write
     versionNum = checkStr(lines,

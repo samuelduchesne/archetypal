@@ -92,7 +92,7 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
 @click.option('--return-idf', '-i', is_flag=True, default=False)
 @click.option('--return_b18', '-b', is_flag=True, default=True)
 @click.option('--return_t3d', '-t', is_flag=True, default=False)
-@click.option('--return_dck', '-t', is_flag=True, default=False)
+@click.option('--return_dck', '-d', is_flag=True, default=False)
 @click.option('--window-lib', type=click.Path(), default=None,
               help='Path of the window library (from Berkeley Lab)')
 @click.option('--trnsidf_exe_dir', type=click.Path(),

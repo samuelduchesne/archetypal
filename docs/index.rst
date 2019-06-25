@@ -24,6 +24,7 @@ developed by the MIT Sustainable Design Lab.
    Getting Started <first.rst>
    Modelign Assumptions <assumptions.rst>
    Schedules <schedules.rst>
+   Translator IDF to BUI <converter_idf.rst>
 
 .. toctree::
    :maxdepth: 1

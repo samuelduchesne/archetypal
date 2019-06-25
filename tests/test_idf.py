@@ -1,5 +1,6 @@
 import os
 import random
+import subprocess
 
 import matplotlib as mpl
 import pytest

@@ -38,3 +38,9 @@ Data Portals
 ------------
 
 .. automodule:: archetypal.dataportal
+
+
+Trnsys
+------
+
+.. automodule:: archetypal.trnsys

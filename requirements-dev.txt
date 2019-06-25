@@ -5,3 +5,4 @@ pytest-cov
 scikit-learn
 scipy
 sphinx
+sphinx-click

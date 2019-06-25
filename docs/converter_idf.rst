@@ -35,7 +35,7 @@ Methodology
 The module is divided in 2 major operations. The first one consist in translating the IDF file from EnergyPlus, to an
 IDF file proper to an input file for TRNBuild (T3D file), usually created by the TRNSYS plugin "Trnsys3D_" in SketchUp.
 The second operation is the conversion of the IDF file for TRNBuild to a BUI file done with the executable trnsidf.exe
-(installed by default in the TRNSYS installation folder: TRNSYS18\Building\trnsIDF\)
+(installed by default in the TRNSYS installation folder: `C:TRNSYS18\\Building\\trnsIDF\\`)
 
 1. IDF to T3D
 

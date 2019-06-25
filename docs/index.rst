@@ -29,6 +29,7 @@ developed by the MIT Sustainable Design Lab.
    :maxdepth: 1
    :caption: Reference Guide
 
+   commands
    Package Modules <package_modules.rst>
 
 
@@ -38,5 +39,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-

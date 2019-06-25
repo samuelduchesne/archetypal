@@ -62,5 +62,9 @@ setup(
     extras_require={'tests': ['coverage', 'coveralls', 'pytest', 'matplotlib'],
                     'docs': ['sphinx', 'nbsphinx', 'jupyter_client',
                              'ipykernel']},
-    test_suite='tests'
+    test_suite='tests',
+    entry_points='''
+        [console_scripts]
+        archetypal=archetypal.cli:cli
+    ''',
 )

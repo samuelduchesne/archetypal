@@ -1,0 +1,120 @@
+################################################################################
+# Module: cli.py
+# Description: Implements archetypal functions as Command Line Interfaces
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+import os
+
+import click
+
+import archetypal
+from archetypal import settings
+
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
+class Config(object):
+    def __init__(self):
+        self.data_folder = settings.data_folder,
+        self.logs_folder = settings.logs_folder,
+        self.imgs_folder = settings.imgs_folder,
+        self.cache_folder = settings.cache_folder,
+        self.use_cache = settings.use_cache,
+        self.log_file = settings.log_file,
+        self.log_console = settings.log_console,
+        self.log_level = settings.log_level,
+        self.log_name = settings.log_name,
+        self.log_filename = settings.log_filename,
+        self.useful_idf_objects = settings.useful_idf_objects,
+        self.umitemplate = settings.umitemplate,
+        self.trnsys_default_folder = settings.trnsys_default_folder
+
+
+pass_config = click.make_pass_decorator(Config, ensure=True)
+
+
+@click.group(context_settings=CONTEXT_SETTINGS)
+@click.option('--data-folder', type=click.Path(),
+              help='where to save and load data files',
+              default=settings.data_folder)
+@click.option('--logs-folder', type=click.Path(),
+              help='where to write the log files',
+              default=settings.logs_folder)
+@click.option('--imgs-folder', type=click.Path(),
+              help='where to save figures',
+              default=settings.imgs_folder)
+@click.option('--cache-folder', type=click.Path(),
+              help='where to save the simluation results',
+              default=settings.cache_folder)
+@click.option('--use-cache/--no-cache',
+              help='Use a local cache to save/retrieve many of '
+                   'archetypal outputs such as EnergyPlus simulation results',
+              default=settings.use_cache)
+@click.option('--log-file/--no-log-file',
+              help='save log output to a log file in logs_folder',
+              default=settings.log_file)
+@click.option('--log-console/--no-log-console',
+              help='print log output to the console',
+              default=settings.log_console)
+@click.option('--log-level', type=click.INT,
+              help='CRITICAL=50, ERROR=40, WARNING=30, INFO=20, DEBUG=10',
+              default=settings.log_level)
+@click.option('--log-name', help='name of the logger',
+              default=settings.log_name)
+@click.option('--log-filename', help='name of the log file',
+              default=settings.log_filename)
+@click.option('--trnsys-default-folder', type=click.Path(),
+              help='root folder of TRNSYS install',
+              default=settings.trnsys_default_folder)
+@pass_config
+def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
+        use_cache, log_file, log_console, log_level, log_name, log_filename,
+        trnsys_default_folder):
+    """Description"""
+    config.data_folder = data_folder
+    config.logs_folder = logs_folder
+    config.imgs_folder = imgs_folder
+    config.cache_folder = cache_folder
+    config.use_cache = use_cache
+    config.log_file = log_file
+    config.log_console = log_console
+    config.log_level = log_level
+    config.log_name = log_name
+    config.log_filename = log_filename
+    config.trnsys_default_folder = trnsys_default_folder
+    archetypal.config(**config.__dict__)
+
+
+@cli.command()
+@click.argument('idf-file')
+@click.argument('output-folder')
+@click.option('--return-idf', '-i', is_flag=True, default=False)
+@click.option('--return_b18', '-b', is_flag=True, default=True)
+@click.option('--return_t3d', '-t', is_flag=True, default=False)
+@click.option('--return_dck', '-t', is_flag=True, default=False)
+@click.option('--window-lib', type=click.Path(), default=None,
+              help='Path of the window library (from Berkeley Lab)')
+@click.option('--trnsidf_exe_dir', type=click.Path(),
+              help='Path to trnsidf.exe',
+              default=os.path.join(
+                  settings.trnsys_default_folder,
+                  r"Building\trnsIDF\trnsidf.exe"))
+@click.option('--template', type=click.Path(),
+              default=settings.path_template_d18,
+              help='Path to d18 template file')
+@pass_config
+def convert(config, idf_file, window_lib, return_idf, return_b18, return_t3d,
+            return_dck, output_folder, trnsidf_exe_dir, template):
+    """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)"""
+    archetypal.convert_idf_to_trnbuild(idf_file, window_lib,
+                                       return_idf, return_b18,
+                                       return_t3d, return_dck,
+                                       output_folder, trnsidf_exe_dir,
+                                       template)
+
+
+@cli.command()
+@pass_config
+def reduce():
+    pass

@@ -1,5 +1,5 @@
 Translator IDF to BUI
-============
+=====================
 
 The necessity of translating IDF files (EnergyPlus input files) to BUI files (TRNBuild input files) emerged from the
 need of modeling building archetypes [#]_. Knowing that a lot of different models from different sources (NECB and US-DOE)
@@ -7,7 +7,7 @@ have already been developed under EnergyPlus, and it can be a tedious task to cr
 editor (e.g. TRNBuild), we assume the development of a file translator could be useful for simulationists.
 
 Objectives
-------------
+----------
 The principal ojectives of this module was to translate the geometry of the building, the different schedules used in
 the model, and the thermal gains.
 
@@ -30,7 +30,7 @@ Internal thermal gains such as “people”, “lights” and “equipment” ar
 
 
 Methodology
-------------
+-----------
 
 The module is divided in 2 major operations. The first one consist in translating the IDF file from EnergyPlus, to an
 IDF file proper to an input file for TRNBuild (T3D file), usually created by the TRNSYS plugin "Trnsys3D_" in SketchUp.

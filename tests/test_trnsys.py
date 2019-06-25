@@ -12,16 +12,15 @@ def round_up(n, decimals=0):
     multiplier = 10 ** decimals
     return math.ceil(n * multiplier) / multiplier
 
-
-@pytest.mark.win32
+@pytest.mark.xfail("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
+                   reason="Skipping this test on Travis CI.")
 def test_trnbuild_from_idf(config):
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
-    files = ["ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-             "NECB 2011 - "
-             "Small Office.idf",
-             "NECB 2011 - "
-             "Warehouse.idf"]
+    files = ["RefBldgOutPatientPost1980_v1.3_5"
+             ".0_4A_USA_MD_BALTIMORE.idf",
+             "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
+             "NECB 2011 - Warehouse.idf"]
     idf_file = os.path.join(file_upper_path, files[0])
     idf_file = copy_file(idf_file)
 
@@ -35,7 +34,7 @@ def test_trnbuild_from_idf(config):
                    'tolerance': 0.05, 'ordered': True}
 
     convert_idf_to_trnbuild(idf_file=idf_file[0], window_lib=window_filepath,
-                            return_idf=True, **kwargs_dict)
+                            **kwargs_dict)
 
 
 @pytest.mark.win32

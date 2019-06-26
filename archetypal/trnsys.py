@@ -371,8 +371,10 @@ def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe_dir,
         if not os.path.isfile(window_lib):
             raise IOError("window_lib file not found")
 
-    if not os.path.exists(output_folder):
-        raise IOError("output_folder directory does not exist")
+    if not output_folder:
+        output_folder = os.path.relpath(settings.data_folder)
+        if not os.path.exists(output_folder):
+            os.mkdir(output_folder)
 
     if not trnsidf_exe_dir:
         trnsidf_exe_dir = os.path.join(settings.trnsys_default_folder,

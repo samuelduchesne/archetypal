@@ -707,17 +707,17 @@ def parse_window_lib(window_file_path):
 
     # Save lines_for_df in text file
     # User did not provide an output folder path. We use the default setting
-    output_folder = os.path.relpath(settings.data_folder)
+    data_dir = os.path.relpath(settings.data_folder)
 
-    if not os.path.isdir(output_folder):
-        os.mkdir(output_folder)
+    if not os.path.isdir(data_dir):
+        os.mkdir(data_dir)
 
-    with open(os.path.join(output_folder, "winPOOL.txt"),
+    with open(os.path.join(data_dir, "winPOOL.txt"),
               "w") as converted_file:
         for line in window_list:
             converted_file.write(str(line) + '\n')
 
-    df_windows = pd.read_csv(os.path.join(output_folder, "winPOOL.txt"),
+    df_windows = pd.read_csv(os.path.join(data_dir, "winPOOL.txt"),
                              header=None)
     columns = ['WinID', 'Description', 'Design', 'u_value', 'g_value', 'T_sol',
                'Rf_sol', 't_vis', 'Lay', 'Width']

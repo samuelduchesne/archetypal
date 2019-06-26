@@ -93,6 +93,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                       template)
 
     # Check if cache exists
+    log("Loading IDF file...", lg.INFO)
     start_time = time.time()
     cache_filename = hash_file(idf_file)
     idf = load_idf_object_from_cache(idf_file, how='idf')
@@ -159,7 +160,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     # region Get schedules from IDF
     start_time = time.time()
-    log("Reading schedules from the idf file...")
+    log("Reading schedules from the IDF file...")
     schedule_names, schedules = _get_schedules(idf)
 
     log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
@@ -238,6 +239,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     win_slope_dict = {}
 
     # Writing zones in lines
+    log("Writing geometry (zones, building and fenestration surfaces info from "
+        "idf file to t3d file...")
     count_fs = 0
     _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
                                               count_slope, fenestrationSurfs,
@@ -247,6 +250,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     # endregion
 
     # region Write CONSTRUCTION from IDF to lines (T3D)
+    log("Writing constructions info from idf file to t3d file...")
     _write_constructions(constr_list, idf, lines, mat_name, materials)
     # endregion
 
@@ -254,14 +258,17 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     _write_constructions_end(constr_list, idf, lines)
 
     # region Write LAYER from IDF to lines (T3D)
+    log("Writing materials (layers) info from idf file to t3d file...")
     _write_materials(lines, materialAirGap, materialNoMass, materials)
     # endregion
 
     # region Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
+    log("Writing gains info from idf file to t3d file...")
     _write_gains(equipments, idf, lights, lines, peoples)
     # endregion
 
     # region Write SCHEDULES from IDF to lines (T3D)
+    log("Writing schedules info from idf file to t3d file...")
     _write_schedules(lines, schedule_names, schedules)
     # endregion
 
@@ -271,7 +278,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     # window = (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
     #                 t_vis_win, lay_win, width, window_bunches[win_id],
     #                 and maybe tolerance)
-
+    log("Get windows info from window library...")
     win_u_value = kwargs.get('u_value', 2.2)
     win_shgc = kwargs.get('shgc', 0.64)
     win_tvis = kwargs.get('t_vis', 0.8)
@@ -291,6 +298,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         lg.INFO)
 
     # Write windows in lines
+    log("Writing windows info from idf file to t3d file...")
     _write_window(lines, win_slope_dict, window)
 
     # Write window pool in lines
@@ -322,6 +330,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         idf.saveas(filename=new_idf_path)
 
     # Run trnsidf to convert T3D to BUI
+    log("Converting t3d file to bui file. Running trnsidf.exe...")
     dck = return_dck
     nonum = kwargs.get('nonum', False)
     N = kwargs.get('N', False)

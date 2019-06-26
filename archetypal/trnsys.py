@@ -312,7 +312,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         output_folder = os.path.relpath(settings.data_folder)
 
     if not os.path.isdir(output_folder):
-        os.mkdir(output_folder)
+        os.makedirs(output_folder)
 
     t3d_path = os.path.join(output_folder, "T3D_" + os.path.basename(idf_file))
     with open(t3d_path, "w") as converted_file:

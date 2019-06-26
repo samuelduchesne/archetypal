@@ -26,30 +26,35 @@ from archetypal import log, settings, Schedule, checkStr, \
 def convert_idf_to_trnbuild(idf_file, window_lib=None,
                             return_idf=False, return_b18=True,
                             return_t3d=False, return_dck=False,
-                            output_folder=None, trnsidf_exe_dir=os.path.join(
-            settings.trnsys_default_folder,
-            r"Building\trnsIDF\trnsidf.exe"),
-                            template=settings.path_template_d18,
+                            output_folder=None, trnsidf_exe_dir=None,
+                            template=None,
                             **kwargs):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
 
     There are three optional outputs:
 
-    * the path to the modified IDF with the
-          new names, coordinates, etc. of the IDF objects. It is an input file
-          for EnergyPlus (.idf)
+    * the path to the modified IDF with the new names, coordinates, etc. of
+          the IDF objects. It is an input file for EnergyPlus (.idf)
     * the path to the TRNBuild file (.b18)
     * the path to the TRNBuild input file (.idf)
     * the path to the TRNSYS dck file (.dck)
+
+    Todo:
+        - Add console info at beginning of each steps of this method
+        - Add console info about the outputs of the function at the end when it
+          is completed.
+        - Add option to hide name conversion report
 
     Example:
         >>> # Exemple of setting kwargs to be unwrapped in the function
         >>> kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
                            'tolerance': 0.05, 'ordered': True}
         >>> # Exemple how to call the function
+        >>> idf_file = "/file.idf"
+        >>> window_filepath = "/W74-lib.dat"
         >>> convert_idf_to_trnbuild(idf_file=idf_file,
-            window_lib=window_filepath,
-            **kwargs_dict)
+        >>>                         window_lib=window_filepath,
+        >>>                         **kwargs_dict)
 
     Args:
         idf_file:
@@ -81,12 +86,6 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
               provided if *return_t3d* is True.
             * retrun_trn (str): the path to the TRNSYS dck file (.dck). Only
               provided if *return_dck* is True.
-
-    Todo:
-        - Add console info at beginning of each steps of this method
-        - Add console info about the outputs of the function at the end when
-        it is completed.
-        - Add option to hide name conversion report
     """
 
     idf_file, window_lib, output_folder, trnsidf_exe_dir, template = \
@@ -160,6 +159,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     # region Get schedules from IDF
     start_time = time.time()
+    log("Reading schedules from the idf file...")
     schedule_names, schedules = _get_schedules(idf)
 
     log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
@@ -194,15 +194,17 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     # Write data from IDF file to T3D file
     start_time = time.time()
-
+    log("Writing data from idf file to t3d file...")
     # Write VERSION from IDF to lines (T3D)
     _write_version(lines, versions)
 
     # Write BUILDING from IDF to lines (T3D)
+    log("Writing building info from idf file to t3d file...")
     _write_building(buildings, lines)
 
     # Write LOCATION and GLOBALGEOMETRYRULES from IDF to lines (T3D) and
     # define if coordinate system is "Relative"
+    log("Writing location info from idf file to t3d file...")
     coordSys = _write_location_geomrules(globGeomRules, lines, locations)
 
     # Determine if coordsSystem is "World" (all zones at (0,0,0))
@@ -344,7 +346,15 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
 def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe_dir,
                   template):
-    """Ensure the files and directory are here"""
+    """Ensure the files and directory are here
+
+    Args:
+        idf_file:
+        window_lib:
+        output_folder:
+        trnsidf_exe_dir:
+        template:
+    """
     if not os.path.isfile(idf_file):
         raise IOError("idf_file file not found")
 
@@ -355,8 +365,15 @@ def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe_dir,
     if not os.path.exists(output_folder):
         raise IOError("output_folder directory does not exist")
 
+    if not trnsidf_exe_dir:
+        trnsidf_exe_dir = os.path.join(settings.trnsys_default_folder,
+                                       r"Building\trnsIDF\trnsidf.exe")
+
     if not os.path.isfile(trnsidf_exe_dir):
         raise IOError("trnsidf.exe not found")
+
+    if not template:
+        template = settings.path_template_d18
 
     if not os.path.isfile(template):
         raise IOError("template file not found")
@@ -834,17 +851,19 @@ def trnbuild_idf(idf_file, template=os.path.join(
     on the geometric information of the IDF file and the template D18 file. In
     addition, an template DCK file can be generated.
 
+    Important:
+        Where settings.trnsys_default_folder must be defined inside the
+        configuration file of the package
+
     Example:
         >>> # Exemple of setting kwargs to be unwrapped in the function
         >>> kwargs_dict = {'dck': True, 'geo_floor': 0.57}
         >>> # Exemple how to call the function
         >>> trnbuild_idf(idf_file, template=os.path.join(
-            settings.trnsys_default_folder,
-            r"Building\\trnsIDF\\NewFileTemplate.d18"),
-            trnidf_exe_dir=os.path.join(settings.trnsys_default_folder,
-            r"Building\\trnsIDF\\trnsidf.exe"), **kwargs_dict)
-        >>> INFO: Where settings.trnsys_default_folder must be defined inside
-            the configuration file of the package
+        >>>              settings.trnsys_default_folder,
+        >>>              r"Building\\trnsIDF\\NewFileTemplate.d18"),
+        >>>              trnidf_exe_dir=os.path.join(settings.trnsys_default_folder,
+        >>>              r"Building\\trnsIDF\\trnsidf.exe"), **kwargs_dict)
 
     Args:
         idf_file (str): path/filename.idf
@@ -865,9 +884,8 @@ def trnbuild_idf(idf_file, template=os.path.join(
         str: status
 
     Raises:
-        * CalledProcessError: When could not run command with trnsidf.exe (to
-
-        * create BUI file from IDF (T3D) file
+        CalledProcessError: When could not run command with trnsidf.exe (to
+            create BUI file from IDF (T3D) file
     """
     # first copy idf_file into output folder
     if not os.path.isdir(settings.data_folder):

@@ -47,7 +47,7 @@ pass_config = click.make_pass_decorator(Config, ensure=True)
 @click.option('--cache-folder', type=click.Path(),
               help='where to save the simluation results',
               default=settings.cache_folder)
-@click.option('--use-cache/--no-cache',
+@click.option('--use-cache', is_flag=True,
               help='Use a local cache to save/retrieve many of '
                    'archetypal outputs such as EnergyPlus simulation results',
               default=settings.use_cache)

@@ -55,67 +55,60 @@ line.
 How to convert an IDF file
 --------------------------
 
-You have to run the command line::
+Converting an IDF file to a BUI file is done using the command line. First, open the Command Prompt on Windows. Note
+that if you used Anaconda to install python on your machine, you will most likely avoid some issues by using the
+Anaconda Prompt instead.
+
+Then simply run following command:
+
+.. code-block:: python
 
     archetypal convert [OPTIONS] IDF_FILE OUTPUT_FOLDER
 
-1. `IDF_FILE` is the file path of the IDF file we want to convert. If there is space characters in the path, should be
-between quotation marks.
+1. ``IDF_FILE`` is the file path of the IDF file to convert. If there are space characters in the path, it should be
+enclosed in quotation marks.
 
-2. `OUTPUT_FOLDER` is the folder where we want the output folders to be written. If there is space characters in the
-path, should be between quotation marks.
+2. ``OUTPUT_FOLDER`` is the folder where we want the output folders to be written. If there are space characters in
+the path, it should enclosed in quotation marks.
 
-Example
+Here is an example. Make sure to replace the last two arguments with the idf file path and the output folder path
+respectively.
 
 .. code-block:: python
 
     archetypal convert "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-3. `OPTIONS`: There ar different option that can be given to the command line
+3. `OPTIONS`: There are different options to the `convert` command. The first 3 manage the requested output files.
+Users can chose to return a combination of flags
 
-    - if `-i` is given as an option, the IDF file to convert is returned in the output folder
-
-    .. code-block:: python
-
-        archetypal convert -i "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
-
-    - if `-b` is given as an option, the BUI file (converted from the IDF file) is returned in the output folder
+    - if ``-i`` is added, the IDF file to convert is returned in the output folder. If ``-t`` is added, the T3D file
+      (converted from the IDF file) is returned in the output folder. If ``-d`` is added, the DCK file (TRNSYS input
+      file) is returned in the output folder.
 
     .. code-block:: python
 
-        archetypal convert -b "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+        archetypal convert -i -t -d "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - if `-t` is given as an option, the T3D file (converted from the IDF file) is returned in the output folder
-
-    .. code-block:: python
-
-        archetypal convert -t "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
-
-    - if `-d` is given as an option, a DCK file (TRNSYS input file) is returned in the output folder
-
-    .. code-block:: python
-
-        archetypal convert -d "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
-
-    - `window-lib PATH` is the path of the window library (from Berkeley Lab). Should be between quotation marks if there is space characters in the path
+    - ``--window-lib`` is the path of the window library (W74-lib.dat).
 
     .. code-block:: python
 
         archetypal convert "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - `trnsidf_exe_dir PATH` is the path of the trnsidf.exe executable. Should be between quotation marks if there is space characters in the path
+    - ``--trnsidf_exe_dir`` is the path of the trnsidf.exe executable.
 
     .. code-block:: python
 
         archetypal convert "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - `template PATH` is the path of the d18 template file (usually in the same directory of the `trnsidf.exe` executable)
+    - ``--template`` is the path of the .d18 template file (usually in the same directory of the `trnsidf.exe`
+      executable)
 
     .. code-block:: python
 
-        archetypal convert "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+        archetypal convert --template "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - `-h` Shows the "help" message
+    - ``-h`` Shows the "help" message
 
     .. code-block:: python
 

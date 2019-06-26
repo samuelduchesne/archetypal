@@ -42,6 +42,10 @@ with open(path.join(here, 'requirements.txt')) as f:
     requirements_lines = f.readlines()
 install_requires = [r.strip() for r in requirements_lines]
 
+with open(path.join(here, 'requirements-dev.txt')) as f:
+    requirements_lines = f.readlines()
+dev_requires = [r.strip() for r in requirements_lines]
+
 setup(
     name='archetypal',
     version=find_version('archetypal', '__init__.py'),
@@ -59,9 +63,7 @@ setup(
     keywords='Building archetypes',
     python_requires='>=3.6',
     install_requires=install_requires,
-    extras_require={'tests': ['coverage', 'coveralls', 'pytest', 'matplotlib'],
-                    'docs': ['sphinx', 'nbsphinx', 'jupyter_client',
-                             'ipykernel']},
+    extras_require={'dev': dev_requires},
     test_suite='tests',
     entry_points='''
         [console_scripts]

@@ -1,6 +1,11 @@
 Translator IDF to BUI
 =====================
 
+.. figure:: images/converter@2x.png
+   :alt: converter logo
+   :width: 100%
+   :align: center
+
 The necessity of translating IDF files (EnergyPlus input files) to BUI files (TRNBuild input files) emerged from the
 need of modeling building archetypes [#]_. Knowing that a lot of different models from different sources (NECB and US-DOE)
 have already been developed under EnergyPlus, and it can be a tedious task to create a multizone building in a model

@@ -65,45 +65,61 @@ between quotation marks.
 2. `OUTPUT_FOLDER` is the folder where we want the output folders to be written. If there is space characters in the
 path, should be between quotation marks.
 
-Example::
+Example
+
+.. code-block:: python
 
     archetypal convert "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-3. `OPTIONS`: There is different option that can be given to the command line
+3. `OPTIONS`: There ar different option that can be given to the command line
 
     - if `-i` is given as an option, the IDF file to convert is returned in the output folder
-        Example::
 
-            archetypal convert -i "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+    .. code-block:: python
+
+        archetypal convert -i "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
     - if `-b` is given as an option, the BUI file (converted from the IDF file) is returned in the output folder
-        Example::
 
-            archetypal convert -b "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+    .. code-block:: python
+
+        archetypal convert -b "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+
     - if `-t` is given as an option, the T3D file (converted from the IDF file) is returned in the output folder
-        Example::
 
-            archetypal convert -t "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+    .. code-block:: python
+
+        archetypal convert -t "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+
     - if `-d` is given as an option, a DCK file (TRNSYS input file) is returned in the output folder
-        Example::
 
-            archetypal convert -d "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+    .. code-block:: python
+
+        archetypal convert -d "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+
     - `window-lib PATH` is the path of the window library (from Berkeley Lab). Should be between quotation marks if there is space characters in the path
-        Example::
 
-            archetypal convert "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+    .. code-block:: python
+
+        archetypal convert "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+
     - `trnsidf_exe_dir PATH` is the path of the trnsidf.exe executable. Should be between quotation marks if there is space characters in the path
-        Example::
 
-            archetypal convert "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+    .. code-block:: python
+
+        archetypal convert "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+
     - `template PATH` is the path of the d18 template file (usually in the same directory of the `trnsidf.exe` executable)
-        Example::
 
-            archetypal convert "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+    .. code-block:: python
+
+        archetypal convert "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+
     - `-h` Shows the "help" message
-        Example::
 
-            archetypal convert -h
+    .. code-block:: python
+
+        archetypal convert -h
 
 .. [#] Archetype: building model representing a type of building based on its geometry, thermal properties and its
     usage. Usually used to create urban building model by assigning different archetypes to represent at best the building

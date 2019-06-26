@@ -58,7 +58,8 @@ setup(
     license='MIT License',
     author='Samuel Letellier-Duchesne',
     author_email='samuel.letellier-duchesne@polymtl.ca',
-    description='',
+    description='Retrieve, construct, simulate, convert and analyse building '
+                'archetypes',
     long_description=long_description,
     keywords='Building archetypes',
     python_requires='>=3.6',

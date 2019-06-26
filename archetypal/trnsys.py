@@ -896,6 +896,20 @@ def trnbuild_idf(idf_file, template=None, dck=False, nonum=False, N=False,
         CalledProcessError: When could not run command with trnsidf.exe (to
             create BUI file from IDF (T3D) file
     """
+    # assert files
+    if not trnsidf_exe:
+        trnsidf_exe = os.path.join(settings.trnsys_default_folder,
+                                       r"Building\trnsIDF\trnsidf.exe")
+
+    if not os.path.isfile(trnsidf_exe):
+        raise IOError("trnsidf.exe not found")
+
+    if not template:
+        template = settings.path_template_d18
+
+    if not os.path.isfile(template):
+        raise IOError("template file not found")
+
     # first copy idf_file into output folder
     if not os.path.isdir(settings.data_folder):
         os.mkdir(settings.data_folder)

@@ -87,7 +87,7 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
 
 
 @cli.command()
-@click.argument('idf-file')
+@click.argument('idf-file', type=click.Path(exists=True))
 @click.argument('output-folder')
 @click.option('--return-idf', '-i', is_flag=True, default=False,
               help='Save modified IDF file to output_folder')

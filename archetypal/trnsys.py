@@ -353,9 +353,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     return tuple(compress([new_idf_path, b18_path, t3d_path, dck_path],
                           [return_idf, return_b18, return_t3d, return_dck]))
 
+
 def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
                   template):
-
     """Ensure the files and directory are here
 
     Args:
@@ -379,7 +379,7 @@ def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
 
     if not trnsidf_exe:
         trnsidf_exe = os.path.join(settings.trnsys_default_folder,
-                                       r"Building\trnsIDF\trnsidf.exe")
+                                   r"Building\trnsIDF\trnsidf.exe")
 
     if not os.path.isfile(trnsidf_exe):
         raise IOError("trnsidf.exe not found")
@@ -899,7 +899,7 @@ def trnbuild_idf(idf_file, template=None, dck=False, nonum=False, N=False,
     # assert files
     if not trnsidf_exe:
         trnsidf_exe = os.path.join(settings.trnsys_default_folder,
-                                       r"Building\trnsIDF\trnsidf.exe")
+                                   r"Building\trnsIDF\trnsidf.exe")
 
     if not os.path.isfile(trnsidf_exe):
         raise IOError("trnsidf.exe not found")

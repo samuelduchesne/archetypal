@@ -89,13 +89,15 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
 @cli.command()
 @click.argument('idf-file')
 @click.argument('output-folder')
-@click.option('--return-idf', '-i', is_flag=True, default=False)
-@click.option('--return_b18', '-b', is_flag=True, default=True)
-@click.option('--return_t3d', '-t', is_flag=True, default=False)
-@click.option('--return_dck', '-d', is_flag=True, default=False)
+@click.option('--return-idf', '-i', is_flag=True, default=False,
+              help='Save modified IDF file to output_folder')
+@click.option('--return_t3d', '-t', is_flag=True, default=False,
+              help='Save T3D file to output_folder')
+@click.option('--return_dck', '-d', is_flag=True, default=False,
+              help='Generate dck file and save to output_folder')
 @click.option('--window-lib', type=click.Path(), default=None,
               help='Path of the window library (from Berkeley Lab)')
-@click.option('--trnsidf_exe_dir', type=click.Path(),
+@click.option('--trnsidf-exe-dir', type=click.Path(),
               help='Path to trnsidf.exe',
               default=os.path.join(
                   settings.trnsys_default_folder,
@@ -103,18 +105,23 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
 @click.option('--template', type=click.Path(),
               default=settings.path_template_d18,
               help='Path to d18 template file')
-@pass_config
-def convert(config, idf_file, window_lib, return_idf, return_b18, return_t3d,
-            return_dck, output_folder, trnsidf_exe_dir, template):
+@click.option('--window', nargs=3, type=float, default=(2.2, 0.64, 0.8),
+              help="Specify window properties <u_value> <shgc> <t_vis>")
+@click.option('--ordered', is_flag=True,
+              help="sort idf object names")
+def convert(idf_file, window_lib, return_idf, return_t3d,
+            return_dck, output_folder, trnsidf_exe_dir, template, window,
+            ordered):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)"""
+    u_value, shgc, t_vis = window
+    window_kwds = {'u_value': u_value, 'shgc': shgc, 't_vis': t_vis}
     archetypal.convert_idf_to_trnbuild(idf_file, window_lib,
-                                       return_idf, return_b18,
+                                       return_idf, True,
                                        return_t3d, return_dck,
                                        output_folder, trnsidf_exe_dir,
-                                       template)
+                                       template, **window_kwds, ordered=ordered)
 
 
 @cli.command()
-@pass_config
 def reduce():
     pass

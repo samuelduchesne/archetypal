@@ -104,11 +104,12 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
             time.time() - start_time),
             lg.INFO)
         # Clean names of idf objects (e.g. 'MATERIAL')
+        log("Cleaning names of the IDF objects...", lg.INFO)
         start_time = time.time()
         clear_name_idf_objects(idf)
         path = os.path.join(settings.cache_folder, cache_filename,
                             cache_filename + '.idf')
-        if not os.path.exists(path):
+        if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
         idf.saveas(filename=path)
         # save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')

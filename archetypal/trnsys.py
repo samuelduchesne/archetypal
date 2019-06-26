@@ -884,7 +884,7 @@ def trnbuild_idf(idf_file, template=os.path.join(
         nonum (bool, optional): If True, no renumeration of surfaces
         N (optional): BatchJob Modus
         geo_floor (float, optional): generates GEOSURF values for distributing
-            direct solar radiation where 60 % is directed to the floor, the rest
+            direct solar radiation where `geo_floor` % is directed to the floor, the rest
             to walls/windows. Default = 0.6
         refarea (bool, optional): If True, floor reference area of airnodes is
             updated

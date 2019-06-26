@@ -71,7 +71,7 @@ pass_config = click.make_pass_decorator(Config, ensure=True)
 def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
         use_cache, log_file, log_console, log_level, log_name, log_filename,
         trnsys_default_folder):
-    """Description"""
+    """Retrieve, construct, simulate, and analyse building templates"""
     config.data_folder = data_folder
     config.logs_folder = logs_folder
     config.imgs_folder = imgs_folder
@@ -105,21 +105,40 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
 @click.option('--template', type=click.Path(),
               default=settings.path_template_d18,
               help='Path to d18 template file')
-@click.option('--window', nargs=3, type=float, default=(2.2, 0.64, 0.8),
-              help="Specify window properties <u_value> <shgc> <t_vis>")
+@click.option('--window', nargs=4, type=float, default=(2.2, 0.64, 0.8, 0.05),
+              help="Specify window properties <u_value> <shgc> <t_vis> <tolerance>")
 @click.option('--ordered', is_flag=True,
               help="sort idf object names")
+@click.option('--nonum', is_flag=True, default=False,
+              help="Do not renumber surfaces")
+@click.option('--batchJob', '-N', is_flag=True, default=False,
+              help="BatchJob Modus")
+@click.option('--geofloor', type=float, default=0.6,
+              help="Generates GEOSURF values for distributing; direct solar "
+                   "radiation where `geo_floor` % is directed to the floor, "
+                   "the rest; to walls/windows. Default = 0.6")
+@click.option('--refarea', is_flag=True, default=False,
+              help="Upadtes floor reference area of airnodes")
+@click.option('--volume', is_flag=True, default=False,
+              help="Upadtes volume of airnodes")
+@click.option('--capacitance', is_flag=True, default=False,
+              help="Upadtes capacitance of airnodes")
 def convert(idf_file, window_lib, return_idf, return_t3d,
             return_dck, output_folder, trnsidf_exe_dir, template, window,
-            ordered):
+            ordered, nonum, batchJob, geofloor, refarea, volume, capacitance):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)"""
-    u_value, shgc, t_vis = window
-    window_kwds = {'u_value': u_value, 'shgc': shgc, 't_vis': t_vis}
+    u_value, shgc, t_vis, tolerance = window
+    window_kwds = {'u_value': u_value, 'shgc': shgc, 't_vis': t_vis,
+                   'tolerance': tolerance}
     archetypal.convert_idf_to_trnbuild(idf_file, window_lib,
                                        return_idf, True,
                                        return_t3d, return_dck,
                                        output_folder, trnsidf_exe_dir,
-                                       template, **window_kwds, ordered=ordered)
+                                       template, **window_kwds, ordered=ordered,
+                                       nonum=nonum, N=batchJob,
+                                       geo_floor=geofloor,
+                                       refarea=refarea, volume=volume,
+                                       capacitance=capacitance)
 
 
 @cli.command()

@@ -108,6 +108,33 @@ Users can chose to return a combination of flags
 
         archetypal convert --template "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
+    - ``--window`` specifies the window properties <u_value> <shgc> <t_vis> <tolerance>
+
+    .. code-block:: python
+
+        archetypal convert --window 2.2 0.65 0.8 0.05 "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+
+    - ``--ordered`` sorts the idf object names
+
+    .. code-block:: python
+
+        archetypal convert --ordered "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+
+    - ``--ordered`` sorts the idf object names
+
+    .. code-block:: python
+
+        archetypal convert --ordered "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+
+    - If ``--nonum`` is added, do not renumber surfaces in BUI. If ``--batchjob`` or ``-N`` is added, does BatchJob Modus when running trnsidf.exe.
+      ``--geofloor`` must be followed by a float between 0 and 1, and generates GEOSURF values for distributing direct solar radiation where `geo_floor` % is directed to the floor,
+      the rest to walls/windows. If ``--refarea`` is added, updates floor reference area of airnodes. If ``--volume`` is added, updates volume of airnodes.
+      If ``--capacitance`` is added, updates capacitance of airnodes. All those options are used when running trnsidf.exe (converting T3D file to BUI file).
+
+    .. code-block:: python
+
+        archetypal convert --nonum -N --geofloor 0.6 --refarea --volume --capacitance "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+
     - ``-h`` Shows the "help" message
 
     .. code-block:: python
@@ -123,7 +150,4 @@ Users can chose to return a combination of flags
 .. _Trnsys3D: https://www.trnsys.de/docs/trnsys3d/trnsys3d_uebersicht_en.htm
 
 .. _Eppy: https://pythonhosted.org/eppy/Main_Tutorial.html
-
-
-
 

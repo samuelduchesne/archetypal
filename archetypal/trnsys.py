@@ -26,7 +26,7 @@ from archetypal import log, settings, Schedule, checkStr, \
 def convert_idf_to_trnbuild(idf_file, window_lib=None,
                             return_idf=False, return_b18=True,
                             return_t3d=False, return_dck=False,
-                            output_folder=None, trnsidf_exe_dir=None,
+                            output_folder=None, trnsidf_exe=None,
                             template=None,
                             **kwargs):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
@@ -88,8 +88,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
               provided if *return_dck* is True.
     """
 
-    idf_file, window_lib, output_folder, trnsidf_exe_dir, template = \
-        _assert_files(idf_file, window_lib, output_folder, trnsidf_exe_dir,
+    idf_file, window_lib, output_folder, trnsidf_exe, template = \
+        _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
                       template)
 
     # Check if cache exists
@@ -342,7 +342,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     trnbuild_idf(t3d_path, template, dck=dck, nonum=nonum, N=N,
                  geo_floor=geo_floor, refarea=refarea, volume=volume,
                  capacitance=capacitance,
-                 trnidf_exe_dir=trnsidf_exe_dir)
+                 trnsidf_exe=trnsidf_exe)
 
     # Prepare return arguments
     pre, ext = os.path.splitext(t3d_path)
@@ -353,16 +353,16 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     return tuple(compress([new_idf_path, b18_path, t3d_path, dck_path],
                           [return_idf, return_b18, return_t3d, return_dck]))
 
-
-def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe_dir,
+def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
                   template):
+
     """Ensure the files and directory are here
 
     Args:
         idf_file:
         window_lib:
         output_folder:
-        trnsidf_exe_dir:
+        trnsidf_exe:
         template:
     """
     if not os.path.isfile(idf_file):
@@ -377,11 +377,11 @@ def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe_dir,
         if not os.path.exists(output_folder):
             os.mkdir(output_folder)
 
-    if not trnsidf_exe_dir:
-        trnsidf_exe_dir = os.path.join(settings.trnsys_default_folder,
+    if not trnsidf_exe:
+        trnsidf_exe = os.path.join(settings.trnsys_default_folder,
                                        r"Building\trnsIDF\trnsidf.exe")
 
-    if not os.path.isfile(trnsidf_exe_dir):
+    if not os.path.isfile(trnsidf_exe):
         raise IOError("trnsidf.exe not found")
 
     if not template:
@@ -390,7 +390,7 @@ def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe_dir,
     if not os.path.isfile(template):
         raise IOError("template file not found")
 
-    return idf_file, window_lib, output_folder, trnsidf_exe_dir, template
+    return idf_file, window_lib, output_folder, trnsidf_exe, template
 
 
 def _add_change_adj_surf(buildingSurfs, idf):
@@ -853,12 +853,9 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
             t_vis_win, lay_win, width, window_bunches[win_id])
 
 
-def trnbuild_idf(idf_file, template=os.path.join(
-    settings.trnsys_default_folder,
-    r"Building\trnsIDF\NewFileTemplate.d18"), dck=False, nonum=False, N=False,
+def trnbuild_idf(idf_file, template=None, dck=False, nonum=False, N=False,
                  geo_floor=0.6, refarea=False, volume=False, capacitance=False,
-                 trnidf_exe_dir=os.path.join(settings.trnsys_default_folder,
-                                             r"Building\trnsIDF\trnsidf.exe")):
+                 trnsidf_exe=None):
     """This program sorts and renumbers the IDF file and writes a B18 file based
     on the geometric information of the IDF file and the template D18 file. In
     addition, an template DCK file can be generated.
@@ -874,7 +871,7 @@ def trnbuild_idf(idf_file, template=os.path.join(
         >>> trnbuild_idf(idf_file, template=os.path.join(
         >>>              settings.trnsys_default_folder,
         >>>              r"Building\\trnsIDF\\NewFileTemplate.d18"),
-        >>>              trnidf_exe_dir=os.path.join(settings.trnsys_default_folder,
+        >>>              trnsidf_exe=os.path.join(settings.trnsys_default_folder,
         >>>              r"Building\\trnsIDF\\trnsidf.exe"), **kwargs_dict)
 
     Args:
@@ -913,7 +910,7 @@ def trnbuild_idf(idf_file, template=os.path.join(
     args = locals().copy()
     idf = os.path.abspath(args.pop('idf_file'))
     template = os.path.abspath(args.pop('template'))
-    trnsysidf_exe = os.path.abspath(args.pop('trnidf_exe_dir'))
+    trnsysidf_exe = os.path.abspath(args.pop('trnsidf_exe'))
 
     if not os.path.isfile(idf) or not os.path.isfile(template):
         raise FileNotFoundError()

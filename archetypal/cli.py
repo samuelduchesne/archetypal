@@ -97,7 +97,7 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
               help='Generate dck file and save to output_folder')
 @click.option('--window-lib', type=click.Path(), default=None,
               help='Path of the window library (from Berkeley Lab)')
-@click.option('--trnsidf-exe-dir', type=click.Path(),
+@click.option('--trnsidf-exe', type=click.Path(),
               help='Path to trnsidf.exe',
               default=os.path.join(
                   settings.trnsys_default_folder,
@@ -124,7 +124,7 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
 @click.option('--capacitance', is_flag=True, default=False,
               help="Upadtes capacitance of airnodes")
 def convert(idf_file, window_lib, return_idf, return_t3d,
-            return_dck, output_folder, trnsidf_exe_dir, template, window,
+            return_dck, output_folder, trnsidf_exe, template, window,
             ordered, nonum, batchjob, geofloor, refarea, volume, capacitance):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)"""
     u_value, shgc, t_vis, tolerance = window
@@ -134,7 +134,7 @@ def convert(idf_file, window_lib, return_idf, return_t3d,
         archetypal.convert_idf_to_trnbuild(idf_file, window_lib,
                                            return_idf, True,
                                            return_t3d, return_dck,
-                                           output_folder, trnsidf_exe_dir,
+                                           output_folder, trnsidf_exe,
                                            template, **window_kwds, ordered=ordered,
                                            nonum=nonum, N=batchjob,
                                            geo_floor=geofloor,

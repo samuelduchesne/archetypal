@@ -35,7 +35,7 @@ def test_trnbuild_from_idf(config):
 
     convert_idf_to_trnbuild(idf_file=idf_file[0], window_lib=window_filepath,
                             template="tests/input_data/trnsys/NewFileTemplate.d18",
-                            trnsidf_exe_dir='docker/trnsidf/trnsidf.exe',
+                            trnsidf_exe='docker/trnsidf/trnsidf.exe',
                             **kwargs_dict)
 
 

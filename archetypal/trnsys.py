@@ -802,8 +802,8 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
         shgc = float(shgc)
     if not isinstance(t_vis, float):
         t_vis = float(t_vis)
-    if not isinstance(t_vis, float):
-        t_vis = float(t_vis)
+    if not isinstance(tolerance, float):
+        tolerance = float(tolerance)
 
     # Parse window library
     df_windows, window_bunches = parse_window_lib(window_lib_path)

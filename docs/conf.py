@@ -49,6 +49,7 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.napoleon',
     'sphinx_click.ext',
+    'recommonmark',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -57,11 +58,6 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-from recommonmark.parser import CommonMarkParser
-
-source_parsers = {
-    '.md': CommonMarkParser,
-}
 
 source_suffix = ['.rst', '.md']
 
@@ -212,9 +208,11 @@ todo_include_todos = True
 
 # -- Autodoc Skip Memebrs ____________________________________________________
 
-autodoc_default_flags = ['members', 'private-members', 'special-members',
-                         # 'undoc-members',
-                         'show-inheritance']
+autodoc_default_options = {'members':True,
+                           'private-members':True,
+                           'special-members':True,
+                           'undoc-members':True,
+                           'show-inheritance':True}
 
 
 def autodoc_skip_member(app, what, name, obj, skip, options):

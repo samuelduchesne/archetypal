@@ -9,7 +9,7 @@ import os
 import click
 
 import archetypal
-from archetypal import settings
+from archetypal import settings, cd
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -125,20 +125,21 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
               help="Upadtes capacitance of airnodes")
 def convert(idf_file, window_lib, return_idf, return_t3d,
             return_dck, output_folder, trnsidf_exe_dir, template, window,
-            ordered, nonum, batchJob, geofloor, refarea, volume, capacitance):
+            ordered, nonum, batchjob, geofloor, refarea, volume, capacitance):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)"""
     u_value, shgc, t_vis, tolerance = window
     window_kwds = {'u_value': u_value, 'shgc': shgc, 't_vis': t_vis,
                    'tolerance': tolerance}
-    archetypal.convert_idf_to_trnbuild(idf_file, window_lib,
-                                       return_idf, True,
-                                       return_t3d, return_dck,
-                                       output_folder, trnsidf_exe_dir,
-                                       template, **window_kwds, ordered=ordered,
-                                       nonum=nonum, N=batchJob,
-                                       geo_floor=geofloor,
-                                       refarea=refarea, volume=volume,
-                                       capacitance=capacitance)
+    with cd(output_folder):
+        archetypal.convert_idf_to_trnbuild(idf_file, window_lib,
+                                           return_idf, True,
+                                           return_t3d, return_dck,
+                                           output_folder, trnsidf_exe_dir,
+                                           template, **window_kwds, ordered=ordered,
+                                           nonum=nonum, N=batchjob,
+                                           geo_floor=geofloor,
+                                           refarea=refarea, volume=volume,
+                                           capacitance=capacitance)
 
 
 @cli.command()

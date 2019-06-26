@@ -51,12 +51,12 @@ pass_config = click.make_pass_decorator(Config, ensure=True)
               help='Use a local cache to save/retrieve many of '
                    'archetypal outputs such as EnergyPlus simulation results',
               default=settings.use_cache)
-@click.option('--log-file/--no-log-file',
+@click.option('--log-file', is_flag=True,
               help='save log output to a log file in logs_folder',
               default=settings.log_file)
-@click.option('--log-console/--no-log-console',
-              help='print log output to the console',
-              default=settings.log_console)
+@click.option('--log-console', '--verbose', '-v', is_flag=True,
+              default=settings.log_console,
+              help='print log output to the console')
 @click.option('--log-level', type=click.INT,
               help='CRITICAL=50, ERROR=40, WARNING=30, INFO=20, DEBUG=10',
               default=settings.log_level)
@@ -111,7 +111,7 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
               help="sort idf object names")
 @click.option('--nonum', is_flag=True, default=False,
               help="Do not renumber surfaces")
-@click.option('--batchJob', '-N', is_flag=True, default=False,
+@click.option('--batchjob', '-N', is_flag=True, default=False,
               help="BatchJob Modus")
 @click.option('--geofloor', type=float, default=0.6,
               help="Generates GEOSURF values for distributing; direct solar "

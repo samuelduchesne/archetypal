@@ -15,6 +15,7 @@ developed by the MIT Sustainable Design Lab.
    :caption: Getting Started
 
    Installation <install.rst>
+   For MacOS/Linux users <unix_users.rst>
 
 
 .. toctree::
@@ -22,13 +23,14 @@ developed by the MIT Sustainable Design Lab.
    :caption: User Guide
 
    Getting Started <first.rst>
-   Modelign Assumptions <assumptions.rst>
    Schedules <schedules.rst>
+   Translator IDF to BUI <converter_idf.rst>
 
 .. toctree::
    :maxdepth: 1
    :caption: Reference Guide
 
+   commands
    Package Modules <package_modules.rst>
 
 
@@ -38,5 +40,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-

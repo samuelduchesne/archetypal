@@ -48,6 +48,9 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
     'sphinx.ext.napoleon',
+    'sphinx_click.ext',
+    'recommonmark',
+    'sphinx.ext.autosummary',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -56,11 +59,6 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-from recommonmark.parser import CommonMarkParser
-
-source_parsers = {
-    '.md': CommonMarkParser,
-}
 
 source_suffix = ['.rst', '.md']
 
@@ -204,16 +202,14 @@ intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
                        'eppy': ('https://eppy.readthedocs.io/en/latest/', None),
                        'numpy': ('https://docs.scipy.org/doc/numpy/', None)}
 
-# -- Options for todo extension ----------------------------------------------
+# -- Options for _todo extension ----------------------------------------------
 
-# If true, `todo` and `todoList` produce output, else they produce nothing.
+# If true, `_todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
 # -- Autodoc Skip Memebrs ____________________________________________________
 
-autodoc_default_flags = ['members', 'private-members', 'special-members',
-                         # 'undoc-members',
-                         'show-inheritance']
+autodoc_default_options = {}
 
 
 def autodoc_skip_member(app, what, name, obj, skip, options):

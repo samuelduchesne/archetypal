@@ -12,7 +12,7 @@ On Windows that would be in `C:\\EnergyPlusV8-X-X` and on MacOS that would be `/
 Installation with Anaconda / conda
 ----------------------------------
 
-It is highly recommended to use install archetypal on a fresh python virtual environment. If you have any trouble
+It is highly recommended to use/install archetypal on a fresh python virtual environment. If you have any trouble
 with the installation, try installing archetypal in a new, clean `virtual environment`_ using conda. Note that this
 pacakge was tested with python 3.6:
 

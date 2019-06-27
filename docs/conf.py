@@ -202,9 +202,9 @@ intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
                        'eppy': ('https://eppy.readthedocs.io/en/latest/', None),
                        'numpy': ('https://docs.scipy.org/doc/numpy/', None)}
 
-# -- Options for todo extension ----------------------------------------------
+# -- Options for _todo extension ----------------------------------------------
 
-# If true, `todo` and `todoList` produce output, else they produce nothing.
+# If true, `_todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
 # -- Autodoc Skip Memebrs ____________________________________________________

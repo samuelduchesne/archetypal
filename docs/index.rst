@@ -22,7 +22,6 @@ developed by the MIT Sustainable Design Lab.
    :caption: User Guide
 
    Getting Started <first.rst>
-   Modelign Assumptions <assumptions.rst>
    Schedules <schedules.rst>
    Translator IDF to BUI <converter_idf.rst>
 

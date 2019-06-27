@@ -109,7 +109,7 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
 @click.option('--log-clear-names', is_flag=True, default=False,
               help='Do not print log of "clear_names" (equivalence between old and new names) in the console')
 @click.option('--window', nargs=4, type=float, default=(2.2, 0.64, 0.8, 0.05),
-              help="Specify window properties <u_value> <shgc> <t_vis> <tolerance>")
+              help="Specify window properties <u_value> <shgc> <t_vis> <tolerance>. Default = 2.2 0.64 0.8 0.05")
 @click.option('--ordered', is_flag=True,
               help="sort idf object names")
 @click.option('--nonum', is_flag=True, default=False,

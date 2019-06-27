@@ -91,11 +91,11 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
 @click.argument('output-folder', type=click.Path(exists=True), required=False,
                 default=".")
 @click.option('--return-idf', '-i', is_flag=True, default=False,
-              help='Save modified IDF file to output_folder')
+              help='Save modified IDF file to output_folder, and return path to the file in the console')
 @click.option('--return_t3d', '-t', is_flag=True, default=False,
-              help='Save T3D file to output_folder')
+              help='Return T3D file path in the console')
 @click.option('--return_dck', '-d', is_flag=True, default=False,
-              help='Generate dck file and save to output_folder')
+              help='Generate dck file and save to output_folder, and return path to the file in the console')
 @click.option('--window-lib', type=click.Path(), default=None,
               help='Path of the window library (from Berkeley Lab)')
 @click.option('--trnsidf-exe', type=click.Path(),
@@ -127,9 +127,11 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
 @click.option('--capacitance', is_flag=True, default=False,
               help="Upadtes capacitance of airnodes")
 def convert(idf_file, window_lib, return_idf, return_t3d,
-            return_dck, output_folder, trnsidf_exe, template, window,
+            return_dck, output_folder, trnsidf_exe, template, log_clear_names,
+            window,
             ordered, nonum, batchjob, geofloor, refarea, volume, capacitance):
-    """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)"""
+    """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
+    The output folder path defaults to the working directory. Equivalent to '.' """
     u_value, shgc, t_vis, tolerance = window
     window_kwds = {'u_value': u_value, 'shgc': shgc, 't_vis': t_vis,
                    'tolerance': tolerance}

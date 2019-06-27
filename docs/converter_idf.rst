@@ -6,14 +6,14 @@ Translator IDF to BUI
    :width: 100%
    :align: center
 
-The necessity of translating IDF files (EnergyPlus input files) to BUI files (TRNBuild input files) emerged from the
-need of modeling building archetypes [#]_. Knowing that a lot of different models from different sources (NECB and US-DOE)
+The necessity of translating IDF files (EnergyPlus_ input files) to BUI files (TRNBuild_ input files) emerged from the
+need of modeling building archetypes [#]_. Knowing that a lot of different models from different sources (NECB_ and US-DOE_)
 have already been developed under EnergyPlus, and it can be a tedious task to create a multizone building in a model
 editor (e.g. TRNBuild), we assume the development of a file translator could be useful for simulationists.
 
 Objectives
 ----------
-The principal ojectives of this module was to translate the geometry of the building, the different schedules used in
+The principal ojectives of this module was to translate (from IDF to BUI) the geometry of the building, the different schedules used in
 the model, and the thermal gains.
 
 1. Geometry
@@ -26,7 +26,7 @@ For more information, see the methodology_ section please.
 2. Schedules
 
 All schedules from the IDF file are translated. The translator is able to process all schedule types defined by
-EnergyPlus (see the different schedules_ for more information). Only day and week schedules are written in the output
+EnergyPlus (see the different schedule_ types for more information). Only day and week schedules are written in the output
 BUI file
 
 3. Gains
@@ -49,17 +49,17 @@ necessary and re-transcribe them in the T3D file
 
 2. T3D to BUI
 
-The operation to convert the T3D file to the BUI one is just done by running the trnsidf.exe executable with a command
+The operation to convert the T3D file to the BUI file is done by running the trnsidf.exe executable with a command
 line.
 
 How to convert an IDF file
 --------------------------
 
-Converting an IDF file to a BUI file is done using the command line. First, open the Command Prompt on Windows. Note
-that if you used Anaconda to install python on your machine, you will most likely avoid some issues by using the
-Anaconda Prompt instead.
+Converting an IDF file to a BUI file is done using the terminal with a command line. First, open the Command Prompt on Windows
+or the Terminal on Mac. Note that if you used Anaconda to install python on your machine, you will most likely avoid some issues
+by using the Anaconda Prompt instead.
 
-Then simply run following command:
+Then simply run the following command:
 
 .. code-block:: python
 
@@ -81,9 +81,9 @@ respectively.
 3. `OPTIONS`: There are different options to the `convert` command. The first 3 manage the requested output files.
 Users can chose to return a combination of flags
 
-    - if ``-i`` is added, the path of the IDF file with the modification is returned in the terminal, and the modified
-      IDF file is returned in the output folder. If ``-t`` is added, the path of the T3D file (converted from the IDF file) is returned.
-      If ``-d`` is added, the DCK file (TRNSYS input file) is returned in the output folder, and the path to this DCK file is returned in the terminal.
+    - if ``-i`` is added, the path to the modified IDF file is returned in the console, and the modified
+      IDF file is returned in the output folder. If ``-t`` is added, the path to the T3D file (converted from the IDF file) is returned.
+      If ``-d`` is added, the DCK file (TRNSYS input file) is returned in the output folder, and the path to this DCK file is returned in the console.
 
     .. code-block:: python
 
@@ -93,13 +93,13 @@ Users can chose to return a combination of flags
 
     .. code-block:: python
 
-        archetypal convert "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+        archetypal convert --window-lib "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--trnsidf_exe_dir`` is the path of the trnsidf.exe executable.
+    - ``--trnsidf-exe`` is the path of the trnsidf.exe executable.
 
     .. code-block:: python
 
-        archetypal convert "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+        archetypal convert --trnsidf-exe "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
     - ``--template`` is the path of the .d18 template file (usually in the same directory of the `trnsidf.exe`
       executable)
@@ -146,9 +146,11 @@ Users can chose to return a combination of flags
     usage. Usually used to create urban building model by assigning different archetypes to represent at best the building
     stock we want to model.
 
-.. _schedules: https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-schedules.html#group-schedules
-
+.. _EnergyPlus: https://energyplus.net
+.. _TRNBuild: http://www.trnsys.com/features/suite-of-tools.php
+.. _NECB: https://github.com/canmet-energy/necb_2011_reference_buildings/tree/master/osm_files
+.. _US-DOE: https://www.energycodes.gov/development/commercial/prototype_models
+.. _schedule: https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-schedules.html#group-schedules
 .. _Trnsys3D: https://www.trnsys.de/docs/trnsys3d/trnsys3d_uebersicht_en.htm
-
 .. _Eppy: https://pythonhosted.org/eppy/Main_Tutorial.html
 

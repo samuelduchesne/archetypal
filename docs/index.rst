@@ -24,7 +24,7 @@ developed by the MIT Sustainable Design Lab.
 
    Getting Started <first.rst>
    Schedules <schedules.rst>
-   Translator IDF to BUI <converter_idf.rst>
+   Convert IDF to BUI <converter_idf.rst>
 
 .. toctree::
    :maxdepth: 1

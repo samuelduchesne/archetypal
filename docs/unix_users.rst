@@ -9,7 +9,7 @@ Wine installation
 
 1. In the Terminal, you have to install Homebrew with the following command line:
 
-.. code-block::
+.. code-block:: python
 
     ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 
@@ -20,7 +20,7 @@ should take few seconds or minutes.
 2. After installing Homebrew, you have to run 'brew doctor' (the Terminal might ask you)
 with the following command line:
 
-.. code-block::
+.. code-block:: python
 
     brew doctor
 
@@ -28,13 +28,13 @@ This action will make Homebrew inspected your system to make sure the installati
 
 3. Then you will need to install Xquartz using Homebrew by typing the following command line:
 
-.. code-block::
+.. code-block:: python
 
     brew cask install xquartz
 
 4. Finally you can install Wine by copying the following command line:
 
-.. code-block::
+.. code-block:: python
 
     brew install wine
 

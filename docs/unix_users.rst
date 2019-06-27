@@ -14,7 +14,7 @@ Wine installation
     ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 
 You will have to confirm this action by pressing enter. The Terminal might ask your password,
-then you have to enter the Admin password (followed by 'Enter'). The installation of Homebrew
+then you have to enter the Admin password (followed by :guilabel:`&Enter: ⏎`). The installation of Homebrew
 should take few seconds or minutes.
 
 2. After installing Homebrew, you have to run 'brew doctor' (the Terminal might ask you)
@@ -26,7 +26,18 @@ with the following command line:
 
 This action will make Homebrew inspected your system to make sure the installation is correctly set up
 
-3. Then you will need to 
+3. Then you will need to install Xquartz using Homebrew by typing the following command line:
+
+.. code-block::
+
+    brew cask install xquartz
+
+4. Finally you can install Wine by copying the following command line:
+
+.. code-block::
+
+    brew install wine
+
 
 
 .. _Wine: https://www.winehq.org/

@@ -35,7 +35,6 @@ class Schedule(object):
             base_year (int): The base year of the schedule. Defaults to 2018
                 since the first day of that year is a Monday.
             schType (str): The EneryPlus schedule object from which this
-            object is based. eg.: "Schedule:Year".
             **kwargs:
         """
         super(Schedule, self).__init__(**kwargs)
@@ -62,14 +61,14 @@ class Schedule(object):
 
     @classmethod
     def constant_schedule(cls, hourly_value=1, Name='AlwaysOn', **kwargs):
-        """Create a schedule with a constant value for the whole year.
-        Defaults to a schedule with a value of 1, named 'AlwaysOn'.
+        """Create a schedule with a constant value for the whole year. Defaults
+        to a schedule with a value of 1, named 'AlwaysOn'.
 
         Args:
-            hourly_value (float, optional): The value for the constant
-                schedule. Defaults to 1.
-            Name (str, optional): The name of the schedule. Defaults to
-                Always On.
+            hourly_value (float, optional): The value for the constant schedule.
+                Defaults to 1.
+            Name (str, optional): The name of the schedule. Defaults to Always
+                On.
             **kwargs:
         """
         idftxt = "VERSION, 8.9;"  # Not an emplty string. has just the
@@ -188,10 +187,11 @@ class Schedule(object):
         return datetime(start_date.year, start_date.month, start_date.day)
 
     def plot(self, slice=None, **kwargs):
-        """Plot the schedule
+        """Plot the schedule :param slice: Implements the .loc method on the
+        schedule Series object.
+
         Args:
-            slice (list): Implements the .loc method on the schedule Series
-                object.
+            slice:
             **kwargs:
         """
         hourlyvalues = self.all_values
@@ -576,6 +576,9 @@ class Schedule(object):
     def _field_interpreter(self, field):
         """dealing with a Field-Set (Through, For, Interpolate, # Until, Value)
         and return the parsed string
+
+        Args:
+            field:
         """
 
         values_sets = ['weekdays', 'weekends', 'alldays', 'allotherdays',

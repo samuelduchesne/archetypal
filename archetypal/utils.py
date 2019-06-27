@@ -44,18 +44,17 @@ def config(data_folder=settings.data_folder,
            useful_idf_objects=settings.useful_idf_objects,
            umitemplate=settings.umitemplate,
            trnsys_default_folder=settings.trnsys_default_folder):
-    """
-    Configurations
+    """Configurations
 
     Args:
         data_folder (str): where to save and load data files
         logs_folder (str): where to write the log files
         imgs_folder (str): where to save figures
         cache_folder (str): where to save the simluation results
-        use_cache (bool): if True, use a local cache to save/retrieve
-            many of archetypal outputs such as EnergyPlus simulation results.
-            This can save a lot of time by not calling the simulation and
-            dataportal APIs repetitively for the same requests.
+        use_cache (bool): if True, use a local cache to save/retrieve many of
+            archetypal outputs such as EnergyPlus simulation results. This can
+            save a lot of time by not calling the simulation and dataportal APIs
+            repetitively for the same requests.
         log_file (bool): if true, save log output to a log file in logs_folder
         log_console (bool): if true, print log output to the console
         log_level (int): one of the logger.level constants
@@ -67,7 +66,6 @@ def config(data_folder=settings.data_folder,
 
     Returns:
         None
-
     """
     # set each global variable to the passed-in parameter value
     settings.use_cache = use_cache
@@ -91,6 +89,10 @@ def config(data_folder=settings.data_folder,
 
 
 def validate_trnsys_folder(trnsys_default_folder):
+    """
+    Args:
+        trnsys_default_folder:
+    """
     if sys.platform == 'win32':
         if os.path.isdir(trnsys_default_folder):
             return trnsys_default_folder
@@ -102,8 +104,7 @@ def validate_trnsys_folder(trnsys_default_folder):
 
 
 def log(message, level=None, name=None, filename=None, avoid_console=False):
-    """
-    Write a message to the log file and/or print to the the console.
+    """Write a message to the log file and/or print to the the console.
 
     Args:
         message (str): the content of the message to log
@@ -115,7 +116,6 @@ def log(message, level=None, name=None, filename=None, avoid_console=False):
 
     Returns:
         None
-
     """
     if level is None:
         level = settings.log_level
@@ -168,7 +168,6 @@ def get_logger(level=None, name=None, filename=None):
 
     Returns:
         logging.Logger: a Logger
-
     """
 
     if level is None:
@@ -205,15 +204,13 @@ def get_logger(level=None, name=None, filename=None):
 
 
 def make_str(value):
-    """
-    Convert a passed-in value to unicode if Python 2, or string if Python 3.
+    """Convert a passed-in value to unicode if Python 2, or string if Python 3.
 
     Args:
         value (any): the value to convert to unicode/string
 
     Returns:
         unicode or string
-
     """
     try:
         # for python 2.x compatibility, use unicode
@@ -224,15 +221,13 @@ def make_str(value):
 
 
 def load_umi_template_objects(filename):
-    """
-    Reads
+    """Reads
 
     Args:
         filename (str): path of template file
 
     Returns:
         dict: Dict of umi_objects
-
     """
     with open(filename) as f:
         umi_objects = json.load(f)
@@ -240,8 +235,7 @@ def load_umi_template_objects(filename):
 
 
 def umi_template_object_to_dataframe(umi_dict, umi_object):
-    """
-    Returns flattened DataFrame of umi_objects
+    """Returns flattened DataFrame of umi_objects
 
     Args:
         umi_dict (dict): dict of umi objects
@@ -249,14 +243,12 @@ def umi_template_object_to_dataframe(umi_dict, umi_object):
 
     Returns:
         pandas.DataFrame: flattened DataFrame of umi_objects
-
     """
     return json_normalize(umi_dict[umi_object])
 
 
 def get_list_of_common_umi_objects(filename):
-    """
-    Returns list of common umi objects
+    """Returns list of common umi objects
 
     Args:
         filename (str): path to umi template file
@@ -273,9 +265,8 @@ def get_list_of_common_umi_objects(filename):
 
 
 def newrange(previous, following):
-    """
-    Takes the previous DataFrame and calculates a new Index range.
-    Returns a DataFrame with a new index
+    """Takes the previous DataFrame and calculates a new Index range. Returns a
+    DataFrame with a new index
 
     Args:
         previous (pandas.DataFrame): previous DataFrame
@@ -283,7 +274,6 @@ def newrange(previous, following):
 
     Returns:
         pandas.DataFrame: DataFrame with an incremented new index
-
     """
     if not previous.empty:
         from_index = previous.iloc[[-1]].index.values + 1
@@ -298,8 +288,7 @@ def newrange(previous, following):
 
 
 def type_surface(row):
-    """
-    Takes a boundary and returns its corresponding umi-type
+    """Takes a boundary and returns its corresponding umi-type
 
     Args:
         row:
@@ -334,14 +323,10 @@ def type_surface(row):
 
 
 def label_surface(row):
-    """
-    Takes a boundary and returns its corresponding umi-Category
+    """Takes a boundary and returns its corresponding umi-Category
 
     Args:
         row:
-
-    Returns:
-
     """
     # Floors
     if row['Surface_Type'] == 'Floor':
@@ -369,17 +354,14 @@ def label_surface(row):
 
 
 def layer_composition(row):
-    """
-    Takes in a series with $id and thickness values and return an array of
-    dict of the form
-    {'Material': {'$ref': ref}, 'thickness': thickness}
-    If thickness is 'nan', it returns None.
-
-    Args:
-        row (pandas.Series): a row
+    """Takes in a series with $id and thickness values and return an array of
+    dict of the form {'Material': {'$ref': ref}, 'thickness': thickness} If
+    thickness is 'nan', it returns None.
 
     Returns (list): List of dicts
 
+    Args:
+        row (pandas.Series): a row
     """
     array = []
     ref = row['$id', 'Outside_Layer']
@@ -403,11 +385,10 @@ def layer_composition(row):
 
 def get_row_prop(self, other, on, property):
     """
-
     Todo:
         * Not used
-        * This function may raise an error (it has to). Maybe we can do
-          things better.
+        * This function may raise an error (it has to). Maybe we can do things
+          better.
 
     Args:
         self:
@@ -417,7 +398,6 @@ def get_row_prop(self, other, on, property):
 
     Returns:
         same type as caller
-
     """
     try:
         value_series = pd.DataFrame(self).T[on].join(
@@ -443,17 +423,14 @@ def get_row_prop(self, other, on, property):
 
 
 def schedule_composition(row):
-    """
-    Takes in a series with $id and \*_ScheduleDay_Name values and return an
-    array of dict of the form
-    {'$ref': ref}
+    """Takes in a series with $id and *_ScheduleDay_Name values and return an
+    array of dict of the form {'$ref': ref}
 
     Args:
         row (pandas.Series): a row
 
     Returns:
         list: list of dicts
-
     """
     # Assumes 7 days
     day_schedules = []
@@ -477,18 +454,15 @@ def schedule_composition(row):
 
 
 def year_composition(row):
-    """
-    Takes in a series with $id and ScheduleWeek_Name_{} values and return an
-    array of dict of the form
-    {'FromDay': fromday, 'FromMonth': frommonth, 'Schedule': {'$ref': int(
-    ref)}, 'ToDay': today, 'ToMonth': tomonth}
+    """Takes in a series with $id and ScheduleWeek_Name_{} values and return an
+    array of dict of the form {'FromDay': fromday, 'FromMonth': frommonth,
+    'Schedule': {'$ref': int( ref)}, 'ToDay': today, 'ToMonth': tomonth}
 
     Args:
         row (pandas.Series): a row
 
     Returns:
         list: list of dicts
-
     """
     parts = []
     for i in range(1, 26 + 1):
@@ -512,8 +486,7 @@ def year_composition(row):
 
 
 def date_transform(date_str):
-    """
-    Simple function transforming one-based hours (1->24) into zero-based
+    """Simple function transforming one-based hours (1->24) into zero-based
     hours (0->23)
 
     Args:
@@ -521,7 +494,6 @@ def date_transform(date_str):
 
     Returns:
         datetime.datetime: datetime object
-
     """
     if date_str[0:2] != '24':
         return datetime.strptime(date_str, '%H:%M') - timedelta(hours=1)
@@ -529,21 +501,19 @@ def date_transform(date_str):
 
 
 def iscore(row):
-    """
-    Helps to group by core and perimeter zones. If any of "has `core` in
-    name" and "ExtGrossWallArea == 0" is true,
-    will consider zone_loads as core, else as perimeter.
+    """Helps to group by core and perimeter zones. If any of "has `core` in
+    name" and "ExtGrossWallArea == 0" is true, will consider zone_loads as core,
+    else as perimeter.
 
     Todo:
-        * assumes a basement zone_loads will be considered as a core
-          zone_loads since no ext wall area for basements.
+        * assumes a basement zone_loads will be considered as a core zone_loads
+          since no ext wall area for basements.
 
     Args:
         row (pandas.Series): a row
 
     Returns:
         str: 'Core' or 'Perimeter'
-
     """
     if any(['core' in row[('Zone', 'Zone Name')].lower(),
             float(row[('Zone', 'Exterior Gross Wall Area {m2}')]) == 0]):
@@ -558,16 +528,13 @@ def iscore(row):
 
 
 def weighted_mean(series, df, weighting_variable):
-    """
-    Compute the weighted average while ignoring NaNs. Implements
+    """Compute the weighted average while ignoring NaNs. Implements
     :func:`numpy.average`.
 
     Args:
         series (pandas.Series):
         df (pandas.DataFrame):
         weighting_variable (str or list or tuple): Weight name to use in
-        *df*. If multiple values given, the values are
-            multiplied together.
 
     Returns:
         numpy.ndarray: the weighted average
@@ -598,8 +565,7 @@ def weighted_mean(series, df, weighting_variable):
 
 
 def top(series, df, weighting_variable):
-    """
-    Compute the highest ranked value weighted by some other variable. Implements
+    """Compute the highest ranked value weighted by some other variable. Implements
         :func:`pandas.DataFrame.nlargest`.
 
     Args:
@@ -642,6 +608,12 @@ def top(series, df, weighting_variable):
 
 
 def safe_prod(x, df, weighting_variable):
+    """
+    Args:
+        x:
+        df:
+        weighting_variable:
+    """
     df_ = df.loc[x.index, weighting_variable]
     if not df_.empty:
         return df_.astype('float').prod(axis=1).sum()
@@ -650,7 +622,12 @@ def safe_prod(x, df, weighting_variable):
 
 
 def copy_file(files, where=None):
-    """Handles a copy of test idf files"""
+    """Handles a copy of test idf files
+
+    Args:
+        files:
+        where:
+    """
     import shutil, os
     if isinstance(files, str):
         files = [files]
@@ -680,6 +657,12 @@ class EnergyPlusProcessError(Error):
     """EnergyPlus Process call error"""
 
     def __init__(self, cmd, stderr, idf=None):
+        """
+        Args:
+            cmd:
+            stderr:
+            idf:
+        """
         self.cmd = cmd
         self.idf = idf
         self.stderr = stderr
@@ -694,6 +677,10 @@ class cd:
     """Context manager for changing the current working directory"""
 
     def __init__(self, new_path):
+        """
+        Args:
+            new_path:
+        """
         self.newPath = os.path.expanduser(new_path)
 
     def __enter__(self):
@@ -705,11 +692,22 @@ class cd:
             os.chdir(self.newPath)
 
     def __exit__(self, etype, value, traceback):
+        """
+        Args:
+            etype:
+            value:
+            traceback:
+        """
         os.chdir(self.savedPath)
 
 
 def rmse(data, targets):
-    """calculate rmse with target values"""
+    """calculate rmse with target values
+
+    Args:
+        data:
+        targets:
+    """
     y = piecewise(data)
     predictions = y
     error = np.sqrt(np.mean((predictions - targets) ** 2))
@@ -717,8 +715,11 @@ def rmse(data, targets):
 
 
 def piecewise(data):
-    """returns a piecewise function from an array of the form
-    [hour1, hour2, ..., value1, value2, ...]
+    """returns a piecewise function from an array of the form [hour1, hour2,
+    ..., value1, value2, ...]
+
+    Args:
+        data:
     """
     nb = int(len(data) / 2)
     bins = data[0: nb]
@@ -737,12 +738,11 @@ def piecewise(data):
 def checkStr(datafile, string):
     """Find the last occurrence of a string and return its line number
 
+    Returns: the list index containing the string
+
     Args:
         datafile (list-like): a list-like object
         string (str): the string to find in the txt file
-
-    Returns: the list index containing the string
-
     """
     value = []
     count = 0
@@ -760,9 +760,6 @@ def write_lines(file_path, lines):
     Args:
         file_path (str): path of the file
         lines (list of str): lines to be written in file
-
-    Returns:
-
     """
     # Delete temp file if exists
     if os.path.exists(file_path):
@@ -776,14 +773,11 @@ def write_lines(file_path, lines):
 
 def load_umi_template(json_template):
     """
-
     Args:
         json_template: Absolute or relative filepath to an umi json_template
-        file.
 
     Returns:
         pandas.DataFrame: 17 DataFrames, one for each component groups
-
     """
     if os.path.isfile(json_template):
         with open(json_template) as f:
@@ -799,19 +793,16 @@ def check_unique_name(first_letters, count, name, unique_list, suffix=False):
     """Making sure new_name does not already exist
 
     Args:
-        suffix:
-        first_letters (str): string at the beginning of the name, giving
-            a hint on what the variable is (e.g. : 'day_' for a schedule
-        day). DO NOT Include an underscore.
+        first_letters (str): string at the beginning of the name, giving a hint
+            on what the variable is (e.g. : 'day_' for a schedule
         count (int): increment to create a unique id in the name
-        name (str): name that was just created. To be verified that it is
-            unique in this function
+        name (str): name that was just created. To be verified that it is unique
+            in this function
         unique_list (list): list where unique names are stored
-        suffix (bool): If True, add a suffix of 3 numbers at the end of the name
+        suffix (bool):
 
     Returns:
         new_name (str): name that is unique
-
     """
     if suffix:
         while name in unique_list:
@@ -836,7 +827,6 @@ def angle(v1, v2, acute=True):
 
     Returns:
         angle (float): angle between the 2 vectors in degree
-
     """
     angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
     if (acute == True):

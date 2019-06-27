@@ -38,6 +38,17 @@ This action will make Homebrew inspected your system to make sure the installati
 
     brew install wine
 
+Using WINE with ``archetypal convert`` command
+----------------------------------------------
 
+The IDF to BUI converter uses an executable installed with TRNSYS (which is Windows only). Users that have bought
+TRNSYS can copy the trnsidf.exe executable to their UNIX machine (MacOs or Linux) and invoke the `archetypal convert`
+command with the :option:`--trnsidf-exe` option.
+
+Example:
+
+.. code-block:: python
+
+    archetypal convert --trnsidf-exe "<path to executable on UNIX machine>" "<path to IDF file>"
 
 .. _Wine: https://www.winehq.org/

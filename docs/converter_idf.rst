@@ -108,6 +108,13 @@ Users can chose to return a combination of flags
 
         archetypal convert --template "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
+    - ``--log-clear-names`` if added, do not print log of "clear_names" (equivalence between old and new names) in the console
+      executable)
+
+    .. code-block:: python
+
+        archetypal convert --log-clear-names "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+
     - ``--window`` specifies the window properties <u_value> <shgc> <t_vis> <tolerance>
 
     .. code-block:: python

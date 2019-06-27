@@ -106,6 +106,8 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
 @click.option('--template', type=click.Path(),
               default=settings.path_template_d18,
               help='Path to d18 template file')
+@click.option('--log-clear-names', is_flag=True, default=False,
+              help='Do not print log of "clear_names" (equivalence between old and new names) in the console')
 @click.option('--window', nargs=4, type=float, default=(2.2, 0.64, 0.8, 0.05),
               help="Specify window properties <u_value> <shgc> <t_vis> <tolerance>")
 @click.option('--ordered', is_flag=True,
@@ -136,26 +138,29 @@ def convert(idf_file, window_lib, return_idf, return_t3d,
                                                    return_idf, True,
                                                    return_t3d, return_dck,
                                                    output_folder, trnsidf_exe,
-                                                   template, **window_kwds,
+                                                   template,
+                                                   log_clear_names=log_clear_names,
+                                                   **window_kwds,
                                                    ordered=ordered,
                                                    nonum=nonum, N=batchjob,
                                                    geo_floor=geofloor,
                                                    refarea=refarea,
                                                    volume=volume,
                                                    capacitance=capacitance)
-        if paths:
-            click.echo('Here are the paths to the different output files: ')
+    # Print path of output files in console
+    if paths:
+        click.echo('Here are the paths to the different output files: ')
 
-            for path in paths:
-                if 'MODIFIED' in path:
-                    click.echo(
-                        'Path to the modified IDF file: {}'.format(path))
-                elif 'b18' in path:
-                    click.echo('Path to the BUI file: {}'.format(path))
-                elif 'dck' in path:
-                    click.echo('Path to the DCK file: {}'.format(path))
-                else:
-                    click.echo('Path to the T3D file: {}'.format(path))
+        for path in paths:
+            if 'MODIFIED' in path:
+                click.echo(
+                    'Path to the modified IDF file: {}'.format(path))
+            elif 'b18' in path:
+                click.echo('Path to the BUI file: {}'.format(path))
+            elif 'dck' in path:
+                click.echo('Path to the DCK file: {}'.format(path))
+            else:
+                click.echo('Path to the T3D file: {}'.format(path))
 
 
 @cli.command()

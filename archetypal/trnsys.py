@@ -27,7 +27,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                             return_idf=False, return_b18=True,
                             return_t3d=False, return_dck=False,
                             output_folder=None, trnsidf_exe=None,
-                            template=None,
+                            template=None, log_clear_names=False,
                             **kwargs):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
 
@@ -106,7 +106,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         # Clean names of idf objects (e.g. 'MATERIAL')
         log("Cleaning names of the IDF objects...", lg.INFO)
         start_time = time.time()
-        clear_name_idf_objects(idf)
+        clear_name_idf_objects(idf, log_clear_names)
         path = os.path.join(settings.cache_folder, cache_filename,
                             cache_filename + '.idf')
         if not os.path.exists(os.path.dirname(path)):
@@ -528,7 +528,7 @@ def _get_schedules(idf):
     return schedule_names, schedules
 
 
-def clear_name_idf_objects(idfFile):
+def clear_name_idf_objects(idfFile, log_clear_names=False):
     """Clean names of IDF objects.
 
     Replaces variable names with a unique name, easy to refer to the original
@@ -536,6 +536,7 @@ def clear_name_idf_objects(idfFile):
     new name will be "stl_00000n" - limits length to 10 characters
 
     Args:
+        log_clear_names:
         idfFile (archetypal.idfclass.IDF): IDF object where to clean names
     """
 
@@ -599,7 +600,7 @@ def clear_name_idf_objects(idfFile):
     log_name = os.path.basename(idfFile.idfname) + "_clear_names.log"
     log_msg = "Here is the equivalence between the old names and the new " \
               "ones." + "\n\n" + tabulate(d, headers="keys")
-    log(log_msg, name=log_name, level=lg.INFO)
+    log(log_msg, name=log_name, level=lg.INFO, avoid_console=log_clear_names)
 
 
 def zone_origin(zone_object):

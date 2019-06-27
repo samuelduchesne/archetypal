@@ -383,45 +383,6 @@ def layer_composition(row):
         return array
 
 
-def get_row_prop(self, other, on, property):
-    """
-    Todo:
-        * Not used
-        * This function may raise an error (it has to). Maybe we can do things
-          better.
-
-    Args:
-        self:
-        other:
-        on:
-        property:
-
-    Returns:
-        same type as caller
-    """
-    try:
-        value_series = pd.DataFrame(self).T[on].join(
-            other.reset_index().set_index([on[0], 'Name']), on=on,
-            rsuffix='_viz')[property]
-    except:
-        raise ValueError()
-    else:
-        if len(value_series) > 1:
-            log('Found more than one possible values for property {} for item '
-                '{}'.format(
-                property, self[on]), lg.WARNING)
-            log('Taking the first occurrence...')
-
-            index = value_series.index.values.astype(int)[0]
-            value_series = value_series.values.astype(float)[0]
-        elif value_series.isna().all():
-            raise ValueError('No corresponding property was found')
-        else:
-            index = value_series.index.values.astype(int)[0]
-            value_series = value_series.values.astype(float)[0]
-        return index, value_series
-
-
 def schedule_composition(row):
     """Takes in a series with $id and \*_ScheduleDay_Name values and return an
     array of dict of the form {'$ref': ref}
@@ -498,33 +459,6 @@ def date_transform(date_str):
     if date_str[0:2] != '24':
         return datetime.strptime(date_str, '%H:%M') - timedelta(hours=1)
     return datetime.strptime('23:00', '%H:%M')
-
-
-def iscore(row):
-    """Helps to group by core and perimeter zones. If any of "has `core` in
-    name" and "ExtGrossWallArea == 0" is true, will consider zone_loads as core,
-    else as perimeter.
-
-    Todo:
-        * assumes a basement zone_loads will be considered as a core zone_loads
-          since no ext wall area for basements.
-
-    Args:
-        row (pandas.Series): a row
-
-    Returns:
-        str: 'Core' or 'Perimeter'
-    """
-    if any(['core' in row[('Zone', 'Zone Name')].lower(),
-            float(row[('Zone', 'Exterior Gross Wall Area {m2}')]) == 0]):
-        # We look for the string `core` in the Zone_Name
-        return 'Core'
-    elif row[('Zone', 'Part of Total Building Area')] == 'No':
-        return np.NaN
-    elif 'plenum' in row[('Zone', 'Zone Name')].lower():
-        return np.NaN
-    else:
-        return 'Perimeter'
 
 
 def weighted_mean(series, df, weighting_variable):
@@ -817,6 +751,7 @@ def check_unique_name(first_letters, count, name, unique_list, suffix=False):
 
     return name, count
 
+
 def angle(v1, v2, acute=True):
     """Calculate the angle between 2 vectors
 
@@ -828,7 +763,8 @@ def angle(v1, v2, acute=True):
     Returns:
         angle (float): angle between the 2 vectors in degree
     """
-    angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+    angle = np.arccos(
+        np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
     if (acute == True):
         return angle
     else:

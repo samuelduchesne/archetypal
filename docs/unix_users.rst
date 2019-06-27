@@ -38,6 +38,8 @@ This action will make Homebrew inspected your system to make sure the installati
 
     brew install wine
 
+For more information about Wine installation, you can visit the following website: https://www.davidbaumgold.com/tutorials/wine-mac/
+
 Using WINE with ``archetypal convert`` command
 ----------------------------------------------
 
@@ -50,5 +52,9 @@ Example:
 .. code-block:: python
 
     archetypal convert --trnsidf-exe "<path to executable on UNIX machine>" "<path to IDF file>"
+
+You can find the executable trnsidf.exe in the TRNSYS default installation folder:
+`C:\\TRNSYS18\\Building\\trnsIDF`
+
 
 .. _Wine: https://www.winehq.org/

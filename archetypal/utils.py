@@ -423,7 +423,7 @@ def get_row_prop(self, other, on, property):
 
 
 def schedule_composition(row):
-    """Takes in a series with $id and *_ScheduleDay_Name values and return an
+    """Takes in a series with $id and \*_ScheduleDay_Name values and return an
     array of dict of the form {'$ref': ref}
 
     Args:
@@ -794,11 +794,11 @@ def check_unique_name(first_letters, count, name, unique_list, suffix=False):
 
     Args:
         first_letters (str): string at the beginning of the name, giving a hint
-            on what the variable is (e.g. : 'day_' for a schedule
-        count (int): increment to create a unique id in the name
+            on what the variable is.
+        count (int): increment to create a unique id in the name.
         name (str): name that was just created. To be verified that it is unique
-            in this function
-        unique_list (list): list where unique names are stored
+            in this function.
+        unique_list (list): list where unique names are stored.
         suffix (bool):
 
     Returns:

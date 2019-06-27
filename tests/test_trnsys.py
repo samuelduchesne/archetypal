@@ -94,7 +94,7 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
 def test_trnbuild_idf_win32(config):
     idf_file = "tests/input_data/trnsys/Building.idf"
     template = "tests/input_data/trnsys/NewFileTemplate.d18"
-    res = trnbuild_idf(idf_file, template, nonum=True)
+    res = trnbuild_idf(idf_file, template=template, nonum=True)
 
     assert res
 
@@ -106,9 +106,7 @@ def test_trnbuild_idf_win32(config):
 def test_trnbuild_idf_darwin_or_linux(config):
     idf_file = "tests/input_data/trnsys/Building.idf"
     template = "tests/input_data/trnsys/NewFileTemplate.d18"
-    res = trnbuild_idf(idf_file, template,
-                       trnidf_exe_dir='docker/trnsidf/trnsidf.exe',
-                       nonum=False, refarea=False, volume=False,
-                       capacitance=True, dck=True)
+    res = trnbuild_idf(idf_file, template=template, dck=True, nonum=False,
+                       refarea=False, volume=False, capacitance=True)
 
     assert res

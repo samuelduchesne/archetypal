@@ -71,7 +71,11 @@ pass_config = click.make_pass_decorator(Config, ensure=True)
 def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
         use_cache, log_file, log_console, log_level, log_name, log_filename,
         trnsys_default_folder):
-    """Retrieve, construct, simulate, and analyse building templates"""
+    """archetypal: Retrieve, construct, simulate, convert and analyse building
+    simulation templates
+
+    Visit archetypal.readthedocs.io for the online documentation
+    """
     config.data_folder = data_folder
     config.logs_folder = logs_folder
     config.imgs_folder = imgs_folder
@@ -91,11 +95,13 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
 @click.argument('output-folder', type=click.Path(exists=True), required=False,
                 default=".")
 @click.option('--return-idf', '-i', is_flag=True, default=False,
-              help='Save modified IDF file to output_folder, and return path to the file in the console')
+              help='Save modified IDF file to output_folder, and return path '
+                   'to the file in the console')
 @click.option('--return_t3d', '-t', is_flag=True, default=False,
               help='Return T3D file path in the console')
 @click.option('--return_dck', '-d', is_flag=True, default=False,
-              help='Generate dck file and save to output_folder, and return path to the file in the console')
+              help='Generate dck file and save to output_folder, and return '
+                   'path to the file in the console')
 @click.option('--window-lib', type=click.Path(), default=None,
               help='Path of the window library (from Berkeley Lab)')
 @click.option('--trnsidf-exe', type=click.Path(),
@@ -107,9 +113,11 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
               default=settings.path_template_d18,
               help='Path to d18 template file')
 @click.option('--log-clear-names', is_flag=True, default=False,
-              help='Do not print log of "clear_names" (equivalence between old and new names) in the console')
+              help='Do not print log of "clear_names" (equivalence between '
+                   'old and new names) in the console')
 @click.option('--window', nargs=4, type=float, default=(2.2, 0.64, 0.8, 0.05),
-              help="Specify window properties <u_value> <shgc> <t_vis> <tolerance>. Default = 2.2 0.64 0.8 0.05")
+              help="Specify window properties <u_value> <shgc> <t_vis> "
+                   "<tolerance>. Default = 2.2 0.64 0.8 0.05")
 @click.option('--ordered', is_flag=True,
               help="sort idf object names")
 @click.option('--nonum', is_flag=True, default=False,
@@ -128,10 +136,11 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
               help="Upadtes capacitance of airnodes")
 def convert(idf_file, window_lib, return_idf, return_t3d,
             return_dck, output_folder, trnsidf_exe, template, log_clear_names,
-            window,
-            ordered, nonum, batchjob, geofloor, refarea, volume, capacitance):
-    """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
-    The output folder path defaults to the working directory. Equivalent to '.' """
+            window, ordered, nonum, batchjob, geofloor, refarea, volume,
+            capacitance):
+    """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS) The
+    output folder path defaults to the working directory. Equivalent to '.'
+    """
     u_value, shgc, t_vis, tolerance = window
     window_kwds = {'u_value': u_value, 'shgc': shgc, 't_vis': t_vis,
                    'tolerance': tolerance}

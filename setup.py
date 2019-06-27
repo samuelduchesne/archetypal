@@ -2,12 +2,13 @@
 import codecs
 import re
 import sys
+import os
 from os import path
 
 # Always prefer setuptools over distutils
 from setuptools import setup
 
-here = path.abspath(path.dirname(__file__))
+here = os.getcwd()
 
 # This check is here if the user does not have a new enough pip to recognize
 # the minimum Python requirement in the metadata.

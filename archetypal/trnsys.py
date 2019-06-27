@@ -39,12 +39,6 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     * the path to the TRNBuild input file (.idf)
     * the path to the TRNSYS dck file (.dck)
 
-    Todo:
-        - Add console info at beginning of each steps of this method
-        - Add console info about the outputs of the function at the end when it
-          is completed.
-        - Add option to hide name conversion report
-
     Example:
         >>> # Exemple of setting kwargs to be unwrapped in the function
         >>> kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,

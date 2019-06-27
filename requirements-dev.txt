@@ -1,0 +1,10 @@
+coverage
+coveralls
+pytest
+pytest-cov
+scikit-learn
+scipy
+sphinx
+sphinx_rtd_theme
+recommonmark
+sphinx-click

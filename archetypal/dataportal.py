@@ -1,3 +1,11 @@
+################################################################################
+# Module: dataportal.py
+# Description: Various functions to acquire building archetype data using
+#              available APIs
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+
 import hashlib
 import io
 import json
@@ -5,13 +13,11 @@ import logging as lg
 import os
 import re
 import time
+import zipfile
 
 import pandas as pd
-import geopandas as gpd
-from sqlalchemy import create_engine
 import pycountry as pycountry
 import requests
-
 from archetypal import log, settings, make_str
 
 # scipy and sklearn are optional dependencies for faster nearest node search
@@ -26,9 +32,6 @@ def tabula_available_buildings(code_country='France'):
 
     Args:
         code_country:
-
-    Returns:
-
     """
     # Check code country
     if code_country.upper() not in ['AT', 'BA', 'BE', 'BG', 'CY', 'CZ', 'DE',
@@ -53,13 +56,10 @@ def tabula_api_request(data, table='detail'):
     response.
 
     Args:
-        data (dict): dictionnary of query attributes.
-            with table='all-country', data expects 'code_country'.
-            with table='detail', data expects 'buildingtype', 'suffix', and
-            'variant'.
+        data (dict): dictionnary of query attributes. with table='all-country',
+            data expects 'code_country'. with table='detail', data expects
+            'buildingtype', 'suffix', and 'variant'.
         table (str): the server-table to query. 'detail' or 'all-country'
-    Returns:
-
     """
     # Prepare URL
     if table == 'all-country':
@@ -115,9 +115,9 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
                                   code_type='ReEx',
                                   code_num=1, code_variantnumber=1):
     """
+    How to format ``code_building``:
+        Format the :attr:`code_building` string as such::
 
-    Args:
-        code_building (str) : Whole building code e.g.:
             "AT.MT.AB.02.Gen.ReEx.001.001"
              |  |  |  |   |   |    |   |__code_variantnumber
              |  |  |  |   |   |    |______code_num
@@ -127,13 +127,14 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
              |  |  |______________________code_buildingsizeclass
              |  |_________________________code_typologyregion
              |____________________________code_country
+
+    Args:
+        code_building (str): Whole building code. See How to format ``code_building``
         code_country (str): Country name or International Country Code (ISO
             3166-1-alpha-2 code). Input as 'France' will work equally as 'FR'.
         code_typologyregion (str): N for national; otherwise specific codes
             representing regions in a given country
         code_buildingsizeclass (str): 4 standardized classes: 'SFH':
-        Single-family house, 'TH': Terraced house, 'MFH': multi-family house,
-            'AB': Apartment block
         code_construcionyearclass (int or str): allocation of time bands to
             classes. Defined nationally (according to significant changes in
             construction technologies, building codes or available statistical
@@ -141,7 +142,7 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
         code_additional_parameter (str): 1 unique category. Defines the generic
             (or basic) typology matrix so that each residential building of a
             given country can be assigned to one generic type. A further
-            segmentation in subtypes is  possible and can be indicated by a
+            segmentation in subtypes is possible and can be indicated by a
             specific code. Whereas the generic types must comprise the whole
             building stock the total of subtypes must be comprehensive. e.g.
             'HR' (highrises), 'TFrame' (timber frame), 'Semi' (semi-detached)
@@ -154,15 +155,14 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
 
     Returns:
         pandas.DataFrame: The DataFrame from the
-
     """
     # Parse builsing_code
     if code_building is not None:
         try:
             code_country, code_typologyregion, code_buildingsizeclass, \
-                code_construcionyearclass, \
-                code_additional_parameter, code_type, code_num, \
-                code_variantnumber = code_building.split('.')
+            code_construcionyearclass, \
+            code_additional_parameter, code_type, code_num, \
+            code_variantnumber = code_building.split('.')
         except ValueError:
             msg = (
                 'the query "{}" is missing a parameter. Make sure the '
@@ -226,14 +226,10 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
 
 def tabula_system(code_country, code_boundarycond='SUH', code_variantnumber=1):
     """
-
     Args:
         code_country:
         code_boundarycond:
         code_variantnumber:
-
-    Returns:
-
     """
     # Check code country
     if code_country.upper() not in ['AT', 'BA', 'BE', 'BG', 'CY', 'CZ', 'DE',
@@ -276,17 +272,13 @@ def tabula_system(code_country, code_boundarycond='SUH', code_variantnumber=1):
 
 
 def tabula_system_request(data):
-    """
+    """Returns:
+
+    Examples:
+        'http://webtool.building-typology.eu/data/matrix/system/detail/IT.SUH.01/dc/1546889637169'
 
     Args:
         data (dict): prepared data for html query
-
-    Returns:
-
-    Examples:
-        'http://webtool.building-typology.eu/data/matrix/system/detail/IT.SUH
-        .01/dc/1546889637169'
-
     """
     system = '.'.join(s for s in data['systype'])
     hexint = hashlib.md5(system.encode('utf-8')).hexdigest()[0:13]
@@ -322,12 +314,8 @@ def tabula_system_request(data):
 
 def get_from_cache(url):
     """
-
     Args:
         url:
-
-    Returns:
-
     """
     # if the tool is configured to use the cache
     if settings.use_cache:
@@ -348,13 +336,9 @@ def get_from_cache(url):
 
 def save_to_cache(url, response_json):
     """
-
     Args:
         url:
         response_json:
-
-    Returns:
-
     """
     if settings.use_cache:
         if response_json is None:
@@ -382,10 +366,9 @@ def save_to_cache(url, response_json):
 def openei_api_request(data, pause_duration=None, timeout=180,
                        error_pause_duration=None):
     """
-
     Args:
-        data (dict or OrderedDict): key-value pairs of parameters to post to
-            the API
+        data (dict or OrderedDict): key-value pairs of parameters to post to the
+            API
         pause_duration:
         timeout (int): how long to pause in seconds before requests, if None,
             will query API status endpoint to find when next slot is available
@@ -407,18 +390,24 @@ def openei_api_request(data, pause_duration=None, timeout=180,
         return cached_response_json
 
 
-# def openei_dataset_request(data):
-#     'COMMERCIAL_LOAD_DATA_E_PLUS_OUTPUT'
-#     'https://openei.org/datasets/files/961/pub/{}
-#     'USA_AR_Batesville'
-#     'AWOS'
-#     '723448'
-#     'RefBldgMediumOfficeNew2004'
-#     '/{}.{}.{}_TMY3/{}_v1.3_7.1_3A_USA_GA_ATLANTA\
-#         .csv'
-
-
 def nrel_api_cbr_request(data):
+    """
+    Notes:
+        For a detailed description of data arguments, visit
+        https://developer.nrel.gov/docs/buildings/commercial-building
+        -resource-database-v1/resources/
+
+    Examples:
+        >>> import archetypal as ar
+        >>> ar.dataportal.nrel_api_cbr_request({'s': 'Commercial'
+        >>> 'Reference', 'api_key': 'oGZdX1nhars1cTJYTm7M9T12T1ZOvikX9pH0Zudq'})
+
+    Args:
+        data: a dict of
+
+    Returns:
+        dict: the json response
+    """
     # define the Overpass API URL, then construct a GET-style URL as a string to
     # hash to look up/save to cache
     url = 'https://developer.nrel.gov/api/commercial-building-resources/v1' \
@@ -465,8 +454,8 @@ def nrel_bcl_api_request(data):
     return the JSON response.
 
     Args:
-        data (dict or OrderedDict): key-value pairs of parameters to post to
-            the API
+        data (dict or OrderedDict): key-value pairs of parameters to post to the
+            API
 
     Returns:
         dict
@@ -517,189 +506,225 @@ def nrel_bcl_api_request(data):
             return response_json
 
 
-def gis_server_raster_request(creds, bbox=None, how='intersects', srid=None,
-                              output_type='Raster'):
+def stat_can_request(data):
     """
-
     Args:
-        output_type:
-        creds:
-        bbox:
-        how:
-        srid:
-
-    Returns:
-        numpy.array
-
-    Info:
-        https://gis.stackexchange.com/questions/130139/downloading-raster
-        -data-into-python-from-postgis-using-psycopg2
+        data:
     """
-    if gdal is None:
-        raise ImportError('The osgeo package must be installed to use this '
-                          'optional feature. recommended to use conda '
-                          '*install gdal instead* of pip')
+    prepared_url = 'https://www12.statcan.gc.ca/rest/census-recensement' \
+                   '/CPR2016.{type}?lang={lang}&dguid={dguid}&topic=' \
+                   '{topic}&notes={notes}'.format(
+        type=data.get('type', 'json'),
+        lang=data.get('land', 'E'),
+        dguid=data.get('dguid', '2016A000011124'),
+        topic=data.get('topic', 1),
+        notes=data.get('notes', 0))
 
-    username = creds.pop('username')
-    password = creds.pop('password')
-    server = creds.pop('server')
-    db_name = creds.pop('db_name')
-    tb_schema = creds.pop('schema')
-    table_name = creds.pop('table_name')
-    # create the engine string
-    engine_str = 'postgresql://{}:{}@{}/{}'.format(username, password, server,
-                                                   db_name)
-    # instanciate the server engine
-    engine = create_engine(engine_str)
+    cached_response_json = get_from_cache(prepared_url)
 
-    xmin, ymin, xmax, ymax = bbox.bounds
-
-    if how.lower() == 'intersects':
-        how = '&&'
-    elif how.lower() == 'contains':
-        how = '@'
-    else:
-        raise NameError('there is no spatial operator named {}. choose from '
-                        '"intersets" or "contains"')
-
-    # prepare the sql query
-    sql = "SELECT ST_AsGDALRaster(ST_Union(rast), 'GTiff') As rast_gdal " \
-          "FROM {schema}.{table_name} " \
-          "WHERE " \
-          "rast " \
-          "{how} " \
-          "ST_MakeEnvelope({xmin}, {ymin}, {xmax}, {ymax}, {my_srid})".format(
-            schema=tb_schema,
-            table_name=table_name,
-            xmin=xmin,
-            ymin=ymin,
-            xmax=xmax,
-            ymax=ymax,
-            my_srid=srid,
-            how=how)
-
-    # Todo: seek raster data from cache instead of from gis server
-    # # try to get results from cache
-    # cached_response = get_from_cache(sql)
-    #
-    # if cached_response is not None:
-    #     # found this request in the cache, just return it instead of making a
-    #     # new sql call. We need to load id usin json.loads though.
-    #     return gpd.GeoDataFrame.from_features(cached_response)
-
-    # Use a virtual memory file, which is named like this
-    vsipath = '/vsimem/from_postgis'
-
-    # Download raster data into Python as GeoTIFF, and make a virtual file
-    # for GDAL
-    result = engine.execute(sql)
-
-    try:
-        gdal.FileFromMemBuffer(vsipath, bytes(result.fetchone()[0]))
-
-        # Read first band of raster with GDAL
-        ds = gdal.Open(vsipath)
-        band = ds.GetRasterBand(1)
-        arr = band.ReadAsArray()
-
-    except Exception:
-        # Close and clean up virtual memory file
-        gdal.Unlink(vsipath)
-        raise
-    else:
-        if output_type == 'Raster':
-            gdal.Unlink(vsipath)
-            return ds
-        elif output_type == 'memory':
-            return vsipath
-        elif output_type == 'array':
-            gdal.Unlink(vsipath)
-            return arr
-
-
-def gis_server_request(creds, bbox=None, how='intersects', srid=None):
-    """Send a request to the GIS server via postgis SQL query and return the
-    GeoDataFrame response.
-
-    Args:
-        creds (dict): credentials to connect with the database. Pass a dict
-        containing the 'username', 'password', 'server', 'db_name',
-        'tb_schema', 'engine_str
-        bbox (shapely.geometry): Any shapely geometry that has bounds.
-        how (str): the spatial operator to use. 'intersects' gets more rows
-            while 'contains' gets fewer rows.
-        srid (int): SRID. If no SRID is specified the unknown spatial
-            reference system is assumed.
-
-    Returns:
-        geopandas.GeoDataFrame
-
-    Info:
-        * Originaly from <https://gis.stackexchange.com/questions/83387
-        /performing-bounding-box-query-in-postgis>
-    """
-    username = creds.pop('username')
-    password = creds.pop('password')
-    server = creds.pop('server')
-    db_name = creds.pop('db_name')
-    tb_schema = creds.pop('schema')
-    table_name = creds.pop('table_name')
-    # create the engine string
-    engine_str = 'postgresql://{}:{}@{}/{}'.format(username, password, server,
-                                                   db_name)
-    # instanciate the server engine
-    engine = create_engine(engine_str)
-
-    xmin, ymin, xmax, ymax = bbox.bounds
-
-    if how.lower() == 'intersects':
-        how = '&&'
-    elif how.lower() == 'contains':
-        how = '@'
-    else:
-        raise NameError('there is no spatial operator named {}. choose from '
-                        '"intersets" or "contains"')
-
-    sql = 'SELECT * FROM {schema}.{table_name} ' \
-          'WHERE ' \
-          'geom ' \
-          '{how} ' \
-          'ST_MakeEnvelope({xmin}, {ymin}, {xmax}, {ymax}, {my_srid})'.format(
-        schema=tb_schema,
-        table_name=table_name,
-        xmin=xmin,
-        ymin=ymin,
-        xmax=xmax,
-        ymax=ymax,
-        my_srid=srid,
-        how=how)
-    cached_response_geojson = get_from_cache(sql)
-
-    if cached_response_geojson is not None:
+    if cached_response_json is not None:
         # found this request in the cache, just return it instead of making a
-        # new HTTP call. We need to load id usin json.loads though.
-        return gpd.GeoDataFrame.from_features(cached_response_geojson)
+        # new HTTP call
+        return cached_response_json
 
     else:
+        # if this URL is not already in the cache, request it
         start_time = time.time()
-        log('Getting from from {}:{}.{}, "{}"'.format(server, tb_schema,
-                                                      table_name, sql))
-        gdf = gpd.read_postgis(sql, con=engine, geom_col='geom',
-                               crs={'init': 'epsg:{srid}'.format(srid=srid)})
-        size_kb = gdf.memory_usage(deep=True).sum() / 1000
-        len_gdf = len(gdf)
-        log('Downloaded {:,.1f} KB or {} entries from {}:{}.{} in '
-            '{:,.2f} seconds'.format(size_kb, len_gdf, server, tb_schema,
-                                     table_name, time.time() - start_time))
-        if not gdf.empty:
-            gdf_json = gdf.to_json()
-            save_to_cache(sql, json.loads(gdf_json))  # must load the json
-            # because because the save_to_cache handles to conversion
-            # Todo: for some reason, rasterio does not like the gdf as is. so
-            #  the workaournd is to spit out the json back into a new
-            #  GeoDataFrame. Why?
-            return gpd.GeoDataFrame.from_features(json.loads(gdf_json))
+        log('Getting from {}, "{}"'.format(prepared_url, data))
+        response = requests.get(prepared_url)
+        # if this URL is not already in the cache, pause, then request it
+        # get the response size and the domain, log result
+        size_kb = len(response.content) / 1000.
+        domain = re.findall(r'//(?s)(.*?)/', prepared_url)[0]
+        log('Downloaded {:,.1f}KB from {}'
+            ' in {:,.2f} seconds'.format(size_kb, domain,
+                                         time.time() - start_time))
+
+        try:
+            response_json = response.json()
+            if 'remark' in response_json:
+                log('Server remark: "{}"'.format(response_json['remark'],
+                                                 level=lg.WARNING))
+            save_to_cache(prepared_url, response_json)
+
+        except Exception:
+            # There seems to be a double backlash in the response. We try
+            # removing it here.
+            try:
+                response = response.content.decode('UTF-8').replace('//',
+                                                                    '')
+                response_json = json.loads(response)
+            except Exception:
+                log(
+                    'Server at {} returned status code {} and no JSON '
+                    'data.'.format(
+                        domain,
+                        response.status_code),
+                    level=lg.ERROR)
+            else:
+                save_to_cache(prepared_url, response_json)
+                return response_json
+            # deal with response satus_code here
+            log('Server at {} returned status code {} and no JSON '
+                'data.'.format(
+                domain, response.status_code), level=lg.ERROR)
         else:
-            log('No entries found. Check your parameters such as '
-                'the bbox coordinates and the CRS', lg.ERROR)
-            return gpd.GeoDataFrame([])  # return empty GeoDataFrame
+            return response_json
+
+
+def stat_can_geo_request(data):
+    """
+    Args:
+        data:
+    """
+    prepared_url = 'https://www12.statcan.gc.ca/rest/census-recensement' \
+                   '/CR2016Geo.{type}?lang={lang}&geos={geos}&cpt={cpt}'.format(
+        type=data.get('type', 'json'),
+        lang=data.get('land', 'E'),
+        geos=data.get('geos', 'PR'),
+        cpt=data.get('cpt', '00'))
+
+    cached_response_json = get_from_cache(prepared_url)
+
+    if cached_response_json is not None:
+        # found this request in the cache, just return it instead of making a
+        # new HTTP call
+        return cached_response_json
+
+    else:
+        # if this URL is not already in the cache, request it
+        start_time = time.time()
+        log('Getting from {}, "{}"'.format(prepared_url, data))
+        response = requests.get(prepared_url)
+        # if this URL is not already in the cache, pause, then request it
+        # get the response size and the domain, log result
+        size_kb = len(response.content) / 1000.
+        domain = re.findall(r'//(?s)(.*?)/', prepared_url)[0]
+        log('Downloaded {:,.1f}KB from {}'
+            ' in {:,.2f} seconds'.format(size_kb, domain,
+                                         time.time() - start_time))
+
+        try:
+            response_json = response.json()
+            if 'remark' in response_json:
+                log('Server remark: "{}"'.format(response_json['remark'],
+                                                 level=lg.WARNING))
+            save_to_cache(prepared_url, response_json)
+
+        except Exception:
+            # There seems to be a double backlash in the response. We try
+            # removing it here.
+            try:
+                response = response.content.decode('UTF-8').replace('//',
+                                                                    '')
+                response_json = json.loads(response)
+            except Exception:
+                log(
+                    'Server at {} returned status code {} and no JSON '
+                    'data.'.format(
+                        domain,
+                        response.status_code),
+                    level=lg.ERROR)
+            else:
+                save_to_cache(prepared_url, response_json)
+                return response_json
+            # deal with response satus_code here
+            log('Server at {} returned status code {} and no JSON '
+                'data.'.format(
+                domain, response.status_code), level=lg.ERROR)
+        else:
+            return response_json
+
+
+def download_bld_window(u_factor, shgc, vis_trans, oauth_key, tolerance=0.05,
+                        extension='idf', output_folder=None):
+    """Find window constructions corresponding to a combination of a u_factor,
+    shgc and visible transmittance and download their idf file to disk. it is
+    necessary to have an authentication key (see Info below).
+
+    .. _Building_Component_Library: https://bcl.nrel.gov/user/register
+
+    Args:
+        u_factor (float or tuple): The center of glass u-factor. Pass a range of
+            values by passing a tuple (from, to). If a tuple is passed,
+            *tolerance* is ignored.
+        shgc (float or tuple): The Solar Heat Gain Coefficient. Pass a range of
+            values by passing a tuple (from, to). If a tuple is passed,
+            *tolerance* is ignored.
+        vis_trans (float or tuple): The Visible Transmittance. Pass a range of
+            values by passing a tuple (from, to). If a tuple is passed,
+            *tolerance* is ignored.
+        oauth_key (str): the Building_Component_Library_ authentication key.
+        tolerance (float): relative tolerance for the input values. Default is
+            0.05 (5%).
+        extension (str): specify the extension of the file to download.
+            (default: 'idf')
+        output_folder (str, optional): specify folder to save response data to.
+            Defaults to settings.data_folder.
+
+    Returns:
+        archetypal.IDF: a list of IDF files containing window objects
+            matching the parameters.
+
+    Note:
+        An authentication key from NREL is required to download building
+        components. Register at Building_Component_Library_
+    """
+    # check if one or multiple values
+    if isinstance(u_factor, tuple):
+        u_factor_dict = '[{} TO {}]'.format(u_factor[0], u_factor[1])
+    else:
+        # apply tolerance
+        u_factor_dict = '[{} TO {}]'.format(u_factor * (1 - tolerance),
+                                            u_factor * (1 + tolerance))
+    if isinstance(shgc, tuple):
+        shgc_dict = '[{} TO {}]'.format(shgc[0], shgc[1])
+    else:
+        # apply tolerance
+        shgc_dict = '[{} TO {}]'.format(shgc * (1 - tolerance),
+                                        shgc * (1 + tolerance))
+    if isinstance(vis_trans, tuple):
+        vis_trans_dict = '[{} TO {}]'.format(vis_trans[0], vis_trans[1])
+    else:
+        # apply tolerance
+        vis_trans_dict = '[{} TO {}]'.format(vis_trans * (1 - tolerance),
+                                             vis_trans * (1 + tolerance))
+
+    data = {'keyword': 'Window',
+            'format': 'json',
+            'f[]': ['fs_a_Overall_U-factor:{}'.format(u_factor_dict),
+                    'fs_a_VLT:{}'.format(vis_trans_dict),
+                    'fs_a_SHGC:{}'.format(shgc_dict),
+                    'sm_component_type:"Window"'],
+            'oauth_consumer_key': oauth_key}
+    response = nrel_bcl_api_request(data)
+
+    if response['result']:
+        log('found {} possible window component(s) matching '
+            'the range {}'.format(len(response['result']), str(data['f[]'])))
+
+    # download components
+    uids = []
+    for component in response['result']:
+        uids.append(component['component']['uid'])
+    url = 'https://bcl.nrel.gov/api/component/download?uids={}'.format(','
+                                                                       ''.join(
+        uids))
+    # actual download with get()
+    d_response = requests.get(url)
+
+    if d_response.ok:
+        # loop through files and extract the ones that match the extension
+        # parameter
+        results = []
+        if output_folder is None:
+            output_folder = settings.data_folder
+        with zipfile.ZipFile(io.BytesIO(d_response.content)) as z:
+            for info in z.infolist():
+                if info.filename.endswith(extension):
+                    z.extract(info, path=output_folder)
+                    results.append(os.path.join(settings.data_folder,
+                                                info.filename))
+        return results
+    else:
+        return response['result']

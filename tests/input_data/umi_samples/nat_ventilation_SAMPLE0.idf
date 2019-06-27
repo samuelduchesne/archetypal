@@ -2080,7 +2080,7 @@ WaterUse:Equipment,
     DHW Supply Temperature Perim,    !- Target Temperature Schedule Name
     DHW Supply Temperature Perim,    !- Hot Water Supply Temperature Schedule Name
     DHW Mains Temperature Perim,    !- Cold Water Supply Temperature Schedule Name
-    ,                         !- Zone Name
+    Perim,                         !- Zone Name
     ,                         !- Sensible Fraction Schedule Name
     ;                         !- Latent Fraction Schedule Name
 
@@ -2092,7 +2092,7 @@ WaterUse:Equipment,
     DHW Supply Temperature Core,    !- Target Temperature Schedule Name
     DHW Supply Temperature Core,    !- Hot Water Supply Temperature Schedule Name
     DHW Mains Temperature Core,    !- Cold Water Supply Temperature Schedule Name
-    ,                         !- Zone Name
+    Core,                         !- Zone Name
     ,                         !- Sensible Fraction Schedule Name
     ;                         !- Latent Fraction Schedule Name
 

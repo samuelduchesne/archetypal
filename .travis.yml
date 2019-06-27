@@ -1,0 +1,56 @@
+dist: xenial
+language: python
+os: linux
+env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
+
+addons:
+  apt:
+    packages:
+      wine
+
+before_install:
+  # install EnergyPlus
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then EXT=dmg; PLATFORM=Darwin; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then EXT=sh; PLATFORM=Linux; fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then EXT=exe; PLATFORM=Windows; fi
+  - ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
+  - ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-$ENERGYPLUS_VERSION-$ENERGYPLUS_SHA-$PLATFORM-x86_64
+  - ENERGYPLUS_DOWNLOAD_URL=$ENERGYPLUS_DOWNLOAD_BASE_URL/$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
+  - curl -SLO $ENERGYPLUS_DOWNLOAD_URL
+  
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+    sudo hdiutil attach $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
+    sudo installer -pkg /Volumes/$ENERGYPLUS_DOWNLOAD_FILENAME/$ENERGYPLUS_DOWNLOAD_FILENAME.pkg -target /; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+    sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
+    echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi
+  - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
+    sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
+    echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi
+  
+  - sudo rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
+  
+  # Install python
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set show_channel_urls true
+  - conda update -n base conda
+  - conda config --prepend channels conda-forge
+  - conda create -n archetypal python=$TRAVIS_PYTHON_VERSION
+  - conda env update -n archetypal -f environment.yml --prune
+  - conda install -n archetypal --file requirements-dev.txt
+  - source activate archetypal
+  - conda info --all
+
+install:
+  - python setup.py install
+  - conda list
+
+script:
+  - pytest --cov=archetypal --verbose tests/
+
+after_success:
+  - coverage report -m
+  - coveralls

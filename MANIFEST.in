@@ -1,0 +1,4 @@
+# package_data is a low-down, dirty lie. It is only used when building binary packages (python setup.py bdist ...) but
+# not when building source packages (python setup.py sdist ...)
+
+include archetypal/templates/*

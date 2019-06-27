@@ -1,24 +1,34 @@
+################################################################################
+# Module: utils.py
+# Description: Utility functions for configuration, logging
+# License: MIT, see full license in LICENSE.txt
+# Web: https://github.com/samuelduchesne/archetypal
+################################################################################
+# OSMnx
+#
+# Copyright (c) 2019 Geoff Boeing https://geoffboeing.com/
+#
+# Part of the following code is a derivative work of the code from the OSMnx
+# project, which is licensed MIT License. This code therefore is also
+# licensed under the terms of the The MIT License (MIT).
+################################################################################
+
 import datetime as dt
 import json
 import logging as lg
 import os
+import re
 import sys
-import time
 import unicodedata
+import warnings
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
-import geopandas as gpd
 import numpy as np
 import pandas as pd
-import shapely
-from lxml import objectify
 from pandas.io.json import json_normalize
-from shapely.geometry import Point
 
-import archetypal as ar
-from . import load_umi_template
-from . import settings
+from archetypal import settings
 
 
 def config(data_folder=settings.data_folder,
@@ -32,19 +42,19 @@ def config(data_folder=settings.data_folder,
            log_name=settings.log_name,
            log_filename=settings.log_filename,
            useful_idf_objects=settings.useful_idf_objects,
-           umitemplate=settings.umitemplate):
-    """
-    Configurations
+           umitemplate=settings.umitemplate,
+           trnsys_default_folder=settings.trnsys_default_folder):
+    """Configurations
 
     Args:
         data_folder (str): where to save and load data files
         logs_folder (str): where to write the log files
         imgs_folder (str): where to save figures
         cache_folder (str): where to save the simluation results
-        use_cache (bool): if True, use a local cache to save/retrieve
-            EnergyPlus simulation results instead of calling the API
-            repetitively for the same requests. This can save a lot of time
-            when simulations are long
+        use_cache (bool): if True, use a local cache to save/retrieve many of
+            archetypal outputs such as EnergyPlus simulation results. This can
+            save a lot of time by not calling the simulation and dataportal APIs
+            repetitively for the same requests.
         log_file (bool): if true, save log output to a log file in logs_folder
         log_console (bool): if true, print log output to the console
         log_level (int): one of the logger.level constants
@@ -52,10 +62,10 @@ def config(data_folder=settings.data_folder,
         log_filename (str): name of the log file
         useful_idf_objects (list): a list of useful idf objects
         umitemplate (str): where the umitemplate is located
+        trnsys_default_folder (str): root folder of TRNSYS install
 
     Returns:
         None
-
     """
     # set each global variable to the passed-in parameter value
     settings.use_cache = use_cache
@@ -70,27 +80,42 @@ def config(data_folder=settings.data_folder,
     settings.log_filename = log_filename
     settings.useful_idf_objects = useful_idf_objects
     settings.umitemplate = umitemplate
-    settings.common_umi_objects = get_list_of_common_umi_objects(
-        settings.umitemplate)
+    settings.trnsys_default_folder = validate_trnsys_folder(
+        trnsys_default_folder)
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
         log('Configured archetypal')
 
 
-def log(message, level=None, name=None, filename=None):
+def validate_trnsys_folder(trnsys_default_folder):
     """
-    Write a message to the log file and/or print to the the console.
+    Args:
+        trnsys_default_folder:
+    """
+    if sys.platform == 'win32':
+        if os.path.isdir(trnsys_default_folder):
+            return trnsys_default_folder
+        else:
+            raise ValueError('The provided TRNSYS path does not exist. Path={'
+                             '}'.format(trnsys_default_folder))
+    else:
+        return trnsys_default_folder
+
+
+def log(message, level=None, name=None, filename=None, avoid_console=False):
+    """Write a message to the log file and/or print to the the console.
 
     Args:
         message (str): the content of the message to log
         level (int): one of the logger.level constants
         name (str): name of the logger
         filename (str): name of the log file
+        avoid_console (bool): If True, don't print to console for this message
+            only
 
     Returns:
         None
-
     """
     if level is None:
         level = settings.log_level
@@ -115,7 +140,7 @@ def log(message, level=None, name=None, filename=None):
 
     # if logging to console is turned on, convert message to ascii and print to
     # the console
-    if settings.log_console:
+    if settings.log_console and not avoid_console:
         # capture current stdout, then switch it to the console, print the
         # message, then switch back to what had been the stdout. this prevents
         # logging to notebook - instead, it goes to console
@@ -129,10 +154,12 @@ def log(message, level=None, name=None, filename=None):
         print(message)
         sys.stdout = standard_out
 
+        if level == lg.WARNING:
+            warnings.warn(message)
+
 
 def get_logger(level=None, name=None, filename=None):
-    """
-    Create a logger or return the current one if already instantiated.
+    """Create a logger or return the current one if already instantiated.
 
     Args:
         level (int): one of the logger.level constants
@@ -141,7 +168,6 @@ def get_logger(level=None, name=None, filename=None):
 
     Returns:
         logging.Logger: a Logger
-
     """
 
     if level is None:
@@ -178,15 +204,13 @@ def get_logger(level=None, name=None, filename=None):
 
 
 def make_str(value):
-    """
-    Convert a passed-in value to unicode if Python 2, or string if Python 3.
+    """Convert a passed-in value to unicode if Python 2, or string if Python 3.
 
     Args:
         value (any): the value to convert to unicode/string
 
     Returns:
         unicode or string
-
     """
     try:
         # for python 2.x compatibility, use unicode
@@ -197,15 +221,13 @@ def make_str(value):
 
 
 def load_umi_template_objects(filename):
-    """
-    Reads
+    """Reads
 
     Args:
         filename (str): path of template file
 
     Returns:
         dict: Dict of umi_objects
-
     """
     with open(filename) as f:
         umi_objects = json.load(f)
@@ -213,8 +235,7 @@ def load_umi_template_objects(filename):
 
 
 def umi_template_object_to_dataframe(umi_dict, umi_object):
-    """
-    Returns flattened DataFrame of umi_objects
+    """Returns flattened DataFrame of umi_objects
 
     Args:
         umi_dict (dict): dict of umi objects
@@ -222,14 +243,12 @@ def umi_template_object_to_dataframe(umi_dict, umi_object):
 
     Returns:
         pandas.DataFrame: flattened DataFrame of umi_objects
-
     """
     return json_normalize(umi_dict[umi_object])
 
 
 def get_list_of_common_umi_objects(filename):
-    """
-    Returns list of common umi objects
+    """Returns list of common umi objects
 
     Args:
         filename (str): path to umi template file
@@ -246,9 +265,8 @@ def get_list_of_common_umi_objects(filename):
 
 
 def newrange(previous, following):
-    """
-    Takes the previous DataFrame and calculates a new Index range.
-    Returns a DataFrame with a new index
+    """Takes the previous DataFrame and calculates a new Index range. Returns a
+    DataFrame with a new index
 
     Args:
         previous (pandas.DataFrame): previous DataFrame
@@ -256,7 +274,6 @@ def newrange(previous, following):
 
     Returns:
         pandas.DataFrame: DataFrame with an incremented new index
-
     """
     if not previous.empty:
         from_index = previous.iloc[[-1]].index.values + 1
@@ -271,8 +288,7 @@ def newrange(previous, following):
 
 
 def type_surface(row):
-    """
-    Takes a boundary and returns its corresponding umi-type
+    """Takes a boundary and returns its corresponding umi-type
 
     Args:
         row:
@@ -307,14 +323,10 @@ def type_surface(row):
 
 
 def label_surface(row):
-    """
-    Takes a boundary and returns its corresponding umi-Category
+    """Takes a boundary and returns its corresponding umi-Category
 
     Args:
         row:
-
-    Returns:
-
     """
     # Floors
     if row['Surface_Type'] == 'Floor':
@@ -342,17 +354,14 @@ def label_surface(row):
 
 
 def layer_composition(row):
-    """
-    Takes in a series with $id and thickness values and return an array of
-    dict of the form
-    {'Material': {'$ref': ref}, 'thickness': thickness}
-    If thickness is 'nan', it returns None.
-
-    Args:
-        row (pandas.Series): a row
+    """Takes in a series with $id and thickness values and return an array of
+    dict of the form {'Material': {'$ref': ref}, 'thickness': thickness} If
+    thickness is 'nan', it returns None.
 
     Returns (list): List of dicts
 
+    Args:
+        row (pandas.Series): a row
     """
     array = []
     ref = row['$id', 'Outside_Layer']
@@ -374,61 +383,15 @@ def layer_composition(row):
         return array
 
 
-def get_row_prop(self, other, on, property):
-    """
-
-    Todo:
-        * Not used
-        * This function may raise an error (it has to). Maybe we can do
-        things better.
-
-    Args:
-        self:
-        other:
-        on:
-        property:
-
-    Returns:
-        same type as caller
-
-    """
-    try:
-        value_series = pd.DataFrame(self).T[on].join(
-            other.reset_index().set_index([on[0], 'Name']), on=on,
-            rsuffix='_viz')[property]
-    except:
-        raise ValueError()
-    else:
-        if len(value_series) > 1:
-            log(
-                'Found more than one possible values for property {} for item '
-                '{}'.format(
-                    property, self[on]),
-                lg.WARNING)
-            log('Taking the first occurrence...')
-
-            index = value_series.index.values.astype(int)[0]
-            value_series = value_series.values.astype(float)[0]
-        elif value_series.isna().all():
-            raise ValueError('No corresponding property was found')
-        else:
-            index = value_series.index.values.astype(int)[0]
-            value_series = value_series.values.astype(float)[0]
-        return index, value_series
-
-
 def schedule_composition(row):
-    """
-    Takes in a series with $id and \*_ScheduleDay_Name values and return an
-    array of dict of the form
-    {'$ref': ref}
+    """Takes in a series with $id and \*_ScheduleDay_Name values and return an
+    array of dict of the form {'$ref': ref}
 
     Args:
         row (pandas.Series): a row
 
     Returns:
         list: list of dicts
-
     """
     # Assumes 7 days
     day_schedules = []
@@ -452,18 +415,15 @@ def schedule_composition(row):
 
 
 def year_composition(row):
-    """
-    Takes in a series with $id and ScheduleWeek_Name_{} values and return an
-    array of dict of the form
-    {'FromDay': fromday, 'FromMonth': frommonth, 'Schedule': {'$ref': int(
-    ref)}, 'ToDay': today, 'ToMonth': tomonth}
+    """Takes in a series with $id and ScheduleWeek_Name_{} values and return an
+    array of dict of the form {'FromDay': fromday, 'FromMonth': frommonth,
+    'Schedule': {'$ref': int( ref)}, 'ToDay': today, 'ToMonth': tomonth}
 
     Args:
         row (pandas.Series): a row
 
     Returns:
         list: list of dicts
-
     """
     parts = []
     for i in range(1, 26 + 1):
@@ -487,8 +447,7 @@ def year_composition(row):
 
 
 def date_transform(date_str):
-    """
-    Simple function transforming one-based hours (1->24) into zero-based
+    """Simple function transforming one-based hours (1->24) into zero-based
     hours (0->23)
 
     Args:
@@ -496,87 +455,20 @@ def date_transform(date_str):
 
     Returns:
         datetime.datetime: datetime object
-
     """
     if date_str[0:2] != '24':
         return datetime.strptime(date_str, '%H:%M') - timedelta(hours=1)
     return datetime.strptime('23:00', '%H:%M')
 
 
-def time2time(row):
-    """
-    Constructs an array of 24 hour schedule points from a
-    Shedule:Day:Interval object.
-
-    Args:
-        row (pandas.Series): a row
-
-    Returns:
-        numpy.ndarray: a numpy array of length 24
-
-    """
-    time_seg = []
-    for i in range(1, 25):
-        try:
-            time = row['Time_{}'.format(i)]  # Time_i
-            value = row['Value_Until_Time_{}'.format(i)]  # Value_Until_Time_i
-        except:
-            pass
-        else:
-            if str(time) != 'nan' and str(value) != 'nan':
-                time = date_transform(time).hour
-                times = np.ones(time + 1) * float(value)
-                time_seg.append(times)
-    arrays = time_seg
-    array = time_seg[0]
-    length = len(arrays[0])
-    for i, a in enumerate(arrays):
-        if i != 0:
-            array = np.append(array, a[length - 1:-1])
-            length = len(a)
-    return array[0:24]
-
-
-def iscore(row):
-    """
-    Helps to group by core and perimeter zones. If any of "has `core` in
-    name" and "ExtGrossWallArea == 0" is true,
-    will consider zone_loads as core, else as perimeter.
-
-    Todo:
-        * assumes a basement zone_loads will be considered as a core
-        zone_loads since no ext wall area for basements.
-
-    Args:
-        row (pandas.Series): a row
-
-    Returns:
-        str: 'Core' or 'Perimeter'
-
-    """
-    if any(['core' in row[('Zones', 'Zone Name')].lower(),
-            float(row[('Zones', 'Exterior Gross Wall Area {m2}')]) == 0]):
-        # We look for the string `core` in the Zone_Name
-        return 'Core'
-    elif row[('Zones', 'Part of Total Building Area')] == 'No':
-        return np.NaN
-    elif 'plenum' in row[('Zones', 'Zone Name')].lower():
-        return np.NaN
-    else:
-        return 'Perimeter'
-
-
 def weighted_mean(series, df, weighting_variable):
-    """
-    Compute the weighted average while ignoring NaNs. Implements
+    """Compute the weighted average while ignoring NaNs. Implements
     :func:`numpy.average`.
 
     Args:
         series (pandas.Series):
         df (pandas.DataFrame):
         weighting_variable (str or list or tuple): Weight name to use in
-        *df*. If multiple values given, the values are
-            multiplied together.
 
     Returns:
         numpy.ndarray: the weighted average
@@ -607,8 +499,7 @@ def weighted_mean(series, df, weighting_variable):
 
 
 def top(series, df, weighting_variable):
-    """
-    Compute the highest ranked value weighted by some other variable. Implements
+    """Compute the highest ranked value weighted by some other variable. Implements
         :func:`pandas.DataFrame.nlargest`.
 
     Args:
@@ -651,6 +542,12 @@ def top(series, df, weighting_variable):
 
 
 def safe_prod(x, df, weighting_variable):
+    """
+    Args:
+        x:
+        df:
+        weighting_variable:
+    """
     df_ = df.loc[x.index, weighting_variable]
     if not df_.empty:
         return df_.astype('float').prod(axis=1).sum()
@@ -658,58 +555,31 @@ def safe_prod(x, df, weighting_variable):
         return 0
 
 
-def copy_file(files):
-    """Handles a copy of test idf files"""
+def copy_file(files, where=None):
+    """Handles a copy of test idf files
+
+    Args:
+        files:
+        where:
+    """
     import shutil, os
     if isinstance(files, str):
         files = [files]
     files = {os.path.basename(k): k for k in files}
+
+    # defaults to cache folder
+    if where is None:
+        where = settings.cache_folder
+
     for file in files:
-        dst = os.path.join(ar.settings.cache_folder, file)
-        output_folder = ar.settings.cache_folder
+        dst = os.path.join(where, file)
+        output_folder = where
         if not os.path.isdir(output_folder):
             os.makedirs(output_folder)
         shutil.copyfile(files[file], dst)
         files[file] = dst
 
     return list(files.values())
-
-    # scratch_then_cache is not necessary if we want to see the results
-    # for file in files:
-    #     dirname = os.path.dirname(files[file])
-    #     if os.path.isdir(dirname):
-    #         shutil.rmtree(dirname)
-
-
-def landxml_to_point(xml_file, crs=None, save=False):
-    """Read in a LandXML 1.0 file and return a GeoSeries of points or a
-    Shapefile"""
-    # {'init': 'epsg:2950'}
-    if not crs:
-        # using default crs
-        log('no crs was defined for LandXML file. Using default', lg.WARNING)
-        crs = {'init': 'epsg:2950'}
-    start = time.time()
-    name, extension = os.path.splitext(os.path.basename(xml_file))
-    log('Treating {}...'.format(name))
-    with open(xml_file, "r") as xml_data:
-        xml = objectify.parse(xml_data)
-    # get the root of the file
-    root = xml.getroot()
-    # get all points
-    pnts = root['Surfaces']['Surface']['Definition']['Pnts'].getchildren()
-    # create GeoSeries from list of points by reading in x,y,z coordinates
-    gds = gpd.GeoSeries([Point([float(i) for i in pnt.text.split(' ')])
-                         for pnt in pnts])
-    # set the crs. Must be the same as xml file coordinates.
-    gds.crs = crs
-    to_name = name + '.shp'
-    if save:
-        # save to shapefile
-        gds.to_file(to_name)
-    else:
-        return gds
-    log('Completed {} in {:,.2f} seconds'.format(name, time.time() - start))
 
 
 class Error(Exception):
@@ -721,6 +591,12 @@ class EnergyPlusProcessError(Error):
     """EnergyPlus Process call error"""
 
     def __init__(self, cmd, stderr, idf=None):
+        """
+        Args:
+            cmd:
+            stderr:
+            idf:
+        """
         self.cmd = cmd
         self.idf = idf
         self.stderr = stderr
@@ -731,91 +607,165 @@ class EnergyPlusProcessError(Error):
         return msg
 
 
-class NoCRSDefinedError(Error):
-    def __init__(self, message):
-        self.message = message
-
-
 class cd:
     """Context manager for changing the current working directory"""
 
     def __init__(self, new_path):
+        """
+        Args:
+            new_path:
+        """
         self.newPath = os.path.expanduser(new_path)
 
     def __enter__(self):
         self.savedPath = os.getcwd()
-        os.chdir(self.newPath)
+        if os.path.isdir(self.newPath):
+            os.chdir(self.newPath)
+        else:
+            os.mkdir(self.newPath)
+            os.chdir(self.newPath)
 
     def __exit__(self, etype, value, traceback):
+        """
+        Args:
+            etype:
+            value:
+            traceback:
+        """
         os.chdir(self.savedPath)
 
 
-def project_geom(geom: shapely.geometry, from_crs=None, to_crs=None,
-                 to_latlon=False):
-    """Projects a geometry to another coordinates system
+def rmse(data, targets):
+    """calculate rmse with target values
 
     Args:
-        geom (shapely Polygon or MultiPolygon): the geometry to project
-        from_crs (dict): the starting coordinate reference system of the
-            passed-in geometry, default value (None) will set
-            settings.default_crs as the CRS
-        to_crs (dict): if not None, just project to this crs instead of to UTM
-        to_latlon (bool): of True, just project to lat-lon coordinates
-    Returns:
-        projected geom
+        data:
+        targets:
     """
-    from functools import partial
-    import pyproj
-    from shapely.ops import transform
+    y = piecewise(data)
+    predictions = y
+    error = np.sqrt(np.mean((predictions - targets) ** 2))
+    return error
 
-    if from_crs is None:
-        from_crs = settings.default_crs
 
-    # get the crs value
-    from_crs_get = from_crs.get('init', settings.default_crs['init'])
+def piecewise(data):
+    """returns a piecewise function from an array of the form [hour1, hour2,
+    ..., value1, value2, ...]
 
-    # if to_crs is there, use this value to project the geom
-    if to_crs:
-        # define new projection scheme
-        project = partial(
-            pyproj.transform,
-            pyproj.Proj(init=from_crs_get),
-            # source coordinate system
-            pyproj.Proj(init=to_crs['init']))
+    Args:
+        data:
+    """
+    nb = int(len(data) / 2)
+    bins = data[0: nb]
+    sf = data[nb:]
+    x = np.linspace(0, 8760, 8760)
+    # build condition array
+    conds = [x < bins[0]]
+    conds.extend([np.logical_and(x >= i, x < j) for i, j in zip(bins[0:],
+                                                                bins[1:])])
+    # build function array. This is the value of y when the condition is met.
+    funcs = sf
+    y = np.piecewise(x, conds, funcs)
+    return y
 
-        return transform(project, geom)  # apply projection
-    # if not, get latlon directly or calulte UTM zone from centroid and
-    # return projection
+
+def checkStr(datafile, string):
+    """Find the last occurrence of a string and return its line number
+
+    Returns: the list index containing the string
+
+    Args:
+        datafile (list-like): a list-like object
+        string (str): the string to find in the txt file
+    """
+    value = []
+    count = 0
+    for line in datafile:
+        count = count + 1
+        match = re.search(string, str(line))
+        if match:
+            return count
+            break
+
+
+def write_lines(file_path, lines):
+    """Delete file if exists, then write lines in it
+
+    Args:
+        file_path (str): path of the file
+        lines (list of str): lines to be written in file
+    """
+    # Delete temp file if exists
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    # Save lines in temp file
+    temp_idf_file = open(file_path, "w+")
+    for line in lines:
+        temp_idf_file.write("%s" % line)
+    temp_idf_file.close()
+
+
+def load_umi_template(json_template):
+    """
+    Args:
+        json_template: Absolute or relative filepath to an umi json_template
+
+    Returns:
+        pandas.DataFrame: 17 DataFrames, one for each component groups
+    """
+    if os.path.isfile(json_template):
+        with open(json_template) as f:
+            dicts = json.load(f, object_pairs_hook=OrderedDict)
+
+            return [{key: json_normalize(value)} for key, value in
+                    dicts.items()]
     else:
-        if to_latlon:
-            # if to_latlong is True, project the geom to latlong
-            project = partial(
-                pyproj.transform,
-                pyproj.Proj(init=from_crs_get),
-                # source coordinate system
-                pyproj.Proj(init='epsg:4326'))
-            return transform(project, geom)  # apply projection
-        else:
-            # else, project the geom to UTM
-            # first, project to lat-long
-            project = partial(
-                pyproj.transform,
-                pyproj.Proj(init=from_crs_get),
-                # source coordinate system
-                pyproj.Proj(init='epsg:4326'))
-            geom = transform(project, geom)
-            # then, calculate UTM zone from geom center
-            # get UTM zone
-            import utm
-            easting, northing, zone_number, zone_letter = utm.from_latlon(
-                *(geom.centroid.x, geom.centroid.y))
+        raise ValueError('File {} does not exist'.format(json_template))
 
-            # finally, define new projection scheme and project
-            project = partial(
-                pyproj.transform,
-                pyproj.Proj(init=from_crs_get),
-                # source coordinate system
-                pyproj.Proj(proj='utm', zone=zone_number, ellps='WGS84',
-                            units='m', datum='WGS84'))
 
-            return transform(project, geom)  # apply projection
+def check_unique_name(first_letters, count, name, unique_list, suffix=False):
+    """Making sure new_name does not already exist
+
+    Args:
+        first_letters (str): string at the beginning of the name, giving a hint
+            on what the variable is.
+        count (int): increment to create a unique id in the name.
+        name (str): name that was just created. To be verified that it is unique
+            in this function.
+        unique_list (list): list where unique names are stored.
+        suffix (bool):
+
+    Returns:
+        new_name (str): name that is unique
+    """
+    if suffix:
+        while name in unique_list:
+            count += 1
+            end_count = '%03d' % count
+            name = name[:-3] + end_count
+    else:
+        while name in unique_list:
+            count += 1
+            end_count = '%06d' % count
+            name = first_letters + '_' + end_count
+
+    return name, count
+
+
+def angle(v1, v2, acute=True):
+    """Calculate the angle between 2 vectors
+
+    Args:
+        v1 (Vector3D): vector 1
+        v2 (Vector3D): vector 2
+        acute (bool): If True, give the acute angle, else gives the obtuse one.
+
+    Returns:
+        angle (float): angle between the 2 vectors in degree
+    """
+    angle = np.arccos(
+        np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+    if (acute == True):
+        return angle
+    else:
+        return 2 * np.pi - angle

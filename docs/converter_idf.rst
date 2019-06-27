@@ -1,4 +1,4 @@
-Translator IDF to BUI
+Convert IDF to BUI
 =====================
 
 .. figure:: images/converter@2x.png

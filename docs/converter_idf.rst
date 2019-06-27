@@ -81,9 +81,9 @@ respectively.
 3. `OPTIONS`: There are different options to the `convert` command. The first 3 manage the requested output files.
 Users can chose to return a combination of flags
 
-    - if ``-i`` is added, the IDF file to convert is returned in the output folder. If ``-t`` is added, the T3D file
-      (converted from the IDF file) is returned in the output folder. If ``-d`` is added, the DCK file (TRNSYS input
-      file) is returned in the output folder.
+    - if ``-i`` is added, the path of the IDF file with the modification is returned in the terminal, and the modified
+      IDF file is returned in the output folder. If ``-t`` is added, the path of the T3D file (converted from the IDF file) is returned.
+      If ``-d`` is added, the DCK file (TRNSYS input file) is returned in the output folder, and the path to this DCK file is returned in the terminal.
 
     .. code-block:: python
 

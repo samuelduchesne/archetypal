@@ -88,7 +88,8 @@ def cli(config, data_folder, logs_folder, imgs_folder, cache_folder,
 
 @cli.command()
 @click.argument('idf-file', type=click.Path(exists=True))
-@click.argument('output-folder', type=click.Path(exists=True), required=False , default=".")
+@click.argument('output-folder', type=click.Path(exists=True), required=False,
+                default=".")
 @click.option('--return-idf', '-i', is_flag=True, default=False,
               help='Save modified IDF file to output_folder')
 @click.option('--return_t3d', '-t', is_flag=True, default=False,
@@ -131,15 +132,30 @@ def convert(idf_file, window_lib, return_idf, return_t3d,
     window_kwds = {'u_value': u_value, 'shgc': shgc, 't_vis': t_vis,
                    'tolerance': tolerance}
     with cd(output_folder):
-        archetypal.convert_idf_to_trnbuild(idf_file, window_lib,
-                                           return_idf, True,
-                                           return_t3d, return_dck,
-                                           output_folder, trnsidf_exe,
-                                           template, **window_kwds, ordered=ordered,
-                                           nonum=nonum, N=batchjob,
-                                           geo_floor=geofloor,
-                                           refarea=refarea, volume=volume,
-                                           capacitance=capacitance)
+        paths = archetypal.convert_idf_to_trnbuild(idf_file, window_lib,
+                                                   return_idf, True,
+                                                   return_t3d, return_dck,
+                                                   output_folder, trnsidf_exe,
+                                                   template, **window_kwds,
+                                                   ordered=ordered,
+                                                   nonum=nonum, N=batchjob,
+                                                   geo_floor=geofloor,
+                                                   refarea=refarea,
+                                                   volume=volume,
+                                                   capacitance=capacitance)
+        if paths:
+            click.echo('Here are the paths to the different output files: ')
+
+            for path in paths:
+                if 'MODIFIED' in path:
+                    click.echo(
+                        'Path to the modified IDF file: {}'.format(path))
+                elif 'b18' in path:
+                    click.echo('Path to the BUI file: {}'.format(path))
+                elif 'dck' in path:
+                    click.echo('Path to the DCK file: {}'.format(path))
+                else:
+                    click.echo('Path to the T3D file: {}'.format(path))
 
 
 @cli.command()

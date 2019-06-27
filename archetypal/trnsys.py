@@ -333,9 +333,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     refarea = kwargs.get('refarea', False)
     volume = kwargs.get('volume', False)
     capacitance = kwargs.get('capacitance', False)
-    trnbuild_idf(t3d_path, template, dck=dck, nonum=nonum, N=N,
-                 geo_floor=geo_floor, refarea=refarea, volume=volume,
-                 capacitance=capacitance,
+    trnbuild_idf(t3d_path, output_folder=output_folder, template=template,
+                 dck=dck, nonum=nonum, N=N, geo_floor=geo_floor,
+                 refarea=refarea, volume=volume, capacitance=capacitance,
                  trnsidf_exe=trnsidf_exe)
 
     # Prepare return arguments
@@ -850,9 +850,10 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
             t_vis_win, lay_win, width, window_bunches[win_id])
 
 
-def trnbuild_idf(idf_file, template=None, dck=False, nonum=False, N=False,
-                 geo_floor=0.6, refarea=False, volume=False, capacitance=False,
-                 trnsidf_exe=None):
+def trnbuild_idf(idf_file, output_folder=None, template=None, dck=False,
+                 nonum=False,
+                 N=False, geo_floor=0.6, refarea=False, volume=False,
+                 capacitance=False, trnsidf_exe=None):
     """This program sorts and renumbers the IDF file and writes a B18 file based
     on the geometric information of the IDF file and the template D18 file. In
     addition, an template DCK file can be generated.
@@ -865,13 +866,12 @@ def trnbuild_idf(idf_file, template=None, dck=False, nonum=False, N=False,
         >>> # Exemple of setting kwargs to be unwrapped in the function
         >>> kwargs_dict = {'dck': True, 'geo_floor': 0.57}
         >>> # Exemple how to call the function
-        >>> trnbuild_idf(idf_file, template=os.path.join(
+        >>> trnbuild_idf(idf_file,template=os.path.join(
         >>>              settings.trnsys_default_folder,
-        >>>              r"Building\\trnsIDF\\NewFileTemplate.d18"),
-        >>>              trnsidf_exe=os.path.join(settings.trnsys_default_folder,
-        >>>              r"Building\\trnsIDF\\trnsidf.exe"), **kwargs_dict)
+        >>>              r"Building\\trnsIDF\\NewFileTemplate.d18"
 
     Args:
+        output_folder:
         idf_file (str): path/filename.idf
         template (str): path/NewFileTemplate.d18
         dck (bool): If True, create a template DCK
@@ -908,10 +908,12 @@ def trnbuild_idf(idf_file, template=None, dck=False, nonum=False, N=False,
         raise IOError("template file not found")
 
     # first copy idf_file into output folder
-    if not os.path.isdir(settings.data_folder):
-        os.mkdir(settings.data_folder)
+    if not output_folder:
+        output_folder = settings.data_folder
+    if not os.path.isdir(output_folder):
+        os.mkdir(output_folder)
     head, tail = os.path.split(idf_file)
-    new_idf_file = os.path.relpath(os.path.join(settings.data_folder, tail))
+    new_idf_file = os.path.abspath(os.path.join(output_folder, tail))
     if new_idf_file != idf_file:
         shutil.copy(idf_file, new_idf_file)
     idf_file = os.path.abspath(new_idf_file)  # back to idf_file

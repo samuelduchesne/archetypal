@@ -208,11 +208,7 @@ todo_include_todos = True
 
 # -- Autodoc Skip Memebrs ____________________________________________________
 
-autodoc_default_options = {'members':True,
-                           'private-members':True,
-                           'special-members':True,
-                           'undoc-members':True,
-                           'show-inheritance':True}
+autodoc_default_options = {}
 
 
 def autodoc_skip_member(app, what, name, obj, skip, options):

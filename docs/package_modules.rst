@@ -8,6 +8,8 @@ Schedules Module
 .. currentmodule:: archetypal
 
 .. autoclass:: Schedule
+   :members:
+   :no-undoc-members:
 
 
 IDF operations
@@ -38,9 +40,10 @@ Data Portals
 ------------
 
 .. automodule:: archetypal.dataportal
-
+   :members:
 
 Trnsys
 ------
 
 .. automodule:: archetypal.trnsys
+   :members:

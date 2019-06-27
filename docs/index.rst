@@ -15,6 +15,7 @@ developed by the MIT Sustainable Design Lab.
    :caption: Getting Started
 
    Installation <install.rst>
+   For MacOS <unix_users.rst>
 
 
 .. toctree::

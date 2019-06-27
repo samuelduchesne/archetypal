@@ -2,3 +2,5 @@
 # not when building source packages (python setup.py sdist ...)
 
 include archetypal/templates/*
+include requirements.txt
+include requirements-dev.txt

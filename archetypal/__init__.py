@@ -6,7 +6,7 @@
 ################################################################################
 
 # Version of the package
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 # Latest version of EnergyPlus compatible with archetypal
 ep_version = '8-9-0'
 

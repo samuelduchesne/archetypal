@@ -120,12 +120,6 @@ Users can chose to return a combination of flags
 
         archetypal convert --ordered "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--ordered`` sorts the idf object names
-
-    .. code-block:: python
-
-        archetypal convert --ordered "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
-
     - If ``--nonum`` is added, do not renumber surfaces in BUI. If ``--batchjob`` or ``-N`` is added, does BatchJob Modus when running trnsidf.exe.
       ``--geofloor`` must be followed by a float between 0 and 1, and generates GEOSURF values for distributing direct solar radiation where `geo_floor` % is directed to the floor,
       the rest to walls/windows. If ``--refarea`` is added, updates floor reference area of airnodes. If ``--volume`` is added, updates volume of airnodes.

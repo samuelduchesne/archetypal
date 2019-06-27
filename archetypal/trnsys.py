@@ -346,12 +346,14 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     # Prepare return arguments
     pre, ext = os.path.splitext(t3d_path)
-    b18_path = pre + 'b18'
-    dck_path = pre + 'dck'
+    b18_path = pre + '.b18'
+    dck_path = pre + '.dck'
 
     from itertools import compress
-    return tuple(compress([new_idf_path, b18_path, t3d_path, dck_path],
-                          [return_idf, return_b18, return_t3d, return_dck]))
+    return_path = tuple(compress([new_idf_path, b18_path, t3d_path, dck_path],
+                                 [return_idf, return_b18, return_t3d,
+                                  return_dck]))
+    return return_path
 
 
 def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
@@ -1113,7 +1115,7 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
                         buildingSurf.Outside_Boundary_Condition.lower():
                     msg = 'Surface {"buildSurfName"} has ' \
                           '"OtherSideConditionsModel" as an outside ' \
-                          'boundary condition, that is not implemented'.format(
+                          'boundary condition, this method is not implemented'.format(
                         buildSurfName=buildingSurf.Name)
                     raise NotImplementedError(msg)
 

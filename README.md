@@ -11,8 +11,7 @@ Retrieve, construct, simulate, convert and analyze building simulation templates
 ## Overview
 
 **Archetypal** is a Python package that helps handle building archetypes. The first public feature released in this
-version is the  conversion of [EnergyPlus](https://energyplus.net) IDF models to Trnsys [TrnBuild](http://www.trnsys
-.com/features/suite-of-tools.php) Models (compatible with the multizone building model). For a list of features
+version is the  conversion of [EnergyPlus](https://energyplus.net) IDF models to Trnsys [TrnBuild](http://www.trnsys.com/features/suite-of-tools.php) Models (compatible with the multizone building model). For a list of features
 currently in development see the [In development](#in-development) section.
 
 ## In development

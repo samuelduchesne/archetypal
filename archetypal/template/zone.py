@@ -243,10 +243,10 @@ class Zone(UmiBase, metaclass=Unique):
         z._zonesurfaces = zone.zonesurfaces
 
         z.Constructions = ZoneConstructionSet.from_zone(z)
-        z.Conditioning = ZoneConditioning.from_zone(z)
+        z.Conditioning = ZoneConditioning.from_zone(z) #todo
         z.Ventilation = VentilationSetting.from_zone(z)
         z.DomesticHotWater = DomesticHotWaterSetting.from_zone(z)
-        z.Loads = ZoneLoad.from_zone(z)
+        z.Loads = ZoneLoad.from_zone(z) #todo
 
         # Todo Deal with InternalMassConstruction here
         im = [surf.theidf.getobject('Construction'.upper(),

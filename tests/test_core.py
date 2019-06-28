@@ -2,13 +2,12 @@ import glob
 import archetypal as ar
 import pytest
 
-# configure archetypal
+# todo: Refactor all tests here to implement the new template logic
 
 ar.config(log_console=True, log_file=True, use_cache=True,
           data_folder='tests/temp/data', logs_folder='tests/temp/logs',
           imgs_folder='tests/temp/imgs', cache_folder='tests/temp/cache',
-          umitemplate='tests/input_data/umi_samples/BostonTemplateLibrary_2.json',
-          get_common_umi_objects=True)
+          umitemplate='tests/input_data/umi_samples/BostonTemplateLibrary_2.json')
 
 # # Uncomment this block to test different file variations
 # files_to_try = ['tests/input_data/problematic/*.idf',

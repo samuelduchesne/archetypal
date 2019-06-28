@@ -80,3 +80,7 @@ def pytest_runtest_setup(item):
     plat = sys.platform
     if supported_platforms and plat not in supported_platforms:
         pytest.skip("cannot run on platform %s" % (plat))
+
+
+# dynamically define files to be ignored
+collect_ignore = ["test_core.py"]

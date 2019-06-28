@@ -34,7 +34,10 @@ class IDF(geomeppy.IDF):
     def __init__(self, *args, **kwargs):
         super(IDF, self).__init__(*args, **kwargs)
         self.schedules_dict = self.get_all_schedules()
-        self.name = os.path.basename(self.idfname)
+
+    @property
+    def name(self):
+        return os.path.basename(self.idfname)
 
     @property
     def sql(self):

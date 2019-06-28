@@ -32,9 +32,6 @@ def tabula_available_buildings(code_country='France'):
 
     Args:
         code_country:
-
-    Returns:
-
     """
     # Check code country
     if code_country.upper() not in ['AT', 'BA', 'BE', 'BG', 'CY', 'CZ', 'DE',
@@ -59,13 +56,10 @@ def tabula_api_request(data, table='detail'):
     response.
 
     Args:
-        data (dict): dictionnary of query attributes.
-            with table='all-country', data expects 'code_country'.
-            with table='detail', data expects 'buildingtype', 'suffix', and
-            'variant'.
+        data (dict): dictionnary of query attributes. with table='all-country',
+            data expects 'code_country'. with table='detail', data expects
+            'buildingtype', 'suffix', and 'variant'.
         table (str): the server-table to query. 'detail' or 'all-country'
-    Returns:
-
     """
     # Prepare URL
     if table == 'all-country':
@@ -121,6 +115,8 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
                                   code_type='ReEx',
                                   code_num=1, code_variantnumber=1):
     """
+    How to format ``code_building``:
+        Format the :attr:`code_building` string as such::
 
     Args:
         code_building (str) : The building code string.
@@ -141,8 +137,6 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
         code_typologyregion (str): N for national; otherwise specific codes
             representing regions in a given country
         code_buildingsizeclass (str): 4 standardized classes: 'SFH':
-        Single-family house, 'TH': Terraced house, 'MFH': multi-family house,
-            'AB': Apartment block
         code_construcionyearclass (int or str): allocation of time bands to
             classes. Defined nationally (according to significant changes in
             construction technologies, building codes or available statistical
@@ -150,7 +144,7 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
         code_additional_parameter (str): 1 unique category. Defines the generic
             (or basic) typology matrix so that each residential building of a
             given country can be assigned to one generic type. A further
-            segmentation in subtypes is  possible and can be indicated by a
+            segmentation in subtypes is possible and can be indicated by a
             specific code. Whereas the generic types must comprise the whole
             building stock the total of subtypes must be comprehensive. e.g.
             'HR' (highrises), 'TFrame' (timber frame), 'Semi' (semi-detached)
@@ -163,7 +157,6 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
 
     Returns:
         pandas.DataFrame: The DataFrame from the
-
     """
     # Parse builsing_code
     if code_building is not None:
@@ -235,14 +228,10 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
 
 def tabula_system(code_country, code_boundarycond='SUH', code_variantnumber=1):
     """
-
     Args:
         code_country:
         code_boundarycond:
         code_variantnumber:
-
-    Returns:
-
     """
     # Check code country
     if code_country.upper() not in ['AT', 'BA', 'BE', 'BG', 'CY', 'CZ', 'DE',
@@ -285,17 +274,13 @@ def tabula_system(code_country, code_boundarycond='SUH', code_variantnumber=1):
 
 
 def tabula_system_request(data):
-    """
+    """Returns:
+
+    Examples:
+        'http://webtool.building-typology.eu/data/matrix/system/detail/IT.SUH.01/dc/1546889637169'
 
     Args:
         data (dict): prepared data for html query
-
-    Returns:
-
-    Examples:
-        'http://webtool.building-typology.eu/data/matrix/system/detail/IT.SUH
-        .01/dc/1546889637169'
-
     """
     system = '.'.join(s for s in data['systype'])
     hexint = hashlib.md5(system.encode('utf-8')).hexdigest()[0:13]
@@ -331,12 +316,8 @@ def tabula_system_request(data):
 
 def get_from_cache(url):
     """
-
     Args:
         url:
-
-    Returns:
-
     """
     # if the tool is configured to use the cache
     if settings.use_cache:
@@ -357,13 +338,9 @@ def get_from_cache(url):
 
 def save_to_cache(url, response_json):
     """
-
     Args:
         url:
         response_json:
-
-    Returns:
-
     """
     if settings.use_cache:
         if response_json is None:
@@ -391,10 +368,9 @@ def save_to_cache(url, response_json):
 def openei_api_request(data, pause_duration=None, timeout=180,
                        error_pause_duration=None):
     """
-
     Args:
-        data (dict or OrderedDict): key-value pairs of parameters to post to
-            the API
+        data (dict or OrderedDict): key-value pairs of parameters to post to the
+            API
         pause_duration:
         timeout (int): how long to pause in seconds before requests, if None,
             will query API status endpoint to find when next slot is available
@@ -416,35 +392,23 @@ def openei_api_request(data, pause_duration=None, timeout=180,
         return cached_response_json
 
 
-# def openei_dataset_request(data):
-#     'COMMERCIAL_LOAD_DATA_E_PLUS_OUTPUT'
-#     'https://openei.org/datasets/files/961/pub/{}
-#     'USA_AR_Batesville'
-#     'AWOS'
-#     '723448'
-#     'RefBldgMediumOfficeNew2004'
-#     '/{}.{}.{}_TMY3/{}_v1.3_7.1_3A_USA_GA_ATLANTA\
-#         .csv'
-
-
 def nrel_api_cbr_request(data):
     """
-
-    Args:
-        data: a dict of
-
-    Returns:
-        dict: the json response
+    Notes:
+        For a detailed description of data arguments, visit
+        https://developer.nrel.gov/docs/buildings/commercial-building
+        -resource-database-v1/resources/
 
     Examples:
         >>> import archetypal as ar
         >>> ar.dataportal.nrel_api_cbr_request({'s': 'Commercial'
         >>> 'Reference', 'api_key': 'oGZdX1nhars1cTJYTm7M9T12T1ZOvikX9pH0Zudq'})
 
-    Notes
-        For a detailed description of data arguments, visit
-        https://developer.nrel.gov/docs/buildings/commercial-building
-        -resource-database-v1/resources/
+    Args:
+        data: a dict of
+
+    Returns:
+        dict: the json response
     """
     # define the Overpass API URL, then construct a GET-style URL as a string to
     # hash to look up/save to cache
@@ -492,8 +456,8 @@ def nrel_bcl_api_request(data):
     return the JSON response.
 
     Args:
-        data (dict or OrderedDict): key-value pairs of parameters to post to
-            the API
+        data (dict or OrderedDict): key-value pairs of parameters to post to the
+            API
 
     Returns:
         dict
@@ -545,6 +509,10 @@ def nrel_bcl_api_request(data):
 
 
 def stat_can_request(data):
+    """
+    Args:
+        data:
+    """
     prepared_url = 'https://www12.statcan.gc.ca/rest/census-recensement' \
                    '/CPR2016.{type}?lang={lang}&dguid={dguid}&topic=' \
                    '{topic}&notes={notes}'.format(
@@ -607,6 +575,10 @@ def stat_can_request(data):
 
 
 def stat_can_geo_request(data):
+    """
+    Args:
+        data:
+    """
     prepared_url = 'https://www12.statcan.gc.ca/rest/census-recensement' \
                    '/CR2016Geo.{type}?lang={lang}&geos={geos}&cpt={cpt}'.format(
         type=data.get('type', 'json'),
@@ -668,27 +640,29 @@ def stat_can_geo_request(data):
 
 def download_bld_window(u_factor, shgc, vis_trans, oauth_key, tolerance=0.05,
                         extension='idf', output_folder=None):
-    """Find window constructions corresponding to a combination of a
-    u_factor, shgc and visible transmittance and download their idf file to
-    disk. it is necessary to have an authentication key (see Info below).
+    """Find window constructions corresponding to a combination of a u_factor,
+    shgc and visible transmittance and download their idf file to disk. it is
+    necessary to have an authentication key (see Info below).
+
+    .. _Building_Component_Library: https://bcl.nrel.gov/user/register
 
     Args:
-        u_factor (float or tuple): The center of glass u-factor. Pass a
-            range of values by passing a tuple (from, to). If a tuple is
-            passed, *tolerance* is ignored.
-        shgc (float or tuple): The Solar Heat Gain Coefficient. Pass a range
-            of values by passing a tuple (from, to). If a tuple is passed,
+        u_factor (float or tuple): The center of glass u-factor. Pass a range of
+            values by passing a tuple (from, to). If a tuple is passed,
             *tolerance* is ignored.
-        vis_trans (float or tuple): The Visible Transmittance. Pass a range
-            of values by passing a tuple (from, to). If a tuple is passed,
+        shgc (float or tuple): The Solar Heat Gain Coefficient. Pass a range of
+            values by passing a tuple (from, to). If a tuple is passed,
             *tolerance* is ignored.
-        tolerance (float): relative tolerance for the input values. Default
-            is 0.05 (5%).
+        vis_trans (float or tuple): The Visible Transmittance. Pass a range of
+            values by passing a tuple (from, to). If a tuple is passed,
+            *tolerance* is ignored.
         oauth_key (str): the Building_Component_Library_ authentication key.
+        tolerance (float): relative tolerance for the input values. Default is
+            0.05 (5%).
         extension (str): specify the extension of the file to download.
             (default: 'idf')
-        output_folder (str, optional): specify folder to save response data
-            to. Defaults to settings.data_folder.
+        output_folder (str, optional): specify folder to save response data to.
+            Defaults to settings.data_folder.
 
     Returns:
         (list of archetypal.IDF): a list of IDF files containing window objects
@@ -697,9 +671,6 @@ def download_bld_window(u_factor, shgc, vis_trans, oauth_key, tolerance=0.05,
     Note:
         An authentication key from NREL is required to download building
         components. Register at Building_Component_Library_
-
-    .. _Building_Component_Library: https://bcl.nrel.gov/user/register
-
     """
     # check if one or multiple values
     if isinstance(u_factor, tuple):

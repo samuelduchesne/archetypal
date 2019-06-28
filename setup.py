@@ -2,12 +2,13 @@
 import codecs
 import re
 import sys
+import os
 from os import path
 
 # Always prefer setuptools over distutils
 from setuptools import setup
 
-here = path.abspath(path.dirname(__file__))
+here = os.getcwd()
 
 # This check is here if the user does not have a new enough pip to recognize
 # the minimum Python requirement in the metadata.
@@ -42,6 +43,10 @@ with open(path.join(here, 'requirements.txt')) as f:
     requirements_lines = f.readlines()
 install_requires = [r.strip() for r in requirements_lines]
 
+with open(path.join(here, 'requirements-dev.txt')) as f:
+    requirements_lines = f.readlines()
+dev_requires = [r.strip() for r in requirements_lines]
+
 setup(
     name='archetypal',
     version=find_version('archetypal', '__init__.py'),
@@ -54,13 +59,16 @@ setup(
     license='MIT License',
     author='Samuel Letellier-Duchesne',
     author_email='samuel.letellier-duchesne@polymtl.ca',
-    description='',
+    description='Retrieve, construct, simulate, convert and analyse building '
+                'archetypes',
     long_description=long_description,
     keywords='Building archetypes',
     python_requires='>=3.6',
     install_requires=install_requires,
-    extras_require={'tests': ['coverage', 'coveralls', 'pytest', 'matplotlib'],
-                    'docs': ['sphinx', 'nbsphinx', 'jupyter_client',
-                             'ipykernel']},
-    test_suite='tests'
+    extras_require={'dev': dev_requires},
+    test_suite='tests',
+    entry_points='''
+        [console_scripts]
+        archetypal=archetypal.cli:cli
+    ''',
 )

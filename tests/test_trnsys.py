@@ -21,7 +21,7 @@ def test_trnbuild_from_idf(config):
              ".0_4A_USA_MD_BALTIMORE.idf",
              "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
              "NECB 2011 - Warehouse.idf"]
-    idf_file = os.path.join(file_upper_path, files[0])
+    idf_file = os.path.join(file_upper_path, files[2])
     idf_file = copy_file(idf_file)
 
     window_file = 'W74-lib.dat'
@@ -34,6 +34,8 @@ def test_trnbuild_from_idf(config):
                    'tolerance': 0.05, 'ordered': True}
 
     convert_idf_to_trnbuild(idf_file=idf_file[0], window_lib=window_filepath,
+                            template="tests/input_data/trnsys/NewFileTemplate.d18",
+                            trnsidf_exe='docker/trnsidf/trnsidf.exe',
                             **kwargs_dict)
 
 
@@ -92,7 +94,7 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
 def test_trnbuild_idf_win32(config):
     idf_file = "tests/input_data/trnsys/Building.idf"
     template = "tests/input_data/trnsys/NewFileTemplate.d18"
-    res = trnbuild_idf(idf_file, template, nonum=True)
+    res = trnbuild_idf(idf_file, template=template, nonum=True)
 
     assert res
 
@@ -104,9 +106,7 @@ def test_trnbuild_idf_win32(config):
 def test_trnbuild_idf_darwin_or_linux(config):
     idf_file = "tests/input_data/trnsys/Building.idf"
     template = "tests/input_data/trnsys/NewFileTemplate.d18"
-    res = trnbuild_idf(idf_file, template,
-                       trnidf_exe_dir='docker/trnsidf/trnsidf.exe',
-                       nonum=False, refarea=False, volume=False,
-                       capacitance=True, dck=True)
+    res = trnbuild_idf(idf_file, template=template, dck=True, nonum=False,
+                       refarea=False, volume=False, capacitance=True)
 
     assert res

@@ -1393,6 +1393,13 @@ def find_eplus_installs(vupdater_path):
     # Find all EnergyPlus folders
     list_eplus_dir = glob.glob(os.path.join(path_to_eplus, 'EnergyPlus*'))
 
+    # check if any EnergyPlus install exists
+    if not list_eplus_dir:
+        raise Exception('No EnergyPlus installation found. Make sure '
+                        'you have EnergyPlus installed. Go to '
+                        'https://energyplus.net/downloads to download the '
+                        'latest version of EnergyPlus.')
+
     # Find the most recent version of EnergyPlus installed from the version
     # number (at the end of the folder name)
     v0 = (0, 0, 0)  # Initialize the version number

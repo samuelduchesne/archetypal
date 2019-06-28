@@ -11,7 +11,6 @@ import logging as lg
 import tempfile
 from datetime import datetime, timedelta
 
-import archetypal
 import numpy as np
 import pandas as pd
 from archetypal import log, settings
@@ -23,17 +22,18 @@ class Schedule(object):
     def __init__(self, sch_name, idf=None, start_day_of_the_week=0,
                  strict=False, base_year=2018, schType=None, **kwargs):
         """
-
         Args:
-            idf (IDF): IDF object
             sch_name (str): The schedule name in the idf file
+            idf (IDF): IDF object
             start_day_of_the_week (int): 0-based day of week (Monday=0)
-            strict (bool): if True, schedules that have the Field-Sets such
-                as Holidays and CustomDay will raise an error if they are absent
+            strict (bool): if True, schedules that have the Field-Sets such as
+                Holidays and CustomDay will raise an error if they are absent
                 from the IDF file. If False, any missing qualifiers will be
                 ignored.
             base_year (int): The base year of the schedule. Defaults to 2018
                 since the first day of that year is a Monday.
+            schType (str): The EneryPlus schedule object from which this
+            **kwargs:
         """
         super(Schedule, self).__init__(**kwargs)
         self.strict = strict
@@ -59,6 +59,16 @@ class Schedule(object):
 
     @classmethod
     def constant_schedule(cls, hourly_value=1, Name='AlwaysOn', **kwargs):
+        """Create a schedule with a constant value for the whole year. Defaults
+        to a schedule with a value of 1, named 'AlwaysOn'.
+
+        Args:
+            hourly_value (float, optional): The value for the constant schedule.
+                Defaults to 1.
+            Name (str, optional): The name of the schedule. Defaults to Always
+                On.
+            **kwargs:
+        """
         idftxt = "VERSION, 8.9;"  # Not an emplty string. has just the
         # version number
         # we can make a file handle of a string
@@ -103,14 +113,19 @@ class Schedule(object):
     @property
     def series(self):
         """Returns the schedule values as a pd.Series object with a
-        DateTimeIndex"""
+        DateTimeIndex
+        """
         index = pd.date_range(start=self.startDate, periods=len(
             self.all_values), freq='1H')
         return pd.Series(self.all_values, index=index)
 
     def get_schedule_type_limits_name(self, sch_name=None, sch_type=None):
-        """Return the Schedule Type Limits name associated to a schedule
-        name"""
+        """Return the Schedule Type Limits name associated to a schedule name
+
+        Args:
+            sch_name:
+            sch_type:
+        """
         if sch_name is None:
             sch_name = self.schName
         if sch_type is None:
@@ -124,7 +139,11 @@ class Schedule(object):
             return schedule_limit_name
 
     def get_schedule_type_limits_data(self, sch_name=None):
-        """Returns Schedule Type Limits data from schedule name"""
+        """Returns Schedule Type Limits data from schedule name
+
+        Args:
+            sch_name:
+        """
 
         if sch_name is None:
             sch_name = self.schName
@@ -148,7 +167,11 @@ class Schedule(object):
             return lower_limit, upper_limit, numeric_type, unit_type
 
     def get_schedule_type(self, sch_name=None):
-        """Return the schedule type"""
+        """Return the schedule type
+
+        Args:
+            sch_name:
+        """
         if sch_name is None:
             sch_name = self.schName
 
@@ -165,6 +188,13 @@ class Schedule(object):
         return datetime(start_date.year, start_date.month, start_date.day)
 
     def plot(self, slice=None, **kwargs):
+        """Plot the schedule :param slice: Implements the .loc method on the
+        schedule Series object.
+
+        Args:
+            slice:
+            **kwargs:
+        """
         hourlyvalues = self.all_values
         index = pd.date_range(self.startDate, periods=len(
             hourlyvalues),
@@ -178,7 +208,11 @@ class Schedule(object):
         return ax
 
     def get_interval_day_ep_schedule_values(self, sch_name=None):
-        """'Schedule:Day:Interval"""
+        """Schedule:Day:Interval
+
+        Args:
+            sch_name (str): the name of the schedule
+        """
 
         if sch_name is None:
             sch_name = self.schName
@@ -208,7 +242,11 @@ class Schedule(object):
         return hourly_values
 
     def get_hourly_day_ep_schedule_values(self, sch_name=None):
-        """'Schedule:Day:Hourly'"""
+        """Schedule:Day:Hourly
+
+        Args:
+            sch_name (str): the name of the schedule
+        """
         if sch_name is None:
             sch_name = self.schName
 
@@ -220,7 +258,13 @@ class Schedule(object):
 
     def get_compact_weekly_ep_schedule_values(self, sch_name=None,
                                               start_date=None, index=None):
-        """'schedule:week:compact'"""
+        """schedule:week:compact
+
+        Args:
+            sch_name (str): the name of the schedule
+            start_date:
+            index:
+        """
         if start_date is None:
             start_date = self.startDate
         if index is None:
@@ -267,7 +311,11 @@ class Schedule(object):
         return weekly_schedules.values
 
     def get_daily_weekly_ep_schedule_values(self, sch_name=None):
-        """'schedule:week:daily'"""
+        """schedule:week:daily
+
+        Args:
+            sch_name (str): the name of the schedule
+        """
         if sch_name is None:
             sch_name = self.schName
 
@@ -288,7 +336,11 @@ class Schedule(object):
         return hourly_values.ravel()
 
     def get_list_day_ep_schedule_values(self, sch_name=None):
-        """'schedule:day:list'"""
+        """schedule:day:list
+
+        Args:
+            sch_name (str): the name of the schedule
+        """
         if sch_name is None:
             sch_name = self.schName
 
@@ -321,7 +373,11 @@ class Schedule(object):
         return series.values
 
     def get_constant_ep_schedule_values(self, sch_name=None):
-        """'schedule:constant'"""
+        """schedule:constant
+
+        Args:
+            sch_name (str): the name of the schedule
+        """
         if sch_name is None:
             sch_name = self.schName
 
@@ -340,7 +396,11 @@ class Schedule(object):
         return hourly_values
 
     def get_file_ep_schedule_values(self, sch_name=None):
-        """'schedule:file'"""
+        """schedule:file
+
+        Args:
+            sch_name (str): the name of the schedule
+        """
         if sch_name is None:
             sch_name = self.schName
 
@@ -368,7 +428,11 @@ class Schedule(object):
         return values.iloc[:, 0].values
 
     def get_compact_ep_schedule_values(self, sch_name=None):
-        """'schedule:compact'"""
+        """schedule:compact
+
+        Args:
+            sch_name (str): the name of the schedule
+        """
 
         if sch_name is None:
             sch_name = self.schName
@@ -392,7 +456,7 @@ class Schedule(object):
         how_interpolate = None
         for field in fields:
             if any([spe in field.lower() for spe in field_sets]):
-                f_set, hour, minute, value = self.field_interpreter(field)
+                f_set, hour, minute, value = self._field_interpreter(field)
 
                 if f_set.lower() == 'through':
                     # main condition. All sub-conditions must obey a
@@ -405,7 +469,7 @@ class Schedule(object):
                     from_time = '00:00'
 
                     # Prepare ep_to_day variable
-                    ep_to_day = self.date_field_interpretation(value) + \
+                    ep_to_day = self._date_field_interpretation(value) + \
                                 timedelta(days=1)
 
                     # Calculate Timedelta in days
@@ -510,9 +574,13 @@ class Schedule(object):
         else:
             return series.values
 
-    def field_interpreter(self, field):
-        """dealing with a Field-Set (Through, For, Interpolate,
-        # Until, Value) and return the parsed string"""
+    def _field_interpreter(self, field):
+        """dealing with a Field-Set (Through, For, Interpolate, # Until, Value)
+        and return the parsed string
+
+        Args:
+            field:
+        """
 
         values_sets = ['weekdays', 'weekends', 'alldays', 'allotherdays',
                        'sunday', 'monday', 'tuesday', 'wednesday',
@@ -605,12 +673,20 @@ class Schedule(object):
 
     @staticmethod
     def invalidate_condition(series):
+        """
+        Args:
+            series:
+        """
         index = series.index
         periods = len(series)
         return pd.Series([False] * periods, index=index)
 
     def get_yearly_ep_schedule_values(self, sch_name=None):
-        """'schedule:year'"""
+        """schedule:year
+
+        Args:
+            sch_name (str): the name of the schedule
+        """
         # first week
 
         start_date = self.startDate
@@ -672,9 +748,10 @@ class Schedule(object):
         """Main function that returns the schedule values
 
         Args:
-            sch_type:
-            index:
+            sch_name (str): the name of the schedule
             start_date:
+            index:
+            sch_type:
         """
 
         if sch_name is None:
@@ -725,7 +802,11 @@ class Schedule(object):
         return hourly_values
 
     def is_schedule(self, sch_name):
-        """Returns True if idfobject is one of 'schedule_types'"""
+        """Returns True if idfobject is one of 'schedule_types'
+
+        Args:
+            sch_name (str): the name of the schedule
+        """
         if sch_name.upper() in self.idf.schedules_dict:
             return True
         else:
@@ -736,8 +817,12 @@ class Schedule(object):
         'Schedule:Week:Daily' and 'Schedule:Day:Hourly' representation
 
         Returns:
-            'Schedule:Year', list of ['Schedule:Week:Daily'],
-            list of ['Schedule:Day:Hourly']
+            3-element tuple containing
+
+            - **yearly** (*Schedule*): The yearly schedule object
+            - **weekly** (*list of Schedule*): The list of weekly schedule
+              objects
+            - **daily** (*list of Schedule*):The list of daily schedule objects
         """
 
         full_year = np.array(self.all_values)  # array of shape (8760,)
@@ -868,18 +953,18 @@ class Schedule(object):
                                       save=False, **new_dict)
         return ep_year, ep_weeks, ep_days
 
-    def date_field_interpretation(self, field):
+    def _date_field_interpretation(self, field):
         """Date Field Interpretation
+
+        Info:
+            See EnergyPlus documentation for more details: 1.6.8.1.2 Field:
+            Start Date (Table 1.4: Date Field Interpretation)
 
         Args:
             field (str): The EnergyPlus Field Contents
 
         Returns:
             (datetime): The datetime object
-
-        Info:
-            See EnergyPlus documentation for more details:
-            1.6.8.1.2 Field: Start Date (Table 1.4: Date Field Interpretation)
         """
         # < number > Weekday in Month
         formats = ['%m/%d', '%d %B', '%B %d', '%d %b', '%b %d']
@@ -895,7 +980,7 @@ class Schedule(object):
         if date is None:
             # if the defined formats did not work, try the fancy parse
             try:
-                date = self.parse_fancy_string(field)
+                date = self._parse_fancy_string(field)
             except:
                 msg = "the schedule '{sch}' contains a " \
                       "Field that is not understood: '{field}'".format(
@@ -907,7 +992,7 @@ class Schedule(object):
         else:
             return date
 
-    def parse_fancy_string(self, field):
+    def _parse_fancy_string(self, field):
         """Will try to parse cases such as `3rd Monday in February` or `Last
         Weekday In Month`
 
@@ -952,14 +1037,13 @@ class Schedule(object):
         """helper function to return the proper slicer depending on the
         field_set value.
 
-        Available values are:
-        Weekdays, Weekends, Holidays, Alldays, SummerDesignDay,
-        WinterDesignDay, Sunday, Monday, Tuesday, Wednesday, Thursday,
-        Friday, Saturday, CustomDay1, CustomDay2, AllOtherDays
+        Available values are: Weekdays, Weekends, Holidays, Alldays,
+        SummerDesignDay, WinterDesignDay, Sunday, Monday, Tuesday, Wednesday,
+        Thursday, Friday, Saturday, CustomDay1, CustomDay2, AllOtherDays
 
         Args:
             field (str): The EnergyPlus field set value.
-            slicer_ (pd.Series): The persistent slicer for this schedule
+            slicer_:
 
         Returns:
             (indexer-like): Returns the appropriate indexer for the series.
@@ -1029,7 +1113,11 @@ class Schedule(object):
         return len(self.all_values)
 
     def __eq__(self, other):
-        """Overrides the default implementation"""
+        """Overrides the default implementation
+
+        Args:
+            other:
+        """
         if isinstance(other, Schedule):
             return self.all_values == other.all_values
         else:
@@ -1063,15 +1151,24 @@ class Schedule(object):
             raise NotImplementedError
 
     def get_sdow(self, start_day_of_week):
-        """Returns the start day of the week"""
+        """Returns the start day of the week
+
+        Args:
+            start_day_of_week:
+        """
         if start_day_of_week is None:
             return self.idf.day_of_week_for_start_day
         else:
             return start_day_of_week
 
     def special_day(self, field, slicer_):
-        """try to get the RunPeriodControl:SpecialDays for the corresponding
-        Day Type"""
+        """try to get the RunPeriodControl:SpecialDays for the corresponding Day
+        Type
+
+        Args:
+            field:
+            slicer_:
+        """
         sp_slicer_ = slicer_.copy()
         sp_slicer_.loc[:] = False
         special_day_types = ['holiday', 'customday1', 'customday2']
@@ -1084,7 +1181,7 @@ class Schedule(object):
             for dd in dd:
                 # can have more than one special day types
                 data = dd.Start_Date
-                ep_start_date = self.date_field_interpretation(data)
+                ep_start_date = self._date_field_interpretation(data)
                 ep_orig = datetime(self.year, 1, 1)
                 days_to_speciald = (ep_start_date - ep_orig).days
                 duration = int(dd.Duration)
@@ -1105,6 +1202,11 @@ class Schedule(object):
 
     def design_day(self, field, slicer_):
         # try to get the SizingPeriod:DesignDay for the corresponding Day Type
+        """
+        Args:
+            field:
+            slicer_:
+        """
         sp_slicer_ = slicer_.copy()
         sp_slicer_.loc[:] = False
         dds = self.idf.idfobjects['SizingPeriod:DesignDay'.upper()]
@@ -1115,7 +1217,7 @@ class Schedule(object):
                 month = dd.Month
                 day = dd.Day_of_Month
                 data = str(month) + "/" + str(day)
-                ep_start_date = self.date_field_interpretation(data)
+                ep_start_date = self._date_field_interpretation(data)
                 ep_orig = datetime(self.year, 1, 1)
                 days_to_speciald = (ep_start_date - ep_orig).days
                 duration = 1  # Duration of 1 day
@@ -1136,17 +1238,26 @@ class Schedule(object):
 
             data = [dd[0].Month, dd[0].Day_of_Month]
             date = '/'.join([str(item).zfill(2) for item in data])
-            date = self.date_field_interpretation(date)
+            date = self._date_field_interpretation(date)
             return lambda x: x.index == date
 
 
 def _conjunction(*conditions, logical=np.logical_and):
-    """Applies a logical function on n conditions"""
+    """Applies a logical function on n conditions
+
+    Args:
+        *conditions:
+        logical:
+    """
     return functools.reduce(logical, conditions)
 
 
 def _separator(sep):
-    """helper function to return the correct delimiter"""
+    """helper function to return the correct delimiter
+
+    Args:
+        sep:
+    """
     if sep == 'Comma':
         return ','
     elif sep == 'Tab':
@@ -1160,7 +1271,11 @@ def _separator(sep):
 
 
 def _how(how):
-    """Helper function to return the correct resampler"""
+    """Helper function to return the correct resampler
+
+    Args:
+        how:
+    """
     if how.lower() == 'average':
         return 'mean'
     elif how.lower() == 'linear':

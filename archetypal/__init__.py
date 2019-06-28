@@ -6,9 +6,13 @@
 ################################################################################
 
 # Version of the package
-__version__ = '1.2.0'
+__version__ = '1.2.5'
 # Latest version of EnergyPlus compatible with archetypal
 ep_version = '8-9-0'
+
+# warn if a newer version of archetypal is available
+from outdated import warn_if_outdated
+warn_if_outdated('archetypal', __version__)
 
 from .utils import *
 from .simple_glazing import *
@@ -23,3 +27,4 @@ from .trnsys import *
 from .template import *
 from .core import *
 from .building import *
+from .cli import *

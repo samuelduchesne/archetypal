@@ -130,7 +130,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                     schedule_equipment_index - 1], idf=zone.idf)
             EquipmentPowerDensity = zone.sql['NominalElectricEquipment'][
                 zone.sql['NominalElectricEquipment']['ObjectName'].str.contains(
-                    zone.Name.upper())]['DesignLevel'].iloc[0]
+                    zone.Name.upper())]['DesignLevel'].iloc[0] / zone.area
         # Verifies if Lights in zone
         if zone.sql['NominalElectricEquipment'][
             zone.sql['NominalElectricEquipment']['ObjectName'].str.contains(
@@ -146,7 +146,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                     schedule_light_index - 1], idf=zone.idf)
             LightingPowerDensity = zone.sql['NominalLighting'][
                 zone.sql['NominalLighting']['ObjectName'].str.contains(
-                    zone.Name.upper())]['DesignLevel'].iloc[0]
+                    zone.Name.upper())]['DesignLevel'].iloc[0] / zone.area
         # Verifies if People in zone
         if zone.sql['NominalPeople'][
             zone.sql['NominalPeople']['ObjectName'].str.contains(
@@ -156,15 +156,14 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         else:
             schedule_people_index = zone.sql['NominalPeople'][
                 zone.sql['NominalPeople']['ObjectName'].str.contains(
-                    zone.Name.upper())]['ActivityScheduleIndex'].iloc[0]
+                    zone.Name.upper())]['NumberOfPeopleScheduleIndex'].iloc[0]
             OccupancySchedule = UmiSchedule(
                 Name=zone.sql['Schedules']['ScheduleName'].iloc[
                     schedule_people_index - 1], idf=zone.idf)
             PeopleDensity = zone.sql['NominalPeople'][
                 zone.sql['NominalPeople']['ObjectName'].str.contains(
-                    zone.Name.upper())]['NumberOfPeople'].iloc[0]
+                    zone.Name.upper())]['NumberOfPeople'].iloc[0] / zone.area
 
-        # todo: to finish
         name = zone.Name + "_ZoneLoad"
         z_load = cls(Name=name, zone=zone,
                      DimmingType='Continuous',

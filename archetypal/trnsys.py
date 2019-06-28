@@ -914,7 +914,7 @@ def trnbuild_idf(idf_file, output_folder=None, template=None, dck=False,
         os.mkdir(output_folder)
     head, tail = os.path.split(idf_file)
     new_idf_file = os.path.abspath(os.path.join(output_folder, tail))
-    if new_idf_file != idf_file:
+    if new_idf_file != os.path.abspath(idf_file):
         shutil.copy(idf_file, new_idf_file)
     idf_file = os.path.abspath(new_idf_file)  # back to idf_file
     del new_idf_file, head, tail

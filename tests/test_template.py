@@ -1,7 +1,6 @@
+import archetypal as ar
 import numpy as np
 import pytest
-
-import archetypal as ar
 
 
 def test_add_materials():
@@ -96,8 +95,10 @@ def test_iadd_opaque_construction():
     assert oc_a.id == id_  # id should not change
     assert oc_a.id != oc_b.id
 
+
 core_name = 'core'
 perim_name = 'perim'
+
 
 @pytest.fixture(scope='session')
 def small_idf(config):
@@ -186,3 +187,22 @@ def test_iadd_zone(small_idf):
 
 def test_add_zoneconditioning(small_idf):
     pass
+
+
+def test_traverse_graph():
+    file = "/Users/samuelduchesne/Dropbox/Polytechnique/Doc/software" \
+           "/archetypal/tests/input_data/regular/NECB 2011-MediumOffice-NECB " \
+           "HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+    w = "/Users/samuelduchesne/Dropbox/Polytechnique/Doc/software/archetypal" \
+        "/tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+
+    idf = ar.load_idf(file)
+    sql = ar.run_eplus(file, weather_file=w, prep_outputs=True, verbose="v",
+                       output_report="sql", expandobjects=True)
+
+    from archetypal import BuildingTemplate
+
+    bt = BuildingTemplate.from_idf(idf, sql=sql)
+    G = bt.zone_graph(log_adj_report=False, skeleton=False, force=True)
+
+    assert G

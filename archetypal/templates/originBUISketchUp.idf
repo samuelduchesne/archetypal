@@ -1,0 +1,192 @@
+!-   ===========  BUI-Template for TRNSYS 18 ==========
+!-T18_Template_Start
+!-*********************************************************************************
+!-*  TRNBuild   2.0.266
+!-*********************************************************************************
+!-*   BUILDING DESCRIPTIONS FILE TRNSYS
+!-*   FOR BUILDING:   
+!-*   GET BY WORKING WITH TRNBuild 1.0 for Windows
+!-*********************************************************************************
+!-*
+!-*--------------------------------------------------------------------------------
+!-*  C o m m e n t s
+!-*--------------------------------------------------------------------------------
+!-*
+!-*--------------------------------------------------------------------------------
+!-*  P r o j e c t
+!-*--------------------------------------------------------------------------------
+!-*+++ PROJECT
+!-*+++ TITLE=UNDEFINED
+!-*+++ DESCRIPTION=UNDEFINED
+!-*+++ CREATED=UNDEFINED
+!-*+++ ADDRESS=UNDEFINED
+!-*+++ CITY=UNDEFINED
+!-*+++ SWITCH=UNDEFINED
+!-*--------------------------------------------------------------------------------
+!-*  P r o p e r t i e s
+!-*--------------------------------------------------------------------------------
+!-PROPERTIES
+!- DENSITY=1.204 : CAPACITY=1.012 : PRESSURE=101325.000 : HVAPOR=2454.0 : SIGMA=2.041e-007 : RTEMP=293.15
+!-*--- convective heat transfer coefficient calculation ---------------------
+!- KFLOORUP=7.2 : EFLOORUP=0.31 : KFLOORDOWN=3.888 : EFLOORDOWN=0.31
+!- KCEILUP=7.2 : ECEILUP=0.31 : KCEILDOWN=3.888 : ECEILDOWN=0.31
+!- KVERTICAL=5.76 : EVERTICAL=0.3
+!-*--- radiance parameters -------------------
+!- SCENE_ROTATION_ANGLE=0 : GROUND_IDS= : GROUND_REFLECTANCE=0.2 : SHADER_REFLECTANCE=0
+!- CALC_MODE=RAD : LATITUDE=48 : LONGITUDE=-9.2 : TIME_ZONE=-15 : SITE_ELEVATION=200
+!- AB=5 : AD=1000 : AS=20 : AR=300 : AA=0.1
+!- LR=6 : ST=0.15 : SJ=1 : LW=0.004 : DJ=0 : DS=0.2 : DR=2 : DP=512
+!-*--- comfort parameters -------------------
+!- DIAM-SENSOR=0.07 : EPS-SENSOR=0.82 : REFL-SENSOR=0.47 : ELV_AIRSPEED1=0.3 : ELV_AIRSPEED2=0.7 : ELV_AIRSPEED3=1.2
+!-*--- other -------------------
+!- FSCAL_TREGENZA=MEDIUM : SHM_MODE=0 : SURFGRID=0.2
+!-*--- daylight  -------------------
+!- UDIMIN=100 : UDIMAX=2000 : DAMIN=300
+!-*
+!-*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!-TYPES
+!-*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!-*
+!-*--------------------------------------------------------------------------------
+!-*  L a y e r s
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  I n p u t s
+!-*--------------------------------------------------------------------------------
+!-INPUTS TGROUND TBOUNDARY SHADE_CLOSE SHADE_OPEN MAX_ISHADE MAX_ESHADE
+!-INPUTS_DESCRIPTION
+!- TGROUND : C : Ground Temperature (boundary temperature used for floors adjacent to the ground)
+!- TBOUNDARY : C : Boundary Temperature (boundary temperature used for boundary floors, walls, ceilings)
+!- SHADE_CLOSE : kJ/hr.m^2 : threshold of total radiation on facade where shading device is activated
+!- SHADE_OPEN : kJ/hr.m^2 : threshold of total radiation on facade where shading device is deactivated
+!- MAX_ISHADE : any : max shading factor of internal shading
+!- MAX_ESHADE : any : max shading factor of external shading
+!-*--------------------------------------------------------------------------------
+!-*  S c h e d u l e s
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  C O N S T R U C T I O N (Wall, Floor, Ceiling,..)
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  W i n d o w s
+!-*--------------------------------------------------------------------------------
+
+!-*--------------------------------------------------------------------------------
+!-*  G a i n s
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  C o m f o r t
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  I n f i l t r a t i o n
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  V e n t i l a t i o n
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  C o o l i n g
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  H e a t i n g
+!-*--------------------------------------------------------------------------------
+!-*--------------------------------------------------------------------------------
+!-*  D a y l i g h t   C o n t r o l 
+!-*--------------------------------------------------------------------------------
+!-*
+!-*--------------------------------------------------------------------------------
+!-*  Z o n e s
+!-*--------------------------------------------------------------------------------
+!-ZONES 
+!-*--------------------------------------------------------------------------------
+!-*  O r i e n t a t i o n s
+!-*--------------------------------------------------------------------------------
+!-HEMISPHERE NORTHERN
+!-ORIENTATIONS H_0_0
+!-INTERNAL_CALCULATION H_0_0
+!-*
+!-*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!-BUILDING
+!-*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!-*--------------------------------------------------------------------------------
+!-*  O u t p u t s
+!-*--------------------------------------------------------------------------------
+!-OUTPUTS
+!- TRANSFER : TIMEBASE=1.000
+!- DEFAULT
+!-*
+!-*--------------------------------------------------------------------------------
+!-*  E n d
+!-*--------------------------------------------------------------------------------
+!-END
+!-
+!-_EXTENSION_WINPOOL_START_
+!-*** END OF LIBRARY ***
+!-********************************************************************************************************************************
+!-*WinID Description                                 Design     U-Value  g-value   T-sol  Rf-sol  T-vis_daylight  Lay  Width(mm)
+!-********************************************************************************************************************************
+!-_EXTENSION_WINPOOL_END_
+!-
+!-_EXTENSION_BuildingGeometry_START_
+!-
+!-_EXTENSION_BuildingGeometry_END_
+!-
+!-
+!-_EXTENSION_VirtualSurfaceGeometry_START_
+!-_EXTENSION_VirtualSurfaceGeometry_END_
+!-
+!-
+!-_EXTENSION_ExternalShadingGeometry_START_
+!-
+!-_EXTENSION_ExternalShadingGeometry_END_
+!-
+!-
+!-_EXTENSION_GeoPositionGeometry_START_
+!-_EXTENSION_GeoPositionGeometry_END_
+!-
+!-
+!-_EXTENSION_DaylightSensorPoints_START_
+!-_EXTENSION_DaylightSensorPoints_END_
+!-
+!-T18_Template_Stop
+
+
+!-   ===========  ALL OBJECTS IN CLASS: VERSION ===========
+ 
+!-   ===========  ALL OBJECTS IN CLASS: BUILDING ===========
+ 
+!-   ===========  ALL OBJECTS IN CLASS: LOCATION ===========
+ 
+!-   ===========  ALL OBJECTS IN CLASS: CONSTRUCTION ===========
+  Construction,
+    EXT_WINDOW1;         !- Name
+!-   ===========  ALL OBJECTS IN CLASS: SurfaceProperty:OtherSideCoefficients ===========
+SurfaceProperty:OtherSideCoefficients,
+    BOUNDARY=IDENTICAL;
+SurfaceProperty:OtherSideCoefficients,
+    BOUNDARY=INPUT 1*TBOUNDARY;
+SurfaceProperty:OtherSideCoefficients,   
+    BOUNDARY=INPUT 1*TBOUNDARY_2;
+SurfaceProperty:OtherSideCoefficients,
+    BOUNDARY=INPUT 1*TBOUNDARY_3;
+SurfaceProperty:OtherSideCoefficients,   
+    BOUNDARY=INPUT 1*TGROUND;
+SurfaceProperty:OtherSideCoefficients,
+    BOUNDARY=20; 
+SurfaceProperty:OtherSideCoefficients,
+    BOUNDARY=15; 
+ 
+!-   ===========  ALL OBJECTS IN CLASS: WindowProperty:ShadingControl ===========
+  WindowProperty:ShadingControl,
+    ESHADE=0; ISHADE=0 !- Name
+  WindowProperty:ShadingControl,
+    ESHADE=INPUT 1*MAX_ESHADE : SHADECNTRL=ESHADE_INTERNAL;  !- Name
+  WindowProperty:ShadingControl,
+    ISHADE=INPUT 1*MAX_ISHADE : SHADECNTRL=ISHADE_INTERNAL;  !- Name
+
+!-   ===========  ALL OBJECTS IN CLASS: ZONE_TYPE ===========
+ 
+  ZoneType,
+    00_NOT_SELECTED;              !- Name
+ !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:VARIABLEDICTIONARY ===========
+ 
+  Output:VariableDictionary,IDF;

@@ -58,7 +58,7 @@ class IDF(geomeppy.IDF):
         for surf in surfaces:
             zone = surfaces[0].get_referenced_object("Zone_Name")
             part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
-            multiplier = float(zone.Multiplier)
+            multiplier = float(zone.Multiplier if zone.Multiplier != '' else 1)
 
             area += surf.area * multiplier * part_of
         return area

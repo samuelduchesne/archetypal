@@ -142,7 +142,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
         new_t = np.append(self_t, other_t)
         new_t = new_t * factor
-        new_m = self_m + other_m
+        new_m = np.append(self_m , other_m)
         return new_m, new_t
 
     @classmethod
@@ -225,7 +225,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                     pass
                 else:
                     layers.append(MaterialLayer(**dict(Material=o,
-                                                       Thickness=material.Thickness)))
+                                                       Thickness=o._thickness)))
             if not found:
                 raise AttributeError("%s material not found in IDF" % layer)
         return layers

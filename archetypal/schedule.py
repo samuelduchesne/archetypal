@@ -6,13 +6,14 @@
 ################################################################################
 
 import functools
-import io
 import logging as lg
 import tempfile
 from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
+
+import archetypal
 from archetypal import log, settings
 
 
@@ -35,7 +36,6 @@ class Schedule(object):
             schType (str): The EneryPlus schedule object from which this
             **kwargs:
         """
-        super(Schedule, self).__init__(**kwargs)
         self.strict = strict
         self.idf = idf
         self.schName = sch_name
@@ -58,7 +58,8 @@ class Schedule(object):
             self.schTypeLimitsName = _type
 
     @classmethod
-    def constant_schedule(cls, hourly_value=1, Name='AlwaysOn', **kwargs):
+    def constant_schedule(cls, hourly_value=1, Name='AlwaysOn',
+                          idf=None, **kwargs):
         """Create a schedule with a constant value for the whole year. Defaults
         to a schedule with a value of 1, named 'AlwaysOn'.
 
@@ -69,24 +70,33 @@ class Schedule(object):
                 On.
             **kwargs:
         """
-        idftxt = "VERSION, 8.9;"  # Not an emplty string. has just the
-        # version number
-        # we can make a file handle of a string
-        fd, name = tempfile.mkstemp(suffix='_schedule.idf', prefix='temp_',
-                                   dir=settings.cache_folder, text=True)
-        with open(name, 'w') as f:
-            f.write(idftxt)
-        # initialize the IDF object with the file handle
-        idf_scratch = archetypal.IDF(name)
+        if idf:
+            # Add the schedule to the existing idf
+            idf.add_object(ep_object='Schedule:Constant'.upper(),
+                           **dict(Name=Name,
+                                  Schedule_Type_Limits_Name='',
+                                  Hourly_Value=hourly_value),
+                           save=False)
+        else:
+            # Create a new idf object and add the schedule to it.
+            idftxt = "VERSION, 8.9;"  # Not an empty string. has just the
+            # version number
+            # we can make a file handle of a string
+            fd, name = tempfile.mkstemp(suffix='_schedule.idf', prefix='temp_',
+                                        dir=settings.cache_folder, text=True)
+            with open(name, 'w') as f:
+                f.write(idftxt)
+            # initialize the IDF object with the file handle
+            idf_scratch = archetypal.IDF(name)
 
-        idf_scratch.add_object(ep_object='Schedule:Constant'.upper(),
-                               **dict(Name=Name,
-                                      Schedule_Type_Limits_Name='',
-                                      Hourly_Value=hourly_value),
-                               save=False)
+            idf_scratch.add_object(ep_object='Schedule:Constant'.upper(),
+                                   **dict(Name=Name,
+                                          Schedule_Type_Limits_Name='',
+                                          Hourly_Value=hourly_value),
+                                   save=False)
 
-        sched = Schedule(sch_name=Name, idf=idf_scratch, **kwargs)
-        return sched
+            sched = Schedule(sch_name=Name, idf=idf_scratch, **kwargs)
+            return sched
 
     @property
     def all_values(self):
@@ -223,7 +233,7 @@ class Schedule(object):
 
         number_of_day_sch = int((len(values.fieldvalues) - 3) / 2)
 
-        hourly_values = np.arange(24)
+        hourly_values = np.arange(24, dtype=float)
         start_hour = 0
         for i in range(number_of_day_sch):
             value = float(values['Value_Until_Time_{}'.format(i + 1)])
@@ -1240,6 +1250,31 @@ class Schedule(object):
             date = '/'.join([str(item).zfill(2) for item in data])
             date = self._date_field_interpretation(date)
             return lambda x: x.index == date
+
+    def combine(self, other, weights):
+        """Combine two schedule objects together"""
+        # Check if other is the same type as self
+        if not isinstance(other, self.__class__):
+            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
+                                                 other.__class__.__name__)
+            raise NotImplementedError(msg)
+
+        # check if the schedule is the same
+
+        if all(self.all_values == other.all_values):
+            return self
+
+        new_values = np.average([self.all_values, other.all_values],
+                                axis=0, weights=weights)
+
+        # the new object's name
+        name = '+'.join([self.schName, other.schName])
+
+        attr = dict(value=new_values)
+
+        new_obj = self.__class__(sch_name=name, **attr)
+
+        return new_obj
 
 
 def _conjunction(*conditions, logical=np.logical_and):

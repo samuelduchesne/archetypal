@@ -96,33 +96,38 @@ def test_iadd_opaque_construction():
     assert oc_a.id == id_  # id should not change
     assert oc_a.id != oc_b.id
 
+core_name = 'core'
+perim_name = 'perim'
 
 @pytest.fixture(scope='session')
-def small_idf():
+def small_idf(config):
     file = "tests/input_data/umi_samples/B_Off_0.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = ar.load_idf(file)
-    yield idf
+    sql = ar.run_eplus(file, weather_file=w, prep_outputs=True,
+                       output_report='sql', verbose='v', design_day=False)
+    yield idf, sql
 
 
 def test_add_zoneconstructionset(small_idf):
     """Test __add__() for ZoneConstructionSet"""
-    idf = small_idf
-    zone_core = idf.getobject('ZONE', 'core')
-    zone_perim = idf.getobject('ZONE', 'perim')
+    idf, sql = small_idf
+    zone_core = idf.getobject('ZONE', core_name)
+    zone_perim = idf.getobject('ZONE', perim_name)
 
     z_core = ar.ZoneConstructionSet.from_zone(
-        ar.Zone.from_zone_epbunch(zone_core))
+        ar.Zone.from_zone_epbunch(zone_core, sql=sql))
     z_perim = ar.ZoneConstructionSet.from_zone(
-        ar.Zone.from_zone_epbunch(zone_perim))
+        ar.Zone.from_zone_epbunch(zone_perim, sql=sql))
     z_new = z_core + z_perim
     assert z_new
 
 
 def test_iadd_zoneconstructionset(small_idf):
     """Test __iadd__() for ZoneConstructionSet"""
-    idf = small_idf
-    zone_core = idf.getobject('ZONE', 'core')
-    zone_perim = idf.getobject('ZONE', 'perim')
+    idf, sql = small_idf
+    zone_core = idf.getobject('ZONE', core_name)
+    zone_perim = idf.getobject('ZONE', perim_name)
 
     z_core = ar.ZoneConstructionSet.from_zone(
         ar.Zone.from_zone_epbunch(zone_core))
@@ -138,11 +143,12 @@ def test_iadd_zoneconstructionset(small_idf):
 
 def test_add_zone(small_idf):
     """Test __add__() for Zone"""
-    zone_core = small_idf.getobject('ZONE', 'core')
-    zone_perim = small_idf.getobject('ZONE', 'perim')
+    idf, sql = small_idf
+    zone_core = idf.getobject('ZONE', core_name)
+    zone_perim = idf.getobject('ZONE', perim_name)
 
-    z_core = ar.Zone.from_zone_epbunch(zone_core)
-    z_perim = ar.Zone.from_zone_epbunch(zone_perim)
+    z_core = ar.Zone.from_zone_epbunch(zone_core, sql=sql)
+    z_perim = ar.Zone.from_zone_epbunch(zone_perim, sql=sql)
 
     z_new = z_core + z_perim
 
@@ -155,8 +161,9 @@ def test_add_zone(small_idf):
 
 def test_iadd_zone(small_idf):
     """Test __iadd__() for Zone"""
-    zone_core = small_idf.getobject('ZONE', 'core')
-    zone_perim = small_idf.getobject('ZONE', 'perim')
+    idf, sql = small_idf
+    zone_core = idf.getobject('ZONE', core_name)
+    zone_perim = idf.getobject('ZONE', perim_name)
 
     z_core = ar.Zone.from_zone_epbunch(zone_core)
     z_perim = ar.Zone.from_zone_epbunch(zone_perim)
@@ -175,3 +182,7 @@ def test_iadd_zone(small_idf):
 
     np.testing.assert_almost_equal(actual=area,
                                    desired=z_core.area, decimal=3)
+
+
+def test_add_zoneconditioning(small_idf):
+    pass

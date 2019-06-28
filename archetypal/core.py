@@ -945,20 +945,24 @@ def zone_ventilation(df):
 
 
 def nominal_nat_ventilation(df):
-    _nom_natvent = nominal_ventilation(df)
-    nom_natvent = (_nom_natvent.reset_index().set_index(['Archetype',
+    _nom_vent = nominal_ventilation(df)
+    if _nom_vent.empty:
+        return _nom_vent
+    nom_natvent = (_nom_vent.reset_index().set_index(['Archetype',
                                                          'Zone Name']).loc[
-                   lambda e: ~e['Fan Type {Exhaust;Intake;Natural}']
+                   lambda e: e['Fan Type {Exhaust;Intake;Natural}']
                    .str.contains('Natural'), :]
-                   if not _nom_natvent.empty else None)
+                   if not _nom_vent.empty else None)
     return nom_natvent
 
 
 def nominal_mech_ventilation(df):
     _nom_vent = nominal_ventilation(df)
+    if _nom_vent.empty:
+        return _nom_vent
     nom_vent = (_nom_vent.reset_index().set_index(['Archetype',
                                                    'Zone Name']).loc[
-                lambda e: e['Fan Type {Exhaust;Intake;Natural}']
+                lambda e: ~e['Fan Type {Exhaust;Intake;Natural}']
                 .str.contains('Natural'), :]
                 if not _nom_vent.empty else None)
     return nom_vent
@@ -1199,9 +1203,14 @@ def nominal_infiltration(df):
 
     """
     df = get_from_tabulardata(df)
-    tbstr = df[(df.ReportName == 'Initialization Summary') &
-               (df.TableName == 'ZoneInfiltration Airflow Stats '
-                                'Nominal')].reset_index()
+    report_name = 'Initialization Summary'
+    table_name = 'ZoneInfiltration Airflow Stats Nominal'
+    tbstr = df[(df.ReportName == report_name) &
+               (df.TableName == table_name)].reset_index()
+    if tbstr.empty:
+        log('Table {} does not exist. '
+            'Returning an empty DataFrame'.format(table_name), lg.WARNING)
+        return pd.DataFrame([])
 
     tbpiv = tbstr.pivot_table(index=['Archetype', 'RowName'],
                               columns='ColumnName',

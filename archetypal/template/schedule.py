@@ -6,7 +6,8 @@
 ################################################################################
 
 import collections
-import random
+
+import numpy as np
 
 from archetypal import Schedule
 from archetypal.template import UmiBase, Unique
@@ -29,18 +30,21 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         self.Type = self.schTypeLimitsName
 
     @classmethod
-    def random_constant_schedule(cls, seed=1, **kwargs):
-        """
+    def random_constant_schedule(cls, min=25, max=50, seed=1, **kwargs):
+        """Create a constant schedule with a random value between min and max
+        values.
+
         Args:
+            min:
+            max:
             seed:
             **kwargs:
         """
-        randint = random.randint(25, 50)
+        rs = np.random.RandomState(seed=seed)
+        randint = rs.randint(low=min, high=max)
         name = 'Constant_value_{}'.format(randint)
-        random.seed(seed)
 
-        sched = cls.constant_schedule(Name=name, **kwargs)
-        sched = cls(Name=name, idf=sched.idf)
+        sched = cls.constant_schedule(Name=name, hourly_value=randint, **kwargs)
         return sched
 
     @classmethod

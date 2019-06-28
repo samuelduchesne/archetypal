@@ -81,11 +81,13 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.EmbodiedEnergy = EmbodiedEnergy
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
 
+        self._thickness = kwargs.get('Thickness', None)
+
     def __add__(self, other):
         """Overload + to implement self.combine.
 
         Args:
-            other:
+            other (OpaqueMaterial):
         """
         return self.combine(other)
 
@@ -236,3 +238,22 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                        Density=Density,
                        Name=Name,
                        **kwargs)
+        elif epbunch.key.upper() == 'MATERIAL:AIRGAP':
+            Name = epbunch.Name
+            Thickness = 0.0127  # half inch thickness
+            Conductivity = Thickness / epbunch.Thermal_Resistance
+            Roughness = "Smooth"
+            Density = 1  # 1 kg/m3, smallest value umi allows
+            SpecificHeat = 100  # 100 J/kg-K, smallest value umi allows
+            return cls(Conductivity=Conductivity,
+                       Roughness=Roughness,
+                       SpecificHeat=SpecificHeat,
+                       Thickness=Thickness,
+                       Density=Density,
+                       Name=Name,
+                       **kwargs)
+        else:
+            raise NotImplementedError("Material '{}' of type '{}' is not yet "
+                                      "supported. Please contact package "
+                                      "authors".format(epbunch.Name,
+                                                       epbunch.key))

@@ -229,14 +229,15 @@ class Zone(UmiBase, metaclass=Unique):
         return zone
 
     @classmethod
-    def from_zone_epbunch(cls, zone):
+    def from_zone_epbunch(cls, zone, **kwargs):
         """Create a Zone object from an eppy 'ZONE' epbunch.
 
         Args:
             zone (EpBunch):
         """
-        name = zone.Name + "_Zone"
-        z = cls(Name=name, idf=zone.theidf)
+        name = zone.Name
+        sql = kwargs.get("sql", None)
+        z = cls(Name=name, idf=zone.theidf, sql=sql)
 
         z._epbunch = zone
         z._zonesurfaces = zone.zonesurfaces
@@ -290,14 +291,19 @@ class Zone(UmiBase, metaclass=Unique):
                                             append=True),
                     Conditioning=self.Conditioning + other.Conditioning,
                     Constructions=self.Constructions + other.Constructions,
+                    Ventilation=self.Ventilation + other.Ventilation,
                     DaylightMeshResolution=self._float_mean(other,
                                                             'DaylightMeshResolution',
                                                             weights=weights),
-                    area=self.area + other.area,
-                    volume=self.volume + other.volume)
+                    DaylightWorkplaneHeight=self._float_mean(other,
+                                                             'DaylightWorkplaneHeight',
+                                                             weights),
+                    DomesticHotWater=self.DomesticHotWater +
+                                     other.DomesticHotWater,
+                    volume=self.volume + other.volume,
+                    area=self.area + other.area)
         new_obj = self.__class__(Name=name, **attr)
         return new_obj
-
 
 def resolve_obco(this):
     """Resolve the outside boundary condition of a surface and return the other
@@ -334,10 +340,8 @@ def resolve_obco(this):
     #                                  'validobjects'):
 
     obc = this.Outside_Boundary_Condition
-    obcos = this.getreferingobjs(
-        fields=['Outside_Boundary_Condition_Object'],
-        iddgroups=['Thermal Zones and Surfaces']
-    )
+    obcos = [this.get_referenced_object('Outside_Boundary_Condition_Object')]
+
     if obc.upper() == 'ZONE':
         for adj_zone in obcos:
             # adj_zone = this.theidf.getobject('ZONE', obco['Name'])
@@ -364,6 +368,7 @@ def surface_dispatcher(surf, zone):
         ('Floor', 'Foundation'): ZoneConstructionSet._do_ground,
         ('Floor', 'Surface'): ZoneConstructionSet._do_slab,
         ('Floor', 'Adiabatic'): ZoneConstructionSet._do_slab,
+        ('Floor', 'Zone'): ZoneConstructionSet._do_slab,
         ('Wall', 'Adiabatic'): ZoneConstructionSet._do_partition,
         ('Wall', 'Surface'): ZoneConstructionSet._do_partition,
         ('Wall', 'Zone'): ZoneConstructionSet._do_partition,

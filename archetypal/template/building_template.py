@@ -102,7 +102,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             adj_report = defaultdict(list)
             zone_obj = None
             if not skeleton:
-                zone_obj = Zone.from_zone_epbunch(zone)
+                zone_obj = Zone.from_zone_epbunch(zone, sql=self.sql)
                 zonesurfaces = zone_obj._zonesurfaces
             else:
                 zonesurfaces = zone.zonesurfaces
@@ -122,7 +122,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                         if skeleton:
                             zone_obj = None
                         else:
-                            zone_obj = Zone.from_zone_epbunch(adj_zone)
+                            zone_obj = Zone.from_zone_epbunch(adj_zone,
+                                                              sql=self.sql)
 
                         # create node for adjacent zone
                         G.add_node(adj_zone.Name,

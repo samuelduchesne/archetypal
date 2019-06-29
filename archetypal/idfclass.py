@@ -34,6 +34,7 @@ class IDF(geomeppy.IDF):
     def __init__(self, *args, **kwargs):
         super(IDF, self).__init__(*args, **kwargs)
         self.schedules_dict = self.get_all_schedules()
+        self._sql = None
 
     @property
     def name(self):
@@ -41,14 +42,10 @@ class IDF(geomeppy.IDF):
 
     @property
     def sql(self):
-        if not self.sql:
+        if self._sql is not None:
             return self.run_eplus()
         else:
-            return self.sql
-
-    @sql.setter
-    def sql(self, value):
-        self._sql = value
+            return self._sql
 
     @property
     def area_conditioned(self):

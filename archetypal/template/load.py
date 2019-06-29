@@ -132,14 +132,14 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 zone.sql['NominalElectricEquipment']['ObjectName'].str.contains(
                     zone.Name.upper())]['DesignLevel'].iloc[0] / zone.area
         # Verifies if Lights in zone
-        if zone.sql['NominalElectricEquipment'][
-            zone.sql['NominalElectricEquipment']['ObjectName'].str.contains(
+        if zone.sql['NominalLighting'][
+            zone.sql['NominalLighting']['ObjectName'].str.contains(
                 zone.Name.upper())].empty:
             LightsAvailabilitySchedule = None
             LightingPowerDensity = 0.0
         else:
-            schedule_light_index = zone.sql['NominalElectricEquipment'][
-                zone.sql['NominalElectricEquipment']['ObjectName'].str.contains(
+            schedule_light_index = zone.sql['NominalLighting'][
+                zone.sql['NominalLighting']['ObjectName'].str.contains(
                     zone.Name.upper())]['ScheduleIndex'].iloc[0]
             LightsAvailabilitySchedule = UmiSchedule(
                 Name=zone.sql['Schedules']['ScheduleName'].iloc[

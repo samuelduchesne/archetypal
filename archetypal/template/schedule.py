@@ -105,6 +105,10 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         year_sched = self.develop()
         return year_sched.to_dict()
 
+    @property
+    def id(self):
+        return id(self)
+
 
 class YearScheduleParts():
     def __init__(self, FromDay=None, FromMonth=None, ToDay=None, ToMonth=None,

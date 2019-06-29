@@ -79,7 +79,7 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
     in_dict = {os.path.basename(file): dict(
         idf_file=os.path.join(file_upper_path, file),
         template="tests/input_data/trnsys/NewFileTemplate.d18",
-        trnidf_exe_dir='docker/trnsidf/trnsidf.exe') for
+        trnsidf_exe='docker/trnsidf/trnsidf.exe') for
         file in files}
 
     result = parallel_process(in_dict, convert_idf_to_trnbuild, 4,
@@ -106,7 +106,9 @@ def test_trnbuild_idf_win32(config):
 def test_trnbuild_idf_darwin_or_linux(config):
     idf_file = "tests/input_data/trnsys/Building.idf"
     template = "tests/input_data/trnsys/NewFileTemplate.d18"
+    trnsidf_exe = "docker/trnsidf/trnsidf.exe"
     res = trnbuild_idf(idf_file, template=template, dck=True, nonum=False,
-                       refarea=False, volume=False, capacitance=True)
+                       refarea=False, volume=False, capacitance=True,
+                       trnsidf_exe=trnsidf_exe)
 
     assert res

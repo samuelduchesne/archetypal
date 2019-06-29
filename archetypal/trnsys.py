@@ -884,7 +884,7 @@ def trnbuild_idf(idf_file, output_folder=None, template=None, dck=False,
             updated
         volume (bool, True): If True, volume of airnodes is updated
         capacitance (bool, True): If True, capacitance of airnodes is updated
-        trnidf_exe_dir (str): Path of the trnsidf.exe executable
+        trnsidf_exe (str): Path of the trnsidf.exe executable
 
     Returns:
         str: status

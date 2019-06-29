@@ -190,10 +190,8 @@ def test_add_zoneconditioning(small_idf):
 
 
 def test_traverse_graph(config):
-    file = "/Users/leroylouis/Dropbox/Cours Poly/Projet_maitrise/archetypal/" \
-               "tests/input_data/trnsys/NECB 2011 - Warehouse.idf"
-    w = "/Users/leroylouis/Dropbox/Cours Poly/Projet_maitrise/archetypal/tests" \
-        "/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = "tests/input_data/trnsys/NECB 2011 - Warehouse.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
 
     idf = ar.load_idf(file)
     sql = ar.run_eplus(file, weather_file=w, prep_outputs=True, verbose="v",

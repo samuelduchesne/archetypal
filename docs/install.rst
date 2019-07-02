@@ -5,8 +5,8 @@ Installation
 Requirements
 ------------
 
-Prior to installing this package, you must have the latest version of `EnergyPlus`_ installed in it's default location.
-On Windows that would be in `C:\\EnergyPlusV8-X-X` and on MacOS that would be `/Applications/EnergyPlus-8-X-X`.
+Prior to installing this package, you must have the 8.9.0 version of `EnergyPlus`_ installed in it's default location.
+On Windows that would be in `C:\\EnergyPlusV8-9-0` and on MacOS that would be `/Applications/EnergyPlus-8-9-0`.
 
 Installation with ``pip``
 -------------------------

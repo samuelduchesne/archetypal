@@ -5,8 +5,8 @@ Installation
 Requirements
 ------------
 
-Prior to installing this package, you must have the latest version of `EnergyPlus`_ installed in it's default location.
-On Windows that would be in `C:\\EnergyPlusV8-X-X` and on MacOS that would be `/Applications/EnergyPlus-8-X-X`.
+Prior to installing this package, you must have the 8.9.0 version (download_ here at the bottom of the page) of `EnergyPlus`_ installed in it's default location.
+On Windows that would be in `C:\\EnergyPlusV8-9-0` and on MacOS that would be `/Applications/EnergyPlus-8-9-0`.
 
 Installation with ``pip``
 -------------------------
@@ -98,3 +98,4 @@ Installing with conda is similar:
 .. _virtual environment: https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#managing-environments
 .. _EnergyPlus: https://energyplus.net
 .. _umi: https://umidocs.readthedocs.io/en/latest/
+.. _download: https://github.com/NREL/EnergyPlus/releases/tag/v8.9.0

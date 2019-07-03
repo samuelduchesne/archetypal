@@ -8,6 +8,7 @@
 import collections
 
 from archetypal.template import UmiBase, Unique, UmiSchedule
+from archetypal import float_round
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
@@ -187,9 +188,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         heating_setpoint_idx = heating_setpoints_idx[
             heating_setpoints_idx['KeyValue'].str.contains(
                 zone.Name.upper())].index
-        heating_setpoint = zone.sql['ReportData'][
-            zone.sql['ReportData']['ReportDataDictionaryIndex'] ==
-            heating_setpoint_idx.tolist()[0]]['Value'].mean()
+        heating_setpoint = float_round(zone.sql['ReportData'][
+                                           zone.sql['ReportData'][
+                                               'ReportDataDictionaryIndex'] ==
+                                           heating_setpoint_idx.tolist()[0]][
+                                           'Value'].mean(), 3)
         # Cooling setpoint
         cooling_setpoints_idx = zone.sql['ReportDataDictionary'][
             zone.sql['ReportDataDictionary'][
@@ -197,9 +200,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         cooling_setpoint_idx = cooling_setpoints_idx[
             cooling_setpoints_idx['KeyValue'].str.contains(
                 zone.Name.upper())].index
-        cooling_setpoint = zone.sql['ReportData'][
-            zone.sql['ReportData']['ReportDataDictionaryIndex'] ==
-            cooling_setpoint_idx.tolist()[0]]['Value'].mean()
+        cooling_setpoint = float_round(zone.sql['ReportData'][
+                                           zone.sql['ReportData'][
+                                               'ReportDataDictionaryIndex'] ==
+                                           cooling_setpoint_idx.tolist()[0]][
+                                           'Value'].mean(), 3)
 
         # If setpoint equal to zero, conditionning is off
         if heating_setpoint == 0:
@@ -223,7 +228,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         heating_energy_in = zone.sql['ReportData'][
             zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
                 heating_in_idx)]['Value'].sum()
-        heating_cop = heating_energy_out / heating_energy_in  # A L'AIR PETIT ??!
+        heating_cop = float_round(heating_energy_out / heating_energy_in,
+                                  3)  # A L'AIR PETIT ??!
         # Cooling
         cooling_out_idx = zone.sql['ReportDataDictionary'][
             zone.sql['ReportDataDictionary'][
@@ -239,7 +245,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         cooling_energy_in = zone.sql['ReportData'][
             zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
                 cooling_in_idx)]['Value'].sum()
-        cooling_cop = cooling_energy_out / cooling_energy_in
+        cooling_cop = float_round(cooling_energy_out / cooling_energy_in, 3)
 
         # Heat recovery system
         if zone.sql['ReportDataDictionary'][zone.sql['ReportDataDictionary'][

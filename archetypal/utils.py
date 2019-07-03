@@ -770,3 +770,19 @@ def angle(v1, v2, acute=True):
         return angle
     else:
         return 2 * np.pi - angle
+
+
+def float_round(num, n):
+    """Makes sure a variable is a float and round it at "n" decimals
+
+    Args:
+        num (str, int, float): number we want to make sure is a float
+        n (int): number of decimals
+
+    Returns:
+        num (float): a float rounded number
+
+    """
+    num = float(num)
+    num = round(num, n)
+    return n

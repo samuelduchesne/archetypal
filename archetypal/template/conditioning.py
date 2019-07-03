@@ -177,7 +177,6 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         Args:
             zone (archetypal.template.zone.Zone):
         """
-        # todo: to finish
         name = zone.Name + "_ZoneConditioning"
 
         # Thermostat setpoints
@@ -270,11 +269,35 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 zone.sql['ReportData'][
                     'ReportDataDictionaryIndex'] == latent_heat_recovery_idx][
                 'Value'].sum()
-            HeatRecoveryEfficiencyLatent = latent_heat_recovery / total_heat_recovery
-            HeatRecoveryEfficiencySensible = sensible_heat_recovery / total_heat_recovery
+            HeatRecoveryEfficiencyLatent = float_round(
+                latent_heat_recovery / total_heat_recovery, 3)
+            HeatRecoveryEfficiencySensible = float_round(
+                sensible_heat_recovery / total_heat_recovery, 3)
             HeatRecoveryType = 'Enthalpy'  # COMMENT CHOISIR SI 'Enthalpy' ou 'Sensible' ??!
 
-        
+        # Mechanical Ventilation
+        for object in zone.idf.idfobjects[
+            'Controller:MechanicalVentilation'.upper()]:
+            if zone.Name in object.fieldvalues:
+                indice_zone = \
+                    [k for k, s in enumerate(object.fieldvalues) if
+                     s == zone.Name][
+                        0]
+                design_spe_outdoor_air_name = object.fieldvalues[
+                    indice_zone + 1]
+        if design_spe_outdoor_air_name != '':
+            IsMechVentOn = True
+            design_spe_outdoor_air = zone.idf.getobject(
+                'DesignSpecification:OutdoorAir'.upper(),
+                design_spe_outdoor_air_name)
+            MinFreshAirPerPerson = float_round(
+                design_spe_outdoor_air.Outdoor_Air_Flow_per_Person, 3)
+            MinFreshAirPerArea = float_round(
+                design_spe_outdoor_air.Outdoor_Air_Flow_per_Zone_Floor_Area, 3)
+        else:
+            IsMechVentOn = False
+            MinFreshAirPerPerson = 0
+            MinFreshAirPerArea = 0
 
         a = 1
 

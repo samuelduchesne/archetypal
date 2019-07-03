@@ -746,7 +746,14 @@ def prepare_outputs(eplus_file, outputs=None, idd_filename=None):
                                    Variable_Name='Zone Thermostat Cooling '
                                                  'Setpoint Temperature',
                                    Reporting_Frequency='hourly')
-    
+    idf[eplus_finename].add_object('Output:Variable'.upper(),
+                                   Variable_Name='Heat Exchanger Total Heating '
+                                                 'Rate',
+                                   Reporting_Frequency='hourly')
+    idf[eplus_finename].add_object('Output:Variable'.upper(),
+                                   Variable_Name='Air System Outdoor Air '
+                                                 'Economiser Status',
+                                   Reporting_Frequency='hourly')
 
     # Output meters
     idf[eplus_finename].add_object('OUTPUT:METER',

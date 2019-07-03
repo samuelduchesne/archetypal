@@ -208,15 +208,50 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         if cooling_setpoint == 0:
             IsCoolingOn = False
 
-        #
+        # COPs (heating and cooling)
+        # Heating
+        heating_out_idx = zone.sql['ReportDataDictionary'][
+            zone.sql['ReportDataDictionary'][
+                'Name'] == 'Air System Total Heating Energy'].index
+        heating_energy_out = zone.sql['ReportData'][
+            zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
+                heating_out_idx)]['Value'].sum()
+        heating_in_list = ['Heating:Electricity', 'Heating:Gas',
+                           'Heating:DistrictHeating']
+        heating_in_idx = zone.sql['ReportDataDictionary'][
+            zone.sql['ReportDataDictionary']['Name'].isin(
+                heating_in_list)].index
+        heating_energy_in = zone.sql['ReportData'][
+            zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
+                heating_in_idx)]['Value'].sum()
+        heating_cop = heating_energy_out / heating_energy_in  # A L'AIR PETIT ??!
+        # Cooling
+        cooling_out_idx = zone.sql['ReportDataDictionary'][
+            zone.sql['ReportDataDictionary'][
+                'Name'] == 'Air System Total Cooling Energy'].index
+        cooling_energy_out = zone.sql['ReportData'][
+            zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
+                cooling_out_idx)]['Value'].sum()
+        cooling_in_list = ['Cooling:Electricity', 'Cooling:Gas',
+                           'Cooling:DistrictCooling']
+        cooling_in_idx = zone.sql['ReportDataDictionary'][
+            zone.sql['ReportDataDictionary']['Name'].isin(
+                cooling_in_list)].index
+        cooling_energy_in = zone.sql['ReportData'][
+            zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
+                cooling_in_idx)]['Value'].sum()
+        cooling_cop = cooling_energy_out / cooling_energy_in
 
+        
 
+        a = 1
 
-        # CoolingCoeffOfPerf = None, CoolingLimitType = 'NoLimit',
+        # CoolingCoeffOfPerf = cooling_cop, CoolingLimitType = 'NoLimit',
         # CoolingSetpoint = cooling_setpoint, EconomizerType = 'NoEconomizer',
-        # HeatRecoveryEfficiencyLatent = 0.65,
-        # HeatRecoveryEfficiencySensible = 0.7, HeatRecoveryType = None,
-        # HeatingCoeffOfPerf = None, HeatingLimitType = 'NoLimit',
+        # HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencyLatent,
+        # HeatRecoveryEfficiencySensible = HeatRecoveryEfficiencySensible,
+        # HeatRecoveryType = HeatRecoveryType,
+        # HeatingCoeffOfPerf = heating_cop, HeatingLimitType = 'NoLimit',
         # HeatingSetpoint = cooling_setpoint, IsCoolingOn = IsCoolingOn, IsHeatingOn = IsHeatingOn,
         # IsMechVentOn = True, MaxCoolFlow = 100, MaxCoolingCapacity = 100,
         # MaxHeatFlow = 100, MaxHeatingCapacity = 100,

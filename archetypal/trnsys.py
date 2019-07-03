@@ -160,6 +160,14 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO)
+
+    log("Saving yearly schedules in CSV file...")
+    df_sched = pd.DataFrame()
+    for schedule_name in schedule_names:
+        df_sched[schedule_name] = schedules[schedule_name]['all values']
+
+    df_sched.to_csv(
+        path_or_buf=os.path.join(output_folder, 'yearly_schedules.csv'))
     # endregion
 
     # Get materials with resistance lower than 0.0007
@@ -516,6 +524,7 @@ def _get_schedules(idf):
         schedule_names.append(schedule_name)
         schedules[schedule_name] = {}
         year, weeks, days = s.to_year_week_day()
+        schedules[schedule_name]['all values'] = s.all_values
         schedules[schedule_name]['year'] = year
         schedules[schedule_name]['weeks'] = weeks
         schedules[schedule_name]['days'] = days

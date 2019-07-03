@@ -242,6 +242,38 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 cooling_in_idx)]['Value'].sum()
         cooling_cop = cooling_energy_out / cooling_energy_in
 
+        # Heat recovery system
+        if zone.sql['ReportDataDictionary'][zone.sql['ReportDataDictionary'][
+                                                'Name'] == 'Heat Exchanger Total Heating Rate'].empty:
+            HeatRecoveryType = None
+            HeatRecoveryEfficiencyLatent = 0
+            HeatRecoveryEfficiencySensible = 0
+        else:
+            total_heat_recovery_idx = zone.sql['ReportDataDictionary'][
+                zone.sql['ReportDataDictionary'][
+                    'Name'] == 'Heat Exchanger Total Heating Energy'].index
+            sensible_heat_recovery_idx = zone.sql['ReportDataDictionary'][
+                zone.sql['ReportDataDictionary'][
+                    'Name'] == 'Heat Exchanger Sensible Heating Energy'].index
+            latent_heat_recovery_idx = zone.sql['ReportDataDictionary'][
+                zone.sql['ReportDataDictionary'][
+                    'Name'] == 'Heat Exchanger Latent Heating Energy'].index
+            total_heat_recovery = zone.sql['ReportData'][
+                zone.sql['ReportData'][
+                    'ReportDataDictionaryIndex'] == total_heat_recovery_idx][
+                'Value'].sum()
+            sensible_heat_recovery = zone.sql['ReportData'][
+                zone.sql['ReportData'][
+                    'ReportDataDictionaryIndex'] == sensible_heat_recovery_idx][
+                'Value'].sum()
+            latent_heat_recovery = zone.sql['ReportData'][
+                zone.sql['ReportData'][
+                    'ReportDataDictionaryIndex'] == latent_heat_recovery_idx][
+                'Value'].sum()
+            HeatRecoveryEfficiencyLatent = latent_heat_recovery / total_heat_recovery
+            HeatRecoveryEfficiencySensible = sensible_heat_recovery / total_heat_recovery
+            HeatRecoveryType = 'Enthalpy'  # COMMENT CHOISIR SI 'Enthalpy' ou 'Sensible' ??!
+
         
 
         a = 1

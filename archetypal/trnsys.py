@@ -1160,18 +1160,17 @@ def _modify_adj_surface(buildingSurf, idf):
     outside_bound_surf = buildingSurf.Outside_Boundary_Condition_Object
     # If outside_bound_surf is the same surface as buildingSurf, raises error
     if outside_bound_surf == buildingSurf.Name:
-        msg = 'The IDF file "{idfname}" could not be converted. The problem ' \
-              'comes from adjacent surfaces that have themselves as an ' \
-              'Outside Boundary Condition Object. For example, surf_1 has ' \
-              '"Surface" as Outside Boundary Condition, but the Outside ' \
-              'Boundary Condition Object is surf_1 too. This comes from the ' \
-              'EnergyPlus IDF. Here it is surface ' \
-              '"{surfname}" that have "{outside_bound}" as Outside ' \
-              'Boundary Condition Object.'.format(
-            idfname=os.path.basename(
-                idf.idfname), surfname=buildingSurf.Name,
-            outside_bound=outside_bound_surf)
-        raise NotImplementedError(msg)
+        buildingSurf.Outside_Boundary_Condition = \
+            "OtherSideCoefficients"
+        buildingSurf.Outside_Boundary_Condition_Object = \
+            "BOUNDARY=IDENTICAL"
+        # Prevents the user in the log of the change of the Boumdary Conditions
+        msg = 'Surface "{surfname}" has "{outside_bound}" as Outside ' \
+              'Boundary Condition Object (adjacent to itself). To solve this ' \
+              'problem, we forced the Boundary Condition of this surface to ' \
+              'be "IDENTICAL".'.format(surfname=buildingSurf.Name,
+                                       outside_bound=outside_bound_surf)
+        log(msg, lg.WARNING)
     else:
         # Replace the Outside_Boundary_Condition_Object that was the
         # outside_bound_surf, by the adjacent zone name

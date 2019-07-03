@@ -1190,11 +1190,6 @@ def _modify_adj_surface(buildingSurf, idf):
             _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf,
                                    'BUILDINGSURFACE:DETAILED')
 
-    a = idf.getobject(
-        'BUILDINGSURFACE:DETAILED',
-        outside_bound_surf)
-    b = 1
-
 
 def _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf,
                            idfobject_key):

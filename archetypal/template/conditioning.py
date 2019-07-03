@@ -180,6 +180,47 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         # todo: to finish
         name = zone.Name + "_ZoneConditioning"
 
+        # Thermostat setpoints
+        #Heating setpoint
+        heating_setpoints_idx = zone.sql['ReportDataDictionary'][
+            zone.sql['ReportDataDictionary'][
+                'Name'] == 'Zone Thermostat Heating Setpoint Temperature']
+        heating_setpoint_idx = heating_setpoints_idx[
+            heating_setpoints_idx['KeyValue'].str.contains(
+                zone.Name.upper())].index
+        heating_setpoint = zone.sql['ReportData'][
+            zone.sql['ReportData']['ReportDataDictionaryIndex'] ==
+            heating_setpoint_idx.tolist()[0]]['Value'].mean()
+        #Cooling setpoint
+        cooling_setpoints_idx = zone.sql['ReportDataDictionary'][
+            zone.sql['ReportDataDictionary'][
+                'Name'] == 'Zone Thermostat Cooling Setpoint Temperature']
+        cooling_setpoint_idx = cooling_setpoints_idx[
+            cooling_setpoints_idx['KeyValue'].str.contains(
+                zone.Name.upper())].index
+        cooling_setpoint = zone.sql['ReportData'][
+            zone.sql['ReportData']['ReportDataDictionaryIndex'] ==
+            cooling_setpoint_idx.tolist()[0]]['Value'].mean()
+
+        # If setpoint equal to zero, conditionning is off
+        if heating_setpoint == 0:
+            IsHeatingOn = False
+        if cooling_setpoint == 0:
+            IsCoolingOn = False
+
+        #
+
+
+
+        # CoolingCoeffOfPerf = None, CoolingLimitType = 'NoLimit',
+        # CoolingSetpoint = cooling_setpoint, EconomizerType = 'NoEconomizer',
+        # HeatRecoveryEfficiencyLatent = 0.65,
+        # HeatRecoveryEfficiencySensible = 0.7, HeatRecoveryType = None,
+        # HeatingCoeffOfPerf = None, HeatingLimitType = 'NoLimit',
+        # HeatingSetpoint = cooling_setpoint, IsCoolingOn = IsCoolingOn, IsHeatingOn = IsHeatingOn,
+        # IsMechVentOn = True, MaxCoolFlow = 100, MaxCoolingCapacity = 100,
+        # MaxHeatFlow = 100, MaxHeatingCapacity = 100,
+        # MinFreshAirPerArea = 0, MinFreshAirPerPerson = 0.00944,
         z_cond = cls(Name=name, zone=zone)
 
         return z_cond

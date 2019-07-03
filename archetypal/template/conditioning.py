@@ -181,7 +181,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         name = zone.Name + "_ZoneConditioning"
 
         # Thermostat setpoints
-        #Heating setpoint
+        # Heating setpoint
         heating_setpoints_idx = zone.sql['ReportDataDictionary'][
             zone.sql['ReportDataDictionary'][
                 'Name'] == 'Zone Thermostat Heating Setpoint Temperature']
@@ -191,7 +191,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         heating_setpoint = zone.sql['ReportData'][
             zone.sql['ReportData']['ReportDataDictionaryIndex'] ==
             heating_setpoint_idx.tolist()[0]]['Value'].mean()
-        #Cooling setpoint
+        # Cooling setpoint
         cooling_setpoints_idx = zone.sql['ReportDataDictionary'][
             zone.sql['ReportDataDictionary'][
                 'Name'] == 'Zone Thermostat Cooling Setpoint Temperature']

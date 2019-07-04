@@ -40,10 +40,10 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     * the path to the TRNSYS dck file (.dck)
 
     Example:
-        >>> # Exemple of setting kwargs to be unwrapped in the function
+        # Exemple of setting kwargs to be unwrapped in the function
         >>> kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
-                           'tolerance': 0.05, 'ordered': True}
-        >>> # Exemple how to call the function
+        >>>                'tolerance': 0.05, 'ordered': True}
+        # Exemple how to call the function
         >>> idf_file = "/file.idf"
         >>> window_filepath = "/W74-lib.dat"
         >>> convert_idf_to_trnbuild(idf_file=idf_file,
@@ -872,9 +872,9 @@ def trnbuild_idf(idf_file, output_folder=None, template=None, dck=False,
         configuration file of the package
 
     Example:
-        >>> # Exemple of setting kwargs to be unwrapped in the function
+        # Exemple of setting kwargs to be unwrapped in the function
         >>> kwargs_dict = {'dck': True, 'geo_floor': 0.57}
-        >>> # Exemple how to call the function
+        # Exemple how to call the function
         >>> trnbuild_idf(idf_file,template=os.path.join(
         >>>              settings.trnsys_default_folder,
         >>>              r"Building\\trnsIDF\\NewFileTemplate.d18"

@@ -36,6 +36,7 @@ class Schedule(object):
             schType (str): The EneryPlus schedule object from which this
             **kwargs:
         """
+        super(Schedule, self).__init__(**kwargs)
         self.strict = strict
         self.idf = idf
         self.schName = sch_name

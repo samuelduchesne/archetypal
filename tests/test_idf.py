@@ -89,7 +89,7 @@ def test_run_olderv_problematic(config, fresh_start):
                  expandobjects=True, verbose='q', prep_outputs=True)
 
 
-def test_run_eplus_from_idf(config):
+def test_run_eplus_from_idf(config, fresh_start):
     file = 'tests/input_data/regular/5ZoneNightVent1.idf'
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
 

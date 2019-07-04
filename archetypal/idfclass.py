@@ -102,7 +102,7 @@ class IDF(geomeppy.IDF):
             return results
         else:
             # user simply wants the sql
-            self.sql = results
+            self._sql = results
             return results
 
     def add_object(self, ep_object, save=True, **kwargs):

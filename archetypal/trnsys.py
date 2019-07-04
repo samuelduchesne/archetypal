@@ -40,10 +40,10 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     * the path to the TRNSYS dck file (.dck)
 
     Example:
-        # Exemple of setting kwargs to be unwrapped in the function
+        >>> # Exemple of setting kwargs to be unwrapped in the function
         >>> kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
         >>>                'tolerance': 0.05, 'ordered': True}
-        # Exemple how to call the function
+        >>> # Exemple how to call the function
         >>> idf_file = "/file.idf"
         >>> window_filepath = "/W74-lib.dat"
         >>> convert_idf_to_trnbuild(idf_file=idf_file,
@@ -64,6 +64,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         output_folder (str, optional): location where output files will be
         trnsidf_exe (str): Path to *trnsidf.exe*.
         template (str): Path to d18 template file.
+        log_clear_names:
         kwargs (dict): keyword arguments sent to
             :func:`convert_idf_to_trnbuild()` or :func:`trnbuild_idf()` or
             :func:`choose_window`. "ordered=True" to have the name of idf
@@ -539,8 +540,8 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
     new name will be "stl_00000n" - limits length to 10 characters
 
     Args:
-        log_clear_names:
         idfFile (archetypal.idfclass.IDF): IDF object where to clean names
+        log_clear_names:
     """
 
     uniqueList = []
@@ -872,23 +873,23 @@ def trnbuild_idf(idf_file, output_folder=None, template=None, dck=False,
         configuration file of the package
 
     Example:
-        # Exemple of setting kwargs to be unwrapped in the function
+        >>> # Exemple of setting kwargs to be unwrapped in the function
         >>> kwargs_dict = {'dck': True, 'geo_floor': 0.57}
-        # Exemple how to call the function
+        >>> # Exemple how to call the function
         >>> trnbuild_idf(idf_file,template=os.path.join(
         >>>              settings.trnsys_default_folder,
         >>>              r"Building\\trnsIDF\\NewFileTemplate.d18"
 
     Args:
-        output_folder:
         idf_file (str): path/filename.idf
+        output_folder:
         template (str): path/NewFileTemplate.d18
         dck (bool): If True, create a template DCK
         nonum (bool, optional): If True, no renumeration of surfaces
         N (optional): BatchJob Modus
         geo_floor (float, optional): generates GEOSURF values for distributing
-            direct solar radiation where `geo_floor` % is directed to the floor, the rest
-            to walls/windows. Default = 0.6
+            direct solar radiation where `geo_floor` % is directed to the floor,
+            the rest to walls/windows. Default = 0.6
         refarea (bool, optional): If True, floor reference area of airnodes is
             updated
         volume (bool, True): If True, volume of airnodes is updated

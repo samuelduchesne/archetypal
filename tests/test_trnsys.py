@@ -79,12 +79,12 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
     in_dict = {os.path.basename(file): dict(
         idf_file=os.path.join(file_upper_path, file),
         template="tests/input_data/trnsys/NewFileTemplate.d18",
-        trnidf_exe_dir='docker/trnsidf/trnsidf.exe') for
+        trnsidf_exe='docker/trnsidf/trnsidf.exe') for
         file in files}
 
     result = parallel_process(in_dict, convert_idf_to_trnbuild, 4,
                               use_kwargs=True)
-
+    [print(a) for a in result.values() if isinstance(a, Exception)]
     assert not any(isinstance(a, Exception) for a in result.values())
 
 

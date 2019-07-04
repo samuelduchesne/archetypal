@@ -62,7 +62,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         return_dck (bool, optional): If True, also return the path to the TRNSYS
             dck file (.dck).
         output_folder (str, optional): location where output files will be
-        trnsidf_exe_dir (str): Path to *trnsidf.exe*.
+        trnsidf_exe (str): Path to *trnsidf.exe*.
         template (str): Path to d18 template file.
         kwargs (dict): keyword arguments sent to
             :func:`convert_idf_to_trnbuild()` or :func:`trnbuild_idf()` or

@@ -296,14 +296,40 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             design_spe_outdoor_air = zone.idf.getobject(
                 'DesignSpecification:OutdoorAir'.upper(),
                 design_spe_outdoor_air_name)
-            MinFreshAirPerPerson = float_round(
-                design_spe_outdoor_air.Outdoor_Air_Flow_per_Person, 3)
-            MinFreshAirPerArea = float_round(
-                design_spe_outdoor_air.Outdoor_Air_Flow_per_Zone_Floor_Area, 3)
+            MinFreshAirPerPerson = design_spe_outdoor_air.Outdoor_Air_Flow_per_Person
+            MinFreshAirPerArea = design_spe_outdoor_air.Outdoor_Air_Flow_per_Zone_Floor_Area
         else:
             IsMechVentOn = False
             MinFreshAirPerPerson = 0
             MinFreshAirPerArea = 0
+
+        # Economizer
+        # Todo: Here EconomizerType is for the entire building, try to do it for each zone
+        EconomizerType = 'NoEconomizer'
+        for object in zone.idf.idfobjects['Controller:OutdoorAir'.upper()]:
+            if object.Economizer_Control_Type == 'NoEconomizer':
+                continue
+            elif object.Economizer_Control_Type == 'DifferentialEnthalpy':
+                EconomizerType = 'DifferentialEnthalpy'
+                break
+            elif object.Economizer_Control_Type == 'DifferentialDryBulb':
+                EconomizerType = 'DifferentialDryBulb'
+                break
+            elif object.Economizer_Control_Type == 'FixedDryBulb':
+                EconomizerType = 'DifferentialDryBulb'
+                break
+            elif object.Economizer_Control_Type == 'FixedEnthalpy':
+                EconomizerType = 'DifferentialEnthalpy'
+                break
+            elif object.Economizer_Control_Type == 'ElectronicEnthalpy':
+                EconomizerType = 'DifferentialEnthalpy'
+                break
+            elif object.Economizer_Control_Type == 'FixedDewPointAndDryBulb':
+                EconomizerType = 'DifferentialDryBulb'
+                break
+            elif object.Economizer_Control_Type == 'DifferentialDryBulbAndEnthalpy':
+                EconomizerType = 'DifferentialEnthalpy'
+                break
 
         a = 1
 

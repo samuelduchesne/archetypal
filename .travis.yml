@@ -16,6 +16,8 @@ before_install:
   - ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
   - ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-$ENERGYPLUS_VERSION-$ENERGYPLUS_SHA-$PLATFORM-x86_64
   - ENERGYPLUS_DOWNLOAD_URL=$ENERGYPLUS_DOWNLOAD_BASE_URL/$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve
+    .com/Knowledgebase/Article/GetAttachment/97/8230; then curl -SLO $EXTRAS_DOWNLOAD_URL
   - curl -SLO $ENERGYPLUS_DOWNLOAD_URL
   
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
@@ -23,12 +25,14 @@ before_install:
     sudo installer -pkg /Volumes/$ENERGYPLUS_DOWNLOAD_FILENAME/$ENERGYPLUS_DOWNLOAD_FILENAME.pkg -target /; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
     sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-    echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi
+    echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; then
+    sudo tar -C /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater -xvf 8230; fi
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
     sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi
   
   - sudo rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
+  - sudo rm 8230
   
   # Install python
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh

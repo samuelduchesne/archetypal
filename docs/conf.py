@@ -108,6 +108,8 @@ html_static_path = ['_static']
 def setup(app):
     app.add_stylesheet('theme_overrides.css')
     app.connect('autodoc-skip-member', autodoc_skip_member)
+    app.add_javascript('copybutton.js')
+    # Add the 'copybutton' javascript, to hide/show the prompt in code examples
 
 
 # Custom sidebar templates, must be a dictionary that maps document names

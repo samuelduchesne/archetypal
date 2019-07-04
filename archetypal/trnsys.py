@@ -64,7 +64,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         output_folder (str, optional): location where output files will be
         trnsidf_exe (str): Path to *trnsidf.exe*.
         template (str): Path to d18 template file.
-        log_clear_names:
+        log_clear_names (bool): If True, log the equivalence between the old and
+            new names in the console
         kwargs (dict): keyword arguments sent to
             :func:`convert_idf_to_trnbuild()` or :func:`trnbuild_idf()` or
             :func:`choose_window`. "ordered=True" to have the name of idf
@@ -882,7 +883,7 @@ def trnbuild_idf(idf_file, output_folder=None, template=None, dck=False,
 
     Args:
         idf_file (str): path/filename.idf
-        output_folder:
+        output_folder (str, optional): location where output files will be
         template (str): path/NewFileTemplate.d18
         dck (bool): If True, create a template DCK
         nonum (bool, optional): If True, no renumeration of surfaces

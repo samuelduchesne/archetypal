@@ -17,7 +17,7 @@ before_install:
   - ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-$ENERGYPLUS_VERSION-$ENERGYPLUS_SHA-$PLATFORM-x86_64
   - ENERGYPLUS_DOWNLOAD_URL=$ENERGYPLUS_DOWNLOAD_BASE_URL/$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ATTCH=97/8230; fi
-  - EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/$ATTCH; fi
+  - EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/$ATTCH
   - curl -SLO $ENERGYPLUS_DOWNLOAD_URL
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
     curl -SLO $EXTRAS_DOWNLOAD_URL; fi

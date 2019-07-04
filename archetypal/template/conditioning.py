@@ -334,7 +334,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         a = 1
 
         # CoolingCoeffOfPerf = cooling_cop, CoolingLimitType = 'NoLimit',
-        # CoolingSetpoint = cooling_setpoint, EconomizerType = 'NoEconomizer',
+        # CoolingSetpoint = cooling_setpoint, EconomizerType = EconomizerType,
         # HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencyLatent,
         # HeatRecoveryEfficiencySensible = HeatRecoveryEfficiencySensible,
         # HeatRecoveryType = HeatRecoveryType,

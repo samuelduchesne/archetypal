@@ -337,8 +337,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                     HeatRecoveryEfficiencySensible = 0.7
                     HeatRecoveryEfficiencySensible = 0.65
                 else:
-                    msg = 'Heat exchanger object {"object"} is not ' \
-                          'implemented'.format(object=object)
+                    msg = 'Heat exchanger object "{}" is not implemented'.format(
+                        object)
                     raise NotImplementedError(msg)
         HeatRecoveryType = 'Enthalpy'  # todo: HOW TO CHOOSE If 'Enthalpy' ou 'Sensible' ??!
 

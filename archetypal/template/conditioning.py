@@ -29,28 +29,66 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         Args:
             CoolingCoeffOfPerf (float): Performance factor of cooling system.
                 This value is used in deriving the total cooling energy use by
-                dividing the cooling load by the COP.
+                dividing the cooling load by the COP. The COP is of each zone is
+                 equal, and refer to the COP of the entire building.
             CoolingLimitType (str): The input must be either LimitFlowRate,
                 LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
             CoolingSetpoint (float): The temperature above which zone heating is
-                turned on.
+                turned on. Here, we take the mean value over the year.
             EconomizerType (str): Specifies if there is an outdoor air
                 economizer. The choices are: NoEconomizer, DifferentialDryBulb,
-                or DifferentialEnthalpy.
+                or DifferentialEnthalpy. For the moment, the EconomizerType is
+                applied for the entire building (every zone with the same
+                EconomizerType). Moreover, some hypotheses are done knowing there
+                 is more EconomizerType existing in EnergyPlus than in UMI:
+                * If 'NoEconomizer' in EnergyPlus, EconomizerType='NoEconomizer'
+                * IF 'DifferentialEnthalpy' in EnergyPlus,
+                    EconomizerType = 'DifferentialEnthalpy'
+                * If 'DifferentialDryBulb' in EnergyPlus,
+                    EconomizerType = 'DifferentialDryBulb'
+                * If 'FixedDryBulb' in EnergyPlus,
+                    EconomizerType = 'DifferentialDryBulb'
+                * If 'FixedEnthalpy' in EnergyPlus,
+                    EconomizerType = 'DifferentialEnthalpy'
+                * If 'ElectronicEnthalpy' in EnergyPlus,
+                    EconomizerType = 'DifferentialEnthalpy'
+                * If 'FixedDewPointAndDryBulb' in EnergyPlus,
+                    EconomizerType = 'DifferentialDryBulb'
+                * If 'DifferentialDryBulbAndEnthalpy' in EnergyPlus,
+                    EconomizerType = 'DifferentialEnthalpy'
             HeatRecoveryEfficiencyLatent (float): The latent heat recovery
                 effectiveness, where effectiveness is defined as the change in
                 supply humidity ratio divided by the difference in entering
                 supply and relief air humidity ratios. The default is 0.65.
+                * If the HeatExchanger is an AirToAir FlatPlate,
+                    HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencySensible - 0.05
+                * If the HeatExchanger is an AirToAir SensibleAndLatent, we
+                    suppose that
+                    HeatRecoveryEfficiencyLatent = Latent Effectiveness at 100% Heating Air Flow
+                * If the HeatExchanger is a Desiccant BalancedFlow, we use the
+                    default value for the efficiency (=0.65)
             HeatRecoveryEfficiencySensible (float): The sensible heat recovery
                 effectiveness, where effectiveness is defined as the change in
                 supply temperature divided by the difference in entering supply
                 and relief air temperatures. The default is 0.70.
+                * If the HeatExchanger is an AirToAir FlatPlate,
+                    HeatRecoveryEfficiencySensible =
+                    (Supply Air Outlet T°C - Supply Air Inlet T°C)/(Secondary Air Inlet T°C - Supply Air Inlet T°C)
+                * If the HeatExchanger is an AirToAir SensibleAndLatent, we
+                    suppose that
+                    HeatRecoveryEfficiencySensible = Sensible Effectiveness at 100% Heating Air Flow
+                * If the HeatExchanger is a Desiccant BalancedFlow, we use the
+                    default value for the efficiency (=0.70)
             HeatRecoveryType (str): Select from None, Sensible, or Enthalpy.
-            HeatingCoeffOfPerf (float): Efficiency of heating system.
+                If the Heat Recovery "is on", HeatRecoveryType = Enthalpy,
+                because we do not know how to choose between 'Sensible' or 'Enthalpy'
+            HeatingCoeffOfPerf (float): Efficiency of heating system. The COP
+                is of each zone is equal, and refer to the COP of the entire
+                building.
             HeatingLimitType (str): The input must be either LimitFlowRate,
                 LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
             HeatingSetpoint (float): The temperature below which zone heating is
-                turned on.
+                turned on. Here, we take the mean value over the year.
             IsCoolingOn (bool): Whether or not this cooling is available.
             IsHeatingOn (bool): Whether or not this cooling is available.
             IsMechVentOn (bool): If True, an outdoor air quantity for use by the

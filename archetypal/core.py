@@ -195,9 +195,9 @@ class UmiTemplate:
     def read(self):
         """Initialize UMI objects"""
         # Umi stuff
-        in_dict = {idf: {'Name': idf,
-                         'idf': self.idfs[idf],
-                         'sql': self.sql[idf]}
+        in_dict = {idf.name: {'Name': idf.name,
+                              'idf': idf,
+                              'sql': idf.sql}
                    for idf in self.idfs
                    }
         for idf in in_dict:

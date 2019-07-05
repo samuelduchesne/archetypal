@@ -259,7 +259,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             idf:
             **kwargs:
         """
-        name = idf.idfobjects['BUILDING'][0].Name
+        name = kwargs.pop('Name', idf.idfobjects['BUILDING'][0].Name)
         core = None
         perimeter = None
         structure = None

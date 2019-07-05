@@ -201,3 +201,79 @@ def test_traverse_graph(config):
     G = bt.zone_graph(log_adj_report=False, skeleton=False, force=True)
 
     assert G
+
+
+class TestBuildingTemplate():
+    """Various tests with the BuildingTemplate class"""
+
+    @pytest.fixture(scope="class")
+    def bt(self, small_idf):
+        """A building template fixture used in subsequent tests"""
+        idf, sql = small_idf
+        bt = ar.BuildingTemplate.from_idf(idf, sql=sql)
+        yield bt
+
+    @pytest.fixture(scope="class")
+    def G(self, bt):
+        yield bt.zone_graph()
+
+    @pytest.mark.parametrize('adj_report', [True, False])
+    def test_graph(self, config, bt, adj_report):
+        """Test the creation of a BuildingTemplate zone graph. Parametrize
+        the creation of the adjacency report"""
+        import networkx as nx
+
+        G1 = bt.zone_graph(log_adj_report=adj_report, skeleton=False,
+                           force=False)
+        assert not nx.is_empty(G1)
+
+        # calling zone_graph a second time should not recalculate it.
+        G2 = bt.zone_graph(log_adj_report=adj_report, skeleton=False,
+                           force=False)
+        assert id(G2) == id(G1)
+
+        # calling zone_graph a second time with force=True should
+        # recalculate it and produce a new id.
+        G3 = bt.zone_graph(log_adj_report=adj_report, skeleton=False,
+                           force=True)
+        assert id(G3) != id(G2)
+
+        # skeleton True should build the zone elements.
+        G4 = bt.zone_graph(log_adj_report=adj_report, skeleton=True,
+                           force=True)
+
+        from eppy.bunch_subclass import EpBunch
+        assert isinstance(G4.nodes['Perim']['epbunch'], EpBunch)
+
+    def test_viewbuilding(self, config, bt):
+        """test the visualization of a building"""
+        bt.view_building()
+
+    def test_viewgraph2d(self, config, G):
+        """test the visualization of the zonegraph in 2d"""
+        import networkx as nx
+        G.plot_graph2d(nx.layout.circular_layout, (1),
+                                     font_color='w', legend=True, font_size=8,
+                                     color_nodes='core',
+                                     node_labels_to_integers=True,
+                                     plt_style='seaborn', save=True,
+                                     filename='test')
+
+    @pytest.mark.parametrize('annotate', [True, 'Name', ('core', None)])
+    def test_viewgraph3d(self, config, G, annotate):
+        """test the visualization of the zonegraph in 3d"""
+        G.plot_graph3d(annotate=annotate, axis_off=True)
+
+    def test_core_graph(self, G):
+        H = G.core_graph
+
+        assert len(H) > 0  # assert G has at least one node
+
+    def test_perim_graph(self, G):
+        H = G.perim_graph
+
+        assert len(H) > 0  # assert G has at least one node
+
+    def test_graph_info(self, G):
+        """test the info method on a ZoneGraph"""
+        G.info()

@@ -396,19 +396,22 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 EconomizerType = 'DifferentialEnthalpy'
                 break
 
-        a = 1
-
-        # CoolingCoeffOfPerf = cooling_cop, CoolingLimitType = 'NoLimit',
-        # CoolingSetpoint = cooling_setpoint, EconomizerType = EconomizerType,
-        # HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencyLatent,
-        # HeatRecoveryEfficiencySensible = HeatRecoveryEfficiencySensible,
-        # HeatRecoveryType = HeatRecoveryType,
-        # HeatingCoeffOfPerf = heating_cop, HeatingLimitType = 'NoLimit',
-        # HeatingSetpoint = cooling_setpoint, IsCoolingOn = IsCoolingOn, IsHeatingOn = IsHeatingOn,
-        # IsMechVentOn = True, MaxCoolFlow = 100, MaxCoolingCapacity = 100,
-        # MaxHeatFlow = 100, MaxHeatingCapacity = 100,
-        # MinFreshAirPerArea = 0, MinFreshAirPerPerson = 0.00944,
-        z_cond = cls(Name=name, zone=zone)
+        z_cond = cls(Name=name, zone=zone, CoolingCoeffOfPerf=cooling_cop,
+                     CoolingLimitType=CoolingLimitType,
+                     CoolingSetpoint=cooling_setpoint,
+                     EconomizerType=EconomizerType,
+                     HeatRecoveryEfficiencyLatent=HeatRecoveryEfficiencyLatent,
+                     HeatRecoveryEfficiencySensible=HeatRecoveryEfficiencySensible,
+                     HeatRecoveryType=HeatRecoveryType,
+                     HeatingCoeffOfPerf=heating_cop,
+                     HeatingLimitType=HeatingLimitType,
+                     HeatingSetpoint=cooling_setpoint, IsCoolingOn=IsCoolingOn,
+                     IsHeatingOn=IsHeatingOn,
+                     IsMechVentOn=IsMechVentOn, MaxCoolFlow=cooling_flow,
+                     MaxCoolingCapacity=cooling_cap,
+                     MaxHeatFlow=heating_flow, MaxHeatingCapacity=heating_cap,
+                     MinFreshAirPerArea=MinFreshAirPerArea,
+                     MinFreshAirPerPerson=MinFreshAirPerPerson)
 
         return z_cond
 

@@ -248,38 +248,40 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         cooling_cop = float_round(cooling_energy_out / cooling_energy_in, 3)
 
         # Heat recovery system
-        if zone.sql['ReportDataDictionary'][zone.sql['ReportDataDictionary'][
-                                                'Name'] == 'Heat Exchanger Total Heating Rate'].empty:
+        if zone.idf.idfobjects[
+            'HeatExchanger:AirToAir:FlatPlate'.upper()].list1 == [] and \
+                zone.idf.idfobjects[
+                    'HeatExchanger:AirToAir:SensibleAndLatent'.upper()].list1 == [] and \
+                zone.idf.idfobjects[
+                    'HeatExchanger:Desiccant:BalancedFlow'.upper()].list1 == []:
             HeatRecoveryType = None
             HeatRecoveryEfficiencyLatent = 0
             HeatRecoveryEfficiencySensible = 0
         else:
-            total_heat_recovery_idx = zone.sql['ReportDataDictionary'][
-                zone.sql['ReportDataDictionary'][
-                    'Name'] == 'Heat Exchanger Total Heating Energy'].index
-            sensible_heat_recovery_idx = zone.sql['ReportDataDictionary'][
-                zone.sql['ReportDataDictionary'][
-                    'Name'] == 'Heat Exchanger Sensible Heating Energy'].index
-            latent_heat_recovery_idx = zone.sql['ReportDataDictionary'][
-                zone.sql['ReportDataDictionary'][
-                    'Name'] == 'Heat Exchanger Latent Heating Energy'].index
-            total_heat_recovery = zone.sql['ReportData'][
-                zone.sql['ReportData'][
-                    'ReportDataDictionaryIndex'] == total_heat_recovery_idx][
-                'Value'].sum()
-            sensible_heat_recovery = zone.sql['ReportData'][
-                zone.sql['ReportData'][
-                    'ReportDataDictionaryIndex'] == sensible_heat_recovery_idx][
-                'Value'].sum()
-            latent_heat_recovery = zone.sql['ReportData'][
-                zone.sql['ReportData'][
-                    'ReportDataDictionaryIndex'] == latent_heat_recovery_idx][
-                'Value'].sum()
-            HeatRecoveryEfficiencyLatent = float_round(
-                latent_heat_recovery / total_heat_recovery, 3)
-            HeatRecoveryEfficiencySensible = float_round(
-                sensible_heat_recovery / total_heat_recovery, 3)
-            HeatRecoveryType = 'Enthalpy'  # COMMENT CHOISIR SI 'Enthalpy' ou 'Sensible' ??!
+            # HeatExchanger:AirToAir:FlatPlate
+            if zone.idf.idfobjects[
+                'HeatExchanger:AirToAir:FlatPlate'.upper()].list1:
+                object = zone.idf.idfobjects[
+                    'HeatExchanger:AirToAir:FlatPlate'.upper()].list1[0]
+                HeatRecoveryEfficiencySensible = (
+                                                         object.Nominal_Supply_Air_Outlet_Temperature - object.Nominal_Supply_Air_Inlet_Temperature) / (
+                                                         object.Nominal_Secondary_Air_Inlet_Temperature - object.Nominal_Supply_Air_Inlet_Temperature)
+                # Hypotheses: HeatRecoveryEfficiencySensible - 0.05
+                HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencySensible - 0.05
+            # HeatExchanger:AirToAir:SensibleAndLatent
+            elif zone.idf.idfobjects[
+                'HeatExchanger:AirToAir:SensibleAndLatent'.upper()].list1:
+                object = zone.idf.idfobjects[
+                    'HeatExchanger:AirToAir:SensibleAndLatent'.upper()].list2[0]
+                HeatRecoveryEfficiencySensible = object[4]
+                HeatRecoveryEfficiencySensible = object[5]
+            # HeatExchanger:Dessicant:BalancedFlow
+            else:
+                # Default values
+                HeatRecoveryEfficiencySensible = 0.7
+                HeatRecoveryEfficiencySensible = 0.65
+                
+            HeatRecoveryType = 'Enthalpy'  # todo: HOW TO CHOOSE If 'Enthalpy' ou 'Sensible' ??!
 
         # Mechanical Ventilation
         for object in zone.idf.idfobjects[

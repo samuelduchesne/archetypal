@@ -220,29 +220,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
         # Thermostat setpoints
         # Heating setpoint
-        heating_setpoints_idx = zone.sql['ReportDataDictionary'][
-            zone.sql['ReportDataDictionary'][
-                'Name'] == 'Zone Thermostat Heating Setpoint Temperature']
-        heating_setpoint_idx = heating_setpoints_idx[
-            heating_setpoints_idx['KeyValue'].str.contains(
-                zone.Name.upper())].index
-        heating_setpoint = float_round(zone.sql['ReportData'][
-                                           zone.sql['ReportData'][
-                                               'ReportDataDictionaryIndex'] ==
-                                           heating_setpoint_idx.tolist()[0]][
-                                           'Value'].mean(), 3)
+        heating_setpoint = cls._get_setpoint(zone,
+                                             'Zone Thermostat Heating Setpoint Temperature')
         # Cooling setpoint
-        cooling_setpoints_idx = zone.sql['ReportDataDictionary'][
-            zone.sql['ReportDataDictionary'][
-                'Name'] == 'Zone Thermostat Cooling Setpoint Temperature']
-        cooling_setpoint_idx = cooling_setpoints_idx[
-            cooling_setpoints_idx['KeyValue'].str.contains(
-                zone.Name.upper())].index
-        cooling_setpoint = float_round(zone.sql['ReportData'][
-                                           zone.sql['ReportData'][
-                                               'ReportDataDictionaryIndex'] ==
-                                           cooling_setpoint_idx.tolist()[0]][
-                                           'Value'].mean(), 3)
+        cooling_setpoint = cls._get_setpoint(zone,
+                                             'Zone Thermostat Cooling Setpoint Temperature')
 
         # If setpoint equal to zero, conditionning is off
         if heating_setpoint == 0:
@@ -418,6 +400,21 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                      MinFreshAirPerPerson=MinFreshAirPerPerson)
 
         return z_cond
+
+    @classmethod
+    def _get_setpoint(cls, zone, variable_output_name):
+        setpoints_idx = zone.sql['ReportDataDictionary'][
+            zone.sql['ReportDataDictionary'][
+                'Name'] == variable_output_name]
+        setpoint_idx = setpoints_idx[
+            setpoints_idx['KeyValue'].str.contains(
+                zone.Name.upper())].index
+        setpoint = float_round(zone.sql['ReportData'][
+                                   zone.sql['ReportData'][
+                                       'ReportDataDictionaryIndex'] ==
+                                   setpoint_idx.tolist()[0]][
+                                   'Value'].mean(), 3)
+        return setpoint
 
     def combine(self, other):
         """Combine two ZoneConditioning objects together.

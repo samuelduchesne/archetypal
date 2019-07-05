@@ -64,7 +64,7 @@ def test_load_old(config):
 def test_run_olderv(config, fresh_start, ep_version):
     """Will run eplus on a file that needs to be upgraded with one that does
     not"""
-
+    ar.settings.use_cache=False
     files = ['tests/input_data/problematic/nat_ventilation_SAMPLE0.idf',
              'tests/input_data/regular/5ZoneNightVent1.idf']
     wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'

@@ -12,6 +12,7 @@ from archetypal.template import MaterialLayer
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
 from archetypal.template.umi_base import UmiBase, Unique
+from archetypal.idfclass import IDF
 
 
 class WindowConstruction(UmiBase, metaclass=Unique):
@@ -22,29 +23,28 @@ class WindowConstruction(UmiBase, metaclass=Unique):
 
     def __init__(self, AssemblyCarbon=0, AssemblyCost=0,
                  AssemblyEnergy=0, DisassemblyCarbon=0,
-                 DisassemblyEnergy=0,
-                 *args, **kwargs):
-        """
+                 DisassemblyEnergy=0, **kwargs):
+        """Initialize a WindowConstruction.
+
         Args:
-            AssemblyCarbon:
-            AssemblyCost:
-            AssemblyEnergy:
-            DisassemblyCarbon:
-            DisassemblyEnergy:
-            *args:
-            **kwargs:
+            AssemblyCarbon (float): Assembly Embodied Carbon by m2 of
+                construction.
+            AssemblyCost (float): Assembly cost by m2 of construction.
+            AssemblyEnergy (float): Assembly Embodied Energy by m2; of
+                construction.
+            DisassemblyCarbon (float): Disassembly embodied carbon by m2 of
+                construction.
+            DisassemblyEnergy (float): Disassembly embodied energy by m2 of
+                construction.
+            **kwargs: Other keywords passed to the constructor.
         """
-        super(WindowConstruction, self).__init__(*args, **kwargs)
+        super(WindowConstruction, self).__init__(**kwargs)
         self.DisassemblyEnergy = DisassemblyEnergy
         self.DisassemblyCarbon = DisassemblyCarbon
         self.AssemblyEnergy = AssemblyEnergy
         self.AssemblyCost = AssemblyCost
         self.AssemblyCarbon = AssemblyCarbon
-        layers = kwargs.get('Layers', None)
-        if layers is None:
-            self.Layers = self.layers()
-        else:
-            self.Layers = layers
+        self.Layers = None
 
     @classmethod
     def from_json(cls, *args, **kwargs):
@@ -63,14 +63,21 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         return wc
 
     @classmethod
-    def from_idf(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        wc = cls(*args, **kwargs)
+    def from_idf(cls, Name, idf, **kwargs):
+        """WindowConstruction from idf Construction Name.
 
+        Example:
+            >>> import archetypal as ar
+            >>> idf = ar.load_idf("myidf")
+            >>> construction_name = "Some construction name"
+            >>> ar.WindowConstruction.from_idf(Name=construction_name, idf=idf)
+
+        Args:
+            Name (str): The name of the Construction in the IDF file.
+            idf (IDF): The idf object.
+            **kwargs: Other keywords passed to the constructor.
+        """
+        wc = cls(Name=Name, idf=idf, **kwargs)
         wc.Layers = wc.layers()
 
         return wc
@@ -148,37 +155,47 @@ class WindowSetting(UmiBase, metaclass=Unique):
     ZoneMixingFlowRate
     """
 
-    def __init__(self, ZoneMixingAvailabilitySchedule, AfnWindowAvailability,
-                 ShadingSystemAvailabilitySchedule, Construction, *args,
-                 AfnDischargeC=0.65, AfnTempSetpoint=20,
-                 IsShadingSystemOn=False, IsVirtualPartition=False,
-                 IsZoneMixingOn=False, OperableArea=0.8,
+    def __init__(self, Construction=None, OperableArea=0.8,
+                 AfnWindowAvailability=None, AfnDischargeC=0.65,
+                 AfnTempSetpoint=20, IsVirtualPartition=False,
+                 IsShadingSystemOn=False,
+                 ShadingSystemAvailabilitySchedule=None,
                  ShadingSystemSetpoint=180, ShadingSystemTransmittance=0.5,
                  ShadingSystemType=0, Type=WindowType.External,
-                 ZoneMixingDeltaTemperature=2,
-                 ZoneMixingFlowRate=0.001, **kwargs):
-        """
+                 IsZoneMixingOn=False, ZoneMixingAvailabilitySchedule=None,
+                 ZoneMixingDeltaTemperature=2, ZoneMixingFlowRate=0.001,
+                 **kwargs):
+        """WindowSetting.
+
         Args:
-            ZoneMixingAvailabilitySchedule:
+            Construction (WindowConstruction): The window construction.
+            OperableArea (float): The operable window area as a ratio of total
+                window area. eg. 0.8 := 80% of the windows area is operable.
             AfnWindowAvailability:
-            ShadingSystemAvailabilitySchedule:
-            Construction:
-            *args:
-            AfnDischargeC:
-            AfnTempSetpoint:
-            IsShadingSystemOn:
-            IsVirtualPartition:
-            IsZoneMixingOn:
-            OperableArea:
-            ShadingSystemSetpoint:
-            ShadingSystemTransmittance:
-            ShadingSystemType:
-            Type:
-            ZoneMixingDeltaTemperature:
-            ZoneMixingFlowRate:
-            **kwargs:
+            AfnDischargeC (float): Airflow Network Discharge Coefficient.
+                Default = 0.65.
+            AfnTempSetpoint (float): Airflow Network Temperature Setpoint.
+                Default = 20 degreeC.
+            IsVirtualPartition (bool): Virtual Partition.
+            IsShadingSystemOn (bool): Shading is used. Default is False.
+            ShadingSystemAvailabilitySchedule (UmiSchedule): Shading system
+                availability schedule.
+            ShadingSystemSetpoint (float): Shading system setpoint in units of
+                W/m2. Default = 180 W/m2.
+            ShadingSystemTransmittance (float): Shading system transmittance.
+                Default = 0.5.
+            ShadingSystemType (int): Shading System Type. 0 = ExteriorShade, 1 =
+                InteriorShade.
+            Type (int):
+            IsZoneMixingOn (bool): Zone mixing.
+            ZoneMixingAvailabilitySchedule (UmiSchedule): Zone mixing
+                availability schedule.
+            ZoneMixingDeltaTemperature (float): Zone mixing delta
+            ZoneMixingFlowRate (float): Zone mixing flow rate in units of m3/m2.
+                Default = 0.001 m3/m2.
+            **kwargs: other keywords passed to the constructor.
         """
-        super(WindowSetting, self).__init__(*args, **kwargs)
+        super(WindowSetting, self).__init__(**kwargs)
         self.ZoneMixingAvailabilitySchedule = ZoneMixingAvailabilitySchedule
         self.ShadingSystemAvailabilitySchedule = \
             ShadingSystemAvailabilitySchedule
@@ -193,34 +210,32 @@ class WindowSetting(UmiBase, metaclass=Unique):
         self.ShadingSystemSetpoint = ShadingSystemSetpoint
         self.ShadingSystemTransmittance = ShadingSystemTransmittance
         self.ShadingSystemType = ShadingSystemType
-        self.Type = Type
+        self.Type = Type  # Todo: Could be deprecated
         self.ZoneMixingDeltaTemperature = ZoneMixingDeltaTemperature
         self.ZoneMixingFlowRate = ZoneMixingFlowRate
 
     @classmethod
-    def from_idf(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        w = cls(*args, **kwargs)
+    def from_idf(cls, Construction, idf, **kwargs):
+        """Make a WindowSetting from an idf object. Must provide the
+        Construction name.
 
-        construction = kwargs.get('Construction', None)
-        w.Construction = w.window_construction(construction)
+        Example:
+            >>> import archetypal as ar
+            >>> # Given an IDF object
+            >>> idf = ar.load_idf("idfname")
+            >>> ar.WindowSetting.from_idf(Name='test_window', idf=idf,
+            >>>                    Construction="AEDG-SmOffice 1A Window Fixed")
+
+        Args:
+            Construction (str): The construction name for this window.
+            idf (IDF): The idf object.
+            **kwargs: Other keywords passed to the constructor.
+        """
+        w = cls(idf=idf, **kwargs)
+        w.Construction = WindowConstruction.from_idf(Name=Construction,
+                                                     idf=w.idf)
 
         return w
-
-    def window_construction(self, window_construction_name):
-        """
-        Args:
-            window_construction_name:
-        """
-        window_construction = WindowConstruction.from_idf(
-            Name=window_construction_name,
-            idf=self.idf)
-
-        return window_construction
 
     def __add__(self, other):
         if isinstance(other, self.__class__):

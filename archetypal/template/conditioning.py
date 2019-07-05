@@ -252,21 +252,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         zone_size = zone.sql['ZoneSizes'][
             zone.sql['ZoneSizes']['ZoneName'] == zone.Name.upper()]
         # Heating
-        heating_cap = round(
-            zone_size[zone_size['LoadType'] == 'Heating']['UserDesLoad'].values[
-                0] / zone.area, 3)
-        heating_flow = \
-            zone_size[zone_size['LoadType'] == 'Heating']['UserDesFlow'].values[
-                0] / zone.area
-        HeatingLimitType = 'LimitFlowRateAndCapacity'
+        HeatingLimitType, heating_cap, heating_flow = cls._get_design_limits(
+            zone, zone_size, load_name='Heating')
         # Cooling
-        cooling_cap = round(
-            zone_size[zone_size['LoadType'] == 'Cooling']['UserDesLoad'].values[
-                0] / zone.area, 3)
-        cooling_flow = \
-            zone_size[zone_size['LoadType'] == 'Cooling']['UserDesFlow'].values[
-                0] / zone.area
-        CoolingLimitType = 'LimitFlowRateAndCapacity'
+        CoolingLimitType, cooling_cap, cooling_flow = cls._get_design_limits(
+            zone, zone_size, load_name='Cooling')
 
         # Heat recovery system
         heat_recovery_objects = zone.idf.getiddgroupdict()['Heat Recovery']
@@ -377,6 +367,17 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                      MinFreshAirPerPerson=MinFreshAirPerPerson)
 
         return z_cond
+
+    @classmethod
+    def _get_design_limits(cls, zone, zone_size, load_name):
+        cap = round(
+            zone_size[zone_size['LoadType'] == load_name]['UserDesLoad'].values[
+                0] / zone.area, 3)
+        flow = \
+            zone_size[zone_size['LoadType'] == load_name]['UserDesFlow'].values[
+                0] / zone.area
+        LimitType = 'LimitFlowRateAndCapacity'
+        return LimitType, cap, flow
 
     @classmethod
     def _get_cop(cls, zone, energy_in_list, energy_out_variable_name):

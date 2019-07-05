@@ -289,43 +289,62 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 cooling_in_idx)]['Value'].sum()
         cooling_cop = float_round(cooling_energy_out / cooling_energy_in, 3)
 
+        # Capacity limits (heating and cooling)
+        zone_size = zone.sql['ZoneSizes'][
+            zone.sql['ZoneSizes']['ZoneName'] == zone.Name.upper()]
+        # Heating
+        heating_cap = round(
+            zone_size[zone_size['LoadType'] == 'Heating']['UserDesLoad'].values[
+                0], 3)
+        heating_flow = round(
+            zone_size[zone_size['LoadType'] == 'Heating']['UserDesFlow'].values[
+                0], 3)
+        HeatingLimitType = 'LimitFlowRateAndCapacity'
+        # Cooling
+        cooling_cap = round(
+            zone_size[zone_size['LoadType'] == 'Cooling']['UserDesLoad'].values[
+                0], 3)
+        cooling_flow = round(
+            zone_size[zone_size['LoadType'] == 'Cooling']['UserDesFlow'].values[
+                0], 3)
+        CoolingLimitType = 'LimitFlowRateAndCapacity'
+
         # Heat recovery system
-        if zone.idf.idfobjects[
-            'HeatExchanger:AirToAir:FlatPlate'.upper()].list1 == [] and \
-                zone.idf.idfobjects[
-                    'HeatExchanger:AirToAir:SensibleAndLatent'.upper()].list1 == [] and \
-                zone.idf.idfobjects[
-                    'HeatExchanger:Desiccant:BalancedFlow'.upper()].list1 == []:
-            HeatRecoveryType = None
-            HeatRecoveryEfficiencyLatent = 0
-            HeatRecoveryEfficiencySensible = 0
-        else:
-            # HeatExchanger:AirToAir:FlatPlate
-            if zone.idf.idfobjects[
-                'HeatExchanger:AirToAir:FlatPlate'.upper()].list1:
-                object = zone.idf.idfobjects[
-                    'HeatExchanger:AirToAir:FlatPlate'.upper()].list1[0]
-                HeatRecoveryEfficiencySensible = (
-                                                         object.Nominal_Supply_Air_Outlet_Temperature - object.Nominal_Supply_Air_Inlet_Temperature) / (
-                                                         object.Nominal_Secondary_Air_Inlet_Temperature - object.Nominal_Supply_Air_Inlet_Temperature)
-                # Hypotheses: HeatRecoveryEfficiencySensible - 0.05
-                HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencySensible - 0.05
-            # HeatExchanger:AirToAir:SensibleAndLatent
-            elif zone.idf.idfobjects[
-                'HeatExchanger:AirToAir:SensibleAndLatent'.upper()].list1:
-                object = zone.idf.idfobjects[
-                    'HeatExchanger:AirToAir:SensibleAndLatent'.upper()].list2[0]
-                HeatRecoveryEfficiencySensible = object[4]
-                HeatRecoveryEfficiencySensible = object[5]
-            # HeatExchanger:Dessicant:BalancedFlow
+        heat_recovery_objects = zone.idf.getiddgroupdict()['Heat Recovery']
+        # If Heat recovery is not used
+        for object in heat_recovery_objects:
+            if zone.idf.idfobjects[object.upper()].list1 == []:
+                HeatRecoveryType = None
+                HeatRecoveryEfficiencyLatent = 0
+                HeatRecoveryEfficiencySensible = 0
             else:
-                # Default values
-                HeatRecoveryEfficiencySensible = 0.7
-                HeatRecoveryEfficiencySensible = 0.65
-                
-            HeatRecoveryType = 'Enthalpy'  # todo: HOW TO CHOOSE If 'Enthalpy' ou 'Sensible' ??!
+                # HeatExchanger:AirToAir:FlatPlate
+                if object.upper() == 'HeatExchanger:AirToAir:FlatPlate'.upper():
+                    obj = zone.idf.idfobjects[object.upper()].list1[0]
+                    HeatRecoveryEfficiencySensible = (
+                                                             object.Nominal_Supply_Air_Outlet_Temperature - object.Nominal_Supply_Air_Inlet_Temperature) / (
+                                                             object.Nominal_Secondary_Air_Inlet_Temperature - object.Nominal_Supply_Air_Inlet_Temperature)
+                    # Hypotheses: HeatRecoveryEfficiencySensible - 0.05
+                    HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencySensible - 0.05
+                # HeatExchanger:AirToAir:SensibleAndLatent
+                elif object.upper() == 'HeatExchanger:AirToAir:SensibleAndLatent'.upper():
+                    obj = zone.idf.idfobjects[object.upper()].list2[0]
+                    HeatRecoveryEfficiencySensible = obj[4]
+                    HeatRecoveryEfficiencySensible = obj[5]
+                # HeatExchanger:Dessicant:BalancedFlow
+                elif object.upper() == 'HeatExchanger:Desiccant:BalancedFlow'.upper():
+                    # Default values
+                    HeatRecoveryEfficiencySensible = 0.7
+                    HeatRecoveryEfficiencySensible = 0.65
+                else:
+                    msg = 'Heat exchanger object {"object"} is not ' \
+                          'implemented'.format(object=object)
+                    raise NotImplementedError(msg)
+        HeatRecoveryType = 'Enthalpy'  # todo: HOW TO CHOOSE If 'Enthalpy' ou 'Sensible' ??!
 
         # Mechanical Ventilation
+        # Iterate on 'Controller:MechanicalVentilation' objects to find the
+        # 'DesignSpecifactionOutdoorAirName' for the zone
         for object in zone.idf.idfobjects[
             'Controller:MechanicalVentilation'.upper()]:
             if zone.Name in object.fieldvalues:

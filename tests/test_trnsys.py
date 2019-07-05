@@ -12,6 +12,7 @@ def round_up(n, decimals=0):
     multiplier = 10 ** decimals
     return math.ceil(n * multiplier) / multiplier
 
+
 @pytest.mark.xfail("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
                    reason="Skipping this test on Travis CI.")
 def test_trnbuild_from_idf(config):
@@ -44,7 +45,37 @@ def test_trnbuild_from_idf(config):
                    reason="Skipping this test on Travis CI.")
 def test_trnbuild_from_idf_parallel(config):
     # All IDF files
-    idf_list = ["NECB 2011 - Warehouse.idf"]
+    idf_list = ["NECB 2011 - Full Service Restaurant.idf",
+                "NECB 2011 - HighRise Apartment.idf",
+                "NECB 2011 - Hospital.idf",
+                "NECB 2011 - Large Hotel.idf",
+                "NECB 2011 - Medium Office.idf",
+                "NECB 2011 - MidRise Apartment.idf",
+                "NECB 2011 - Outpatient.idf",
+                "NECB 2011 - Primary School.idf",
+                "NECB 2011 - Quick Service Restaurant.idf",
+                "NECB 2011 - Retail Standalone.idf",
+                "NECB 2011 - Retail Stripmall.idf",
+                "NECB 2011 - Secondary School.idf",
+                "NECB 2011 - Small Hotel.idf",
+                "NECB 2011 - Small Office.idf",
+                "NECB 2011 - Warehouse.idf",
+                "ASHRAE90.1_ApartmentHighRise_STD2004_Rochester.idf",
+                "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
+                "ASHRAE90.1_Hospital_STD2004_Rochester.idf",
+                "ASHRAE90.1_HotelLarge_STD2004_Rochester.idf",
+                "ASHRAE90.1_HotelSmall_STD2004_Rochester.idf",
+                "ASHRAE90.1_OfficeLarge_STD2004_Rochester.idf",
+                "ASHRAE90.1_OfficeMedium_STD2004_Rochester.idf",
+                "ASHRAE90.1_OfficeSmall_STD2004_Rochester.idf",
+                "ASHRAE90.1_OutPatientHealthCare_STD2004_Rochester.idf",
+                "ASHRAE90.1_RestaurantFastFood_STD2004_Rochester.idf",
+                "ASHRAE90.1_RestaurantSitDown_STD2004_Rochester.idf",
+                "ASHRAE90.1_RetailStandalone_STD2004_Rochester.idf",
+                "ASHRAE90.1_RetailStripmall_STD2004_Rochester.idf",
+                "ASHRAE90.1_SchoolPrimary_STD2004_Rochester.idf",
+                "ASHRAE90.1_SchoolSecondary_STD2004_Rochester.idf",
+                "ASHRAE90.1_Warehouse_STD2004_Rochester.idf"]
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
     files = ["NECB 2011 - Warehouse.idf", "NECB 2011 - Small Office.idf"]
@@ -69,7 +100,37 @@ def test_trnbuild_from_idf_parallel(config):
                    reason="Skipping this test on Travis CI.")
 def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
     # All IDF files
-    idf_list = ["NECB 2011 - Warehouse.idf"]
+    idf_list = ["NECB 2011 - Full Service Restaurant.idf",
+                "NECB 2011 - HighRise Apartment.idf",
+                "NECB 2011 - Hospital.idf",
+                "NECB 2011 - Large Hotel.idf",
+                "NECB 2011 - Medium Office.idf",
+                "NECB 2011 - MidRise Apartment.idf",
+                "NECB 2011 - Outpatient.idf",
+                "NECB 2011 - Primary School.idf",
+                "NECB 2011 - Quick Service Restaurant.idf",
+                "NECB 2011 - Retail Standalone.idf",
+                "NECB 2011 - Retail Stripmall.idf",
+                "NECB 2011 - Secondary School.idf",
+                "NECB 2011 - Small Hotel.idf",
+                "NECB 2011 - Small Office.idf",
+                "NECB 2011 - Warehouse.idf",
+                "ASHRAE90.1_ApartmentHighRise_STD2004_Rochester.idf",
+                "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
+                "ASHRAE90.1_Hospital_STD2004_Rochester.idf",
+                "ASHRAE90.1_HotelLarge_STD2004_Rochester.idf",
+                "ASHRAE90.1_HotelSmall_STD2004_Rochester.idf",
+                "ASHRAE90.1_OfficeLarge_STD2004_Rochester.idf",
+                "ASHRAE90.1_OfficeMedium_STD2004_Rochester.idf",
+                "ASHRAE90.1_OfficeSmall_STD2004_Rochester.idf",
+                "ASHRAE90.1_OutPatientHealthCare_STD2004_Rochester.idf",
+                "ASHRAE90.1_RestaurantFastFood_STD2004_Rochester.idf",
+                "ASHRAE90.1_RestaurantSitDown_STD2004_Rochester.idf",
+                "ASHRAE90.1_RetailStandalone_STD2004_Rochester.idf",
+                "ASHRAE90.1_RetailStripmall_STD2004_Rochester.idf",
+                "ASHRAE90.1_SchoolPrimary_STD2004_Rochester.idf",
+                "ASHRAE90.1_SchoolSecondary_STD2004_Rochester.idf",
+                "ASHRAE90.1_Warehouse_STD2004_Rochester.idf"]
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
     files = ["NECB 2011 - Warehouse.idf", "NECB 2011 - Small Office.idf"]
@@ -80,7 +141,7 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
         idf_file=os.path.join(file_upper_path, file),
         template="tests/input_data/trnsys/NewFileTemplate.d18",
         trnsidf_exe='docker/trnsidf/trnsidf.exe') for
-        file in files}
+        file in idf_list}
 
     result = parallel_process(in_dict, convert_idf_to_trnbuild, 4,
                               use_kwargs=True)

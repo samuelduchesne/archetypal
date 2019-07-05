@@ -78,6 +78,7 @@ class Schedule(object):
                                   Schedule_Type_Limits_Name='',
                                   Hourly_Value=hourly_value),
                            save=False)
+            return Schedule(sch_name=Name, idf=idf, **kwargs)
         else:
             # Create a new idf object and add the schedule to it.
             idftxt = "VERSION, 8.9;"  # Not an empty string. has just the

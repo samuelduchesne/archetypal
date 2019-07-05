@@ -247,8 +247,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         # If setpoint equal to zero, conditionning is off
         if heating_setpoint == 0:
             IsHeatingOn = False
+        else:
+            IsHeatingOn = True
         if cooling_setpoint == 0:
             IsCoolingOn = False
+        else:
+            IsCoolingOn = True
 
         # COPs (heating and cooling)
         # Heating

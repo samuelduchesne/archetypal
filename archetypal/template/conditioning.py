@@ -271,7 +271,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
                 heating_in_idx)]['Value'].sum()
         heating_cop = float_round(heating_energy_out / heating_energy_in,
-                                  3)  # todo: A L'AIR PETIT ??!
+                                  3)
         # Cooling
         cooling_out_idx = zone.sql['ReportDataDictionary'][
             zone.sql['ReportDataDictionary'][

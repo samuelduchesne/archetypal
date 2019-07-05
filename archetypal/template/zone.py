@@ -243,7 +243,7 @@ class Zone(UmiBase, metaclass=Unique):
         z._zonesurfaces = zone.zonesurfaces
 
         z.Constructions = ZoneConstructionSet.from_zone(z)
-        z.Conditioning = ZoneConditioning.from_zone(z) #todo
+        z.Conditioning = ZoneConditioning.from_zone(z)
         z.Ventilation = VentilationSetting.from_zone(z)
         z.DomesticHotWater = DomesticHotWaterSetting.from_zone(z)
         z.Loads = ZoneLoad.from_zone(z)

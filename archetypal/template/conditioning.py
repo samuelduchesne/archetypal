@@ -238,38 +238,15 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
         # COPs (heating and cooling)
         # Heating
-        heating_out_idx = zone.sql['ReportDataDictionary'][
-            zone.sql['ReportDataDictionary'][
-                'Name'] == 'Air System Total Heating Energy'].index
-        heating_energy_out = zone.sql['ReportData'][
-            zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
-                heating_out_idx)]['Value'].sum()
         heating_in_list = ['Heating:Electricity', 'Heating:Gas',
                            'Heating:DistrictHeating']
-        heating_in_idx = zone.sql['ReportDataDictionary'][
-            zone.sql['ReportDataDictionary']['Name'].isin(
-                heating_in_list)].index
-        heating_energy_in = zone.sql['ReportData'][
-            zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
-                heating_in_idx)]['Value'].sum()
-        heating_cop = float_round(heating_energy_out / heating_energy_in,
-                                  3)
+        heating_cop = cls._get_cop(zone, energy_in_list=heating_in_list,
+                                   energy_out_variable_name='Air System Total Heating Energy')
         # Cooling
-        cooling_out_idx = zone.sql['ReportDataDictionary'][
-            zone.sql['ReportDataDictionary'][
-                'Name'] == 'Air System Total Cooling Energy'].index
-        cooling_energy_out = zone.sql['ReportData'][
-            zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
-                cooling_out_idx)]['Value'].sum()
         cooling_in_list = ['Cooling:Electricity', 'Cooling:Gas',
                            'Cooling:DistrictCooling']
-        cooling_in_idx = zone.sql['ReportDataDictionary'][
-            zone.sql['ReportDataDictionary']['Name'].isin(
-                cooling_in_list)].index
-        cooling_energy_in = zone.sql['ReportData'][
-            zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
-                cooling_in_idx)]['Value'].sum()
-        cooling_cop = float_round(cooling_energy_out / cooling_energy_in, 3)
+        cooling_cop = cls._get_cop(zone, energy_in_list=cooling_in_list,
+                                   energy_out_variable_name='Air System Total Cooling Energy')
 
         # Capacity limits (heating and cooling)
         zone_size = zone.sql['ZoneSizes'][
@@ -400,6 +377,24 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                      MinFreshAirPerPerson=MinFreshAirPerPerson)
 
         return z_cond
+
+    @classmethod
+    def _get_cop(cls, zone, energy_in_list, energy_out_variable_name):
+        energy_out_idx = zone.sql['ReportDataDictionary'][
+            zone.sql['ReportDataDictionary'][
+                'Name'] == energy_out_variable_name].index
+        energy_out = zone.sql['ReportData'][
+            zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
+                energy_out_idx)]['Value'].sum()
+        energy_in_idx = zone.sql['ReportDataDictionary'][
+            zone.sql['ReportDataDictionary']['Name'].isin(
+                energy_in_list)].index
+        energy_in = zone.sql['ReportData'][
+            zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
+                energy_in_idx)]['Value'].sum()
+        cop = float_round(energy_out / energy_in,
+                          3)
+        return cop
 
     @classmethod
     def _get_setpoint(cls, zone, variable_output_name):

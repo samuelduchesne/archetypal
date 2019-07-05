@@ -295,18 +295,18 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         # Heating
         heating_cap = round(
             zone_size[zone_size['LoadType'] == 'Heating']['UserDesLoad'].values[
-                0], 3)
-        heating_flow = round(
+                0] / zone.area, 3)
+        heating_flow = \
             zone_size[zone_size['LoadType'] == 'Heating']['UserDesFlow'].values[
-                0], 3)
+                0] / zone.area
         HeatingLimitType = 'LimitFlowRateAndCapacity'
         # Cooling
         cooling_cap = round(
             zone_size[zone_size['LoadType'] == 'Cooling']['UserDesLoad'].values[
-                0], 3)
-        cooling_flow = round(
+                0] / zone.area, 3)
+        cooling_flow = \
             zone_size[zone_size['LoadType'] == 'Cooling']['UserDesFlow'].values[
-                0], 3)
+                0] / zone.area
         CoolingLimitType = 'LimitFlowRateAndCapacity'
 
         # Heat recovery system

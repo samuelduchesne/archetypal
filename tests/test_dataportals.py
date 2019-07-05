@@ -62,7 +62,8 @@ def test_download_and_load_bld_window(config):
                                    oauth_key=oauth_consumer_key, tolerance=0.05)
     idf = ar.load_idf(response[0])
 
-    ws = ar.WindowSetting.from_idf(Name='test_window', idf=idf)
+    ws = ar.WindowSetting.from_idf(Name='test_window', idf=idf,
+                                   Construction="AEDG-SmOffice 1A Window Fixed")
 
     assert ws
 

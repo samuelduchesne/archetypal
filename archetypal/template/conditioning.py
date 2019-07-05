@@ -326,16 +326,19 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                                                              object.Nominal_Secondary_Air_Inlet_Temperature - object.Nominal_Supply_Air_Inlet_Temperature)
                     # Hypotheses: HeatRecoveryEfficiencySensible - 0.05
                     HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencySensible - 0.05
+                    break
                 # HeatExchanger:AirToAir:SensibleAndLatent
                 elif object.upper() == 'HeatExchanger:AirToAir:SensibleAndLatent'.upper():
                     obj = zone.idf.idfobjects[object.upper()].list2[0]
                     HeatRecoveryEfficiencySensible = obj[4]
-                    HeatRecoveryEfficiencySensible = obj[5]
+                    HeatRecoveryEfficiencyLatent = obj[5]
+                    break
                 # HeatExchanger:Dessicant:BalancedFlow
                 elif object.upper() == 'HeatExchanger:Desiccant:BalancedFlow'.upper():
                     # Default values
                     HeatRecoveryEfficiencySensible = 0.7
                     HeatRecoveryEfficiencySensible = 0.65
+                    break
                 else:
                     msg = 'Heat exchanger object "{}" is not implemented'.format(
                         object)

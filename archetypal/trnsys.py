@@ -1121,10 +1121,10 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
 
                 if 'othersideconditionsmodel' in \
                         buildingSurf.Outside_Boundary_Condition.lower():
-                    msg = 'Surface {"buildSurfName"} has ' \
+                    msg = 'Surface "{}" has ' \
                           '"OtherSideConditionsModel" as an outside ' \
                           'boundary condition, this method is not implemented'.format(
-                        buildSurfName=buildingSurf.Name)
+                        buildingSurf.Name)
                     raise NotImplementedError(msg)
 
                 # Round vertex to 4 decimal digit max

@@ -167,9 +167,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     df_sched = pd.DataFrame()
     for schedule_name in schedule_names:
         df_sched[schedule_name] = schedules[schedule_name]['all values']
-
+    sched_file_name = 'yearly_schedules_' + os.path.basename(idf_file) + '.csv'
     df_sched.to_csv(
-        path_or_buf=os.path.join(output_folder, 'yearly_schedules.csv'))
+        path_or_buf=os.path.join(output_folder, sched_file_name))
     # endregion
 
     # Get materials with resistance lower than 0.0007

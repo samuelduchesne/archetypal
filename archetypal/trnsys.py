@@ -42,7 +42,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     Example:
         >>> # Exemple of setting kwargs to be unwrapped in the function
         >>> kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
-                           'tolerance': 0.05, 'ordered': True}
+        >>>                'tolerance': 0.05, 'ordered': True}
         >>> # Exemple how to call the function
         >>> idf_file = "/file.idf"
         >>> window_filepath = "/W74-lib.dat"
@@ -62,8 +62,10 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         return_dck (bool, optional): If True, also return the path to the TRNSYS
             dck file (.dck).
         output_folder (str, optional): location where output files will be
-        trnsidf_exe_dir (str): Path to *trnsidf.exe*.
+        trnsidf_exe (str): Path to *trnsidf.exe*.
         template (str): Path to d18 template file.
+        log_clear_names (bool): If True, DOES NOT log the equivalence between
+            the old and new names in the console.
         kwargs (dict): keyword arguments sent to
             :func:`convert_idf_to_trnbuild()` or :func:`trnbuild_idf()` or
             :func:`choose_window`. "ordered=True" to have the name of idf
@@ -160,6 +162,14 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO)
+
+    log("Saving yearly schedules in CSV file...")
+    df_sched = pd.DataFrame()
+    for schedule_name in schedule_names:
+        df_sched[schedule_name] = schedules[schedule_name]['all values']
+    sched_file_name = 'yearly_schedules_' + os.path.basename(idf_file) + '.csv'
+    df_sched.to_csv(
+        path_or_buf=os.path.join(output_folder, sched_file_name))
     # endregion
 
     # Get materials with resistance lower than 0.0007
@@ -516,6 +526,7 @@ def _get_schedules(idf):
         schedule_names.append(schedule_name)
         schedules[schedule_name] = {}
         year, weeks, days = s.to_year_week_day()
+        schedules[schedule_name]['all values'] = s.all_values
         schedules[schedule_name]['year'] = year
         schedules[schedule_name]['weeks'] = weeks
         schedules[schedule_name]['days'] = days
@@ -530,8 +541,8 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
     new name will be "stl_00000n" - limits length to 10 characters
 
     Args:
-        log_clear_names:
         idfFile (archetypal.idfclass.IDF): IDF object where to clean names
+        log_clear_names:
     """
 
     uniqueList = []
@@ -871,15 +882,15 @@ def trnbuild_idf(idf_file, output_folder=None, template=None, dck=False,
         >>>              r"Building\\trnsIDF\\NewFileTemplate.d18"
 
     Args:
-        output_folder:
         idf_file (str): path/filename.idf
+        output_folder (str, optional): location where output files will be
         template (str): path/NewFileTemplate.d18
         dck (bool): If True, create a template DCK
         nonum (bool, optional): If True, no renumeration of surfaces
         N (optional): BatchJob Modus
         geo_floor (float, optional): generates GEOSURF values for distributing
-            direct solar radiation where `geo_floor` % is directed to the floor, the rest
-            to walls/windows. Default = 0.6
+            direct solar radiation where `geo_floor` % is directed to the floor,
+            the rest to walls/windows. Default = 0.6
         refarea (bool, optional): If True, floor reference area of airnodes is
             updated
         volume (bool, True): If True, volume of airnodes is updated
@@ -1110,10 +1121,10 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
 
                 if 'othersideconditionsmodel' in \
                         buildingSurf.Outside_Boundary_Condition.lower():
-                    msg = 'Surface {"buildSurfName"} has ' \
+                    msg = 'Surface "{}" has ' \
                           '"OtherSideConditionsModel" as an outside ' \
                           'boundary condition, this method is not implemented'.format(
-                        buildSurfName=buildingSurf.Name)
+                        buildingSurf.Name)
                     raise NotImplementedError(msg)
 
                 # Round vertex to 4 decimal digit max
@@ -1151,18 +1162,17 @@ def _modify_adj_surface(buildingSurf, idf):
     outside_bound_surf = buildingSurf.Outside_Boundary_Condition_Object
     # If outside_bound_surf is the same surface as buildingSurf, raises error
     if outside_bound_surf == buildingSurf.Name:
-        msg = 'The IDF file "{idfname}" could not be converted. The problem ' \
-              'comes from adjacent surfaces that have themselves as an ' \
-              'Outside Boundary Condition Object. For example, surf_1 has ' \
-              '"Surface" as Outside Boundary Condition, but the Outside ' \
-              'Boundary Condition Object is surf_1 too. This comes from the ' \
-              'EnergyPlus IDF. Here it is surface ' \
-              '"{surfname}" that have "{outside_bound}" as Outside ' \
-              'Boundary Condition Object.'.format(
-            idfname=os.path.basename(
-                idf.idfname), surfname=buildingSurf.Name,
-            outside_bound=outside_bound_surf)
-        raise NotImplementedError(msg)
+        buildingSurf.Outside_Boundary_Condition = \
+            "OtherSideCoefficients"
+        buildingSurf.Outside_Boundary_Condition_Object = \
+            "BOUNDARY=IDENTICAL"
+        # Prevents the user in the log of the change of the Boumdary Conditions
+        msg = 'Surface "{surfname}" has "{outside_bound}" as Outside ' \
+              'Boundary Condition Object (adjacent to itself). To solve this ' \
+              'problem, we forced the Boundary Condition of this surface to ' \
+              'be "IDENTICAL".'.format(surfname=buildingSurf.Name,
+                                       outside_bound=outside_bound_surf)
+        log(msg, lg.WARNING)
     else:
         # Replace the Outside_Boundary_Condition_Object that was the
         # outside_bound_surf, by the adjacent zone name
@@ -1189,11 +1199,6 @@ def _modify_adj_surface(buildingSurf, idf):
             # (Vertex4 become Vertex1, Vertex2 become Vertex3, etc.)
             _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf,
                                    'BUILDINGSURFACE:DETAILED')
-
-    a = idf.getobject(
-        'BUILDINGSURFACE:DETAILED',
-        outside_bound_surf)
-    b = 1
 
 
 def _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf,

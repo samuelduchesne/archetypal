@@ -297,29 +297,35 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         # Mechanical Ventilation
         # Iterate on 'Controller:MechanicalVentilation' objects to find the
         # 'DesignSpecifactionOutdoorAirName' for the zone
-        for object in zone.idf.idfobjects[
-            'Controller:MechanicalVentilation'.upper()]:
-            if zone.Name in object.fieldvalues:
-                indice_zone = \
-                    [k for k, s in enumerate(object.fieldvalues) if
-                     s == zone.Name][
-                        0]
-                design_spe_outdoor_air_name = object.fieldvalues[
-                    indice_zone + 1]
-                break
-        # If 'DesignSpecifactionOutdoorAirName', MechVent is ON, and gets the
-        # minimum fresh air (per person and area)
-        if design_spe_outdoor_air_name != '':
-            IsMechVentOn = True
-            design_spe_outdoor_air = zone.idf.getobject(
-                'DesignSpecification:OutdoorAir'.upper(),
-                design_spe_outdoor_air_name)
-            MinFreshAirPerPerson = design_spe_outdoor_air.Outdoor_Air_Flow_per_Person
-            MinFreshAirPerArea = design_spe_outdoor_air.Outdoor_Air_Flow_per_Zone_Floor_Area
-        else:
+        if zone.idf.idfobjects[
+            'Controller:MechanicalVentilation'.upper()].list1 == []:
             IsMechVentOn = False
             MinFreshAirPerPerson = 0
             MinFreshAirPerArea = 0
+        else:
+            for object in zone.idf.idfobjects[
+                'Controller:MechanicalVentilation'.upper()]:
+                if zone.Name in object.fieldvalues:
+                    indice_zone = \
+                        [k for k, s in enumerate(object.fieldvalues) if
+                         s == zone.Name][
+                            0]
+                    design_spe_outdoor_air_name = object.fieldvalues[
+                        indice_zone + 1]
+                    break
+            # If 'DesignSpecifactionOutdoorAirName', MechVent is ON, and gets the
+            # minimum fresh air (per person and area)
+            if design_spe_outdoor_air_name != '':
+                IsMechVentOn = True
+                design_spe_outdoor_air = zone.idf.getobject(
+                    'DesignSpecification:OutdoorAir'.upper(),
+                    design_spe_outdoor_air_name)
+                MinFreshAirPerPerson = design_spe_outdoor_air.Outdoor_Air_Flow_per_Person
+                MinFreshAirPerArea = design_spe_outdoor_air.Outdoor_Air_Flow_per_Zone_Floor_Area
+            else:
+                IsMechVentOn = False
+                MinFreshAirPerPerson = 0
+                MinFreshAirPerArea = 0
 
         # Economizer
         # Todo: Here EconomizerType is for the entire building, try to do it for each zone

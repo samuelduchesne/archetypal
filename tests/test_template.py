@@ -215,7 +215,7 @@ class TestBuildingTemplate():
 
     @pytest.fixture(scope="class")
     def G(self, bt):
-        yield bt.zone_graph()
+        yield bt.zone_graph(skeleton=True)
 
     @pytest.mark.parametrize('adj_report', [True, False])
     def test_graph(self, config, bt, adj_report):
@@ -223,23 +223,23 @@ class TestBuildingTemplate():
         the creation of the adjacency report"""
         import networkx as nx
 
-        G1 = bt.zone_graph(log_adj_report=adj_report, skeleton=False,
+        G1 = bt.zone_graph(log_adj_report=adj_report, skeleton=True,
                            force=False)
         assert not nx.is_empty(G1)
 
         # calling zone_graph a second time should not recalculate it.
-        G2 = bt.zone_graph(log_adj_report=adj_report, skeleton=False,
+        G2 = bt.zone_graph(log_adj_report=adj_report, skeleton=True,
                            force=False)
         assert id(G2) == id(G1)
 
         # calling zone_graph a second time with force=True should
         # recalculate it and produce a new id.
-        G3 = bt.zone_graph(log_adj_report=adj_report, skeleton=False,
+        G3 = bt.zone_graph(log_adj_report=adj_report, skeleton=True,
                            force=True)
         assert id(G3) != id(G2)
 
-        # skeleton True should build the zone elements.
-        G4 = bt.zone_graph(log_adj_report=adj_report, skeleton=True,
+        # skeleton False should build the zone elements.
+        G4 = bt.zone_graph(log_adj_report=adj_report, skeleton=False,
                            force=True)
 
         from eppy.bunch_subclass import EpBunch

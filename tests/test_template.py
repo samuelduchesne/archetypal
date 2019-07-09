@@ -188,7 +188,7 @@ class TestAddiADD():
 
 
 def test_traverse_graph(config):
-    file = "tests/input_data/trnsys/NECB 2011 - Warehouse.idf"
+    file = "tests/input_data/trnsys/ASHRAE90.1_Warehouse_STD2004_Rochester.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
 
     idf = ar.load_idf(file)

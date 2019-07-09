@@ -54,7 +54,7 @@ class IDF(geomeppy.IDF):
         area = 0
         surfaces = [s for s in self.idfobjects[
             'BuildingSurface:Detailed'.upper()]
-            if s.tilt == 180]
+                    if s.tilt == 180]
         for surf in surfaces:
             zone = surfaces[0].get_referenced_object("Zone_Name")
             part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
@@ -118,7 +118,14 @@ class IDF(geomeppy.IDF):
             eppy.modeleditor.IDF: the IDF object
         """
         # get list of objects
+
         objs = self.idfobjects[ep_object]  # a list
+        # If object is supposed to be 'unique-object', deletes all objects to be
+        # sure there is only one of them when creating new object
+        # (see following line)
+        for obj in objs:
+            if 'unique-object' in obj.objidd[0].keys():
+                self.removeidfobject(obj)
         # create new object
         new_object = self.newidfobject(ep_object, **kwargs)
         # Check if new object exists in previous list
@@ -737,6 +744,18 @@ def prepare_outputs(eplus_file, outputs=None, idd_filename=None):
     idf[eplus_finename].add_object('Output:Variable'.upper(),
                                    Variable_Name='Air System Total Cooling '
                                                  'Energy',
+                                   Reporting_Frequency='hourly')
+    idf[eplus_finename].add_object('Output:Variable'.upper(),
+                                   Variable_Name='Zone Thermostat Heating '
+                                                 'Setpoint Temperature',
+                                   Reporting_Frequency='hourly')
+    idf[eplus_finename].add_object('Output:Variable'.upper(),
+                                   Variable_Name='Zone Thermostat Cooling '
+                                                 'Setpoint Temperature',
+                                   Reporting_Frequency='hourly')
+    idf[eplus_finename].add_object('Output:Variable'.upper(),
+                                   Variable_Name='Heat Exchanger Total Heating '
+                                                 'Rate',
                                    Reporting_Frequency='hourly')
 
     # Output meters

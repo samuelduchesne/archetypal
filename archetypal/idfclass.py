@@ -118,7 +118,14 @@ class IDF(geomeppy.IDF):
             eppy.modeleditor.IDF: the IDF object
         """
         # get list of objects
+
         objs = self.idfobjects[ep_object]  # a list
+        # If object is supposed to be 'unique-object', deletes all objects to be
+        # sure there is only one of them when creating new object
+        # (see following line)
+        for obj in objs:
+            if 'unique-object' in obj.objidd[0].keys():
+                self.removeidfobject(obj)
         # create new object
         new_object = self.newidfobject(ep_object, **kwargs)
         # Check if new object exists in previous list

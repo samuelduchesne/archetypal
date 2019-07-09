@@ -377,6 +377,7 @@ def surface_dispatcher(surf, zone):
         ('Ceiling', 'Adiabatic'): ZoneConstructionSet._do_slab,
         ('Ceiling', 'Surface'): ZoneConstructionSet._do_slab,
         ('Ceiling', 'Zone'): ZoneConstructionSet._do_slab,
+        ('Roof', 'Zone'): ZoneConstructionSet._do_roof,
     }
     if surf.key.upper() != 'INTERNALMASS':
         a, b = surf['Surface_Type'].capitalize(), surf[

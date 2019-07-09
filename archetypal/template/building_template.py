@@ -86,14 +86,18 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
         def is_core(this_zone):
             # if all surfaces don't have boundary condition == "Outdoors"
-            try:
-                return not any(
-                    [True if s.Outside_Boundary_Condition.lower() ==
-                             'outdoors' else False for s in
-                     this_zone.zonesurfaces])
-            except BadEPFieldError:
-                pass  # pass surfaces that don't have an OBC,
-                # eg. InternalMass
+            iscore = True
+            for s in this_zone.zonesurfaces:
+                try:
+                    if int(s.tilt) == 90:
+                        if s.Outside_Boundary_Condition.lower() == 'outdoors':
+                            iscore = False
+                            break
+                except BadEPFieldError:
+                    pass  # pass surfaces that don't have an OBC,
+                    # eg. InternalMass
+            return iscore
+
 
         counter = 0
         for zone in tqdm(idf.idfobjects['ZONE'], desc='zone_loop'):
@@ -259,7 +263,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             idf:
             **kwargs:
         """
-        name = idf.idfobjects['BUILDING'][0].Name
+        name = kwargs.pop('Name', idf.idfobjects['BUILDING'][0].Name)
         core = None
         perimeter = None
         structure = None

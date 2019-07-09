@@ -243,7 +243,7 @@ class Zone(UmiBase, metaclass=Unique):
         z._zonesurfaces = zone.zonesurfaces
 
         z.Constructions = ZoneConstructionSet.from_zone(z)
-        z.Conditioning = ZoneConditioning.from_zone(z)
+        z.Conditioning = ZoneConditioning.from_zone(z) #todo
         z.Ventilation = VentilationSetting.from_zone(z)
         z.DomesticHotWater = DomesticHotWaterSetting.from_zone(z)
         z.Loads = ZoneLoad.from_zone(z)
@@ -956,9 +956,12 @@ class ZoneGraph(networkx.Graph):
             elev (float): Elevation viewing angle, defaults to 30.
             proj_type (str): Type of projection, accepts 'persp' and 'ortho'.
             filename (str): the name of the file if saving.
-            annotate (bool or str): If True, annotates the node with the Zone
-                Name. Pass a field_name to retrieve data from the epbunch of the
-                zone.
+            annotate (bool or str or tuple): If True, annotates the node with
+                the Zone Name. Pass an EpBunch *field_name* to retrieve data
+                from the zone EpBunch. Pass a tuple (data, key) to retrieve data
+                from the graph: eg. ('core', None) will retrieve the attribute
+                'core' associated to the node. The second tuple element serves
+                as a key on the first: G.nodes(data=data)[key].
             plt_style (str, dict, or list): A style specification. Valid options
                 are: - str: The name of a style or a path/URL to a style file.
                 For a list of available style names, see `style.available` . -
@@ -1105,7 +1108,7 @@ class ZoneGraph(networkx.Graph):
             >>>                color_nodes='core',
             >>>                node_labels_to_integers=True,
             >>>                plt_style='seaborn', save=True,
-            >>>                filename='test'
+            >>>                filename='test')
 
         Args:
             layout_function (func): One of the networkx layout functions.

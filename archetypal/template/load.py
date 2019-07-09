@@ -7,7 +7,7 @@
 
 import collections
 
-from archetypal.template import UmiBase, Unique
+from archetypal.template import UmiBase, Unique, UmiSchedule
 
 
 class ZoneLoad(UmiBase, metaclass=Unique):
@@ -112,7 +112,69 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         Args:
             zone (archetypal.template.zone.Zone):
         """
-        # todo: to finish
+
+        a = 1
+        # Get schedule index for different loads and creates ZoneLoad arguments
+        # Verifies if Equipment in zone
+        if zone.sql['NominalElectricEquipment'][
+            zone.sql['NominalElectricEquipment']['ObjectName'].str.contains(
+                zone.Name.upper())].empty:
+            EquipmentAvailabilitySchedule = None
+            EquipmentPowerDensity = 0.0
+        else:
+            schedule_equipment_index = zone.sql['NominalElectricEquipment'][
+                zone.sql['NominalElectricEquipment']['ObjectName'].str.contains(
+                    zone.Name.upper())]['ScheduleIndex'].iloc[0]
+            EquipmentAvailabilitySchedule = \
+                UmiSchedule(Name=zone.sql['Schedules']['ScheduleName'].iloc[
+                    schedule_equipment_index - 1], idf=zone.idf)
+            EquipmentPowerDensity = zone.sql['NominalElectricEquipment'][
+                zone.sql['NominalElectricEquipment']['ObjectName'].str.contains(
+                    zone.Name.upper())]['DesignLevel'].iloc[0] / zone.area
+        # Verifies if Lights in zone
+        if zone.sql['NominalLighting'][
+            zone.sql['NominalLighting']['ObjectName'].str.contains(
+                zone.Name.upper())].empty:
+            LightsAvailabilitySchedule = None
+            LightingPowerDensity = 0.0
+        else:
+            schedule_light_index = zone.sql['NominalLighting'][
+                zone.sql['NominalLighting']['ObjectName'].str.contains(
+                    zone.Name.upper())]['ScheduleIndex'].iloc[0]
+            LightsAvailabilitySchedule = UmiSchedule(
+                Name=zone.sql['Schedules']['ScheduleName'].iloc[
+                    schedule_light_index - 1], idf=zone.idf)
+            LightingPowerDensity = zone.sql['NominalLighting'][
+                zone.sql['NominalLighting']['ObjectName'].str.contains(
+                    zone.Name.upper())]['DesignLevel'].iloc[0] / zone.area
+        # Verifies if People in zone
+        if zone.sql['NominalPeople'][
+            zone.sql['NominalPeople']['ObjectName'].str.contains(
+                zone.Name.upper())].empty:
+            OccupancySchedule = None
+            PeopleDensity = 0.0
+        else:
+            schedule_people_index = zone.sql['NominalPeople'][
+                zone.sql['NominalPeople']['ObjectName'].str.contains(
+                    zone.Name.upper())]['NumberOfPeopleScheduleIndex'].iloc[0]
+            OccupancySchedule = UmiSchedule(
+                Name=zone.sql['Schedules']['ScheduleName'].iloc[
+                    schedule_people_index - 1], idf=zone.idf)
+            PeopleDensity = zone.sql['NominalPeople'][
+                zone.sql['NominalPeople']['ObjectName'].str.contains(
+                    zone.Name.upper())]['NumberOfPeople'].iloc[0] / zone.area
+
         name = zone.Name + "_ZoneLoad"
-        z_load = cls(Name=name, zone=zone)
+        z_load = cls(Name=name, zone=zone,
+                     DimmingType='Continuous',
+                     EquipmentAvailabilitySchedule=EquipmentAvailabilitySchedule,
+                     EquipmentPowerDensity=EquipmentPowerDensity,
+                     IlluminanceTarget=500,
+                     LightingPowerDensity=LightingPowerDensity,
+                     LightsAvailabilitySchedule=LightsAvailabilitySchedule,
+                     OccupancySchedule=OccupancySchedule,
+                     IsEquipmentOn=EquipmentPowerDensity > 0,
+                     IsLightingOn=LightingPowerDensity > 0,
+                     IsPeopleOn=PeopleDensity > 0,
+                     PeopleDensity=PeopleDensity)
         return z_load

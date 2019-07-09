@@ -59,7 +59,14 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         return sched
 
     def __repr__(self):
-        return str(self)
+        name = self.schName
+        resample = self.series.resample('D')
+        min = resample.min().mean()
+        mean = resample.mean().mean()
+        max = resample.max().mean()
+        return name + ': ' + \
+               "mean daily min:{:.2f} mean:{:.2f} max:{:.2f}".format(min, mean,
+                                                                     max)
 
     def __hash__(self):
         return hash(repr(self))

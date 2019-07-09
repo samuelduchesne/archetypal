@@ -262,7 +262,7 @@ class MaterialLayer(object):
     def __init__(self, Material, Thickness):
         """
         Args:
-            Material (archetypal.template.opaque_material.OpaqueMaterial):
+            Material (OpaqueMaterial, GlazingMaterial, GasMaterial):
             Thickness (float): The thickness of the material in the
                 construction.
         """

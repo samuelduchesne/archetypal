@@ -255,12 +255,10 @@ def do_natural_ventilation(index, nat_df, zone):
     if not nat_df.empty:
         try:
             IsNatVentOn = any(nat_df.loc[index, "Name"])
-            IsWindOn = True  # todo: determine how to catch behavior
-            IsBuoyancyOn = True  # todo: determine how to catch behavior
             schedule_name_ = nat_df.loc[index, "Schedule Name"]
             NatVentSchedule = archetypal.UmiSchedule(Name=schedule_name_,
                                                      idf=zone.idf)
-            NatVentMaxRelHumidity = 20  # todo: not sure if it is being used
+            NatVentMaxRelHumidity = 90  # todo: not sure if it is being used
             NatVentMaxOutdoorAirTemp = resolve_temp(nat_df.loc[
                                                         index, "Maximum "
                                                                "Outdoor "
@@ -279,27 +277,44 @@ def do_natural_ventilation(index, nat_df, zone):
                                                               "C}/Schedule"],
                                                    zone.idf)
         except:
-            # todo: For some reasonn, a ZoneVentilation:WindandStackOpenArea
-            #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
-            #  in the nat_df. For the mean time, a zone containing such an
-            #  object will revert to defaults (below).
+        # todo: For some reasonn, a ZoneVentilation:WindandStackOpenArea
+        #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
+        #  in the nat_df. For the mean time, a zone containing such an
+        #  object will revert to defaults (below).
             IsNatVentOn = False
-            IsWindOn = False
-            IsBuoyancyOn = False
             NatVentSchedule = archetypal.UmiSchedule.constant_schedule()
-            NatVentMaxRelHumidity = 20
+            NatVentMaxRelHumidity = 90
             NatVentMaxOutdoorAirTemp = 30
             NatVentMinOutdoorAirTemp = 0
             NatVentZoneTempSetpoint = 18
+
     else:
         IsNatVentOn = False
-        IsWindOn = False
-        IsBuoyancyOn = False
         NatVentSchedule = archetypal.UmiSchedule.constant_schedule()
-        NatVentMaxRelHumidity = 20
+        NatVentMaxRelHumidity = 90
         NatVentMaxOutdoorAirTemp = 30
         NatVentMinOutdoorAirTemp = 0
         NatVentZoneTempSetpoint = 18
+
+    # Is Wind ON
+    if not zone.idf.idfobjects[
+        'ZoneVentilation:WindandStackOpenArea'.upper()].list1:
+        IsWindOn = False
+        IsBuoyancyOn = False
+    else:
+        try:
+            equ_b = nat_df.loc[
+                index, "Equation B - Temperature Term Coefficient {1/C}"]
+            if equ_b != 0:
+                IsBuoyancyOn = True
+            equ_w = nat_df.loc[
+                index, "Equation B - Velocity Term Coefficient {s/m}"]
+            if equ_w != 0:
+                IsWindOn = True
+        except:
+            IsWindOn = False
+            IsBuoyancyOn = False
+
     return IsNatVentOn, IsWindOn, IsBuoyancyOn, NatVentMaxOutdoorAirTemp, \
            NatVentMaxRelHumidity, NatVentMinOutdoorAirTemp, NatVentSchedule, \
            NatVentZoneTempSetpoint

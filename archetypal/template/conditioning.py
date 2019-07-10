@@ -376,13 +376,18 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     @classmethod
     def _get_design_limits(cls, zone, zone_size, load_name):
-        cap = round(
-            zone_size[zone_size['LoadType'] == load_name]['UserDesLoad'].values[
-                0] / zone.area, 3)
-        flow = \
-            zone_size[zone_size['LoadType'] == load_name]['UserDesFlow'].values[
-                0] / zone.area
-        LimitType = 'LimitFlowRateAndCapacity'
+        try:
+            cap = round(
+                zone_size[zone_size['LoadType'] == load_name]['UserDesLoad'].values[
+                    0] / zone.area, 3)
+            flow = \
+                zone_size[zone_size['LoadType'] == load_name]['UserDesFlow'].values[
+                    0] / zone.area
+            LimitType = 'LimitFlowRateAndCapacity'
+        except:
+            cap = 100
+            flow = 100
+            LimitType = 'NoLimit'
         return LimitType, cap, flow
 
     @classmethod

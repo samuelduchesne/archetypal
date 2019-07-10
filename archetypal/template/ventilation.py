@@ -150,7 +150,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         ni_df = archetypal.nominal_infiltration(df)
         sched_df = archetypal.nominal_mech_ventilation(df)
         nat_df = archetypal.nominal_nat_ventilation(df)
-        index = ("a", zone.Name)
+        index = ("a", zone.Name.upper())
 
         # Do infiltration
         Infiltration, IsInfiltrationOn = \

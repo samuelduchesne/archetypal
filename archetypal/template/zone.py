@@ -34,11 +34,16 @@ class Zone(UmiBase, metaclass=Unique):
         """Initialize :class:`Zone` object.
 
         Args:
-            Conditioning (ZoneConditioning):
+            Conditioning (ZoneConditioning): Conditioning of the zone defined
+                with heating/cooling and mechanical ventilation parameters (see
+                :class:`ZoneConditioning`)
             Constructions (ZoneConstructionSet):
             DomesticHotWater (archetypal.template.dhw.DomesticHotWaterSetting):
-            Loads (ZoneLoad):
-            Ventilation (VentilationSetting):
+            Loads (ZoneLoad): Loads of the zone defined with the lights,
+                equipment and occupancy parameters (see :class:`ZoneLoad`)
+            Ventilation (VentilationSetting): Ventilation settings of the zone
+                defined with the infiltration rate and natural ventilation
+                parameters (see :class:`VentilationSetting`)
             InternalMassConstruction (archetypal.OpaqueConstruction):
             InternalMassExposedPerFloorArea:
             DaylightMeshResolution (float):
@@ -234,6 +239,7 @@ class Zone(UmiBase, metaclass=Unique):
 
         Args:
             zone (EpBunch):
+            **kwargs:
         """
         name = zone.Name
         sql = kwargs.get("sql", None)
@@ -304,6 +310,7 @@ class Zone(UmiBase, metaclass=Unique):
                     area=self.area + other.area)
         new_obj = self.__class__(Name=name, **attr)
         return new_obj
+
 
 def resolve_obco(this):
     """Resolve the outside boundary condition of a surface and return the other
@@ -575,7 +582,11 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         self._belongs_to_zone = kwargs.get('zone', None)
 
     def __add__(self, other):
-        """Overload + to implement self.combine."""
+        """Overload + to implement self.combine.
+
+        Args:
+            other:
+        """
         return self.combine(other)
 
     def combine(self, other):
@@ -583,9 +594,6 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         Args:
             other (ZoneConstructionSet):
-
-        Returns:
-
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
@@ -641,7 +649,6 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     def from_idf(cls, **kwargs):
         """
         Args:
-            *args:
             **kwargs:
         """
         name = 'a name'  # todo: give it a name

@@ -30,7 +30,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             CoolingCoeffOfPerf (float): Performance factor of cooling system.
                 This value is used in deriving the total cooling energy use by
                 dividing the cooling load by the COP. The COP is of each zone is
-                 equal, and refer to the COP of the entire building.
+
+                    equal, and refer to the COP of the entire building.
             CoolingLimitType (str): The input must be either LimitFlowRate,
                 LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
             CoolingSetpoint (float): The temperature above which zone heating is
@@ -39,51 +40,68 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 economizer. The choices are: NoEconomizer, DifferentialDryBulb,
                 or DifferentialEnthalpy. For the moment, the EconomizerType is
                 applied for the entire building (every zone with the same
-                EconomizerType). Moreover, some hypotheses are done knowing there
-                 is more EconomizerType existing in EnergyPlus than in UMI:
+                EconomizerType). Moreover, some hypotheses are done knowing
+                there
+
+                    is more EconomizerType existing in EnergyPlus than in UMI:
                 * If 'NoEconomizer' in EnergyPlus, EconomizerType='NoEconomizer'
+
                 * IF 'DifferentialEnthalpy' in EnergyPlus,
-                    EconomizerType = 'DifferentialEnthalpy'
+                      EconomizerType = 'DifferentialEnthalpy'
+
                 * If 'DifferentialDryBulb' in EnergyPlus,
-                    EconomizerType = 'DifferentialDryBulb'
+                      EconomizerType = 'DifferentialDryBulb'
+
                 * If 'FixedDryBulb' in EnergyPlus,
-                    EconomizerType = 'DifferentialDryBulb'
+                      EconomizerType = 'DifferentialDryBulb'
+
                 * If 'FixedEnthalpy' in EnergyPlus,
-                    EconomizerType = 'DifferentialEnthalpy'
+                      EconomizerType = 'DifferentialEnthalpy'
+
                 * If 'ElectronicEnthalpy' in EnergyPlus,
-                    EconomizerType = 'DifferentialEnthalpy'
+                      EconomizerType = 'DifferentialEnthalpy'
+
                 * If 'FixedDewPointAndDryBulb' in EnergyPlus,
-                    EconomizerType = 'DifferentialDryBulb'
+                      EconomizerType = 'DifferentialDryBulb'
+
                 * If 'DifferentialDryBulbAndEnthalpy' in EnergyPlus,
-                    EconomizerType = 'DifferentialEnthalpy'
+                      EconomizerType = 'DifferentialEnthalpy'
             HeatRecoveryEfficiencyLatent (float): The latent heat recovery
                 effectiveness, where effectiveness is defined as the change in
                 supply humidity ratio divided by the difference in entering
-                supply and relief air humidity ratios. The default is 0.65.
-                * If the HeatExchanger is an AirToAir FlatPlate,
-                    HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencySensible - 0.05
+                supply and relief air humidity ratios. The default is 0.65. * If
+                the HeatExchanger is an AirToAir FlatPlate,
+
+                    HeatRecoveryEfficiencyLatent =
+                    HeatRecoveryEfficiencySensible - 0.05
+
                 * If the HeatExchanger is an AirToAir SensibleAndLatent, we
-                    suppose that
-                    HeatRecoveryEfficiencyLatent = Latent Effectiveness at 100% Heating Air Flow
+                      suppose that HeatRecoveryEfficiencyLatent = Latent
+                      Effectiveness at 100% Heating Air Flow
+
                 * If the HeatExchanger is a Desiccant BalancedFlow, we use the
-                    default value for the efficiency (=0.65)
+                      default value for the efficiency (=0.65)
             HeatRecoveryEfficiencySensible (float): The sensible heat recovery
                 effectiveness, where effectiveness is defined as the change in
                 supply temperature divided by the difference in entering supply
-                and relief air temperatures. The default is 0.70.
-                * If the HeatExchanger is an AirToAir FlatPlate,
-                    HeatRecoveryEfficiencySensible =
-                    (Supply Air Outlet T°C - Supply Air Inlet T°C)/(Secondary Air Inlet T°C - Supply Air Inlet T°C)
+                and relief air temperatures. The default is 0.70. * If the
+                HeatExchanger is an AirToAir FlatPlate,
+
+                    HeatRecoveryEfficiencySensible = (Supply Air Outlet T°C -
+                    Supply Air Inlet T°C)/(Secondary Air Inlet T°C - Supply Air
+                    Inlet T°C)
+
                 * If the HeatExchanger is an AirToAir SensibleAndLatent, we
-                    suppose that
-                    HeatRecoveryEfficiencySensible = Sensible Effectiveness at 100% Heating Air Flow
+                      suppose that HeatRecoveryEfficiencySensible = Sensible
+                      Effectiveness at 100% Heating Air Flow
+
                 * If the HeatExchanger is a Desiccant BalancedFlow, we use the
-                    default value for the efficiency (=0.70)
-            HeatRecoveryType (str): Select from None, Sensible, or Enthalpy.
-                If the Heat Recovery "is on", HeatRecoveryType = Enthalpy,
-                because we do not know how to choose between 'Sensible' or 'Enthalpy'
-            HeatingCoeffOfPerf (float): Efficiency of heating system. The COP
-                is of each zone is equal, and refer to the COP of the entire
+                      default value for the efficiency (=0.70)
+            HeatRecoveryType (str): Select from None, Sensible, or Enthalpy. If
+                the Heat Recovery "is on", HeatRecoveryType = Enthalpy, because
+                we do not know how to choose between 'Sensible' or 'Enthalpy'
+            HeatingCoeffOfPerf (float): Efficiency of heating system. The COP is
+                of each zone is equal, and refer to the COP of the entire
                 building.
             HeatingLimitType (str): The input must be either LimitFlowRate,
                 LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
@@ -376,6 +394,15 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     @classmethod
     def _get_design_limits(cls, zone, zone_size, load_name):
+        """Gets design limits for heating and cooling systems
+
+        Args:
+            zone (archetypal.template.zone.Zone): zone to gets information from
+            zone_size (df): Dataframe from the sql EnergyPlus outpout, with the
+                sizing of the heating and cooling systems
+            load_name (str): 'Heating' or 'Cooling' depending on what system we
+                want to characterize
+        """
         try:
             cap = round(
                 zone_size[zone_size['LoadType'] == load_name]['UserDesLoad'].values[
@@ -392,6 +419,16 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     @classmethod
     def _get_cop(cls, zone, energy_in_list, energy_out_variable_name):
+        """Calculates COP for heating or cooling systems
+
+        Args:
+            zone (archetypal.template.zone.Zone): zone to gets information from
+            energy_in_list (list): list of the energy sources for a system (e.g.
+                [Heating:Electricity, Heating:Gas] for heating system)
+            energy_out_variable_name (str): Name of the output in the sql for
+                the energy given to the zone from the system (e.g. 'Air System
+                Total Heating Energy')
+        """
         energy_out_idx = zone.sql['ReportDataDictionary'][
             zone.sql['ReportDataDictionary'][
                 'Name'] == energy_out_variable_name].index
@@ -410,6 +447,14 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     @classmethod
     def _get_setpoint(cls, zone, variable_output_name):
+        """Gets temperature setpoints from sql EnergyPlus output
+
+        Args:
+            zone (archetypal.template.zone.Zone): zone to gets information from
+            variable_output_name (str): Name of the output in the sql for the
+                zone setpoint (e.g. 'Zone Thermostat Heating Setpoint
+                Temperature')
+        """
         setpoints_idx = zone.sql['ReportDataDictionary'][
             zone.sql['ReportDataDictionary'][
                 'Name'] == variable_output_name]
@@ -428,9 +473,6 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
         Args:
             other (ZoneConditioning):
-
-        Returns:
-
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):

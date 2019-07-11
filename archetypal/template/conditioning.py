@@ -410,10 +410,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         try:
             cap = round(
-                zone_size[zone_size['LoadType'] == load_name]['UserDesLoad'].values[
+                zone_size[zone_size['LoadType'] == load_name][
+                    'UserDesLoad'].values[
                     0] / zone.area, 3)
             flow = \
-                zone_size[zone_size['LoadType'] == load_name]['UserDesFlow'].values[
+                zone_size[zone_size['LoadType'] == load_name][
+                    'UserDesFlow'].values[
                     0] / zone.area
             LimitType = 'LimitFlowRateAndCapacity'
         except:

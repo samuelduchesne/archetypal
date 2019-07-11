@@ -139,7 +139,6 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             zone (archetypal.template.zone.Zone): zone to gets information from
         """
 
-        a = 1
         # Get schedule index for different loads and creates ZoneLoad arguments
         # Verifies if Equipment in zone
         if zone.sql['NominalElectricEquipment'][

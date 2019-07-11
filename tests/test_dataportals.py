@@ -46,7 +46,7 @@ def test_nrel_api_request(config, scratch_then_cache):
     assert response['result']
 
 
-def test_download_bld_window(scratch_then_cache):
+def test_download_bld_window(config, scratch_then_cache):
     oauth_consumer_key = 'f2d08b2d6cf7c8abd7d7c580ede79fa4'
 
     response = download_bld_window(u_factor=3.18, shgc=0.49, vis_trans=0.53,

@@ -43,23 +43,59 @@ class VentilationSetting(UmiBase, metaclass=Unique):
                  NatVentMinOutdoorAirTemp=0, NatVentZoneTempSetpoint=18,
                  ScheduledVentilationAch=0.6, ScheduledVentilationSetpoint=18,
                  **kwargs):
-        """
+        """Initialize a new VentilationSetting (for zone) object
+
         Args:
-            NatVentSchedule (UmiSchedule, optional):
-            ScheduledVentilationSchedule (UmiSchedule, optional):
+            NatVentSchedule (UmiSchedule, optional): The name of the schedule
+                (Day | Week | Year) which ultimately modifies the
+                Opening Area value (see previous field). In its current
+                implementation, any value greater than 0 will consider, value
+                above The schedule values must be any positive number between
+                0 and 1 as a fraction.
+            ScheduledVentilationSchedule (UmiSchedule, optional): The name of
+                the schedule (Schedules Tab) that modifies the maximum design
+                volume flow rate. This fraction is between 0.0 and 1.0.
             Afn (bool):
-            Infiltration (float):
-            IsBuoyancyOn (bool):
-            IsInfiltrationOn (bool):
-            IsNatVentOn (bool):
-            IsScheduledVentilationOn (bool):
-            IsWindOn (bool):
-            NatVentMaxOutdoorAirTemp (float):
-            NatVentMaxRelHumidity (float):
-            NatVentMinOutdoorAirTemp (float):
+            Infiltration (float): Infiltration rate in ACH
+            IsBuoyancyOn (bool): If True, simulation takes into account the stack
+                effect in the infiltration calculation
+            IsInfiltrationOn (bool): If yes, there is heat transfer between the
+                building and the outside caused by infiltration
+            IsNatVentOn (bool): If True, Natural ventilation (air
+                movement/exchange as a result of openings in the building
+                façade not consuming any fan energy).
+            IsScheduledVentilationOn (bool): If True, Ventilation (flow of air
+                from the outdoor environment directly into a thermal zone) is ON
+            IsWindOn (bool): If True, simulation takes into account the wind
+                effect in the infiltration calculation
+            NatVentMaxOutdoorAirTemp (float): The outdoor temperature
+                (in Celsius) above which ventilation is shut off. The minimum
+                value for this field is -100.0°C and the maximum value is
+                100.0°C. The default value is 100.0°C if the field is left
+                blank. This upper temperature limit is intended to avoid
+                overheating a space, which could result in a cooling load.
+            NatVentMaxRelHumidity (float): Defines the dehumidifying relative
+                humidity setpoint, expressed as a percentage (0-100), for each
+                timestep of the simulation.
+            NatVentMinOutdoorAirTemp (float): The outdoor temperature
+                (in Celsius) below which ventilation is shut off. The minimum
+                value for this field is -100.0°C and the maximum value is
+                100.0°C. The default value is -100.0°C if the field is left
+                blank. This lower temperature limit is intended to avoid
+                overcooling a space, which could result in a heating load.
             NatVentZoneTempSetpoint (float):
-            ScheduledVentilationAch (float):
-            ScheduledVentilationSetpoint (float):
+            ScheduledVentilationAch (float): This factor, along with the Zone
+                Volume, will be used to determine the Design Flow Rate.
+            ScheduledVentilationSetpoint (float): The indoor temperature
+                (in Celsius) below which ventilation is shutoff. The minimum
+                value for this field is -100.0°C and the maximum value is
+                100.0°C. The default value is -100.0°C if the field is left
+                blank. This lower temperature limit is intended to avoid
+                overcooling a space and thus result in a heating load.
+                For example, if the user specifies a minimum temperature of
+                20°C, ventilation is assumed to be available if the zone air
+                temperature is above 20°C. If the zone air temperature drops
+                below 20°C, then ventilation is automatically turned off.
             **kwargs:
         """
         super(VentilationSetting, self).__init__(**kwargs)
@@ -268,7 +304,7 @@ def do_natural_ventilation(index, nat_df, zone):
                                                               "C}/Schedule"],
                                                    zone.idf)
         except:
-            # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
+            # todo: For some reasonn, a ZoneVentilation:WindandStackOpenArea
             #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
             #  in the nat_df. For the mean time, a zone containing such an
             #  object will revert to defaults (below).

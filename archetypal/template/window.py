@@ -347,23 +347,37 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 elif leak.key.upper() \
                         == \
                         'AIRFLOWNETWORK:MULTIZONE:COMPONENT:HORIZONTALOPENING':
-                    pass
+                    log('"{}" is not fully supported. Rerverting to '
+                        'defaults for object "{}"'.format(leak.key,
+                                                     cls.mro()[0].__name__),
+                        lg.WARNING)
                 elif leak.key.upper() == \
                         'AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK':
-                    pass
+                    log('"{}" is not fully supported. Rerverting to '
+                        'defaults for object'.format(leak.key,
+                                                     cls.mro()[0].__name__),
+                        lg.WARNING)
                 elif leak.key.upper() \
                         == 'AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING':
-                    pass
+                    log('"{}" is not fully supported. Rerverting to '
+                        'defaults for object "{}"'.format(leak.key,
+                                                     cls.mro()[0].__name__),
+                        lg.WARNING)
                 elif leak.key.upper() \
                         == 'AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN':
-                    pass
+                    log('"{}" is not fully supported. Rerverting to '
+                        'defaults for object "{}"'.format(leak.key,
+                                                     cls.mro()[0].__name__),
+                        lg.WARNING)
                 elif leak.key.upper() \
                         == 'AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING':
-                    pass
+                    log('"{}" is not fully supported. Rerverting to '
+                        'defaults for object "{}"'.format(leak.key,
+                                                     cls.mro()[0].__name__),
+                        lg.WARNING)
 
             w = cls(Name=name, construction=construction, idf=surface.theidf,
                     **attr)
-            log(repr(w), lg.DEBUG)
             return w
 
     def __add__(self, other):

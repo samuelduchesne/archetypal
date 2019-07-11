@@ -43,7 +43,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 there is more EconomizerType existing in EnergyPlus than in UMI:
                 * If 'NoEconomizer' in EnergyPlus, EconomizerType='NoEconomizer'
 
-                * IF 'DifferentialEnthalpy' in EnergyPlus,
+                * If 'DifferentialEnthalpy' in EnergyPlus,
                       EconomizerType = 'DifferentialEnthalpy'
 
                 * If 'DifferentialDryBulb' in EnergyPlus,

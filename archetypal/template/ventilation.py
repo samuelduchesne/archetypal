@@ -129,15 +129,6 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         return data_dict
 
     @classmethod
-    def from_epbunch(cls, zone):
-        # todo: create zone ventilation settings from epbunch
-        """
-        Args:
-            zone (EpBunch):
-        """
-        pass
-
-    @classmethod
     def from_zone(cls, zone):
         """
         Args:
@@ -277,10 +268,10 @@ def do_natural_ventilation(index, nat_df, zone):
                                                               "C}/Schedule"],
                                                    zone.idf)
         except:
-        # todo: For some reasonn, a ZoneVentilation:WindandStackOpenArea
-        #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
-        #  in the nat_df. For the mean time, a zone containing such an
-        #  object will revert to defaults (below).
+            # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
+            #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
+            #  in the nat_df. For the mean time, a zone containing such an
+            #  object will revert to defaults (below).
             IsNatVentOn = False
             NatVentSchedule = archetypal.UmiSchedule.constant_schedule()
             NatVentMaxRelHumidity = 90

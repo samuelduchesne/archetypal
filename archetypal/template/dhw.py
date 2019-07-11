@@ -77,15 +77,6 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         return data_dict
 
     @classmethod
-    def from_epbunch(cls, epbunch):
-        # Todo: Create DHW settings fom epbunch
-        """
-        Args:
-            epbunch:
-        """
-        name = epbunch.Name
-
-    @classmethod
     def from_zone(cls, zone):
         """Some WaterUse:Equipment objects can be assigned to a zone. :param
         zone: :type zone: Zone

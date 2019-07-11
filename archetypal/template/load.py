@@ -32,20 +32,46 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                  IsPeopleOn=True,
                  PeopleDensity=0.2,
                  **kwargs):
-        """
+        """Initialize a new ZoneLoad object
+
         Args:
             *args:
-            DimmingType:
-            EquipmentAvailabilitySchedule:
-            EquipmentPowerDensity:
-            IlluminanceTarget:
-            LightingPowerDensity:
-            LightsAvailabilitySchedule:
-            OccupancySchedule:
-            IsEquipmentOn:
-            IsLightingOn:
-            IsPeopleOn:
-            PeopleDensity:
+            DimmingType (str): Different types to dim the lighting to respect
+                the IlluminanceTraget and taking into account the daylight
+                illuminance:
+                * If `Continuous` : the overhead lights dim continuously and
+                    linearly from (maximum electric power, maximum light output)
+                    to (minimum electric power, minimum light output) as the
+                    daylight illuminance increases. The lights stay on at the
+                    minimum point with further increase in the daylight
+                    illuminance
+
+                * If `Stepped`: the electric power input and light output vary
+                      in discrete, equally spaced steps
+
+                * If `Off`: Lights switch off completely when the minimum
+                      dimming point is reached
+            EquipmentAvailabilitySchedule (UmiSchedule, optional): The name of
+                the schedule (Day | Week | Year) that modifies the design level
+                parameter for electric equipment.
+            EquipmentPowerDensity (float): Equipment Power Density in the zone
+                (W/m²)
+            IlluminanceTarget (float): Number of lux to be respected in the zone
+            LightingPowerDensity (float): Lighting Power Density in the zone
+                (W/m²)
+            LightsAvailabilitySchedule (UmiSchedule, optional): The name of the
+                schedule (Day | Week | Year) that modifies the design level
+                parameter for lighting.
+            OccupancySchedule (UmiSchedule, optional): The name of the schedule
+                (Day | Week | Year) that modifies the number of people parameter
+                for electric equipment.
+            IsEquipmentOn (bool): If True, heat gains from Equipment are taken
+                into account for the zone's load calculation
+            IsLightingOn (bool): If True, heat gains from Lights are taken into
+                account for the zone's load calculation
+            IsPeopleOn (bool): If True, heat gains from People are taken into
+                account for the zone's load calculation
+            PeopleDensity (float): Density of people in the zone (people/m²)
             **kwargs:
         """
         super(ZoneLoad, self).__init__(*args, **kwargs)
@@ -110,7 +136,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
     def from_zone(cls, zone):
         """
         Args:
-            zone (archetypal.template.zone.Zone):
+            zone (archetypal.template.zone.Zone): zone to gets information from
         """
 
         a = 1

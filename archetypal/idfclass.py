@@ -8,6 +8,7 @@
 import datetime
 import glob
 import hashlib
+import io
 import logging as lg
 import multiprocessing
 import os
@@ -954,13 +955,14 @@ def multirunner(**kwargs):
     except TypeError as e:
         log('{}'.format(e), lg.ERROR)
         raise TypeError('{}'.format(e))
-    except CalledProcessError as e:
+    except (KeyError, CalledProcessError, io.UnsupportedOperation) as e:
         # Get error file
         log('{}'.format(e), lg.ERROR)
 
         error_filename = os.path.join(kwargs['output_directory'],
                                       kwargs['output_prefix'] + 'out.err')
         if os.path.isfile(error_filename):
+            # if file found, open and log.
             with open(error_filename, 'r') as fin:
                 log('\nError File for "{}" begins here...\n'.format(
                     os.path.basename(kwargs['idf'])), lg.ERROR)
@@ -968,10 +970,17 @@ def multirunner(**kwargs):
                 log('Error File for "{}" ends here...\n'.format(
                     os.path.basename(kwargs['idf'])), lg.ERROR)
             with open(error_filename, 'r') as stderr:
-                raise EnergyPlusProcessError(cmd=e.cmd,
-                                             idf=os.path.basename(
-                                                 kwargs['idf']),
-                                             stderr=stderr.read())
+                # using file, raise EnergyPlusError if it is a
+                # CalledProcessError.
+                if isinstance(e, CalledProcessError):
+                    raise EnergyPlusProcessError(cmd=e.cmd,
+                                                 idf=os.path.basename(
+                                                     kwargs['idf']),
+                                                 stderr=stderr.read())
+                else:
+                    # else, raise the error (could be a KeyError or a
+                    # UnsupportedOperation)
+                    raise e
         else:
             log('Could not find error file', lg.ERROR)
 

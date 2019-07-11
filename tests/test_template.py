@@ -363,8 +363,9 @@ class TestWindowSetting():
 class TestVentilationSetting():
     """Combines different :class:`VentilationSetting` tests"""
 
-    @pytest.fixture(scope='class', params=["VentilationSimpleTest.idf"])
-    def ventalitontests(self, config, request):
+    @pytest.fixture(scope='class', params=["VentilationSimpleTest.idf",
+                                           "RefBldgWarehouseNew2004_Chicago.idf"])
+    def ventilatontests(self, config, request):
         from eppy.runner.run_functions import install_paths
         eplus_exe, eplus_weather = install_paths("8-9-0")
         eplusdir = Path(eplus_exe).dirname()
@@ -374,19 +375,38 @@ class TestVentilationSetting():
         sql = ar.run_eplus(file, weather_file=w, prep_outputs=True,
                            output_report='sql', verbose='v', design_day=False,
                            annual=False)
-        yield idf, sql
+        yield idf, sql, request.param
 
-    def test_ventilation_init(self, config, ventalitontests):
+    def test_ventilation_init(self, config, ventilatontests):
         from archetypal import VentilationSetting
-        idf, sql = ventalitontests
+        idf, sql, idf_name = ventilatontests
         vent = VentilationSetting(Name=None)
 
-    def test_ventilation_from_zone(self, config, ventalitontests):
+    def test_naturalVentilation_from_zone(self, config, ventilatontests):
         from archetypal import VentilationSetting, Zone
-        idf, sql = ventalitontests
-        zone = idf.getobject('ZONE', 'ZONE 1')
-        z = Zone.from_zone_epbunch(zone=zone, sql=sql)
-        vent = VentilationSetting.from_zone(z)
+        idf, sql, idf_name = ventilatontests
+        if idf_name == "VentilationSimpleTest.idf":
+            zone = idf.getobject('ZONE', 'ZONE 1')
+            z = Zone.from_zone_epbunch(zone=zone, sql=sql)
+            natVent = VentilationSetting.from_zone(z)
+
+    def test_scheduleVentilation_from_zone(self, config, ventilatontests):
+        from archetypal import VentilationSetting, Zone
+        idf, sql, idf_name = ventilatontests
+        if idf_name == "VentilationSimpleTest.idf":
+            zone = idf.getobject('ZONE', 'ZONE 2')
+            z = Zone.from_zone_epbunch(zone=zone, sql=sql)
+            schedVent = VentilationSetting.from_zone(z)
+
+    def test_infiltVentilation_from_zone(self, config, ventilatontests):
+        from archetypal import VentilationSetting, Zone
+        idf, sql, idf_name = ventilatontests
+        if idf_name == "RefBldgWarehouseNew2004_Chicago.idf":
+            zone = idf.getobject('ZONE', 'Office')
+            z = Zone.from_zone_epbunch(zone=zone, sql=sql)
+            infiltVent = VentilationSetting.from_zone(z)
 
     # todo: test for from_json
+
+
 

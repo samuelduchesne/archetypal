@@ -30,8 +30,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             CoolingCoeffOfPerf (float): Performance factor of cooling system.
                 This value is used in deriving the total cooling energy use by
                 dividing the cooling load by the COP. The COP is of each zone is
-
-                    equal, and refer to the COP of the entire building.
+                equal, and refer to the COP of the entire building.
             CoolingLimitType (str): The input must be either LimitFlowRate,
                 LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
             CoolingSetpoint (float): The temperature above which zone heating is
@@ -41,9 +40,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 or DifferentialEnthalpy. For the moment, the EconomizerType is
                 applied for the entire building (every zone with the same
                 EconomizerType). Moreover, some hypotheses are done knowing
-                there
-
-                    is more EconomizerType existing in EnergyPlus than in UMI:
+                there is more EconomizerType existing in EnergyPlus than in UMI:
                 * If 'NoEconomizer' in EnergyPlus, EconomizerType='NoEconomizer'
 
                 * IF 'DifferentialEnthalpy' in EnergyPlus,
@@ -71,8 +68,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 supply humidity ratio divided by the difference in entering
                 supply and relief air humidity ratios. The default is 0.65. * If
                 the HeatExchanger is an AirToAir FlatPlate,
-
-                    HeatRecoveryEfficiencyLatent =
+                HeatRecoveryEfficiencyLatent =
                     HeatRecoveryEfficiencySensible - 0.05
 
                 * If the HeatExchanger is an AirToAir SensibleAndLatent, we
@@ -86,10 +82,9 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 supply temperature divided by the difference in entering supply
                 and relief air temperatures. The default is 0.70. * If the
                 HeatExchanger is an AirToAir FlatPlate,
-
-                    HeatRecoveryEfficiencySensible = (Supply Air Outlet T°C -
-                    Supply Air Inlet T°C)/(Secondary Air Inlet T°C - Supply Air
-                    Inlet T°C)
+                HeatRecoveryEfficiencySensible = (Supply Air Outlet T°C -
+                Supply Air Inlet T°C)/(Secondary Air Inlet T°C - Supply Air
+                Inlet T°C)
 
                 * If the HeatExchanger is an AirToAir SensibleAndLatent, we
                       suppose that HeatRecoveryEfficiencySensible = Sensible

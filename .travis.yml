@@ -6,7 +6,8 @@ env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101ea
 addons:
   apt:
     packages:
-      wine
+      - wine
+      - libgfortran3
 
 before_install:
   # install EnergyPlus

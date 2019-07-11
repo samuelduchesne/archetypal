@@ -358,3 +358,35 @@ class TestWindowSetting():
         assert window_1
         assert window_1.id == id_  # id should not change
         assert window_1.id != window_2.id
+
+
+class TestVentilationSetting():
+    """Combines different :class:`VentilationSetting` tests"""
+
+    @pytest.fixture(scope='class', params=["VentilationSimpleTest.idf"])
+    def ventalitontests(self, config, request):
+        from eppy.runner.run_functions import install_paths
+        eplus_exe, eplus_weather = install_paths("8-9-0")
+        eplusdir = Path(eplus_exe).dirname()
+        file = eplusdir / "ExampleFiles" / request.param
+        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        idf = ar.load_idf(file)
+        sql = ar.run_eplus(file, weather_file=w, prep_outputs=True,
+                           output_report='sql', verbose='v', design_day=False,
+                           annual=False)
+        yield idf, sql
+
+    def test_ventilation_init(self, config, ventalitontests):
+        from archetypal import VentilationSetting
+        idf, sql = ventalitontests
+        vent = VentilationSetting(Name=None)
+
+    def test_ventilation_from_zone(self, config, ventalitontests):
+        from archetypal import VentilationSetting, Zone
+        idf, sql = ventalitontests
+        zone = idf.getobject('ZONE', 'ZONE 1')
+        z = Zone.from_zone_epbunch(zone=zone, sql=sql)
+        vent = VentilationSetting.from_zone(z)
+
+    # todo: test for from_json
+

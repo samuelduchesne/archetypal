@@ -35,9 +35,9 @@ class VentilationSetting(UmiBase, metaclass=Unique):
     ScheduledVentilationSchedule.$ref, ScheduledVentilationSetpoint
     """
 
-    def __init__(self, NatVentSchedule=None, ScheduledVentilationSchedule=None,
-                 Afn=False, Infiltration=0.1, IsBuoyancyOn=True,
-                 IsInfiltrationOn=True, IsNatVentOn=False,
+    def __init__(self, Name=None, NatVentSchedule=None,
+                 ScheduledVentilationSchedule=None, Afn=False, Infiltration=0.1,
+                 IsBuoyancyOn=True, IsInfiltrationOn=True, IsNatVentOn=False,
                  IsScheduledVentilationOn=False, IsWindOn=False,
                  NatVentMaxOutdoorAirTemp=30, NatVentMaxRelHumidity=90,
                  NatVentMinOutdoorAirTemp=0, NatVentZoneTempSetpoint=18,
@@ -46,6 +46,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         """Initialize a new VentilationSetting (for zone) object
 
         Args:
+            Name:
             NatVentSchedule (UmiSchedule, optional): The name of the schedule
                 (Day | Week | Year) which ultimately modifies the Opening Area
                 value (see previous field). In its current implementation, any
@@ -98,7 +99,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
                 automatically turned off.
             **kwargs:
         """
-        super(VentilationSetting, self).__init__(**kwargs)
+        super(VentilationSetting, self).__init__(Name=Name, **kwargs)
         self.Afn = Afn
         self.Infiltration = Infiltration
         self.IsBuoyancyOn = IsBuoyancyOn

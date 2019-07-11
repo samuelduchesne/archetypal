@@ -286,7 +286,7 @@ class TestWindowSetting():
     """Combines different :class:`WindowSetting` tests"""
 
     @pytest.fixture(scope='class', params=["WindowTests.idf",
-                                           'AirflowNetwork3zvent.idf'])
+                                           'AirflowNetwork3zVent.idf'])
     def windowtests(self, config, request):
         from eppy.runner.run_functions import install_paths
         eplus_exe, eplus_weather = install_paths("8-9-0")

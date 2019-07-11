@@ -168,9 +168,9 @@ class VentilationSetting(UmiBase, metaclass=Unique):
     def from_zone(cls, zone):
         """
         Args:
-            zone (archetypal.template.zone.Zone):
+            zone (archetypal.template.zone.Zone): zone to gets information from
         """
-        
+
         name = zone.Name + "_VentilationSetting"
 
         df = {"a": zone.sql}
@@ -264,6 +264,16 @@ class VentilationSetting(UmiBase, metaclass=Unique):
 
 
 def do_infiltration(index, inf_df, zone):
+    """Gets infiltration information of the zone
+
+    Args:
+        index (tuple): Zone name
+        inf_df (dataframe): Dataframe with infiltration information for each zone
+        zone (archetypal.template.zone.Zone): zone to gets information from
+
+    Returns:
+
+    """
     if not inf_df.empty:
         try:
             Infiltration = inf_df.loc[index, 'ACH - Air Changes per Hour']
@@ -278,7 +288,17 @@ def do_infiltration(index, inf_df, zone):
 
 
 def do_natural_ventilation(index, nat_df, zone):
-    # do natural ventilation
+    """Gets natural ventilation information of the zone
+
+    Args:
+        index (tuple): Zone name
+        inf_df (dataframe): Dataframe with natural ventilation information for
+            each zone
+        zone (archetypal.template.zone.Zone): zone to gets information from
+
+    Returns:
+
+    """
     if not nat_df.empty:
         try:
             IsNatVentOn = any(nat_df.loc[index, "Name"])

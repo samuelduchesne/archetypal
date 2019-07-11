@@ -227,7 +227,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
     def from_zone(cls, zone):
         """
         Args:
-            zone (archetypal.template.zone.Zone):
+            zone (archetypal.template.zone.Zone): zone to gets information from
         """
         name = zone.Name + "_ZoneConditioning"
 

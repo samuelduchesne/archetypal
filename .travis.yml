@@ -28,7 +28,7 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
     sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-    sudo tar -C /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater -xvf 8230 --strip-components=1;
+    sudo tar zxvf 8230 -C /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
     sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
     sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles; fi
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then

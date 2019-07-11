@@ -77,6 +77,11 @@ class Zone(UmiBase, metaclass=Unique):
 
     @property
     def area(self):
+        """Calculates the floor surface area of the zone
+
+        Returns (float): zone's area in m²
+
+        """
         if not self._area:
             zone_surfs = [surf for surf in self._epbunch.zonesurfaces if
                           surf.key.lower() != 'internalmass']
@@ -89,6 +94,11 @@ class Zone(UmiBase, metaclass=Unique):
 
     @property
     def volume(self):
+        """Calculates the volume of the zone
+
+        Returns (float): zone's volume in m³
+
+        """
         if not self._volume:
             return self._epbunch.Volume
         else:

@@ -304,7 +304,6 @@ class TestWindowSetting():
         idf, sql = small_idf
         construction = idf.getobject('CONSTRUCTION', 'B_Dbl_Air_Cl')
         w = WindowSetting.from_construction(construction)
-        yield w
 
     def test_allwindowtypes(self, config, windowtests):
         from archetypal import WindowSetting

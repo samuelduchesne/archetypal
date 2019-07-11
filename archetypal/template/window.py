@@ -12,7 +12,6 @@ from enum import IntEnum
 from eppy.bunch_subclass import EpBunch
 
 from archetypal import log
-from archetypal.idfclass import IDF
 from archetypal.template import MaterialLayer, UmiSchedule
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
@@ -77,8 +76,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
             >>> ar.WindowConstruction.from_idf(Name=construction_name, idf=idf)
 
         Args:
-            Name (str): The name of the Construction in the IDF file.
-            idf (IDF): The idf object.
+            Construction:
             **kwargs: Other keywords passed to the constructor.
         """
         Name = Construction.Name
@@ -228,7 +226,6 @@ class WindowSetting(UmiBase, metaclass=Unique):
         object.
 
         Examples:
-
             >>> import archetypal as ar
             >>> # Given an IDF object
             >>> idf = ar.load_idf("idfname")
@@ -240,6 +237,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Args:
             Construction (EpBunch): The construction name for this window.
             **kwargs: Other keywords passed to the constructor.
+
+        Returns:
+            (windowSetting): The window setting object.
         """
         name = kwargs.pop('Name', Construction.Name + "_Window")
         kwargs['Name'] = name
@@ -321,7 +321,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 iddgroups=['Natural Ventilation and Duct Leakage'],
                 fields=['Surface_Name'])), None)
             if afn:
-                attr['OperableArea'] = afn.WindowDoor_Opening_Factor_or_Crack_Factor
+                attr[
+                    'OperableArea'] = \
+                    afn.WindowDoor_Opening_Factor_or_Crack_Factor
                 leak = afn.get_referenced_object('Leakage_Component_Name')
                 sch_name = afn['Venting_Availability_Schedule_Name']
                 if sch_name != '':
@@ -330,41 +332,48 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 else:
                     attr['AfnWindowAvailability'] = \
                         UmiSchedule.constant_schedule(idf=surface.theidf)
-                sch_name = afn['Ventilation_Control_Zone_Temperature_Setpoint_Schedule_Name']
+                sch_name = afn[
+                    'Ventilation_Control_Zone_Temperature_Setpoint_Schedule_Name']
                 if sch_name != '':
                     attr['AfnTempSetpoint'] = UmiSchedule(
                         Name=sch_name, idf=surface.theidf).mean
                 else:
-                    pass # uses default
-
+                    pass  # uses default
 
                 if leak.key.upper() \
-                        =='AIRFLOWNETWORK:MULTIZONE:SURFACE:EFFECTIVELEAKAGEAREA':
+                        == \
+                        'AIRFLOWNETWORK:MULTIZONE:SURFACE:EFFECTIVELEAKAGEAREA':
                     attr['AfnDischargeC'] = leak['Discharge_Coefficient']
                 elif leak.key.upper() \
-                        =='AIRFLOWNETWORK:MULTIZONE:COMPONENT:HORIZONTALOPENING':
+                        == \
+                        'AIRFLOWNETWORK:MULTIZONE:COMPONENT:HORIZONTALOPENING':
                     pass
-                elif leak.key.upper() =='AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK':
-                    pass
-                elif leak.key.upper() \
-                        =='AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING':
-                    pass
-                elif leak.key.upper() \
-                        =='AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN':
+                elif leak.key.upper() == \
+                        'AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK':
                     pass
                 elif leak.key.upper() \
-                        =='AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING':
+                        == 'AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING':
                     pass
-
-
-
+                elif leak.key.upper() \
+                        == 'AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN':
+                    pass
+                elif leak.key.upper() \
+                        == 'AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING':
+                    pass
 
             w = cls(Name=name, construction=construction, idf=surface.theidf,
                     **attr)
-
+            log(repr(w), lg.DEBUG)
             return w
 
     def __add__(self, other):
+        return self.combine(other)
+
+    def combine(self, other):
+        """
+        Args:
+            other:
+        """
         if isinstance(other, self.__class__):
             self.AfnDischargeC = max(self.AfnDischargeC, other.AfnDischargeC)
             self.AfnTempSetpoint = max(self.AfnTempSetpoint,
@@ -446,10 +455,3 @@ class WindowSetting(UmiBase, metaclass=Unique):
         ref = kwargs.get('ZoneMixingAvailabilitySchedule', None)
         w.ZoneMixingAvailabilitySchedule = w.get_ref(ref)
         return w
-
-    def __radd__(self, other):
-        """
-        Args:
-            other:
-        """
-        return self + other

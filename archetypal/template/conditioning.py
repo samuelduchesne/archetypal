@@ -275,7 +275,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         heat_recovery_objects = zone.idf.getiddgroupdict()['Heat Recovery']
         # If Heat recovery is not used
         for object in heat_recovery_objects:
-            if zone.idf.idfobjects[object.upper()].list1 == []:
+            if not zone.idf.idfobjects[object.upper()].list1:
                 HeatRecoveryType = None
                 HeatRecoveryEfficiencyLatent = 0
                 HeatRecoveryEfficiencySensible = 0
@@ -284,8 +284,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 if object.upper() == 'HeatExchanger:AirToAir:FlatPlate'.upper():
                     obj = zone.idf.idfobjects[object.upper()].list1[0]
                     HeatRecoveryEfficiencySensible = (
-                                                             object.Nominal_Supply_Air_Outlet_Temperature - object.Nominal_Supply_Air_Inlet_Temperature) / (
-                                                             object.Nominal_Secondary_Air_Inlet_Temperature - object.Nominal_Supply_Air_Inlet_Temperature)
+                                                             obj.Nominal_Supply_Air_Outlet_Temperature - obj.Nominal_Supply_Air_Inlet_Temperature) / (
+                                                             obj.Nominal_Secondary_Air_Inlet_Temperature - obj.Nominal_Supply_Air_Inlet_Temperature)
                     # Hypotheses: HeatRecoveryEfficiencySensible - 0.05
                     HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencySensible - 0.05
                     break

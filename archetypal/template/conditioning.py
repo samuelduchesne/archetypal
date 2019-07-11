@@ -334,7 +334,17 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                     'DesignSpecification:OutdoorAir'.upper(),
                     design_spe_outdoor_air_name)
                 MinFreshAirPerPerson = design_spe_outdoor_air.Outdoor_Air_Flow_per_Person
+                # If MinFreshAirPerPerson NOT a number, MinFreshAirPerPerson=0
+                try:
+                    MinFreshAirPerPerson = float(MinFreshAirPerPerson)
+                except:
+                    MinFreshAirPerPerson = 0
                 MinFreshAirPerArea = design_spe_outdoor_air.Outdoor_Air_Flow_per_Zone_Floor_Area
+                # If MinFreshAirPerArea NOT a number, MinFreshAirPerArea=0
+                try:
+                    MinFreshAirPerArea = float(MinFreshAirPerArea)
+                except:
+                    MinFreshAirPerArea = 0
             else:
                 IsMechVentOn = False
                 MinFreshAirPerPerson = 0

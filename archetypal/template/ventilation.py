@@ -170,7 +170,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         Args:
             zone (archetypal.template.zone.Zone):
         """
-        # todo: to finish
+        
         name = zone.Name + "_VentilationSetting"
 
         df = {"a": zone.sql}

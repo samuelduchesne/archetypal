@@ -6,7 +6,7 @@ import pytest
 from archetypal import copy_file, UmiTemplate, settings
 
 
-@pytest.mark.xfail(raises=AssertionError)
+@pytest.mark.xfail(reason="Mark as skip until logic is completed")
 def test_template_to_template(config, fresh_start):
     """load the json into UmiTemplate object, then convert back to json and
     compare"""
@@ -51,7 +51,7 @@ def test_template_to_template(config, fresh_start):
     assert a == b
 
 
-@pytest.mark.xfail(reason="Mark as fail until logic is completed")
+@pytest.mark.skip(reason="Mark as skip until logic is completed")
 def test_umi_routine(config):
     idf_source = [
         'tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD '
@@ -69,7 +69,7 @@ def test_umi_routine(config):
     print(a.to_json())
 
 
-@pytest.mark.xfail(reason="Mark as fail until logic is completed")
+@pytest.mark.skip(reason="Mark as skip until logic is completed")
 def test_umi_samples(config):
     idf_source = ['tests/input_data/umi_samples/B_Off_0.idf',
                   'tests/input_data/umi_samples/B_Ret_0.idf',

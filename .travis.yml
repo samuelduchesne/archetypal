@@ -6,7 +6,8 @@ env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101ea
 addons:
   apt:
     packages:
-      wine
+      - wine
+      - libgfortran3
 
 before_install:
   # install EnergyPlus
@@ -28,7 +29,7 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
     sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-    sudo tar -C /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater -xvf 8230 --strip-components=1;
+    sudo tar zxvf 8230 -C /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
     sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
     sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles; fi
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
@@ -43,14 +44,7 @@ before_install:
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
-  - conda config --set always_yes yes --set show_channel_urls true
-  - conda update -n base conda
-  - conda config --prepend channels conda-forge
-  - conda create -n archetypal python=$TRAVIS_PYTHON_VERSION
-  - conda env update -n archetypal -f environment.yml --prune
-  - conda install -n archetypal --file requirements-dev.txt
-  - source activate archetypal
-  - conda info --all
+  - pip install .[dev]
 
 install:
   - python setup.py install

@@ -15,6 +15,8 @@ from archetypal import log
 
 
 class Unique(type):
+    """Metaclass that handles unique class instantiation based on the
+    :attr:`Name` attribute of a class."""
 
     def __call__(cls, *args, **kwargs):
         """
@@ -169,16 +171,16 @@ class UmiBase(object):
     def extend(self, other):
         """Append other to self. Modify and return self.
 
-        Args (UmiBase):
-
         Args:
-            other:
+            other (UmiBase):
 
         Returns:
             UmiBase: self
         """
+        id = self.id
         new_obj = self + other
         new_obj.__dict__.pop('id')
+        new_obj.id = id
         name = new_obj.__dict__.pop('Name')
         self.__dict__.update(**new_obj.__dict__)
         self.all_objects.pop((self.__class__.__name__, name))

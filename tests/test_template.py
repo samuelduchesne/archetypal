@@ -1,6 +1,8 @@
-import archetypal as ar
 import numpy as np
 import pytest
+from path import Path
+
+import archetypal as ar
 
 
 @pytest.fixture(scope='session')
@@ -9,7 +11,8 @@ def small_idf(config):
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = ar.load_idf(file)
     sql = ar.run_eplus(file, weather_file=w, prep_outputs=True,
-                       output_report='sql', verbose='v', design_day=False)
+                       output_report='sql', verbose='v', design_day=False,
+                       annual=False)
     yield idf, sql
 
 
@@ -253,11 +256,11 @@ class TestBuildingTemplate():
         """test the visualization of the zonegraph in 2d"""
         import networkx as nx
         G.plot_graph2d(nx.layout.circular_layout, (1),
-                                     font_color='w', legend=True, font_size=8,
-                                     color_nodes='core',
-                                     node_labels_to_integers=True,
-                                     plt_style='seaborn', save=True,
-                                     filename='test')
+                       font_color='w', legend=True, font_size=8,
+                       color_nodes='core',
+                       node_labels_to_integers=True,
+                       plt_style='seaborn', save=True,
+                       filename='test')
 
     @pytest.mark.parametrize('annotate', [True, 'Name', ('core', None)])
     def test_viewgraph3d(self, config, G, annotate):
@@ -277,3 +280,82 @@ class TestBuildingTemplate():
     def test_graph_info(self, G):
         """test the info method on a ZoneGraph"""
         G.info()
+
+
+class TestWindowSetting():
+    """Combines different :class:`WindowSetting` tests"""
+
+    @pytest.fixture(scope='class', params=["WindowTests.idf",
+                                           'AirflowNetwork3zvent.idf'])
+    def windowtests(self, config, request):
+        from eppy.runner.run_functions import install_paths
+        eplus_exe, eplus_weather = install_paths("8-9-0")
+        eplusdir = Path(eplus_exe).dirname()
+        file = eplusdir / "ExampleFiles" / request.param
+        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        idf = ar.load_idf(file)
+        sql = ar.run_eplus(file, weather_file=w, prep_outputs=True,
+                           output_report='sql', verbose='v', design_day=False,
+                           annual=False)
+        yield idf, sql
+
+    def test_window_from_construction_name(self, small_idf):
+        from archetypal import WindowSetting
+        idf, sql = small_idf
+        construction = idf.getobject('CONSTRUCTION', 'B_Dbl_Air_Cl')
+        w = WindowSetting.from_construction(construction)
+        yield w
+
+    def test_allwindowtypes(self, config, windowtests):
+        from archetypal import WindowSetting
+        idf, sql = windowtests
+        f_surfs = idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
+        windows = []
+        for f in f_surfs:
+            w = WindowSetting.from_surface(f)
+            assert w
+            windows.append(w)
+
+    def test_window_fromsurface(self, config, small_idf):
+        from archetypal import WindowSetting
+        idf, sql = small_idf
+        f_surfs = idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
+        for f in f_surfs:
+            constr = f.Construction_Name
+            idf.add_object("WindowMaterial:Shade".upper(),
+                           Visible_Transmittance=0.5,
+                           Name='Roll Shade', save=False)
+            idf.add_object("WINDOWPROPERTY:SHADINGCONTROL",
+                           Construction_with_Shading_Name=constr,
+                           Setpoint=14,
+                           Shading_Device_Material_Name='Roll Shade',
+                           save=False, Name='test_constrol')
+            f.Shading_Control_Name = "test_constrol"
+            w = WindowSetting.from_surface(f)
+            assert w
+
+    def test_window_add(self, small_idf):
+        from archetypal import WindowSetting
+        idf, sql = small_idf
+        construction = idf.getobject('CONSTRUCTION', 'B_Dbl_Air_Cl')
+        window_1 = WindowSetting.from_construction(construction)
+        construction = idf.getobject('CONSTRUCTION', 'B_Dbl_Air_Cl_FLIPPED')
+        window_2 = WindowSetting.from_construction(construction)
+
+        new_w = window_1 + window_2
+        assert new_w
+        assert window_1.id != window_2.id != new_w.id
+
+    def test_window_iadd(self, small_idf):
+        from archetypal import WindowSetting
+        idf, sql = small_idf
+        construction = idf.getobject('CONSTRUCTION', 'B_Dbl_Air_Cl')
+        window_1 = WindowSetting.from_construction(construction)
+        id_ = window_1.id
+        construction = idf.getobject('CONSTRUCTION', 'B_Dbl_Air_Cl_FLIPPED')
+        window_2 = WindowSetting.from_construction(construction)
+
+        window_1 += window_2
+        assert window_1
+        assert window_1.id == id_  # id should not change
+        assert window_1.id != window_2.id

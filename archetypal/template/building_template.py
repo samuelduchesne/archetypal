@@ -364,19 +364,19 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
                         if surfaces[zone.Name][azimuth]['window'] > 0:
                             window.append(
-                                WindowSetting.from_idf(idf=self.idf,
-                                                       Name=
+                                WindowSetting.from_construction(idf=self.idf,
+                                                                Name=
                                                        surfaces[zone.Name][
                                                            azimuth][
                                                            'Name'],
-                                                       **surfaces[zone.Name][
+                                                                **surfaces[zone.Name][
                                                            azimuth][
                                                            'shading'],
-                                                       Construction=
+                                                                Construction=
                                                        surfaces[zone.Name][
                                                            azimuth][
                                                            'Construction_Name']
-                                                       )
+                                                                )
                             )
                 except:
                     pass
@@ -446,11 +446,11 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                                 Name=construction_name,
                                 Outside_Layer=construction_name)
 
-            self.Windows = WindowSetting.from_idf(Name='Random WindowSetting',
-                                                  Comments=msg,
-                                                  idf=self.idf,
-                                                  Construction=construction_name,
-                                                  **kwargs)
+            self.Windows = WindowSetting.from_construction(Name='Random WindowSetting',
+                                                           Comments=msg,
+                                                           idf=self.idf,
+                                                           Construction=construction_name,
+                                                           **kwargs)
 
             # Todo: We should actually raise an error once this method is
             #  corrected. Use the error bellow

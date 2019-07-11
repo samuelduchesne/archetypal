@@ -6,13 +6,17 @@
 ################################################################################
 
 import collections
+import logging as lg
 from enum import IntEnum
 
-from archetypal.template import MaterialLayer
+from eppy.bunch_subclass import EpBunch
+
+from archetypal import log
+from archetypal.idfclass import IDF
+from archetypal.template import MaterialLayer, UmiSchedule
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
 from archetypal.template.umi_base import UmiBase, Unique
-from archetypal.idfclass import IDF
 
 
 class WindowConstruction(UmiBase, metaclass=Unique):
@@ -63,7 +67,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         return wc
 
     @classmethod
-    def from_idf(cls, Name, idf, **kwargs):
+    def from_idf(cls, Construction, **kwargs):
         """WindowConstruction from idf Construction Name.
 
         Example:
@@ -77,6 +81,8 @@ class WindowConstruction(UmiBase, metaclass=Unique):
             idf (IDF): The idf object.
             **kwargs: Other keywords passed to the constructor.
         """
+        Name = Construction.Name
+        idf = Construction.theidf
         wc = cls(Name=Name, idf=idf, **kwargs)
         wc.Layers = wc.layers()
 
@@ -155,7 +161,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
     ZoneMixingFlowRate
     """
 
-    def __init__(self, Construction=None, OperableArea=0.8,
+    def __init__(self, Name, Construction=None, OperableArea=0.8,
                  AfnWindowAvailability=None, AfnDischargeC=0.65,
                  AfnTempSetpoint=20, IsVirtualPartition=False,
                  IsShadingSystemOn=False,
@@ -168,6 +174,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         """WindowSetting.
 
         Args:
+            Name:
             Construction (WindowConstruction): The window construction.
             OperableArea (float): The operable window area as a ratio of total
                 window area. eg. 0.8 := 80% of the windows area is operable.
@@ -195,7 +202,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 Default = 0.001 m3/m2.
             **kwargs: other keywords passed to the constructor.
         """
-        super(WindowSetting, self).__init__(**kwargs)
+        super(WindowSetting, self).__init__(Name, **kwargs)
+
         self.ZoneMixingAvailabilitySchedule = ZoneMixingAvailabilitySchedule
         self.ShadingSystemAvailabilitySchedule = \
             ShadingSystemAvailabilitySchedule
@@ -215,27 +223,146 @@ class WindowSetting(UmiBase, metaclass=Unique):
         self.ZoneMixingFlowRate = ZoneMixingFlowRate
 
     @classmethod
-    def from_idf(cls, Construction, idf, **kwargs):
-        """Make a WindowSetting from an idf object. Must provide the
-        Construction name.
+    def from_construction(cls, Construction, **kwargs):
+        """Make a :class:`WindowSetting` directly from a :attr:`Construction`
+        object.
 
-        Example:
+        Examples:
+
             >>> import archetypal as ar
             >>> # Given an IDF object
             >>> idf = ar.load_idf("idfname")
-            >>> ar.WindowSetting.from_idf(Name='test_window', idf=idf,
-            >>>                    Construction="AEDG-SmOffice 1A Window Fixed")
+            >>> construction = idf.getobject('CONSTRUCTION',
+            >>>                              'AEDG-SmOffice 1A Window Fixed')
+            >>> ar.WindowSetting.from_construction(Name='test_window',
+            >>>                    Construction=construction)
 
         Args:
-            Construction (str): The construction name for this window.
-            idf (IDF): The idf object.
+            Construction (EpBunch): The construction name for this window.
             **kwargs: Other keywords passed to the constructor.
         """
-        w = cls(idf=idf, **kwargs)
-        w.Construction = WindowConstruction.from_idf(Name=Construction,
-                                                     idf=w.idf)
+        name = kwargs.pop('Name', Construction.Name + "_Window")
+        kwargs['Name'] = name
+        w = cls(idf=Construction.theidf, **kwargs)
+        w.Construction = WindowConstruction.from_idf(Construction)
 
         return w
+
+    @classmethod
+    def from_surface(cls, surface):
+        """Build a WindowSetting object from a 'FENESTRATIONSURFACE:DETAILED'
+        object.
+
+        Args:
+            surface (EpBunch): The 'FENESTRATIONSURFACE:DETAILED' object.
+
+        Returns:
+            (windowSetting): The window setting object.
+        """
+        if isinstance(surface, EpBunch):
+            construction = surface.Construction_Name
+            name = surface.Name
+            shading_control = surface.get_referenced_object(
+                'Shading_Control_Name')
+            attr = {}
+            if shading_control:
+                # a 'WINDOWPROPERTY:SHADINGCONTROL' object can be attached to
+                # this window
+                attr['IsShadingSystemOn'] = True
+                if shading_control["Setpoint"] != '':
+                    attr["ShadingSystemSetpoint"] = shading_control["Setpoint"]
+                shade_mat = shading_control.get_referenced_object(
+                    "Shading_Device_Material_Name")
+                # get shading transmittance
+                if shade_mat:
+                    attr["ShadingSystemTransmittance"] = \
+                        shade_mat["Visible_Transmittance"]
+                # get shading control schedule
+                if shading_control["Shading_Control_Is_Scheduled"].upper() == \
+                        'YES':
+                    sch_name = shading_control['Schedule_Name']
+                    attr['ShadingSystemAvailabilitySchedule'] = UmiSchedule(
+                        Name=sch_name, idf=surface.theidf)
+                else:
+                    # Determine which behavior of control
+                    shade_ctrl_type = shading_control[
+                        'Shading_Control_Type']
+                    if shade_ctrl_type.lower() == \
+                            'alwaysoff':
+                        attr['ShadingSystemAvailabilitySchedule'] = \
+                            UmiSchedule.constant_schedule(idf=surface.theidf,
+                                                          name='AlwaysOff',
+                                                          hourly_value=0)
+                    elif shade_ctrl_type.lower() == 'alwayson':
+                        attr['ShadingSystemAvailabilitySchedule'] = \
+                            UmiSchedule.constant_schedule(idf=surface.theidf)
+                    else:
+                        log('Window "{}" uses a  window control type that '
+                            'is not supported: "{}". Reverting to '
+                            '"AlwaysOn"'.format(name, shade_ctrl_type), lg.WARN)
+                        attr['ShadingSystemAvailabilitySchedule'] = \
+                            UmiSchedule.constant_schedule(idf=surface.theidf)
+                # get shading type
+                if shading_control["Shading_Type"] != '':
+                    mapping = {'InteriorShade': WindowType(1),
+                               'ExteriorShade': WindowType(0),
+                               'ExteriorScreen': WindowType(0),
+                               'InteriorBlind': WindowType(1),
+                               'ExteriorBlind': WindowType(0),
+                               'BetweenGlassShade': WindowType(0),
+                               'BetweenGlassBlind': WindowType(0),
+                               'SwitchableGlazing': WindowType(0),
+                               }
+                    attr['ShadingSystemType'] = mapping[
+                        shading_control["Shading_Type"]]
+
+            # get airflow network
+            afn = next(iter(surface.getreferingobjs(
+                iddgroups=['Natural Ventilation and Duct Leakage'],
+                fields=['Surface_Name'])), None)
+            if afn:
+                attr['OperableArea'] = afn.WindowDoor_Opening_Factor_or_Crack_Factor
+                leak = afn.get_referenced_object('Leakage_Component_Name')
+                sch_name = afn['Venting_Availability_Schedule_Name']
+                if sch_name != '':
+                    attr['AfnWindowAvailability'] = UmiSchedule(
+                        Name=sch_name, idf=surface.theidf)
+                else:
+                    attr['AfnWindowAvailability'] = \
+                        UmiSchedule.constant_schedule(idf=surface.theidf)
+                sch_name = afn['Ventilation_Control_Zone_Temperature_Setpoint_Schedule_Name']
+                if sch_name != '':
+                    attr['AfnTempSetpoint'] = UmiSchedule(
+                        Name=sch_name, idf=surface.theidf).mean
+                else:
+                    pass # uses default
+
+
+                if leak.key.upper() \
+                        =='AIRFLOWNETWORK:MULTIZONE:SURFACE:EFFECTIVELEAKAGEAREA':
+                    attr['AfnDischargeC'] = leak['Discharge_Coefficient']
+                elif leak.key.upper() \
+                        =='AIRFLOWNETWORK:MULTIZONE:COMPONENT:HORIZONTALOPENING':
+                    pass
+                elif leak.key.upper() =='AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK':
+                    pass
+                elif leak.key.upper() \
+                        =='AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING':
+                    pass
+                elif leak.key.upper() \
+                        =='AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN':
+                    pass
+                elif leak.key.upper() \
+                        =='AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING':
+                    pass
+
+
+
+
+            w = cls(Name=name, construction=construction, idf=surface.theidf,
+                    **attr)
+
+            return w
 
     def __add__(self, other):
         if isinstance(other, self.__class__):
@@ -265,12 +392,6 @@ class WindowSetting(UmiBase, metaclass=Unique):
             return self
         else:
             raise NotImplementedError
-
-    def __iadd__(self, other):
-        if isinstance(other, None):
-            return self
-        else:
-            return self + other
 
     def to_json(self):
         """Convert class properties to dict"""

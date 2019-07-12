@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from archetypal import Schedule, load_idf, copy_file, run_eplus
+from archetypal import Schedule, load_idf, copy_file, run_eplus, UmiSchedule
 
 
 def test_schedules_in_necb_specific(config):
@@ -14,7 +14,7 @@ def test_schedules_in_necb_specific(config):
     import matplotlib.pyplot as plt
     for key in idfs:
         idf = idfs[key]
-        s = Schedule(sch_name='NECB-A-Thermostat Setpoint-Heating',
+        s = Schedule(Name='NECB-A-Thermostat Setpoint-Heating',
                      start_day_of_the_week=0, idf=idf)
         s.plot(slice=('2018/01/02', '2018/01/03'), drawstyle="steps-post")
         plt.show()
@@ -27,11 +27,11 @@ def test_make_umi_schedule(config):
     idf_file = copy_file(idf_file)[0]
     idf = load_idf(idf_file)
 
-    s = Schedule(sch_name='POFF', start_day_of_the_week=0, idf=idf)
+    s = UmiSchedule(Name='POFF', start_day_of_the_week=0, idf=idf)
     ep_year, ep_weeks, ep_days = s.to_year_week_day()
 
-    new = Schedule(sch_name=ep_year.Name,
-                   start_day_of_the_week=s.startDayOfTheWeek, idf=idf)
+    new = UmiSchedule(Name=ep_year.Name,
+                      start_day_of_the_week=s.startDayOfTheWeek, idf=idf)
 
     print(len(s.all_values))
     print(len(new.all_values))
@@ -39,8 +39,15 @@ def test_make_umi_schedule(config):
     new.plot(slice=('2018/01/01 00:00', '2018/01/07'), ax=ax, legend=True)
     plt.show()
     print((s != new).sum())
+    assert s.__class__.__name__ == 'UmiSchedule'
     assert len(s.all_values) == len(new.all_values)
     assert (new.all_values == s.all_values).all()
+
+
+def test_constant_schedule():
+    from archetypal import UmiSchedule
+    const = UmiSchedule.constant_schedule()
+    assert const.__class__.__name__ == 'UmiSchedule'
 
 
 idf_file = 'tests/input_data/schedules/test_multizone_EP.idf'
@@ -108,7 +115,7 @@ def test_schedules(request, run_schedules_idf):
     # read original schedule
     idf = schedules_idf()
     schName = request.param
-    orig = Schedule(sch_name=schName, idf=idf)
+    orig = Schedule(Name=schName, idf=idf)
 
     print('{name}\tType:{type}\t[{len}]\tValues:{'
           'values}'.format(name=orig.schName,
@@ -118,7 +125,7 @@ def test_schedules(request, run_schedules_idf):
 
     # create year:week:day version
     new_eps = orig.to_year_week_day()
-    new = Schedule(sch_name=new_eps[0].Name, idf=idf)
+    new = Schedule(Name=new_eps[0].Name, idf=idf)
 
     index = orig.series.index
     epv = pd.read_csv(run_schedules_idf)

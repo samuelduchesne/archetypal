@@ -305,15 +305,18 @@ class TestWindowSetting():
         construction = idf.getobject('CONSTRUCTION', 'B_Dbl_Air_Cl')
         w = WindowSetting.from_construction(construction)
 
-    def test_allwindowtypes(self, config, windowtests):
+    @pytest.fixture(scope='class')
+    def allwindowtypes(self, config, windowtests):
         from archetypal import WindowSetting
         idf, sql = windowtests
         f_surfs = idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
-        windows = []
+        windows=[]
         for f in f_surfs:
-            w = WindowSetting.from_surface(f)
-            assert w
-            windows.append(w)
+            windows.append(WindowSetting.from_surface(f))
+        yield windows
+
+    def test_allwindowtype(self, allwindowtypes):
+        assert allwindowtypes
 
     def test_window_fromsurface(self, config, small_idf):
         from archetypal import WindowSetting
@@ -332,6 +335,12 @@ class TestWindowSetting():
             f.Shading_Control_Name = "test_constrol"
             w = WindowSetting.from_surface(f)
             assert w
+
+    def test_winow_add2(self, allwindowtypes):
+        from operator import add
+        from functools import reduce
+        window = reduce(add, allwindowtypes)
+        print(window)
 
     def test_window_add(self, small_idf):
         from archetypal import WindowSetting

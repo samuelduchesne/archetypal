@@ -23,13 +23,16 @@ developed by the MIT Sustainable Design Lab.
    :caption: User Guide
 
    Getting Started <first.rst>
+   Convert IDF to UMI <converter_umi.rst>
    Convert IDF to BUI <converter_idf.rst>
+   Tutorials <tutorials.rst>
 
 .. toctree::
    :maxdepth: 1
    :caption: Reference Guide
 
    commands
+   package_modules
 
 
 Indices and tables

@@ -21,35 +21,33 @@ from archetypal.template import UmiBase, Unique, ZoneGraph, Zone, \
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
-    """Category, Comments, Core.$ref, DataSource, Lifespan, Name,
-    PartitionRatio, Perimeter.$ref, Structure.$ref
-    """
+    """Main class supporting the definition of a single building template."""
 
-    def __init__(self, *args,
-                 Core=None,
+    def __init__(self, Core=None,
                  Perimeter=None,
                  Structure=None,
                  Windows=None,
                  Lifespan=60,
                  PartitionRatio=0.35,
                  **kwargs):
-        """High :param * args: :param Core: :type Core: Zone, optional) :param
-        Perimeter: :type Perimeter: Zone, optional :param Structure: :type
-        Structure: StructureDefinition :param Windows: :type Windows:
-        WindowSettingw, optional :param Lifespan: :param PartitionRatio: :param
-        ** kwargs:
+        """Initialize a :class:`BuildingTemplate` object with the following
+        attributes:
 
         Args:
-            *args:
-            Core:
-            Perimeter:
-            Structure:
-            Windows:
-            Lifespan:
-            PartitionRatio:
-            **kwargs:
+            Core (Zone): The Zone object defining the core zone. see
+                :class:`Zone` for more details.
+            Perimeter (Zone): The Zone object defining the perimeter zone. see
+                :class:`Zone` for more details.
+            Structure (StructureDefinition): The StructureDefinition object
+                defining the structural properties of the template.
+            Windows (WindowSetting): The WindowSetting object defining the
+                window properties of the object.
+            Lifespan (float): The projected lifespan of the building template in
+                years. Used in various calculations such as embodied energy.
+            PartitionRatio (float): The ratio of partition wall to floor area.
+            **kwargs: other optional keywords passed to other constructors.
         """
-        super(BuildingTemplate, self).__init__(*args, **kwargs)
+        super(BuildingTemplate, self).__init__(**kwargs)
         self._zone_graph = None
         self.Zones = None
         self.PartitionRatio = PartitionRatio

@@ -80,7 +80,6 @@ class Zone(UmiBase, metaclass=Unique):
         """Calculates the floor surface area of the zone
 
         Returns (float): zone's area in m²
-
         """
         if not self._area:
             zone_surfs = [surf for surf in self._epbunch.zonesurfaces if
@@ -97,7 +96,6 @@ class Zone(UmiBase, metaclass=Unique):
         """Calculates the volume of the zone
 
         Returns (float): zone's volume in m³
-
         """
         if not self._volume:
             return self._epbunch.Volume
@@ -907,24 +905,34 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
 
 class ZoneGraph(networkx.Graph):
-    """Base class for undirected graphs.
+    """A subclass of :class:`networkx.Graph`. This class implements useful
+    methods to visualize and navigate a template along the thermal adjacency of
+    its zones.
 
-    A Graph stores nodes and edges with optional data, or attributes.
+    There are currently two methods to visualize the graph:
 
-    Graphs hold undirected edges. Self loops are allowed but multiple
-    (parallel) edges are not.
+    - :func:`plot in 3d <plot_graph3d>` to get a 3-dimensional view of the
+      building.
+    - :func:`plot in 2d <plot_graph2d>` to get a 2-dimensional view of the
+      building zones
 
-    Nodes can be arbitrary (hashable) Python objects with optional key/value
-    attributes. By convention `None` is not used as a node.
+    Note:
+        A Graph stores nodes and edges with optional data, or attributes.
 
-    Edges are represented as links between nodes with optional key/value
-    attributes.
+        Graphs hold undirected edges. Self loops are allowed but multiple
+        (parallel) edges are not.
+
+        Nodes can be arbitrary (hashable) Python objects with optional key/value
+        attributes. By convention `None` is not used as a node.
+
+        Edges are represented as links between nodes with optional key/value
+        attributes.
     """
 
     def __init__(self, incoming_graph_data=None, **attr):
         """Initialize a graph with edges, name, or graph attributes.
 
-        Wrapper around the :class:`networkx.classes.graph.Graph` class.
+        Wrapper around the :class:`networkx.Graph` class.
 
         Args:
             incoming_graph_data: input graph (optional, default: None) Data to
@@ -954,6 +962,9 @@ class ZoneGraph(networkx.Graph):
         the surfaces centroids. For concave volumes, this corresponds to the
         center of gravity of the volume. Some weird positioning can occur for
         convex volumes.
+
+        Todo:
+            Create an Example
 
         Args:
             fig_height (float): matplotlib figure height in inches.
@@ -1118,7 +1129,12 @@ class ZoneGraph(networkx.Graph):
                      close=False, ax=None, axis_off=False, cmap='plasma',
                      dpi=300, file_format='png', filename='unnamed',
                      plt_style='ggplot', extent='tight', **kwargs):
-        """
+        """Plot the adjacency of the zones as a graph. Choose a layout from the
+        :mod:`networkx.drawing.layout` module, the
+        :mod:`Graphviz AGraph (dot)<networkx.drawing.nx_agraph>` module, the
+        :mod:`Graphviz with pydot<networkx.drawing.nx_pydot>` module. Then, plot
+        the graph using matplotlib using the :mod:`networkx.drawing.py_lab`
+
         Examples:
             >>> G = BuildingTemplate().zone_graph
             >>> G.plot_graph2d(nx.nx_agraph.graphviz_layout, ('dot'),
@@ -1166,7 +1182,7 @@ class ZoneGraph(networkx.Graph):
             **kwargs: keywords passed to :func:`networkx.draw_networkx`
 
         Returns:
-            fig, ax
+            (tuple): The fig and ax objects
         """
         try:
             import matplotlib.pyplot as plt

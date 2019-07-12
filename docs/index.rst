@@ -19,11 +19,10 @@ developed by the MIT Sustainable Design Lab.
 
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: User Guide
 
    Getting Started <first.rst>
-   Schedules <schedules.rst>
    Convert IDF to BUI <converter_idf.rst>
 
 .. toctree::
@@ -31,7 +30,6 @@ developed by the MIT Sustainable Design Lab.
    :caption: Reference Guide
 
    commands
-   Package Modules <package_modules.rst>
 
 
 Indices and tables

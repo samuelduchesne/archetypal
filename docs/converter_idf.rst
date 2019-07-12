@@ -1,5 +1,5 @@
 Convert IDF to BUI
-=====================
+==================
 
 .. figure:: images/converter@2x.png
    :alt: converter logo

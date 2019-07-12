@@ -389,18 +389,10 @@ class TestVentilationSetting():
             zone = idf.getobject('ZONE', 'ZONE 1')
             z = Zone.from_zone_epbunch(zone=zone, sql=sql)
             natVent = VentilationSetting.from_zone(z)
-
-    def test_scheduleVentilation_from_zone(self, config, ventilatontests):
-        from archetypal import VentilationSetting, Zone
-        idf, sql, idf_name = ventilatontests
         if idf_name == "VentilationSimpleTest.idf":
             zone = idf.getobject('ZONE', 'ZONE 2')
             z = Zone.from_zone_epbunch(zone=zone, sql=sql)
             schedVent = VentilationSetting.from_zone(z)
-
-    def test_infiltVentilation_from_zone(self, config, ventilatontests):
-        from archetypal import VentilationSetting, Zone
-        idf, sql, idf_name = ventilatontests
         if idf_name == "RefBldgWarehouseNew2004_Chicago.idf":
             zone = idf.getobject('ZONE', 'Office')
             z = Zone.from_zone_epbunch(zone=zone, sql=sql)
@@ -437,15 +429,11 @@ class TestZoneConditioning():
         if idf_name == "RefMedOffVAVAllDefVRP.idf":
             zone = idf.getobject('ZONE', 'Core_mid')
             z = Zone.from_zone_epbunch(zone=zone, sql=sql)
-            cond = ZoneConditioning.from_zone(z)
-
-    def test_zoneConditioning_from_zone(self, config, zoneConditioningtests):
-        from archetypal import ZoneConditioning, Zone
-        idf, sql, idf_name = zoneConditioningtests
+            cond_ = ZoneConditioning.from_zone(z)
         if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf":
             zone = idf.getobject('ZONE', 'West Zone')
             z = Zone.from_zone_epbunch(zone=zone, sql=sql)
-            cond = ZoneConditioning.from_zone(z)
+            cond_HX = ZoneConditioning.from_zone(z)
 
     # todo: test for from_json
 
@@ -475,6 +463,6 @@ class TestZoneLoad():
         idf, sql = zoneLoadtests
         zone = idf.getobject('ZONE', 'Office')
         z = Zone.from_zone_epbunch(zone=zone, sql=sql)
-        load = ZoneLoad.from_zone(z)
+        load_ = ZoneLoad.from_zone(z)
 
     # todo: test for from_json

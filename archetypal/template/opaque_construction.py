@@ -14,6 +14,10 @@ from archetypal.template import Unique, MaterialLayer, \
 
 
 class ConstructionBase(UmiBase):
+    """
+
+    """
+
     def __init__(self, AssemblyCarbon=0, AssemblyCost=0, AssemblyEnergy=0,
                  DisassemblyCarbon=0, DisassemblyEnergy=0, **kwargs):
         """
@@ -34,6 +38,9 @@ class ConstructionBase(UmiBase):
 
 
 class LayeredConstruction(ConstructionBase):
+    """
+
+    """
     def __init__(self, Layers, **kwargs):
         """
         Args:
@@ -45,9 +52,10 @@ class LayeredConstruction(ConstructionBase):
 
 
 class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
-    """
-    $id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
-    DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
+    """Opaque Constructions
+
+    .. image:: ../images/template/constructions-opaque.png
+
     """
 
     def __init__(self, Layers, Surface_Type=None,

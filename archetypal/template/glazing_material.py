@@ -11,6 +11,11 @@ from archetypal.template import MaterialBase, Unique
 
 
 class GlazingMaterial(MaterialBase, metaclass=Unique):
+    """Glazing Materials
+
+    .. image:: ../images/template/materials-glazing.png
+
+    """
 
     def __init__(self, Density=2500, Conductivity=None, SolarTransmittance=None,
                  SolarReflectanceFront=None, SolarReflectanceBack=None,

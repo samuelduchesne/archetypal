@@ -12,7 +12,11 @@ from archetypal import float_round
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
-    """HVAC settings for the zone"""
+    """HVAC settings for the zone
+
+    .. image:: ../images/template/zoninfo-conditioning.png
+
+    """
 
     def __init__(self, CoolingCoeffOfPerf=None, CoolingLimitType='NoLimit',
                  CoolingSetpoint=26, EconomizerType='NoEconomizer',

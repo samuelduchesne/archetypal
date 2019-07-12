@@ -150,13 +150,10 @@ class WindowType(IntEnum):
 
 
 class WindowSetting(UmiBase, metaclass=Unique):
-    """AfnDischargeC, AfnTempSetpoint, AfnWindowAvailability.$ref, Category,
-    Comments, OpaqueConstruction.$ref, DataSource, IsShadingSystemOn,
-    IsVirtualPartition, IsZoneMixingOn, Name, OperableArea,
-    ShadingSystemAvailabilitySchedule.$ref, ShadingSystemSetpoint,
-    ShadingSystemTransmittance, ShadingSystemType, Type,
-    ZoneMixingAvailabilitySchedule.$ref, ZoneMixingDeltaTemperature,
-    ZoneMixingFlowRate
+    """Window Settings
+
+    .. image:: ../images/template/zoneinfo-windows.png
+
     """
 
     def __init__(self, Name, Construction=None, OperableArea=0.8,

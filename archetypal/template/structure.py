@@ -31,9 +31,10 @@ class MassRatio(object):
 
 
 class StructureDefinition(UmiBase, metaclass=Unique):
-    """
-    $id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
-    DataSource, DisassemblyCarbon, DisassemblyEnergy, MassRatios, Name,
+    """Building Structure settings.
+
+    .. image:: ../images/template/constructions-structure.png
+
     """
 
     def __init__(self, *args, AssemblyCarbon=0, AssemblyCost=0,

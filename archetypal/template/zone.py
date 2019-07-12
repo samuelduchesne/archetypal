@@ -22,8 +22,11 @@ from archetypal.template import Unique, UmiBase, ZoneConditioning, ZoneLoad, \
 
 
 class Zone(UmiBase, metaclass=Unique):
-    """Zone containing HVAC settings: Conditioning, Domestic Hot Water, Loads,
+    """Class containing HVAC settings: Conditioning, Domestic Hot Water, Loads,
     Ventilation, adn Consructions
+
+    .. image:: ../images/template/zoneinfo-zone.png
+
     """
 
     def __init__(self, Conditioning=None, Constructions=None,

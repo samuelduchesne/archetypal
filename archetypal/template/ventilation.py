@@ -27,12 +27,10 @@ def resolve_temp(temp, idf):
 
 
 class VentilationSetting(UmiBase, metaclass=Unique):
-    """
-    $id, Afn, Infiltration, IsBuoyancyOn, IsInfiltrationOn, IsNatVentOn,
-    IsScheduledVentilationOn, IsWindOn, NatVentMaxOutdoorAirTemp,
-    NatVentMaxRelHumidity, NatVentMinOutdoorAirTemp, NatVentSchedule.$ref,
-    NatVentZoneTempSetpoint, ScheduledVentilationAch,
-    ScheduledVentilationSchedule.$ref, ScheduledVentilationSetpoint
+    """Zone Ventilation Settings
+
+    .. image:: ../images/template/zoneinfo-ventilation.png
+
     """
 
     def __init__(self, Name=None, NatVentSchedule=None,

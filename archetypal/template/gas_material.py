@@ -11,11 +11,10 @@ from archetypal.template import MaterialBase, Unique
 
 
 class GasMaterial(MaterialBase, metaclass=Unique):
-    """
-    $id, Comments, Cost, DataSource, EmbodiedCarbon, EmbodiedCarbonStdDev,
-    EmbodiedEnergy, EmbodiedEnergyStdDev, GasType, Life, Name,
-    SubstitutionRatePattern, SubstitutionTimestep, TransportCarbon,
-    TransportDistance, TransportEnergy, Type
+    """Gas Materials
+
+    .. image:: ../images/template/materials-gas.png
+
     """
 
     def __init__(self, *args,

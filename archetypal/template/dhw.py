@@ -13,9 +13,10 @@ from archetypal.template import Unique, UmiBase, UmiSchedule
 
 
 class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
-    """
-    $id, Category, Comments, DataSource, FlowRatePerFloorArea, IsOn, Name,
-    WaterSchedule.$ref, WaterSupplyTemperature, WaterTemperatureInlet
+    """Domestic Hot Water settigns
+
+    .. image:: ../images/template/zoneinfo-dhw.png
+
     """
 
     def __init__(self, IsOn=True, WaterSchedule=None,

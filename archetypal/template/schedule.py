@@ -14,8 +14,10 @@ from archetypal.template import UmiBase, Unique
 
 
 class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
-    """
-    $id, Category, Comments, DataSource, Name, Parts, Type
+    """Schedules
+
+
+
     """
 
     def __init__(self, *args, **kwargs):

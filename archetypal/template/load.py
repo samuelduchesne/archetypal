@@ -11,12 +11,10 @@ from archetypal.template import UmiBase, Unique, UmiSchedule
 
 
 class ZoneLoad(UmiBase, metaclass=Unique):
-    """
-    $id, Category, Comments, DataSource, DimmingType,
-    EquipmentAvailabilitySchedule.$ref, EquipmentPowerDensity,
-    IlluminanceTarget, IsEquipmentOn, IsLightingOn, IsPeopleOn,
-    LightingPowerDensity, LightsAvailabilitySchedule.$ref, Name,
-    OccupancySchedule.$ref, PeopleDensity
+    """Zone Loads
+
+    .. image:: ../images/template/zoneinfo-loads.png
+
     """
 
     def __init__(self, *args,

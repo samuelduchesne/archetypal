@@ -21,7 +21,11 @@ from archetypal.template import UmiBase, Unique, ZoneGraph, Zone, \
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
-    """Main class supporting the definition of a single building template."""
+    """Main class supporting the definition of a single building template.
+
+    .. image:: ../images/template/buildingtemplate.png
+
+    """
 
     def __init__(self, Core=None,
                  Perimeter=None,

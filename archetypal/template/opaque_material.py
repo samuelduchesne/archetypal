@@ -11,7 +11,11 @@ from archetypal.template import UmiBase, Unique
 
 
 class OpaqueMaterial(UmiBase, metaclass=Unique):
-    """Use this component to create a custom opaque material."""
+    """Use this component to create a custom opaque material.
+
+    .. image:: ../images/template/materials-opaque.png
+
+    """
 
     def __init__(self, Conductivity, SpecificHeat, SolarAbsorptance=0.7,
                  ThermalEmittance=0.9, VisibleAbsorptance=0.7,

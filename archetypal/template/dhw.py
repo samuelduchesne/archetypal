@@ -221,7 +221,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             total_flow_rate += obj.Peak_Flow_Rate  # m3/s
         if not isinstance(zone, list):
             area = 0
-            surfaces = [s for s in zone._epbunch.zonesurfaces if s.tilt == 180]
+            surfaces = list(filter(lambda s: s.key.lower() != 'internalmass', [s for s in zone._epbunch.zonesurfaces]))
+            surfaces = list(filter(lambda s: s.tilt==180, surfaces))
             for surf in surfaces:
                 part_of = int(
                     zone._epbunch.Part_of_Total_Floor_Area.upper() != "NO")

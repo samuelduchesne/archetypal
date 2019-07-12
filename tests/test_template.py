@@ -428,7 +428,7 @@ class TestZoneConditioning():
 
     def test_zoneConditioning_init(self, config, zoneConditioningtests):
         from archetypal import ZoneConditioning
-        idf, sql = zoneConditioningtests
+        idf, sql, idf_name = zoneConditioningtests
         cond = ZoneConditioning(Name=None)
 
     def test_zoneConditioning_from_zone(self, config, zoneConditioningtests):

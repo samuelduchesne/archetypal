@@ -13,17 +13,17 @@ import logging as lg
 import multiprocessing
 import os
 import time
+from sqlite3 import OperationalError
 from subprocess import CalledProcessError, check_call
 
 import eppy
 import eppy.modeleditor
 import geomeppy
 import pandas as pd
+from archetypal import log, settings, EnergyPlusProcessError, cd
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run
-
-from archetypal import log, settings, EnergyPlusProcessError, cd
 
 
 class IDF(geomeppy.IDF):
@@ -1251,20 +1251,36 @@ def get_sqlite_report(report_file, report_tables=None):
     # if file exists, parse it with pandas' read_sql_query
     if os.path.isfile(report_file):
         import sqlite3
+        import numpy as np
         # create database connection with sqlite3
         with sqlite3.connect(report_file) as conn:
+
             # empty dict to hold all DataFrames
             all_tables = {}
             # Iterate over all tables in the report_tables list
             for table in report_tables:
                 try:
-                    all_tables[table] = pd.read_sql_query(
+                    # Try regular read, could fail if wrong encoding
+                    df = pd.read_sql_query(
                         "select * from {};".format(table), conn,
                         index_col=report_tables[table]['PrimaryKey'],
-                        parse_dates=report_tables[table]['ParseDates'])
-                except Exception as e:
-                    log('no such table: {}'.format(table), lg.WARNING)
-
+                        parse_dates=report_tables[table]['ParseDates'],
+                        coerce_float=True)
+                    all_tables[table] = df
+                except OperationalError:
+                    # Wring encoding found, the load bytes and ecode object
+                    # columns only
+                    conn.text_factory = bytes
+                    df = pd.read_sql_query(
+                        "select * from {};".format(table), conn,
+                        index_col=report_tables[table]['PrimaryKey'],
+                        parse_dates=report_tables[table]['ParseDates'],
+                        coerce_float=True)
+                    str_df = df.select_dtypes([np.object])
+                    str_df = str_df.stack().str.decode('8859').unstack()
+                    for col in str_df:
+                        df[col] = str_df[col]
+                    all_tables[table] = df
             log('SQL query parsed {} tables as DataFrames from {}'.format(
                 len(all_tables), report_file))
             return all_tables

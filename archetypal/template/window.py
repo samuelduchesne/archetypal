@@ -9,13 +9,12 @@ import collections
 import logging as lg
 from enum import IntEnum
 
-from eppy.bunch_subclass import EpBunch
-
 from archetypal import log
 from archetypal.template import MaterialLayer, UmiSchedule
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
 from archetypal.template.umi_base import UmiBase, Unique
+from eppy.bunch_subclass import EpBunch
 
 
 class WindowConstruction(UmiBase, metaclass=Unique):
@@ -150,10 +149,21 @@ class WindowType(IntEnum):
 
 
 class WindowSetting(UmiBase, metaclass=Unique):
-    """Window Settings
+    """Window Settings define the various window-related properties of a
+    specific :class:`Zone`. Control natural ventilation, shading and airflow
+    networks and more using this class. This class serves the same role as the
+    ZoneInformation>Windows tab in the UMI TemplateEditor.
 
     .. image:: ../images/template/zoneinfo-windows.png
 
+    Classmethods:
+        The WindowSetting class implements two constructors that are tailored to
+        the eppy_ scripting language:
+
+        - :func:`from_construction` and
+        - :func:`from_surface`.
+
+    .. _eppy : https://eppy.readthedocs.io/en/latest/
     """
 
     def __init__(self, Name, Construction=None, OperableArea=0.8,
@@ -166,7 +176,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                  IsZoneMixingOn=False, ZoneMixingAvailabilitySchedule=None,
                  ZoneMixingDeltaTemperature=2, ZoneMixingFlowRate=0.001,
                  **kwargs):
-        """WindowSetting.
+        """Initialize a WindowSetting using default values:
 
         Args:
             Name:
@@ -219,8 +229,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_construction(cls, Construction, **kwargs):
-        """Make a :class:`WindowSetting` directly from a :attr:`Construction`
-        object.
+        """Make a :class:`WindowSetting` directly from a Construction_ object.
+
+        .. _Construction : https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-surface-construction-elements.html#construction-000
 
         Examples:
             >>> import archetypal as ar
@@ -247,14 +258,28 @@ class WindowSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_surface(cls, surface):
-        """Build a WindowSetting object from a 'FENESTRATIONSURFACE:DETAILED'
-        object.
+        """Build a WindowSetting object from a FenestrationSurface:Detailed_
+        object. This constructor will detect common window constructions and
+        shading devices. Supported Shading and Natural Air flow EnergyPlus
+        objects are: WindowProperty:ShadingControl_,
+        AirflowNetwork:MultiZone:Surface_.
+
+        Important:
+            If an EnergyPlus object is not supported, eg.:
+            AirflowNetwork:MultiZone:Component:DetailedOpening_, only a warning
+            will be issued in the console for the related object instance and
+            default values will be automatically used.
+
+        .. _FenestrationSurface:Detailed: https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-thermal-zone-description-geometry.html#fenestrationsurfacedetailed
+        .. _WindowProperty:ShadingControl: https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-thermal-zone-description-geometry.html#windowpropertyshadingcontrol
+        .. _AirflowNetwork:MultiZone:Surface: https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-airflow-network.html#airflownetworkmultizonesurface
+        .. _AirflowNetwork:MultiZone:Component:DetailedOpening: https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-airflow-network.html#airflownetworkmultizonecomponentdetailedopening
 
         Args:
-            surface (EpBunch): The 'FENESTRATIONSURFACE:DETAILED' object.
+            surface (EpBunch): The FenestrationSurface:Detailed_ object.
 
         Returns:
-            (windowSetting): The window setting object.
+            (WindowSetting): The window setting object.
         """
         if isinstance(surface, EpBunch):
             construction = surface.Construction_Name
@@ -263,7 +288,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 'Shading_Control_Name')
             attr = {}
             if shading_control:
-                # a 'WINDOWPROPERTY:SHADINGCONTROL' object can be attached to
+                # a WindowProperty:ShadingControl_ object can be attached to
                 # this window
                 attr['IsShadingSystemOn'] = True
                 if shading_control["Setpoint"] != '':
@@ -318,8 +343,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 iddgroups=['Natural Ventilation and Duct Leakage'],
                 fields=['Surface_Name'])), None)
             if afn:
-                attr[
-                    'OperableArea'] = \
+                attr['OperableArea'] = \
                     afn.WindowDoor_Opening_Factor_or_Crack_Factor
                 leak = afn.get_referenced_object('Leakage_Component_Name')
                 sch_name = afn['Venting_Availability_Schedule_Name']
@@ -345,32 +369,32 @@ class WindowSetting(UmiBase, metaclass=Unique):
                         == \
                         'AIRFLOWNETWORK:MULTIZONE:COMPONENT:HORIZONTALOPENING':
                     log('"{}" is not fully supported. Rerverting to '
-                        'defaults for object "{}"'.format(leak.key,
-                                                     cls.mro()[0].__name__),
+                        'defaults for object "{}"'.format(
+                        leak.key, cls.mro()[ 0].__name__),
                         lg.WARNING)
                 elif leak.key.upper() == \
                         'AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK':
                     log('"{}" is not fully supported. Rerverting to '
-                        'defaults for object'.format(leak.key,
-                                                     cls.mro()[0].__name__),
+                        'defaults for object "{}"'.format(
+                        leak.key, cls.mro()[0].__name__),
                         lg.WARNING)
                 elif leak.key.upper() \
                         == 'AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING':
                     log('"{}" is not fully supported. Rerverting to '
-                        'defaults for object "{}"'.format(leak.key,
-                                                     cls.mro()[0].__name__),
+                        'defaults for object "{}"'.format(
+                        leak.key, cls.mro()[0].__name__),
                         lg.WARNING)
                 elif leak.key.upper() \
                         == 'AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN':
                     log('"{}" is not fully supported. Rerverting to '
-                        'defaults for object "{}"'.format(leak.key,
-                                                     cls.mro()[0].__name__),
+                        'defaults for object "{}"'.format(
+                        leak.key, cls.mro()[0].__name__),
                         lg.WARNING)
                 elif leak.key.upper() \
                         == 'AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING':
                     log('"{}" is not fully supported. Rerverting to '
-                        'defaults for object "{}"'.format(leak.key,
-                                                     cls.mro()[0].__name__),
+                        'defaults for object "{}"'.format(
+                        leak.key, cls.mro()[0].__name__),
                         lg.WARNING)
 
             w = cls(Name=name, construction=construction, idf=surface.theidf,

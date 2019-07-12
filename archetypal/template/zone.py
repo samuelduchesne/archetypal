@@ -782,6 +782,10 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
                     roof.append(disp_surf)
                 elif disp_surf.Surface_Type == 'Slab':
                     slab.append(disp_surf)
+                else:
+                    msg = 'Surface Type "{}" is not known, this method is not ' \
+                          'implemented'.format(disp_surf.Surface_Type)
+                    raise NotImplementedError(msg)
 
         # Returning a set() for each groups of Constructions.
 

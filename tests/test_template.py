@@ -398,18 +398,10 @@ class TestVentilationSetting():
             zone = idf.getobject('ZONE', 'ZONE 1')
             z = Zone.from_zone_epbunch(zone=zone, sql=sql)
             natVent = VentilationSetting.from_zone(z)
-
-    def test_scheduleVentilation_from_zone(self, config, ventilatontests):
-        from archetypal import VentilationSetting, Zone
-        idf, sql, idf_name = ventilatontests
         if idf_name == "VentilationSimpleTest.idf":
             zone = idf.getobject('ZONE', 'ZONE 2')
             z = Zone.from_zone_epbunch(zone=zone, sql=sql)
             schedVent = VentilationSetting.from_zone(z)
-
-    def test_infiltVentilation_from_zone(self, config, ventilatontests):
-        from archetypal import VentilationSetting, Zone
-        idf, sql, idf_name = ventilatontests
         if idf_name == "RefBldgWarehouseNew2004_Chicago.idf":
             zone = idf.getobject('ZONE', 'Office')
             z = Zone.from_zone_epbunch(zone=zone, sql=sql)
@@ -446,15 +438,11 @@ class TestZoneConditioning():
         if idf_name == "RefMedOffVAVAllDefVRP.idf":
             zone = idf.getobject('ZONE', 'Core_mid')
             z = Zone.from_zone_epbunch(zone=zone, sql=sql)
-            cond = ZoneConditioning.from_zone(z)
-
-    def test_zoneConditioning_from_zone(self, config, zoneConditioningtests):
-        from archetypal import ZoneConditioning, Zone
-        idf, sql, idf_name = zoneConditioningtests
+            cond_ = ZoneConditioning.from_zone(z)
         if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf":
             zone = idf.getobject('ZONE', 'West Zone')
             z = Zone.from_zone_epbunch(zone=zone, sql=sql)
-            cond = ZoneConditioning.from_zone(z)
+            cond_HX = ZoneConditioning.from_zone(z)
 
     # todo: test for from_json
 
@@ -484,6 +472,36 @@ class TestZoneLoad():
         idf, sql = zoneLoadtests
         zone = idf.getobject('ZONE', 'Office')
         z = Zone.from_zone_epbunch(zone=zone, sql=sql)
-        load = ZoneLoad.from_zone(z)
+        load_ = ZoneLoad.from_zone(z)
+
+    # todo: test for from_json
+
+class TestZoneConstructionSet():
+    """Combines different :class:`VentilationSetting` tests"""
+
+    @pytest.fixture(scope='class', params=["RefBldgWarehouseNew2004_Chicago.idf"])
+    def zoneConstructionSettests(self, config, request):
+        from eppy.runner.run_functions import install_paths
+        eplus_exe, eplus_weather = install_paths("8-9-0")
+        eplusdir = Path(eplus_exe).dirname()
+        file = eplusdir / "ExampleFiles" / request.param
+        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        idf = ar.load_idf(file)
+        sql = ar.run_eplus(file, weather_file=w, prep_outputs=True,
+                           output_report='sql', verbose='v', design_day=False,
+                           annual=False)
+        yield idf, sql
+
+    def test_zoneConstructionSet_init(self, config, zoneConstructionSettests):
+        from archetypal import ZoneConstructionSet
+        idf, sql = zoneConstructionSettests
+        constrSet = ZoneConstructionSet(Name=None)
+
+    def test_zoneConstructionSet_from_zone(self, config, zoneConstructionSettests):
+        from archetypal import ZoneConstructionSet, Zone
+        idf, sql = zoneConstructionSettests
+        zone = idf.getobject('ZONE', 'Office')
+        z = Zone.from_zone_epbunch(zone=zone, sql=sql)
+        constrSet_ = ZoneConstructionSet.from_zone(z)
 
     # todo: test for from_json

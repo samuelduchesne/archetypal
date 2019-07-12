@@ -467,15 +467,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 Temperature')
         """
         setpoints_idx = zone.sql['ReportDataDictionary'][
-            zone.sql['ReportDataDictionary'][
-                'Name'] == variable_output_name]
+            zone.sql['ReportDataDictionary']['Name'] == variable_output_name]
         setpoint_idx = setpoints_idx[
-            setpoints_idx['KeyValue'].str.contains(
-                zone.Name.upper())].index
-        setpoint = float_round(zone.sql['ReportData'][
-                                   zone.sql['ReportData'][
-                                       'ReportDataDictionaryIndex'] ==
-                                   setpoint_idx.tolist()[0]][
+            setpoints_idx['KeyValue'].str.contains(zone.Name.upper())].index
+        setpoint = float_round(zone.sql['ReportData'][zone.sql['ReportData'][
+                                                          'ReportDataDictionaryIndex'] ==
+                                                      setpoint_idx.tolist()[0]][
                                    'Value'].mean(), 3)
         return setpoint
 

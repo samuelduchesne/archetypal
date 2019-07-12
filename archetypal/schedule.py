@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
+from path import Path
 
 import archetypal
 from archetypal import log, settings
@@ -21,7 +22,8 @@ class Schedule(object):
     """An object designed to handle any EnergyPlys schedule object"""
 
     def __init__(self, sch_name, idf=None, start_day_of_the_week=0,
-                 strict=False, base_year=2018, schType=None, **kwargs):
+                 strict=False, base_year=2018, schType=None,
+                 values=None, **kwargs):
         """
         Args:
             sch_name (str): The schedule name in the idf file
@@ -36,7 +38,10 @@ class Schedule(object):
             schType (str): The EneryPlus schedule object from which this
             **kwargs:
         """
-        super(Schedule, self).__init__(**kwargs)
+        try:
+            super(Schedule, self).__init__(**kwargs)
+        except:
+            super(Schedule, self).__init__()
         self.strict = strict
         self.idf = idf
         self.schName = sch_name
@@ -49,7 +54,7 @@ class Schedule(object):
         self.unit = "unknown"
 
         self.index_ = None
-        self.values = None
+        self.values = values
         self.schType = schType
         _type = kwargs.get('Type', None)
         if _type is None:
@@ -57,6 +62,10 @@ class Schedule(object):
                 sch_type=self.schType)
         else:
             self.schTypeLimitsName = _type
+
+    @classmethod
+    def from_values(cls, sch_name, values, **kwargs):
+        return cls(sch_name, values=values, **kwargs)
 
     @classmethod
     def constant_schedule(cls, hourly_value=1, Name='AlwaysOn',
@@ -78,26 +87,29 @@ class Schedule(object):
                                   Schedule_Type_Limits_Name='',
                                   Hourly_Value=hourly_value),
                            save=False)
-            return Schedule(sch_name=Name, idf=idf, **kwargs)
+            return cls(sch_name=Name, Name=Name, idf=idf, **kwargs)
         else:
             # Create a new idf object and add the schedule to it.
             idftxt = "VERSION, 8.9;"  # Not an empty string. has just the
             # version number
             # we can make a file handle of a string
-            fd, name = tempfile.mkstemp(suffix='_schedule.idf', prefix='temp_',
-                                        dir=settings.cache_folder, text=True)
-            with open(name, 'w') as f:
-                f.write(idftxt)
-            # initialize the IDF object with the file handle
-            idf_scratch = archetypal.IDF(name)
+            if not Path(settings.cache_folder).exists():
+                Path(settings.cache_folder).mkdir_p()
+            with tempfile.NamedTemporaryFile(mode='w', suffix='_schedule.idf',
+                                          prefix='temp_',
+                                        dir=settings.cache_folder)\
+                    as file:
+                file.write(idftxt)
+                # initialize the IDF object with the file handle
+                idf_scratch = archetypal.IDF(file.name)
 
-            idf_scratch.add_object(ep_object='Schedule:Constant'.upper(),
-                                   **dict(Name=Name,
-                                          Schedule_Type_Limits_Name='',
-                                          Hourly_Value=hourly_value),
-                                   save=False)
+                idf_scratch.add_object(ep_object='Schedule:Constant'.upper(),
+                                       **dict(Name=Name,
+                                              Schedule_Type_Limits_Name='',
+                                              Hourly_Value=hourly_value),
+                                       save=False)
 
-            sched = Schedule(sch_name=Name, idf=idf_scratch, **kwargs)
+            sched = cls(sch_name=Name, Name=Name, idf=idf_scratch, **kwargs)
             return sched
 
     @property
@@ -824,7 +836,7 @@ class Schedule(object):
         else:
             return False
 
-    def to_year_week_day(self):
+    def to_year_week_day(self, values=None, idf=None):
         """convert a Schedule Class to the 'Schedule:Year',
         'Schedule:Week:Daily' and 'Schedule:Day:Hourly' representation
 
@@ -836,8 +848,10 @@ class Schedule(object):
               objects
             - **daily** (*list of Schedule*):The list of daily schedule objects
         """
-
-        full_year = np.array(self.all_values)  # array of shape (8760,)
+        if values:
+            full_year=values
+        else:
+            full_year = np.array(self.all_values)  # array of shape (8760,)
         values = full_year.reshape(-1, 24)  # shape (365, 24)
 
         # create unique days
@@ -1253,7 +1267,7 @@ class Schedule(object):
             date = self._date_field_interpretation(date)
             return lambda x: x.index == date
 
-    def combine(self, other, weights):
+    def combine(self, other, weights=None):
         """Combine two schedule objects together"""
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
@@ -1265,7 +1279,8 @@ class Schedule(object):
 
         if all(self.all_values == other.all_values):
             return self
-
+        if not weights:
+            weights = [1, 1]
         new_values = np.average([self.all_values, other.all_values],
                                 axis=0, weights=weights)
 

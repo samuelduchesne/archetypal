@@ -14,7 +14,7 @@ def test_schedules_in_necb_specific(config):
     import matplotlib.pyplot as plt
     for key in idfs:
         idf = idfs[key]
-        s = Schedule(Name='NECB-A-Thermostat Setpoint-Heating',
+        s = Schedule(sch_name='NECB-A-Thermostat Setpoint-Heating',
                      start_day_of_the_week=0, idf=idf)
         s.plot(slice=('2018/01/02', '2018/01/03'), drawstyle="steps-post")
         plt.show()
@@ -48,6 +48,8 @@ def test_constant_schedule():
     from archetypal import UmiSchedule
     const = UmiSchedule.constant_schedule()
     assert const.__class__.__name__ == 'UmiSchedule'
+    const = Schedule.constant_schedule()
+    assert const.__class__.__name__ == 'Schedule'
 
 
 idf_file = 'tests/input_data/schedules/test_multizone_EP.idf'
@@ -115,7 +117,7 @@ def test_schedules(request, run_schedules_idf):
     # read original schedule
     idf = schedules_idf()
     schName = request.param
-    orig = Schedule(Name=schName, idf=idf)
+    orig = Schedule(sch_name=schName, idf=idf)
 
     print('{name}\tType:{type}\t[{len}]\tValues:{'
           'values}'.format(name=orig.schName,
@@ -125,7 +127,7 @@ def test_schedules(request, run_schedules_idf):
 
     # create year:week:day version
     new_eps = orig.to_year_week_day()
-    new = Schedule(Name=new_eps[0].Name, idf=idf)
+    new = Schedule(sch_name=new_eps[0].Name, idf=idf)
 
     index = orig.series.index
     epv = pd.read_csv(run_schedules_idf)

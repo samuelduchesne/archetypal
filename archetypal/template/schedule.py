@@ -8,7 +8,6 @@
 import collections
 
 import numpy as np
-
 from archetypal import Schedule
 from archetypal.template import UmiBase, Unique
 
@@ -46,8 +45,17 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         randint = rs.randint(low=min, high=max)
         name = 'Constant_value_{}'.format(randint)
 
-        sched = cls.constant_schedule(Name=name, hourly_value=randint, **kwargs)
+        sched = super().constant_schedule(Name=name, hourly_value=randint,
+                                          **kwargs)
         return sched
+
+    @classmethod
+    def constant_schedule(cls, hourly_value=1, Name='AlwaysOn',
+                          idf=None, **kwargs):
+        return super(UmiSchedule, cls).constant_schedule(
+            hourly_value=hourly_value,
+            Name=Name,
+            idf=idf, **kwargs)
 
     @classmethod
     def from_idf(cls, *args, **kwargs):
@@ -59,6 +67,9 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         sched = cls(*args, **kwargs)
         sched.develop()
         return sched
+
+    def __add__(self, other):
+        return self.combine(other)
 
     def __repr__(self):
         name = self.schName
@@ -72,6 +83,31 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
     def __hash__(self):
         return hash(repr(self))
+
+    def combine(self, other, weights=None):
+        if not isinstance(other, self.__class__):
+            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
+                                                 other.__class__.__name__)
+            raise NotImplementedError(msg)
+
+        # check if the schedule is the same
+
+        if all(self.all_values == other.all_values):
+            return self
+        if not weights:
+            weights = [1, 1]
+        new_values = np.average([self.all_values, other.all_values],
+                                axis=0, weights=weights)
+
+        # the new object's name
+        name = '+'.join([self.schName, other.schName])
+
+        attr = self.__dict__
+        attr.update(dict(value=new_values))
+        attr.pop('Name')
+        new_obj = super().from_values(sch_name=name, Name=name, **attr)
+
+        return new_obj
 
     def develop(self):
         year, weeks, days = self.to_year_week_day()

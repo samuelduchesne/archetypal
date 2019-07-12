@@ -9,7 +9,8 @@ import collections
 import logging as lg
 from enum import IntEnum
 
-from archetypal import log
+import tabulate
+from archetypal import log, IDF
 from archetypal.template import MaterialLayer, UmiSchedule
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
@@ -166,7 +167,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
     .. _eppy : https://eppy.readthedocs.io/en/latest/
     """
 
-    def __init__(self, Name, Construction=None, OperableArea=0.8,
+    def __init__(self, Construction=None, OperableArea=0.8,
                  AfnWindowAvailability=None, AfnDischargeC=0.65,
                  AfnTempSetpoint=20, IsVirtualPartition=False,
                  IsShadingSystemOn=False,
@@ -179,7 +180,6 @@ class WindowSetting(UmiBase, metaclass=Unique):
         """Initialize a WindowSetting using default values:
 
         Args:
-            Name:
             Construction (WindowConstruction): The window construction.
             OperableArea (float): The operable window area as a ratio of total
                 window area. eg. 0.8 := 80% of the windows area is operable.
@@ -207,7 +207,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 Default = 0.001 m3/m2.
             **kwargs: other keywords passed to the constructor.
         """
-        super(WindowSetting, self).__init__(Name, **kwargs)
+        super(WindowSetting, self).__init__(**kwargs)
 
         self.ZoneMixingAvailabilitySchedule = ZoneMixingAvailabilitySchedule
         self.ShadingSystemAvailabilitySchedule = \
@@ -226,6 +226,20 @@ class WindowSetting(UmiBase, metaclass=Unique):
         self.Type = Type  # Todo: Could be deprecated
         self.ZoneMixingDeltaTemperature = ZoneMixingDeltaTemperature
         self.ZoneMixingFlowRate = ZoneMixingFlowRate
+
+    def __add__(self, other):
+        return self.combine(other)
+
+    def __repr__(self):
+        v_ = [(k, v)
+              for k, v in self.__dict__.items()
+              if not isinstance(v, (dict, IDF))]
+        header = "{}: <{}>\n".format(self.Name, self.__class__.mro()[
+            0].__name__)
+        return header + tabulate.tabulate(v_, tablefmt='plain')
+
+    def __str__(self):
+        return repr(self)
 
     @classmethod
     def from_construction(cls, Construction, **kwargs):
@@ -350,6 +364,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
                                }
                     attr['ShadingSystemType'] = mapping[
                         shading_control["Shading_Type"]]
+            else:
+                # Set default schedules
+                attr['ShadingSystemAvailabilitySchedule'] = UmiSchedule.constant_schedule(idf=surface.theidf)
 
             # get airflow network
             afn = next(iter(surface.getreferingobjs(
@@ -409,46 +426,62 @@ class WindowSetting(UmiBase, metaclass=Unique):
                         'defaults for object "{}"'.format(
                         leak.key, cls.mro()[0].__name__),
                         lg.WARNING)
-
-            w = cls(Name=name, construction=construction, idf=surface.theidf,
+            # Zone Mixing
+            attr['ZoneMixingAvailabilitySchedule'] = UmiSchedule.constant_schedule(idf=surface.theidf)
+            w = cls(Name=name, Construction=construction, idf=surface.theidf,
                     **attr)
             return w
 
-    def __add__(self, other):
-        return self.combine(other)
-
     def combine(self, other):
-        """
+        """Append other to self. Return self + other as a new object.
+
         Args:
-            other:
+            other (WindowSetting): The other OpaqueMaterial object
+
+        Returns:
+            WindowSetting: A new combined object made of self + other.
         """
-        if isinstance(other, self.__class__):
-            self.AfnDischargeC = max(self.AfnDischargeC, other.AfnDischargeC)
-            self.AfnTempSetpoint = max(self.AfnTempSetpoint,
-                                       other.AfnTempSetpoint)
-            self.IsShadingSystemOn = any([self.IsShadingSystemOn,
-                                          other.IsShadingSystemOn])
-            self.IsVirtualPartition = any([self.IsVirtualPartition,
-                                           other.IsVirtualPartition])
-            self.IsZoneMixingOn = any([self.IsZoneMixingOn,
-                                       other.IsZoneMixingOn])
-            self.OperableArea = max(self.OperableArea,
-                                    other.OperableArea)
-            self.ShadingSystemSetpoint = max(self.ShadingSystemSetpoint,
-                                             other.ShadingSystemSetpoint)
-            self.ShadingSystemTransmittance = \
-                max(self.ShadingSystemTransmittance,
-                    other.ShadingSystemTransmittance)
-            self.ShadingSystemType = self.ShadingSystemType
-            self.Type = self.Type
-            self.ZoneMixingDeltaTemperature = \
-                max(self.ZoneMixingDeltaTemperature,
-                    other.ZoneMixingDeltaTemperature)
-            self.ZoneMixingFlowRate = max(self.ZoneMixingFlowRate,
-                                          other.ZoneMixingFlowRate)
+        if not isinstance(other, self.__class__):
+            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
+                                                 other.__class__.__name__)
+            raise NotImplementedError(msg)
+
+        # Check if other is not the same as self
+        if self == other:
             return self
-        else:
-            raise NotImplementedError
+        name = " + ".join([self.Name, other.Name])
+        new_attr = self.__dict__.copy()
+        attr = dict(AfnDischargeC=
+                    self._float_mean(other, 'AfnDischargeC'),
+                    AfnTempSetpoint=
+                    self._float_mean(other, 'AfnTempSetpoint'),
+                    IsShadingSystemOn=any([self.IsShadingSystemOn,
+                                           other.IsShadingSystemOn]),
+                    IsVirtualPartition=any([self.IsVirtualPartition,
+                                            other.IsVirtualPartition]),
+                    IsZoneMixingOn=any([self.IsZoneMixingOn,
+                                        other.IsZoneMixingOn]),
+                    OperableArea=
+                    self._float_mean(other, 'OperableArea'),
+                    ShadingSystemSetpoint=
+                    self._float_mean(other, 'ShadingSystemSetpoint'),
+                    ShadingSystemTransmittance=
+                    self._float_mean(other, 'ShadingSystemTransmittance'),
+                    ShadingSystemType=self.ShadingSystemType if
+                    self.IsShadingSystemOn else other.ShadingSystemType,
+                    ZoneMixingDeltaTemperature=
+                    self._float_mean(other, 'ZoneMixingDeltaTemperature'),
+                    ZoneMixingFlowRate=
+                    self._float_mean(other, 'ZoneMixingFlowRate'),
+                    ZoneMixingAvailabilitySchedule=
+                    self.ZoneMixingAvailabilitySchedule.combine(other.ZoneMixingAvailabilitySchedule),
+                    ShadingSystemAvailabilitySchedule=
+                    self.ShadingSystemAvailabilitySchedule.combine(
+                        other.ShadingSystemAvailabilitySchedule))
+        new_attr.update(attr)
+        new_attr['Name'] = name
+        new_obj = self.__class__(**new_attr)
+        return new_obj
 
     def to_json(self):
         """Convert class properties to dict"""

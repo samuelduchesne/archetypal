@@ -65,7 +65,7 @@ class Schedule(object):
 
     @classmethod
     def from_values(cls, sch_name, values, **kwargs):
-        return cls(sch_name, values=values, **kwargs)
+        return cls(values=values, **kwargs)
 
     @classmethod
     def constant_schedule(cls, hourly_value=1, Name='AlwaysOn',

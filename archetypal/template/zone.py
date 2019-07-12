@@ -245,40 +245,40 @@ class Zone(UmiBase, metaclass=Unique):
         return zone
 
     @classmethod
-    def from_zone_epbunch(cls, zone, **kwargs):
+    def from_zone_epbunch(cls, zone_ep, **kwargs):
         """Create a Zone object from an eppy 'ZONE' epbunch.
 
         Args:
-            zone (EpBunch):
+            zone_ep (EpBunch):
             **kwargs:
         """
-        name = zone.Name
-        sql = kwargs.get("sql", None)
-        z = cls(Name=name, idf=zone.theidf, sql=sql)
+        name = zone_ep.Name
+        sql = kwargs.get("sql")
+        zone = cls(Name=name, idf=zone_ep.theidf, sql=sql)
 
-        z._epbunch = zone
-        z._zonesurfaces = zone.zonesurfaces
+        zone._epbunch = zone_ep
+        zone._zonesurfaces = zone_ep.zonesurfaces
 
-        z.Constructions = ZoneConstructionSet.from_zone(z)
-        z.Conditioning = ZoneConditioning.from_zone(z)
-        z.Ventilation = VentilationSetting.from_zone(z)
-        z.DomesticHotWater = DomesticHotWaterSetting.from_zone(z)
-        z.Loads = ZoneLoad.from_zone(z)
+        zone.Constructions = ZoneConstructionSet.from_zone(zone)
+        zone.Conditioning = ZoneConditioning.from_zone(zone)
+        zone.Ventilation = VentilationSetting.from_zone(zone)
+        zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(zone)
+        zone.Loads = ZoneLoad.from_zone(zone)
 
         # Todo Deal with InternalMassConstruction here
         im = [surf.theidf.getobject('Construction'.upper(),
                                     surf.Construction_Name)
-              for surf in zone.zonesurfaces
+              for surf in zone_ep.zonesurfaces
               if surf.key.lower() == 'internalmass']
         imcs = set([OpaqueConstruction.from_epbunch(i) for i in im])
         if imcs:
             imc = functools.reduce(lambda a, b: a + b, imcs)
-            imc._belongs_to_zone = zone
+            imc._belongs_to_zone = zone_ep
         else:
             imc = []
-        z.InternalMassConstruction = imc
+        zone.InternalMassConstruction = imc
 
-        return z
+        return zone
 
     def combine(self, other):
         """
@@ -377,7 +377,7 @@ def surface_dispatcher(surf, zone):
     """
     Args:
         surf (EpBunch):
-        zone (archetypal.template.zone.Zone):
+        zone (EpBunch):
     """
     dispatch = {
         ('Wall', 'Outdoors'): ZoneConstructionSet._do_facade,
@@ -763,7 +763,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     def from_zone(cls, zone):
         """
         Args:
-            zone (archetypal.template.zone.Zone):
+            zone (Zone):
         """
         name = zone.Name + "_ZoneConstructionSet"
         # dispatch surfaces

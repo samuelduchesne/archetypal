@@ -83,7 +83,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         zone: :type zone: Zone
 
         Args:
-            zone:
+            zone (Zone):
         """
         # First, find the WaterUse:Equipement assigned to this zone
         dhw_objs = zone._epbunch.getreferingobjs(iddgroups=["Water Systems"],

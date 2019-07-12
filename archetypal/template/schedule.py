@@ -81,6 +81,9 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                "mean daily min:{:.2f} mean:{:.2f} max:{:.2f}".format(min, mean,
                                                                      max)
 
+    def __str__(self):
+        return repr(self)
+
     def __hash__(self):
         return hash(repr(self))
 

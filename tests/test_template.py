@@ -345,10 +345,12 @@ class TestWindowSetting():
     def test_window_add(self, small_idf):
         from archetypal import WindowSetting
         idf, sql = small_idf
-        construction = idf.getobject('CONSTRUCTION', 'B_Dbl_Air_Cl')
-        window_1 = WindowSetting.from_construction(construction)
-        construction = idf.getobject('CONSTRUCTION', 'B_Dbl_Air_Cl_FLIPPED')
-        window_2 = WindowSetting.from_construction(construction)
+        zone = idf.idfobjects['ZONE'][0]
+        iterator = iter(zone.zonesurfaces)
+        surface = next(iterator, None)
+        window_1 = WindowSetting.from_surface(surface)
+        surface = next(iterator, None)
+        window_2 = WindowSetting.from_surface(surface)
 
         new_w = window_1 + window_2
         assert new_w
@@ -357,11 +359,13 @@ class TestWindowSetting():
     def test_window_iadd(self, small_idf):
         from archetypal import WindowSetting
         idf, sql = small_idf
-        construction = idf.getobject('CONSTRUCTION', 'B_Dbl_Air_Cl')
-        window_1 = WindowSetting.from_construction(construction)
+        zone = idf.idfobjects['ZONE'][0]
+        iterator = iter(zone.zonesurfaces)
+        surface = next(iterator, None)
+        window_1 = WindowSetting.from_surface(surface)
         id_ = window_1.id
-        construction = idf.getobject('CONSTRUCTION', 'B_Dbl_Air_Cl_FLIPPED')
-        window_2 = WindowSetting.from_construction(construction)
+        surface = next(iterator, None)
+        window_2 = WindowSetting.from_surface(surface)
 
         window_1 += window_2
         assert window_1
@@ -396,15 +400,15 @@ class TestVentilationSetting():
         idf, sql, idf_name = ventilatontests
         if idf_name == "VentilationSimpleTest.idf":
             zone = idf.getobject('ZONE', 'ZONE 1')
-            z = Zone.from_zone_epbunch(zone=zone, sql=sql)
+            z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             natVent = VentilationSetting.from_zone(z)
         if idf_name == "VentilationSimpleTest.idf":
             zone = idf.getobject('ZONE', 'ZONE 2')
-            z = Zone.from_zone_epbunch(zone=zone, sql=sql)
+            z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             schedVent = VentilationSetting.from_zone(z)
         if idf_name == "RefBldgWarehouseNew2004_Chicago.idf":
             zone = idf.getobject('ZONE', 'Office')
-            z = Zone.from_zone_epbunch(zone=zone, sql=sql)
+            z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             infiltVent = VentilationSetting.from_zone(z)
 
     # todo: test for from_json
@@ -437,11 +441,11 @@ class TestZoneConditioning():
         idf, sql, idf_name = zoneConditioningtests
         if idf_name == "RefMedOffVAVAllDefVRP.idf":
             zone = idf.getobject('ZONE', 'Core_mid')
-            z = Zone.from_zone_epbunch(zone=zone, sql=sql)
+            z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_ = ZoneConditioning.from_zone(z)
         if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf":
             zone = idf.getobject('ZONE', 'West Zone')
-            z = Zone.from_zone_epbunch(zone=zone, sql=sql)
+            z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_HX = ZoneConditioning.from_zone(z)
 
     # todo: test for from_json
@@ -471,7 +475,7 @@ class TestZoneLoad():
         from archetypal import ZoneLoad, Zone
         idf, sql = zoneLoadtests
         zone = idf.getobject('ZONE', 'Office')
-        z = Zone.from_zone_epbunch(zone=zone, sql=sql)
+        z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
         load_ = ZoneLoad.from_zone(z)
 
     # todo: test for from_json
@@ -501,7 +505,7 @@ class TestZoneConstructionSet():
         from archetypal import ZoneConstructionSet, Zone
         idf, sql = zoneConstructionSettests
         zone = idf.getobject('ZONE', 'Office')
-        z = Zone.from_zone_epbunch(zone=zone, sql=sql)
+        z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
         constrSet_ = ZoneConstructionSet.from_zone(z)
 
     # todo: test for from_json

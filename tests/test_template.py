@@ -428,7 +428,7 @@ class TestZoneConditioning():
 
     def test_zoneConditioning_init(self, config, zoneConditioningtests):
         from archetypal import ZoneConditioning
-        idf, sql = zoneConditioningtests
+        idf, sql, idf_name = zoneConditioningtests
         cond = ZoneConditioning(Name=None)
 
     def test_zoneConditioning_from_zone(self, config, zoneConditioningtests):
@@ -446,5 +446,35 @@ class TestZoneConditioning():
             zone = idf.getobject('ZONE', 'West Zone')
             z = Zone.from_zone_epbunch(zone=zone, sql=sql)
             cond = ZoneConditioning.from_zone(z)
+
+    # todo: test for from_json
+
+class TestZoneLoad():
+    """Combines different :class:`VentilationSetting` tests"""
+
+    @pytest.fixture(scope='class', params=["RefBldgWarehouseNew2004_Chicago.idf"])
+    def zoneLoadtests(self, config, request):
+        from eppy.runner.run_functions import install_paths
+        eplus_exe, eplus_weather = install_paths("8-9-0")
+        eplusdir = Path(eplus_exe).dirname()
+        file = eplusdir / "ExampleFiles" / request.param
+        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        idf = ar.load_idf(file)
+        sql = ar.run_eplus(file, weather_file=w, prep_outputs=True,
+                           output_report='sql', verbose='v', design_day=False,
+                           annual=False)
+        yield idf, sql
+
+    def test_zoneLoad_init(self, config, zoneLoadtests):
+        from archetypal import ZoneLoad
+        idf, sql = zoneLoadtests
+        load = ZoneLoad(Name=None)
+
+    def test_zoneLoad_from_zone(self, config, zoneLoadtests):
+        from archetypal import ZoneLoad, Zone
+        idf, sql = zoneLoadtests
+        zone = idf.getobject('ZONE', 'Office')
+        z = Zone.from_zone_epbunch(zone=zone, sql=sql)
+        load = ZoneLoad.from_zone(z)
 
     # todo: test for from_json

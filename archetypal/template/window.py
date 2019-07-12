@@ -231,7 +231,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
     def from_construction(cls, Construction, **kwargs):
         """Make a :class:`WindowSetting` directly from a Construction_ object.
 
-        .. _Construction : https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-surface-construction-elements.html#construction-000
+        .. _Construction : https://bigladdersoftware.com/epx/docs/8-9/input
+        -output-reference/group-surface-construction-elements.html
+        #construction-000
 
         Examples:
             >>> import archetypal as ar
@@ -270,10 +272,21 @@ class WindowSetting(UmiBase, metaclass=Unique):
             will be issued in the console for the related object instance and
             default values will be automatically used.
 
-        .. _FenestrationSurface:Detailed: https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-thermal-zone-description-geometry.html#fenestrationsurfacedetailed
-        .. _WindowProperty:ShadingControl: https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-thermal-zone-description-geometry.html#windowpropertyshadingcontrol
-        .. _AirflowNetwork:MultiZone:Surface: https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-airflow-network.html#airflownetworkmultizonesurface
-        .. _AirflowNetwork:MultiZone:Component:DetailedOpening: https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-airflow-network.html#airflownetworkmultizonecomponentdetailedopening
+        .. _FenestrationSurface:Detailed:
+           https://bigladdersoftware.com/epx/docs/8-9/input-output-reference
+           /group-thermal-zone-description-geometry.html
+           #fenestrationsurfacedetailed
+        .. _WindowProperty:ShadingControl:
+           https://bigladdersoftware.com/epx/docs/8-9/input-output-reference
+           /group-thermal-zone-description-geometry.html
+           #windowpropertyshadingcontrol
+        .. _AirflowNetwork:MultiZone:Surface:
+           https://bigladdersoftware.com/epx/docs/8-9/input-output-reference
+           /group-airflow-network.html#airflownetworkmultizonesurface
+        .. _AirflowNetwork:MultiZone:Component:DetailedOpening:
+           https://bigladdersoftware.com/epx/docs/8-9/input-output-reference
+           /group-airflow-network.html
+           #airflownetworkmultizonecomponentdetailedopening
 
         Args:
             surface (EpBunch): The FenestrationSurface:Detailed_ object.
@@ -370,7 +383,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                         'AIRFLOWNETWORK:MULTIZONE:COMPONENT:HORIZONTALOPENING':
                     log('"{}" is not fully supported. Rerverting to '
                         'defaults for object "{}"'.format(
-                        leak.key, cls.mro()[ 0].__name__),
+                        leak.key, cls.mro()[0].__name__),
                         lg.WARNING)
                 elif leak.key.upper() == \
                         'AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK':

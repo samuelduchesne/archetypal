@@ -225,7 +225,7 @@ class TestBuildingTemplate():
         """Test the creation of a BuildingTemplate zone graph. Parametrize
         the creation of the adjacency report"""
         import networkx as nx
-
+        bt.clear_cache()
         G1 = bt.zone_graph(log_adj_report=adj_report, skeleton=True,
                            force=False)
         assert not nx.is_empty(G1)

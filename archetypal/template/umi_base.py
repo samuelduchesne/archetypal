@@ -90,6 +90,10 @@ class UmiBase(object):
         """string representation of the object as id:Name"""
         return ':'.join([str(self.id), str(self.Name)])
 
+    def clear_cache(cls):
+        """Clear the dict of created object instances"""
+        created_obj.clear()
+
     def to_json(self):
         """Convert class properties to dict"""
         return {"$id": "{}".format(self.id),

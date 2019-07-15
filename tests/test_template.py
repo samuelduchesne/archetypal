@@ -310,7 +310,7 @@ class TestWindowSetting():
         from archetypal import WindowSetting
         idf, sql = windowtests
         f_surfs = idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
-        windows=[]
+        windows = []
         for f in f_surfs:
             windows.append(WindowSetting.from_surface(f))
         yield windows

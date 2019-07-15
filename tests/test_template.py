@@ -411,7 +411,15 @@ class TestVentilationSetting():
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             infiltVent = VentilationSetting.from_zone(z)
 
-    # todo: test for from_json
+    def test_ventilationSetting_from_json(self, config):
+        import json
+        from archetypal import VentilationSetting, load_json_objects
+        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        with open(filename, 'r') as f:
+            datastore = json.load(f)
+        loading_json_list = load_json_objects(datastore)
+        vent_json = [VentilationSetting.from_json(**store)
+                     for store in datastore["VentilationSettings"]]
 
 
 class TestZoneConditioning():
@@ -448,12 +456,22 @@ class TestZoneConditioning():
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_HX = ZoneConditioning.from_zone(z)
 
-    # todo: test for from_json
+    def test_zoneConditioning_from_json(self, config):
+        import json
+        from archetypal import ZoneConditioning, load_json_objects
+        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        with open(filename, 'r') as f:
+            datastore = json.load(f)
+        loading_json_list = load_json_objects(datastore)
+        cond_json = [ZoneConditioning.from_json(**store)
+                     for store in datastore["ZoneConditionings"]]
+
 
 class TestZoneLoad():
     """Combines different :class:`VentilationSetting` tests"""
 
-    @pytest.fixture(scope='class', params=["RefBldgWarehouseNew2004_Chicago.idf"])
+    @pytest.fixture(scope='class',
+                    params=["RefBldgWarehouseNew2004_Chicago.idf"])
     def zoneLoadtests(self, config, request):
         from eppy.runner.run_functions import install_paths
         eplus_exe, eplus_weather = install_paths("8-9-0")
@@ -478,12 +496,22 @@ class TestZoneLoad():
         z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
         load_ = ZoneLoad.from_zone(z)
 
-    # todo: test for from_json
+    def test_zoneLoad_from_json(self, config):
+        import json
+        from archetypal import ZoneLoad, load_json_objects
+        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        with open(filename, 'r') as f:
+            datastore = json.load(f)
+        loading_json_list = load_json_objects(datastore)
+        load_json = [ZoneLoad.from_json(**store)
+                     for store in datastore["ZoneLoads"]]
+
 
 class TestZoneConstructionSet():
     """Combines different :class:`VentilationSetting` tests"""
 
-    @pytest.fixture(scope='class', params=["RefBldgWarehouseNew2004_Chicago.idf"])
+    @pytest.fixture(scope='class',
+                    params=["RefBldgWarehouseNew2004_Chicago.idf"])
     def zoneConstructionSettests(self, config, request):
         from eppy.runner.run_functions import install_paths
         eplus_exe, eplus_weather = install_paths("8-9-0")
@@ -501,11 +529,20 @@ class TestZoneConstructionSet():
         idf, sql = zoneConstructionSettests
         constrSet = ZoneConstructionSet(Name=None)
 
-    def test_zoneConstructionSet_from_zone(self, config, zoneConstructionSettests):
+    def test_zoneConstructionSet_from_zone(self, config,
+                                           zoneConstructionSettests):
         from archetypal import ZoneConstructionSet, Zone
         idf, sql = zoneConstructionSettests
         zone = idf.getobject('ZONE', 'Office')
         z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
         constrSet_ = ZoneConstructionSet.from_zone(z)
 
-    # todo: test for from_json
+    def test_zoneConstructionSet_from_json(self, config):
+        import json
+        from archetypal import ZoneConstructionSet, load_json_objects
+        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        with open(filename, 'r') as f:
+            datastore = json.load(f)
+        loading_json_list = load_json_objects(datastore)
+        constr_json = [ZoneConstructionSet.from_json(**store)
+                       for store in datastore["ZoneConstructionSets"]]

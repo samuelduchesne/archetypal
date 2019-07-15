@@ -283,3 +283,53 @@ class MaterialLayer(object):
     def to_dict(self):
         return collections.OrderedDict(Material={'$ref': str(self.Material.id)},
                                        Thickness=self.Thickness)
+
+
+def load_json_objects(datastore):
+    from archetypal import GasMaterial, GlazingMaterial, OpaqueMaterial, \
+        OpaqueConstruction, WindowConstruction, StructureDefinition, \
+        DaySchedule, WeekSchedule, YearSchedule, DomesticHotWaterSetting, \
+        VentilationSetting, ZoneConditioning, ZoneConstructionSet, ZoneLoad, \
+        Zone, BuildingTemplate
+    loading_json_list = []
+    loading_json_list.append([GasMaterial.from_json(**store) for
+                      store in datastore['GasMaterials']])
+    loading_json_list.append([GlazingMaterial(**store) for
+                          store in datastore["GlazingMaterials"]])
+    loading_json_list.append([OpaqueMaterial(**store) for
+                         store in datastore["OpaqueMaterials"]])
+    loading_json_list.append([
+        OpaqueConstruction.from_json(
+            **store) for store in datastore["OpaqueConstructions"]])
+    loading_json_list.append([
+        WindowConstruction.from_json(
+            **store) for store in datastore["WindowConstructions"]])
+    loading_json_list.append([
+        StructureDefinition.from_json(
+            **store) for store in datastore["StructureDefinitions"]])
+    loading_json_list.append([DaySchedule(**store)
+                      for store in datastore["DaySchedules"]])
+    loading_json_list.append([WeekSchedule.from_json(**store)
+                       for store in datastore["WeekSchedules"]])
+    loading_json_list.append([YearSchedule.from_json(**store)
+                       for store in datastore["YearSchedules"]])
+    loading_json_list.append([
+        DomesticHotWaterSetting.from_json(**store)
+        for store in datastore["DomesticHotWaterSettings"]])
+    loading_json_list.append([
+        VentilationSetting.from_json(**store)
+        for store in datastore["VentilationSettings"]])
+    loading_json_list.append([
+        ZoneConditioning.from_json(**store)
+        for store in datastore["ZoneConditionings"]])
+    loading_json_list.append([
+        ZoneConstructionSet.from_json(
+            **store) for store in datastore["ZoneConstructionSets"]])
+    loading_json_list.append([ZoneLoad.from_json(**store)
+                   for store in datastore["ZoneLoads"]])
+    loading_json_list.append([Zone.from_json(**store)
+               for store in datastore["Zones"]])
+    loading_json_list.append([
+        BuildingTemplate.from_json(**store)
+        for store in datastore["BuildingTemplates"]])
+    return loading_json_list

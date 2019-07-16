@@ -160,20 +160,6 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     @classmethod
-    def from_idf(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        zc = ZoneConditioning(**kwargs)
-
-        zc.MechVentSchedule = UmiSchedule.random_constant_schedule()
-        zc.HeatingSchedule = UmiSchedule.random_constant_schedule()
-        zc.CoolingSchedule = UmiSchedule.random_constant_schedule()
-        return zc
-
-    @classmethod
     def from_json(cls, *args, **kwargs):
         """
         Args:

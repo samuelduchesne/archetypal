@@ -492,42 +492,6 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                         Name=sch_name, idf=self.idf),
                     }
 
-    def zone_refs(self):
-        """Recursively create the core and perimeter zones"""
-        core_name = '_'.join([self.Name, 'core'])
-        perim_name = '_'.join([self.Name, 'perim'])
-
-        zone_info = zone_information(self.sql)
-        zone_info['Type'] = zone_info.apply(iscore, axis=1)
-
-        perim_n = zone_info.Type == 'Perimeter'
-        core_n = zone_info.Type == 'Core'
-
-        core_zone_names = zone_info.loc[core_n, 'Zone Name']
-        perim_zone_names = zone_info.loc[perim_n, 'Zone Name']
-
-        perim = Zone.from_idf(Zone_Names=perim_zone_names.values, sql=self.sql,
-                              Name=perim_name, idf=self.idf)
-
-        if not core_zone_names.empty:
-            # if there are core zones, create core zone
-            core = Zone.from_idf(Zone_Names=core_zone_names.values,
-                                 sql=self.sql,
-                                 Name=core_name, idf=self.idf)
-        else:
-            # if there is no core, use the perim zone
-            core = perim
-
-        structure_name = '_'.join([self.Name, 'structure'])
-        structure = StructureDefinition(Name=structure_name, idf=self.idf,
-                                        sql=self.sql)
-
-        self.Zones = [core, perim]
-
-        self.Core = core
-        self.Perimeter = perim
-        self.Structure = structure
-
     def to_json(self):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()

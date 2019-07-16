@@ -31,25 +31,6 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         self.Type = self.schTypeLimitsName
 
     @classmethod
-    def random_constant_schedule(cls, min=25, max=50, seed=1, **kwargs):
-        """Create a constant schedule with a random value between min and max
-        values.
-
-        Args:
-            min:
-            max:
-            seed:
-            **kwargs:
-        """
-        rs = np.random.RandomState(seed=seed)
-        randint = rs.randint(low=min, high=max)
-        name = 'Constant_value_{}'.format(randint)
-
-        sched = super().constant_schedule(Name=name, hourly_value=randint,
-                                          **kwargs)
-        return sched
-
-    @classmethod
     def constant_schedule(cls, hourly_value=1, Name='AlwaysOn',
                           idf=None, **kwargs):
         return super(UmiSchedule, cls).constant_schedule(

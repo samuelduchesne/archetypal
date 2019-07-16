@@ -204,7 +204,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                 Name=obj.Flow_Rate_Fraction_Schedule_Name,
                 idf=zone._epbunch.theidf
             )
-            water_schds.append(water_schd_name.all_values)
+            water_schds.append(water_schd_name)
         return reduce(UmiSchedule.combine, water_schds, weights=[1, 1])
 
     @classmethod

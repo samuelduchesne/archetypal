@@ -238,42 +238,6 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 raise AttributeError("%s material not found in IDF" % layer)
         return layers
 
-    def type_surface(self):
-        """Takes a boundary and returns its corresponding umi-type"""
-
-        # Floors
-        if self.Surface_Type == 'Floor':
-            if self.Outside_Boundary_Condition == 'Surface':
-                self.Type = 3  # umi defined
-            if self.Outside_Boundary_Condition == 'Ground':
-                self.Type = 2  # umi defined
-            if self.Outside_Boundary_Condition == 'Outdoors':
-                self.Type = 4  # umi defined
-            if self.Outside_Boundary_Condition == 'Adiabatic':
-                self.Type = 5  # umi defined
-                self.IsAdiabatic = True
-            else:
-                return ValueError(
-                    'Cannot find Construction Type for "{}"'.format(self))
-
-        # Roofs & Ceilings
-        elif self.Surface_Type == 'Roof':
-            self.Type = 1  # umi defined
-        elif self.Surface_Type == 'Ceiling':
-            self.Type = 3  # umi defined
-        # Walls
-        elif self.Surface_Type == 'Wall':
-            if self.Outside_Boundary_Condition == 'Surface':
-                self.Type = 5  # umi defined
-            if self.Outside_Boundary_Condition == 'Outdoors':
-                self.Type = 0  # umi defined
-            if self.Outside_Boundary_Condition == 'Adiabatic':
-                self.Type = 5  # umi defined
-                self.IsAdiabatic = True
-        else:
-            raise ValueError(
-                'Cannot find Construction Type for "{}"'.format(self))
-
     def to_json(self):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()

@@ -686,64 +686,6 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         return zc
 
-    def constructions(self):
-        """G"""
-        idfs = {self.Name: self.idf}
-
-        constructions_df = object_from_idfs(idfs, 'CONSTRUCTION',
-                                            first_occurrence_only=False)
-        bldg_surface_detailed = object_from_idfs(idfs,
-                                                 'BUILDINGSURFACE:DETAILED',
-                                                 first_occurrence_only=False)
-        constructions_df = bldg_surface_detailed.join(
-            constructions_df.set_index(['Archetype', 'Name']),
-            on=['Archetype', 'Construction_Name'], rsuffix='_constructions')
-        constructions_df['Category'] = constructions_df.apply(
-            lambda x: label_surface(x), axis=1)
-        constructions_df['Type'] = constructions_df.apply(
-            lambda x: type_surface(x),
-            axis=1)
-        constructions_df['Zone_Name'] = constructions_df[
-            'Zone_Name'].str.upper()
-
-        constructions_df = constructions_df[
-            ~constructions_df.duplicated(subset=['Construction_Name'])]
-
-        # Here we create OpaqueConstruction using a apply.
-        constructions_df['constructions'] = constructions_df.apply(
-            lambda x: OpaqueConstruction.from_idf(Name=x.Construction_Name,
-                                                  idf=self.idf,
-                                                  Surface_Type=x.Surface_Type,
-                                                  Outside_Boundary_Condition=x.Outside_Boundary_Condition,
-                                                  Category=x.Category),
-            axis=1)
-
-        partcond = (constructions_df.Type == 5) | (constructions_df.Type == 0)
-        roofcond = constructions_df.Type == 1
-        slabcond = (constructions_df.Type == 3) | (constructions_df.Type == 2)
-        facadecond = constructions_df.Type == 0
-        groundcond = constructions_df.Type == 2
-
-        self.Partition = constructions_df.loc[partcond,
-                                              'constructions'].values[0]
-        self.IsPartitionAdiabatic = self.Partition.IsAdiabatic
-
-        self.Roof = constructions_df.loc[roofcond,
-                                         'constructions'].values[0]
-        self.IsRoofAdiabatic = self.Roof.IsAdiabatic
-
-        self.Slab = constructions_df.loc[slabcond,
-                                         'constructions'].values[0]
-        self.IsPartitionAdiabatic = self.Slab.IsAdiabatic
-
-        self.Facade = constructions_df.loc[facadecond,
-                                           'constructions'].values[0]
-        self.IsPartitionAdiabatic = self.Facade.IsAdiabatic
-
-        self.Ground = constructions_df.loc[groundcond,
-                                           'constructions'].values[0]
-        self.IsPartitionAdiabatic = self.Ground.IsAdiabatic
-
     def to_json(self):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()

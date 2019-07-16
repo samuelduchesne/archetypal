@@ -561,3 +561,24 @@ class TestZoneConstructionSet():
         loading_json_list = load_json_objects(datastore)
         constr_json = [ZoneConstructionSet.from_json(**store)
                        for store in datastore["ZoneConstructionSets"]]
+
+
+class TestZone():
+    """Tests for Zone class"""
+
+    def test_zone_volume(self, config):
+        """Test the zone volume for a sloped roof"""
+        from archetypal import Zone
+        file = "tests/input_data/trnsys/NECB 2011 - Full Service Restaurant.idf"
+        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        idf = ar.load_idf(file)
+        sql = ar.run_eplus(file, weather_file=w, prep_outputs=True,
+                           output_report='sql', verbose='v', design_day=False,
+                           annual=False)
+        zone = idf.getobject('ZONE',
+                             'Sp-attic Sys-0 Flr-2 Sch-- undefined - '
+                             'HPlcmt-core ZN')
+        z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+        np.testing.assert_almost_equal(desired=z.volume,
+                                       actual=856.3,
+                                       decimal=1)

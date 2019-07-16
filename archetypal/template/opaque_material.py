@@ -181,20 +181,6 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         return data_dict
 
     @classmethod
-    def from_idf(cls, idf, *args, **kwargs):
-        """
-        Args:
-            idf:
-            *args:
-            **kwargs:
-        """
-        all_ = []
-        all_.extend(idf.idfobjects['Material'.upper()])
-        all_.extend(idf.idfobjects['Material:NoMass'.upper()])
-
-        return [cls.from_epbunch(om, **kwargs) for om in all_]
-
-    @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
         """
         Args:

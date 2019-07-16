@@ -8,6 +8,7 @@
 import collections
 import functools
 import logging as lg
+import math
 import random
 
 import eppy.modeleditor
@@ -15,7 +16,6 @@ import matplotlib.collections
 import matplotlib.colors
 import networkx
 import numpy as np
-from eppy.geometry.surface import height
 from geomeppy.geom.polygons import Polygon3D
 
 from archetypal import object_from_idfs, log, save_and_show
@@ -28,7 +28,6 @@ class Zone(UmiBase, metaclass=Unique):
     Ventilation, adn Consructions
 
     .. image:: ../images/template/zoneinfo-zone.png
-
     """
 
     def __init__(self, Conditioning=None, Constructions=None,
@@ -103,24 +102,54 @@ class Zone(UmiBase, metaclass=Unique):
         Returns (float): zone's volume in m³
         """
         if not self._volume:
-            # Gets vertical surfaces to calculate zone height
             zone_surfs = [surf for surf in self._epbunch.zonesurfaces if
                           surf.key.lower() != 'internalmass']
-            vertical_wall = next(
-                iter([surf for surf in zone_surfs if surf.tilt == 90]), None)
-            # Gets zone multiplier
+
+            vol = self.get_volume_from_surfs(zone_surfs)
+
             if self._epbunch.Multiplier == '':
                 multiplier = 1
             else:
                 multiplier = self._epbunch.Multiplier
-            if vertical_wall:
-                return self.area * height(Polygon3D(vertical_wall.coords))
-            else:
-                msg = 'Could not find the height of the Zone "{}"'.format(
-                    self.Name)
-                raise NotImplementedError(msg)
+            # multiply to volume by the zone multiplier.
+            return vol * multiplier
         else:
             return self._volume
+
+    @staticmethod
+    def get_volume_from_surfs(zone_surfs):
+        """Calculate the volume of a zone only and only if the surfaces are such
+        that you can find a point inside so that you can connect every vertex to
+        the point without crossing a face.
+
+        Adapted from: https://stackoverflow.com/a/19125446
+
+        Args:
+            zone_surfs (list): List of zone surfaces (EpBunch)
+        """
+        vol = 0
+        for surf in zone_surfs:
+            polygon_d = Polygon3D(surf.coords)  # create Polygon3D from surf
+            n = len(polygon_d.vertices_list)
+            v2 = polygon_d[0]
+            x2 = v2.x
+            y2 = v2.y
+            z2 = v2.z
+
+            for i in range(1, n - 1):
+                v0 = polygon_d[i]
+                x0 = v0.x
+                y0 = v0.y
+                z0 = v0.z
+                v1 = polygon_d[i + 1]
+                x1 = v1.x
+                y1 = v1.y
+                z1 = v1.z
+                # Add volume of tetrahedron formed by triangle and origin
+                vol += math.fabs(x0 * y1 * z2 + x1 * y2 * z0 \
+                                 + x2 * y0 * z1 - x0 * y2 * z1 \
+                                 - x1 * y0 * z2 - x2 * y1 * z0)
+        return vol / 6.
 
     def _conditioning(self):
         """run _conditioning and return id"""
@@ -768,6 +797,9 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
                     slab.append(disp_surf)
                 else:
                     msg = 'Surface Type "{}" is not known, this method is not ' \
+                          '' \
+                          '' \
+                          '' \
                           'implemented'.format(disp_surf.Surface_Type)
                     raise NotImplementedError(msg)
 

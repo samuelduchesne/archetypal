@@ -306,6 +306,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             MinFreshAirPerPerson = 0
             MinFreshAirPerArea = 0
         else:
+            design_spe_outdoor_air_name = ''
             for object in zone.idf.idfobjects[
                 'Controller:MechanicalVentilation'.upper()]:
                 if zone.Name in object.fieldvalues:

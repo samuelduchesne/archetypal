@@ -3,6 +3,7 @@ import pytest
 from path import Path
 
 import archetypal as ar
+from tests.conftest import get_eplus_dire
 
 
 @pytest.fixture(scope='session')
@@ -210,18 +211,25 @@ class TestBuildingTemplate():
     """Various tests with the BuildingTemplate class"""
 
     @pytest.fixture(scope="class")
-    def bt(self, small_idf):
+    def bt(self):
         """A building template fixture used in subsequent tests"""
-        idf, sql = small_idf
-        bt = ar.BuildingTemplate.from_idf(idf, sql=sql)
+        eplus_dir = get_eplus_dire()
+        file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
+        w = next(iter((eplus_dir / "WeatherData").glob("*.epw")), None)
+        file = ar.copy_file(file)[0]
+        idf = ar.load_idf(file)
+        sql = ar.run_eplus(file, weather_file=w, prep_outputs=True, verbose="v",
+                           output_report="sql", expandobjects=True, annual=True)
+        from archetypal import BuildingTemplate
+        bt = BuildingTemplate.from_idf(idf, sql=sql)
         yield bt
 
     @pytest.fixture(scope="class")
     def G(self, bt):
-        yield bt.zone_graph(skeleton=True)
+        yield bt.zone_graph(skeleton=True, force=True)
 
     @pytest.mark.parametrize('adj_report', [True, False])
-    def test_graph(self, config, bt, adj_report):
+    def test_graph1(self, config, bt, adj_report):
         """Test the creation of a BuildingTemplate zone graph. Parametrize
         the creation of the adjacency report"""
         import networkx as nx
@@ -230,23 +238,30 @@ class TestBuildingTemplate():
                            force=False)
         assert not nx.is_empty(G1)
 
+    def test_graph2(self, config, bt):
+        """Test the creation of a BuildingTemplate zone graph. Parametrize
+            the creation of the adjacency report"""
         # calling zone_graph a second time should not recalculate it.
-        G2 = bt.zone_graph(log_adj_report=adj_report, skeleton=True,
+        G2 = bt.zone_graph(log_adj_report=False, skeleton=True,
                            force=False)
-        assert id(G2) == id(G1)
 
+    def test_graph3(self, config, bt):
+        """Test the creation of a BuildingTemplate zone graph. Parametrize
+        the creation of the adjacency report"""
         # calling zone_graph a second time with force=True should
         # recalculate it and produce a new id.
-        G3 = bt.zone_graph(log_adj_report=adj_report, skeleton=True,
+        G3 = bt.zone_graph(log_adj_report=False, skeleton=True,
                            force=True)
-        assert id(G3) != id(G2)
 
+    def test_graph4(self, config, bt):
+        """Test the creation of a BuildingTemplate zone graph. Parametrize
+            the creation of the adjacency report"""
         # skeleton False should build the zone elements.
-        G4 = bt.zone_graph(log_adj_report=adj_report, skeleton=False,
+        G4 = bt.zone_graph(log_adj_report=False, skeleton=False,
                            force=True)
 
         from eppy.bunch_subclass import EpBunch
-        assert isinstance(G4.nodes['Perim']['epbunch'], EpBunch)
+        assert isinstance(G4.nodes['ZN5_Core_Space_1']['epbunch'], EpBunch)
 
     def test_viewbuilding(self, config, bt):
         """test the visualization of a building"""
@@ -288,9 +303,7 @@ class TestWindowSetting():
     @pytest.fixture(scope='class', params=["WindowTests.idf",
                                            'AirflowNetwork3zVent.idf'])
     def windowtests(self, config, request):
-        from eppy.runner.run_functions import install_paths
-        eplus_exe, eplus_weather = install_paths("8-9-0")
-        eplusdir = Path(eplus_exe).dirname()
+        eplusdir = get_eplus_dire()
         file = eplusdir / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = ar.load_idf(file)
@@ -390,9 +403,8 @@ class TestVentilationSetting():
                            annual=False)
         yield idf, sql, request.param
 
-    def test_ventilation_init(self, config, ventilatontests):
+    def test_ventilation_init(self, config):
         from archetypal import VentilationSetting
-        idf, sql, idf_name = ventilatontests
         vent = VentilationSetting(Name=None)
 
     def test_naturalVentilation_from_zone(self, config, ventilatontests):
@@ -440,10 +452,10 @@ class TestZoneConditioning():
                            annual=False)
         yield idf, sql, request.param
 
-    def test_zoneConditioning_init(self, config, zoneConditioningtests):
+    def test_zoneConditioning_init(self, config):
         from archetypal import ZoneConditioning
-        idf, sql, idf_name = zoneConditioningtests
         cond = ZoneConditioning(Name=None)
+        assert cond.Name == None
 
     def test_zoneConditioning_from_zone(self, config, zoneConditioningtests):
         from archetypal import ZoneConditioning, Zone
@@ -452,7 +464,8 @@ class TestZoneConditioning():
             zone = idf.getobject('ZONE', 'Core_mid')
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_ = ZoneConditioning.from_zone(z)
-        if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf":
+        if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL" \
+                       ".idf":
             zone = idf.getobject('ZONE', 'West Zone')
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_HX = ZoneConditioning.from_zone(z)
@@ -486,9 +499,8 @@ class TestZoneLoad():
                            annual=False)
         yield idf, sql
 
-    def test_zoneLoad_init(self, config, zoneLoadtests):
+    def test_zoneLoad_init(self, config):
         from archetypal import ZoneLoad
-        idf, sql = zoneLoadtests
         load = ZoneLoad(Name=None)
 
     def test_zoneLoad_from_zone(self, config, zoneLoadtests):
@@ -527,9 +539,8 @@ class TestZoneConstructionSet():
                            annual=False)
         yield idf, sql
 
-    def test_zoneConstructionSet_init(self, config, zoneConstructionSettests):
+    def test_zoneConstructionSet_init(self, config):
         from archetypal import ZoneConstructionSet
-        idf, sql = zoneConstructionSettests
         constrSet = ZoneConstructionSet(Name=None)
 
     def test_zoneConstructionSet_from_zone(self, config,

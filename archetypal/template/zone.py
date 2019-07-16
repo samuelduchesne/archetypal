@@ -110,7 +110,7 @@ class Zone(UmiBase, metaclass=Unique):
             if self._epbunch.Multiplier == '':
                 multiplier = 1
             else:
-                multiplier = self._epbunch.Multiplier
+                multiplier = float(self._epbunch.Multiplier)
             # multiply to volume by the zone multiplier.
             return vol * multiplier
         else:

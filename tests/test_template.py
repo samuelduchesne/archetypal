@@ -204,7 +204,48 @@ def test_traverse_graph(config):
     bt = BuildingTemplate.from_idf(idf, sql=sql)
     G = bt.zone_graph(log_adj_report=False, skeleton=False, force=True)
 
+    # from operator import add
+    # from functools import reduce
+    #
+    # zone_list = [node[1] for node in G.nodes(data='zone') if
+    #              not G.nodes(data='core')[node[0]]]
+    #
+    # zone = reduce(add, zone)_list
+
     assert G
+
+
+def test_reduce(config):
+    file = "tests/input_data/trnsys/ASHRAE90.1_OfficeSmall_STD2004_Rochester.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+
+    idf = ar.load_idf(file)
+    sql = ar.run_eplus(file, weather_file=w, prep_outputs=True, verbose="v",
+                       output_report="sql", expandobjects=True)
+
+    from archetypal import BuildingTemplate
+    bt = BuildingTemplate.from_idf(idf, sql=sql)
+    bt.clear_cache()
+    R = bt.reduce()
+
+
+def test_reduce_graph(config):
+    file = "tests/input_data/trnsys/ASHRAE90.1_OfficeSmall_STD2004_Rochester.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+
+    idf = ar.load_idf(file)
+    sql = ar.run_eplus(file, weather_file=w, prep_outputs=True, verbose="v",
+                       output_report="sql", expandobjects=True)
+
+    from archetypal import BuildingTemplate
+
+    bt = BuildingTemplate.from_idf(idf, sql=sql)
+    bt.clear_cache()
+    G = bt.zone_graph(log_adj_report=False, skeleton=False, force=True)
+
+    r_G = bt.graph_reduce(G)
+
+    assert r_G
 
 
 class TestBuildingTemplate():

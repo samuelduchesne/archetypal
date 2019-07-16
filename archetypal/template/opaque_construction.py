@@ -238,6 +238,19 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 raise AttributeError("%s material not found in IDF" % layer)
         return layers
 
+    @classmethod
+    def from_idf(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
+        oc = cls(*args, **kwargs)
+        c = oc.idf.getobject('CONSTRUCTION', oc.Name)
+        oc.Layers = oc._surface_layers(c)
+
+        return oc
+
     def type_surface(self):
         """Takes a boundary and returns its corresponding umi-type"""
 

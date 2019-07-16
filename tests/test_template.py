@@ -415,6 +415,7 @@ class TestVentilationSetting():
         import json
         from archetypal import VentilationSetting, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        VentilationSetting(Name='Vent').clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
@@ -460,6 +461,7 @@ class TestZoneConditioning():
         import json
         from archetypal import ZoneConditioning, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        ZoneConditioning(Name='Cond').clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
@@ -500,6 +502,7 @@ class TestZoneLoad():
         import json
         from archetypal import ZoneLoad, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        ZoneLoad(Name='Load').clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
@@ -541,6 +544,7 @@ class TestZoneConstructionSet():
         import json
         from archetypal import ZoneConstructionSet, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        ZoneConstructionSet(Name='Constr').clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)

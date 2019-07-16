@@ -165,18 +165,6 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         return data_dict
 
     @classmethod
-    def from_idf(cls, idf, *args, **kwargs):
-        """
-        Args:
-            idf:
-            *args:
-            **kwargs:
-        """
-        glazms = idf.idfobjects['WindowMaterial:Glazing'.upper()]
-
-        return [cls.from_ep_bunch(glazm, *args, **kwargs) for glazm in glazms]
-
-    @classmethod
     def from_ep_bunch(cls, epbunch, *args, **kwargs):
         # Get parameter values from ep_bunch
         """

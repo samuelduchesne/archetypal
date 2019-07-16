@@ -44,19 +44,6 @@ class GasMaterial(MaterialBase, metaclass=Unique):
 
         return gm
 
-    @classmethod
-    def from_ep_bunch(cls, ep_bunch, *args, **kwargs):
-        """
-        Args:
-            ep_bunch (ep_bunch):
-            *args:
-            **kwargs:
-        """
-        type = ep_bunch.Gas_Type
-        name = ep_bunch.Name
-        gm = cls(Type=type.upper(), Name=name)
-        return gm
-
     def to_json(self):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()

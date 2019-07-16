@@ -218,26 +218,6 @@ class Zone(UmiBase, metaclass=Unique):
         return data_dict
 
     @classmethod
-    def from_idf(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        z = cls(*args, **kwargs)
-        z.Zone_Names = kwargs.get('Zone_Names', None)
-        z.sql = kwargs.get('sql', None)
-
-        z._conditioning()
-        z._constructions()
-        z._ventilation()
-        z._domestichotwater()
-        z._internalmassconstruction()
-        z._loads()
-
-        return z
-
-    @classmethod
     def from_json(cls, *args, **kwargs):
         """
         Args:
@@ -670,19 +650,6 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         ref = kwargs.get('Slab', None)
         zc.Slab = zc.get_ref(ref)
-
-        return zc
-
-    @classmethod
-    def from_idf(cls, **kwargs):
-        """
-        Args:
-            **kwargs:
-        """
-        name = kwargs.pop('Name', None)  # todo: give it a name
-        zc = cls(Name=name, **kwargs)
-
-        zc.constructions()
 
         return zc
 

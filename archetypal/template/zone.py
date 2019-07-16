@@ -679,7 +679,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         Args:
             **kwargs:
         """
-        name = 'a name'  # todo: give it a name
+        name = kwargs.pop('Name', None)  # todo: give it a name
         zc = cls(Name=name, **kwargs)
 
         zc.constructions()

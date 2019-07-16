@@ -214,7 +214,7 @@ class TestBuildingTemplate():
     def bt(self):
         """A building template fixture used in subsequent tests"""
         eplus_dir = get_eplus_dire()
-        file = next(iter((eplus_dir / "ExampleFiles").glob("5*.idf")), None)
+        file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
         w = next(iter((eplus_dir / "WeatherData").glob("*.epw")), None)
         file = ar.copy_file(file)[0]
         idf = ar.load_idf(file)

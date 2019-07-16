@@ -342,10 +342,14 @@ class Zone(UmiBase, metaclass=Unique):
                                                              'DaylightWorkplaneHeight',
                                                              weights),
                     DomesticHotWater=self.DomesticHotWater +
-                                     other.DomesticHotWater,
-                    volume=self.volume + other.volume,
-                    area=self.area + other.area)
+                                     other.DomesticHotWater)
         new_obj = self.__class__(Name=name, **attr)
+        new_obj._volume = self.volume + other.volume
+        new_obj._area = self.area + other.area
+        attr['Conditioning']._belongs_to_zone = new_obj
+        attr['Constructions']._belongs_to_zone = new_obj
+        attr['Ventilation']._belongs_to_zone = new_obj
+        attr['DomesticHotWater']._belongs_to_zone = new_obj
         return new_obj
 
 

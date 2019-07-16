@@ -15,6 +15,8 @@ import matplotlib.collections
 import matplotlib.colors
 import networkx
 import numpy as np
+from eppy.geometry.surface import height
+from geomeppy.geom.polygons import Polygon3D
 
 from archetypal import object_from_idfs, log, save_and_show
 from archetypal.template import Unique, UmiBase, ZoneConditioning, ZoneLoad, \
@@ -101,7 +103,22 @@ class Zone(UmiBase, metaclass=Unique):
         Returns (float): zone's volume in m³
         """
         if not self._volume:
-            return self._epbunch.Volume
+            # Gets vertical surfaces to calculate zone height
+            zone_surfs = [surf for surf in self._epbunch.zonesurfaces if
+                          surf.key.lower() != 'internalmass']
+            vertical_wall = next(
+                iter([surf for surf in zone_surfs if surf.tilt == 90]), None)
+            # Gets zone multiplier
+            if self._epbunch.Multiplier == '':
+                multiplier = 1
+            else:
+                multiplier = self._epbunch.Multiplier
+            if vertical_wall:
+                return self.area * height(Polygon3D(vertical_wall.coords))
+            else:
+                msg = 'Could not find the height of the Zone "{}"'.format(
+                    self.Name)
+                raise NotImplementedError(msg)
         else:
             return self._volume
 

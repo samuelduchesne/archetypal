@@ -57,17 +57,6 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             Name=Name,
             idf=idf, **kwargs)
 
-    @classmethod
-    def from_idf(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        sched = cls(*args, **kwargs)
-        sched.develop()
-        return sched
-
     def __add__(self, other):
         return self.combine(other)
 

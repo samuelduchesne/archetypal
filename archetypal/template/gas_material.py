@@ -45,19 +45,6 @@ class GasMaterial(MaterialBase, metaclass=Unique):
         return gm
 
     @classmethod
-    def from_idf(cls, idf, *args, **kwargs):
-        """
-        Args:
-            idf:
-            *args:
-            **kwargs:
-        """
-        gms = idf.idfobjects['WindowMaterial:Gas'.upper()]
-        # returns Idf_MSequence
-
-        return [cls.from_ep_bunch(gm, *args, **kwargs) for gm in gms]
-
-    @classmethod
     def from_ep_bunch(cls, ep_bunch, *args, **kwargs):
         """
         Args:

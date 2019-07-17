@@ -3,7 +3,8 @@ import io
 import os
 
 import pytest
-from archetypal import copy_file, UmiTemplate, settings
+from archetypal import copy_file, settings
+from archetypal.umi_template import UmiTemplate
 
 
 @pytest.mark.xfail(reason="Mark as skip until logic is completed")

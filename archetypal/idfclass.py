@@ -977,6 +977,11 @@ def multirunner(**kwargs):
                                                  idf=os.path.basename(
                                                      kwargs['idf']),
                                                  stderr=stderr.read())
+                elif isinstance(e, io.UnsupportedOperation):
+                    raise EnergyPlusProcessError(cmd=e,
+                                                 idf=os.path.basename(
+                                                     kwargs['idf']),
+                                                 stderr=stderr.read())
                 else:
                     # else, raise the error (could be a KeyError or a
                     # UnsupportedOperation)

@@ -3,7 +3,7 @@ import pytest
 from path import Path
 
 import archetypal as ar
-from tests.conftest import get_eplus_dire
+from archetypal import get_eplus_dire
 
 
 @pytest.fixture(scope='session')

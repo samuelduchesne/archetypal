@@ -6,7 +6,6 @@ import sys
 import pytest
 
 import archetypal as ar
-from path import Path
 
 
 @pytest.fixture(scope='session')
@@ -85,10 +84,3 @@ def pytest_runtest_setup(item):
 
 # dynamically define files to be ignored
 collect_ignore = ["test_core.py"]
-
-
-def get_eplus_dire():
-    from eppy.runner.run_functions import install_paths
-    eplus_exe, eplus_weather = install_paths("8-9-0")
-    eplusdir = Path(eplus_exe).dirname()
-    return eplusdir

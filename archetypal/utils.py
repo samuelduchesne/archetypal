@@ -215,7 +215,7 @@ def make_str(value):
     """
     try:
         # for python 2.x compatibility, use unicode
-        return unicode(value)
+        return np.unicode(value)
     except NameError:
         # python 3.x has no unicode type, so if error, use str type
         return str(value)
@@ -786,3 +786,10 @@ def float_round(num, n):
     num = float(num)
     num = round(num, n)
     return num
+
+
+def get_eplus_dire():
+    from eppy.runner.run_functions import install_paths
+    eplus_exe, eplus_weather = install_paths("8-9-0")
+    eplusdir = Path(eplus_exe).dirname()
+    return Path(eplusdir)

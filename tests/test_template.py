@@ -243,7 +243,7 @@ def test_reduce_graph(config):
     bt.clear_cache()
     G = bt.zone_graph(log_adj_report=False, skeleton=False, force=True)
 
-    r_G = bt.graph_reduce(G)
+    r_G = bt._graph_reduce(G)
 
     assert r_G
 

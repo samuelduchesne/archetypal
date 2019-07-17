@@ -260,33 +260,36 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_idf(cls, idf, **kwargs):
-        """
+        """Create a BuildingTemplate from an IDF object.
+
         Args:
-            idf:
+            idf (IDF):
             **kwargs:
         """
+        # initialize empty BuildingTemplate
         name = kwargs.pop('Name', idf.idfobjects['BUILDING'][0].Name)
-        core = None
-        perimeter = None
-        structure = None
-        windows = None
+        bt = cls(Name=name, idf=idf, **kwargs)
 
-        bt = cls(Core=core, Perimeter=perimeter, Structure=structure,
-                 Windows=windows, Name=name, idf=idf, **kwargs)
+        # do Core and Perim zone reduction
+        bt.reduce()
+
+        # resolve StructureDefinition and WindowSetting
+        bt.Structure = StructureDefinition(Name=bt.Name+'_StructureDefinition')
+        bt.Windows = WindowSetting()
 
         return bt
 
-    def reduce(self):
+    def reduce(self, **zone_graph_kwargs):
         """Reduce the building to its simplest core and perimeter zones."""
 
         # Determine if core graph is not empty
-        core = self.zone_graph().core_graph
-        perim = self.zone_graph().perim_graph
+        core_graph = self.zone_graph(**zone_graph_kwargs).core_graph
+        perim_graph = self.zone_graph(**zone_graph_kwargs).perim_graph
 
-        self.Core = self.graph_reduce(core)
-        self.Perimeter = self.graph_reduce(core)
+        self.Core = self._graph_reduce(core_graph)
+        self.Perimeter = self._graph_reduce(perim_graph)
 
-    def graph_reduce(self, G):
+    def _graph_reduce(self, G):
         """Using the depth first search algorithm, iterate over the zone
         adjacency graph and compute the equivalent zone yielded by the
         'addition' of two consecutive zones.
@@ -301,8 +304,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         Returns:
             Zone: The reduced zone
         """
-        if networkx.is_empty(G):
-            log('No core zones for building %s' % self.Name)
+        if len(G) < 1:
+            log('No zones for building graph %s' % G.name)
             return None
         else:
             log('starting reduce process for building %s' % self.Name)

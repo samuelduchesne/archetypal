@@ -8,6 +8,7 @@
 import collections
 import logging as lg
 from enum import IntEnum
+from functools import reduce
 
 import tabulate
 from archetypal import log, IDF
@@ -431,6 +432,31 @@ class WindowSetting(UmiBase, metaclass=Unique):
             w = cls(Name=name, Construction=construction, idf=surface.theidf,
                     **attr)
             return w
+
+    @classmethod
+    def from_zone(cls, zone):
+        """Iterate over the zone subsurfaces and create a window object. If
+        more than one window is created, use reduce to combine them together.
+
+        Args:
+            zone (Zone):
+
+        Returns:
+            WindowSetting: The WindowSetting object for this zone.
+        """
+        window_sets = []
+        name = zone.Name + "_WindowSetting"
+        for surf in zone._zonesurfaces:
+            if surf.key.lower() != 'internalmass':
+                for subsurf in surf.subsurfaces:
+                    window_sets.append(cls.from_surface(subsurf))
+        if window_sets:
+            # if one or more window has been created, reduce
+            from operator import add
+            return reduce(add, window_sets)
+        else:
+            # no window found, probably a core zone, return None
+            return None
 
     def combine(self, other):
         """Append other to self. Return self + other as a new object.

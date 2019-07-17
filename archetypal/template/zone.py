@@ -20,7 +20,8 @@ from geomeppy.geom.polygons import Polygon3D
 
 from archetypal import object_from_idfs, log, save_and_show
 from archetypal.template import Unique, UmiBase, ZoneConditioning, ZoneLoad, \
-    VentilationSetting, DomesticHotWaterSetting, OpaqueConstruction
+    VentilationSetting, DomesticHotWaterSetting, OpaqueConstruction, \
+    WindowSetting
 
 
 class Zone(UmiBase, metaclass=Unique):
@@ -32,7 +33,7 @@ class Zone(UmiBase, metaclass=Unique):
 
     def __init__(self, Conditioning=None, Constructions=None,
                  DomesticHotWater=None, Loads=None, Ventilation=None,
-                 InternalMassConstruction=None,
+                 Windows=None, InternalMassConstruction=None,
                  InternalMassExposedPerFloorArea=1.05, DaylightMeshResolution=1,
                  DaylightWorkplaneHeight=0.8, **kwargs):
         """Initialize :class:`Zone` object.
@@ -48,6 +49,8 @@ class Zone(UmiBase, metaclass=Unique):
             Ventilation (VentilationSetting): Ventilation settings of the zone
                 defined with the infiltration rate and natural ventilation
                 parameters (see :class:`VentilationSetting`)
+            Windows (WindowSetting): The WindowSetting object associated with
+                this zone.
             InternalMassConstruction (archetypal.OpaqueConstruction):
             InternalMassExposedPerFloorArea:
             DaylightMeshResolution (float):
@@ -65,6 +68,8 @@ class Zone(UmiBase, metaclass=Unique):
         self.DomesticHotWater = DomesticHotWater
         self.InternalMassConstruction = InternalMassConstruction
         self.InternalMassExposedPerFloorArea = InternalMassExposedPerFloorArea
+
+        self.Windows = Windows  # This is not used in to_json()
 
         self._epbunch = kwargs.get('epbunch', None)
         self._zonesurfaces = kwargs.get('zonesurfaces', None)
@@ -285,7 +290,8 @@ class Zone(UmiBase, metaclass=Unique):
         zone.Ventilation = VentilationSetting.from_zone(zone)
         zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(zone)
         zone.Loads = ZoneLoad.from_zone(zone)
-        zone.InternalMassConstruction = zone._internalmassconstruction()
+        # zone.InternalMassConstruction = zone._internalmassconstruction()
+        zone.Windows = WindowSetting.from_zone(zone)
 
         # Todo Deal with InternalMassConstruction here
         im = [surf.theidf.getobject('Construction'.upper(),
@@ -331,6 +337,7 @@ class Zone(UmiBase, metaclass=Unique):
                     Conditioning=self.Conditioning + other.Conditioning,
                     Constructions=self.Constructions + other.Constructions,
                     Ventilation=self.Ventilation + other.Ventilation,
+                    Windows=self.Windows + other.Windows,
                     DaylightMeshResolution=self._float_mean(other,
                                                             'DaylightMeshResolution',
                                                             weights=weights),
@@ -346,6 +353,7 @@ class Zone(UmiBase, metaclass=Unique):
         attr['Constructions']._belongs_to_zone = new_obj
         attr['Ventilation']._belongs_to_zone = new_obj
         attr['DomesticHotWater']._belongs_to_zone = new_obj
+        attr['Windows']._belongs_to_zone = new_obj
         return new_obj
 
 

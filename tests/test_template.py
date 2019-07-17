@@ -337,6 +337,13 @@ class TestBuildingTemplate():
         """test the info method on a ZoneGraph"""
         G.info()
 
+    def test_buildingTemplate_from_json(self, config):
+        from archetypal import UmiTemplate
+        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        b = UmiTemplate.from_json(filename)
+        bt = b.BuildingTemplates
+        print(bt)
+
 
 class TestWindowSetting():
     """Combines different :class:`WindowSetting` tests"""
@@ -357,6 +364,7 @@ class TestWindowSetting():
         from archetypal import WindowSetting
         idf, sql = small_idf
         construction = idf.getobject('CONSTRUCTION', 'B_Dbl_Air_Cl')
+        WindowSetting(Name='Unnamed').clear_cache()
         w = WindowSetting.from_construction(construction)
 
     @pytest.fixture(scope='class')
@@ -464,7 +472,7 @@ class TestVentilationSetting():
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             infiltVent = VentilationSetting.from_zone(z)
 
-    def test_ventilationSetting_from_json(self, config):
+    def test_ventilationSetting_from_to_json(self, config):
         import json
         from archetypal import VentilationSetting, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -474,13 +482,16 @@ class TestVentilationSetting():
         loading_json_list = load_json_objects(datastore)
         vent_json = [VentilationSetting.from_json(**store)
                      for store in datastore["VentilationSettings"]]
+        vent_to_json = vent_json[0].to_json()
 
 
 class TestZoneConditioning():
     """Combines different :class:`VentilationSetting` tests"""
 
     @pytest.fixture(scope='class', params=["RefMedOffVAVAllDefVRP.idf",
-                                           "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf"])
+                                           "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf",
+                                           "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf",
+                                           "2ZoneDataCenterHVAC_wEconomizer.idf"])
     def zoneConditioningtests(self, config, request):
         from eppy.runner.run_functions import install_paths
         eplus_exe, eplus_weather = install_paths("8-9-0")
@@ -510,8 +521,13 @@ class TestZoneConditioning():
             zone = idf.getobject('ZONE', 'West Zone')
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_HX = ZoneConditioning.from_zone(z)
+        if idf_name == "2ZoneDataCenterHVAC_wEconomizer.idf" \
+                or idf_name == "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf":
+            zone = idf.getobject('ZONE', 'East Zone')
+            z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+            cond_HX_eco = ZoneConditioning.from_zone(z)
 
-    def test_zoneConditioning_from_json(self, config):
+    def test_zoneConditioning_from_to_json(self, config):
         import json
         from archetypal import ZoneConditioning, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -521,6 +537,7 @@ class TestZoneConditioning():
         loading_json_list = load_json_objects(datastore)
         cond_json = [ZoneConditioning.from_json(**store)
                      for store in datastore["ZoneConditionings"]]
+        cond_to_json = cond_json[0].to_json()
 
 
 class TestZoneLoad():
@@ -551,7 +568,7 @@ class TestZoneLoad():
         z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
         load_ = ZoneLoad.from_zone(z)
 
-    def test_zoneLoad_from_json(self, config):
+    def test_zoneLoad_from_to_json(self, config):
         import json
         from archetypal import ZoneLoad, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -561,6 +578,7 @@ class TestZoneLoad():
         loading_json_list = load_json_objects(datastore)
         load_json = [ZoneLoad.from_json(**store)
                      for store in datastore["ZoneLoads"]]
+        load_to_json = load_json[0].to_json()
 
 
 class TestZoneConstructionSet():
@@ -592,7 +610,7 @@ class TestZoneConstructionSet():
         z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
         constrSet_ = ZoneConstructionSet.from_zone(z)
 
-    def test_zoneConstructionSet_from_json(self, config):
+    def test_zoneConstructionSet_from_to_json(self, config):
         import json
         from archetypal import ZoneConstructionSet, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -602,6 +620,7 @@ class TestZoneConstructionSet():
         loading_json_list = load_json_objects(datastore)
         constr_json = [ZoneConstructionSet.from_json(**store)
                        for store in datastore["ZoneConstructionSets"]]
+        constr_to_json = constr_json[0].to_json()
 
 
 class TestZone():
@@ -623,3 +642,94 @@ class TestZone():
         np.testing.assert_almost_equal(desired=z.volume,
                                        actual=856.3,
                                        decimal=1)
+
+
+def test_GasMaterial_from_to_json(config):
+    import json
+    from archetypal import GasMaterial, load_json_objects
+    filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+    GasMaterial(Name='GasMat').clear_cache()
+    with open(filename, 'r') as f:
+        datastore = json.load(f)
+    loading_json_list = load_json_objects(datastore)
+    gasMat_json = [GasMaterial.from_json(**store)
+                   for store in datastore["GasMaterials"]]
+    gasMat_to_json = gasMat_json[0].to_json()
+
+
+def test_opaqueConstruction_from_to_json(config):
+    import json
+    from archetypal import OpaqueConstruction, OpaqueMaterial, MaterialLayer, \
+        load_json_objects
+    filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+    mat_a = OpaqueMaterial(Conductivity=100, SpecificHeat=4.18,
+                           Name='mat_a')
+    mat_b = OpaqueMaterial(Conductivity=200, SpecificHeat=4.18,
+                           Name='mat_b')
+    thickness = 0.10
+    layers = [MaterialLayer(mat_a, thickness),
+              MaterialLayer(mat_b, thickness)]
+    OpaqueConstruction(Name='Name', Layers=layers).clear_cache()
+    with open(filename, 'r') as f:
+        datastore = json.load(f)
+    loading_json_list = load_json_objects(datastore)
+    opaqConstr_json = [OpaqueConstruction.from_json(**store)
+                       for store in datastore["OpaqueConstructions"]]
+    opaqConstr_to_json = opaqConstr_json[0].to_json()
+
+
+def test_opaqueMaterial_from_to_json(config, small_idf):
+    from archetypal import OpaqueMaterial
+    idf, sql = small_idf
+    if idf.idfobjects['MATERIAL']:
+        opaqMat_epBunch = OpaqueMaterial.from_epbunch(
+            idf.idfobjects['MATERIAL'][0])
+        opaqMat_epBunch.to_json()
+    if idf.idfobjects['MATERIAL:NOMASS']:
+        opaqMat_epBunch = OpaqueMaterial.from_epbunch(
+            idf.idfobjects['MATERIAL:NOMASS'][0])
+        opaqMat_epBunch.to_json()
+    if idf.idfobjects['MATERIAL:AIRGAP']:
+        opaqMat_epBunch = OpaqueMaterial.from_epbunch(
+            idf.idfobjects['MATERIAL:AIRGAP'][0])
+        opaqMat_epBunch.to_json()
+
+class TestSchedule():
+    """Tests for Schedule class """
+
+    def test_weekSchedule_from_to_json(self, config):
+        import json
+        from archetypal import WeekSchedule, load_json_objects
+        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        # WeekSchedule(Name='weekSched').clear_cache()
+        with open(filename, 'r') as f:
+            datastore = json.load(f)
+        loading_json_list = load_json_objects(datastore)
+        weekSched_json = [WeekSchedule.from_json(**store)
+                          for store in datastore["WeekSchedules"]]
+        weekSched_to_json = weekSched_json[0].to_json()
+
+    def test_yearSchedule_from_to_json(self, config):
+        import json
+        from archetypal import YearSchedule, load_json_objects
+        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        # WeekSchedule(Name='weekSched').clear_cache()
+        with open(filename, 'r') as f:
+            datastore = json.load(f)
+        loading_json_list = load_json_objects(datastore)
+        yearSched_json = [YearSchedule.from_json(**store)
+                          for store in datastore["YearSchedules"]]
+        yearSched_to_json = yearSched_json[0].to_json()
+
+
+def test_structure_from_to_json(config):
+    import json
+    from archetypal import StructureDefinition, load_json_objects
+    filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+    StructureDefinition(Name='structDef').clear_cache()
+    with open(filename, 'r') as f:
+        datastore = json.load(f)
+    loading_json_list = load_json_objects(datastore)
+    struct_json = [StructureDefinition.from_json(**store)
+                   for store in datastore["StructureDefinitions"]]
+    struct_to_json = struct_json[0].to_json()

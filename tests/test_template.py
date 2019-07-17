@@ -342,7 +342,8 @@ class TestBuildingTemplate():
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         b = UmiTemplate.from_json(filename)
         bt = b.BuildingTemplates
-        bt[0].to_json()
+        bt_to_json = bt[0].to_json()
+        w_to_json = bt[0].Windows.to_json()
 
 class TestWindowSetting():
     """Combines different :class:`WindowSetting` tests"""

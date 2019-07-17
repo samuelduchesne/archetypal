@@ -657,6 +657,12 @@ def test_GasMaterial_from_to_json(config):
                    for store in datastore["GasMaterials"]]
     gasMat_to_json = gasMat_json[0].to_json()
 
+def test_glazing_material_to_json(config):
+    """test __add__() for OpaqueMaterial"""
+    sg_a = ar.calc_simple_glazing(0.763, 2.716, 0.812)
+    mat_a = ar.GlazingMaterial(Name='mat_a', **sg_a)
+    glazMat_to_json = mat_a.to_json()
+
 
 def test_opaqueConstruction_from_to_json(config):
     import json

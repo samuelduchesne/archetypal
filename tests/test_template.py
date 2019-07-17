@@ -337,13 +337,13 @@ class TestBuildingTemplate():
         """test the info method on a ZoneGraph"""
         G.info()
 
-    def test_buildingTemplate_from_json(self, config):
+    def test_buildingTemplate_from_to_json(self, config):
         from archetypal import UmiTemplate
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         b = UmiTemplate.from_json(filename)
         bt = b.BuildingTemplates
-        print(bt)
-
+        bt_to_json = bt[0].to_json()
+        w_to_json = bt[0].Windows.to_json()
 
 class TestWindowSetting():
     """Combines different :class:`WindowSetting` tests"""
@@ -642,6 +642,7 @@ class TestZone():
         np.testing.assert_almost_equal(desired=z.volume,
                                        actual=856.3,
                                        decimal=1)
+        z.to_json()
 
 
 def test_GasMaterial_from_to_json(config):
@@ -655,6 +656,12 @@ def test_GasMaterial_from_to_json(config):
     gasMat_json = [GasMaterial.from_json(**store)
                    for store in datastore["GasMaterials"]]
     gasMat_to_json = gasMat_json[0].to_json()
+
+def test_glazing_material_to_json(config):
+    """test __add__() for OpaqueMaterial"""
+    sg_a = ar.calc_simple_glazing(0.763, 2.716, 0.812)
+    mat_a = ar.GlazingMaterial(Name='mat_a', **sg_a)
+    glazMat_to_json = mat_a.to_json()
 
 
 def test_opaqueConstruction_from_to_json(config):
@@ -694,8 +701,31 @@ def test_opaqueMaterial_from_to_json(config, small_idf):
             idf.idfobjects['MATERIAL:AIRGAP'][0])
         opaqMat_epBunch.to_json()
 
+def test_windowConstr_from_to_json(config):
+    import json
+    from archetypal import WindowConstruction, load_json_objects
+    filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+    WindowConstruction(Name='winConstr').clear_cache()
+    with open(filename, 'r') as f:
+        datastore = json.load(f)
+    loading_json_list = load_json_objects(datastore)
+    winConstr_json = [WindowConstruction.from_json(**store)
+                   for store in datastore["WindowConstructions"]]
+    winConstr_to_json = winConstr_json[0].to_json()
+
 class TestSchedule():
     """Tests for Schedule class """
+
+    def test_daySchedule_from_to_json(self, config):
+        import json
+        from archetypal import DaySchedule, load_json_objects
+        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        # WeekSchedule(Name='weekSched').clear_cache()
+        with open(filename, 'r') as f:
+            datastore = json.load(f)
+        loading_json_list = load_json_objects(datastore)
+        daySched_to_json = loading_json_list[6][0].to_json()
+
 
     def test_weekSchedule_from_to_json(self, config):
         import json

@@ -1226,13 +1226,17 @@ class ZoneGraph(networkx.Graph):
     def core_graph(self):
         """Returns a copy of the ZoneGraph containing only core zones"""
         nodes = [i for i, data in self.nodes(data='core') if data]
-        return self.subgraph(nodes).copy()
+        H = self.subgraph(nodes).copy()
+        H.name = 'Core_' + self.name
+        return H
 
     @property
     def perim_graph(self):
         """Returns a copy of the ZoneGraph containing only perimeter zones"""
         nodes = [i for i, data in self.nodes(data='core') if not data]
-        return self.subgraph(nodes).copy()
+        H = self.subgraph(nodes).copy()
+        H.name = 'Perim_' + self.name
+        return H
 
     def info(self, node=None):
         """Print short summary of information for the graph or the node n.

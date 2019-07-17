@@ -290,14 +290,14 @@ def load_json_objects(datastore):
         OpaqueConstruction, WindowConstruction, StructureDefinition, \
         DaySchedule, WeekSchedule, YearSchedule, DomesticHotWaterSetting, \
         VentilationSetting, ZoneConditioning, ZoneConstructionSet, ZoneLoad, \
-        Zone, BuildingTemplate
+        Zone, WindowSetting, BuildingTemplate
     loading_json_list = []
     loading_json_list.append([GasMaterial.from_json(**store) for
-                      store in datastore['GasMaterials']])
+                              store in datastore['GasMaterials']])
     loading_json_list.append([GlazingMaterial(**store) for
-                          store in datastore["GlazingMaterials"]])
+                              store in datastore["GlazingMaterials"]])
     loading_json_list.append([OpaqueMaterial(**store) for
-                         store in datastore["OpaqueMaterials"]])
+                              store in datastore["OpaqueMaterials"]])
     loading_json_list.append([
         OpaqueConstruction.from_json(
             **store) for store in datastore["OpaqueConstructions"]])
@@ -308,11 +308,11 @@ def load_json_objects(datastore):
         StructureDefinition.from_json(
             **store) for store in datastore["StructureDefinitions"]])
     loading_json_list.append([DaySchedule(**store)
-                      for store in datastore["DaySchedules"]])
+                              for store in datastore["DaySchedules"]])
     loading_json_list.append([WeekSchedule.from_json(**store)
-                       for store in datastore["WeekSchedules"]])
+                              for store in datastore["WeekSchedules"]])
     loading_json_list.append([YearSchedule.from_json(**store)
-                       for store in datastore["YearSchedules"]])
+                              for store in datastore["YearSchedules"]])
     loading_json_list.append([
         DomesticHotWaterSetting.from_json(**store)
         for store in datastore["DomesticHotWaterSettings"]])
@@ -326,9 +326,9 @@ def load_json_objects(datastore):
         ZoneConstructionSet.from_json(
             **store) for store in datastore["ZoneConstructionSets"]])
     loading_json_list.append([ZoneLoad.from_json(**store)
-                   for store in datastore["ZoneLoads"]])
+                              for store in datastore["ZoneLoads"]])
     loading_json_list.append([Zone.from_json(**store)
-               for store in datastore["Zones"]])
+                              for store in datastore["Zones"]])
     loading_json_list.append([
         BuildingTemplate.from_json(**store)
         for store in datastore["BuildingTemplates"]])

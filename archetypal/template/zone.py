@@ -162,7 +162,7 @@ class Zone(UmiBase, metaclass=Unique):
                                                                           999999))
 
     def _internalmassconstruction(self):
-        """Group internal walls into a ThermalMass object for each Zones"""
+        """Group internal walls into a ThermalMass object for this Zone"""
 
         oc = []
         for surface in self._zonesurfaces:
@@ -195,12 +195,12 @@ class Zone(UmiBase, metaclass=Unique):
             oc.append(OpaqueConstruction.from_epbunch(new_epbunch))
             self.InternalMassExposedPerFloorArea = 0
 
-        from operator import add
-        self.InternalMassConstruction = functools.reduce(add, oc)
+
         if not self.InternalMassExposedPerFloorArea:
             self.InternalMassExposedPerFloorArea = 0
 
-        self.InternalMassConstruction = oc
+        from operator import add
+        return functools.reduce(add, oc)
 
     def _loads(self):
         """run loads and return id"""

@@ -467,6 +467,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Returns:
             WindowSetting: A new combined object made of self + other.
         """
+        if other is None:
+            return self
         if not isinstance(other, self.__class__):
             msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
                                                  other.__class__.__name__)

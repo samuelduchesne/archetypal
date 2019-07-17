@@ -164,31 +164,31 @@ class Zone(UmiBase, metaclass=Unique):
             # for surf_type in self.idf.idd_index['ref2names']['AllHeatTranSurfNames']:
             if surface.key.upper() == 'INTERNALMASS':
                 oc.append(OpaqueConstruction.from_epbunch(surface))
+                self.InternalMassExposedPerFloorArea = float(
+                    surface.Surface_Area) / self.area
+        if not oc:
+            # Todo: Create Equivalent InternalMassConstruction from
+            #  partitions. For now, creating dummy InternalMass
 
-                self.InternalMassExposedPerFloorArea =surface.Surface_Area / \
-                    eppy.modeleditor.zonearea(self.idf, self.Name)
-            else:
-                # Todo: Create Equivalent InternalMassConstruction from
-                #  partitions. For now, creating dummy InternalMass
+            #   InternalMass,
+            #     PerimInternalMass,       !- Name
+            #     B_Ret_Thm_0,             !- Construction Name
+            #     Perim,                   !- Zone Name
+            #     2.05864785735637;        !- Surface Area {m2}
 
-                #   InternalMass,
-                #     PerimInternalMass,       !- Name
-                #     B_Ret_Thm_0,             !- Construction Name
-                #     Perim,                   !- Zone Name
-                #     2.05864785735637;        !- Surface Area {m2}
+            existgin_cons = self.idf.idfobjects['CONSTRUCTION'][0]
+            new = self.idf.copyidfobject(existgin_cons)
+            internal_mass = '{}InternalMass'.format(self.Name)
+            new.Name = internal_mass + '_construction'
+            new_epbunch = self.idf.add_object(
+                ep_object='InternalMass'.upper(),
+                save=False, Name=internal_mass,
+                Construction_Name=new.Name,
+                Zone_Name=self.Name,
+                Surface_Area=0)
 
-                existgin_cons = self.idf.idfobjects['CONSTRUCTION'][0]
-                new = self.idf.copyidfobject(existgin_cons)
-                internal_mass = '{}InternalMass'.format(self.Name)
-                new.Name = internal_mass + '_construction'
-                new_epbunch = self.idf.add_object(
-                    ep_object='InternalMass'.upper(),
-                    save=False, Name=internal_mass,
-                    Construction_Name=new.Name,
-                    Zone_Name=self.Name,
-                    Surface_Area=0)
-
-                oc.append(OpaqueConstruction.from_epbunch(new_epbunch))
+            oc.append(OpaqueConstruction.from_epbunch(new_epbunch))
+            self.InternalMassExposedPerFloorArea = 0
 
         from operator import add
         self.InternalMassConstruction = functools.reduce(add, oc)

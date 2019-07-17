@@ -41,6 +41,7 @@ class LayeredConstruction(ConstructionBase):
     """
 
     """
+
     def __init__(self, Layers, **kwargs):
         """
         Args:
@@ -150,7 +151,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
         new_t = np.append(self_t, other_t)
         new_t = new_t * factor
-        new_m = np.append(self_m , other_m)
+        new_m = np.append(self_m, other_m)
         return new_m, new_t
 
     @classmethod
@@ -192,24 +193,28 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         Args:
             epbunch:
         """
-        validobjects = epbunch.getfieldidd_item('Construction_Name',
-                                                'validobjects')
-        found = False
-        for key in validobjects:
-            try:
-                material = epbunch.theidf.getobject(key,
-                                                    epbunch.Construction_Name)
-                om = OpaqueMaterial.from_epbunch(material)
-                found = True
-            except AttributeError:
-                pass
-            else:
-                layers = [MaterialLayer(**dict(Material=om,
-                                               Thickness=om.Thickness))]
-                return layers
-        if not found:
-            raise AttributeError("%s internalmass not found in IDF",
-                                 epbunch.Name)
+
+        layers = []
+        constr_obj = epbunch.theidf.getobject('CONSTRUCTION',
+                                              epbunch.Construction_Name)
+        field_idd = constr_obj.getfieldidd('Outside_Layer')
+        validobjects = field_idd['validobjects']  # plausible layer types
+        for layer in constr_obj.fieldvalues[2:]:
+            # Iterate over the constructions layers
+            found = False
+            for key in validobjects:
+                try:
+                    material = constr_obj.theidf.getobject(key, layer)
+                    o = OpaqueMaterial.from_epbunch(material)
+                    found = True
+                except AttributeError:
+                    pass
+                else:
+                    layers.append(MaterialLayer(**dict(Material=o,
+                                                       Thickness=o._thickness)))
+            if not found:
+                raise AttributeError("%s material not found in IDF" % layer)
+        return layers
 
     @staticmethod
     def _surface_layers(c):

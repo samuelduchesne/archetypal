@@ -5,6 +5,7 @@
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
 import os
+from collections import defaultdict
 
 import click
 
@@ -175,5 +176,37 @@ def convert(idf_file, window_lib, return_idf, return_t3d,
 
 
 @cli.command()
-def reduce():
-    pass
+@click.argument('idf', nargs=-1)
+@click.option('--weather', '-w', type=click.Path(exists=True),
+              help="path to the EPW weather file",
+              default=archetypal.get_eplus_dire() / "WeatherData" /
+                      "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw")
+@click.option('--parallel/--no-parallel', '-p/-np', is_flag=True, default=True,
+              help="path to the EPW weather file")
+def reduce(idf, weather, parallel):
+    if parallel:
+        # if parallel is True, run eplus in parallel
+        rundict = {file: dict(eplus_file=file, weather_file=weather,
+                              annual=True, prep_outputs=True,
+                              expandobjects=True, verbose='q',
+                              output_report='sql')
+                   for file in idf}
+        res = archetypal.parallel_process(rundict, archetypal.run_eplus)
+        print(type(res))
+    else:
+        # else, run sequentially
+        res = defaultdict(dict)
+        for fn in idf:
+            res[fn]['idf'] = archetypal.load_idf(fn)
+            res[fn]['sql'] = archetypal.run_eplus(fn, weather, verbose='v',
+                                     output_report='sql',
+                            prep_outputs=True, annual=True, design_day=False)
+        from archetypal import BuildingTemplate
+        bts = []
+        for fn in res.values():
+            bts.append(BuildingTemplate.from_idf(fn['idf'], sql=fn['sql']))
+
+        template = archetypal.UmiTemplate(BuildingTemplates=bts)
+        print(template.to_json())
+
+

@@ -20,10 +20,11 @@ import eppy
 import eppy.modeleditor
 import geomeppy
 import pandas as pd
-from archetypal import log, settings, EnergyPlusProcessError, cd
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run
+
+from archetypal import log, settings, EnergyPlusProcessError, cd
 
 
 class IDF(geomeppy.IDF):
@@ -732,6 +733,9 @@ def prepare_outputs(eplus_file, outputs=None, idd_filename=None):
     idf[eplus_finename].add_object('Output:Table:SummaryReports'.upper(),
                                    Report_1_Name='AllSummary')
 
+    idf[eplus_finename].add_object('OutputControl:Table:Style'.upper(),
+                                   Column_Separator='HTML')
+
     # SQL output
     idf[eplus_finename].add_object('Output:SQLite'.upper(),
                                    Option_Type='SimpleAndTabular')
@@ -744,6 +748,14 @@ def prepare_outputs(eplus_file, outputs=None, idd_filename=None):
     idf[eplus_finename].add_object('Output:Variable'.upper(),
                                    Variable_Name='Air System Total Cooling '
                                                  'Energy',
+                                   Reporting_Frequency='hourly')
+    idf[eplus_finename].add_object('Output:Variable'.upper(),
+                                   Variable_Name='Zone Ideal Loads Zone Total '
+                                                 'Heating Energy',
+                                   Reporting_Frequency='hourly')
+    idf[eplus_finename].add_object('Output:Variable'.upper(),
+                                   Variable_Name='Zone Ideal Loads Zone Total '
+                                                 'Cooling Energy',
                                    Reporting_Frequency='hourly')
     idf[eplus_finename].add_object('Output:Variable'.upper(),
                                    Variable_Name='Zone Thermostat Heating '

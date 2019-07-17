@@ -337,13 +337,12 @@ class TestBuildingTemplate():
         """test the info method on a ZoneGraph"""
         G.info()
 
-    def test_buildingTemplate_from_json(self, config):
+    def test_buildingTemplate_from_to_json(self, config):
         from archetypal import UmiTemplate
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         b = UmiTemplate.from_json(filename)
         bt = b.BuildingTemplates
-        print(bt)
-
+        bt[0].to_json()
 
 class TestWindowSetting():
     """Combines different :class:`WindowSetting` tests"""

@@ -290,21 +290,8 @@ class Zone(UmiBase, metaclass=Unique):
         zone.Ventilation = VentilationSetting.from_zone(zone)
         zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(zone)
         zone.Loads = ZoneLoad.from_zone(zone)
-        # zone.InternalMassConstruction = zone._internalmassconstruction()
+        zone.InternalMassConstruction = zone._internalmassconstruction()
         zone.Windows = WindowSetting.from_zone(zone)
-
-        # Todo Deal with InternalMassConstruction here
-        im = [surf.theidf.getobject('Construction'.upper(),
-                                    surf.Construction_Name)
-              for surf in zone_ep.zonesurfaces
-              if surf.key.lower() == 'internalmass']
-        imcs = set([OpaqueConstruction.from_epbunch(i) for i in im])
-        if imcs:
-            imc = functools.reduce(lambda a, b: a + b, imcs)
-            imc._belongs_to_zone = zone_ep
-        else:
-            imc = []
-        zone.InternalMassConstruction = imc
 
         return zone
 

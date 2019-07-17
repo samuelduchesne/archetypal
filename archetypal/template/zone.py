@@ -159,48 +159,43 @@ class Zone(UmiBase, metaclass=Unique):
     def _internalmassconstruction(self):
         """Group internal walls into a ThermalMass object for each Zones"""
 
-        surfaces = {}
-        for zone in self.idf.idfobjects['ZONE']:
-            for surface in zone.zonesurfaces:
-                if surface.key.upper() == 'INTERNALMASS':
-                    oc = OpaqueConstruction.from_idf(
-                        Name=surface.Construction_Name,
-                        idf=self.idf,
-                        Surface_Type='Wall',
-                        Outside_Boundary_Condition='Outdoors',
-                    )
-                    self.InternalMassConstruction = oc
-                else:
-                    # Todo: Create Equivalent InternalMassConstruction from
-                    #  partitions. For now, creating dummy InternalMass
+        oc = []
+        for surface in self._zonesurfaces:
+            # for surf_type in self.idf.idd_index['ref2names']['AllHeatTranSurfNames']:
+            if surface.key.upper() == 'INTERNALMASS':
+                oc.append(OpaqueConstruction.from_epbunch(surface))
 
-                    #   InternalMass,
-                    #     PerimInternalMass,       !- Name
-                    #     B_Ret_Thm_0,             !- Construction Name
-                    #     Perim,                   !- Zone Name
-                    #     2.05864785735637;        !- Surface Area {m2}
+                self.InternalMassExposedPerFloorArea =surface.Surface_Area / \
+                    eppy.modeleditor.zonearea(self.idf, self.Name)
+            else:
+                # Todo: Create Equivalent InternalMassConstruction from
+                #  partitions. For now, creating dummy InternalMass
 
-                    existgin_cons = self.idf.idfobjects['CONSTRUCTION'][0]
-                    new = self.idf.copyidfobject(existgin_cons)
-                    internal_mass = '{}InternalMass'.format(zone.Name)
-                    new.Name = internal_mass + '_construction'
-                    self.idf.add_object(
-                        ep_object='InternalMass'.upper(),
-                        save=False, Name=internal_mass,
-                        Construction_Name=new.Name,
-                        Zone_Name=zone.Name,
-                        Surface_Area=10
-                    )
-                    oc = OpaqueConstruction.from_idf(Name=new.Name,
-                                                     idf=self.idf,
-                                                     Surface_Type='Wall',
-                                                     Outside_Boundary_Condition='Outdoors'
-                                                     )
-                    self.InternalMassConstruction = oc
-                    self.InternalMassExposedPerFloorArea = \
-                        self.idf.getobject('INTERNALMASS',
-                                           internal_mass).Surface_Area / \
-                        eppy.modeleditor.zonearea(self.idf, zone.Name)
+                #   InternalMass,
+                #     PerimInternalMass,       !- Name
+                #     B_Ret_Thm_0,             !- Construction Name
+                #     Perim,                   !- Zone Name
+                #     2.05864785735637;        !- Surface Area {m2}
+
+                existgin_cons = self.idf.idfobjects['CONSTRUCTION'][0]
+                new = self.idf.copyidfobject(existgin_cons)
+                internal_mass = '{}InternalMass'.format(self.Name)
+                new.Name = internal_mass + '_construction'
+                new_epbunch = self.idf.add_object(
+                    ep_object='InternalMass'.upper(),
+                    save=False, Name=internal_mass,
+                    Construction_Name=new.Name,
+                    Zone_Name=self.Name,
+                    Surface_Area=0)
+
+                oc.append(OpaqueConstruction.from_epbunch(new_epbunch))
+
+        from operator import add
+        self.InternalMassConstruction = functools.reduce(add, oc)
+        if not self.InternalMassExposedPerFloorArea:
+            self.InternalMassExposedPerFloorArea = 0
+
+        self.InternalMassConstruction = oc
 
     def _loads(self):
         """run loads and return id"""
@@ -290,6 +285,7 @@ class Zone(UmiBase, metaclass=Unique):
         zone.Ventilation = VentilationSetting.from_zone(zone)
         zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(zone)
         zone.Loads = ZoneLoad.from_zone(zone)
+        zone.InternalMassConstruction = zone._internalmassconstruction()
 
         # Todo Deal with InternalMassConstruction here
         im = [surf.theidf.getobject('Construction'.upper(),

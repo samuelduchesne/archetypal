@@ -275,7 +275,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
         # resolve StructureDefinition and WindowSetting
         bt.Structure = StructureDefinition(Name=bt.Name+'_StructureDefinition')
-        bt.Windows = WindowSetting()
+        bt.Windows = WindowSetting(Name=bt.Name+'_Window')
 
         return bt
 

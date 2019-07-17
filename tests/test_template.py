@@ -641,6 +641,7 @@ class TestZone():
         np.testing.assert_almost_equal(desired=z.volume,
                                        actual=856.3,
                                        decimal=1)
+        z.to_json()
 
 
 def test_GasMaterial_from_to_json(config):

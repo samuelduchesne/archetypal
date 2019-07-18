@@ -51,8 +51,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         >>>                         **kwargs_dict)
 
     Args:
-        idf_file:
-        window_lib (str): File path of the window library (from Berkeley Lab).
+        idf_file (str): path to the idf file to convert
+        window_lib (str): File path of the window library (from Berkeley Lab)
         return_idf (bool, optional): If True, also return the path to the
             modified IDF with the new names, coordinates, etc. of the IDF
             objects. It is an input file for EnergyPlus (.idf)
@@ -481,11 +481,11 @@ def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
     """Ensure the files and directory are here
 
     Args:
-        idf_file:
-        window_lib:
-        output_folder:
-        trnsidf_exe:
-        template:
+        idf_file (str): path to the idf file to convert
+        window_lib (str): File path of the window library (from Berkeley Lab)
+        output_folder (str): path to the output folder (can be None)
+        trnsidf_exe (str): Path to *trnsidf.exe*.
+        template (str): Path to d18 template file.
     """
     if not os.path.isfile(idf_file):
         raise IOError("idf_file file not found")

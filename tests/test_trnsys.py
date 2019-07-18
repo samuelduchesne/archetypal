@@ -18,11 +18,12 @@ def round_up(n, decimals=0):
 def test_trnbuild_from_idf(config):
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
-    files = ["RefBldgOutPatientPost1980_v1.3_5"
+    files = ["RefBldgWarehousePost1980_v1.3_5"
              ".0_4A_USA_MD_BALTIMORE.idf",
-             "ASHRAE90.1_OfficeLarge_STD2004_Rochester.idf",
-             "NECB 2011 - Warehouse.idf"]
-    idf_file = os.path.join(file_upper_path, files[1])
+             "NECB 2011 - Warehouse.idf",
+             "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
+             "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf"]
+    idf_file = [os.path.join(file_upper_path, file) for file in files]
     idf_file = copy_file(idf_file)
 
     window_file = 'W74-lib.dat'
@@ -34,10 +35,11 @@ def test_trnbuild_from_idf(config):
     kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
                    'tolerance': 0.05, 'ordered': True}
 
-    convert_idf_to_trnbuild(idf_file=idf_file[0], window_lib=window_filepath,
-                            template="tests/input_data/trnsys/NewFileTemplate.d18",
-                            trnsidf_exe='docker/trnsidf/trnsidf.exe',
-                            **kwargs_dict)
+    for file in idf_file:
+        convert_idf_to_trnbuild(idf_file=file, window_lib=window_filepath,
+                                template="tests/input_data/trnsys/NewFileTemplate.d18",
+                                trnsidf_exe='docker/trnsidf/trnsidf.exe',
+                                **kwargs_dict)
 
 
 @pytest.mark.win32
@@ -78,7 +80,9 @@ def test_trnbuild_from_idf_parallel(config):
                 "ASHRAE90.1_Warehouse_STD2004_Rochester.idf"]
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
-    files = ["NECB 2011 - Warehouse.idf", "NECB 2011 - Small Office.idf"]
+    files = ["NECB 2011 - Warehouse.idf",
+             "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
+             "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf"]
 
     # window_file = 'W74-lib.dat'
     # window_filepath = os.path.join(file_upper_path, window_file)

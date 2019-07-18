@@ -287,6 +287,195 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     return return_path
 
 
+def _save_t3d(idf_file, lines, output_folder):
+    """Saves T3D file
+
+    Args:
+        idf_file (str): path to the idf file to convert
+        lines (list): lines to copy in the T3D file
+        output_folder (str): path to the output folder (can be None)
+
+    Returns:
+        output_folder (str): path to the output folder
+        t3d_path (str): path to the T3D file
+
+    """
+    if output_folder is None:
+        # User did not provide an output folder path. We use the default setting
+        output_folder = os.path.relpath(settings.data_folder)
+    if not os.path.isdir(output_folder):
+        os.makedirs(output_folder)
+    t3d_path = os.path.join(output_folder, "T3D_" + os.path.basename(idf_file))
+    with open(t3d_path, "w") as converted_file:
+        for line in lines:
+            converted_file.writelines(str(line))
+    return output_folder, t3d_path
+
+
+def _remove_low_conductivity(constructions, idf, materials):
+    """Removes materials form idf with conductivity too low (0.0007 kJ/h-m-K)
+
+    Args:
+        constructions (Idf_MSequence): CONSTRUCTION object from the IDF
+        idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
+        materials (Idf_MSequence): MATERIAL object from the IDF
+
+    Returns:
+        mat_name (list): list of name of the removed materials
+
+    """
+    material_low_res = []
+    for material in materials:
+        if material.Thickness / (
+                material.Conductivity * 3.6) < 0.0007:
+            material_low_res.append(material)
+    # Remove materials with resistance lower than 0.0007 from IDF
+    mat_name = []
+    for mat in material_low_res:
+        mat_name.append(mat.Name)
+        idf.removeidfobject(mat)
+    # Get constructions with only materials with resistance lower than 0.0007
+    construct_low_res = []
+    for i in range(0, len(constructions)):
+        if len(constructions[i].fieldvalues) == 3 and \
+                constructions[i].fieldvalues[
+                    2] in mat_name:
+            construct_low_res.append(constructions[i])
+    # Remove constructions with only materials with resistance lower than
+    # 0.0007 from IDF
+    for construct in construct_low_res:
+        idf.removeidfobject(construct)
+    return mat_name
+
+
+def _order_objects(buildingSurfs, buildings, constr_list, constructions,
+                   equipments, fenestrationSurfs, globGeomRules, lights,
+                   locations, materialAirGap, materialNoMass, materials,
+                   peoples, zones):
+    """
+
+    Args:
+        materials (Idf_MSequence): MATERIAL object from the IDF
+        materialNoMass (Idf_MSequence): MATERIAL:NOMASS object from the IDF
+        materialAirGap (Idf_MSequence): MATERIAL:AIRGAP object from the IDF
+        versions (Idf_MSequence): VERSION object from the IDF
+        buildings (Idf_MSequence): BUILDING object from the IDF
+        locations (Idf_MSequence): SITE:LOCATION object from the IDF
+        globGeomRules (Idf_MSequence): GLOBALGEOMETRYRULES object from the IDF
+        constructions (Idf_MSequence): CONSTRUCTION object from the IDF
+        buildingSurfs (Idf_MSequence): BUILDINGSURFACE:DETAILED object
+            from the IDF
+        fenestrationSurfs (Idf_MSequence): FENESTRATIONSURFACE:DETAILED object
+            from the IDF
+        zones (Idf_MSequence): ZONE object from the IDF
+        peoples (Idf_MSequence): PEOPLE object from the IDF
+        lights (Idf_MSequence): LIGHTs object from the IDF
+        equipments (Idf_MSequence): EQUIPMENT object from the IDF
+
+    Returns:
+        IDF objects (see Args) with their order reversed
+
+    """
+    materials = list(reversed(materials))
+    materialNoMass = list(reversed(materialNoMass))
+    materialAirGap = list(reversed(materialAirGap))
+    buildings = list(reversed(buildings))
+    locations = list(reversed(locations))
+    globGeomRules = list(reversed(globGeomRules))
+    constructions = list(reversed(constructions))
+    fenestrationSurfs = list(reversed(fenestrationSurfs))
+    buildingSurfs = list(reversed(buildingSurfs))
+    zones = list(reversed(zones))
+    peoples = list(reversed(peoples))
+    lights = list(reversed(lights))
+    equipments = list(reversed(equipments))
+    constr_list = list(reversed(constr_list))
+    return buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones
+
+
+def _get_idf_objects(idf):
+    """Gets idf objects
+
+    Args:
+        idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
+
+    Returns:
+        materials (Idf_MSequence): MATERIAL object from the IDF
+        materialNoMass (Idf_MSequence): MATERIAL:NOMASS object from the IDF
+        materialAirGap (Idf_MSequence): MATERIAL:AIRGAP object from the IDF
+        versions (Idf_MSequence): VERSION object from the IDF
+        buildings (Idf_MSequence): BUILDING object from the IDF
+        locations (Idf_MSequence): SITE:LOCATION object from the IDF
+        globGeomRules (Idf_MSequence): GLOBALGEOMETRYRULES object from the IDF
+        constructions (Idf_MSequence): CONSTRUCTION object from the IDF
+        buildingSurfs (Idf_MSequence): BUILDINGSURFACE:DETAILED object
+            from the IDF
+        fenestrationSurfs (Idf_MSequence): FENESTRATIONSURFACE:DETAILED object
+            from the IDF
+        zones (Idf_MSequence): ZONE object from the IDF
+        peoples (Idf_MSequence): PEOPLE object from the IDF
+        lights (Idf_MSequence): LIGHTs object from the IDF
+        equipments (Idf_MSequence): EQUIPMENT object from the IDF
+
+    """
+    materials = idf.idfobjects['MATERIAL']
+    materialNoMass = idf.idfobjects['MATERIAL:NOMASS']
+    materialAirGap = idf.idfobjects['MATERIAL:AIRGAP']
+    versions = idf.idfobjects['VERSION']
+    buildings = idf.idfobjects['BUILDING']
+    locations = idf.idfobjects['SITE:LOCATION']
+    globGeomRules = idf.idfobjects['GLOBALGEOMETRYRULES']
+    constructions = idf.idfobjects['CONSTRUCTION']
+    fenestrationSurfs = idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
+    buildingSurfs = idf.idfobjects['BUILDINGSURFACE:DETAILED']
+    zones = idf.idfobjects['ZONE']
+    peoples = idf.idfobjects['PEOPLE']
+    lights = idf.idfobjects['LIGHTS']
+    equipments = idf.idfobjects['ELECTRICEQUIPMENT']
+    return buildingSurfs, buildings, constructions, equipments, \
+           fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, \
+           materialNoMass, materials, peoples, versions, zones
+
+
+def _load_idf_file_and_clean_names(idf_file, log_clear_names):
+    """Load idf file from cache if cache exist and user ask for use_cache=True.
+        Moreover cleans idf object names and log in the console the equivalence
+        between the old and new names if log_clear_names=False
+
+    Args:
+        idf_file (str): Path to the idf file
+        log_clear_names (bool): If True, DOES NOT log the equivalence between
+            the old and new names in the console.
+
+    Returns:
+        idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
+
+    """
+    log("Loading IDF file...", lg.INFO)
+    start_time = time.time()
+    cache_filename = hash_file(idf_file)
+    idf = load_idf_object_from_cache(idf_file, how='idf')
+    if not idf:
+        # Load IDF file(s)
+        idf = load_idf(idf_file)
+        log("IDF files loaded in {:,.2f} seconds".format(
+            time.time() - start_time),
+            lg.INFO)
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        log("Cleaning names of the IDF objects...", lg.INFO)
+        start_time = time.time()
+        clear_name_idf_objects(idf, log_clear_names)
+        path = os.path.join(settings.cache_folder, cache_filename,
+                            cache_filename + '.idf')
+        if not os.path.exists(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
+        idf.saveas(filename=path)
+        # save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
+        log("Cleaned IDF object names in {:,.2f} seconds".format(
+            time.time() - start_time), lg.INFO)
+    return idf
+
+
 def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
                   template):
     """Ensure the files and directory are here

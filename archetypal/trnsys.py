@@ -132,31 +132,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         path_or_buf=os.path.join(output_folder, sched_file_name))
     # endregion
 
-    # Get materials with resistance lower than 0.0007
-    material_low_res = []
-    for material in materials:
-        if material.Thickness / (
-                material.Conductivity * 3.6) < 0.0007:
-            material_low_res.append(material)
-
-    # Remove materials with resistance lower than 0.0007 from IDF
-    mat_name = []
-    for mat in material_low_res:
-        mat_name.append(mat.Name)
-        idf.removeidfobject(mat)
-
-    # Get constructions with only materials with resistance lower than 0.0007
-    construct_low_res = []
-    for i in range(0, len(constructions)):
-        if len(constructions[i].fieldvalues) == 3 and \
-                constructions[i].fieldvalues[
-                    2] in mat_name:
-            construct_low_res.append(constructions[i])
-
-    # Remove constructions with only materials with resistance lower than
-    # 0.0007 from IDF
-    for construct in construct_low_res:
-        idf.removeidfobject(construct)
+    # Gets and removes from IDF materials with resistance lower than 0.0007
+    mat_name = _remove_low_conductivity(constructions, idf, materials)
 
     # Write data from IDF file to T3D file
     start_time = time.time()

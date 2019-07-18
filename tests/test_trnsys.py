@@ -80,7 +80,9 @@ def test_trnbuild_from_idf_parallel(config):
                 "ASHRAE90.1_Warehouse_STD2004_Rochester.idf"]
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
-    files = ["NECB 2011 - Warehouse.idf",
+    files = ["RefBldgWarehousePost1980_v1.3_5"
+             ".0_4A_USA_MD_BALTIMORE.idf",
+             "NECB 2011 - Warehouse.idf",
              "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
              "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf"]
 
@@ -137,7 +139,11 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
                 "ASHRAE90.1_Warehouse_STD2004_Rochester.idf"]
     # List files here
     file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
-    files = ["NECB 2011 - Warehouse.idf", "NECB 2011 - Small Office.idf"]
+    files = ["RefBldgWarehousePost1980_v1.3_5"
+             ".0_4A_USA_MD_BALTIMORE.idf",
+             "NECB 2011 - Warehouse.idf",
+             "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
+             "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf"]
 
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
@@ -145,7 +151,7 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
         idf_file=os.path.join(file_upper_path, file),
         template="tests/input_data/trnsys/NewFileTemplate.d18",
         trnsidf_exe='docker/trnsidf/trnsidf.exe') for
-        file in idf_list}
+        file in files}
 
     result = parallel_process(in_dict, convert_idf_to_trnbuild, 4,
                               use_kwargs=True)

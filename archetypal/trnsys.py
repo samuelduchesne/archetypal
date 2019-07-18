@@ -100,20 +100,15 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     peoples, versions, zones = _get_idf_objects(idf)
 
     # Get all construction EXCEPT fenestration ones
-    constr_list = []
-    for buildingSurf in buildingSurfs:
-        constr_list.append(buildingSurf.Construction_Name)
-    constr_list = list(set(constr_list))
-    constr_list.sort()
+    constr_list = _get_constr_list(buildingSurfs)
 
     ordered = kwargs.get('ordered', False)
-    if ordered:
-        buildingSurfs, buildings, constr_list, constructions, equipments, \
-        fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, \
-        materialNoMass, materials, peoples, zones = _order_objects(
-            buildingSurfs, buildings, constr_list, constructions, equipments,
-            fenestrationSurfs, globGeomRules, lights, locations, materialAirGap,
-            materialNoMass, materials, peoples, zones)
+    buildingSurfs, buildings, constr_list, constructions, equipments, \
+    fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, \
+    materialNoMass, materials, peoples, zones = _order_objects(
+        buildingSurfs, buildings, constr_list, constructions, equipments,
+        fenestrationSurfs, globGeomRules, lights, locations, materialAirGap,
+        materialNoMass, materials, peoples, zones, ordered)
 
     # region Get schedules from IDF
     start_time = time.time()
@@ -287,6 +282,15 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     return return_path
 
 
+def _get_constr_list(buildingSurfs):
+    constr_list = []
+    for buildingSurf in buildingSurfs:
+        constr_list.append(buildingSurf.Construction_Name)
+    constr_list = list(set(constr_list))
+    constr_list.sort()
+    return constr_list
+
+
 def _save_t3d(idf_file, lines, output_folder):
     """Saves T3D file
 
@@ -351,10 +355,11 @@ def _remove_low_conductivity(constructions, idf, materials):
 def _order_objects(buildingSurfs, buildings, constr_list, constructions,
                    equipments, fenestrationSurfs, globGeomRules, lights,
                    locations, materialAirGap, materialNoMass, materials,
-                   peoples, zones):
+                   peoples, zones, ordered=True):
     """
 
     Args:
+        ordered:
         materials (Idf_MSequence): MATERIAL object from the IDF
         materialNoMass (Idf_MSequence): MATERIAL:NOMASS object from the IDF
         materialAirGap (Idf_MSequence): MATERIAL:AIRGAP object from the IDF
@@ -376,21 +381,24 @@ def _order_objects(buildingSurfs, buildings, constr_list, constructions,
         IDF objects (see Args) with their order reversed
 
     """
-    materials = list(reversed(materials))
-    materialNoMass = list(reversed(materialNoMass))
-    materialAirGap = list(reversed(materialAirGap))
-    buildings = list(reversed(buildings))
-    locations = list(reversed(locations))
-    globGeomRules = list(reversed(globGeomRules))
-    constructions = list(reversed(constructions))
-    fenestrationSurfs = list(reversed(fenestrationSurfs))
-    buildingSurfs = list(reversed(buildingSurfs))
-    zones = list(reversed(zones))
-    peoples = list(reversed(peoples))
-    lights = list(reversed(lights))
-    equipments = list(reversed(equipments))
-    constr_list = list(reversed(constr_list))
-    return buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones
+    if ordered:
+        materials = list(reversed(materials))
+        materialNoMass = list(reversed(materialNoMass))
+        materialAirGap = list(reversed(materialAirGap))
+        buildings = list(reversed(buildings))
+        locations = list(reversed(locations))
+        globGeomRules = list(reversed(globGeomRules))
+        constructions = list(reversed(constructions))
+        fenestrationSurfs = list(reversed(fenestrationSurfs))
+        buildingSurfs = list(reversed(buildingSurfs))
+        zones = list(reversed(zones))
+        peoples = list(reversed(peoples))
+        lights = list(reversed(lights))
+        equipments = list(reversed(equipments))
+        constr_list = list(reversed(constr_list))
+    return buildingSurfs, buildings, constr_list, constructions, equipments, \
+           fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, \
+           materialNoMass, materials, peoples, zones
 
 
 def _get_idf_objects(idf):

@@ -248,17 +248,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     # endregion
 
     # Save T3D file at output_folder
-    if output_folder is None:
-        # User did not provide an output folder path. We use the default setting
-        output_folder = os.path.relpath(settings.data_folder)
-
-    if not os.path.isdir(output_folder):
-        os.makedirs(output_folder)
-
-    t3d_path = os.path.join(output_folder, "T3D_" + os.path.basename(idf_file))
-    with open(t3d_path, "w") as converted_file:
-        for line in lines:
-            converted_file.writelines(str(line))
+    output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
 
     log("Write data from IDF to T3D in {:,.2f} seconds".format(
         time.time() - start_time), lg.INFO)

@@ -35,11 +35,12 @@ def test_trnbuild_from_idf(config):
     kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
                    'tolerance': 0.05, 'ordered': True}
 
-    for file in idf_file:
-        convert_idf_to_trnbuild(idf_file=file, window_lib=window_filepath,
-                                template="tests/input_data/trnsys/NewFileTemplate.d18",
-                                trnsidf_exe='docker/trnsidf/trnsidf.exe',
-                                **kwargs_dict)
+    # for file in idf_file:
+    file = idf_file[2]
+    convert_idf_to_trnbuild(idf_file=file, window_lib=window_filepath,
+                            template="tests/input_data/trnsys/NewFileTemplate.d18",
+                            trnsidf_exe='docker/trnsidf/trnsidf.exe',
+                            **kwargs_dict)
 
 
 @pytest.mark.win32

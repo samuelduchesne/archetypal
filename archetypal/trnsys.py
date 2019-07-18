@@ -111,20 +111,9 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         materialNoMass, materials, peoples, zones, ordered)
 
     # region Get schedules from IDF
-    start_time = time.time()
-    log("Reading schedules from the IDF file...")
     schedule_names, schedules = _get_schedules(idf)
 
-    log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO)
-
-    log("Saving yearly schedules in CSV file...")
-    df_sched = pd.DataFrame()
-    for schedule_name in schedule_names:
-        df_sched[schedule_name] = schedules[schedule_name]['all values']
-    sched_file_name = 'yearly_schedules_' + os.path.basename(idf_file) + '.csv'
-    df_sched.to_csv(
-        path_or_buf=os.path.join(output_folder, sched_file_name))
+    _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
     # endregion
 
     # Gets and removes from IDF materials with resistance lower than 0.0007
@@ -132,29 +121,21 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     # Write data from IDF file to T3D file
     start_time = time.time()
-    log("Writing data from idf file to t3d file...")
     # Write VERSION from IDF to lines (T3D)
     _write_version(lines, versions)
 
     # Write BUILDING from IDF to lines (T3D)
-    log("Writing building info from idf file to t3d file...")
     _write_building(buildings, lines)
 
     # Write LOCATION and GLOBALGEOMETRYRULES from IDF to lines (T3D) and
     # define if coordinate system is "Relative"
-    log("Writing location info from idf file to t3d file...")
     coordSys = _write_location_geomrules(globGeomRules, lines, locations)
 
     # Determine if coordsSystem is "World" (all zones at (0,0,0))
     coordSys = _is_coordSys_world(coordSys, zones)
 
     # Change coordinates from relative to absolute for building surfaces
-    if coordSys == 'Relative':
-        # Add zone coordinates to X, Y, Z vectors
-        for buildingSurf in buildingSurfs:
-            surf_zone = buildingSurf.Zone_Name
-            incrX, incrY, incrZ = zone_origin(idf.getobject("ZONE", surf_zone))
-            _relative_to_absolute(buildingSurf, incrX, incrY, incrZ)
+    _change_relative_coords(buildingSurfs, coordSys, idf)
 
     # Adds or changes adjacent surface if needed
     _add_change_adj_surf(buildingSurfs, idf)
@@ -171,23 +152,17 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     # To be used to find the window's slopes
     n_ground = _get_ground_vertex(buildingSurfs)
 
-    # Initialize list of window's slopes
-    count_slope = 0
-    win_slope_dict = {}
-
     # Writing zones in lines
-    log("Writing geometry (zones, building and fenestration surfaces info from "
-        "idf file to t3d file...")
-    count_fs = 0
-    _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
-                                              count_slope, fenestrationSurfs,
-                                              idf, lines, n_ground,
-                                              variableDictNum, win_slope_dict,
-                                              zones)
+    win_slope_dict = _write_zone_buildingSurf_fenestrationSurf(buildingSurfs,
+                                                               coordSys,
+                                                               fenestrationSurfs,
+                                                               idf, lines,
+                                                               n_ground,
+                                                               variableDictNum,
+                                                               zones)
     # endregion
 
     # region Write CONSTRUCTION from IDF to lines (T3D)
-    log("Writing constructions info from idf file to t3d file...")
     _write_constructions(constr_list, idf, lines, mat_name, materials)
     # endregion
 
@@ -195,17 +170,14 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     _write_constructions_end(constr_list, idf, lines)
 
     # region Write LAYER from IDF to lines (T3D)
-    log("Writing materials (layers) info from idf file to t3d file...")
     _write_materials(lines, materialAirGap, materialNoMass, materials)
     # endregion
 
     # region Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
-    log("Writing gains info from idf file to t3d file...")
     _write_gains(equipments, idf, lights, lines, peoples)
     # endregion
 
     # region Write SCHEDULES from IDF to lines (T3D)
-    log("Writing schedules info from idf file to t3d file...")
     _write_schedules(lines, schedule_names, schedules)
     # endregion
 
@@ -222,20 +194,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     win_tolerance = kwargs.get('tolerance', 0.05)
     window = choose_window(win_u_value, win_shgc, win_tvis, win_tolerance,
                            window_lib)
-    # If tolerance was not respected to find a window, write in log a warning
-    if len(window) > 11:
-        log(
-            "Window tolerance was not respected. Final tolerance = "
-            "{:,.2f}".format(
-                window[-1]), lg.WARNING)
-    # Write in log (info) the characteristics of the window
-    log(
-        "Characterisitics of the chosen window are: u_value = {:,.2f}, "
-        "SHGC= {:,.2f}, t_vis= {:,.2f}".format(window[3], window[4], window[7]),
-        lg.INFO)
 
     # Write windows in lines
-    log("Writing windows info from idf file to t3d file...")
     _write_window(lines, win_slope_dict, window)
 
     # Write window pool in lines
@@ -280,6 +240,25 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                                  [return_idf, return_b18, return_t3d,
                                   return_dck]))
     return return_path
+
+
+def _change_relative_coords(buildingSurfs, coordSys, idf):
+    if coordSys == 'Relative':
+        # Add zone coordinates to X, Y, Z vectors
+        for buildingSurf in buildingSurfs:
+            surf_zone = buildingSurf.Zone_Name
+            incrX, incrY, incrZ = zone_origin(idf.getobject("ZONE", surf_zone))
+            _relative_to_absolute(buildingSurf, incrX, incrY, incrZ)
+
+
+def _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules):
+    log("Saving yearly schedules in CSV file...")
+    df_sched = pd.DataFrame()
+    for schedule_name in schedule_names:
+        df_sched[schedule_name] = schedules[schedule_name]['all values']
+    sched_file_name = 'yearly_schedules_' + os.path.basename(idf_file) + '.csv'
+    df_sched.to_csv(
+        path_or_buf=os.path.join(output_folder, sched_file_name))
 
 
 def _get_constr_list(buildingSurfs):
@@ -640,6 +619,8 @@ def _get_schedules(idf):
     Args:
         idf (archetypal.idfclass.IDF): IDF object
     """
+    start_time = time.time()
+    log("Reading schedules from the IDF file...")
     schedule_names = []
     used_schedules = idf.get_used_schedules(yearly_only=True)
     schedules = {}
@@ -654,6 +635,9 @@ def _get_schedules(idf):
         schedules[schedule_name]['year'] = year
         schedules[schedule_name]['weeks'] = weeks
         schedules[schedule_name]['days'] = days
+
+    log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
+        time.time() - start_time), lg.INFO)
     return schedule_names, schedules
 
 
@@ -974,6 +958,18 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
                                 'g_value', 'T_sol', 'Rf_sol', 't_vis', 'Lay',
                                 'Width']]
 
+    # If tolerance was not respected to find a window, write in log a warning
+    if warn:
+        log(
+            "Window tolerance was not respected. Final tolerance = "
+            "{:,.2f}".format(
+                tolerance), lg.WARNING)
+    # Write in log (info) the characteristics of the window
+    log(
+        "Characterisitics of the chosen window are: u_value = {:,.2f}, "
+        "SHGC= {:,.2f}, t_vis= {:,.2f}".format(u_win, shgc_win, t_vis_win),
+        lg.INFO)
+
     # If warn = 1 (tolerance not respected) return tolerance
     if warn:
         return (
@@ -1102,11 +1098,9 @@ def trnbuild_idf(idf_file, output_folder=None, template=None, dck=False,
         return True
 
 
-def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
-                                              count_slope, fenestrationSurfs,
-                                              idf, lines, n_ground,
-                                              variableDictNum, win_slope_dict,
-                                              zones):
+def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys,
+                                              fenestrationSurfs, idf, lines,
+                                              n_ground, variableDictNum, zones):
     """Does several actions on the zones, fenestration and building surfaces.
     Then, writes zone, fenestration and building surfaces information in lines.
 
@@ -1141,8 +1135,6 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
         buildingSurfs (idf_MSequence): IDF object from idf.idfobjects(). List of
             building surfaces ("BUILDINGSURFACE:DETAILED" in the IDF).
         coordSys (str): Coordinate system of the IDF file. Can be 'Absolute'
-        count_fs (int): Count of the number of fenestration surfaces.
-        count_slope (int): Count of the different window's slopes
         fenestrationSurfs (idf_MSequence): IDF object from idf.idfobjects().
             List of fenestration surfaces ("FENESTRATIONSURFACE:DETAILED" in the
             IDF).
@@ -1152,11 +1144,15 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
         n_ground (Vector 3D): Normal vector of the ground surface
         variableDictNum (int): Line number where to write the zones,
             fenestration and building surfaces
-        win_slope_dict (dict): Dictionary with window's names as key and
-            window's slope as value
         zones (idf_MSequence): IDF object from idf.idfobjects(). List of zones
             ("ZONES" in the IDF).
     """
+    # Initialize list of window's slopes
+    count_slope = 0
+    win_slope_dict = {}
+    log("Writing geometry (zones, building and fenestration surfaces info from "
+        "idf file to t3d file...")
+    count_fs = 0
     for zone in zones:
         zone.Direction_of_Relative_North = 0.0
         if zone.Multiplier == '':
@@ -1270,6 +1266,7 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
         zone.Z_Origin = round(zone.Z_Origin, 4)
 
         lines.insert(variableDictNum + 2, zone)
+    return win_slope_dict
 
 
 def _modify_adj_surface(buildingSurf, idf):
@@ -1443,6 +1440,7 @@ def _write_window(lines, win_slope_dict, window):
             window's slope as value
         window (tuple): Information to write in the window pool extension (
     """
+    log("Writing windows info from idf file to t3d file...")
     # Get line number where to write
     windowNum = checkStr(lines,
                          'W i n d o w s')
@@ -1485,6 +1483,7 @@ def _write_schedules(lines, schedule_names, schedules):
         schedule_names (list): Names of all the schedules to be written in lines
         schedules (dict): Dictionary with the schedule names as key and with
     """
+    log("Writing schedules info from idf file to t3d file...")
     # Get line number where to write
     scheduleNum = checkStr(lines, 'S c h e d u l e s')
     hour_list = list(range(25))
@@ -1534,6 +1533,7 @@ def _write_gains(equipments, idf, lights, lines, peoples):
             TRNBuild). To be appended (insert) here
         peoples (idf_MSequence): IDF object from idf.idfobjects()
     """
+    log("Writing gains info from idf file to t3d file...")
     # Get line number where to write
     gainNum = checkStr(lines, 'G a i n s')
     # Writing PEOPLE gains infos to lines
@@ -1710,6 +1710,7 @@ def _write_materials(lines, materialAirGap, materialNoMass, materials):
         materials (idf_MSequence): IDF object from idf.idfobjects(). List of
             materials ("MATERIAL" in the IDF)
     """
+    log("Writing materials (layers) info from idf file to t3d file...")
     # Get line number where to write
     layerNum = checkStr(lines, 'L a y e r s')
     listLayerName = []
@@ -1821,6 +1822,7 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials):
         materials (idf_MSequence): IDF object from idf.idfobjects(). List of
             materials ("MATERIAL" in the IDF)
     """
+    log("Writing constructions info from idf file to t3d file...")
     # Get line number where to write
     constructionNum = checkStr(lines, 'C O N S T R U C T I O N')
     # Writing CONSTRUCTION in lines
@@ -1928,6 +1930,7 @@ def _write_location_geomrules(globGeomRules, lines, locations):
             should be only one location.
     """
     # Get line number where to write
+    log("Writing location info from idf file to t3d file...")
     locationNum = checkStr(lines,
                            'ALL OBJECTS IN CLASS: LOCATION')
     # Writing GLOBALGEOMETRYRULES infos to lines
@@ -1961,6 +1964,7 @@ def _write_building(buildings, lines):
             TRNBuild). To be appended (insert) here
     """
     # Get line number where to write
+    log("Writing building info from idf file to t3d file...")
     buildingNum = checkStr(lines,
                            'ALL OBJECTS IN CLASS: BUILDING')
     # Writing BUILDING infos to lines
@@ -1978,6 +1982,7 @@ def _write_version(lines, versions):
             only one version.
     """
     # Get line number where to write
+    log("Writing data from idf file to t3d file...")
     versionNum = checkStr(lines,
                           'ALL OBJECTS IN CLASS: VERSION')
     # Writing VERSION infos to lines

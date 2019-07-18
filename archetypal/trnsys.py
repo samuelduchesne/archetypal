@@ -108,20 +108,12 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     ordered = kwargs.get('ordered', False)
     if ordered:
-        materials = list(reversed(materials))
-        materialNoMass = list(reversed(materialNoMass))
-        materialAirGap = list(reversed(materialAirGap))
-        buildings = list(reversed(buildings))
-        locations = list(reversed(locations))
-        globGeomRules = list(reversed(globGeomRules))
-        constructions = list(reversed(constructions))
-        fenestrationSurfs = list(reversed(fenestrationSurfs))
-        buildingSurfs = list(reversed(buildingSurfs))
-        zones = list(reversed(zones))
-        peoples = list(reversed(peoples))
-        lights = list(reversed(lights))
-        equipments = list(reversed(equipments))
-        constr_list = list(reversed(constr_list))
+        buildingSurfs, buildings, constr_list, constructions, equipments, \
+        fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, \
+        materialNoMass, materials, peoples, zones = _order_objects(
+            buildingSurfs, buildings, constr_list, constructions, equipments,
+            fenestrationSurfs, globGeomRules, lights, locations, materialAirGap,
+            materialNoMass, materials, peoples, zones)
 
     # region Get schedules from IDF
     start_time = time.time()

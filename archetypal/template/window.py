@@ -11,12 +11,13 @@ from enum import IntEnum
 from functools import reduce
 
 import tabulate
-from archetypal import log, IDF
+from eppy.bunch_subclass import EpBunch
+
+from archetypal import log, IDF, calc_simple_glazing
 from archetypal.template import MaterialLayer, UmiSchedule
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
 from archetypal.template.umi_base import UmiBase, Unique
-from eppy.bunch_subclass import EpBunch
 
 
 class WindowConstruction(UmiBase, metaclass=Unique):
@@ -117,28 +118,47 @@ class WindowConstruction(UmiBase, metaclass=Unique):
             if material:
                 # Create the WindowMaterial:Glazing or the WindowMaterial:Gas
                 # and append to the list of layers
-                material_obj = GlazingMaterial(Name=material.Name,
-                                               Conductivity=material.Conductivity,
-                                               Optical=material.Optical_Data_Type,
-                                               OpticalData=material.Window_Glass_Spectral_Data_Set_Name,
-                                               SolarTransmittance=material.Solar_Transmittance_at_Normal_Incidence,
-                                               SolarReflectanceFront=material.Front_Side_Solar_Reflectance_at_Normal_Incidence,
-                                               SolarReflectanceBack=material.Back_Side_Solar_Reflectance_at_Normal_Incidence,
-                                               VisibleTransmittance=material.Visible_Transmittance_at_Normal_Incidence,
-                                               VisibleReflectanceFront=material.Front_Side_Visible_Reflectance_at_Normal_Incidence,
-                                               VisibleReflectanceBack=material.Back_Side_Visible_Reflectance_at_Normal_Incidence,
-                                               IRTransmittance=material.Infrared_Transmittance_at_Normal_Incidence,
-                                               IREmissivityFront=material.Front_Side_Infrared_Hemispherical_Emissivity,
-                                               IREmissivityBack=material.Back_Side_Infrared_Hemispherical_Emissivity,
-                                               DirtFactor=material.Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance,
-                                               Type='Uncoated', idf=self.idf) \
-                    if \
-                    material.obj[
-                        0].upper() == 'WindowMaterial:Glazing'.upper() else \
-                    GasMaterial(
-                        Name=material.Name, idf=self.idf,
-                        Gas_Type=material.Gas_Type)
-                material_layer = MaterialLayer(material_obj, material.Thickness)
+                if material.key.upper() == 'WindowMaterial:Glazing'.upper():
+                    material_obj = GlazingMaterial(Name=material.Name,
+                                                   Conductivity=material.Conductivity,
+                                                   Optical=material.Optical_Data_Type,
+                                                   OpticalData=material.Window_Glass_Spectral_Data_Set_Name,
+                                                   SolarTransmittance=material.Solar_Transmittance_at_Normal_Incidence,
+                                                   SolarReflectanceFront=material.Front_Side_Solar_Reflectance_at_Normal_Incidence,
+                                                   SolarReflectanceBack=material.Back_Side_Solar_Reflectance_at_Normal_Incidence,
+                                                   VisibleTransmittance=material.Visible_Transmittance_at_Normal_Incidence,
+                                                   VisibleReflectanceFront=material.Front_Side_Visible_Reflectance_at_Normal_Incidence,
+                                                   VisibleReflectanceBack=material.Back_Side_Visible_Reflectance_at_Normal_Incidence,
+                                                   IRTransmittance=material.Infrared_Transmittance_at_Normal_Incidence,
+                                                   IREmissivityFront=material.Front_Side_Infrared_Hemispherical_Emissivity,
+                                                   IREmissivityBack=material.Back_Side_Infrared_Hemispherical_Emissivity,
+                                                   DirtFactor=material.Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance,
+                                                   Type='Uncoated',
+                                                   idf=self.idf)
+
+                    material_layer = MaterialLayer(material_obj,
+                                                   material.Thickness)
+
+                elif material.key.upper() == 'WindowMaterial:Gas'.upper():
+                    material_obj = GasMaterial(Name=material.Name,
+                                               idf=self.idf,
+                                               Gas_Type=material.Gas_Type)
+                    material_layer = MaterialLayer(material_obj,
+                                                   material.Thickness)
+                elif material.key.upper() == \
+                        'WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM':
+                    glass_properties = calc_simple_glazing(
+                        material.Solar_Heat_Gain_Coefficient,
+                        material.UFactor,
+                        material.Visible_Transmittance)
+                    material_obj = GlazingMaterial(**glass_properties,
+                                                   Name=material.Name,
+                                                   idf=self.idf)
+
+                    material_layer = MaterialLayer(material_obj, glass_properties['Thickness'])
+                else:
+                    continue
+
                 layers.append(
                     material_layer
                 )
@@ -241,6 +261,27 @@ class WindowSetting(UmiBase, metaclass=Unique):
 
     def __str__(self):
         return repr(self)
+
+    @classmethod
+    def generic(cls, idf):
+        """Returns a generic window
+
+        Args:
+            idf (IDF):
+        """
+        idf.add_object('WindowMaterial:SimpleGlazingSystem'.upper(),
+                       Name='SimpleWindow:SINGLE PANE HW WINDOW',
+                       UFactor=5.778,
+                       Solar_Heat_Gain_Coefficient=0.819,
+                       Visible_Transmittance=0.881,
+                       save=False)
+
+        constr = idf.add_object('CONSTRUCTION',
+                                Name='SINGLE PANE HW WINDOW',
+                                Outside_Layer='SimpleWindow:SINGLE PANE HW '
+                                              'WINDOW',
+                                save=False)
+        return cls.from_construction(Construction=constr)
 
     @classmethod
     def from_construction(cls, Construction, **kwargs):
@@ -367,7 +408,10 @@ class WindowSetting(UmiBase, metaclass=Unique):
                         shading_control["Shading_Type"]]
             else:
                 # Set default schedules
-                attr['ShadingSystemAvailabilitySchedule'] = UmiSchedule.constant_schedule(idf=surface.theidf)
+                attr[
+                    'ShadingSystemAvailabilitySchedule'] = \
+                    UmiSchedule.constant_schedule(
+                        idf=surface.theidf)
 
             # get airflow network
             afn = next(iter(surface.getreferingobjs(
@@ -428,7 +472,10 @@ class WindowSetting(UmiBase, metaclass=Unique):
                         leak.key, cls.mro()[0].__name__),
                         lg.WARNING)
             # Zone Mixing
-            attr['ZoneMixingAvailabilitySchedule'] = UmiSchedule.constant_schedule(idf=surface.theidf)
+            attr[
+                'ZoneMixingAvailabilitySchedule'] = \
+                UmiSchedule.constant_schedule(
+                    idf=surface.theidf)
             w = cls(Name=name, Construction=construction, idf=surface.theidf,
                     **attr)
             return w
@@ -467,6 +514,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Returns:
             WindowSetting: A new combined object made of self + other.
         """
+        if self is None:
+            return other
         if other is None:
             return self
         if not isinstance(other, self.__class__):
@@ -502,7 +551,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
                     ZoneMixingFlowRate=
                     self._float_mean(other, 'ZoneMixingFlowRate'),
                     ZoneMixingAvailabilitySchedule=
-                    self.ZoneMixingAvailabilitySchedule.combine(other.ZoneMixingAvailabilitySchedule),
+                    self.ZoneMixingAvailabilitySchedule.combine(
+                        other.ZoneMixingAvailabilitySchedule),
                     ShadingSystemAvailabilitySchedule=
                     self.ShadingSystemAvailabilitySchedule.combine(
                         other.ShadingSystemAvailabilitySchedule))

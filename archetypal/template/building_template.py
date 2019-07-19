@@ -17,7 +17,7 @@ from tqdm import tqdm
 from archetypal import log, save_and_show, calc_simple_glazing
 from archetypal.template import UmiBase, Unique, ZoneGraph, Zone, \
     resolve_obco, WindowSetting, UmiSchedule, GlazingMaterial, \
-    zone_information, iscore, StructureDefinition
+    StructureDefinition
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
@@ -99,7 +99,6 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                     pass  # pass surfaces that don't have an OBC,
                     # eg. InternalMass
             return iscore
-
 
         counter = 0
         for zone in tqdm(idf.idfobjects['ZONE'], desc='zone_loop'):
@@ -274,7 +273,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         bt.reduce()
 
         # resolve StructureDefinition and WindowSetting
-        bt.Structure = StructureDefinition(Name=bt.Name+'_StructureDefinition')
+        bt.Structure = StructureDefinition(
+            Name=bt.Name + '_StructureDefinition')
         bt.Windows = bt.Perimeter.Windows
 
         return bt
@@ -288,6 +288,13 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
         self.Core = self._graph_reduce(core_graph)
         self.Perimeter = self._graph_reduce(perim_graph)
+
+        if self.Perimeter.Windows is None:
+            # create generic window
+            self.Perimeter.Windows = WindowSetting.generic(idf=self.idf)
+
+        if not self.Core:
+            self.Core = self.Perimeter
 
     def _graph_reduce(self, G):
         """Using the depth first search algorithm, iterate over the zone
@@ -314,18 +321,11 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             # start from the highest degree node
             subgraphs = sorted(networkx.connected_component_subgraphs(G),
                                key=len, reverse=True)
-            for subG in subgraphs:
-                s = sorted(subG.degree(), key=lambda x: x[1], reverse=True)
-                source = s[0][0]  # highest degree node
-
-                # Starting Zone object. Retreived from datat='zone' in ZoneGraph
-                bundle_zone: Zone = subG.nodes(data='zone')[source]
-                if bundle_zone is None:
-                    raise KeyError('No Zone object in graph. Make sure '
-                                   '"skeleton" is set to False.')
-                for prev_z, next_z in networkx.dfs_edges(subG, source=source):
-                    # 'add' next zone to previous bundle
-                    bundle_zone += subG.nodes(data='zone')[next_z]
+            from functools import reduce
+            from operator import add
+            bundle_zone = reduce(add,
+                                 [zone for subG in subgraphs for name, zone in
+                                  subG.nodes(data='zone')])
 
             log('completed zone reduction for building {} in'
                 '{:,.2f} seconds'.format(self.Name, time.time() - start_time))
@@ -371,16 +371,19 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                             window.append(
                                 WindowSetting.from_construction(idf=self.idf,
                                                                 Name=
-                                                       surfaces[zone.Name][
-                                                           azimuth][
-                                                           'Name'],
-                                                                **surfaces[zone.Name][
-                                                           azimuth][
-                                                           'shading'],
+                                                                surfaces[
+                                                                    zone.Name][
+                                                                    azimuth][
+                                                                    'Name'],
+                                                                **surfaces[
+                                                                    zone.Name][
+                                                                    azimuth][
+                                                                    'shading'],
                                                                 Construction=
-                                                       surfaces[zone.Name][
-                                                           azimuth][
-                                                           'Construction_Name']
+                                                                surfaces[
+                                                                    zone.Name][
+                                                                    azimuth][
+                                                                    'Construction_Name']
                                                                 )
                             )
                 except:
@@ -451,11 +454,12 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                                 Name=construction_name,
                                 Outside_Layer=construction_name)
 
-            self.Windows = WindowSetting.from_construction(Name='Random WindowSetting',
-                                                           Comments=msg,
-                                                           idf=self.idf,
-                                                           Construction=construction_name,
-                                                           **kwargs)
+            self.Windows = WindowSetting.from_construction(
+                Name='Random WindowSetting',
+                Comments=msg,
+                idf=self.idf,
+                Construction=construction_name,
+                **kwargs)
 
             # Todo: We should actually raise an error once this method is
             #  corrected. Use the error bellow

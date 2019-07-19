@@ -324,7 +324,9 @@ class Zone(UmiBase, metaclass=Unique):
                     Conditioning=self.Conditioning + other.Conditioning,
                     Constructions=self.Constructions + other.Constructions,
                     Ventilation=self.Ventilation + other.Ventilation,
-                    Windows=self.Windows + other.Windows,
+                    Windows=None if self.Windows is None and other.Windows is
+                                    None
+                            else self.Windows + other.Windows,
                     DaylightMeshResolution=self._float_mean(other,
                                                             'DaylightMeshResolution',
                                                             weights=weights),
@@ -340,7 +342,8 @@ class Zone(UmiBase, metaclass=Unique):
         attr['Constructions']._belongs_to_zone = new_obj
         attr['Ventilation']._belongs_to_zone = new_obj
         attr['DomesticHotWater']._belongs_to_zone = new_obj
-        attr['Windows']._belongs_to_zone = new_obj
+        if attr['Windows']:
+            attr['Windows']._belongs_to_zone = new_obj
         return new_obj
 
 

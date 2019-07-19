@@ -262,7 +262,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
         # Heat recovery system
         HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible, \
-        HeatRecoveryType = cls._get_heat_recovery(zone)
+        HeatRecoveryType, comment = cls._get_heat_recovery(zone)
 
         # Mechanical Ventilation
         # Iterate on 'Controller:MechanicalVentilation' objects to find the
@@ -355,7 +355,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                      MaxCoolingCapacity=cooling_cap,
                      MaxHeatFlow=heating_flow, MaxHeatingCapacity=heating_cap,
                      MinFreshAirPerArea=MinFreshAirPerArea,
-                     MinFreshAirPerPerson=MinFreshAirPerPerson)
+                     MinFreshAirPerPerson=MinFreshAirPerPerson,
+                     comment=comment)
 
         return z_cond
 
@@ -367,10 +368,14 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             zone (Zone): The Zone object.
 
         Returns:
-            3-tuple: heat recovery parameters
-                - HeatRecoveryEfficiencyLatent (float):
-                - HeatRecoveryEfficiencySensible (float):
-                - HeatRecoveryType (str): 'None', 'Sensible' or 'Enthalpy'
+            4-tuple: heat recovery parameters:
+                - HeatRecoveryEfficiencyLatent (float): The latent heat recovery
+                  effectiveness.
+                - HeatRecoveryEfficiencySensible (float): The sensible heat
+                  recovery effectiveness.
+                - HeatRecoveryType (str): 'None', 'Sensible' or 'Enthalpy'.
+                - comment (str): A comment to append to the class comment
+                  attribute.
         """
         from itertools import chain
         # get possible heat recovery objects from idd
@@ -384,11 +389,14 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         HeatRecoveryEfficiencyLatent = 0.7
         HeatRecoveryEfficiencySensible = 0.65
         HeatRecoveryType = 'None'
+        comment = ''
 
         # iterate over those objects. If the list is empty, it will simply pass.
         for object in heat_recovery_in_idf:
-            # Do HeatExchanger:AirToAir:FlatPlate
+
             if object.key.upper() == 'HeatExchanger:AirToAir:FlatPlate'.upper():
+                # Do HeatExchanger:AirToAir:FlatPlate
+
                 nsaot = object.Nominal_Supply_Air_Outlet_Temperature
                 nsait = object.Nominal_Supply_Air_Inlet_Temperature
                 n2ait = object.Nominal_Secondary_Air_Inlet_Temperature
@@ -398,23 +406,32 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 HeatRecoveryEfficiencyLatent = \
                     HeatRecoveryEfficiencySensible - 0.05
                 HeatRecoveryType = 'Enthalpy'
-            # Do HeatExchanger:AirToAir:SensibleAndLatent
+                comment = 'HeatRecoveryEfficiencySensible was calculated ' \
+                          'using this formula: (Supply Air Outlet T°C -; ' \
+                          'Supply Air Inlet T°C)/(Secondary Air Inlet T°C - ' \
+                          'Supply Air Inlet T°C)'
+
             elif object.key.upper() == \
                     'HeatExchanger:AirToAir:SensibleAndLatent'.upper():
+                # Do HeatExchanger:AirToAir:SensibleAndLatent
+
                 HeatRecoveryEfficiencyLatent, \
                 HeatRecoveryEfficiencySensible \
                     = cls._get_recoverty_effectiveness(object, zone)
                 HeatRecoveryType = 'Enthalpy'
-            # Do HeatExchanger:Dessicant:BalancedFlow
+
+                comment = 'HeatRecoveryEfficiencies were calculated using ' \
+                          'simulation hourly values and averaged. Only values' \
+                          ' > 0 were used in the average calculation.'
+
             elif object.key.upper() == \
                     'HeatExchanger:Desiccant:BalancedFlow'.upper():
-                # Default values
-                HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible \
-                    = cls._get_recoverty_effectiveness(
-                    object, zone)
+                # Do HeatExchanger:Dessicant:BalancedFlow
+                # Use default values
                 HeatRecoveryEfficiencyLatent = 0.7
                 HeatRecoveryEfficiencySensible = 0.65
                 HeatRecoveryType = 'Enthalpy'
+
             elif object.key.upper() == \
                     'HeatExchanger:Desiccant:BalancedFlow' \
                     ':PerformanceDataType1'.upper():
@@ -426,7 +443,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 raise NotImplementedError(msg)
 
         return HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible, \
-               HeatRecoveryType
+               HeatRecoveryType, comment
 
     @classmethod
     def _get_recoverty_effectiveness(cls, object, zone):

@@ -102,6 +102,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     # Get all construction EXCEPT fenestration ones
     constr_list = _get_constr_list(buildingSurfs)
 
+    # If ordered=True, ordering idf objects
     ordered = kwargs.get('ordered', False)
     buildingSurfs, buildings, constr_list, constructions, equipments, \
     fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, \

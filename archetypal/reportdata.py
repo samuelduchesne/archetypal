@@ -27,6 +27,17 @@ class ReportData(pd.DataFrame):
     SCHEDULENAME = 'ScheduleName'
     UNITS = 'Units'
 
+    @classmethod
+    def from_sql(cls, sql_dict):
+        report_data = sql_dict['ReportData']
+        report_data['ReportDataDictionaryIndex'] = pd.to_numeric(
+            report_data['ReportDataDictionaryIndex'])
+
+        report_data_dict = sql_dict['ReportDataDictionary']
+
+        return cls(report_data.reset_index().join(report_data_dict,
+                                              on=['ReportDataDictionaryIndex']))
+
     @property
     def _constructor(self):
         return ReportData

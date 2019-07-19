@@ -7,15 +7,14 @@
 
 import collections
 
-from archetypal.template import UmiBase, Unique, UmiSchedule
-from archetypal import float_round
+from archetypal import float_round, ReportData
+from archetypal.template import UmiBase, Unique
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
     """HVAC settings for the zone
 
     .. image:: ../images/template/zoninfo-conditioning.png
-
     """
 
     def __init__(self, CoolingCoeffOfPerf=None, CoolingLimitType='NoLimit',
@@ -45,60 +44,56 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 applied for the entire building (every zone with the same
                 EconomizerType). Moreover, some hypotheses are done knowing
                 there is more EconomizerType existing in EnergyPlus than in UMI:
-                * If 'NoEconomizer' in EnergyPlus, EconomizerType='NoEconomizer'
 
-                * If 'DifferentialEnthalpy' in EnergyPlus,
-                      EconomizerType = 'DifferentialEnthalpy'
-
-                * If 'DifferentialDryBulb' in EnergyPlus,
-                      EconomizerType = 'DifferentialDryBulb'
-
-                * If 'FixedDryBulb' in EnergyPlus,
-                      EconomizerType = 'DifferentialDryBulb'
-
-                * If 'FixedEnthalpy' in EnergyPlus,
-                      EconomizerType = 'DifferentialEnthalpy'
-
-                * If 'ElectronicEnthalpy' in EnergyPlus,
-                      EconomizerType = 'DifferentialEnthalpy'
-
-                * If 'FixedDewPointAndDryBulb' in EnergyPlus,
-                      EconomizerType = 'DifferentialDryBulb'
-
-                * If 'DifferentialDryBulbAndEnthalpy' in EnergyPlus,
-                      EconomizerType = 'DifferentialEnthalpy'
+                - If 'NoEconomizer' in EnergyPlus, EconomizerType='NoEconomizer'
+                - If 'DifferentialEnthalpy' in EnergyPlus,EconomizerType =
+                  'DifferentialEnthalpy'
+                - If 'DifferentialDryBulb' in EnergyPlus, EconomizerType =
+                  'DifferentialDryBulb'
+                - If 'FixedDryBulb' in EnergyPlus, EconomizerType =
+                  'DifferentialDryBulb'
+                - If 'FixedEnthalpy' in EnergyPlus, EconomizerType =
+                  'DifferentialEnthalpy'
+                - If 'ElectronicEnthalpy' in EnergyPlus, EconomizerType =
+                  'DifferentialEnthalpy'
+                - If 'FixedDewPointAndDryBulb' in EnergyPlus, EconomizerType =
+                  'DifferentialDryBulb'
+                - If 'DifferentialDryBulbAndEnthalpy' in EnergyPlus,
+                  EconomizerType = 'DifferentialEnthalpy'
             HeatRecoveryEfficiencyLatent (float): The latent heat recovery
                 effectiveness, where effectiveness is defined as the change in
                 supply humidity ratio divided by the difference in entering
-                supply and relief air humidity ratios. The default is 0.65. * If
-                the HeatExchanger is an AirToAir FlatPlate,
-                HeatRecoveryEfficiencyLatent =
-                    HeatRecoveryEfficiencySensible - 0.05
+                supply and relief air humidity ratios. The default is 0.65.
 
-                * If the HeatExchanger is an AirToAir SensibleAndLatent, we
-                      suppose that HeatRecoveryEfficiencyLatent = Latent
-                      Effectiveness at 100% Heating Air Flow
-
-                * If the HeatExchanger is a Desiccant BalancedFlow, we use the
-                      default value for the efficiency (=0.65)
+                - If the HeatExchanger is an AirToAir FlatPlate,
+                  HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencySensible
+                  - 0.05
+                - If the HeatExchanger is an AirToAir SensibleAndLatent, we
+                  suppose that HeatRecoveryEfficiencyLatent = Latent
+                  Effectiveness at 100% Heating Air Flow
+                - If the HeatExchanger is a Desiccant BalancedFlow, we use the
+                  default value for the efficiency (=0.65)
             HeatRecoveryEfficiencySensible (float): The sensible heat recovery
                 effectiveness, where effectiveness is defined as the change in
                 supply temperature divided by the difference in entering supply
-                and relief air temperatures. The default is 0.70. * If the
-                HeatExchanger is an AirToAir FlatPlate,
-                HeatRecoveryEfficiencySensible = (Supply Air Outlet T°C -
-                Supply Air Inlet T°C)/(Secondary Air Inlet T°C - Supply Air
-                Inlet T°C)
+                and relief air temperatures. The default is 0.70.
 
-                * If the HeatExchanger is an AirToAir SensibleAndLatent, we
-                      suppose that HeatRecoveryEfficiencySensible = Sensible
-                      Effectiveness at 100% Heating Air Flow
-
-                * If the HeatExchanger is a Desiccant BalancedFlow, we use the
-                      default value for the efficiency (=0.70)
-            HeatRecoveryType (str): Select from None, Sensible, or Enthalpy. If
-                the Heat Recovery "is on", HeatRecoveryType = Enthalpy, because
-                we do not know how to choose between 'Sensible' or 'Enthalpy'
+                - If the HeatExchanger is an AirToAir FlatPlate,
+                  HeatRecoveryEfficiencySensible = (Supply Air Outlet T°C -
+                  Supply Air Inlet T°C)/(Secondary Air Inlet T°C - Supply Air
+                  Inlet T°C)
+                - If the HeatExchanger is an AirToAir SensibleAndLatent, we
+                  suppose that HeatRecoveryEfficiencySensible = Sensible
+                  Effectiveness at 100% Heating Air Flow
+                - If the HeatExchanger is a Desiccant BalancedFlow, we use the
+                  default value for the efficiency (=0.70)
+            HeatRecoveryType (str): Select from *None*, *Sensible*, or
+                *Enthalpy*. None means that there is no heat recovery. Sensible
+                means that there is sensible heat recovery whenever the zone
+                exhaust air temperature is more favorable than the outdoor air
+                temperature. Enthalpy means that there is latent and sensible
+                heat recovery whenever the zone exhaust air enthalpy is more
+                favorable than the outdoor air enthalpy. The default is None
             HeatingCoeffOfPerf (float): Efficiency of heating system. The COP is
                 of each zone is equal, and refer to the COP of the entire
                 building.
@@ -224,10 +219,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         # Thermostat setpoints
         # Heating setpoint
         heating_setpoint = cls._get_setpoint(zone,
-                                             'Zone Thermostat Heating Setpoint Temperature')
+                                             'Zone Thermostat Heating '
+                                             'Setpoint Temperature')
         # Cooling setpoint
         cooling_setpoint = cls._get_setpoint(zone,
-                                             'Zone Thermostat Cooling Setpoint Temperature')
+                                             'Zone Thermostat Cooling '
+                                             'Setpoint Temperature')
 
         # If setpoint equal to zero, conditionning is off
         if heating_setpoint == 0:
@@ -244,12 +241,14 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         heating_in_list = ['Heating:Electricity', 'Heating:Gas',
                            'Heating:DistrictHeating']
         heating_cop = cls._get_cop(zone, energy_in_list=heating_in_list,
-                                   energy_out_variable_name='Air System Total Heating Energy')
+                                   energy_out_variable_name='Air System Total '
+                                                            'Heating Energy')
         # Cooling
         cooling_in_list = ['Cooling:Electricity', 'Cooling:Gas',
                            'Cooling:DistrictCooling']
         cooling_cop = cls._get_cop(zone, energy_in_list=cooling_in_list,
-                                   energy_out_variable_name='Air System Total Cooling Energy')
+                                   energy_out_variable_name='Air System Total '
+                                                            'Cooling Energy')
 
         # Capacity limits (heating and cooling)
         zone_size = zone.sql['ZoneSizes'][
@@ -284,20 +283,23 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                     design_spe_outdoor_air_name = object.fieldvalues[
                         indice_zone + 1]
                     break
-            # If 'DesignSpecifactionOutdoorAirName', MechVent is ON, and gets the
+            # If 'DesignSpecifactionOutdoorAirName', MechVent is ON, and gets
+            # the
             # minimum fresh air (per person and area)
             if design_spe_outdoor_air_name != '':
                 IsMechVentOn = True
                 design_spe_outdoor_air = zone.idf.getobject(
                     'DesignSpecification:OutdoorAir'.upper(),
                     design_spe_outdoor_air_name)
-                MinFreshAirPerPerson = design_spe_outdoor_air.Outdoor_Air_Flow_per_Person
+                MinFreshAirPerPerson = \
+                    design_spe_outdoor_air.Outdoor_Air_Flow_per_Person
                 # If MinFreshAirPerPerson NOT a number, MinFreshAirPerPerson=0
                 try:
                     MinFreshAirPerPerson = float(MinFreshAirPerPerson)
                 except:
                     MinFreshAirPerPerson = 0
-                MinFreshAirPerArea = design_spe_outdoor_air.Outdoor_Air_Flow_per_Zone_Floor_Area
+                MinFreshAirPerArea = \
+                    design_spe_outdoor_air.Outdoor_Air_Flow_per_Zone_Floor_Area
                 # If MinFreshAirPerArea NOT a number, MinFreshAirPerArea=0
                 try:
                     MinFreshAirPerArea = float(MinFreshAirPerArea)
@@ -309,7 +311,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 MinFreshAirPerArea = 0
 
         # Economizer
-        # Todo: Here EconomizerType is for the entire building, try to do it for each zone
+        # Todo: Here EconomizerType is for the entire building, try to do it
+        #  for each zone
         EconomizerType = 'NoEconomizer'
         for object in zone.idf.idfobjects['Controller:OutdoorAir'.upper()]:
             if object.Economizer_Control_Type == 'NoEconomizer':
@@ -332,7 +335,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             elif object.Economizer_Control_Type == 'FixedDewPointAndDryBulb':
                 EconomizerType = 'DifferentialDryBulb'
                 break
-            elif object.Economizer_Control_Type == 'DifferentialDryBulbAndEnthalpy':
+            elif object.Economizer_Control_Type == \
+                    'DifferentialDryBulbAndEnthalpy':
                 EconomizerType = 'DifferentialEnthalpy'
                 break
 
@@ -357,47 +361,92 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     @classmethod
     def _get_heat_recovery(cls, zone):
+        """Returns the heat recovery parameters for this zone.
+
+        Args:
+            zone (Zone): The Zone object.
+
+        Returns:
+            3-tuple: heat recovery parameters
+                - HeatRecoveryEfficiencyLatent (float):
+                - HeatRecoveryEfficiencySensible (float):
+                - HeatRecoveryType (str): 'None', 'Sensible' or 'Enthalpy'
+        """
+        from itertools import chain
+        # get possible heat recovery objects from idd
         heat_recovery_objects = zone.idf.getiddgroupdict()['Heat Recovery']
-        # If Heat recovery is not used
-        for object in heat_recovery_objects:
-            if not zone.idf.idfobjects[object.upper()]:
-                HeatRecoveryType = 'None'
-                HeatRecoveryEfficiencyLatent = 0
-                HeatRecoveryEfficiencySensible = 0
+
+        # get possible heat recovery objects from this idf
+        heat_recovery_in_idf = list(chain.from_iterable(
+            zone.idf.idfobjects[key.upper()] for key in heat_recovery_objects))
+
+        # Set defaults
+        HeatRecoveryEfficiencyLatent = 0.7
+        HeatRecoveryEfficiencySensible = 0.65
+        HeatRecoveryType = 'None'
+
+        # iterate over those objects. If the list is empty, it will simply pass.
+        for object in heat_recovery_in_idf:
+            # Do HeatExchanger:AirToAir:FlatPlate
+            if object.key.upper() == 'HeatExchanger:AirToAir:FlatPlate'.upper():
+                nsaot = object.Nominal_Supply_Air_Outlet_Temperature
+                nsait = object.Nominal_Supply_Air_Inlet_Temperature
+                n2ait = object.Nominal_Secondary_Air_Inlet_Temperature
+                HeatRecoveryEfficiencySensible = (
+                        (nsaot - nsait) / (n2ait - nsait))
+                # Hypotheses: HeatRecoveryEfficiencySensible - 0.05
+                HeatRecoveryEfficiencyLatent = \
+                    HeatRecoveryEfficiencySensible - 0.05
+                HeatRecoveryType = 'Enthalpy'
+            # Do HeatExchanger:AirToAir:SensibleAndLatent
+            elif object.key.upper() == \
+                    'HeatExchanger:AirToAir:SensibleAndLatent'.upper():
+                HeatRecoveryEfficiencyLatent, \
+                HeatRecoveryEfficiencySensible \
+                    = cls._get_recoverty_effectiveness(object, zone)
+                HeatRecoveryType = 'Enthalpy'
+            # Do HeatExchanger:Dessicant:BalancedFlow
+            elif object.key.upper() == \
+                    'HeatExchanger:Desiccant:BalancedFlow'.upper():
+                # Default values
+                HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible \
+                    = cls._get_recoverty_effectiveness(
+                    object, zone)
+                HeatRecoveryEfficiencyLatent = 0.7
+                HeatRecoveryEfficiencySensible = 0.65
+                HeatRecoveryType = 'Enthalpy'
+            elif object.key.upper() == \
+                    'HeatExchanger:Desiccant:BalancedFlow' \
+                    ':PerformanceDataType1'.upper():
+                # This is not an actual HeatExchanger, pass
+                pass
             else:
-                # HeatExchanger:AirToAir:FlatPlate
-                if object.upper() == 'HeatExchanger:AirToAir:FlatPlate'.upper():
-                    obj = zone.idf.idfobjects[object.upper()][0]
-                    HeatRecoveryEfficiencySensible = (
-                                                             obj.Nominal_Supply_Air_Outlet_Temperature - obj.Nominal_Supply_Air_Inlet_Temperature) / (
-                                                             obj.Nominal_Secondary_Air_Inlet_Temperature - obj.Nominal_Supply_Air_Inlet_Temperature)
-                    # Hypotheses: HeatRecoveryEfficiencySensible - 0.05
-                    HeatRecoveryEfficiencyLatent = \
-                        HeatRecoveryEfficiencySensible - 0.05
-                    break
-                # HeatExchanger:AirToAir:SensibleAndLatent
-                elif object.upper() == \
-                        'HeatExchanger:AirToAir:SensibleAndLatent'.upper():
-                    obj = zone.idf.idfobjects[object.upper()].list2[0]
-                    HeatRecoveryEfficiencySensible = obj[4]
-                    HeatRecoveryEfficiencyLatent = obj[5]
-                    break
-                # HeatExchanger:Dessicant:BalancedFlow
-                elif object.upper() == \
-                        'HeatExchanger:Desiccant:BalancedFlow'.upper():
-                    # Default values
-                    HeatRecoveryEfficiencySensible = 0.7
-                    HeatRecoveryEfficiencySensible = 0.65
-                    break
-                else:
-                    msg = 'Heat exchanger object "{}" is not ' \
-                          'implemented'.format(
-                        object)
-                    raise NotImplementedError(msg)
-        HeatRecoveryType = 'Enthalpy'  # todo: HOW TO CHOOSE If 'Enthalpy' ou
-        # 'Sensible' ??!
+                msg = 'Heat exchanger object "{}" is not ' \
+                      'implemented'.format(object)
+                raise NotImplementedError(msg)
+
         return HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible, \
                HeatRecoveryType
+
+    @classmethod
+    def _get_recoverty_effectiveness(cls, object, zone):
+        """
+        Args:
+            object:
+            zone:
+        """
+        rd = ReportData.from_sql(zone.sql)
+        effectiveness = rd.filter_report_data(
+            name=('Heat Exchanger Sensible Effectiveness',
+                  'Heat Exchanger Latent Effectiveness')).loc[
+            lambda x: x.Value > 0].groupby(
+            ['KeyValue', 'Name']).Value.mean().unstack(level=-1)
+        HeatRecoveryEfficiencySensible = effectiveness.loc[
+            object.Name.upper(), 'Heat Exchanger Sensible ' \
+                                 'Effectiveness']
+        HeatRecoveryEfficiencyLatent = effectiveness.loc[
+            object.Name.upper(), 'Heat Exchanger Latent Effectiveness']
+        return HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible
 
     @classmethod
     def _get_design_limits(cls, zone, zone_size, load_name):

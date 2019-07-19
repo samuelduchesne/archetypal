@@ -1,13 +1,11 @@
-import math
 import os
 import io
+import os
 
 import pytest
 
-from path import Path
 from archetypal import convert_idf_to_trnbuild, parallel_process, \
     trnbuild_idf, copy_file, load_idf, settings, choose_window
-
 # Function round to hundreds
 from archetypal.trnsys import _assert_files, _load_idf_file_and_clean_names, \
     _get_idf_objects, _get_constr_list, _order_objects, _get_schedules, \
@@ -15,7 +13,8 @@ from archetypal.trnsys import _assert_files, _load_idf_file_and_clean_names, \
     _write_building, _add_change_adj_surf, _write_location_geomrules, \
     _is_coordSys_world, _change_relative_coords, _get_ground_vertex, \
     _write_zone_buildingSurf_fenestrationSurf, _write_constructions, \
-    _write_constructions_end, _write_materials, _write_gains, _write_schedules, \
+    _write_constructions_end, _write_materials, _write_gains, \
+    _write_schedules, \
     _write_window, _write_winPool, _save_t3d
 
 
@@ -44,7 +43,8 @@ class TestsConvert():
 
         yield idf, file, window_filepath, trnsidf_exe, template_d18, kwargs_dict
 
-    def test_load_idf_file_and_clean_names(self, config, converttest):
+    def test_load_idf_file_and_clean_names(self, config,
+                                           converttest):
         idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
         log_clear_names = False
         idf_2 = _load_idf_file_and_clean_names(idf_file, log_clear_names)
@@ -66,8 +66,10 @@ class TestsConvert():
 
     def test_write_version_and_building(self, config, converttest):
         idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, \
-        globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, \
+        buildingSurfs, buildings, constructions, equipments, \
+        fenestrationSurfs, \
+        globGeomRules, lights, locations, materialAirGap, materialNoMass, \
+        materials, \
         peoples, versions, zones = _get_idf_objects(idf)
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
         _write_version(lines, versions)
@@ -80,8 +82,10 @@ class TestsConvert():
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, \
-        globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, \
+        buildingSurfs, buildings, constructions, equipments, \
+        fenestrationSurfs, \
+        globGeomRules, lights, locations, materialAirGap, materialNoMass, \
+        materials, \
         peoples, versions, zones = _get_idf_objects(idf)
 
         # Get all construction EXCEPT fenestration ones
@@ -135,7 +139,8 @@ class TestsConvert():
         # region Write WINDOWS chosen by the user (from Berkeley lab library) in
         # lines (T3D)
         # Get window from library
-        # window = (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
+        # window = (win_id, description, design, u_win, shgc_win, t_sol_win,
+        # rf_sol,
         #                 t_vis_win, lay_win, width, window_bunches[win_id],
         #                 and maybe tolerance)
         win_u_value = kwargs.get('u_value', 2.2)
@@ -158,8 +163,10 @@ class TestsConvert():
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, \
-        globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, \
+        buildingSurfs, buildings, constructions, equipments, \
+        fenestrationSurfs, \
+        globGeomRules, lights, locations, materialAirGap, materialNoMass, \
+        materials, \
         peoples, versions, zones = _get_idf_objects(idf)
 
         # Write LAYER from IDF to lines (T3D)
@@ -172,8 +179,10 @@ class TestsConvert():
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, \
-        globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, \
+        buildingSurfs, buildings, constructions, equipments, \
+        fenestrationSurfs, \
+        globGeomRules, lights, locations, materialAirGap, materialNoMass, \
+        materials, \
         peoples, versions, zones = _get_idf_objects(idf)
 
         # Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
@@ -221,7 +230,8 @@ def test_trnbuild_from_idf(config):
 
     file = idf_file[2]
     convert_idf_to_trnbuild(idf_file=file, window_lib=window_filepath,
-                            template="tests/input_data/trnsys/NewFileTemplate.d18",
+                            template="tests/input_data/trnsys/NewFileTemplate"
+                                     ".d18",
                             trnsidf_exe='docker/trnsidf/trnsidf.exe',
                             **kwargs_dict)
 

@@ -21,7 +21,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
     def __init__(self, CoolingCoeffOfPerf=None, CoolingLimitType='NoLimit',
                  CoolingSetpoint=26, EconomizerType='NoEconomizer',
                  HeatRecoveryEfficiencyLatent=0.65,
-                 HeatRecoveryEfficiencySensible=0.7, HeatRecoveryType=None,
+                 HeatRecoveryEfficiencySensible=0.7, HeatRecoveryType='None',
                  HeatingCoeffOfPerf=None, HeatingLimitType='NoLimit',
                  HeatingSetpoint=20, IsCoolingOn=True, IsHeatingOn=True,
                  IsMechVentOn=True, MaxCoolFlow=100, MaxCoolingCapacity=100,
@@ -262,40 +262,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             zone, zone_size, load_name='Cooling')
 
         # Heat recovery system
-        heat_recovery_objects = zone.idf.getiddgroupdict()['Heat Recovery']
-        # If Heat recovery is not used
-        for object in heat_recovery_objects:
-            if not zone.idf.idfobjects[object.upper()]:
-                HeatRecoveryType = None
-                HeatRecoveryEfficiencyLatent = 0
-                HeatRecoveryEfficiencySensible = 0
-            else:
-                # HeatExchanger:AirToAir:FlatPlate
-                if object.upper() == 'HeatExchanger:AirToAir:FlatPlate'.upper():
-                    obj = zone.idf.idfobjects[object.upper()][0]
-                    HeatRecoveryEfficiencySensible = (
-                                                             obj.Nominal_Supply_Air_Outlet_Temperature - obj.Nominal_Supply_Air_Inlet_Temperature) / (
-                                                             obj.Nominal_Secondary_Air_Inlet_Temperature - obj.Nominal_Supply_Air_Inlet_Temperature)
-                    # Hypotheses: HeatRecoveryEfficiencySensible - 0.05
-                    HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencySensible - 0.05
-                    break
-                # HeatExchanger:AirToAir:SensibleAndLatent
-                elif object.upper() == 'HeatExchanger:AirToAir:SensibleAndLatent'.upper():
-                    obj = zone.idf.idfobjects[object.upper()].list2[0]
-                    HeatRecoveryEfficiencySensible = obj[4]
-                    HeatRecoveryEfficiencyLatent = obj[5]
-                    break
-                # HeatExchanger:Dessicant:BalancedFlow
-                elif object.upper() == 'HeatExchanger:Desiccant:BalancedFlow'.upper():
-                    # Default values
-                    HeatRecoveryEfficiencySensible = 0.7
-                    HeatRecoveryEfficiencySensible = 0.65
-                    break
-                else:
-                    msg = 'Heat exchanger object "{}" is not implemented'.format(
-                        object)
-                    raise NotImplementedError(msg)
-        HeatRecoveryType = 'Enthalpy'  # todo: HOW TO CHOOSE If 'Enthalpy' ou 'Sensible' ??!
+        HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible, \
+        HeatRecoveryType = cls._get_heat_recovery(zone)
 
         # Mechanical Ventilation
         # Iterate on 'Controller:MechanicalVentilation' objects to find the
@@ -386,6 +354,50 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                      MinFreshAirPerPerson=MinFreshAirPerPerson)
 
         return z_cond
+
+    @classmethod
+    def _get_heat_recovery(cls, zone):
+        heat_recovery_objects = zone.idf.getiddgroupdict()['Heat Recovery']
+        # If Heat recovery is not used
+        for object in heat_recovery_objects:
+            if not zone.idf.idfobjects[object.upper()]:
+                HeatRecoveryType = 'None'
+                HeatRecoveryEfficiencyLatent = 0
+                HeatRecoveryEfficiencySensible = 0
+            else:
+                # HeatExchanger:AirToAir:FlatPlate
+                if object.upper() == 'HeatExchanger:AirToAir:FlatPlate'.upper():
+                    obj = zone.idf.idfobjects[object.upper()][0]
+                    HeatRecoveryEfficiencySensible = (
+                                                             obj.Nominal_Supply_Air_Outlet_Temperature - obj.Nominal_Supply_Air_Inlet_Temperature) / (
+                                                             obj.Nominal_Secondary_Air_Inlet_Temperature - obj.Nominal_Supply_Air_Inlet_Temperature)
+                    # Hypotheses: HeatRecoveryEfficiencySensible - 0.05
+                    HeatRecoveryEfficiencyLatent = \
+                        HeatRecoveryEfficiencySensible - 0.05
+                    break
+                # HeatExchanger:AirToAir:SensibleAndLatent
+                elif object.upper() == \
+                        'HeatExchanger:AirToAir:SensibleAndLatent'.upper():
+                    obj = zone.idf.idfobjects[object.upper()].list2[0]
+                    HeatRecoveryEfficiencySensible = obj[4]
+                    HeatRecoveryEfficiencyLatent = obj[5]
+                    break
+                # HeatExchanger:Dessicant:BalancedFlow
+                elif object.upper() == \
+                        'HeatExchanger:Desiccant:BalancedFlow'.upper():
+                    # Default values
+                    HeatRecoveryEfficiencySensible = 0.7
+                    HeatRecoveryEfficiencySensible = 0.65
+                    break
+                else:
+                    msg = 'Heat exchanger object "{}" is not ' \
+                          'implemented'.format(
+                        object)
+                    raise NotImplementedError(msg)
+        HeatRecoveryType = 'Enthalpy'  # todo: HOW TO CHOOSE If 'Enthalpy' ou
+        # 'Sensible' ??!
+        return HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible, \
+               HeatRecoveryType
 
     @classmethod
     def _get_design_limits(cls, zone, zone_size, load_name):

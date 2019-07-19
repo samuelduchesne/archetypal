@@ -214,35 +214,13 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         Args:
             zone (archetypal.template.zone.Zone): zone to gets information from
         """
+        # First create placeholder object.
         name = zone.Name + "_ZoneConditioning"
+        z_cond = cls(Name=name, zone=zone)
 
-        IsCoolingOn, \
-        IsHeatingOn, \
-        cooling_setpoint = cls._get_thermostat_setpoints(zone)
+        z_cond._set_thermostat_setpoints(zone)
 
-        # COPs (heating and cooling)
-        # Heating
-        heating_in_list = ['Heating:Electricity', 'Heating:Gas',
-                           'Heating:DistrictHeating']
-        heating_cop = cls._get_cop(zone, energy_in_list=heating_in_list,
-                                   energy_out_variable_name='Air System Total '
-                                                            'Heating Energy')
-        # Cooling
-        cooling_in_list = ['Cooling:Electricity', 'Cooling:Gas',
-                           'Cooling:DistrictCooling']
-        cooling_cop = cls._get_cop(zone, energy_in_list=cooling_in_list,
-                                   energy_out_variable_name='Air System Total '
-                                                            'Cooling Energy')
-
-        # Capacity limits (heating and cooling)
-        zone_size = zone.sql['ZoneSizes'][
-            zone.sql['ZoneSizes']['ZoneName'] == zone.Name.upper()]
-        # Heating
-        HeatingLimitType, heating_cap, heating_flow = cls._get_design_limits(
-            zone, zone_size, load_name='Heating')
-        # Cooling
-        CoolingLimitType, cooling_cap, cooling_flow = cls._get_design_limits(
-            zone, zone_size, load_name='Cooling')
+        z_cond._set_zone_cops(zone)
 
         # Heat recovery system
         HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible, \
@@ -324,59 +302,77 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 EconomizerType = 'DifferentialEnthalpy'
                 break
 
-        z_cond = cls(Name=name, zone=zone, CoolingCoeffOfPerf=cooling_cop,
-                     CoolingLimitType=CoolingLimitType,
-                     CoolingSetpoint=cooling_setpoint,
-                     EconomizerType=EconomizerType,
-                     HeatRecoveryEfficiencyLatent=HeatRecoveryEfficiencyLatent,
-                     HeatRecoveryEfficiencySensible=HeatRecoveryEfficiencySensible,
-                     HeatRecoveryType=HeatRecoveryType,
-                     HeatingCoeffOfPerf=heating_cop,
-                     HeatingLimitType=HeatingLimitType,
-                     HeatingSetpoint=cooling_setpoint, IsCoolingOn=IsCoolingOn,
-                     IsHeatingOn=IsHeatingOn,
-                     IsMechVentOn=IsMechVentOn, MaxCoolFlow=cooling_flow,
-                     MaxCoolingCapacity=cooling_cap,
-                     MaxHeatFlow=heating_flow, MaxHeatingCapacity=heating_cap,
-                     MinFreshAirPerArea=MinFreshAirPerArea,
-                     MinFreshAirPerPerson=MinFreshAirPerPerson,
-                     comment=comment)
-
         return z_cond
 
-    @classmethod
-    def _get_thermostat_setpoints(cls, zone):
-        """Get the thermostat settings for this zone.
+    def _set_zone_cops(self, zone):
+        """
+        Args:
+            zone (Zone):
+        """
+        # COPs (heating and cooling)
+        # Heating
+        heating_in_list = ['Heating:Electricity', 'Heating:Gas',
+                           'Heating:DistrictHeating']
+        heating_cop = self._get_cop(zone, energy_in_list=heating_in_list,
+                                    energy_out_variable_name='Air System Total '
+                                                             'Heating Energy')
+        # Cooling
+        cooling_in_list = ['Cooling:Electricity', 'Cooling:Gas',
+                           'Cooling:DistrictCooling']
+        cooling_cop = self._get_cop(zone, energy_in_list=cooling_in_list,
+                                    energy_out_variable_name='Air System Total '
+                                                             'Cooling Energy')
+        # Capacity limits (heating and cooling)
+        zone_size = zone.sql['ZoneSizes'][
+            zone.sql['ZoneSizes']['ZoneName'] == zone.Name.upper()]
+        # Heating
+        HeatingLimitType, heating_cap, heating_flow = self._get_design_limits(
+            zone, zone_size, load_name='Heating')
+        # Cooling
+        CoolingLimitType, cooling_cap, cooling_flow = self._get_design_limits(
+            zone, zone_size, load_name='Cooling')
+
+        self.HeatingLimitType = HeatingLimitType
+        self.MaxHeatingCapacity = heating_cap
+        self.MaxHeatFlow = heating_flow
+        self.CoolingLimitType = CoolingLimitType
+        self.MaxCoolingCapacity = cooling_cap
+        self.MaxCoolFlow = cooling_flow
+
+        self.CoolingCoeffOfPerf = cooling_cop
+        self.HeatingCoeffOfPerf = heating_cop
+
+    def _set_thermostat_setpoints(self, zone):
+        """Sets the thermostat settings for this zone.
+
+        Thermostat Setpoints:
+            - IsCoolingOn (bool): Whether or not Cooling is needed.
+            - IsHeatingOn (bool): Whether or not Heating is needed.
+            - CoolingSetpoint (float):
+            - HeatingSetpoint (float):
 
         Args:
             zone (Zone): The zone object.
-
-        Returns:
-            3-tuple: Thermostat Setpoints:
-                - IsCoolingOn (bool): Whether or not Cooling is needed.
-                - IsHeatingOn (bool): Whether or not Heating is needed.
-                - CoolingSetpoint (float):
-                - HeatingSetpoint (float):
         """
-        # Thermostat setpoints
+        # Set Thermostat set points
         # Heating setpoint
-        HeatingSetpoint = cls._get_setpoint(zone,
-                                            'Zone Thermostat Heating '
-                                            'Setpoint Temperature')
+        self.HeatingSetpoint = self._get_setpoint(zone,
+                                                  'Zone Thermostat Heating '
+                                                  'Setpoint Temperature')
         # Cooling setpoint
-        CoolingSetpoint = cls._get_setpoint(zone,
-                                            'Zone Thermostat Cooling '
-                                            'Setpoint Temperature')
+        self.CoolingSetpoint = self._get_setpoint(zone,
+                                                  'Zone Thermostat Cooling '
+                                                  'Setpoint Temperature')
+
         # If set point equal to zero, conditioning is off.
-        if HeatingSetpoint == 0:
-            IsHeatingOn = False
+        if self.HeatingSetpoint == 0:
+            self.IsHeatingOn = False
         else:
-            IsHeatingOn = True
-        if CoolingSetpoint == 0:
-            IsCoolingOn = False
+            self.IsHeatingOn = True
+        if self.CoolingSetpoint == 0:
+            self.IsCoolingOn = False
         else:
-            IsCoolingOn = True
-        return IsCoolingOn, IsHeatingOn, CoolingSetpoint, HeatingSetpoint
+            self.IsCoolingOn = True
 
     @classmethod
     def _get_heat_recovery(cls, zone):
@@ -538,8 +534,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                           3)
         return cop
 
-    @classmethod
-    def _get_setpoint(cls, zone, variable_output_name):
+    def _get_setpoint(self, zone, variable_output_name):
         """Gets temperature set points from sql EnergyPlus output
 
         Args:

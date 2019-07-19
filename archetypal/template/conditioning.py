@@ -265,14 +265,14 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         heat_recovery_objects = zone.idf.getiddgroupdict()['Heat Recovery']
         # If Heat recovery is not used
         for object in heat_recovery_objects:
-            if not zone.idf.idfobjects[object.upper()].list1:
+            if not zone.idf.idfobjects[object.upper()]:
                 HeatRecoveryType = None
                 HeatRecoveryEfficiencyLatent = 0
                 HeatRecoveryEfficiencySensible = 0
             else:
                 # HeatExchanger:AirToAir:FlatPlate
                 if object.upper() == 'HeatExchanger:AirToAir:FlatPlate'.upper():
-                    obj = zone.idf.idfobjects[object.upper()].list1[0]
+                    obj = zone.idf.idfobjects[object.upper()][0]
                     HeatRecoveryEfficiencySensible = (
                                                              obj.Nominal_Supply_Air_Outlet_Temperature - obj.Nominal_Supply_Air_Inlet_Temperature) / (
                                                              obj.Nominal_Secondary_Air_Inlet_Temperature - obj.Nominal_Supply_Air_Inlet_Temperature)
@@ -300,8 +300,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         # Mechanical Ventilation
         # Iterate on 'Controller:MechanicalVentilation' objects to find the
         # 'DesignSpecifactionOutdoorAirName' for the zone
-        if zone.idf.idfobjects[
-            'Controller:MechanicalVentilation'.upper()].list1 == []:
+        if not zone.idf.idfobjects['Controller:MechanicalVentilation'.upper()]:
             IsMechVentOn = False
             MinFreshAirPerPerson = 0
             MinFreshAirPerArea = 0

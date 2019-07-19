@@ -8,6 +8,7 @@
 import collections
 
 from archetypal import float_round, ReportData
+from archetypal.tabulardata import TabularData
 from archetypal.template import UmiBase, Unique
 
 
@@ -222,17 +223,61 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
         z_cond._set_zone_cops(zone)
 
-        # Heat recovery system
-        HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible, \
-        HeatRecoveryType, comment = cls._get_heat_recovery(zone)
+        z_cond._set_heat_recovery(zone)
 
-        # Mechanical Ventilation
-        # Iterate on 'Controller:MechanicalVentilation' objects to find the
-        # 'DesignSpecifactionOutdoorAirName' for the zone
+        z_cond._set_mechanical_ventilation(zone)
+
+        z_cond._set_economizer(zone)
+
+        return z_cond
+
+    def _set_economizer(self, zone):
+        """Set economizer parameters
+
+        Todo:
+            - Here EconomizerType is for the entire building, try to do it for
+              each zone.
+
+        Args:
+            zone (Zone): The zone object.
+        """
+        # Economizer
+        controllers_in_idf = zone.idf.idfobjects['Controller:OutdoorAir'.upper()]
+        self.EconomizerType = 'NoEconomizer'  # default value
+
+        for object in controllers_in_idf:
+            if object.Economizer_Control_Type == 'NoEconomizer':
+                self.EconomizerType = 'NoEconomizer'
+            elif object.Economizer_Control_Type == 'DifferentialEnthalpy':
+                self.EconomizerType = 'DifferentialEnthalpy'
+            elif object.Economizer_Control_Type == 'DifferentialDryBulb':
+                self.EconomizerType = 'DifferentialDryBulb'
+            elif object.Economizer_Control_Type == 'FixedDryBulb':
+                self.EconomizerType = 'DifferentialDryBulb'
+            elif object.Economizer_Control_Type == 'FixedEnthalpy':
+                self.EconomizerType = 'DifferentialEnthalpy'
+            elif object.Economizer_Control_Type == 'ElectronicEnthalpy':
+                self.EconomizerType = 'DifferentialEnthalpy'
+            elif object.Economizer_Control_Type == 'FixedDewPointAndDryBulb':
+                self.EconomizerType = 'DifferentialDryBulb'
+            elif object.Economizer_Control_Type == \
+                    'DifferentialDryBulbAndEnthalpy':
+                self.EconomizerType = 'DifferentialEnthalpy'
+
+    def _set_mechanical_ventilation(self, zone):
+        """Iterate on 'Controller:MechanicalVentilation' objects to find the
+        'DesignSpecifactionOutdoorAirName' for the zone.
+
+        Todo:
+            - Get mechanical sizing by zone.
+
+        Args:
+            zone (Zone): The zone object.
+        """
         if not zone.idf.idfobjects['Controller:MechanicalVentilation'.upper()]:
             IsMechVentOn = False
+            MinFreshAirPerArea = 0 # use defaults
             MinFreshAirPerPerson = 0
-            MinFreshAirPerArea = 0
         else:
             design_spe_outdoor_air_name = ''
             for object in zone.idf.idfobjects[
@@ -246,8 +291,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                         indice_zone + 1]
                     break
             # If 'DesignSpecifactionOutdoorAirName', MechVent is ON, and gets
-            # the
-            # minimum fresh air (per person and area)
+            # the minimum fresh air (per person and area)
             if design_spe_outdoor_air_name != '':
                 IsMechVentOn = True
                 design_spe_outdoor_air = zone.idf.getobject(
@@ -272,44 +316,20 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 MinFreshAirPerPerson = 0
                 MinFreshAirPerArea = 0
 
-        # Economizer
-        # Todo: Here EconomizerType is for the entire building, try to do it
-        #  for each zone
-        EconomizerType = 'NoEconomizer'
-        for object in zone.idf.idfobjects['Controller:OutdoorAir'.upper()]:
-            if object.Economizer_Control_Type == 'NoEconomizer':
-                continue
-            elif object.Economizer_Control_Type == 'DifferentialEnthalpy':
-                EconomizerType = 'DifferentialEnthalpy'
-                break
-            elif object.Economizer_Control_Type == 'DifferentialDryBulb':
-                EconomizerType = 'DifferentialDryBulb'
-                break
-            elif object.Economizer_Control_Type == 'FixedDryBulb':
-                EconomizerType = 'DifferentialDryBulb'
-                break
-            elif object.Economizer_Control_Type == 'FixedEnthalpy':
-                EconomizerType = 'DifferentialEnthalpy'
-                break
-            elif object.Economizer_Control_Type == 'ElectronicEnthalpy':
-                EconomizerType = 'DifferentialEnthalpy'
-                break
-            elif object.Economizer_Control_Type == 'FixedDewPointAndDryBulb':
-                EconomizerType = 'DifferentialDryBulb'
-                break
-            elif object.Economizer_Control_Type == \
-                    'DifferentialDryBulbAndEnthalpy':
-                EconomizerType = 'DifferentialEnthalpy'
-                break
-
-        return z_cond
+        self.IsMechVentOn = IsMechVentOn
+        self.MinFreshAirPerArea = MinFreshAirPerArea
+        self.MinFreshAirPerPerson = MinFreshAirPerPerson
 
     def _set_zone_cops(self, zone):
         """
+        Todo:
+            - Make this method zone-independent.
+
         Args:
             zone (Zone):
         """
         # COPs (heating and cooling)
+
         # Heating
         heating_in_list = ['Heating:Electricity', 'Heating:Gas',
                            'Heating:DistrictHeating']
@@ -374,22 +394,19 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         else:
             self.IsCoolingOn = True
 
-    @classmethod
-    def _get_heat_recovery(cls, zone):
-        """Returns the heat recovery parameters for this zone.
+    def _set_heat_recovery(self, zone):
+        """Sets the heat recovery parameters for this zone.
+
+        Heat Recovery Parameters:
+            - HeatRecoveryEfficiencyLatent (float): The latent heat recovery
+              effectiveness.
+            - HeatRecoveryEfficiencySensible (float): The sensible heat recovery
+              effectiveness.
+            - HeatRecoveryType (str): 'None', 'Sensible' or 'Enthalpy'.
+            - comment (str): A comment to append to the class comment attribute.
 
         Args:
             zone (Zone): The Zone object.
-
-        Returns:
-            4-tuple: heat recovery parameters:
-                - HeatRecoveryEfficiencyLatent (float): The latent heat recovery
-                  effectiveness.
-                - HeatRecoveryEfficiencySensible (float): The sensible heat
-                  recovery effectiveness.
-                - HeatRecoveryType (str): 'None', 'Sensible' or 'Enthalpy'.
-                - comment (str): A comment to append to the class comment
-                  attribute.
         """
         from itertools import chain
         # get possible heat recovery objects from idd
@@ -431,7 +448,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
                 HeatRecoveryEfficiencyLatent, \
                 HeatRecoveryEfficiencySensible \
-                    = cls._get_recoverty_effectiveness(object, zone)
+                    = self._get_recoverty_effectiveness(object, zone)
                 HeatRecoveryType = 'Enthalpy'
 
                 comment = 'HeatRecoveryEfficiencies were calculated using ' \
@@ -456,11 +473,13 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                       'implemented'.format(object)
                 raise NotImplementedError(msg)
 
-        return HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible, \
-               HeatRecoveryType, comment
+        self.HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencyLatent
+        self.HeatRecoveryEfficiencySensible = HeatRecoveryEfficiencySensible
+        self.HeatRecoveryType = HeatRecoveryType
+        self.Comments += comment
 
-    @classmethod
-    def _get_recoverty_effectiveness(cls, object, zone):
+    @staticmethod
+    def _get_recoverty_effectiveness(object, zone):
         """
         Args:
             object:

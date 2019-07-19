@@ -48,7 +48,7 @@ class UmiBase(object):
                  Name,
                  idf=None,
                  Category='Uncategorized',
-                 Comments=None,
+                 Comments='',
                  DataSource=None,
                  sql=None,
                  **kwargs):

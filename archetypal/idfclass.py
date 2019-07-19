@@ -117,7 +117,7 @@ class IDF(geomeppy.IDF):
             **kwargs: keyword arguments to pass to other functions.
 
         Returns:
-            eppy.modeleditor.IDF: the IDF object
+            EpBunch: the object
         """
         # get list of objects
         objs = self.idfobjects[ep_object]  # a list

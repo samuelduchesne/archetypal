@@ -245,6 +245,10 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         Returns:
             (DomesticHotWaterSetting): a new combined object
         """
+        if self is None:
+            return other
+        if other is None:
+            return self
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
             msg = 'Cannot combine %s with %s' % (self.__class__.__name__,

@@ -216,25 +216,9 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         name = zone.Name + "_ZoneConditioning"
 
-        # Thermostat setpoints
-        # Heating setpoint
-        heating_setpoint = cls._get_setpoint(zone,
-                                             'Zone Thermostat Heating '
-                                             'Setpoint Temperature')
-        # Cooling setpoint
-        cooling_setpoint = cls._get_setpoint(zone,
-                                             'Zone Thermostat Cooling '
-                                             'Setpoint Temperature')
-
-        # If setpoint equal to zero, conditionning is off
-        if heating_setpoint == 0:
-            IsHeatingOn = False
-        else:
-            IsHeatingOn = True
-        if cooling_setpoint == 0:
-            IsCoolingOn = False
-        else:
-            IsCoolingOn = True
+        IsCoolingOn, \
+        IsHeatingOn, \
+        cooling_setpoint = cls._get_thermostat_setpoints(zone)
 
         # COPs (heating and cooling)
         # Heating
@@ -359,6 +343,40 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                      comment=comment)
 
         return z_cond
+
+    @classmethod
+    def _get_thermostat_setpoints(cls, zone):
+        """Get the thermostat settings for this zone.
+
+        Args:
+            zone (Zone): The zone object.
+
+        Returns:
+            3-tuple: Thermostat Setpoints:
+                - IsCoolingOn (bool): Whether or not Cooling is needed.
+                - IsHeatingOn (bool): Whether or not Heating is needed.
+                - CoolingSetpoint (float):
+                - HeatingSetpoint (float):
+        """
+        # Thermostat setpoints
+        # Heating setpoint
+        HeatingSetpoint = cls._get_setpoint(zone,
+                                            'Zone Thermostat Heating '
+                                            'Setpoint Temperature')
+        # Cooling setpoint
+        CoolingSetpoint = cls._get_setpoint(zone,
+                                            'Zone Thermostat Cooling '
+                                            'Setpoint Temperature')
+        # If set point equal to zero, conditioning is off.
+        if HeatingSetpoint == 0:
+            IsHeatingOn = False
+        else:
+            IsHeatingOn = True
+        if CoolingSetpoint == 0:
+            IsCoolingOn = False
+        else:
+            IsCoolingOn = True
+        return IsCoolingOn, IsHeatingOn, CoolingSetpoint, HeatingSetpoint
 
     @classmethod
     def _get_heat_recovery(cls, zone):
@@ -522,7 +540,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     @classmethod
     def _get_setpoint(cls, zone, variable_output_name):
-        """Gets temperature setpoints from sql EnergyPlus output
+        """Gets temperature set points from sql EnergyPlus output
 
         Args:
             zone (archetypal.template.zone.Zone): zone to gets information from
@@ -530,15 +548,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 zone setpoint (e.g. 'Zone Thermostat Heating Setpoint
                 Temperature')
         """
-        setpoints_idx = zone.sql['ReportDataDictionary'][
-            zone.sql['ReportDataDictionary']['Name'] == variable_output_name]
-        setpoint_idx = setpoints_idx[
-            setpoints_idx['KeyValue'].str.contains(zone.Name.upper())].index
-        setpoint = float_round(zone.sql['ReportData'][zone.sql['ReportData'][
-                                                          'ReportDataDictionaryIndex'] ==
-                                                      setpoint_idx.tolist()[0]][
-                                   'Value'].mean(), 3)
-        return setpoint
+        # Load the ReportData and filter *variable_output_name* and group by
+        # zone name (*KeyValue*). Return annual average.
+        setpoints = ReportData.from_sql(zone.sql).filter_report_data(
+            name=variable_output_name).groupby('KeyValue').Value.mean()
+        return setpoints.loc[zone.Name.upper()]
 
     def combine(self, other):
         """Combine two ZoneConditioning objects together.

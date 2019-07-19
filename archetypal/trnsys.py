@@ -144,10 +144,6 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
 
     # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf)
     # from IDF to lines (T3D)
-    # Get line number where to write
-    variableDictNum = checkStr(lines,
-                               'ALL OBJECTS IN CLASS: '
-                               'OUTPUT:VARIABLEDICTIONARY')
 
     # Get all surfaces having Outside boundary condition with the ground.
     # To be used to find the window's slopes
@@ -158,9 +154,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
                                                                coordSys,
                                                                fenestrationSurfs,
                                                                idf, lines,
-                                                               n_ground,
-                                                               variableDictNum,
-                                                               zones)
+                                                               n_ground, zones)
     # endregion
 
     # region Write CONSTRUCTION from IDF to lines (T3D)
@@ -1101,7 +1095,7 @@ def trnbuild_idf(idf_file, output_folder=None, template=None, dck=False,
 
 def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys,
                                               fenestrationSurfs, idf, lines,
-                                              n_ground, variableDictNum, zones):
+                                              n_ground, zones):
     """Does several actions on the zones, fenestration and building surfaces.
     Then, writes zone, fenestration and building surfaces information in lines.
 
@@ -1143,11 +1137,13 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys,
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
         n_ground (Vector 3D): Normal vector of the ground surface
-        variableDictNum (int): Line number where to write the zones,
-            fenestration and building surfaces
         zones (idf_MSequence): IDF object from idf.idfobjects(). List of zones
             ("ZONES" in the IDF).
     """
+    # Get line number where to write
+    variableDictNum = checkStr(lines,
+                               'ALL OBJECTS IN CLASS: '
+                               'OUTPUT:VARIABLEDICTIONARY')
     # Initialize list of window's slopes
     count_slope = 0
     win_slope_dict = {}

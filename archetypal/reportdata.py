@@ -46,6 +46,11 @@ class ReportData(pd.DataFrame):
     def schedules(self):
         return self.sorted_values(key_value='Schedule Value')
 
+    @property
+    def df(self):
+        """Returns the DataFrame of the ReportData"""
+        return pd.DataFrame(self)
+
     def heating_load(self, normalize=False, sort=False, ascending=False,
                      concurrent_sort=False):
         """Returns the aggragated 'Heating:Electricity', 'Heating:Gas' and

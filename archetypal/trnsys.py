@@ -481,18 +481,18 @@ def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
         if not os.path.exists(output_folder):
             os.mkdir(output_folder)
 
+    if not template:
+        template = settings.path_template_d18
+
+    if not os.path.isfile(template):
+        raise IOError("template file not found")
+
     if not trnsidf_exe:
         trnsidf_exe = os.path.join(settings.trnsys_default_folder,
                                    r"Building\trnsIDF\trnsidf.exe")
 
     if not os.path.isfile(trnsidf_exe):
         raise IOError("trnsidf.exe not found")
-
-    if not template:
-        template = settings.path_template_d18
-
-    if not os.path.isfile(template):
-        raise IOError("template file not found")
 
     return idf_file, window_lib, output_folder, trnsidf_exe, template
 

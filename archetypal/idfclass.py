@@ -1278,13 +1278,13 @@ def get_sqlite_report(report_file, report_tables=None):
         import numpy as np
         # create database connection with sqlite3
         with sqlite3.connect(report_file) as conn:
-
             # empty dict to hold all DataFrames
             all_tables = {}
             # Iterate over all tables in the report_tables list
             for table in report_tables:
                 try:
-                    # Try regular read, could fail if wrong encoding
+                    # Try regular str read, could fail if wrong encoding
+                    conn.text_factory = str
                     df = pd.read_sql_query(
                         "select * from {};".format(table), conn,
                         index_col=report_tables[table]['PrimaryKey'],

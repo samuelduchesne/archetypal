@@ -28,13 +28,13 @@ class TestsConvert():
                                            "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
                                            "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
                                            "5ZoneGeometryTransform.idf"])
-    def converttest(self, config, request):
+    def converttest(self, config, fresh_start, request):
         file = os.path.join('tests', 'input_data', 'trnsys', request.param)
         window_file = 'W74-lib.dat'
         template_dir = os.path.join('archetypal', 'templates')
         window_filepath = os.path.join(template_dir, window_file)
         template_d18 = None
-        trnsidf_exe =  None # 'docker/trnsidf/trnsidf.exe'
+        trnsidf_exe = None  # 'docker/trnsidf/trnsidf.exe'
 
         # prepare args (key=value). Key is a unique id for the runs (here the
         # file basename is used). Value is a dict of the function arguments

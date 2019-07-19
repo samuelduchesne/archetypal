@@ -146,6 +146,13 @@ Users can chose to return a combination of flags
     usage. Usually used to create urban building model by assigning different archetypes to represent at best the building
     stock we want to model.
 
+Equivalence between idf object names when converting a file
+-----------------------------------------------------------
+.. csv-table:: Equivalences
+    :file: ./_static/name_equivalence.csv
+    :header-rows: 1
+
+
 .. _EnergyPlus: https://energyplus.net
 .. _TRNBuild: http://www.trnsys.com/features/suite-of-tools.php
 .. _NECB: https://github.com/canmet-energy/necb_2011_reference_buildings/tree/master/osm_files

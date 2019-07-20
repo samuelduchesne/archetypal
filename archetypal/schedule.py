@@ -35,7 +35,7 @@ class Schedule(object):
                 ignored.
             base_year (int): The base year of the schedule. Defaults to 2018
                 since the first day of that year is a Monday.
-            schType (str): The EneryPlus schedule object from which this
+            schType (str): The EnergyPlus schedule object from which this
             **kwargs:
         """
         try:
@@ -875,7 +875,7 @@ class Schedule(object):
                 ep_object='Schedule:Day:Hourly'.upper(),
                 save=False,
                 **dict(Name=name,
-                       Schedule_Type_Limits_Name=self.schType,
+                       Schedule_Type_Limits_Name=self.schTypeLimitsName,
                        **{'Hour_{}'.format(i + 1): unique_day[i]
                           for i in range(24)})
             )

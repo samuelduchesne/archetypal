@@ -8,8 +8,7 @@
 import collections
 
 from archetypal import float_round, ReportData
-from archetypal.tabulardata import TabularData
-from archetypal.template import UmiBase, Unique
+from archetypal.template import UmiBase, Unique, UmiSchedule
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
@@ -242,7 +241,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             zone (Zone): The zone object.
         """
         # Economizer
-        controllers_in_idf = zone.idf.idfobjects['Controller:OutdoorAir'.upper()]
+        controllers_in_idf = zone.idf.idfobjects[
+            'Controller:OutdoorAir'.upper()]
         self.EconomizerType = 'NoEconomizer'  # default value
 
         for object in controllers_in_idf:
@@ -276,8 +276,9 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         if not zone.idf.idfobjects['Controller:MechanicalVentilation'.upper()]:
             IsMechVentOn = False
-            MinFreshAirPerArea = 0 # use defaults
+            MinFreshAirPerArea = 0  # use defaults
             MinFreshAirPerPerson = 0
+            MechVentSchedule = UmiSchedule.constant_schedule(idf=zone.idf)
         else:
             design_spe_outdoor_air_name = ''
             for object in zone.idf.idfobjects[
@@ -289,6 +290,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                             0]
                     design_spe_outdoor_air_name = object.fieldvalues[
                         indice_zone + 1]
+                    MechVentSchedule = UmiSchedule(
+                        sch_name=object.Availability_Schedule_Name)
                     break
             # If 'DesignSpecifactionOutdoorAirName', MechVent is ON, and gets
             # the minimum fresh air (per person and area)
@@ -315,10 +318,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 IsMechVentOn = False
                 MinFreshAirPerPerson = 0
                 MinFreshAirPerArea = 0
+                MechVentSchedule = UmiSchedule.constant_schedule(idf=zone.idf)
 
         self.IsMechVentOn = IsMechVentOn
         self.MinFreshAirPerArea = MinFreshAirPerArea
         self.MinFreshAirPerPerson = MinFreshAirPerPerson
+        self.MechVentSchedule = MechVentSchedule
 
     def _set_zone_cops(self, zone):
         """
@@ -375,14 +380,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             zone (Zone): The zone object.
         """
         # Set Thermostat set points
-        # Heating setpoint
-        self.HeatingSetpoint = self._get_setpoint(zone,
-                                                  'Zone Thermostat Heating '
-                                                  'Setpoint Temperature')
-        # Cooling setpoint
-        self.CoolingSetpoint = self._get_setpoint(zone,
-                                                  'Zone Thermostat Cooling '
-                                                  'Setpoint Temperature')
+        # Heating and Cooling set points and schedules
+        self.HeatingSetpoint, \
+        self.HeatingSchedule, \
+        self.CoolingSetpoint, \
+        self.CoolingSchedule = self._get_setpoint_and_scheds(zone)
 
         # If set point equal to zero, conditioning is off.
         if self.HeatingSetpoint == 0:
@@ -553,8 +555,9 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                           3)
         return cop
 
-    def _get_setpoint(self, zone, variable_output_name):
-        """Gets temperature set points from sql EnergyPlus output
+    def _get_setpoint_and_scheds(self, zone):
+        """Gets temperature set points from sql EnergyPlus output and
+        associated schedules.
 
         Args:
             zone (archetypal.template.zone.Zone): zone to gets information from
@@ -564,9 +567,26 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # Load the ReportData and filter *variable_output_name* and group by
         # zone name (*KeyValue*). Return annual average.
-        setpoints = ReportData.from_sql(zone.sql).filter_report_data(
-            name=variable_output_name).groupby('KeyValue').Value.mean()
-        return setpoints.loc[zone.Name.upper()]
+        variable_output_name = 'Zone Thermostat Heating Setpoint Temperature'
+        h_array = ReportData.from_sql(zone.sql).filter_report_data(
+            name=variable_output_name, keyvalue=zone.Name.upper()).loc[:,
+                  ['TimeIndex', 'Value']].set_index('TimeIndex').Value.values
+        heating_sched = UmiSchedule.from_values(
+            sch_name=zone.Name + '_Heating_Schedule',
+            values=h_array,
+            Type='fraction',
+            idf=zone.idf)
+
+        variable_output_name = 'Zone Thermostat Cooling Setpoint Temperature'
+        c_array = ReportData.from_sql(zone.sql).filter_report_data(
+            name=variable_output_name, keyvalue=zone.Name.upper()).loc[:,
+                  ['TimeIndex', 'Value']].set_index('TimeIndex').Value.values
+        cooling_sched = UmiSchedule.from_values(
+            sch_name=zone.Name + '_Cooling_Schedule',
+            values=c_array,
+            Type='fraction',
+            idf=zone.idf)
+        return h_array.mean(), heating_sched, c_array.mean(), cooling_sched
 
     def combine(self, other):
         """Combine two ZoneConditioning objects together.

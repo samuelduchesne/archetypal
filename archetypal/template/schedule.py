@@ -8,6 +8,7 @@
 import collections
 
 import numpy as np
+
 from archetypal import Schedule
 from archetypal.template import UmiBase, Unique
 
@@ -37,6 +38,13 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             hourly_value=hourly_value,
             Name=Name,
             idf=idf, **kwargs)
+
+    @classmethod
+    def from_values(cls, sch_name, values, **kwargs):
+        return super(UmiSchedule, cls).from_values(sch_name=sch_name,
+                                                   values=values,
+                                                   Name=sch_name,
+                                                   **kwargs)
 
     def __add__(self, other):
         return self.combine(other)

@@ -11,14 +11,13 @@ import logging as lg
 import math
 import random
 
-import eppy.modeleditor
 import matplotlib.collections
 import matplotlib.colors
 import networkx
 import numpy as np
 from geomeppy.geom.polygons import Polygon3D
 
-from archetypal import object_from_idfs, log, save_and_show
+from archetypal import log, save_and_show
 from archetypal.template import Unique, UmiBase, ZoneConditioning, ZoneLoad, \
     VentilationSetting, DomesticHotWaterSetting, OpaqueConstruction, \
     WindowSetting
@@ -166,7 +165,8 @@ class Zone(UmiBase, metaclass=Unique):
 
         oc = []
         for surface in self._zonesurfaces:
-            # for surf_type in self.idf.idd_index['ref2names']['AllHeatTranSurfNames']:
+            # for surf_type in self.idf.idd_index['ref2names'][
+            # 'AllHeatTranSurfNames']:
             if surface.key.upper() == 'INTERNALMASS':
                 oc.append(OpaqueConstruction.from_epbunch(surface))
                 self.InternalMassExposedPerFloorArea = float(
@@ -183,7 +183,7 @@ class Zone(UmiBase, metaclass=Unique):
 
             existgin_cons = self.idf.idfobjects['CONSTRUCTION'][0]
             new = self.idf.copyidfobject(existgin_cons)
-            internal_mass = '{}InternalMass'.format(self.Name)
+            internal_mass = '{}_InternalMass'.format(self.Name)
             new.Name = internal_mass + '_construction'
             new_epbunch = self.idf.add_object(
                 ep_object='InternalMass'.upper(),
@@ -192,11 +192,11 @@ class Zone(UmiBase, metaclass=Unique):
                 Zone_Name=self.Name,
                 Surface_Area=0)
 
-            oc.append(OpaqueConstruction.from_epbunch(new_epbunch))
+            oc.append(OpaqueConstruction.from_epbunch(new_epbunch,
+                                                      idf=self.idf))
             self.InternalMassExposedPerFloorArea = 0
 
-
-        if not self.InternalMassExposedPerFloorArea:
+        if self.InternalMassExposedPerFloorArea is None:
             self.InternalMassExposedPerFloorArea = 0
 
         from operator import add
@@ -326,7 +326,7 @@ class Zone(UmiBase, metaclass=Unique):
                     Ventilation=self.Ventilation + other.Ventilation,
                     Windows=None if self.Windows is None and other.Windows is
                                     None
-                            else self.Windows + other.Windows,
+                    else self.Windows + other.Windows,
                     DaylightMeshResolution=self._float_mean(other,
                                                             'DaylightMeshResolution',
                                                             weights=weights),
@@ -334,7 +334,14 @@ class Zone(UmiBase, metaclass=Unique):
                                                              'DaylightWorkplaneHeight',
                                                              weights),
                     DomesticHotWater=self.DomesticHotWater +
-                                     other.DomesticHotWater)
+                                     other.DomesticHotWater,
+                    InternalMassConstruction=self.InternalMassConstruction +
+                                             other.InternalMassConstruction,
+                    InternalMassExposedPerFloorArea=
+                    self._float_mean(other,
+                                     'InternalMassExposedPerFloorArea',
+                                     weights),
+                    Loads=self.Loads + other.Loads)
         new_obj = self.__class__(Name=name, **attr)
         new_obj._volume = self.volume + other.volume
         new_obj._area = self.area + other.area
@@ -738,6 +745,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
                     slab.append(disp_surf)
                 else:
                     msg = 'Surface Type "{}" is not known, this method is not ' \
+                          '' \
                           '' \
                           '' \
                           '' \

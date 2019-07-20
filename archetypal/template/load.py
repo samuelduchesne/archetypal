@@ -87,6 +87,13 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
         self._belongs_to_zone = kwargs.get('zone', None)
 
+    def __add__(self, other):
+        """
+        Args:
+            other (Zone):
+        """
+        return self.combine(other)
+
     @classmethod
     def from_json(cls, *args, **kwargs):
         """
@@ -153,8 +160,10 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 UmiSchedule(Name=zone.sql['Schedules']['ScheduleName'].iloc[
                     schedule_equipment_index - 1], idf=zone.idf)
             EquipmentPowerDensity = zone.sql['NominalElectricEquipment'][
-                zone.sql['NominalElectricEquipment']['ObjectName'].str.contains(
-                    zone.Name.upper())]['DesignLevel'].iloc[0] / zone.area
+                                        zone.sql['NominalElectricEquipment'][
+                                            'ObjectName'].str.contains(
+                                            zone.Name.upper())][
+                                        'DesignLevel'].iloc[0] / zone.area
         # Verifies if Lights in zone
         if zone.sql['NominalLighting'][
             zone.sql['NominalLighting']['ObjectName'].str.contains(
@@ -170,8 +179,10 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 Name=zone.sql['Schedules']['ScheduleName'].iloc[
                     schedule_light_index - 1], idf=zone.idf)
             LightingPowerDensity = zone.sql['NominalLighting'][
-                zone.sql['NominalLighting']['ObjectName'].str.contains(
-                    zone.Name.upper())]['DesignLevel'].iloc[0] / zone.area
+                                       zone.sql['NominalLighting'][
+                                           'ObjectName'].str.contains(
+                                           zone.Name.upper())][
+                                       'DesignLevel'].iloc[0] / zone.area
         # Verifies if People in zone
         if zone.sql['NominalPeople'][
             zone.sql['NominalPeople']['ObjectName'].str.contains(
@@ -187,8 +198,10 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 Name=zone.sql['Schedules']['ScheduleName'].iloc[
                     schedule_people_index - 1], idf=zone.idf)
             PeopleDensity = zone.sql['NominalPeople'][
-                zone.sql['NominalPeople']['ObjectName'].str.contains(
-                    zone.Name.upper())]['NumberOfPeople'].iloc[0] / zone.area
+                                zone.sql['NominalPeople'][
+                                    'ObjectName'].str.contains(
+                                    zone.Name.upper())]['NumberOfPeople'].iloc[
+                                0] / zone.area
 
         name = zone.Name + "_ZoneLoad"
         z_load = cls(Name=name, zone=zone,
@@ -204,3 +217,58 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                      IsPeopleOn=PeopleDensity > 0,
                      PeopleDensity=PeopleDensity)
         return z_load
+
+    def combine(self, other):
+        """
+
+        Args:
+            other (ZoneLoad):
+        """
+        # Check if other is the same type as self
+        if not isinstance(other, self.__class__):
+            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
+                                                 other.__class__.__name__)
+            raise NotImplementedError(msg)
+
+        # Check if other is not the same as self
+        if self == other:
+            return self
+
+        incoming_load_data = self.__dict__.copy()
+        incoming_load_data.pop('Name')
+
+        # the new object's name
+        name = '+'.join([self.Name, other.Name])
+
+        weights = [self._belongs_to_zone.volume, other._belongs_to_zone.volume]
+
+        attr = dict(DimmingType=self._str_mean(other, 'DimmingType'),
+                    EquipmentAvailabilitySchedule=
+                    self.EquipmentAvailabilitySchedule.combine(
+                        other.EquipmentAvailabilitySchedule),
+                    EquipmentPowerDensity=
+                    self._float_mean(other,
+                                     'EquipmentPowerDensity', weights),
+                    IlluminanceTarget=
+                    self._float_mean(other,
+                                     'IlluminanceTarget', weights),
+                    LightingPowerDensity=
+                    self._float_mean(other,
+                                     'LightingPowerDensity', weights),
+                    LightsAvailabilitySchedule=
+                    self.LightsAvailabilitySchedule.combine(
+                        other.LightsAvailabilitySchedule, weights),
+                    OccupancySchedule=self.OccupancySchedule.combine(
+                        other.OccupancySchedule, weights),
+                    IsEquipmentOn=any(
+                        [self.IsEquipmentOn, other.IsEquipmentOn]),
+                    IsLightingOn=any([self.IsLightingOn, other.IsLightingOn]),
+                    IsPeopleOn=any([self.IsPeopleOn, other.IsPeopleOn]),
+                    PeopleDensity=
+                    self._float_mean(other,
+                                     'PeopleDensity', weights))
+
+        new_obj = self.__class__(Name=name, **attr)
+        new_obj._belongs_to_zone = self._belongs_to_zone
+
+        return new_obj

@@ -297,8 +297,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                     design_spe_outdoor_air_name = object.fieldvalues[
                         indice_zone + 1]
                     MechVentSchedule = UmiSchedule(
-                        Name=object.Availability_Schedule_Name,
-                        idf=zone.idf)
+                        Name=object.Availability_Schedule_Name, idf=zone.idf)
                     break
             # If 'DesignSpecifactionOutdoorAirName', MechVent is ON, and gets
             # the minimum fresh air (per person and area)
@@ -578,7 +577,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             name=variable_output_name, keyvalue=zone.Name.upper()).loc[:,
                   ['TimeIndex', 'Value']].set_index('TimeIndex').Value.values
         heating_sched = UmiSchedule.from_values(
-            sch_name=zone.Name + '_Heating_Schedule',
+            Name=zone.Name + '_Heating_Schedule',
             values=h_array,
             Type='Fraction',
             idf=zone.idf)
@@ -588,7 +587,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             name=variable_output_name, keyvalue=zone.Name.upper()).loc[:,
                   ['TimeIndex', 'Value']].set_index('TimeIndex').Value.values
         cooling_sched = UmiSchedule.from_values(
-            sch_name=zone.Name + '_Cooling_Schedule',
+            Name=zone.Name + '_Cooling_Schedule',
             values=c_array,
             Type='Fraction',
             idf=zone.idf)

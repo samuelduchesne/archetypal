@@ -372,9 +372,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 # get shading control schedule
                 if shading_control["Shading_Control_Is_Scheduled"].upper() == \
                         'YES':
-                    sch_name = shading_control['Schedule_Name']
+                    name = shading_control['Schedule_Name']
                     attr['ShadingSystemAvailabilitySchedule'] = UmiSchedule(
-                        Name=sch_name, idf=surface.theidf)
+                        Name=name, idf=surface.theidf)
                 else:
                     # Determine which behavior of control
                     shade_ctrl_type = shading_control[
@@ -422,18 +422,18 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 attr['OperableArea'] = \
                     afn.WindowDoor_Opening_Factor_or_Crack_Factor
                 leak = afn.get_referenced_object('Leakage_Component_Name')
-                sch_name = afn['Venting_Availability_Schedule_Name']
-                if sch_name != '':
-                    attr['AfnWindowAvailability'] = UmiSchedule(
-                        Name=sch_name, idf=surface.theidf)
+                name = afn['Venting_Availability_Schedule_Name']
+                if name != '':
+                    attr['AfnWindowAvailability'] = UmiSchedule(Name=name,
+                                                                idf=surface.theidf)
                 else:
                     attr['AfnWindowAvailability'] = \
                         UmiSchedule.constant_schedule(idf=surface.theidf)
-                sch_name = afn[
+                name = afn[
                     'Ventilation_Control_Zone_Temperature_Setpoint_Schedule_Name']
-                if sch_name != '':
-                    attr['AfnTempSetpoint'] = UmiSchedule(
-                        Name=sch_name, idf=surface.theidf).mean
+                if name != '':
+                    attr['AfnTempSetpoint'] = UmiSchedule(Name=name,
+                                                          idf=surface.theidf).mean
                 else:
                     pass  # uses default
 

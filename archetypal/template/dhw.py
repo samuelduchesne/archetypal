@@ -141,9 +141,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                 obj.Target_Temperature_Schedule_Name != '' else \
                 obj.Hot_Water_Supply_Temperature_Schedule_Name
 
-            hot_schd = UmiSchedule(
-                Name=schedule_name,
-                idf=zone._epbunch.theidf)
+            hot_schd = UmiSchedule(Name=schedule_name, idf=zone._epbunch.theidf)
             hot_schds.append(hot_schd)
 
         return np.array([sched.all_values.mean() for sched in hot_schds]).mean()
@@ -204,8 +202,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         for obj in dhw_objs:
             water_schd_name = UmiSchedule(
                 Name=obj.Flow_Rate_Fraction_Schedule_Name,
-                idf=zone._epbunch.theidf
-            )
+                idf=zone._epbunch.theidf)
             water_schds.append(water_schd_name)
         return reduce(UmiSchedule.combine, water_schds, weights=[1, 1])
 

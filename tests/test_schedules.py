@@ -14,8 +14,8 @@ def test_schedules_in_necb_specific(config):
     import matplotlib.pyplot as plt
     for key in idfs:
         idf = idfs[key]
-        s = Schedule(sch_name='NECB-A-Thermostat Setpoint-Heating',
-                     start_day_of_the_week=0, idf=idf)
+        s = Schedule(Name='NECB-A-Thermostat Setpoint-Heating', idf=idf,
+                     start_day_of_the_week=0)
         s.plot(slice=('2018/01/02', '2018/01/03'), drawstyle="steps-post")
         plt.show()
 
@@ -27,11 +27,11 @@ def test_make_umi_schedule(config):
     idf_file = copy_file(idf_file)[0]
     idf = load_idf(idf_file)
 
-    s = UmiSchedule(Name='POFF', start_day_of_the_week=0, idf=idf)
+    s = UmiSchedule(Name='POFF', idf=idf, start_day_of_the_week=0)
     ep_year, ep_weeks, ep_days = s.to_year_week_day()
 
-    new = UmiSchedule(Name=ep_year.Name,
-                      start_day_of_the_week=s.startDayOfTheWeek, idf=idf)
+    new = UmiSchedule(Name=ep_year.Name, idf=idf,
+                      start_day_of_the_week=s.startDayOfTheWeek)
 
     print(len(s.all_values))
     print(len(new.all_values))
@@ -99,7 +99,7 @@ def test_ep_versus_schedule(test_data):
     # expected.loc[slice_[0]:slice_[1]].plot(label='E+', legend=True, ax=ax,
     #                                        drawstyle='steps-post',
     #                                        linestyle='dashdot')
-    # ax.set_title(orig.schName.capitalize())
+    # ax.set_title(orig.Name.capitalize())
     # plt.show()
     # # endregion
 
@@ -116,17 +116,17 @@ def test_schedules(request, run_schedules_idf):
     # read original schedule
     idf = schedules_idf()
     schName = request.param
-    orig = Schedule(sch_name=schName, idf=idf)
+    orig = Schedule(Name=schName, idf=idf)
 
     print('{name}\tType:{type}\t[{len}]\tValues:{'
-          'values}'.format(name=orig.schName,
+          'values}'.format(name=orig.Name,
                            type=orig.schType,
                            values=orig.all_values,
                            len=len(orig.all_values)))
 
     # create year:week:day version
     new_eps = orig.to_year_week_day()
-    new = Schedule(sch_name=new_eps[0].Name, idf=idf)
+    new = Schedule(Name=new_eps[0].Name, idf=idf)
 
     index = orig.series.index
     epv = pd.read_csv(run_schedules_idf)
@@ -176,7 +176,7 @@ def test_ep_versus_schedule(test_schedules):
     # expected.loc[slice_[0]:slice_[1]].plot(label='E+', legend=True, ax=ax,
     #                                        drawstyle='steps-post',
     #                                        linestyle='dashdot')
-    # ax.set_title(orig.schName.capitalize())
+    # ax.set_title(orig.Name.capitalize())
     # plt.show()
     # # endregion
 

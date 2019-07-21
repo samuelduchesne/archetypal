@@ -1565,8 +1565,7 @@ def _write_people_gain(gainNum, idf, lines, peoples):
             radFract = float(radFract)
 
         # Find the the total power of the people gain
-        power = Schedule(sch_name=peoples[i].Activity_Level_Schedule_Name,
-                         idf=idf).max
+        power = Schedule(Name=peoples[i].Activity_Level_Schedule_Name, idf=idf).max
         # Write gain characteristics into lines
         lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
             round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + str(

@@ -14,10 +14,9 @@ import tabulate
 from eppy.bunch_subclass import BadEPFieldError
 from tqdm import tqdm
 
-from archetypal import log, save_and_show, calc_simple_glazing
+from archetypal import log, save_and_show
 from archetypal.template import UmiBase, Unique, ZoneGraph, Zone, \
-    resolve_obco, WindowSetting, UmiSchedule, GlazingMaterial, \
-    StructureDefinition, MassRatio
+    resolve_obco, WindowSetting, UmiSchedule, StructureDefinition, MassRatio
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
@@ -340,29 +339,29 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         scn = sub.Shading_Control_Name
         obj = self.idf.getobject('WindowProperty:ShadingControl'.upper(), scn)
         if obj:
-            sch_name = obj.Schedule_Name
+            name = obj.Schedule_Name
             return {'IsShadingSystemOn': True,
                     'ShadingSystemType': 1,
                     'ShadingSystemSetPoint': obj.Setpoint,
-                    'ShadingSystemAvailabilitySchedule': UmiSchedule(
-                        Name=sch_name, idf=self.idf),
-                    'AfnWindowAvailability': UmiSchedule(
-                        Name=sch_name, idf=self.idf),
-                    'ZoneMixingAvailabilitySchedule': UmiSchedule(
-                        Name=sch_name, idf=self.idf),
+                    'ShadingSystemAvailabilitySchedule': UmiSchedule(Name=name,
+                                                                     idf=self.idf),
+                    'AfnWindowAvailability': UmiSchedule(Name=name,
+                                                         idf=self.idf),
+                    'ZoneMixingAvailabilitySchedule': UmiSchedule(Name=name,
+                                                                  idf=self.idf),
                     # Todo: Add WindowConstruction here
                     }
         else:
-            sch_name = list(self.idf.get_all_schedules(yearly_only=True))[0]
+            name = list(self.idf.get_all_schedules(yearly_only=True))[0]
             return {'IsShadingSystemOn': False,
                     'ShadingSystemType': 0,
                     'ShadingSystemSetPoint': 0,
-                    'ShadingSystemAvailabilitySchedule': UmiSchedule(
-                        Name=sch_name, idf=self.idf),
-                    'AfnWindowAvailability': UmiSchedule(
-                        Name=sch_name, idf=self.idf),
-                    'ZoneMixingAvailabilitySchedule': UmiSchedule(
-                        Name=sch_name, idf=self.idf),
+                    'ShadingSystemAvailabilitySchedule': UmiSchedule(Name=name,
+                                                                     idf=self.idf),
+                    'AfnWindowAvailability': UmiSchedule(Name=name,
+                                                         idf=self.idf),
+                    'ZoneMixingAvailabilitySchedule': UmiSchedule(Name=name,
+                                                                  idf=self.idf),
                     }
 
     def to_json(self):

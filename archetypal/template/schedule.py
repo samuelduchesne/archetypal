@@ -15,7 +15,7 @@ from archetypal.template import UmiBase, Unique
 
 
 class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
-    """Schedules
+    """Class that handles Schedules as
 
 
 
@@ -27,7 +27,6 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             *args:
             **kwargs:
         """
-        kwargs['sch_name'] = kwargs.get('Name', None)
         super(UmiSchedule, self).__init__(*args, **kwargs)
 
         self.Type = self.schTypeLimitsName
@@ -41,16 +40,15 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             idf=idf, **kwargs)
 
     @classmethod
-    def from_values(cls, sch_name, values, **kwargs):
-        return super(UmiSchedule, cls).from_values(sch_name=sch_name,
+    def from_values(cls, Name, values, **kwargs):
+        return super(UmiSchedule, cls).from_values(Name=Name,
                                                    values=values,
-                                                   Name=sch_name,
                                                    **kwargs)
 
     @classmethod
     def from_yearschedule(cls, year_sched):
         if isinstance(year_sched, YearSchedule):
-            return cls.from_values(sch_name=year_sched.Name,
+            return cls.from_values(Name=year_sched.Name,
                                    values=year_sched.all_values,
                                    Type=year_sched.Type)
 
@@ -58,7 +56,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __repr__(self):
-        name = self.schName
+        name = self.Name
         resample = self.series.resample('D')
         min = resample.min().mean()
         mean = resample.mean().mean()
@@ -89,12 +87,12 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                                 axis=0, weights=weights)
 
         # the new object's name
-        name = '+'.join([self.schName, other.schName])
+        name = '+'.join([self.Name, other.Name])
 
         attr = self.__dict__
         attr.update(dict(value=new_values))
         attr.pop('Name', None)
-        new_obj = super().from_values(sch_name=name, Name=name, **attr)
+        new_obj = super().from_values(Name=name, **attr)
 
         return new_obj
 
@@ -104,22 +102,20 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         newdays = []
         for day in days:
             newdays.append(
-                DaySchedule(Name=day.Name, idf=self.idf, epbunch=day,
+                DaySchedule(idf=self.idf, Name=day.Name, epbunch=day,
                             Type=self.Type,
                             Comments='Year Week Day schedules created from: '
                                      '{}'.format(self.Name)))
         newweeks = []
         for week in weeks:
-            newweeks.append(WeekSchedule(Name=week.Name, idf=self.idf,
-                                         Type=self.Type,
-                                         epbunch=week, newdays=newdays,
-                                         Comments='Year Week Day schedules '
-                                                  'created from: '
-                                                  '{}'.format(self.Name)))
-        year = YearSchedule(Name=year.Name, id=self.id, idf=self.idf,
-                            Type=self.Type,
-                            epbunch=year,
-                            newweeks=newweeks,
+            newweeks.append(
+                WeekSchedule(idf=self.idf, Name=week.Name, Type=self.Type,
+                             epbunch=week, newdays=newdays,
+                             Comments='Year Week Day schedules '
+                                      'created from: '
+                                      '{}'.format(self.Name)))
+        year = YearSchedule(idf=self.idf, Name=year.Name, id=self.id,
+                            Type=self.Type, epbunch=year, newweeks=newweeks,
                             Comments='Year Week Day schedules created from: '
                                      '{}'.format(self.Name))
         return year

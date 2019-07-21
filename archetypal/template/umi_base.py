@@ -45,7 +45,7 @@ class Unique(type):
 
 class UmiBase(object):
     def __init__(self,
-                 Name,
+                 Name=None,
                  idf=None,
                  Category='Uncategorized',
                  Comments='',

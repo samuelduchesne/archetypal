@@ -166,7 +166,7 @@ class IDF(geomeppy.IDF):
         else:
             return '', '', '', ''
 
-    def get_schedule_data_by_name(self, sch_name, sch_type=None):
+    def get_schedule_data_by_name(self, name, sch_type=None):
         """Returns the epbunch of a particular schedule name
 
         Args:
@@ -174,17 +174,17 @@ class IDF(geomeppy.IDF):
         """
         if sch_type is None:
             try:
-                return self.schedules_dict[sch_name.upper()]
+                return self.schedules_dict[name.upper()]
             except:
                 try:
                     schedules_dict = self.get_all_schedules()
-                    return schedules_dict[sch_name.upper()]
+                    return schedules_dict[name.upper()]
                 except KeyError:
                     raise KeyError('Unable to find schedule "{}" of type "{}" '
                                    'in idf file "{}"'.format(
-                        sch_name, sch_type, self.idfname))
+                        name, sch_type, self.idfname))
         else:
-            return self.getobject(sch_type, sch_name)
+            return self.getobject(sch_type, name)
 
     def get_all_schedules(self, yearly_only=False):
         """Returns all schedule ep_objects in a dict with their name as a key

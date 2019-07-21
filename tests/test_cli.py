@@ -24,4 +24,4 @@ class TestCli():
                                catch_exceptions=False,
                                )
         print(result.stdout)
-        #assert result.exit_code == 0
+        assert result.exit_code == 0

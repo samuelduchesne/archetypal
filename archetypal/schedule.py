@@ -19,14 +19,14 @@ from archetypal import log, settings
 
 
 class Schedule(object):
-    """An object designed to handle any EnergyPlys schedule object"""
+    """An object designed to handle any EnergyPlus schedule object"""
 
-    def __init__(self, sch_name, idf=None, start_day_of_the_week=0,
+    def __init__(self, Name=None, idf=None, start_day_of_the_week=0,
                  strict=False, base_year=2018, schType=None,
                  values=None, **kwargs):
         """
         Args:
-            sch_name (str): The schedule name in the idf file
+            Name (str): The schedule name in the idf file
             idf (IDF): IDF object
             start_day_of_the_week (int): 0-based day of week (Monday=0)
             strict (bool): if True, schedules that have the Field-Sets such as
@@ -35,26 +35,26 @@ class Schedule(object):
                 ignored.
             base_year (int): The base year of the schedule. Defaults to 2018
                 since the first day of that year is a Monday.
-            schType (str): The EnergyPlus schedule object from which this
+            schType (str): The EnergyPlus schedule type. eg.: "Schedule:Year"
             **kwargs:
         """
         try:
             kwargs['idf'] = idf
-            kwargs['Name'] = sch_name
+            Name = kwargs.get('Name', Name)
             super(Schedule, self).__init__(**kwargs)
         except:
-            super(Schedule, self).__init__()
+            pass
         self.strict = strict
         self.idf = idf
-        self.schName = sch_name
+        self.Name = Name
         self.startDayOfTheWeek = self.get_sdow(start_day_of_the_week)
         self.year = base_year
         self.startDate = self.start_date()
+
         self.count = 0
         self.startHOY = 1
         self.endHOY = 24
         self.unit = "unknown"
-
         self.index_ = None
         self.values = values
         self.schType = schType
@@ -66,8 +66,8 @@ class Schedule(object):
             self.schTypeLimitsName = _type
 
     @classmethod
-    def from_values(cls, sch_name, values, **kwargs):
-        return cls(values=values, **kwargs)
+    def from_values(cls, Name, values, **kwargs):
+        return cls(Name=Name, values=values, **kwargs)
 
     @classmethod
     def constant_schedule(cls, hourly_value=1, Name='AlwaysOn',
@@ -76,6 +76,7 @@ class Schedule(object):
         to a schedule with a value of 1, named 'AlwaysOn'.
 
         Args:
+            idf:
             hourly_value (float, optional): The value for the constant schedule.
                 Defaults to 1.
             Name (str, optional): The name of the schedule. Defaults to Always
@@ -89,7 +90,7 @@ class Schedule(object):
                                   Schedule_Type_Limits_Name='',
                                   Hourly_Value=hourly_value),
                            save=False)
-            return cls(sch_name=Name, Name=Name, idf=idf, **kwargs)
+            return cls(Name=Name, idf=idf, **kwargs)
         else:
             # Create a new idf object and add the schedule to it.
             idftxt = "VERSION, 8.9;"  # Not an empty string. has just the
@@ -111,14 +112,14 @@ class Schedule(object):
                                               Hourly_Value=hourly_value),
                                        save=False)
 
-            sched = cls(sch_name=Name, Name=Name, idf=idf_scratch, **kwargs)
+            sched = cls(Name=Name, idf=idf_scratch, **kwargs)
             return sched
 
     @property
     def all_values(self):
         """returns the values array"""
         if self.values is None:
-            self.values = self.get_schedule_values(sch_name=self.schName,
+            self.values = self.get_schedule_values(name=self.Name,
                                                    sch_type=self.schType)
             return self.values
         else:
@@ -145,18 +146,14 @@ class Schedule(object):
             self.all_values), freq='1H')
         return pd.Series(self.all_values, index=index)
 
-    def get_schedule_type_limits_name(self, sch_name=None, sch_type=None):
-        """Return the Schedule Type Limits name associated to a schedule name
+    def get_schedule_type_limits_name(self, sch_type=None):
+        """Return the Schedule Type Limits name associated to this schedule
 
         Args:
-            sch_name:
             sch_type:
         """
-        if sch_name is None:
-            sch_name = self.schName
-        if sch_type is None:
-            schedule_values = self.idf.get_schedule_data_by_name(sch_name,
-                                                                 sch_type=sch_type)
+        schedule_values = self.idf.get_schedule_data_by_name(self.Name,
+                                                             sch_type=sch_type)
         try:
             schedule_limit_name = schedule_values.Schedule_Type_Limits_Name
         except:
@@ -164,17 +161,17 @@ class Schedule(object):
         else:
             return schedule_limit_name
 
-    def get_schedule_type_limits_data(self, sch_name=None):
+    def get_schedule_type_limits_data(self, name=None):
         """Returns Schedule Type Limits data from schedule name
 
         Args:
-            sch_name:
+            name:
         """
 
-        if sch_name is None:
-            sch_name = self.schName
+        if name is None:
+            name = self.Name
 
-        schedule_values = self.idf.get_schedule_data_by_name(sch_name)
+        schedule_values = self.idf.get_schedule_data_by_name(name)
         try:
             schedule_limit_name = schedule_values.Schedule_Type_Limits_Name
         except:
@@ -192,17 +189,17 @@ class Schedule(object):
 
             return lower_limit, upper_limit, numeric_type, unit_type
 
-    def get_schedule_type(self, sch_name=None):
-        """Return the schedule type
+    def get_schedule_type(self, name=None):
+        """Return the schedule type, eg.: "Schedule:Year"
 
         Args:
-            sch_name:
+            name:
         """
-        if sch_name is None:
-            sch_name = self.schName
+        if name is None:
+            name = self.Name
 
-        schedule_values = self.idf.get_schedule_data_by_name(sch_name)
-        sch_type = schedule_values.fieldvalues[0]
+        schedule_values = self.idf.get_schedule_data_by_name(name)
+        sch_type = schedule_values.key
 
         return sch_type
 
@@ -230,22 +227,22 @@ class Schedule(object):
             slice = pd.IndexSlice[:]
         elif len(slice) > 1:
             slice = pd.IndexSlice[slice[0]:slice[1]]
-        ax = series.loc[slice].plot(**kwargs, label=self.schName)
+        ax = series.loc[slice].plot(**kwargs, label=self.Name)
         return ax
 
-    def get_interval_day_ep_schedule_values(self, sch_name=None):
+    def get_interval_day_ep_schedule_values(self, name=None):
         """Schedule:Day:Interval
 
         Args:
-            sch_name (str): the name of the schedule
+            name (str): the name of the schedule
         """
 
-        if sch_name is None:
-            sch_name = self.schName
+        if name is None:
+            name = self.Name
 
-        values = self.idf.getobject('Schedule:Day:Interval'.upper(), sch_name)
+        values = self.idf.getobject('Schedule:Day:Interval'.upper(), name)
         lower_limit, upper_limit, numeric_type, unit_type = \
-            self.get_schedule_type_limits_data(sch_name)
+            self.get_schedule_type_limits_data(name)
 
         number_of_day_sch = int((len(values.fieldvalues) - 3) / 2)
 
@@ -267,27 +264,27 @@ class Schedule(object):
 
         return hourly_values
 
-    def get_hourly_day_ep_schedule_values(self, sch_name=None):
+    def get_hourly_day_ep_schedule_values(self, name=None):
         """Schedule:Day:Hourly
 
         Args:
-            sch_name (str): the name of the schedule
+            name (str): the name of the schedule
         """
-        if sch_name is None:
-            sch_name = self.schName
+        if name is None:
+            name = self.Name
 
-        values = self.idf.getobject('Schedule:Day:Hourly'.upper(), sch_name)
+        values = self.idf.getobject('Schedule:Day:Hourly'.upper(), name)
 
         fieldvalues_ = np.array(values.fieldvalues[3:])
 
         return fieldvalues_
 
-    def get_compact_weekly_ep_schedule_values(self, sch_name=None,
-                                              start_date=None, index=None):
+    def get_compact_weekly_ep_schedule_values(self, name=None, start_date=None,
+                                              index=None):
         """schedule:week:compact
 
         Args:
-            sch_name (str): the name of the schedule
+            name (str): the name of the schedule
             start_date:
             index:
         """
@@ -299,9 +296,9 @@ class Schedule(object):
         else:
             slicer_ = pd.Series([False] * (len(index)), index=index)
 
-        if sch_name is None:
-            sch_name = self.schName
-        values = self.idf.getobject('schedule:week:compact'.upper(), sch_name)
+        if name is None:
+            name = self.Name
+        values = self.idf.getobject('schedule:week:compact'.upper(), name)
 
         weekly_schedules = pd.Series([0] * len(slicer_), index=slicer_.index)
         # update last day of schedule
@@ -323,8 +320,8 @@ class Schedule(object):
                     if not day.empty:
                         ref = values.get_referenced_object(
                             "ScheduleDay_Name_{}".format(i + 1))
-                        day.loc[:] = self.get_schedule_values(
-                            sch_name=ref.Name, sch_type=ref.key)
+                        day.loc[:] = self.get_schedule_values(name=ref.Name,
+                                                              sch_type=ref.key)
                         days.append(day)
                 new = pd.concat(days)
                 slicer_.update(
@@ -336,16 +333,16 @@ class Schedule(object):
 
         return weekly_schedules.values
 
-    def get_daily_weekly_ep_schedule_values(self, sch_name=None):
+    def get_daily_weekly_ep_schedule_values(self, name=None):
         """schedule:week:daily
 
         Args:
-            sch_name (str): the name of the schedule
+            name (str): the name of the schedule
         """
-        if sch_name is None:
-            sch_name = self.schName
+        if name is None:
+            name = self.Name
 
-        values = self.idf.getobject('schedule:week:daily'.upper(), sch_name)
+        values = self.idf.getobject('schedule:week:daily'.upper(), name)
 
         # 7 list for 7 days of the week
         hourly_values = []
@@ -353,7 +350,7 @@ class Schedule(object):
                     'Friday', 'Saturday', 'Sunday']:
             ref = values.get_referenced_object(
                 '{}_ScheduleDay_Name'.format(day))
-            h = self.get_schedule_values(sch_name=ref.Name, sch_type=ref.key)
+            h = self.get_schedule_values(name=ref.Name, sch_type=ref.key)
             hourly_values.append(h)
         hourly_values = np.array(hourly_values)
         # shift days earlier by self.startDayOfTheWeek
@@ -361,18 +358,18 @@ class Schedule(object):
 
         return hourly_values.ravel()
 
-    def get_list_day_ep_schedule_values(self, sch_name=None):
+    def get_list_day_ep_schedule_values(self, name=None):
         """schedule:day:list
 
         Args:
-            sch_name (str): the name of the schedule
+            name (str): the name of the schedule
         """
-        if sch_name is None:
-            sch_name = self.schName
+        if name is None:
+            name = self.Name
 
-        values = self.idf.getobject('schedule:day:list'.upper(), sch_name)
+        values = self.idf.getobject('schedule:day:list'.upper(), name)
         lower_limit, upper_limit, numeric_type, unit_type = \
-            self.get_schedule_type_limits_data(sch_name)
+            self.get_schedule_type_limits_data(name)
 
         import pandas as pd
         freq = int(values['Minutes_per_Item'])  # Frequency of the values
@@ -398,18 +395,18 @@ class Schedule(object):
 
         return series.values
 
-    def get_constant_ep_schedule_values(self, sch_name=None):
+    def get_constant_ep_schedule_values(self, name=None):
         """schedule:constant
 
         Args:
-            sch_name (str): the name of the schedule
+            name (str): the name of the schedule
         """
-        if sch_name is None:
-            sch_name = self.schName
+        if name is None:
+            name = self.Name
 
-        values = self.idf.getobject('schedule:constant'.upper(), sch_name)
+        values = self.idf.getobject('schedule:constant'.upper(), name)
         lower_limit, upper_limit, numeric_type, unit_type = \
-            self.get_schedule_type_limits_data(sch_name)
+            self.get_schedule_type_limits_data(name)
 
         hourly_values = np.arange(8760)
         value = float(values['Hourly_Value'])
@@ -421,18 +418,18 @@ class Schedule(object):
 
         return hourly_values
 
-    def get_file_ep_schedule_values(self, sch_name=None):
+    def get_file_ep_schedule_values(self, name=None):
         """schedule:file
 
         Args:
-            sch_name (str): the name of the schedule
+            name (str): the name of the schedule
         """
-        if sch_name is None:
-            sch_name = self.schName
+        if name is None:
+            name = self.Name
 
-        values = self.idf.getobject('schedule:file'.upper(), sch_name)
+        values = self.idf.getobject('schedule:file'.upper(), name)
         lower_limit, upper_limit, numeric_type, unit_type = \
-            self.get_schedule_type_limits_data(sch_name)
+            self.get_schedule_type_limits_data(name)
 
         filename = values['File_Name']
         column = values['Column_Number']
@@ -453,19 +450,19 @@ class Schedule(object):
 
         return values.iloc[:, 0].values
 
-    def get_compact_ep_schedule_values(self, sch_name=None):
+    def get_compact_ep_schedule_values(self, name=None):
         """schedule:compact
 
         Args:
-            sch_name (str): the name of the schedule
+            name (str): the name of the schedule
         """
 
-        if sch_name is None:
-            sch_name = self.schName
+        if name is None:
+            name = self.Name
 
-        values = self.idf.getobject('schedule:compact'.upper(), sch_name)
+        values = self.idf.getobject('schedule:compact'.upper(), name)
         lower_limit, upper_limit, numeric_type, unit_type = \
-            self.get_schedule_type_limits_data(sch_name)
+            self.get_schedule_type_limits_data(name)
 
         field_sets = ['through', 'for', 'interpolate', 'until', 'value']
         fields = values.fieldvalues[3:]
@@ -625,7 +622,7 @@ class Schedule(object):
             else:
                 msg = 'The schedule "{sch}" contains a Field ' \
                       'that is not understood: "{field}"'.format(
-                    sch=self.schName, field=field)
+                    sch=self.Name, field=field)
                 raise NotImplementedError(msg)
         elif 'for' in field.lower():
             keywords = [word for word in values_sets if word in field.lower()]
@@ -647,12 +644,12 @@ class Schedule(object):
                 # parse without a colon
                 msg = 'The schedule "{sch}" contains a Field ' \
                       'that is not understood: "{field}"'.format(
-                    sch=self.schName, field=field)
+                    sch=self.Name, field=field)
                 raise NotImplementedError(msg)
         elif 'interpolate' in field.lower():
             msg = 'The schedule "{sch}" contains sub-hourly values (' \
                   'Field-Set="{field}"). The average over the hour is ' \
-                  'taken'.format(sch=self.schName, field=field)
+                  'taken'.format(sch=self.Name, field=field)
             log(msg, lg.WARNING)
             f_set, value = field.split(':')
             hour = None
@@ -674,7 +671,7 @@ class Schedule(object):
             else:
                 msg = 'The schedule "{sch}" contains a Field ' \
                       'that is not understood: "{field}"'.format(
-                    sch=self.schName, field=field)
+                    sch=self.Name, field=field)
                 raise NotImplementedError(msg)
         elif 'value' in field.lower():
             if ':' in field.lower():
@@ -686,7 +683,7 @@ class Schedule(object):
             else:
                 msg = 'The schedule "{sch}" contains a Field ' \
                       'that is not understood: "{field}"'.format(
-                    sch=self.schName, field=field)
+                    sch=self.Name, field=field)
                 raise NotImplementedError(msg)
         else:
             # deal with the data value
@@ -707,11 +704,11 @@ class Schedule(object):
         periods = len(series)
         return pd.Series([False] * periods, index=index)
 
-    def get_yearly_ep_schedule_values(self, sch_name=None):
+    def get_yearly_ep_schedule_values(self, name=None):
         """schedule:year
 
         Args:
-            sch_name (str): the name of the schedule
+            name (str): the name of the schedule
         """
         # first week
 
@@ -722,10 +719,10 @@ class Schedule(object):
         # update last day of schedule
         self.endHOY = 8760
 
-        if sch_name is None:
-            sch_name = self.schName
+        if name is None:
+            name = self.Name
 
-        values = self.idf.getobject('schedule:year'.upper(), sch_name)
+        values = self.idf.getobject('schedule:year'.upper(), name)
 
         # generate weekly schedules
         num_of_weekly_schedules = int(len(values.fieldvalues[3:]) / 5)
@@ -755,12 +752,16 @@ class Schedule(object):
                     pd.Grouper(freq='168H')):
                 if not week.empty:
                     try:
-                        week.loc[:] = self.get_schedule_values(
-                            sch_name=ref.Name, start_date=week.index[0],
-                            index=week.index, sch_type=ref.key)
+                        week.loc[:] = self.get_schedule_values(name=ref.Name,
+                                                               start_date=
+                                                               week.index[0],
+                                                               index=week.index,
+                                                               sch_type=ref.key)
                     except ValueError:
-                        week.loc[:] = self.get_schedule_values(
-                            ref.Name, week.index[0])[0:len(week)]
+                        week.loc[:] = self.get_schedule_values(ref.Name,
+                                                               week.index[
+                                                                   0])[0:len(
+                            week)]
                     finally:
                         weeks.append(week)
             new = pd.concat(weeks)
@@ -769,22 +770,22 @@ class Schedule(object):
 
         return hourly_values.values
 
-    def get_schedule_values(self, sch_name=None, start_date=None, index=None,
+    def get_schedule_values(self, name=None, start_date=None, index=None,
                             sch_type=None):
         """Main function that returns the schedule values
 
         Args:
-            sch_name (str): the name of the schedule
+            name (str): the name of the schedule
             start_date:
             index:
             sch_type:
         """
 
-        if sch_name is None:
-            sch_name = self.schName
+        if name is None:
+            name = self.Name
 
         if sch_type is None:
-            schedule_values = self.idf.get_schedule_data_by_name(sch_name)
+            schedule_values = self.idf.get_schedule_data_by_name(name)
             self.schType = schedule_values.key.upper()
             sch_type = self.schType
         if self.count == 0:
@@ -794,32 +795,25 @@ class Schedule(object):
         self.count += 1
 
         if sch_type.upper() == "schedule:year".upper():
-            hourly_values = self.get_yearly_ep_schedule_values(
-                sch_name)
+            hourly_values = self.get_yearly_ep_schedule_values(name)
         elif sch_type.upper() == "schedule:day:interval".upper():
-            hourly_values = self.get_interval_day_ep_schedule_values(
-                sch_name)
+            hourly_values = self.get_interval_day_ep_schedule_values(name)
         elif sch_type.upper() == "schedule:day:hourly".upper():
-            hourly_values = self.get_hourly_day_ep_schedule_values(
-                sch_name)
+            hourly_values = self.get_hourly_day_ep_schedule_values(name)
         elif sch_type.upper() == "schedule:day:list".upper():
-            hourly_values = self.get_list_day_ep_schedule_values(
-                sch_name)
+            hourly_values = self.get_list_day_ep_schedule_values(name)
         elif sch_type.upper() == "schedule:week:compact".upper():
-            hourly_values = self.get_compact_weekly_ep_schedule_values(
-                sch_name, start_date, index)
+            hourly_values = self.get_compact_weekly_ep_schedule_values(name,
+                                                                       start_date,
+                                                                       index)
         elif sch_type.upper() == "schedule:week:daily".upper():
-            hourly_values = self.get_daily_weekly_ep_schedule_values(
-                sch_name)
+            hourly_values = self.get_daily_weekly_ep_schedule_values(name)
         elif sch_type.upper() == "schedule:constant".upper():
-            hourly_values = self.get_constant_ep_schedule_values(
-                sch_name)
+            hourly_values = self.get_constant_ep_schedule_values(name)
         elif sch_type.upper() == "schedule:compact".upper():
-            hourly_values = self.get_compact_ep_schedule_values(
-                sch_name)
+            hourly_values = self.get_compact_ep_schedule_values(name)
         elif sch_type.upper() == "schedule:file".upper():
-            hourly_values = self.get_file_ep_schedule_values(
-                sch_name)
+            hourly_values = self.get_file_ep_schedule_values(name)
         else:
             log('Archetypal does not support "{}" currently'.format(
                 self.schType), lg.WARNING)
@@ -827,17 +821,6 @@ class Schedule(object):
             hourly_values = []
 
         return hourly_values
-
-    def is_schedule(self, sch_name):
-        """Returns True if idfobject is one of 'schedule_types'
-
-        Args:
-            sch_name (str): the name of the schedule
-        """
-        if sch_name.upper() in self.idf.schedules_dict:
-            return True
-        else:
-            return False
 
     def to_year_week_day(self, values=None, idf=None):
         """convert a Schedule Class to the 'Schedule:Year',
@@ -864,7 +847,7 @@ class Schedule(object):
         dict_day = {}
         count_day = 0
         for unique_day in unique_days:
-            name = 'd_' + self.schName + '_' + '%03d' % count_day
+            name = 'd_' + self.Name + '_' + '%03d' % count_day
             name, count_day = archetypal.check_unique_name('d', count_day,
                                                            name,
                                                            archetypal.settings.unique_schedules,
@@ -895,7 +878,7 @@ class Schedule(object):
         dict_week = {}
         count_week = 0
         for unique_week in unique_weeks:
-            week_id = 'w_' + self.schName + '_' + '%03d' % count_week
+            week_id = 'w_' + self.Name + '_' + '%03d' % count_week
             week_id, count_week = archetypal.check_unique_name('w',
                                                                count_week,
                                                                week_id,
@@ -964,7 +947,7 @@ class Schedule(object):
                 blocks[i]['end_day'] = 31
                 blocks[i]['end_month'] = 12
 
-        new_dict = dict(Name=self.schName + '_',
+        new_dict = dict(Name=self.Name + '_',
                         Schedule_Type_Limits_Name=self.schTypeLimitsName)
         for i in blocks:
             new_dict.update({"ScheduleWeek_Name_{}".format(i + 1):
@@ -1013,7 +996,7 @@ class Schedule(object):
             except:
                 msg = "the schedule '{sch}' contains a " \
                       "Field that is not understood: '{field}'".format(
-                    sch=self.schName,
+                    sch=self.Name,
                     field=field)
                 raise ValueError(msg)
             else:
@@ -1087,7 +1070,7 @@ class Schedule(object):
         elif field.lower() == 'alldays':
             log('For schedule "{}", the field-set "AllDays" may be overridden '
                 'by the "AllOtherDays" field-set'.format(
-                self.schName), lg.WARNING)
+                self.Name), lg.WARNING)
             # return all days := equivalenet to .loc[:]
             return pd.IndexSlice[:]
         elif field.lower() == 'allotherdays':
@@ -1211,7 +1194,7 @@ class Schedule(object):
         else:
             msg = 'Could not find a "SizingPeriod:DesignDay" object ' \
                   'needed for schedule "{}" with Day Type "{}"'.format(
-                self.schName, field.capitalize()
+                self.Name, field.capitalize()
             )
             raise ValueError(msg)
 
@@ -1247,7 +1230,7 @@ class Schedule(object):
         else:
             msg = 'Could not find a "SizingPeriod:DesignDay" object ' \
                   'needed for schedule "{}" with Day Type "{}"'.format(
-                self.schName, field.capitalize()
+                self.Name, field.capitalize()
             )
             raise ValueError(msg)
 
@@ -1274,11 +1257,11 @@ class Schedule(object):
                                 axis=0, weights=weights)
 
         # the new object's name
-        name = '+'.join([self.schName, other.schName])
+        name = '+'.join([self.Name, other.Name])
 
         attr = dict(value=new_values)
-
-        new_obj = self.__class__(sch_name=name, **attr)
+        idf = attr.pop('idf', None)
+        new_obj = self.__class__(name, idf, **attr)
 
         return new_obj
 

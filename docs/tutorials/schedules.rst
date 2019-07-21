@@ -15,7 +15,7 @@ Reading Schedules
 
     import archetypal as ar
     idf = ar.load_idf(<idf-file-path>)
-    this_schedule = Schedule(sch_name='name', idf=idf)
+    this_schedule = Schedule(Name='name', idf=idf)
 
 One can create the `year-week-day` representation for any schedule object by invoking the :py:meth:`archetypal.Schedule
 .to_year_week_day` method:

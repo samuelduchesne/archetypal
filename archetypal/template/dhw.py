@@ -108,7 +108,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                         IsOn=total_flow_rate > 0,
                         WaterSchedule=water_schedule,
                         WaterSupplyTemperature=supply_temp,
-                        WaterTemperatureInlet=inlet_temp)
+                        WaterTemperatureInlet=inlet_temp,
+                        idf=zone.idf)
         else:
             # This zone does not have a WaterUse:Equipment object but all
             # other zones might not as well
@@ -124,7 +125,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                         IsOn=total_flow_rate > 0,
                         WaterSchedule=water_schedule,
                         WaterSupplyTemperature=supply_temp,
-                        WaterTemperatureInlet=inlet_temp)
+                        WaterTemperatureInlet=inlet_temp,
+                        idf=zone.idf)
 
         return z_dhw
 

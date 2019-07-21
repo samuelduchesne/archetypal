@@ -758,30 +758,31 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         if facades:
             facade = functools.reduce(lambda a, b: a + b, facades)
         else:
-            facade = OpaqueConstruction.generic()
+            facade = OpaqueConstruction.generic(idf=zone.idf)
         grounds = set(ground)
         if grounds:
             ground = functools.reduce(lambda a, b: a + b, grounds)
         else:
-            ground = OpaqueConstruction.generic()
+            ground = OpaqueConstruction.generic(idf=zone.idf)
         partitions = set(partition)
         if partitions:
             partition = functools.reduce(lambda a, b: a + b, partitions)
         else:
-            partition = OpaqueConstruction.generic()
+            partition = OpaqueConstruction.generic(idf=zone.idf)
         roofs = set(roof)
         if roofs:
             roof = functools.reduce(lambda a, b: a + b, roofs)
         else:
-            roof = OpaqueConstruction.generic()
+            roof = OpaqueConstruction.generic(idf=zone.idf)
         slabs = set(slab)
         if slabs:
             slab = functools.reduce(lambda a, b: a + b, slabs)
         else:
-            slab = OpaqueConstruction.generic()
+            slab = OpaqueConstruction.generic(idf=zone.idf)
 
         z_set = cls(Facade=facade, Ground=ground, Partition=partition,
-                    Roof=roof, Slab=slab, Name=name, zone=zone)
+                    Roof=roof, Slab=slab, Name=name, zone=zone,
+                    idf=zone.idf)
         return z_set
 
     @staticmethod

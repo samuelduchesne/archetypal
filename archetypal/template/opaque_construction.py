@@ -172,20 +172,21 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return oc
 
     @classmethod
-    def from_epbunch(cls, epbunch):
+    def from_epbunch(cls, epbunch, **kwargs):
         # from the construction or internalmass object
         """
         Args:
             epbunch (EpBunch):
         """
         name = epbunch.Name
+        idf = kwargs.pop('idf', epbunch.theidf)
         # treat internalmass and surfaces differently
         if epbunch.key.lower() == 'internalmass':
             layers = cls._internalmass_layer(epbunch)
-            return cls(Name=name, Layers=layers)
+            return cls(Name=name, Layers=layers, idf=idf)
         else:
             layers = cls._surface_layers(epbunch)
-            return cls(Name=name, Layers=layers)
+            return cls(Name=name, Layers=layers, idf=idf, **kwargs)
 
     @classmethod
     def _internalmass_layer(cls, epbunch):
@@ -262,9 +263,10 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return data_dict
 
     @classmethod
-    def generic(cls):
+    def generic(cls, idf=None):
         # Generic Plaster Board
         om = OpaqueMaterial(Conductivity=0.17, SpecificHeat=800, Density=800,
-                            Name='generic_Material')
+                            Name='generic_Material', idf=idf)
         layers = [MaterialLayer(om, 0.0127)]  # half inch
-        return cls(Name='generic plaster board half inch', Layers=layers)
+        return cls(Name='generic plaster board half inch', Layers=layers,
+                   idf=idf)

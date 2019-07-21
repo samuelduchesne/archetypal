@@ -199,14 +199,14 @@ def reduce(idf, weather, parallel):
         for fn in idf:
             res[fn]['idf'] = archetypal.load_idf(fn)
             res[fn]['sql'] = archetypal.run_eplus(fn, weather, verbose='v',
-                                     output_report='sql',
-                            prep_outputs=True, annual=True, design_day=False)
+                                                  output_report='sql',
+                                                  prep_outputs=True,
+                                                  annual=True, design_day=False)
         from archetypal import BuildingTemplate
         bts = []
         for fn in res.values():
-            bts.append(BuildingTemplate.from_idf(fn['idf'], sql=fn['sql']))
+            bts.append(BuildingTemplate.from_idf(fn['idf'], sql=fn['sql'],
+                                                 DataSource=fn['idf'].name))
 
         template = archetypal.UmiTemplate(BuildingTemplates=bts)
         print(template.to_json())
-
-

@@ -38,7 +38,6 @@ def test_make_umi_schedule(config):
     ax = s.plot(slice=('2018/01/01 00:00', '2018/01/07'), legend=True)
     new.plot(slice=('2018/01/01 00:00', '2018/01/07'), ax=ax, legend=True)
     plt.show()
-    print((s != new).sum())
     assert s.__class__.__name__ == 'UmiSchedule'
     assert len(s.all_values) == len(new.all_values)
     assert (new.all_values == s.all_values).all()

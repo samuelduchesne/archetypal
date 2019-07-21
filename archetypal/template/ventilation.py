@@ -206,7 +206,8 @@ class VentilationSetting(UmiBase, metaclass=Unique):
                      ScheduledVentilationSchedule=ScheduledVentilationSchedule,
                      IsScheduledVentilationOn=IsScheduledVentilationOn,
                      ScheduledVentilationAch=ScheduledVentilationAch,
-                     ScheduledVentilationSetpoint=ScheduledVentilationSetpoint)
+                     ScheduledVentilationSetpoint=ScheduledVentilationSetpoint,
+                     idf=zone.idf)
         return z_vent
 
     def combine(self, other):

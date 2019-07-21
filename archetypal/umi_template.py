@@ -2,12 +2,16 @@ import io
 import json
 import os
 from collections import OrderedDict
+import numpy as np
 
-from archetypal import load_idf, BuildingTemplate, GasMaterial, GlazingMaterial, \
+from archetypal import load_idf, BuildingTemplate, GasMaterial, \
+    GlazingMaterial, \
     OpaqueMaterial, parallel_process, run_eplus, OpaqueConstruction, \
     WindowConstruction, StructureDefinition, DaySchedule, WeekSchedule, \
-    YearSchedule, DomesticHotWaterSetting, VentilationSetting, ZoneConditioning, \
-    ZoneConstructionSet, ZoneLoad, Zone, settings
+    YearSchedule, DomesticHotWaterSetting, VentilationSetting, \
+    ZoneConditioning, \
+    ZoneConstructionSet, ZoneLoad, Zone, settings, UmiBase, MaterialLayer, \
+    YearScheduleParts, UmiSchedule
 
 
 class UmiTemplate:
@@ -283,18 +287,46 @@ class UmiTemplate:
                                      'Zones': [],
                                      'WindowSettings': [],
                                      'BuildingTemplates': []})
-            jsonized = []
-            for bld in self.BuildingTemplates:
-                all_objs = bld.all_objects
-                for obj in all_objs:
-                    if obj not in jsonized:
-                        jsonized.append(obj)
-                        catname = all_objs[obj].__class__.__name__ + 's'
-                        app_dict = all_objs[obj].to_json()
-                        data_dict[catname].append(app_dict)
 
+            jsonized = []
+
+            def recursive_json(obj):
+                if obj.__class__.mro()[0] == UmiSchedule:
+                    obj = obj.develop()
+                catname = obj.__class__.__name__ + 's'
+                if catname in data_dict:
+                    app_dict = obj.to_json()
+                    if obj not in jsonized:
+                        data_dict[catname].append(app_dict)
+                        jsonized.append(obj)
+                for key, value in obj.__dict__.items():
+
+                    if isinstance(value, (UmiBase, MaterialLayer,
+                                          YearScheduleParts)) and not \
+                            key.startswith('_'):
+                        recursive_json(value)
+                    elif isinstance(value, list):
+                        [recursive_json(value) for value in value if
+                         isinstance(value, (
+                         UmiBase, MaterialLayer, YearScheduleParts))]
+
+            for bld in self.BuildingTemplates:
+                recursive_json(bld)
+
+            for key in data_dict:
+                data_dict[key] = sorted(data_dict[key],
+                                        key=lambda x: float(x["$id"]) if "$id"
+                                                                       in x
+                                        else 1)
+
+            class CustomJSONEncoder(json.JSONEncoder):
+                def default(self, obj):
+                    if isinstance(obj, np.bool_):
+                        return bool(obj)
+
+                    return obj
             # Write the dict to json using json.dumps
-            response = json.dumps(data_dict, indent=indent)
+            response = json.dumps(data_dict, indent=indent, cls=CustomJSONEncoder)
             path_or_buf.write(response)
 
         return response

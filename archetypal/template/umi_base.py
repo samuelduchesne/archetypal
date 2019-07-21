@@ -232,23 +232,23 @@ class MaterialBase(UmiBase):
         self.TransportDistance = TransportDistance
         self.TransportEnergy = TransportEnergy
 
-    def __eq__(self, other):
-        if isinstance(other, MaterialBase):
-            return \
-                self.Name == other.Name and \
-                self.Conductivity == other.Conductivity and \
-                self.Cost == other.Cost and \
-                self.Density == other.Density and \
-                self.EmbodiedCarbon == other.EmbodiedCarbon and \
-                self.EmbodiedEnergy == other.EmbodiedEnergy and \
-                self.SubstitutionRatePattern == other.SubstitutionRatePattern \
-                and \
-                self.SubstitutionTimestep == other.SubstitutionTimestep and \
-                self.TransportCarbon == other.TransportCarbon and \
-                self.TransportDistance == other.TransportDistance and \
-                self.TransportEnergy == other.TransportEnergy
-        else:
-            raise NotImplementedError
+    # def __eq__(self, other):
+    #     if isinstance(other, MaterialBase):
+    #         return \
+    #             self.Name == other.Name and \
+    #             self.Conductivity == other.Conductivity and \
+    #             self.Cost == other.Cost and \
+    #             self.Density == other.Density and \
+    #             self.EmbodiedCarbon == other.EmbodiedCarbon and \
+    #             self.EmbodiedEnergy == other.EmbodiedEnergy and \
+    #             self.SubstitutionRatePattern == other.SubstitutionRatePattern \
+    #             and \
+    #             self.SubstitutionTimestep == other.SubstitutionTimestep and \
+    #             self.TransportCarbon == other.TransportCarbon and \
+    #             self.TransportDistance == other.TransportDistance and \
+    #             self.TransportEnergy == other.TransportEnergy
+    #     else:
+    #         raise NotImplementedError
 
     def __hash__(self):
         return hash((self.Density,

@@ -351,7 +351,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
             (WindowSetting): The window setting object.
         """
         if isinstance(surface, EpBunch):
-            construction = surface.Construction_Name
+            construction = surface.get_referenced_object('Construction_Name')
+            construction = WindowConstruction.from_idf(construction)
             name = surface.Name
             shading_control = surface.get_referenced_object(
                 'Shading_Control_Name')
@@ -471,6 +472,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
                         'defaults for object "{}"'.format(
                         leak.key, cls.mro()[0].__name__),
                         lg.WARNING)
+            else:
+                attr['AfnWindowAvailability'] = \
+                    UmiSchedule.constant_schedule(idf=surface.theidf)
             # Zone Mixing
             attr[
                 'ZoneMixingAvailabilitySchedule'] = \
@@ -532,6 +536,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
                     self._float_mean(other, 'AfnDischargeC'),
                     AfnTempSetpoint=
                     self._float_mean(other, 'AfnTempSetpoint'),
+                    AfnWindowAvailability=self.AfnWindowAvailability.combine(
+                        other.AfnWindowAvailability),
                     IsShadingSystemOn=any([self.IsShadingSystemOn,
                                            other.IsShadingSystemOn]),
                     IsVirtualPartition=any([self.IsVirtualPartition,

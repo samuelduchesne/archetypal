@@ -196,15 +196,8 @@ class IDF(geomeppy.IDF):
             (dict of eppy.bunch_subclass.EpBunch): the schedules with their
                 name as a key
         """
-        schedule_types = ['Schedule:Day:Hourly'.upper(),
-                          'Schedule:Day:Interval'.upper(),
-                          'Schedule:Day:List'.upper(),
-                          'Schedule:Week:Daily'.upper(),
-                          'Schedule:Year'.upper(),
-                          'Schedule:Week:Compact'.upper(),
-                          'Schedule:Compact'.upper(),
-                          'Schedule:Constant'.upper(),
-                          'Schedule:File'.upper()]
+        schedule_types = list(map(str.upper, self.getiddgroupdict()[
+            'Schedules']))
         if yearly_only:
             schedule_types = ['Schedule:Year'.upper(),
                               'Schedule:Compact'.upper(),

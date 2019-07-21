@@ -8,6 +8,7 @@
 import collections
 
 import numpy as np
+import pandas as pd
 
 from archetypal import Schedule
 from archetypal.template import UmiBase, Unique
@@ -45,6 +46,13 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                                                    values=values,
                                                    Name=sch_name,
                                                    **kwargs)
+
+    @classmethod
+    def from_yearschedule(cls, year_sched):
+        if isinstance(year_sched, YearSchedule):
+            return cls.from_values(sch_name=year_sched.Name,
+                                   values=year_sched.all_values,
+                                   Type=year_sched.Type)
 
     def __add__(self, other):
         return self.combine(other)
@@ -85,7 +93,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
         attr = self.__dict__
         attr.update(dict(value=new_values))
-        attr.pop('Name')
+        attr.pop('Name', None)
         new_obj = super().from_values(sch_name=name, Name=name, **attr)
 
         return new_obj
@@ -97,16 +105,19 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         for day in days:
             newdays.append(
                 DaySchedule(Name=day.Name, idf=self.idf, epbunch=day,
+                            Type=self.Type,
                             Comments='Year Week Day schedules created from: '
                                      '{}'.format(self.Name)))
         newweeks = []
         for week in weeks:
             newweeks.append(WeekSchedule(Name=week.Name, idf=self.idf,
+                                         Type=self.Type,
                                          epbunch=week, newdays=newdays,
                                          Comments='Year Week Day schedules '
                                                   'created from: '
                                                   '{}'.format(self.Name)))
         year = YearSchedule(Name=year.Name, id=self.id, idf=self.idf,
+                            Type=self.Type,
                             epbunch=year,
                             newweeks=newweeks,
                             Comments='Year Week Day schedules created from: '
@@ -179,7 +190,6 @@ class DaySchedule(UmiSchedule):
             **kwargs:
         """
         super(DaySchedule, self).__init__(*args, **kwargs)
-        self.Values = kwargs.get('Values', None)
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -188,7 +198,7 @@ class DaySchedule(UmiSchedule):
         data_dict["$id"] = str(self.id)
         data_dict["Category"] = "Day"
         data_dict["Type"] = self.schTypeLimitsName
-        data_dict["Values"] = self.Values
+        data_dict["Values"] = self.all_values.tolist()
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
         data_dict["Name"] = self.Name
@@ -241,7 +251,6 @@ class WeekSchedule(UmiSchedule):
 
         data_dict["$id"] = str(self.id)
         data_dict["Category"] = "Week"
-        day: DaySchedule
         data_dict["Days"] = [day.to_dict() for day in self.Days]
         data_dict["Type"] = self.schLimitType
         data_dict["Comments"] = self.Comments
@@ -262,10 +271,8 @@ class WeekSchedule(UmiSchedule):
             week_day_schedule_name = epbunch[
                 "{}_ScheduleDay_Name".format(day)]
             blocks.append(
-                {
-                    "$ref": self.all_objects[('DaySchedule',
-                                              week_day_schedule_name)].id
-                }
+                self.all_objects[('DaySchedule',
+                                  week_day_schedule_name)]
             )
 
         return blocks
@@ -304,6 +311,20 @@ class YearSchedule(UmiSchedule):
         else:
             self.schLimitType = type
 
+    @property
+    def all_values(self):
+        index = pd.DatetimeIndex(start=self.startDate, freq='1H', periods=8760)
+        series = pd.Series(index=index)
+        for part in self.Parts:
+            start = "{}-{}-{}".format(self.year, part.FromMonth, part.FromDay)
+            end = "{}-{}-{}".format(self.year, part.ToMonth, part.ToDay)
+            one_week = np.array(
+                [item for sublist in part.Schedule.Days for item in
+                 sublist.Values])
+            all_weeks = np.resize(one_week, len(series.loc[start:end]))
+            series.loc[start:end] = all_weeks
+        return series.values
+
     @classmethod
     def from_json(cls, *args, **kwargs):
         """
@@ -316,8 +337,8 @@ class YearSchedule(UmiSchedule):
 
         ys.Parts = [YearScheduleParts.from_json(all_objects=ys, **part) for
                     part in parts]
-
-        return ys
+        ys.schType = 'Schedule:Year'
+        return UmiSchedule.from_yearschedule(ys)
 
     def to_json(self):
         """Convert class properties to dict"""

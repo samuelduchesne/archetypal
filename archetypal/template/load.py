@@ -215,7 +215,8 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                      IsEquipmentOn=EquipmentPowerDensity > 0,
                      IsLightingOn=LightingPowerDensity > 0,
                      IsPeopleOn=PeopleDensity > 0,
-                     PeopleDensity=PeopleDensity)
+                     PeopleDensity=PeopleDensity,
+                     idf=zone.idf)
         return z_load
 
     def combine(self, other):

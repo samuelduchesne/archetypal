@@ -17,15 +17,15 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
 
     """
 
-    def __init__(self, Density=2500, Conductivity=None, SolarTransmittance=None,
-                 SolarReflectanceFront=None, SolarReflectanceBack=None,
-                 VisibleTransmittance=None, VisibleReflectanceFront=None,
-                 VisibleReflectanceBack=None, IRTransmittance=None,
-                 IREmissivityFront=None, IREmissivityBack=None, DirtFactor=1.0,
+    def __init__(self, Density=2500, Conductivity=0, SolarTransmittance=0,
+                 SolarReflectanceFront=0, SolarReflectanceBack=0,
+                 VisibleTransmittance=0, VisibleReflectanceFront=0,
+                 VisibleReflectanceBack=0, IRTransmittance=0,
+                 IREmissivityFront=0, IREmissivityBack=0, DirtFactor=1.0,
                  Type=None, EmbodiedEnergy=0, EmbodiedEnergyStdDev=0,
                  EmbodiedCarbon=0, EmbodiedCarbonStdDev=0, Cost=0.0, Life=1,
                  SubstitutionRatePattern=[0.2], SubstitutionTimestep=50,
-                 TransportCarbon=None, TransportDistance=None,
+                 TransportCarbon=0, TransportDistance=0,
                  TransportEnergy=0, **kwargs):
         """
         Args:

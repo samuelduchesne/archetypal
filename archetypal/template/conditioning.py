@@ -18,15 +18,16 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
     """
 
     def __init__(self, CoolingCoeffOfPerf=None, CoolingLimitType='NoLimit',
-                 CoolingSetpoint=26, EconomizerType='NoEconomizer',
+                 CoolingSetpoint=26, CoolingSchedule=None,
+                 EconomizerType='NoEconomizer',
                  HeatRecoveryEfficiencyLatent=0.65,
                  HeatRecoveryEfficiencySensible=0.7, HeatRecoveryType='None',
                  HeatingCoeffOfPerf=None, HeatingLimitType='NoLimit',
-                 HeatingSetpoint=20, IsCoolingOn=True, IsHeatingOn=True,
-                 IsMechVentOn=True, MaxCoolFlow=100, MaxCoolingCapacity=100,
-                 MaxHeatFlow=100, MaxHeatingCapacity=100,
-                 MinFreshAirPerArea=0, MinFreshAirPerPerson=0.00944,
-                 **kwargs):
+                 HeatingSetpoint=20, HeatingSchedule=None, IsCoolingOn=True,
+                 IsHeatingOn=True, IsMechVentOn=True, MaxCoolFlow=100,
+                 MaxCoolingCapacity=100, MaxHeatFlow=100,
+                 MaxHeatingCapacity=100, MinFreshAirPerArea=0,
+                 MinFreshAirPerPerson=0.00944, MechVentSchedule=None, **kwargs):
         """Initialize a new ZoneCondition object
 
         Args:
@@ -38,6 +39,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
             CoolingSetpoint (float): The temperature above which zone heating is
                 turned on. Here, we take the mean value over the year.
+            CoolingSchedule (UmiSchedule): The availability schedule for space
+                cooling in this zone.
             EconomizerType (str): Specifies if there is an outdoor air
                 economizer. The choices are: NoEconomizer, DifferentialDryBulb,
                 or DifferentialEnthalpy. For the moment, the EconomizerType is
@@ -101,6 +104,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
             HeatingSetpoint (float): The temperature below which zone heating is
                 turned on. Here, we take the mean value over the year.
+            HeatingSchedule (UmiSchedule): The availability schedule for space
+                heating in this zone.
             IsCoolingOn (bool): Whether or not this cooling is available.
             IsHeatingOn (bool): Whether or not this cooling is available.
             IsMechVentOn (bool): If True, an outdoor air quantity for use by the
@@ -122,13 +127,14 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             MinFreshAirPerPerson (float): The design outdoor air volume flow
                 rate per person for this zone in cubic meters per second per
                 person. The default is 0.00944 (20 cfm per person).
+            MechVentSchedule:
             **kwargs: Other arguments passed to the base class
                 :class:`archetypal.template.UmiBase`
         """
         super(ZoneConditioning, self).__init__(**kwargs)
-        self.MechVentSchedule = None
-        self.HeatingSchedule = None
-        self.CoolingSchedule = None
+        self.MechVentSchedule = MechVentSchedule
+        self.HeatingSchedule = HeatingSchedule
+        self.CoolingSchedule = CoolingSchedule
         self.CoolingCoeffOfPerf = CoolingCoeffOfPerf
         self.CoolingLimitType = CoolingLimitType
         self.CoolingSetpoint = CoolingSetpoint
@@ -216,7 +222,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # First create placeholder object.
         name = zone.Name + "_ZoneConditioning"
-        z_cond = cls(Name=name, zone=zone)
+        z_cond = cls(Name=name, zone=zone, idf=zone.idf)
 
         z_cond._set_thermostat_setpoints(zone)
 
@@ -291,7 +297,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                     design_spe_outdoor_air_name = object.fieldvalues[
                         indice_zone + 1]
                     MechVentSchedule = UmiSchedule(
-                        sch_name=object.Availability_Schedule_Name)
+                        Name=object.Availability_Schedule_Name,
+                        idf=zone.idf)
                     break
             # If 'DesignSpecifactionOutdoorAirName', MechVent is ON, and gets
             # the minimum fresh air (per person and area)
@@ -368,13 +375,15 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         self.HeatingCoeffOfPerf = heating_cop
 
     def _set_thermostat_setpoints(self, zone):
-        """Sets the thermostat settings for this zone.
+        """Sets the thermostat settings and schedules for this zone.
 
         Thermostat Setpoints:
             - IsCoolingOn (bool): Whether or not Cooling is needed.
             - IsHeatingOn (bool): Whether or not Heating is needed.
             - CoolingSetpoint (float):
             - HeatingSetpoint (float):
+            - HeatingSchedule (UmiSchedule):
+            - CoolingSchedule (UmiSchedule):
 
         Args:
             zone (Zone): The zone object.
@@ -556,14 +565,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         return cop
 
     def _get_setpoint_and_scheds(self, zone):
-        """Gets temperature set points from sql EnergyPlus output and
-        associated schedules.
+        """Gets temperature set points from sql EnergyPlus output and associated
+        schedules.
 
         Args:
             zone (archetypal.template.zone.Zone): zone to gets information from
-            variable_output_name (str): Name of the output in the sql for the
-                zone setpoint (e.g. 'Zone Thermostat Heating Setpoint
-                Temperature')
         """
         # Load the ReportData and filter *variable_output_name* and group by
         # zone name (*KeyValue*). Return annual average.
@@ -574,7 +580,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         heating_sched = UmiSchedule.from_values(
             sch_name=zone.Name + '_Heating_Schedule',
             values=h_array,
-            Type='fraction',
+            Type='Fraction',
             idf=zone.idf)
 
         variable_output_name = 'Zone Thermostat Cooling Setpoint Temperature'
@@ -584,7 +590,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         cooling_sched = UmiSchedule.from_values(
             sch_name=zone.Name + '_Cooling_Schedule',
             values=c_array,
-            Type='fraction',
+            Type='Fraction',
             idf=zone.idf)
         return h_array.mean(), heating_sched, c_array.mean(), cooling_sched
 
@@ -629,15 +635,25 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         q = self._float_mean(other, 'MaxHeatingCapacity', weights)
         r = self._float_mean(other, 'MinFreshAirPerArea', weights)
         s = self._float_mean(other, 'MinFreshAirPerPerson', weights)
-
-        attr = dict(CoolingCoeffOfPerf=a, CoolingLimitType=b, CoolingSetpoint=c,
-                    EconomizerType=d, HeatRecoveryEfficiencyLatent=e,
-                    HeatRecoveryEfficiencySensible=f, HeatRecoveryType=g,
-                    HeatingCoeffOfPerf=h, HeatingLimitType=i, HeatingSetpoint=j,
-                    IsCoolingOn=k, IsHeatingOn=l, IsMechVentOn=m, MaxCoolFlow=n,
-                    MaxCoolingCapacity=o, MaxHeatFlow=p, MaxHeatingCapacity=q,
-                    MinFreshAirPerArea=r, MinFreshAirPerPerson=s)
+        t = self.HeatingSchedule.combine(other.HeatingSchedule, weights)
+        u = self.CoolingSchedule.combine(other.CoolingSchedule, weights)
 
         # create a new object with the previous attributes
-        new_obj = self.__class__(Name=name, **attr)
+        new_obj = self.__class__(Name=name,
+                                 CoolingCoeffOfPerf=a, CoolingLimitType=b,
+                                 CoolingSetpoint=c,
+                                 EconomizerType=d,
+                                 HeatRecoveryEfficiencyLatent=e,
+                                 HeatRecoveryEfficiencySensible=f,
+                                 HeatRecoveryType=g,
+                                 HeatingCoeffOfPerf=h, HeatingLimitType=i,
+                                 HeatingSetpoint=j,
+                                 IsCoolingOn=k, IsHeatingOn=l, IsMechVentOn=m,
+                                 MaxCoolFlow=n,
+                                 MaxCoolingCapacity=o, MaxHeatFlow=p,
+                                 MaxHeatingCapacity=q,
+                                 MinFreshAirPerArea=r, MinFreshAirPerPerson=s,
+                                 HeatingSchedule=t,
+                                 CoolingSchedule=u
+                                 )
         return new_obj

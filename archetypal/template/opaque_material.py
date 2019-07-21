@@ -95,6 +95,11 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         """
         return self.combine(other)
 
+    @classmethod
+    def generic(cls):
+        return cls(Conductivity=0.17, SpecificHeat=800, Density=800,
+                   Name='generic_Material')
+
     def combine(self, other):
         """Append other to self. Return self + other as a new object.
 
@@ -206,6 +211,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                        VisibleAbsorptance=VisibleAbsorptance,
                        Thickness=Thickness,
                        Name=Name,
+                       idf=epbunch.theidf,
                        **kwargs)
         elif epbunch.key.upper() == 'MATERIAL:NOMASS':
             # do MATERIAL:NOMASS
@@ -227,6 +233,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                        Thickness=Thickness,
                        Density=Density,
                        Name=Name,
+                       idf=epbunch.theidf,
                        **kwargs)
         elif epbunch.key.upper() == 'MATERIAL:AIRGAP':
             Name = epbunch.Name
@@ -241,6 +248,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                        Thickness=Thickness,
                        Density=Density,
                        Name=Name,
+                       idf=epbunch.theidf,
                        **kwargs)
         else:
             raise NotImplementedError("Material '{}' of type '{}' is not yet "

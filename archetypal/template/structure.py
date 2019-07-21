@@ -7,7 +7,7 @@
 
 import collections
 
-from archetypal.template import UmiBase, Unique
+from archetypal.template import UmiBase, Unique, OpaqueMaterial
 
 
 class MassRatio(object):
@@ -15,7 +15,7 @@ class MassRatio(object):
         """
         Args:
             HighLoadRatio:
-            Material:
+            Material (OpaqueMaterial):
             NormalRatio:
         """
         self.HighLoadRatio = HighLoadRatio
@@ -28,6 +28,11 @@ class MassRatio(object):
                                        Material={'$ref': str(
                                            self.Material.id)},
                                        NormalRatio=self.NormalRatio)
+
+    @classmethod
+    def generic(cls):
+        mat = OpaqueMaterial.generic()
+        return cls(HighLoadRatio=0, Material=mat, NormalRatio=0)
 
 
 class StructureDefinition(UmiBase, metaclass=Unique):

@@ -17,7 +17,7 @@ from tqdm import tqdm
 from archetypal import log, save_and_show, calc_simple_glazing
 from archetypal.template import UmiBase, Unique, ZoneGraph, Zone, \
     resolve_obco, WindowSetting, UmiSchedule, GlazingMaterial, \
-    StructureDefinition
+    StructureDefinition, MassRatio
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
@@ -274,7 +274,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
         # resolve StructureDefinition and WindowSetting
         bt.Structure = StructureDefinition(
-            Name=bt.Name + '_StructureDefinition')
+            Name=bt.Name + '_StructureDefinition', MassRatios=[
+                MassRatio.generic()], idf=idf)
         bt.Windows = bt.Perimeter.Windows
 
         return bt

@@ -39,6 +39,8 @@ class Schedule(object):
             **kwargs:
         """
         try:
+            kwargs['idf'] = idf
+            kwargs['Name'] = sch_name
             super(Schedule, self).__init__(**kwargs)
         except:
             super(Schedule, self).__init__()
@@ -96,8 +98,8 @@ class Schedule(object):
             if not Path(settings.cache_folder).exists():
                 Path(settings.cache_folder).mkdir_p()
             with tempfile.NamedTemporaryFile(mode='w', suffix='_schedule.idf',
-                                          prefix='temp_',
-                                        dir=settings.cache_folder)\
+                                             prefix='temp_',
+                                             dir=settings.cache_folder) \
                     as file:
                 file.write(idftxt)
                 # initialize the IDF object with the file handle
@@ -787,7 +789,8 @@ class Schedule(object):
             sch_type = self.schType
         if self.count == 0:
             # This is the first time, get the schedule type and the type limits.
-            self.schTypeLimitsName = self.get_schedule_type_limits_name()
+            if self.schTypeLimitsName is None:
+                self.schTypeLimitsName = self.get_schedule_type_limits_name()
         self.count += 1
 
         if sch_type.upper() == "schedule:year".upper():
@@ -849,7 +852,7 @@ class Schedule(object):
             - **daily** (*list of Schedule*):The list of daily schedule objects
         """
         if values:
-            full_year=values
+            full_year = values
         else:
             full_year = np.array(self.all_values)  # array of shape (8760,)
         values = full_year.reshape(-1, 24)  # shape (365, 24)
@@ -1137,20 +1140,6 @@ class Schedule(object):
     def __len__(self):
         """returns the length of all values of the schedule"""
         return len(self.all_values)
-
-    def __eq__(self, other):
-        """Overrides the default implementation
-
-        Args:
-            other:
-        """
-        if isinstance(other, Schedule):
-            return self.all_values == other.all_values
-        else:
-            raise NotImplementedError
-
-    def __ne__(self, other):
-        return ~(self.__eq__(other))
 
     def __add__(self, other):
         if isinstance(other, Schedule):

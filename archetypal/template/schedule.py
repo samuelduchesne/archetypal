@@ -91,8 +91,8 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
         attr = self.__dict__
         attr.update(dict(value=new_values))
-        attr.pop('Name', None)
-        new_obj = super().from_values(Name=name, **attr)
+        attr['Name'] = name
+        new_obj = super().from_values(**attr)
 
         return new_obj
 

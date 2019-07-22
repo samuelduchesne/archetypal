@@ -186,7 +186,7 @@ class DaySchedule(UmiSchedule):
             **kwargs:
         """
         super(DaySchedule, self).__init__(*args, **kwargs)
-        self._values = kwargs.get('Values', None)
+        self._values = kwargs.get('Values', self.get_schedule_values())
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -195,7 +195,7 @@ class DaySchedule(UmiSchedule):
         data_dict["$id"] = str(self.id)
         data_dict["Category"] = "Day"
         data_dict["Type"] = self.schTypeLimitsName
-        data_dict["Values"] = self.all_values.tolist()
+        data_dict["Values"] = self.all_values.round(3).tolist()
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
         data_dict["Name"] = self.Name

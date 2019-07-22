@@ -9,6 +9,7 @@ import collections
 
 from archetypal import float_round, ReportData
 from archetypal.template import UmiBase, Unique, UmiSchedule
+import numpy as np
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
@@ -348,17 +349,22 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         # COPs (heating and cooling)
 
         # Heating
-        heating_in_list = ['Heating:Electricity', 'Heating:Gas',
-                           'Heating:DistrictHeating']
-        heating_cop = self._get_cop(zone, energy_in_list=heating_in_list,
-                                    energy_out_variable_name='Air System Total '
-                                                             'Heating Energy')
+        heating_meters = ('Heating:Electricity', 'Heating:Gas',
+                          'Heating:DistrictHeating')
+        heating_cop = self._get_cop(zone, energy_in_list=heating_meters,
+                                    energy_out_variable_name=(
+                                    'Air System Total Heating Energy',
+                                    'Zone Ideal Loads Zone Total Heating '
+                                    'Energy'))
         # Cooling
-        cooling_in_list = ['Cooling:Electricity', 'Cooling:Gas',
-                           'Cooling:DistrictCooling']
-        cooling_cop = self._get_cop(zone, energy_in_list=cooling_in_list,
-                                    energy_out_variable_name='Air System Total '
-                                                             'Cooling Energy')
+        cooling_meters = ('Cooling:Electricity', 'Cooling:Gas',
+                          'Cooling:DistrictCooling')
+        cooling_cop = self._get_cop(zone, energy_in_list=cooling_meters,
+                                    energy_out_variable_name=(
+                                    'Air System Total Cooling Energy',
+                                    'Zone Ideal Loads Zone Total Cooling '
+                                    'Energy'))
+
         # Capacity limits (heating and cooling)
         zone_size = zone.sql['ZoneSizes'][
             zone.sql['ZoneSizes']['ZoneName'] == zone.Name.upper()]
@@ -547,26 +553,38 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
         Args:
             zone (archetypal.template.zone.Zone): zone to gets information from
-            energy_in_list (list): list of the energy sources for a system (e.g.
-                [Heating:Electricity, Heating:Gas] for heating system)
-            energy_out_variable_name (str): Name of the output in the sql for
-                the energy given to the zone from the system (e.g. 'Air System
-                Total Heating Energy')
+            energy_in_list (str or tuple): list of the energy sources for a
+                system (e.g. [Heating:Electricity, Heating:Gas] for heating
+                system)
+            energy_out_variable_name (str or tuple): Name of the output in the
+                sql for the energy given to the zone from the system (e.g. 'Air
+                System Total Heating Energy')
         """
-        energy_out_idx = zone.sql['ReportDataDictionary'][
-            zone.sql['ReportDataDictionary'][
-                'Name'] == energy_out_variable_name].index
-        energy_out = zone.sql['ReportData'][
-            zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
-                energy_out_idx)]['Value'].sum()
-        energy_in_idx = zone.sql['ReportDataDictionary'][
-            zone.sql['ReportDataDictionary']['Name'].isin(
-                energy_in_list)].index
-        energy_in = zone.sql['ReportData'][
-            zone.sql['ReportData']['ReportDataDictionaryIndex'].isin(
-                energy_in_idx)]['Value'].sum()
-        cop = float_round(energy_out / energy_in,
-                          3)
+        from archetypal import ReportData
+        rd = ReportData.from_sql(zone.sql)
+        energy_out = rd.filter_report_data(name=tuple(energy_out_variable_name))
+        energy_in = rd.filter_report_data(name=tuple(energy_in_list))
+
+        # zone_to_hvac = {zone.Zone_Name: [
+        #     zone.get_referenced_object(
+        #         'Zone_Conditioning_Equipment_List_Name
+        #         ').get_referenced_object(
+        #         fieldname) for fieldname in zone.get_referenced_object(
+        #         'Zone_Conditioning_Equipment_List_Name').fieldnames if
+        #     zone.get_referenced_object(
+        #         'Zone_Conditioning_Equipment_List_Name
+        #         ').get_referenced_object(
+        #         fieldname) is not None
+        # ]
+        #     for zone in zone.idf.idfobjects[
+        #         'ZoneHVAC:EquipmentConnections'.upper()]
+        # }
+
+        outs = energy_out.groupby('KeyValue').Value.sum()
+        ins = energy_in.Value.sum()
+
+        cop = float_round(outs.sum() / ins, 3)
+
         return cop
 
     def _get_setpoint_and_scheds(self, zone):
@@ -582,9 +600,10 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         h_array = ReportData.from_sql(zone.sql).filter_report_data(
             name=variable_output_name, keyvalue=zone.Name.upper()).loc[:,
                   ['TimeIndex', 'Value']].set_index('TimeIndex').Value.values
+
         heating_sched = UmiSchedule.from_values(
             Name=zone.Name + '_Heating_Schedule',
-            values=h_array,
+            values=(h_array > 0).astype(int),
             Type='Fraction',
             idf=zone.idf)
 
@@ -594,7 +613,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                   ['TimeIndex', 'Value']].set_index('TimeIndex').Value.values
         cooling_sched = UmiSchedule.from_values(
             Name=zone.Name + '_Cooling_Schedule',
-            values=c_array,
+            values=(c_array > 0).astype(int),
             Type='Fraction',
             idf=zone.idf)
         return h_array.mean(), heating_sched, c_array.mean(), cooling_sched

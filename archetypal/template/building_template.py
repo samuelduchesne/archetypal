@@ -11,12 +11,11 @@ import time
 
 import networkx
 import tabulate
-from eppy.bunch_subclass import BadEPFieldError
-from tqdm import tqdm
-
 from archetypal import log, save_and_show
 from archetypal.template import UmiBase, Unique, ZoneGraph, Zone, \
-    resolve_obco, WindowSetting, UmiSchedule, StructureDefinition, MassRatio
+    resolve_obco, WindowSetting, StructureDefinition, MassRatio
+from eppy.bunch_subclass import BadEPFieldError
+from tqdm import tqdm
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
@@ -330,39 +329,6 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             log('completed zone reduction for building {} in'
                 '{:,.2f} seconds'.format(self.Name, time.time() - start_time))
             return bundle_zone
-
-    def get_shading_control(self, sub):
-        """
-        Args:
-            sub:
-        """
-        scn = sub.Shading_Control_Name
-        obj = self.idf.getobject('WindowProperty:ShadingControl'.upper(), scn)
-        if obj:
-            name = obj.Schedule_Name
-            return {'IsShadingSystemOn': True,
-                    'ShadingSystemType': 1,
-                    'ShadingSystemSetPoint': obj.Setpoint,
-                    'ShadingSystemAvailabilitySchedule': UmiSchedule(Name=name,
-                                                                     idf=self.idf),
-                    'AfnWindowAvailability': UmiSchedule(Name=name,
-                                                         idf=self.idf),
-                    'ZoneMixingAvailabilitySchedule': UmiSchedule(Name=name,
-                                                                  idf=self.idf),
-                    # Todo: Add WindowConstruction here
-                    }
-        else:
-            name = list(self.idf.get_all_schedules(yearly_only=True))[0]
-            return {'IsShadingSystemOn': False,
-                    'ShadingSystemType': 0,
-                    'ShadingSystemSetPoint': 0,
-                    'ShadingSystemAvailabilitySchedule': UmiSchedule(Name=name,
-                                                                     idf=self.idf),
-                    'AfnWindowAvailability': UmiSchedule(Name=name,
-                                                         idf=self.idf),
-                    'ZoneMixingAvailabilitySchedule': UmiSchedule(Name=name,
-                                                                  idf=self.idf),
-                    }
 
     def to_json(self):
         """Convert class properties to dict"""

@@ -296,8 +296,14 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                             0]
                     design_spe_outdoor_air_name = object.fieldvalues[
                         indice_zone + 1]
-                    MechVentSchedule = UmiSchedule(
-                        Name=object.Availability_Schedule_Name, idf=zone.idf)
+
+                    if object.Availability_Schedule_Name != '':
+                        MechVentSchedule = UmiSchedule(
+                            Name=object.Availability_Schedule_Name,
+                            idf=zone.idf)
+                    else:
+                        MechVentSchedule = UmiSchedule.constant_schedule(
+                            idf=zone.idf)
                     break
             # If 'DesignSpecifactionOutdoorAirName', MechVent is ON, and gets
             # the minimum fresh air (per person and area)

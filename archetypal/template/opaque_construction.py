@@ -139,6 +139,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return new_m, new_t
 
     def constant_ufactor(self, other):
+        # Todo: Update logic to properly craete constant u-factor assembly
+
         self_t = np.array([mat.Thickness for mat in self.Layers])
         self_m = np.array([mat.Material for mat in self.Layers])
         self_k = np.array([mat.Material.Conductivity for mat in self.Layers])
@@ -147,7 +149,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         other_m = np.array([mat.Material for mat in other.Layers])
         other_k = np.array([mat.Material.Conductivity for mat in other.Layers])
 
-        factor = sum(self_t / self_k) / sum(other_t / other_k)
+        factor = sum(self_k / self_t) / sum(other_k / other_t)
 
         new_t = np.append(self_t, other_t)
         new_t = new_t * factor

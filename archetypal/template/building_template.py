@@ -51,7 +51,6 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         """
         super(BuildingTemplate, self).__init__(**kwargs)
         self._zone_graph = None
-        self.Zones = None
         self.PartitionRatio = PartitionRatio
         self.Lifespan = Lifespan
         self.Core = Core

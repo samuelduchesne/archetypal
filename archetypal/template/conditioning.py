@@ -661,6 +661,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         s = self._float_mean(other, 'MinFreshAirPerPerson', weights)
         t = self.HeatingSchedule.combine(other.HeatingSchedule, weights)
         u = self.CoolingSchedule.combine(other.CoolingSchedule, weights)
+        v = self.MechVentSchedule.combine(other.MechVentSchedule, weights)
 
         # create a new object with the previous attributes
         new_obj = self.__class__(Name=name,
@@ -678,6 +679,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                                  MaxHeatingCapacity=q,
                                  MinFreshAirPerArea=r, MinFreshAirPerPerson=s,
                                  HeatingSchedule=t,
-                                 CoolingSchedule=u
+                                 CoolingSchedule=u,
+                                 MechVentSchedule=v
                                  )
         return new_obj

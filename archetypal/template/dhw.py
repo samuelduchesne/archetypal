@@ -6,9 +6,10 @@
 ################################################################################
 
 import collections
+from operator import add
+from statistics import mean
 
 import numpy as np
-
 from archetypal.template import Unique, UmiBase, UmiSchedule
 
 
@@ -111,22 +112,38 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                         WaterTemperatureInlet=inlet_temp,
                         idf=zone.idf)
         else:
-            # This zone does not have a WaterUse:Equipment object but all
-            # other zones might not as well
-            total_flow_rate = 0
-            water_schedule = UmiSchedule.constant_schedule(
-                idf=zone._epbunch.theidf)
-            supply_temp = 60
-            inlet_temp = 10
+            # Assume water systems for whole building
+            dhw_objs = zone.idf.idfobjects['WaterUse:Equipment'.upper()]
+            if dhw_objs:
+                total_flow_rate = cls._do_flow_rate(dhw_objs, zone)
+                water_schedule = cls._do_water_schedule(dhw_objs, zone)
+                inlet_temp = cls._do_inlet_temp(dhw_objs, zone)
+                supply_temp = cls._do_hot_temp(dhw_objs, zone)
 
-            name = zone.Name + "_DHW"
-            z_dhw = cls(Name=name, zone=zone,
-                        FlowRatePerFloorArea=total_flow_rate,
-                        IsOn=total_flow_rate > 0,
-                        WaterSchedule=water_schedule,
-                        WaterSupplyTemperature=supply_temp,
-                        WaterTemperatureInlet=inlet_temp,
-                        idf=zone.idf)
+                name = zone.Name + "_DHW"
+                z_dhw = cls(Name=name, zone=zone,
+                            FlowRatePerFloorArea=total_flow_rate,
+                            IsOn=total_flow_rate > 0,
+                            WaterSchedule=water_schedule,
+                            WaterSupplyTemperature=supply_temp,
+                            WaterTemperatureInlet=inlet_temp,
+                            idf=zone.idf)
+            else:
+                # defaults with 0 flow rate.
+                total_flow_rate = 0
+                water_schedule = UmiSchedule.constant_schedule(
+                    idf=zone._epbunch.theidf)
+                supply_temp = 60
+                inlet_temp = 10
+
+                name = zone.Name + "_DHW"
+                z_dhw = cls(Name=name, zone=zone,
+                            FlowRatePerFloorArea=total_flow_rate,
+                            IsOn=total_flow_rate > 0,
+                            WaterSchedule=water_schedule,
+                            WaterSupplyTemperature=supply_temp,
+                            WaterTemperatureInlet=inlet_temp,
+                            idf=zone.idf)
 
         return z_dhw
 
@@ -184,14 +201,14 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                         max_dif = \
                             water_mains_temp.Maximum_Difference_In_Monthly_Average_Outdoor_Air_Temperatures
 
-                        WaterTemperatureInlet = water_main_correlation(
-                            mean_outair_temp, max_dif).mean()
+                        WaterTemperatureInlet.append(water_main_correlation(
+                            mean_outair_temp, max_dif).mean())
                 else:
                     # Else, there is no Site:WaterMainsTemperature object in
                     # the input file, a default constant value of 10 C is
                     # assumed.
                     WaterTemperatureInlet.append(float(10))
-        return WaterTemperatureInlet.mean()
+        return mean(WaterTemperatureInlet)
 
     @classmethod
     def _do_water_schedule(cls, dhw_objs, zone):
@@ -218,21 +235,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         total_flow_rate = 0
         for obj in dhw_objs:
             total_flow_rate += obj.Peak_Flow_Rate  # m3/s
-        if not isinstance(zone, list):
-            area = 0
-            surfaces = list(filter(lambda s: s.key.lower() != 'internalmass', [s for s in zone._epbunch.zonesurfaces]))
-            surfaces = list(filter(lambda s: s.tilt==180, surfaces))
-            for surf in surfaces:
-                part_of = int(
-                    zone._epbunch.Part_of_Total_Floor_Area.upper() != "NO")
-                multiplier = float(
-                    zone._epbunch.Multiplier if zone._epbunch.Multiplier !=
-                                                '' else 1)
-
-                area += surf.area * multiplier * part_of
-        else:
-            area = zone._epbunch.theidf.area_conditioned
-        total_flow_rate /= area  # m3/s/m2
+        total_flow_rate /= zone.area  # m3/s/m2
+        total_flow_rate *= 3600.  # m3/h/m2
         return total_flow_rate
 
     def combine(self, other):

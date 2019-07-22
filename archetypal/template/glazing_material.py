@@ -128,6 +128,8 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
                 elif isinstance(self.__dict__[attr], str):
                     new_attr[attr] = self._str_mean(other, attr=attr,
                                                     append=False)
+                else:
+                    raise NotImplementedError
         # create a new object from combined attributes
         new_obj = self.__class__(Name=name, idf=idf, sql=sql,
                                  Comments=comments, **new_attr)

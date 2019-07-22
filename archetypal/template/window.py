@@ -11,13 +11,12 @@ from enum import IntEnum
 from functools import reduce
 
 import tabulate
-from eppy.bunch_subclass import EpBunch
-
 from archetypal import log, IDF, calc_simple_glazing
 from archetypal.template import MaterialLayer, UmiSchedule
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
 from archetypal.template.umi_base import UmiBase, Unique
+from eppy.bunch_subclass import EpBunch
 
 
 class WindowConstruction(UmiBase, metaclass=Unique):
@@ -26,12 +25,13 @@ class WindowConstruction(UmiBase, metaclass=Unique):
     DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
     """
 
-    def __init__(self, AssemblyCarbon=0, AssemblyCost=0,
-                 AssemblyEnergy=0, DisassemblyCarbon=0,
-                 DisassemblyEnergy=0, **kwargs):
+    def __init__(self, Category="Double", AssemblyCarbon=0, AssemblyCost=0,
+                 AssemblyEnergy=0, DisassemblyCarbon=0, DisassemblyEnergy=0,
+                 **kwargs):
         """Initialize a WindowConstruction.
 
         Args:
+            Category (str): "Single", "Double" or "Triple".
             AssemblyCarbon (float): Assembly Embodied Carbon by m2 of
                 construction.
             AssemblyCost (float): Assembly cost by m2 of construction.
@@ -44,6 +44,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
             **kwargs: Other keywords passed to the constructor.
         """
         super(WindowConstruction, self).__init__(**kwargs)
+        self.Category = Category
         self.DisassemblyEnergy = DisassemblyEnergy
         self.DisassemblyCarbon = DisassemblyCarbon
         self.AssemblyEnergy = AssemblyEnergy
@@ -155,7 +156,9 @@ class WindowConstruction(UmiBase, metaclass=Unique):
                                                    Name=material.Name,
                                                    idf=self.idf)
 
-                    material_layer = MaterialLayer(material_obj, glass_properties['Thickness'])
+                    material_layer = MaterialLayer(material_obj,
+                                                   glass_properties[
+                                                       'Thickness'])
                 else:
                     continue
 
@@ -311,7 +314,12 @@ class WindowSetting(UmiBase, metaclass=Unique):
         kwargs['Name'] = name
         w = cls(idf=Construction.theidf, **kwargs)
         w.Construction = WindowConstruction.from_idf(Construction)
-
+        w.AfnWindowAvailability = UmiSchedule.constant_schedule(
+            idf=Construction.theidf)
+        w.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(
+            idf=Construction.theidf)
+        w.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(
+            idf=Construction.theidf)
         return w
 
     @classmethod

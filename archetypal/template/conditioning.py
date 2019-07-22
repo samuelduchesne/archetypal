@@ -17,12 +17,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
     .. image:: ../images/template/zoninfo-conditioning.png
     """
 
-    def __init__(self, CoolingCoeffOfPerf=None, CoolingLimitType='NoLimit',
+    def __init__(self, CoolingCoeffOfPerf=1, CoolingLimitType='NoLimit',
                  CoolingSetpoint=26, CoolingSchedule=None,
                  EconomizerType='NoEconomizer',
                  HeatRecoveryEfficiencyLatent=0.65,
                  HeatRecoveryEfficiencySensible=0.7, HeatRecoveryType='None',
-                 HeatingCoeffOfPerf=None, HeatingLimitType='NoLimit',
+                 HeatingCoeffOfPerf=1, HeatingLimitType='NoLimit',
                  HeatingSetpoint=20, HeatingSchedule=None, IsCoolingOn=True,
                  IsHeatingOn=True, IsMechVentOn=True, MaxCoolFlow=100,
                  MaxCoolingCapacity=100, MaxHeatFlow=100,

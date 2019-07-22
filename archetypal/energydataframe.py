@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 from pandas import DataFrame, Series, DatetimeIndex
-from pandas.plotting._tools import _subplots, _flatten
 
 from archetypal import EnergySeries
 from archetypal.energyseries import plot_energyseries_map, save_and_show
@@ -151,6 +150,7 @@ def _setup_subplots(subplots, nseries, sharex=False, sharey=False,
                     layout=None,
                     layout_type='vertical'):
     """prepares the subplots"""
+    from pandas.plotting._tools import _subplots, _flatten
     if subplots:
         fig, axes = _subplots(naxes=nseries,
                               sharex=sharex,

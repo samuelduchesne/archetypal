@@ -100,17 +100,20 @@ class Schedule(object):
                 Path(settings.cache_folder).mkdir_p()
             with tempfile.NamedTemporaryFile(mode='w', suffix='_schedule.idf',
                                              prefix='temp_',
-                                             dir=settings.cache_folder) \
+                                             dir=settings.cache_folder,
+                                             delete=False) \
                     as file:
                 file.write(idftxt)
                 # initialize the IDF object with the file handle
-                idf_scratch = archetypal.IDF(file.name)
+            from eppy.easyopen import easyopen
+            idf_scratch = easyopen(file.name)
+            idf_scratch.__class__ = archetypal.IDF
 
-                idf_scratch.add_object(ep_object='Schedule:Constant'.upper(),
-                                       **dict(Name=Name,
-                                              Schedule_Type_Limits_Name='',
-                                              Hourly_Value=hourly_value),
-                                       save=False)
+            idf_scratch.add_object(ep_object='Schedule:Constant'.upper(),
+                                   **dict(Name=Name,
+                                          Schedule_Type_Limits_Name='',
+                                          Hourly_Value=hourly_value),
+                                   save=False)
 
             sched = cls(Name=Name, idf=idf_scratch, **kwargs)
             return sched

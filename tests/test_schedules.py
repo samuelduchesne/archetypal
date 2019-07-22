@@ -44,9 +44,6 @@ def test_make_umi_schedule(config):
 
 
 def test_constant_schedule():
-    from archetypal import UmiSchedule
-    const = UmiSchedule.constant_schedule()
-    assert const.__class__.__name__ == 'UmiSchedule'
     const = Schedule.constant_schedule()
     assert const.__class__.__name__ == 'Schedule'
 

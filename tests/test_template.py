@@ -751,6 +751,12 @@ class TestSchedule():
                           for store in datastore["YearSchedules"]]
         yearSched_to_json = yearSched_json[0].to_json()
 
+    def test_constant_schedule(self, config):
+        from archetypal import UmiSchedule
+        const = UmiSchedule.constant_schedule()
+        assert const.__class__.__name__ == 'UmiSchedule'
+        assert const.Name == 'AlwaysOn'
+
 
 def test_structure_from_to_json(config):
     import json

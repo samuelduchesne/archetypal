@@ -186,6 +186,7 @@ class DaySchedule(UmiSchedule):
             **kwargs:
         """
         super(DaySchedule, self).__init__(*args, **kwargs)
+        self._values = kwargs.get('Values', None)
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -200,6 +201,10 @@ class DaySchedule(UmiSchedule):
         data_dict["Name"] = self.Name
 
         return data_dict
+
+    @property
+    def all_values(self):
+        return np.array(self._values)
 
     def to_dict(self):
         return {'$ref': str(self.id)}
@@ -316,7 +321,7 @@ class YearSchedule(UmiSchedule):
             end = "{}-{}-{}".format(self.year, part.ToMonth, part.ToDay)
             one_week = np.array(
                 [item for sublist in part.Schedule.Days for item in
-                 sublist.Values])
+                 sublist.all_values])
             all_weeks = np.resize(one_week, len(series.loc[start:end]))
             series.loc[start:end] = all_weeks
         return series.values

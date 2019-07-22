@@ -1,7 +1,8 @@
-import pandas as pd
-import pytest
+import os
 
 import archetypal as ar
+import pandas as pd
+import pytest
 
 
 @pytest.fixture(scope='module')
@@ -36,6 +37,8 @@ def test_plot_3d(test_energydf, kind):
               fig_width=3, fig_height=8, edgecolors='k', linewidths=0.5)
 
 
+@pytest.mark.xfail("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
+                   reason="Skipping this test on Travis CI.")
 def test_plot_2d(test_energydf):
     hl = test_energydf.copy()
     hl = hl.unstack(level=0)
@@ -54,6 +57,8 @@ def from_csv(config):
     yield ep
 
 
+@pytest.mark.xfail("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
+                   reason="Skipping this test on Travis CI.")
 def test_discretize(from_csv):
     epc = from_csv.copy()
     res = epc.discretize_tsam()

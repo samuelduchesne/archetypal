@@ -308,12 +308,12 @@ def water_main_correlation(t_out_avg, max_diff):
         /water-systems.html#water-mains-temperatures
 
     Args:
-        t_out_avg (float): average annual outdoor air temperature (°C)
+        t_out_avg (float): average annual outdoor air temperature (°C).
         max_diff (float): maximum difference in monthly average outdoor air
-            temperatures (°C)
+            temperatures (°C).
 
     Returns:
-        (pd.Series): water mains temperature profile
+        (pd.Series): water mains temperature profile.
     """
     import numpy as np
     import pandas as pd

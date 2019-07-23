@@ -124,9 +124,7 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
     dict['EmbodiedEnergy'] = 0
     dict['EmbodiedEnergyStdDev'] = 0
     dict['Life'] = 1
-    dict[
-        'SubstitutionRatePattern'] = np.NaN  # ! Might have to change to an
-    # empty array
+    dict['SubstitutionRatePattern'] = [1.0]
     dict['SubstitutionTimestep'] = 0
     dict['TransportCarbon'] = 0
     dict['TransportDistance'] = 0

@@ -24,7 +24,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
                  IREmissivityFront=0, IREmissivityBack=0, DirtFactor=1.0,
                  Type=None, EmbodiedEnergy=0, EmbodiedEnergyStdDev=0,
                  EmbodiedCarbon=0, EmbodiedCarbonStdDev=0, Cost=0.0, Life=1,
-                 SubstitutionRatePattern=[0.2], SubstitutionTimestep=50,
+                 SubstitutionRatePattern=None, SubstitutionTimestep=50,
                  TransportCarbon=0, TransportDistance=0,
                  TransportEnergy=0, **kwargs):
         """
@@ -71,6 +71,8 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
             **kwargs:
         """
         super(GlazingMaterial, self).__init__(**kwargs)
+        if SubstitutionRatePattern is None:
+            SubstitutionRatePattern = [0.2]
         self.TransportEnergy = TransportEnergy
         self.TransportDistance = TransportDistance
         self.TransportCarbon = TransportCarbon
@@ -122,12 +124,19 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         # iterate over attributes and apply either float_mean or str_mean.
         new_attr = {}
         for attr in self.__dict__:
-            if attr not in ['Comments', 'idf', 'sql']:
-                if isinstance(self.__dict__[attr], float):
+            if attr not in ['Comments', 'idf', 'sql', 'all_objects', 'id']:
+                if isinstance(self.__dict__[attr], (int, float)):
                     new_attr[attr] = self._float_mean(other, attr=attr)
                 elif isinstance(self.__dict__[attr], str):
                     new_attr[attr] = self._str_mean(other, attr=attr,
                                                     append=False)
+                elif isinstance(self.__dict__[attr], list):
+                    new_attr[attr] = getattr(self, attr) + getattr(other, attr)
+                elif not getattr(self, attr):
+                    if getattr(self, attr):
+                        new_attr[attr] = getattr(self, attr)
+                    else:
+                        new_attr[attr] = None
                 else:
                     raise NotImplementedError
         # create a new object from combined attributes

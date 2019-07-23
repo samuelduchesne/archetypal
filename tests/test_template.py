@@ -1,8 +1,9 @@
-import archetypal as ar
 import numpy as np
 import pytest
-from archetypal import get_eplus_dire
 from path import Path
+
+import archetypal as ar
+from archetypal import get_eplus_dire
 
 
 @pytest.fixture(scope='session')
@@ -75,45 +76,6 @@ class TestAddiADD():
         assert mat_a
         assert mat_a.id == id_  # id should not change
         assert mat_a.id != mat_b.id
-
-    def test_add_opaque_construction(self):
-        """Test __add__() for OpaqueConstruction"""
-        mat_a = ar.OpaqueMaterial(Conductivity=100, SpecificHeat=4.18,
-                                  Name='mat_a')
-        mat_b = ar.OpaqueMaterial(Conductivity=200, SpecificHeat=4.18,
-                                  Name='mat_b')
-        thickness = 0.10
-        layers = [ar.MaterialLayer(mat_a, thickness),
-                  ar.MaterialLayer(mat_b, thickness)]
-        oc_a = ar.OpaqueConstruction(Layers=layers, Name="oc_a")
-
-        thickness = 0.30
-        layers = [ar.MaterialLayer(mat_a, thickness)]
-        oc_b = ar.OpaqueConstruction(Layers=layers, Name="oc_b")
-        oc_c = oc_a + oc_b
-
-        assert oc_c
-
-    def test_iadd_opaque_construction(self):
-        """Test __iadd__() for OpaqueConstruction"""
-        mat_a = ar.OpaqueMaterial(Conductivity=100, SpecificHeat=4.18,
-                                  Name='mat_ia')
-        mat_b = ar.OpaqueMaterial(Conductivity=200, SpecificHeat=4.18,
-                                  Name='mat_ib')
-        thickness = 0.10
-        layers = [ar.MaterialLayer(mat_a, thickness),
-                  ar.MaterialLayer(mat_b, thickness)]
-        oc_a = ar.OpaqueConstruction(Layers=layers, Name="oc_ia")
-        id_ = oc_a.id  # storing mat_a's id.
-
-        thickness = 0.30
-        layers = [ar.MaterialLayer(mat_a, thickness)]
-        oc_b = ar.OpaqueConstruction(Layers=layers, Name="oc_ib")
-        oc_a += oc_b
-
-        assert oc_a
-        assert oc_a.id == id_  # id should not change
-        assert oc_a.id != oc_b.id
 
     def test_add_zoneconstructionset(self, small_idf):
         """Test __add__() for ZoneConstructionSet"""
@@ -249,7 +211,68 @@ def test_reduce_graph(config):
     assert r_G
 
 
-class TestBuildingTemplate():
+class TestOpaqueConstruction:
+
+    @pytest.fixture()
+    def mat_a(self):
+        """A :class:Material fixture"""
+        mat_a = ar.OpaqueMaterial(Conductivity=1.4, SpecificHeat=840,
+                                  Density=2240,
+                                  Name='Concrete')
+        yield mat_a
+
+    @pytest.fixture()
+    def mat_b(self):
+        """A :class:Material fixture"""
+        mat_b = ar.OpaqueMaterial(Conductivity=0.12, SpecificHeat=1210,
+                                  Density=540,
+                                  Name='Plywood')
+
+        yield mat_b
+
+    @pytest.fixture()
+    def construction_a(self, mat_a, mat_b):
+        """A :class:Construction fixture"""
+        thickness = 0.10
+        layers = [ar.MaterialLayer(mat_a, thickness),
+                  ar.MaterialLayer(mat_b, thickness)]
+        oc_a = ar.OpaqueConstruction(Layers=layers, Name="oc_a")
+
+        yield oc_a
+
+    @pytest.fixture()
+    def construction_b(self, mat_a):
+        """A :class:Construction fixture"""
+        thickness = 0.30
+        layers = [ar.MaterialLayer(mat_a, thickness)]
+        oc_b = ar.OpaqueConstruction(Layers=layers, Name="oc_b")
+
+        yield oc_b
+
+    def test_thermal_properties(self, construction_a):
+        """test r_value and u_value properties"""
+        assert construction_a.r_value == 1 / construction_a.u_value
+
+    def test_add_opaque_construction(self, construction_a, construction_b):
+        """Test __add__() for OpaqueConstruction"""
+        oc_c = construction_a + construction_b
+        assert oc_c
+        desired = (
+                    construction_a.u_value + construction_b.u_value) * 0.5
+        actual = oc_c.u_value
+        np.testing.assert_almost_equal(actual, desired, decimal=3)
+
+    def test_iadd_opaque_construction(self, construction_a, construction_b):
+        """Test __iadd__() for OpaqueConstruction"""
+        id_ = construction_a.id
+        construction_a += construction_b
+
+        assert construction_a
+        assert construction_a.id == id_  # id should not change
+        assert construction_a.id != construction_b.id
+
+
+class TestBuildingTemplate:
     """Various tests with the BuildingTemplate class"""
 
     @pytest.fixture(scope="class")
@@ -660,7 +683,7 @@ class TestGasMaterial():
 
     def test_GasMaterial_from_to_json(self, config):
         import json
-        from archetypal import GasMaterial, load_json_objects
+        from archetypal import GasMaterial
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         GasMaterial(Name='GasMat').clear_cache()
         with open(filename, 'r') as f:

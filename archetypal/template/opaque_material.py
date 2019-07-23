@@ -14,7 +14,6 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
     """Use this component to create a custom opaque material.
 
     .. image:: ../images/template/materials-opaque.png
-
     """
 
     def __init__(self, Conductivity, SpecificHeat, SolarAbsorptance=0.7,
@@ -38,7 +37,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                 degree Kelvin. Only values of specific heat of 100 or larger are
                 allowed. Typical ranges are from 800 to 2000 J/(kg-K).
             SolarAbsorptance (float): An number between 0 and 1 that represents
-                the abstorptance of solar radiation by the material. The default
+                the absorptance of solar radiation by the material. The default
                 is set to 0.7, which is common for most non-metallic materials.
             ThermalEmittance (float): An number between 0 and 1 that represents
                 the thermal abstorptance of the material. The default is set to
@@ -46,24 +45,25 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                 wavelength radiant exchange, thermal emissivity and thermal
                 emittance are equal to thermal absorptance.
             VisibleAbsorptance (float): An number between 0 and 1 that
-                represents the abstorptance of visible light by the material.
+                represents the absorptance of visible light by the material.
                 The default is set to 0.7, which is common for most non-metallic
                 materials.
             Roughness (str): A text value that indicated the roughness of your
                 material. This can be either "VeryRough", "Rough",
                 "MediumRough", "MediumSmooth", "Smooth", and "VerySmooth". The
                 default is set to "Rough".
-            Cost: # todo: defined parameter
-            Density: A number representing the density of the material in kg/m3.
-                This is essentially the mass of one cubic meter of the material.
+            Cost: # todo: define parameter
+            Density (float): A number representing the density of the material
+                in kg/m3. This is essentially the mass of one cubic meter of the
+                material.
             MoistureDiffusionResistance: # todo: defined parameter
-            EmbodiedCarbon: # todo: defined parameter
-            EmbodiedEnergy: # todo: defined parameter
-            TransportCarbon: # todo: defined parameter
-            TransportDistance: # todo: defined parameter
-            TransportEnergy: # todo: defined parameter
-            SubstitutionRatePattern: # todo: defined parameter
-            SubstitutionTimestep: # todo: defined parameter
+            EmbodiedCarbon: # todo: define parameter
+            EmbodiedEnergy: # todo: define parameter
+            TransportCarbon: # todo: define parameter
+            TransportDistance: # todo: define parameter
+            TransportEnergy: # todo: define parameter
+            SubstitutionRatePattern: # todo: define parameter
+            SubstitutionTimestep: # todo: define parameter
             **kwargs:
         """
         super(OpaqueMaterial, self).__init__(**kwargs)
@@ -187,16 +187,33 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
-        """
+        """Create an OpaqueMaterial from an IDF "Material", "Material:NoMAss",
+        or "Material:AirGap" element.
+
+        Hint:
+            (From EnergyPlus Manual): When a user enters such a “no mass”
+            material into EnergyPlus, internally the properties of this layer
+            are converted to approximate the properties of air (density,
+            specific heat, and conductivity) with the thickness adjusted to
+            maintain the user’s desired R-Value. This allowed such layers to be
+            handled internally in the same way as other layers without any
+            additional changes to the code. This solution was deemed accurate
+            enough as air has very little thermal mass and it made the coding of
+            the state space method simpler.
+
+            For Material:AirGap, a similar strategy is used, with the
+            exception that solar properties (solar and visible absorptance and
+            emittance) are assumed null.
+
         Args:
             epbunch (EpBunch): EP-Construction object
-            *args:
             **kwargs:
         """
         if epbunch.key.upper() == 'MATERIAL':
             # do MATERIAL
             Name = epbunch.Name
             Conductivity = epbunch.Conductivity
+            Density = epbunch.Density
             Roughness = epbunch.Roughness
             SolarAbsorptance = epbunch.Solar_Absorptance
             SpecificHeat = epbunch.Specific_Heat
@@ -204,6 +221,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             VisibleAbsorptance = epbunch.Visible_Absorptance
             Thickness = epbunch.Thickness
             return cls(Conductivity=Conductivity,
+                       Density=Density,
                        Roughness=Roughness,
                        SolarAbsorptance=SolarAbsorptance,
                        SpecificHeat=SpecificHeat,
@@ -214,40 +232,44 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                        idf=epbunch.theidf,
                        **kwargs)
         elif epbunch.key.upper() == 'MATERIAL:NOMASS':
-            # do MATERIAL:NOMASS
+            # do MATERIAL:NOMASS. Assume properties of air.
             Name = epbunch.Name
-            Thickness = 0.0127  # half inch thickness
-            Conductivity = Thickness / epbunch.Thermal_Resistance
+            Conductivity = 0.02436  # W/mK, dry air at 0 °C and 100 kPa.
+            Density = 1.2754  # dry air at 0 °C and 100 kPa.
+            SpecificHeat = 100.5  # J/kg-K, dry air at 0 °C and 100 kPa.
+            Thickness = Conductivity * epbunch.Thermal_Resistance
             Roughness = epbunch.Roughness
             SolarAbsorptance = epbunch.Solar_Absorptance
             ThermalEmittance = epbunch.Thermal_Absorptance
             VisibleAbsorptance = epbunch.Visible_Absorptance
-            Density = 1  # 1 kg/m3, smallest value umi allows
-            SpecificHeat = 100  # 100 J/kg-K, smallest value umi allows
             return cls(Conductivity=Conductivity,
+                       Density=Density,
                        Roughness=Roughness,
                        SolarAbsorptance=SolarAbsorptance,
                        SpecificHeat=SpecificHeat,
                        ThermalEmittance=ThermalEmittance,
                        VisibleAbsorptance=VisibleAbsorptance,
                        Thickness=Thickness,
-                       Density=Density,
                        Name=Name,
                        idf=epbunch.theidf,
                        **kwargs)
         elif epbunch.key.upper() == 'MATERIAL:AIRGAP':
+
             Name = epbunch.Name
-            Thickness = 0.0127  # half inch thickness
-            Conductivity = Thickness / epbunch.Thermal_Resistance
+            Conductivity = 0.02436  # W/mK, dry air at 0 °C and 100 kPa.
+            Density = 1.2754  # dry air at 0 °C and 100 kPa.
+            SpecificHeat = 100.5  # J/kg-K, dry air at 0 °C and 100 kPa.
+            Thickness = Conductivity * epbunch.Thermal_Resistance
             Roughness = "Smooth"
-            Density = 1  # 1 kg/m3, smallest value umi allows
-            SpecificHeat = 100  # 100 J/kg-K, smallest value umi allows
             return cls(Conductivity=Conductivity,
                        Roughness=Roughness,
                        SpecificHeat=SpecificHeat,
                        Thickness=Thickness,
                        Density=Density,
                        Name=Name,
+                       SolarAbsorptance=0,
+                       ThermalEmittance=0,
+                       VisibleAbsorptance=0,
                        idf=epbunch.theidf,
                        **kwargs)
         else:

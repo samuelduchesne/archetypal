@@ -14,9 +14,6 @@ from archetypal.template import Unique, MaterialLayer, \
 
 
 class ConstructionBase(UmiBase):
-    """
-
-    """
 
     def __init__(self, AssemblyCarbon=0, AssemblyCost=0, AssemblyEnergy=0,
                  DisassemblyCarbon=0, DisassemblyEnergy=0, **kwargs):
@@ -38,9 +35,6 @@ class ConstructionBase(UmiBase):
 
 
 class LayeredConstruction(ConstructionBase):
-    """
-
-    """
 
     def __init__(self, Layers, **kwargs):
         """
@@ -56,7 +50,6 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     """Opaque Constructions
 
     .. image:: ../images/template/constructions-opaque.png
-
     """
 
     def __init__(self, Layers, Surface_Type=None,
@@ -83,6 +76,16 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """
         return self.combine(other)
 
+    @property
+    def r_value(self):
+        """float: The Thermal Resistance of the Opaque Construction"""
+        return sum([layer.Thickness / layer.Material.Conductivity
+                    for layer in self.Layers])  # W/mk
+
+    @property
+    def u_value(self):
+        return 1 / self.r_value
+
     def combine(self, other, method='constant_ufactor'):
         """Combine two OpaqueConstruction together.
 
@@ -92,6 +95,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
         Args:
             other (OpaqueConstruction):
+            method:
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
@@ -127,6 +131,10 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return new_obj
 
     def equivalent_volume(self, other):
+        """
+        Args:
+            other:
+        """
         self_t = np.array([mat.Thickness for mat in self.Layers])
         self_m = [mat.Material for mat in self.Layers]
         # thicknesses & materials for other
@@ -138,23 +146,38 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         new_m = self_m + other_m
         return new_m, new_t
 
-    def constant_ufactor(self, other):
-        # Todo: Update logic to properly craete constant u-factor assembly
+    def constant_ufactor(self, other, weights=None):
+        """The constant u-factor method will produce an assembly that has the
+        same u-value as an equivalent wall (weighted by wall area) but with a
+        mixture of all unique layer materials
 
-        self_t = np.array([mat.Thickness for mat in self.Layers])
-        self_m = np.array([mat.Material for mat in self.Layers])
-        self_k = np.array([mat.Material.Conductivity for mat in self.Layers])
+        Args:
+            other (OpaqueConstruction): The other Construction.
+            weights (array_like, optional): An array of weights associated with
+                the self and other. Each value contributes to the average
+                according to its associated weight. If `weights=None` , then all
+                data are assumed to have a weight equal to one.
+        """
 
-        other_t = np.array([mat.Thickness for mat in other.Layers])
-        other_m = np.array([mat.Material for mat in other.Layers])
-        other_k = np.array([mat.Material.Conductivity for mat in other.Layers])
+        def obj_func(thicknesses, materials, expected):
+            calc = 1 / sum([thickness / mat.Conductivity
+                            for thickness, mat in zip(thicknesses, materials)])
+            return (calc - expected) ** 2
 
-        factor = sum(self_k / self_t) / sum(other_k / other_t)
+        if not weights:
+            weights = [1., 1.]
 
-        new_t = np.append(self_t, other_t)
-        new_t = new_t * factor
-        new_m = np.append(self_m, other_m)
-        return new_m, new_t
+        equi_u = np.average([self.u_value, other.u_value], weights=weights)
+
+        materials = set([layer.Material for layer in self.Layers] + \
+                     [layer.Material for layer in other.Layers])
+
+        from scipy.optimize import minimize
+        x0 = np.ones(len(materials))
+        bnds = tuple([(0.003, None) for layer in materials])
+        res = minimize(obj_func, x0, args=(materials, equi_u), bounds=bnds)
+
+        return np.array(list(materials)), res.x
 
     @classmethod
     def from_json(cls, *args, **kwargs):
@@ -179,6 +202,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """
         Args:
             epbunch (EpBunch):
+            **kwargs:
         """
         name = epbunch.Name
         idf = kwargs.pop('idf', epbunch.theidf)
@@ -267,6 +291,10 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     @classmethod
     def generic(cls, idf=None):
         # Generic Plaster Board
+        """
+        Args:
+            idf:
+        """
         om = OpaqueMaterial(Conductivity=0.17, SpecificHeat=800, Density=800,
                             Name='generic_Material', idf=idf)
         layers = [MaterialLayer(om, 0.0127)]  # half inch

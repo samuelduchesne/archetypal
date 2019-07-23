@@ -385,12 +385,23 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         self.CoolingCoeffOfPerf = cooling_cop
         self.HeatingCoeffOfPerf = heating_cop
 
+        # If cop calc == infinity, means there is no heat or cold input,
+        # therefore system is off.
+        if heating_cop == float('infinity'):
+            self.IsHeatingOn = False
+            self.HeatingCoeffOfPerf = 1
+        else:
+            self.IsHeatingOn = True
+        if cooling_cop == float('infinity'):
+            self.IsCoolingOn = False
+            self.CoolingCoeffOfPerf = 1
+        else:
+            self.IsCoolingOn = True
+
     def _set_thermostat_setpoints(self, zone):
         """Sets the thermostat settings and schedules for this zone.
 
         Thermostat Setpoints:
-            - IsCoolingOn (bool): Whether or not Cooling is needed.
-            - IsHeatingOn (bool): Whether or not Heating is needed.
             - CoolingSetpoint (float):
             - HeatingSetpoint (float):
             - HeatingSchedule (UmiSchedule):
@@ -405,16 +416,6 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         self.HeatingSchedule, \
         self.CoolingSetpoint, \
         self.CoolingSchedule = self._get_setpoint_and_scheds(zone)
-
-        # If set point equal to zero, conditioning is off.
-        if self.HeatingSetpoint == 0:
-            self.IsHeatingOn = False
-        else:
-            self.IsHeatingOn = True
-        if self.CoolingSetpoint == 0:
-            self.IsCoolingOn = False
-        else:
-            self.IsCoolingOn = True
 
     def _set_heat_recovery(self, zone):
         """Sets the heat recovery parameters for this zone.

@@ -9,7 +9,6 @@ import collections
 
 from archetypal import float_round, ReportData
 from archetypal.template import UmiBase, Unique, UmiSchedule
-import numpy as np
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
@@ -243,6 +242,9 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         Todo:
             - Here EconomizerType is for the entire building, try to do it for
               each zone.
+            - Fix typo in DifferentialEnthalpy (extra h) when issue is
+              resolved at Basilisk project:
+              https://github.com/MITSustainableDesignLab/basilisk/issues/32
 
         Args:
             zone (Zone): The zone object.
@@ -255,21 +257,21 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         for object in controllers_in_idf:
             if object.Economizer_Control_Type == 'NoEconomizer':
                 self.EconomizerType = 'NoEconomizer'
-            elif object.Economizer_Control_Type == 'DifferentialEnthalpy':
-                self.EconomizerType = 'DifferentialEnthalpy'
+            elif object.Economizer_Control_Type == 'DifferentialEnthalphy':
+                self.EconomizerType = 'DifferentialEnthalphy'
             elif object.Economizer_Control_Type == 'DifferentialDryBulb':
                 self.EconomizerType = 'DifferentialDryBulb'
             elif object.Economizer_Control_Type == 'FixedDryBulb':
                 self.EconomizerType = 'DifferentialDryBulb'
             elif object.Economizer_Control_Type == 'FixedEnthalpy':
-                self.EconomizerType = 'DifferentialEnthalpy'
+                self.EconomizerType = 'DifferentialEnthalphy'
             elif object.Economizer_Control_Type == 'ElectronicEnthalpy':
-                self.EconomizerType = 'DifferentialEnthalpy'
+                self.EconomizerType = 'DifferentialEnthalphy'
             elif object.Economizer_Control_Type == 'FixedDewPointAndDryBulb':
                 self.EconomizerType = 'DifferentialDryBulb'
             elif object.Economizer_Control_Type == \
                     'DifferentialDryBulbAndEnthalpy':
-                self.EconomizerType = 'DifferentialEnthalpy'
+                self.EconomizerType = 'DifferentialEnthalphy'
 
     def _set_mechanical_ventilation(self, zone):
         """Iterate on 'Controller:MechanicalVentilation' objects to find the
@@ -353,17 +355,17 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                           'Heating:DistrictHeating')
         heating_cop = self._get_cop(zone, energy_in_list=heating_meters,
                                     energy_out_variable_name=(
-                                    'Air System Total Heating Energy',
-                                    'Zone Ideal Loads Zone Total Heating '
-                                    'Energy'))
+                                        'Air System Total Heating Energy',
+                                        'Zone Ideal Loads Zone Total Heating '
+                                        'Energy'))
         # Cooling
         cooling_meters = ('Cooling:Electricity', 'Cooling:Gas',
                           'Cooling:DistrictCooling')
         cooling_cop = self._get_cop(zone, energy_in_list=cooling_meters,
                                     energy_out_variable_name=(
-                                    'Air System Total Cooling Energy',
-                                    'Zone Ideal Loads Zone Total Cooling '
-                                    'Energy'))
+                                        'Air System Total Cooling Energy',
+                                        'Zone Ideal Loads Zone Total Cooling '
+                                        'Energy'))
 
         # Capacity limits (heating and cooling)
         zone_size = zone.sql['ZoneSizes'][

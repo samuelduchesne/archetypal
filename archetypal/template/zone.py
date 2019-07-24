@@ -744,12 +744,9 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
                 elif disp_surf.Surface_Type == 'Slab':
                     slab.append(disp_surf)
                 else:
-                    msg = 'Surface Type "{}" is not known, this method is not ' \
-                          '' \
-                          '' \
-                          '' \
-                          '' \
-                          'implemented'.format(disp_surf.Surface_Type)
+                    msg = 'Surface Type "{}" is not known, this method is not' \
+                          ' implemented'.format(
+                        disp_surf.Surface_Type)
                     raise NotImplementedError(msg)
 
         # Returning a set() for each groups of Constructions.
@@ -873,7 +870,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             surf.theidf.getobject('Construction'.upper(),
                                   surf.Construction_Name))
         oc.area = surf.area
-        oc.Surface_Type = 'Wall'
+        oc.Surface_Type = 'Facade'
         return oc
 
 

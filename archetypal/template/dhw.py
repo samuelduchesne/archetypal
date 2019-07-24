@@ -10,6 +10,8 @@ from operator import add
 from statistics import mean
 
 import numpy as np
+
+from archetypal import settings
 from archetypal.template import Unique, UmiBase, UmiSchedule
 
 
@@ -317,9 +319,7 @@ def water_main_correlation(t_out_avg, max_diff):
     """
     import numpy as np
     import pandas as pd
-    import pint
-    ureg = pint.UnitRegistry()
-    Q_ = ureg.Quantity
+    Q_ = settings.unit_registry.Quantity
     t_out_avg_F = Q_(t_out_avg, 'degC').to("degF")
     max_diff_F = Q_(max_diff, 'delta_degC').to("delta_degF")
     ratio = 0.4 + 0.01 * (t_out_avg_F.m - 44)

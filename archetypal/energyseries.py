@@ -6,7 +6,6 @@ import warnings
 
 import numpy as np
 import pandas as pd
-import pint
 import tsam.timeseriesaggregation as tsam
 from matplotlib import pyplot as plt, cm
 from matplotlib.colors import LightSource
@@ -83,9 +82,9 @@ class EnergySeries(Series):
         self.profile_type = profile_type
         self.frequency = frequency
         self.base_year = base_year
-        self.units = pint.UnitRegistry().parse_expression(units).units
+        self.units = settings.unit_registry.parse_expression(units).units
         self.archetypes = archetypes
-        self.to_units = pint.UnitRegistry().parse_expression(to_units).units
+        self.to_units = settings.unit_registry.parse_expression(to_units).units
         self.converted_ = False
         self.concurrent_sort_ = concurrent_sort
         # handle sorting of the data
@@ -129,8 +128,7 @@ class EnergySeries(Series):
         Args:
             to_units (pint.Unit):
         """
-        from pint import UnitRegistry
-        reg = UnitRegistry()
+        reg = settings.unit_registry
         if to_units is None:
             to_units = self.to_units
         else:
@@ -175,7 +173,7 @@ class EnergySeries(Series):
             result = Series(scaler.fit_transform(self.values.reshape(-1,
                                                                      1)).ravel())
             result = self._constructor(result)
-            result.units = pint.UnitRegistry().dimensionless
+            result.units = settings.unit_registry.dimensionless
         if inplace:
             self._update_inplace(result)
         else:

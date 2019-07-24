@@ -7,6 +7,7 @@
 
 import logging as lg
 
+import pint
 from path import Path
 
 # locations to save data, logs, images, and cache
@@ -143,5 +144,9 @@ template_winLib = pkg_resources.resource_string(resource_package,
 resource_path = '/'.join(('ressources', 'NewFileTemplate.d18'))
 # Do not use os.path.join()
 path_template_d18 = pkg_resources.resource_filename(resource_package,
-                                                resource_path)
+                                                    resource_path)
 # endregion
+
+# Units
+
+unit_registry = pint.UnitRegistry()

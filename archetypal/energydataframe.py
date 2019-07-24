@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from pandas import DataFrame, Series, DatetimeIndex
 
-from archetypal import EnergySeries
+from archetypal import EnergySeries, settings
 from archetypal.energyseries import plot_energyseries_map, save_and_show
 
 
@@ -23,8 +23,7 @@ class EnergyDataFrame(DataFrame):
             self.set_unit(from_units, inplace=True)
 
     def set_unit(self, from_unit, inplace):
-        import pint
-        ureg = pint.UnitRegistry()
+        ureg = settings.unit_registry
 
         if inplace:
             frame = self

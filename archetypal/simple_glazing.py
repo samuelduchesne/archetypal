@@ -139,7 +139,7 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
     dict[
         'Comments'] = 'Properties calculated from Simple Glazing System with ' \
                       'SHGC={:.3f}, UFactor={:.3f} and Tvis={:.3f}'.format(
-        shgc, u_factor, visible_transmittance)
+        shgc, u_factor, T_vis)
 
     return dict
 

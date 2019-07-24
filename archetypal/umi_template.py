@@ -2,6 +2,7 @@ import io
 import json
 import os
 from collections import OrderedDict
+
 import numpy as np
 
 from archetypal import load_idf, BuildingTemplate, GasMaterial, \
@@ -308,7 +309,7 @@ class UmiTemplate:
                     elif isinstance(value, list):
                         [recursive_json(value) for value in value if
                          isinstance(value, (
-                         UmiBase, MaterialLayer, YearScheduleParts))]
+                             UmiBase, MaterialLayer, YearScheduleParts))]
 
             for bld in self.BuildingTemplates:
                 recursive_json(bld)
@@ -316,7 +317,7 @@ class UmiTemplate:
             for key in data_dict:
                 data_dict[key] = sorted(data_dict[key],
                                         key=lambda x: float(x["$id"]) if "$id"
-                                                                       in x
+                                                                         in x
                                         else 1)
 
             class CustomJSONEncoder(json.JSONEncoder):
@@ -325,8 +326,15 @@ class UmiTemplate:
                         return bool(obj)
 
                     return obj
+
+            if not data_dict['GasMaterials']:
+                # Umi needs at least one gas material even if it is not
+                # necessary.
+                data_dict['GasMaterials'].append(GasMaterial(
+                    Name='AIR').to_json())
             # Write the dict to json using json.dumps
-            response = json.dumps(data_dict, indent=indent, cls=CustomJSONEncoder)
+            response = json.dumps(data_dict, indent=indent,
+                                  cls=CustomJSONEncoder)
             path_or_buf.write(response)
 
         return response

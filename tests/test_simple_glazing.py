@@ -1,19 +1,20 @@
-import os
-import shutil
-
-import matplotlib as mpl
 import pytest
-import numpy as np
 
-import archetypal as pu
 from archetypal.simple_glazing import calc_simple_glazing
 
 
-@pytest.mark.parametrize('t_vis', [0.1, None, 0.9])
-@pytest.mark.parametrize('u_value', np.linspace(0.1, 7, 10))
-@pytest.mark.parametrize('shgc', np.linspace(0.1, 1, 10))
-def test_glazing(shgc, u_value, t_vis):
-    calc_simple_glazing(shgc, u_value, t_vis)
+def test_glazing():
+    """Simulates a Double Clear Air Glazing System (Window.exe v.7.5)"""
+    res = calc_simple_glazing(0.704, 2.703, 0.786)
+    print(res['Thickness'])
+
+
+def test_absurd():
+    """Simulates a Double Clear Air Glazing System (Window.exe v.7.5). Will
+    raise an error when checking Visible Transmittance at Normal Incidence +
+    Back Side Visible Reflectance at Normal Incidence not <= 1.0"""
+    with pytest.raises(AssertionError):
+        res = calc_simple_glazing(0.704, 2.703, 0.9)
 
 
 @pytest.mark.parametrize('another', [

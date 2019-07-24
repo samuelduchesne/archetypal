@@ -267,16 +267,16 @@ class WindowSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def generic(cls, idf):
-        """Returns a generic window
+        """Returns a generic window with SHGC=0.704, UFactor=2.703, Tvis=0.786
 
         Args:
             idf (IDF):
         """
         idf.add_object('WindowMaterial:SimpleGlazingSystem'.upper(),
                        Name='SimpleWindow:SINGLE PANE HW WINDOW',
-                       UFactor=5.778,
-                       Solar_Heat_Gain_Coefficient=0.819,
-                       Visible_Transmittance=0.881,
+                       UFactor=2.703,
+                       Solar_Heat_Gain_Coefficient=0.704,
+                       Visible_Transmittance=0.786,
                        save=False)
 
         constr = idf.add_object('CONSTRUCTION',

@@ -30,10 +30,14 @@ from archetypal import log, settings, EnergyPlusProcessError, cd
 class IDF(geomeppy.IDF):
     """Wrapper over the geomeppy.IDF class and subsequently the
     eppy.modeleditor.IDF class
-
     """
 
     def __init__(self, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         super(IDF, self).__init__(*args, **kwargs)
         self.schedules_dict = self.get_all_schedules()
         self._sql = None
@@ -51,18 +55,18 @@ class IDF(geomeppy.IDF):
 
     @property
     def area_conditioned(self):
-        """Returns the total conditioned area of a building (taking into
-        account zone multipliers"""
+        """Returns the total conditioned area of a building (taking into account
+        zone multipliers
+        """
         area = 0
-        surfaces = [s for s in self.idfobjects[
-            'BuildingSurface:Detailed'.upper()]
-                    if s.tilt == 180]
-        for surf in surfaces:
-            zone = surfaces[0].get_referenced_object("Zone_Name")
-            part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
-            multiplier = float(zone.Multiplier if zone.Multiplier != '' else 1)
+        zones = self.idfobjects['ZONE']
+        for zone in zones:
+            for surface in zone.zonesurfaces:
+                if surface.tilt == 180.0:
+                    part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
+                    multiplier = float(zone.Multiplier if zone.Multiplier != '' else 1)
 
-            area += surf.area * multiplier * part_of
+                    area += surface.area * multiplier * part_of
         return area
 
     def run_eplus(self, weather_file=None, output_folder=None, ep_version=None,
@@ -108,12 +112,13 @@ class IDF(geomeppy.IDF):
             return results
 
     def add_object(self, ep_object, save=True, **kwargs):
-        """Add a new object to an idf file. The function will test if the
-        object exists to prevent duplicates.
+        """Add a new object to an idf file. The function will test if the object
+        exists to prevent duplicates.
 
         Args:
-            ep_object (str): the object name to add, eg. 'OUTPUT:METER' (Must
-                be in all_caps)
+            ep_object (str): the object name to add, eg. 'OUTPUT:METER' (Must be
+                in all_caps)
+            save:
             **kwargs: keyword arguments to pass to other functions.
 
         Returns:
@@ -139,7 +144,7 @@ class IDF(geomeppy.IDF):
             # `idf.newidfobject()` automatically adds it
             self.removeidfobject(new_object)
             if not save:
-                return []
+                return self.getobject(ep_object, kwargs['Name'])
         else:
             if save:
                 log('object "{}" added to the idf file'.format(ep_object))
@@ -149,7 +154,11 @@ class IDF(geomeppy.IDF):
                 return new_object
 
     def get_schedule_type_limits_data_by_name(self, schedule_limit_name):
-        """Returns the data for a particular 'ScheduleTypeLimits' object"""
+        """Returns the data for a particular 'ScheduleTypeLimits' object
+
+        Args:
+            schedule_limit_name:
+        """
         schedule = self.getobject('ScheduleTypeLimits'.upper(),
                                   schedule_limit_name)
 
@@ -170,6 +179,7 @@ class IDF(geomeppy.IDF):
         """Returns the epbunch of a particular schedule name
 
         Args:
+            name:
             sch_type:
         """
         if sch_type is None:
@@ -221,7 +231,6 @@ class IDF(geomeppy.IDF):
 
         Returns:
             (list): the schedules names
-
         """
         schedule_types = ['Schedule:Day:Hourly'.upper(),
                           'Schedule:Day:Interval'.upper(),
@@ -271,6 +280,10 @@ class IDF(geomeppy.IDF):
             return 0
 
     def building_name(self, use_idfname=False):
+        """
+        Args:
+            use_idfname:
+        """
         if use_idfname:
             return os.path.basename(self.idfname)
         else:
@@ -283,9 +296,9 @@ class IDF(geomeppy.IDF):
     def rename(self, objkey, objname, newname):
         """rename all the references to this objname
 
-        Function comes from eppy.modeleditor and was modify to compare
-        the name to rename as a lower string
-        (see idfobject[idfobject.objls[findex]].lower() == objname.lower())
+        Function comes from eppy.modeleditor and was modify to compare the
+        name to rename as a lower string (see
+        idfobject[idfobject.objls[findex]].lower() == objname.lower())
 
         Args:
             objkey (EpBunch): EpBunch we want to rename and rename all the
@@ -295,7 +308,6 @@ class IDF(geomeppy.IDF):
 
         Returns:
             theobject (EpBunch): The IDF objects renameds
-
         """
 
         refnames = eppy.modeleditor.getrefnames(self, objkey)
@@ -318,21 +330,20 @@ class IDF(geomeppy.IDF):
 
 def object_from_idfs(idfs, ep_object, first_occurrence_only=False,
                      processors=1):
-    """Takes a list of parsed IDF objects and a single ep_object and returns
-    a DataFrame.
+    """Takes a list of parsed IDF objects and a single ep_object and returns a
+    DataFrame.
 
     Args:
         idfs (list of dict of IDF): List or Dict of IDF objects
-        ep_object (str): EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a
-            string. **Most be in all caps.**
-        first_occurrence_only (bool, optional): if true, returns only the
-            first occurence of the object
+        ep_object (str): EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a string.
+            **Most be in all caps.**
+        first_occurrence_only (bool, optional): if true, returns only the first
+            occurence of the object
         processors (int, optional): specify how many processors to use for a
             parallel run
 
     Returns:
         pandas.DataFrame: A DataFrame
-
     """
     if not isinstance(idfs, (list, dict)):
         idfs = [idfs]
@@ -393,7 +404,6 @@ def object_from_idf_pool(args):
 
     Returns:
         list: A list of DataFrames
-
     """
     return object_from_idf(args[0], args[1])
 
@@ -404,13 +414,12 @@ def object_from_idf(idf, ep_object):
 
     Args:
         idf (eppy.modeleditor.IDF): a parsed eppy object
-        ep_object (str): EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a
-            string. **Most be in all caps.**
+        ep_object (str): EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a string.
+            **Most be in all caps.**
 
     Returns:
         pandas.DataFrame: A DataFrame. Returns an empty DataFrame if
             ep_object is not found in file.
-
     """
     try:
         df = pd.concat(
@@ -430,17 +439,14 @@ def object_from_idf(idf, ep_object):
 
 
 def load_idf(eplus_file, idd_filename=None, weather_file=None):
-    """Returns a parsed IDF object from file. If
-    *archetypal.settings.use_cache* is true, then the idf object is loaded
-    from cache.
+    """Returns a parsed IDF object from file. If *archetypal.settings.use_cache*
+    is true, then the idf object is loaded from cache.
 
     Args:
-        weather_file:
         eplus_file (str): path of the idf file.
-        idd_filename (str, optional): name of the EnergyPlus IDD file. If
-            None, the function tries to find it.
-        weather_file (str, optional): path to the EnergyPlus weather file (
-            .epw)
+        idd_filename (str, optional): name of the EnergyPlus IDD file. If None,
+            the function tries to find it.
+        weather_file (str, optional):
 
     Returns:
         (IDF): The parsed IDF object
@@ -464,9 +470,8 @@ def load_idf(eplus_file, idd_filename=None, weather_file=None):
 
 
 def eppy_load(file, idd_filename, weather_file=None):
-    """Uses package eppy to parse an idf file. Will also try to upgrade the
-    idf file using the EnergyPlus Transition
-    executables.
+    """Uses package eppy to parse an idf file. Will also try to upgrade the idf
+    file using the EnergyPlus Transition executables.
 
     Args:
         file (str): path of the idf file
@@ -476,7 +481,6 @@ def eppy_load(file, idd_filename, weather_file=None):
 
     Returns:
         eppy.modeleditor.IDF: IDF object
-
     """
     cache_filename = hash_file(file)
     # Initiate an eppy.modeleditor.IDF object
@@ -528,19 +532,19 @@ def save_idf_object_to_cache(idf_object, idf_file, cache_filename=None,
     """Saves the object to disk. Essentially uses the pickling functions of
     python.
 
+    Todo:
+        * Json dump does not work yet.
+
     Args:
-        cache_filename:
         idf_object (eppy.modeleditor.IDF): an eppy IDF object
         idf_file (str): file path of idf file
+        cache_filename:
         how (str, optional): How the pickling is done. Choices are 'json' or
             'pickle'. json dump doen't quite work yet. 'pickle' will save to a
             gzip'ed file instead of a regular binary file (.dat).
 
     Returns:
         None
-
-    Todo:
-        * Json dump does not work yet.
     """
     # upper() can't take NoneType as input.
     if how is None:
@@ -701,15 +705,15 @@ def load_idf_object_from_cache(idf_file, how=None):
 def prepare_outputs(eplus_file, outputs=None, idd_filename=None):
     """Add additional epobjects to the idf file. Users can pass in an outputs
 
-    Args:
-        eplus_file:
-        outputs (bool or list):
-
     Examples:
         >>> objects = [{'ep_object':'OUTPUT:DIAGNOSTICS',
         >>>             'kwargs':{'Key_1':'DisplayUnusedSchedules'}}]
         >>> prepare_outputs(eplus_file, outputs=objects)
 
+    Args:
+        eplus_file:
+        outputs (bool or list):
+        idd_filename:
     """
 
     log('first, loading the idf file')
@@ -802,6 +806,11 @@ def prepare_outputs(eplus_file, outputs=None, idd_filename=None):
 
 
 def cache_runargs(eplus_file, runargs):
+    """
+    Args:
+        eplus_file:
+        runargs:
+    """
     import json
     output_directory = runargs['output_directory']
 
@@ -812,9 +821,10 @@ def cache_runargs(eplus_file, runargs):
 
 
 def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
-              output_report=None, prep_outputs=False, **kwargs):
-    """Run an energy plus file and return the SummaryReports Tables in a list
-    of [(title, table), .....]
+              output_report=None, prep_outputs=False, return_idf=False,
+              **kwargs):
+    """Run an energy plus file and return the SummaryReports Tables in a list of
+    [(title, table), .....]
 
     Args:
         eplus_file (str): path to the idf file.
@@ -826,12 +836,10 @@ def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
         prep_outputs (bool or list, optional): if true, meters and variable
             outputs will be appended to the idf files. see
             :func:`prepare_outputs`
+        return_idf (bool): If True, returns the loaded IDF object.
         **kwargs: keyword arguments to pass to other functions (see below)
 
-    Returns:
-        dict: dict of [(title, table), .....]
-
-    Keyword Args:
+    Keywords:
         annual (bool): If True then force annual simulation (default: False)
         design_day (bool): Force design-day-only simulation (default: False)
         epmacro (bool): Run EPMacro prior to simulation (default: False)
@@ -840,16 +848,18 @@ def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
         readvars (bool): Run ReadVarsESO after simulation (default: False)
         output_prefix (str): Prefix for output file names
         verbose (str):
-        idf : str
-        output_suffix (str, optional): Suffix style for output file names
-            (default: L)
-                L: Legacy (e.g., eplustbl.csv)
-                C: Capital (e.g., eplusTable.csv)
-                D: Dash (e.g., eplus-table.csv)
+        idf: str
+        output_suffix (str, optional): Suffix style for output file names (
+            default: L):
+            - L: Legacy (e.g., eplustbl.csv) C: Capital (e.g.,
+              eplusTable.csv)
+            - D: Dash (e.g., eplus-table.csv)
         version (bool, optional): Display version information (default: False)
-        verbose (str): Set verbosity of runtime messages (default: v)
-            v: verbose
-            q: quiet
+
+    Returns:
+        tuple: a 1-tuple or a 2-tuple
+            - dict: dict of [(title, table), .....]
+            - IDF: The IDF object. Only provided if return_idf is True.
     """
     if os.path.isfile(weather_file):
         pass
@@ -873,7 +883,16 @@ def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
             # if cached run found, simply return it
             log('Succesfully parsed cached idf run in {:,.2f} seconds'.format(
                 time.time() - start_time))
-            return cached_run_results
+            # return_idf
+            if return_idf:
+                idf = load_idf(eplus_file)
+            else:
+                idf = None
+            from itertools import compress
+            return_elements = tuple(
+                compress([cached_run_results, idf],
+                         [True, return_idf]))
+            return return_elements
 
     runs_not_found = eplus_file
     # </editor-fold>
@@ -951,16 +970,25 @@ def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
                      'filename_prefix': output_prefix,
                      **kwargs}
         cached_run_results = get_report(**cacheargs)
-        return cached_run_results
+
+        # return_idf
+        if return_idf:
+            idf = load_idf(eplus_file)
+        else:
+            idf = None
+        from itertools import compress
+        return_elements = tuple(
+            compress([cached_run_results, idf],
+                     [True, return_idf]))
+        return return_elements
 
 
 def multirunner(**kwargs):
-    """Wrapper for :func:`eppy.runner.run_functions.run` to be used when
-    running IDF and EPW runs in parallel.
+    """Wrapper for :func:`eppy.runner.run_functions.run` to be used when running
+    IDF and EPW runs in parallel.
 
     Args:
         kwargs (dict): A dict made up of run() arguments.
-
     """
     try:
         run(**kwargs)
@@ -1005,16 +1033,6 @@ def multirunner(**kwargs):
 def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
     """A parallel version of the map function with a progress bar.
 
-    Args:
-        in_dict (dict-like): A dictionary to iterate over.
-        function (function): A python function to apply to the elements of
-            in_dict
-        processors (int): The number of cores to use
-        use_kwargs (bool): If True, pass the kwargs as arguments to `function`.
-
-    Returns:
-        [function(array[0]), function(array[1]), ...]
-
     Examples:
         >>> import archetypal as ar
         >>> files = ['tests/input_data/problematic/nat_ventilation_SAMPLE0.idf',
@@ -1028,6 +1046,15 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         >>>           for file in files}
         >>> result = {file: ar.run_eplus(**rundict[file]) for file in files}
 
+    Args:
+        in_dict (dict-like): A dictionary to iterate over.
+        function (function): A python function to apply to the elements of
+            in_dict
+        processors (int): The number of cores to use
+        use_kwargs (bool): If True, pass the kwargs as arguments to `function` .
+
+    Returns:
+        [function(array[0]), function(array[1]), ...]
     """
     from tqdm import tqdm
     from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -1084,24 +1111,22 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
 
 
 def hash_file(eplus_file, kwargs=None):
-    """Simple function to hash a file and return it as a string.
-    Will also hash the :py:func:`eppy.runner.run_functions.run()` arguments
-    so that correct results are returned
-    when different run arguments are used
+    """Simple function to hash a file and return it as a string. Will also hash
+    the :py:func:`eppy.runner.run_functions.run()` arguments so that correct
+    results are returned when different run arguments are used
+
+    Todo:
+        Hashing should include the external files used an idf file. For example,
+        if a model uses a csv file as an input and that file changes, the
+        hashing will currently not pickup that change. This could result in
+        loading old results without the user knowing.
 
     Args:
         eplus_file (str): path of the idf file
-        **kwargs: keywords to pass to the hasher
+        kwargs:
 
     Returns:
         str: The digest value as a string of hexadecimal digits
-
-    Todo:
-        Hashing should include the external files used an idf file. For
-        example, if a model
-        uses a csv file as an input and that file changes, the hashing will
-        currently not pickup that change. This
-        could result in loading old results without the user knowing.
     """
     hasher = hashlib.md5()
     with open(eplus_file, 'rb') as afile:
@@ -1117,16 +1142,15 @@ def get_report(eplus_file, output_folder=None, output_report='sql',
     """Returns the specified report format (html or sql)
 
     Args:
-        filename_prefix:
         eplus_file (str): path of the idf file
-        output_folder (str, optional): path to the output folder. Will
-            default to the settings.cache_folder.
+        output_folder (str, optional): path to the output folder. Will default
+            to the settings.cache_folder.
         output_report: 'html' or 'sql'
+        filename_prefix:
         **kwargs: keyword arguments to pass to hasher.
 
     Returns:
         dict: a dict of DataFrames
-
     """
     # Hash the idf file with any kwargs used in the function
     if filename_prefix is None:
@@ -1210,7 +1234,6 @@ def get_html_report(report_fullpath):
 
     Returns:
         dict: dict of {title : table <DataFrame>,...}
-
     """
     from eppy.results import \
         readhtml  # the eppy module with functions to read the html
@@ -1235,7 +1258,6 @@ def summary_reports_to_dataframes(reports_list):
 
     Returns:
         dict: a dict of {title: table <DataFrame>}
-
     """
     results_dict = {}
     for table in reports_list:
@@ -1255,11 +1277,9 @@ def get_sqlite_report(report_file, report_tables=None):
     Args:
         report_file (str): path of report file
         report_tables (list, optional): list of report table names to retreive.
-        Defaults to settings.available_sqlite_tables
 
     Returns:
         dict: dict of DataFrames
-
     """
     # set list of report tables
     if not report_tables:
@@ -1309,9 +1329,6 @@ def upgrade_idf(files):
 
     Args:
         files (str or list): path or list of paths to the idf file(s)
-
-    Returns:
-
     """
     # Check if files is a str and put in a list
     if isinstance(files, str):
@@ -1330,9 +1347,6 @@ def perform_transition(file, to_version=None):
     Args:
         file (str): path of idf file
         to_version (str): EnergyPlus version in the form "X-X-X".
-
-    Returns:
-
     """
     versionid = get_idf_version(file, doted=False)[0:5]
     doted_version = get_idf_version(file, doted=True)
@@ -1447,7 +1461,6 @@ def find_eplus_installs(vupdater_path):
 
     Returns:
         (str): The version number of the latest E+ install
-
     """
     path_to_eplus, _ = vupdater_path.split('EnergyPlus')
 
@@ -1475,18 +1488,15 @@ def find_eplus_installs(vupdater_path):
 
 
 def get_idf_version(file, doted=True):
-    """Get idf version quickly by reading first few lines of idf file
-    containing the 'VERSION' identifier
+    """Get idf version quickly by reading first few lines of idf file containing
+    the 'VERSION' identifier
 
     Args:
         file (str): Absolute or relative Path to the idf file
         doted (bool, optional): Wheter or not to return the version number
-        with periods or dashes eg.: 8.9 vs 8-9-0.
-            Doted=False appends -0 to the end of the version number
 
     Returns:
         str: the version id
-
     """
     with open(os.path.abspath(file), 'r', encoding='latin-1') as fhandle:
         try:
@@ -1512,9 +1522,12 @@ def get_idf_version(file, doted=True):
 
 
 def getoldiddfile(versionid):
-    """find the IDD file of the E+ installation
-    E+ version 7 and earlier have the idd in
-    /EnergyPlus-7-2-0/bin/Energy+.idd """
+    """find the IDD file of the E+ installation E+ version 7 and earlier have
+    the idd in /EnergyPlus-7-2-0/bin/Energy+.idd
+
+    Args:
+        versionid:
+    """
     vlist = versionid.split('.')
     if len(vlist) == 1:
         vlist = vlist + ['0', '0']

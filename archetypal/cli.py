@@ -6,6 +6,7 @@
 ################################################################################
 import os
 from collections import defaultdict
+from pprint import pprint
 
 import click
 
@@ -188,25 +189,27 @@ def reduce(idf, weather, parallel):
         # if parallel is True, run eplus in parallel
         rundict = {file: dict(eplus_file=file, weather_file=weather,
                               annual=True, prep_outputs=True,
-                              expandobjects=True, verbose='q',
-                              output_report='sql')
+                              expandobjects=True, verbose='v',
+                              output_report='sql', return_idf=True)
                    for file in idf}
         res = archetypal.parallel_process(rundict, archetypal.run_eplus)
-        print(type(res))
+        pprint(res)
     else:
         # else, run sequentially
-        res = defaultdict(dict)
+        res = defaultdict(tuple)
         for fn in idf:
-            res[fn]['idf'] = archetypal.load_idf(fn)
-            res[fn]['sql'] = archetypal.run_eplus(fn, weather, verbose='v',
-                                                  output_report='sql',
-                                                  prep_outputs=True,
-                                                  annual=True, design_day=False)
-        from archetypal import BuildingTemplate
-        bts = []
-        for fn in res.values():
-            bts.append(BuildingTemplate.from_idf(fn['idf'], sql=fn['sql'],
-                                                 DataSource=fn['idf'].name))
+            res[fn] = archetypal.run_eplus(fn, weather,
+                                           verbose='v',
+                                           output_report='sql',
+                                           prep_outputs=True,
+                                           annual=True,
+                                           design_day=False,
+                                           return_idf=True)
+    from archetypal import BuildingTemplate
+    bts = []
+    for fn in res.values():
+        bts.append(BuildingTemplate.from_idf(fn[1], sql=fn[0],
+                                             DataSource=fn[1].name))
 
-        template = archetypal.UmiTemplate(BuildingTemplates=bts)
-        print(template.to_json())
+    template = archetypal.UmiTemplate(BuildingTemplates=bts)
+    print(template.to_json())

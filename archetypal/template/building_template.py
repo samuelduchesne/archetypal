@@ -8,14 +8,16 @@
 import collections
 import logging as lg
 import time
+from collections import defaultdict
 
 import networkx
 import tabulate
+from eppy.bunch_subclass import BadEPFieldError
+from tqdm import tqdm
+
 from archetypal import log, save_and_show
 from archetypal.template import UmiBase, Unique, ZoneGraph, Zone, \
     resolve_obco, WindowSetting, StructureDefinition, MassRatio
-from eppy.bunch_subclass import BadEPFieldError
-from tqdm import tqdm
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
@@ -89,7 +91,9 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             for s in this_zone.zonesurfaces:
                 try:
                     if int(s.tilt) == 90:
-                        if s.Outside_Boundary_Condition.lower() == 'outdoors':
+                        obc = s.Outside_Boundary_Condition.lower()
+                        if obc == 'outdoors' or obc == 'foundation' or obc == \
+                                'ground':
                             iscore = False
                             break
                 except BadEPFieldError:
@@ -99,7 +103,6 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
         counter = 0
         for zone in tqdm(idf.idfobjects['ZONE'], desc='zone_loop'):
-            from collections import defaultdict
             # initialize the adjacency report dictionary. default list.
             adj_report = defaultdict(list)
             zone_obj = None

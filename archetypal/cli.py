@@ -183,8 +183,9 @@ def convert(idf_file, window_lib, return_idf, return_t3d,
               default=archetypal.get_eplus_dire() / "WeatherData" /
                       "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw")
 @click.option('--parallel/--no-parallel', '-p/-np', is_flag=True, default=True,
-              help="path to the EPW weather file")
+              help="process each idf file on different cores")
 def reduce(idf, weather, parallel):
+    """Perform the model reduction and translate to an UMI template file."""
     if parallel:
         # if parallel is True, run eplus in parallel
         rundict = {file: dict(eplus_file=file, weather_file=weather,

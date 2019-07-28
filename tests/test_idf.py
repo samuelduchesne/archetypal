@@ -112,7 +112,7 @@ def test_run_eplus_from_idf(config, fresh_start):
     ('SecondarySchool', 19592),
     ('SmallHotel', 4013),
     ('SmallOffice', 511),
-    pytest.param('RetailStandalone', 2319, mark=pytest.mark.xfail(
+    pytest.param('RetailStandalone', 2319, marks=pytest.mark.xfail(
         reason='Difference cannot be explained')),
     ('RetailStripmall', 2090),
     pytest.param('Supermarket', 4181, marks=pytest.mark.skip('Supermarket '

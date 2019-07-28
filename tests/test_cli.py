@@ -10,7 +10,10 @@ class TestCli():
         runner = CliRunner()
         examples = get_eplus_dire() / "ExampleFiles"
         test_file = examples / "2ZoneDataCenterHVAC_wEconomizer.idf"
-        # test_file = "tests/input_data/umi_samples/B_Off_0.idf"
+        test_files = ["tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD "
+                      "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+                      "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD "
+                      "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"]
         result = runner.invoke(cli,
                                ['--use-cache', '--cache-folder',
                                 'tests/.temp/cache', '--data-folder',
@@ -19,8 +22,10 @@ class TestCli():
                                 'tests/.temp/logs',
                                 '--log-console',
                                 'reduce',
+                                '-w',
+                                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
                                 '-np',
-                                test_file],
+                                *test_files],
                                catch_exceptions=False,
                                )
         print(result.stdout)

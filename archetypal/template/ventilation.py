@@ -8,6 +8,7 @@
 import collections
 
 import archetypal
+from archetypal import log
 from archetypal.template import UmiBase, Unique
 
 
@@ -30,7 +31,6 @@ class VentilationSetting(UmiBase, metaclass=Unique):
     """Zone Ventilation Settings
 
     .. image:: ../images/template/zoneinfo-ventilation.png
-
     """
 
     def __init__(self, NatVentSchedule=None, ScheduledVentilationSchedule=None,
@@ -210,11 +210,17 @@ class VentilationSetting(UmiBase, metaclass=Unique):
                      idf=zone.idf)
         return z_vent
 
-    def combine(self, other):
-        """Combine two VentilationSetting objects together
+    def combine(self, other, weights=None):
+        """Combine two VentilationSetting objects together.
 
         Args:
             other (VentilationSetting):
+            weights (list-like, optional): A list-like object of len 2. If None,
+                the volume of the zones for which self and other belongs is
+                used.
+
+        Returns:
+            (VentilationSetting): the combined VentilationSetting object.
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
@@ -229,8 +235,11 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         # the new object's name
         name = " + ".join([self.Name, other.Name])
 
-        weights = [self._belongs_to_zone.volume,
-                   other._belongs_to_zone.volume]
+        if not weights:
+            log('using zone volume as weighting factor in "{}" '
+                'combine.'.format(self.__class__.__name__))
+            weights = [self._belongs_to_zone.volume,
+                       other._belongs_to_zone.volume]
         a = self.NatVentSchedule.combine(other.NatVentSchedule, weights)
         # a = self._float_mean(other, 'NatVentSchedule', weights)
         b = self.ScheduledVentilationSchedule.combine(

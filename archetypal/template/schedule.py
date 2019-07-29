@@ -10,16 +10,12 @@ import collections
 import numpy as np
 import pandas as pd
 
-from archetypal import Schedule
+from archetypal import Schedule, log
 from archetypal.template import UmiBase, Unique
 
 
 class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
-    """Class that handles Schedules as
-
-
-
-    """
+    """Class that handles Schedules as"""
 
     def __init__(self, *args, **kwargs):
         """
@@ -34,6 +30,13 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
     @classmethod
     def constant_schedule(cls, hourly_value=1, Name='AlwaysOn',
                           idf=None, **kwargs):
+        """
+        Args:
+            hourly_value:
+            Name:
+            idf:
+            **kwargs:
+        """
         return super(UmiSchedule, cls).constant_schedule(
             hourly_value=hourly_value,
             Name=Name,
@@ -41,12 +44,22 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
     @classmethod
     def from_values(cls, Name, values, **kwargs):
+        """
+        Args:
+            Name:
+            values:
+            **kwargs:
+        """
         return super(UmiSchedule, cls).from_values(Name=Name,
                                                    values=values,
                                                    **kwargs)
 
     @classmethod
     def from_yearschedule(cls, year_sched):
+        """
+        Args:
+            year_sched:
+        """
         if isinstance(year_sched, YearSchedule):
             return cls.from_values(Name=year_sched.Name,
                                    values=year_sched.all_values,
@@ -72,6 +85,17 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         return hash(repr(self))
 
     def combine(self, other, weights=None):
+        """Combine two UmiSchedule objects together.
+
+        Args:
+            other (UmiSchedule):
+            weights (list-like, optional): A list-like object of len 2. If None,
+                the volume of the zones for which self and other belongs is
+                used.
+
+        Returns:
+            (UmiSchedule): the combined UmiSchedule object.
+        """
         if not isinstance(other, self.__class__):
             msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
                                                  other.__class__.__name__)
@@ -82,7 +106,9 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         if all(self.all_values == other.all_values):
             return self
         if not weights:
-            weights = [1, 1]
+            log('using 1 as weighting factor in "{}" '
+                'combine.'.format(self.__class__.__name__))
+            weights = [1., 1.]
         new_values = np.average([self.all_values, other.all_values],
                                 axis=0, weights=weights)
 
@@ -186,7 +212,8 @@ class DaySchedule(UmiSchedule):
             **kwargs:
         """
         super(DaySchedule, self).__init__(*args, **kwargs)
-        self._values = kwargs.get('Values', self.get_schedule_values())
+        self._values = kwargs.get('Values', self.get_schedule_values(
+            sch_type='Schedule:Daily'))
 
     def to_json(self):
         """Convert class properties to dict"""

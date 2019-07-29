@@ -6,12 +6,11 @@
 ################################################################################
 
 import collections
-from operator import add
 from statistics import mean
 
 import numpy as np
 
-from archetypal import settings
+from archetypal import settings, log
 from archetypal.template import Unique, UmiBase, UmiSchedule
 
 
@@ -19,7 +18,6 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
     """Domestic Hot Water settigns
 
     .. image:: ../images/template/zoneinfo-dhw.png
-
     """
 
     def __init__(self, IsOn=True, WaterSchedule=None,
@@ -151,6 +149,11 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def _do_hot_temp(cls, dhw_objs, zone):
+        """
+        Args:
+            dhw_objs:
+            zone:
+        """
         hot_schds = []
         for obj in dhw_objs:
             # Reference to the schedule object specifying the target water
@@ -169,7 +172,12 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
     def _do_inlet_temp(cls, dhw_objs, zone):
         """Reference to the Schedule object specifying the cold water
         temperature [C] from the supply mains that provides the cold water to
-        the tap and makes up for all water lost down the drain."""
+        the tap and makes up for all water lost down the drain.
+
+        Args:
+            dhw_objs:
+            zone:
+        """
         WaterTemperatureInlet = []
         for obj in dhw_objs:
             if obj.Cold_Water_Supply_Temperature_Schedule_Name != '':
@@ -214,9 +222,13 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def _do_water_schedule(cls, dhw_objs, zone):
-        """Returns the WaterSchedule for a list of WaterUse:Equipment
-        objects. If more than one objects are passed, a combined schedule is
-        returned"""
+        """Returns the WaterSchedule for a list of WaterUse:Equipment objects.
+        If more than one objects are passed, a combined schedule is returned
+
+        Args:
+            dhw_objs:
+            zone:
+        """
         water_schds = []
         for obj in dhw_objs:
             water_schd_name = UmiSchedule(
@@ -241,11 +253,14 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         total_flow_rate *= 3600.  # m3/h/m2
         return total_flow_rate
 
-    def combine(self, other):
+    def combine(self, other, weights=None):
         """Combine two DomesticHotWaterSetting objects together.
 
         Args:
             other (DomesticHotWaterSetting):
+            weights (list-like, optional): A list-like object of len 2. If None,
+                the volume of the zones for which self and other belongs is
+                used.
 
         Returns:
             (DomesticHotWaterSetting): a new combined object
@@ -267,12 +282,16 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         # the new object's name
         name = " + ".join([self.Name, other.Name])
 
-        weights = [self._belongs_to_zone.volume,
-                   other._belongs_to_zone.volume]
+        if not weights:
+            log('using zone volume as weighting factor in "{}" '
+                'combine.'.format(self.__class__.__name__))
+            weights = [self._belongs_to_zone.volume,
+                       other._belongs_to_zone.volume]
 
         new_obj = DomesticHotWaterSetting(Name=name,
                                           IsOn=any((self.IsOn, other.IsOn)),
-                                          WaterSchedule=self.WaterSchedule.combine(
+                                          WaterSchedule=self.WaterSchedule
+                                          .combine(
                                               other.WaterSchedule,
                                               weights=weights),
                                           FlowRatePerFloorArea=self._float_mean(
@@ -292,6 +311,12 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
 
 
 def reduce(function, iterable, **attr):
+    """
+    Args:
+        function:
+        iterable:
+        **attr:
+    """
     it = iter(iterable)
     value = next(it)
     for element in it:

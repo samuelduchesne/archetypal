@@ -7,7 +7,7 @@
 
 import collections
 
-from archetypal import float_round, ReportData
+from archetypal import float_round, ReportData, log
 from archetypal.template import UmiBase, Unique, UmiSchedule
 
 
@@ -242,8 +242,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         Todo:
             - Here EconomizerType is for the entire building, try to do it for
               each zone.
-            - Fix typo in DifferentialEnthalpy (extra h) when issue is
-              resolved at Basilisk project:
+            - Fix typo in DifferentialEnthalpy (extra h) when issue is resolved
+              at Basilisk project:
               https://github.com/MITSustainableDesignLab/basilisk/issues/32
 
         Args:
@@ -621,11 +621,17 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             idf=zone.idf)
         return h_array.mean(), heating_sched, c_array.mean(), cooling_sched
 
-    def combine(self, other):
+    def combine(self, other, weights=None):
         """Combine two ZoneConditioning objects together.
 
         Args:
-            other (ZoneConditioning):
+            other (ZoneConditioning): The other ZoneConditioning object to
+                combine with.
+            weights (list-like, optional): A list-like object of len 2. If None,
+                the volume of the zones for which self and other belongs is
+                used.
+        Returns:
+            (ZoneConditioning): the combined ZoneConditioning object.
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
@@ -640,8 +646,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         # the new object's name
         name = " + ".join([self.Name, other.Name])
 
-        weights = [self._belongs_to_zone.volume,
-                   other._belongs_to_zone.volume]
+        if not weights:
+            log('using zone volume as weighting factor in "{}" '
+                'combine.'.format(self.__class__.__name__))
+            weights = [self._belongs_to_zone.volume,
+                       other._belongs_to_zone.volume]
         a = self._float_mean(other, 'CoolingCoeffOfPerf', weights)
         b = self._str_mean(other, 'CoolingLimitType')
         c = self._float_mean(other, 'CoolingSetpoint', weights)

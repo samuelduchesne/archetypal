@@ -36,6 +36,7 @@ class Schedule(object):
             base_year (int): The base year of the schedule. Defaults to 2018
                 since the first day of that year is a Monday.
             schType (str): The EnergyPlus schedule type. eg.: "Schedule:Year"
+            values:
             **kwargs:
         """
         try:
@@ -67,6 +68,12 @@ class Schedule(object):
 
     @classmethod
     def from_values(cls, Name, values, **kwargs):
+        """
+        Args:
+            Name:
+            values:
+            **kwargs:
+        """
         return cls(Name=Name, values=values, **kwargs)
 
     @classmethod
@@ -76,11 +83,11 @@ class Schedule(object):
         to a schedule with a value of 1, named 'AlwaysOn'.
 
         Args:
-            idf:
             hourly_value (float, optional): The value for the constant schedule.
                 Defaults to 1.
             Name (str, optional): The name of the schedule. Defaults to Always
                 On.
+            idf:
             **kwargs:
         """
         if idf:
@@ -829,6 +836,10 @@ class Schedule(object):
         """convert a Schedule Class to the 'Schedule:Year',
         'Schedule:Week:Daily' and 'Schedule:Day:Hourly' representation
 
+        Args:
+            values:
+            idf:
+
         Returns:
             3-element tuple containing
 
@@ -1243,7 +1254,16 @@ class Schedule(object):
             return lambda x: x.index == date
 
     def combine(self, other, weights=None):
-        """Combine two schedule objects together"""
+        """Combine two schedule objects together.
+
+        Args:
+            other (Schedule): the other Schedule object to combine with.
+            weights (list-like, optional): A list-like object of len 2. If None,
+                equal weights are used.
+
+        Returns:
+            (Schedule): the combined Schedule object.
+        """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
             msg = 'Cannot combine %s with %s' % (self.__class__.__name__,

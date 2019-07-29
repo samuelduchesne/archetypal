@@ -7,6 +7,7 @@
 
 import collections
 
+from archetypal import log
 from archetypal.template import MaterialBase, Unique
 
 
@@ -102,10 +103,14 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         """Overload + to implement self.combine."""
         return self.combine(other)
 
-    def combine(self, other):
-        """
+    def combine(self, other, weights=None):
+        """Combine two GlazingMaterial objects together.
+
         Args:
-            other (GlazingMaterial):
+            other (GlazingMaterial): The other GlazingMaterial object to
+                combine with.
+        Returns:
+            (GlazingMaterial): the combined GlazingMaterial object.
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
@@ -121,12 +126,18 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         comments = self._str_mean(other, attr='Comments', append=True)
         idf = self.__dict__.get('idf')
         sql = self.__dict__.get('sql')
+
+        if not weights:
+            log('using GlazingMaterial density as weighting factor in "{}" '
+                'combine.'.format(self.__class__.__name__))
+            weights = [self.Density, other.Density]
         # iterate over attributes and apply either float_mean or str_mean.
         new_attr = {}
         for attr in self.__dict__:
             if attr not in ['Comments', 'idf', 'sql', 'all_objects', 'id']:
                 if isinstance(self.__dict__[attr], (int, float)):
-                    new_attr[attr] = self._float_mean(other, attr=attr)
+                    new_attr[attr] = self._float_mean(other, attr=attr,
+                                                      weights=weights)
                 elif isinstance(self.__dict__[attr], str):
                     new_attr[attr] = self._str_mean(other, attr=attr,
                                                     append=False)

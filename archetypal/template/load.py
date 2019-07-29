@@ -8,13 +8,13 @@
 import collections
 
 from archetypal.template import UmiBase, Unique, UmiSchedule
+from archetypal import log
 
 
 class ZoneLoad(UmiBase, metaclass=Unique):
     """Zone Loads
 
     .. image:: ../images/template/zoneinfo-loads.png
-
     """
 
     def __init__(self, *args,
@@ -36,8 +36,9 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             *args:
             DimmingType (str): Different types to dim the lighting to respect
                 the IlluminanceTraget and taking into account the daylight
-                illuminance:
-                * If `Continuous` : the overhead lights dim continuously and
+                illuminance: * If `Continuous` : the overhead lights dim
+                continuously and
+
                     linearly from (maximum electric power, maximum light output)
                     to (minimum electric power, minimum light output) as the
                     daylight illuminance increases. The lights stay on at the
@@ -219,11 +220,17 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                      idf=zone.idf)
         return z_load
 
-    def combine(self, other):
-        """
+    def combine(self, other, weights=None):
+        """Combine two ZoneLoad objects together.
 
         Args:
             other (ZoneLoad):
+            weights (list-like, optional): A list-like object of len 2. If None,
+                the volume of the zones for which self and other belongs is
+                used.
+
+        Returns:
+            (ZoneLoad): the combined ZoneLoad object.
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
@@ -241,7 +248,11 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         # the new object's name
         name = '+'.join([self.Name, other.Name])
 
-        weights = [self._belongs_to_zone.volume, other._belongs_to_zone.volume]
+        if not weights:
+            log('using zone volume as weighting factor in "{}" '
+                'combine.'.format(self.__class__.__name__))
+            weights = [self._belongs_to_zone.volume,
+                       other._belongs_to_zone.volume]
 
         attr = dict(DimmingType=self._str_mean(other, 'DimmingType'),
                     EquipmentAvailabilitySchedule=

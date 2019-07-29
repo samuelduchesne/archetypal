@@ -7,6 +7,7 @@
 
 import collections
 
+from archetypal import log
 from archetypal.template import UmiBase, Unique
 
 
@@ -100,11 +101,15 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         return cls(Conductivity=0.17, SpecificHeat=800, Density=800,
                    Name='generic_Material')
 
-    def combine(self, other):
-        """Append other to self. Return self + other as a new object.
+    def combine(self, other, weights=None):
+        """Combine two OpaqueMaterial objects.
 
         Args:
-            other (OpaqueMaterial): The other OpaqueMaterial object
+            weights (list-like, optional): A list-like object of len 2. If None,
+                the density of the OpaqueMaterial of each objects is used as
+                a weighting factor.
+            other (OpaqueMaterial): The other OpaqueMaterial object the
+                combine with.
 
         Returns:
             OpaqueMaterial: A new combined object made of self + other.
@@ -118,6 +123,12 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         # Check if other is not the same as self
         if self == other:
             return self
+
+        if not weights:
+            log('using OpaqueMaterial density as weighting factor in "{}" '
+                'combine.'.format(self.__class__.__name__))
+            weights = [self.Density, other.Density]
+
         name = " + ".join([self.Name, other.Name])
         new_attr = dict(Category=self._str_mean(other, attr='Category',
                                                 append=False),
@@ -125,34 +136,46 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                                                 append=True),
                         DataSource=self._str_mean(other, attr='DataSource',
                                                   append=False),
-                        Conductivity=self._float_mean(other, 'Conductivity'),
+                        Conductivity=self._float_mean(other, 'Conductivity',
+                                                      weights),
                         Roughness=self._str_mean(other, attr='Roughness',
                                                  append=False),
                         SolarAbsorptance=self._float_mean(other,
-                                                          'SolarAbsorptance'),
+                                                          'SolarAbsorptance',
+                                                          weights),
                         SpecificHeat=self._float_mean(other, 'SpecificHeat'),
                         ThermalEmittance=self._float_mean(other,
-                                                          'ThermalEmittance'),
+                                                          'ThermalEmittance',
+                                                          weights),
                         VisibleAbsorptance=self._float_mean(other,
-                                                            'VisibleAbsorptance'),
+                                                            'VisibleAbsorptance',
+                                                            weights),
                         TransportCarbon=self._float_mean(other,
-                                                         'TransportCarbon'),
+                                                         'TransportCarbon',
+                                                         weights),
                         TransportDistance=self._float_mean(other,
-                                                           'TransportDistance'),
+                                                           'TransportDistance',
+                                                           weights),
                         TransportEnergy=self._float_mean(other,
-                                                         'TransportEnergy'),
+                                                         'TransportEnergy',
+                                                         weights),
                         SubstitutionRatePattern=self._float_mean(other,
-                                                                 'SubstitutionRatePattern'),
+                                                                 'SubstitutionRatePattern',
+                                                                 weights=None),
                         SubstitutionTimestep=self._float_mean(other,
-                                                              'SubstitutionTimestep'),
-                        Cost=self._float_mean(other, 'Cost'),
-                        Density=self._float_mean(other, 'Density'),
+                                                              'SubstitutionTimestep',
+                                                              weights),
+                        Cost=self._float_mean(other, 'Cost', weights),
+                        Density=self._float_mean(other, 'Density', weights),
                         EmbodiedCarbon=self._float_mean(other,
-                                                        'EmbodiedCarbon'),
+                                                        'EmbodiedCarbon',
+                                                        weights),
                         EmbodiedEnergy=self._float_mean(other,
-                                                        'EmbodiedEnergy'),
+                                                        'EmbodiedEnergy',
+                                                        weights),
                         MoistureDiffusionResistance=self._float_mean(other,
-                                                                     'MoistureDiffusionResistance'))
+                                                                     'MoistureDiffusionResistance',
+                                                                     weights))
         new_obj = self.__class__(Name=name, **new_attr)
         return new_obj
 

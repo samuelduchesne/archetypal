@@ -295,10 +295,16 @@ class Zone(UmiBase, metaclass=Unique):
 
         return zone
 
-    def combine(self, other):
+    def combine(self, other, weights=None):
         """
         Args:
             other (Zone):
+            weights (list-like, optional): A list-like object of len 2. If None,
+                the volume of the zones for which self and other belongs is
+                used.
+
+        Returns:
+            (Zone): the combined Zone object.
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
@@ -316,32 +322,41 @@ class Zone(UmiBase, metaclass=Unique):
         # the new object's name
         name = '+'.join([self.Name, other.Name])
 
-        weights = [self.volume, other.volume]
+        if not weights:
+            log('using zone volume as weighting factor in "{}" '
+                'combine.'.format(self.__class__.__name__))
+            weights = [self.volume, other.volume]
         attr = dict(Category=self._str_mean(other, attr='Category',
                                             append=False),
                     Comments=self._str_mean(other, attr='Comments',
                                             append=True),
-                    Conditioning=self.Conditioning + other.Conditioning,
-                    Constructions=self.Constructions + other.Constructions,
-                    Ventilation=self.Ventilation + other.Ventilation,
-                    Windows=None if self.Windows is None and other.Windows is
+                    Conditioning=self.Conditioning.combine(
+                        other.Conditioning, weights),
+                    Constructions=self.Constructions.combine(
+                        other.Constructions, weights),
+                    Ventilation=self.Ventilation.combine(
+                        other.Ventilation, weights),
+                    Windows=None if self.Windows is None or other.Windows is
                                     None
-                    else self.Windows + other.Windows,
+                    else self.Windows.combine(
+                        other.Windows, weights),
                     DaylightMeshResolution=self._float_mean(other,
                                                             'DaylightMeshResolution',
                                                             weights=weights),
                     DaylightWorkplaneHeight=self._float_mean(other,
                                                              'DaylightWorkplaneHeight',
                                                              weights),
-                    DomesticHotWater=self.DomesticHotWater +
-                                     other.DomesticHotWater,
-                    InternalMassConstruction=self.InternalMassConstruction +
-                                             other.InternalMassConstruction,
+                    DomesticHotWater=self.DomesticHotWater.combine(
+                        other.DomesticHotWater, weights),
+                    InternalMassConstruction=self.InternalMassConstruction
+                    .combine(
+                        other.InternalMassConstruction, weights),
                     InternalMassExposedPerFloorArea=
                     self._float_mean(other,
                                      'InternalMassExposedPerFloorArea',
                                      weights),
-                    Loads=self.Loads + other.Loads)
+                    Loads=self.Loads.combine(
+                        other.Loads, weights))
         new_obj = self.__class__(Name=name, **attr)
         new_obj._volume = self.volume + other.volume
         new_obj._area = self.area + other.area
@@ -632,11 +647,14 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         """
         return self.combine(other)
 
-    def combine(self, other):
+    def combine(self, other, weights=None):
         """Append other to self. Return self + other as a new object.
 
         Args:
             other (ZoneConstructionSet):
+
+        Returns:
+            (ZoneConstructionSet): the combined ZoneConstructionSet object.
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
@@ -648,8 +666,14 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         if self == other:
             return self
 
+        if not weights:
+            log('using zone volume as weighting factor in "{}" '
+                'combine.'.format(self.__class__.__name__))
+            weights = [self._belongs_to_zone.volume,
+                       other._belongs_to_zone.volume]
+
         name = " + ".join([self.Name, other.Name])
-        new_attr = dict(Slab=self.Slab + other.Slab,
+        new_attr = dict(Slab=self.Slab.combine(other.Slab, weights),
                         IsSlabAdiabatic=self.IsSlabAdiabatic,
                         Roof=self.Roof + other.Roof,
                         IsRoofAdiabatic=self.IsRoofAdiabatic,

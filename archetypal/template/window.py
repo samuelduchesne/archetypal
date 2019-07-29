@@ -11,12 +11,13 @@ from enum import IntEnum
 from functools import reduce
 
 import tabulate
+from eppy.bunch_subclass import EpBunch
+
 from archetypal import log, IDF, calc_simple_glazing
 from archetypal.template import MaterialLayer, UmiSchedule
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
 from archetypal.template.umi_base import UmiBase, Unique
-from eppy.bunch_subclass import EpBunch
 
 
 class WindowConstruction(UmiBase, metaclass=Unique):
@@ -517,10 +518,12 @@ class WindowSetting(UmiBase, metaclass=Unique):
             # no window found, probably a core zone, return None
             return None
 
-    def combine(self, other):
+    def combine(self, other, weights=None):
         """Append other to self. Return self + other as a new object.
 
         Args:
+            weights (list-like, optional): A list-like object of len 2. If None,
+                equal weights are used.
             other (WindowSetting): The other OpaqueMaterial object
 
         Returns:
@@ -539,13 +542,19 @@ class WindowSetting(UmiBase, metaclass=Unique):
         if self == other:
             return self
         name = " + ".join([self.Name, other.Name])
+
+        if not weights:
+            log('using 1 as weighting factor in "{}" '
+                'combine.'.format(self.__class__.__name__))
+            weights = [1., 1.]
+
         new_attr = self.__dict__.copy()
         attr = dict(AfnDischargeC=
-                    self._float_mean(other, 'AfnDischargeC'),
+                    self._float_mean(other, 'AfnDischargeC', weights),
                     AfnTempSetpoint=
-                    self._float_mean(other, 'AfnTempSetpoint'),
+                    self._float_mean(other, 'AfnTempSetpoint', weights),
                     AfnWindowAvailability=self.AfnWindowAvailability.combine(
-                        other.AfnWindowAvailability),
+                        other.AfnWindowAvailability, weights),
                     IsShadingSystemOn=any([self.IsShadingSystemOn,
                                            other.IsShadingSystemOn]),
                     IsVirtualPartition=any([self.IsVirtualPartition,
@@ -553,23 +562,25 @@ class WindowSetting(UmiBase, metaclass=Unique):
                     IsZoneMixingOn=any([self.IsZoneMixingOn,
                                         other.IsZoneMixingOn]),
                     OperableArea=
-                    self._float_mean(other, 'OperableArea'),
+                    self._float_mean(other, 'OperableArea', weights),
                     ShadingSystemSetpoint=
-                    self._float_mean(other, 'ShadingSystemSetpoint'),
+                    self._float_mean(other, 'ShadingSystemSetpoint', weights),
                     ShadingSystemTransmittance=
-                    self._float_mean(other, 'ShadingSystemTransmittance'),
+                    self._float_mean(other, 'ShadingSystemTransmittance',
+                                     weights),
                     ShadingSystemType=self.ShadingSystemType if
                     self.IsShadingSystemOn else other.ShadingSystemType,
                     ZoneMixingDeltaTemperature=
-                    self._float_mean(other, 'ZoneMixingDeltaTemperature'),
+                    self._float_mean(other, 'ZoneMixingDeltaTemperature',
+                                     weights),
                     ZoneMixingFlowRate=
-                    self._float_mean(other, 'ZoneMixingFlowRate'),
+                    self._float_mean(other, 'ZoneMixingFlowRate', weights),
                     ZoneMixingAvailabilitySchedule=
                     self.ZoneMixingAvailabilitySchedule.combine(
-                        other.ZoneMixingAvailabilitySchedule),
+                        other.ZoneMixingAvailabilitySchedule, weights),
                     ShadingSystemAvailabilitySchedule=
                     self.ShadingSystemAvailabilitySchedule.combine(
-                        other.ShadingSystemAvailabilitySchedule))
+                        other.ShadingSystemAvailabilitySchedule, weights))
         new_attr.update(attr)
         new_attr['Name'] = name
         new_obj = self.__class__(**new_attr)

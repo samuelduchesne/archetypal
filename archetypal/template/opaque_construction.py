@@ -9,6 +9,7 @@ import collections
 
 import numpy as np
 
+from archetypal import log
 from archetypal.template import Unique, MaterialLayer, \
     OpaqueMaterial, UmiBase
 
@@ -86,16 +87,19 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     def u_value(self):
         return 1 / self.r_value
 
-    def combine(self, other, method='constant_ufactor'):
+    def combine(self, other, weights=None, method='constant_ufactor'):
         """Combine two OpaqueConstruction together.
 
-        Info:
-            The returned OpaqueConstruction assumes the thickness of each
-            constructions' materials is distributed equally.
-
         Args:
-            other (OpaqueConstruction):
-            method:
+            other (OpaqueConstruction): The other OpaqueConstruction object
+                to combine with.
+            method (str): Equivalent wall assembly method. Only
+                'constan_ufactor' is implemented for now.
+            weights (list-like, optional): A list-like object of len 2. If None,
+                the weight is the same for both self and other.
+
+        Returns:
+            (OpaqueConstruction): the combined ZoneLoad object.
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
@@ -107,13 +111,18 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         if self == other:
             return self
 
+        if not weights:
+            log('using 1 as weighting factor in "{}" '
+                'combine.'.format(self.__class__.__name__))
+            weights = [1., 1.]
+
         # the new object's name
         name = " + ".join([self.Name, other.Name])
         # thicknesses & materials for self
         if method == 'equivalent_volume':
             new_m, new_t = self.equivalent_volume(other)
         elif method == 'constant_ufactor':
-            new_m, new_t = self.constant_ufactor(other)
+            new_m, new_t = self.constant_ufactor(other, weights)
         else:
             raise ValueError(
                 'Possible choices are ["equivalent_volume","constant_ufactor"]')
@@ -132,9 +141,16 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     def equivalent_volume(self, other):
         """
+        Todo:
+            - Implement the 'equivalent_volume' method.
+
         Args:
             other:
         """
+        raise NotImplementedError('"equivalent_volume" method is not yet '
+                                  'fully implmented. Please choose '
+                                  '"constant_ufactor"')
+
         self_t = np.array([mat.Thickness for mat in self.Layers])
         self_m = [mat.Material for mat in self.Layers]
         # thicknesses & materials for other
@@ -170,7 +186,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         equi_u = np.average([self.u_value, other.u_value], weights=weights)
 
         materials = set([layer.Material for layer in self.Layers] + \
-                     [layer.Material for layer in other.Layers])
+                        [layer.Material for layer in other.Layers])
 
         from scipy.optimize import minimize
         x0 = np.ones(len(materials))

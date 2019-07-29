@@ -53,7 +53,7 @@ class TestAddiADD():
     def test_add_glazing_material(self):
         """test __add__() for OpaqueMaterial"""
         sg_a = ar.calc_simple_glazing(0.763, 2.716, 0.812)
-        sg_b = ar.calc_simple_glazing(0.678, 2.113, 0.906)
+        sg_b = ar.calc_simple_glazing(0.578, 2.413, 0.706)
         mat_a = ar.GlazingMaterial(Name='mat_a', **sg_a)
         mat_b = ar.GlazingMaterial(Name='mat_b', **sg_b)
 
@@ -65,7 +65,7 @@ class TestAddiADD():
     def test_iadd_glazing_material(self):
         """test __iadd__() for OpaqueMaterial"""
         sg_a = ar.calc_simple_glazing(0.763, 2.716, 0.812)
-        sg_b = ar.calc_simple_glazing(0.678, 2.113, 0.906)
+        sg_b = ar.calc_simple_glazing(0.578, 2.413, 0.706)
         mat_a = ar.GlazingMaterial(Name='mat_ia', **sg_a)
         mat_b = ar.GlazingMaterial(Name='mat_ib', **sg_b)
 
@@ -251,7 +251,7 @@ class TestOpaqueConstruction:
 
     def test_thermal_properties(self, construction_a):
         """test r_value and u_value properties"""
-        assert construction_a.r_value == 1 / construction_a.u_value
+        assert 1 / construction_a.r_value == construction_a.u_value
 
     def test_add_opaque_construction(self, construction_a, construction_b):
         """Test __add__() for OpaqueConstruction"""

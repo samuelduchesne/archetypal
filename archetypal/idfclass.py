@@ -64,7 +64,8 @@ class IDF(geomeppy.IDF):
             for surface in zone.zonesurfaces:
                 if surface.tilt == 180.0:
                     part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
-                    multiplier = float(zone.Multiplier if zone.Multiplier != '' else 1)
+                    multiplier = float(
+                        zone.Multiplier if zone.Multiplier != '' else 1)
 
                     area += surface.area * multiplier * part_of
         return area
@@ -892,7 +893,7 @@ def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
             return_elements = tuple(
                 compress([cached_run_results, idf],
                          [True, return_idf]))
-            return return_elements
+            return _unpack_tuple(return_elements)
 
     runs_not_found = eplus_file
     # </editor-fold>
@@ -980,7 +981,15 @@ def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
         return_elements = tuple(
             compress([cached_run_results, idf],
                      [True, return_idf]))
-        return return_elements
+        return _unpack_tuple(return_elements)
+
+
+def _unpack_tuple(x):
+    """Unpacks one-element tuples for use as return values"""
+    if len(x) == 1:
+        return x[0]
+    else:
+        return x
 
 
 def multirunner(**kwargs):

@@ -70,17 +70,18 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         return wc
 
     @classmethod
-    def from_idf(cls, Construction, **kwargs):
+    def from_epbunch(cls, Construction, **kwargs):
         """WindowConstruction from idf Construction Name.
 
         Example:
             >>> import archetypal as ar
             >>> idf = ar.load_idf("myidf")
             >>> construction_name = "Some construction name"
-            >>> ar.WindowConstruction.from_idf(Name=construction_name, idf=idf)
+            >>> ar.WindowConstruction.from_epbunch(Name=construction_name,
+            >>> idf=idf)
 
         Args:
-            Construction:
+            Construction (EpBunch): The Construction epbunch object.
             **kwargs: Other keywords passed to the constructor.
         """
         Name = Construction.Name
@@ -314,7 +315,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         name = kwargs.pop('Name', Construction.Name + "_Window")
         kwargs['Name'] = name
         w = cls(idf=Construction.theidf, **kwargs)
-        w.Construction = WindowConstruction.from_idf(Construction)
+        w.Construction = WindowConstruction.from_epbunch(Construction)
         w.AfnWindowAvailability = UmiSchedule.constant_schedule(
             idf=Construction.theidf)
         w.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(
@@ -361,7 +362,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         """
         if isinstance(surface, EpBunch):
             construction = surface.get_referenced_object('Construction_Name')
-            construction = WindowConstruction.from_idf(construction)
+            construction = WindowConstruction.from_epbunch(construction)
             name = surface.Name
             shading_control = surface.get_referenced_object(
                 'Shading_Control_Name')

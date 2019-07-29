@@ -23,41 +23,50 @@ perim_name = 'perim'
 
 class TestUnique:
     """Series of tests for the :class:`Unique` class"""
+    # todo: Implement tests for Unique class
     pass
 
 
 class TestUmiBase:
     """Series of tests for the :class:`UmiBase` class"""
+    # todo: Implement tests for UmiBase class
     pass
 
 
 class TestMaterialLayer:
     """Series of tests for the :class:`MaterialLayer` class"""
+    # todo: Implement tests for MaterialLayer class
     pass
 
 
 class TestConstructionBase:
     """Series of tests for the :class:`ConstructionBase` class"""
+    # todo: Implement tests for ConstructionBase class
     pass
 
 
 class TestLayeredConstruction:
     """Series of tests for the :class:`LayeredConstruction` class"""
+    # todo: Implement tests for LayeredConstruction class
     pass
 
 
 class TestMassRatio:
     """Series of tests for the :class:`MassRatio` class"""
+    # todo: Implement tests for MassRatio class
     pass
 
 
 class TestYearScheduleParts:
     """Series of tests for the :class:`YearScheduleParts` class"""
+    # todo: Implement tests for YearScheduleParts class
     pass
 
 
 class TestDaySchedule:
     """Series of tests for the :class:`DaySchedule` class"""
+
+    # todo: Implement tests for DaySchedule class
 
     def test_daySchedule_from_to_json(self, config):
         import json
@@ -72,6 +81,8 @@ class TestDaySchedule:
 
 class TestWeekSchedule:
     """Series of tests for the :class:`WeekSchedule` class"""
+
+    # todo: Implement tests for WeekSchedule class
 
     def test_weekSchedule_from_to_json(self, config):
         import json
@@ -89,6 +100,8 @@ class TestWeekSchedule:
 class TestYearSchedule:
     """Series of tests for the :class:`YearSchedule` class"""
 
+    # todo: Implement tests for YearSchedule class
+
     def test_yearSchedule_from_to_json(self, config):
         import json
         from archetypal import YearSchedule, load_json_objects
@@ -104,6 +117,9 @@ class TestYearSchedule:
 
 class TestWindowType:
     """Series of tests for the :class:`YearScheduleParts` class"""
+
+    # todo: Implement tests for WindowType class
+
     pass
 
 
@@ -151,6 +167,8 @@ class TestOpaqueMaterial:
                 idf.idfobjects['MATERIAL:AIRGAP'][0])
             opaqMat_epBunch.to_json()
 
+    # todo: Implement from_to_json test for OpaqueMaterial class
+
 
 class TestGlazingMaterial:
     """Series of tests for the :class:`GlazingMaterial` class"""
@@ -182,9 +200,13 @@ class TestGlazingMaterial:
         assert mat_a.id == id_  # id should not change
         assert mat_a.id != mat_b.id
 
+    # todo: Implement from_to_json test for GlazingMaterial class
+
 
 class TestGasMaterial:
     """Series of tests for the GasMaterial class"""
+
+    # todo: Implement tests for GasMaterial class
 
     def test_GasMaterial_from_to_json(self, config):
         import json
@@ -246,8 +268,7 @@ class TestOpaqueConstruction:
         """Test __add__() for OpaqueConstruction"""
         oc_c = construction_a + construction_b
         assert oc_c
-        desired = (
-                          construction_a.u_value + construction_b.u_value) * 0.5
+        desired = (construction_a.u_value + construction_b.u_value) * 0.5
         actual = oc_c.u_value
         np.testing.assert_almost_equal(actual, desired, decimal=3)
 
@@ -285,6 +306,8 @@ class TestOpaqueConstruction:
 class TestWindowConstruction:
     """Series of tests for the :class:`WindowConstruction` class"""
 
+    # todo: Implement from_to_json for WindowConstruction class
+
     def test_windowConstr_from_to_json(config):
         import json
         from archetypal import WindowConstruction, load_json_objects
@@ -301,6 +324,8 @@ class TestWindowConstruction:
 class TestStructureDefinition:
     """Series of tests for the :class:`StructureDefinition` class"""
 
+    # todo: Implement from_to_json for StructureDefinition class
+
     def test_structure_from_to_json(config):
         import json
         from archetypal import StructureDefinition, load_json_objects
@@ -315,7 +340,9 @@ class TestStructureDefinition:
 
 
 class TestUmiSchedule:
-    """Tests for :class:`Schedule` class """
+    """Tests for :class:`UmiSchedule` class """
+
+    # todo: Implement from_to_json for UmiSchedule class
 
     def test_constant_umischedule(self, config):
         from archetypal import UmiSchedule
@@ -545,6 +572,9 @@ class TestVentilationSetting:
 
 class TestDomesticHotWaterSetting:
     """Series of tests for the :class:`DomesticHotWaterSetting` class"""
+
+    # todo: Implement from_to_json for DomesticHotWaterSetting class
+
     pass
 
 
@@ -708,22 +738,63 @@ class TestZone:
                                        desired=z_core.area, decimal=3)
 
 
+@pytest.fixture(scope="session")
+def bt():
+    """A building template fixture used in subsequent tests"""
+    eplus_dir = get_eplus_dire()
+    file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
+    w = next(iter((eplus_dir / "WeatherData").glob("*.epw")), None)
+    file = ar.copy_file(file)[0]
+    idf = ar.load_idf(file)
+    sql = ar.run_eplus(file, weather_file=w, prep_outputs=True, verbose="v",
+                       output_report="sql", expandobjects=True, annual=True)
+    from archetypal import BuildingTemplate
+    bt = BuildingTemplate.from_idf(idf, sql=sql)
+    yield bt
+
+
 class TestBuildingTemplate:
     """Various tests with the :class:`BuildingTemplate` class"""
 
-    @pytest.fixture(scope="class")
-    def bt(self):
-        """A building template fixture used in subsequent tests"""
-        eplus_dir = get_eplus_dire()
-        file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
-        w = next(iter((eplus_dir / "WeatherData").glob("*.epw")), None)
-        file = ar.copy_file(file)[0]
+    def test_viewbuilding(self, config, bt):
+        """test the visualization of a building"""
+        bt.view_building()
+
+    def test_buildingTemplate_from_to_json(self, config):
+        from archetypal import UmiTemplate
+        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        b = UmiTemplate.from_json(filename)
+        bt = b.BuildingTemplates
+        bt_to_json = bt[0].to_json()
+        w_to_json = bt[0].Windows.to_json()
+
+
+class TestZoneGraph:
+    """Series of tests for the :class:`ZoneGraph` class"""
+
+    def test_traverse_graph(self, config):
+        file = "tests/input_data/trnsys/ASHRAE90" \
+               ".1_Warehouse_STD2004_Rochester.idf"
+        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+
         idf = ar.load_idf(file)
         sql = ar.run_eplus(file, weather_file=w, prep_outputs=True, verbose="v",
-                           output_report="sql", expandobjects=True, annual=True)
+                           output_report="sql", expandobjects=True)
+
         from archetypal import BuildingTemplate
+
         bt = BuildingTemplate.from_idf(idf, sql=sql)
-        yield bt
+        G = bt.zone_graph(log_adj_report=False, skeleton=False, force=True)
+
+        # from operator import add
+        # from functools import reduce
+        #
+        # zone_list = [node[1] for node in G.nodes(data='zone') if
+        #              not G.nodes(data='core')[node[0]]]
+        #
+        # zone = reduce(add, zone)_list
+
+        assert G
 
     @pytest.fixture(scope="class")
     def G(self, bt):
@@ -764,9 +835,9 @@ class TestBuildingTemplate:
         from eppy.bunch_subclass import EpBunch
         assert isinstance(G4.nodes['ZN5_Core_Space_1']['epbunch'], EpBunch)
 
-    def test_viewbuilding(self, config, bt):
-        """test the visualization of a building"""
-        bt.view_building()
+    def test_graph_info(self, G):
+        """test the info method on a ZoneGraph"""
+        G.info()
 
     def test_viewgraph2d(self, config, G):
         """test the visualization of the zonegraph in 2d"""
@@ -793,47 +864,7 @@ class TestBuildingTemplate:
 
         assert len(H) > 0  # assert G has at least one node
 
-    def test_graph_info(self, G):
-        """test the info method on a ZoneGraph"""
-        G.info()
-
-    def test_buildingTemplate_from_to_json(self, config):
-        from archetypal import UmiTemplate
-        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        b = UmiTemplate.from_json(filename)
-        bt = b.BuildingTemplates
-        bt_to_json = bt[0].to_json()
-        w_to_json = bt[0].Windows.to_json()
-
-
-class TestZoneGraph:
-    """Series of tests for the :class:`ZoneGraph` class"""
-
-    def test_traverse_graph(config):
-        file = "tests/input_data/trnsys/ASHRAE90" \
-               ".1_Warehouse_STD2004_Rochester.idf"
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-
-        idf = ar.load_idf(file)
-        sql = ar.run_eplus(file, weather_file=w, prep_outputs=True, verbose="v",
-                           output_report="sql", expandobjects=True)
-
-        from archetypal import BuildingTemplate
-
-        bt = BuildingTemplate.from_idf(idf, sql=sql)
-        G = bt.zone_graph(log_adj_report=False, skeleton=False, force=True)
-
-        # from operator import add
-        # from functools import reduce
-        #
-        # zone_list = [node[1] for node in G.nodes(data='zone') if
-        #              not G.nodes(data='core')[node[0]]]
-        #
-        # zone = reduce(add, zone)_list
-
-        assert G
-
-    def test_reduce(config):
+    def test_reduce(self, config):
         file = "tests/input_data/trnsys/ASHRAE90" \
                ".1_OfficeSmall_STD2004_Rochester" \
                ".idf"
@@ -848,7 +879,7 @@ class TestZoneGraph:
         bt.clear_cache()
         R = bt.reduce()
 
-    def test_reduce_graph(config):
+    def test_reduce_graph(self, config):
         file = "tests/input_data/trnsys/ASHRAE90" \
                ".1_OfficeSmall_STD2004_Rochester" \
                ".idf"

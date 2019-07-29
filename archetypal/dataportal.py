@@ -150,7 +150,7 @@ def tabula_building_details_sheet(code_building=None, code_country='FR',
             'HR' (highrises), 'TFrame' (timber frame), 'Semi' (semi-detached)
         code_type: “ReEx” is a code for “real example” and “SyAv” for
             “Synthetical Average”
-        code_num: TODO: What is this paramter?
+        code_num: TODO: What is this parameter?
         code_variantnumber: the energy performance level 1, 2 and 3. 1: minimum
             requirements, 2: improved and 3: ambitious or NZEB standard (assumed
             or announced level of Nearly Zero-Energy Buildings)

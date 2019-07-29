@@ -784,6 +784,9 @@ class Schedule(object):
                             sch_type=None):
         """Main function that returns the schedule values
 
+        Todo:
+            - Add support for "Schedule:Daily" schedules.
+
         Args:
             name (str): the name of the schedule
             start_date:
@@ -825,9 +828,8 @@ class Schedule(object):
         elif sch_type.upper() == "schedule:file".upper():
             hourly_values = self.get_file_ep_schedule_values(name)
         else:
-            log('Archetypal does not support "{}" currently'.format(
-                self.schType), lg.WARNING)
-
+            log('Archetypal does not currently support schedules of type '
+                '"{}"'.format(sch_type), lg.WARNING)
             hourly_values = []
 
         return hourly_values

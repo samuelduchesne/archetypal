@@ -14,7 +14,7 @@ from archetypal.template import UmiBase, Unique
 
 def resolve_temp(temp, idf):
     """Resolve the temperature. If a float is passed, simply return it. If a str
-    is passed, get the scehdule and return the mean value.
+    is passed, get the schedule and return the mean value.
 
     Args:
         temp (float or str):
@@ -165,6 +165,11 @@ class VentilationSetting(UmiBase, metaclass=Unique):
     @classmethod
     def from_zone(cls, zone):
         """
+        Todo:
+            - Refactor :func:`do_infiltration`, :func:`do_natural_ventilation`
+              and :func:`do_scheduled_ventilation` to use the
+              :class:`ReportData` in order to completely remove core.py.
+
         Args:
             zone (archetypal.template.zone.Zone): zone to gets information from
         """
@@ -326,7 +331,7 @@ def do_natural_ventilation(index, nat_df, zone):
                                                               "C}/Schedule"],
                                                    zone.idf)
         except:
-            # todo: For some reasonn, a ZoneVentilation:WindandStackOpenArea
+            # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
             #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
             #  in the nat_df. For the mean time, a zone containing such an
             #  object will revert to defaults (below).

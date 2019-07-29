@@ -328,8 +328,9 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                                  [zone for subG in subgraphs for name, zone in
                                   subG.nodes(data='zone')])
 
-            log('completed zone reduction for building {} in'
-                '{:,.2f} seconds'.format(self.Name, time.time() - start_time))
+            log('completed zone reduction for zone "{}" in uilding "{}" in'
+                '{:,.2f} seconds'.format(bundle_zone.Name, self.Name,
+                                         time.time() - start_time))
             return bundle_zone
 
     def to_json(self):

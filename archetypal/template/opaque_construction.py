@@ -15,10 +15,17 @@ from archetypal.template import Unique, MaterialLayer, \
 
 
 class ConstructionBase(UmiBase):
+    """A class used to store data linked with the Life Cycle aspect of
+    constructions (eg.: wall assemblies).
+
+    For more information on the Life Cycle Analysis performed in UMI, see:
+    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life-cycle-impact
+    """
 
     def __init__(self, AssemblyCarbon=0, AssemblyCost=0, AssemblyEnergy=0,
                  DisassemblyCarbon=0, DisassemblyEnergy=0, **kwargs):
-        """
+        """Initialize a ConstructionBase object with parameters:
+
         Args:
             AssemblyCarbon:
             AssemblyCost:
@@ -36,12 +43,19 @@ class ConstructionBase(UmiBase):
 
 
 class LayeredConstruction(ConstructionBase):
+    """Defines the layers of an :class:`OpaqueConstruction`. This
+    class has one attribute:
+
+    1. A list of :class:`MaterialLayer` objects.
+    """
 
     def __init__(self, Layers, **kwargs):
         """
         Args:
-            Layers (list of MaterialLayer):
-            **kwargs:
+            Layers (list of MaterialLayer): A list of :class:`MaterialLayer`
+                objects.
+            **kwargs: Keywords passed to the :class:`ConstructionBase`
+                constructor.
         """
         super(LayeredConstruction, self).__init__(Layers=Layers, **kwargs)
         self.Layers = Layers
@@ -91,12 +105,12 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """Combine two OpaqueConstruction together.
 
         Args:
-            other (OpaqueConstruction): The other OpaqueConstruction object
-                to combine with.
-            method (str): Equivalent wall assembly method. Only
-                'constan_ufactor' is implemented for now.
+            other (OpaqueConstruction): The other OpaqueConstruction object to
+                combine with.
             weights (list-like, optional): A list-like object of len 2. If None,
                 the weight is the same for both self and other.
+            method (str): Equivalent wall assembly method. Only
+                'constan_ufactor' is implemented for now.
 
         Returns:
             (OpaqueConstruction): the combined ZoneLoad object.

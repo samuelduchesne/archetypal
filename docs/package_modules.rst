@@ -3,8 +3,8 @@ Modules
 
 .. _templates_label:
 
-Template
---------
+Template Objects
+----------------
 
 .. currentmodule:: archetypal.template
 

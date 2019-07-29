@@ -16,7 +16,8 @@ from archetypal import log
 
 class Unique(type):
     """Metaclass that handles unique class instantiation based on the
-    :attr:`Name` attribute of a class."""
+    :attr:`Name` attribute of a class.
+    """
 
     def __call__(cls, *args, **kwargs):
         """
@@ -190,33 +191,53 @@ class UmiBase(object):
         self.all_objects.pop((self.__class__.__name__, name))
         return self
 
-    def __radd__(self, other):
-        """
-        Args:
-            other:
-        """
-        return self + other
-
 
 class MaterialBase(UmiBase):
+    """A class used to store data linked with the Life Cycle aspect of materials
+
+    For more information on the Life Cycle Analysis performed in UMI, see:
+    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life-cycle-impact
+    """
+
     def __init__(self, Cost=0, EmbodiedCarbon=0, EmbodiedEnergy=0,
-                 SubstitutionTimestep=0, TransportCarbon=0, TransportDistance=0,
-                 TransportEnergy=0, SubstitutionRatePattern=None,
-                 Conductivity=2.4, Density=2400,
+                 SubstitutionTimestep=100, TransportCarbon=0,
+                 TransportDistance=0, TransportEnergy=0,
+                 SubstitutionRatePattern=None, Conductivity=2.4, Density=2400,
                  **kwargs):
-        """
+        """Initialize a MaterialBase object with parameters:
+
         Args:
-            Cost (float):
-            EmbodiedCarbon (float):
-            EmbodiedEnergy (float):
-            SubstitutionTimestep (float):
-            TransportCarbon (float):
-            TransportDistance (float):
-            TransportEnergy (float):
-            SubstitutionRatePattern (list):
-            Conductivity (float):
-            Density (float):
-            **kwargs: Keywords passed to the base class :class:`UmiBase`
+            Cost (float): The purchase cost of the material by volume ($/m3).
+            EmbodiedCarbon (float): Represents the GHG emissions through the
+                lifetime of the product (kgCO2/kg).
+            EmbodiedEnergy (float): Represents all fuel consumption ( Typically
+                from non-renewable sources) which happened through the lifetime
+                of a product (or building), expressed as primary energy (MJ/kg).
+            SubstitutionTimestep (float): The duration in years of a period of
+                replacement (e.g. There will be interventions in this material
+                type every 10 years).
+            TransportCarbon (float): The impacts associated with the transport
+                by km of distance and kg of material (kgCO2/kg/km).
+            TransportDistance (float): The average distance in km from the
+                manufacturing site to the building construction site
+            TransportEnergy (float): The impacts associated with the transport
+                by km of distance and kg of material (MJ/kg/km).
+            SubstitutionRatePattern (list-like): A ratio from 0 to 1 which
+                defines the amount of the material replaced at the end of each
+                period of replacement, :attr:`SubstitutionTimestep` (e.g. Every
+                10 years this cladding will be completely replaced with ratio
+                1). Notice that you can define different replacement ratios for
+                different consecutive periods, introducing them separated by
+                commas. For example, if you introduce the series “0.1 , 0.1 , 1”
+                after the first 10 years a 10% will be replaced, then after 20
+                years another 10%, then after 30 years a 100%, and finally the
+                series would start again in year 40.
+            Conductivity (float): Thermal conductivity (W/m-K).
+            Density (float): A number representing the density of the material
+                in kg/m3. This is essentially the mass of one cubic meter of the
+                material.
+            **kwargs: Keywords passed to the :class:`UmiBase` class. See
+                :class:`UmiBase` for more details.
         """
         super(MaterialBase, self).__init__(**kwargs)
         if SubstitutionRatePattern is None:
@@ -231,24 +252,6 @@ class MaterialBase(UmiBase):
         self.TransportCarbon = TransportCarbon
         self.TransportDistance = TransportDistance
         self.TransportEnergy = TransportEnergy
-
-    # def __eq__(self, other):
-    #     if isinstance(other, MaterialBase):
-    #         return \
-    #             self.Name == other.Name and \
-    #             self.Conductivity == other.Conductivity and \
-    #             self.Cost == other.Cost and \
-    #             self.Density == other.Density and \
-    #             self.EmbodiedCarbon == other.EmbodiedCarbon and \
-    #             self.EmbodiedEnergy == other.EmbodiedEnergy and \
-    #             self.SubstitutionRatePattern == other.SubstitutionRatePattern \
-    #             and \
-    #             self.SubstitutionTimestep == other.SubstitutionTimestep and \
-    #             self.TransportCarbon == other.TransportCarbon and \
-    #             self.TransportDistance == other.TransportDistance and \
-    #             self.TransportEnergy == other.TransportEnergy
-    #     else:
-    #         raise NotImplementedError
 
     def __hash__(self):
         return hash((self.Density,
@@ -265,8 +268,17 @@ created_obj = {}
 
 
 class MaterialLayer(object):
+    """Class used to define one layer in a construction assembly. This class has
+    two attributes:
+
+    1. Material (:class:`OpaqueMaterial` or :class:`GlazingMaterial` or
+       :class:`GasMaterial`): the material object for this layer.
+    2. Thickness (float): The thickness of the material in the layer.
+    """
+
     def __init__(self, Material, Thickness):
-        """
+        """Initialize a MaterialLayer object with parameters:
+
         Args:
             Material (OpaqueMaterial, GlazingMaterial, GasMaterial):
             Thickness (float): The thickness of the material in the
@@ -286,11 +298,15 @@ class MaterialLayer(object):
 
 
 def load_json_objects(datastore):
+    """
+    Args:
+        datastore:
+    """
     from archetypal import GasMaterial, GlazingMaterial, OpaqueMaterial, \
         OpaqueConstruction, WindowConstruction, StructureDefinition, \
         DaySchedule, WeekSchedule, YearSchedule, DomesticHotWaterSetting, \
         VentilationSetting, ZoneConditioning, ZoneConstructionSet, ZoneLoad, \
-        Zone, WindowSetting, BuildingTemplate
+        Zone, BuildingTemplate
     loading_json_list = []
     loading_json_list.append([GasMaterial.from_json(**store) for
                               store in datastore['GasMaterials']])

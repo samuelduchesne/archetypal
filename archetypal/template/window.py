@@ -122,22 +122,22 @@ class WindowConstruction(UmiBase, metaclass=Unique):
                 # Create the WindowMaterial:Glazing or the WindowMaterial:Gas
                 # and append to the list of layers
                 if material.key.upper() == 'WindowMaterial:Glazing'.upper():
-                    material_obj = GlazingMaterial(Name=material.Name,
-                                                   Conductivity=material.Conductivity,
-                                                   Optical=material.Optical_Data_Type,
-                                                   OpticalData=material.Window_Glass_Spectral_Data_Set_Name,
-                                                   SolarTransmittance=material.Solar_Transmittance_at_Normal_Incidence,
-                                                   SolarReflectanceFront=material.Front_Side_Solar_Reflectance_at_Normal_Incidence,
-                                                   SolarReflectanceBack=material.Back_Side_Solar_Reflectance_at_Normal_Incidence,
-                                                   VisibleTransmittance=material.Visible_Transmittance_at_Normal_Incidence,
-                                                   VisibleReflectanceFront=material.Front_Side_Visible_Reflectance_at_Normal_Incidence,
-                                                   VisibleReflectanceBack=material.Back_Side_Visible_Reflectance_at_Normal_Incidence,
-                                                   IRTransmittance=material.Infrared_Transmittance_at_Normal_Incidence,
-                                                   IREmissivityFront=material.Front_Side_Infrared_Hemispherical_Emissivity,
-                                                   IREmissivityBack=material.Back_Side_Infrared_Hemispherical_Emissivity,
-                                                   DirtFactor=material.Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance,
-                                                   Type='Uncoated',
-                                                   idf=self.idf)
+                    material_obj = GlazingMaterial(
+                        Conductivity=material.Conductivity,
+                        SolarTransmittance=material.Solar_Transmittance_at_Normal_Incidence,
+                        SolarReflectanceFront=material.Front_Side_Solar_Reflectance_at_Normal_Incidence,
+                        SolarReflectanceBack=material.Back_Side_Solar_Reflectance_at_Normal_Incidence,
+                        VisibleTransmittance=material.Visible_Transmittance_at_Normal_Incidence,
+                        VisibleReflectanceFront=material.Front_Side_Visible_Reflectance_at_Normal_Incidence,
+                        VisibleReflectanceBack=material.Back_Side_Visible_Reflectance_at_Normal_Incidence,
+                        IRTransmittance=material.Infrared_Transmittance_at_Normal_Incidence,
+                        IREmissivityFront=material.Front_Side_Infrared_Hemispherical_Emissivity,
+                        IREmissivityBack=material.Back_Side_Infrared_Hemispherical_Emissivity,
+                        DirtFactor=material.Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance,
+                        Type='Uncoated', Name=material.Name,
+                        Optical=material.Optical_Data_Type,
+                        OpticalData=material.Window_Glass_Spectral_Data_Set_Name,
+                        idf=self.idf)
 
                     material_layer = MaterialLayer(material_obj,
                                                    material.Thickness)
@@ -292,9 +292,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
     def from_construction(cls, Construction, **kwargs):
         """Make a :class:`WindowSetting` directly from a Construction_ object.
 
-        .. _Construction : https://bigladdersoftware.com/epx/docs/8-9/input
-        -output-reference/group-surface-construction-elements.html
-        #construction-000
+        .. _Construction : https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-surface-construction-elements.html#construction-000
 
         Examples:
             >>> import archetypal as ar
@@ -496,8 +494,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     def from_zone(cls, zone):
-        """Iterate over the zone subsurfaces and create a window object. If
-        more than one window is created, use reduce to combine them together.
+        """Iterate over the zone subsurfaces and create a window object. If more
+        than one window is created, use reduce to combine them together.
 
         Args:
             zone (Zone):
@@ -523,9 +521,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
         """Append other to self. Return self + other as a new object.
 
         Args:
+            other (WindowSetting): The other OpaqueMaterial object
             weights (list-like, optional): A list-like object of len 2. If None,
                 equal weights are used.
-            other (WindowSetting): The other OpaqueMaterial object
 
         Returns:
             WindowSetting: A new combined object made of self + other.

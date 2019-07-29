@@ -24,7 +24,6 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
     """Main class supporting the definition of a single building template.
 
     .. image:: ../images/template/buildingtemplate.png
-
     """
 
     def __init__(self, Core=None,
@@ -48,7 +47,9 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                 window properties of the object.
             Lifespan (float): The projected lifespan of the building template in
                 years. Used in various calculations such as embodied energy.
-            PartitionRatio (float): The ratio of partition wall to floor area.
+            PartitionRatio (float): The number of lineal meters of partitions
+                (Floor to ceiling) present in average in the building floor
+                plan by m2.
             **kwargs: other optional keywords passed to other constructors.
         """
         super(BuildingTemplate, self).__init__(**kwargs)
@@ -281,7 +282,11 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         return bt
 
     def reduce(self, **zone_graph_kwargs):
-        """Reduce the building to its simplest core and perimeter zones."""
+        """Reduce the building to its simplest core and perimeter zones.
+
+        Args:
+            **zone_graph_kwargs:
+        """
 
         # Determine if core graph is not empty
         core_graph = self.zone_graph(**zone_graph_kwargs).core_graph

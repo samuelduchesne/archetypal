@@ -23,12 +23,9 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
                  VisibleTransmittance=0, VisibleReflectanceFront=0,
                  VisibleReflectanceBack=0, IRTransmittance=0,
                  IREmissivityFront=0, IREmissivityBack=0, DirtFactor=1.0,
-                 Type=None, EmbodiedEnergy=0, EmbodiedEnergyStdDev=0,
-                 EmbodiedCarbon=0, EmbodiedCarbonStdDev=0, Cost=0.0, Life=1,
-                 SubstitutionRatePattern=None, SubstitutionTimestep=50,
-                 TransportCarbon=0, TransportDistance=0,
-                 TransportEnergy=0, **kwargs):
-        """
+                 Type=None, Cost=0.0, Life=1, **kwargs):
+        """Initialize a GlazingMaterial object with parameters:
+
         Args:
             Density (float): A number representing the density of the material
                 in kg/m3. This is essentially the mass of one cubic meter of the
@@ -58,33 +55,13 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
                 factor < 1.0 in the construction for an interior window will
                 result in an error message.
             Type: # todo: defined parameter
-            EmbodiedEnergy: # todo: defined parameter
-            EmbodiedEnergyStdDev: # todo: defined parameter
-            EmbodiedCarbon: # todo: defined parameter
-            EmbodiedCarbonStdDev: # todo: defined parameter
-            Cost: # todo: defined parameter
             Life: # todo: defined parameter
-            SubstitutionRatePattern: # todo: defined parameter
-            SubstitutionTimestep: # todo: defined parameter
-            TransportCarbon: # todo: defined parameter
-            TransportDistance: # todo: defined parameter
-            TransportEnergy: # todo: defined parameter
-            **kwargs:
+            **kwargs (dict): keywords passed to the :class:`MaterialBase`
+                constructor. For more info, see :class:`MaterialBase`.
         """
         super(GlazingMaterial, self).__init__(**kwargs)
-        if SubstitutionRatePattern is None:
-            SubstitutionRatePattern = [0.2]
-        self.TransportEnergy = TransportEnergy
-        self.TransportDistance = TransportDistance
-        self.TransportCarbon = TransportCarbon
-        self.SubstitutionTimestep = SubstitutionTimestep
-        self.SubstitutionRatePattern = SubstitutionRatePattern
         self.Life = Life
         self.Cost = Cost
-        self.EmbodiedCarbonStdDev = EmbodiedCarbonStdDev
-        self.EmbodiedCarbon = EmbodiedCarbon
-        self.EmbodiedEnergyStdDev = EmbodiedEnergyStdDev
-        self.EmbodiedEnergy = EmbodiedEnergy
         self.Type = Type
         self.DirtFactor = DirtFactor
         self.IREmissivityBack = IREmissivityBack

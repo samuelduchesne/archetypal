@@ -165,7 +165,7 @@ class TabularData(pd.DataFrame):
             c_n.append(c_14)
 
         filtered_df = self.loc[conjunction(*c_n, logical=np.logical_and)]
-        log('filtered DataFrame in {:,.2f} seconds'.format(
+        log('filtered TabularData in {:,.2f} seconds'.format(
             time.time() - start_time))
         if inplace:
             return filtered_df._update_inplace(filtered_df)

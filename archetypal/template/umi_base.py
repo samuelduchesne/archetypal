@@ -44,6 +44,24 @@ class Unique(type):
         cls._cache = {}
 
 
+def _resolve_combined_names(predecessors):
+    """Creates a name from the list of :class:`UmiBase` objects (
+    predecessors)"""
+    from collections import Counter
+    all_names = [obj.Name for obj in predecessors]
+    counter = Counter(all_names)
+    unique_names = counter.keys()
+    n_unique_names = counter.values()
+    long_name = " + ".join(["{}x_{{{}}}".format(n, name) for n, name in
+                            zip(n_unique_names, unique_names)])
+    if len(long_name) > 300:
+        # shorten name if longer than 300 characters (limit set by
+        # EnergyPlus)
+        return long_name[:148] + (long_name[148:] and ' .. ')
+    else:
+        return long_name
+
+
 class UmiBase(object):
     def __init__(self,
                  Name=None,
@@ -72,9 +90,8 @@ class UmiBase(object):
         self.idf = idf
         self.sql = sql
         self.Category = Category
-        self.Comments = ''
         self.Comments = Comments
-        if DataSource is None:
+        if DataSource is '':
             try:
                 self.DataSource = self.idf.building_name(use_idfname=True)
             except:
@@ -96,34 +113,22 @@ class UmiBase(object):
         if self._predecessors:
             return self._predecessors
         else:
-            return [self]
+            return MetaData([self])
 
     def _get_predecessors_meta(self, other):
         """get predecessor objects to self and other"""
         predecessors = self.predecessors + other.predecessors
         meta = {}
-        meta['Name'] = self._resolve_combined_names(other, predecessors)
-        meta['Comments'] = "\n".join(
-            set([obj.Comments for obj in predecessors]))
+        meta['Name'] = _resolve_combined_names(predecessors)
+        meta['Comments'] = "Object composed of a combination of these " \
+                           "objects:\n{}".format(
+            "\n- ".join(set(obj.Name for obj in predecessors)))
         meta['Category'] = ", ".join(
             set([obj.Category for obj in predecessors]))
         meta['DataSource'] = ", ".join(
             set([obj.DataSource for obj in predecessors]))
 
         return meta
-
-    def _resolve_combined_names(self, other, predecessors):
-        """"""
-        from collections import Counter
-        all_names = [obj.Name for obj in predecessors]
-        if all_names:
-            counter = Counter(all_names)
-            unique_names = counter.keys()
-            n_unique_names = counter.values()
-            return " + ".join(["{}x_{{{}}}".format(n, name)
-                               for n, name in zip(n_unique_names, unique_names)])
-        else:
-            return " + ".join([self.Name, other.Name])
 
     def clear_cache(cls):
         """Clear the dict of created object instances"""
@@ -338,6 +343,11 @@ class MetaData(collections.UserList):
     @property
     def Name(self):
         return "+".join([obj.Name for obj in self])
+
+    @property
+    def comments(self):
+        return "Object composed of a combination of these " \
+               "objects:\n{}".format(set(obj.Name for obj in self))
 
 
 def load_json_objects(datastore):

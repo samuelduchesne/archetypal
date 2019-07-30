@@ -244,12 +244,12 @@ class ReportData(pd.DataFrame):
             c_n.append(c_14)
 
         filtered_df = self.loc[conjunction(*c_n, logical=np.logical_and)]
-        log('filtered DataFrame in {:,.2f} seconds'.format(
+        log('filtered ReportData in {:,.2f} seconds'.format(
             time.time() - start_time))
         if inplace:
             return filtered_df._update_inplace(filtered_df)
         else:
-            return filtered_df._constructor(filtered_df).__finalize__(self)
+            return filtered_df.__finalize__(self)
 
     def sorted_values(self, key_value=None, name=None,
                       by='TimeIndex', ascending=True):

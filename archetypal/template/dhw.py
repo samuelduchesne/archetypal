@@ -110,7 +110,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                         WaterSchedule=water_schedule,
                         WaterSupplyTemperature=supply_temp,
                         WaterTemperatureInlet=inlet_temp,
-                        idf=zone.idf)
+                        idf=zone.idf,
+                        Category=zone.idf.building_name(use_idfname=True))
         else:
             # Assume water systems for whole building
             dhw_objs = zone.idf.idfobjects['WaterUse:Equipment'.upper()]
@@ -127,7 +128,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                             WaterSchedule=water_schedule,
                             WaterSupplyTemperature=supply_temp,
                             WaterTemperatureInlet=inlet_temp,
-                            idf=zone.idf)
+                            idf=zone.idf,
+                            Category=zone.idf.building_name(use_idfname=True))
             else:
                 # defaults with 0 flow rate.
                 total_flow_rate = 0
@@ -143,7 +145,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                             WaterSchedule=water_schedule,
                             WaterSupplyTemperature=supply_temp,
                             WaterTemperatureInlet=inlet_temp,
-                            idf=zone.idf)
+                            idf=zone.idf,
+                            Category=zone.idf.building_name(use_idfname=True))
 
         return z_dhw
 
@@ -282,29 +285,26 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         meta = self._get_predecessors_meta(other)
 
         if not weights:
-            log('using zone volume as weighting factor in "{}" '
-                'combine.'.format(self.__class__.__name__))
             weights = [self._belongs_to_zone.volume,
                        other._belongs_to_zone.volume]
+            log('using zone volume "{}" as weighting factor in "{}" '
+                'combine.'.format(" & ".join(list(map(str, map(int, weights)))),
+                                  self.__class__.__name__))
 
-        new_obj = DomesticHotWaterSetting(**meta,
-                                          IsOn=any((self.IsOn, other.IsOn)),
-                                          WaterSchedule=self.WaterSchedule
-                                          .combine(
-                                              other.WaterSchedule,
-                                              weights=weights),
-                                          FlowRatePerFloorArea=self._float_mean(
-                                              other,
-                                              "FlowRatePerFloorArea",
-                                              weights),
-                                          WaterSupplyTemperature=self._float_mean(
-                                              other,
-                                              "WaterSupplyTemperature",
-                                              weights),
-                                          WaterTemperatureInlet=self._float_mean(
-                                              other,
-                                              "WaterTemperatureInlet",
-                                              weights))
+        new_obj = DomesticHotWaterSetting(
+            **meta,
+            IsOn=any((self.IsOn, other.IsOn)),
+            WaterSchedule=self.WaterSchedule.combine(other.WaterSchedule,
+                                                     weights),
+            FlowRatePerFloorArea=self._float_mean(other, "FlowRatePerFloorArea",
+                                                  weights),
+            WaterSupplyTemperature=self._float_mean(other,
+                                                    "WaterSupplyTemperature",
+                                                    weights),
+            WaterTemperatureInlet=self._float_mean(other,
+                                                   "WaterTemperatureInlet",
+                                                   weights)
+        )
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 

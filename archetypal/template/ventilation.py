@@ -212,7 +212,8 @@ class VentilationSetting(UmiBase, metaclass=Unique):
                      IsScheduledVentilationOn=IsScheduledVentilationOn,
                      ScheduledVentilationAch=ScheduledVentilationAch,
                      ScheduledVentilationSetpoint=ScheduledVentilationSetpoint,
-                     idf=zone.idf)
+                     idf=zone.idf,
+                     Category=zone.idf.building_name(use_idfname=True))
         return z_vent
 
     def combine(self, other, weights=None):
@@ -240,10 +241,12 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         meta = self._get_predecessors_meta(other)
 
         if not weights:
-            log('using zone volume as weighting factor in "{}" '
-                'combine.'.format(self.__class__.__name__))
             weights = [self._belongs_to_zone.volume,
                        other._belongs_to_zone.volume]
+            log('using zone volume "{}" as weighting factor in "{}" '
+                'combine.'.format(" & ".join(list(map(str, map(int, weights)))),
+                                  self.__class__.__name__))
+
         a = self.NatVentSchedule.combine(other.NatVentSchedule, weights)
         # a = self._float_mean(other, 'NatVentSchedule', weights)
         b = self.ScheduledVentilationSchedule.combine(

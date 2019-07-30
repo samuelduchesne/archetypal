@@ -287,6 +287,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         Args:
             **zone_graph_kwargs:
         """
+        start_time = time.time()
 
         # Determine if core graph is not empty
         core_graph = self.zone_graph(**zone_graph_kwargs).core_graph
@@ -301,6 +302,9 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
         if not self.Core:
             self.Core = self.Perimeter
+
+        log('Completed model complexity reduction for BuildingTemplate "{}" in '
+            '{:,.2f} seconds'.format(self.Name, time.time() - start_time))
 
     def _graph_reduce(self, G):
         """Using the depth first search algorithm, iterate over the zone
@@ -333,7 +337,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                                  [zone for subG in subgraphs for name, zone in
                                   subG.nodes(data='zone')])
 
-            log('completed zone reduction for zone "{}" in uilding "{}" in'
+            log('completed zone reduction for zone "{}" in building "{}" in'
                 '{:,.2f} seconds'.format(bundle_zone.Name, self.Name,
                                          time.time() - start_time))
             return bundle_zone

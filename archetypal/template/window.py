@@ -491,6 +491,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 UmiSchedule.constant_schedule(
                     idf=surface.theidf)
             w = cls(Name=name, Construction=construction, idf=surface.theidf,
+                    Category=surface.theidf.building_name(use_idfname=True),
                     **attr)
             return w
 

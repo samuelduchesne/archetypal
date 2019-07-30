@@ -212,8 +212,7 @@ class DaySchedule(UmiSchedule):
             **kwargs:
         """
         super(DaySchedule, self).__init__(*args, **kwargs)
-        self._values = kwargs.get('Values', self.get_schedule_values(
-            sch_type='Schedule:Daily'))
+        self._values = kwargs.get('Values', self.get_schedule_values())
 
     def to_json(self):
         """Convert class properties to dict"""

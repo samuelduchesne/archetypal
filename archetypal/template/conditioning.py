@@ -222,7 +222,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # First create placeholder object.
         name = zone.Name + "_ZoneConditioning"
-        z_cond = cls(Name=name, zone=zone, idf=zone.idf)
+        z_cond = cls(Name=name, zone=zone, idf=zone.idf,
+                     Category=zone.idf.building_name(use_idfname=True))
 
         z_cond._set_thermostat_setpoints(zone)
 
@@ -646,10 +647,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         meta = self._get_predecessors_meta(other)
 
         if not weights:
-            log('using zone volume as weighting factor in "{}" '
-                'combine.'.format(self.__class__.__name__))
             weights = [self._belongs_to_zone.volume,
                        other._belongs_to_zone.volume]
+            log('using zone volume "{}" as weighting factor in "{}" '
+                'combine.'.format(" & ".join(list(map(str, map(int, weights)))),
+                                  self.__class__.__name__))
+
         a = self._float_mean(other, 'CoolingCoeffOfPerf', weights)
         b = self._str_mean(other, 'CoolingLimitType')
         c = self._float_mean(other, 'CoolingSetpoint', weights)

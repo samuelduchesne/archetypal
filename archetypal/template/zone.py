@@ -10,6 +10,7 @@ import functools
 import logging as lg
 import math
 import random
+import time
 
 import matplotlib.collections
 import matplotlib.colors
@@ -278,9 +279,15 @@ class Zone(UmiBase, metaclass=Unique):
             zone_ep (EpBunch):
             **kwargs:
         """
+        cached = cls.get_cached(zone_ep.Name)
+        if cached:
+            return cached
+        start_time = time.time()
+        log('\nConstructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
         name = zone_ep.Name
         sql = kwargs.get("sql")
-        zone = cls(Name=name, idf=zone_ep.theidf, sql=sql)
+        zone = cls(Name=name, idf=zone_ep.theidf, sql=sql,
+                   Category=zone_ep.theidf.building_name(use_idfname=True))
 
         zone._epbunch = zone_ep
         zone._zonesurfaces = zone_ep.zonesurfaces
@@ -293,7 +300,23 @@ class Zone(UmiBase, metaclass=Unique):
         zone.InternalMassConstruction = zone._internalmassconstruction()
         zone.Windows = WindowSetting.from_zone(zone)
 
+        log('completed Zone "{}" constructor in {:,.2f} seconds'.format(
+            zone_ep.Name, time.time() - start_time))
         return zone
+
+    @classmethod
+    def get_cached(cls, name):
+        """Retrieve the cached object by Name. If not, returns None.
+
+        Args:
+            name (str): The name of the object in the cache.
+        """
+        try:
+            cached = cls._cache[(cls.mro()[0].__name__, name)]
+        except KeyError:
+            return None
+        else:
+            return cached
 
     def combine(self, other, weights=None):
         """
@@ -322,36 +345,38 @@ class Zone(UmiBase, metaclass=Unique):
         meta = self._get_predecessors_meta(other)
 
         if not weights:
-            log('using zone volume as weighting factor in "{}" '
-                'combine.'.format(self.__class__.__name__))
             weights = [self.volume, other.volume]
+            log('using zone volume "{}" as weighting factor in "{}" '
+                'combine.'.format(" & ".join(list(map(str, map(int, weights)))),
+                                  self.__class__.__name__))
+
         attr = dict(Conditioning=self.Conditioning.combine(
-                        other.Conditioning, weights),
-                    Constructions=self.Constructions.combine(
-                        other.Constructions, weights),
-                    Ventilation=self.Ventilation.combine(
-                        other.Ventilation, weights),
-                    Windows=None if self.Windows is None or other.Windows is
-                                    None
-                    else self.Windows.combine(
-                        other.Windows, weights),
-                    DaylightMeshResolution=self._float_mean(other,
-                                                            'DaylightMeshResolution',
-                                                            weights=weights),
-                    DaylightWorkplaneHeight=self._float_mean(other,
-                                                             'DaylightWorkplaneHeight',
-                                                             weights),
-                    DomesticHotWater=self.DomesticHotWater.combine(
-                        other.DomesticHotWater, weights),
-                    InternalMassConstruction=self.InternalMassConstruction
-                    .combine(
-                        other.InternalMassConstruction, weights),
-                    InternalMassExposedPerFloorArea=
-                    self._float_mean(other,
-                                     'InternalMassExposedPerFloorArea',
-                                     weights),
-                    Loads=self.Loads.combine(
-                        other.Loads, weights))
+            other.Conditioning, weights),
+            Constructions=self.Constructions.combine(
+                other.Constructions, weights),
+            Ventilation=self.Ventilation.combine(
+                other.Ventilation, weights),
+            Windows=None if self.Windows is None or other.Windows is
+                            None
+            else self.Windows.combine(
+                other.Windows, weights),
+            DaylightMeshResolution=self._float_mean(other,
+                                                    'DaylightMeshResolution',
+                                                    weights=weights),
+            DaylightWorkplaneHeight=self._float_mean(other,
+                                                     'DaylightWorkplaneHeight',
+                                                     weights),
+            DomesticHotWater=self.DomesticHotWater.combine(
+                other.DomesticHotWater, weights),
+            InternalMassConstruction=self.InternalMassConstruction
+                .combine(
+                other.InternalMassConstruction, weights),
+            InternalMassExposedPerFloorArea=
+            self._float_mean(other,
+                             'InternalMassExposedPerFloorArea',
+                             weights),
+            Loads=self.Loads.combine(
+                other.Loads, weights))
         new_obj = self.__class__(**meta, **attr)
         new_obj._volume = self.volume + other.volume
         new_obj._area = self.area + other.area
@@ -663,12 +688,13 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             return self
 
         if not weights:
-            log('using zone volume as weighting factor in "{}" '
-                'combine.'.format(self.__class__.__name__))
             weights = [self._belongs_to_zone.volume,
                        other._belongs_to_zone.volume]
+            log('using zone volume "{}" as weighting factor in "{}" '
+                'combine.'.format(" & ".join(list(map(str, map(int, weights)))),
+                                  self.__class__.__name__))
 
-        name = " + ".join([self.Name, other.Name])
+        meta = self._get_predecessors_meta(other)
         new_attr = dict(Slab=self.Slab.combine(other.Slab, weights),
                         IsSlabAdiabatic=self.IsSlabAdiabatic,
                         Roof=self.Roof + other.Roof,
@@ -679,7 +705,8 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
                         IsGroundAdiabatic=self.IsGroundAdiabatic,
                         Facade=self.Facade + other.Facade,
                         IsFacadeAdiabatic=self.IsFacadeAdiabatic)
-        new_obj = self.__class__(Name=name, **new_attr)
+        new_obj = self.__class__(**meta, **new_attr)
+        new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
     @classmethod
@@ -799,7 +826,8 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         z_set = cls(Facade=facade, Ground=ground, Partition=partition,
                     Roof=roof, Slab=slab, Name=name, zone=zone,
-                    idf=zone.idf)
+                    idf=zone.idf,
+                    Category=zone.idf.building_name(use_idfname=True))
         return z_set
 
     @staticmethod

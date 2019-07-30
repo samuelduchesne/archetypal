@@ -292,7 +292,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
     def from_construction(cls, Construction, **kwargs):
         """Make a :class:`WindowSetting` directly from a Construction_ object.
 
-        .. _Construction : https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-surface-construction-elements.html#construction-000
+        .. _Construction : https://bigladdersoftware.com/epx/docs/8-9/input
+        -output-reference/group-surface-construction-elements.html
+        #construction-000
 
         Examples:
             >>> import archetypal as ar
@@ -540,49 +542,41 @@ class WindowSetting(UmiBase, metaclass=Unique):
         # Check if other is not the same as self
         if self == other:
             return self
-        name = " + ".join([self.Name, other.Name])
 
         if not weights:
             log('using 1 as weighting factor in "{}" '
                 'combine.'.format(self.__class__.__name__))
             weights = [1., 1.]
-
-        new_attr = self.__dict__.copy()
-        attr = dict(AfnDischargeC=
-                    self._float_mean(other, 'AfnDischargeC', weights),
-                    AfnTempSetpoint=
-                    self._float_mean(other, 'AfnTempSetpoint', weights),
-                    AfnWindowAvailability=self.AfnWindowAvailability.combine(
-                        other.AfnWindowAvailability, weights),
-                    IsShadingSystemOn=any([self.IsShadingSystemOn,
-                                           other.IsShadingSystemOn]),
-                    IsVirtualPartition=any([self.IsVirtualPartition,
-                                            other.IsVirtualPartition]),
-                    IsZoneMixingOn=any([self.IsZoneMixingOn,
-                                        other.IsZoneMixingOn]),
-                    OperableArea=
-                    self._float_mean(other, 'OperableArea', weights),
-                    ShadingSystemSetpoint=
-                    self._float_mean(other, 'ShadingSystemSetpoint', weights),
-                    ShadingSystemTransmittance=
-                    self._float_mean(other, 'ShadingSystemTransmittance',
-                                     weights),
-                    ShadingSystemType=self.ShadingSystemType if
-                    self.IsShadingSystemOn else other.ShadingSystemType,
-                    ZoneMixingDeltaTemperature=
-                    self._float_mean(other, 'ZoneMixingDeltaTemperature',
-                                     weights),
-                    ZoneMixingFlowRate=
-                    self._float_mean(other, 'ZoneMixingFlowRate', weights),
-                    ZoneMixingAvailabilitySchedule=
-                    self.ZoneMixingAvailabilitySchedule.combine(
-                        other.ZoneMixingAvailabilitySchedule, weights),
-                    ShadingSystemAvailabilitySchedule=
-                    self.ShadingSystemAvailabilitySchedule.combine(
-                        other.ShadingSystemAvailabilitySchedule, weights))
-        new_attr.update(attr)
-        new_attr['Name'] = name
-        new_obj = self.__class__(**new_attr)
+        meta = self._get_predecessors_meta(other)
+        new_attr = dict(
+            AfnDischargeC=self._float_mean(other, 'AfnDischargeC', weights),
+            AfnTempSetpoint=self._float_mean(other, 'AfnTempSetpoint', weights),
+            AfnWindowAvailability=self.AfnWindowAvailability.combine(
+                other.AfnWindowAvailability, weights), IsShadingSystemOn=any(
+                [self.IsShadingSystemOn, other.IsShadingSystemOn]),
+            IsVirtualPartition=any(
+                [self.IsVirtualPartition, other.IsVirtualPartition]),
+            IsZoneMixingOn=any([self.IsZoneMixingOn, other.IsZoneMixingOn]),
+            OperableArea=self._float_mean(other, 'OperableArea', weights),
+            ShadingSystemSetpoint=self._float_mean(
+                other, 'ShadingSystemSetpoint', weights),
+            ShadingSystemTransmittance=self._float_mean(
+                other, 'ShadingSystemTransmittance', weights),
+            ShadingSystemType=self.ShadingSystemType if
+            self.IsShadingSystemOn else other.ShadingSystemType,
+            ZoneMixingDeltaTemperature=self._float_mean(
+                other, 'ZoneMixingDeltaTemperature', weights),
+            ZoneMixingFlowRate=self._float_mean(
+                other, 'ZoneMixingFlowRate', weights),
+            ZoneMixingAvailabilitySchedule=self
+                .ZoneMixingAvailabilitySchedule.combine(
+                other.ZoneMixingAvailabilitySchedule, weights),
+            ShadingSystemAvailabilitySchedule=self
+                .ShadingSystemAvailabilitySchedule.combine(
+                other.ShadingSystemAvailabilitySchedule, weights)
+        )
+        new_obj = self.__class__(**meta, **new_attr)
+        new_obj._predecessors.extend(self._predecessors + other._predecessors)
         return new_obj
 
     def to_json(self):

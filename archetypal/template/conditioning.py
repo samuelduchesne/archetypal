@@ -643,8 +643,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         if self == other:
             return self
 
-        # the new object's name
-        name = " + ".join([self.Name, other.Name])
+        meta = self._get_predecessors_meta(other)
 
         if not weights:
             log('using zone volume as weighting factor in "{}" '
@@ -676,7 +675,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         v = self.MechVentSchedule.combine(other.MechVentSchedule, weights)
 
         # create a new object with the previous attributes
-        new_obj = self.__class__(Name=name,
+        new_obj = self.__class__(**meta,
                                  CoolingCoeffOfPerf=a, CoolingLimitType=b,
                                  CoolingSetpoint=c,
                                  EconomizerType=d,
@@ -694,4 +693,5 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                                  CoolingSchedule=u,
                                  MechVentSchedule=v
                                  )
+        new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj

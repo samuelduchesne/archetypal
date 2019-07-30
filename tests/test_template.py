@@ -137,6 +137,10 @@ class TestOpaqueMaterial:
         assert mat_c.Conductivity == 150
         assert mat_a.id != mat_b.id != mat_c.id
 
+        mat_d = mat_c + mat_a
+        print(mat_c)
+        print(mat_d)
+
     def test_iadd_materials(self):
         """test __iadd__() for OpaqueMaterial"""
         mat_a = ar.OpaqueMaterial(Conductivity=100, SpecificHeat=4.18,
@@ -630,6 +634,7 @@ class TestWindowSetting:
             f.Shading_Control_Name = "test_constrol"
             w = WindowSetting.from_surface(f)
             assert w
+            print(w)
 
     def test_winow_add2(self, allwindowtypes):
         from operator import add

@@ -113,13 +113,13 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                                 axis=0, weights=weights)
 
         # the new object's name
-        name = '+'.join([self.Name, other.Name])
+        meta = self._get_predecessors_meta(other)
 
-        attr = self.__dict__
+        attr = self.__dict__.copy()
         attr.update(dict(value=new_values))
-        attr['Name'] = name
+        attr['Name'] = meta['Name']
         new_obj = super().from_values(**attr)
-
+        new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
     def develop(self):

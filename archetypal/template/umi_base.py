@@ -50,7 +50,7 @@ class UmiBase(object):
                  idf=None,
                  Category='Uncategorized',
                  Comments='',
-                 DataSource=None,
+                 DataSource='',
                  sql=None,
                  **kwargs):
         """The UmiBase class handles common properties to all Template objects.
@@ -73,10 +73,7 @@ class UmiBase(object):
         self.sql = sql
         self.Category = Category
         self.Comments = ''
-        try:
-            self.Comments += Comments
-        except:
-            self.Comments = Comments
+        self.Comments = Comments
         if DataSource is None:
             try:
                 self.DataSource = self.idf.building_name(use_idfname=True)
@@ -86,10 +83,47 @@ class UmiBase(object):
             self.DataSource = DataSource
         self.all_objects = created_obj
         self.id = kwargs.get('$id', id(self))
+        self._predecessors = MetaData()
 
     def __str__(self):
         """string representation of the object as id:Name"""
         return ':'.join([str(self.id), str(self.Name)])
+
+    @property
+    def predecessors(self):
+        """Of which objects is self made of. If from nothing else then self,
+        return self."""
+        if self._predecessors:
+            return self._predecessors
+        else:
+            return [self]
+
+    def _get_predecessors_meta(self, other):
+        """get predecessor objects to self and other"""
+        predecessors = self.predecessors + other.predecessors
+        meta = {}
+        meta['Name'] = self._resolve_combined_names(other, predecessors)
+        meta['Comments'] = "\n".join(
+            set([obj.Comments for obj in predecessors]))
+        meta['Category'] = ", ".join(
+            set([obj.Category for obj in predecessors]))
+        meta['DataSource'] = ", ".join(
+            set([obj.DataSource for obj in predecessors]))
+
+        return meta
+
+    def _resolve_combined_names(self, other, predecessors):
+        """"""
+        from collections import Counter
+        all_names = [obj.Name for obj in predecessors]
+        if all_names:
+            counter = Counter(all_names)
+            unique_names = counter.keys()
+            n_unique_names = counter.values()
+            return " + ".join(["{}x_{{{}}}".format(n, name)
+                               for n, name in zip(n_unique_names, unique_names)])
+        else:
+            return " + ".join([self.Name, other.Name])
 
     def clear_cache(cls):
         """Clear the dict of created object instances"""
@@ -196,7 +230,8 @@ class MaterialBase(UmiBase):
     """A class used to store data linked with the Life Cycle aspect of materials
 
     For more information on the Life Cycle Analysis performed in UMI, see:
-    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life-cycle-impact
+    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction
+    .html#life-cycle-impact
     """
 
     def __init__(self, Cost=0, EmbodiedCarbon=0, EmbodiedEnergy=0,
@@ -295,6 +330,14 @@ class MaterialLayer(object):
     def to_dict(self):
         return collections.OrderedDict(Material={'$ref': str(self.Material.id)},
                                        Thickness=self.Thickness)
+
+
+class MetaData(collections.UserList):
+    """Handles data of combined objects such as Name, Comments and other."""
+
+    @property
+    def Name(self):
+        return "+".join([obj.Name for obj in self])
 
 
 def load_json_objects(datastore):

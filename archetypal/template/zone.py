@@ -319,18 +319,13 @@ class Zone(UmiBase, metaclass=Unique):
         incoming_zone_data = self.__dict__.copy()
         incoming_zone_data.pop('Name')
 
-        # the new object's name
-        name = '+'.join([self.Name, other.Name])
+        meta = self._get_predecessors_meta(other)
 
         if not weights:
             log('using zone volume as weighting factor in "{}" '
                 'combine.'.format(self.__class__.__name__))
             weights = [self.volume, other.volume]
-        attr = dict(Category=self._str_mean(other, attr='Category',
-                                            append=False),
-                    Comments=self._str_mean(other, attr='Comments',
-                                            append=True),
-                    Conditioning=self.Conditioning.combine(
+        attr = dict(Conditioning=self.Conditioning.combine(
                         other.Conditioning, weights),
                     Constructions=self.Constructions.combine(
                         other.Constructions, weights),
@@ -357,7 +352,7 @@ class Zone(UmiBase, metaclass=Unique):
                                      weights),
                     Loads=self.Loads.combine(
                         other.Loads, weights))
-        new_obj = self.__class__(Name=name, **attr)
+        new_obj = self.__class__(**meta, **attr)
         new_obj._volume = self.volume + other.volume
         new_obj._area = self.area + other.area
         attr['Conditioning']._belongs_to_zone = new_obj
@@ -366,6 +361,7 @@ class Zone(UmiBase, metaclass=Unique):
         attr['DomesticHotWater']._belongs_to_zone = new_obj
         if attr['Windows']:
             attr['Windows']._belongs_to_zone = new_obj
+        new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
 

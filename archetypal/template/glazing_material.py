@@ -99,8 +99,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         if self == other:
             return self
 
-        name = " + ".join([self.__dict__.pop('Name'), other.Name])
-        comments = self._str_mean(other, attr='Comments', append=True)
+        meta = self._get_predecessors_meta(other)
         idf = self.__dict__.get('idf')
         sql = self.__dict__.get('sql')
 
@@ -125,11 +124,15 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
                         new_attr[attr] = getattr(self, attr)
                     else:
                         new_attr[attr] = None
+                elif isinstance(getattr(self, attr), collections.UserList):
+                    pass
                 else:
                     raise NotImplementedError
+        [new_attr.pop(key, None) for key in meta.keys()]  # meta handles these
+        # keywords.
         # create a new object from combined attributes
-        new_obj = self.__class__(Name=name, idf=idf, sql=sql,
-                                 Comments=comments, **new_attr)
+        new_obj = self.__class__(**meta, idf=idf, sql=sql, **new_attr)
+        new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
     def to_json(self):

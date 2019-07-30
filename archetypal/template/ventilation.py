@@ -237,8 +237,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         if self == other:
             return self
 
-        # the new object's name
-        name = " + ".join([self.Name, other.Name])
+        meta = self._get_predecessors_meta(other)
 
         if not weights:
             log('using zone volume as weighting factor in "{}" '
@@ -272,7 +271,8 @@ class VentilationSetting(UmiBase, metaclass=Unique):
                     ScheduledVentilationAch=n, ScheduledVentilationSetpoint=o)
 
         # create a new object with the previous attributes
-        new_obj = self.__class__(Name=name, **attr)
+        new_obj = self.__class__(**meta, **attr)
+        new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
 

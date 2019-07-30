@@ -245,8 +245,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         incoming_load_data = self.__dict__.copy()
         incoming_load_data.pop('Name')
 
-        # the new object's name
-        name = '+'.join([self.Name, other.Name])
+        meta = self._get_predecessors_meta(other)
 
         if not weights:
             log('using zone volume as weighting factor in "{}" '
@@ -280,7 +279,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                     self._float_mean(other,
                                      'PeopleDensity', weights))
 
-        new_obj = self.__class__(Name=name, **attr)
+        new_obj = self.__class__(**meta, **attr)
         new_obj._belongs_to_zone = self._belongs_to_zone
-
+        new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj

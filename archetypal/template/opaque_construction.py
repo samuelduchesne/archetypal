@@ -130,8 +130,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 'combine.'.format(self.__class__.__name__))
             weights = [1., 1.]
 
-        # the new object's name
-        name = " + ".join([self.Name, other.Name])
+        meta = self._get_predecessors_meta(other)
         # thicknesses & materials for self
         if method == 'equivalent_volume':
             new_m, new_t = self.equivalent_volume(other)
@@ -142,15 +141,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 'Possible choices are ["equivalent_volume","constant_ufactor"]')
         # layers for the new OpaqueConstruction
         layers = [MaterialLayer(mat, t) for mat, t in zip(new_m, new_t)]
-        new_attr = dict(Layers=layers,
-                        Category=self._str_mean(other, attr='Category',
-                                                append=False),
-                        Comments=self._str_mean(other, attr='Comments',
-                                                append=True),
-                        DataSource=self._str_mean(other, attr='DataSource',
-                                                  append=False)
-                        )
-        new_obj = self.__class__(Name=name, **new_attr)
+        new_obj = self.__class__(**meta, Layers=layers)
+        new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
     def equivalent_volume(self, other):

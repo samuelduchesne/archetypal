@@ -279,8 +279,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         if self == other:
             return self
 
-        # the new object's name
-        name = " + ".join([self.Name, other.Name])
+        meta = self._get_predecessors_meta(other)
 
         if not weights:
             log('using zone volume as weighting factor in "{}" '
@@ -288,7 +287,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             weights = [self._belongs_to_zone.volume,
                        other._belongs_to_zone.volume]
 
-        new_obj = DomesticHotWaterSetting(Name=name,
+        new_obj = DomesticHotWaterSetting(**meta,
                                           IsOn=any((self.IsOn, other.IsOn)),
                                           WaterSchedule=self.WaterSchedule
                                           .combine(
@@ -306,7 +305,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                                               other,
                                               "WaterTemperatureInlet",
                                               weights))
-
+        new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
 

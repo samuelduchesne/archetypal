@@ -12,6 +12,7 @@ class TestCli():
         runner = CliRunner()
         examples = get_eplus_dire() / "ExampleFiles"
         test_file = examples / "2ZoneDataCenterHVAC_wEconomizer.idf"
+        test_file = "/Users/samuelduchesne/Dropbox/Polytechnique/Doc/software/archetypal/tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         result = runner.invoke(cli,
                                ['--use-cache', '--cache-folder',
                                 'tests/.temp/cache', '--data-folder',

@@ -54,6 +54,12 @@ def _resolve_combined_names(predecessors):
     n_unique_names = counter.values()
     long_name = " + ".join(["{}x_{{{}}}".format(n, name) for n, name in
                             zip(n_unique_names, unique_names)])
+    return _shorten_name(long_name)
+
+
+def _shorten_name(long_name):
+    """Check if name is longer than 300 characters, and return truncated
+    version"""
     if len(long_name) > 300:
         # shorten name if longer than 300 characters (limit set by
         # EnergyPlus)

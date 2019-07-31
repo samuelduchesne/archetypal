@@ -26,12 +26,12 @@ class Unique(type):
             **kwargs:
         """
         key = (cls.mro()[0].__name__, kwargs['Name'])
-        if key not in created_obj:
+        if key not in CREATED_OBJECTS:
             self = cls.__new__(cls, *args, **kwargs)
             cls.__init__(self, *args, **kwargs)
             cls._cache[key] = self
-            created_obj[key] = self
-        return created_obj[key]
+            CREATED_OBJECTS[key] = self
+        return CREATED_OBJECTS[key]
 
     def __init__(cls, name, bases, attributes):
         """
@@ -98,7 +98,7 @@ class UmiBase(object):
                 self.DataSource = DataSource
         else:
             self.DataSource = DataSource
-        self.all_objects = created_obj
+        self.all_objects = CREATED_OBJECTS
         self.id = kwargs.get('$id', id(self))
         self._predecessors = MetaData()
 
@@ -132,7 +132,18 @@ class UmiBase(object):
 
     def clear_cache(cls):
         """Clear the dict of created object instances"""
-        created_obj.clear()
+        CREATED_OBJECTS.clear()
+
+    def rename(self, name):
+        """renames self as well as the cached object"""
+        key = (self.__class__.mro()[0].__name__, self.Name)
+        self._cache.pop(key)
+        CREATED_OBJECTS.pop(key)
+
+        self.Name = name
+        newkey = (self.__class__.mro()[0].__name__, name)
+        self._cache[newkey] = self
+        CREATED_OBJECTS[newkey] = self
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -304,7 +315,7 @@ class MaterialBase(UmiBase):
                      self.TransportEnergy))
 
 
-created_obj = {}
+CREATED_OBJECTS = {}
 
 
 class MaterialLayer(object):

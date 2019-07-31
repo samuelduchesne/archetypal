@@ -6,6 +6,7 @@
 ################################################################################
 
 import collections
+import uuid
 
 import numpy as np
 
@@ -43,8 +44,8 @@ class ConstructionBase(UmiBase):
 
 
 class LayeredConstruction(ConstructionBase):
-    """Defines the layers of an :class:`OpaqueConstruction`. This
-    class has one attribute:
+    """Defines the layers of an :class:`OpaqueConstruction`. This class has one
+    attribute:
 
     1. A list of :class:`MaterialLayer` objects.
     """
@@ -93,12 +94,15 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @property
     def r_value(self):
-        """float: The Thermal Resistance of the Opaque Construction"""
+        """float: The Thermal Resistance of the :class:`OpaqueConstruction`"""
         return sum([layer.Thickness / layer.Material.Conductivity
-                    for layer in self.Layers])  # W/mk
+                    for layer in self.Layers])  # (K⋅m2/W)
 
     @property
     def u_value(self):
+        """float: The overall heat transfer coefficient of the
+        :class:`OpaqueConstruction`. Expressed in W/(m2⋅K)
+        """
         return 1 / self.r_value
 
     def combine(self, other, weights=None, method='constant_ufactor'):
@@ -142,6 +146,9 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         # layers for the new OpaqueConstruction
         layers = [MaterialLayer(mat, t) for mat, t in zip(new_m, new_t)]
         new_obj = self.__class__(**meta, Layers=layers)
+        new_name = "Combined Opaque Construction {{{}}} with u_value " \
+                   "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value)
+        new_obj.rename(new_name)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
@@ -154,7 +161,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             other:
         """
         raise NotImplementedError('"equivalent_volume" method is not yet '
-                                  'fully implmented. Please choose '
+                                  'fully implemented. Please choose '
                                   '"constant_ufactor"')
 
         self_t = np.array([mat.Thickness for mat in self.Layers])

@@ -278,6 +278,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             Name=bt.Name + '_StructureDefinition', MassRatios=[
                 MassRatio.generic()], idf=idf)
         bt.Windows = bt.Perimeter.Windows
+        bt.PartitionRatio = idf.partition_ratio
 
         return bt
 

@@ -130,3 +130,10 @@ def test_area(archetype, area):
     idf = load_idf(next(iter(idf_file)))
     np.testing.assert_almost_equal(actual=idf.area_conditioned, desired=area,
                                    decimal=0)
+
+
+def test_partition_ratio():
+    from archetypal import load_idf
+    idf_file = Path("tests/input_data/necb/").glob('*LargeOffice*.idf')
+    idf = load_idf(next(iter(idf_file)))
+    print(idf.partition_ratio)

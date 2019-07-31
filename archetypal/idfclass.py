@@ -62,13 +62,32 @@ class IDF(geomeppy.IDF):
         zones = self.idfobjects['ZONE']
         for zone in zones:
             for surface in zone.zonesurfaces:
-                if surface.tilt == 180.0:
-                    part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
-                    multiplier = float(
-                        zone.Multiplier if zone.Multiplier != '' else 1)
+                if hasattr(surface, 'tilt'):
+                    if surface.tilt == 180.0:
+                        part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
+                        multiplier = float(
+                            zone.Multiplier if zone.Multiplier != '' else 1)
 
-                    area += surface.area * multiplier * part_of
+                        area += surface.area * multiplier * part_of
         return area
+
+    @property
+    def partition_ratio(self):
+        """The number of lineal meters of partitions (Floor to ceiling) present
+        in average in the building floor plan by m2.
+        """
+        partition_lineal = 0
+        zones = self.idfobjects['ZONE']
+        for zone in zones:
+            for surface in zone.zonesurfaces:
+                if hasattr(surface, 'tilt'):
+                    if surface.tilt == 90.0 and surface.Outside_Boundary_Condition \
+                            != 'Outdoors':
+                        multiplier = float(
+                            zone.Multiplier if zone.Multiplier != '' else 1)
+                        partition_lineal += surface.width * multiplier
+
+        return partition_lineal / self.area_conditioned
 
     def run_eplus(self, weather_file=None, output_folder=None, ep_version=None,
                   output_report='sql', prep_outputs=True, **kwargs):

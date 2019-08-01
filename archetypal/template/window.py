@@ -169,6 +169,16 @@ class WindowConstruction(UmiBase, metaclass=Unique):
                 )
         return layers
 
+    def combine(self, other, weights=None):
+        """Append other to self. Return self + other as a new object. For
+        now, simply returns self.
+
+        todo:
+            - Implement equivalent window layers for constant u-factor.
+
+        """
+        return self
+
 
 class WindowType(IntEnum):
     External = 0
@@ -502,23 +512,29 @@ class WindowSetting(UmiBase, metaclass=Unique):
         than one window is created, use reduce to combine them together.
 
         Args:
-            zone (Zone):
+            zone (Zone): The Zone object from which the WindowSetting is
+                created.
 
         Returns:
             WindowSetting: The WindowSetting object for this zone.
         """
         window_sets = []
-        name = zone.Name + "_WindowSetting"
+
         for surf in zone._zonesurfaces:
+            # skip internalmass objects since they don't have windows.
             if surf.key.lower() != 'internalmass':
                 for subsurf in surf.subsurfaces:
+                    # For each subsurface, create a WindowSetting object
+                    # using the `from_surface` constructor.
                     window_sets.append(cls.from_surface(subsurf))
+
         if window_sets:
-            # if one or more window has been created, reduce
+            # if one or more window has been created, reduce. Using reduce on
+            # a len==1 list, will simply return the object.
             from operator import add
             return reduce(add, window_sets)
         else:
-            # no window found, probably a core zone, return None
+            # no window found, probably a core zone, return None.
             return None
 
     def combine(self, other, weights=None):
@@ -551,6 +567,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
             weights = [1., 1.]
         meta = self._get_predecessors_meta(other)
         new_attr = dict(
+            Construction=self.Construction.combine(other.Construction, weights),
             AfnDischargeC=self._float_mean(other, 'AfnDischargeC', weights),
             AfnTempSetpoint=self._float_mean(other, 'AfnTempSetpoint', weights),
             AfnWindowAvailability=self.AfnWindowAvailability.combine(

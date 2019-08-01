@@ -604,6 +604,8 @@ class TestWindowSetting:
         WindowSetting(Name='Unnamed').clear_cache()
         w = WindowSetting.from_construction(construction)
 
+        assert w.to_json()
+
     @pytest.fixture(scope='class')
     def allwindowtypes(self, config, windowtests):
         from archetypal import WindowSetting
@@ -678,6 +680,13 @@ class TestWindowSetting:
         mat_a = ar.GlazingMaterial(Name='mat_a', **sg_a)
         glazMat_to_json = mat_a.to_json()
         assert glazMat_to_json
+
+    def test_window_generic(self, small_idf):
+        from archetypal import WindowSetting
+        idf, sql = small_idf
+        w = WindowSetting.generic(idf)
+        
+        assert w.to_json()
 
 
 class TestZone:

@@ -8,7 +8,7 @@
 import collections
 
 from archetypal.template import UmiBase, Unique, UmiSchedule
-from archetypal import log
+from archetypal import log, timeit
 
 
 class ZoneLoad(UmiBase, metaclass=Unique):
@@ -139,6 +139,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         return data_dict
 
     @classmethod
+    @timeit
     def from_zone(cls, zone):
         """
         Args:

@@ -13,7 +13,7 @@ from functools import reduce
 import tabulate
 from eppy.bunch_subclass import EpBunch
 
-from archetypal import log, IDF, calc_simple_glazing
+from archetypal import log, IDF, calc_simple_glazing, timeit
 from archetypal.template import MaterialLayer, UmiSchedule
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
@@ -496,6 +496,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
             return w
 
     @classmethod
+    @timeit
     def from_zone(cls, zone):
         """Iterate over the zone subsurfaces and create a window object. If more
         than one window is created, use reduce to combine them together.

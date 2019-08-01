@@ -7,7 +7,7 @@
 
 import collections
 
-from archetypal import float_round, ReportData, log
+from archetypal import float_round, ReportData, log, timeit
 from archetypal.template import UmiBase, Unique, UmiSchedule
 
 
@@ -215,6 +215,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         return data_dict
 
     @classmethod
+    @timeit
     def from_zone(cls, zone):
         """
         Args:

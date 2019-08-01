@@ -19,6 +19,7 @@ import logging as lg
 import os
 import re
 import sys
+import time
 import unicodedata
 import warnings
 from collections import OrderedDict
@@ -502,7 +503,8 @@ def weighted_mean(series, df, weighting_variable):
 
 
 def top(series, df, weighting_variable):
-    """Compute the highest ranked value weighted by some other variable. Implements
+    """Compute the highest ranked value weighted by some other variable.
+    Implements
         :func:`pandas.DataFrame.nlargest`.
 
     Args:
@@ -795,3 +797,21 @@ def get_eplus_dire():
     eplus_exe, eplus_weather = install_paths("8-9-0")
     eplusdir = Path(eplus_exe).dirname()
     return Path(eplusdir)
+
+
+def timeit(method):
+    """Use this method as a decorator to calculate the time"""
+
+    def timed(*args, **kwargs):
+        ts = time.time()
+        result = method(*args, **kwargs)
+        te = time.time()
+
+        tt = (te - ts)
+        if tt > 0.001:
+            log('Completed %r in %.3f s' % (method.__qualname__, tt))
+        else:
+            log('Completed %r in %.3f ms' % (method.__qualname__, tt * 1000))
+        return result
+
+    return timed

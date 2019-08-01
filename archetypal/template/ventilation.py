@@ -8,7 +8,7 @@
 import collections
 
 import archetypal
-from archetypal import log
+from archetypal import log, timeit
 from archetypal.template import UmiBase, Unique
 
 
@@ -163,6 +163,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         return data_dict
 
     @classmethod
+    @timeit
     def from_zone(cls, zone):
         """
         Todo:

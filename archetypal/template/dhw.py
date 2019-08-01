@@ -10,7 +10,7 @@ from statistics import mean
 
 import numpy as np
 
-from archetypal import settings, log
+from archetypal import settings, log, timeit, parallel_process
 from archetypal.template import Unique, UmiBase, UmiSchedule
 
 
@@ -79,6 +79,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         return data_dict
 
     @classmethod
+    @timeit
     def from_zone(cls, zone):
         """Some WaterUse:Equipment objects can be assigned to a zone. :param
         zone: :type zone: Zone
@@ -151,6 +152,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         return z_dhw
 
     @classmethod
+    @timeit
     def _do_hot_temp(cls, dhw_objs, zone):
         """
         Args:
@@ -172,6 +174,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         return np.array([sched.all_values.mean() for sched in hot_schds]).mean()
 
     @classmethod
+    @timeit
     def _do_inlet_temp(cls, dhw_objs, zone):
         """Reference to the Schedule object specifying the cold water
         temperature [C] from the supply mains that provides the cold water to
@@ -224,6 +227,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         return mean(WaterTemperatureInlet)
 
     @classmethod
+    @timeit
     def _do_water_schedule(cls, dhw_objs, zone):
         """Returns the WaterSchedule for a list of WaterUse:Equipment objects.
         If more than one objects are passed, a combined schedule is returned
@@ -241,6 +245,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         return reduce(UmiSchedule.combine, water_schds, weights=[1, 1])
 
     @classmethod
+    @timeit
     def _do_flow_rate(cls, dhw_objs, zone):
         """Calculate total flow rate from list of WaterUse:Equipment objects.
         The zone's area_conditioned property is used to normalize the flow rate.

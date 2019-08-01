@@ -18,7 +18,7 @@ import networkx
 import numpy as np
 from geomeppy.geom.polygons import Polygon3D
 
-from archetypal import log, save_and_show
+from archetypal import log, save_and_show, timeit
 from archetypal.template import Unique, UmiBase, ZoneConditioning, ZoneLoad, \
     VentilationSetting, DomesticHotWaterSetting, OpaqueConstruction, \
     WindowSetting
@@ -161,6 +161,7 @@ class Zone(UmiBase, metaclass=Unique):
         self.Conditioning = ZoneConditioning.from_idf(Name=random.randint(1,
                                                                           999999))
 
+    @timeit
     def _internalmassconstruction(self):
         """Group internal walls into a ThermalMass object for this Zone"""
 
@@ -768,6 +769,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         return data_dict
 
     @classmethod
+    @timeit
     def from_zone(cls, zone):
         """
         Args:

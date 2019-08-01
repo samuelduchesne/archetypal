@@ -6,6 +6,7 @@
 ################################################################################
 
 import collections
+import uuid
 
 import numpy as np
 import pandas as pd
@@ -118,11 +119,20 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         attr.update(dict(value=new_values))
         attr['Name'] = meta['Name']
         new_obj = super().from_values(**attr)
+        new_name = "Combined Schedule {{{}}} with mean daily min:{:.2f} " \
+                   "mean:{:.2f} max:{:.2f}".format(
+            uuid.uuid1(),
+            new_obj.min,
+            new_obj.mean,
+            new_obj.max
+        )
+        new_obj.rename(new_name)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
     def develop(self):
         year, weeks, days = self.to_year_week_day()
+        lines = ['- {}'.format(obj) for obj in self.predecessors]
 
         newdays = []
         for day in days:
@@ -130,19 +140,20 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                 DaySchedule.from_epbunch(
                     day,
                     Comments='Year Week Day schedules created from: {}'.format(
-                        self.Name)))
+                        "\n".join(lines))))
         newweeks = []
         for week in weeks:
             newweeks.append(
                 WeekSchedule.from_epbunch(
                     week,
                     Comments='Year Week Day schedules created from: {}'.format(
-                        self.Name)))
+                        "\n".join(lines))))
         year = YearSchedule(idf=self.idf, Name=year.Name, id=self.id,
-                            schTypeLimitsName=self.schTypeLimitsName, epbunch=year,
+                            schTypeLimitsName=self.schTypeLimitsName,
+                            epbunch=year,
                             newweeks=newweeks,
                             Comments='Year Week Day schedules created from: '
-                                     '{}'.format(self.Name))
+                                     '{}'.format("\n".join(lines)))
         return year
 
     def to_json(self):

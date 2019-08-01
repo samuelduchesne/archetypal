@@ -15,7 +15,8 @@ import pandas as pd
 from path import Path
 
 import archetypal
-from archetypal import log, settings
+from archetypal import log, settings, timeit
+from eppy.bunch_subclass import EpBunch
 
 
 class Schedule(object):
@@ -129,11 +130,9 @@ class Schedule(object):
     def all_values(self):
         """returns the values array"""
         if self.values is None:
-            self.values = self.get_schedule_values(name=self.Name,
-                                                   sch_type=self.schType)
-            return self.values
-        else:
-            return self.values
+            epbunch = self.idf.get_schedule_epbunch(self.Name)
+            self.values = self.get_schedule_values(epbunch)
+        return self.values
 
     @property
     def max(self):
@@ -162,8 +161,8 @@ class Schedule(object):
         Args:
             sch_type:
         """
-        schedule_values = self.idf.get_schedule_data_by_name(self.Name,
-                                                             sch_type=sch_type)
+        schedule_values = self.idf.get_schedule_epbunch(self.Name,
+                                                        sch_type=sch_type)
         try:
             schedule_limit_name = schedule_values.Schedule_Type_Limits_Name
         except:
@@ -181,7 +180,7 @@ class Schedule(object):
         if name is None:
             name = self.Name
 
-        schedule_values = self.idf.get_schedule_data_by_name(name)
+        schedule_values = self.idf.get_schedule_epbunch(name)
         try:
             schedule_limit_name = schedule_values.Schedule_Type_Limits_Name
         except:
@@ -208,7 +207,7 @@ class Schedule(object):
         if name is None:
             name = self.Name
 
-        schedule_values = self.idf.get_schedule_data_by_name(name)
+        schedule_values = self.idf.get_schedule_epbunch(name)
         sch_type = schedule_values.key
 
         return sch_type
@@ -240,28 +239,24 @@ class Schedule(object):
         ax = series.loc[slice].plot(**kwargs, label=self.Name)
         return ax
 
-    def get_interval_day_ep_schedule_values(self, name=None):
+    def get_interval_day_ep_schedule_values(self, epbunch):
         """Schedule:Day:Interval
 
         Args:
-            name (str): the name of the schedule
+            epbunch (EpBunch): The schedule EpBunch object.
         """
 
-        if name is None:
-            name = self.Name
-
-        values = self.idf.getobject('Schedule:Day:Interval'.upper(), name)
         lower_limit, upper_limit, numeric_type, unit_type = \
-            self.get_schedule_type_limits_data(name)
+            self.get_schedule_type_limits_data(epbunch.Name)
 
-        number_of_day_sch = int((len(values.fieldvalues) - 3) / 2)
+        number_of_day_sch = int((len(epbunch.fieldvalues) - 3) / 2)
 
         hourly_values = np.arange(24, dtype=float)
         start_hour = 0
         for i in range(number_of_day_sch):
-            value = float(values['Value_Until_Time_{}'.format(i + 1)])
+            value = float(epbunch['Value_Until_Time_{}'.format(i + 1)])
             until_time = [int(s.strip()) for s in
-                          values['Time_{}'.format(i + 1)].split(":") if
+                          epbunch['Time_{}'.format(i + 1)].split(":") if
                           s.strip().isdigit()]
             end_hour = int(until_time[0] + until_time[1] / 60)
             for hour in range(start_hour, end_hour):
@@ -274,27 +269,23 @@ class Schedule(object):
 
         return hourly_values
 
-    def get_hourly_day_ep_schedule_values(self, name=None):
+    def get_hourly_day_ep_schedule_values(self, epbunch):
         """Schedule:Day:Hourly
 
         Args:
-            name (str): the name of the schedule
+            epbunch (EpBunch): The schedule EpBunch object.
         """
-        if name is None:
-            name = self.Name
 
-        values = self.idf.getobject('Schedule:Day:Hourly'.upper(), name)
-
-        fieldvalues_ = np.array(values.fieldvalues[3:])
+        fieldvalues_ = np.array(epbunch.fieldvalues[3:])
 
         return fieldvalues_
 
-    def get_compact_weekly_ep_schedule_values(self, name=None, start_date=None,
+    def get_compact_weekly_ep_schedule_values(self, epbunch, start_date=None,
                                               index=None):
         """schedule:week:compact
 
         Args:
-            name (str): the name of the schedule
+            epbunch (EpBunch): the name of the schedule
             start_date:
             index:
         """
@@ -306,21 +297,17 @@ class Schedule(object):
         else:
             slicer_ = pd.Series([False] * (len(index)), index=index)
 
-        if name is None:
-            name = self.Name
-        values = self.idf.getobject('schedule:week:compact'.upper(), name)
-
         weekly_schedules = pd.Series([0] * len(slicer_), index=slicer_.index)
         # update last day of schedule
 
         if self.count == 0:
-            self.schType = values.key
+            self.schType = epbunch.key
             self.endHOY = 168
 
-        num_of_daily_schedules = int(len(values.fieldvalues[2:]) / 2)
+        num_of_daily_schedules = int(len(epbunch.fieldvalues[2:]) / 2)
 
         for i in range(num_of_daily_schedules):
-            day_type = values['DayType_List_{}'.format(i + 1)].lower()
+            day_type = epbunch['DayType_List_{}'.format(i + 1)].lower()
             how = self.field_set(day_type, slicer_)
             if not weekly_schedules.loc[how].empty:
                 # Loop through days and replace with day:schedule values
@@ -328,10 +315,10 @@ class Schedule(object):
                 for name, day in weekly_schedules.loc[how].groupby(pd.Grouper(
                         freq='D')):
                     if not day.empty:
-                        ref = values.get_referenced_object(
+                        ref = epbunch.get_referenced_object(
                             "ScheduleDay_Name_{}".format(i + 1))
-                        day.loc[:] = self.get_schedule_values(name=ref.Name,
-                                                              sch_type=ref.key)
+                        day.loc[:] = self.get_schedule_values(
+                            sched_epbunch=ref)
                         days.append(day)
                 new = pd.concat(days)
                 slicer_.update(
@@ -343,24 +330,19 @@ class Schedule(object):
 
         return weekly_schedules.values
 
-    def get_daily_weekly_ep_schedule_values(self, name=None):
+    def get_daily_weekly_ep_schedule_values(self, epbunch):
         """schedule:week:daily
 
         Args:
-            name (str): the name of the schedule
+            epbunch (EpBunch): The schedule EpBunch object.
         """
-        if name is None:
-            name = self.Name
-
-        values = self.idf.getobject('schedule:week:daily'.upper(), name)
-
         # 7 list for 7 days of the week
         hourly_values = []
         for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday',
                     'Friday', 'Saturday', 'Sunday']:
-            ref = values.get_referenced_object(
+            ref = epbunch.get_referenced_object(
                 '{}_ScheduleDay_Name'.format(day))
-            h = self.get_schedule_values(name=ref.Name, sch_type=ref.key)
+            h = self.get_schedule_values(sched_epbunch=ref)
             hourly_values.append(h)
         hourly_values = np.array(hourly_values)
         # shift days earlier by self.startDayOfTheWeek
@@ -368,23 +350,16 @@ class Schedule(object):
 
         return hourly_values.ravel()
 
-    def get_list_day_ep_schedule_values(self, name=None):
+    def get_list_day_ep_schedule_values(self, epbunch):
         """schedule:day:list
 
         Args:
-            name (str): the name of the schedule
+            epbunch (EpBunch): The schedule epbunch object.
         """
-        if name is None:
-            name = self.Name
-
-        values = self.idf.getobject('schedule:day:list'.upper(), name)
-        lower_limit, upper_limit, numeric_type, unit_type = \
-            self.get_schedule_type_limits_data(name)
-
         import pandas as pd
-        freq = int(values['Minutes_per_Item'])  # Frequency of the values
-        num_values = values.fieldvalues[5:]  # List of values
-        method = values['Interpolate_to_Timestep']  # How to resample
+        freq = int(epbunch['Minutes_per_Item'])  # Frequency of the values
+        num_values = epbunch.fieldvalues[5:]  # List of values
+        method = epbunch['Interpolate_to_Timestep']  # How to resample
 
         # fill a list of available values and pad with zeros (this is safer
         # but should not occur)
@@ -405,21 +380,17 @@ class Schedule(object):
 
         return series.values
 
-    def get_constant_ep_schedule_values(self, name=None):
+    def get_constant_ep_schedule_values(self, epbunch):
         """schedule:constant
 
         Args:
-            name (str): the name of the schedule
+            epbunch (EpBunch): The schedule epbunch object.
         """
-        if name is None:
-            name = self.Name
-
-        values = self.idf.getobject('schedule:constant'.upper(), name)
         lower_limit, upper_limit, numeric_type, unit_type = \
-            self.get_schedule_type_limits_data(name)
+            self.get_schedule_type_limits_data(epbunch.Name)
 
         hourly_values = np.arange(8760)
-        value = float(values['Hourly_Value'])
+        value = float(epbunch['Hourly_Value'])
         for hour in hourly_values:
             hourly_values[hour] = value
 
@@ -428,25 +399,18 @@ class Schedule(object):
 
         return hourly_values
 
-    def get_file_ep_schedule_values(self, name=None):
+    def get_file_ep_schedule_values(self, epbunch):
         """schedule:file
 
         Args:
-            name (str): the name of the schedule
+            epbunch (EpBunch): The schedule epbunch object.
         """
-        if name is None:
-            name = self.Name
-
-        values = self.idf.getobject('schedule:file'.upper(), name)
-        lower_limit, upper_limit, numeric_type, unit_type = \
-            self.get_schedule_type_limits_data(name)
-
-        filename = values['File_Name']
-        column = values['Column_Number']
-        rows = values['Rows_to_Skip_at_Top']
-        hours = values['Number_of_Hours_of_Data']
-        sep = values['Column_Separator']
-        interp = values['Interpolate_to_Timestep']
+        filename = epbunch['File_Name']
+        column = epbunch['Column_Number']
+        rows = epbunch['Rows_to_Skip_at_Top']
+        hours = epbunch['Number_of_Hours_of_Data']
+        sep = epbunch['Column_Separator']
+        interp = epbunch['Interpolate_to_Timestep']
 
         import pandas as pd
         import os
@@ -455,27 +419,19 @@ class Schedule(object):
         delimeter = _separator(sep)
         skip_rows = int(rows) - 1  # We want to keep the column
         col = [int(column) - 1]  # zero-based
-        values = pd.read_csv(file, delimiter=delimeter, skiprows=skip_rows,
-                             usecols=col)
+        epbunch = pd.read_csv(file, delimiter=delimeter, skiprows=skip_rows,
+                              usecols=col)
 
-        return values.iloc[:, 0].values
+        return epbunch.iloc[:, 0].values
 
-    def get_compact_ep_schedule_values(self, name=None):
+    def get_compact_ep_schedule_values(self, epbunch):
         """schedule:compact
 
         Args:
-            name (str): the name of the schedule
+            epbunch (EpBunch): The schedule epbunch object.
         """
-
-        if name is None:
-            name = self.Name
-
-        values = self.idf.getobject('schedule:compact'.upper(), name)
-        lower_limit, upper_limit, numeric_type, unit_type = \
-            self.get_schedule_type_limits_data(name)
-
         field_sets = ['through', 'for', 'interpolate', 'until', 'value']
-        fields = values.fieldvalues[3:]
+        fields = epbunch.fieldvalues[3:]
 
         index = pd.date_range(start=self.startDate, periods=8760, freq='H')
         zeros = np.zeros(len(index))
@@ -522,11 +478,11 @@ class Schedule(object):
                     from_time = '00:00'
 
                     for_condition = self.invalidate_condition(series)
-                    values = value.split()
-                    if len(values) > 1:
+                    epbunch = value.split()
+                    if len(epbunch) > 1:
                         # if multiple `For`. eg.: For: Weekends Holidays,
                         # Combine both conditions
-                        for value in values:
+                        for value in epbunch:
                             if value.lower() == 'allotherdays':
                                 # Apply condition to slice
                                 how = self.field_set(value, slicer_)
@@ -714,11 +670,11 @@ class Schedule(object):
         periods = len(series)
         return pd.Series([False] * periods, index=index)
 
-    def get_yearly_ep_schedule_values(self, name=None):
+    def get_yearly_ep_schedule_values(self, epbunch):
         """schedule:year
 
         Args:
-            name (str): the name of the schedule
+            epbunch (EpBunch): the schedule epbunch.
         """
         # first week
 
@@ -729,22 +685,17 @@ class Schedule(object):
         # update last day of schedule
         self.endHOY = 8760
 
-        if name is None:
-            name = self.Name
-
-        values = self.idf.getobject('schedule:year'.upper(), name)
-
         # generate weekly schedules
-        num_of_weekly_schedules = int(len(values.fieldvalues[3:]) / 5)
+        num_of_weekly_schedules = int(len(epbunch.fieldvalues[3:]) / 5)
 
         for i in range(num_of_weekly_schedules):
-            ref = values.get_referenced_object(
+            ref = epbunch.get_referenced_object(
                 'ScheduleWeek_Name_{}'.format(i + 1))
 
-            start_month = values['Start_Month_{}'.format(i + 1)]
-            end_month = values['End_Month_{}'.format(i + 1)]
-            start_day = values['Start_Day_{}'.format(i + 1)]
-            end_day = values['End_Day_{}'.format(i + 1)]
+            start_month = getattr(epbunch, 'Start_Month_{}'.format(i + 1))
+            end_month = getattr(epbunch, 'End_Month_{}'.format(i + 1))
+            start_day = getattr(epbunch, 'Start_Day_{}'.format(i + 1))
+            end_day = getattr(epbunch, 'End_Day_{}'.format(i + 1))
 
             start = datetime.strptime(
                 '{}/{}/{}'.format(self.year, start_month, start_day),
@@ -762,16 +713,14 @@ class Schedule(object):
                     pd.Grouper(freq='168H')):
                 if not week.empty:
                     try:
-                        week.loc[:] = self.get_schedule_values(name=ref.Name,
-                                                               start_date=
-                                                               week.index[0],
-                                                               index=week.index,
-                                                               sch_type=ref.key)
+                        week.loc[:] = self.get_schedule_values(
+                            sched_epbunch=ref,
+                            start_date=week.index[0],
+                            index=week.index)
                     except ValueError:
-                        week.loc[:] = self.get_schedule_values(ref.Name,
-                                                               week.index[
-                                                                   0])[0:len(
-                            week)]
+                        week.loc[:] = self.get_schedule_values(
+                            sched_epbunch=ref,
+                            start_date=week.index[0])[0:len(week)]
                     finally:
                         weeks.append(week)
             new = pd.concat(weeks)
@@ -780,50 +729,46 @@ class Schedule(object):
 
         return hourly_values.values
 
-    def get_schedule_values(self, name=None, start_date=None, index=None,
-                            sch_type=None):
+    def get_schedule_values(self, sched_epbunch, start_date=None,
+                            index=None):
         """Main function that returns the schedule values
 
         Args:
-            name (str): the name of the schedule
+            sched_epbunch (EpBunch): the schedule epbunch object
             start_date:
             index:
             sch_type:
         """
-
-        if name is None:
-            name = self.Name
-
-        if sch_type is None:
-            schedule_values = self.idf.get_schedule_data_by_name(name)
-            self.schType = schedule_values.key.upper()
-            sch_type = self.schType
         if self.count == 0:
             # This is the first time, get the schedule type and the type limits.
             if self.schTypeLimitsName is None:
                 self.schTypeLimitsName = self.get_schedule_type_limits_name()
         self.count += 1
 
+        sch_type = sched_epbunch.key.upper()
+
         if sch_type.upper() == "schedule:year".upper():
-            hourly_values = self.get_yearly_ep_schedule_values(name)
+            hourly_values = self.get_yearly_ep_schedule_values(sched_epbunch)
         elif sch_type.upper() == "schedule:day:interval".upper():
-            hourly_values = self.get_interval_day_ep_schedule_values(name)
+            hourly_values = self.get_interval_day_ep_schedule_values(
+                sched_epbunch)
         elif sch_type.upper() == "schedule:day:hourly".upper():
-            hourly_values = self.get_hourly_day_ep_schedule_values(name)
+            hourly_values = self.get_hourly_day_ep_schedule_values(
+                sched_epbunch)
         elif sch_type.upper() == "schedule:day:list".upper():
-            hourly_values = self.get_list_day_ep_schedule_values(name)
+            hourly_values = self.get_list_day_ep_schedule_values(sched_epbunch)
         elif sch_type.upper() == "schedule:week:compact".upper():
-            hourly_values = self.get_compact_weekly_ep_schedule_values(name,
-                                                                       start_date,
-                                                                       index)
+            hourly_values = self.get_compact_weekly_ep_schedule_values(
+                sched_epbunch, start_date, index)
         elif sch_type.upper() == "schedule:week:daily".upper():
-            hourly_values = self.get_daily_weekly_ep_schedule_values(name)
+            hourly_values = self.get_daily_weekly_ep_schedule_values(
+                sched_epbunch)
         elif sch_type.upper() == "schedule:constant".upper():
-            hourly_values = self.get_constant_ep_schedule_values(name)
+            hourly_values = self.get_constant_ep_schedule_values(sched_epbunch)
         elif sch_type.upper() == "schedule:compact".upper():
-            hourly_values = self.get_compact_ep_schedule_values(name)
+            hourly_values = self.get_compact_ep_schedule_values(sched_epbunch)
         elif sch_type.upper() == "schedule:file".upper():
-            hourly_values = self.get_file_ep_schedule_values(name)
+            hourly_values = self.get_file_ep_schedule_values(sched_epbunch)
         else:
             log('Archetypal does not currently support schedules of type '
                 '"{}"'.format(sch_type), lg.WARNING)

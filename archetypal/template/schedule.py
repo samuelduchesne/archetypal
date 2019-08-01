@@ -212,7 +212,15 @@ class DaySchedule(UmiSchedule):
             **kwargs:
         """
         super(DaySchedule, self).__init__(*args, **kwargs)
-        self._values = kwargs.get('Values', self.get_schedule_values())
+        epbunch = self.idf.get_schedule_epbunch(self.Name)
+        self._values = self.get_schedule_values(epbunch)
+
+    @classmethod
+    def from_values(cls, Values, **kwargs):
+        sched = cls(**kwargs)
+        sched._values = Values
+
+        return sched
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -255,7 +263,7 @@ class WeekSchedule(UmiSchedule):
         else:
             self.Days = days
         _type = kwargs.get('Type', None)
-        if type is None:
+        if _type is None:
             self.schLimitType = self.get_schedule_type_limits_name()
         else:
             self.schLimitType = _type

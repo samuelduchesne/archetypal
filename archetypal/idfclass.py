@@ -64,7 +64,8 @@ class IDF(geomeppy.IDF):
             for surface in zone.zonesurfaces:
                 if hasattr(surface, 'tilt'):
                     if surface.tilt == 180.0:
-                        part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
+                        part_of = int(
+                            zone.Part_of_Total_Floor_Area.upper() != "NO")
                         multiplier = float(
                             zone.Multiplier if zone.Multiplier != '' else 1)
 
@@ -81,7 +82,8 @@ class IDF(geomeppy.IDF):
         for zone in zones:
             for surface in zone.zonesurfaces:
                 if hasattr(surface, 'tilt'):
-                    if surface.tilt == 90.0 and surface.Outside_Boundary_Condition \
+                    if surface.tilt == 90.0 and \
+                            surface.Outside_Boundary_Condition \
                             != 'Outdoors':
                         multiplier = float(
                             zone.Multiplier if zone.Multiplier != '' else 1)
@@ -195,12 +197,13 @@ class IDF(geomeppy.IDF):
         else:
             return '', '', '', ''
 
-    def get_schedule_data_by_name(self, name, sch_type=None):
-        """Returns the epbunch of a particular schedule name
+    def get_schedule_epbunch(self, name, sch_type=None):
+        """Returns the epbunch of a particular schedule name. If the schedule
+        type is know, retreives it quicker.
 
         Args:
-            name:
-            sch_type:
+            name (str): The name of the schedule to retreive in the IDF file.
+            sch_type (str): The schedule type, e.g.: "SCHEDULE:YEAR".
         """
         if sch_type is None:
             try:

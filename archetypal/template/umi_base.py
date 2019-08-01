@@ -393,7 +393,7 @@ def load_json_objects(datastore):
     loading_json_list.append([
         StructureDefinition.from_json(
             **store) for store in datastore["StructureDefinitions"]])
-    loading_json_list.append([DaySchedule(**store)
+    loading_json_list.append([DaySchedule.from_values(**store)
                               for store in datastore["DaySchedules"]])
     loading_json_list.append([WeekSchedule.from_json(**store)
                               for store in datastore["WeekSchedules"]])

@@ -232,7 +232,7 @@ class UmiTemplate:
             t.StructureDefinitions = [
                 StructureDefinition.from_json(
                     **store) for store in datastore["StructureDefinitions"]]
-            t.DaySchedules = [DaySchedule(**store)
+            t.DaySchedules = [DaySchedule.from_json(**store)
                               for store in datastore["DaySchedules"]]
             t.WeekSchedules = [WeekSchedule.from_json(**store)
                                for store in datastore["WeekSchedules"]]

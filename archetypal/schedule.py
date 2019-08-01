@@ -24,6 +24,7 @@ class Schedule(object):
 
     def __init__(self, Name=None, idf=None, start_day_of_the_week=0,
                  strict=False, base_year=2018, schType=None,
+                 schTypeLimitsName=None,
                  values=None, **kwargs):
         """
         Args:
@@ -60,12 +61,10 @@ class Schedule(object):
         self.index_ = None
         self.values = values
         self.schType = schType
-        _type = kwargs.get('Type', None)
-        if _type is None:
+        self.schTypeLimitsName = schTypeLimitsName
+        if self.schTypeLimitsName is None:
             self.schTypeLimitsName = self.get_schedule_type_limits_name(
                 sch_type=self.schType)
-        else:
-            self.schTypeLimitsName = _type
 
     @classmethod
     def from_values(cls, Name, values, **kwargs):

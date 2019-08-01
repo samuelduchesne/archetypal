@@ -68,6 +68,11 @@ def _shorten_name(long_name):
         return long_name
 
 
+def clear_cache():
+    """Clear the dict of created object instances"""
+    CREATED_OBJECTS.clear()
+
+
 class UmiBase(object):
     def __init__(self,
                  Name=None,
@@ -136,10 +141,6 @@ class UmiBase(object):
 
         return meta
 
-    def clear_cache(cls):
-        """Clear the dict of created object instances"""
-        CREATED_OBJECTS.clear()
-
     def rename(self, name):
         """renames self as well as the cached object"""
         key = (self.__class__.mro()[0].__name__, self.Name)
@@ -162,9 +163,9 @@ class UmiBase(object):
         Args:
             ref:
         """
-        return [self.all_objects[obj]
-                for obj in self.all_objects
-                if self.all_objects[obj].id == ref['$ref']][0]
+        return next(iter([value
+                          for key, value in self.all_objects.items()
+                          if value.id == ref['$ref']]))
 
     def get_random_schedule(self):
         """Return a random YearSchedule from cache"""
@@ -393,7 +394,7 @@ def load_json_objects(datastore):
     loading_json_list.append([
         StructureDefinition.from_json(
             **store) for store in datastore["StructureDefinitions"]])
-    loading_json_list.append([DaySchedule.from_values(**store)
+    loading_json_list.append([DaySchedule.from_json(**store)
                               for store in datastore["DaySchedules"]])
     loading_json_list.append([WeekSchedule.from_json(**store)
                               for store in datastore["WeekSchedules"]])

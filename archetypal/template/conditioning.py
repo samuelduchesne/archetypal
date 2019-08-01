@@ -609,7 +609,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         heating_sched = UmiSchedule.from_values(
             Name=zone.Name + '_Heating_Schedule',
             values=(h_array > 0).astype(int),
-            Type='Fraction',
+            schTypeLimitsName='Fraction',
             idf=zone.idf)
 
         variable_output_name = 'Zone Thermostat Cooling Setpoint Temperature'
@@ -619,7 +619,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         cooling_sched = UmiSchedule.from_values(
             Name=zone.Name + '_Cooling_Schedule',
             values=(c_array > 0).astype(int),
-            Type='Fraction',
+            schTypeLimitsName='Fraction',
             idf=zone.idf)
         return h_array.mean(), heating_sched, c_array.mean(), cooling_sched
 

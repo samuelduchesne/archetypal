@@ -217,7 +217,7 @@ class IDF(geomeppy.IDF):
                                    'in idf file "{}"'.format(
                         name, sch_type, self.idfname))
         else:
-            return self.getobject(sch_type, name)
+            return self.getobject(sch_type.upper(), name)
 
     def get_all_schedules(self, yearly_only=False):
         """Returns all schedule ep_objects in a dict with their name as a key

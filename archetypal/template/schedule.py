@@ -12,6 +12,7 @@ import pandas as pd
 
 from archetypal import Schedule, log
 from archetypal.template import UmiBase, Unique
+from eppy.bunch_subclass import EpBunch
 
 
 class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
@@ -24,8 +25,6 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             **kwargs:
         """
         super(UmiSchedule, self).__init__(*args, **kwargs)
-
-        self.Type = self.schTypeLimitsName
 
     @classmethod
     def constant_schedule(cls, hourly_value=1, Name='AlwaysOn',
@@ -63,7 +62,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         if isinstance(year_sched, YearSchedule):
             return cls.from_values(Name=year_sched.Name,
                                    values=year_sched.all_values,
-                                   Type=year_sched.Type)
+                                   schTypeLimitsName=year_sched.schTypeLimitsName)
 
     def __add__(self, other):
         return self.combine(other)
@@ -128,20 +127,20 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         newdays = []
         for day in days:
             newdays.append(
-                DaySchedule(idf=self.idf, Name=day.Name, epbunch=day,
-                            Type=self.Type,
-                            Comments='Year Week Day schedules created from: '
-                                     '{}'.format(self.Name)))
+                DaySchedule.from_epbunch(
+                    day,
+                    Comments='Year Week Day schedules created from: {}'.format(
+                        self.Name)))
         newweeks = []
         for week in weeks:
             newweeks.append(
-                WeekSchedule(idf=self.idf, Name=week.Name, Type=self.Type,
-                             epbunch=week, newdays=newdays,
-                             Comments='Year Week Day schedules '
-                                      'created from: '
-                                      '{}'.format(self.Name)))
+                WeekSchedule.from_epbunch(
+                    week,
+                    Comments='Year Week Day schedules created from: {}'.format(
+                        self.Name)))
         year = YearSchedule(idf=self.idf, Name=year.Name, id=self.id,
-                            Type=self.Type, epbunch=year, newweeks=newweeks,
+                            schTypeLimitsName=self.schTypeLimitsName, epbunch=year,
+                            newweeks=newweeks,
                             Comments='Year Week Day schedules created from: '
                                      '{}'.format(self.Name))
         return year
@@ -201,24 +200,55 @@ class YearScheduleParts():
 
 
 class DaySchedule(UmiSchedule):
-    """
-    $id, Category, Comments, DataSource, Name, Type, Values
+    """A DaySchedule is a superclass of UmiSchedule and handles the conversion
+    to and from the json UmiTemplate.
     """
 
-    def __init__(self, *args, **kwargs):
-        """
+    def __init__(self, **kwargs):
+        """Initialize a DaySchedule object with parameters: :param **kwargs:
+        keywords passed to the :class:`UmiSchedule`:param constructor. See
+        :class:`UmiSchedule` for more info.:
+
         Args:
-            *args:
-            **kwargs:
+            **kwargs (dict): Keywords passed to the :class:`UmiSchedule`
+                constructor. See :class:`UmiSchedule` for more details.
         """
-        super(DaySchedule, self).__init__(*args, **kwargs)
-        epbunch = self.idf.get_schedule_epbunch(self.Name)
-        self._values = self.get_schedule_values(epbunch)
+        super(DaySchedule, self).__init__(**kwargs)
+
+    @classmethod
+    def from_epbunch(cls, epbunch, **kwargs):
+        """Create a DaySchedule from a :class:`EpBunch` object
+
+        Args:
+            epbunch (EpBunch): The EpBunch object to construct a DaySchedule
+                from.
+            **kwargs (dict): Keywords passed to the :class:`UmiSchedule`
+                constructor. See :class:`UmiSchedule` for more details.
+        """
+
+        sched = cls(idf=epbunch.theidf, Name=epbunch.Name, epbunch=epbunch,
+                    schType=epbunch.key, **kwargs)
+        sched.values = sched.get_schedule_values(epbunch)
+        return sched
 
     @classmethod
     def from_values(cls, Values, **kwargs):
+        """Create a DaySchedule from an array of size (24,)
+
+        Args:
+            Values (array-like): A list of values of length 24.
+            **kwargs (dict): Keywords passed to the :class:`UmiSchedule`
+             constructor. See :class:`UmiSchedule` for more details.
+        """
         sched = cls(**kwargs)
-        sched._values = Values
+        sched.values = Values
+
+        return sched
+
+    @classmethod
+    def from_json(cls, Type, **kwargs):
+        values = kwargs.pop('Values')
+        sched = cls.from_values(values, schTypeLimitsName=Type, **kwargs)
 
         return sched
 
@@ -238,7 +268,7 @@ class DaySchedule(UmiSchedule):
 
     @property
     def all_values(self):
-        return np.array(self._values)
+        return np.array(self.values)
 
     def to_dict(self):
         return {'$ref': str(self.id)}
@@ -249,33 +279,32 @@ class WeekSchedule(UmiSchedule):
     $id, Category, Comments, DataSource, Days, Name, Type
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, days=None, **kwargs):
         """
         Args:
             *args:
             **kwargs:
         """
-        super(WeekSchedule, self).__init__(*args, **kwargs)
-
-        days = kwargs.get('Days', None)
-        if days is None:
-            self.Days = self.get_days(kwargs['epbunch'])
-        else:
-            self.Days = days
-        _type = kwargs.get('Type', None)
-        if _type is None:
-            self.schLimitType = self.get_schedule_type_limits_name()
-        else:
-            self.schLimitType = _type
+        super(WeekSchedule, self).__init__(**kwargs)
+        self.Days = days
 
     @classmethod
-    def from_json(cls, *args, **kwargs):
+    def from_epbunch(cls, epbunch, **kwargs):
+        sched = cls(idf=epbunch.theidf, Name=epbunch.Name,
+                    schType=epbunch.key, **kwargs)
+        sched.Days = sched.get_days(epbunch)
+
+        return sched
+
+    @classmethod
+    def from_json(cls, **kwargs):
         """
         Args:
             *args:
             **kwargs:
         """
-        wc = cls(*args, **kwargs)
+        sch_type_limits_name = kwargs.pop('Type')
+        wc = cls(schTypeLimitsName=sch_type_limits_name, **kwargs)
         days = kwargs.get('Days', None)
         wc.Days = [wc.get_ref(day) for day in days]
         return wc
@@ -287,7 +316,7 @@ class WeekSchedule(UmiSchedule):
         data_dict["$id"] = str(self.id)
         data_dict["Category"] = "Week"
         data_dict["Days"] = [day.to_dict() for day in self.Days]
-        data_dict["Type"] = self.schLimitType
+        data_dict["Type"] = self.schTypeLimitsName
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
         data_dict["Name"] = self.Name
@@ -328,23 +357,12 @@ class YearSchedule(UmiSchedule):
             **kwargs:
         """
         super(YearSchedule, self).__init__(*args, **kwargs)
-        self.Comments = kwargs.get('Comments', '')
         self.epbunch = kwargs.get('epbunch', None)
-        type = kwargs.get('Type', None)
-        if type is None:
-            self.Type = self.schTypeLimitsName
-        else:
-            self.Type = type
         parts = kwargs.get('Parts', None)
         if parts is None:
             self.Parts = self.get_parts(self.epbunch)
         else:
             self.Parts = parts
-        type = kwargs.get('Type', None)
-        if type is None:
-            self.schLimitType = self.get_schedule_type_limits_name()
-        else:
-            self.schLimitType = type
 
     @property
     def all_values(self):
@@ -361,13 +379,14 @@ class YearSchedule(UmiSchedule):
         return series.values
 
     @classmethod
-    def from_json(cls, *args, **kwargs):
+    def from_json(cls, **kwargs):
         """
         Args:
             *args:
             **kwargs:
         """
-        ys = cls(*args, **kwargs)
+        schtypelimitsname = kwargs.pop('Type')
+        ys = cls(schTypeLimitsName=schtypelimitsname, **kwargs)
         parts = kwargs.get('Parts', None)
 
         ys.Parts = [YearScheduleParts.from_json(all_objects=ys, **part) for
@@ -382,7 +401,7 @@ class YearSchedule(UmiSchedule):
         data_dict["$id"] = str(self.id)
         data_dict["Category"] = "Year"
         data_dict["Parts"] = [part.to_dict() for part in self.Parts]
-        data_dict["Type"] = self.schLimitType
+        data_dict["Type"] = self.schTypeLimitsName
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
         data_dict["Name"] = self.Name

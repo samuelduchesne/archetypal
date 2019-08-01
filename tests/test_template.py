@@ -3,7 +3,7 @@ import pytest
 from path import Path
 
 import archetypal as ar
-from archetypal import get_eplus_dire
+from archetypal import get_eplus_dire, clear_cache
 
 
 @pytest.fixture(scope='session')
@@ -68,11 +68,32 @@ class TestDaySchedule:
 
     # todo: Implement tests for DaySchedule class
 
+    def test_from_epbunch(self, small_idf):
+        """test the `from_epbunch` constructor"""
+        from archetypal import DaySchedule
+        idf, sql = small_idf
+        epbunch = idf.getobject('Schedule:Day:Hourly'.upper(), 'B_Off_D_Het_WD')
+        sched = DaySchedule.from_epbunch(epbunch)
+        assert len(sched.all_values) == 24.
+        assert repr(sched)
+
+    def test_from_values(self):
+        """test the `from_epbunch` constructor"""
+        from archetypal import DaySchedule
+        values = np.array(range(0, 24))
+        kwargs = {'$id': '66', 'Category': 'Day',
+                  'schTypeLimitsName': 'Fraction',
+                  'Comments': 'default', 'DataSource': 'default',
+                  'Name': 'hourlyAllOn'}
+        sched = DaySchedule.from_values(values, **kwargs)
+        assert len(sched.all_values) == 24.
+        assert repr(sched)
+
     def test_daySchedule_from_to_json(self, config):
         import json
         from archetypal import load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        # WeekSchedule(Name='weekSched').clear_cache()
+        clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
@@ -88,7 +109,7 @@ class TestWeekSchedule:
         import json
         from archetypal import WeekSchedule, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        # WeekSchedule(Name='weekSched').clear_cache()
+        clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
@@ -106,7 +127,7 @@ class TestYearSchedule:
         import json
         from archetypal import YearSchedule, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        # WeekSchedule(Name='weekSched').clear_cache()
+        clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
@@ -216,7 +237,7 @@ class TestGasMaterial:
         import json
         from archetypal import GasMaterial
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        GasMaterial(Name='GasMat').clear_cache()
+        clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         gasMat_json = [GasMaterial.from_json(**store)
@@ -298,7 +319,7 @@ class TestOpaqueConstruction:
         thickness = 0.10
         layers = [MaterialLayer(mat_a, thickness),
                   MaterialLayer(mat_b, thickness)]
-        OpaqueConstruction(Name='Name', Layers=layers).clear_cache()
+        clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
@@ -316,7 +337,7 @@ class TestWindowConstruction:
         import json
         from archetypal import WindowConstruction, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        WindowConstruction(Name='winConstr').clear_cache()
+        clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
@@ -334,7 +355,7 @@ class TestStructureDefinition:
         import json
         from archetypal import StructureDefinition, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        StructureDefinition(Name='structDef').clear_cache()
+        clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
@@ -353,6 +374,13 @@ class TestUmiSchedule:
         const = UmiSchedule.constant_schedule()
         assert const.__class__.__name__ == 'UmiSchedule'
         assert const.Name == 'AlwaysOn'
+
+    def test_schedule_develop(self, config, small_idf):
+        from archetypal import UmiSchedule
+        idf, sql = small_idf
+        clear_cache()
+        sched = UmiSchedule(Name='B_Off_Y_Occ', idf=idf)
+        assert sched.to_dict()
 
 
 class TestZoneConstructionSet:
@@ -418,7 +446,7 @@ class TestZoneConstructionSet:
         import json
         from archetypal import ZoneConstructionSet, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        ZoneConstructionSet(Name='Constr').clear_cache()
+        clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
@@ -459,7 +487,7 @@ class TestZoneLoad:
         import json
         from archetypal import ZoneLoad, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        ZoneLoad(Name='Load').clear_cache()
+        clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
@@ -515,7 +543,7 @@ class TestZoneConditioning:
         import json
         from archetypal import ZoneConditioning, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        ZoneConditioning(Name='Cond').clear_cache()
+        clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
@@ -565,7 +593,7 @@ class TestVentilationSetting:
         import json
         from archetypal import VentilationSetting, load_json_objects
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        VentilationSetting(Name='Vent').clear_cache()
+        clear_cache()
         with open(filename, 'r') as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
@@ -601,7 +629,7 @@ class TestWindowSetting:
         from archetypal import WindowSetting
         idf, sql = small_idf
         construction = idf.getobject('CONSTRUCTION', 'B_Dbl_Air_Cl')
-        WindowSetting(Name='Unnamed').clear_cache()
+        clear_cache()
         w = WindowSetting.from_construction(construction)
 
         assert w.to_json()
@@ -777,6 +805,7 @@ class TestBuildingTemplate:
     def test_buildingTemplate_from_to_json(self, config):
         from archetypal import UmiTemplate
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        clear_cache()
         b = UmiTemplate.from_json(filename)
         bt = b.BuildingTemplates
         bt_to_json = bt[0].to_json()
@@ -819,7 +848,7 @@ class TestZoneGraph:
         """Test the creation of a BuildingTemplate zone graph. Parametrize
         the creation of the adjacency report"""
         import networkx as nx
-        bt.clear_cache()
+        clear_cache()
         G1 = bt.zone_graph(log_adj_report=adj_report, skeleton=True,
                            force=False)
         assert not nx.is_empty(G1)
@@ -890,7 +919,7 @@ class TestZoneGraph:
 
         from archetypal import BuildingTemplate
         bt = BuildingTemplate.from_idf(idf, sql=sql)
-        bt.clear_cache()
+        clear_cache()
         R = bt.reduce()
 
     def test_reduce_graph(self, config):
@@ -906,7 +935,7 @@ class TestZoneGraph:
         from archetypal import BuildingTemplate
 
         bt = BuildingTemplate.from_idf(idf, sql=sql)
-        bt.clear_cache()
+        clear_cache()
         G = bt.zone_graph(log_adj_report=False, skeleton=False, force=True)
 
         r_G = bt._graph_reduce(G)

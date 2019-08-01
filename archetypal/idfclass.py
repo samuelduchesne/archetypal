@@ -1019,7 +1019,7 @@ def multirunner(**kwargs):
     IDF and EPW runs in parallel.
 
     Args:
-        kwargs (dict): A dict made up of run() arguments.
+        kwargs: keywords passed to the :func:`run` method.
     """
     try:
         run(**kwargs)

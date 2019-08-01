@@ -66,7 +66,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         template (str): Path to d18 template file.
         log_clear_names (bool): If True, DOES NOT log the equivalence between
             the old and new names in the console.
-        kwargs (dict): keyword arguments sent to
+        kwargs: keyword arguments sent to
             :func:`convert_idf_to_trnbuild()` or :func:`trnbuild_idf()` or
             :func:`choose_window`. "ordered=True" to have the name of idf
             objects in the outputfile in ascendant order. See

@@ -118,8 +118,8 @@ class UmiTemplate:
             idf_files (str or list):
             weather (str):
             load (bool):
-            run_eplus_kwargs (dict):
-            load_idf_kwargs (dict):
+            run_eplus_kwargs:
+            load_idf_kwargs:
         """
         # instanciate class
         if run_eplus_kwargs is None:

@@ -56,7 +56,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
                 result in an error message.
             Type: # todo: defined parameter
             Life: # todo: defined parameter
-            **kwargs (dict): keywords passed to the :class:`MaterialBase`
+            **kwargs: keywords passed to the :class:`MaterialBase`
                 constructor. For more info, see :class:`MaterialBase`.
         """
         super(GlazingMaterial, self).__init__(**kwargs)

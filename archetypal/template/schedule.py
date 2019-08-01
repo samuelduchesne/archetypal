@@ -210,7 +210,7 @@ class DaySchedule(UmiSchedule):
         :class:`UmiSchedule` for more info.:
 
         Args:
-            **kwargs (dict): Keywords passed to the :class:`UmiSchedule`
+            **kwargs: Keywords passed to the :class:`UmiSchedule`
                 constructor. See :class:`UmiSchedule` for more details.
         """
         super(DaySchedule, self).__init__(**kwargs)
@@ -222,7 +222,7 @@ class DaySchedule(UmiSchedule):
         Args:
             epbunch (EpBunch): The EpBunch object to construct a DaySchedule
                 from.
-            **kwargs (dict): Keywords passed to the :class:`UmiSchedule`
+            **kwargs: Keywords passed to the :class:`UmiSchedule`
                 constructor. See :class:`UmiSchedule` for more details.
         """
 
@@ -237,7 +237,7 @@ class DaySchedule(UmiSchedule):
 
         Args:
             Values (array-like): A list of values of length 24.
-            **kwargs (dict): Keywords passed to the :class:`UmiSchedule`
+            **kwargs: Keywords passed to the :class:`UmiSchedule`
              constructor. See :class:`UmiSchedule` for more details.
         """
         sched = cls(**kwargs)

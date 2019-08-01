@@ -784,9 +784,6 @@ class Schedule(object):
                             sch_type=None):
         """Main function that returns the schedule values
 
-        Todo:
-            - Add support for "Schedule:Daily" schedules.
-
         Args:
             name (str): the name of the schedule
             start_date:

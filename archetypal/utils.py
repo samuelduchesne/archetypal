@@ -800,10 +800,21 @@ def get_eplus_dire():
 
 
 def timeit(method):
-    """Use this method as a decorator to calculate the time"""
+    """Use this method as a decorator on a function to calculate the time it
+    take to complete. Uses the :func:`log` method.
+
+    Examples:
+        >>> @timeit
+        >>> def myfunc():
+        >>>     return 'is a function'
+
+    Args:
+        method (function): A function.
+    """
 
     def timed(*args, **kwargs):
         ts = time.time()
+        log('Executing %r...' % method.__qualname__)
         result = method(*args, **kwargs)
         te = time.time()
 

@@ -171,9 +171,8 @@ class IDF(geomeppy.IDF):
             if save:
                 log('object "{}" added to the idf file'.format(ep_object))
                 self.save()
-            else:
-                # return the ep_object
-                return new_object
+            # return the ep_object
+            return new_object
 
     def get_schedule_type_limits_data_by_name(self, schedule_limit_name):
         """Returns the data for a particular 'ScheduleTypeLimits' object

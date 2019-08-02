@@ -126,6 +126,7 @@ class Schedule(object):
             return sched
 
     @property
+    @timeit
     def all_values(self):
         """returns the values array"""
         if self.values is None:

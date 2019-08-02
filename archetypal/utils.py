@@ -819,10 +819,19 @@ def timeit(method):
         te = time.time()
 
         tt = (te - ts)
+        try:
+            try:
+                name = result.Name
+            except:
+                name = result.__qualname__
+        except:
+            name = str(result)
         if tt > 0.001:
-            log('Completed %r in %.3f s' % (method.__qualname__, tt))
+            log('Completed %r for %r in %.3f s' % (method.__qualname__,
+                                                   name, tt))
         else:
-            log('Completed %r in %.3f ms' % (method.__qualname__, tt * 1000))
+            log('Completed %r for %r in %.3f ms' % (method.__qualname__,
+                                                    name, tt * 1000))
         return result
 
     return timed

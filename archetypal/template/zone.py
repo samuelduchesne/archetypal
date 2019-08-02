@@ -393,7 +393,7 @@ class Zone(UmiBase, metaclass=Unique):
 
 def resolve_obco(this):
     """Resolve the outside boundary condition of a surface and return the other
-    surface and, if possible, the zone.
+    SURFACE epbunch and, if possible, the ZONE epbunch.
 
     Args:
         this (EpBunch): The surface for which we are identifying the boundary
@@ -426,17 +426,16 @@ def resolve_obco(this):
     #                                  'validobjects'):
 
     obc = this.Outside_Boundary_Condition
-    obcos = [this.get_referenced_object('Outside_Boundary_Condition_Object')]
 
     if obc.upper() == 'ZONE':
-        for adj_zone in obcos:
-            # adj_zone = this.theidf.getobject('ZONE', obco['Name'])
-            return None, adj_zone
+        name = obc.Outside_Boundary_Condition_Object
+        adj_zone = this.theidf.getobject('ZONE', name)
+        return None, adj_zone
 
     elif obc.upper() == 'SURFACE':
-        for obco in obcos:
-            adj_zone = obco.theidf.getobject('ZONE', obco['Zone_Name'])
-            return obco, adj_zone
+        obco = this.get_referenced_object('Outside_Boundary_Condition_Object')
+        adj_zone = obco.theidf.getobject('ZONE', obco.Zone_Name)
+        return obco, adj_zone
     else:
         return None, None
 

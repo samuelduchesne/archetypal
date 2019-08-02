@@ -73,7 +73,7 @@ RUN curl -SLO $ENERGYPLUS_DOWNLOAD_URL && \
 COPY ./trnsidf /app/trnsidf
 
 # configure conda and install packages in one RUN to keep image tidy
-RUN git clone --branch=develop --verbose https://github.com/samuelduchesne/archetypal.git && \
+RUN git clone --branch=feature/umi --verbose https://github.com/samuelduchesne/archetypal.git && \
     cd archetypal && \
     conda update -n base conda && \
     conda config --append channels conda-forge && \

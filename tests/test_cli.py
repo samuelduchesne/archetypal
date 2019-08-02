@@ -2,6 +2,7 @@ from click.testing import CliRunner
 
 from archetypal import get_eplus_dire
 from archetypal.cli import cli
+from path import Path
 
 
 class TestCli():
@@ -11,8 +12,9 @@ class TestCli():
         """Tests the 'reduce' method"""
         runner = CliRunner()
         examples = get_eplus_dire() / "ExampleFiles"
+        necb = Path("tests/input_data/necb")
         test_file = examples / "2ZoneDataCenterHVAC_wEconomizer.idf"
-        test_file = "/Users/samuelduchesne/Dropbox/Polytechnique/Doc/software/archetypal/tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        test_files = necb.glob("*Retail*.idf")
         result = runner.invoke(cli,
                                ['--use-cache', '--cache-folder',
                                 'tests/.temp/cache', '--data-folder',
@@ -21,10 +23,11 @@ class TestCli():
                                 'tests/.temp/logs',
                                 '--log-console',
                                 'reduce',
+                                '-n', "Retail",
                                 '-w',
                                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-                                '-np',
-                                test_file],
+                                '-p',
+                                *test_files],
                                catch_exceptions=False,
                                )
         print(result.stdout)

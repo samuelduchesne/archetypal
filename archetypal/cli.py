@@ -11,7 +11,7 @@ from pprint import pprint
 import click
 
 import archetypal
-from archetypal import settings, cd
+from archetypal import settings, cd, load_idf
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -178,23 +178,30 @@ def convert(idf_file, window_lib, return_idf, return_t3d,
 
 @cli.command()
 @click.argument('idf', nargs=-1)
+@click.option('--name', '-n', type=click.STRING,
+              help="The name of the output json file")
 @click.option('--weather', '-w', type=click.Path(exists=True),
               help="path to the EPW weather file",
               default=archetypal.get_eplus_dire() / "WeatherData" /
                       "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw")
 @click.option('--parallel/--no-parallel', '-p/-np', is_flag=True, default=True,
               help="process each idf file on different cores")
-def reduce(idf, weather, parallel):
+def reduce(idf, name, weather, parallel):
     """Perform the model reduction and translate to an UMI template file."""
     if parallel:
         # if parallel is True, run eplus in parallel
         rundict = {file: dict(eplus_file=file, weather_file=weather,
                               annual=True, prep_outputs=True,
                               expandobjects=True, verbose='v',
-                              output_report='sql', return_idf=True)
+                              output_report='sql', return_idf=False)
                    for file in idf}
         res = archetypal.parallel_process(rundict, archetypal.run_eplus)
-        pprint(res)
+        loaded_idf = {}
+        for key, sql in res.items():
+            loaded_idf[key] = {}
+            loaded_idf[key][0] = sql
+            loaded_idf[key][1] = load_idf(key)
+        res = loaded_idf
     else:
         # else, run sequentially
         res = defaultdict(tuple)
@@ -212,5 +219,5 @@ def reduce(idf, weather, parallel):
         bts.append(BuildingTemplate.from_idf(fn[1], sql=fn[0],
                                              DataSource=fn[1].name))
 
-    template = archetypal.UmiTemplate(BuildingTemplates=bts)
+    template = archetypal.UmiTemplate(name=name, BuildingTemplates=bts)
     print(template.to_json())

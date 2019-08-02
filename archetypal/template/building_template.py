@@ -330,8 +330,9 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             start_time = time.time()
 
             # start from the highest degree node
-            subgraphs = sorted(networkx.connected_component_subgraphs(G),
-                               key=len, reverse=True)
+            subgraphs = sorted(
+                (G.subgraph(c) for c in networkx.connected_components(G)),
+                key=len, reverse=True)
             from functools import reduce
             from operator import add
             bundle_zone = reduce(add,

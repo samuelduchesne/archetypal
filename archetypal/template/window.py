@@ -144,7 +144,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
 
                 elif material.key.upper() == 'WindowMaterial:Gas'.upper():
                     # Todo: Make gas name generic, like in UmiTemplate Editor
-                    material_obj = GasMaterial(Name=material.Gas_Type,
+                    material_obj = GasMaterial(Name=material.Gas_Type.upper(),
                                                idf=self.idf)
                     material_layer = MaterialLayer(material_obj,
                                                    material.Thickness)

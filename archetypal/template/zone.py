@@ -428,7 +428,7 @@ def resolve_obco(this):
     obc = this.Outside_Boundary_Condition
 
     if obc.upper() == 'ZONE':
-        name = obc.Outside_Boundary_Condition_Object
+        name = this.Outside_Boundary_Condition_Object
         adj_zone = this.theidf.getobject('ZONE', name)
         return None, adj_zone
 

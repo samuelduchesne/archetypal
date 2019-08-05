@@ -14,6 +14,7 @@ class TestCli():
         examples = get_eplus_dire() / "ExampleFiles"
         necb = Path("tests/input_data/necb")
         test_file = examples / "2ZoneDataCenterHVAC_wEconomizer.idf"
+        test_file_list = ["tests/input_data/trnsys/ASHRAE90.1_Warehouse_STD2004_Rochester.idf"]
         test_files = necb.glob("*Retail*.idf")
         result = runner.invoke(cli,
                                ['--use-cache', '--cache-folder',
@@ -27,7 +28,7 @@ class TestCli():
                                 '-w',
                                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
                                 '-p',
-                                *test_files],
+                                *test_file_list],
                                catch_exceptions=False,
                                )
         print(result.stdout)

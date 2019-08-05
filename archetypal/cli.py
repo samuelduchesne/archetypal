@@ -178,7 +178,7 @@ def convert(idf_file, window_lib, return_idf, return_t3d,
 
 @cli.command()
 @click.argument('idf', nargs=-1)
-@click.option('--name', '-n', type=click.STRING,
+@click.option('--name', '-n', type=click.STRING, default='umitemplate',
               help="The name of the output json file")
 @click.option('--weather', '-w', type=click.Path(exists=True),
               help="path to the EPW weather file",

@@ -11,6 +11,8 @@ import random
 
 import numpy as np
 
+import math
+
 from archetypal import log
 
 
@@ -189,6 +191,12 @@ class UmiBase(object):
             weights (iterable, optional): Weights of [self, other] to calculate
                 weighted average.
         """
+        if math.isnan(self.__dict__[attr]):
+            return other.__dict__[attr]
+        if math.isnan(other.__dict__[attr]):
+            return self.__dict__[attr]
+        if math.isnan(self.__dict__[attr])and math.isnan(other.__dict__[attr]):
+            return ValueError("Both values for self and other are Not A Number.")
         if self.__dict__[attr] is None and other.__dict__[attr] is None:
             return None
         else:

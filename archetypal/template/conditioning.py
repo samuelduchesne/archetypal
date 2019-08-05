@@ -9,6 +9,7 @@ import collections
 
 from archetypal import float_round, ReportData, log, timeit
 from archetypal.template import UmiBase, Unique, UmiSchedule
+import numpy as np
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
@@ -601,27 +602,45 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # Load the ReportData and filter *variable_output_name* and group by
         # zone name (*KeyValue*). Return annual average.
-        variable_output_name = 'Zone Thermostat Heating Setpoint Temperature'
-        h_array = ReportData.from_sql(zone.sql).filter_report_data(
-            name=variable_output_name, keyvalue=zone.Name.upper()).loc[:,
-                  ['TimeIndex', 'Value']].set_index('TimeIndex').Value.values
+        variable_output_name = "Zone Thermostat Heating Setpoint Temperature"
+        h_array = (
+            ReportData.from_sql(zone.sql)
+            .filter_report_data(name=variable_output_name, keyvalue=zone.Name.upper())
+            .loc[:, ["TimeIndex", "Value"]]
+            .set_index("TimeIndex")
+            .Value.values
+        )
 
         heating_sched = UmiSchedule.from_values(
-            Name=zone.Name + '_Heating_Schedule',
+            Name=zone.Name + "_Heating_Schedule",
             values=(h_array > 0).astype(int),
-            schTypeLimitsName='Fraction',
-            idf=zone.idf)
+            schTypeLimitsName="Fraction",
+            idf=zone.idf,
+        )
 
-        variable_output_name = 'Zone Thermostat Cooling Setpoint Temperature'
-        c_array = ReportData.from_sql(zone.sql).filter_report_data(
-            name=variable_output_name, keyvalue=zone.Name.upper()).loc[:,
-                  ['TimeIndex', 'Value']].set_index('TimeIndex').Value.values
+        variable_output_name = "Zone Thermostat Cooling Setpoint Temperature"
+        c_array = (
+            ReportData.from_sql(zone.sql)
+            .filter_report_data(name=variable_output_name, keyvalue=zone.Name.upper())
+            .loc[:, ["TimeIndex", "Value"]]
+            .set_index("TimeIndex")
+            .Value.values
+        )
         cooling_sched = UmiSchedule.from_values(
-            Name=zone.Name + '_Cooling_Schedule',
+            Name=zone.Name + "_Cooling_Schedule",
             values=(c_array > 0).astype(int),
-            schTypeLimitsName='Fraction',
-            idf=zone.idf)
-        return h_array.mean(), heating_sched, c_array.mean(), cooling_sched
+            schTypeLimitsName="Fraction",
+            idf=zone.idf,
+        )
+        if np.all(c_array == 0):
+            c_mean = np.NaN
+        else:
+            c_mean = c_array.mean()
+        if np.all(h_array == 0):
+            h_mean = np.NaN
+        else:
+            h_mean = h_array.mean()
+        return h_mean, heating_sched, c_mean, cooling_sched
 
     def combine(self, other, weights=None):
         """Combine two ZoneConditioning objects together.

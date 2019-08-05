@@ -14,6 +14,7 @@ import numpy as np
 import math
 
 from archetypal import log
+from archetypal.utils import lcm
 
 
 class Unique(type):
@@ -191,18 +192,28 @@ class UmiBase(object):
             weights (iterable, optional): Weights of [self, other] to calculate
                 weighted average.
         """
-        if not isinstance(self.__dict__[attr], list):
+        if not isinstance(self.__dict__[attr], list) and not isinstance(
+                other.__dict__[attr], list):
             if math.isnan(self.__dict__[attr]):
                 return other.__dict__[attr]
-            if math.isnan(other.__dict__[attr]):
+            elif math.isnan(other.__dict__[attr]):
                 return self.__dict__[attr]
-            if math.isnan(self.__dict__[attr]) and math.isnan(other.__dict__[attr]):
-                return ValueError("Both values for self and other are Not A Number.")
-        if self.__dict__[attr] is None and other.__dict__[attr] is None:
+            elif math.isnan(self.__dict__[attr]) and math.isnan(other.__dict__[attr]):
+                raise ValueError("Both values for self and other are Not A Number.")
+            else:
+                return np.average([self.__dict__[attr],
+                                   other.__dict__[attr]], weights=weights)
+        elif self.__dict__[attr] is None and other.__dict__[attr] is None:
             return None
         else:
-            return np.average([self.__dict__[attr],
-                               other.__dict__[attr]], weights=weights)
+            # handle arrays by finding the least common multiple of the two arrays and
+            # tiling to the full length; then, apply average
+            self_attr_ = np.array(self.__dict__[attr])
+            other_attr_ = np.array(other.__dict__[attr])
+            l_ = lcm(len(self_attr_), len(other_attr_))
+            self_attr_ = np.tile(self_attr_, int(l_ / len(self_attr_)))
+            other_attr_ = np.tile(other_attr_, int(l_ / len(other_attr_)))
+            return np.average([self_attr_, other_attr_], weights=weights, axis=0)
 
     def _str_mean(self, other, attr, append=False):
         """Returns the combined string attributes

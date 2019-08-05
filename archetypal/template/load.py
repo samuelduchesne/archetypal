@@ -148,61 +148,58 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
         # Get schedule index for different loads and creates ZoneLoad arguments
         # Verifies if Equipment in zone
+        zone_index = zone.sql['Zones'][
+            zone.sql['Zones']['ZoneName'].str.contains(
+                zone.Name.upper())].index[0]
         if zone.sql['NominalElectricEquipment'][
-            zone.sql['NominalElectricEquipment']['ObjectName'].str.contains(
-                zone.Name.upper())].empty:
+            zone.sql['NominalElectricEquipment']['ZoneIndex'] == zone_index].empty:
             EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule(
                 idf=zone.idf)
             EquipmentPowerDensity = 0.0
         else:
             schedule_equipment_index = zone.sql['NominalElectricEquipment'][
-                zone.sql['NominalElectricEquipment']['ObjectName'].str.contains(
-                    zone.Name.upper())]['ScheduleIndex'].iloc[0]
+                zone.sql['NominalElectricEquipment']['ZoneIndex'] == zone_index][
+                'ScheduleIndex'].iloc[0]
             EquipmentAvailabilitySchedule = \
                 UmiSchedule(Name=zone.sql['Schedules']['ScheduleName'].iloc[
                     schedule_equipment_index - 1], idf=zone.idf)
             EquipmentPowerDensity = zone.sql['NominalElectricEquipment'][
                                         zone.sql['NominalElectricEquipment'][
-                                            'ObjectName'].str.contains(
-                                            zone.Name.upper())][
+                                            'ZoneIndex'] == zone_index][
                                         'DesignLevel'].iloc[0] / zone.area
         # Verifies if Lights in zone
         if zone.sql['NominalLighting'][
-            zone.sql['NominalLighting']['ObjectName'].str.contains(
-                zone.Name.upper())].empty:
+            zone.sql['NominalLighting']['ZoneIndex'] == zone_index].empty:
             LightsAvailabilitySchedule = UmiSchedule.constant_schedule(
                 idf=zone.idf)
             LightingPowerDensity = 0.0
         else:
             schedule_light_index = zone.sql['NominalLighting'][
-                zone.sql['NominalLighting']['ObjectName'].str.contains(
-                    zone.Name.upper())]['ScheduleIndex'].iloc[0]
+                zone.sql['NominalLighting']['ZoneIndex'] == zone_index][
+                'ScheduleIndex'].iloc[0]
             LightsAvailabilitySchedule = UmiSchedule(
                 Name=zone.sql['Schedules']['ScheduleName'].iloc[
                     schedule_light_index - 1], idf=zone.idf)
             LightingPowerDensity = zone.sql['NominalLighting'][
                                        zone.sql['NominalLighting'][
-                                           'ObjectName'].str.contains(
-                                           zone.Name.upper())][
+                                           'ZoneIndex'] == zone_index][
                                        'DesignLevel'].iloc[0] / zone.area
         # Verifies if People in zone
         if zone.sql['NominalPeople'][
-            zone.sql['NominalPeople']['ObjectName'].str.contains(
-                zone.Name.upper())].empty:
+            zone.sql['NominalPeople']['ZoneIndex'] == zone_index].empty:
             OccupancySchedule = UmiSchedule.constant_schedule(
                 idf=zone.idf)
             PeopleDensity = 0.0
         else:
             schedule_people_index = zone.sql['NominalPeople'][
-                zone.sql['NominalPeople']['ObjectName'].str.contains(
-                    zone.Name.upper())]['NumberOfPeopleScheduleIndex'].iloc[0]
+                zone.sql['NominalPeople']['ZoneIndex'] == zone_index][
+                'NumberOfPeopleScheduleIndex'].iloc[0]
             OccupancySchedule = UmiSchedule(
                 Name=zone.sql['Schedules']['ScheduleName'].iloc[
                     schedule_people_index - 1], idf=zone.idf)
             PeopleDensity = zone.sql['NominalPeople'][
-                                zone.sql['NominalPeople'][
-                                    'ObjectName'].str.contains(
-                                    zone.Name.upper())]['NumberOfPeople'].iloc[
+                                zone.sql['NominalPeople']['ZoneIndex'] == zone_index][
+                                'NumberOfPeople'].iloc[
                                 0] / zone.area
 
         name = zone.Name + "_ZoneLoad"

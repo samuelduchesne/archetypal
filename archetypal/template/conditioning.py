@@ -10,6 +10,7 @@ import collections
 from archetypal import float_round, ReportData, log, timeit
 from archetypal.template import UmiBase, Unique, UmiSchedule
 import numpy as np
+import math
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
@@ -18,17 +19,32 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
     .. image:: ../images/template/zoninfo-conditioning.png
     """
 
-    def __init__(self, CoolingCoeffOfPerf=1, CoolingLimitType='NoLimit',
-                 CoolingSetpoint=26, CoolingSchedule=None,
-                 EconomizerType='NoEconomizer',
-                 HeatRecoveryEfficiencyLatent=0.65,
-                 HeatRecoveryEfficiencySensible=0.7, HeatRecoveryType='None',
-                 HeatingCoeffOfPerf=1, HeatingLimitType='NoLimit',
-                 HeatingSetpoint=20, HeatingSchedule=None, IsCoolingOn=True,
-                 IsHeatingOn=True, IsMechVentOn=True, MaxCoolFlow=100,
-                 MaxCoolingCapacity=100, MaxHeatFlow=100,
-                 MaxHeatingCapacity=100, MinFreshAirPerArea=0,
-                 MinFreshAirPerPerson=0.00944, MechVentSchedule=None, **kwargs):
+    def __init__(
+        self,
+        CoolingCoeffOfPerf=1,
+        CoolingLimitType="NoLimit",
+        CoolingSetpoint=26,
+        CoolingSchedule=None,
+        EconomizerType="NoEconomizer",
+        HeatRecoveryEfficiencyLatent=0.65,
+        HeatRecoveryEfficiencySensible=0.7,
+        HeatRecoveryType="None",
+        HeatingCoeffOfPerf=1,
+        HeatingLimitType="NoLimit",
+        HeatingSetpoint=20,
+        HeatingSchedule=None,
+        IsCoolingOn=True,
+        IsHeatingOn=True,
+        IsMechVentOn=True,
+        MaxCoolFlow=100,
+        MaxCoolingCapacity=100,
+        MaxHeatFlow=100,
+        MaxHeatingCapacity=100,
+        MinFreshAirPerArea=0,
+        MinFreshAirPerPerson=0.00944,
+        MechVentSchedule=None,
+        **kwargs
+    ):
         """Initialize a new ZoneCondition object
 
         Args:
@@ -156,7 +172,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         self.MinFreshAirPerArea = MinFreshAirPerArea
         self.MinFreshAirPerPerson = MinFreshAirPerPerson
 
-        self._belongs_to_zone = kwargs.get('zone', None)
+        self._belongs_to_zone = kwargs.get("zone", None)
 
     def __add__(self, other):
         return self.combine(other)
@@ -170,11 +186,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         zc = cls(*args, **kwargs)
 
-        cool_schd = kwargs.get('CoolingSchedule', None)
+        cool_schd = kwargs.get("CoolingSchedule", None)
         zc.CoolingSchedule = zc.get_ref(cool_schd)
-        heat_schd = kwargs.get('HeatingSchedule', None)
+        heat_schd = kwargs.get("HeatingSchedule", None)
         zc.HeatingSchedule = zc.get_ref(heat_schd)
-        mech_schd = kwargs.get('MechVentSchedule', None)
+        mech_schd = kwargs.get("MechVentSchedule", None)
         zc.MechVentSchedule = zc.get_ref(mech_schd)
         return zc
 
@@ -185,18 +201,21 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         data_dict["$id"] = str(self.id)
         data_dict["CoolingSchedule"] = self.CoolingSchedule.to_dict()
         data_dict["CoolingCoeffOfPerf"] = self.CoolingCoeffOfPerf
-        data_dict["CoolingSetpoint"] = self.CoolingSetpoint
+        data_dict["CoolingSetpoint"] = (
+            self.CoolingSetpoint if not math.isnan(self.CoolingSetpoint) else 26
+        )
         data_dict["CoolingLimitType"] = self.CoolingLimitType
         data_dict["EconomizerType"] = self.EconomizerType
         data_dict["HeatingCoeffOfPerf"] = self.HeatingCoeffOfPerf
         data_dict["HeatingLimitType"] = self.HeatingLimitType
         data_dict["HeatingSchedule"] = self.HeatingSchedule.to_dict()
-        data_dict["HeatingSetpoint"] = self.HeatingSetpoint
+        data_dict["HeatingSetpoint"] = (
+            self.HeatingSetpoint if not math.isnan(self.HeatingSetpoint) else 20
+        )
+        data_dict["HeatRecoveryEfficiencyLatent"] = self.HeatRecoveryEfficiencyLatent
         data_dict[
-            "HeatRecoveryEfficiencyLatent"] = self.HeatRecoveryEfficiencyLatent
-        data_dict[
-            "HeatRecoveryEfficiencySensible"] = \
-            self.HeatRecoveryEfficiencySensible
+            "HeatRecoveryEfficiencySensible"
+        ] = self.HeatRecoveryEfficiencySensible
         data_dict["HeatRecoveryType"] = self.HeatRecoveryType
         data_dict["IsCoolingOn"] = self.IsCoolingOn
         data_dict["IsHeatingOn"] = self.IsHeatingOn
@@ -224,8 +243,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # First create placeholder object.
         name = zone.Name + "_ZoneConditioning"
-        z_cond = cls(Name=name, zone=zone, idf=zone.idf,
-                     Category=zone.idf.building_name(use_idfname=True))
+        z_cond = cls(
+            Name=name,
+            zone=zone,
+            idf=zone.idf,
+            Category=zone.idf.building_name(use_idfname=True),
+        )
 
         z_cond._set_thermostat_setpoints(zone)
 
@@ -253,28 +276,26 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             zone (Zone): The zone object.
         """
         # Economizer
-        controllers_in_idf = zone.idf.idfobjects[
-            'Controller:OutdoorAir'.upper()]
-        self.EconomizerType = 'NoEconomizer'  # default value
+        controllers_in_idf = zone.idf.idfobjects["Controller:OutdoorAir".upper()]
+        self.EconomizerType = "NoEconomizer"  # default value
 
         for object in controllers_in_idf:
-            if object.Economizer_Control_Type == 'NoEconomizer':
-                self.EconomizerType = 'NoEconomizer'
-            elif object.Economizer_Control_Type == 'DifferentialEnthalphy':
-                self.EconomizerType = 'DifferentialEnthalphy'
-            elif object.Economizer_Control_Type == 'DifferentialDryBulb':
-                self.EconomizerType = 'DifferentialDryBulb'
-            elif object.Economizer_Control_Type == 'FixedDryBulb':
-                self.EconomizerType = 'DifferentialDryBulb'
-            elif object.Economizer_Control_Type == 'FixedEnthalpy':
-                self.EconomizerType = 'DifferentialEnthalphy'
-            elif object.Economizer_Control_Type == 'ElectronicEnthalpy':
-                self.EconomizerType = 'DifferentialEnthalphy'
-            elif object.Economizer_Control_Type == 'FixedDewPointAndDryBulb':
-                self.EconomizerType = 'DifferentialDryBulb'
-            elif object.Economizer_Control_Type == \
-                    'DifferentialDryBulbAndEnthalpy':
-                self.EconomizerType = 'DifferentialEnthalphy'
+            if object.Economizer_Control_Type == "NoEconomizer":
+                self.EconomizerType = "NoEconomizer"
+            elif object.Economizer_Control_Type == "DifferentialEnthalphy":
+                self.EconomizerType = "DifferentialEnthalphy"
+            elif object.Economizer_Control_Type == "DifferentialDryBulb":
+                self.EconomizerType = "DifferentialDryBulb"
+            elif object.Economizer_Control_Type == "FixedDryBulb":
+                self.EconomizerType = "DifferentialDryBulb"
+            elif object.Economizer_Control_Type == "FixedEnthalpy":
+                self.EconomizerType = "DifferentialEnthalphy"
+            elif object.Economizer_Control_Type == "ElectronicEnthalpy":
+                self.EconomizerType = "DifferentialEnthalphy"
+            elif object.Economizer_Control_Type == "FixedDewPointAndDryBulb":
+                self.EconomizerType = "DifferentialDryBulb"
+            elif object.Economizer_Control_Type == "DifferentialDryBulbAndEnthalpy":
+                self.EconomizerType = "DifferentialEnthalphy"
 
     def _set_mechanical_ventilation(self, zone):
         """Iterate on 'Controller:MechanicalVentilation' objects to find the
@@ -286,47 +307,48 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         Args:
             zone (Zone): The zone object.
         """
-        if not zone.idf.idfobjects['Controller:MechanicalVentilation'.upper()]:
+        if not zone.idf.idfobjects["Controller:MechanicalVentilation".upper()]:
             IsMechVentOn = False
             MinFreshAirPerArea = 0  # use defaults
             MinFreshAirPerPerson = 0
             MechVentSchedule = UmiSchedule.constant_schedule(idf=zone.idf)
         else:
-            design_spe_outdoor_air_name = ''
+            design_spe_outdoor_air_name = ""
             for object in zone.idf.idfobjects[
-                'Controller:MechanicalVentilation'.upper()]:
+                "Controller:MechanicalVentilation".upper()
+            ]:
                 if zone.Name in object.fieldvalues:
-                    indice_zone = \
-                        [k for k, s in enumerate(object.fieldvalues) if
-                         s == zone.Name][
-                            0]
-                    design_spe_outdoor_air_name = object.fieldvalues[
-                        indice_zone + 1]
+                    indice_zone = [
+                        k for k, s in enumerate(object.fieldvalues) if s == zone.Name
+                    ][0]
+                    design_spe_outdoor_air_name = object.fieldvalues[indice_zone + 1]
 
-                    if object.Availability_Schedule_Name != '':
+                    if object.Availability_Schedule_Name != "":
                         MechVentSchedule = UmiSchedule(
-                            Name=object.Availability_Schedule_Name,
-                            idf=zone.idf)
+                            Name=object.Availability_Schedule_Name, idf=zone.idf
+                        )
                     else:
-                        MechVentSchedule = UmiSchedule.constant_schedule(
-                            idf=zone.idf)
+                        MechVentSchedule = UmiSchedule.constant_schedule(idf=zone.idf)
                     break
             # If 'DesignSpecifactionOutdoorAirName', MechVent is ON, and gets
             # the minimum fresh air (per person and area)
-            if design_spe_outdoor_air_name != '':
+            if design_spe_outdoor_air_name != "":
                 IsMechVentOn = True
                 design_spe_outdoor_air = zone.idf.getobject(
-                    'DesignSpecification:OutdoorAir'.upper(),
-                    design_spe_outdoor_air_name)
-                MinFreshAirPerPerson = \
+                    "DesignSpecification:OutdoorAir".upper(),
+                    design_spe_outdoor_air_name,
+                )
+                MinFreshAirPerPerson = (
                     design_spe_outdoor_air.Outdoor_Air_Flow_per_Person
+                )
                 # If MinFreshAirPerPerson NOT a number, MinFreshAirPerPerson=0
                 try:
                     MinFreshAirPerPerson = float(MinFreshAirPerPerson)
                 except:
                     MinFreshAirPerPerson = 0
-                MinFreshAirPerArea = \
+                MinFreshAirPerArea = (
                     design_spe_outdoor_air.Outdoor_Air_Flow_per_Zone_Floor_Area
+                )
                 # If MinFreshAirPerArea NOT a number, MinFreshAirPerArea=0
                 try:
                     MinFreshAirPerArea = float(MinFreshAirPerArea)
@@ -354,31 +376,46 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         # COPs (heating and cooling)
 
         # Heating
-        heating_meters = ('Heating:Electricity', 'Heating:Gas',
-                          'Heating:DistrictHeating')
-        heating_cop = self._get_cop(zone, energy_in_list=heating_meters,
-                                    energy_out_variable_name=(
-                                        'Air System Total Heating Energy',
-                                        'Zone Ideal Loads Zone Total Heating '
-                                        'Energy'))
+        heating_meters = (
+            "Heating:Electricity",
+            "Heating:Gas",
+            "Heating:DistrictHeating",
+        )
+        heating_cop = self._get_cop(
+            zone,
+            energy_in_list=heating_meters,
+            energy_out_variable_name=(
+                "Air System Total Heating Energy",
+                "Zone Ideal Loads Zone Total Heating " "Energy",
+            ),
+        )
         # Cooling
-        cooling_meters = ('Cooling:Electricity', 'Cooling:Gas',
-                          'Cooling:DistrictCooling')
-        cooling_cop = self._get_cop(zone, energy_in_list=cooling_meters,
-                                    energy_out_variable_name=(
-                                        'Air System Total Cooling Energy',
-                                        'Zone Ideal Loads Zone Total Cooling '
-                                        'Energy'))
+        cooling_meters = (
+            "Cooling:Electricity",
+            "Cooling:Gas",
+            "Cooling:DistrictCooling",
+        )
+        cooling_cop = self._get_cop(
+            zone,
+            energy_in_list=cooling_meters,
+            energy_out_variable_name=(
+                "Air System Total Cooling Energy",
+                "Zone Ideal Loads Zone Total Cooling " "Energy",
+            ),
+        )
 
         # Capacity limits (heating and cooling)
-        zone_size = zone.sql['ZoneSizes'][
-            zone.sql['ZoneSizes']['ZoneName'] == zone.Name.upper()]
+        zone_size = zone.sql["ZoneSizes"][
+            zone.sql["ZoneSizes"]["ZoneName"] == zone.Name.upper()
+        ]
         # Heating
         HeatingLimitType, heating_cap, heating_flow = self._get_design_limits(
-            zone, zone_size, load_name='Heating')
+            zone, zone_size, load_name="Heating"
+        )
         # Cooling
         CoolingLimitType, cooling_cap, cooling_flow = self._get_design_limits(
-            zone, zone_size, load_name='Cooling')
+            zone, zone_size, load_name="Cooling"
+        )
 
         self.HeatingLimitType = HeatingLimitType
         self.MaxHeatingCapacity = heating_cap
@@ -390,18 +427,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         self.CoolingCoeffOfPerf = cooling_cop
         self.HeatingCoeffOfPerf = heating_cop
 
-        # If cop calc == infinity, means there is no heat or cold input,
-        # therefore system is off.
-        if heating_cop == float('infinity'):
-            self.IsHeatingOn = False
+        # If cop calc == infinity, COP = 1 because we need a value in json file.
+        if heating_cop == float("infinity"):
             self.HeatingCoeffOfPerf = 1
-        else:
-            self.IsHeatingOn = True
-        if cooling_cop == float('infinity'):
-            self.IsCoolingOn = False
+        if cooling_cop == float("infinity"):
             self.CoolingCoeffOfPerf = 1
-        else:
-            self.IsCoolingOn = True
 
     def _set_thermostat_setpoints(self, zone):
         """Sets the thermostat settings and schedules for this zone.
@@ -417,10 +447,20 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # Set Thermostat set points
         # Heating and Cooling set points and schedules
-        self.HeatingSetpoint, \
-        self.HeatingSchedule, \
-        self.CoolingSetpoint, \
-        self.CoolingSchedule = self._get_setpoint_and_scheds(zone)
+        self.HeatingSetpoint, self.HeatingSchedule, self.CoolingSetpoint, self.CoolingSchedule = self._get_setpoint_and_scheds(
+            zone
+        )
+
+        # If HeatingSetpoint == nan, means there is no heat or cold input,
+        # therefore system is off.
+        if math.isnan(self.HeatingSetpoint):
+            self.IsHeatingOn = False
+        else:
+            self.IsHeatingOn = True
+        if math.isnan(self.CoolingSetpoint):
+            self.IsCoolingOn = False
+        else:
+            self.IsCoolingOn = True
 
     def _set_heat_recovery(self, zone):
         """Sets the heat recovery parameters for this zone.
@@ -437,68 +477,74 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             zone (Zone): The Zone object.
         """
         from itertools import chain
+
         # get possible heat recovery objects from idd
-        heat_recovery_objects = zone.idf.getiddgroupdict()['Heat Recovery']
+        heat_recovery_objects = zone.idf.getiddgroupdict()["Heat Recovery"]
 
         # get possible heat recovery objects from this idf
-        heat_recovery_in_idf = list(chain.from_iterable(
-            zone.idf.idfobjects[key.upper()] for key in heat_recovery_objects))
+        heat_recovery_in_idf = list(
+            chain.from_iterable(
+                zone.idf.idfobjects[key.upper()] for key in heat_recovery_objects
+            )
+        )
 
         # Set defaults
         HeatRecoveryEfficiencyLatent = 0.7
         HeatRecoveryEfficiencySensible = 0.65
-        HeatRecoveryType = 'None'
-        comment = ''
+        HeatRecoveryType = "None"
+        comment = ""
 
         # iterate over those objects. If the list is empty, it will simply pass.
         for object in heat_recovery_in_idf:
 
-            if object.key.upper() == 'HeatExchanger:AirToAir:FlatPlate'.upper():
+            if object.key.upper() == "HeatExchanger:AirToAir:FlatPlate".upper():
                 # Do HeatExchanger:AirToAir:FlatPlate
 
                 nsaot = object.Nominal_Supply_Air_Outlet_Temperature
                 nsait = object.Nominal_Supply_Air_Inlet_Temperature
                 n2ait = object.Nominal_Secondary_Air_Inlet_Temperature
-                HeatRecoveryEfficiencySensible = (
-                        (nsaot - nsait) / (n2ait - nsait))
+                HeatRecoveryEfficiencySensible = (nsaot - nsait) / (n2ait - nsait)
                 # Hypotheses: HeatRecoveryEfficiencySensible - 0.05
-                HeatRecoveryEfficiencyLatent = \
-                    HeatRecoveryEfficiencySensible - 0.05
-                HeatRecoveryType = 'Enthalpy'
-                comment = 'HeatRecoveryEfficiencySensible was calculated ' \
-                          'using this formula: (Supply Air Outlet T°C -; ' \
-                          'Supply Air Inlet T°C)/(Secondary Air Inlet T°C - ' \
-                          'Supply Air Inlet T°C)'
+                HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencySensible - 0.05
+                HeatRecoveryType = "Enthalpy"
+                comment = (
+                    "HeatRecoveryEfficiencySensible was calculated "
+                    "using this formula: (Supply Air Outlet T°C -; "
+                    "Supply Air Inlet T°C)/(Secondary Air Inlet T°C - "
+                    "Supply Air Inlet T°C)"
+                )
 
-            elif object.key.upper() == \
-                    'HeatExchanger:AirToAir:SensibleAndLatent'.upper():
+            elif (
+                object.key.upper() == "HeatExchanger:AirToAir:SensibleAndLatent".upper()
+            ):
                 # Do HeatExchanger:AirToAir:SensibleAndLatent
 
-                HeatRecoveryEfficiencyLatent, \
-                HeatRecoveryEfficiencySensible \
-                    = self._get_recoverty_effectiveness(object, zone)
-                HeatRecoveryType = 'Enthalpy'
+                HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible = self._get_recoverty_effectiveness(
+                    object, zone
+                )
+                HeatRecoveryType = "Enthalpy"
 
-                comment = 'HeatRecoveryEfficiencies were calculated using ' \
-                          'simulation hourly values and averaged. Only values' \
-                          ' > 0 were used in the average calculation.'
+                comment = (
+                    "HeatRecoveryEfficiencies were calculated using "
+                    "simulation hourly values and averaged. Only values"
+                    " > 0 were used in the average calculation."
+                )
 
-            elif object.key.upper() == \
-                    'HeatExchanger:Desiccant:BalancedFlow'.upper():
+            elif object.key.upper() == "HeatExchanger:Desiccant:BalancedFlow".upper():
                 # Do HeatExchanger:Dessicant:BalancedFlow
                 # Use default values
                 HeatRecoveryEfficiencyLatent = 0.7
                 HeatRecoveryEfficiencySensible = 0.65
-                HeatRecoveryType = 'Enthalpy'
+                HeatRecoveryType = "Enthalpy"
 
-            elif object.key.upper() == \
-                    'HeatExchanger:Desiccant:BalancedFlow' \
-                    ':PerformanceDataType1'.upper():
+            elif (
+                object.key.upper() == "HeatExchanger:Desiccant:BalancedFlow"
+                ":PerformanceDataType1".upper()
+            ):
                 # This is not an actual HeatExchanger, pass
                 pass
             else:
-                msg = 'Heat exchanger object "{}" is not ' \
-                      'implemented'.format(object)
+                msg = 'Heat exchanger object "{}" is not ' "implemented".format(object)
                 raise NotImplementedError(msg)
 
         self.HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencyLatent
@@ -514,16 +560,24 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             zone:
         """
         rd = ReportData.from_sql(zone.sql)
-        effectiveness = rd.filter_report_data(
-            name=('Heat Exchanger Sensible Effectiveness',
-                  'Heat Exchanger Latent Effectiveness')).loc[
-            lambda x: x.Value > 0].groupby(
-            ['KeyValue', 'Name']).Value.mean().unstack(level=-1)
+        effectiveness = (
+            rd.filter_report_data(
+                name=(
+                    "Heat Exchanger Sensible Effectiveness",
+                    "Heat Exchanger Latent Effectiveness",
+                )
+            )
+            .loc[lambda x: x.Value > 0]
+            .groupby(["KeyValue", "Name"])
+            .Value.mean()
+            .unstack(level=-1)
+        )
         HeatRecoveryEfficiencySensible = effectiveness.loc[
-            object.Name.upper(), 'Heat Exchanger Sensible ' \
-                                 'Effectiveness']
+            object.Name.upper(), "Heat Exchanger Sensible " "Effectiveness"
+        ]
         HeatRecoveryEfficiencyLatent = effectiveness.loc[
-            object.Name.upper(), 'Heat Exchanger Latent Effectiveness']
+            object.Name.upper(), "Heat Exchanger Latent Effectiveness"
+        ]
         return HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible
 
     @classmethod
@@ -539,18 +593,19 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         try:
             cap = round(
-                zone_size[zone_size['LoadType'] == load_name][
-                    'UserDesLoad'].values[
-                    0] / zone.area, 3)
-            flow = \
-                zone_size[zone_size['LoadType'] == load_name][
-                    'UserDesFlow'].values[
-                    0] / zone.area
-            LimitType = 'LimitFlowRateAndCapacity'
+                zone_size[zone_size["LoadType"] == load_name]["UserDesLoad"].values[0]
+                / zone.area,
+                3,
+            )
+            flow = (
+                zone_size[zone_size["LoadType"] == load_name]["UserDesFlow"].values[0]
+                / zone.area
+            )
+            LimitType = "LimitFlowRateAndCapacity"
         except:
             cap = 100
             flow = 100
-            LimitType = 'NoLimit'
+            LimitType = "NoLimit"
         return LimitType, cap, flow
 
     @classmethod
@@ -567,6 +622,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 System Total Heating Energy')
         """
         from archetypal import ReportData
+
         rd = ReportData.from_sql(zone.sql)
         energy_out = rd.filter_report_data(name=tuple(energy_out_variable_name))
         energy_in = rd.filter_report_data(name=tuple(energy_in_list))
@@ -586,7 +642,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         #         'ZoneHVAC:EquipmentConnections'.upper()]
         # }
 
-        outs = energy_out.groupby('KeyValue').Value.sum()
+        outs = energy_out.groupby("KeyValue").Value.sum()
         ins = energy_in.Value.sum()
 
         cop = float_round(outs.sum() / ins, 3)
@@ -656,8 +712,10 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
-                                                 other.__class__.__name__)
+            msg = "Cannot combine %s with %s" % (
+                self.__class__.__name__,
+                other.__class__.__name__,
+            )
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -667,54 +725,63 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         meta = self._get_predecessors_meta(other)
 
         if not weights:
-            weights = [self._belongs_to_zone.volume,
-                       other._belongs_to_zone.volume]
-            log('using zone volume "{}" as weighting factor in "{}" '
-                'combine.'.format(" & ".join(list(map(str, map(int, weights)))),
-                                  self.__class__.__name__))
+            weights = [self._belongs_to_zone.volume, other._belongs_to_zone.volume]
+            log(
+                'using zone volume "{}" as weighting factor in "{}" '
+                "combine.".format(
+                    " & ".join(list(map(str, map(int, weights)))),
+                    self.__class__.__name__,
+                )
+            )
 
-        a = self._float_mean(other, 'CoolingCoeffOfPerf', weights)
-        b = self._str_mean(other, 'CoolingLimitType')
-        c = self._float_mean(other, 'CoolingSetpoint', weights)
-        d = self._str_mean(other, 'EconomizerType')
-        e = self._float_mean(other, 'HeatRecoveryEfficiencyLatent', weights)
-        f = self._float_mean(other, 'HeatRecoveryEfficiencySensible',
-                             weights)
-        g = self._str_mean(other, 'HeatRecoveryType')
-        h = self._float_mean(other, 'HeatingCoeffOfPerf', weights)
-        i = self._str_mean(other, 'HeatingLimitType')
-        j = self._float_mean(other, 'HeatingSetpoint', weights)
+        a = self._float_mean(other, "CoolingCoeffOfPerf", weights)
+        b = self._str_mean(other, "CoolingLimitType")
+        c = self._float_mean(other, "CoolingSetpoint", weights)
+        d = self._str_mean(other, "EconomizerType")
+        e = self._float_mean(other, "HeatRecoveryEfficiencyLatent", weights)
+        f = self._float_mean(other, "HeatRecoveryEfficiencySensible", weights)
+        g = self._str_mean(other, "HeatRecoveryType")
+        h = self._float_mean(other, "HeatingCoeffOfPerf", weights)
+        i = self._str_mean(other, "HeatingLimitType")
+        j = self._float_mean(other, "HeatingSetpoint", weights)
         k = any((self.IsCoolingOn, other.IsCoolingOn))
         l = any((self.IsHeatingOn, other.IsHeatingOn))
         m = any((self.IsMechVentOn, other.IsMechVentOn))
-        n = self._float_mean(other, 'MaxCoolFlow', weights)
-        o = self._float_mean(other, 'MaxCoolingCapacity', weights)
-        p = self._float_mean(other, 'MaxHeatFlow', weights)
-        q = self._float_mean(other, 'MaxHeatingCapacity', weights)
-        r = self._float_mean(other, 'MinFreshAirPerArea', weights)
-        s = self._float_mean(other, 'MinFreshAirPerPerson', weights)
+        n = self._float_mean(other, "MaxCoolFlow", weights)
+        o = self._float_mean(other, "MaxCoolingCapacity", weights)
+        p = self._float_mean(other, "MaxHeatFlow", weights)
+        q = self._float_mean(other, "MaxHeatingCapacity", weights)
+        r = self._float_mean(other, "MinFreshAirPerArea", weights)
+        s = self._float_mean(other, "MinFreshAirPerPerson", weights)
         t = self.HeatingSchedule.combine(other.HeatingSchedule, weights)
         u = self.CoolingSchedule.combine(other.CoolingSchedule, weights)
         v = self.MechVentSchedule.combine(other.MechVentSchedule, weights)
 
         # create a new object with the previous attributes
-        new_obj = self.__class__(**meta,
-                                 CoolingCoeffOfPerf=a, CoolingLimitType=b,
-                                 CoolingSetpoint=c,
-                                 EconomizerType=d,
-                                 HeatRecoveryEfficiencyLatent=e,
-                                 HeatRecoveryEfficiencySensible=f,
-                                 HeatRecoveryType=g,
-                                 HeatingCoeffOfPerf=h, HeatingLimitType=i,
-                                 HeatingSetpoint=j,
-                                 IsCoolingOn=k, IsHeatingOn=l, IsMechVentOn=m,
-                                 MaxCoolFlow=n,
-                                 MaxCoolingCapacity=o, MaxHeatFlow=p,
-                                 MaxHeatingCapacity=q,
-                                 MinFreshAirPerArea=r, MinFreshAirPerPerson=s,
-                                 HeatingSchedule=t,
-                                 CoolingSchedule=u,
-                                 MechVentSchedule=v
-                                 )
+        new_obj = self.__class__(
+            **meta,
+            CoolingCoeffOfPerf=a,
+            CoolingLimitType=b,
+            CoolingSetpoint=c,
+            EconomizerType=d,
+            HeatRecoveryEfficiencyLatent=e,
+            HeatRecoveryEfficiencySensible=f,
+            HeatRecoveryType=g,
+            HeatingCoeffOfPerf=h,
+            HeatingLimitType=i,
+            HeatingSetpoint=j,
+            IsCoolingOn=k,
+            IsHeatingOn=l,
+            IsMechVentOn=m,
+            MaxCoolFlow=n,
+            MaxCoolingCapacity=o,
+            MaxHeatFlow=p,
+            MaxHeatingCapacity=q,
+            MinFreshAirPerArea=r,
+            MinFreshAirPerPerson=s,
+            HeatingSchedule=t,
+            CoolingSchedule=u,
+            MechVentSchedule=v
+        )
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj

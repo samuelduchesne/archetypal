@@ -17,10 +17,7 @@ class GasMaterial(MaterialBase, metaclass=Unique):
 
     """
 
-    def __init__(self, *args,
-                 Category='Gases',
-                 Type="Gas",
-                 **kwargs):
+    def __init__(self, *args, Category="Gases", Type="Gas", **kwargs):
         """
         Args:
             *args:
@@ -39,7 +36,7 @@ class GasMaterial(MaterialBase, metaclass=Unique):
             **kwargs:
         """
         gm = cls(*args, **kwargs)
-        gas_type = kwargs.get('Name', None)
+        gas_type = kwargs.get("Name", None)
         gm.Type = gas_type
 
         return gm

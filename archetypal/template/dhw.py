@@ -20,9 +20,15 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
     .. image:: ../images/template/zoneinfo-dhw.png
     """
 
-    def __init__(self, IsOn=True, WaterSchedule=None,
-                 FlowRatePerFloorArea=0.03, WaterSupplyTemperature=65,
-                 WaterTemperatureInlet=10, **kwargs):
+    def __init__(
+        self,
+        IsOn=True,
+        WaterSchedule=None,
+        FlowRatePerFloorArea=0.03,
+        WaterSupplyTemperature=65,
+        WaterTemperatureInlet=10,
+        **kwargs
+    ):
         """
         Args:
             IsOn (bool):
@@ -39,7 +45,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         self.WaterTemperatureInlet = WaterTemperatureInlet
         self.WaterSchedule = WaterSchedule
 
-        self._belongs_to_zone = kwargs.get('zone', None)
+        self._belongs_to_zone = kwargs.get("zone", None)
 
     def __add__(self, other):
         """Overload + to implement self.combine
@@ -57,7 +63,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             **kwargs:
         """
         dhws = cls(*args, **kwargs)
-        wat_sch = kwargs.get('WaterSchedule', None)
+        wat_sch = kwargs.get("WaterSchedule", None)
         dhws.WaterSchedule = dhws.get_ref(wat_sch)
         return dhws
 
@@ -88,15 +94,19 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             zone (Zone):
         """
         # First, find the WaterUse:Equipement assigned to this zone
-        dhw_objs = zone._epbunch.getreferingobjs(iddgroups=["Water Systems"],
-                                                 fields=['Zone_Name'])
+        dhw_objs = zone._epbunch.getreferingobjs(
+            iddgroups=["Water Systems"], fields=["Zone_Name"]
+        )
         if len(dhw_objs) > 1:
             # This zone has more than one WaterUse:Equipment object
-            raise NotImplementedError('More than one WaterUse:Equipment '
-                                      'objects is not yet implemented. Please '
-                                      'contact pacakge developers. '
-                                      'Zone "{}" in building "{}"'.format(
-                zone.Name, zone._epbunch.theidf.name))
+            raise NotImplementedError(
+                "More than one WaterUse:Equipment "
+                "objects is not yet implemented. Please "
+                "contact pacakge developers. "
+                'Zone "{}" in building "{}"'.format(
+                    zone.Name, zone._epbunch.theidf.name
+                )
+            )
         elif len(dhw_objs) > 0:
             # Return dhw object for zone
             total_flow_rate = cls._do_flow_rate(dhw_objs, zone)
@@ -105,17 +115,20 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             supply_temp = cls._do_hot_temp(dhw_objs, zone)
 
             name = zone.Name + "_DHW"
-            z_dhw = cls(Name=name, zone=zone,
-                        FlowRatePerFloorArea=total_flow_rate,
-                        IsOn=total_flow_rate > 0,
-                        WaterSchedule=water_schedule,
-                        WaterSupplyTemperature=supply_temp,
-                        WaterTemperatureInlet=inlet_temp,
-                        idf=zone.idf,
-                        Category=zone.idf.building_name(use_idfname=True))
+            z_dhw = cls(
+                Name=name,
+                zone=zone,
+                FlowRatePerFloorArea=total_flow_rate,
+                IsOn=total_flow_rate > 0,
+                WaterSchedule=water_schedule,
+                WaterSupplyTemperature=supply_temp,
+                WaterTemperatureInlet=inlet_temp,
+                idf=zone.idf,
+                Category=zone.idf.building_name(use_idfname=True),
+            )
         else:
             # Assume water systems for whole building
-            dhw_objs = zone.idf.idfobjects['WaterUse:Equipment'.upper()]
+            dhw_objs = zone.idf.idfobjects["WaterUse:Equipment".upper()]
             if dhw_objs:
                 total_flow_rate = cls._do_flow_rate(dhw_objs, zone)
                 water_schedule = cls._do_water_schedule(dhw_objs, zone)
@@ -123,31 +136,36 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                 supply_temp = cls._do_hot_temp(dhw_objs, zone)
 
                 name = zone.Name + "_DHW"
-                z_dhw = cls(Name=name, zone=zone,
-                            FlowRatePerFloorArea=total_flow_rate,
-                            IsOn=total_flow_rate > 0,
-                            WaterSchedule=water_schedule,
-                            WaterSupplyTemperature=supply_temp,
-                            WaterTemperatureInlet=inlet_temp,
-                            idf=zone.idf,
-                            Category=zone.idf.building_name(use_idfname=True))
+                z_dhw = cls(
+                    Name=name,
+                    zone=zone,
+                    FlowRatePerFloorArea=total_flow_rate,
+                    IsOn=total_flow_rate > 0,
+                    WaterSchedule=water_schedule,
+                    WaterSupplyTemperature=supply_temp,
+                    WaterTemperatureInlet=inlet_temp,
+                    idf=zone.idf,
+                    Category=zone.idf.building_name(use_idfname=True),
+                )
             else:
                 # defaults with 0 flow rate.
                 total_flow_rate = 0
-                water_schedule = UmiSchedule.constant_schedule(
-                    idf=zone._epbunch.theidf)
+                water_schedule = UmiSchedule.constant_schedule(idf=zone._epbunch.theidf)
                 supply_temp = 60
                 inlet_temp = 10
 
                 name = zone.Name + "_DHW"
-                z_dhw = cls(Name=name, zone=zone,
-                            FlowRatePerFloorArea=total_flow_rate,
-                            IsOn=total_flow_rate > 0,
-                            WaterSchedule=water_schedule,
-                            WaterSupplyTemperature=supply_temp,
-                            WaterTemperatureInlet=inlet_temp,
-                            idf=zone.idf,
-                            Category=zone.idf.building_name(use_idfname=True))
+                z_dhw = cls(
+                    Name=name,
+                    zone=zone,
+                    FlowRatePerFloorArea=total_flow_rate,
+                    IsOn=total_flow_rate > 0,
+                    WaterSchedule=water_schedule,
+                    WaterSupplyTemperature=supply_temp,
+                    WaterTemperatureInlet=inlet_temp,
+                    idf=zone.idf,
+                    Category=zone.idf.building_name(use_idfname=True),
+                )
 
         return z_dhw
 
@@ -164,9 +182,11 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             # Reference to the schedule object specifying the target water
             # temperature [C]. If blank, the target temperature defaults to
             # the hot water supply temperature.
-            schedule_name = obj.Target_Temperature_Schedule_Name if \
-                obj.Target_Temperature_Schedule_Name != '' else \
-                obj.Hot_Water_Supply_Temperature_Schedule_Name
+            schedule_name = (
+                obj.Target_Temperature_Schedule_Name
+                if obj.Target_Temperature_Schedule_Name != ""
+                else obj.Hot_Water_Supply_Temperature_Schedule_Name
+            )
 
             hot_schd = UmiSchedule(Name=schedule_name, idf=zone._epbunch.theidf)
             hot_schds.append(hot_schd)
@@ -186,39 +206,43 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         """
         WaterTemperatureInlet = []
         for obj in dhw_objs:
-            if obj.Cold_Water_Supply_Temperature_Schedule_Name != '':
+            if obj.Cold_Water_Supply_Temperature_Schedule_Name != "":
                 # If a cold water supply schedule is provided, create the
                 # schedule
                 cold_schd_names = UmiSchedule(
                     Name=obj.Cold_Water_Supply_Temperature_Schedule_Name,
-                    idf=zone._epbunch.theidf)
+                    idf=zone._epbunch.theidf,
+                )
                 WaterTemperatureInlet.append(cold_schd_names.mean)
             else:
                 # If blank, water temperatures are calculated by the
                 # Site:WaterMainsTemperature object.
                 water_mains_temps = zone._epbunch.theidf.idfobjects[
-                    "Site:WaterMainsTemperature".upper()]
+                    "Site:WaterMainsTemperature".upper()
+                ]
                 if water_mains_temps:
                     # If a "Site:WaterMainsTemperature" object exists,
                     # do water depending on calc method:
                     water_mains_temp = water_mains_temps[0]
-                    if water_mains_temp.Calculation_Method.lower() == \
-                            "schedule":
+                    if water_mains_temp.Calculation_Method.lower() == "schedule":
                         # From Schedule method
                         mains_scd = UmiSchedule(
                             Name=water_mains_temp.Schedule_Name,
-                            idf=zone._epbunch.theidf)
+                            idf=zone._epbunch.theidf,
+                        )
                         WaterTemperatureInlet.append(mains_scd.mean())
-                    elif water_mains_temp.Calculation_Method.lower() == \
-                            "correlation":
+                    elif water_mains_temp.Calculation_Method.lower() == "correlation":
                         # From Correlation method
-                        mean_outair_temp = \
+                        mean_outair_temp = (
                             water_mains_temp.Annual_Average_Outdoor_Air_Temperature
-                        max_dif = \
+                        )
+                        max_dif = (
                             water_mains_temp.Maximum_Difference_In_Monthly_Average_Outdoor_Air_Temperatures
+                        )
 
-                        WaterTemperatureInlet.append(water_main_correlation(
-                            mean_outair_temp, max_dif).mean())
+                        WaterTemperatureInlet.append(
+                            water_main_correlation(mean_outair_temp, max_dif).mean()
+                        )
                 else:
                     # Else, there is no Site:WaterMainsTemperature object in
                     # the input file, a default constant value of 10 C is
@@ -239,8 +263,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         water_schds = []
         for obj in dhw_objs:
             water_schd_name = UmiSchedule(
-                Name=obj.Flow_Rate_Fraction_Schedule_Name,
-                idf=zone._epbunch.theidf)
+                Name=obj.Flow_Rate_Fraction_Schedule_Name, idf=zone._epbunch.theidf
+            )
             water_schds.append(water_schd_name)
         return reduce(UmiSchedule.combine, water_schds, weights=[1, 1])
 
@@ -258,7 +282,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         for obj in dhw_objs:
             total_flow_rate += obj.Peak_Flow_Rate  # m3/s
         total_flow_rate /= zone.area  # m3/s/m2
-        total_flow_rate *= 3600.  # m3/h/m2
+        total_flow_rate *= 3600.0  # m3/h/m2
         return total_flow_rate
 
     def combine(self, other, weights=None):
@@ -279,8 +303,10 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             return self
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
-                                                 other.__class__.__name__)
+            msg = "Cannot combine %s with %s" % (
+                self.__class__.__name__,
+                other.__class__.__name__,
+            )
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -290,25 +316,28 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         meta = self._get_predecessors_meta(other)
 
         if not weights:
-            weights = [self._belongs_to_zone.volume,
-                       other._belongs_to_zone.volume]
-            log('using zone volume "{}" as weighting factor in "{}" '
-                'combine.'.format(" & ".join(list(map(str, map(int, weights)))),
-                                  self.__class__.__name__))
+            weights = [self._belongs_to_zone.volume, other._belongs_to_zone.volume]
+            log(
+                'using zone volume "{}" as weighting factor in "{}" '
+                "combine.".format(
+                    " & ".join(list(map(str, map(int, weights)))),
+                    self.__class__.__name__,
+                )
+            )
 
         new_obj = DomesticHotWaterSetting(
             **meta,
             IsOn=any((self.IsOn, other.IsOn)),
-            WaterSchedule=self.WaterSchedule.combine(other.WaterSchedule,
-                                                     weights),
-            FlowRatePerFloorArea=self._float_mean(other, "FlowRatePerFloorArea",
-                                                  weights),
-            WaterSupplyTemperature=self._float_mean(other,
-                                                    "WaterSupplyTemperature",
-                                                    weights),
-            WaterTemperatureInlet=self._float_mean(other,
-                                                   "WaterTemperatureInlet",
-                                                   weights)
+            WaterSchedule=self.WaterSchedule.combine(other.WaterSchedule, weights),
+            FlowRatePerFloorArea=self._float_mean(
+                other, "FlowRatePerFloorArea", weights
+            ),
+            WaterSupplyTemperature=self._float_mean(
+                other, "WaterSupplyTemperature", weights
+            ),
+            WaterTemperatureInlet=self._float_mean(
+                other, "WaterTemperatureInlet", weights
+            )
         )
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
@@ -348,15 +377,16 @@ def water_main_correlation(t_out_avg, max_diff):
     """
     import numpy as np
     import pandas as pd
+
     Q_ = settings.unit_registry.Quantity
-    t_out_avg_F = Q_(t_out_avg, 'degC').to("degF")
-    max_diff_F = Q_(max_diff, 'delta_degC').to("delta_degF")
+    t_out_avg_F = Q_(t_out_avg, "degC").to("degF")
+    max_diff_F = Q_(max_diff, "delta_degC").to("delta_degF")
     ratio = 0.4 + 0.01 * (t_out_avg_F.m - 44)
     lag = 35 - 1.0 * (t_out_avg_F.m - 44)
     days = np.arange(1, 365)
     function = lambda t_out_avg, day, max_diff: (t_out_avg + 6) + ratio * (
-            max_diff / 2) * np.sin(np.deg2rad(0.986 * (day - 15 - lag) - 90))
-    mains = [Q_(function(t_out_avg_F.m, day, max_diff_F.m), "degF")
-             for day in days]
+        max_diff / 2
+    ) * np.sin(np.deg2rad(0.986 * (day - 15 - lag) - 90))
+    mains = [Q_(function(t_out_avg_F.m, day, max_diff_F.m), "degF") for day in days]
     series = pd.Series([temp.to("degC").m for temp in mains])
     return series

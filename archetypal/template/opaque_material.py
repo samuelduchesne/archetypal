@@ -17,13 +17,26 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
     .. image:: ../images/template/materials-opaque.png
     """
 
-    def __init__(self, Conductivity, SpecificHeat, SolarAbsorptance=0.7,
-                 ThermalEmittance=0.9, VisibleAbsorptance=0.7,
-                 Roughness='Rough', Cost=0, Density=1,
-                 MoistureDiffusionResistance=50, EmbodiedCarbon=0.45,
-                 EmbodiedEnergy=0, TransportCarbon=0, TransportDistance=0,
-                 TransportEnergy=0, SubstitutionRatePattern=None,
-                 SubstitutionTimestep=20, **kwargs):
+    def __init__(
+        self,
+        Conductivity,
+        SpecificHeat,
+        SolarAbsorptance=0.7,
+        ThermalEmittance=0.9,
+        VisibleAbsorptance=0.7,
+        Roughness="Rough",
+        Cost=0,
+        Density=1,
+        MoistureDiffusionResistance=50,
+        EmbodiedCarbon=0.45,
+        EmbodiedEnergy=0,
+        TransportCarbon=0,
+        TransportDistance=0,
+        TransportEnergy=0,
+        SubstitutionRatePattern=None,
+        SubstitutionTimestep=20,
+        **kwargs
+    ):
         """A custom opaque material.
 
         Args:
@@ -88,7 +101,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.EmbodiedEnergy = EmbodiedEnergy
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
 
-        self._thickness = kwargs.get('Thickness', None)
+        self._thickness = kwargs.get("Thickness", None)
 
     def __add__(self, other):
         """Overload + to implement self.combine.
@@ -100,8 +113,9 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
 
     @classmethod
     def generic(cls):
-        return cls(Conductivity=0.17, SpecificHeat=800, Density=800,
-                   Name='generic_Material')
+        return cls(
+            Conductivity=0.17, SpecificHeat=800, Density=800, Name="generic_Material"
+        )
 
     def combine(self, other, weights=None):
         """Combine two OpaqueMaterial objects.
@@ -118,8 +132,10 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
-                                                 other.__class__.__name__)
+            msg = "Cannot combine %s with %s" % (
+                self.__class__.__name__,
+                other.__class__.__name__,
+            )
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -127,37 +143,37 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             return self
 
         if not weights:
-            log('using OpaqueMaterial density as weighting factor in "{}" '
-                'combine.'.format(self.__class__.__name__))
+            log(
+                'using OpaqueMaterial density as weighting factor in "{}" '
+                "combine.".format(self.__class__.__name__)
+            )
             weights = [self.Density, other.Density]
 
         meta = self._get_predecessors_meta(other)
-        new_obj = OpaqueMaterial(**meta,
-            Conductivity=self._float_mean(other, 'Conductivity', weights),
-            Roughness=self._str_mean(other, attr='Roughness', append=False),
-            SolarAbsorptance=self._float_mean(other, 'SolarAbsorptance',
-                                              weights),
-            SpecificHeat=self._float_mean(other, 'SpecificHeat'),
-            ThermalEmittance=self._float_mean(other, 'ThermalEmittance',
-                                              weights),
-            VisibleAbsorptance=self._float_mean(other, 'VisibleAbsorptance',
-                                                weights),
-            TransportCarbon=self._float_mean(other, 'TransportCarbon', weights),
-            TransportDistance=self._float_mean(other, 'TransportDistance',
-                                               weights),
-            TransportEnergy=self._float_mean(other, 'TransportEnergy', weights),
-            SubstitutionRatePattern=self._float_mean(other,
-                                                     'SubstitutionRatePattern',
-                                                     weights=None),
-            SubstitutionTimestep=self._float_mean(other, 'SubstitutionTimestep',
-                                                  weights),
-            Cost=self._float_mean(other, 'Cost', weights),
-            Density=self._float_mean(other, 'Density', weights),
-            EmbodiedCarbon=self._float_mean(other, 'EmbodiedCarbon', weights),
-            EmbodiedEnergy=self._float_mean(other, 'EmbodiedEnergy', weights),
-            MoistureDiffusionResistance=self._float_mean(other,
-                                                         'MoistureDiffusionResistance',
-                                                         weights)
+        new_obj = OpaqueMaterial(
+            **meta,
+            Conductivity=self._float_mean(other, "Conductivity", weights),
+            Roughness=self._str_mean(other, attr="Roughness", append=False),
+            SolarAbsorptance=self._float_mean(other, "SolarAbsorptance", weights),
+            SpecificHeat=self._float_mean(other, "SpecificHeat"),
+            ThermalEmittance=self._float_mean(other, "ThermalEmittance", weights),
+            VisibleAbsorptance=self._float_mean(other, "VisibleAbsorptance", weights),
+            TransportCarbon=self._float_mean(other, "TransportCarbon", weights),
+            TransportDistance=self._float_mean(other, "TransportDistance", weights),
+            TransportEnergy=self._float_mean(other, "TransportEnergy", weights),
+            SubstitutionRatePattern=self._float_mean(
+                other, "SubstitutionRatePattern", weights=None
+            ),
+            SubstitutionTimestep=self._float_mean(
+                other, "SubstitutionTimestep", weights
+            ),
+            Cost=self._float_mean(other, "Cost", weights),
+            Density=self._float_mean(other, "Density", weights),
+            EmbodiedCarbon=self._float_mean(other, "EmbodiedCarbon", weights),
+            EmbodiedEnergy=self._float_mean(other, "EmbodiedEnergy", weights),
+            MoistureDiffusionResistance=self._float_mean(
+                other, "MoistureDiffusionResistance", weights
+            )
         )
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
@@ -167,8 +183,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict[
-            "MoistureDiffusionResistance"] = self.MoistureDiffusionResistance
+        data_dict["MoistureDiffusionResistance"] = self.MoistureDiffusionResistance
         data_dict["Roughness"] = self.Roughness
         data_dict["SolarAbsorptance"] = self.SolarAbsorptance
         data_dict["SpecificHeat"] = self.SpecificHeat
@@ -215,7 +230,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             epbunch (EpBunch): EP-Construction object
             **kwargs:
         """
-        if epbunch.key.upper() == 'MATERIAL':
+        if epbunch.key.upper() == "MATERIAL":
             # do MATERIAL
             Name = epbunch.Name
             Conductivity = epbunch.Conductivity
@@ -226,18 +241,20 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             ThermalEmittance = epbunch.Thermal_Absorptance
             VisibleAbsorptance = epbunch.Visible_Absorptance
             Thickness = epbunch.Thickness
-            return cls(Conductivity=Conductivity,
-                       Density=Density,
-                       Roughness=Roughness,
-                       SolarAbsorptance=SolarAbsorptance,
-                       SpecificHeat=SpecificHeat,
-                       ThermalEmittance=ThermalEmittance,
-                       VisibleAbsorptance=VisibleAbsorptance,
-                       Thickness=Thickness,
-                       Name=Name,
-                       idf=epbunch.theidf,
-                       **kwargs)
-        elif epbunch.key.upper() == 'MATERIAL:NOMASS':
+            return cls(
+                Conductivity=Conductivity,
+                Density=Density,
+                Roughness=Roughness,
+                SolarAbsorptance=SolarAbsorptance,
+                SpecificHeat=SpecificHeat,
+                ThermalEmittance=ThermalEmittance,
+                VisibleAbsorptance=VisibleAbsorptance,
+                Thickness=Thickness,
+                Name=Name,
+                idf=epbunch.theidf,
+                **kwargs
+            )
+        elif epbunch.key.upper() == "MATERIAL:NOMASS":
             # do MATERIAL:NOMASS. Assume properties of air.
             Name = epbunch.Name
             Conductivity = 0.02436  # W/mK, dry air at 0 °C and 100 kPa.
@@ -248,18 +265,20 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             SolarAbsorptance = epbunch.Solar_Absorptance
             ThermalEmittance = epbunch.Thermal_Absorptance
             VisibleAbsorptance = epbunch.Visible_Absorptance
-            return cls(Conductivity=Conductivity,
-                       Density=Density,
-                       Roughness=Roughness,
-                       SolarAbsorptance=SolarAbsorptance,
-                       SpecificHeat=SpecificHeat,
-                       ThermalEmittance=ThermalEmittance,
-                       VisibleAbsorptance=VisibleAbsorptance,
-                       Thickness=Thickness,
-                       Name=Name,
-                       idf=epbunch.theidf,
-                       **kwargs)
-        elif epbunch.key.upper() == 'MATERIAL:AIRGAP':
+            return cls(
+                Conductivity=Conductivity,
+                Density=Density,
+                Roughness=Roughness,
+                SolarAbsorptance=SolarAbsorptance,
+                SpecificHeat=SpecificHeat,
+                ThermalEmittance=ThermalEmittance,
+                VisibleAbsorptance=VisibleAbsorptance,
+                Thickness=Thickness,
+                Name=Name,
+                idf=epbunch.theidf,
+                **kwargs
+            )
+        elif epbunch.key.upper() == "MATERIAL:AIRGAP":
 
             Name = epbunch.Name
             Conductivity = 0.02436  # W/mK, dry air at 0 °C and 100 kPa.
@@ -267,19 +286,22 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             SpecificHeat = 100.5  # J/kg-K, dry air at 0 °C and 100 kPa.
             Thickness = Conductivity * epbunch.Thermal_Resistance
             Roughness = "Smooth"
-            return cls(Conductivity=Conductivity,
-                       Roughness=Roughness,
-                       SpecificHeat=SpecificHeat,
-                       Thickness=Thickness,
-                       Density=Density,
-                       Name=Name,
-                       SolarAbsorptance=0,
-                       ThermalEmittance=0,
-                       VisibleAbsorptance=0,
-                       idf=epbunch.theidf,
-                       **kwargs)
+            return cls(
+                Conductivity=Conductivity,
+                Roughness=Roughness,
+                SpecificHeat=SpecificHeat,
+                Thickness=Thickness,
+                Density=Density,
+                Name=Name,
+                SolarAbsorptance=0,
+                ThermalEmittance=0,
+                VisibleAbsorptance=0,
+                idf=epbunch.theidf,
+                **kwargs
+            )
         else:
-            raise NotImplementedError("Material '{}' of type '{}' is not yet "
-                                      "supported. Please contact package "
-                                      "authors".format(epbunch.Name,
-                                                       epbunch.key))
+            raise NotImplementedError(
+                "Material '{}' of type '{}' is not yet "
+                "supported. Please contact package "
+                "authors".format(epbunch.Name, epbunch.key)
+            )

@@ -13,9 +13,16 @@ from pyomo.opt import SolverFactory
 from .energyseries import EnergySeries
 
 
-def create_fake_profile(x=None, y1={}, y2={}, normalize=False,
-                        profile_type='undefined', sorted=False,
-                        ascending=False, units='J'):
+def create_fake_profile(
+    x=None,
+    y1={},
+    y2={},
+    normalize=False,
+    profile_type="undefined",
+    sorted=False,
+    ascending=False,
+    units="J",
+):
     """Utility that generates a generic EnergySeries isntance
 
     Args:
@@ -33,25 +40,31 @@ def create_fake_profile(x=None, y1={}, y2={}, normalize=False,
     """
     if x is None:
         x = np.linspace(0, 8759, 8760)
-    A1 = y1.get('A', 1)
-    f = y1.get('f', 1 / 8760)
+    A1 = y1.get("A", 1)
+    f = y1.get("f", 1 / 8760)
     w = 2 * np.pi * f
-    phy = y1.get('phy', 1)
-    s = y1.get('s', 0.5)
+    phy = y1.get("phy", 1)
+    s = y1.get("s", 0.5)
     y1 = A1 * np.sin(w * x + phy) + s
 
-    A = y2.get('A', A1)
-    f = y2.get('f', 1 / 24)
+    A = y2.get("A", A1)
+    f = y2.get("f", 1 / 24)
     w = 2 * np.pi * f
-    phy = y2.get('phy', 1)
-    s = y2.get('s', 0.5)
+    phy = y2.get("phy", 1)
+    s = y2.get("s", 0.5)
     y2 = A * np.sin(w * x + phy) + s
 
     y = y1 + y2
-    return EnergySeries(y, index=x, frequency='1H', units=units,
-                        profile_type=profile_type, normalize=normalize,
-                        is_sorted=sorted,
-                        ascending=ascending)
+    return EnergySeries(
+        y,
+        index=x,
+        frequency="1H",
+        units=units,
+        profile_type=profile_type,
+        normalize=normalize,
+        is_sorted=sorted,
+        ascending=ascending,
+    )
 
 
 def discretize(profile, bins=5):
@@ -63,16 +76,16 @@ def discretize(profile, bins=5):
     m.duration = pyomo.Var(m.bins, within=pyomo.NonNegativeIntegers)
     m.amplitude = pyomo.Var(m.bins, within=pyomo.NonNegativeReals)
 
-    m.total_duration = pyomo.Constraint(m.bins,
-                                        doc='All duration must be ' \
-                                            'smaller or '
-                                            'equal to 8760',
-                                        rule=total_duration_rule)
+    m.total_duration = pyomo.Constraint(
+        m.bins,
+        doc="All duration must be " "smaller or " "equal to 8760",
+        rule=total_duration_rule,
+    )
 
-    m.obj = pyomo.Objective(sense=pyomo.minimize,
-                            doc='Minimize the sum of squared errors',
-                            rule=obj_rule)
-    optim = SolverFactory('gurobi')
+    m.obj = pyomo.Objective(
+        sense=pyomo.minimize, doc="Minimize the sum of squared errors", rule=obj_rule
+    )
+    optim = SolverFactory("gurobi")
 
     result = optim.solve(m, tee=True, load_solutions=False)
 

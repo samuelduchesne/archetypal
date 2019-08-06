@@ -24,10 +24,18 @@ class EnergySeries(Series):
     def _constructor(self):
         return EnergySeries
 
-    _metadata = ['bin_edges_', 'bin_scaling_factors_', 'profile_type',
-                 'base_year', 'frequency', 'units',
-                 'is_sorted', 'to_units', 'converted_',
-                 'concurrent_sort_']
+    _metadata = [
+        "bin_edges_",
+        "bin_scaling_factors_",
+        "profile_type",
+        "base_year",
+        "frequency",
+        "units",
+        "is_sorted",
+        "to_units",
+        "converted_",
+        "concurrent_sort_",
+    ]
 
     def __finalize__(self, other, method=None, **kwargs):
         """ propagate metadata from other to self """
@@ -36,24 +44,52 @@ class EnergySeries(Series):
             object.__setattr__(self, name, getattr(other, name, None))
         return self
 
-    def __new__(cls, data, frequency=None, units=None,
-                profile_type='undefinded',
-                index=None, dtype=None, copy=True, name=None,
-                fastpath=False, base_year=2018, normalize=False,
-                is_sorted=False, ascending=False, archetypes=None,
-                concurrent_sort=False, to_units=None, use_timeindex=True):
+    def __new__(
+        cls,
+        data,
+        frequency=None,
+        units=None,
+        profile_type="undefinded",
+        index=None,
+        dtype=None,
+        copy=True,
+        name=None,
+        fastpath=False,
+        base_year=2018,
+        normalize=False,
+        is_sorted=False,
+        ascending=False,
+        archetypes=None,
+        concurrent_sort=False,
+        to_units=None,
+        use_timeindex=True,
+    ):
         arr = Series.__new__(cls)
         if type(arr) is EnergySeries:
             return arr
         else:
             return arr.view(EnergySeries)
 
-    def __init__(self, data, frequency=None, units=None,
-                 profile_type='undefinded',
-                 index=None, dtype=None, copy=True, name=None,
-                 fastpath=False, base_year=2018, normalize=False,
-                 is_sorted=False, ascending=False, archetypes=None,
-                 concurrent_sort=False, to_units=None, use_timeindex=True):
+    def __init__(
+        self,
+        data,
+        frequency=None,
+        units=None,
+        profile_type="undefinded",
+        index=None,
+        dtype=None,
+        copy=True,
+        name=None,
+        fastpath=False,
+        base_year=2018,
+        normalize=False,
+        is_sorted=False,
+        ascending=False,
+        archetypes=None,
+        concurrent_sort=False,
+        to_units=None,
+        use_timeindex=True,
+    ):
         """
 
         Args:
@@ -74,9 +110,9 @@ class EnergySeries(Series):
             concurrent_sort:
             to_units:
         """
-        super(EnergySeries, self).__init__(data=data, index=index,
-                                           dtype=dtype, name=name,
-                                           copy=copy, fastpath=fastpath)
+        super(EnergySeries, self).__init__(
+            data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath
+        )
         self.bin_edges_ = None
         self.bin_scaling_factors_ = None
         self.profile_type = profile_type
@@ -114,12 +150,13 @@ class EnergySeries(Series):
 
         # handle DateTimeIndex
         if index is None and use_timeindex:
-            start_date = str(self.base_year) + '0101'
+            start_date = str(self.base_year) + "0101"
             if isinstance(self.index, MultiIndex):
                 newindex = self.index  # todo: finish this
             else:
-                newindex = pd.date_range(start=start_date, freq=self.frequency,
-                                         periods=len(self))
+                newindex = pd.date_range(
+                    start=start_date, freq=self.frequency, periods=len(self)
+                )
             self.index = newindex
 
     def unit_conversion(self, to_units=None, inplace=False):
@@ -165,13 +202,17 @@ class EnergySeries(Series):
         """Returns a normalized EnergySeries"""
         scaler = preprocessing.MinMaxScaler(feature_range=feature_range)
         if self.archetypes:
-            result = concat({name: Series(
-                scaler.fit_transform(sub.values.reshape(-1, 1)).ravel()) for
-                name, sub in self.groupby(level=0)}).sort_index()
+            result = concat(
+                {
+                    name: Series(
+                        scaler.fit_transform(sub.values.reshape(-1, 1)).ravel()
+                    )
+                    for name, sub in self.groupby(level=0)
+                }
+            ).sort_index()
             result = self._constructor(result)
         else:
-            result = Series(scaler.fit_transform(self.values.reshape(-1,
-                                                                     1)).ravel())
+            result = Series(scaler.fit_transform(self.values.reshape(-1, 1)).ravel())
             result = self._constructor(result)
             result.units = settings.unit_registry.dimensionless
         if inplace:
@@ -191,8 +232,9 @@ class EnergySeries(Series):
             (EnergySeries) Load Duration Curve
         """
 
-        result = self.ldc.apply(lambda x: x * (1 - 1 / SCOPH) if x > 0
-        else x * (1 + 1 / SCOPC))
+        result = self.ldc.apply(
+            lambda x: x * (1 - 1 / SCOPH) if x > 0 else x * (1 + 1 / SCOPC)
+        )
         return result
 
     def source_side(self, SCOPH=None, SCOPC=None):
@@ -208,48 +250,61 @@ class EnergySeries(Series):
         """
         if SCOPC or SCOPH:
             result = self.apply(
-                lambda x: x * (1 - 1 / SCOPH) if SCOPH else x * (1 +
-                                                                 1 / SCOPC))
+                lambda x: x * (1 - 1 / SCOPH) if SCOPH else x * (1 + 1 / SCOPC)
+            )
             return result
         else:
-            raise ValueError('Please provide a SCOPH or a SCOPC')
+            raise ValueError("Please provide a SCOPH or a SCOPC")
 
-    def discretize_tsam(self, resolution=None, noTypicalPeriods=10,
-                        hoursPerPeriod=24,
-                        clusterMethod='hierarchical', evalSumPeriods=False,
-                        sortValues=False, sameMean=False,
-                        rescaleClusterPeriods=True,
-                        weightDict=None, extremePeriodMethod='None',
-                        solver='glpk', roundOutput=None, addPeakMin=None,
-                        addPeakMax=None, addMeanMin=None, addMeanMax=None):
+    def discretize_tsam(
+        self,
+        resolution=None,
+        noTypicalPeriods=10,
+        hoursPerPeriod=24,
+        clusterMethod="hierarchical",
+        evalSumPeriods=False,
+        sortValues=False,
+        sameMean=False,
+        rescaleClusterPeriods=True,
+        weightDict=None,
+        extremePeriodMethod="None",
+        solver="glpk",
+        roundOutput=None,
+        addPeakMin=None,
+        addPeakMax=None,
+        addMeanMin=None,
+        addMeanMax=None,
+    ):
         """uses tsam"""
         try:
             import tsam.timeseriesaggregation as tsam
         except ImportError:
             raise ImportError("tsam is required for discretize_tsam()")
         if not isinstance(self.index, pd.DatetimeIndex):
-            raise TypeError('To use tsam, index of series must be a '
-                            'DateTimeIndex')
+            raise TypeError("To use tsam, index of series must be a " "DateTimeIndex")
         if isinstance(self, Series):
             timeSeries = pd.DataFrame(self)
         else:
             timeSeries = self.copy()
-        agg = tsam.TimeSeriesAggregation(timeSeries, resolution=resolution,
-                                         noTypicalPeriods=noTypicalPeriods,
-                                         hoursPerPeriod=hoursPerPeriod,
-                                         clusterMethod=clusterMethod,
-                                         evalSumPeriods=evalSumPeriods,
-                                         sortValues=sortValues,
-                                         sameMean=sameMean,
-                                         rescaleClusterPeriods=rescaleClusterPeriods,
-                                         weightDict=weightDict,
-                                         extremePeriodMethod=extremePeriodMethod,
-                                         solver=solver,
-                                         roundOutput=roundOutput,
-                                         addPeakMin=addPeakMin,
-                                         addPeakMax=addPeakMax,
-                                         addMeanMin=addMeanMin,
-                                         addMeanMax=addMeanMax)
+        agg = tsam.TimeSeriesAggregation(
+            timeSeries,
+            resolution=resolution,
+            noTypicalPeriods=noTypicalPeriods,
+            hoursPerPeriod=hoursPerPeriod,
+            clusterMethod=clusterMethod,
+            evalSumPeriods=evalSumPeriods,
+            sortValues=sortValues,
+            sameMean=sameMean,
+            rescaleClusterPeriods=rescaleClusterPeriods,
+            weightDict=weightDict,
+            extremePeriodMethod=extremePeriodMethod,
+            solver=solver,
+            roundOutput=roundOutput,
+            addPeakMin=addPeakMin,
+            addPeakMax=addPeakMax,
+            addMeanMin=addMeanMin,
+            addMeanMax=addMeanMax,
+        )
 
         agg.createTypicalPeriods()
         results = agg.predictOriginalData()
@@ -271,8 +326,9 @@ class EnergySeries(Series):
             from scipy.optimize import minimize
             from itertools import chain
         except ImportError:
-            raise ImportError('The sklearn package must be installed to '
-                              'use this optional feature.')
+            raise ImportError(
+                "The sklearn package must be installed to " "use this optional feature."
+            )
         if self.archetypes:
             # if multiindex, group and apply operation on each group.
             # combine at the end
@@ -285,22 +341,32 @@ class EnergySeries(Series):
                 sf = [1 / (i * 1.01) for i in range(1, n_bins + 1)]
                 sf.extend([sub.min()])
                 sf_bounds = [(0, sub.max()) for i in range(0, n_bins + 1)]
-                hours = [hour_of_min - hour_of_min * 1 / (i * 1.01) for i in
-                         range(1, n_bins + 1)]
+                hours = [
+                    hour_of_min - hour_of_min * 1 / (i * 1.01)
+                    for i in range(1, n_bins + 1)
+                ]
                 # Todo hours need to work fow datetime index
                 hours.extend([len(sub)])
                 hours_bounds = [(0, len(sub)) for i in range(0, n_bins + 1)]
 
                 start_time = time.time()
-                log('discretizing EnergySeries {}'.format(name), lg.DEBUG)
-                res = minimize(rmse, np.array(hours + sf), args=(sub.values),
-                               method='L-BFGS-B',
-                               bounds=hours_bounds + sf_bounds,
-                               options=dict(disp=True))
-                log('Completed discretization in {:,.2f} seconds'.format(
-                    time.time() - start_time), lg.DEBUG)
-                edges[name] = res.x[0:n_bins + 1]
-                ampls[name] = res.x[n_bins + 1:]
+                log("discretizing EnergySeries {}".format(name), lg.DEBUG)
+                res = minimize(
+                    rmse,
+                    np.array(hours + sf),
+                    args=(sub.values),
+                    method="L-BFGS-B",
+                    bounds=hours_bounds + sf_bounds,
+                    options=dict(disp=True),
+                )
+                log(
+                    "Completed discretization in {:,.2f} seconds".format(
+                        time.time() - start_time
+                    ),
+                    lg.DEBUG,
+                )
+                edges[name] = res.x[0 : n_bins + 1]
+                ampls[name] = res.x[n_bins + 1 :]
                 results[name] = Series(piecewise(res.x))
             self.bin_edges_ = Series(edges).apply(Series)
             self.bin_scaling_factors_ = DataFrame(ampls)
@@ -312,21 +378,30 @@ class EnergySeries(Series):
             sf = [1 / (i * 1.01) for i in range(1, n_bins + 1)]
             sf.extend([self.min()])
             sf_bounds = [(0, self.max()) for i in range(0, n_bins + 1)]
-            hours = [hour_of_min - hour_of_min * 1 / (i * 1.01) for i in
-                     range(1, n_bins + 1)]
+            hours = [
+                hour_of_min - hour_of_min * 1 / (i * 1.01) for i in range(1, n_bins + 1)
+            ]
             hours.extend([len(self)])
             hours_bounds = [(0, len(self)) for i in range(0, n_bins + 1)]
 
             start_time = time.time()
             # log('discretizing EnergySeries {}'.format(name), lg.DEBUG)
-            res = minimize(rmse, np.array(hours + sf), args=(self.values),
-                           method='L-BFGS-B',
-                           bounds=hours_bounds + sf_bounds,
-                           options=dict(disp=True))
-            log('Completed discretization in {:,.2f} seconds'.format(
-                time.time() - start_time), lg.DEBUG)
-            edges = res.x[0:n_bins + 1]
-            ampls = res.x[n_bins + 1:]
+            res = minimize(
+                rmse,
+                np.array(hours + sf),
+                args=(self.values),
+                method="L-BFGS-B",
+                bounds=hours_bounds + sf_bounds,
+                options=dict(disp=True),
+            )
+            log(
+                "Completed discretization in {:,.2f} seconds".format(
+                    time.time() - start_time
+                ),
+                lg.DEBUG,
+            )
+            edges = res.x[0 : n_bins + 1]
+            ampls = res.x[n_bins + 1 :]
             result = Series(piecewise(res.x))
             bin_edges = Series(edges).apply(Series)
             self.bin_edges_ = bin_edges
@@ -334,8 +409,9 @@ class EnergySeries(Series):
             bin_edges.sort_index(inplace=True)
             bin_edges = bin_edges.diff().dropna()
             bin_edges = bin_edges.round()
-            self.bin_scaling_factors_ = DataFrame({'duration': bin_edges[
-                0], 'scaling factor': ampls})
+            self.bin_scaling_factors_ = DataFrame(
+                {"duration": bin_edges[0], "scaling factor": ampls}
+            )
             self.bin_scaling_factors_.index = np.round(edges).astype(int)
 
         if inplace:
@@ -349,6 +425,7 @@ class EnergySeries(Series):
     def unstack(self, level=-1, fill_value=None):
         """"""
         from pandas.core.reshape.reshape import unstack
+
         result = unstack(self, level, fill_value)
         result.__class__ = archetypal.EnergyDataFrame
         return result.__finalize__(self)
@@ -390,16 +467,16 @@ class EnergySeries(Series):
         if isinstance(self.index, MultiIndex):
             return self.groupby(level=0).max()
         else:
-            datetimeindex = date_range(freq=self.frequency,
-                                       start='{}-01-01'.format(
-                                           self.base_year),
-                                       periods=self.size)
+            datetimeindex = date_range(
+                freq=self.frequency,
+                start="{}-01-01".format(self.base_year),
+                periods=self.size,
+            )
             self_copy = self.copy()
             self_copy.index = datetimeindex
-            self_copy = self_copy.resample('M').mean()
-            self_copy.frequency = 'M'
-            return EnergySeries(self_copy, frequency='M',
-                                units=self.units)
+            self_copy = self_copy.resample("M").mean()
+            self_copy.frequency = "M"
+            return EnergySeries(self_copy, frequency="M", units=self.units)
 
     @property
     def capacity_factor(self):
@@ -438,8 +515,9 @@ class EnergySeries(Series):
             return self.data.shape[1]
 
 
-def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
-                  axis_off, extent):
+def save_and_show(
+    fig, ax, save, show, close, filename, file_format, dpi, axis_off, extent
+):
     """Save a figure to disk and show it, as specified.
 
     Args:
@@ -468,20 +546,26 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
         # create the save folder if it doesn't already exist
         if not os.path.exists(settings.imgs_folder):
             os.makedirs(settings.imgs_folder)
-        path_filename = os.path.join(settings.imgs_folder,
-                                     os.extsep.join([filename, file_format]))
+        path_filename = os.path.join(
+            settings.imgs_folder, os.extsep.join([filename, file_format])
+        )
 
         if not isinstance(ax, (np.ndarray, list)):
             ax = [ax]
-        if file_format == 'svg':
+        if file_format == "svg":
             for ax in ax:
                 # if the file_format is svg, prep the fig/ax a bit for saving
-                ax.axis('off')
+                ax.axis("off")
                 ax.set_position([0, 0, 1, 1])
-                ax.patch.set_alpha(0.)
-            fig.patch.set_alpha(0.)
-            fig.savefig(path_filename, bbox_inches=0, format=file_format,
-                        facecolor=fig.get_facecolor(), transparent=True)
+                ax.patch.set_alpha(0.0)
+            fig.patch.set_alpha(0.0)
+            fig.savefig(
+                path_filename,
+                bbox_inches=0,
+                format=file_format,
+                facecolor=fig.get_facecolor(),
+                transparent=True,
+            )
         else:
             if extent is None:
                 if len(ax) == 1:
@@ -490,22 +574,30 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
                             # if axis is turned off, constrain the saved
                             # figure's extent to the interior of the axis
                             extent = ax.get_window_extent().transformed(
-                                fig.dpi_scale_trans.inverted())
+                                fig.dpi_scale_trans.inverted()
+                            )
                 else:
-                    extent = 'tight'
-            fig.savefig(path_filename, dpi=dpi, bbox_inches=extent,
-                        format=file_format, facecolor=fig.get_facecolor(),
-                        transparent=True)
-        log('Saved the figure to disk in {:,.2f} seconds'.format(time.time() -
-                                                                 start_time))
+                    extent = "tight"
+            fig.savefig(
+                path_filename,
+                dpi=dpi,
+                bbox_inches=extent,
+                format=file_format,
+                facecolor=fig.get_facecolor(),
+                transparent=True,
+            )
+        log(
+            "Saved the figure to disk in {:,.2f} seconds".format(
+                time.time() - start_time
+            )
+        )
 
     # show the figure if specified
     if show:
         start_time = time.time()
         plt.show()
         # fig.show()
-        log('Showed the plot in {:,.2f} seconds'.format(time.time() -
-                                                        start_time))
+        log("Showed the plot in {:,.2f} seconds".format(time.time() - start_time))
     # if show=False, close the figure if close=True to prevent display
     elif close:
         plt.close()
@@ -513,11 +605,26 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi,
     return fig, ax
 
 
-def plot_energyseries(energy_series, kind='polygon', axis_off=True, cmap=None,
-                      fig_height=None, fig_width=6, show=True, view_angle=-60,
-                      save=False, close=False, dpi=300, file_format='png',
-                      color=None, axes=None, vmin=None, vmax=None,
-                      filename=None, **kwargs):
+def plot_energyseries(
+    energy_series,
+    kind="polygon",
+    axis_off=True,
+    cmap=None,
+    fig_height=None,
+    fig_width=6,
+    show=True,
+    view_angle=-60,
+    save=False,
+    close=False,
+    dpi=300,
+    file_format="png",
+    color=None,
+    axes=None,
+    vmin=None,
+    vmax=None,
+    filename=None,
+    **kwargs
+):
     """
 
     Args:
@@ -544,11 +651,15 @@ def plot_energyseries(energy_series, kind='polygon', axis_off=True, cmap=None,
 
     """
     if energy_series.empty:
-        warnings.warn("The EnergyProgile you are attempting to plot is "
-                      "empty. Nothing has been displayed.", UserWarning)
+        warnings.warn(
+            "The EnergyProgile you are attempting to plot is "
+            "empty. Nothing has been displayed.",
+            UserWarning,
+        )
         return axes
 
     import matplotlib.pyplot as plt
+
     # noinspection PyUnresolvedReferences
     from mpl_toolkits.mplot3d import Axes3D
 
@@ -557,14 +668,19 @@ def plot_energyseries(energy_series, kind='polygon', axis_off=True, cmap=None,
         nax = len(groups)
     else:
         nax = 1
-        groups = [('unnamed', energy_series)]
+        groups = [("unnamed", energy_series)]
 
     if fig_height is None:
         fig_height = fig_width * nax
 
     # Set up plot
-    fig, axes = plt.subplots(nax, 1, subplot_kw=dict(projection='3d'),
-                             figsize=(fig_width, fig_height), dpi=dpi)
+    fig, axes = plt.subplots(
+        nax,
+        1,
+        subplot_kw=dict(projection="3d"),
+        figsize=(fig_width, fig_height),
+        dpi=dpi,
+    )
     if not isinstance(axes, np.ndarray):
         axes = [axes]
 
@@ -574,8 +690,9 @@ def plot_energyseries(energy_series, kind='polygon', axis_off=True, cmap=None,
         vmin = values.min() if vmin is None else vmin
         vmax = values.max() if vmax is None else vmax
 
-        if kind == 'polygon':
+        if kind == "polygon":
             import tsam.timeseriesaggregation as tsam
+
             z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=24)
             nrows, ncols = z.shape
 
@@ -587,13 +704,18 @@ def plot_energyseries(energy_series, kind='polygon', axis_off=True, cmap=None,
                 ys = z.iloc[int(i), :]
                 verts.append(_polygon_under_graph(xs, ys))
 
-            _plot_poly_collection(ax, verts, zs,
-                                  edgecolors=kwargs.get('edgecolors', None),
-                                  facecolors=kwargs.get('facecolors', None),
-                                  linewidths=kwargs.get('linewidths', None),
-                                  cmap=cmap)
-        elif kind == 'surface':
+            _plot_poly_collection(
+                ax,
+                verts,
+                zs,
+                edgecolors=kwargs.get("edgecolors", None),
+                facecolors=kwargs.get("facecolors", None),
+                linewidths=kwargs.get("linewidths", None),
+                cmap=cmap,
+            )
+        elif kind == "surface":
             import tsam.timeseriesaggregation as tsam
+
             z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=24)
             nrows, ncols = z.shape
             x = z.columns
@@ -605,15 +727,15 @@ def plot_energyseries(energy_series, kind='polygon', axis_off=True, cmap=None,
             raise NameError('plot kind "{}" is not supported'.format(kind))
 
         if filename is None:
-            filename = 'unnamed'
+            filename = "unnamed"
 
         # set the extent of the figure
         ax.set_xlim3d(-1, ncols)
-        ax.set_xlabel('X')
+        ax.set_xlabel("X")
         ax.set_ylim3d(-1, nrows)
-        ax.set_ylabel('Y')
+        ax.set_ylabel("Y")
         ax.set_zlim3d(vmin, vmax)
-        ax.set_zlabel('Z')
+        ax.set_zlabel("Z")
 
         # configure axis appearance
         xaxis = ax.xaxis
@@ -627,32 +749,58 @@ def plot_energyseries(energy_series, kind='polygon', axis_off=True, cmap=None,
         # if axis_off, turn off the axis display set the margins to zero and
         # point the ticks in so there's no space around the plot
         if axis_off:
-            ax.axis('off')
+            ax.axis("off")
             ax.margins(0)
-            ax.tick_params(which='both', direction='in')
+            ax.tick_params(which="both", direction="in")
             xaxis.set_visible(False)
             yaxis.set_visible(False)
             zaxis.set_visible(False)
             fig.canvas.draw()
         if view_angle is not None:
             ax.view_init(30, view_angle)
-            ax.set_proj_type(kwargs.get('proj_type', 'persp'))
+            ax.set_proj_type(kwargs.get("proj_type", "persp"))
             fig.canvas.draw()
-    fig, axes = save_and_show(fig=fig, ax=axes, save=save, show=show,
-                              close=close, filename=filename,
-                              file_format=file_format, dpi=dpi,
-                              axis_off=axis_off, extent=None)
+    fig, axes = save_and_show(
+        fig=fig,
+        ax=axes,
+        save=save,
+        show=show,
+        close=close,
+        filename=filename,
+        file_format=file_format,
+        dpi=dpi,
+        axis_off=axis_off,
+        extent=None,
+    )
     return fig, axes
 
 
-def plot_energyseries_map(data, periodlength=24, subplots=False, vmin=None,
-                          vmax=None, axis_off=True, cmap='RdBu',
-                          fig_height=None, fig_width=6, show=True,
-                          view_angle=-60, save=False, close=False, dpi=300,
-                          file_format='png', color=None, ax=None,
-                          filename='untitled', extent='tight', sharex=False,
-                          sharey=False, layout=None, layout_type='vertical',
-                          **kwargs):
+def plot_energyseries_map(
+    data,
+    periodlength=24,
+    subplots=False,
+    vmin=None,
+    vmax=None,
+    axis_off=True,
+    cmap="RdBu",
+    fig_height=None,
+    fig_width=6,
+    show=True,
+    view_angle=-60,
+    save=False,
+    close=False,
+    dpi=300,
+    file_format="png",
+    color=None,
+    ax=None,
+    filename="untitled",
+    extent="tight",
+    sharex=False,
+    sharey=False,
+    layout=None,
+    layout_type="vertical",
+    **kwargs
+):
     """
 
     Args:
@@ -669,36 +817,38 @@ def plot_energyseries_map(data, periodlength=24, subplots=False, vmin=None,
             n = data.shape[1]
         else:
             n = 1
-        fig, axes = plt.subplots(nrows=n, ncols=1,
-                                 figsize=(fig_width, fig_height),
-                                 dpi=dpi)
+        fig, axes = plt.subplots(
+            nrows=n, ncols=1, figsize=(fig_width, fig_height), dpi=dpi
+        )
     else:
         fig = ax.get_figure()
         if figsize is not None:
             fig.set_size_inches(figsize)
         axes = ax
 
-    stacked, timeindex = tsam.unstackToPeriods(copy.deepcopy(data),
-                                               periodlength)
+    stacked, timeindex = tsam.unstackToPeriods(copy.deepcopy(data), periodlength)
     cmap = plt.get_cmap(cmap)
-    cax = axes.imshow(stacked.values.T, interpolation='nearest', vmin=vmin,
-                      vmax=vmax, cmap=cmap)
-    axes.set_aspect('auto')
-    axes.set_ylabel('Hour')
-    plt.xlabel('Day')
+    cax = axes.imshow(
+        stacked.values.T, interpolation="nearest", vmin=vmin, vmax=vmax, cmap=cmap
+    )
+    axes.set_aspect("auto")
+    axes.set_ylabel("Hour")
+    plt.xlabel("Day")
 
     fig.subplots_adjust(right=1.2)
     cbar = plt.colorbar(cax)
-    cbar.set_label('{} [{:~P}]'.format(data.name, data.units))
+    cbar.set_label("{} [{:~P}]".format(data.name, data.units))
 
-    fig, axes = save_and_show(fig, axes, save, show, close, filename,
-                              file_format, dpi, axis_off, extent)
+    fig, axes = save_and_show(
+        fig, axes, save, show, close, filename, file_format, dpi, axis_off, extent
+    )
 
     return fig, axes
 
 
-def _plot_poly_collection(ax, verts, zs=None, color=None, cmap=None,
-                          vmin=None, vmax=None, **kwargs):
+def _plot_poly_collection(
+    ax, verts, zs=None, color=None, cmap=None, vmin=None, vmax=None, **kwargs
+):
     from matplotlib.collections import PolyCollection
 
     # if None in zs:
@@ -706,8 +856,9 @@ def _plot_poly_collection(ax, verts, zs=None, color=None, cmap=None,
 
     # color=None overwrites specified facecolor/edgecolor with default color
     if color is not None:
-        kwargs['color'] = color
+        kwargs["color"] = color
     import matplotlib as mpl
+
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
 
     poly = PolyCollection(verts, **kwargs)
@@ -716,7 +867,7 @@ def _plot_poly_collection(ax, verts, zs=None, color=None, cmap=None,
         poly.set_cmap(cmap)
         poly.set_clim(vmin, vmax)
 
-    ax.add_collection3d(poly, zs=zs, zdir='y')
+    ax.add_collection3d(poly, zs=zs, zdir="y")
     # ax.autoscale_view()
     return poly
 
@@ -728,10 +879,19 @@ def _plot_surface(ax, x, y, z, cmap=None, **kwargs):
     ls = LightSource(270, 45)
     # To use a custom hillshading mode, override the built-in shading and pass
     # in the rgb colors of the shaded surface calculated from "shade".
-    rgb = ls.shade(z, cmap=cm.get_cmap(cmap), vert_exag=0.1, blend_mode='soft')
-    surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, facecolors=rgb,
-                           linewidth=0, antialiased=False, shade=False,
-                           **kwargs)
+    rgb = ls.shade(z, cmap=cm.get_cmap(cmap), vert_exag=0.1, blend_mode="soft")
+    surf = ax.plot_surface(
+        x,
+        y,
+        z,
+        rstride=1,
+        cstride=1,
+        facecolors=rgb,
+        linewidth=0,
+        antialiased=False,
+        shade=False,
+        **kwargs
+    )
     return surf
 
 
@@ -739,7 +899,7 @@ def _polygon_under_graph(xlist, ylist):
     """Construct the vertex list which defines the polygon filling the space
     under
     the (xlist, ylist) line graph.  Assumes the xs are in ascending order."""
-    return [(xlist[0], 0.), *zip(xlist, ylist), (xlist[-1], 0.)]
+    return [(xlist[0], 0.0), *zip(xlist, ylist), (xlist[-1], 0.0)]
 
 
 EnergySeries.plot3d.__doc__ = plot_energyseries.__doc__

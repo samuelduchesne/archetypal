@@ -59,15 +59,15 @@ class IDF(geomeppy.IDF):
         zone multipliers
         """
         area = 0
-        zones = self.idfobjects['ZONE']
+        zones = self.idfobjects["ZONE"]
         for zone in zones:
             for surface in zone.zonesurfaces:
-                if hasattr(surface, 'tilt'):
+                if hasattr(surface, "tilt"):
                     if surface.tilt == 180.0:
-                        part_of = int(
-                            zone.Part_of_Total_Floor_Area.upper() != "NO")
+                        part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
                         multiplier = float(
-                            zone.Multiplier if zone.Multiplier != '' else 1)
+                            zone.Multiplier if zone.Multiplier != "" else 1
+                        )
 
                         area += surface.area * multiplier * part_of
         return area
@@ -78,21 +78,30 @@ class IDF(geomeppy.IDF):
         in average in the building floor plan by m2.
         """
         partition_lineal = 0
-        zones = self.idfobjects['ZONE']
+        zones = self.idfobjects["ZONE"]
         for zone in zones:
             for surface in zone.zonesurfaces:
-                if hasattr(surface, 'tilt'):
-                    if surface.tilt == 90.0 and \
-                            surface.Outside_Boundary_Condition \
-                            != 'Outdoors':
+                if hasattr(surface, "tilt"):
+                    if (
+                        surface.tilt == 90.0
+                        and surface.Outside_Boundary_Condition != "Outdoors"
+                    ):
                         multiplier = float(
-                            zone.Multiplier if zone.Multiplier != '' else 1)
+                            zone.Multiplier if zone.Multiplier != "" else 1
+                        )
                         partition_lineal += surface.width * multiplier
 
         return partition_lineal / self.area_conditioned
 
-    def run_eplus(self, weather_file=None, output_folder=None, ep_version=None,
-                  output_report='sql', prep_outputs=True, **kwargs):
+    def run_eplus(
+        self,
+        weather_file=None,
+        output_folder=None,
+        ep_version=None,
+        output_report="sql",
+        prep_outputs=True,
+        **kwargs
+    ):
         """wrapper around the :func:`archetypal.run_eplus()` method.
 
         If weather file is defined in the IDF object, then this field is
@@ -120,12 +129,19 @@ class IDF(geomeppy.IDF):
         if not weather_file:
             weather_file = self.epw
         if not ep_version:
-            ep_version = '-'.join(map(str, self.idd_version))
+            ep_version = "-".join(map(str, self.idd_version))
         eplus_file = self.idfname
-        results = run_eplus(eplus_file, weather_file, output_folder, ep_version,
-                            output_report, prep_outputs,
-                            design_day=True, **kwargs)
-        if output_report != 'sql':
+        results = run_eplus(
+            eplus_file,
+            weather_file,
+            output_folder,
+            ep_version,
+            output_report,
+            prep_outputs,
+            design_day=True,
+            **kwargs
+        )
+        if output_report != "sql":
             # user wants something more than the sql
             return results
         else:
@@ -152,21 +168,19 @@ class IDF(geomeppy.IDF):
         # sure there is only one of them when creating new object
         # (see following line)
         for obj in objs:
-            if 'unique-object' in obj.objidd[0].keys():
+            if "unique-object" in obj.objidd[0].keys():
                 self.removeidfobject(obj)
         # create new object
         new_object = self.newidfobject(ep_object, **kwargs)
         # Check if new object exists in previous list
         # If True, delete the object
-        if sum([str(obj).upper() == str(new_object).upper() for obj in
-                objs]) > 1:
-            log('object "{}" already exists in idf file'.format(ep_object),
-                lg.WARNING)
+        if sum([str(obj).upper() == str(new_object).upper() for obj in objs]) > 1:
+            log('object "{}" already exists in idf file'.format(ep_object), lg.WARNING)
             # Remove the newly created object since the function
             # `idf.newidfobject()` automatically adds it
             self.removeidfobject(new_object)
             if not save:
-                return self.getobject(ep_object, kwargs['Name'])
+                return self.getobject(ep_object, kwargs["Name"])
         else:
             if save:
                 log('object "{}" added to the idf file'.format(ep_object))
@@ -180,21 +194,20 @@ class IDF(geomeppy.IDF):
         Args:
             schedule_limit_name:
         """
-        schedule = self.getobject('ScheduleTypeLimits'.upper(),
-                                  schedule_limit_name)
+        schedule = self.getobject("ScheduleTypeLimits".upper(), schedule_limit_name)
 
         if schedule is not None:
-            lower_limit = schedule['Lower_Limit_Value']
-            upper_limit = schedule['Upper_Limit_Value']
-            numeric_type = schedule['Numeric_Type']
-            unit_type = schedule['Unit_Type']
+            lower_limit = schedule["Lower_Limit_Value"]
+            upper_limit = schedule["Upper_Limit_Value"]
+            numeric_type = schedule["Numeric_Type"]
+            unit_type = schedule["Unit_Type"]
 
-            if schedule['Unit_Type'] == '':
+            if schedule["Unit_Type"] == "":
                 unit_type = numeric_type
 
             return lower_limit, upper_limit, numeric_type, unit_type
         else:
-            return '', '', '', ''
+            return "", "", "", ""
 
     def get_schedule_epbunch(self, name, sch_type=None):
         """Returns the epbunch of a particular schedule name. If the schedule
@@ -212,9 +225,10 @@ class IDF(geomeppy.IDF):
                     schedules_dict = self.get_all_schedules()
                     return schedules_dict[name.upper()]
                 except KeyError:
-                    raise KeyError('Unable to find schedule "{}" of type "{}" '
-                                   'in idf file "{}"'.format(
-                        name, sch_type, self.idfname))
+                    raise KeyError(
+                        'Unable to find schedule "{}" of type "{}" '
+                        'in idf file "{}"'.format(name, sch_type, self.idfname)
+                    )
         else:
             return self.getobject(sch_type.upper(), name)
 
@@ -228,13 +242,14 @@ class IDF(geomeppy.IDF):
             (dict of eppy.bunch_subclass.EpBunch): the schedules with their
                 name as a key
         """
-        schedule_types = list(map(str.upper, self.getiddgroupdict()[
-            'Schedules']))
+        schedule_types = list(map(str.upper, self.getiddgroupdict()["Schedules"]))
         if yearly_only:
-            schedule_types = ['Schedule:Year'.upper(),
-                              'Schedule:Compact'.upper(),
-                              'Schedule:Constant'.upper(),
-                              'Schedule:File'.upper()]
+            schedule_types = [
+                "Schedule:Year".upper(),
+                "Schedule:Compact".upper(),
+                "Schedule:Constant".upper(),
+                "Schedule:File".upper(),
+            ]
         scheds = {}
         for sched_type in schedule_types:
             for sched in self.idfobjects[sched_type]:
@@ -254,15 +269,17 @@ class IDF(geomeppy.IDF):
         Returns:
             (list): the schedules names
         """
-        schedule_types = ['Schedule:Day:Hourly'.upper(),
-                          'Schedule:Day:Interval'.upper(),
-                          'Schedule:Day:List'.upper(),
-                          'Schedule:Week:Daily'.upper(),
-                          'Schedule:Year'.upper(),
-                          'Schedule:Week:Compact'.upper(),
-                          'Schedule:Compact'.upper(),
-                          'Schedule:Constant'.upper(),
-                          'Schedule:File'.upper()]
+        schedule_types = [
+            "Schedule:Day:Hourly".upper(),
+            "Schedule:Day:Interval".upper(),
+            "Schedule:Day:List".upper(),
+            "Schedule:Week:Daily".upper(),
+            "Schedule:Year".upper(),
+            "Schedule:Week:Compact".upper(),
+            "Schedule:Compact".upper(),
+            "Schedule:Constant".upper(),
+            "Schedule:File".upper(),
+        ]
 
         used_schedules = []
         all_schedules = self.get_all_schedules(yearly_only=yearly_only)
@@ -271,8 +288,10 @@ class IDF(geomeppy.IDF):
                 if object.key.upper() not in schedule_types:
                     for fieldvalue in object.fieldvalues:
                         try:
-                            if fieldvalue in all_schedules and fieldvalue not \
-                                    in used_schedules:
+                            if (
+                                fieldvalue in all_schedules
+                                and fieldvalue not in used_schedules
+                            ):
                                 used_schedules.append(fieldvalue)
                         except:
                             pass
@@ -282,6 +301,7 @@ class IDF(geomeppy.IDF):
     def day_of_week_for_start_day(self):
         """Get day of week for start day for the first found RUNPERIOD"""
         import calendar
+
         day = self.idfobjects["RUNPERIOD"][0]["Day_of_Week_for_Start_Day"]
 
         if day.lower() == "sunday":
@@ -340,18 +360,18 @@ class IDF(geomeppy.IDF):
                 idfobjects = self.idfobjects[robjkey]
                 for idfobject in idfobjects:
                     for findex in fieldindexlist:  # for each field
-                        if idfobject[idfobject.objls[findex]].lower() == \
-                                objname.lower():
+                        if (
+                            idfobject[idfobject.objls[findex]].lower()
+                            == objname.lower()
+                        ):
                             idfobject[idfobject.objls[findex]] = newname
         theobject = self.getobject(objkey, objname)
-        fieldname = [item for item in theobject.objls if item.endswith('Name')][
-            0]
+        fieldname = [item for item in theobject.objls if item.endswith("Name")][0]
         theobject[fieldname] = newname
         return theobject
 
 
-def object_from_idfs(idfs, ep_object, first_occurrence_only=False,
-                     processors=1):
+def object_from_idfs(idfs, ep_object, first_occurrence_only=False, processors=1):
     """Takes a list of parsed IDF objects and a single ep_object and returns a
     DataFrame.
 
@@ -371,24 +391,29 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False,
         idfs = [idfs]
     container = []
     start_time = time.time()
-    log('Parsing {1} objects for {0} idf files...'.format(len(idfs), ep_object))
+    log("Parsing {1} objects for {0} idf files...".format(len(idfs), ep_object))
     if isinstance(idfs, dict):
         try:
             if processors == 1:
-                raise Exception('Loading objects sequentially...')
-            log('Loading objects in parallel...')
+                raise Exception("Loading objects sequentially...")
+            log("Loading objects in parallel...")
             # Loading objects in parallel is actually slower at the moment,
             # so we raise an Exception
             runs = [[idf, ep_object] for idfname, idf in idfs.items()]
             import concurrent.futures
+
             with concurrent.futures.ProcessPoolExecutor(
-                    max_workers=processors) as executor:
-                container = {idfname: result for (idfname, idf), result in
-                             zip(idfs.items(), executor.map(
-                                 object_from_idf_pool, runs))}
+                max_workers=processors
+            ) as executor:
+                container = {
+                    idfname: result
+                    for (idfname, idf), result in zip(
+                        idfs.items(), executor.map(object_from_idf_pool, runs)
+                    )
+                }
         except Exception as e:
             # multiprocessing not present so pass the jobs one at a time
-            log('{}'.format(e))
+            log("{}".format(e))
             container = {}
             for key, idf in idfs.items():
                 # Load objects from IDF files and concatenate
@@ -397,9 +422,9 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False,
 
         # If keys given, construct hierarchical index using the passed keys
         # as the outermost level
-        this_frame = pd.concat(container, names=['Archetype', '$id'], sort=True)
+        this_frame = pd.concat(container, names=["Archetype", "$id"], sort=True)
         this_frame.reset_index(inplace=True)
-        this_frame.drop(columns='$id', inplace=True)
+        this_frame.drop(columns="$id", inplace=True)
     else:
         for idf in idfs:
             # Load objects from IDF files and concatenate
@@ -409,12 +434,14 @@ def object_from_idfs(idfs, ep_object, first_occurrence_only=False,
         this_frame = pd.concat(container)
 
     if first_occurrence_only:
-        this_frame = this_frame.groupby('Name').first()
+        this_frame = this_frame.groupby("Name").first()
     this_frame.reset_index(inplace=True)
-    this_frame.index.rename('$id', inplace=True)
-    log('Parsed {} {} object(s) in {} idf file(s) in {:,.2f} seconds'.format(
-        len(this_frame), ep_object, len(idfs),
-        time.time() - start_time))
+    this_frame.index.rename("$id", inplace=True)
+    log(
+        "Parsed {} {} object(s) in {} idf file(s) in {:,.2f} seconds".format(
+            len(this_frame), ep_object, len(idfs), time.time() - start_time
+        )
+    )
     return this_frame
 
 
@@ -445,16 +472,21 @@ def object_from_idf(idf, ep_object):
     """
     try:
         df = pd.concat(
-            [pd.DataFrame(
-                obj.fieldvalues, index=obj.fieldnames[0:len(obj.fieldvalues)]).T
-             for obj in
-             idf.idfobjects[ep_object]],
-            ignore_index=True, sort=False)
+            [
+                pd.DataFrame(
+                    obj.fieldvalues, index=obj.fieldnames[0 : len(obj.fieldvalues)]
+                ).T
+                for obj in idf.idfobjects[ep_object]
+            ],
+            ignore_index=True,
+            sort=False,
+        )
     except ValueError:
         log(
             'ValueError: EP object "{}" does not exist in frame for idf "{}. '
-            'Returning empty DataFrame"'.format(
-                ep_object, idf.idfname), lg.WARNING)
+            'Returning empty DataFrame"'.format(ep_object, idf.idfname),
+            lg.WARNING,
+        )
         return pd.DataFrame({ep_object: []})
     else:
         return df
@@ -482,8 +514,11 @@ def load_idf(eplus_file, idd_filename=None, weather_file=None):
     start_time = time.time()
     if idf:
         # if found in cache, return
-        log('Eppy load from cache completed in {:,.2f} seconds\n'.format(
-            time.time() - start_time))
+        log(
+            "Eppy load from cache completed in {:,.2f} seconds\n".format(
+                time.time() - start_time
+            )
+        )
         return idf
     else:
         # Else, run eppy to load the idf objects
@@ -512,21 +547,24 @@ def eppy_load(file, idd_filename, weather_file=None):
         try:
             idf_object = IDF(idfname=file, epw=weather_file)
             # Check version of IDF file against version of IDD file
-            idf_version = idf_object.idfobjects['VERSION'][
-                0].Version_Identifier
-            idd_version = '{}.{}'.format(idf_object.idd_version[0],
-                                         idf_object.idd_version[1])
+            idf_version = idf_object.idfobjects["VERSION"][0].Version_Identifier
+            idd_version = "{}.{}".format(
+                idf_object.idd_version[0], idf_object.idd_version[1]
+            )
 
             if idf_version == idd_version:
                 # if the versions fit, great!
-                log('The version of the IDF file "{}",\n\t'
+                log(
+                    'The version of the IDF file "{}",\n\t'
                     'version "{}", matched the version of EnergyPlus {},'
                     '\n\tversion "{}", used to parse it.'.format(
-                    os.path.basename(file),
-                    idf_version,
-                    idf_object.getiddname(),
-                    idd_version),
-                    level=lg.DEBUG)
+                        os.path.basename(file),
+                        idf_version,
+                        idf_object.getiddname(),
+                        idd_version,
+                    ),
+                    level=lg.DEBUG,
+                )
             else:
                 # if they don't fit, upgrade file
                 upgrade_idf(file)
@@ -535,8 +573,8 @@ def eppy_load(file, idd_filename, weather_file=None):
         # An error could occur if the iddname is not found on the system. Try
         # to upgrade the idf file
         except Exception as e:
-            log('{}'.format(e))
-            log('Trying to upgrade the file instead...')
+            log("{}".format(e))
+            log("Trying to upgrade the file instead...")
             # Try to upgrade the file
             upgrade_idf(file)
             # Get idd file for newly created and upgraded idf file
@@ -544,13 +582,11 @@ def eppy_load(file, idd_filename, weather_file=None):
             IDF.iddname = idd_filename
         else:
             # when parsing is complete, save it to disk, then return object
-            save_idf_object_to_cache(idf_object, idf_object.idfname,
-                                     cache_filename)
+            save_idf_object_to_cache(idf_object, idf_object.idfname, cache_filename)
     return idf_object
 
 
-def save_idf_object_to_cache(idf_object, idf_file, cache_filename=None,
-                             how=None):
+def save_idf_object_to_cache(idf_object, idf_file, cache_filename=None, how=None):
     """Saves the object to disk. Essentially uses the pickling functions of
     python.
 
@@ -570,7 +606,7 @@ def save_idf_object_to_cache(idf_object, idf_file, cache_filename=None,
     """
     # upper() can't take NoneType as input.
     if how is None:
-        how = ''
+        how = ""
     # The main function
     if settings.use_cache:
         if cache_filename is None:
@@ -581,52 +617,66 @@ def save_idf_object_to_cache(idf_object, idf_file, cache_filename=None,
         if not os.path.exists(cache_dir):
             os.makedirs(cache_dir)
 
-        if how.upper() == 'JSON':
-            cache_fullpath_filename = os.path.join(settings.cache_folder,
-                                                   cache_filename,
-                                                   os.extsep.join([
-                                                       cache_filename + 'idfs',
-                                                       'json']))
+        if how.upper() == "JSON":
+            cache_fullpath_filename = os.path.join(
+                settings.cache_folder,
+                cache_filename,
+                os.extsep.join([cache_filename + "idfs", "json"]),
+            )
             import gzip, json
-            with open(cache_fullpath_filename, 'w') as file_handle:
-                json.dump({key: value.__dict__ for key, value in
-                           idf_object.idfobjects.items()},
-                          file_handle,
-                          sort_keys=True, indent=4, check_circular=True)
 
-        elif how.upper() == 'PICKLE':
+            with open(cache_fullpath_filename, "w") as file_handle:
+                json.dump(
+                    {
+                        key: value.__dict__
+                        for key, value in idf_object.idfobjects.items()
+                    },
+                    file_handle,
+                    sort_keys=True,
+                    indent=4,
+                    check_circular=True,
+                )
+
+        elif how.upper() == "PICKLE":
             # create pickle and dump
-            cache_fullpath_filename = os.path.join(settings.cache_folder,
-                                                   cache_filename,
-                                                   os.extsep.join([
-                                                       cache_filename + 'idfs',
-                                                       'gzip']))
+            cache_fullpath_filename = os.path.join(
+                settings.cache_folder,
+                cache_filename,
+                os.extsep.join([cache_filename + "idfs", "gzip"]),
+            )
             import gzip
+
             try:
                 import cPickle as pickle
             except ImportError:
                 import pickle
             start_time = time.time()
-            with gzip.GzipFile(cache_fullpath_filename, 'wb') as file_handle:
+            with gzip.GzipFile(cache_fullpath_filename, "wb") as file_handle:
                 pickle.dump(idf_object, file_handle, protocol=0)
-            log('Saved pickle to file in {:,.2f} seconds'.format(
-                time.time() - start_time))
+            log(
+                "Saved pickle to file in {:,.2f} seconds".format(
+                    time.time() - start_time
+                )
+            )
 
         else:
-            cache_fullpath_filename = os.path.join(settings.cache_folder,
-                                                   cache_filename,
-                                                   os.extsep.join([
-                                                       cache_filename + 'idfs',
-                                                       'dat']))
+            cache_fullpath_filename = os.path.join(
+                settings.cache_folder,
+                cache_filename,
+                os.extsep.join([cache_filename + "idfs", "dat"]),
+            )
             try:
                 import cPickle as pickle
             except ImportError:
                 import pickle
             start_time = time.time()
-            with open(cache_fullpath_filename, 'wb') as file_handle:
+            with open(cache_fullpath_filename, "wb") as file_handle:
                 pickle.dump(idf_object, file_handle, protocol=-1)
-            log('Saved pickle to file in {:,.2f} seconds'.format(
-                time.time() - start_time))
+            log(
+                "Saved pickle to file in {:,.2f} seconds".format(
+                    time.time() - start_time
+                )
+            )
 
 
 def load_idf_object_from_cache(idf_file, how=None):
@@ -644,83 +694,91 @@ def load_idf_object_from_cache(idf_file, how=None):
     """
     # upper() can't tahe NoneType as input.
     if how is None:
-        how = ''
+        how = ""
     # The main function
     if settings.use_cache:
         cache_filename = hash_file(idf_file)
-        if how.upper() == 'JSON':
-            cache_fullpath_filename = os.path.join(settings.cache_folder,
-                                                   cache_filename,
-                                                   os.extsep.join([
-                                                       cache_filename + 'idfs',
-                                                       'json']))
+        if how.upper() == "JSON":
+            cache_fullpath_filename = os.path.join(
+                settings.cache_folder,
+                cache_filename,
+                os.extsep.join([cache_filename + "idfs", "json"]),
+            )
             import json
+
             try:
                 import cPickle as pickle
             except ImportError:
                 import pickle
             start_time = time.time()
             if os.path.isfile(cache_fullpath_filename):
-                with open(cache_fullpath_filename, 'rb') as file_handle:
+                with open(cache_fullpath_filename, "rb") as file_handle:
                     idf = json.load(file_handle)
-                log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(
-                    os.path.basename(idf_file), time.time() -
-                                                start_time))
+                log(
+                    'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
+                        os.path.basename(idf_file), time.time() - start_time
+                    )
+                )
                 return idf
 
-        elif how.upper() == 'PICKLE':
-            cache_fullpath_filename = os.path.join(settings.cache_folder,
-                                                   cache_filename,
-                                                   os.extsep.join([
-                                                       cache_filename + 'idfs',
-                                                       'gzip']))
+        elif how.upper() == "PICKLE":
+            cache_fullpath_filename = os.path.join(
+                settings.cache_folder,
+                cache_filename,
+                os.extsep.join([cache_filename + "idfs", "gzip"]),
+            )
             import gzip
+
             try:
                 import cPickle as pickle
             except ImportError:
                 import pickle
             start_time = time.time()
             if os.path.isfile(cache_fullpath_filename):
-                with gzip.GzipFile(cache_fullpath_filename,
-                                   'rb') as file_handle:
+                with gzip.GzipFile(cache_fullpath_filename, "rb") as file_handle:
                     idf = pickle.load(file_handle)
                 if idf.iddname is None:
-                    idf.setiddname(getiddfile(idf.model.dt['VERSION'][0][1]))
+                    idf.setiddname(getiddfile(idf.model.dt["VERSION"][0][1]))
                     # idf.read()
-                log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(
-                    os.path.basename(idf_file), time.time() -
-                                                start_time))
+                log(
+                    'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
+                        os.path.basename(idf_file), time.time() - start_time
+                    )
+                )
                 return idf
-        elif how.upper() == 'IDF':
-            cache_fullpath_filename = os.path.join(settings.cache_folder,
-                                                   cache_filename,
-                                                   os.extsep.join([
-                                                       cache_filename,
-                                                       'idf']))
+        elif how.upper() == "IDF":
+            cache_fullpath_filename = os.path.join(
+                settings.cache_folder,
+                cache_filename,
+                os.extsep.join([cache_filename, "idf"]),
+            )
             if os.path.isfile(cache_fullpath_filename):
                 version = get_idf_version(cache_fullpath_filename, doted=True)
                 iddfilename = getiddfile(version)
                 idf = eppy_load(cache_fullpath_filename, iddfilename)
                 return idf
         else:
-            cache_fullpath_filename = os.path.join(settings.cache_folder,
-                                                   cache_filename,
-                                                   os.extsep.join([
-                                                       cache_filename + 'idfs',
-                                                       'dat']))
+            cache_fullpath_filename = os.path.join(
+                settings.cache_folder,
+                cache_filename,
+                os.extsep.join([cache_filename + "idfs", "dat"]),
+            )
             try:
                 import cPickle as pickle
             except ImportError:
                 import pickle
             start_time = time.time()
             if os.path.isfile(cache_fullpath_filename):
-                with open(cache_fullpath_filename, 'rb') as file_handle:
+                with open(cache_fullpath_filename, "rb") as file_handle:
                     idf = pickle.load(file_handle)
                 if idf.iddname is None:
-                    idf.setiddname(getiddfile(idf.model.dt['VERSION'][0][1]))
+                    idf.setiddname(getiddfile(idf.model.dt["VERSION"][0][1]))
                     idf.read()
-                log('Loaded "{}" from pickled file in {:,.2f} seconds'.format(
-                    os.path.basename(idf_file), time.time() - start_time))
+                log(
+                    'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
+                        os.path.basename(idf_file), time.time() - start_time
+                    )
+                )
                 return idf
 
 
@@ -738,93 +796,106 @@ def prepare_outputs(eplus_file, outputs=None, idd_filename=None):
         idd_filename:
     """
 
-    log('first, loading the idf file')
+    log("first, loading the idf file")
     idf = load_idf(eplus_file, idd_filename=idd_filename)
     eplus_finename = os.path.basename(eplus_file)
     idf = {eplus_finename: idf}
 
     if isinstance(outputs, list):
         for output in outputs:
-            idf[eplus_finename].add_object(output['ep_object'], **output[
-                'kwargs'])
+            idf[eplus_finename].add_object(output["ep_object"], **output["kwargs"])
 
     # SummaryReports
-    idf[eplus_finename].add_object('Output:Table:SummaryReports'.upper(),
-                                   Report_1_Name='AllSummary')
+    idf[eplus_finename].add_object(
+        "Output:Table:SummaryReports".upper(), Report_1_Name="AllSummary"
+    )
 
-    idf[eplus_finename].add_object('OutputControl:Table:Style'.upper(),
-                                   Column_Separator='HTML')
+    idf[eplus_finename].add_object(
+        "OutputControl:Table:Style".upper(), Column_Separator="HTML"
+    )
 
     # SQL output
-    idf[eplus_finename].add_object('Output:SQLite'.upper(),
-                                   Option_Type='SimpleAndTabular')
+    idf[eplus_finename].add_object(
+        "Output:SQLite".upper(), Option_Type="SimpleAndTabular"
+    )
 
     # Output variables
-    idf[eplus_finename].add_object('Output:Variable'.upper(),
-                                   Variable_Name='Air System Total Heating '
-                                                 'Energy',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('Output:Variable'.upper(),
-                                   Variable_Name='Air System Total Cooling '
-                                                 'Energy',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('Output:Variable'.upper(),
-                                   Variable_Name='Zone Ideal Loads Zone Total '
-                                                 'Heating Energy',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('Output:Variable'.upper(),
-                                   Variable_Name='Zone Ideal Loads Zone Total '
-                                                 'Cooling Energy',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('Output:Variable'.upper(),
-                                   Variable_Name='Zone Thermostat Heating '
-                                                 'Setpoint Temperature',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('Output:Variable'.upper(),
-                                   Variable_Name='Zone Thermostat Cooling '
-                                                 'Setpoint Temperature',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('Output:Variable'.upper(),
-                                   Variable_Name='Heat Exchanger Total Heating '
-                                                 'Rate',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('Output:Variable'.upper(),
-                                   Variable_Name='Heat Exchanger Sensible '
-                                                 'Effectiveness',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('Output:Variable'.upper(),
-                                   Variable_Name='Heat Exchanger Latent '
-                                                 'Effectiveness',
-                                   Reporting_Frequency='hourly')
+    idf[eplus_finename].add_object(
+        "Output:Variable".upper(),
+        Variable_Name="Air System Total Heating " "Energy",
+        Reporting_Frequency="hourly",
+    )
+    idf[eplus_finename].add_object(
+        "Output:Variable".upper(),
+        Variable_Name="Air System Total Cooling " "Energy",
+        Reporting_Frequency="hourly",
+    )
+    idf[eplus_finename].add_object(
+        "Output:Variable".upper(),
+        Variable_Name="Zone Ideal Loads Zone Total " "Heating Energy",
+        Reporting_Frequency="hourly",
+    )
+    idf[eplus_finename].add_object(
+        "Output:Variable".upper(),
+        Variable_Name="Zone Ideal Loads Zone Total " "Cooling Energy",
+        Reporting_Frequency="hourly",
+    )
+    idf[eplus_finename].add_object(
+        "Output:Variable".upper(),
+        Variable_Name="Zone Thermostat Heating " "Setpoint Temperature",
+        Reporting_Frequency="hourly",
+    )
+    idf[eplus_finename].add_object(
+        "Output:Variable".upper(),
+        Variable_Name="Zone Thermostat Cooling " "Setpoint Temperature",
+        Reporting_Frequency="hourly",
+    )
+    idf[eplus_finename].add_object(
+        "Output:Variable".upper(),
+        Variable_Name="Heat Exchanger Total Heating " "Rate",
+        Reporting_Frequency="hourly",
+    )
+    idf[eplus_finename].add_object(
+        "Output:Variable".upper(),
+        Variable_Name="Heat Exchanger Sensible " "Effectiveness",
+        Reporting_Frequency="hourly",
+    )
+    idf[eplus_finename].add_object(
+        "Output:Variable".upper(),
+        Variable_Name="Heat Exchanger Latent " "Effectiveness",
+        Reporting_Frequency="hourly",
+    )
 
     # Output meters
-    idf[eplus_finename].add_object('OUTPUT:METER',
-                                   Key_Name='HeatRejection:EnergyTransfer',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('OUTPUT:METER',
-                                   Key_Name='Heating:EnergyTransfer',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('OUTPUT:METER',
-                                   Key_Name='Cooling:EnergyTransfer',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('OUTPUT:METER',
-                                   Key_Name='Heating:DistrictHeating',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('OUTPUT:METER',
-                                   Key_Name='Heating:Electricity',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('OUTPUT:METER',
-                                   Key_Name='Heating:Gas',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('OUTPUT:METER',
-                                   Key_Name='Cooling:DistrictCooling',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('OUTPUT:METER',
-                                   Key_Name='Cooling:Electricity',
-                                   Reporting_Frequency='hourly')
-    idf[eplus_finename].add_object('OUTPUT:METER',
-                                   Key_Name='Cooling:Gas',
-                                   Reporting_Frequency='hourly')
+    idf[eplus_finename].add_object(
+        "OUTPUT:METER",
+        Key_Name="HeatRejection:EnergyTransfer",
+        Reporting_Frequency="hourly",
+    )
+    idf[eplus_finename].add_object(
+        "OUTPUT:METER", Key_Name="Heating:EnergyTransfer", Reporting_Frequency="hourly"
+    )
+    idf[eplus_finename].add_object(
+        "OUTPUT:METER", Key_Name="Cooling:EnergyTransfer", Reporting_Frequency="hourly"
+    )
+    idf[eplus_finename].add_object(
+        "OUTPUT:METER", Key_Name="Heating:DistrictHeating", Reporting_Frequency="hourly"
+    )
+    idf[eplus_finename].add_object(
+        "OUTPUT:METER", Key_Name="Heating:Electricity", Reporting_Frequency="hourly"
+    )
+    idf[eplus_finename].add_object(
+        "OUTPUT:METER", Key_Name="Heating:Gas", Reporting_Frequency="hourly"
+    )
+    idf[eplus_finename].add_object(
+        "OUTPUT:METER", Key_Name="Cooling:DistrictCooling", Reporting_Frequency="hourly"
+    )
+    idf[eplus_finename].add_object(
+        "OUTPUT:METER", Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"
+    )
+    idf[eplus_finename].add_object(
+        "OUTPUT:METER", Key_Name="Cooling:Gas", Reporting_Frequency="hourly"
+    )
 
 
 def cache_runargs(eplus_file, runargs):
@@ -834,17 +905,25 @@ def cache_runargs(eplus_file, runargs):
         runargs:
     """
     import json
-    output_directory = runargs['output_directory']
 
-    runargs.update({'run_time': datetime.datetime.now().isoformat()})
-    runargs.update({'idf_file': eplus_file})
-    with open(os.path.join(output_directory, 'runargs.json'), 'w') as fp:
+    output_directory = runargs["output_directory"]
+
+    runargs.update({"run_time": datetime.datetime.now().isoformat()})
+    runargs.update({"idf_file": eplus_file})
+    with open(os.path.join(output_directory, "runargs.json"), "w") as fp:
         json.dump(runargs, fp, sort_keys=True, indent=4)
 
 
-def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
-              output_report=None, prep_outputs=False, return_idf=False,
-              **kwargs):
+def run_eplus(
+    eplus_file,
+    weather_file,
+    output_folder=None,
+    ep_version=None,
+    output_report=None,
+    prep_outputs=False,
+    return_idf=False,
+    **kwargs
+):
     """Run an energy plus file and return the SummaryReports Tables in a list of
     [(title, table), .....]
 
@@ -886,8 +965,7 @@ def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
     if os.path.isfile(weather_file):
         pass
     else:
-        raise FileNotFoundError('Could not find weather file: {}'.format(
-            weather_file))
+        raise FileNotFoundError("Could not find weather file: {}".format(weather_file))
 
     # use absolute paths
     eplus_file = os.path.abspath(eplus_file)
@@ -895,25 +973,28 @@ def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
     # <editor-fold desc="Try to get cached results">
     try:
         start_time = time.time()
-        cached_run_results = get_from_cache(eplus_file, output_report,
-                                            **kwargs)
+        cached_run_results = get_from_cache(eplus_file, output_report, **kwargs)
     except Exception as e:
         # catch other exceptions that could occur
-        raise Exception('{}'.format(e))
+        raise Exception("{}".format(e))
     else:
         if cached_run_results:
             # if cached run found, simply return it
-            log('Succesfully parsed cached idf run in {:,.2f} seconds'.format(
-                time.time() - start_time))
+            log(
+                "Succesfully parsed cached idf run in {:,.2f} seconds".format(
+                    time.time() - start_time
+                )
+            )
             # return_idf
             if return_idf:
                 idf = load_idf(eplus_file)
             else:
                 idf = None
             from itertools import compress
+
             return_elements = tuple(
-                compress([cached_run_results, idf],
-                         [True, return_idf]))
+                compress([cached_run_results, idf], [True, return_idf])
+            )
             return _unpack_tuple(return_elements)
 
     runs_not_found = eplus_file
@@ -941,7 +1022,7 @@ def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
     # create the folder on the disk if it doesn't already exist
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
-    log('Output folder set to {}'.format(output_folder))
+    log("Output folder set to {}".format(output_folder))
 
     # Prepare outputs e.g. sql table
     if prep_outputs:
@@ -950,47 +1031,56 @@ def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
 
     if runs_not_found:
         # continue with simulation of other files
-        log('no cached run for {}. Running EnergyPlus...'.format(
-            os.path.basename(eplus_file)))
+        log(
+            "no cached run for {}. Running EnergyPlus...".format(
+                os.path.basename(eplus_file)
+            )
+        )
 
         start_time = time.time()
         from shutil import copyfile
+
         processed_runs = {}
 
         # used the hash of the original file (unmodified)
-        filename_prefix = kwargs.get('output_prefix', output_prefix)
+        filename_prefix = kwargs.get("output_prefix", output_prefix)
         epw = os.path.abspath(weather_file)
-        runargs = {'idf': eplus_file,
-                   'weather': epw,
-                   'verbose': 'q',
-                   'output_directory': os.path.join(output_folder,
-                                                    filename_prefix),
-                   'ep_version': versionid,
-                   'output_prefix': filename_prefix,
-                   'idd': idd_filename}
+        runargs = {
+            "idf": eplus_file,
+            "weather": epw,
+            "verbose": "q",
+            "output_directory": os.path.join(output_folder, filename_prefix),
+            "ep_version": versionid,
+            "output_prefix": filename_prefix,
+            "idd": idd_filename,
+        }
         runargs.update(kwargs)
 
         # Put a copy of the file in its cache folder and save runargs
-        if not os.path.isfile(os.path.join(runargs['output_directory'],
-                                           os.path.basename(eplus_file))):
-            if not os.path.isdir(os.path.join(runargs['output_directory'])):
-                os.mkdir(runargs['output_directory'])
-            copyfile(eplus_file, os.path.join(runargs['output_directory'],
-                                              os.path.basename(eplus_file)))
+        if not os.path.isfile(
+            os.path.join(runargs["output_directory"], os.path.basename(eplus_file))
+        ):
+            if not os.path.isdir(os.path.join(runargs["output_directory"])):
+                os.mkdir(runargs["output_directory"])
+            copyfile(
+                eplus_file,
+                os.path.join(runargs["output_directory"], os.path.basename(eplus_file)),
+            )
             cache_runargs(eplus_file, runargs.copy())
 
         # run the EnergyPlus Simulation
         multirunner(**runargs)
 
-        log('Completed EnergyPlus in {:,.2f} seconds'.format(
-            time.time() - start_time))
+        log("Completed EnergyPlus in {:,.2f} seconds".format(time.time() - start_time))
 
         # Return summary DataFrames
-        cacheargs = {'eplus_file': eplus_file,
-                     'output_folder': output_folder,
-                     'output_report': output_report,
-                     'filename_prefix': output_prefix,
-                     **kwargs}
+        cacheargs = {
+            "eplus_file": eplus_file,
+            "output_folder": output_folder,
+            "output_report": output_report,
+            "filename_prefix": output_prefix,
+            **kwargs,
+        }
         cached_run_results = get_report(**cacheargs)
 
         # return_idf
@@ -999,9 +1089,8 @@ def run_eplus(eplus_file, weather_file, output_folder=None, ep_version=None,
         else:
             idf = None
         from itertools import compress
-        return_elements = tuple(
-            compress([cached_run_results, idf],
-                     [True, return_idf]))
+
+        return_elements = tuple(compress([cached_run_results, idf], [True, return_idf]))
         return _unpack_tuple(return_elements)
 
 
@@ -1023,41 +1112,50 @@ def multirunner(**kwargs):
     try:
         run(**kwargs)
     except TypeError as e:
-        log('{}'.format(e), lg.ERROR)
-        raise TypeError('{}'.format(e))
+        log("{}".format(e), lg.ERROR)
+        raise TypeError("{}".format(e))
     except (KeyError, CalledProcessError, io.UnsupportedOperation) as e:
         # Get error file
-        log('{}'.format(e), lg.ERROR)
+        log("{}".format(e), lg.ERROR)
 
-        error_filename = os.path.join(kwargs['output_directory'],
-                                      kwargs['output_prefix'] + 'out.err')
+        error_filename = os.path.join(
+            kwargs["output_directory"], kwargs["output_prefix"] + "out.err"
+        )
         if os.path.isfile(error_filename):
             # if file found, open and log.
-            with open(error_filename, 'r') as fin:
-                log('\nError File for "{}" begins here...\n'.format(
-                    os.path.basename(kwargs['idf'])), lg.ERROR)
+            with open(error_filename, "r") as fin:
+                log(
+                    '\nError File for "{}" begins here...\n'.format(
+                        os.path.basename(kwargs["idf"])
+                    ),
+                    lg.ERROR,
+                )
                 log(fin.read(), lg.ERROR)
-                log('Error File for "{}" ends here...\n'.format(
-                    os.path.basename(kwargs['idf'])), lg.ERROR)
-            with open(error_filename, 'r') as stderr:
+                log(
+                    'Error File for "{}" ends here...\n'.format(
+                        os.path.basename(kwargs["idf"])
+                    ),
+                    lg.ERROR,
+                )
+            with open(error_filename, "r") as stderr:
                 # using file, raise EnergyPlusError if it is a
                 # CalledProcessError.
                 if isinstance(e, CalledProcessError):
-                    raise EnergyPlusProcessError(cmd=e.cmd,
-                                                 idf=os.path.basename(
-                                                     kwargs['idf']),
-                                                 stderr=stderr.read())
+                    raise EnergyPlusProcessError(
+                        cmd=e.cmd,
+                        idf=os.path.basename(kwargs["idf"]),
+                        stderr=stderr.read(),
+                    )
                 elif isinstance(e, io.UnsupportedOperation):
-                    raise EnergyPlusProcessError(cmd=e,
-                                                 idf=os.path.basename(
-                                                     kwargs['idf']),
-                                                 stderr=stderr.read())
+                    raise EnergyPlusProcessError(
+                        cmd=e, idf=os.path.basename(kwargs["idf"]), stderr=stderr.read()
+                    )
                 else:
                     # else, raise the error (could be a KeyError or a
                     # UnsupportedOperation)
                     raise e
         else:
-            log('Could not find error file', lg.ERROR)
+            log("Could not find error file", lg.ERROR)
 
 
 def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
@@ -1094,33 +1192,29 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
 
     if processors == 1:
         kwargs = {
-            'desc': function.__name__,
-            'total': len(in_dict),
-            'unit': 'runs',
-            'unit_scale': True,
-            'leave': True
+            "desc": function.__name__,
+            "total": len(in_dict),
+            "unit": "runs",
+            "unit_scale": True,
+            "leave": True,
         }
         if use_kwargs:
-            futures = {a: function(**in_dict[a]) for a in tqdm(in_dict,
-                                                               **kwargs)}
+            futures = {a: function(**in_dict[a]) for a in tqdm(in_dict, **kwargs)}
         else:
-            futures = {a: function(in_dict[a]) for a in tqdm(in_dict,
-                                                             **kwargs)}
+            futures = {a: function(in_dict[a]) for a in tqdm(in_dict, **kwargs)}
     else:
         with ProcessPoolExecutor(max_workers=processors) as pool:
             if use_kwargs:
-                futures = {pool.submit(function, **in_dict[a]): a for a in
-                           in_dict}
+                futures = {pool.submit(function, **in_dict[a]): a for a in in_dict}
             else:
-                futures = {pool.submit(function, in_dict[a]): a for a in
-                           in_dict}
+                futures = {pool.submit(function, in_dict[a]): a for a in in_dict}
 
             kwargs = {
-                'desc': function.__name__,
-                'total': len(futures),
-                'unit': 'runs',
-                'unit_scale': True,
-                'leave': True
+                "desc": function.__name__,
+                "total": len(futures),
+                "unit": "runs",
+                "unit_scale": True,
+                "leave": True,
             }
 
             # Print out the progress as tasks complete
@@ -1159,16 +1253,16 @@ def hash_file(eplus_file, kwargs=None):
         str: The digest value as a string of hexadecimal digits
     """
     hasher = hashlib.md5()
-    with open(eplus_file, 'rb') as afile:
+    with open(eplus_file, "rb") as afile:
         buf = afile.read()
         hasher.update(buf)
-        hasher.update(
-            kwargs.__str__().encode('utf-8'))  # Hashing the kwargs as well
+        hasher.update(kwargs.__str__().encode("utf-8"))  # Hashing the kwargs as well
     return hasher.hexdigest()
 
 
-def get_report(eplus_file, output_folder=None, output_report='sql',
-               filename_prefix=None, **kwargs):
+def get_report(
+    eplus_file, output_folder=None, output_report="sql", filename_prefix=None, **kwargs
+):
     """Returns the specified report format (html or sql)
 
     Args:
@@ -1187,32 +1281,38 @@ def get_report(eplus_file, output_folder=None, output_report='sql',
         filename_prefix = hash_file(eplus_file, kwargs)
     if output_report is None:
         return None
-    elif 'htm' in output_report.lower():
+    elif "htm" in output_report.lower():
         # Get the html report
-        fullpath_filename = os.path.join(output_folder, filename_prefix,
-                                         os.extsep.join(
-                                             [filename_prefix + 'tbl', 'htm']))
+        fullpath_filename = os.path.join(
+            output_folder,
+            filename_prefix,
+            os.extsep.join([filename_prefix + "tbl", "htm"]),
+        )
         if os.path.isfile(fullpath_filename):
             return get_html_report(fullpath_filename)
         else:
             raise FileNotFoundError(
-                'File "{}" does not exist'.format(fullpath_filename))
+                'File "{}" does not exist'.format(fullpath_filename)
+            )
 
-    elif 'sql' in output_report.lower():
+    elif "sql" in output_report.lower():
         # Get the sql report
-        fullpath_filename = os.path.join(output_folder, filename_prefix,
-                                         os.extsep.join(
-                                             [filename_prefix + 'out', 'sql']))
+        fullpath_filename = os.path.join(
+            output_folder,
+            filename_prefix,
+            os.extsep.join([filename_prefix + "out", "sql"]),
+        )
         if os.path.isfile(fullpath_filename):
             return get_sqlite_report(fullpath_filename)
         else:
             raise FileNotFoundError(
-                'File "{}" does not exist'.format(fullpath_filename))
+                'File "{}" does not exist'.format(fullpath_filename)
+            )
     else:
         return None
 
 
-def get_from_cache(eplus_file, output_report='sql', **kwargs):
+def get_from_cache(eplus_file, output_report="sql", **kwargs):
     """Retrieve a EPlus Tabulated Summary run result from the cache
 
     Args:
@@ -1228,31 +1328,30 @@ def get_from_cache(eplus_file, output_report='sql', **kwargs):
         cache_filename_prefix = hash_file(eplus_file, kwargs)
         if output_report is None:
             return None
-        elif 'htm' in output_report.lower():
+        elif "htm" in output_report.lower():
             # Get the html report
-            cache_fullpath_filename = os.path.join(settings.cache_folder,
-                                                   cache_filename_prefix,
-                                                   os.extsep.join([
-                                                       cache_filename_prefix
-                                                       + 'tbl',
-                                                       'htm']))
+            cache_fullpath_filename = os.path.join(
+                settings.cache_folder,
+                cache_filename_prefix,
+                os.extsep.join([cache_filename_prefix + "tbl", "htm"]),
+            )
             if os.path.isfile(cache_fullpath_filename):
                 return get_html_report(cache_fullpath_filename)
 
-        elif 'sql' in output_report.lower():
+        elif "sql" in output_report.lower():
             # get the SQL report
-            cache_fullpath_filename = os.path.join(settings.cache_folder,
-                                                   cache_filename_prefix,
-                                                   os.extsep.join([
-                                                       cache_filename_prefix
-                                                       + 'out',
-                                                       'sql']))
+            cache_fullpath_filename = os.path.join(
+                settings.cache_folder,
+                cache_filename_prefix,
+                os.extsep.join([cache_filename_prefix + "out", "sql"]),
+            )
             if os.path.isfile(cache_fullpath_filename):
                 # get reports from passed-in report names or from
                 # settings.available_sqlite_tables if None are given
-                return get_sqlite_report(cache_fullpath_filename,
-                                         kwargs.get('report_tables',
-                                                    settings.available_sqlite_tables))
+                return get_sqlite_report(
+                    cache_fullpath_filename,
+                    kwargs.get("report_tables", settings.available_sqlite_tables),
+                )
 
 
 def get_html_report(report_fullpath):
@@ -1265,16 +1364,16 @@ def get_html_report(report_fullpath):
     Returns:
         dict: dict of {title : table <DataFrame>,...}
     """
-    from eppy.results import \
-        readhtml  # the eppy module with functions to read the html
-    with open(report_fullpath, 'r', encoding='utf-8') as cache_file:
+    from eppy.results import readhtml  # the eppy module with functions to read the html
+
+    with open(report_fullpath, "r", encoding="utf-8") as cache_file:
         filehandle = cache_file.read()  # get a file handle to the html file
 
         cached_tbl = readhtml.titletable(
-            filehandle)  # get a file handle to the html file
+            filehandle
+        )  # get a file handle to the html file
 
-        log('Retrieved response from cache file "{}"'.format(
-            report_fullpath))
+        log('Retrieved response from cache file "{}"'.format(report_fullpath))
         return summary_reports_to_dataframes(cached_tbl)
 
 
@@ -1294,7 +1393,7 @@ def summary_reports_to_dataframes(reports_list):
         key = str(table[0])
         if key in results_dict:  # Check if key is already exists in
             # dictionary and give it a new name
-            key = key + '_'
+            key = key + "_"
         df = pd.DataFrame(table[1])
         df = df.rename(columns=df.iloc[0]).drop(df.index[0])
         results_dict[key] = df
@@ -1319,6 +1418,7 @@ def get_sqlite_report(report_file, report_tables=None):
     if os.path.isfile(report_file):
         import sqlite3
         import numpy as np
+
         # create database connection with sqlite3
         with sqlite3.connect(report_file) as conn:
             # empty dict to hold all DataFrames
@@ -1329,27 +1429,34 @@ def get_sqlite_report(report_file, report_tables=None):
                     # Try regular str read, could fail if wrong encoding
                     conn.text_factory = str
                     df = pd.read_sql_query(
-                        "select * from {};".format(table), conn,
-                        index_col=report_tables[table]['PrimaryKey'],
-                        parse_dates=report_tables[table]['ParseDates'],
-                        coerce_float=True)
+                        "select * from {};".format(table),
+                        conn,
+                        index_col=report_tables[table]["PrimaryKey"],
+                        parse_dates=report_tables[table]["ParseDates"],
+                        coerce_float=True,
+                    )
                     all_tables[table] = df
                 except OperationalError:
                     # Wring encoding found, the load bytes and ecode object
                     # columns only
                     conn.text_factory = bytes
                     df = pd.read_sql_query(
-                        "select * from {};".format(table), conn,
-                        index_col=report_tables[table]['PrimaryKey'],
-                        parse_dates=report_tables[table]['ParseDates'],
-                        coerce_float=True)
+                        "select * from {};".format(table),
+                        conn,
+                        index_col=report_tables[table]["PrimaryKey"],
+                        parse_dates=report_tables[table]["ParseDates"],
+                        coerce_float=True,
+                    )
                     str_df = df.select_dtypes([np.object])
-                    str_df = str_df.stack().str.decode('8859').unstack()
+                    str_df = str_df.stack().str.decode("8859").unstack()
                     for col in str_df:
                         df[col] = str_df[col]
                     all_tables[table] = df
-            log('SQL query parsed {} tables as DataFrames from {}'.format(
-                len(all_tables), report_file))
+            log(
+                "SQL query parsed {} tables as DataFrames from {}".format(
+                    len(all_tables), report_file
+                )
+            )
             return all_tables
 
 
@@ -1385,61 +1492,64 @@ def perform_transition(file, to_version=None):
         # if a E+ exists, pass
         pass
         # might be an old version of E+
-    elif tuple(map(int, doted_version.split('.'))) < (8, 0):
+    elif tuple(map(int, doted_version.split("."))) < (8, 0):
         # else if the version is an old E+ version (< 8.0)
         iddfile = getoldiddfile(doted_version)
-    vupdater_path, _ = iddfile.split('Energy+')
+    vupdater_path, _ = iddfile.split("Energy+")
     # use to_version
     if to_version is None:
         # What is the latest E+ installed version
         to_version = find_eplus_installs(vupdater_path)
-    if tuple(versionid.split('-')) > tuple(to_version.split('-')):
+    if tuple(versionid.split("-")) > tuple(to_version.split("-")):
         log(
             'The version of the idf file "{}: v{}" is higher than any version '
-            'of EnergyPlus installed on this machine. Please install '
+            "of EnergyPlus installed on this machine. Please install "
             'EnergyPlus version "{}" or higher. Latest version found: '
-            '{}'.format(os.path.basename(file), versionid, versionid,
-                        to_version), lg.WARNING)
+            "{}".format(os.path.basename(file), versionid, versionid, to_version),
+            lg.WARNING,
+        )
         return None
-    ep_installation_name = os.path.abspath(os.path.dirname(getiddfile(
-        to_version.replace('-', '.'))))
-    vupdater_path = os.path.join(ep_installation_name, 'PreProcess',
-                                 'IDFVersionUpdater')
+    ep_installation_name = os.path.abspath(
+        os.path.dirname(getiddfile(to_version.replace("-", ".")))
+    )
+    vupdater_path = os.path.join(
+        ep_installation_name, "PreProcess", "IDFVersionUpdater"
+    )
     trans_exec = {
-        '1-0-0': os.path.join(vupdater_path, 'Transition-V1-0-0-to-V1-0-1'),
-        '1-0-1': os.path.join(vupdater_path, 'Transition-V1-0-1-to-V1-0-2'),
-        '1-0-2': os.path.join(vupdater_path, 'Transition-V1-0-2-to-V1-0-3'),
-        '1-0-3': os.path.join(vupdater_path, 'Transition-V1-0-3-to-V1-1-0'),
-        '1-1-0': os.path.join(vupdater_path, 'Transition-V1-1-0-to-V1-1-1'),
-        '1-1-1': os.path.join(vupdater_path, 'Transition-V1-1-1-to-V1-2-0'),
-        '1-2-0': os.path.join(vupdater_path, 'Transition-V1-2-0-to-V1-2-1'),
-        '1-2-1': os.path.join(vupdater_path, 'Transition-V1-2-1-to-V1-2-2'),
-        '1-2-2': os.path.join(vupdater_path, 'Transition-V1-2-2-to-V1-2-3'),
-        '1-2-3': os.path.join(vupdater_path, 'Transition-V1-2-3-to-V1-3-0'),
-        '1-3-0': os.path.join(vupdater_path, 'Transition-V1-3-0-to-V1-4-0'),
-        '1-4-0': os.path.join(vupdater_path, 'Transition-V1-4-0-to-V2-0-0'),
-        '2-0-0': os.path.join(vupdater_path, 'Transition-V2-0-0-to-V2-1-0'),
-        '2-1-0': os.path.join(vupdater_path, 'Transition-V2-1-0-to-V2-2-0'),
-        '2-2-0': os.path.join(vupdater_path, 'Transition-V2-2-0-to-V3-0-0'),
-        '3-0-0': os.path.join(vupdater_path, 'Transition-V3-0-0-to-V3-1-0'),
-        '3-1-0': os.path.join(vupdater_path, 'Transition-V3-1-0-to-V4-0-0'),
-        '4-0-0': os.path.join(vupdater_path, 'Transition-V4-0-0-to-V5-0-0'),
-        '5-0-0': os.path.join(vupdater_path, 'Transition-V5-0-0-to-V6-0-0'),
-        '6-0-0': os.path.join(vupdater_path, 'Transition-V6-0-0-to-V7-0-0'),
-        '7-0-0': os.path.join(vupdater_path, 'Transition-V7-0-0-to-V7-1-0'),
-        '7-1-0': os.path.join(vupdater_path, 'Transition-V7-1-0-to-V7-2-0'),
-        '7-2-0': os.path.join(vupdater_path, 'Transition-V7-2-0-to-V8-0-0'),
-        '8-0-0': os.path.join(vupdater_path, 'Transition-V8-0-0-to-V8-1-0'),
-        '8-1-0': os.path.join(vupdater_path, 'Transition-V8-1-0-to-V8-2-0'),
-        '8-2-0': os.path.join(vupdater_path, 'Transition-V8-2-0-to-V8-3-0'),
-        '8-3-0': os.path.join(vupdater_path, 'Transition-V8-3-0-to-V8-4-0'),
-        '8-4-0': os.path.join(vupdater_path, 'Transition-V8-4-0-to-V8-5-0'),
-        '8-5-0': os.path.join(vupdater_path, 'Transition-V8-5-0-to-V8-6-0'),
-        '8-6-0': os.path.join(vupdater_path, 'Transition-V8-6-0-to-V8-7-0'),
-        '8-7-0': os.path.join(vupdater_path, 'Transition-V8-7-0-to-V8-8-0'),
-        '8-8-0': os.path.join(vupdater_path, 'Transition-V8-8-0-to-V8-9-0'),
-        '8-9-0': os.path.join(vupdater_path, 'Transition-V8-9-0-to-V9-0-0'),
-        '9-0-0': os.path.join(vupdater_path, 'Transition-V9-0-0-to-V9-1-0'),
+        "1-0-0": os.path.join(vupdater_path, "Transition-V1-0-0-to-V1-0-1"),
+        "1-0-1": os.path.join(vupdater_path, "Transition-V1-0-1-to-V1-0-2"),
+        "1-0-2": os.path.join(vupdater_path, "Transition-V1-0-2-to-V1-0-3"),
+        "1-0-3": os.path.join(vupdater_path, "Transition-V1-0-3-to-V1-1-0"),
+        "1-1-0": os.path.join(vupdater_path, "Transition-V1-1-0-to-V1-1-1"),
+        "1-1-1": os.path.join(vupdater_path, "Transition-V1-1-1-to-V1-2-0"),
+        "1-2-0": os.path.join(vupdater_path, "Transition-V1-2-0-to-V1-2-1"),
+        "1-2-1": os.path.join(vupdater_path, "Transition-V1-2-1-to-V1-2-2"),
+        "1-2-2": os.path.join(vupdater_path, "Transition-V1-2-2-to-V1-2-3"),
+        "1-2-3": os.path.join(vupdater_path, "Transition-V1-2-3-to-V1-3-0"),
+        "1-3-0": os.path.join(vupdater_path, "Transition-V1-3-0-to-V1-4-0"),
+        "1-4-0": os.path.join(vupdater_path, "Transition-V1-4-0-to-V2-0-0"),
+        "2-0-0": os.path.join(vupdater_path, "Transition-V2-0-0-to-V2-1-0"),
+        "2-1-0": os.path.join(vupdater_path, "Transition-V2-1-0-to-V2-2-0"),
+        "2-2-0": os.path.join(vupdater_path, "Transition-V2-2-0-to-V3-0-0"),
+        "3-0-0": os.path.join(vupdater_path, "Transition-V3-0-0-to-V3-1-0"),
+        "3-1-0": os.path.join(vupdater_path, "Transition-V3-1-0-to-V4-0-0"),
+        "4-0-0": os.path.join(vupdater_path, "Transition-V4-0-0-to-V5-0-0"),
+        "5-0-0": os.path.join(vupdater_path, "Transition-V5-0-0-to-V6-0-0"),
+        "6-0-0": os.path.join(vupdater_path, "Transition-V6-0-0-to-V7-0-0"),
+        "7-0-0": os.path.join(vupdater_path, "Transition-V7-0-0-to-V7-1-0"),
+        "7-1-0": os.path.join(vupdater_path, "Transition-V7-1-0-to-V7-2-0"),
+        "7-2-0": os.path.join(vupdater_path, "Transition-V7-2-0-to-V8-0-0"),
+        "8-0-0": os.path.join(vupdater_path, "Transition-V8-0-0-to-V8-1-0"),
+        "8-1-0": os.path.join(vupdater_path, "Transition-V8-1-0-to-V8-2-0"),
+        "8-2-0": os.path.join(vupdater_path, "Transition-V8-2-0-to-V8-3-0"),
+        "8-3-0": os.path.join(vupdater_path, "Transition-V8-3-0-to-V8-4-0"),
+        "8-4-0": os.path.join(vupdater_path, "Transition-V8-4-0-to-V8-5-0"),
+        "8-5-0": os.path.join(vupdater_path, "Transition-V8-5-0-to-V8-6-0"),
+        "8-6-0": os.path.join(vupdater_path, "Transition-V8-6-0-to-V8-7-0"),
+        "8-7-0": os.path.join(vupdater_path, "Transition-V8-7-0-to-V8-8-0"),
+        "8-8-0": os.path.join(vupdater_path, "Transition-V8-8-0-to-V8-9-0"),
+        "8-9-0": os.path.join(vupdater_path, "Transition-V8-9-0-to-V9-0-0"),
+        "9-0-0": os.path.join(vupdater_path, "Transition-V9-0-0-to-V9-1-0"),
     }
     file = os.path.abspath(file)
     # store the directory we start in
@@ -1450,11 +1560,12 @@ def perform_transition(file, to_version=None):
     if versionid == to_version:
         raise KeyError
     with cd(run_dir):
-        transitions = [key for key in trans_exec
-                       if tuple(map(int, key.split('-'))) < \
-                       tuple(map(int, to_version.split('-')))
-                       and tuple(map(int, key.split('-'))) >= \
-                       tuple(map(int, versionid.split('-')))]
+        transitions = [
+            key
+            for key in trans_exec
+            if tuple(map(int, key.split("-"))) < tuple(map(int, to_version.split("-")))
+            and tuple(map(int, key.split("-"))) >= tuple(map(int, versionid.split("-")))
+        ]
         for trans in transitions:
             try:
                 trans_exec[trans]
@@ -1468,15 +1579,16 @@ def perform_transition(file, to_version=None):
                 except CalledProcessError as e:
                     # potentially catch contents of std out and put it in the
                     # error log
-                    log('{}'.format(e), lg.ERROR)
+                    log("{}".format(e), lg.ERROR)
                     raise
 
-    log('Transition completed\n')
+    log("Transition completed\n")
     # Clean 'idfnew' and 'idfold' files created by the transition porgram
-    files_to_delete = glob.glob(os.path.dirname(file) + '/*.idfnew')
-    files_to_delete.extend(glob.glob(os.path.dirname(file) + '/*.idfold'))
-    files_to_delete.extend(glob.glob(os.path.dirname(
-        file) + '/*.VCpErr'))  # Remove error files since logged to console
+    files_to_delete = glob.glob(os.path.dirname(file) + "/*.idfnew")
+    files_to_delete.extend(glob.glob(os.path.dirname(file) + "/*.idfold"))
+    files_to_delete.extend(
+        glob.glob(os.path.dirname(file) + "/*.VCpErr")
+    )  # Remove error files since logged to console
     for file in files_to_delete:
         if os.path.isfile(file):
             os.remove(file)
@@ -1492,17 +1604,19 @@ def find_eplus_installs(vupdater_path):
     Returns:
         (str): The version number of the latest E+ install
     """
-    path_to_eplus, _ = vupdater_path.split('EnergyPlus')
+    path_to_eplus, _ = vupdater_path.split("EnergyPlus")
 
     # Find all EnergyPlus folders
-    list_eplus_dir = glob.glob(os.path.join(path_to_eplus, 'EnergyPlus*'))
+    list_eplus_dir = glob.glob(os.path.join(path_to_eplus, "EnergyPlus*"))
 
     # check if any EnergyPlus install exists
     if not list_eplus_dir:
-        raise Exception('No EnergyPlus installation found. Make sure '
-                        'you have EnergyPlus installed. Go to '
-                        'https://energyplus.net/downloads to download the '
-                        'latest version of EnergyPlus.')
+        raise Exception(
+            "No EnergyPlus installation found. Make sure "
+            "you have EnergyPlus installed. Go to "
+            "https://energyplus.net/downloads to download the "
+            "latest version of EnergyPlus."
+        )
 
     # Find the most recent version of EnergyPlus installed from the version
     # number (at the end of the folder name)
@@ -1510,11 +1624,11 @@ def find_eplus_installs(vupdater_path):
     # Find the most recent version in the different folders found
     for dir in list_eplus_dir:
         version = dir[-5:]
-        ver = tuple(map(int, version.split('-')))
+        ver = tuple(map(int, version.split("-")))
         if ver > v0:
             v0 = ver
 
-    return '-'.join(tuple(map(str, v0)))
+    return "-".join(tuple(map(str, v0)))
 
 
 def get_idf_version(file, doted=True):
@@ -1528,24 +1642,23 @@ def get_idf_version(file, doted=True):
     Returns:
         str: the version id
     """
-    with open(os.path.abspath(file), 'r', encoding='latin-1') as fhandle:
+    with open(os.path.abspath(file), "r", encoding="latin-1") as fhandle:
         try:
             txt = fhandle.read()
-            ntxt = parse_idd.nocomment(txt, '!')
-            blocks = ntxt.split(';')
+            ntxt = parse_idd.nocomment(txt, "!")
+            blocks = ntxt.split(";")
             blocks = [block.strip() for block in blocks]
-            bblocks = [block.split(',') for block in blocks]
+            bblocks = [block.split(",") for block in blocks]
             bblocks1 = [[item.strip() for item in block] for block in bblocks]
-            ver_blocks = [block for block in bblocks1
-                          if block[0].upper() == 'VERSION']
+            ver_blocks = [block for block in bblocks1 if block[0].upper() == "VERSION"]
             ver_block = ver_blocks[0]
             if doted:
                 versionid = ver_block[1]
             else:
-                versionid = ver_block[1].replace('.', '-') + '-0'
+                versionid = ver_block[1].replace(".", "-") + "-0"
         except Exception as e:
             log('Version id for file "{}" cannot be found'.format(file))
-            log('{}'.format(e))
+            log("{}".format(e))
             raise
         else:
             return versionid
@@ -1558,13 +1671,13 @@ def getoldiddfile(versionid):
     Args:
         versionid:
     """
-    vlist = versionid.split('.')
+    vlist = versionid.split(".")
     if len(vlist) == 1:
-        vlist = vlist + ['0', '0']
+        vlist = vlist + ["0", "0"]
     elif len(vlist) == 2:
-        vlist = vlist + ['0']
-    ver_str = '-'.join(vlist)
+        vlist = vlist + ["0"]
+    ver_str = "-".join(vlist)
     eplus_exe, _ = eppy.runner.run_functions.install_paths(ver_str)
     eplusfolder = os.path.dirname(eplus_exe)
-    iddfile = '{}/bin/Energy+.idd'.format(eplusfolder, )
+    iddfile = "{}/bin/Energy+.idd".format(eplusfolder)
     return iddfile

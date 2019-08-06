@@ -7,48 +7,52 @@ from archetypal import Schedule, load_idf, copy_file, run_eplus, UmiSchedule
 
 def test_schedules_in_necb_specific(config):
     files = [
-        'tests/input_data/regular/NECB 2011-MediumOffice-NECB HDD '
-        'Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf']
-    idfs = {os.path.basename(file): load_idf(file)
-            for file in files}
+        "tests/input_data/regular/NECB 2011-MediumOffice-NECB HDD "
+        "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+    ]
+    idfs = {os.path.basename(file): load_idf(file) for file in files}
     import matplotlib.pyplot as plt
+
     for key in idfs:
         idf = idfs[key]
-        s = Schedule(Name='NECB-A-Thermostat Setpoint-Heating', idf=idf,
-                     start_day_of_the_week=0)
-        s.plot(slice=('2018/01/02', '2018/01/03'), drawstyle="steps-post")
+        s = Schedule(
+            Name="NECB-A-Thermostat Setpoint-Heating", idf=idf, start_day_of_the_week=0
+        )
+        s.plot(slice=("2018/01/02", "2018/01/03"), drawstyle="steps-post")
         plt.show()
 
 
 def test_make_umi_schedule(config):
     """Tests only a single schedule name"""
     import matplotlib.pyplot as plt
-    idf_file = 'tests/input_data/schedules/schedules.idf'
+
+    idf_file = "tests/input_data/schedules/schedules.idf"
     idf_file = copy_file(idf_file)[0]
     idf = load_idf(idf_file)
 
-    s = UmiSchedule(Name='POFF', idf=idf, start_day_of_the_week=0)
+    s = UmiSchedule(Name="POFF", idf=idf, start_day_of_the_week=0)
     ep_year, ep_weeks, ep_days = s.to_year_week_day()
 
-    new = UmiSchedule(Name=ep_year.Name, idf=idf,
-                      start_day_of_the_week=s.startDayOfTheWeek)
+    new = UmiSchedule(
+        Name=ep_year.Name, idf=idf, start_day_of_the_week=s.startDayOfTheWeek
+    )
 
     print(len(s.all_values))
     print(len(new.all_values))
-    ax = s.plot(slice=('2018/01/01 00:00', '2018/01/07'), legend=True)
-    new.plot(slice=('2018/01/01 00:00', '2018/01/07'), ax=ax, legend=True)
+    ax = s.plot(slice=("2018/01/01 00:00", "2018/01/07"), legend=True)
+    new.plot(slice=("2018/01/01 00:00", "2018/01/07"), ax=ax, legend=True)
     plt.show()
-    assert s.__class__.__name__ == 'UmiSchedule'
+    assert s.__class__.__name__ == "UmiSchedule"
     assert len(s.all_values) == len(new.all_values)
     assert (new.all_values == s.all_values).all()
 
 
 def test_constant_schedule():
     const = Schedule.constant_schedule()
-    assert const.__class__.__name__ == 'Schedule'
+    assert const.__class__.__name__ == "Schedule"
 
 
-idf_file = 'tests/input_data/schedules/test_multizone_EP.idf'
+idf_file = "tests/input_data/schedules/test_multizone_EP.idf"
 
 
 def schedules_idf():
@@ -59,17 +63,19 @@ def schedules_idf():
 idf = schedules_idf()
 schedules = list(idf.get_all_schedules(yearly_only=True).keys())
 ids = [i.replace(" ", "_") for i in schedules]
-schedules = [pytest.param(schedule,
-                          marks=pytest.mark.xfail(
-                              reason="Can't quite capture all possibilities " \
-                                     "with special days"))
-             if schedule == 'POFF' else
-             pytest.param(schedule,
-                          marks=pytest.mark.xfail(
-                              raises=NotImplementedError))
-             if schedule == 'Cooling Setpoint Schedule'
-             else schedule
-             for schedule in schedules]
+schedules = [
+    pytest.param(
+        schedule,
+        marks=pytest.mark.xfail(
+            reason="Can't quite capture all possibilities " "with special days"
+        ),
+    )
+    if schedule == "POFF"
+    else pytest.param(schedule, marks=pytest.mark.xfail(raises=NotImplementedError))
+    if schedule == "Cooling Setpoint Schedule"
+    else schedule
+    for schedule in schedules
+]
 
 
 def test_ep_versus_schedule(test_data):
@@ -80,7 +86,7 @@ def test_ep_versus_schedule(test_data):
 
     # slice_ = ('2018/01/01 00:00', '2018/01/08 00:00')  # first week
     # slice_ = ('2018/05/20 12:00', '2018/05/22 12:00')
-    slice_ = ('2018/04/30 12:00', '2018/05/02 12:00')  # Holiday
+    slice_ = ("2018/04/30 12:00", "2018/05/02 12:00")  # Holiday
     # slice_ = ('2018/01/01 00:00', '2018/12/31 23:00')  # all year
     # slice_ = ('2018/04/30 12:00', '2018/05/01 12:00')  # break
 
@@ -102,24 +108,29 @@ def test_ep_versus_schedule(test_data):
 
     print(diff)
     print(orig.series[mask])
-    assert (orig.all_values[0:52 * 7 * 24] == expected[0:52 * 7 * 24]).all()
-    assert (new.all_values[0:52 * 7 * 24] == expected[0:52 * 7 * 24]).all()
+    assert (orig.all_values[0 : 52 * 7 * 24] == expected[0 : 52 * 7 * 24]).all()
+    assert (new.all_values[0 : 52 * 7 * 24] == expected[0 : 52 * 7 * 24]).all()
 
 
 @pytest.fixture(params=schedules, ids=ids)
 def test_schedules(request, run_schedules_idf):
     """Create the test_data"""
     import pandas as pd
+
     # read original schedule
     idf = schedules_idf()
     schName = request.param
     orig = Schedule(Name=schName, idf=idf)
 
-    print('{name}\tType:{type}\t[{len}]\tValues:{'
-          'values}'.format(name=orig.Name,
-                           type=orig.schType,
-                           values=orig.all_values,
-                           len=len(orig.all_values)))
+    print(
+        "{name}\tType:{type}\t[{len}]\tValues:{"
+        "values}".format(
+            name=orig.Name,
+            type=orig.schType,
+            values=orig.all_values,
+            len=len(orig.all_values),
+        )
+    )
 
     # create year:week:day version
     new_eps = orig.to_year_week_day()
@@ -128,25 +139,29 @@ def test_schedules(request, run_schedules_idf):
     index = orig.series.index
     epv = pd.read_csv(run_schedules_idf)
     epv.columns = epv.columns.str.strip()
-    epv = epv.loc[:, schName.upper() + ':Schedule Value [](Hourly)'].values
+    epv = epv.loc[:, schName.upper() + ":Schedule Value [](Hourly)"].values
     expected = pd.Series(epv, index=index)
 
-    print('Year: {}'.format(new_eps[0].Name))
-    print('Weeks: {}'.format([obj.Name for obj in new_eps[1]]))
-    print('Days: {}'.format([obj.Name for obj in new_eps[2]]))
+    print("Year: {}".format(new_eps[0].Name))
+    print("Weeks: {}".format([obj.Name for obj in new_eps[1]]))
+    print("Days: {}".format([obj.Name for obj in new_eps[2]]))
 
     yield orig, new, expected
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def run_schedules_idf(config):
     import os
-    run_eplus(idf_file, weather_file='tests/input_data/CAN_PQ_Montreal.Intl.AP'
-                                     '.716270_CWEC.epw',
-              annual=True, output_folder='tests/input_data/schedules',
-              output_prefix='eprun', readvars=True)
-    csv = os.path.join('tests', 'input_data', 'schedules', 'eprun',
-                       'eprunout.csv')
+
+    run_eplus(
+        idf_file,
+        weather_file="tests/input_data/CAN_PQ_Montreal.Intl.AP" ".716270_CWEC.epw",
+        annual=True,
+        output_folder="tests/input_data/schedules",
+        output_prefix="eprun",
+        readvars=True,
+    )
+    csv = os.path.join("tests", "input_data", "schedules", "eprun", "eprunout.csv")
     yield csv
 
 
@@ -158,7 +173,7 @@ def test_ep_versus_schedule(test_schedules):
 
     # slice_ = ('2018/01/01 00:00', '2018/01/08 00:00')  # first week
     # slice_ = ('2018/05/20 12:00', '2018/05/22 12:00')
-    slice_ = ('2018-10-05 12:00', '2018-10-07 12:00')  # Holiday
+    slice_ = ("2018-10-05 12:00", "2018-10-07 12:00")  # Holiday
     # slice_ = ('2018/01/01 00:00', '2018/12/31 23:00')  # all year
     # slice_ = ('2018/04/30 12:00', '2018/05/01 12:00')  # break
 
@@ -178,7 +193,9 @@ def test_ep_versus_schedule(test_schedules):
     # # endregion
 
     print(orig.series[mask])
-    assert (orig.all_values.round(3)[0:52 * 7 * 24] == expected.round(3)[
-                                                       0:52 * 7 * 24]).all()
-    assert (new.all_values.round(3)[0:52 * 7 * 24] == expected.round(3)[
-                                                      0:52 * 7 * 24]).all()
+    assert (
+        orig.all_values.round(3)[0 : 52 * 7 * 24] == expected.round(3)[0 : 52 * 7 * 24]
+    ).all()
+    assert (
+        new.all_values.round(3)[0 : 52 * 7 * 24] == expected.round(3)[0 : 52 * 7 * 24]
+    ).all()

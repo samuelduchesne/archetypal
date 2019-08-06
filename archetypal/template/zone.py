@@ -18,7 +18,7 @@ import networkx
 import numpy as np
 from geomeppy.geom.polygons import Polygon3D
 
-from archetypal import log, save_and_show, timeit
+from archetypal import log, save_and_show, timeit, settings
 from archetypal.template import (
     Unique,
     UmiBase,
@@ -381,10 +381,15 @@ class Zone(UmiBase, metaclass=Unique):
         meta = self._get_predecessors_meta(other)
 
         if not weights:
-            weights = [self.volume, other.volume]
+            zone_weight = settings.zone_weight
+            weights = [
+                getattr(self, str(zone_weight)),
+                getattr(other, str(zone_weight)),
+            ]
             log(
-                'using zone volume "{}" as weighting factor in "{}" '
+                'using zone {} "{}" as weighting factor in "{}" '
                 "combine.".format(
+                    zone_weight,
                     " & ".join(list(map(str, map(int, weights)))),
                     self.__class__.__name__,
                 )

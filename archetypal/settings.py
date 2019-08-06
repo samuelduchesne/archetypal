@@ -146,3 +146,27 @@ path_template_d18 = pkg_resources.resource_filename(resource_package, resource_p
 # Units
 
 unit_registry = pint.UnitRegistry()
+
+
+class ZoneWeight(object):
+    """Zone weights for Umi Templates"""
+
+    weight_attr = {0: "area", 1: "volume"}
+
+    def __init__(self, n=0):
+        self._weight_attr = self.weight_attr[n]
+
+    def __str__(self):
+        return self.get_weight_attr()
+
+    def get_weight_attr(self):
+        return self._weight_attr
+
+    def set_weigth_attr(self, weight):
+        if weight not in self.weight_attr.values():
+            i = len(self.weight_attr) + 1
+            self.weight_attr[i] = weight
+        self._weight_attr = weight
+
+
+zone_weight = ZoneWeight(n=0)

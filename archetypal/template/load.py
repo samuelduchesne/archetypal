@@ -8,7 +8,7 @@
 import collections
 
 from archetypal.template import UmiBase, Unique, UmiSchedule
-from archetypal import log, timeit
+from archetypal import log, timeit, settings
 
 
 class ZoneLoad(UmiBase, metaclass=Unique):
@@ -272,10 +272,15 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         meta = self._get_predecessors_meta(other)
 
         if not weights:
-            weights = [self._belongs_to_zone.volume, other._belongs_to_zone.volume]
+            zone_weight = settings.zone_weight
+            weights = [
+                getattr(self._belongs_to_zone, str(zone_weight)),
+                getattr(other._belongs_to_zone, str(zone_weight)),
+            ]
             log(
-                'using zone volume "{}" as weighting factor in "{}" '
+                'using zone {} "{}" as weighting factor in "{}" '
                 "combine.".format(
+                    zone_weight,
                     " & ".join(list(map(str, map(int, weights)))),
                     self.__class__.__name__,
                 )

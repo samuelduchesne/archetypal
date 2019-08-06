@@ -47,6 +47,7 @@ def config(
     useful_idf_objects=settings.useful_idf_objects,
     umitemplate=settings.umitemplate,
     trnsys_default_folder=settings.trnsys_default_folder,
+    default_weight_factor='area',
 ):
     """Configurations
 
@@ -85,6 +86,7 @@ def config(
     settings.useful_idf_objects = useful_idf_objects
     settings.umitemplate = umitemplate
     settings.trnsys_default_folder = validate_trnsys_folder(trnsys_default_folder)
+    settings.zone_weight.set_weigth_attr(default_weight_factor)
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:

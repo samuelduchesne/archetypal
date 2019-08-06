@@ -17,19 +17,22 @@ class ZoneLoad(UmiBase, metaclass=Unique):
     .. image:: ../images/template/zoneinfo-loads.png
     """
 
-    def __init__(self, *args,
-                 DimmingType='Continuous',
-                 EquipmentAvailabilitySchedule=None,
-                 EquipmentPowerDensity=12,
-                 IlluminanceTarget=500,
-                 LightingPowerDensity=12,
-                 LightsAvailabilitySchedule=None,
-                 OccupancySchedule=None,
-                 IsEquipmentOn=True,
-                 IsLightingOn=True,
-                 IsPeopleOn=True,
-                 PeopleDensity=0.2,
-                 **kwargs):
+    def __init__(
+        self,
+        *args,
+        DimmingType="Continuous",
+        EquipmentAvailabilitySchedule=None,
+        EquipmentPowerDensity=12,
+        IlluminanceTarget=500,
+        LightingPowerDensity=12,
+        LightsAvailabilitySchedule=None,
+        OccupancySchedule=None,
+        IsEquipmentOn=True,
+        IsLightingOn=True,
+        IsPeopleOn=True,
+        PeopleDensity=0.2,
+        **kwargs
+    ):
         """Initialize a new ZoneLoad object
 
         Args:
@@ -86,7 +89,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         self.IsPeopleOn = IsPeopleOn
         self.PeopleDensity = PeopleDensity
 
-        self._belongs_to_zone = kwargs.get('zone', None)
+        self._belongs_to_zone = kwargs.get("zone", None)
 
     def __add__(self, other):
         """
@@ -104,11 +107,11 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         """
         zl = cls(*args, **kwargs)
 
-        cool_schd = kwargs.get('EquipmentAvailabilitySchedule', None)
+        cool_schd = kwargs.get("EquipmentAvailabilitySchedule", None)
         zl.EquipmentAvailabilitySchedule = zl.get_ref(cool_schd)
-        heat_schd = kwargs.get('LightsAvailabilitySchedule', None)
+        heat_schd = kwargs.get("LightsAvailabilitySchedule", None)
         zl.LightsAvailabilitySchedule = zl.get_ref(heat_schd)
-        mech_schd = kwargs.get('OccupancySchedule', None)
+        mech_schd = kwargs.get("OccupancySchedule", None)
         zl.OccupancySchedule = zl.get_ref(mech_schd)
 
         return zl
@@ -119,13 +122,15 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
         data_dict["$id"] = str(self.id)
         data_dict["DimmingType"] = self.DimmingType
-        data_dict["EquipmentAvailabilitySchedule"] = \
-            self.EquipmentAvailabilitySchedule.to_dict()
+        data_dict[
+            "EquipmentAvailabilitySchedule"
+        ] = self.EquipmentAvailabilitySchedule.to_dict()
         data_dict["EquipmentPowerDensity"] = self.EquipmentPowerDensity
         data_dict["IlluminanceTarget"] = self.IlluminanceTarget
         data_dict["LightingPowerDensity"] = self.LightingPowerDensity
-        data_dict["LightsAvailabilitySchedule"] = \
-            self.LightsAvailabilitySchedule.to_dict()
+        data_dict[
+            "LightsAvailabilitySchedule"
+        ] = self.LightsAvailabilitySchedule.to_dict()
         data_dict["OccupancySchedule"] = self.OccupancySchedule.to_dict()
         data_dict["IsEquipmentOn"] = self.IsEquipmentOn
         data_dict["IsLightingOn"] = self.IsLightingOn
@@ -148,75 +153,93 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
         # Get schedule index for different loads and creates ZoneLoad arguments
         # Verifies if Equipment in zone
-        zone_index = zone.sql['Zones'][
-            zone.sql['Zones']['ZoneName'].str.contains(
-                zone.Name.upper())].index[0]
-        if zone.sql['NominalElectricEquipment'][
-            zone.sql['NominalElectricEquipment']['ZoneIndex'] == zone_index].empty:
-            EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule(
-                idf=zone.idf)
+        zone_index = zone.sql["Zones"][
+            zone.sql["Zones"]["ZoneName"].str.contains(zone.Name.upper())
+        ].index[0]
+        if zone.sql["NominalElectricEquipment"][
+            zone.sql["NominalElectricEquipment"]["ZoneIndex"] == zone_index
+        ].empty:
+            EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule(idf=zone.idf)
             EquipmentPowerDensity = 0.0
         else:
-            schedule_equipment_index = zone.sql['NominalElectricEquipment'][
-                zone.sql['NominalElectricEquipment']['ZoneIndex'] == zone_index][
-                'ScheduleIndex'].iloc[0]
-            EquipmentAvailabilitySchedule = \
-                UmiSchedule(Name=zone.sql['Schedules']['ScheduleName'].iloc[
-                    schedule_equipment_index - 1], idf=zone.idf)
-            EquipmentPowerDensity = zone.sql['NominalElectricEquipment'][
-                                        zone.sql['NominalElectricEquipment'][
-                                            'ZoneIndex'] == zone_index][
-                                        'DesignLevel'].iloc[0] / zone.area
+            schedule_equipment_index = zone.sql["NominalElectricEquipment"][
+                zone.sql["NominalElectricEquipment"]["ZoneIndex"] == zone_index
+            ]["ScheduleIndex"].iloc[0]
+            EquipmentAvailabilitySchedule = UmiSchedule(
+                Name=zone.sql["Schedules"]["ScheduleName"].iloc[
+                    schedule_equipment_index - 1
+                ],
+                idf=zone.idf,
+            )
+            EquipmentPowerDensity = (
+                zone.sql["NominalElectricEquipment"][
+                    zone.sql["NominalElectricEquipment"]["ZoneIndex"] == zone_index
+                ]["DesignLevel"].iloc[0]
+                / zone.area
+            )
         # Verifies if Lights in zone
-        if zone.sql['NominalLighting'][
-            zone.sql['NominalLighting']['ZoneIndex'] == zone_index].empty:
-            LightsAvailabilitySchedule = UmiSchedule.constant_schedule(
-                idf=zone.idf)
+        if zone.sql["NominalLighting"][
+            zone.sql["NominalLighting"]["ZoneIndex"] == zone_index
+        ].empty:
+            LightsAvailabilitySchedule = UmiSchedule.constant_schedule(idf=zone.idf)
             LightingPowerDensity = 0.0
         else:
-            schedule_light_index = zone.sql['NominalLighting'][
-                zone.sql['NominalLighting']['ZoneIndex'] == zone_index][
-                'ScheduleIndex'].iloc[0]
+            schedule_light_index = zone.sql["NominalLighting"][
+                zone.sql["NominalLighting"]["ZoneIndex"] == zone_index
+            ]["ScheduleIndex"].iloc[0]
             LightsAvailabilitySchedule = UmiSchedule(
-                Name=zone.sql['Schedules']['ScheduleName'].iloc[
-                    schedule_light_index - 1], idf=zone.idf)
-            LightingPowerDensity = zone.sql['NominalLighting'][
-                                       zone.sql['NominalLighting'][
-                                           'ZoneIndex'] == zone_index][
-                                       'DesignLevel'].iloc[0] / zone.area
+                Name=zone.sql["Schedules"]["ScheduleName"].iloc[
+                    schedule_light_index - 1
+                ],
+                idf=zone.idf,
+            )
+            LightingPowerDensity = (
+                zone.sql["NominalLighting"][
+                    zone.sql["NominalLighting"]["ZoneIndex"] == zone_index
+                ]["DesignLevel"].iloc[0]
+                / zone.area
+            )
         # Verifies if People in zone
-        if zone.sql['NominalPeople'][
-            zone.sql['NominalPeople']['ZoneIndex'] == zone_index].empty:
-            OccupancySchedule = UmiSchedule.constant_schedule(
-                idf=zone.idf)
+        if zone.sql["NominalPeople"][
+            zone.sql["NominalPeople"]["ZoneIndex"] == zone_index
+        ].empty:
+            OccupancySchedule = UmiSchedule.constant_schedule(idf=zone.idf)
             PeopleDensity = 0.0
         else:
-            schedule_people_index = zone.sql['NominalPeople'][
-                zone.sql['NominalPeople']['ZoneIndex'] == zone_index][
-                'NumberOfPeopleScheduleIndex'].iloc[0]
+            schedule_people_index = zone.sql["NominalPeople"][
+                zone.sql["NominalPeople"]["ZoneIndex"] == zone_index
+            ]["NumberOfPeopleScheduleIndex"].iloc[0]
             OccupancySchedule = UmiSchedule(
-                Name=zone.sql['Schedules']['ScheduleName'].iloc[
-                    schedule_people_index - 1], idf=zone.idf)
-            PeopleDensity = zone.sql['NominalPeople'][
-                                zone.sql['NominalPeople']['ZoneIndex'] == zone_index][
-                                'NumberOfPeople'].iloc[
-                                0] / zone.area
+                Name=zone.sql["Schedules"]["ScheduleName"].iloc[
+                    schedule_people_index - 1
+                ],
+                idf=zone.idf,
+            )
+            PeopleDensity = (
+                zone.sql["NominalPeople"][
+                    zone.sql["NominalPeople"]["ZoneIndex"] == zone_index
+                ]["NumberOfPeople"].iloc[0]
+                / zone.area
+            )
 
         name = zone.Name + "_ZoneLoad"
-        z_load = cls(Name=name, zone=zone,
-                     DimmingType='Continuous',
-                     EquipmentAvailabilitySchedule=EquipmentAvailabilitySchedule,
-                     EquipmentPowerDensity=EquipmentPowerDensity,
-                     IlluminanceTarget=500,
-                     LightingPowerDensity=LightingPowerDensity,
-                     LightsAvailabilitySchedule=LightsAvailabilitySchedule,
-                     OccupancySchedule=OccupancySchedule,
-                     IsEquipmentOn=EquipmentPowerDensity > 0,
-                     IsLightingOn=LightingPowerDensity > 0,
-                     IsPeopleOn=PeopleDensity > 0,
-                     PeopleDensity=PeopleDensity,
-                     idf=zone.idf,
-                     Category=zone.idf.building_name(use_idfname=True))
+        z_load = cls(
+            Name=name,
+            zone=zone,
+            DimmingType="Continuous",
+            EquipmentAvailabilitySchedule=EquipmentAvailabilitySchedule,
+            EquipmentPowerDensity=EquipmentPowerDensity,
+            IlluminanceTarget=500,
+            LightingPowerDensity=LightingPowerDensity,
+            LightsAvailabilitySchedule=LightsAvailabilitySchedule,
+            OccupancySchedule=OccupancySchedule,
+            IsEquipmentOn=EquipmentPowerDensity > 0,
+            IsLightingOn=LightingPowerDensity > 0,
+            IsPeopleOn=PeopleDensity > 0,
+            PeopleDensity=PeopleDensity,
+            idf=zone.idf,
+            Category=zone.idf.building_name(use_idfname=True),
+        )
         return z_load
 
     def combine(self, other, weights=None):
@@ -233,8 +256,10 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
-                                                 other.__class__.__name__)
+            msg = "Cannot combine %s with %s" % (
+                self.__class__.__name__,
+                other.__class__.__name__,
+            )
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -242,42 +267,43 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             return self
 
         incoming_load_data = self.__dict__.copy()
-        incoming_load_data.pop('Name')
+        incoming_load_data.pop("Name")
 
         meta = self._get_predecessors_meta(other)
 
         if not weights:
-            weights = [self._belongs_to_zone.volume,
-                       other._belongs_to_zone.volume]
-            log('using zone volume "{}" as weighting factor in "{}" '
-                'combine.'.format(" & ".join(list(map(str, map(int, weights)))),
-                                  self.__class__.__name__))
+            weights = [self._belongs_to_zone.volume, other._belongs_to_zone.volume]
+            log(
+                'using zone volume "{}" as weighting factor in "{}" '
+                "combine.".format(
+                    " & ".join(list(map(str, map(int, weights)))),
+                    self.__class__.__name__,
+                )
+            )
 
-        attr = dict(DimmingType=self._str_mean(other, 'DimmingType'),
-                    EquipmentAvailabilitySchedule=
-                    self.EquipmentAvailabilitySchedule.combine(
-                        other.EquipmentAvailabilitySchedule),
-                    EquipmentPowerDensity=
-                    self._float_mean(other,
-                                     'EquipmentPowerDensity', weights),
-                    IlluminanceTarget=
-                    self._float_mean(other,
-                                     'IlluminanceTarget', weights),
-                    LightingPowerDensity=
-                    self._float_mean(other,
-                                     'LightingPowerDensity', weights),
-                    LightsAvailabilitySchedule=
-                    self.LightsAvailabilitySchedule.combine(
-                        other.LightsAvailabilitySchedule, weights),
-                    OccupancySchedule=self.OccupancySchedule.combine(
-                        other.OccupancySchedule, weights),
-                    IsEquipmentOn=any(
-                        [self.IsEquipmentOn, other.IsEquipmentOn]),
-                    IsLightingOn=any([self.IsLightingOn, other.IsLightingOn]),
-                    IsPeopleOn=any([self.IsPeopleOn, other.IsPeopleOn]),
-                    PeopleDensity=
-                    self._float_mean(other,
-                                     'PeopleDensity', weights))
+        attr = dict(
+            DimmingType=self._str_mean(other, "DimmingType"),
+            EquipmentAvailabilitySchedule=self.EquipmentAvailabilitySchedule.combine(
+                other.EquipmentAvailabilitySchedule
+            ),
+            EquipmentPowerDensity=self._float_mean(
+                other, "EquipmentPowerDensity", weights
+            ),
+            IlluminanceTarget=self._float_mean(other, "IlluminanceTarget", weights),
+            LightingPowerDensity=self._float_mean(
+                other, "LightingPowerDensity", weights
+            ),
+            LightsAvailabilitySchedule=self.LightsAvailabilitySchedule.combine(
+                other.LightsAvailabilitySchedule, weights
+            ),
+            OccupancySchedule=self.OccupancySchedule.combine(
+                other.OccupancySchedule, weights
+            ),
+            IsEquipmentOn=any([self.IsEquipmentOn, other.IsEquipmentOn]),
+            IsLightingOn=any([self.IsLightingOn, other.IsLightingOn]),
+            IsPeopleOn=any([self.IsPeopleOn, other.IsPeopleOn]),
+            PeopleDensity=self._float_mean(other, "PeopleDensity", weights),
+        )
 
         new_obj = self.__class__(**meta, **attr)
         new_obj._belongs_to_zone = self._belongs_to_zone

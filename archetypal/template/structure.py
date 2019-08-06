@@ -24,10 +24,11 @@ class MassRatio(object):
 
     def to_dict(self):
         """dict representation of object"""
-        return collections.OrderedDict(HighLoadRatio=self.HighLoadRatio,
-                                       Material={'$ref': str(
-                                           self.Material.id)},
-                                       NormalRatio=self.NormalRatio)
+        return collections.OrderedDict(
+            HighLoadRatio=self.HighLoadRatio,
+            Material={"$ref": str(self.Material.id)},
+            NormalRatio=self.NormalRatio,
+        )
 
     @classmethod
     def generic(cls):
@@ -42,9 +43,17 @@ class StructureDefinition(UmiBase, metaclass=Unique):
 
     """
 
-    def __init__(self, *args, AssemblyCarbon=0, AssemblyCost=0,
-                 AssemblyEnergy=0, DisassemblyCarbon=0, DisassemblyEnergy=0,
-                 MassRatios=None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        AssemblyCarbon=0,
+        AssemblyCost=0,
+        AssemblyEnergy=0,
+        DisassemblyCarbon=0,
+        DisassemblyEnergy=0,
+        MassRatios=None,
+        **kwargs
+    ):
         """
         Args:
             *args:
@@ -72,19 +81,22 @@ class StructureDefinition(UmiBase, metaclass=Unique):
             **kwargs:
         """
         sd = cls(*args, **kwargs)
-        massratios = kwargs.get('MassRatios', None)
-        sd.MassRatios = [MassRatio(HighLoadRatio=massratio['HighLoadRatio'],
-                                   Material=sd.get_ref(massratio['Material']),
-                                   NormalRatio=massratio['NormalRatio'])
-                         for massratio in massratios]
+        massratios = kwargs.get("MassRatios", None)
+        sd.MassRatios = [
+            MassRatio(
+                HighLoadRatio=massratio["HighLoadRatio"],
+                Material=sd.get_ref(massratio["Material"]),
+                NormalRatio=massratio["NormalRatio"],
+            )
+            for massratio in massratios
+        ]
         return sd
 
     def to_json(self):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["MassRatios"] = [mass.to_dict() for mass
-                                   in self.MassRatios]
+        data_dict["MassRatios"] = [mass.to_dict() for mass in self.MassRatios]
         data_dict["AssemblyCarbon"] = self.AssemblyCarbon
         data_dict["AssemblyCost"] = self.AssemblyCost
         data_dict["AssemblyEnergy"] = self.AssemblyEnergy

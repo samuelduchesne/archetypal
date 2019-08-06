@@ -18,12 +18,25 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
 
     """
 
-    def __init__(self, Density=2500, Conductivity=0, SolarTransmittance=0,
-                 SolarReflectanceFront=0, SolarReflectanceBack=0,
-                 VisibleTransmittance=0, VisibleReflectanceFront=0,
-                 VisibleReflectanceBack=0, IRTransmittance=0,
-                 IREmissivityFront=0, IREmissivityBack=0, DirtFactor=1.0,
-                 Type=None, Cost=0.0, Life=1, **kwargs):
+    def __init__(
+        self,
+        Density=2500,
+        Conductivity=0,
+        SolarTransmittance=0,
+        SolarReflectanceFront=0,
+        SolarReflectanceBack=0,
+        VisibleTransmittance=0,
+        VisibleReflectanceFront=0,
+        VisibleReflectanceBack=0,
+        IRTransmittance=0,
+        IREmissivityFront=0,
+        IREmissivityBack=0,
+        DirtFactor=1.0,
+        Type=None,
+        Cost=0.0,
+        Life=1,
+        **kwargs
+    ):
         """Initialize a GlazingMaterial object with parameters:
 
         Args:
@@ -91,8 +104,10 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
-                                                 other.__class__.__name__)
+            msg = "Cannot combine %s with %s" % (
+                self.__class__.__name__,
+                other.__class__.__name__,
+            )
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -100,23 +115,23 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
             return self
 
         meta = self._get_predecessors_meta(other)
-        idf = self.__dict__.get('idf')
-        sql = self.__dict__.get('sql')
+        idf = self.__dict__.get("idf")
+        sql = self.__dict__.get("sql")
 
         if not weights:
-            log('using GlazingMaterial density as weighting factor in "{}" '
-                'combine.'.format(self.__class__.__name__))
+            log(
+                'using GlazingMaterial density as weighting factor in "{}" '
+                "combine.".format(self.__class__.__name__)
+            )
             weights = [self.Density, other.Density]
         # iterate over attributes and apply either float_mean or str_mean.
         new_attr = {}
         for attr in self.__dict__:
-            if attr not in ['Comments', 'idf', 'sql', 'all_objects', 'id']:
+            if attr not in ["Comments", "idf", "sql", "all_objects", "id"]:
                 if isinstance(self.__dict__[attr], (int, float)):
-                    new_attr[attr] = self._float_mean(other, attr=attr,
-                                                      weights=weights)
+                    new_attr[attr] = self._float_mean(other, attr=attr, weights=weights)
                 elif isinstance(self.__dict__[attr], str):
-                    new_attr[attr] = self._str_mean(other, attr=attr,
-                                                    append=False)
+                    new_attr[attr] = self._str_mean(other, attr=attr, append=False)
                 elif isinstance(self.__dict__[attr], list):
                     new_attr[attr] = getattr(self, attr) + getattr(other, attr)
                 elif not getattr(self, attr):

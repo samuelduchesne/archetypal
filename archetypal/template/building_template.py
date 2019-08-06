@@ -16,8 +16,16 @@ from eppy.bunch_subclass import BadEPFieldError
 from tqdm import tqdm
 
 from archetypal import log, save_and_show
-from archetypal.template import UmiBase, Unique, ZoneGraph, Zone, \
-    resolve_obco, WindowSetting, StructureDefinition, MassRatio
+from archetypal.template import (
+    UmiBase,
+    Unique,
+    ZoneGraph,
+    Zone,
+    resolve_obco,
+    WindowSetting,
+    StructureDefinition,
+    MassRatio,
+)
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
@@ -26,13 +34,16 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
     .. image:: ../images/template/buildingtemplate.png
     """
 
-    def __init__(self, Core=None,
-                 Perimeter=None,
-                 Structure=None,
-                 Windows=None,
-                 Lifespan=60,
-                 PartitionRatio=0.35,
-                 **kwargs):
+    def __init__(
+        self,
+        Core=None,
+        Perimeter=None,
+        Structure=None,
+        Windows=None,
+        Lifespan=60,
+        PartitionRatio=0.35,
+        **kwargs
+    ):
         """Initialize a :class:`BuildingTemplate` object with the following
         attributes:
 
@@ -93,8 +104,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                 try:
                     if int(s.tilt) == 90:
                         obc = s.Outside_Boundary_Condition.lower()
-                        if obc == 'outdoors' or obc == 'foundation' or obc == \
-                                'ground':
+                        if obc == "outdoors" or obc == "foundation" or obc == "ground":
                             iscore = False
                             break
                 except BadEPFieldError:
@@ -103,7 +113,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             return iscore
 
         counter = 0
-        for zone in tqdm(idf.idfobjects['ZONE'], desc='zone_loop'):
+        for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop"):
             # initialize the adjacency report dictionary. default list.
             adj_report = defaultdict(list)
             zone_obj = None
@@ -112,11 +122,10 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                 zonesurfaces = zone_obj._zonesurfaces
             else:
                 zonesurfaces = zone.zonesurfaces
-            G.add_node(zone.Name, epbunch=zone, core=is_core(zone),
-                       zone=zone_obj)
+            G.add_node(zone.Name, epbunch=zone, core=is_core(zone), zone=zone_obj)
 
             for surface in zonesurfaces:
-                if surface.key.upper() == 'INTERNALMASS':
+                if surface.key.upper() == "INTERNALMASS":
                     # Todo deal with internal mass surfaces
                     pass
                 else:
@@ -128,51 +137,68 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                         if skeleton:
                             zone_obj = None
                         else:
-                            zone_obj = Zone.from_zone_epbunch(adj_zone,
-                                                              sql=self.sql)
+                            zone_obj = Zone.from_zone_epbunch(adj_zone, sql=self.sql)
 
                         # create node for adjacent zone
-                        G.add_node(adj_zone.Name,
-                                   epbunch=adj_zone,
-                                   core=is_core(adj_zone),
-                                   zone=zone_obj)
+                        G.add_node(
+                            adj_zone.Name,
+                            epbunch=adj_zone,
+                            core=is_core(adj_zone),
+                            zone=zone_obj,
+                        )
                         try:
-                            this_cstr = surface[
-                                'Construction_Name']
-                            their_cstr = adj_surf[
-                                'Construction_Name']
-                            is_diff_cstr = surface['Construction_Name'] \
-                                           != adj_surf['Construction_Name']
+                            this_cstr = surface["Construction_Name"]
+                            their_cstr = adj_surf["Construction_Name"]
+                            is_diff_cstr = (
+                                surface["Construction_Name"]
+                                != adj_surf["Construction_Name"]
+                            )
                         except:
-                            this_cstr, their_cstr, is_diff_cstr = None, \
-                                                                  None, None
+                            this_cstr, their_cstr, is_diff_cstr = None, None, None
                         # create edge from this zone to the adjacent zone
-                        G.add_edge(zone.Name, adj_zone.Name,
-                                   this_cstr=this_cstr,
-                                   their_cstr=their_cstr,
-                                   is_diff_cstr=is_diff_cstr)
+                        G.add_edge(
+                            zone.Name,
+                            adj_zone.Name,
+                            this_cstr=this_cstr,
+                            their_cstr=their_cstr,
+                            is_diff_cstr=is_diff_cstr,
+                        )
 
-                        add_to_report(adj_report, zone, surface, adj_zone,
-                                      adj_surf,
-                                      counter)
+                        add_to_report(
+                            adj_report, zone, surface, adj_zone, adj_surf, counter
+                        )
                     else:
                         pass
             if log_adj_report:
-                msg = 'Printing Adjacency Report for zone %s\n' % zone.Name
-                msg += tabulate.tabulate(adj_report, headers='keys')
+                msg = "Printing Adjacency Report for zone %s\n" % zone.Name
+                msg += tabulate.tabulate(adj_report, headers="keys")
                 log(msg)
 
-        log("Created zone graph in {:,.2f} seconds".format(
-            time.time() - start_time))
+        log("Created zone graph in {:,.2f} seconds".format(time.time() - start_time))
         log(networkx.info(G), lg.DEBUG)
         self._zone_graph = G
         return self._zone_graph
 
-    def view_building(self, fig_height=None, fig_width=6, plot_graph=False,
-                      save=False, show=True, close=False, ax=None,
-                      axis_off=False, cmap='plasma', dpi=300, file_format='png',
-                      azim=-60, elev=30, filename=None, opacity=0.5,
-                      proj_type='persp', **kwargs):
+    def view_building(
+        self,
+        fig_height=None,
+        fig_width=6,
+        plot_graph=False,
+        save=False,
+        show=True,
+        close=False,
+        ax=None,
+        axis_off=False,
+        cmap="plasma",
+        dpi=300,
+        file_format="png",
+        azim=-60,
+        elev=30,
+        filename=None,
+        opacity=0.5,
+        proj_type="persp",
+        **kwargs
+    ):
         """
         Args:
             fig_height (float): matplotlib figure height in inches.
@@ -225,14 +251,23 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         ax.set_zlim(limits["z"])
 
         if plot_graph:
-            annotate = kwargs.get('annotate', False)
+            annotate = kwargs.get("annotate", False)
             self.zone_graph(log_adj_report=False, force=False).plot_graph3d(
-                ax=ax, annotate=annotate)
+                ax=ax, annotate=annotate
+            )
 
-        fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
-                                close=close, filename=filename,
-                                file_format=file_format, dpi=dpi,
-                                axis_off=axis_off, extent=None)
+        fig, ax = save_and_show(
+            fig=fig,
+            ax=ax,
+            save=save,
+            show=show,
+            close=close,
+            filename=filename,
+            file_format=file_format,
+            dpi=dpi,
+            axis_off=axis_off,
+            extent=None,
+        )
         return fig, ax
 
     @classmethod
@@ -244,15 +279,15 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         """
         bt = cls(*args, **kwargs)
 
-        ref = kwargs.get('Core', None)
+        ref = kwargs.get("Core", None)
         bt.Core = bt.get_ref(ref)
-        ref = kwargs.get('Perimeter', None)
+        ref = kwargs.get("Perimeter", None)
         bt.Perimeter = bt.get_ref(ref)
-        ref = kwargs.get('Structure', None)
+        ref = kwargs.get("Structure", None)
         bt.Structure = bt.get_ref(ref)
-        ref = kwargs.get('Windows', None)
+        ref = kwargs.get("Windows", None)
         try:
-            bt.Windows = WindowSetting.from_json(Name=ref.pop('Name'), **ref)
+            bt.Windows = WindowSetting.from_json(Name=ref.pop("Name"), **ref)
         except:
             bt.Windows = bt.get_ref(ref)
 
@@ -267,7 +302,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             **kwargs:
         """
         # initialize empty BuildingTemplate
-        name = kwargs.pop('Name', idf.idfobjects['BUILDING'][0].Name)
+        name = kwargs.pop("Name", idf.idfobjects["BUILDING"][0].Name)
         bt = cls(Name=name, idf=idf, **kwargs)
 
         # do Core and Perim zone reduction
@@ -275,8 +310,10 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
         # resolve StructureDefinition and WindowSetting
         bt.Structure = StructureDefinition(
-            Name=bt.Name + '_StructureDefinition', MassRatios=[
-                MassRatio.generic()], idf=idf)
+            Name=bt.Name + "_StructureDefinition",
+            MassRatios=[MassRatio.generic()],
+            idf=idf,
+        )
         bt.Windows = bt.Perimeter.Windows
         bt.PartitionRatio = idf.partition_ratio
 
@@ -304,8 +341,11 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         if not self.Core:
             self.Core = self.Perimeter
 
-        log('Completed model complexity reduction for BuildingTemplate "{}" in '
-            '{:,.2f} seconds'.format(self.Name, time.time() - start_time))
+        log(
+            'Completed model complexity reduction for BuildingTemplate "{}" in {:,.2f} seconds'.format(
+                self.Name, time.time() - start_time
+            )
+        )
 
     def _graph_reduce(self, G):
         """Using the depth first search algorithm, iterate over the zone
@@ -323,25 +363,31 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             Zone: The reduced zone
         """
         if len(G) < 1:
-            log('No zones for building graph %s' % G.name)
+            log("No zones for building graph %s" % G.name)
             return None
         else:
-            log('starting reduce process for building %s' % self.Name)
+            log("starting reduce process for building %s" % self.Name)
             start_time = time.time()
 
             # start from the highest degree node
             subgraphs = sorted(
                 (G.subgraph(c) for c in networkx.connected_components(G)),
-                key=len, reverse=True)
+                key=len,
+                reverse=True,
+            )
             from functools import reduce
             from operator import add
-            bundle_zone = reduce(add,
-                                 [zone for subG in subgraphs for name, zone in
-                                  subG.nodes(data='zone')])
 
-            log('completed zone reduction for zone "{}" in building "{}" in'
-                '{:,.2f} seconds'.format(bundle_zone.Name, self.Name,
-                                         time.time() - start_time))
+            bundle_zone = reduce(
+                add,
+                [zone for subG in subgraphs for name, zone in subG.nodes(data="zone")],
+            )
+
+            log(
+                'completed zone reduction for zone "{}" in building "{}" in {:,.2f} seconds'.format(
+                    bundle_zone.Name, self.Name, time.time() - start_time
+                )
+            )
             return bundle_zone
 
     def to_json(self):
@@ -372,8 +418,8 @@ def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):
         adj_surf:
         counter (int): Counter.
     """
-    adj_report['#'].append(counter)
-    adj_report['Zone Name'].append(zone.Name)
-    adj_report['Surface Type'].append(surface['Surface_Type'])
-    adj_report['Adjacent Zone'].append(adj_zone['Name'])
-    adj_report['Surface Type_'].append(adj_surf['Surface_Type'])
+    adj_report["#"].append(counter)
+    adj_report["Zone Name"].append(zone.Name)
+    adj_report["Surface Type"].append(surface["Surface_Type"])
+    adj_report["Adjacent Zone"].append(adj_zone["Name"])
+    adj_report["Surface Type_"].append(adj_surf["Surface_Type"])

@@ -33,19 +33,21 @@ from path import Path
 from archetypal import settings
 
 
-def config(data_folder=settings.data_folder,
-           logs_folder=settings.logs_folder,
-           imgs_folder=settings.imgs_folder,
-           cache_folder=settings.cache_folder,
-           use_cache=settings.use_cache,
-           log_file=settings.log_file,
-           log_console=settings.log_console,
-           log_level=settings.log_level,
-           log_name=settings.log_name,
-           log_filename=settings.log_filename,
-           useful_idf_objects=settings.useful_idf_objects,
-           umitemplate=settings.umitemplate,
-           trnsys_default_folder=settings.trnsys_default_folder):
+def config(
+    data_folder=settings.data_folder,
+    logs_folder=settings.logs_folder,
+    imgs_folder=settings.imgs_folder,
+    cache_folder=settings.cache_folder,
+    use_cache=settings.use_cache,
+    log_file=settings.log_file,
+    log_console=settings.log_console,
+    log_level=settings.log_level,
+    log_name=settings.log_name,
+    log_filename=settings.log_filename,
+    useful_idf_objects=settings.useful_idf_objects,
+    umitemplate=settings.umitemplate,
+    trnsys_default_folder=settings.trnsys_default_folder,
+):
     """Configurations
 
     Args:
@@ -82,12 +84,11 @@ def config(data_folder=settings.data_folder,
     settings.log_filename = log_filename
     settings.useful_idf_objects = useful_idf_objects
     settings.umitemplate = umitemplate
-    settings.trnsys_default_folder = validate_trnsys_folder(
-        trnsys_default_folder)
+    settings.trnsys_default_folder = validate_trnsys_folder(trnsys_default_folder)
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
-        log('Configured archetypal')
+        log("Configured archetypal")
 
 
 def validate_trnsys_folder(trnsys_default_folder):
@@ -95,14 +96,15 @@ def validate_trnsys_folder(trnsys_default_folder):
     Args:
         trnsys_default_folder:
     """
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         if os.path.isdir(trnsys_default_folder):
             return trnsys_default_folder
         else:
-            raise ValueError('The provided TRNSYS path does not exist. Path={'
-                             '. Please set the TRNSYS path with the '
-                             '"--trnsys-default-folder" option}'.format(
-                trnsys_default_folder))
+            raise ValueError(
+                "The provided TRNSYS path does not exist. Path={"
+                ". Please set the TRNSYS path with the "
+                '"--trnsys-default-folder" option}'.format(trnsys_default_folder)
+            )
     else:
         return trnsys_default_folder
 
@@ -153,8 +155,11 @@ def log(message, level=None, name=None, filename=None, avoid_console=False):
 
         # convert message to ascii for console display so it doesn't break
         # windows terminals
-        message = unicodedata.normalize('NFKD', make_str(message)).encode(
-            'ascii', errors='replace').decode()
+        message = (
+            unicodedata.normalize("NFKD", make_str(message))
+            .encode("ascii", errors="replace")
+            .decode()
+        )
         print(message)
         sys.stdout = standard_out
 
@@ -184,21 +189,21 @@ def get_logger(level=None, name=None, filename=None):
     logger = lg.getLogger(name)
 
     # if a logger with this name is not already set up
-    if not getattr(logger, 'handler_set', None):
+    if not getattr(logger, "handler_set", None):
 
         # get today's date and construct a log filename
-        todays_date = dt.datetime.today().strftime('%Y_%m_%d')
-        log_filename = os.path.join(settings.logs_folder,
-                                    '{}_{}.log'.format(filename, todays_date))
+        todays_date = dt.datetime.today().strftime("%Y_%m_%d")
+        log_filename = os.path.join(
+            settings.logs_folder, "{}_{}.log".format(filename, todays_date)
+        )
 
         # if the logs folder does not already exist, create it
         if not os.path.exists(settings.logs_folder):
             os.makedirs(settings.logs_folder)
 
         # create file handler and log formatter and set them up
-        handler = lg.FileHandler(log_filename, encoding='utf-8')
-        formatter = lg.Formatter(
-            '%(asctime)s %(levelname)s %(name)s %(message)s')
+        handler = lg.FileHandler(log_filename, encoding="utf-8")
+        formatter = lg.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.setLevel(level)
@@ -284,7 +289,7 @@ def newrange(previous, following):
         to_index = from_index + len(following)
 
         following.index = np.arange(from_index, to_index)
-        following.rename_axis('$id', inplace=True)
+        following.rename_axis("$id", inplace=True)
         return following
     else:
         # If previous dataframe is empty, return the orginal DataFrame
@@ -302,26 +307,26 @@ def type_surface(row):
     """
 
     # Floors
-    if row['Surface_Type'] == 'Floor':
-        if row['Outside_Boundary_Condition'] == 'Surface':
+    if row["Surface_Type"] == "Floor":
+        if row["Outside_Boundary_Condition"] == "Surface":
             return 3
-        if row['Outside_Boundary_Condition'] == 'Ground':
+        if row["Outside_Boundary_Condition"] == "Ground":
             return 2
-        if row['Outside_Boundary_Condition'] == 'Outdoors':
+        if row["Outside_Boundary_Condition"] == "Outdoors":
             return 4
         else:
             return np.NaN
 
     # Roofs & Ceilings
-    if row['Surface_Type'] == 'Roof':
+    if row["Surface_Type"] == "Roof":
         return 1
-    if row['Surface_Type'] == 'Ceiling':
+    if row["Surface_Type"] == "Ceiling":
         return 3
     # Walls
-    if row['Surface_Type'] == 'Wall':
-        if row['Outside_Boundary_Condition'] == 'Surface':
+    if row["Surface_Type"] == "Wall":
+        if row["Outside_Boundary_Condition"] == "Surface":
             return 5
-        if row['Outside_Boundary_Condition'] == 'Outdoors':
+        if row["Outside_Boundary_Condition"] == "Outdoors":
             return 0
     return np.NaN
 
@@ -333,28 +338,28 @@ def label_surface(row):
         row:
     """
     # Floors
-    if row['Surface_Type'] == 'Floor':
-        if row['Outside_Boundary_Condition'] == 'Surface':
-            return 'Interior Floor'
-        if row['Outside_Boundary_Condition'] == 'Ground':
-            return 'Ground Floor'
-        if row['Outside_Boundary_Condition'] == 'Outdoors':
-            return 'Exterior Floor'
+    if row["Surface_Type"] == "Floor":
+        if row["Outside_Boundary_Condition"] == "Surface":
+            return "Interior Floor"
+        if row["Outside_Boundary_Condition"] == "Ground":
+            return "Ground Floor"
+        if row["Outside_Boundary_Condition"] == "Outdoors":
+            return "Exterior Floor"
         else:
-            return 'Other'
+            return "Other"
 
     # Roofs & Ceilings
-    if row['Surface_Type'] == 'Roof':
-        return 'Roof'
-    if row['Surface_Type'] == 'Ceiling':
-        return 'Interior Floor'
+    if row["Surface_Type"] == "Roof":
+        return "Roof"
+    if row["Surface_Type"] == "Ceiling":
+        return "Interior Floor"
     # Walls
-    if row['Surface_Type'] == 'Wall':
-        if row['Outside_Boundary_Condition'] == 'Surface':
-            return 'Partition'
-        if row['Outside_Boundary_Condition'] == 'Outdoors':
-            return 'Facade'
-    return 'Other'
+    if row["Surface_Type"] == "Wall":
+        if row["Outside_Boundary_Condition"] == "Surface":
+            return "Partition"
+        if row["Outside_Boundary_Condition"] == "Outdoors":
+            return "Facade"
+    return "Other"
 
 
 def layer_composition(row):
@@ -368,22 +373,21 @@ def layer_composition(row):
         row (pandas.Series): a row
     """
     array = []
-    ref = row['$id', 'Outside_Layer']
-    thickness = row['Thickness', 'Outside_Layer']
+    ref = row["$id", "Outside_Layer"]
+    thickness = row["Thickness", "Outside_Layer"]
     if np.isnan(ref):
         pass
     else:
-        array.append({'Material': {'$ref': str(int(ref))},
-                      'Thickness': thickness})
-        for i in range(2, len(row['$id']) + 1):
-            ref = row['$id', 'Layer_{}'.format(i)]
+        array.append({"Material": {"$ref": str(int(ref))}, "Thickness": thickness})
+        for i in range(2, len(row["$id"]) + 1):
+            ref = row["$id", "Layer_{}".format(i)]
             if np.isnan(ref):
                 pass
             else:
-                thickness = row['Thickness', 'Layer_{}'.format(i)]
+                thickness = row["Thickness", "Layer_{}".format(i)]
                 array.append(
-                    {'Material': {'$ref': str(int(ref))},
-                     'Thickness': thickness})
+                    {"Material": {"$ref": str(int(ref))}, "Thickness": thickness}
+                )
         return array
 
 
@@ -399,22 +403,24 @@ def schedule_composition(row):
     """
     # Assumes 7 days
     day_schedules = []
-    days = ['Monday_ScheduleDay_Name',
-            'Tuesday_ScheduleDay_Name',
-            'Wednesday_ScheduleDay_Name',
-            'Thursday_ScheduleDay_Name',
-            'Friday_ScheduleDay_Name',
-            'Saturday_ScheduleDay_Name',
-            'Sunday_ScheduleDay_Name']  # With weekends last (as defined in
+    days = [
+        "Monday_ScheduleDay_Name",
+        "Tuesday_ScheduleDay_Name",
+        "Wednesday_ScheduleDay_Name",
+        "Thursday_ScheduleDay_Name",
+        "Friday_ScheduleDay_Name",
+        "Saturday_ScheduleDay_Name",
+        "Sunday_ScheduleDay_Name",
+    ]  # With weekends last (as defined in
     # umi-template)
     # Let's start with the `Outside_Layer`
     for day in days:
         try:
-            ref = row['$id', day]
+            ref = row["$id", day]
         except:
             pass
         else:
-            day_schedules.append({'$ref': str(int(ref))})
+            day_schedules.append({"$ref": str(int(ref))})
     return day_schedules
 
 
@@ -432,21 +438,25 @@ def year_composition(row):
     parts = []
     for i in range(1, 26 + 1):
         try:
-            ref = row['$id', 'ScheduleWeek_Name_{}'.format(i)]
+            ref = row["$id", "ScheduleWeek_Name_{}".format(i)]
         except:
             pass
         else:
             if ~np.isnan(ref):
-                fromday = row['Schedules', 'Start_Day_{}'.format(i)]
-                frommonth = row['Schedules', 'Start_Month_{}'.format(i)]
-                today = row['Schedules', 'End_Day_{}'.format(i)]
-                tomonth = row['Schedules', 'End_Month_{}'.format(i)]
+                fromday = row["Schedules", "Start_Day_{}".format(i)]
+                frommonth = row["Schedules", "Start_Month_{}".format(i)]
+                today = row["Schedules", "End_Day_{}".format(i)]
+                tomonth = row["Schedules", "End_Month_{}".format(i)]
 
-                parts.append({'FromDay': fromday,
-                              'FromMonth': frommonth,
-                              'Schedule': {'$ref': str(int(ref))},
-                              'ToDay': today,
-                              'ToMonth': tomonth})
+                parts.append(
+                    {
+                        "FromDay": fromday,
+                        "FromMonth": frommonth,
+                        "Schedule": {"$ref": str(int(ref))},
+                        "ToDay": today,
+                        "ToMonth": tomonth,
+                    }
+                )
     return parts
 
 
@@ -460,9 +470,9 @@ def date_transform(date_str):
     Returns:
         datetime.datetime: datetime object
     """
-    if date_str[0:2] != '24':
-        return datetime.strptime(date_str, '%H:%M') - timedelta(hours=1)
-    return datetime.strptime('23:00', '%H:%M')
+    if date_str[0:2] != "24":
+        return datetime.strptime(date_str, "%H:%M") - timedelta(hours=1)
+    return datetime.strptime("23:00", "%H:%M")
 
 
 def weighted_mean(series, df, weighting_variable):
@@ -478,23 +488,22 @@ def weighted_mean(series, df, weighting_variable):
         numpy.ndarray: the weighted average
     """
     # get non-nan values
-    index = ~np.isnan(series.values.astype('float'))
+    index = ~np.isnan(series.values.astype("float"))
 
     # Returns weights. If multiple `weighting_variable`, df.prod will take care
     # of multipling them together.
     if not isinstance(weighting_variable, list):
         weighting_variable = [weighting_variable]
     try:
-        weights = df.loc[series.index, weighting_variable].astype('float').prod(
-            axis=1)
+        weights = df.loc[series.index, weighting_variable].astype("float").prod(axis=1)
     except Exception:
         raise
 
     # Try to average
     try:
-        wa = np.average(series[index].astype('float'), weights=weights[index])
+        wa = np.average(series[index].astype("float"), weights=weights[index])
     except ZeroDivisionError:
-        log('Cannot aggregate empty series {}'.format(series.name), lg.WARNING)
+        log("Cannot aggregate empty series {}".format(series.name), lg.WARNING)
         return np.NaN
     except Exception:
         raise
@@ -519,15 +528,18 @@ def top(series, df, weighting_variable):
     # Returns weights. If multiple `weighting_variable`, df.prod will take care
     # of multipling them together.
     if not isinstance(series, pd.Series):
-        raise TypeError('"top()" only works on Series, '
-                        'not DataFrames\n{}'.format(series))
+        raise TypeError(
+            '"top()" only works on Series, ' "not DataFrames\n{}".format(series)
+        )
 
     if not isinstance(weighting_variable, list):
         weighting_variable = [weighting_variable]
 
     try:
-        idx_ = df.loc[series.index].groupby(series.name).apply(
-            lambda x: safe_prod(x, df, weighting_variable)
+        idx_ = (
+            df.loc[series.index]
+            .groupby(series.name)
+            .apply(lambda x: safe_prod(x, df, weighting_variable))
         )
         if not idx_.empty:
             idx = idx_.nlargest(1).index
@@ -535,7 +547,7 @@ def top(series, df, weighting_variable):
             log('No such names "{}"'.format(series.name))
             return np.NaN
     except KeyError:
-        log('Cannot aggregate empty series {}'.format(series.name), lg.WARNING)
+        log("Cannot aggregate empty series {}".format(series.name), lg.WARNING)
         return np.NaN
     except Exception:
         raise
@@ -543,7 +555,7 @@ def top(series, df, weighting_variable):
         if idx.isnull().any():
             return np.NaN
         else:
-            return pd.to_numeric(idx, errors='ignore').values[0]
+            return pd.to_numeric(idx, errors="ignore").values[0]
 
 
 def safe_prod(x, df, weighting_variable):
@@ -555,7 +567,7 @@ def safe_prod(x, df, weighting_variable):
     """
     df_ = df.loc[x.index, weighting_variable]
     if not df_.empty:
-        return df_.astype('float').prod(axis=1).sum()
+        return df_.astype("float").prod(axis=1).sum()
     else:
         return 0
 
@@ -568,6 +580,7 @@ def copy_file(files, where=None):
         where:
     """
     import shutil, os
+
     if isinstance(files, str):
         files = [files]
     files = {os.path.basename(k): k for k in files}
@@ -589,6 +602,7 @@ def copy_file(files, where=None):
 
 class Error(Exception):
     """Base class for exceptions in this module."""
+
     pass
 
 
@@ -608,7 +622,7 @@ class EnergyPlusProcessError(Error):
 
     def __str__(self):
         """Override that only returns the stderr"""
-        msg = ':\n'.join([self.idf, self.stderr])
+        msg = ":\n".join([self.idf, self.stderr])
         return msg
 
 
@@ -661,13 +675,12 @@ def piecewise(data):
         data:
     """
     nb = int(len(data) / 2)
-    bins = data[0: nb]
+    bins = data[0:nb]
     sf = data[nb:]
     x = np.linspace(0, 8760, 8760)
     # build condition array
     conds = [x < bins[0]]
-    conds.extend([np.logical_and(x >= i, x < j) for i, j in zip(bins[0:],
-                                                                bins[1:])])
+    conds.extend([np.logical_and(x >= i, x < j) for i, j in zip(bins[0:], bins[1:])])
     # build function array. This is the value of y when the condition is met.
     funcs = sf
     y = np.piecewise(x, conds, funcs)
@@ -722,10 +735,9 @@ def load_umi_template(json_template):
         with open(json_template) as f:
             dicts = json.load(f, object_pairs_hook=OrderedDict)
 
-            return [{key: json_normalize(value)} for key, value in
-                    dicts.items()]
+            return [{key: json_normalize(value)} for key, value in dicts.items()]
     else:
-        raise ValueError('File {} does not exist'.format(json_template))
+        raise ValueError("File {} does not exist".format(json_template))
 
 
 def check_unique_name(first_letters, count, name, unique_list, suffix=False):
@@ -746,13 +758,13 @@ def check_unique_name(first_letters, count, name, unique_list, suffix=False):
     if suffix:
         while name in unique_list:
             count += 1
-            end_count = '%03d' % count
+            end_count = "%03d" % count
             name = name[:-3] + end_count
     else:
         while name in unique_list:
             count += 1
-            end_count = '%06d' % count
-            name = first_letters + '_' + end_count
+            end_count = "%06d" % count
+            name = first_letters + "_" + end_count
 
     return name, count
 
@@ -768,9 +780,8 @@ def angle(v1, v2, acute=True):
     Returns:
         angle (float): angle between the 2 vectors in degree
     """
-    angle = np.arccos(
-        np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
-    if (acute == True):
+    angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+    if acute == True:
         return angle
     else:
         return 2 * np.pi - angle
@@ -794,6 +805,7 @@ def float_round(num, n):
 
 def get_eplus_dire():
     from eppy.runner.run_functions import install_paths
+
     eplus_exe, eplus_weather = install_paths("8-9-0")
     eplusdir = Path(eplus_exe).dirname()
     return Path(eplusdir)
@@ -814,11 +826,11 @@ def timeit(method):
 
     def timed(*args, **kwargs):
         ts = time.time()
-        log('Executing %r...' % method.__qualname__)
+        log("Executing %r..." % method.__qualname__)
         result = method(*args, **kwargs)
         te = time.time()
 
-        tt = (te - ts)
+        tt = te - ts
         try:
             try:
                 name = result.Name
@@ -827,30 +839,31 @@ def timeit(method):
         except:
             name = str(result)
         if tt > 0.001:
-            log('Completed %r for %r in %.3f s' % (method.__qualname__,
-                                                   name, tt))
+            log("Completed %r for %r in %.3f s" % (method.__qualname__, name, tt))
         else:
-            log('Completed %r for %r in %.3f ms' % (method.__qualname__,
-                                                    name, tt * 1000))
+            log(
+                "Completed %r for %r in %.3f ms"
+                % (method.__qualname__, name, tt * 1000)
+            )
         return result
 
     return timed
 
 
 def lcm(x, y):
-   """This function takes two
+    """This function takes two
    integers and returns the L.C.M."""
 
-   # choose the greater number
-   if x > y:
-       greater = x
-   else:
-       greater = y
+    # choose the greater number
+    if x > y:
+        greater = x
+    else:
+        greater = y
 
-   while(True):
-       if((greater % x == 0) and (greater % y == 0)):
-           lcm = greater
-           break
-       greater += 1
+    while True:
+        if (greater % x == 0) and (greater % y == 0):
+            lcm = greater
+            break
+        greater += 1
 
-   return lcm
+    return lcm

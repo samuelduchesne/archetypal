@@ -19,9 +19,16 @@ import numpy as np
 from geomeppy.geom.polygons import Polygon3D
 
 from archetypal import log, save_and_show, timeit
-from archetypal.template import Unique, UmiBase, ZoneConditioning, ZoneLoad, \
-    VentilationSetting, DomesticHotWaterSetting, OpaqueConstruction, \
-    WindowSetting
+from archetypal.template import (
+    Unique,
+    UmiBase,
+    ZoneConditioning,
+    ZoneLoad,
+    VentilationSetting,
+    DomesticHotWaterSetting,
+    OpaqueConstruction,
+    WindowSetting,
+)
 
 
 class Zone(UmiBase, metaclass=Unique):
@@ -31,11 +38,20 @@ class Zone(UmiBase, metaclass=Unique):
     .. image:: ../images/template/zoneinfo-zone.png
     """
 
-    def __init__(self, Conditioning=None, Constructions=None,
-                 DomesticHotWater=None, Loads=None, Ventilation=None,
-                 Windows=None, InternalMassConstruction=None,
-                 InternalMassExposedPerFloorArea=1.05, DaylightMeshResolution=1,
-                 DaylightWorkplaneHeight=0.8, **kwargs):
+    def __init__(
+        self,
+        Conditioning=None,
+        Constructions=None,
+        DomesticHotWater=None,
+        Loads=None,
+        Ventilation=None,
+        Windows=None,
+        InternalMassConstruction=None,
+        InternalMassExposedPerFloorArea=1.05,
+        DaylightMeshResolution=1,
+        DaylightWorkplaneHeight=0.8,
+        **kwargs
+    ):
         """Initialize :class:`Zone` object.
 
         Args:
@@ -71,10 +87,10 @@ class Zone(UmiBase, metaclass=Unique):
 
         self.Windows = Windows  # This is not used in to_json()
 
-        self._epbunch = kwargs.get('epbunch', None)
-        self._zonesurfaces = kwargs.get('zonesurfaces', None)
-        self._area = kwargs.get('area', None)
-        self._volume = kwargs.get('volume', None)
+        self._epbunch = kwargs.get("epbunch", None)
+        self._zonesurfaces = kwargs.get("zonesurfaces", None)
+        self._area = kwargs.get("area", None)
+        self._volume = kwargs.get("volume", None)
 
     def __add__(self, other):
         """
@@ -91,10 +107,12 @@ class Zone(UmiBase, metaclass=Unique):
         Returns (float): zone's area in m²
         """
         if not self._area:
-            zone_surfs = [surf for surf in self._epbunch.zonesurfaces if
-                          surf.key.lower() != 'internalmass']
-            floors = [s for s in zone_surfs if
-                      s.Surface_Type.upper() == 'FLOOR']
+            zone_surfs = [
+                surf
+                for surf in self._epbunch.zonesurfaces
+                if surf.key.lower() != "internalmass"
+            ]
+            floors = [s for s in zone_surfs if s.Surface_Type.upper() == "FLOOR"]
             area = sum([floor.area for floor in floors])
             return area
         else:
@@ -107,12 +125,15 @@ class Zone(UmiBase, metaclass=Unique):
         Returns (float): zone's volume in m³
         """
         if not self._volume:
-            zone_surfs = [surf for surf in self._epbunch.zonesurfaces if
-                          surf.key.lower() != 'internalmass']
+            zone_surfs = [
+                surf
+                for surf in self._epbunch.zonesurfaces
+                if surf.key.lower() != "internalmass"
+            ]
 
             vol = self.get_volume_from_surfs(zone_surfs)
 
-            if self._epbunch.Multiplier == '':
+            if self._epbunch.Multiplier == "":
                 multiplier = 1
             else:
                 multiplier = float(self._epbunch.Multiplier)
@@ -151,15 +172,19 @@ class Zone(UmiBase, metaclass=Unique):
                 y1 = v1.y
                 z1 = v1.z
                 # Add volume of tetrahedron formed by triangle and origin
-                vol += math.fabs(x0 * y1 * z2 + x1 * y2 * z0 \
-                                 + x2 * y0 * z1 - x0 * y2 * z1 \
-                                 - x1 * y0 * z2 - x2 * y1 * z0)
-        return vol / 6.
+                vol += math.fabs(
+                    x0 * y1 * z2
+                    + x1 * y2 * z0
+                    + x2 * y0 * z1
+                    - x0 * y2 * z1
+                    - x1 * y0 * z2
+                    - x2 * y1 * z0
+                )
+        return vol / 6.0
 
     def _conditioning(self):
         """run _conditioning and return id"""
-        self.Conditioning = ZoneConditioning.from_idf(Name=random.randint(1,
-                                                                          999999))
+        self.Conditioning = ZoneConditioning.from_idf(Name=random.randint(1, 999999))
 
     @timeit
     def _internalmassconstruction(self):
@@ -169,10 +194,11 @@ class Zone(UmiBase, metaclass=Unique):
         for surface in self._zonesurfaces:
             # for surf_type in self.idf.idd_index['ref2names'][
             # 'AllHeatTranSurfNames']:
-            if surface.key.upper() == 'INTERNALMASS':
+            if surface.key.upper() == "INTERNALMASS":
                 oc.append(OpaqueConstruction.from_epbunch(surface))
-                self.InternalMassExposedPerFloorArea = float(
-                    surface.Surface_Area) / self.area
+                self.InternalMassExposedPerFloorArea = (
+                    float(surface.Surface_Area) / self.area
+                )
         if not oc:
             # Todo: Create Equivalent InternalMassConstruction from
             #  partitions. For now, creating dummy InternalMass
@@ -183,47 +209,48 @@ class Zone(UmiBase, metaclass=Unique):
             #     Perim,                   !- Zone Name
             #     2.05864785735637;        !- Surface Area {m2}
 
-            existgin_cons = self.idf.idfobjects['CONSTRUCTION'][0]
+            existgin_cons = self.idf.idfobjects["CONSTRUCTION"][0]
             new = self.idf.copyidfobject(existgin_cons)
-            internal_mass = '{}_InternalMass'.format(self.Name)
-            new.Name = internal_mass + '_construction'
+            internal_mass = "{}_InternalMass".format(self.Name)
+            new.Name = internal_mass + "_construction"
             new_epbunch = self.idf.add_object(
-                ep_object='InternalMass'.upper(),
-                save=False, Name=internal_mass,
+                ep_object="InternalMass".upper(),
+                save=False,
+                Name=internal_mass,
                 Construction_Name=new.Name,
                 Zone_Name=self.Name,
-                Surface_Area=0)
+                Surface_Area=0,
+            )
 
-            oc.append(OpaqueConstruction.from_epbunch(new_epbunch,
-                                                      idf=self.idf))
+            oc.append(OpaqueConstruction.from_epbunch(new_epbunch, idf=self.idf))
             self.InternalMassExposedPerFloorArea = 0
 
         if self.InternalMassExposedPerFloorArea is None:
             self.InternalMassExposedPerFloorArea = 0
 
         from operator import add
+
         return functools.reduce(add, oc)
 
     def _loads(self):
         """run loads and return id"""
-        self.Loads = ZoneLoad(Name=str(
-            random.randint(1, 999999)))
+        self.Loads = ZoneLoad(Name=str(random.randint(1, 999999)))
 
     def _ventilation(self):
-        self.Ventilation = VentilationSetting(Name=str(
-            random.randint(1, 999999)))
+        self.Ventilation = VentilationSetting(Name=str(random.randint(1, 999999)))
 
     def _constructions(self):
         """run construction sets and return id"""
-        set_name = '_'.join([self.Name, 'constructions'])
+        set_name = "_".join([self.Name, "constructions"])
         self.Constructions = ZoneConstructionSet.from_idf(
-            Zone_Names=self.Zone_Names, sql=self.sql, Name=set_name,
-            idf=self.idf)
+            Zone_Names=self.Zone_Names, sql=self.sql, Name=set_name, idf=self.idf
+        )
 
     def _domestichotwater(self):
         """run domestic hot water and return id"""
-        self.DomesticHotWater = DomesticHotWaterSetting(Name=str(
-            random.randint(1, 999999)))
+        self.DomesticHotWater = DomesticHotWaterSetting(
+            Name=str(random.randint(1, 999999))
+        )
 
     def to_json(self):
         data_dict = collections.OrderedDict()
@@ -234,11 +261,10 @@ class Zone(UmiBase, metaclass=Unique):
         data_dict["DaylightMeshResolution"] = self.DaylightMeshResolution
         data_dict["DaylightWorkplaneHeight"] = self.DaylightWorkplaneHeight
         data_dict["DomesticHotWater"] = self.DomesticHotWater.to_dict()
-        data_dict["InternalMassConstruction"] = \
-            self.InternalMassConstruction.to_dict()
+        data_dict["InternalMassConstruction"] = self.InternalMassConstruction.to_dict()
         data_dict[
-            "InternalMassExposedPerFloorArea"] = \
-            self.InternalMassExposedPerFloorArea
+            "InternalMassExposedPerFloorArea"
+        ] = self.InternalMassExposedPerFloorArea
         data_dict["Loads"] = self.Loads.to_dict()
         data_dict["Ventilation"] = self.Ventilation.to_dict()
         data_dict["Category"] = self.Category
@@ -257,17 +283,17 @@ class Zone(UmiBase, metaclass=Unique):
         """
         zone = cls(*args, **kwargs)
 
-        ref = kwargs.get('Conditioning', None)
+        ref = kwargs.get("Conditioning", None)
         zone.Conditioning = zone.get_ref(ref)
-        ref = kwargs.get('Constructions', None)
+        ref = kwargs.get("Constructions", None)
         zone.Constructions = zone.get_ref(ref)
-        ref = kwargs.get('DomesticHotWater', None)
+        ref = kwargs.get("DomesticHotWater", None)
         zone.DomesticHotWater = zone.get_ref(ref)
-        ref = kwargs.get('InternalMassConstruction', None)
+        ref = kwargs.get("InternalMassConstruction", None)
         zone.InternalMassConstruction = zone.get_ref(ref)
-        ref = kwargs.get('Loads', None)
+        ref = kwargs.get("Loads", None)
         zone.Loads = zone.get_ref(ref)
-        ref = kwargs.get('Ventilation', None)
+        ref = kwargs.get("Ventilation", None)
         zone.Ventilation = zone.get_ref(ref)
 
         return zone
@@ -287,8 +313,12 @@ class Zone(UmiBase, metaclass=Unique):
         log('\nConstructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
         name = zone_ep.Name
         sql = kwargs.get("sql")
-        zone = cls(Name=name, idf=zone_ep.theidf, sql=sql,
-                   Category=zone_ep.theidf.building_name(use_idfname=True))
+        zone = cls(
+            Name=name,
+            idf=zone_ep.theidf,
+            sql=sql,
+            Category=zone_ep.theidf.building_name(use_idfname=True),
+        )
 
         zone._epbunch = zone_ep
         zone._zonesurfaces = zone_ep.zonesurfaces
@@ -301,8 +331,11 @@ class Zone(UmiBase, metaclass=Unique):
         zone.InternalMassConstruction = zone._internalmassconstruction()
         zone.Windows = WindowSetting.from_zone(zone)
 
-        log('completed Zone "{}" constructor in {:,.2f} seconds'.format(
-            zone_ep.Name, time.time() - start_time))
+        log(
+            'completed Zone "{}" constructor in {:,.2f} seconds'.format(
+                zone_ep.Name, time.time() - start_time
+            )
+        )
         return zone
 
     @classmethod
@@ -332,8 +365,10 @@ class Zone(UmiBase, metaclass=Unique):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
-                                                 other.__class__.__name__)
+            msg = "Cannot combine %s with %s" % (
+                self.__class__.__name__,
+                other.__class__.__name__,
+            )
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -341,52 +376,53 @@ class Zone(UmiBase, metaclass=Unique):
             return self
 
         incoming_zone_data = self.__dict__.copy()
-        incoming_zone_data.pop('Name')
+        incoming_zone_data.pop("Name")
 
         meta = self._get_predecessors_meta(other)
 
         if not weights:
             weights = [self.volume, other.volume]
-            log('using zone volume "{}" as weighting factor in "{}" '
-                'combine.'.format(" & ".join(list(map(str, map(int, weights)))),
-                                  self.__class__.__name__))
+            log(
+                'using zone volume "{}" as weighting factor in "{}" '
+                "combine.".format(
+                    " & ".join(list(map(str, map(int, weights)))),
+                    self.__class__.__name__,
+                )
+            )
 
-        attr = dict(Conditioning=self.Conditioning.combine(
-            other.Conditioning, weights),
-            Constructions=self.Constructions.combine(
-                other.Constructions, weights),
-            Ventilation=self.Ventilation.combine(
-                other.Ventilation, weights),
-            Windows=None if self.Windows is None or other.Windows is
-                            None
-            else self.Windows.combine(
-                other.Windows, weights),
-            DaylightMeshResolution=self._float_mean(other,
-                                                    'DaylightMeshResolution',
-                                                    weights=weights),
-            DaylightWorkplaneHeight=self._float_mean(other,
-                                                     'DaylightWorkplaneHeight',
-                                                     weights),
+        attr = dict(
+            Conditioning=self.Conditioning.combine(other.Conditioning, weights),
+            Constructions=self.Constructions.combine(other.Constructions, weights),
+            Ventilation=self.Ventilation.combine(other.Ventilation, weights),
+            Windows=None
+            if self.Windows is None or other.Windows is None
+            else self.Windows.combine(other.Windows, weights),
+            DaylightMeshResolution=self._float_mean(
+                other, "DaylightMeshResolution", weights=weights
+            ),
+            DaylightWorkplaneHeight=self._float_mean(
+                other, "DaylightWorkplaneHeight", weights
+            ),
             DomesticHotWater=self.DomesticHotWater.combine(
-                other.DomesticHotWater, weights),
-            InternalMassConstruction=self.InternalMassConstruction
-                .combine(
-                other.InternalMassConstruction, weights),
-            InternalMassExposedPerFloorArea=
-            self._float_mean(other,
-                             'InternalMassExposedPerFloorArea',
-                             weights),
-            Loads=self.Loads.combine(
-                other.Loads, weights))
+                other.DomesticHotWater, weights
+            ),
+            InternalMassConstruction=self.InternalMassConstruction.combine(
+                other.InternalMassConstruction, weights
+            ),
+            InternalMassExposedPerFloorArea=self._float_mean(
+                other, "InternalMassExposedPerFloorArea", weights
+            ),
+            Loads=self.Loads.combine(other.Loads, weights),
+        )
         new_obj = self.__class__(**meta, **attr)
         new_obj._volume = self.volume + other.volume
         new_obj._area = self.area + other.area
-        attr['Conditioning']._belongs_to_zone = new_obj
-        attr['Constructions']._belongs_to_zone = new_obj
-        attr['Ventilation']._belongs_to_zone = new_obj
-        attr['DomesticHotWater']._belongs_to_zone = new_obj
-        if attr['Windows']:
-            attr['Windows']._belongs_to_zone = new_obj
+        attr["Conditioning"]._belongs_to_zone = new_obj
+        attr["Constructions"]._belongs_to_zone = new_obj
+        attr["Ventilation"]._belongs_to_zone = new_obj
+        attr["DomesticHotWater"]._belongs_to_zone = new_obj
+        if attr["Windows"]:
+            attr["Windows"]._belongs_to_zone = new_obj
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
@@ -427,14 +463,14 @@ def resolve_obco(this):
 
     obc = this.Outside_Boundary_Condition
 
-    if obc.upper() == 'ZONE':
+    if obc.upper() == "ZONE":
         name = this.Outside_Boundary_Condition_Object
-        adj_zone = this.theidf.getobject('ZONE', name)
+        adj_zone = this.theidf.getobject("ZONE", name)
         return None, adj_zone
 
-    elif obc.upper() == 'SURFACE':
-        obco = this.get_referenced_object('Outside_Boundary_Condition_Object')
-        adj_zone = obco.theidf.getobject('ZONE', obco.Zone_Name)
+    elif obc.upper() == "SURFACE":
+        obco = this.get_referenced_object("Outside_Boundary_Condition_Object")
+        adj_zone = obco.theidf.getobject("ZONE", obco.Zone_Name)
         return obco, adj_zone
     else:
         return None, None
@@ -447,33 +483,33 @@ def surface_dispatcher(surf, zone):
         zone (EpBunch):
     """
     dispatch = {
-        ('Wall', 'Outdoors'): ZoneConstructionSet._do_facade,
-        ('Floor', 'Ground'): ZoneConstructionSet._do_ground,
-        ('Floor', 'Outdoors'): ZoneConstructionSet._do_ground,
-        ('Floor', 'Foundation'): ZoneConstructionSet._do_ground,
-        ('Floor', 'Surface'): ZoneConstructionSet._do_slab,
-        ('Floor', 'Adiabatic'): ZoneConstructionSet._do_slab,
-        ('Floor', 'Zone'): ZoneConstructionSet._do_slab,
-        ('Wall', 'Adiabatic'): ZoneConstructionSet._do_partition,
-        ('Wall', 'Surface'): ZoneConstructionSet._do_partition,
-        ('Wall', 'Zone'): ZoneConstructionSet._do_partition,
-        ('Wall', 'Ground'): ZoneConstructionSet._do_basement,
-        ('Roof', 'Outdoors'): ZoneConstructionSet._do_roof,
-        ('Roof', 'Zone'): ZoneConstructionSet._do_roof,
-        ('Roof', 'Surface'): ZoneConstructionSet._do_roof,
-        ('Ceiling', 'Adiabatic'): ZoneConstructionSet._do_slab,
-        ('Ceiling', 'Surface'): ZoneConstructionSet._do_slab,
-        ('Ceiling', 'Zone'): ZoneConstructionSet._do_slab,
+        ("Wall", "Outdoors"): ZoneConstructionSet._do_facade,
+        ("Floor", "Ground"): ZoneConstructionSet._do_ground,
+        ("Floor", "Outdoors"): ZoneConstructionSet._do_ground,
+        ("Floor", "Foundation"): ZoneConstructionSet._do_ground,
+        ("Floor", "Surface"): ZoneConstructionSet._do_slab,
+        ("Floor", "Adiabatic"): ZoneConstructionSet._do_slab,
+        ("Floor", "Zone"): ZoneConstructionSet._do_slab,
+        ("Wall", "Adiabatic"): ZoneConstructionSet._do_partition,
+        ("Wall", "Surface"): ZoneConstructionSet._do_partition,
+        ("Wall", "Zone"): ZoneConstructionSet._do_partition,
+        ("Wall", "Ground"): ZoneConstructionSet._do_basement,
+        ("Roof", "Outdoors"): ZoneConstructionSet._do_roof,
+        ("Roof", "Zone"): ZoneConstructionSet._do_roof,
+        ("Roof", "Surface"): ZoneConstructionSet._do_roof,
+        ("Ceiling", "Adiabatic"): ZoneConstructionSet._do_slab,
+        ("Ceiling", "Surface"): ZoneConstructionSet._do_slab,
+        ("Ceiling", "Zone"): ZoneConstructionSet._do_slab,
     }
-    if surf.key.upper() != 'INTERNALMASS':
-        a, b = surf['Surface_Type'].capitalize(), surf[
-            'Outside_Boundary_Condition']
+    if surf.key.upper() != "INTERNALMASS":
+        a, b = surf["Surface_Type"].capitalize(), surf["Outside_Boundary_Condition"]
         try:
             yield dispatch[a, b](surf)
         except KeyError as e:
             raise NotImplementedError(
                 "surface '%s' in zone '%s' not supported by surface dispatcher "
-                "with keys %s" % (surf.Name, zone.Name, e))
+                "with keys %s" % (surf.Name, zone.Name, e)
+            )
 
 
 def label_surface(row):
@@ -483,32 +519,32 @@ def label_surface(row):
         row:
     """
     # Floors
-    if row['Surface_Type'] == 'Floor':
-        if row['Outside_Boundary_Condition'] == 'Surface':
-            return 'Interior Floor'
-        if row['Outside_Boundary_Condition'] == 'Ground':
-            return 'Ground Floor'
-        if row['Outside_Boundary_Condition'] == 'Outdoors':
-            return 'Exterior Floor'
-        if row['Outside_Boundary_Condition'] == 'Adiabatic':
-            return 'Interior Floor'
+    if row["Surface_Type"] == "Floor":
+        if row["Outside_Boundary_Condition"] == "Surface":
+            return "Interior Floor"
+        if row["Outside_Boundary_Condition"] == "Ground":
+            return "Ground Floor"
+        if row["Outside_Boundary_Condition"] == "Outdoors":
+            return "Exterior Floor"
+        if row["Outside_Boundary_Condition"] == "Adiabatic":
+            return "Interior Floor"
         else:
-            return 'Other'
+            return "Other"
 
     # Roofs & Ceilings
-    if row['Surface_Type'] == 'Roof':
-        return 'Roof'
-    if row['Surface_Type'] == 'Ceiling':
-        return 'Interior Floor'
+    if row["Surface_Type"] == "Roof":
+        return "Roof"
+    if row["Surface_Type"] == "Ceiling":
+        return "Interior Floor"
     # Walls
-    if row['Surface_Type'] == 'Wall':
-        if row['Outside_Boundary_Condition'] == 'Surface':
-            return 'Partition'
-        if row['Outside_Boundary_Condition'] == 'Outdoors':
-            return 'Facade'
-        if row['Outside_Boundary_Condition'] == 'Adiabatic':
-            return 'Partition'
-    return 'Other'
+    if row["Surface_Type"] == "Wall":
+        if row["Outside_Boundary_Condition"] == "Surface":
+            return "Partition"
+        if row["Outside_Boundary_Condition"] == "Outdoors":
+            return "Facade"
+        if row["Outside_Boundary_Condition"] == "Adiabatic":
+            return "Partition"
+    return "Other"
 
 
 def type_surface(row):
@@ -519,31 +555,30 @@ def type_surface(row):
     """
 
     # Floors
-    if row['Surface_Type'] == 'Floor':
-        if row['Outside_Boundary_Condition'] == 'Surface':
+    if row["Surface_Type"] == "Floor":
+        if row["Outside_Boundary_Condition"] == "Surface":
             return 3  # umi defined
-        if row['Outside_Boundary_Condition'] == 'Ground':
+        if row["Outside_Boundary_Condition"] == "Ground":
             return 2  # umi defined
-        if row['Outside_Boundary_Condition'] == 'Outdoors':
+        if row["Outside_Boundary_Condition"] == "Outdoors":
             return 4  # umi defined
-        if row['Outside_Boundary_Condition'] == 'Adiabatic':
+        if row["Outside_Boundary_Condition"] == "Adiabatic":
             return 5
         else:
-            return ValueError(
-                'Cannot find Construction Type for "{}"'.format(row))
+            return ValueError('Cannot find Construction Type for "{}"'.format(row))
 
     # Roofs & Ceilings
-    elif row['Surface_Type'] == 'Roof':
+    elif row["Surface_Type"] == "Roof":
         return 1
-    elif row['Surface_Type'] == 'Ceiling':
+    elif row["Surface_Type"] == "Ceiling":
         return 3
     # Walls
-    elif row['Surface_Type'] == 'Wall':
-        if row['Outside_Boundary_Condition'] == 'Surface':
+    elif row["Surface_Type"] == "Wall":
+        if row["Outside_Boundary_Condition"] == "Surface":
             return 5  # umi defined
-        if row['Outside_Boundary_Condition'] == 'Outdoors':
+        if row["Outside_Boundary_Condition"] == "Outdoors":
             return 0  # umi defined
-        if row['Outside_Boundary_Condition'] == 'Adiabatic':
+        if row["Outside_Boundary_Condition"] == "Adiabatic":
             return 5  # umi defined
     else:
         raise ValueError('Cannot find Construction Type for "{}"'.format(row))
@@ -565,15 +600,19 @@ def zone_information(df):
         -examples/eplusout.eio.html#zone_loads-information>`_
     """
     df = get_from_tabulardata(df)
-    tbstr = df[(df.ReportName == 'Initialization Summary') &
-               (df.TableName == 'Zone Information')].reset_index()
+    tbstr = df[
+        (df.ReportName == "Initialization Summary")
+        & (df.TableName == "Zone Information")
+    ].reset_index()
     # Ignore Zone that are not part of building area
-    pivoted = tbstr.pivot_table(index=['RowName'],
-                                columns='ColumnName',
-                                values='Value',
-                                aggfunc=lambda x: ' '.join(x))
+    pivoted = tbstr.pivot_table(
+        index=["RowName"],
+        columns="ColumnName",
+        values="Value",
+        aggfunc=lambda x: " ".join(x),
+    )
 
-    return pivoted.loc[pivoted['Part of Total Building Area'] == 'Yes', :]
+    return pivoted.loc[pivoted["Part of Total Building Area"] == "Yes", :]
 
 
 def get_from_tabulardata(sql):
@@ -585,8 +624,8 @@ def get_from_tabulardata(sql):
     Returns:
         (pandas.DataFrame)
     """
-    tab_data_wstring = sql['TabularDataWithStrings']
-    tab_data_wstring.index.names = ['Index']
+    tab_data_wstring = sql["TabularDataWithStrings"]
+    tab_data_wstring.index.names = ["Index"]
 
     # strip whitespaces
     tab_data_wstring.Value = tab_data_wstring.Value.str.strip()
@@ -609,26 +648,41 @@ def iscore(row):
     Returns:
         str: 'Core' or 'Perimeter'
     """
-    if any(['core' in row['Zone Name'].lower(),
-            float(row['Exterior Gross Wall Area {m2}']) == 0]):
+    if any(
+        [
+            "core" in row["Zone Name"].lower(),
+            float(row["Exterior Gross Wall Area {m2}"]) == 0,
+        ]
+    ):
         # We look for the string `core` in the Zone_Name
-        return 'Core'
-    elif row['Part of Total Building Area'] == 'No':
+        return "Core"
+    elif row["Part of Total Building Area"] == "No":
         return np.NaN
-    elif 'plenum' in row['Zone Name'].lower():
+    elif "plenum" in row["Zone Name"].lower():
         return np.NaN
     else:
-        return 'Perimeter'
+        return "Perimeter"
 
 
 class ZoneConstructionSet(UmiBase, metaclass=Unique):
     """Zone-specific :class:`Construction` ids"""
 
-    def __init__(self, *args, Zone_Names=None, Slab=None, IsSlabAdiabatic=False,
-                 Roof=None, IsRoofAdiabatic=False, Partition=None,
-                 IsPartitionAdiabatic=False, Ground=None,
-                 IsGroundAdiabatic=False, Facade=None, IsFacadeAdiabatic=False,
-                 **kwargs):
+    def __init__(
+        self,
+        *args,
+        Zone_Names=None,
+        Slab=None,
+        IsSlabAdiabatic=False,
+        Roof=None,
+        IsRoofAdiabatic=False,
+        Partition=None,
+        IsPartitionAdiabatic=False,
+        Ground=None,
+        IsGroundAdiabatic=False,
+        Facade=None,
+        IsFacadeAdiabatic=False,
+        **kwargs
+    ):
         """
         Args:
             *args:
@@ -658,7 +712,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         self.IsFacadeAdiabatic = IsFacadeAdiabatic
 
         self.Zone_Names = Zone_Names
-        self._belongs_to_zone = kwargs.get('zone', None)
+        self._belongs_to_zone = kwargs.get("zone", None)
 
     def __add__(self, other):
         """Overload + to implement self.combine.
@@ -679,8 +733,10 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
-                                                 other.__class__.__name__)
+            msg = "Cannot combine %s with %s" % (
+                self.__class__.__name__,
+                other.__class__.__name__,
+            )
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -688,23 +744,28 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             return self
 
         if not weights:
-            weights = [self._belongs_to_zone.volume,
-                       other._belongs_to_zone.volume]
-            log('using zone volume "{}" as weighting factor in "{}" '
-                'combine.'.format(" & ".join(list(map(str, map(int, weights)))),
-                                  self.__class__.__name__))
+            weights = [self._belongs_to_zone.volume, other._belongs_to_zone.volume]
+            log(
+                'using zone volume "{}" as weighting factor in "{}" '
+                "combine.".format(
+                    " & ".join(list(map(str, map(int, weights)))),
+                    self.__class__.__name__,
+                )
+            )
 
         meta = self._get_predecessors_meta(other)
-        new_attr = dict(Slab=self.Slab.combine(other.Slab, weights),
-                        IsSlabAdiabatic=self.IsSlabAdiabatic,
-                        Roof=self.Roof + other.Roof,
-                        IsRoofAdiabatic=self.IsRoofAdiabatic,
-                        Partition=self.Partition + other.Partition,
-                        IsPartitionAdiabatic=self.IsPartitionAdiabatic,
-                        Ground=self.Ground + other.Ground,
-                        IsGroundAdiabatic=self.IsGroundAdiabatic,
-                        Facade=self.Facade + other.Facade,
-                        IsFacadeAdiabatic=self.IsFacadeAdiabatic)
+        new_attr = dict(
+            Slab=self.Slab.combine(other.Slab, weights),
+            IsSlabAdiabatic=self.IsSlabAdiabatic,
+            Roof=self.Roof + other.Roof,
+            IsRoofAdiabatic=self.IsRoofAdiabatic,
+            Partition=self.Partition + other.Partition,
+            IsPartitionAdiabatic=self.IsPartitionAdiabatic,
+            Ground=self.Ground + other.Ground,
+            IsGroundAdiabatic=self.IsGroundAdiabatic,
+            Facade=self.Facade + other.Facade,
+            IsFacadeAdiabatic=self.IsFacadeAdiabatic,
+        )
         new_obj = self.__class__(**meta, **new_attr)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
@@ -718,19 +779,19 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         """
         zc = cls(*args, **kwargs)
 
-        ref = kwargs.get('Facade', None)
+        ref = kwargs.get("Facade", None)
         zc.Facade = zc.get_ref(ref)
 
-        ref = kwargs.get('Ground', None)
+        ref = kwargs.get("Ground", None)
         zc.Ground = zc.get_ref(ref)
 
-        ref = kwargs.get('Partition', None)
+        ref = kwargs.get("Partition", None)
         zc.Partition = zc.get_ref(ref)
 
-        ref = kwargs.get('Roof', None)
+        ref = kwargs.get("Roof", None)
         zc.Roof = zc.get_ref(ref)
 
-        ref = kwargs.get('Slab', None)
+        ref = kwargs.get("Slab", None)
         zc.Slab = zc.get_ref(ref)
 
         return zc
@@ -740,21 +801,11 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Facade"] = {
-            "$ref": str(self.Facade.id)
-        }
-        data_dict["Ground"] = {
-            "$ref": str(self.Ground.id)
-        }
-        data_dict["Partition"] = {
-            "$ref": str(self.Partition.id)
-        }
-        data_dict["Roof"] = {
-            "$ref": str(self.Roof.id)
-        }
-        data_dict["Slab"] = {
-            "$ref": str(self.Slab.id)
-        }
+        data_dict["Facade"] = {"$ref": str(self.Facade.id)}
+        data_dict["Ground"] = {"$ref": str(self.Ground.id)}
+        data_dict["Partition"] = {"$ref": str(self.Partition.id)}
+        data_dict["Roof"] = {"$ref": str(self.Roof.id)}
+        data_dict["Slab"] = {"$ref": str(self.Slab.id)}
         data_dict["IsFacadeAdiabatic"] = self.IsFacadeAdiabatic
         data_dict["IsGroundAdiabatic"] = self.IsGroundAdiabatic
         data_dict["IsPartitionAdiabatic"] = self.IsPartitionAdiabatic
@@ -781,20 +832,21 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         for surf in zonesurfaces:
             for disp_surf in surface_dispatcher(surf, zone):
 
-                if disp_surf.Surface_Type == 'Facade':
+                if disp_surf.Surface_Type == "Facade":
                     facade.append(disp_surf)
-                elif disp_surf.Surface_Type == 'Ground':
+                elif disp_surf.Surface_Type == "Ground":
                     ground.append(disp_surf)
-                elif disp_surf.Surface_Type == 'Partition':
+                elif disp_surf.Surface_Type == "Partition":
                     partition.append(disp_surf)
-                elif disp_surf.Surface_Type == 'Roof':
+                elif disp_surf.Surface_Type == "Roof":
                     roof.append(disp_surf)
-                elif disp_surf.Surface_Type == 'Slab':
+                elif disp_surf.Surface_Type == "Slab":
                     slab.append(disp_surf)
                 else:
-                    msg = 'Surface Type "{}" is not known, this method is not' \
-                          ' implemented'.format(
-                        disp_surf.Surface_Type)
+                    msg = (
+                        'Surface Type "{}" is not known, this method is not'
+                        " implemented".format(disp_surf.Surface_Type)
+                    )
                     raise NotImplementedError(msg)
 
         # Returning a set() for each groups of Constructions.
@@ -825,10 +877,17 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         else:
             slab = OpaqueConstruction.generic(idf=zone.idf)
 
-        z_set = cls(Facade=facade, Ground=ground, Partition=partition,
-                    Roof=roof, Slab=slab, Name=name, zone=zone,
-                    idf=zone.idf,
-                    Category=zone.idf.building_name(use_idfname=True))
+        z_set = cls(
+            Facade=facade,
+            Ground=ground,
+            Partition=partition,
+            Roof=roof,
+            Slab=slab,
+            Name=name,
+            zone=zone,
+            idf=zone.idf,
+            Category=zone.idf.building_name(use_idfname=True),
+        )
         return z_set
 
     @staticmethod
@@ -837,13 +896,16 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         Args:
             surf (EpBunch):
         """
-        log('surface "%s" assigned as a Facade' % surf.Name, lg.DEBUG,
-            name=surf.theidf.name)
+        log(
+            'surface "%s" assigned as a Facade' % surf.Name,
+            lg.DEBUG,
+            name=surf.theidf.name,
+        )
         oc = OpaqueConstruction.from_epbunch(
-            surf.theidf.getobject('Construction'.upper(),
-                                  surf.Construction_Name))
+            surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
+        )
         oc.area = surf.area
-        oc.Surface_Type = 'Facade'
+        oc.Surface_Type = "Facade"
         return oc
 
     @staticmethod
@@ -852,13 +914,16 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         Args:
             surf (EpBunch):
         """
-        log('surface "%s" assigned as a Ground' % surf.Name, lg.DEBUG,
-            name=surf.theidf.name)
+        log(
+            'surface "%s" assigned as a Ground' % surf.Name,
+            lg.DEBUG,
+            name=surf.theidf.name,
+        )
         oc = OpaqueConstruction.from_epbunch(
-            surf.theidf.getobject('Construction'.upper(),
-                                  surf.Construction_Name))
+            surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
+        )
         oc.area = surf.area
-        oc.Surface_Type = 'Ground'
+        oc.Surface_Type = "Ground"
         return oc
 
     @staticmethod
@@ -867,13 +932,16 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         Args:
             surf (EpBunch):
         """
-        log('surface "%s" assigned as a Partition' % surf.Name, lg.DEBUG,
-            name=surf.theidf.name)
+        log(
+            'surface "%s" assigned as a Partition' % surf.Name,
+            lg.DEBUG,
+            name=surf.theidf.name,
+        )
         oc = OpaqueConstruction.from_epbunch(
-            surf.theidf.getobject('Construction'.upper(),
-                                  surf.Construction_Name))
+            surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
+        )
         oc.area = surf.area
-        oc.Surface_Type = 'Partition'
+        oc.Surface_Type = "Partition"
         return oc
 
     @staticmethod
@@ -882,13 +950,16 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         Args:
             surf (EpBunch):
         """
-        log('surface "%s" assigned as a Roof' % surf.Name, lg.DEBUG,
-            name=surf.theidf.name)
+        log(
+            'surface "%s" assigned as a Roof' % surf.Name,
+            lg.DEBUG,
+            name=surf.theidf.name,
+        )
         oc = OpaqueConstruction.from_epbunch(
-            surf.theidf.getobject('Construction'.upper(),
-                                  surf.Construction_Name))
+            surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
+        )
         oc.area = surf.area
-        oc.Surface_Type = 'Roof'
+        oc.Surface_Type = "Roof"
         return oc
 
     @staticmethod
@@ -897,13 +968,16 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         Args:
             surf (EpBunch):
         """
-        log('surface "%s" assigned as a Slab' % surf.Name, lg.DEBUG,
-            name=surf.theidf.name)
+        log(
+            'surface "%s" assigned as a Slab' % surf.Name,
+            lg.DEBUG,
+            name=surf.theidf.name,
+        )
         oc = OpaqueConstruction.from_epbunch(
-            surf.theidf.getobject('Construction'.upper(),
-                                  surf.Construction_Name))
+            surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
+        )
         oc.area = surf.area
-        oc.Surface_Type = 'Slab'
+        oc.Surface_Type = "Slab"
         return oc
 
     @staticmethod
@@ -912,14 +986,17 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         Args:
             surf (EpBunch):
         """
-        log('surface "%s" ignored because basement facades are not supported' %
-            surf.Name, lg.WARNING,
-            name=surf.theidf.name)
+        log(
+            'surface "%s" ignored because basement facades are not supported'
+            % surf.Name,
+            lg.WARNING,
+            name=surf.theidf.name,
+        )
         oc = OpaqueConstruction.from_epbunch(
-            surf.theidf.getobject('Construction'.upper(),
-                                  surf.Construction_Name))
+            surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
+        )
         oc.area = surf.area
-        oc.Surface_Type = 'Facade'
+        oc.Surface_Type = "Facade"
         return oc
 
 
@@ -963,14 +1040,27 @@ class ZoneGraph(networkx.Graph):
             attr: keyword arguments, optional (default= no attributes)
                 Attributes to add to graph as key=value pairs.
         """
-        super(ZoneGraph, self).__init__(incoming_graph_data=incoming_graph_data,
-                                        **attr)
+        super(ZoneGraph, self).__init__(incoming_graph_data=incoming_graph_data, **attr)
 
-    def plot_graph3d(self, fig_height=None, fig_width=6, save=False, show=True,
-                     close=False, ax=None, axis_off=False, cmap='plasma',
-                     dpi=300,
-                     file_format='png', azim=-60, elev=30, proj_type='persp',
-                     filename=None, annotate=False, plt_style='ggplot'):
+    def plot_graph3d(
+        self,
+        fig_height=None,
+        fig_width=6,
+        save=False,
+        show=True,
+        close=False,
+        ax=None,
+        axis_off=False,
+        cmap="plasma",
+        dpi=300,
+        file_format="png",
+        azim=-60,
+        elev=30,
+        proj_type="persp",
+        filename=None,
+        annotate=False,
+        plt_style="ggplot",
+    ):
         """Plot the :class:`archetypal.template.ZoneGraph` in a 3D plot.
 
         The size of the node is relative to its
@@ -1033,14 +1123,14 @@ class ZoneGraph(networkx.Graph):
             ggr = zone.theidf.idfobjects["GLOBALGEOMETRYRULES"][0]
 
             for surface in zone.zonesurfaces:
-                if surface.key.lower() == 'internalmass':
+                if surface.key.lower() == "internalmass":
                     pass
                 else:
                     dem += 1  # Counter for average calc at return
-                    if ggr.Coordinate_System.lower() == 'relative':
+                    if ggr.Coordinate_System.lower() == "relative":
                         # add zone origin to surface coordinates and create
                         # Polygon3D from updated coords.
-                        zone = zone.theidf.getobject('ZONE', surface.Zone_Name)
+                        zone = zone.theidf.getobject("ZONE", surface.Zone_Name)
                         poly3d = Polygon3D(surface.coords)
                         origin = (zone.X_Origin, zone.Y_Origin, zone.Z_Origin)
                         coords = translate_coords(poly3d, Vector3D(*origin))
@@ -1055,38 +1145,41 @@ class ZoneGraph(networkx.Graph):
             return x_ / dem, y_ / dem, z_ / dem
 
         # Get node positions in a dictionary
-        pos = {name: avg(epbunch) for name, epbunch in
-               self.nodes(data='epbunch')}
+        pos = {name: avg(epbunch) for name, epbunch in self.nodes(data="epbunch")}
 
         # Get the maximum number of edges adjacent to a single node
         edge_max = max(1, max([self.degree(i) for i in self.nodes]))  # min = 1
 
         # Define color range proportional to number of edges adjacent to a
         # single node
-        colors = {i: plt.cm.get_cmap(cmap)(self.degree(i) / edge_max) for i in
-                  self.nodes}
+        colors = {
+            i: plt.cm.get_cmap(cmap)(self.degree(i) / edge_max) for i in self.nodes
+        }
 
         if annotate:
             # annotate can be bool or str.
             if isinstance(annotate, bool):
                 # if True, default to 'Name' field
-                annotate = 'Name'
+                annotate = "Name"
             if isinstance(annotate, str):
                 # create dict of the form {id: (x, y, z, label, zdir)}. zdir is
                 # None by default.
-                labels = {name: (*pos[name], data[annotate], None)
-                          for name, data in self.nodes(data='epbunch')
-                          }
+                labels = {
+                    name: (*pos[name], data[annotate], None)
+                    for name, data in self.nodes(data="epbunch")
+                }
             if isinstance(annotate, tuple):
                 data, key = annotate
                 if key:
-                    labels = {name: (*pos[name], data[key], None)
-                              for name, data in self.nodes(data=data)
-                              }
+                    labels = {
+                        name: (*pos[name], data[key], None)
+                        for name, data in self.nodes(data=data)
+                    }
                 else:
-                    labels = {name: (*pos[name], data, None)
-                              for name, data in self.nodes(data=data)
-                              }
+                    labels = {
+                        name: (*pos[name], data, None)
+                        for name, data in self.nodes(data=data)
+                    }
 
         # 3D network plot
         with plt.style.context((plt_style)):
@@ -1107,9 +1200,15 @@ class ZoneGraph(networkx.Graph):
                 zi = value[2]
 
                 # Scatter plot
-                ax.scatter(xi, yi, zi, color=colors[key],
-                           s=20 + 20 * self.degree(key),
-                           edgecolors='k', alpha=0.7)
+                ax.scatter(
+                    xi,
+                    yi,
+                    zi,
+                    color=colors[key],
+                    s=20 + 20 * self.degree(key),
+                    edgecolors="k",
+                    alpha=0.7,
+                )
                 if annotate:
                     # Add node label
                     ax.text(*labels[key], fontsize=4)
@@ -1122,7 +1221,7 @@ class ZoneGraph(networkx.Graph):
                 z = np.array((pos[j[0]][2], pos[j[1]][2]))
 
                 # Plot the connecting lines
-                ax.plot(x, y, z, c='black', alpha=0.5)
+                ax.plot(x, y, z, c="black", alpha=0.5)
 
         # Set the initial view
         ax.view_init(elev, azim)
@@ -1133,21 +1232,46 @@ class ZoneGraph(networkx.Graph):
             ax.set_axis_off()
 
         if filename is None:
-            filename = 'unnamed'
+            filename = "unnamed"
 
-        fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
-                                close=close, filename=filename,
-                                file_format=file_format, dpi=dpi,
-                                axis_off=axis_off, extent=None)
+        fig, ax = save_and_show(
+            fig=fig,
+            ax=ax,
+            save=save,
+            show=show,
+            close=close,
+            filename=filename,
+            file_format=file_format,
+            dpi=dpi,
+            axis_off=axis_off,
+            extent=None,
+        )
         return fig, ax
 
-    def plot_graph2d(self, layout_function, *func_args, color_nodes=None,
-                     fig_height=None, fig_width=6,
-                     node_labels_to_integers=False, legend=False,
-                     with_labels=True, arrows=True, save=False, show=True,
-                     close=False, ax=None, axis_off=False, cmap='plasma',
-                     dpi=300, file_format='png', filename='unnamed',
-                     plt_style='ggplot', extent='tight', **kwargs):
+    def plot_graph2d(
+        self,
+        layout_function,
+        *func_args,
+        color_nodes=None,
+        fig_height=None,
+        fig_width=6,
+        node_labels_to_integers=False,
+        legend=False,
+        with_labels=True,
+        arrows=True,
+        save=False,
+        show=True,
+        close=False,
+        ax=None,
+        axis_off=False,
+        cmap="plasma",
+        dpi=300,
+        file_format="png",
+        filename="unnamed",
+        plt_style="ggplot",
+        extent="tight",
+        **kwargs
+    ):
         """Plot the adjacency of the zones as a graph. Choose a layout from the
         :mod:`networkx.drawing.layout` module, the
         :mod:`Graphviz AGraph (dot)<networkx.drawing.nx_agraph>` module, the
@@ -1211,11 +1335,10 @@ class ZoneGraph(networkx.Graph):
             print("Matplotlib unable to open display")
             raise
         # fill kwargs
-        kwargs['cmap'] = cmap
+        kwargs["cmap"] = cmap
         G = self.copy()
         if node_labels_to_integers:
-            G = networkx.convert_node_labels_to_integers(G,
-                                                         label_attribute='name')
+            G = networkx.convert_node_labels_to_integers(G, label_attribute="name")
         tree = networkx.dfs_tree(G)
         pos = layout_function(tree, *func_args)
         with plt.style.context((plt_style)):
@@ -1224,72 +1347,79 @@ class ZoneGraph(networkx.Graph):
             else:
                 if fig_height is None:
                     fig_height = fig_width
-                fig, ax = plt.subplots(1, figsize=(fig_width, fig_height),
-                                       dpi=dpi)
+                fig, ax = plt.subplots(1, figsize=(fig_width, fig_height), dpi=dpi)
 
             if isinstance(color_nodes, str):
                 from itertools import count
-                groups = set(networkx.get_node_attributes(G,
-                                                          color_nodes).values())
+
+                groups = set(networkx.get_node_attributes(G, color_nodes).values())
                 mapping = dict(zip(sorted(groups), count()))
-                colors = [mapping[G.node[n][color_nodes]] for n in
-                          tree.nodes]
-                colors = [discrete_cmap(len(groups), cmap).colors[i] for i in
-                          colors]
+                colors = [mapping[G.node[n][color_nodes]] for n in tree.nodes]
+                colors = [discrete_cmap(len(groups), cmap).colors[i] for i in colors]
 
             paths_ = []
             for nt in tree:
                 # choose nodes and color for each iteration
                 nlist = [nt]
-                label = '%s: %s' % (nt, G.nodes(data='name')[nt])
+                label = "%s: %s" % (nt, G.nodes(data="name")[nt])
                 if color_nodes:
                     node_color = [colors[nt]]
                 else:
-                    node_color = '#1f78b4'
+                    node_color = "#1f78b4"
                 # draw the graph
-                sc = networkx.draw_networkx_nodes(tree,
-                                                  pos=pos,
-                                                  nodelist=nlist,
-                                                  ax=ax,
-                                                  node_color=node_color,
-                                                  label=label,
-                                                  **kwargs)
+                sc = networkx.draw_networkx_nodes(
+                    tree,
+                    pos=pos,
+                    nodelist=nlist,
+                    ax=ax,
+                    node_color=node_color,
+                    label=label,
+                    **kwargs
+                )
                 paths_.extend(sc.get_paths())
             scatter = matplotlib.collections.PathCollection(paths_)
-            networkx.draw_networkx_edges(tree, pos, ax=ax, arrows=arrows,
-                                         **kwargs)
+            networkx.draw_networkx_edges(tree, pos, ax=ax, arrows=arrows, **kwargs)
             if with_labels:
                 networkx.draw_networkx_labels(G, pos, **kwargs)
 
             if legend:
-                bbox = kwargs.get('bbox_to_anchor', (1, 1))
-                legend1 = ax.legend(title=color_nodes, bbox_to_anchor=bbox,
-                                    markerscale=.5)
+                bbox = kwargs.get("bbox_to_anchor", (1, 1))
+                legend1 = ax.legend(
+                    title=color_nodes, bbox_to_anchor=bbox, markerscale=0.5
+                )
                 ax.add_artist(legend1)
 
             # clear axis
-            ax.axis('off')
+            ax.axis("off")
 
-            fig, ax = save_and_show(fig=fig, ax=ax, save=save, show=show,
-                                    close=close, filename=filename,
-                                    file_format=file_format, dpi=dpi,
-                                    axis_off=axis_off, extent=extent)
+            fig, ax = save_and_show(
+                fig=fig,
+                ax=ax,
+                save=save,
+                show=show,
+                close=close,
+                filename=filename,
+                file_format=file_format,
+                dpi=dpi,
+                axis_off=axis_off,
+                extent=extent,
+            )
             return fig, ax
 
     @property
     def core_graph(self):
         """Returns a copy of the ZoneGraph containing only core zones"""
-        nodes = [i for i, data in self.nodes(data='core') if data]
+        nodes = [i for i, data in self.nodes(data="core") if data]
         H = self.subgraph(nodes).copy()
-        H.name = 'Core_' + self.name
+        H.name = "Core_" + self.name
         return H
 
     @property
     def perim_graph(self):
         """Returns a copy of the ZoneGraph containing only perimeter zones"""
-        nodes = [i for i, data in self.nodes(data='core') if not data]
+        nodes = [i for i, data in self.nodes(data="core") if not data]
         H = self.subgraph(nodes).copy()
-        H.name = 'Perim_' + self.name
+        H.name = "Perim_" + self.name
         return H
 
     def info(self, node=None):

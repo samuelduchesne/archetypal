@@ -11,8 +11,7 @@ import uuid
 import numpy as np
 
 from archetypal import log
-from archetypal.template import Unique, MaterialLayer, \
-    OpaqueMaterial, UmiBase
+from archetypal.template import Unique, MaterialLayer, OpaqueMaterial, UmiBase
 
 
 class ConstructionBase(UmiBase):
@@ -23,8 +22,15 @@ class ConstructionBase(UmiBase):
     https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life-cycle-impact
     """
 
-    def __init__(self, AssemblyCarbon=0, AssemblyCost=0, AssemblyEnergy=0,
-                 DisassemblyCarbon=0, DisassemblyEnergy=0, **kwargs):
+    def __init__(
+        self,
+        AssemblyCarbon=0,
+        AssemblyCost=0,
+        AssemblyEnergy=0,
+        DisassemblyCarbon=0,
+        DisassemblyEnergy=0,
+        **kwargs
+    ):
         """Initialize a ConstructionBase object with parameters:
 
         Args:
@@ -68,9 +74,14 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     .. image:: ../images/template/constructions-opaque.png
     """
 
-    def __init__(self, Layers, Surface_Type=None,
-                 Outside_Boundary_Condition=None,
-                 IsAdiabatic=False, **kwargs):
+    def __init__(
+        self,
+        Layers,
+        Surface_Type=None,
+        Outside_Boundary_Condition=None,
+        IsAdiabatic=False,
+        **kwargs
+    ):
         """
         Args:
             Layers (list of MaterialLayer):
@@ -95,8 +106,9 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     @property
     def r_value(self):
         """float: The Thermal Resistance of the :class:`OpaqueConstruction`"""
-        return sum([layer.Thickness / layer.Material.Conductivity
-                    for layer in self.Layers])  # (K⋅m2/W)
+        return sum(
+            [layer.Thickness / layer.Material.Conductivity for layer in self.Layers]
+        )  # (K⋅m2/W)
 
     @property
     def u_value(self):
@@ -105,7 +117,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """
         return 1 / self.r_value
 
-    def combine(self, other, weights=None, method='constant_ufactor'):
+    def combine(self, other, weights=None, method="constant_ufactor"):
         """Combine two OpaqueConstruction together.
 
         Args:
@@ -121,8 +133,10 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = 'Cannot combine %s with %s' % (self.__class__.__name__,
-                                                 other.__class__.__name__)
+            msg = "Cannot combine %s with %s" % (
+                self.__class__.__name__,
+                other.__class__.__name__,
+            )
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -130,24 +144,29 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             return self
 
         if not weights:
-            log('using 1 as weighting factor in "{}" '
-                'combine.'.format(self.__class__.__name__))
-            weights = [1., 1.]
+            log(
+                'using 1 as weighting factor in "{}" '
+                "combine.".format(self.__class__.__name__)
+            )
+            weights = [1.0, 1.0]
 
         meta = self._get_predecessors_meta(other)
         # thicknesses & materials for self
-        if method == 'equivalent_volume':
+        if method == "equivalent_volume":
             new_m, new_t = self.equivalent_volume(other)
-        elif method == 'constant_ufactor':
+        elif method == "constant_ufactor":
             new_m, new_t = self.constant_ufactor(other, weights)
         else:
             raise ValueError(
-                'Possible choices are ["equivalent_volume","constant_ufactor"]')
+                'Possible choices are ["equivalent_volume","constant_ufactor"]'
+            )
         # layers for the new OpaqueConstruction
         layers = [MaterialLayer(mat, t) for mat, t in zip(new_m, new_t)]
         new_obj = self.__class__(**meta, Layers=layers)
-        new_name = "Combined Opaque Construction {{{}}} with u_value " \
-                   "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value)
+        new_name = (
+            "Combined Opaque Construction {{{}}} with u_value "
+            "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value)
+        )
         new_obj.rename(new_name)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
@@ -160,9 +179,11 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         Args:
             other:
         """
-        raise NotImplementedError('"equivalent_volume" method is not yet '
-                                  'fully implemented. Please choose '
-                                  '"constant_ufactor"')
+        raise NotImplementedError(
+            '"equivalent_volume" method is not yet '
+            "fully implemented. Please choose "
+            '"constant_ufactor"'
+        )
 
         self_t = np.array([mat.Thickness for mat in self.Layers])
         self_m = [mat.Material for mat in self.Layers]
@@ -189,19 +210,26 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """
 
         def obj_func(thicknesses, materials, expected):
-            calc = 1 / sum([thickness / mat.Conductivity
-                            for thickness, mat in zip(thicknesses, materials)])
+            calc = 1 / sum(
+                [
+                    thickness / mat.Conductivity
+                    for thickness, mat in zip(thicknesses, materials)
+                ]
+            )
             return (calc - expected) ** 2
 
         if not weights:
-            weights = [1., 1.]
+            weights = [1.0, 1.0]
 
         equi_u = np.average([self.u_value, other.u_value], weights=weights)
 
-        materials = set([layer.Material for layer in self.Layers] + \
-                        [layer.Material for layer in other.Layers])
+        materials = set(
+            [layer.Material for layer in self.Layers]
+            + [layer.Material for layer in other.Layers]
+        )
 
         from scipy.optimize import minimize
+
         x0 = np.ones(len(materials))
         bnds = tuple([(0.003, None) for layer in materials])
         res = minimize(obj_func, x0, args=(materials, equi_u), bounds=bnds)
@@ -216,11 +244,12 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             **kwargs:
         """
         # resolve Material objects from ref
-        layers = kwargs.pop('Layers')
+        layers = kwargs.pop("Layers")
         oc = cls(Layers=None, **kwargs)
-        lys = [MaterialLayer(oc.get_ref(layer['Material']),
-                             layer['Thickness'])
-               for layer in layers]
+        lys = [
+            MaterialLayer(oc.get_ref(layer["Material"]), layer["Thickness"])
+            for layer in layers
+        ]
         oc.Layers = lys
 
         return oc
@@ -234,9 +263,9 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             **kwargs:
         """
         name = epbunch.Name
-        idf = kwargs.pop('idf', epbunch.theidf)
+        idf = kwargs.pop("idf", epbunch.theidf)
         # treat internalmass and surfaces differently
-        if epbunch.key.lower() == 'internalmass':
+        if epbunch.key.lower() == "internalmass":
             layers = cls._internalmass_layer(epbunch)
             return cls(Name=name, Layers=layers, idf=idf)
         else:
@@ -251,10 +280,9 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """
 
         layers = []
-        constr_obj = epbunch.theidf.getobject('CONSTRUCTION',
-                                              epbunch.Construction_Name)
-        field_idd = constr_obj.getfieldidd('Outside_Layer')
-        validobjects = field_idd['validobjects']  # plausible layer types
+        constr_obj = epbunch.theidf.getobject("CONSTRUCTION", epbunch.Construction_Name)
+        field_idd = constr_obj.getfieldidd("Outside_Layer")
+        validobjects = field_idd["validobjects"]  # plausible layer types
         for layer in constr_obj.fieldvalues[2:]:
             # Iterate over the constructions layers
             found = False
@@ -266,8 +294,9 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 except AttributeError:
                     pass
                 else:
-                    layers.append(MaterialLayer(**dict(Material=o,
-                                                       Thickness=o._thickness)))
+                    layers.append(
+                        MaterialLayer(**dict(Material=o, Thickness=o._thickness))
+                    )
             if not found:
                 raise AttributeError("%s material not found in IDF" % layer)
         return layers
@@ -280,8 +309,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             c (EpBunch): EP-Construction object
         """
         layers = []
-        field_idd = c.getfieldidd('Outside_Layer')
-        validobjects = field_idd['validobjects']  # plausible layer types
+        field_idd = c.getfieldidd("Outside_Layer")
+        validobjects = field_idd["validobjects"]  # plausible layer types
         for layer in c.fieldvalues[2:]:
             # Iterate over the constructions layers
             found = False
@@ -293,8 +322,9 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 except AttributeError:
                     pass
                 else:
-                    layers.append(MaterialLayer(**dict(Material=o,
-                                                       Thickness=o._thickness)))
+                    layers.append(
+                        MaterialLayer(**dict(Material=o, Thickness=o._thickness))
+                    )
             if not found:
                 raise AttributeError("%s material not found in IDF" % layer)
         return layers
@@ -324,8 +354,12 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         Args:
             idf:
         """
-        om = OpaqueMaterial(Conductivity=0.17, SpecificHeat=800, Density=800,
-                            Name='generic_Material', idf=idf)
+        om = OpaqueMaterial(
+            Conductivity=0.17,
+            SpecificHeat=800,
+            Density=800,
+            Name="generic_Material",
+            idf=idf,
+        )
         layers = [MaterialLayer(om, 0.0127)]  # half inch
-        return cls(Name='generic plaster board half inch', Layers=layers,
-                   idf=idf)
+        return cls(Name="generic plaster board half inch", Layers=layers, idf=idf)

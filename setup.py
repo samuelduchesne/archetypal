@@ -22,53 +22,55 @@ Make sure you have pip >= 9.0.1.
 
 
 def read(*parts):
-    with codecs.open(path.join(here, *parts), 'r') as fp:
+    with codecs.open(path.join(here, *parts), "r") as fp:
         return fp.read()
 
 
 def find_version(*file_paths):
     version_file = read(*file_paths)
-    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
-                              version_file, re.M)
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
     if version_match:
         return version_match.group(1)
     raise RuntimeError("Unable to find version string.")
 
 
 # Get the long description from the README file
-with codecs.open(path.join(here, 'README.md'), encoding='utf-8') as f:
+with codecs.open(path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
-with open(path.join(here, 'requirements.txt')) as f:
+with open(path.join(here, "requirements.txt")) as f:
     requirements_lines = f.readlines()
 install_requires = [r.strip() for r in requirements_lines]
 
-with open(path.join(here, 'requirements-dev.txt')) as f:
+with open(path.join(here, "requirements-dev.txt")) as f:
     requirements_lines = f.readlines()
 dev_requires = [r.strip() for r in requirements_lines]
 
 setup(
-    name='archetypal',
-    version=find_version('archetypal', '__init__.py'),
-    packages=['archetypal'],
-    package_data={'archetypal': ['archetypal/ressources/originBUISketchUp.idf',
-                                 'archetypal/ressources/W74-lib.dat',
-                                 'archetypal/ressources/NewFileTemplate.d18']},
+    name="archetypal",
+    version=find_version("archetypal", "__init__.py"),
+    packages=["archetypal"],
+    package_data={
+        "archetypal": [
+            "archetypal/ressources/originBUISketchUp.idf",
+            "archetypal/ressources/W74-lib.dat",
+            "archetypal/ressources/NewFileTemplate.d18",
+        ]
+    },
     include_package_data=True,
-    url='https://github.com/samuelduchesne/archetypal',
-    license='MIT License',
-    author='Samuel Letellier-Duchesne',
-    author_email='samuel.letellier-duchesne@polymtl.ca',
-    description='Retrieve, construct, simulate, convert and analyse building '
-                'archetypes',
+    url="https://github.com/samuelduchesne/archetypal",
+    license="MIT License",
+    author="Samuel Letellier-Duchesne",
+    author_email="samuel.letellier-duchesne@polymtl.ca",
+    description="Retrieve, construct, simulate, convert and analyse building archetypes",
     long_description=long_description,
-    keywords='Building archetypes',
-    python_requires='>=3.6',
+    keywords="Building archetypes",
+    python_requires=">=3.6",
     install_requires=install_requires,
-    extras_require={'dev': dev_requires},
-    test_suite='tests',
-    entry_points='''
+    extras_require={"dev": dev_requires},
+    test_suite="tests",
+    entry_points="""
         [console_scripts]
         archetypal=archetypal.cli:cli
-    ''',
+    """,
 )

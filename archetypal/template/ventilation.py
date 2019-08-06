@@ -391,9 +391,13 @@ def do_natural_ventilation(index, nat_df, zone):
             equ_b = nat_df.loc[index, "Equation B - Temperature Term Coefficient {1/C}"]
             if equ_b != 0:
                 IsBuoyancyOn = True
+            else:
+                IsBuoyancyOn = False
             equ_w = nat_df.loc[index, "Equation C - Velocity Term Coefficient {s/m}"]
             if equ_w != 0:
                 IsWindOn = True
+            else:
+                IsWindOn = False
         except:
             IsWindOn = False
             IsBuoyancyOn = False

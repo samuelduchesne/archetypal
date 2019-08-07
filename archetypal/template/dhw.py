@@ -6,6 +6,7 @@
 ################################################################################
 
 import collections
+from operator import add
 from statistics import mean
 
 import numpy as np
@@ -99,17 +100,32 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         )
         if len(dhw_objs) > 1:
             # This zone has more than one WaterUse:Equipment object
-            raise NotImplementedError(
-                "More than one WaterUse:Equipment "
-                "objects is not yet implemented. Please "
-                "contact pacakge developers. "
-                'Zone "{}" in building "{}"'.format(
-                    zone.Name, zone._epbunch.theidf.name
+            z_dhw_list = []
+            for obj in dhw_objs:
+                total_flow_rate = cls._do_flow_rate(dhw_objs, zone.area)
+                water_schedule = cls._do_water_schedule(dhw_objs, zone)
+                inlet_temp = cls._do_inlet_temp(dhw_objs, zone)
+                supply_temp = cls._do_hot_temp(dhw_objs, zone)
+
+                name = zone.Name + "_DHW"
+                z_dhw = cls(
+                    Name=name,
+                    zone=zone,
+                    FlowRatePerFloorArea=total_flow_rate,
+                    IsOn=total_flow_rate > 0,
+                    WaterSchedule=water_schedule,
+                    WaterSupplyTemperature=supply_temp,
+                    WaterTemperatureInlet=inlet_temp,
+                    idf=zone.idf,
+                    Category=zone.idf.building_name(use_idfname=True),
                 )
-            )
+                z_dhw_list.append(z_dhw)
+
+            return reduce(add, z_dhw_list)
+
         elif len(dhw_objs) > 0:
             # Return dhw object for zone
-            total_flow_rate = cls._do_flow_rate(dhw_objs, zone)
+            total_flow_rate = cls._do_flow_rate(dhw_objs, zone.area)
             water_schedule = cls._do_water_schedule(dhw_objs, zone)
             inlet_temp = cls._do_inlet_temp(dhw_objs, zone)
             supply_temp = cls._do_hot_temp(dhw_objs, zone)
@@ -130,7 +146,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             # Assume water systems for whole building
             dhw_objs = zone.idf.idfobjects["WaterUse:Equipment".upper()]
             if dhw_objs:
-                total_flow_rate = cls._do_flow_rate(dhw_objs, zone)
+                total_flow_rate = cls._do_flow_rate(dhw_objs, zone.idf.area_conditioned)
                 water_schedule = cls._do_water_schedule(dhw_objs, zone)
                 inlet_temp = cls._do_inlet_temp(dhw_objs, zone)
                 supply_temp = cls._do_hot_temp(dhw_objs, zone)
@@ -270,7 +286,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     @timeit
-    def _do_flow_rate(cls, dhw_objs, zone):
+    def _do_flow_rate(cls, dhw_objs, area):
         """Calculate total flow rate from list of WaterUse:Equipment objects.
         The zone's area_conditioned property is used to normalize the flow rate.
 
@@ -281,7 +297,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         total_flow_rate = 0
         for obj in dhw_objs:
             total_flow_rate += obj.Peak_Flow_Rate  # m3/s
-        total_flow_rate /= zone.area  # m3/s/m2
+        total_flow_rate /= area  # m3/s/m2
         total_flow_rate *= 3600.0  # m3/h/m2
         return total_flow_rate
 

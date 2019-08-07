@@ -625,6 +625,40 @@ class TestZoneConditioning:
         ]
         cond_to_json = cond_json[0].to_json()
 
+    def test_hash_eq_zoneCond(self, small_idf):
+        """Test equality and hashing of class DomesticHotWaterSetting"""
+        from archetypal.template import ZoneConditioning, Zone
+        from copy import copy
+
+        idf, sql = small_idf
+        zone_ep = idf.idfobjects["ZONE"][0]
+        zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
+        zc = ZoneConditioning.from_zone(zone)
+        zc_2 = copy(zc)
+
+        # a copy of dhw should be eqaul have the same hash
+        assert zc == zc_2
+        assert hash(zc) == hash(zc_2)
+
+        # hash is used to find object in lookup table
+        zc_list = [zc, zc_2]
+        assert zc in zc_list
+
+        # dict behavior
+        zc_dict = {zc: 'this_idf', zc_2: 'same_idf'}
+        assert len(zc_dict) == 1
+
+        zc_2.Name = 'some other name'
+        # even if name changes, they should be equal
+        assert zc_2 == zc
+
+        zc_dict = {zc: 'this_idf', zc_2: 'same_idf'}
+        assert zc in zc_dict
+        assert len(zc_dict) == 2
+
+        # if an attribute changed, equality is lost
+        zc_2.IsCoolingOn = False
+        assert zc != zc_2
 
 class TestVentilationSetting:
     """Combines different :class:`VentilationSetting` tests"""

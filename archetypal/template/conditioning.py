@@ -177,6 +177,42 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
     def __add__(self, other):
         return self.combine(other)
 
+    def __hash__(self):
+        return hash((self.Name, self.idf.name))
+
+    def __eq__(self, other):
+        if not isinstance(other, ZoneConditioning):
+            raise NotImplementedError()
+        else:
+            return all(
+                [
+                    self.CoolingCoeffOfPerf == other.CoolingCoeffOfPerf,
+                    self.CoolingLimitType == other.CoolingLimitType,
+                    self.CoolingSetpoint == other.CoolingSetpoint,
+                    self.CoolingSchedule == other.CoolingSchedule,
+                    self.EconomizerType == other.EconomizerType,
+                    self.HeatRecoveryEfficiencyLatent
+                    == other.HeatRecoveryEfficiencyLatent,
+                    self.HeatRecoveryEfficiencySensible
+                    == other.HeatRecoveryEfficiencySensible,
+                    self.HeatRecoveryType == other.HeatRecoveryType,
+                    self.HeatingCoeffOfPerf == other.HeatingCoeffOfPerf,
+                    self.HeatingLimitType == other.HeatingLimitType,
+                    self.HeatingSetpoint == other.HeatingSetpoint,
+                    self.HeatingSchedule == other.HeatingSchedule,
+                    self.IsCoolingOn == other.IsCoolingOn,
+                    self.IsHeatingOn == other.IsHeatingOn,
+                    self.IsMechVentOn == other.IsMechVentOn,
+                    self.MaxCoolFlow == other.MaxCoolFlow,
+                    self.MaxCoolingCapacity == other.MaxCoolingCapacity,
+                    self.MaxHeatFlow == other.MaxHeatFlow,
+                    self.MaxHeatingCapacity == other.MaxHeatingCapacity,
+                    self.MinFreshAirPerArea == other.MinFreshAirPerArea,
+                    self.MinFreshAirPerPerson == other.MinFreshAirPerPerson,
+                    self.MechVentSchedule == other.MechVentSchedule,
+                ]
+            )
+
     @classmethod
     def from_json(cls, *args, **kwargs):
         """

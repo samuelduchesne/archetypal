@@ -326,6 +326,12 @@ def convert(
     help="The name of the output json file",
 )
 @click.option(
+    "--ep-version",
+    type=click.STRING,
+    help="specify the version of EnergyPlus to use, eg.: '8-9-0'",
+    default="8-9-0",
+)
+@click.option(
     "--weather",
     "-w",
     type=click.Path(exists=True),
@@ -341,7 +347,7 @@ def convert(
     default=True,
     help="process each idf file on different cores",
 )
-def reduce(idf, name, weather, parallel):
+def reduce(idf, name, ep_version, weather, parallel):
     """Perform the model reduction and translate to an UMI template file.
 
     Args:
@@ -362,6 +368,7 @@ def reduce(idf, name, weather, parallel):
                 verbose="v",
                 output_report="sql",
                 return_idf=False,
+                ep_version=ep_version,
             )
             for file in idf
         }
@@ -385,6 +392,7 @@ def reduce(idf, name, weather, parallel):
                 annual=True,
                 design_day=False,
                 return_idf=True,
+                ep_version=ep_version,
             )
     from archetypal import BuildingTemplate
 

@@ -72,6 +72,24 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         self.Structure = Structure
         self.Windows = Windows
 
+    def __hash__(self):
+        return hash((self.Name, self.idf.name))
+
+    def __eq__(self, other):
+        if not isinstance(other, BuildingTemplate):
+            raise NotImplementedError()
+        else:
+            return all(
+                [
+                    self.Core == other.Core,
+                    self.Perimeter == other.Perimeter,
+                    self.Structure == other.Structure,
+                    self.Windows == other.Windows,
+                    self.Lifespan == other.Lifespan,
+                    self.PartitionRatio == other.PartitionRatio,
+                ]
+            )
+
     def zone_graph(self, log_adj_report=True, skeleton=False, force=False):
         """Create a graph representation of all the building zones. An edge
         between two zones represents the adjacency of the two zones.

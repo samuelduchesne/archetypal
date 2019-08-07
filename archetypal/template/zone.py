@@ -106,7 +106,7 @@ class Zone(UmiBase, metaclass=Unique):
 
         Returns (float): zone's area in m²
         """
-        if not self._area:
+        if self._area is None:
             zone_surfs = [
                 surf
                 for surf in self._epbunch.zonesurfaces

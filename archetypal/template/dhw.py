@@ -56,6 +56,23 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         """
         return self.combine(other)
 
+    def __hash__(self):
+        return hash((self.Name, self.idf.name))
+
+    def __eq__(self, other):
+        if not isinstance(other, DomesticHotWaterSetting):
+            raise NotImplementedError()
+        else:
+            return all(
+                [
+                    self.IsOn == other.IsOn,
+                    self.FlowRatePerFloorArea == other.FlowRatePerFloorArea,
+                    self.WaterSupplyTemperature == other.WaterSupplyTemperature,
+                    self.WaterTemperatureInlet == other.WaterTemperatureInlet,
+                    self.WaterSchedule == other.WaterSchedule,
+                ]
+            )
+
     @classmethod
     def from_json(cls, *args, **kwargs):
         """

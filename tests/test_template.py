@@ -693,9 +693,40 @@ class TestVentilationSetting:
 class TestDomesticHotWaterSetting:
     """Series of tests for the :class:`DomesticHotWaterSetting` class"""
 
-    # todo: Implement from_to_json for DomesticHotWaterSetting class
+    def test_hash_eq_dhw(self, small_idf):
+        """Test equality and hashing of class DomesticHotWaterSetting"""
+        from archetypal.template import DomesticHotWaterSetting, Zone
+        from copy import copy
 
-    pass
+        idf, sql = small_idf
+        zone_ep = idf.idfobjects["ZONE"][0]
+        zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
+        dhw = DomesticHotWaterSetting.from_zone(zone)
+        dhw_2 = copy(dhw)
+
+        # a copy of dhw should be eqaul have the same hash
+        assert dhw == dhw_2
+        assert hash(dhw) == hash(dhw_2)
+
+        # hash is used to find object in lookup table
+        dhw_list = [dhw, dhw_2]
+        assert dhw in dhw_list
+
+        # dict behavior
+        dhw_dict = {dhw: 'this_idf', dhw_2: 'same_idf'}
+        assert len(dhw_dict) == 1
+
+        dhw_2.Name = 'some other name'
+        # even if name changes, they should be equal
+        assert dhw_2 == dhw
+
+        dhw_dict = {dhw: 'this_idf', dhw_2: 'same_idf'}
+        assert dhw in dhw_dict
+        assert len(dhw_dict) == 2
+
+        # if an attribute changed, equality is lost
+        dhw_2.IsOn = False
+        assert dhw != dhw_2
 
 
 class TestWindowSetting:

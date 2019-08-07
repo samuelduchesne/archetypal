@@ -221,6 +221,10 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         if not weights:
             weights = [1.0, 1.0]
 
+        # If weights is a list of zeros
+        if not np.array(weights).any():
+            weights = [1, 1]
+
         equi_u = np.average([self.u_value, other.u_value], weights=weights)
 
         materials = set(

@@ -201,6 +201,11 @@ class UmiBase(object):
             weights (iterable, optional): Weights of [self, other] to calculate
                 weighted average.
         """
+
+        # If weights is a list of zeros
+        if not np.array(weights).any():
+            weights = [1, 1]
+
         if not isinstance(self.__dict__[attr], list) and not isinstance(
             other.__dict__[attr], list
         ):

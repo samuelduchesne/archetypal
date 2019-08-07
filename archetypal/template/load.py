@@ -98,6 +98,30 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         """
         return self.combine(other)
 
+    def __hash__(self):
+        return hash((self.Name, self.idf.name))
+
+    def __eq__(self, other):
+        if not isinstance(other, ZoneLoad):
+            raise NotImplementedError()
+        else:
+            return all(
+                [
+                    self.DimmingType == other.DimmingType,
+                    self.EquipmentAvailabilitySchedule
+                    == other.EquipmentAvailabilitySchedule,
+                    self.EquipmentPowerDensity == other.EquipmentPowerDensity,
+                    self.IlluminanceTarget == other.IlluminanceTarget,
+                    self.LightingPowerDensity == other.LightingPowerDensity,
+                    self.LightsAvailabilitySchedule == other.LightsAvailabilitySchedule,
+                    self.OccupancySchedule == other.OccupancySchedule,
+                    self.IsEquipmentOn == other.IsEquipmentOn,
+                    self.IsLightingOn == other.IsLightingOn,
+                    self.IsPeopleOn == other.IsPeopleOn,
+                    self.PeopleDensity == other.PeopleDensity,
+                ]
+            )
+
     @classmethod
     def from_json(cls, *args, **kwargs):
         """

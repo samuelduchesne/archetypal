@@ -552,6 +552,41 @@ class TestZoneLoad:
         load_json = [ZoneLoad.from_json(**store) for store in datastore["ZoneLoads"]]
         load_to_json = load_json[0].to_json()
 
+    def test_hash_eq_zoneLoad(self, small_idf):
+        """Test equality and hashing of class DomesticHotWaterSetting"""
+        from archetypal.template import ZoneLoad, Zone
+        from copy import copy
+
+        idf, sql = small_idf
+        zone_ep = idf.idfobjects["ZONE"][0]
+        zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
+        zl = ZoneLoad.from_zone(zone)
+        zl_2 = copy(zl)
+
+        # a copy of dhw should be eqaul have the same hash
+        assert zl == zl_2
+        assert hash(zl) == hash(zl_2)
+
+        # hash is used to find object in lookup table
+        zl_list = [zl, zl_2]
+        assert zl in zl_list
+
+        # dict behavior
+        zl_dict = {zl: 'this_idf', zl_2: 'same_idf'}
+        assert len(zl_dict) == 1
+
+        zl_2.Name = 'some other name'
+        # even if name changes, they should be equal
+        assert zl_2 == zl
+
+        zl_dict = {zl: 'this_idf', zl_2: 'same_idf'}
+        assert zl in zl_dict
+        assert len(zl_dict) == 2
+
+        # if an attribute changed, equality is lost
+        zl_2.IsEquipmentOn = False
+        assert zl != zl_2
+
 
 class TestZoneConditioning:
     """Combines different :class:`ZoneConditioning` tests"""

@@ -401,6 +401,17 @@ class MaterialLayer(object):
         self.Thickness = Thickness
         self.Material = Material
 
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        if not isinstance(other, MaterialLayer):
+            return False
+        else:
+            return all(
+                [self.Thickness == other.Thickness, self.Material == other.Material]
+            )
+
     def to_dict(self):
         return collections.OrderedDict(
             Material={"$ref": str(self.Material.id)}, Thickness=self.Thickness

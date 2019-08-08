@@ -22,6 +22,21 @@ def small_idf(config):
     )
     yield idf, sql
 
+@pytest.fixture(scope="session")
+def other_idf(config):
+    file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    idf = ar.load_idf(file)
+    sql = ar.run_eplus(
+        file,
+        weather_file=w,
+        prep_outputs=True,
+        output_report="sql",
+        verbose="v",
+        design_day=False,
+        annual=False,
+    )
+    yield idf, sql
 
 core_name = "core"
 perim_name = "perim"
@@ -402,14 +417,14 @@ class TestOpaqueConstruction:
         ]
         opaqConstr_to_json = opaqConstr_json[0].to_json()
 
-    def test_hash_eq_opaqConstr(self, small_idf):
+    def test_hash_eq_opaqConstr(self, small_idf, other_idf):
         """Test equality and hashing of :class:`OpaqueConstruction`"""
         from archetypal.template import OpaqueConstruction
         from copy import copy
 
         idf, sql = small_idf
         clear_cache()
-        opaq_constr = idf.idfobjects["CONSTRUCTION"][0]
+        opaq_constr = idf.getobject("CONSTRUCTION", "B_Off_Thm_0")
         oc = OpaqueConstruction.from_epbunch(opaq_constr)
         oc_2 = copy(oc)
 
@@ -450,6 +465,20 @@ class TestOpaqueConstruction:
         # length of set() should be 2 since both objects are not equal anymore and
         # don't have the same hash.
         assert len(set(oc_list)) == 2
+
+        # 2 OpaqueConstruction from different idf should not have the same hash if they
+        # have different names, not be the same object, yet be equal if they have the
+        # same layers (Material and Thickness)
+        idf_2, sql_2 = other_idf
+        assert idf is not idf_2
+        opaq_constr_3 = idf_2.getobject("CONSTRUCTION", "B_Res_Thm_0")
+        assert opaq_constr is not opaq_constr_3
+        assert opaq_constr != opaq_constr_3
+        oc_3 = OpaqueConstruction.from_epbunch(opaq_constr_3)
+        assert hash(oc) != hash(oc_3)
+        assert id(oc) != id(oc_3)
+        assert oc is not oc_3
+        assert oc == oc_3
 
 
 class TestWindowConstruction:

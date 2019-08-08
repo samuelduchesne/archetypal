@@ -224,13 +224,23 @@ class TestOpaqueMaterial:
         om = OpaqueMaterial.from_epbunch(opaq_mat)
         om_2 = copy(om)
 
-        # a copy of dhw should be eqaul have the same hash
+        # a copy of dhw should be equal and have the same hash, but still not be the
+        # same object
         assert om == om_2
         assert hash(om) == hash(om_2)
+        assert om is not om_2
 
         # hash is used to find object in lookup table
-        om_list = [om, om_2]
+        om_list = [om]
         assert om in om_list
+        assert om_2 in om_list  # This is weird but expected
+
+        om_list.append(om_2)
+        assert om_2 in om_list
+
+        # length of set() should be 1 since both objects are
+        # equal and have the same hash.
+        assert len(set(om_list)) == 1
 
         # dict behavior
         om_dict = {om: "this_idf", om_2: "same_idf"}
@@ -247,6 +257,10 @@ class TestOpaqueMaterial:
         # if an attribute changed, equality is lost
         om_2.Cost = 69
         assert om != om_2
+
+        # length of set() should be 2 since both objects are not equal anymore and
+        # don't have the same hash.
+        assert len(set(om_list)) == 2
 
 
 class TestGlazingMaterial:
@@ -398,13 +412,23 @@ class TestOpaqueConstruction:
         oc = OpaqueConstruction.from_epbunch(opaq_constr)
         oc_2 = copy(oc)
 
-        # a copy of dhw should be eqaul have the same hash
+        # a copy of dhw should be equal and have the same hash, but still not be the
+        # same object
         assert oc == oc_2
         assert hash(oc) == hash(oc_2)
+        assert oc is not oc_2
 
         # hash is used to find object in lookup table
-        oc_list = [oc, oc_2]
+        oc_list = [oc]
         assert oc in oc_list
+        assert oc_2 in oc_list  # This is weird but expected
+
+        oc_list.append(oc_2)
+        assert oc_2 in oc_list
+
+        # length of set() should be 1 since both objects are
+        # equal and have the same hash.
+        assert len(set(oc_list)) == 1
 
         # dict behavior
         oc_dict = {oc: "this_idf", oc_2: "same_idf"}
@@ -421,6 +445,10 @@ class TestOpaqueConstruction:
         # if an attribute changed, equality is lost
         oc_2.IsAdiabatic = True
         assert oc != oc_2
+
+        # length of set() should be 2 since both objects are not equal anymore and
+        # don't have the same hash.
+        assert len(set(oc_list)) == 2
 
 
 class TestWindowConstruction:
@@ -629,13 +657,23 @@ class TestZoneLoad:
         zl = ZoneLoad.from_zone(zone)
         zl_2 = copy(zl)
 
-        # a copy of dhw should be eqaul have the same hash
+        # a copy of dhw should be equal and have the same hash, but still not be the
+        # same object
         assert zl == zl_2
         assert hash(zl) == hash(zl_2)
+        assert zl is not zl_2
 
         # hash is used to find object in lookup table
-        zl_list = [zl, zl_2]
+        zl_list = [zl]
         assert zl in zl_list
+        assert zl_2 in zl_list  # This is weird but expected
+
+        zl_list.append(zl_2)
+        assert zl_2 in zl_list
+
+        # length of set() should be 1 since both objects are
+        # equal and have the same hash.
+        assert len(set(zl_list)) == 1
 
         # dict behavior
         zl_dict = {zl: "this_idf", zl_2: "same_idf"}
@@ -652,6 +690,10 @@ class TestZoneLoad:
         # if an attribute changed, equality is lost
         zl_2.IsEquipmentOn = False
         assert zl != zl_2
+
+        # length of set() should be 2 since both objects are not equal anymore and
+        # don't have the same hash.
+        assert len(set(zl_list)) == 2
 
 
 class TestZoneConditioning:
@@ -737,13 +779,23 @@ class TestZoneConditioning:
         zc = ZoneConditioning.from_zone(zone)
         zc_2 = copy(zc)
 
-        # a copy of dhw should be eqaul have the same hash
+        # a copy of dhw should be equal and have the same hash, but still not be the
+        # same object
         assert zc == zc_2
         assert hash(zc) == hash(zc_2)
+        assert zc is not zc_2
 
         # hash is used to find object in lookup table
-        zc_list = [zc, zc_2]
+        zc_list = [zc]
         assert zc in zc_list
+        assert zc_2 in zc_list  # This is weird but expected
+
+        zc_list.append(zc_2)
+        assert zc_2 in zc_list
+
+        # length of set() should be 1 since both objects are
+        # equal and have the same hash.
+        assert len(set(zc_list)) == 1
 
         # dict behavior
         zc_dict = {zc: "this_idf", zc_2: "same_idf"}
@@ -760,6 +812,10 @@ class TestZoneConditioning:
         # if an attribute changed, equality is lost
         zc_2.IsCoolingOn = False
         assert zc != zc_2
+
+        # length of set() should be 2 since both objects are not equal anymore and
+        # don't have the same hash.
+        assert len(set(zc_list)) == 2
 
 
 class TestVentilationSetting:
@@ -1125,13 +1181,23 @@ class TestBuildingTemplate:
         bt = BuildingTemplate.from_idf(idf, sql=sql)
         bt_2 = copy(bt)
 
-        # a copy of dhw should be eqaul have the same hash
+        # a copy of dhw should be equal and have the same hash, but still not be the
+        # same object
         assert bt == bt_2
         assert hash(bt) == hash(bt_2)
+        assert bt is not bt_2
 
         # hash is used to find object in lookup table
-        bt_list = [bt, bt_2]
+        bt_list = [bt]
         assert bt in bt_list
+        assert bt_2 in bt_list  # This is weird but expected
+
+        bt_list.append(bt_2)
+        assert bt_2 in bt_list
+
+        # length of set() should be 1 since both objects are
+        # equal and have the same hash.
+        assert len(set(bt_list)) == 1
 
         # dict behavior
         bt_dict = {bt: "this_idf", bt_2: "same_idf"}
@@ -1148,6 +1214,10 @@ class TestBuildingTemplate:
         # if an attribute changed, equality is lost
         bt_2.Lifespan = 69
         assert bt != bt_2
+
+        # length of set() should be 2 since both objects are not equal anymore and
+        # don't have the same hash.
+        assert len(set(bt_list)) == 2
 
 
 class TestZoneGraph:

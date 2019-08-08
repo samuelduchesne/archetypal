@@ -216,6 +216,40 @@ class TestOpaqueMaterial:
 
     # todo: Implement from_to_json test for OpaqueMaterial class
 
+    def test_hash_eq_opaqMat(self, small_idf):
+        """Test equality and hashing of class DomesticHotWaterSetting"""
+        from archetypal.template import OpaqueMaterial
+        from copy import copy
+
+        idf, sql = small_idf
+        opaq_mat = idf.idfobjects["MATERIAL"][0]
+        om = OpaqueMaterial.from_epbunch(opaq_mat)
+        om_2 = copy(om)
+
+        # a copy of dhw should be eqaul have the same hash
+        assert om == om_2
+        assert hash(om) == hash(om_2)
+
+        # hash is used to find object in lookup table
+        om_list = [om, om_2]
+        assert om in om_list
+
+        # dict behavior
+        om_dict = {om: "this_idf", om_2: "same_idf"}
+        assert len(om_dict) == 1
+
+        om_2.Name = "some other name"
+        # even if name changes, they should be equal
+        assert om_2 == om
+
+        om_dict = {om: "this_idf", om_2: "same_idf"}
+        assert om in om_dict
+        assert len(om_dict) == 2
+
+        # if an attribute changed, equality is lost
+        om_2.Cost = 69
+        assert om != om_2
+
 
 class TestGlazingMaterial:
     """Series of tests for the :class:`GlazingMaterial` class"""
@@ -606,14 +640,14 @@ class TestZoneLoad:
         assert zl in zl_list
 
         # dict behavior
-        zl_dict = {zl: 'this_idf', zl_2: 'same_idf'}
+        zl_dict = {zl: "this_idf", zl_2: "same_idf"}
         assert len(zl_dict) == 1
 
-        zl_2.Name = 'some other name'
+        zl_2.Name = "some other name"
         # even if name changes, they should be equal
         assert zl_2 == zl
 
-        zl_dict = {zl: 'this_idf', zl_2: 'same_idf'}
+        zl_dict = {zl: "this_idf", zl_2: "same_idf"}
         assert zl in zl_dict
         assert len(zl_dict) == 2
 
@@ -714,20 +748,21 @@ class TestZoneConditioning:
         assert zc in zc_list
 
         # dict behavior
-        zc_dict = {zc: 'this_idf', zc_2: 'same_idf'}
+        zc_dict = {zc: "this_idf", zc_2: "same_idf"}
         assert len(zc_dict) == 1
 
-        zc_2.Name = 'some other name'
+        zc_2.Name = "some other name"
         # even if name changes, they should be equal
         assert zc_2 == zc
 
-        zc_dict = {zc: 'this_idf', zc_2: 'same_idf'}
+        zc_dict = {zc: "this_idf", zc_2: "same_idf"}
         assert zc in zc_dict
         assert len(zc_dict) == 2
 
         # if an attribute changed, equality is lost
         zc_2.IsCoolingOn = False
         assert zc != zc_2
+
 
 class TestVentilationSetting:
     """Combines different :class:`VentilationSetting` tests"""
@@ -816,14 +851,14 @@ class TestDomesticHotWaterSetting:
         assert dhw in dhw_list
 
         # dict behavior
-        dhw_dict = {dhw: 'this_idf', dhw_2: 'same_idf'}
+        dhw_dict = {dhw: "this_idf", dhw_2: "same_idf"}
         assert len(dhw_dict) == 1
 
-        dhw_2.Name = 'some other name'
+        dhw_2.Name = "some other name"
         # even if name changes, they should be equal
         assert dhw_2 == dhw
 
-        dhw_dict = {dhw: 'this_idf', dhw_2: 'same_idf'}
+        dhw_dict = {dhw: "this_idf", dhw_2: "same_idf"}
         assert dhw in dhw_dict
         assert len(dhw_dict) == 2
 
@@ -1087,14 +1122,14 @@ class TestBuildingTemplate:
         assert bt in bt_list
 
         # dict behavior
-        bt_dict = {bt: 'this_idf', bt_2: 'same_idf'}
+        bt_dict = {bt: "this_idf", bt_2: "same_idf"}
         assert len(bt_dict) == 1
 
-        bt_2.Name = 'some other name'
+        bt_2.Name = "some other name"
         # even if name changes, they should be equal
         assert bt_2 == bt
 
-        bt_dict = {bt: 'this_idf', bt_2: 'same_idf'}
+        bt_dict = {bt: "this_idf", bt_2: "same_idf"}
         assert bt in bt_dict
         assert len(bt_dict) == 2
 

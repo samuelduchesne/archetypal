@@ -111,6 +111,35 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         """
         return self.combine(other)
 
+    def __hash__(self):
+        return hash((self.Name, self.idf.name))
+
+    def __eq__(self, other):
+        if not isinstance(other, OpaqueMaterial):
+            raise NotImplementedError()
+        else:
+            return all(
+                [
+                    self.Conductivity == other.Conductivity,
+                    self.SpecificHeat == other.SpecificHeat,
+                    self.SolarAbsorptance == other.SolarAbsorptance,
+                    self.ThermalEmittance == other.ThermalEmittance,
+                    self.VisibleAbsorptance == other.VisibleAbsorptance,
+                    self.Roughness == other.Roughness,
+                    self.Cost == other.Cost,
+                    self.Density == other.Density,
+                    self.MoistureDiffusionResistance
+                    == self.MoistureDiffusionResistance,
+                    self.EmbodiedCarbon == other.EmbodiedCarbon,
+                    self.EmbodiedEnergy == other.EmbodiedEnergy,
+                    self.TransportCarbon == other.TransportCarbon,
+                    self.TransportDistance == other.TransportDistance,
+                    self.TransportEnergy == other.TransportEnergy,
+                    self.SubstitutionRatePattern == other.SubstitutionRatePattern,
+                    self.SubstitutionTimestep == other.SubstitutionTimestep,
+                ]
+            )
+
     @classmethod
     def generic(cls):
         return cls(

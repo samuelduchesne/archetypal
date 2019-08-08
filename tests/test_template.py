@@ -1415,8 +1415,7 @@ class TestBuildingTemplate:
         from copy import copy
 
         idf, sql = small_idf
-        # zone_ep = idf.idfobjects["ZONE"][0]
-        # zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
+        clear_cache()
         bt = BuildingTemplate.from_idf(idf, sql=sql)
         bt_2 = copy(bt)
 

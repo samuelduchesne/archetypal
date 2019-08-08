@@ -750,6 +750,29 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         """
         return self.combine(other)
 
+    def __hash__(self):
+        return hash((self.Name, self.idf.name))
+
+    def __eq__(self, other):
+        if not isinstance(other, ZoneConstructionSet):
+            return False
+        else:
+            return all(
+                [
+                    self.Zone_Names == other.Zone_Names,
+                    self.Slab == other.Slab,
+                    self.IsSlabAdiabatic == other.IsSlabAdiabatic,
+                    self.Roof == other.Roof,
+                    self.IsRoofAdiabatic == other.IsRoofAdiabatic,
+                    self.Partition == other.Partition,
+                    self.IsPartitionAdiabatic == other.IsPartitionAdiabatic,
+                    self.Ground == other.Ground,
+                    self.IsGroundAdiabatic == other.IsGroundAdiabatic,
+                    self.Facade == other.Facade,
+                    self.IsFacadeAdiabatic == other.IsFacadeAdiabatic,
+                ]
+            )
+
     def combine(self, other, weights=None):
         """Append other to self. Return self + other as a new object.
 

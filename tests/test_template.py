@@ -229,7 +229,7 @@ class TestOpaqueMaterial:
             )
             opaqMat_epBunch.to_json()
 
-    def test_hash_eq_opaqMat(self, small_idf, other_idf):
+    def test_hash_eq_opaq_mat(self, small_idf, other_idf):
         """Test equality and hashing of :class:`TestOpaqueMaterial`"""
         from archetypal.template import OpaqueMaterial
         from copy import copy
@@ -431,7 +431,7 @@ class TestOpaqueConstruction:
         ]
         opaqConstr_to_json = opaqConstr_json[0].to_json()
 
-    def test_hash_eq_opaqConstr(self, small_idf, other_idf):
+    def test_hash_eq_opaq_constr(self, small_idf, other_idf):
         """Test equality and hashing of :class:`OpaqueConstruction`"""
         from archetypal.template import OpaqueConstruction
         from copy import copy
@@ -557,7 +557,7 @@ class TestUmiSchedule:
         sched = UmiSchedule(Name="B_Off_Y_Occ", idf=idf)
         assert sched.to_dict()
 
-    def test_hash_eq_umiSched(self, small_idf):
+    def test_hash_eq_umi_sched(self, small_idf):
         """Test equality and hashing of :class:`ZoneLoad`"""
         from archetypal.template import UmiSchedule
         from copy import copy
@@ -738,7 +738,7 @@ class TestZoneLoad:
         load_json = [ZoneLoad.from_json(**store) for store in datastore["ZoneLoads"]]
         load_to_json = load_json[0].to_json()
 
-    def test_hash_eq_zoneLoad(self, small_idf):
+    def test_hash_eq_zone_load(self, small_idf):
         """Test equality and hashing of :class:`ZoneLoad`"""
         from archetypal.template import ZoneLoad, Zone
         from copy import copy
@@ -860,7 +860,7 @@ class TestZoneConditioning:
         ]
         cond_to_json = cond_json[0].to_json()
 
-    def test_hash_eq_zoneCond(self, small_idf):
+    def test_hash_eq_zone_cond(self, small_idf):
         """Test equality and hashing of :class:`ZoneConditioning`"""
         from archetypal.template import ZoneConditioning, Zone
         from copy import copy
@@ -973,7 +973,7 @@ class TestVentilationSetting:
         ]
         vent_to_json = vent_json[0].to_json()
 
-    def test_hash_eq_ventSettings(self, small_idf):
+    def test_hash_eq_vent_settings(self, small_idf):
         """Test equality and hashing of :class:`DomesticHotWaterSetting`"""
         from archetypal.template import VentilationSetting, Zone
         from copy import copy
@@ -1203,7 +1203,7 @@ class TestWindowSetting:
 
         assert w.to_json()
 
-    def test_hash_eq_windowSettings(self, small_idf):
+    def test_hash_eq_window_settings(self, small_idf):
         """Test equality and hashing of :class:`DomesticHotWaterSetting`"""
         from archetypal.template import WindowSetting
         from copy import copy
@@ -1319,7 +1319,7 @@ class TestZone:
 
         np.testing.assert_almost_equal(actual=area, desired=z_core.area, decimal=3)
 
-    def test_hash_eq_umiSched(self, small_idf):
+    def test_hash_eq_zone(self, small_idf):
         """Test equality and hashing of :class:`ZoneLoad`"""
         from archetypal.template import Zone
         from copy import copy

@@ -82,7 +82,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         return repr(self)
 
     def __hash__(self):
-        return hash(repr(self))
+        return hash((self.Name, self.idf.name))
 
     def __eq__(self, other):
         if not isinstance(other, UmiSchedule):
@@ -93,7 +93,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                     self.strict == other.strict,
                     self.schType == other.schType,
                     self.schTypeLimitsName == other.schTypeLimitsName,
-                    np.array_equal(self.values, other.values),
+                    np.array_equal(self.all_values, other.all_values),
                 ]
             )
 

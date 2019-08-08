@@ -408,6 +408,7 @@ class TestOpaqueConstruction:
         from copy import copy
 
         idf, sql = small_idf
+        clear_cache()
         opaq_constr = idf.idfobjects["CONSTRUCTION"][0]
         oc = OpaqueConstruction.from_epbunch(opaq_constr)
         oc_2 = copy(oc)
@@ -929,12 +930,13 @@ class TestVentilationSetting:
         ]
         vent_to_json = vent_json[0].to_json()
 
-    def test_hash_eq_dhw(self, small_idf):
+    def test_hash_eq_ventSettings(self, small_idf):
         """Test equality and hashing of :class:`DomesticHotWaterSetting`"""
         from archetypal.template import VentilationSetting, Zone
         from copy import copy
 
         idf, sql = small_idf
+        clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
         vent = VentilationSetting.from_zone(zone)

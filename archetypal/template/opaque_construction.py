@@ -103,6 +103,22 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """
         return self.combine(other)
 
+    def __hash__(self):
+        return hash((self.Name, self.idf.name))
+
+    def __eq__(self, other):
+        if not isinstance(other, OpaqueConstruction):
+            raise NotImplementedError()
+        else:
+            return all(
+                [
+                    self.Layers == other.Layers,
+                    self.Surface_Type == other.Surface_Type,
+                    self.Outside_Boundary_Condition == other.Outside_Boundary_Condition,
+                    self.IsAdiabatic == other.IsAdiabatic,
+                ]
+            )
+
     @property
     def r_value(self):
         """float: The Thermal Resistance of the :class:`OpaqueConstruction`"""

@@ -356,6 +356,40 @@ class TestOpaqueConstruction:
         ]
         opaqConstr_to_json = opaqConstr_json[0].to_json()
 
+    def test_hash_eq_opaqConstr(self, small_idf):
+        """Test equality and hashing of class DomesticHotWaterSetting"""
+        from archetypal.template import OpaqueConstruction
+        from copy import copy
+
+        idf, sql = small_idf
+        opaq_constr = idf.idfobjects["CONSTRUCTION"][0]
+        oc = OpaqueConstruction.from_epbunch(opaq_constr)
+        oc_2 = copy(oc)
+
+        # a copy of dhw should be eqaul have the same hash
+        assert oc == oc_2
+        assert hash(oc) == hash(oc_2)
+
+        # hash is used to find object in lookup table
+        oc_list = [oc, oc_2]
+        assert oc in oc_list
+
+        # dict behavior
+        oc_dict = {oc: "this_idf", oc_2: "same_idf"}
+        assert len(oc_dict) == 1
+
+        oc_2.Name = "some other name"
+        # even if name changes, they should be equal
+        assert oc_2 == oc
+
+        oc_dict = {oc: "this_idf", oc_2: "same_idf"}
+        assert oc in oc_dict
+        assert len(oc_dict) == 2
+
+        # if an attribute changed, equality is lost
+        oc_2.IsAdiabatic = True
+        assert oc != oc_2
+
 
 class TestWindowConstruction:
     """Series of tests for the :class:`WindowConstruction` class"""

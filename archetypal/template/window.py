@@ -60,6 +60,24 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         self.AssemblyCarbon = AssemblyCarbon
         self.Layers = None
 
+    def __hash__(self):
+        return hash(self.Name)
+
+    def __eq__(self, other):
+        if not isinstance(other, WindowConstruction):
+            return False
+        else:
+            return all(
+                [
+                    self.Category == other.Category,
+                    self.AssemblyCarbon == other.AssemblyCarbon,
+                    self.AssemblyCost == other.AssemblyCost,
+                    self.AssemblyEnergy == other.AssemblyEnergy,
+                    self.DisassemblyCarbon == other.DisassemblyCarbon,
+                    self.DisassemblyEnergy == other.DisassemblyEnergy,
+                ]
+            )
+
     @classmethod
     def from_json(cls, *args, **kwargs):
         """

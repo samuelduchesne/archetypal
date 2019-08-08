@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import numpy as np
 import pytest
 from path import Path
@@ -22,6 +24,7 @@ def small_idf(config):
     )
     yield idf, sql
 
+
 @pytest.fixture(scope="session")
 def other_idf(config):
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
@@ -37,6 +40,7 @@ def other_idf(config):
         annual=False,
     )
     yield idf, sql
+
 
 core_name = "core"
 perim_name = "perim"
@@ -557,14 +561,14 @@ class TestUmiSchedule:
         sched = UmiSchedule(Name="B_Off_Y_Occ", idf=idf)
         assert sched.to_dict()
 
-    def test_hash_eq_umi_sched(self, small_idf):
+    def test_hash_eq_umi_sched(self, small_idf, other_idf):
         """Test equality and hashing of :class:`ZoneLoad`"""
         from archetypal.template import UmiSchedule
         from copy import copy
 
         idf, sql = small_idf
         clear_cache()
-        sched = UmiSchedule(Name="B_Off_Y_Occ", idf=idf)
+        sched = UmiSchedule(Name="On", idf=idf)
         sched_2 = copy(sched)
 
         # a copy of dhw should be equal and have the same hash, but still not be the
@@ -604,6 +608,18 @@ class TestUmiSchedule:
         # length of set() should be 2 since both objects are not equal anymore and
         # don't have the same hash.
         assert len(set(sched_list)) == 2
+
+        # 2 UmiSchedule from different idf should not have the same hash if they
+        # have different names, not be the same object, yet be equal if they have the
+        # same values
+        idf_2, sql_2 = other_idf
+        clear_cache()
+        assert idf is not idf_2
+        sched_3 = UmiSchedule(Name="On", idf=idf_2)
+        assert sched is not sched_3
+        assert sched == sched_3
+        assert hash(sched) == hash(sched_3)
+        assert id(sched) != id(sched_3)
 
 
 class TestZoneConstructionSet:
@@ -744,6 +760,7 @@ class TestZoneLoad:
         from copy import copy
 
         idf, sql = small_idf
+        clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
         zl = ZoneLoad.from_zone(zone)
@@ -786,6 +803,22 @@ class TestZoneLoad:
         # length of set() should be 2 since both objects are not equal anymore and
         # don't have the same hash.
         assert len(set(zl_list)) == 2
+
+        # 2 ZoneLoad from different idf should not have the same hash if they
+        # have different names, not be the same object, yet be equal if they have the
+        # same values (EquipmentPowerDensity, LightingPowerDensity, etc.)
+        idf_2 = deepcopy(idf)
+        clear_cache()
+        zone_ep_3 = idf_2.idfobjects["ZONE"][0]
+        zone_3 = Zone.from_zone_epbunch(zone_ep_3, sql=sql)
+        assert idf is not idf_2
+        zl_3 = ZoneLoad.from_zone(zone_3)
+        assert zone_ep is not zone_ep_3
+        assert zone_ep != zone_ep_3
+        assert hash(zl) == hash(zl_3)
+        assert id(zl) != id(zl_3)
+        assert zl is not zl_3
+        assert zl == zl_3
 
 
 class TestZoneConditioning:
@@ -866,6 +899,7 @@ class TestZoneConditioning:
         from copy import copy
 
         idf, sql = small_idf
+        clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
         zc = ZoneConditioning.from_zone(zone)
@@ -908,6 +942,22 @@ class TestZoneConditioning:
         # length of set() should be 2 since both objects are not equal anymore and
         # don't have the same hash.
         assert len(set(zc_list)) == 2
+
+        # 2 ZoneConditioning from different idf should not have the same hash if they
+        # have different names, not be the same object, yet be equal if they have the
+        # same values (CoolingSetpoint, HeatingSetpoint, etc.)
+        idf_2 = deepcopy(idf)
+        clear_cache()
+        zone_ep_3 = idf_2.idfobjects["ZONE"][0]
+        zone_3 = Zone.from_zone_epbunch(zone_ep_3, sql=sql)
+        assert idf is not idf_2
+        zc_3 = ZoneConditioning.from_zone(zone_3)
+        assert zone_ep is not zone_ep_3
+        assert zone_ep != zone_ep_3
+        assert hash(zc) == hash(zc_3)
+        assert id(zc) != id(zc_3)
+        assert zc is not zc_3
+        assert zc == zc_3
 
 
 class TestVentilationSetting:
@@ -1023,6 +1073,22 @@ class TestVentilationSetting:
         # don't have the same hash.
         assert len(set(vent_list)) == 2
 
+        # 2 VentilationSettings from different idf should not have the same hash if they
+        # have different names, not be the same object, yet be equal if they have the
+        # same values (Infiltration, IsWindOn, etc.)
+        idf_2 = deepcopy(idf)
+        clear_cache()
+        zone_ep_3 = idf_2.idfobjects["ZONE"][0]
+        zone_3 = Zone.from_zone_epbunch(zone_ep_3, sql=sql)
+        assert idf is not idf_2
+        vent_3 = VentilationSetting.from_zone(zone_3)
+        assert zone_ep is not zone_ep_3
+        assert zone_ep != zone_ep_3
+        assert hash(vent) == hash(vent_3)
+        assert id(vent) != id(vent_3)
+        assert vent is not vent_3
+        assert vent == vent_3
+
 
 class TestDomesticHotWaterSetting:
     """Series of tests for the :class:`DomesticHotWaterSetting` class"""
@@ -1033,6 +1099,7 @@ class TestDomesticHotWaterSetting:
         from copy import copy
 
         idf, sql = small_idf
+        clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
         dhw = DomesticHotWaterSetting.from_zone(zone)
@@ -1075,6 +1142,22 @@ class TestDomesticHotWaterSetting:
         # length of set() should be 2 since both objects are not equal anymore and
         # don't have the same hash.
         assert len(set(dhw_list)) == 2
+
+        # 2 DomesticHotWaterSettings from different idf should not have the same hash
+        # if they have different names, not be the same object, yet be equal if they
+        # have the same values (Infiltration, IsWindOn, etc.)
+        idf_2 = deepcopy(idf)
+        clear_cache()
+        zone_ep_3 = idf_2.idfobjects["ZONE"][0]
+        zone_3 = Zone.from_zone_epbunch(zone_ep_3, sql=sql)
+        assert idf is not idf_2
+        dhw_3 = DomesticHotWaterSetting.from_zone(zone_3)
+        assert zone_ep is not zone_ep_3
+        assert zone_ep != zone_ep_3
+        assert hash(dhw) == hash(dhw_3)
+        assert id(dhw) != id(dhw_3)
+        assert dhw is not dhw_3
+        assert dhw == dhw_3
 
 
 class TestWindowSetting:
@@ -1250,6 +1333,21 @@ class TestWindowSetting:
         # length of set() should be 2 since both objects are not equal anymore and
         # don't have the same hash.
         assert len(set(wind_list)) == 2
+
+        # 2 WindowSettings from different idf should not have the same hash
+        # if they have different names, not be the same object, yet be equal if they
+        # have the same values (Construction, Type, etc.)
+        idf_2 = deepcopy(idf)
+        clear_cache()
+        f_surf_3 = idf_2.idfobjects["FENESTRATIONSURFACE:DETAILED"][0]
+        wind_3 = WindowSetting.from_surface(f_surf_3)
+        assert idf is not idf_2
+        assert f_surf is not f_surf_3
+        assert f_surf != f_surf_3
+        assert hash(wind) == hash(wind_3)
+        assert id(wind) != id(wind_3)
+        assert wind is not wind_3
+        assert wind == wind_3
 
 
 class TestZone:

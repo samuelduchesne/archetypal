@@ -229,13 +229,13 @@ class TestOpaqueMaterial:
             )
             opaqMat_epBunch.to_json()
 
-    def test_hash_eq_opaqMat(self, small_idf):
+    def test_hash_eq_opaqMat(self, small_idf, other_idf):
         """Test equality and hashing of :class:`TestOpaqueMaterial`"""
         from archetypal.template import OpaqueMaterial
         from copy import copy
 
         idf, sql = small_idf
-        opaq_mat = idf.idfobjects["MATERIAL"][0]
+        opaq_mat = idf.getobject("MATERIAL", "B_Gypsum_Plaster_0.02_B_Off_Thm_0")
         om = OpaqueMaterial.from_epbunch(opaq_mat)
         om_2 = copy(om)
 
@@ -276,6 +276,20 @@ class TestOpaqueMaterial:
         # length of set() should be 2 since both objects are not equal anymore and
         # don't have the same hash.
         assert len(set(om_list)) == 2
+
+        # 2 OpaqueMaterial from different idf should not have the same hash if they
+        # have different names, not be the same object, yet be equal if they have the
+        # same characteristics (Thickness, Roughness, etc.)
+        idf_2, sql_2 = other_idf
+        assert idf is not idf_2
+        opaq_mat_3 = idf_2.getobject("MATERIAL", "B_Gypsum_Plaster_0.02_B_Res_Thm_0")
+        assert opaq_mat is not opaq_mat_3
+        assert opaq_mat != opaq_mat_3
+        om_3 = OpaqueMaterial.from_epbunch(opaq_mat_3)
+        assert hash(om) != hash(om_3)
+        assert id(om) != id(om_3)
+        assert om is not om_3
+        assert om == om_3
 
 
 class TestGlazingMaterial:

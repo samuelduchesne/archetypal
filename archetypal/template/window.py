@@ -291,6 +291,36 @@ class WindowSetting(UmiBase, metaclass=Unique):
     def __str__(self):
         return repr(self)
 
+    def __hash__(self):
+        return hash((self.Name, self.idf.name))
+
+    def __eq__(self, other):
+        if not isinstance(other, WindowSetting):
+            return False
+        else:
+            return all(
+                [
+                    self.Construction == other.Construction,
+                    self.OperableArea == other.OperableArea,
+                    self.AfnWindowAvailability == other.AfnWindowAvailability,
+                    self.AfnDischargeC == other.AfnDischargeC,
+                    self.AfnTempSetpoint == other.AfnTempSetpoint,
+                    self.IsVirtualPartition == other.IsVirtualPartition,
+                    self.IsShadingSystemOn == other.IsShadingSystemOn,
+                    self.ShadingSystemAvailabilitySchedule
+                    == other.ShadingSystemAvailabilitySchedule,
+                    self.ShadingSystemSetpoint == other.ShadingSystemSetpoint,
+                    self.ShadingSystemTransmittance == other.ShadingSystemTransmittance,
+                    self.ShadingSystemType == other.ShadingSystemType,
+                    self.Type == other.Type,
+                    self.IsZoneMixingOn == other.IsZoneMixingOn,
+                    self.ZoneMixingAvailabilitySchedule
+                    == other.ZoneMixingAvailabilitySchedule,
+                    self.ZoneMixingDeltaTemperature == other.ZoneMixingDeltaTemperature,
+                    self.ZoneMixingFlowRate == other.ZoneMixingFlowRate,
+                ]
+            )
+
     @classmethod
     def generic(cls, idf):
         """Returns a generic window with SHGC=0.704, UFactor=2.703, Tvis=0.786

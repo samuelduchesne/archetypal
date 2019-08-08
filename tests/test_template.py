@@ -1160,6 +1160,54 @@ class TestWindowSetting:
 
         assert w.to_json()
 
+    def test_hash_eq_windowSettings(self, small_idf):
+        """Test equality and hashing of :class:`DomesticHotWaterSetting`"""
+        from archetypal.template import WindowSetting
+        from copy import copy
+
+        idf, sql = small_idf
+        f_surf = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"][0]
+        wind = WindowSetting.from_surface(f_surf)
+        wind_2 = copy(wind)
+
+        # a copy of dhw should be equal and have the same hash, but still not be the
+        # same object
+        assert wind == wind_2
+        assert hash(wind) == hash(wind_2)
+        assert wind is not wind_2
+
+        # hash is used to find object in lookup table
+        wind_list = [wind]
+        assert wind in wind_list
+        assert wind_2 in wind_list  # This is weird but expected
+
+        wind_list.append(wind_2)
+        assert wind_2 in wind_list
+
+        # length of set() should be 1 since both objects are
+        # equal and have the same hash.
+        assert len(set(wind_list)) == 1
+
+        # dict behavior
+        wind_dict = {wind: "this_idf", wind_2: "same_idf"}
+        assert len(wind_dict) == 1
+
+        wind_2.Name = "some other name"
+        # even if name changes, they should be equal
+        assert wind_2 == wind
+
+        wind_dict = {wind: "this_idf", wind_2: "same_idf"}
+        assert wind in wind_dict
+        assert len(wind_dict) == 2
+
+        # if an attribute changed, equality is lost
+        wind_2.IsVirtualPartition = True
+        assert wind != wind_2
+
+        # length of set() should be 2 since both objects are not equal anymore and
+        # don't have the same hash.
+        assert len(set(wind_list)) == 2
+
 
 class TestZone:
     """Tests for :class:`Zone` class"""

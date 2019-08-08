@@ -182,7 +182,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     def __eq__(self, other):
         if not isinstance(other, ZoneConditioning):
-            raise NotImplementedError()
+            return False
         else:
             return all(
                 [

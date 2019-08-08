@@ -61,7 +61,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
 
     def __eq__(self, other):
         if not isinstance(other, DomesticHotWaterSetting):
-            raise NotImplementedError()
+            return False
         else:
             return all(
                 [

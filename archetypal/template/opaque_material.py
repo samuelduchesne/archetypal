@@ -116,7 +116,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
 
     def __eq__(self, other):
         if not isinstance(other, OpaqueMaterial):
-            raise NotImplementedError()
+            return False
         else:
             return all(
                 [

@@ -108,7 +108,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     def __eq__(self, other):
         if not isinstance(other, OpaqueConstruction):
-            raise NotImplementedError()
+            return False
         else:
             return all(
                 [

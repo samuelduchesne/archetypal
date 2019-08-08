@@ -103,7 +103,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
     def __eq__(self, other):
         if not isinstance(other, ZoneLoad):
-            raise NotImplementedError()
+            return False
         else:
             return all(
                 [

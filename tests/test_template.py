@@ -1102,41 +1102,6 @@ class TestBuildingTemplate:
         bt_to_json = bt[0].to_json()
         w_to_json = bt[0].Windows.to_json()
 
-    def test_hash_eq_bt(self, small_idf):
-        """Test equality and hashing of class DomesticHotWaterSetting"""
-        from archetypal.template import BuildingTemplate, Zone
-        from copy import copy
-
-        idf, sql = small_idf
-        # zone_ep = idf.idfobjects["ZONE"][0]
-        # zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
-        bt = BuildingTemplate.from_idf(idf, sql=sql)
-        bt_2 = copy(bt)
-
-        # a copy of dhw should be eqaul have the same hash
-        assert bt == bt_2
-        assert hash(bt) == hash(bt_2)
-
-        # hash is used to find object in lookup table
-        bt_list = [bt, bt_2]
-        assert bt in bt_list
-
-        # dict behavior
-        bt_dict = {bt: "this_idf", bt_2: "same_idf"}
-        assert len(bt_dict) == 1
-
-        bt_2.Name = "some other name"
-        # even if name changes, they should be equal
-        assert bt_2 == bt
-
-        bt_dict = {bt: "this_idf", bt_2: "same_idf"}
-        assert bt in bt_dict
-        assert len(bt_dict) == 2
-
-        # if an attribute changed, equality is lost
-        bt_2.Lifespan = 69
-        assert bt != bt_2
-
 
 class TestZoneGraph:
     """Series of tests for the :class:`ZoneGraph` class"""

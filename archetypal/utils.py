@@ -47,7 +47,7 @@ def config(
     useful_idf_objects=settings.useful_idf_objects,
     umitemplate=settings.umitemplate,
     trnsys_default_folder=settings.trnsys_default_folder,
-    default_weight_factor='area',
+    default_weight_factor="area",
 ):
     """Configurations
 

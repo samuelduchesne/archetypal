@@ -842,13 +842,23 @@ class TestDomesticHotWaterSetting:
         dhw = DomesticHotWaterSetting.from_zone(zone)
         dhw_2 = copy(dhw)
 
-        # a copy of dhw should be eqaul have the same hash
+        # a copy of dhw should be equal and have the same hash, but still not be the
+        # same object
         assert dhw == dhw_2
         assert hash(dhw) == hash(dhw_2)
+        assert dhw is not dhw_2
 
         # hash is used to find object in lookup table
-        dhw_list = [dhw, dhw_2]
+        dhw_list = [dhw]
         assert dhw in dhw_list
+        assert dhw_2 in dhw_list  # This is weird but expected
+
+        dhw_list.append(dhw_2)
+        assert dhw_2 in dhw_list
+
+        # length of set() should be 1 since both objects are
+        # equal and have the same hash.
+        assert len(set(dhw_list)) == 1
 
         # dict behavior
         dhw_dict = {dhw: "this_idf", dhw_2: "same_idf"}
@@ -865,6 +875,10 @@ class TestDomesticHotWaterSetting:
         # if an attribute changed, equality is lost
         dhw_2.IsOn = False
         assert dhw != dhw_2
+
+        # length of set() should be 2 since both objects are not equal anymore and
+        # don't have the same hash.
+        assert len(set(dhw_list)) == 2
 
 
 class TestWindowSetting:

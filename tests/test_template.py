@@ -513,6 +513,54 @@ class TestUmiSchedule:
         sched = UmiSchedule(Name="B_Off_Y_Occ", idf=idf)
         assert sched.to_dict()
 
+    def test_hash_eq_umiSched(self, small_idf):
+        """Test equality and hashing of :class:`ZoneLoad`"""
+        from archetypal.template import UmiSchedule
+        from copy import copy
+
+        idf, sql = small_idf
+        clear_cache()
+        sched = UmiSchedule(Name="B_Off_Y_Occ", idf=idf)
+        sched_2 = copy(sched)
+
+        # a copy of dhw should be equal and have the same hash, but still not be the
+        # same object
+        assert sched == sched_2
+        assert hash(sched) == hash(sched_2)
+        assert sched is not sched_2
+
+        # hash is used to find object in lookup table
+        sched_list = [sched]
+        assert sched in sched_list
+        assert sched_2 in sched_list  # This is weird but expected
+
+        sched_list.append(sched_2)
+        assert sched_2 in sched_list
+
+        # length of set() should be 1 since both objects are
+        # equal and have the same hash.
+        assert len(set(sched_list)) == 1
+
+        # dict behavior
+        sched_dict = {sched: "this_idf", sched_2: "same_idf"}
+        assert len(sched_dict) == 1
+
+        sched_2.Name = "some other name"
+        # even if name changes, they should be equal
+        assert sched_2 == sched
+
+        sched_dict = {sched: "this_idf", sched_2: "same_idf"}
+        assert sched in sched_dict
+        assert len(sched_dict) == 2
+
+        # if an attribute changed, equality is lost
+        sched_2.strict = True
+        assert sched != sched_2
+
+        # length of set() should be 2 since both objects are not equal anymore and
+        # don't have the same hash.
+        assert len(set(sched_list)) == 2
+
 
 class TestZoneConstructionSet:
     """Combines different :class:`ZoneConstructionSet` tests"""

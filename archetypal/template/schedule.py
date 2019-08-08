@@ -84,6 +84,19 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
     def __hash__(self):
         return hash(repr(self))
 
+    def __eq__(self, other):
+        if not isinstance(other, UmiSchedule):
+            return False
+        else:
+            return all(
+                [
+                    self.strict == other.strict,
+                    self.schType == other.schType,
+                    self.schTypeLimitsName == other.schTypeLimitsName,
+                    np.array_equal(self.values, other.values),
+                ]
+            )
+
     def combine(self, other, weights=None):
         """Combine two UmiSchedule objects together.
 

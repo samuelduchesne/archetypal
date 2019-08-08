@@ -214,10 +214,8 @@ class TestOpaqueMaterial:
             )
             opaqMat_epBunch.to_json()
 
-    # todo: Implement from_to_json test for OpaqueMaterial class
-
     def test_hash_eq_opaqMat(self, small_idf):
-        """Test equality and hashing of class DomesticHotWaterSetting"""
+        """Test equality and hashing of :class:`TestOpaqueMaterial`"""
         from archetypal.template import OpaqueMaterial
         from copy import copy
 
@@ -391,7 +389,7 @@ class TestOpaqueConstruction:
         opaqConstr_to_json = opaqConstr_json[0].to_json()
 
     def test_hash_eq_opaqConstr(self, small_idf):
-        """Test equality and hashing of class DomesticHotWaterSetting"""
+        """Test equality and hashing of :class:`OpaqueConstruction`"""
         from archetypal.template import OpaqueConstruction
         from copy import copy
 
@@ -621,7 +619,7 @@ class TestZoneLoad:
         load_to_json = load_json[0].to_json()
 
     def test_hash_eq_zoneLoad(self, small_idf):
-        """Test equality and hashing of class DomesticHotWaterSetting"""
+        """Test equality and hashing of :class:`ZoneLoad`"""
         from archetypal.template import ZoneLoad, Zone
         from copy import copy
 
@@ -729,7 +727,7 @@ class TestZoneConditioning:
         cond_to_json = cond_json[0].to_json()
 
     def test_hash_eq_zoneCond(self, small_idf):
-        """Test equality and hashing of class DomesticHotWaterSetting"""
+        """Test equality and hashing of :class:`ZoneConditioning`"""
         from archetypal.template import ZoneConditioning, Zone
         from copy import copy
 
@@ -832,7 +830,7 @@ class TestDomesticHotWaterSetting:
     """Series of tests for the :class:`DomesticHotWaterSetting` class"""
 
     def test_hash_eq_dhw(self, small_idf):
-        """Test equality and hashing of class DomesticHotWaterSetting"""
+        """Test equality and hashing of :class:`DomesticHotWaterSetting`"""
         from archetypal.template import DomesticHotWaterSetting, Zone
         from copy import copy
 

@@ -99,7 +99,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.Name, self.idf.name))
+        return hash(self.Name)
 
     def __eq__(self, other):
         if not isinstance(other, ZoneLoad):

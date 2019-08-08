@@ -1276,6 +1276,55 @@ class TestZone:
 
         np.testing.assert_almost_equal(actual=area, desired=z_core.area, decimal=3)
 
+    def test_hash_eq_umiSched(self, small_idf):
+        """Test equality and hashing of :class:`ZoneLoad`"""
+        from archetypal.template import Zone
+        from copy import copy
+
+        idf, sql = small_idf
+        clear_cache()
+        zone_ep = idf.idfobjects["ZONE"][0]
+        zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
+        zone_2 = copy(zone)
+
+        # a copy of dhw should be equal and have the same hash, but still not be the
+        # same object
+        assert zone == zone_2
+        assert hash(zone) == hash(zone_2)
+        assert zone is not zone_2
+
+        # hash is used to find object in lookup table
+        zone_list = [zone]
+        assert zone in zone_list
+        assert zone_2 in zone_list  # This is weird but expected
+
+        zone_list.append(zone_2)
+        assert zone_2 in zone_list
+
+        # length of set() should be 1 since both objects are
+        # equal and have the same hash.
+        assert len(set(zone_list)) == 1
+
+        # dict behavior
+        zone_dict = {zone: "this_idf", zone_2: "same_idf"}
+        assert len(zone_dict) == 1
+
+        zone_2.Name = "some other name"
+        # even if name changes, they should be equal
+        assert zone_2 == zone
+
+        zone_dict = {zone: "this_idf", zone_2: "same_idf"}
+        assert zone in zone_dict
+        assert len(zone_dict) == 2
+
+        # if an attribute changed, equality is lost
+        zone_2.DaylightMeshResolution = 69
+        assert zone != zone_2
+
+        # length of set() should be 2 since both objects are not equal anymore and
+        # don't have the same hash.
+        assert len(set(zone_list)) == 2
+
 
 @pytest.fixture(scope="session")
 def bt():

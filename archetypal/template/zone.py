@@ -100,6 +100,29 @@ class Zone(UmiBase, metaclass=Unique):
         # create the new merged zone from self
         return self.combine(other)
 
+    def __hash__(self):
+        return hash((self.Name, self.idf.name))
+
+    def __eq__(self, other):
+        if not isinstance(other, Zone):
+            return False
+        else:
+            return all(
+                [
+                    self.Conditioning == other.Conditioning,
+                    self.Constructions == other.Constructions,
+                    self.DomesticHotWater == other.DomesticHotWater,
+                    self.Loads == other.Loads,
+                    self.Ventilation == other.Ventilation,
+                    self.Windows == other.Windows,
+                    self.InternalMassConstruction == other.InternalMassConstruction,
+                    self.InternalMassExposedPerFloorArea
+                    == other.InternalMassExposedPerFloorArea,
+                    self.DaylightMeshResolution == other.DaylightMeshResolution,
+                    self.DaylightWorkplaneHeight == other.DaylightWorkplaneHeight,
+                ]
+            )
+
     @property
     def area(self):
         """Calculates the floor surface area of the zone

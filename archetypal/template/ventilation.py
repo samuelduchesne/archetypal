@@ -130,6 +130,35 @@ class VentilationSetting(UmiBase, metaclass=Unique):
     def __add__(self, other):
         return self.combine(other)
 
+    def __hash__(self):
+        return hash((self.Name, self.idf.name))
+
+    def __eq__(self, other):
+        if not isinstance(other, VentilationSetting):
+            return False
+        else:
+            return all(
+                [
+                    self.NatVentSchedule == other.NatVentSchedule,
+                    self.ScheduledVentilationSchedule
+                    == self.ScheduledVentilationSchedule,
+                    self.Afn == other.Afn,
+                    self.Infiltration == other.Infiltration,
+                    self.IsBuoyancyOn == other.IsBuoyancyOn,
+                    self.IsInfiltrationOn == other.IsInfiltrationOn,
+                    self.IsNatVentOn == other.IsNatVentOn,
+                    self.IsScheduledVentilationOn == other.IsScheduledVentilationOn,
+                    self.IsWindOn == other.IsWindOn,
+                    self.NatVentMaxOutdoorAirTemp == other.NatVentMaxOutdoorAirTemp,
+                    self.NatVentMaxRelHumidity == other.NatVentMaxRelHumidity,
+                    self.NatVentMinOutdoorAirTemp == other.NatVentMinOutdoorAirTemp,
+                    self.NatVentZoneTempSetpoint == other.NatVentZoneTempSetpoint,
+                    self.ScheduledVentilationAch == other.ScheduledVentilationAch,
+                    self.ScheduledVentilationSetpoint
+                    == other.ScheduledVentilationSetpoint,
+                ]
+            )
+
     @classmethod
     def from_json(cls, *args, **kwargs):
         """

@@ -929,6 +929,55 @@ class TestVentilationSetting:
         ]
         vent_to_json = vent_json[0].to_json()
 
+    def test_hash_eq_dhw(self, small_idf):
+        """Test equality and hashing of :class:`DomesticHotWaterSetting`"""
+        from archetypal.template import VentilationSetting, Zone
+        from copy import copy
+
+        idf, sql = small_idf
+        zone_ep = idf.idfobjects["ZONE"][0]
+        zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
+        vent = VentilationSetting.from_zone(zone)
+        vent_2 = copy(vent)
+
+        # a copy of dhw should be equal and have the same hash, but still not be the
+        # same object
+        assert vent == vent_2
+        assert hash(vent) == hash(vent_2)
+        assert vent is not vent_2
+
+        # hash is used to find object in lookup table
+        vent_list = [vent]
+        assert vent in vent_list
+        assert vent_2 in vent_list  # This is weird but expected
+
+        vent_list.append(vent_2)
+        assert vent_2 in vent_list
+
+        # length of set() should be 1 since both objects are
+        # equal and have the same hash.
+        assert len(set(vent_list)) == 1
+
+        # dict behavior
+        vent_dict = {vent: "this_idf", vent_2: "same_idf"}
+        assert len(vent_dict) == 1
+
+        vent_2.Name = "some other name"
+        # even if name changes, they should be equal
+        assert vent_2 == vent
+
+        vent_dict = {vent: "this_idf", vent_2: "same_idf"}
+        assert vent in vent_dict
+        assert len(vent_dict) == 2
+
+        # if an attribute changed, equality is lost
+        vent_2.Afn = True
+        assert vent != vent_2
+
+        # length of set() should be 2 since both objects are not equal anymore and
+        # don't have the same hash.
+        assert len(set(vent_list)) == 2
+
 
 class TestDomesticHotWaterSetting:
     """Series of tests for the :class:`DomesticHotWaterSetting` class"""

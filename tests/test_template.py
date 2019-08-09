@@ -1628,7 +1628,7 @@ class TestBuildingTemplate:
 
     def test_hash_eq_bt(self, small_idf):
         """Test equality and hashing of class DomesticHotWaterSetting"""
-        from archetypal.template import BuildingTemplate, Zone
+        from archetypal.template import BuildingTemplate
         from copy import copy
 
         idf, sql = small_idf

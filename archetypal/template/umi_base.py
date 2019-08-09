@@ -357,18 +357,26 @@ class MaterialBase(UmiBase):
         self.TransportEnergy = TransportEnergy
 
     def __hash__(self):
-        return hash(
-            (
-                self.Density,
-                self.EmbodiedCarbon,
-                self.EmbodiedEnergy,
-                " ".join(map(str, self.SubstitutionRatePattern)),
-                self.SubstitutionTimestep,
-                self.TransportCarbon,
-                self.TransportDistance,
-                self.TransportEnergy,
+        return hash(self.Name)
+
+    def __eq__(self, other):
+        if not isinstance(other, MaterialBase):
+            return False
+        else:
+            return all(
+                [
+                    self.Cost == other.Cost,
+                    self.EmbodiedCarbon == other.EmbodiedCarbon,
+                    self.EmbodiedEnergy == other.EmbodiedEnergy,
+                    self.SubstitutionTimestep == other.SubstitutionTimestep,
+                    self.TransportCarbon == other.TransportCarbon,
+                    self.TransportDistance == other.TransportDistance,
+                    self.TransportEnergy == other.TransportEnergy,
+                    self.SubstitutionRatePattern == other.SubstitutionRatePattern,
+                    self.Conductivity == other.Conductivity,
+                    self.Density == other.Density,
+                ]
             )
-        )
 
 
 CREATED_OBJECTS = {}

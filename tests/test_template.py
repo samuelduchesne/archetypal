@@ -348,6 +348,70 @@ class TestGasMaterial:
         gasMat_to_json = gasMat_json[0].to_json()
         assert gasMat_json[0].Name == gasMat_to_json["Name"]
 
+    def test_hash_eq_gas_mat(self, config):
+        """Test equality and hashing of :class:`OpaqueConstruction`"""
+        from archetypal.template import GasMaterial
+        from copy import copy
+        import json
+
+        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        clear_cache()
+        with open(filename, "r") as f:
+            datastore = json.load(f)
+        gasMat_json = [
+            GasMaterial.from_json(**store) for store in datastore["GasMaterials"]
+        ]
+        gm = gasMat_json[0]
+        gm_2 = copy(gm)
+
+        # a copy of dhw should be equal and have the same hash, but still not be the
+        # same object
+        assert gm == gm_2
+        assert hash(gm) == hash(gm_2)
+        assert gm is not gm_2
+
+        # hash is used to find object in lookup table
+        oc_list = [gm]
+        assert gm in oc_list
+        assert gm_2 in oc_list  # This is weird but expected
+
+        oc_list.append(gm_2)
+        assert gm_2 in oc_list
+
+        # length of set() should be 1 since both objects are
+        # equal and have the same hash.
+        assert len(set(oc_list)) == 1
+
+        # dict behavior
+        oc_dict = {gm: "this_idf", gm_2: "same_idf"}
+        assert len(oc_dict) == 1
+
+        gm_2.Name = "some other name"
+        # even if name changes, they should be equal
+        assert gm_2 == gm
+
+        oc_dict = {gm: "this_idf", gm_2: "same_idf"}
+        assert gm in oc_dict
+        assert len(oc_dict) == 2
+
+        # if an attribute changed, equality is lost
+        gm_2.Cost = 69
+        assert gm != gm_2
+
+        # length of set() should be 2 since both objects are not equal anymore and
+        # don't have the same hash.
+        assert len(set(oc_list)) == 2
+
+        # 2 GasMaterial from different json should not have the same hash if they
+        # have different names, not be the same object, yet be equal if they have the
+        # same layers (Material and Thickness)
+        gm_3 = copy(gm)
+        gm_3.Name = "other name"
+        assert hash(gm) != hash(gm_3)
+        assert id(gm) != id(gm_3)
+        assert gm is not gm_3
+        assert gm == gm_3
+
 
 class TestOpaqueConstruction:
     """Series of tests for the :class:`OpaqueConstruction` class"""

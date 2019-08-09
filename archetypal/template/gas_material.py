@@ -28,6 +28,30 @@ class GasMaterial(MaterialBase, metaclass=Unique):
         super(GasMaterial, self).__init__(*args, Category=Category, **kwargs)
         self.Type = Type
 
+    def __hash__(self):
+        return hash(self.Name)
+
+    def __eq__(self, other):
+        if not isinstance(other, GasMaterial):
+            return False
+        else:
+            return all(
+                [
+                    self.Category == other.Category,
+                    self.Type == other.Type,
+                    self.Conductivity == other.Conductivity,
+                    self.Cost == other.Cost,
+                    self.Density == other.Density,
+                    self.EmbodiedCarbon == other.EmbodiedCarbon,
+                    self.EmbodiedEnergy == other.EmbodiedEnergy,
+                    self.SubstitutionRatePattern == other.SubstitutionRatePattern,
+                    self.SubstitutionTimestep == other.SubstitutionTimestep,
+                    self.TransportCarbon == other.TransportCarbon,
+                    self.TransportDistance == other.TransportDistance,
+                    self.TransportEnergy == other.TransportEnergy,
+                ]
+            )
+
     @classmethod
     def from_json(cls, *args, **kwargs):
         """

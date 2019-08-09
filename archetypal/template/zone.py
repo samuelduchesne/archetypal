@@ -28,7 +28,7 @@ from archetypal.template import (
     DomesticHotWaterSetting,
     OpaqueConstruction,
     WindowSetting,
-)
+    CREATED_OBJECTS)
 
 
 class Zone(UmiBase):
@@ -95,6 +95,7 @@ class Zone(UmiBase):
         self._volume = kwargs.get("volume", None)
 
         self._cache[hash(self)] = self
+        CREATED_OBJECTS[hash(self)] = self
 
     def __add__(self, other):
         """

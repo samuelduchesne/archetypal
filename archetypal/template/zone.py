@@ -31,12 +31,14 @@ from archetypal.template import (
 )
 
 
-class Zone(UmiBase, metaclass=Unique):
+class Zone(UmiBase):
     """Class containing HVAC settings: Conditioning, Domestic Hot Water, Loads,
     Ventilation, adn Consructions
 
     .. image:: ../images/template/zoneinfo-zone.png
     """
+
+    _cache = {}
 
     def __init__(
         self,
@@ -92,6 +94,8 @@ class Zone(UmiBase, metaclass=Unique):
         self._area = kwargs.get("area", None)
         self._volume = kwargs.get("volume", None)
 
+        self._cache[hash(self)] = self
+
     def __add__(self, other):
         """
         Args:
@@ -101,7 +105,7 @@ class Zone(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.Name, self.idf.name))
+        return hash((self.Name, id(self.idf)))
 
     def __eq__(self, other):
         if not isinstance(other, Zone):
@@ -329,7 +333,7 @@ class Zone(UmiBase, metaclass=Unique):
             zone_ep (EpBunch):
             **kwargs:
         """
-        cached = cls.get_cached(zone_ep.Name)
+        cached = cls.get_cached(zone_ep.Name, zone_ep.theidf)
         if cached:
             return cached
         start_time = time.time()
@@ -362,14 +366,14 @@ class Zone(UmiBase, metaclass=Unique):
         return zone
 
     @classmethod
-    def get_cached(cls, name):
-        """Retrieve the cached object by Name. If not, returns None.
+    def get_cached(cls, name, idf):
+        """Retrieve the cached object by Name and idf name. If not, returns None.
 
         Args:
             name (str): The name of the object in the cache.
         """
         try:
-            cached = cls._cache[(cls.mro()[0].__name__, name)]
+            cached = cls._cache[hash((name, id(idf)))]
         except KeyError:
             return None
         else:

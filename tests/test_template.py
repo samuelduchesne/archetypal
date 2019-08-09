@@ -331,6 +331,7 @@ class TestGlazingMaterial:
     def test_hash_eq_glaz_mat(self, config):
         """Test equality and hashing of :class:`OpaqueConstruction`"""
         from copy import copy
+
         sg_a = ar.calc_simple_glazing(0.763, 2.716, 0.812)
         mat_a = ar.GlazingMaterial(Name="mat_ia", **sg_a)
         mat_b = copy(mat_a)
@@ -1661,7 +1662,7 @@ class TestZone:
         assert idf is not idf_2
         assert zone_ep is not zone_ep_3
         assert zone_ep != zone_ep_3
-        assert hash(zone) == hash(zone_3)
+        assert hash(zone) != hash(zone_3)
         assert id(zone) != id(zone_3)
         assert zone is not zone_3
         assert zone == zone_3

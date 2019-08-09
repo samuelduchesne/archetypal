@@ -131,7 +131,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash(self.Name)
+        return hash((self.__class__.__name__, self.Name))
 
     def __eq__(self, other):
         if not isinstance(other, VentilationSetting):

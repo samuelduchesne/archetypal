@@ -28,15 +28,17 @@ from archetypal.template import (
     DomesticHotWaterSetting,
     OpaqueConstruction,
     WindowSetting,
-)
+    CREATED_OBJECTS)
 
 
-class Zone(UmiBase, metaclass=Unique):
+class Zone(UmiBase):
     """Class containing HVAC settings: Conditioning, Domestic Hot Water, Loads,
     Ventilation, adn Consructions
 
     .. image:: ../images/template/zoneinfo-zone.png
     """
+
+    _cache = {}
 
     def __init__(
         self,
@@ -92,6 +94,9 @@ class Zone(UmiBase, metaclass=Unique):
         self._area = kwargs.get("area", None)
         self._volume = kwargs.get("volume", None)
 
+        self._cache[hash(self)] = self
+        CREATED_OBJECTS[hash(self)] = self
+
     def __add__(self, other):
         """
         Args:
@@ -101,7 +106,7 @@ class Zone(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.Name, self.idf.name))
+        return hash((self.Name, id(self.idf)))
 
     def __eq__(self, other):
         if not isinstance(other, Zone):
@@ -322,20 +327,19 @@ class Zone(UmiBase, metaclass=Unique):
         return zone
 
     @classmethod
-    def from_zone_epbunch(cls, zone_ep, **kwargs):
+    def from_zone_epbunch(cls, zone_ep, sql):
         """Create a Zone object from an eppy 'ZONE' epbunch.
 
         Args:
-            zone_ep (EpBunch):
-            **kwargs:
+            zone_ep (EpBunch): The Zone EpBunch.
+            sql (dict): The sql dict for this IDF object.
         """
-        cached = cls.get_cached(zone_ep.Name)
+        cached = cls.get_cached(zone_ep.Name, zone_ep.theidf)
         if cached:
             return cached
         start_time = time.time()
         log('\nConstructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
         name = zone_ep.Name
-        sql = kwargs.get("sql")
         zone = cls(
             Name=name,
             idf=zone_ep.theidf,
@@ -362,14 +366,16 @@ class Zone(UmiBase, metaclass=Unique):
         return zone
 
     @classmethod
-    def get_cached(cls, name):
-        """Retrieve the cached object by Name. If not, returns None.
+    def get_cached(cls, name, idf):
+        """Retrieve the cached object by Name and idf name. If not, returns
+        None.
 
         Args:
             name (str): The name of the object in the cache.
+            idf (IDF): The :class:`IDF` object.
         """
         try:
-            cached = cls._cache[(cls.mro()[0].__name__, name)]
+            cached = cls._cache[hash((name, id(idf)))]
         except KeyError:
             return None
         else:
@@ -751,7 +757,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.Name, self.idf.name))
+        return hash((self.__class__.__name__, self.Name))
 
     def __eq__(self, other):
         if not isinstance(other, ZoneConstructionSet):
@@ -778,6 +784,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         Args:
             other (ZoneConstructionSet):
+            weights:
 
         Returns:
             (ZoneConstructionSet): the combined ZoneConstructionSet object.

@@ -13,7 +13,7 @@ def small_idf(config):
     file = "tests/input_data/umi_samples/B_Off_0.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = ar.load_idf(file)
-    sql = ar.run_eplus(
+    sql: dict = ar.run_eplus(
         file,
         weather_file=w,
         prep_outputs=True,
@@ -331,6 +331,7 @@ class TestGlazingMaterial:
     def test_hash_eq_glaz_mat(self, config):
         """Test equality and hashing of :class:`OpaqueConstruction`"""
         from copy import copy
+
         sg_a = ar.calc_simple_glazing(0.763, 2.716, 0.812)
         mat_a = ar.GlazingMaterial(Name="mat_ia", **sg_a)
         mat_b = copy(mat_a)
@@ -854,9 +855,11 @@ class TestZoneConstructionSet:
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ar.ZoneConstructionSet.from_zone(ar.Zone.from_zone_epbunch(zone_core))
+        z_core = ar.ZoneConstructionSet.from_zone(
+            ar.Zone.from_zone_epbunch(zone_core, sql=sql)
+        )
         z_perim = ar.ZoneConstructionSet.from_zone(
-            ar.Zone.from_zone_epbunch(zone_perim)
+            ar.Zone.from_zone_epbunch(zone_perim, sql=sql)
         )
         id_ = z_core.id
         z_core += z_perim
@@ -1589,8 +1592,8 @@ class TestZone:
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ar.Zone.from_zone_epbunch(zone_core)
-        z_perim = ar.Zone.from_zone_epbunch(zone_perim)
+        z_core = ar.Zone.from_zone_epbunch(zone_core, sql=sql)
+        z_perim = ar.Zone.from_zone_epbunch(zone_perim, sql=sql)
         volume = z_core.volume + z_perim.volume  # save volume before changing
         area = z_core.area + z_perim.area  # save area before changing
 
@@ -1610,7 +1613,7 @@ class TestZone:
         from archetypal.template import Zone
         from copy import copy
 
-        idf, sql = small_idf
+        idf, sql = map(deepcopy, small_idf)
         clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
@@ -1664,7 +1667,7 @@ class TestZone:
         assert idf is not idf_2
         assert zone_ep is not zone_ep_3
         assert zone_ep != zone_ep_3
-        assert hash(zone) == hash(zone_3)
+        assert hash(zone) != hash(zone_3)
         assert id(zone) != id(zone_3)
         assert zone is not zone_3
         assert zone == zone_3

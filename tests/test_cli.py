@@ -15,8 +15,8 @@ class TestCli:
         necb = Path("tests/input_data/necb")
         test_file = examples / "2ZoneDataCenterHVAC_wEconomizer.idf"
         test_file_list = [
-            "tests/input_data/trnsys/ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-            "tests/input_data/trnsys/ASHRAE90.1_RestaurantSitDown_STD2004_Rochester.idf",
+            "tests/input_data/umi_samples/B_Off_0.idf",
+            "tests/input_data/umi_samples/B_Res_0_Masonry.idf",
         ]
         test_files = necb.glob("*Retail*.idf")
         result = runner.invoke(

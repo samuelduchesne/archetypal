@@ -89,7 +89,7 @@ class StructureDefinition(UmiBase, metaclass=Unique):
         self.MassRatios = MassRatios
 
     def __hash__(self):
-        return hash(self.Name)
+        return hash((self.__class__.__name__, self.Name))
 
     def __eq__(self, other):
         if not isinstance(other, StructureDefinition):

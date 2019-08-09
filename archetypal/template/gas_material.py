@@ -29,7 +29,7 @@ class GasMaterial(MaterialBase, metaclass=Unique):
         self.Type = Type
 
     def __hash__(self):
-        return hash(self.Name)
+        return hash((self.__class__.__name__, self.Name))
 
     def __eq__(self, other):
         if not isinstance(other, GasMaterial):

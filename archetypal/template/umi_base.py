@@ -28,7 +28,7 @@ class Unique(type):
             *args:
             **kwargs:
         """
-        key = (cls.mro()[0].__name__, kwargs["Name"])
+        key = hash((cls.mro()[0].__name__, kwargs["Name"]))
         if key not in CREATED_OBJECTS:
             self = cls.__new__(cls, *args, **kwargs)
             cls.__init__(self, *args, **kwargs)
@@ -149,12 +149,12 @@ class UmiBase(object):
 
     def rename(self, name):
         """renames self as well as the cached object"""
-        key = (self.__class__.mro()[0].__name__, self.Name)
+        key = hash((self.__class__.mro()[0].__name__, self.Name))
         self._cache.pop(key)
         CREATED_OBJECTS.pop(key)
 
         self.Name = name
-        newkey = (self.__class__.mro()[0].__name__, name)
+        newkey = hash((self.__class__.mro()[0].__name__, name))
         self._cache[newkey] = self
         CREATED_OBJECTS[newkey] = self
 
@@ -185,7 +185,7 @@ class UmiBase(object):
         )
 
     def __hash__(self):
-        return hash(self.Name)
+        return hash((self.__class__.mro()[0].__name__, self.Name))
 
     def to_dict(self):
         return {"$ref": str(self.id)}
@@ -275,13 +275,14 @@ class UmiBase(object):
         Returns:
             UmiBase: self
         """
+        self.all_objects.pop(self.__hash__(), None)
         id = self.id
-        new_obj = self + other
+        new_obj = self.combine(other)
         new_obj.__dict__.pop("id")
         new_obj.id = id
         name = new_obj.__dict__.pop("Name")
-        self.__dict__.update(**new_obj.__dict__)
-        self.all_objects.pop((self.__class__.__name__, name))
+        self.__dict__.update(Name=name, **new_obj.__dict__)
+        self.all_objects[self.__hash__()] = self
         return self
 
 
@@ -357,7 +358,7 @@ class MaterialBase(UmiBase):
         self.TransportEnergy = TransportEnergy
 
     def __hash__(self):
-        return hash(self.Name)
+        return hash((self.__class__.__name__, self.Name))
 
     def __eq__(self, other):
         if not isinstance(other, MaterialBase):

@@ -93,6 +93,33 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         """Overload + to implement self.combine."""
         return self.combine(other)
 
+    def __hash__(self):
+        return hash(self.Name)
+
+    def __eq__(self, other):
+        if not isinstance(other, GlazingMaterial):
+            return False
+        else:
+            return all(
+                [
+                    self.Density == other.Density,
+                    self.Conductivity == other.Conductivity,
+                    self.SolarTransmittance == other.SolarTransmittance,
+                    self.SolarReflectanceFront == other.SolarReflectanceFront,
+                    self.SolarReflectanceBack == other.SolarReflectanceBack,
+                    self.VisibleTransmittance == other.VisibleTransmittance,
+                    self.VisibleReflectanceFront == other.VisibleReflectanceFront,
+                    self.VisibleReflectanceBack == other.VisibleReflectanceBack,
+                    self.IRTransmittance == other.IRTransmittance,
+                    self.IREmissivityFront == other.IREmissivityFront,
+                    self.IREmissivityBack == other.IREmissivityBack,
+                    self.DirtFactor == other.DirtFactor,
+                    self.Type == other.Type,
+                    self.Cost == other.Cost,
+                    self.Life == other.Life,
+                ]
+            )
+
     def combine(self, other, weights=None):
         """Combine two GlazingMaterial objects together.
 

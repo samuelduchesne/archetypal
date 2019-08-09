@@ -328,6 +328,61 @@ class TestGlazingMaterial:
 
     # todo: Implement from_to_json test for GlazingMaterial class
 
+    def test_hash_eq_glaz_mat(self, config):
+        """Test equality and hashing of :class:`OpaqueConstruction`"""
+        from copy import copy
+        sg_a = ar.calc_simple_glazing(0.763, 2.716, 0.812)
+        mat_a = ar.GlazingMaterial(Name="mat_ia", **sg_a)
+        mat_b = copy(mat_a)
+
+        # a copy of dhw should be equal and have the same hash, but still not be the
+        # same object
+        assert mat_a == mat_b
+        assert hash(mat_a) == hash(mat_b)
+        assert mat_a is not mat_b
+
+        # hash is used to find object in lookup table
+        glm_list = [mat_a]
+        assert mat_a in glm_list
+        assert mat_b in glm_list  # This is weird but expected
+
+        glm_list.append(mat_b)
+        assert mat_b in glm_list
+
+        # length of set() should be 1 since both objects are
+        # equal and have the same hash.
+        assert len(set(glm_list)) == 1
+
+        # dict behavior
+        glm_dict = {mat_a: "this_idf", mat_b: "same_idf"}
+        assert len(glm_dict) == 1
+
+        mat_b.Name = "some other name"
+        # even if name changes, they should be equal
+        assert mat_b == mat_a
+
+        glm_dict = {mat_a: "this_idf", mat_b: "same_idf"}
+        assert mat_a in glm_dict
+        assert len(glm_dict) == 2
+
+        # if an attribute changed, equality is lost
+        mat_b.Cost = 69
+        assert mat_a != mat_b
+
+        # length of set() should be 2 since both objects are not equal anymore and
+        # don't have the same hash.
+        assert len(set(glm_list)) == 2
+
+        # 2 GasMaterial from same json should not have the same hash if they
+        # have different names, not be the same object, yet be equal if they have the
+        # same layers (Material and Thickness)
+        mat_3 = copy(mat_a)
+        mat_3.Name = "other name"
+        assert hash(mat_a) != hash(mat_3)
+        assert id(mat_a) != id(mat_3)
+        assert mat_a is not mat_3
+        assert mat_a == mat_3
+
 
 class TestGasMaterial:
     """Series of tests for the GasMaterial class"""

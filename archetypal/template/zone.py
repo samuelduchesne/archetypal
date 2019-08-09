@@ -327,12 +327,12 @@ class Zone(UmiBase):
         return zone
 
     @classmethod
-    def from_zone_epbunch(cls, zone_ep, **kwargs):
+    def from_zone_epbunch(cls, zone_ep, sql):
         """Create a Zone object from an eppy 'ZONE' epbunch.
 
         Args:
-            zone_ep (EpBunch):
-            **kwargs:
+            zone_ep (EpBunch): The Zone EpBunch.
+            sql (dict): The sql dict for this IDF object.
         """
         cached = cls.get_cached(zone_ep.Name, zone_ep.theidf)
         if cached:
@@ -340,7 +340,6 @@ class Zone(UmiBase):
         start_time = time.time()
         log('\nConstructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
         name = zone_ep.Name
-        sql = kwargs.get("sql")
         zone = cls(
             Name=name,
             idf=zone_ep.theidf,
@@ -368,10 +367,12 @@ class Zone(UmiBase):
 
     @classmethod
     def get_cached(cls, name, idf):
-        """Retrieve the cached object by Name and idf name. If not, returns None.
+        """Retrieve the cached object by Name and idf name. If not, returns
+        None.
 
         Args:
             name (str): The name of the object in the cache.
+            idf (IDF): The :class:`IDF` object.
         """
         try:
             cached = cls._cache[hash((name, id(idf)))]
@@ -783,6 +784,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         Args:
             other (ZoneConstructionSet):
+            weights:
 
         Returns:
             (ZoneConstructionSet): the combined ZoneConstructionSet object.

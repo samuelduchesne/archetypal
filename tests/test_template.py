@@ -855,9 +855,11 @@ class TestZoneConstructionSet:
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ar.ZoneConstructionSet.from_zone(ar.Zone.from_zone_epbunch(zone_core))
+        z_core = ar.ZoneConstructionSet.from_zone(
+            ar.Zone.from_zone_epbunch(zone_core, sql=sql)
+        )
         z_perim = ar.ZoneConstructionSet.from_zone(
-            ar.Zone.from_zone_epbunch(zone_perim)
+            ar.Zone.from_zone_epbunch(zone_perim, sql=sql)
         )
         id_ = z_core.id
         z_core += z_perim
@@ -1590,8 +1592,8 @@ class TestZone:
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ar.Zone.from_zone_epbunch(zone_core)
-        z_perim = ar.Zone.from_zone_epbunch(zone_perim)
+        z_core = ar.Zone.from_zone_epbunch(zone_core, sql=sql)
+        z_perim = ar.Zone.from_zone_epbunch(zone_perim, sql=sql)
         volume = z_core.volume + z_perim.volume  # save volume before changing
         area = z_core.area + z_perim.area  # save area before changing
 

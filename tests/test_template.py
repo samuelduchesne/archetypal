@@ -659,6 +659,72 @@ class TestStructureDefinition:
         ]
         struct_to_json = struct_json[0].to_json()
 
+    def test_hash_eq_struc_def(self, config):
+        """Test equality and hashing of :class:`OpaqueConstruction`"""
+        from archetypal import StructureDefinition, load_json_objects
+        from copy import copy
+        import json
+
+        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        clear_cache()
+        with open(filename, "r") as f:
+            datastore = json.load(f)
+        loading_json_list = load_json_objects(datastore)
+        struct_json = [
+            StructureDefinition.from_json(**store)
+            for store in datastore["StructureDefinitions"]
+        ]
+        sd = struct_json[0]
+        sd_2 = copy(sd)
+
+        # a copy of dhw should be equal and have the same hash, but still not be the
+        # same object
+        assert sd == sd_2
+        assert hash(sd) == hash(sd_2)
+        assert sd is not sd_2
+
+        # hash is used to find object in lookup table
+        sd_list = [sd]
+        assert sd in sd_list
+        assert sd_2 in sd_list  # This is weird but expected
+
+        sd_list.append(sd_2)
+        assert sd_2 in sd_list
+
+        # length of set() should be 1 since both objects are
+        # equal and have the same hash.
+        assert len(set(sd_list)) == 1
+
+        # dict behavior
+        sd_dict = {sd: "this_idf", sd_2: "same_idf"}
+        assert len(sd_dict) == 1
+
+        sd_2.Name = "some other name"
+        # even if name changes, they should be equal
+        assert sd_2 == sd
+
+        sd_dict = {sd: "this_idf", sd_2: "same_idf"}
+        assert sd in sd_dict
+        assert len(sd_dict) == 2
+
+        # if an attribute changed, equality is lost
+        sd_2.AssemblyCost = 69
+        assert sd != sd_2
+
+        # length of set() should be 2 since both objects are not equal anymore and
+        # don't have the same hash.
+        assert len(set(sd_list)) == 2
+
+        # 2 GasMaterial from same json should not have the same hash if they
+        # have different names, not be the same object, yet be equal if they have the
+        # same layers (Material and Thickness)
+        sd_3 = copy(sd)
+        sd_3.Name = "other name"
+        assert hash(sd) != hash(sd_3)
+        assert id(sd) != id(sd_3)
+        assert sd is not sd_3
+        assert sd == sd_3
+
 
 class TestUmiSchedule:
     """Tests for :class:`UmiSchedule` class """

@@ -22,6 +22,21 @@ class MassRatio(object):
         self.Material = Material
         self.NormalRatio = NormalRatio
 
+    def __hash__(self):
+        return hash(id(self))
+
+    def __eq__(self, other):
+        if not isinstance(other, MassRatio):
+            return False
+        else:
+            return all(
+                [
+                    self.HighLoadRatio == other.HighLoadRatio,
+                    self.Material == other.Material,
+                    self.NormalRatio == other.NormalRatio,
+                ]
+            )
+
     def to_dict(self):
         """dict representation of object"""
         return collections.OrderedDict(
@@ -72,6 +87,24 @@ class StructureDefinition(UmiBase, metaclass=Unique):
         self.DisassemblyCarbon = DisassemblyCarbon
         self.DisassemblyEnergy = DisassemblyEnergy
         self.MassRatios = MassRatios
+
+    def __hash__(self):
+        return hash(self.Name)
+
+    def __eq__(self, other):
+        if not isinstance(other, StructureDefinition):
+            return False
+        else:
+            return all(
+                [
+                    self.AssemblyCarbon == other.AssemblyCarbon,
+                    self.AssemblyCost == other.AssemblyCost,
+                    self.AssemblyEnergy == other.AssemblyEnergy,
+                    self.DisassemblyCarbon == other.DisassemblyCarbon,
+                    self.DisassemblyEnergy == other.DisassemblyEnergy,
+                    self.MassRatios == other.MassRatios,
+                ]
+            )
 
     @classmethod
     def from_json(cls, *args, **kwargs):

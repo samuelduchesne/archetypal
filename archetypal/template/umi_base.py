@@ -420,6 +420,23 @@ class MaterialLayer(object):
                 [self.Thickness == other.Thickness, self.Material == other.Material]
             )
 
+    @property
+    def r_value(self):
+        """float: The Thermal Resistance of the :class:`MaterialLayer`"""
+        return self.Thickness / self.Material.Conductivity  # (K⋅m2/W)
+
+    @property
+    def u_value(self):
+        """float: The overall heat transfer coefficient of the
+        :class:`MaterialLayer`. Expressed in W/(m2⋅K)
+        """
+        return 1 / self.r_value
+
+    @property
+    def specific_heat(self):
+        """float: The Material's specific heat J/kg-K"""
+        return self.Material.SpecificHeat
+
     def to_dict(self):
         return collections.OrderedDict(
             Material={"$ref": str(self.Material.id)}, Thickness=self.Thickness

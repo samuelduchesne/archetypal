@@ -518,7 +518,10 @@ class TestOpaqueConstruction:
         """Test __add__() for OpaqueConstruction"""
         oc_c = construction_a + construction_b
         assert oc_c
-        desired = (construction_a.u_value + construction_b.u_value) * 0.5
+        desired = np.average(
+            [construction_a.u_value, construction_b.u_value],
+            weights=[construction_a.total_thickness, construction_b.total_thickness],
+        )
         actual = oc_c.u_value
         np.testing.assert_almost_equal(actual, desired, decimal=3)
 

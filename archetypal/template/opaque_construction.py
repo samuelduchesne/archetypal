@@ -122,9 +122,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     @property
     def r_value(self):
         """float: The Thermal Resistance of the :class:`OpaqueConstruction`"""
-        return sum(
-            [layer.Thickness / layer.Material.Conductivity for layer in self.Layers]
-        )  # (K⋅m2/W)
+        return sum([layer.r_value for layer in self.Layers])  # (K⋅m2/W)
 
     @property
     def u_value(self):
@@ -132,6 +130,21 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         :class:`OpaqueConstruction`. Expressed in W/(m2⋅K)
         """
         return 1 / self.r_value
+
+    @property
+    def specific_heat(self):
+        """float: The overall specific heat of the OpaqueConstruction weighted by
+        wall area mass (kg/m2)"""
+        return np.average(
+            [layer.specific_heat for layer in self.Layers],
+            weights=[layer.Thickness * layer.Material.Density for layer in self.Layers],
+        )
+
+    @property
+    def total_thickness(self):
+        """Returns the total thickness of an OpaqueConstruction by summing up each
+        material layer thicknesses"""
+        return sum([layer.Thickness for layer in self.Layers])
 
     def combine(self, other, weights=None, method="constant_ufactor"):
         """Combine two OpaqueConstruction together.
@@ -225,23 +238,30 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 data are assumed to have a weight equal to one.
         """
 
-        def obj_func(thicknesses, materials, expected):
+        def obj_func(thicknesses, materials, expected, h_expected):
+            """"""
             calc = 1 / sum(
                 [
                     thickness / mat.Conductivity
                     for thickness, mat in zip(thicknesses, materials)
                 ]
             )
-            return (calc - expected) ** 2
 
-        if not weights:
-            weights = [1.0, 1.0]
+            h_calc = [
+                mat.SpecificHeat for thickness, mat in zip(thicknesses, materials)
+            ]
 
-        # If weights is a list of zeros
-        if not np.array(weights).any():
-            weights = [1, 1]
+            unit_volume = [
+                mat.Density * thickness
+                for thickness, mat in zip(thicknesses, materials)
+            ]
+            specific_heat = np.average(h_calc, weights=unit_volume)
+            return (calc - expected) ** 2 + (specific_heat - h_expected) ** 2
 
-        equi_u = np.average([self.u_value, other.u_value], weights=weights)
+        equi_u = np.average(
+            [self.u_value, other.u_value],
+            weights=[self.total_thickness, other.total_thickness],
+        )
 
         materials = set(
             [layer.Material for layer in self.Layers]
@@ -250,9 +270,21 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
         from scipy.optimize import minimize
 
+        if not weights:
+            weights = [1.0, 1.0]
+
+        # If weights is a list of zeros. This weigth is used in the
+        if not np.array(weights).any():
+            weights = [1, 1]
+
+        equi_spec_heat = np.average(
+            [self.specific_heat, other.specific_heat], weights=weights
+        )
         x0 = np.ones(len(materials))
         bnds = tuple([(0.003, None) for layer in materials])
-        res = minimize(obj_func, x0, args=(materials, equi_u), bounds=bnds)
+        res = minimize(
+            obj_func, x0, args=(materials, equi_u, equi_spec_heat), bounds=bnds
+        )
 
         return np.array(list(materials)), res.x
 

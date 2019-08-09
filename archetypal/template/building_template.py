@@ -137,7 +137,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
             zone_obj = None
             if not skeleton:
                 zone_obj = Zone.from_zone_epbunch(zone, sql=self.sql)
-                zonesurfaces = zone_obj._zonesurfaces
+                zonesurfaces = zone.zonesurfaces
+                zone_obj._zonesurfaces = zonesurfaces
             else:
                 zonesurfaces = zone.zonesurfaces
             G.add_node(zone.Name, epbunch=zone, core=is_core(zone), zone=zone_obj)

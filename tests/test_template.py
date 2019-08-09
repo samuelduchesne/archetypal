@@ -1613,7 +1613,7 @@ class TestZone:
         from archetypal.template import Zone
         from copy import copy
 
-        idf, sql = small_idf
+        idf, sql = map(deepcopy, small_idf)
         clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = Zone.from_zone_epbunch(zone_ep, sql=sql)

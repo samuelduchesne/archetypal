@@ -371,28 +371,28 @@ class TestGasMaterial:
         assert gm is not gm_2
 
         # hash is used to find object in lookup table
-        oc_list = [gm]
-        assert gm in oc_list
-        assert gm_2 in oc_list  # This is weird but expected
+        gm_list = [gm]
+        assert gm in gm_list
+        assert gm_2 in gm_list  # This is weird but expected
 
-        oc_list.append(gm_2)
-        assert gm_2 in oc_list
+        gm_list.append(gm_2)
+        assert gm_2 in gm_list
 
         # length of set() should be 1 since both objects are
         # equal and have the same hash.
-        assert len(set(oc_list)) == 1
+        assert len(set(gm_list)) == 1
 
         # dict behavior
-        oc_dict = {gm: "this_idf", gm_2: "same_idf"}
-        assert len(oc_dict) == 1
+        gm_dict = {gm: "this_idf", gm_2: "same_idf"}
+        assert len(gm_dict) == 1
 
         gm_2.Name = "some other name"
         # even if name changes, they should be equal
         assert gm_2 == gm
 
-        oc_dict = {gm: "this_idf", gm_2: "same_idf"}
-        assert gm in oc_dict
-        assert len(oc_dict) == 2
+        gm_dict = {gm: "this_idf", gm_2: "same_idf"}
+        assert gm in gm_dict
+        assert len(gm_dict) == 2
 
         # if an attribute changed, equality is lost
         gm_2.Cost = 69
@@ -400,9 +400,9 @@ class TestGasMaterial:
 
         # length of set() should be 2 since both objects are not equal anymore and
         # don't have the same hash.
-        assert len(set(oc_list)) == 2
+        assert len(set(gm_list)) == 2
 
-        # 2 GasMaterial from different json should not have the same hash if they
+        # 2 GasMaterial from same json should not have the same hash if they
         # have different names, not be the same object, yet be equal if they have the
         # same layers (Material and Thickness)
         gm_3 = copy(gm)

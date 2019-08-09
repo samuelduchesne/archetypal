@@ -13,7 +13,7 @@ def small_idf(config):
     file = "tests/input_data/umi_samples/B_Off_0.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = ar.load_idf(file)
-    sql = ar.run_eplus(
+    sql: dict = ar.run_eplus(
         file,
         weather_file=w,
         prep_outputs=True,

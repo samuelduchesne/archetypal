@@ -958,7 +958,7 @@ def run_eplus(
         version (bool, optional): Display version information (default: False)
 
     Returns:
-        tuple: a 1-tuple or a 2-tuple
+        2-tuple: a 1-tuple or a 2-tuple
             - dict: dict of [(title, table), .....]
             - IDF: The IDF object. Only provided if return_idf is True.
     """

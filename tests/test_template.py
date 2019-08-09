@@ -1651,6 +1651,21 @@ class TestZone:
         # don't have the same hash.
         assert len(set(zone_list)) == 2
 
+        # 2 Zones from different idf should not have the same hash, not be the same
+        # object, yet be equal if they have the same values (Conditioning, Loads, etc.).
+        # 2 Zones with different names should not have the same hash.
+        idf_2 = deepcopy(idf)
+        clear_cache()
+        zone_ep_3 = idf_2.idfobjects["ZONE"][0]
+        zone_3 = Zone.from_zone_epbunch(zone_ep_3, sql=sql)
+        assert idf is not idf_2
+        assert zone_ep is not zone_ep_3
+        assert zone_ep != zone_ep_3
+        assert hash(zone) == hash(zone_3)
+        assert id(zone) != id(zone_3)
+        assert zone is not zone_3
+        assert zone == zone_3
+
 
 @pytest.fixture(scope="session")
 def bt():

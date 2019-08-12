@@ -115,21 +115,6 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
         G = ZoneGraph(name=idf.name)
 
-        def is_core(this_zone):
-            # if all surfaces don't have boundary condition == "Outdoors"
-            iscore = True
-            for s in this_zone.zonesurfaces:
-                try:
-                    if int(s.tilt) == 90:
-                        obc = s.Outside_Boundary_Condition.lower()
-                        if obc == "outdoors" or obc == "foundation" or obc == "ground":
-                            iscore = False
-                            break
-                except BadEPFieldError:
-                    pass  # pass surfaces that don't have an OBC,
-                    # eg. InternalMass
-            return iscore
-
         counter = 0
         for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop"):
             # initialize the adjacency report dictionary. default list.
@@ -141,13 +126,15 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                 zone_obj._zonesurfaces = zonesurfaces
             else:
                 zonesurfaces = zone.zonesurfaces
-            G.add_node(zone.Name, epbunch=zone, core=is_core(zone), zone=zone_obj)
+            G.add_node(zone.Name, epbunch=zone, core=zone.is_core, zone=zone_obj)
 
             for surface in zonesurfaces:
                 if surface.key.upper() == "INTERNALMASS":
                     # Todo deal with internal mass surfaces
                     pass
                 else:
+                    adj_zone: Zone
+                    adj_surf: EpBunch
                     adj_surf, adj_zone = resolve_obco(surface)
 
                     if adj_zone and adj_surf:
@@ -160,9 +147,9 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
                         # create node for adjacent zone
                         G.add_node(
-                            adj_zone.Name,
+                            zone.Name,
                             epbunch=adj_zone,
-                            core=is_core(adj_zone),
+                            core=adj_zone.is_core,
                             zone=zone_obj,
                         )
                         try:

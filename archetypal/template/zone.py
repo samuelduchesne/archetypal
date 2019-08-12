@@ -16,6 +16,7 @@ import matplotlib.collections
 import matplotlib.colors
 import networkx
 import numpy as np
+from eppy.bunch_subclass import BadEPFieldError
 from geomeppy.geom.polygons import Polygon3D
 
 from archetypal import log, save_and_show, timeit, settings
@@ -169,6 +170,22 @@ class Zone(UmiBase):
             return vol * multiplier
         else:
             return self._volume
+
+    @property
+    def is_core(self):
+        # if all surfaces don't have boundary condition == "Outdoors"
+        iscore = True
+        for s in self.zonesurfaces:
+            try:
+                if math.isclose(int(s.tilt), 90):
+                    obc = s.Outside_Boundary_Condition.lower()
+                    if obc == "outdoors":
+                        iscore = False
+                        break
+            except BadEPFieldError:
+                pass  # pass surfaces that don't have an OBC,
+                # eg. InternalMass
+        return iscore
 
     @staticmethod
     def get_volume_from_surfs(zone_surfs):

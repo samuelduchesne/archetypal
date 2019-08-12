@@ -12,7 +12,7 @@ from collections import defaultdict
 
 import networkx
 import tabulate
-from eppy.bunch_subclass import BadEPFieldError
+from eppy.bunch_subclass import EpBunch
 from tqdm import tqdm
 
 from archetypal import log, save_and_show
@@ -26,6 +26,7 @@ from archetypal.template import (
     StructureDefinition,
     MassRatio,
 )
+from archetypal.utils import reduce
 
 
 class BuildingTemplate(UmiBase, metaclass=Unique):
@@ -171,7 +172,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
                         )
 
                         add_to_report(
-                            adj_report, zone, surface, adj_zone, adj_surf, counter
+                            adj_report, zone, surface, zone_obj, adj_surf, counter
                         )
                     else:
                         pass
@@ -310,9 +311,14 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         # initialize empty BuildingTemplate
         name = kwargs.pop("Name", idf.idfobjects["BUILDING"][0].Name)
         bt = cls(Name=name, idf=idf, **kwargs)
-
+        zones = [
+            Zone.from_zone_epbunch(zone, sql=bt.sql)
+            for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop")
+        ]
+        cores = [zone for zone in zones if zone.is_core]
+        perims = [zone for zone in zones if not zone.is_core]
         # do Core and Perim zone reduction
-        bt.reduce()
+        bt.reduce(cores, perims)
 
         # resolve StructureDefinition and WindowSetting
         bt.Structure = StructureDefinition(
@@ -325,7 +331,7 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
 
         return bt
 
-    def reduce(self, **zone_graph_kwargs):
+    def reduce(self, cores, perims):
         """Reduce the building to its simplest core and perimeter zones.
 
         Args:
@@ -333,12 +339,8 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         """
         start_time = time.time()
 
-        # Determine if core graph is not empty
-        core_graph = self.zone_graph(**zone_graph_kwargs).core_graph
-        perim_graph = self.zone_graph(**zone_graph_kwargs).perim_graph
-
-        self.Core = self._graph_reduce(core_graph)
-        self.Perimeter = self._graph_reduce(perim_graph)
+        self.Core = reduce(Zone.combine, cores)
+        self.Perimeter = reduce(Zone.combine, perims)
 
         if self.Perimeter.Windows is None:
             # create generic window
@@ -421,7 +423,7 @@ def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):
         zone (EpBunch):
         surface (EpBunch):
         adj_zone (EpBunch):
-        adj_surf:
+        adj_surf (EpBunch):
         counter (int): Counter.
     """
     adj_report["#"].append(counter)

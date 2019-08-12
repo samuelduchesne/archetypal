@@ -29,7 +29,8 @@ from archetypal.template import (
     DomesticHotWaterSetting,
     OpaqueConstruction,
     WindowSetting,
-    CREATED_OBJECTS)
+    CREATED_OBJECTS,
+)
 
 
 class Zone(UmiBase):

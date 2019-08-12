@@ -172,6 +172,13 @@ class Zone(UmiBase):
             return self._volume
 
     @property
+    def zonesurfaces(self):
+        if self._zonesurfaces is None:
+            return self._epbunch.zonesurfaces
+        else:
+            return self._zonesurfaces
+
+    @property
     def is_core(self):
         # if all surfaces don't have boundary condition == "Outdoors"
         iscore = True

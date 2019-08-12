@@ -11,7 +11,7 @@ from statistics import mean
 
 import numpy as np
 
-from archetypal import settings, log, timeit, parallel_process
+from archetypal import settings, log, timeit, reduce
 from archetypal.template import Unique, UmiBase, UmiSchedule
 
 
@@ -379,20 +379,6 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         )
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
-
-
-def reduce(function, iterable, **attr):
-    """
-    Args:
-        function:
-        iterable:
-        **attr:
-    """
-    it = iter(iterable)
-    value = next(it)
-    for element in it:
-        value = function(value, element, **attr)
-    return value
 
 
 def water_main_correlation(t_out_avg, max_diff):

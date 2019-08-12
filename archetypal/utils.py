@@ -869,3 +869,17 @@ def lcm(x, y):
         greater += 1
 
     return lcm
+
+
+def reduce(function, iterable, **attr):
+    """
+    Args:
+        function:
+        iterable:
+        **attr:
+    """
+    it = iter(iterable)
+    value = next(it)
+    for element in it:
+        value = function(value, element, **attr)
+    return value

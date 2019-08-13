@@ -1729,12 +1729,12 @@ class TestBuildingTemplate:
         bt_to_json = bt[0].to_json()
         w_to_json = bt[0].Windows.to_json()
 
-    def test_hash_eq_bt(self, small_idf):
+    def test_hash_eq_bt(self, other_idf):
         """Test equality and hashing of class DomesticHotWaterSetting"""
         from archetypal.template import BuildingTemplate
         from copy import copy
 
-        idf, sql = small_idf
+        idf, sql = other_idf
         clear_cache()
         bt = BuildingTemplate.from_idf(idf, sql=sql)
         bt_2 = copy(bt)

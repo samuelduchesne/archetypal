@@ -19,6 +19,8 @@ import pandas as pd
 from geomeppy.geom.polygons import Polygon3D
 from tqdm import tqdm
 
+from path import Path
+
 from archetypal import (
     log,
     settings,
@@ -292,6 +294,9 @@ def _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules):
     for schedule_name in schedule_names:
         df_sched[schedule_name] = schedules[schedule_name]["all values"]
     sched_file_name = "yearly_schedules_" + os.path.basename(idf_file) + ".csv"
+    output_folder = Path(output_folder)
+    if not output_folder.exists():
+        output_folder.mkdir_p()
     df_sched.to_csv(path_or_buf=os.path.join(output_folder, sched_file_name))
 
 

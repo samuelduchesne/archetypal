@@ -172,7 +172,7 @@ SimulationControl,
 
 Building,
     Warehouse,                !- Name
-    90.0,                     !- North Axis
+    90,                       !- North Axis
     Urban,                    !- Terrain
     0.04,                     !- Loads Convergence Tolerance Value
     0.4,                      !- Temperature Convergence Tolerance Value
@@ -201,11 +201,8 @@ Site:Location,
     Rochester International Arpt_MN_USA Design_Conditions,    !- Name
     43.9,                     !- Latitude
     -92.5,                    !- Longitude
-    -6.0,                     !- Time Zone
-    398.0;                    !- Elevation
-=======
-  HeatBalanceAlgorithm,ConductionTransferFunction;
->>>>>>> develop
+    -6,                       !- Time Zone
+    398;                      !- Elevation
 
 SizingPeriod:DesignDay,
     Rochester International Arpt Ann Htg 99.6% Condns DB,    !- Name
@@ -213,7 +210,7 @@ SizingPeriod:DesignDay,
     21,                       !- Day of Month
     WinterDesignDay,          !- Day Type
     -26.2,                    !- Maximum DryBulb Temperature
-    0.0,                      !- Daily DryBulb Temperature Range
+    0,                        !- Daily DryBulb Temperature Range
     DefaultMultipliers,       !- DryBulb Temperature Range Modifier Type
     ,                         !- DryBulb Temperature Range Modifier Day Schedule Name
     Wetbulb,                  !- Humidity Condition Type
@@ -222,9 +219,9 @@ SizingPeriod:DesignDay,
     ,                         !- Humidity Ratio at Maximum DryBulb
     ,                         !- Enthalpy at Maximum DryBulb
     ,                         !- Daily WetBulb Temperature Range
-    96634.0,                  !- Barometric Pressure
+    96634,                    !- Barometric Pressure
     5.7,                      !- Wind Speed
-    310.0,                    !- Wind Direction
+    310,                      !- Wind Direction
     No,                       !- Rain Indicator
     No,                       !- Snow Indicator
     No,                       !- Daylight Saving Time Indicator
@@ -233,7 +230,7 @@ SizingPeriod:DesignDay,
     ,                         !- Diffuse Solar Day Schedule Name
     ,                         !- ASHRAE Clear Sky Optical Depth for Beam Irradiance taub
     ,                         !- ASHRAE Clear Sky Optical Depth for Diffuse Irradiance taud
-    0.0;                      !- Sky Clearness
+    0;                        !- Sky Clearness
 
 <<<<<<< HEAD
 SizingPeriod:DesignDay,
@@ -251,9 +248,9 @@ SizingPeriod:DesignDay,
     ,                         !- Humidity Ratio at Maximum DryBulb
     ,                         !- Enthalpy at Maximum DryBulb
     ,                         !- Daily WetBulb Temperature Range
-    96634.0,                  !- Barometric Pressure
+    96634,                    !- Barometric Pressure
     6.7,                      !- Wind Speed
-    200.0,                    !- Wind Direction
+    200,                      !- Wind Direction
     No,                       !- Rain Indicator
     No,                       !- Snow Indicator
     No,                       !- Daylight Saving Time Indicator
@@ -397,58 +394,58 @@ ScheduleTypeLimits,
 Schedule:Day:Hourly,
     Office Occ WD,            !- Name
     Fraction,                 !- Schedule Type Limits Name
-    0.0,                      !- Hour 1
-    0.0,                      !- Hour 2
-    0.0,                      !- Hour 3
-    0.0,                      !- Hour 4
-    0.0,                      !- Hour 5
-    0.0,                      !- Hour 6
+    0,                        !- Hour 1
+    0,                        !- Hour 2
+    0,                        !- Hour 3
+    0,                        !- Hour 4
+    0,                        !- Hour 5
+    0,                        !- Hour 6
     0.11,                     !- Hour 7
     0.21,                     !- Hour 8
-    1.0,                      !- Hour 9
-    1.0,                      !- Hour 10
-    1.0,                      !- Hour 11
-    1.0,                      !- Hour 12
+    1,                        !- Hour 9
+    1,                        !- Hour 10
+    1,                        !- Hour 11
+    1,                        !- Hour 12
     0.53,                     !- Hour 13
-    1.0,                      !- Hour 14
-    1.0,                      !- Hour 15
-    1.0,                      !- Hour 16
-    1.0,                      !- Hour 17
+    1,                        !- Hour 14
+    1,                        !- Hour 15
+    1,                        !- Hour 16
+    1,                        !- Hour 17
     0.32,                     !- Hour 18
-    0.0,                      !- Hour 19
-    0.0,                      !- Hour 20
-    0.0,                      !- Hour 21
-    0.0,                      !- Hour 22
-    0.0,                      !- Hour 23
-    0.0;                      !- Hour 24
+    0,                        !- Hour 19
+    0,                        !- Hour 20
+    0,                        !- Hour 21
+    0,                        !- Hour 22
+    0,                        !- Hour 23
+    0;                        !- Hour 24
 
 Schedule:Day:Hourly,
     Office Occ WEH,           !- Name
     Fraction,                 !- Schedule Type Limits Name
-    0.0,                      !- Hour 1
-    0.0,                      !- Hour 2
-    0.0,                      !- Hour 3
-    0.0,                      !- Hour 4
-    0.0,                      !- Hour 5
-    0.0,                      !- Hour 6
-    0.0,                      !- Hour 7
-    0.0,                      !- Hour 8
-    0.0,                      !- Hour 9
-    0.0,                      !- Hour 10
-    0.0,                      !- Hour 11
-    0.0,                      !- Hour 12
-    0.0,                      !- Hour 13
-    0.0,                      !- Hour 14
-    0.0,                      !- Hour 15
-    0.0,                      !- Hour 16
-    0.0,                      !- Hour 17
-    0.0,                      !- Hour 18
-    0.0,                      !- Hour 19
-    0.0,                      !- Hour 20
-    0.0,                      !- Hour 21
-    0.0,                      !- Hour 22
-    0.0,                      !- Hour 23
-    0.0;                      !- Hour 24
+    0,                        !- Hour 1
+    0,                        !- Hour 2
+    0,                        !- Hour 3
+    0,                        !- Hour 4
+    0,                        !- Hour 5
+    0,                        !- Hour 6
+    0,                        !- Hour 7
+    0,                        !- Hour 8
+    0,                        !- Hour 9
+    0,                        !- Hour 10
+    0,                        !- Hour 11
+    0,                        !- Hour 12
+    0,                        !- Hour 13
+    0,                        !- Hour 14
+    0,                        !- Hour 15
+    0,                        !- Hour 16
+    0,                        !- Hour 17
+    0,                        !- Hour 18
+    0,                        !- Hour 19
+    0,                        !- Hour 20
+    0,                        !- Hour 21
+    0,                        !- Hour 22
+    0,                        !- Hour 23
+    0;                        !- Hour 24
 
 Schedule:Day:Hourly,
     Office Light WD,          !- Name
@@ -537,13 +534,13 @@ Schedule:Day:Hourly,
 Schedule:Day:Hourly,
     Office Infiltration WD,    !- Name
     Any Number,               !- Schedule Type Limits Name
-    1.0,                      !- Hour 1
-    1.0,                      !- Hour 2
-    1.0,                      !- Hour 3
-    1.0,                      !- Hour 4
-    1.0,                      !- Hour 5
-    1.0,                      !- Hour 6
-    1.0,                      !- Hour 7
+    1,                        !- Hour 1
+    1,                        !- Hour 2
+    1,                        !- Hour 3
+    1,                        !- Hour 4
+    1,                        !- Hour 5
+    1,                        !- Hour 6
+    1,                        !- Hour 7
     1.25,                     !- Hour 8
     1.25,                     !- Hour 9
     0.5,                      !- Hour 10
@@ -555,40 +552,40 @@ Schedule:Day:Hourly,
     0.5,                      !- Hour 16
     1.25,                     !- Hour 17
     1.25,                     !- Hour 18
-    1.0,                      !- Hour 19
-    1.0,                      !- Hour 20
-    1.0,                      !- Hour 21
-    1.0,                      !- Hour 22
-    1.0,                      !- Hour 23
-    1.0;                      !- Hour 24
+    1,                        !- Hour 19
+    1,                        !- Hour 20
+    1,                        !- Hour 21
+    1,                        !- Hour 22
+    1,                        !- Hour 23
+    1;                        !- Hour 24
 
 Schedule:Day:Hourly,
     Office Infiltration WEH,    !- Name
     Fraction,                 !- Schedule Type Limits Name
-    1.0,                      !- Hour 1
-    1.0,                      !- Hour 2
-    1.0,                      !- Hour 3
-    1.0,                      !- Hour 4
-    1.0,                      !- Hour 5
-    1.0,                      !- Hour 6
-    1.0,                      !- Hour 7
-    1.0,                      !- Hour 8
-    1.0,                      !- Hour 9
-    1.0,                      !- Hour 10
-    1.0,                      !- Hour 11
-    1.0,                      !- Hour 12
-    1.0,                      !- Hour 13
-    1.0,                      !- Hour 14
-    1.0,                      !- Hour 15
-    1.0,                      !- Hour 16
-    1.0,                      !- Hour 17
-    1.0,                      !- Hour 18
-    1.0,                      !- Hour 19
-    1.0,                      !- Hour 20
-    1.0,                      !- Hour 21
-    1.0,                      !- Hour 22
-    1.0,                      !- Hour 23
-    1.0;                      !- Hour 24
+    1,                        !- Hour 1
+    1,                        !- Hour 2
+    1,                        !- Hour 3
+    1,                        !- Hour 4
+    1,                        !- Hour 5
+    1,                        !- Hour 6
+    1,                        !- Hour 7
+    1,                        !- Hour 8
+    1,                        !- Hour 9
+    1,                        !- Hour 10
+    1,                        !- Hour 11
+    1,                        !- Hour 12
+    1,                        !- Hour 13
+    1,                        !- Hour 14
+    1,                        !- Hour 15
+    1,                        !- Hour 16
+    1,                        !- Hour 17
+    1,                        !- Hour 18
+    1,                        !- Hour 19
+    1,                        !- Hour 20
+    1,                        !- Hour 21
+    1,                        !- Hour 22
+    1,                        !- Hour 23
+    1;                        !- Hour 24
 
 Schedule:Day:Hourly,
     Office Heating WD_YES_OPTIMUM,    !- Name
@@ -600,7 +597,7 @@ Schedule:Day:Hourly,
     15.6,                     !- Hour 5
     15.6,                     !- Hour 6
     17.8,                     !- Hour 7
-    20.0,                     !- Hour 8
+    20,                       !- Hour 8
     21.1,                     !- Hour 9
     21.1,                     !- Hour 10
     21.1,                     !- Hour 11
@@ -789,68 +786,68 @@ Schedule:Day:Hourly,
 Schedule:Day:Hourly,
     Office FAN WD,            !- Name
     Fraction,                 !- Schedule Type Limits Name
-    0.0,                      !- Hour 1
-    0.0,                      !- Hour 2
-    0.0,                      !- Hour 3
-    0.0,                      !- Hour 4
-    0.0,                      !- Hour 5
-    0.0,                      !- Hour 6
-    0.0,                      !- Hour 7
-    1.0,                      !- Hour 8
-    1.0,                      !- Hour 9
-    1.0,                      !- Hour 10
-    1.0,                      !- Hour 11
-    1.0,                      !- Hour 12
-    1.0,                      !- Hour 13
-    1.0,                      !- Hour 14
-    1.0,                      !- Hour 15
-    1.0,                      !- Hour 16
-    1.0,                      !- Hour 17
-    1.0,                      !- Hour 18
-    0.0,                      !- Hour 19
-    0.0,                      !- Hour 20
-    0.0,                      !- Hour 21
-    0.0,                      !- Hour 22
-    0.0,                      !- Hour 23
-    0.0;                      !- Hour 24
+    0,                        !- Hour 1
+    0,                        !- Hour 2
+    0,                        !- Hour 3
+    0,                        !- Hour 4
+    0,                        !- Hour 5
+    0,                        !- Hour 6
+    0,                        !- Hour 7
+    1,                        !- Hour 8
+    1,                        !- Hour 9
+    1,                        !- Hour 10
+    1,                        !- Hour 11
+    1,                        !- Hour 12
+    1,                        !- Hour 13
+    1,                        !- Hour 14
+    1,                        !- Hour 15
+    1,                        !- Hour 16
+    1,                        !- Hour 17
+    1,                        !- Hour 18
+    0,                        !- Hour 19
+    0,                        !- Hour 20
+    0,                        !- Hour 21
+    0,                        !- Hour 22
+    0,                        !- Hour 23
+    0;                        !- Hour 24
 
 Schedule:Day:Hourly,
     Office FAN WEH,           !- Name
     Fraction,                 !- Schedule Type Limits Name
-    0.0,                      !- Hour 1
-    0.0,                      !- Hour 2
-    0.0,                      !- Hour 3
-    0.0,                      !- Hour 4
-    0.0,                      !- Hour 5
-    0.0,                      !- Hour 6
-    0.0,                      !- Hour 7
-    0.0,                      !- Hour 8
-    0.0,                      !- Hour 9
-    0.0,                      !- Hour 10
-    0.0,                      !- Hour 11
-    0.0,                      !- Hour 12
-    0.0,                      !- Hour 13
-    0.0,                      !- Hour 14
-    0.0,                      !- Hour 15
-    0.0,                      !- Hour 16
-    0.0,                      !- Hour 17
-    0.0,                      !- Hour 18
-    0.0,                      !- Hour 19
-    0.0,                      !- Hour 20
-    0.0,                      !- Hour 21
-    0.0,                      !- Hour 22
-    0.0,                      !- Hour 23
-    0.0;                      !- Hour 24
+    0,                        !- Hour 1
+    0,                        !- Hour 2
+    0,                        !- Hour 3
+    0,                        !- Hour 4
+    0,                        !- Hour 5
+    0,                        !- Hour 6
+    0,                        !- Hour 7
+    0,                        !- Hour 8
+    0,                        !- Hour 9
+    0,                        !- Hour 10
+    0,                        !- Hour 11
+    0,                        !- Hour 12
+    0,                        !- Hour 13
+    0,                        !- Hour 14
+    0,                        !- Hour 15
+    0,                        !- Hour 16
+    0,                        !- Hour 17
+    0,                        !- Hour 18
+    0,                        !- Hour 19
+    0,                        !- Hour 20
+    0,                        !- Hour 21
+    0,                        !- Hour 22
+    0,                        !- Hour 23
+    0;                        !- Hour 24
 
 Schedule:Day:Hourly,
     Office DHW WD,            !- Name
     Fraction,                 !- Schedule Type Limits Name
-    0.0,                      !- Hour 1
-    0.0,                      !- Hour 2
-    0.0,                      !- Hour 3
-    0.0,                      !- Hour 4
-    0.0,                      !- Hour 5
-    0.0,                      !- Hour 6
+    0,                        !- Hour 1
+    0,                        !- Hour 2
+    0,                        !- Hour 3
+    0,                        !- Hour 4
+    0,                        !- Hour 5
+    0,                        !- Hour 6
     0.05,                     !- Hour 7
     0.101,                    !- Hour 8
     0.399,                    !- Hour 9
@@ -863,22 +860,22 @@ Schedule:Day:Hourly,
     0.798,                    !- Hour 16
     0.297,                    !- Hour 17
     0.05,                     !- Hour 18
-    0.0,                      !- Hour 19
-    0.0,                      !- Hour 20
-    0.0,                      !- Hour 21
-    0.0,                      !- Hour 22
-    0.0,                      !- Hour 23
-    0.0;                      !- Hour 24
+    0,                        !- Hour 19
+    0,                        !- Hour 20
+    0,                        !- Hour 21
+    0,                        !- Hour 22
+    0,                        !- Hour 23
+    0;                        !- Hour 24
 
 Schedule:Day:Hourly,
     Office DHW SUNDAY,        !- Name
     Fraction,                 !- Schedule Type Limits Name
-    0.0,                      !- Hour 1
-    0.0,                      !- Hour 2
-    0.0,                      !- Hour 3
-    0.0,                      !- Hour 4
-    0.0,                      !- Hour 5
-    0.0,                      !- Hour 6
+    0,                        !- Hour 1
+    0,                        !- Hour 2
+    0,                        !- Hour 3
+    0,                        !- Hour 4
+    0,                        !- Hour 5
+    0,                        !- Hour 6
     0.015,                    !- Hour 7
     0.015,                    !- Hour 8
     0.015,                    !- Hour 9
@@ -891,12 +888,12 @@ Schedule:Day:Hourly,
     0.015,                    !- Hour 16
     0.015,                    !- Hour 17
     0.015,                    !- Hour 18
-    0.0,                      !- Hour 19
-    0.0,                      !- Hour 20
-    0.0,                      !- Hour 21
-    0.0,                      !- Hour 22
-    0.0,                      !- Hour 23
-    0.0;                      !- Hour 24
+    0,                        !- Hour 19
+    0,                        !- Hour 20
+    0,                        !- Hour 21
+    0,                        !- Hour 22
+    0,                        !- Hour 23
+    0;                        !- Hour 24
 
 Schedule:Day:Hourly,
     Office DHW WEH,           !- Name
@@ -1021,15 +1018,15 @@ Schedule:Day:Hourly,
     0.25,                     !- Hour 6
     0.25,                     !- Hour 7
     0.25,                     !- Hour 8
-    1.0,                      !- Hour 9
-    1.0,                      !- Hour 10
-    1.0,                      !- Hour 11
-    1.0,                      !- Hour 12
+    1,                        !- Hour 9
+    1,                        !- Hour 10
+    1,                        !- Hour 11
+    1,                        !- Hour 12
     0.25,                     !- Hour 13
-    1.0,                      !- Hour 14
-    1.0,                      !- Hour 15
-    1.0,                      !- Hour 16
-    1.0,                      !- Hour 17
+    1,                        !- Hour 14
+    1,                        !- Hour 15
+    1,                        !- Hour 16
+    1,                        !- Hour 17
     0.25,                     !- Hour 18
     0.25,                     !- Hour 19
     0.25,                     !- Hour 20
@@ -1041,41 +1038,41 @@ Schedule:Day:Hourly,
 Schedule:Day:Hourly,
     Bulk Storage PLUG WEH,    !- Name
     Fraction,                 !- Schedule Type Limits Name
-    0.0,                      !- Hour 1
-    0.0,                      !- Hour 2
-    0.0,                      !- Hour 3
-    0.0,                      !- Hour 4
-    0.0,                      !- Hour 5
-    0.0,                      !- Hour 6
-    0.0,                      !- Hour 7
-    0.0,                      !- Hour 8
-    0.0,                      !- Hour 9
-    0.0,                      !- Hour 10
-    0.0,                      !- Hour 11
-    0.0,                      !- Hour 12
-    0.0,                      !- Hour 13
-    0.0,                      !- Hour 14
-    0.0,                      !- Hour 15
-    0.0,                      !- Hour 16
-    0.0,                      !- Hour 17
-    0.0,                      !- Hour 18
-    0.0,                      !- Hour 19
-    0.0,                      !- Hour 20
-    0.0,                      !- Hour 21
-    0.0,                      !- Hour 22
-    0.0,                      !- Hour 23
-    0.0;                      !- Hour 24
+    0,                        !- Hour 1
+    0,                        !- Hour 2
+    0,                        !- Hour 3
+    0,                        !- Hour 4
+    0,                        !- Hour 5
+    0,                        !- Hour 6
+    0,                        !- Hour 7
+    0,                        !- Hour 8
+    0,                        !- Hour 9
+    0,                        !- Hour 10
+    0,                        !- Hour 11
+    0,                        !- Hour 12
+    0,                        !- Hour 13
+    0,                        !- Hour 14
+    0,                        !- Hour 15
+    0,                        !- Hour 16
+    0,                        !- Hour 17
+    0,                        !- Hour 18
+    0,                        !- Hour 19
+    0,                        !- Hour 20
+    0,                        !- Hour 21
+    0,                        !- Hour 22
+    0,                        !- Hour 23
+    0;                        !- Hour 24
 
 Schedule:Day:Hourly,
     Fine Storage INFIL WD,    !- Name
     Any Number,               !- Schedule Type Limits Name
-    1.0,                      !- Hour 1
-    1.0,                      !- Hour 2
-    1.0,                      !- Hour 3
-    1.0,                      !- Hour 4
-    1.0,                      !- Hour 5
-    1.0,                      !- Hour 6
-    1.0,                      !- Hour 7
+    1,                        !- Hour 1
+    1,                        !- Hour 2
+    1,                        !- Hour 3
+    1,                        !- Hour 4
+    1,                        !- Hour 5
+    1,                        !- Hour 6
+    1,                        !- Hour 7
     1.25,                     !- Hour 8
     1.25,                     !- Hour 9
     0.5,                      !- Hour 10
@@ -1087,40 +1084,40 @@ Schedule:Day:Hourly,
     0.5,                      !- Hour 16
     1.25,                     !- Hour 17
     1.25,                     !- Hour 18
-    1.0,                      !- Hour 19
-    1.0,                      !- Hour 20
-    1.0,                      !- Hour 21
-    1.0,                      !- Hour 22
-    1.0,                      !- Hour 23
-    1.0;                      !- Hour 24
+    1,                        !- Hour 19
+    1,                        !- Hour 20
+    1,                        !- Hour 21
+    1,                        !- Hour 22
+    1,                        !- Hour 23
+    1;                        !- Hour 24
 
 Schedule:Day:Hourly,
     Fine Storage INFIL WEH,    !- Name
     Fraction,                 !- Schedule Type Limits Name
-    1.0,                      !- Hour 1
-    1.0,                      !- Hour 2
-    1.0,                      !- Hour 3
-    1.0,                      !- Hour 4
-    1.0,                      !- Hour 5
-    1.0,                      !- Hour 6
-    1.0,                      !- Hour 7
-    1.0,                      !- Hour 8
-    1.0,                      !- Hour 9
-    1.0,                      !- Hour 10
-    1.0,                      !- Hour 11
-    1.0,                      !- Hour 12
-    1.0,                      !- Hour 13
-    1.0,                      !- Hour 14
-    1.0,                      !- Hour 15
-    1.0,                      !- Hour 16
-    1.0,                      !- Hour 17
-    1.0,                      !- Hour 18
-    1.0,                      !- Hour 19
-    1.0,                      !- Hour 20
-    1.0,                      !- Hour 21
-    1.0,                      !- Hour 22
-    1.0,                      !- Hour 23
-    1.0;                      !- Hour 24
+    1,                        !- Hour 1
+    1,                        !- Hour 2
+    1,                        !- Hour 3
+    1,                        !- Hour 4
+    1,                        !- Hour 5
+    1,                        !- Hour 6
+    1,                        !- Hour 7
+    1,                        !- Hour 8
+    1,                        !- Hour 9
+    1,                        !- Hour 10
+    1,                        !- Hour 11
+    1,                        !- Hour 12
+    1,                        !- Hour 13
+    1,                        !- Hour 14
+    1,                        !- Hour 15
+    1,                        !- Hour 16
+    1,                        !- Hour 17
+    1,                        !- Hour 18
+    1,                        !- Hour 19
+    1,                        !- Hour 20
+    1,                        !- Hour 21
+    1,                        !- Hour 22
+    1,                        !- Hour 23
+    1;                        !- Hour 24
 
 Schedule:Day:Hourly,
     Bulk Storage INFIL_Base WD,    !- Name
@@ -1133,15 +1130,15 @@ Schedule:Day:Hourly,
     0.765,                    !- Hour 6
     0.765,                    !- Hour 7
     0.765,                    !- Hour 8
-    1.0,                      !- Hour 9
-    1.0,                      !- Hour 10
-    1.0,                      !- Hour 11
-    1.0,                      !- Hour 12
+    1,                        !- Hour 9
+    1,                        !- Hour 10
+    1,                        !- Hour 11
+    1,                        !- Hour 12
     0.765,                    !- Hour 13
-    1.0,                      !- Hour 14
-    1.0,                      !- Hour 15
-    1.0,                      !- Hour 16
-    1.0,                      !- Hour 17
+    1,                        !- Hour 14
+    1,                        !- Hour 15
+    1,                        !- Hour 16
+    1,                        !- Hour 17
     0.765,                    !- Hour 18
     0.765,                    !- Hour 19
     0.765,                    !- Hour 20
@@ -1189,15 +1186,15 @@ Schedule:Day:Hourly,
     0.75,                     !- Hour 6
     0.75,                     !- Hour 7
     0.75,                     !- Hour 8
-    1.0,                      !- Hour 9
-    1.0,                      !- Hour 10
-    1.0,                      !- Hour 11
-    1.0,                      !- Hour 12
+    1,                        !- Hour 9
+    1,                        !- Hour 10
+    1,                        !- Hour 11
+    1,                        !- Hour 12
     0.75,                     !- Hour 13
-    1.0,                      !- Hour 14
-    1.0,                      !- Hour 15
-    1.0,                      !- Hour 16
-    1.0,                      !- Hour 17
+    1,                        !- Hour 14
+    1,                        !- Hour 15
+    1,                        !- Hour 16
+    1,                        !- Hour 17
     0.75,                     !- Hour 18
     0.75,                     !- Hour 19
     0.75,                     !- Hour 20
@@ -1237,58 +1234,58 @@ Schedule:Day:Hourly,
 Schedule:Day:Hourly,
     Exterior Light Day Schdule,    !- Name
     Fraction,                 !- Schedule Type Limits Name
-    1.0,                      !- Hour 1
-    1.0,                      !- Hour 2
-    1.0,                      !- Hour 3
-    1.0,                      !- Hour 4
-    1.0,                      !- Hour 5
-    1.0,                      !- Hour 6
-    1.0,                      !- Hour 7
-    1.0,                      !- Hour 8
-    0.0,                      !- Hour 9
-    0.0,                      !- Hour 10
-    0.0,                      !- Hour 11
-    0.0,                      !- Hour 12
-    0.0,                      !- Hour 13
-    0.0,                      !- Hour 14
-    0.0,                      !- Hour 15
-    0.0,                      !- Hour 16
-    0.0,                      !- Hour 17
-    1.0,                      !- Hour 18
-    1.0,                      !- Hour 19
-    1.0,                      !- Hour 20
-    1.0,                      !- Hour 21
-    1.0,                      !- Hour 22
-    1.0,                      !- Hour 23
-    1.0;                      !- Hour 24
+    1,                        !- Hour 1
+    1,                        !- Hour 2
+    1,                        !- Hour 3
+    1,                        !- Hour 4
+    1,                        !- Hour 5
+    1,                        !- Hour 6
+    1,                        !- Hour 7
+    1,                        !- Hour 8
+    0,                        !- Hour 9
+    0,                        !- Hour 10
+    0,                        !- Hour 11
+    0,                        !- Hour 12
+    0,                        !- Hour 13
+    0,                        !- Hour 14
+    0,                        !- Hour 15
+    0,                        !- Hour 16
+    0,                        !- Hour 17
+    1,                        !- Hour 18
+    1,                        !- Hour 19
+    1,                        !- Hour 20
+    1,                        !- Hour 21
+    1,                        !- Hour 22
+    1,                        !- Hour 23
+    1;                        !- Hour 24
 
 Schedule:Day:Hourly,
     SYS Day   1,              !- Name
     Any Number,               !- Schedule Type Limits Name
-    1.0,                      !- Hour 1
-    1.0,                      !- Hour 2
-    1.0,                      !- Hour 3
-    1.0,                      !- Hour 4
-    1.0,                      !- Hour 5
-    1.0,                      !- Hour 6
-    1.0,                      !- Hour 7
-    1.0,                      !- Hour 8
-    1.0,                      !- Hour 9
-    1.0,                      !- Hour 10
-    1.0,                      !- Hour 11
-    1.0,                      !- Hour 12
-    1.0,                      !- Hour 13
-    1.0,                      !- Hour 14
-    1.0,                      !- Hour 15
-    1.0,                      !- Hour 16
-    1.0,                      !- Hour 17
-    1.0,                      !- Hour 18
-    1.0,                      !- Hour 19
-    1.0,                      !- Hour 20
-    1.0,                      !- Hour 21
-    1.0,                      !- Hour 22
-    1.0,                      !- Hour 23
-    1.0;                      !- Hour 24
+    1,                        !- Hour 1
+    1,                        !- Hour 2
+    1,                        !- Hour 3
+    1,                        !- Hour 4
+    1,                        !- Hour 5
+    1,                        !- Hour 6
+    1,                        !- Hour 7
+    1,                        !- Hour 8
+    1,                        !- Hour 9
+    1,                        !- Hour 10
+    1,                        !- Hour 11
+    1,                        !- Hour 12
+    1,                        !- Hour 13
+    1,                        !- Hour 14
+    1,                        !- Hour 15
+    1,                        !- Hour 16
+    1,                        !- Hour 17
+    1,                        !- Hour 18
+    1,                        !- Hour 19
+    1,                        !- Hour 20
+    1,                        !- Hour 21
+    1,                        !- Hour 22
+    1,                        !- Hour 23
+    1;                        !- Hour 24
 
 Schedule:Week:Daily,
     Office Light Wk Schedule,    !- Name
@@ -2184,8 +2181,8 @@ Material,
     MediumSmooth,             !- Roughness
     0.0095,                   !- Thickness
     0.58,                     !- Conductivity
-    800.0,                    !- Density
-    1090.0,                   !- Specific Heat
+    800,                      !- Density
+    1090,                     !- Specific Heat
     0.9,                      !- Thermal Absorptance
     0.7,                      !- Solar Absorptance
     0.7;                      !- Visible Absorptance
@@ -2228,8 +2225,8 @@ Material,
     MediumSmooth,             !- Roughness
     0.15,                     !- Thickness
     0.12,                     !- Conductivity
-    540.0,                    !- Density
-    1210.0,                   !- Specific Heat
+    540,                      !- Density
+    1210,                     !- Specific Heat
     0.9,                      !- Thermal Absorptance
     0.7,                      !- Solar Absorptance
     0.7;                      !- Visible Absorptance
@@ -2239,8 +2236,8 @@ Material,
     MediumSmooth,             !- Roughness
     0.0127,                   !- Thickness
     0.057,                    !- Conductivity
-    288.0,                    !- Density
-    1339.0,                   !- Specific Heat
+    288,                      !- Density
+    1339,                     !- Specific Heat
     0.9,                      !- Thermal Absorptance
     0.7,                      !- Solar Absorptance
     0.2;                      !- Visible Absorptance
@@ -2250,8 +2247,8 @@ Material,
     Smooth,                   !- Roughness
     0.0254,                   !- Thickness
     0.72,                     !- Conductivity
-    1856.0,                   !- Density
-    840.0,                    !- Specific Heat
+    1856,                     !- Density
+    840,                      !- Specific Heat
     0.9,                      !- Thermal Absorptance
     0.7,                      !- Solar Absorptance
     0.7;                      !- Visible Absorptance
@@ -2261,16 +2258,16 @@ Material,
     Smooth,                   !- Roughness
     0.0008,                   !- Thickness
     45.28,                    !- Conductivity
-    7824.0,                   !- Density
-    500.0;                    !- Specific Heat
+    7824,                     !- Density
+    500;                      !- Specific Heat
 
 Material,
     F08 Metal roof surface,    !- Name
     Smooth,                   !- Roughness
     0.0008,                   !- Thickness
     45.28,                    !- Conductivity
-    7824.0,                   !- Density
-    500.0,                    !- Specific Heat
+    7824,                     !- Density
+    500,                      !- Specific Heat
     0.9,                      !- Thermal Absorptance
     0.77;                     !- Solar Absorptance
 
@@ -2279,8 +2276,8 @@ Material,
     VeryRough,                !- Roughness
     0.0032,                   !- Thickness
     0.04,                     !- Conductivity
-    1120.0,                   !- Density
-    1260.0,                   !- Specific Heat
+    1120,                     !- Density
+    1260,                     !- Specific Heat
     0.9,                      !- Thermal Absorptance
     0.77;                     !- Solar Absorptance
 
@@ -2289,8 +2286,8 @@ Material,
     Rough,                    !- Roughness
     0.0095,                   !- Thickness
     0.16,                     !- Conductivity
-    1120.0,                   !- Density
-    1460.0,                   !- Specific Heat
+    1120,                     !- Density
+    1460,                     !- Specific Heat
     0.9,                      !- Thermal Absorptance
     0.77;                     !- Solar Absorptance
 
@@ -2299,8 +2296,8 @@ Material,
     Smooth,                   !- Roughness
     0.0127,                   !- Thickness
     0.16,                     !- Conductivity
-    800.0,                    !- Density
-    1090.0,                   !- Specific Heat
+    800,                      !- Density
+    1090,                     !- Specific Heat
     0.9,                      !- Thermal Absorptance
     0.7,                      !- Solar Absorptance
     0.5;                      !- Visible Absorptance
@@ -2310,80 +2307,80 @@ Material,
     MediumSmooth,             !- Roughness
     0.0159,                   !- Thickness
     0.16,                     !- Conductivity
-    800.0,                    !- Density
-    1090.0;                   !- Specific Heat
+    800,                      !- Density
+    1090;                     !- Specific Heat
 
 Material,
     G02 16mm plywood,         !- Name
     Smooth,                   !- Roughness
     0.0159,                   !- Thickness
     0.12,                     !- Conductivity
-    544.0,                    !- Density
-    1210.0;                   !- Specific Heat
+    544,                      !- Density
+    1210;                     !- Specific Heat
 
 Material,
     M14 150mm heavyweight concrete roof,    !- Name
     MediumRough,              !- Roughness
     0.1524,                   !- Thickness
     2.31,                     !- Conductivity
-    2322.0,                   !- Density
-    832.0;                    !- Specific Heat
+    2322,                     !- Density
+    832;                      !- Specific Heat
 
 Material,
     100mm Normalweight concrete wall,    !- Name
     MediumRough,              !- Roughness
     0.1016,                   !- Thickness
     2.31,                     !- Conductivity
-    2322.0,                   !- Density
-    832.0;                    !- Specific Heat
+    2322,                     !- Density
+    832;                      !- Specific Heat
 
 Material,
     200mm Normalweight concrete wall,    !- Name
     MediumRough,              !- Roughness
     0.2032,                   !- Thickness
     2.31,                     !- Conductivity
-    2322.0,                   !- Density
-    832.0;                    !- Specific Heat
+    2322,                     !- Density
+    832;                      !- Specific Heat
 
 Material,
     100mm Normalweight concrete floor,    !- Name
     MediumRough,              !- Roughness
     0.1016,                   !- Thickness
     2.31,                     !- Conductivity
-    2322.0,                   !- Density
-    832.0;                    !- Specific Heat
+    2322,                     !- Density
+    832;                      !- Specific Heat
 
 Material,
     150mm Normalweight concrete floor,    !- Name
     MediumRough,              !- Roughness
     0.1524,                   !- Thickness
     2.31,                     !- Conductivity
-    2322.0,                   !- Density
-    832.0;                    !- Specific Heat
+    2322,                     !- Density
+    832;                      !- Specific Heat
 
 Material,
     200mm Normalweight concrete floor,    !- Name
     MediumRough,              !- Roughness
     0.2032,                   !- Thickness
     2.31,                     !- Conductivity
-    2322.0,                   !- Density
-    832.0;                    !- Specific Heat
+    2322,                     !- Density
+    832;                      !- Specific Heat
 
 Material,
     M10 200mm concrete block wall,    !- Name
     MediumRough,              !- Roughness
     0.2032,                   !- Thickness
     0.72,                     !- Conductivity
-    800.0,                    !- Density
-    832.0;                    !- Specific Heat
+    800,                      !- Density
+    832;                      !- Specific Heat
 
 Material,
     M10 200mm concrete block basement wall,    !- Name
     MediumRough,              !- Roughness
     0.2032,                   !- Thickness
     1.326,                    !- Conductivity
-    1842.0,                   !- Density
-    912.0;                    !- Specific Heat
+    1842,                     !- Density
+    912;                      !- Specific Heat
 
 Material:NoMass,
     R13_Insulation,           !- Name
@@ -2593,7 +2590,7 @@ WindowMaterial:Glazing,
     0.749,                    !- Visible Transmittance at Normal Incidence
     0.07,                     !- Front Side Visible Reflectance at Normal Incidence
     0.07,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2609,7 +2606,7 @@ WindowMaterial:Glazing,
     0.3,                      !- Visible Transmittance at Normal Incidence
     0.16,                     !- Front Side Visible Reflectance at Normal Incidence
     0.29,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.6,                      !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2711,7 +2708,7 @@ WindowMaterial:Glazing,
     0.22,                     !- Visible Transmittance at Normal Incidence
     0.17,                     !- Front Side Visible Reflectance at Normal Incidence
     0.35,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.55,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2728,7 +2725,7 @@ WindowMaterial:Glazing,
     0.155,                    !- Visible Transmittance at Normal Incidence
     0.073,                    !- Front Side Visible Reflectance at Normal Incidence
     0.073,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2744,7 +2741,7 @@ WindowMaterial:Glazing,
     0.13,                     !- Visible Transmittance at Normal Incidence
     0.1,                      !- Front Side Visible Reflectance at Normal Incidence
     0.32,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.45,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2760,7 +2757,7 @@ WindowMaterial:Glazing,
     0.881,                    !- Visible Transmittance at Normal Incidence
     0.08,                     !- Front Side Visible Reflectance at Normal Incidence
     0.08,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2776,7 +2773,7 @@ WindowMaterial:Glazing,
     0.334,                    !- Visible Transmittance at Normal Incidence
     0.453,                    !- Front Side Visible Reflectance at Normal Incidence
     0.505,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.82,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2792,7 +2789,7 @@ WindowMaterial:Glazing,
     0.57,                     !- Visible Transmittance at Normal Incidence
     0.06,                     !- Front Side Visible Reflectance at Normal Incidence
     0.06,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2808,7 +2805,7 @@ WindowMaterial:Glazing,
     0.431,                    !- Visible Transmittance at Normal Incidence
     0.052,                    !- Front Side Visible Reflectance at Normal Incidence
     0.052,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2824,7 +2821,7 @@ WindowMaterial:Glazing,
     0.84,                     !- Visible Transmittance at Normal Incidence
     0.055,                    !- Front Side Visible Reflectance at Normal Incidence
     0.078,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.1,                      !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2840,7 +2837,7 @@ WindowMaterial:Glazing,
     0.611,                    !- Visible Transmittance at Normal Incidence
     0.061,                    !- Front Side Visible Reflectance at Normal Incidence
     0.061,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2856,7 +2853,7 @@ WindowMaterial:Glazing,
     0.5,                      !- Visible Transmittance at Normal Incidence
     0.035,                    !- Front Side Visible Reflectance at Normal Incidence
     0.054,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.1,                      !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2872,7 +2869,7 @@ WindowMaterial:Glazing,
     0.18,                     !- Visible Transmittance at Normal Incidence
     0.08,                     !- Front Side Visible Reflectance at Normal Incidence
     0.28,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.6,                      !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2888,7 +2885,7 @@ WindowMaterial:Glazing,
     0.19,                     !- Visible Transmittance at Normal Incidence
     0.21,                     !- Front Side Visible Reflectance at Normal Incidence
     0.38,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.51,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2949,7 +2946,7 @@ WindowMaterial:Glazing,
     0.25,                     !- Visible Transmittance at Normal Incidence
     0.18,                     !- Front Side Visible Reflectance at Normal Incidence
     0.45,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.82,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2966,7 +2963,7 @@ WindowMaterial:Glazing,
     0.766,                    !- Visible Transmittance at Normal Incidence
     0.147,                    !- Front Side Visible Reflectance at Normal Incidence
     0.167,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.075,                    !- Front Side Infrared Hemispherical Emissivity
     0.72,                     !- Back Side Infrared Hemispherical Emissivity
     0.14;                     !- Conductivity
@@ -2982,7 +2979,7 @@ WindowMaterial:Glazing,
     0.46,                     !- Visible Transmittance at Normal Incidence
     0.06,                     !- Front Side Visible Reflectance at Normal Incidence
     0.04,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.03,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -2998,7 +2995,7 @@ WindowMaterial:Glazing,
     0.81,                     !- Visible Transmittance at Normal Incidence
     0.11,                     !- Front Side Visible Reflectance at Normal Incidence
     0.12,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.2,                      !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -3014,7 +3011,7 @@ WindowMaterial:Glazing,
     0.898,                    !- Visible Transmittance at Normal Incidence
     0.081,                    !- Front Side Visible Reflectance at Normal Incidence
     0.081,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -3030,7 +3027,7 @@ WindowMaterial:Glazing,
     0.2,                      !- Visible Transmittance at Normal Incidence
     0.23,                     !- Front Side Visible Reflectance at Normal Incidence
     0.33,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.58,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -3046,7 +3043,7 @@ WindowMaterial:Glazing,
     0.08,                     !- Visible Transmittance at Normal Incidence
     0.41,                     !- Front Side Visible Reflectance at Normal Incidence
     0.37,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.4,                      !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -3062,7 +3059,7 @@ WindowMaterial:Glazing,
     0.822,                    !- Visible Transmittance at Normal Incidence
     0.075,                    !- Front Side Visible Reflectance at Normal Incidence
     0.075,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -3078,7 +3075,7 @@ WindowMaterial:Glazing,
     0.128,                    !- Visible Transmittance at Normal Incidence
     0.081,                    !- Front Side Visible Reflectance at Normal Incidence
     0.081,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.1,                      !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -3094,7 +3091,7 @@ WindowMaterial:Glazing,
     0.551,                    !- Visible Transmittance at Normal Incidence
     0.336,                    !- Front Side Visible Reflectance at Normal Incidence
     0.375,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.046,                    !- Front Side Infrared Hemispherical Emissivity
     0.72,                     !- Back Side Infrared Hemispherical Emissivity
     0.14;                     !- Conductivity
@@ -3110,7 +3107,7 @@ WindowMaterial:Glazing,
     0.155,                    !- Visible Transmittance at Normal Incidence
     0.073,                    !- Front Side Visible Reflectance at Normal Incidence
     0.073,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.1,                      !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -3126,7 +3123,7 @@ WindowMaterial:Glazing,
     0.77,                     !- Visible Transmittance at Normal Incidence
     0.06,                     !- Front Side Visible Reflectance at Normal Incidence
     0.07,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.03,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -3142,7 +3139,7 @@ WindowMaterial:Glazing,
     0.534,                    !- Visible Transmittance at Normal Incidence
     0.057,                    !- Front Side Visible Reflectance at Normal Incidence
     0.057,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -3158,7 +3155,7 @@ WindowMaterial:Glazing,
     0.09,                     !- Visible Transmittance at Normal Incidence
     0.14,                     !- Front Side Visible Reflectance at Normal Incidence
     0.35,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.47,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -3174,7 +3171,7 @@ WindowMaterial:Glazing,
     0.529698,                 !- Visible Transmittance at Normal Incidence
     0.420302,                 !- Front Side Visible Reflectance at Normal Incidence
     0.420302,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.9,                      !- Front Side Infrared Hemispherical Emissivity
     0.9,                      !- Back Side Infrared Hemispherical Emissivity
     0.0103561;                !- Conductivity
@@ -3190,7 +3187,7 @@ WindowMaterial:Glazing,
     0.479911,                 !- Visible Transmittance at Normal Incidence
     0.470089,                 !- Front Side Visible Reflectance at Normal Incidence
     0.470089,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.9,                      !- Front Side Infrared Hemispherical Emissivity
     0.9,                      !- Back Side Infrared Hemispherical Emissivity
     0.010358;                 !- Conductivity
@@ -3206,7 +3203,7 @@ WindowMaterial:Glazing,
     0.322771,                 !- Visible Transmittance at Normal Incidence
     0.182598,                 !- Front Side Visible Reflectance at Normal Incidence
     0.081654,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.538265,                 !- Back Side Infrared Hemispherical Emissivity
     1.000345;                 !- Conductivity
@@ -3222,10 +3219,10 @@ WindowMaterial:Glazing,
     0.89926,                  !- Visible Transmittance at Normal Incidence
     0.082563,                 !- Front Side Visible Reflectance at Normal Incidence
     0.082564,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
-    1.0;                      !- Conductivity
+    1;                        !- Conductivity
 
 WindowMaterial:Glazing,
     PYR B CLEAR 3MM,          !- Name
@@ -3238,7 +3235,7 @@ WindowMaterial:Glazing,
     0.82,                     !- Visible Transmittance at Normal Incidence
     0.11,                     !- Front Side Visible Reflectance at Normal Incidence
     0.12,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.2,                      !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -3254,7 +3251,7 @@ WindowMaterial:Glazing,
     0.78,                     !- Visible Transmittance at Normal Incidence
     0.07,                     !- Front Side Visible Reflectance at Normal Incidence
     0.06,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.03,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -3270,7 +3267,7 @@ WindowMaterial:Glazing,
     0.847,                    !- Visible Transmittance at Normal Incidence
     0.099,                    !- Front Side Visible Reflectance at Normal Incidence
     0.099,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.1,                      !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -4494,10 +4491,10 @@ WindowMaterial:Glazing,
     0.416044,                 !- Visible Transmittance at Normal Incidence
     0.078729,                 !- Front Side Visible Reflectance at Normal Incidence
     0.10654,                  !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
-    1.0;                      !- Conductivity
+    1;                        !- Conductivity
 
 <<<<<<< HEAD
 WindowMaterial:Glazing,
@@ -4511,17 +4508,10 @@ WindowMaterial:Glazing,
     0.677694,                 !- Visible Transmittance at Normal Incidence
     0.042734,                 !- Front Side Visible Reflectance at Normal Incidence
     0.05547,                  !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.046,                    !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
-    1.0;                      !- Conductivity
-=======
-  Construction,
-    Window_U_0.42_SHGC_0.35, !- Name
-    LoE TINT 6MM,            !- Outside Layer
-    AIR 6MM,                 !- Layer 2
-    CLEAR 6MM;               !- Layer 3
->>>>>>> develop
+    1;                        !- Conductivity
 
 WindowMaterial:Glazing,
     Glass_2052_LayerAvg,      !- Name
@@ -4534,10 +4524,10 @@ WindowMaterial:Glazing,
     0.586833,                 !- Visible Transmittance at Normal Incidence
     0.05805,                  !- Front Side Visible Reflectance at Normal Incidence
     0.058397,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
-    1.0;                      !- Conductivity
+    1;                        !- Conductivity
 
 <<<<<<< HEAD
 WindowMaterial:Glazing,
@@ -4551,10 +4541,10 @@ WindowMaterial:Glazing,
     0.797579,                 !- Visible Transmittance at Normal Incidence
     0.043577,                 !- Front Side Visible Reflectance at Normal Incidence
     0.056031,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.042274,                 !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
-    1.0;                      !- Conductivity
+    1;                        !- Conductivity
 
 WindowMaterial:Glazing,
     Glass_2027F_LayerAvg,     !- Name
@@ -4567,16 +4557,10 @@ WindowMaterial:Glazing,
     0.765222,                 !- Visible Transmittance at Normal Incidence
     0.0546,                   !- Front Side Visible Reflectance at Normal Incidence
     0.073741,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.03675,                  !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
-    1.0;                      !- Conductivity
-=======
-  Construction,
-    Window_U_0.33_SHGC_0.40, !- Name
-    LoE TINT 6MM,            !- Outside Layer
-    AIR 13MM,                !- Layer 2
-    CLEAR 6MM;               !- Layer 3
+    1;                        !- Conductivity
 
   Construction,
     Window_U_0.34_SHGC_0.40, !- Name
@@ -4596,7 +4580,7 @@ WindowMaterial:Glazing,
     0.818,                    !- Visible Transmittance at Normal Incidence
     0.11,                     !- Front Side Visible Reflectance at Normal Incidence
     0.11,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.1,                      !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -4613,7 +4597,7 @@ WindowMaterial:Glazing,
     0.85,                     !- Visible Transmittance at Normal Incidence
     0.12,                     !- Front Side Visible Reflectance at Normal Incidence
     0.12,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.4,                      !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -4636,7 +4620,7 @@ WindowMaterial:Glazing,
     0.559652,                 !- Visible Transmittance at Normal Incidence
     0.072726,                 !- Front Side Visible Reflectance at Normal Incidence
     0.094819,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.279,                    !- Back Side Infrared Hemispherical Emissivity
     0.814;                    !- Conductivity
@@ -4653,7 +4637,7 @@ WindowMaterial:Glazing,
     0.487937,                 !- Visible Transmittance at Normal Incidence
     0.209449,                 !- Front Side Visible Reflectance at Normal Incidence
     0.306829,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.39,                     !- Back Side Infrared Hemispherical Emissivity
     0.962;                    !- Conductivity
@@ -4676,7 +4660,7 @@ WindowMaterial:Glazing,
     0.510046,                 !- Visible Transmittance at Normal Incidence
     0.237458,                 !- Front Side Visible Reflectance at Normal Incidence
     0.270435,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.37,                     !- Back Side Infrared Hemispherical Emissivity
     0.94;                     !- Conductivity
@@ -4693,7 +4677,7 @@ WindowMaterial:Glazing,
     0.490923,                 !- Visible Transmittance at Normal Incidence
     0.25084,                  !- Front Side Visible Reflectance at Normal Incidence
     0.232929,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.454,                    !- Back Side Infrared Hemispherical Emissivity
     0.934;                    !- Conductivity
@@ -4716,7 +4700,7 @@ WindowMaterial:Glazing,
     0.543814,                 !- Visible Transmittance at Normal Incidence
     0.0766,                   !- Front Side Visible Reflectance at Normal Incidence
     0.079448,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.676,                    !- Back Side Infrared Hemispherical Emissivity
     0.933;                    !- Conductivity
@@ -4733,7 +4717,7 @@ WindowMaterial:Glazing,
     0.710088,                 !- Visible Transmittance at Normal Incidence
     0.071115,                 !- Front Side Visible Reflectance at Normal Incidence
     0.070696,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
     0.815;                    !- Conductivity
@@ -4756,10 +4740,10 @@ WindowMaterial:Glazing,
     0.6013,                   !- Visible Transmittance at Normal Incidence
     0.077225,                 !- Front Side Visible Reflectance at Normal Incidence
     0.096992,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.298,                    !- Back Side Infrared Hemispherical Emissivity
-    1.0;                      !- Conductivity
+    1;                        !- Conductivity
 
 <<<<<<< HEAD
 WindowMaterial:Glazing,
@@ -4773,7 +4757,7 @@ WindowMaterial:Glazing,
     0.341994,                 !- Visible Transmittance at Normal Incidence
     0.128888,                 !- Front Side Visible Reflectance at Normal Incidence
     0.128077,                 !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.868,                    !- Back Side Infrared Hemispherical Emissivity
     0.846;                    !- Conductivity
@@ -4796,7 +4780,7 @@ WindowMaterial:Glazing,
     0.14,                     !- Visible Transmittance at Normal Incidence
     0.31,                     !- Front Side Visible Reflectance at Normal Incidence
     0.35,                     !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.47,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -4813,7 +4797,7 @@ WindowMaterial:Glazing,
     0.901,                    !- Visible Transmittance at Normal Incidence
     0.081,                    !- Front Side Visible Reflectance at Normal Incidence
     0.081,                    !- Back Side Visible Reflectance at Normal Incidence
-    0.0,                      !- Infrared Transmittance at Normal Incidence
+    0,                        !- Infrared Transmittance at Normal Incidence
     0.84,                     !- Front Side Infrared Hemispherical Emissivity
     0.84,                     !- Back Side Infrared Hemispherical Emissivity
     0.9;                      !- Conductivity
@@ -6597,10 +6581,10 @@ GlobalGeometryRules,
 
 Zone,
     Zone1 Office,             !- Name
-    0.0,                      !- Direction of Relative North
-    0.0,                      !- X Origin
-    0.0,                      !- Y Origin
-    0.0,                      !- Z Origin
+    0,                        !- Direction of Relative North
+    0,                        !- X Origin
+    0,                        !- Y Origin
+    0,                        !- Z Origin
     1,                        !- Type
     1,                        !- Multiplier
     autocalculate,            !- Ceiling Height
@@ -6612,10 +6596,10 @@ Zone,
 
 Zone,
     Zone2 Fine Storage,       !- Name
-    0.0,                      !- Direction of Relative North
-    0.0,                      !- X Origin
-    0.0,                      !- Y Origin
-    0.0,                      !- Z Origin
+    0,                        !- Direction of Relative North
+    0,                        !- X Origin
+    0,                        !- Y Origin
+    0,                        !- Z Origin
     1,                        !- Type
     1,                        !- Multiplier
     autocalculate,            !- Ceiling Height
@@ -6627,10 +6611,10 @@ Zone,
 
 Zone,
     Zone3 Bulk Storage,       !- Name
-    0.0,                      !- Direction of Relative North
-    0.0,                      !- X Origin
-    0.0,                      !- Y Origin
-    0.0,                      !- Z Origin
+    0,                        !- Direction of Relative North
+    0,                        !- X Origin
+    0,                        !- Y Origin
+    0,                        !- Z Origin
     1,                        !- Type
     1,                        !- Multiplier
     autocalculate,            !- Ceiling Height
@@ -6651,17 +6635,17 @@ BuildingSurface:Detailed,
     WindExposed,              !- Wind Exposure
     autocalculate,            !- View Factor to Ground
     autocalculate,            !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Ycoordinate
     4.26699190227003,         !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Zcoordinate
     25.9067365494966,         !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Zcoordinate
     25.9067365494966,         !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 4 Ycoordinate
     4.26699190227003;         !- Vertex 4 Zcoordinate
 
 BuildingSurface:Detailed,
@@ -6676,14 +6660,14 @@ BuildingSurface:Detailed,
     autocalculate,            !- View Factor to Ground
     autocalculate,            !- Number of Vertices
     25.9067365494966,         !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Ycoordinate
     4.26699190227003,         !- Vertex 1 Zcoordinate
     25.9067365494966,         !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Zcoordinate
     25.9067365494966,         !- Vertex 3 Xcoordinate
     9.14355407629293,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     25.9067365494966,         !- Vertex 4 Xcoordinate
     9.14355407629293,         !- Vertex 4 Ycoordinate
     4.26699190227003;         !- Vertex 4 Zcoordinate
@@ -6704,11 +6688,11 @@ BuildingSurface:Detailed,
     4.26699190227003,         !- Vertex 1 Zcoordinate
     25.9067365494966,         !- Vertex 2 Xcoordinate
     9.14355407629293,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     9.14355407629293,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     9.14355407629293,         !- Vertex 4 Ycoordinate
     4.26699190227003;         !- Vertex 4 Zcoordinate
 
@@ -6723,17 +6707,17 @@ BuildingSurface:Detailed,
     WindExposed,              !- Wind Exposure
     autocalculate,            !- View Factor to Ground
     autocalculate,            !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     9.14355407629293,         !- Vertex 1 Ycoordinate
     4.26699190227003,         !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     9.14355407629293,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 4 Ycoordinate
     4.26699190227003;         !- Vertex 4 Zcoordinate
 
 BuildingSurface:Detailed,
@@ -6748,16 +6732,16 @@ BuildingSurface:Detailed,
     autocalculate,            !- View Factor to Ground
     autocalculate,            !- Number of Vertices
     25.9067365494966,         !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Ycoordinate
     8.53398380454007,         !- Vertex 1 Zcoordinate
     25.9067365494966,         !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Zcoordinate
     45.7177703814647,         !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Zcoordinate
     45.7177703814647,         !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 4 Ycoordinate
     8.53398380454007;         !- Vertex 4 Zcoordinate
 
 BuildingSurface:Detailed,
@@ -6772,14 +6756,14 @@ BuildingSurface:Detailed,
     autocalculate,            !- View Factor to Ground
     autocalculate,            !- Number of Vertices
     45.7177703814647,         !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Ycoordinate
     8.53398380454007,         !- Vertex 1 Zcoordinate
     45.7177703814647,         !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Zcoordinate
     45.7177703814647,         !- Vertex 3 Xcoordinate
     30.4785135876431,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     45.7177703814647,         !- Vertex 4 Xcoordinate
     30.4785135876431,         !- Vertex 4 Ycoordinate
     8.53398380454007;         !- Vertex 4 Zcoordinate
@@ -6795,7 +6779,7 @@ BuildingSurface:Detailed,
     NoWind,                   !- Wind Exposure
     autocalculate,            !- View Factor to Ground
     autocalculate,            !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     30.4785135876431,         !- Vertex 1 Ycoordinate
     8.53398380454007,         !- Vertex 1 Zcoordinate
     45.7177703814647,         !- Vertex 2 Xcoordinate
@@ -6803,10 +6787,10 @@ BuildingSurface:Detailed,
     8.53398380454007,         !- Vertex 2 Zcoordinate
     45.7177703814647,         !- Vertex 3 Xcoordinate
     30.4785135876431,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     30.4785135876431,         !- Vertex 4 Ycoordinate
-    0.0;                      !- Vertex 4 Zcoordinate
+    0;                        !- Vertex 4 Zcoordinate
 
 BuildingSurface:Detailed,
     Fine Storage Left Wall,    !- Name
@@ -6819,16 +6803,16 @@ BuildingSurface:Detailed,
     WindExposed,              !- Wind Exposure
     autocalculate,            !- View Factor to Ground
     autocalculate,            !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     30.4785135876431,         !- Vertex 1 Ycoordinate
     8.53398380454007,         !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     30.4785135876431,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     9.14355407629293,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     9.14355407629293,         !- Vertex 4 Ycoordinate
     8.53398380454007;         !- Vertex 4 Zcoordinate
 
@@ -6848,10 +6832,10 @@ BuildingSurface:Detailed,
     8.53398380454007,         !- Vertex 1 Zcoordinate
     45.7177703814647,         !- Vertex 2 Xcoordinate
     30.4785135876431,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     45.7177703814647,         !- Vertex 3 Xcoordinate
     100.579094839222,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     45.7177703814647,         !- Vertex 4 Xcoordinate
     100.579094839222,         !- Vertex 4 Ycoordinate
     8.53398380454007;         !- Vertex 4 Zcoordinate
@@ -6872,11 +6856,11 @@ BuildingSurface:Detailed,
     8.53398380454007,         !- Vertex 1 Zcoordinate
     45.7177703814647,         !- Vertex 2 Xcoordinate
     100.579094839222,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     100.579094839222,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     100.579094839222,         !- Vertex 4 Ycoordinate
     8.53398380454007;         !- Vertex 4 Zcoordinate
 
@@ -6891,16 +6875,16 @@ BuildingSurface:Detailed,
     WindExposed,              !- Wind Exposure
     autocalculate,            !- View Factor to Ground
     autocalculate,            !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     100.579094839222,         !- Vertex 1 Ycoordinate
     8.53398380454007,         !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     100.579094839222,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     30.4785135876431,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     30.4785135876431,         !- Vertex 4 Ycoordinate
     8.53398380454007;         !- Vertex 4 Zcoordinate
 
@@ -6916,16 +6900,16 @@ BuildingSurface:Detailed,
     autocalculate,            !- View Factor to Ground
     autocalculate,            !- Number of Vertices
     25.9067365494966,         !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Ycoordinate
     4.26699190227003,         !- Vertex 1 Zcoordinate
     25.9067365494966,         !- Vertex 2 Xcoordinate
     9.14355407629293,         !- Vertex 2 Ycoordinate
     4.26699190227003,         !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     9.14355407629293,         !- Vertex 3 Ycoordinate
     4.26699190227003,         !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 4 Ycoordinate
     4.26699190227003;         !- Vertex 4 Zcoordinate
 
 BuildingSurface:Detailed,
@@ -6940,16 +6924,16 @@ BuildingSurface:Detailed,
     autocalculate,            !- View Factor to Ground
     autocalculate,            !- Number of Vertices
     45.7177703814647,         !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Ycoordinate
     8.53398380454007,         !- Vertex 1 Zcoordinate
     45.7177703814647,         !- Vertex 2 Xcoordinate
     30.4785135876431,         !- Vertex 2 Ycoordinate
     8.53398380454007,         !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     30.4785135876431,         !- Vertex 3 Ycoordinate
     8.53398380454007,         !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 4 Ycoordinate
     8.53398380454007;         !- Vertex 4 Zcoordinate
 
 BuildingSurface:Detailed,
@@ -6963,10 +6947,10 @@ BuildingSurface:Detailed,
     WindExposed,              !- Wind Exposure
     autocalculate,            !- View Factor to Ground
     autocalculate,            !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     100.579094839222,         !- Vertex 1 Ycoordinate
     8.53398380454007,         !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     30.4785135876431,         !- Vertex 2 Ycoordinate
     8.53398380454007,         !- Vertex 2 Zcoordinate
     45.7177703814647,         !- Vertex 3 Xcoordinate
@@ -6987,17 +6971,17 @@ BuildingSurface:Detailed,
     WindExposed,              !- Wind Exposure
     autocalculate,            !- View Factor to Ground
     autocalculate,            !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Ycoordinate
     8.53398380454007,         !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Ycoordinate
     4.26699190227003,         !- Vertex 2 Zcoordinate
     25.9067365494966,         !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Ycoordinate
     4.26699190227003,         !- Vertex 3 Zcoordinate
     25.9067365494966,         !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 4 Ycoordinate
     8.53398380454007;         !- Vertex 4 Zcoordinate
 
 BuildingSurface:Detailed,
@@ -7011,17 +6995,17 @@ BuildingSurface:Detailed,
     WindExposed,              !- Wind Exposure
     autocalculate,            !- View Factor to Ground
     autocalculate,            !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     9.14355407629293,         !- Vertex 1 Ycoordinate
     8.53398380454007,         !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     9.14355407629293,         !- Vertex 2 Ycoordinate
     4.26699190227003,         !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 3 Ycoordinate
     4.26699190227003,         !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 4 Ycoordinate
     8.53398380454007;         !- Vertex 4 Zcoordinate
 
 BuildingSurface:Detailed,
@@ -7037,16 +7021,16 @@ BuildingSurface:Detailed,
     autocalculate,            !- Number of Vertices
     25.9067365494966,         !- Vertex 1 Xcoordinate
     9.14355407629293,         !- Vertex 1 Ycoordinate
-    0.0,                      !- Vertex 1 Zcoordinate
+    0,                        !- Vertex 1 Zcoordinate
     25.9067365494966,         !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     9.14355407629293,         !- Vertex 4 Ycoordinate
-    0.0;                      !- Vertex 4 Zcoordinate
+    0;                        !- Vertex 4 Zcoordinate
 
 BuildingSurface:Detailed,
     Fine Storage Floor,       !- Name
@@ -7061,22 +7045,22 @@ BuildingSurface:Detailed,
     autocalculate,            !- Number of Vertices
     45.7177703814647,         !- Vertex 1 Xcoordinate
     30.4785135876431,         !- Vertex 1 Ycoordinate
-    0.0,                      !- Vertex 1 Zcoordinate
+    0,                        !- Vertex 1 Zcoordinate
     45.7177703814647,         !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Zcoordinate
     25.9067365494966,         !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Zcoordinate
     25.9067365494966,         !- Vertex 4 Xcoordinate
     9.14355407629293,         !- Vertex 4 Ycoordinate
-    0.0,                      !- Vertex 4 Zcoordinate
-    0.0,                      !- Vertex 5 Xcoordinate
+    0,                        !- Vertex 4 Zcoordinate
+    0,                        !- Vertex 5 Xcoordinate
     9.14355407629293,         !- Vertex 5 Ycoordinate
-    0.0,                      !- Vertex 5 Zcoordinate
-    0.0,                      !- Vertex 6 Xcoordinate
+    0,                        !- Vertex 5 Zcoordinate
+    0,                        !- Vertex 6 Xcoordinate
     30.4785135876431,         !- Vertex 6 Ycoordinate
-    0.0;                      !- Vertex 6 Zcoordinate
+    0;                        !- Vertex 6 Zcoordinate
 
 BuildingSurface:Detailed,
     Bulk Storage Floor,       !- Name
@@ -7091,16 +7075,16 @@ BuildingSurface:Detailed,
     autocalculate,            !- Number of Vertices
     45.7177703814647,         !- Vertex 1 Xcoordinate
     100.579094839222,         !- Vertex 1 Ycoordinate
-    0.0,                      !- Vertex 1 Zcoordinate
+    0,                        !- Vertex 1 Zcoordinate
     45.7177703814647,         !- Vertex 2 Xcoordinate
     30.4785135876431,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     30.4785135876431,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     100.579094839222,         !- Vertex 4 Ycoordinate
-    0.0;                      !- Vertex 4 Zcoordinate
+    0;                        !- Vertex 4 Zcoordinate
 
 FenestrationSurface:Detailed,
     Office Front Wall Window 1,    !- Name
@@ -7114,16 +7098,16 @@ FenestrationSurface:Detailed,
     1,                        !- Multiplier
     4,                        !- Number of Vertices
     3.65742163051717,         !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Ycoordinate
     2.43929602151392,         !- Vertex 1 Zcoordinate
     3.65742163051717,         !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Ycoordinate
     0.914355407629293,        !- Vertex 2 Zcoordinate
     7.31484326103434,         !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Ycoordinate
     0.914355407629293,        !- Vertex 3 Zcoordinate
     7.31484326103434,         !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 4 Ycoordinate
     2.43929602151392;         !- Vertex 4 Zcoordinate
 
 FenestrationSurface:Detailed,
@@ -7138,16 +7122,16 @@ FenestrationSurface:Detailed,
     1,                        !- Multiplier
     4,                        !- Number of Vertices
     18.5918932884623,         !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Ycoordinate
     2.43929602151392,         !- Vertex 1 Zcoordinate
     18.5918932884623,         !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Ycoordinate
     0.914355407629293,        !- Vertex 2 Zcoordinate
     22.2493149189795,         !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Ycoordinate
     0.914355407629293,        !- Vertex 3 Zcoordinate
     22.2493149189795,         !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 4 Ycoordinate
     2.43929602151392;         !- Vertex 4 Zcoordinate
 
 FenestrationSurface:Detailed,
@@ -7162,16 +7146,16 @@ FenestrationSurface:Detailed,
     1,                        !- Multiplier
     4,                        !- Number of Vertices
     12.039012867119,          !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Ycoordinate
     2.133495951135,           !- Vertex 1 Zcoordinate
     12.039012867119,          !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Zcoordinate
     12.953323682378,          !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Zcoordinate
     12.953323682378,          !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 4 Ycoordinate
     2.133495951135;           !- Vertex 4 Zcoordinate
 
 FenestrationSurface:Detailed,
@@ -7185,16 +7169,16 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     1,                        !- Multiplier
     4,                        !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     7.51904930207155,         !- Vertex 1 Ycoordinate
     2.43929602151392,         !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     7.51904930207155,         !- Vertex 2 Ycoordinate
     0.914355407629293,        !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     5.38555335093654,         !- Vertex 3 Ycoordinate
     0.914355407629293,        !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     5.38555335093654,         !- Vertex 4 Ycoordinate
     2.43929602151392;         !- Vertex 4 Zcoordinate
 
@@ -7209,16 +7193,16 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     1,                        !- Multiplier
     4,                        !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     3.75800072535639,         !- Vertex 1 Ycoordinate
     2.43929602151392,         !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     3.75800072535639,         !- Vertex 2 Ycoordinate
     0.914355407629293,        !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     1.62450477422138,         !- Vertex 3 Ycoordinate
     0.914355407629293,        !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     1.62450477422138,         !- Vertex 4 Ycoordinate
     2.43929602151392;         !- Vertex 4 Zcoordinate
 
@@ -7233,16 +7217,16 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     1,                        !- Multiplier
     4,                        !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     5.02895474196111,         !- Vertex 1 Ycoordinate
     2.13349595113502,         !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     5.02895474196111,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     4.11459933433182,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     4.11459933433182,         !- Vertex 4 Ycoordinate
     2.13349595113502;         !- Vertex 4 Zcoordinate
 
@@ -7258,16 +7242,16 @@ FenestrationSurface:Detailed,
     ,                         !- Multiplier
     4,                        !- Number of Vertices
     33.479659311782,          !- Vertex 1 Xcoordinate
-    0.0,                      !- Vertex 1 Ycoordinate
+    0,                        !- Vertex 1 Ycoordinate
     2.438251358764,           !- Vertex 1 Zcoordinate
     33.479659311782,          !- Vertex 2 Xcoordinate
-    0.0,                      !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Ycoordinate
+    0,                        !- Vertex 2 Zcoordinate
     36.527540398794,          !- Vertex 3 Xcoordinate
-    0.0,                      !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Ycoordinate
+    0,                        !- Vertex 3 Zcoordinate
     36.527540398794,          !- Vertex 4 Xcoordinate
-    0.0,                      !- Vertex 4 Ycoordinate
+    0,                        !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
 
 FenestrationSurface:Detailed,
@@ -7286,10 +7270,10 @@ FenestrationSurface:Detailed,
     2.438251358764,           !- Vertex 1 Zcoordinate
     45.717770381465,          !- Vertex 2 Xcoordinate
     4.9416673497,             !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     45.717770381465,          !- Vertex 3 Xcoordinate
     7.989548436712,           !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     45.717770381465,          !- Vertex 4 Xcoordinate
     7.989548436712,           !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
@@ -7310,10 +7294,10 @@ FenestrationSurface:Detailed,
     2.438251358764,           !- Vertex 1 Zcoordinate
     45.717770381465,          !- Vertex 2 Xcoordinate
     23.08747404264,           !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     45.717770381465,          !- Vertex 3 Xcoordinate
     26.135355129652,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     45.717770381465,          !- Vertex 4 Xcoordinate
     26.135355129652,          !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
@@ -7329,16 +7313,16 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     ,                         !- Multiplier
     4,                        !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     28.015580613846,          !- Vertex 1 Ycoordinate
     2.438251358764,           !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     28.015580613846,          !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     24.967699526834,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     24.967699526834,          !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
 
@@ -7353,16 +7337,16 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     1,                        !- Multiplier
     4,                        !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     93.95001813391,           !- Vertex 1 Ycoordinate
     2.438251358764,           !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     93.95001813391,           !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     90.902137046898,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     90.902137046898,          !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
 
@@ -7377,16 +7361,16 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     1,                        !- Multiplier
     4,                        !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     84.882660341586,          !- Vertex 1 Ycoordinate
     2.438251358764,           !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     84.882660341586,          !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     81.834779254575,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     81.834779254575,          !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
 
@@ -7401,16 +7385,16 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     1,                        !- Multiplier
     4,                        !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     75.815302549262,          !- Vertex 1 Ycoordinate
     2.438251358764,           !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     75.815302549262,          !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     72.767421462251,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     72.767421462251,          !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
 
@@ -7425,16 +7409,16 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     1,                        !- Multiplier
     4,                        !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     66.747944756938,          !- Vertex 1 Ycoordinate
     2.438251358764,           !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     66.747944756938,          !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     63.700063669927,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     63.700063669927,          !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
 
@@ -7449,16 +7433,16 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     1,                        !- Multiplier
     4,                        !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     57.680586964615,          !- Vertex 1 Ycoordinate
     2.438251358764,           !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     57.680586964615,          !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     54.632705877603,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     54.632705877603,          !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
 
@@ -7473,16 +7457,16 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     1,                        !- Multiplier
     4,                        !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     48.613229172291,          !- Vertex 1 Ycoordinate
     2.438251358764,           !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     48.613229172291,          !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     45.565348085279,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     45.565348085279,          !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
 
@@ -7497,16 +7481,16 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     1,                        !- Multiplier
     4,                        !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     39.545871379967,          !- Vertex 1 Ycoordinate
     2.438251358764,           !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     39.545871379967,          !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     36.497990292956,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     36.497990292956,          !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
 
@@ -7526,10 +7510,10 @@ FenestrationSurface:Detailed,
     2.438251358764,           !- Vertex 1 Zcoordinate
     45.717770381465,          !- Vertex 2 Xcoordinate
     37.093047145699,          !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     45.717770381465,          !- Vertex 3 Xcoordinate
     39.531328232711,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     45.717770381465,          !- Vertex 4 Xcoordinate
     39.531328232711,          !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
@@ -7550,10 +7534,10 @@ FenestrationSurface:Detailed,
     2.438251358764,           !- Vertex 1 Zcoordinate
     45.717770381465,          !- Vertex 2 Xcoordinate
     55.273759445851,          !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     45.717770381465,          !- Vertex 3 Xcoordinate
     57.712040532863,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     45.717770381465,          !- Vertex 4 Xcoordinate
     57.712040532863,          !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
@@ -7574,10 +7558,10 @@ FenestrationSurface:Detailed,
     2.438251358764,           !- Vertex 1 Zcoordinate
     45.717770381465,          !- Vertex 2 Xcoordinate
     73.315058536411,          !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     45.717770381465,          !- Vertex 3 Xcoordinate
     75.753339623423,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     45.717770381465,          !- Vertex 4 Xcoordinate
     75.753339623423,          !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
@@ -7598,10 +7582,10 @@ FenestrationSurface:Detailed,
     2.438251358764,           !- Vertex 1 Zcoordinate
     45.717770381465,          !- Vertex 2 Xcoordinate
     89.887764572181,          !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     45.717770381465,          !- Vertex 3 Xcoordinate
     92.326045659193,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     45.717770381465,          !- Vertex 4 Xcoordinate
     92.326045659193,          !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
@@ -7622,10 +7606,10 @@ FenestrationSurface:Detailed,
     2.438251358764,           !- Vertex 1 Zcoordinate
     40.439074862717,          !- Vertex 2 Xcoordinate
     100.579094839222,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     37.391193775705,          !- Vertex 3 Xcoordinate
     100.579094839222,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     37.391193775705,          !- Vertex 4 Xcoordinate
     100.579094839222,         !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
@@ -7646,10 +7630,10 @@ FenestrationSurface:Detailed,
     2.438251358764,           !- Vertex 1 Zcoordinate
     30.771439143478,          !- Vertex 2 Xcoordinate
     100.579094839222,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     27.723558056466,          !- Vertex 3 Xcoordinate
     100.579094839222,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     27.723558056466,          !- Vertex 4 Xcoordinate
     100.579094839222,         !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
@@ -7670,10 +7654,10 @@ FenestrationSurface:Detailed,
     2.438251358764,           !- Vertex 1 Zcoordinate
     16.687766818731,          !- Vertex 2 Xcoordinate
     100.579094839222,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     13.639885731719,          !- Vertex 3 Xcoordinate
     100.579094839222,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     13.639885731719,          !- Vertex 4 Xcoordinate
     100.579094839222,         !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
@@ -7694,10 +7678,10 @@ FenestrationSurface:Detailed,
     2.438251358764,           !- Vertex 1 Zcoordinate
     7.322384518536,           !- Vertex 2 Xcoordinate
     100.579094839222,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     4.274503431524,           !- Vertex 3 Xcoordinate
     100.579094839222,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     4.274503431524,           !- Vertex 4 Xcoordinate
     100.579094839222,         !- Vertex 4 Ycoordinate
     2.438251358764;           !- Vertex 4 Zcoordinate
@@ -7718,10 +7702,10 @@ FenestrationSurface:Detailed,
     2.13349595113502,         !- Vertex 1 Zcoordinate
     45.7177703814647,         !- Vertex 2 Xcoordinate
     47.5464811967232,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     45.7177703814647,         !- Vertex 3 Xcoordinate
     48.4608366043525,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     45.7177703814647,         !- Vertex 4 Xcoordinate
     48.4608366043525,         !- Vertex 4 Ycoordinate
     2.13349595113502;         !- Vertex 4 Zcoordinate
@@ -7742,10 +7726,10 @@ FenestrationSurface:Detailed,
     2.13349595113502,         !- Vertex 1 Zcoordinate
     45.7177703814647,         !- Vertex 2 Xcoordinate
     65.071626509618,          !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     45.7177703814647,         !- Vertex 3 Xcoordinate
     65.9859819172473,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     45.7177703814647,         !- Vertex 4 Xcoordinate
     65.9859819172473,         !- Vertex 4 Ycoordinate
     2.13349595113502;         !- Vertex 4 Zcoordinate
@@ -7766,10 +7750,10 @@ FenestrationSurface:Detailed,
     2.13349595113502,         !- Vertex 1 Zcoordinate
     45.7177703814647,         !- Vertex 2 Xcoordinate
     82.5967718225128,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     45.7177703814647,         !- Vertex 3 Xcoordinate
     83.5111272301421,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     45.7177703814647,         !- Vertex 4 Xcoordinate
     83.5111272301421,         !- Vertex 4 Ycoordinate
     2.13349595113502;         !- Vertex 4 Zcoordinate
@@ -7790,10 +7774,10 @@ FenestrationSurface:Detailed,
     2.133495951135,           !- Vertex 1 Zcoordinate
     23.352181134479,          !- Vertex 2 Xcoordinate
     100.579094839222,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     22.43782572685,           !- Vertex 3 Xcoordinate
     100.579094839222,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     22.43782572685,           !- Vertex 4 Xcoordinate
     100.579094839222,         !- Vertex 4 Ycoordinate
     2.133495951135;           !- Vertex 4 Zcoordinate
@@ -7809,16 +7793,16 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     ,                         !- Multiplier
     4,                        !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     70.345058109595,          !- Vertex 1 Ycoordinate
     2.133495951135,           !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     70.345058109595,          !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     69.430702701966,          !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     69.430702701966,          !- Vertex 4 Ycoordinate
     2.133495951135;           !- Vertex 4 Zcoordinate
 
@@ -7833,18 +7817,18 @@ FenestrationSurface:Detailed,
     ,                         !- Frame and Divider Name
     1,                        !- Multiplier
     4,                        !- Number of Vertices
-    0.0,                      !- Vertex 1 Xcoordinate
+    0,                        !- Vertex 1 Xcoordinate
     19.3538561281534,         !- Vertex 1 Ycoordinate
     2.13349595113502,         !- Vertex 1 Zcoordinate
-    0.0,                      !- Vertex 2 Xcoordinate
+    0,                        !- Vertex 2 Xcoordinate
     20.2682115357827,         !- Vertex 2 Ycoordinate
     2.13349595113502,         !- Vertex 2 Zcoordinate
-    0.0,                      !- Vertex 3 Xcoordinate
+    0,                        !- Vertex 3 Xcoordinate
     20.2682115357827,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
-    0.0,                      !- Vertex 4 Xcoordinate
+    0,                        !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 4 Xcoordinate
     19.3538561281534,         !- Vertex 4 Ycoordinate
-    0.0;                      !- Vertex 4 Zcoordinate
+    0;                        !- Vertex 4 Zcoordinate
 
 FenestrationSurface:Detailed,
     Fine Storage Right Door,    !- Name
@@ -7862,10 +7846,10 @@ FenestrationSurface:Detailed,
     2.13349595113502,         !- Vertex 1 Zcoordinate
     45.7177703814647,         !- Vertex 2 Xcoordinate
     14.7820790900069,         !- Vertex 2 Ycoordinate
-    0.0,                      !- Vertex 2 Zcoordinate
+    0,                        !- Vertex 2 Zcoordinate
     45.7177703814647,         !- Vertex 3 Xcoordinate
     15.6964344976362,         !- Vertex 3 Ycoordinate
-    0.0,                      !- Vertex 3 Zcoordinate
+    0,                        !- Vertex 3 Zcoordinate
     45.7177703814647,         !- Vertex 4 Xcoordinate
     15.6964344976362,         !- Vertex 4 Ycoordinate
     2.13349595113502;         !- Vertex 4 Zcoordinate
@@ -8116,7 +8100,7 @@ WindowProperty:FrameAndDivider,
     ,                         !- Frame Outside Projection
     ,                         !- Frame Inside Projection
     283.91315,                !- Frame Conductance
-    1.0,                      !- Ratio of FrameEdge Glass Conductance to CenterOfGlass Conductance
+    1,                        !- Ratio of FrameEdge Glass Conductance to CenterOfGlass Conductance
     0.7,                      !- Frame Solar Absorptance
     0.7,                      !- Frame Visible Absorptance
     0.9,                      !- Frame Thermal Hemispherical Emissivity
@@ -8127,7 +8111,7 @@ WindowProperty:FrameAndDivider,
     ,                         !- Divider Outside Projection
     ,                         !- Divider Inside Projection
     ,                         !- Divider Conductance
-    1.0,                      !- Ratio of DividerEdge Glass Conductance to CenterOfGlass Conductance
+    1,                        !- Ratio of DividerEdge Glass Conductance to CenterOfGlass Conductance
     ,                         !- Divider Solar Absorptance
     ,                         !- Divider Visible Absorptance
     0.9;                      !- Divider Thermal Hemispherical Emissivity
@@ -8138,7 +8122,7 @@ WindowProperty:FrameAndDivider,
     ,                         !- Frame Outside Projection
     ,                         !- Frame Inside Projection
     283.91315,                !- Frame Conductance
-    1.0,                      !- Ratio of FrameEdge Glass Conductance to CenterOfGlass Conductance
+    1,                        !- Ratio of FrameEdge Glass Conductance to CenterOfGlass Conductance
     0.7,                      !- Frame Solar Absorptance
     0.7,                      !- Frame Visible Absorptance
     0.9,                      !- Frame Thermal Hemispherical Emissivity
@@ -8149,7 +8133,7 @@ WindowProperty:FrameAndDivider,
     ,                         !- Divider Outside Projection
     ,                         !- Divider Inside Projection
     ,                         !- Divider Conductance
-    1.0,                      !- Ratio of DividerEdge Glass Conductance to CenterOfGlass Conductance
+    1,                        !- Ratio of DividerEdge Glass Conductance to CenterOfGlass Conductance
     ,                         !- Divider Solar Absorptance
     ,                         !- Divider Visible Absorptance
     0.9;                      !- Divider Thermal Hemispherical Emissivity
@@ -8165,7 +8149,7 @@ People,
     Zone1 Office,             !- Zone or ZoneList Name
     BLDG_OCC_SCH,             !- Number of People Schedule Name
     People,                   !- Number of People Calculation Method
-    5.0,                      !- Number of People
+    5,                        !- Number of People
     ,                         !- People per Zone Floor Area
     ,                         !- Zone Floor Area per Person
     0.3,                      !- Fraction Radiant
@@ -8183,10 +8167,10 @@ Lights,
     ,                         !- Lighting Level
     10.76391042,              !- Watts per Zone Floor Area
     ,                         !- Watts per Person
-    0.0,                      !- Return Air Fraction
+    0,                        !- Return Air Fraction
     0.37,                     !- Fraction Radiant
     0.18,                     !- Fraction Visible
-    1.0,                      !- Fraction Replaceable
+    1,                        !- Fraction Replaceable
     GeneralLights,            !- EndUse Subcategory
     No;                       !- Return Air Fraction Calculated from Plenum Temperature
 
@@ -8198,10 +8182,10 @@ Lights,
     ,                         !- Lighting Level
     8.611128334,              !- Watts per Zone Floor Area
     ,                         !- Watts per Person
-    0.0,                      !- Return Air Fraction
+    0,                        !- Return Air Fraction
     0.42,                     !- Fraction Radiant
     0.18,                     !- Fraction Visible
-    1.0,                      !- Fraction Replaceable
+    1,                        !- Fraction Replaceable
     GeneralLights,            !- EndUse Subcategory
     No;                       !- Return Air Fraction Calculated from Plenum Temperature
 
@@ -8213,10 +8197,10 @@ Lights,
     ,                         !- Lighting Level
     8.611128334,              !- Watts per Zone Floor Area
     ,                         !- Watts per Person
-    0.0,                      !- Return Air Fraction
+    0,                        !- Return Air Fraction
     0.42,                     !- Fraction Radiant
     0.18,                     !- Fraction Visible
-    1.0,                      !- Fraction Replaceable
+    1,                        !- Fraction Replaceable
     GeneralLights,            !- EndUse Subcategory
     No;                       !- Return Air Fraction Calculated from Plenum Temperature
 
@@ -8255,10 +8239,10 @@ ZoneInfiltration:DesignFlowRate,
     ,                         !- Flow per Zone Floor Area
     0.000396357,              !- Flow per Exterior Surface Area
     ,                         !- Air Changes per Hour
-    0.0,                      !- Constant Term Coefficient
-    0.0,                      !- Temperature Term Coefficient
+    0,                        !- Constant Term Coefficient
+    0,                        !- Temperature Term Coefficient
     0.224,                    !- Velocity Term Coefficient
-    0.0;                      !- Velocity Squared Term Coefficient
+    0;                        !- Velocity Squared Term Coefficient
 
 ZoneInfiltration:DesignFlowRate,
     Office Door Infiltration,    !- Name
@@ -8269,10 +8253,10 @@ ZoneInfiltration:DesignFlowRate,
     ,                         !- Flow per Zone Floor Area
     ,                         !- Flow per Exterior Surface Area
     ,                         !- Air Changes per Hour
-    1.0,                      !- Constant Term Coefficient
-    0.0,                      !- Temperature Term Coefficient
-    0.0,                      !- Velocity Term Coefficient
-    0.0;                      !- Velocity Squared Term Coefficient
+    1,                        !- Constant Term Coefficient
+    0,                        !- Temperature Term Coefficient
+    0,                        !- Velocity Term Coefficient
+    0;                        !- Velocity Squared Term Coefficient
 
 ZoneInfiltration:DesignFlowRate,
     Fine Storage Infiltration,    !- Name
@@ -8283,10 +8267,10 @@ ZoneInfiltration:DesignFlowRate,
     ,                         !- Flow per Zone Floor Area
     0.000406376,              !- Flow per Exterior Surface Area
     ,                         !- Air Changes per Hour
-    0.0,                      !- Constant Term Coefficient
-    0.0,                      !- Temperature Term Coefficient
+    0,                        !- Constant Term Coefficient
+    0,                        !- Temperature Term Coefficient
     0.224,                    !- Velocity Term Coefficient
-    0.0;                      !- Velocity Squared Term Coefficient
+    0;                        !- Velocity Squared Term Coefficient
 
 ZoneInfiltration:DesignFlowRate,
     Bulk Storage Infiltration,    !- Name
@@ -8297,10 +8281,10 @@ ZoneInfiltration:DesignFlowRate,
     ,                         !- Flow per Zone Floor Area
     ,                         !- Flow per Exterior Surface Area
     ,                         !- Air Changes per Hour
-    0.0,                      !- Constant Term Coefficient
-    0.0,                      !- Temperature Term Coefficient
+    0,                        !- Constant Term Coefficient
+    0,                        !- Temperature Term Coefficient
     0.224,                    !- Velocity Term Coefficient
-    0.0;                      !- Velocity Squared Term Coefficient
+    0;                        !- Velocity Squared Term Coefficient
 
 ZoneVentilation:DesignFlowRate,
     Bulk Storage Ventilation-1,    !- Name
@@ -8314,21 +8298,21 @@ ZoneVentilation:DesignFlowRate,
     Exhaust,                  !- Ventilation Type
     31.1361206455786,         !- Fan Pressure Rise
     0.51,                     !- Fan Total Efficiency
-    1.0,                      !- Constant Term Coefficient
-    0.0,                      !- Temperature Term Coefficient
-    0.0,                      !- Velocity Term Coefficient
-    0.0,                      !- Velocity Squared Term Coefficient
+    1,                        !- Constant Term Coefficient
+    0,                        !- Temperature Term Coefficient
+    0,                        !- Velocity Term Coefficient
+    0,                        !- Velocity Squared Term Coefficient
     29.4444452244559,         !- Minimum Indoor Temperature
     ,                         !- Minimum Indoor Temperature Schedule Name
-    100.0,                    !- Maximum Indoor Temperature
+    100,                      !- Maximum Indoor Temperature
     ,                         !- Maximum Indoor Temperature Schedule Name
-    -100.0,                   !- Delta Temperature
+    -100,                     !- Delta Temperature
     ,                         !- Delta Temperature Schedule Name
-    -100.0,                   !- Minimum Outdoor Temperature
+    -100,                     !- Minimum Outdoor Temperature
     ,                         !- Minimum Outdoor Temperature Schedule Name
-    100.0,                    !- Maximum Outdoor Temperature
+    100,                      !- Maximum Outdoor Temperature
     ,                         !- Maximum Outdoor Temperature Schedule Name
-    40.0;                     !- Maximum Wind Speed
+    40;                       !- Maximum Wind Speed
 
 ZoneVentilation:DesignFlowRate,
     Bulk Storage Ventilation-2,    !- Name
@@ -8341,22 +8325,22 @@ ZoneVentilation:DesignFlowRate,
     ,                         !- Air Changes per Hour
     Natural,                  !- Ventilation Type
     ,                         !- Fan Pressure Rise
-    1.0,                      !- Fan Total Efficiency
-    0.0,                      !- Constant Term Coefficient
-    0.0,                      !- Temperature Term Coefficient
+    1,                        !- Fan Total Efficiency
+    0,                        !- Constant Term Coefficient
+    0,                        !- Temperature Term Coefficient
     0.224,                    !- Velocity Term Coefficient
-    0.0,                      !- Velocity Squared Term Coefficient
+    0,                        !- Velocity Squared Term Coefficient
     -73.3333352760033,        !- Minimum Indoor Temperature
     ,                         !- Minimum Indoor Temperature Schedule Name
     29.4444452244559,         !- Maximum Indoor Temperature
     ,                         !- Maximum Indoor Temperature Schedule Name
-    -100.0,                   !- Delta Temperature
+    -100,                     !- Delta Temperature
     ,                         !- Delta Temperature Schedule Name
-    -100.0,                   !- Minimum Outdoor Temperature
+    -100,                     !- Minimum Outdoor Temperature
     ,                         !- Minimum Outdoor Temperature Schedule Name
-    100.0,                    !- Maximum Outdoor Temperature
+    100,                      !- Maximum Outdoor Temperature
     ,                         !- Maximum Outdoor Temperature Schedule Name
-    40.0;                     !- Maximum Wind Speed
+    40;                       !- Maximum Wind Speed
 
 Exterior:Lights,
     Exterior_Lights,          !- Name
@@ -8368,23 +8352,23 @@ Exterior:Lights,
 DesignSpecification:OutdoorAir,
     SZ DSOA Zone1 Office,     !- Name
     Flow/Area,                !- Outdoor Air Method
-    0.0,                      !- Outdoor Air Flow per Person
+    0,                        !- Outdoor Air Flow per Person
     0.000508002,              !- Outdoor Air Flow per Zone Floor Area
-    0.0;                      !- Outdoor Air Flow per Zone
+    0;                        !- Outdoor Air Flow per Zone
 
 DesignSpecification:OutdoorAir,
     SZ DSOA Zone2 Fine Storage,    !- Name
     Flow/Area,                !- Outdoor Air Method
-    0.0,                      !- Outdoor Air Flow per Person
+    0,                        !- Outdoor Air Flow per Person
     0.000254001,              !- Outdoor Air Flow per Zone Floor Area
-    0.0;                      !- Outdoor Air Flow per Zone
+    0;                        !- Outdoor Air Flow per Zone
 
 DesignSpecification:OutdoorAir,
     SZ DSOA Zone3 Bulk Storage,    !- Name
     Flow/Area,                !- Outdoor Air Method
-    0.0,                      !- Outdoor Air Flow per Person
+    0,                        !- Outdoor Air Flow per Person
     0.000254001,              !- Outdoor Air Flow per Zone Floor Area
-    0.0;                      !- Outdoor Air Flow per Zone
+    0;                        !- Outdoor Air Flow per Zone
 
 Sizing:Parameters,
     1.2,                      !- Heating Sizing Factor
@@ -8394,10 +8378,10 @@ Sizing:Parameters,
 Sizing:Zone,
     Zone1 Office,             !- Zone or ZoneList Name
     SupplyAirTemperature,     !- Zone Cooling Design Supply Air Temperature Input Method
-    14.0,                     !- Zone Cooling Design Supply Air Temperature
+    14,                       !- Zone Cooling Design Supply Air Temperature
     ,                         !- Zone Cooling Design Supply Air Temperature Difference
     SupplyAirTemperature,     !- Zone Heating Design Supply Air Temperature Input Method
-    50.0,                     !- Zone Heating Design Supply Air Temperature
+    50,                       !- Zone Heating Design Supply Air Temperature
     ,                         !- Zone Heating Design Supply Air Temperature Difference
     0.008,                    !- Zone Cooling Design Supply Air Humidity Ratio
     0.008,                    !- Zone Heating Design Supply Air Humidity Ratio
@@ -8405,23 +8389,23 @@ Sizing:Zone,
     0,                        !- Zone Heating Sizing Factor
     0,                        !- Zone Cooling Sizing Factor
     DesignDay,                !- Cooling Design Air Flow Method
-    0.0,                      !- Cooling Design Air Flow Rate
+    0,                        !- Cooling Design Air Flow Rate
     ,                         !- Cooling Minimum Air Flow per Zone Floor Area
     ,                         !- Cooling Minimum Air Flow
-    0.0,                      !- Cooling Minimum Air Flow Fraction
+    0,                        !- Cooling Minimum Air Flow Fraction
     DesignDay,                !- Heating Design Air Flow Method
-    0.0,                      !- Heating Design Air Flow Rate
+    0,                        !- Heating Design Air Flow Rate
     ,                         !- Heating Maximum Air Flow per Zone Floor Area
     ,                         !- Heating Maximum Air Flow
-    0.0;                      !- Heating Maximum Air Flow Fraction
+    0;                        !- Heating Maximum Air Flow Fraction
 
 Sizing:Zone,
     Zone2 Fine Storage,       !- Zone or ZoneList Name
     SupplyAirTemperature,     !- Zone Cooling Design Supply Air Temperature Input Method
-    14.0,                     !- Zone Cooling Design Supply Air Temperature
+    14,                       !- Zone Cooling Design Supply Air Temperature
     ,                         !- Zone Cooling Design Supply Air Temperature Difference
     SupplyAirTemperature,     !- Zone Heating Design Supply Air Temperature Input Method
-    50.0,                     !- Zone Heating Design Supply Air Temperature
+    50,                       !- Zone Heating Design Supply Air Temperature
     ,                         !- Zone Heating Design Supply Air Temperature Difference
     0.008,                    !- Zone Cooling Design Supply Air Humidity Ratio
     0.008,                    !- Zone Heating Design Supply Air Humidity Ratio
@@ -8429,15 +8413,15 @@ Sizing:Zone,
     0,                        !- Zone Heating Sizing Factor
     0,                        !- Zone Cooling Sizing Factor
     DesignDay,                !- Cooling Design Air Flow Method
-    0.0,                      !- Cooling Design Air Flow Rate
+    0,                        !- Cooling Design Air Flow Rate
     ,                         !- Cooling Minimum Air Flow per Zone Floor Area
     ,                         !- Cooling Minimum Air Flow
-    0.0,                      !- Cooling Minimum Air Flow Fraction
+    0,                        !- Cooling Minimum Air Flow Fraction
     DesignDay,                !- Heating Design Air Flow Method
-    0.0,                      !- Heating Design Air Flow Rate
+    0,                        !- Heating Design Air Flow Rate
     ,                         !- Heating Maximum Air Flow per Zone Floor Area
     ,                         !- Heating Maximum Air Flow
-    0.0;                      !- Heating Maximum Air Flow Fraction
+    0;                        !- Heating Maximum Air Flow Fraction
 
 Sizing:Zone,
     Zone3 Bulk Storage,       !- Zone or ZoneList Name
@@ -8454,44 +8438,44 @@ Sizing:Zone,
     ,                         !- Zone Cooling Sizing Factor
     DesignDay,                !- Cooling Design Air Flow Method
     ,                         !- Cooling Design Air Flow Rate
-    0.0,                      !- Cooling Minimum Air Flow per Zone Floor Area
+    0,                        !- Cooling Minimum Air Flow per Zone Floor Area
     ,                         !- Cooling Minimum Air Flow
     ,                         !- Cooling Minimum Air Flow Fraction
     DesignDay,                !- Heating Design Air Flow Method
     ,                         !- Heating Design Air Flow Rate
-    0.0,                      !- Heating Maximum Air Flow per Zone Floor Area
-    0.0,                      !- Heating Maximum Air Flow
+    0,                        !- Heating Maximum Air Flow per Zone Floor Area
+    0,                        !- Heating Maximum Air Flow
     ;                         !- Heating Maximum Air Flow Fraction
 
 Sizing:System,
     PSZ-Office,               !- AirLoop Name
     Sensible,                 !- Type of Load to Size On
     autosize,                 !- Design Outdoor Air Flow Rate
-    1.0,                      !- Central Heating Maximum System Air Flow Ratio
-    7.0,                      !- Preheat Design Temperature
+    1,                        !- Central Heating Maximum System Air Flow Ratio
+    7,                        !- Preheat Design Temperature
     0.008,                    !- Preheat Design Humidity Ratio
-    11.0,                     !- Precool Design Temperature
+    11,                       !- Precool Design Temperature
     0.008,                    !- Precool Design Humidity Ratio
-    12.0,                     !- Central Cooling Design Supply Air Temperature
-    50.0,                     !- Central Heating Design Supply Air Temperature
+    12,                       !- Central Cooling Design Supply Air Temperature
+    50,                       !- Central Heating Design Supply Air Temperature
     NonCoincident,            !- Type of Zone Sum to Use
     No,                       !- 100 Outdoor Air in Cooling
     No,                       !- 100 Outdoor Air in Heating
     0.008,                    !- Central Cooling Design Supply Air Humidity Ratio
     0.008,                    !- Central Heating Design Supply Air Humidity Ratio
     DesignDay,                !- Cooling Supply Air Flow Rate Method
-    0.0,                      !- Cooling Supply Air Flow Rate
+    0,                        !- Cooling Supply Air Flow Rate
     ,                         !- Cooling Supply Air Flow Rate Per Floor Area
     ,                         !- Cooling Fraction of Autosized Cooling Supply Air Flow Rate
     ,                         !- Cooling Supply Air Flow Rate Per Unit Cooling Capacity
     DesignDay,                !- Heating Supply Air Flow Rate Method
-    0.0,                      !- Heating Supply Air Flow Rate
+    0,                        !- Heating Supply Air Flow Rate
     ,                         !- Heating Supply Air Flow Rate Per Floor Area
     ,                         !- Heating Fraction of Autosized Heating Supply Air Flow Rate
     ,                         !- Heating Fraction of Autosized Cooling Supply Air Flow Rate
     ,                         !- Heating Supply Air Flow Rate Per Unit Heating Capacity
     ZoneSum,                  !- System Outdoor Air Method
-    1.0,                      !- Zone Maximum Outdoor Air Fraction
+    1,                        !- Zone Maximum Outdoor Air Fraction
     CoolingDesignCapacity,    !- Cooling Design Capacity Method
     autosize,                 !- Cooling Design Capacity
     ,                         !- Cooling Design Capacity Per Floor Area
@@ -8506,31 +8490,31 @@ Sizing:System,
     PSZ-Fine Storage,         !- AirLoop Name
     Sensible,                 !- Type of Load to Size On
     autosize,                 !- Design Outdoor Air Flow Rate
-    1.0,                      !- Central Heating Maximum System Air Flow Ratio
-    7.0,                      !- Preheat Design Temperature
+    1,                        !- Central Heating Maximum System Air Flow Ratio
+    7,                        !- Preheat Design Temperature
     0.008,                    !- Preheat Design Humidity Ratio
-    11.0,                     !- Precool Design Temperature
+    11,                       !- Precool Design Temperature
     0.008,                    !- Precool Design Humidity Ratio
-    12.0,                     !- Central Cooling Design Supply Air Temperature
-    50.0,                     !- Central Heating Design Supply Air Temperature
+    12,                       !- Central Cooling Design Supply Air Temperature
+    50,                       !- Central Heating Design Supply Air Temperature
     NonCoincident,            !- Type of Zone Sum to Use
     No,                       !- 100 Outdoor Air in Cooling
     No,                       !- 100 Outdoor Air in Heating
     0.008,                    !- Central Cooling Design Supply Air Humidity Ratio
     0.008,                    !- Central Heating Design Supply Air Humidity Ratio
     DesignDay,                !- Cooling Supply Air Flow Rate Method
-    0.0,                      !- Cooling Supply Air Flow Rate
+    0,                        !- Cooling Supply Air Flow Rate
     ,                         !- Cooling Supply Air Flow Rate Per Floor Area
     ,                         !- Cooling Fraction of Autosized Cooling Supply Air Flow Rate
     ,                         !- Cooling Supply Air Flow Rate Per Unit Cooling Capacity
     DesignDay,                !- Heating Supply Air Flow Rate Method
-    0.0,                      !- Heating Supply Air Flow Rate
+    0,                        !- Heating Supply Air Flow Rate
     ,                         !- Heating Supply Air Flow Rate Per Floor Area
     ,                         !- Heating Fraction of Autosized Heating Supply Air Flow Rate
     ,                         !- Heating Fraction of Autosized Cooling Supply Air Flow Rate
     ,                         !- Heating Supply Air Flow Rate Per Unit Heating Capacity
     ZoneSum,                  !- System Outdoor Air Method
-    1.0,                      !- Zone Maximum Outdoor Air Fraction
+    1,                        !- Zone Maximum Outdoor Air Fraction
     CoolingDesignCapacity,    !- Cooling Design Capacity Method
     autosize,                 !- Cooling Design Capacity
     ,                         !- Cooling Design Capacity Per Floor Area
@@ -8693,7 +8677,7 @@ Fan:ConstantVolume,
     622.5,                    !- Pressure Rise
     autosize,                 !- Maximum Flow Rate
     0.825,                    !- Motor Efficiency
-    1.0,                      !- Motor In Airstream Fraction
+    1,                        !- Motor In Airstream Fraction
     PSZ-Office Mixed Air Outlet,    !- Air Inlet Node Name
     PSZ-Office Supply Fan Outlet,    !- Air Outlet Node Name
     General;                  !- EndUse Subcategory
@@ -8705,7 +8689,7 @@ Fan:ConstantVolume,
     622.5,                    !- Pressure Rise
     autosize,                 !- Maximum Flow Rate
     0.875,                    !- Motor Efficiency
-    1.0,                      !- Motor In Airstream Fraction
+    1,                        !- Motor In Airstream Fraction
     PSZ-Fine Storage Mixed Air Outlet,    !- Air Inlet Node Name
     PSZ-Fine Storage Supply Fan Outlet,    !- Air Outlet Node Name
     General;                  !- EndUse Subcategory
@@ -8717,7 +8701,7 @@ Fan:ConstantVolume,
     49.8,                     !- Pressure Rise
     autosize,                 !- Maximum Flow Rate
     0.825,                    !- Motor Efficiency
-    1.0,                      !- Motor In Airstream Fraction
+    1,                        !- Motor In Airstream Fraction
     Zone3UnitHeaterAirInletNode,    !- Air Inlet Node Name
     Zone3UnitHeaterFanOutletNode,    !- Air Outlet Node Name
     Bulk Storage Fan;         !- EndUse Subcategory
@@ -9039,15 +9023,15 @@ NodeList,
 
 OutdoorAir:Node,
     Zone3UnitHeaterOAInNode,    !- Name
-    -1.0;                     !- Height Above Ground
+    -1;                       !- Height Above Ground
 
 OutdoorAir:Node,
     PSZ-Office Cooling Coil Condenser Inlet,    !- Name
-    -1.0;                     !- Height Above Ground
+    -1;                       !- Height Above Ground
 
 OutdoorAir:Node,
     PSZ-Fine Storage Cooling Coil Condenser Inlet,    !- Name
-    -1.0;                     !- Height Above Ground
+    -1;                       !- Height Above Ground
 
 OutdoorAir:NodeList,
     PSZ-Office Outside Air Inlet;    !- Node or NodeList Name 1
@@ -9063,16 +9047,16 @@ WaterHeater:Mixed,
     82.2222244003673,         !- Maximum Temperature Limit
     Cycle,                    !- Heater Control Type
     6154.74805507525,         !- Heater Maximum Capacity
-    0.0,                      !- Heater Minimum Capacity
+    0,                        !- Heater Minimum Capacity
     ,                         !- Heater Ignition Minimum Flow Rate
     ,                         !- Heater Ignition Delay
     Electricity,              !- Heater Fuel Type
-    1.0,                      !- Heater Thermal Efficiency
+    1,                        !- Heater Thermal Efficiency
     ,                         !- Part Load Factor Curve Name
-    483.0,                    !- Off Cycle Parasitic Fuel Consumption Rate
+    483,                      !- Off Cycle Parasitic Fuel Consumption Rate
     Electricity,              !- Off Cycle Parasitic Fuel Type
-    0.0,                      !- Off Cycle Parasitic Heat Fraction to Tank
-    483.0,                    !- On Cycle Parasitic Fuel Consumption Rate
+    0,                        !- Off Cycle Parasitic Heat Fraction to Tank
+    483,                      !- On Cycle Parasitic Fuel Consumption Rate
     ,                         !- On Cycle Parasitic Fuel Type
     ,                         !- On Cycle Parasitic Heat Fraction to Tank
     Zone,                     !- Ambient Temperature Indicator
@@ -9629,7 +9613,7 @@ Curve:Quadratic,
     PSZ-Office DX Coil Cap-FF,    !- Name
     0.8,                      !- Coefficient1 Constant
     0.2,                      !- Coefficient2 x
-    0.0,                      !- Coefficient3 x2
+    0,                        !- Coefficient3 x2
     0.5,                      !- Minimum Value of x
     1.5;                      !- Maximum Value of x
 
@@ -9645,15 +9629,15 @@ Curve:Quadratic,
     PSZ-Office DX Coil PLF,    !- Name
     0.85,                     !- Coefficient1 Constant
     0.15,                     !- Coefficient2 x
-    0.0,                      !- Coefficient3 x2
-    0.0,                      !- Minimum Value of x
-    1.0;                      !- Maximum Value of x
+    0,                        !- Coefficient3 x2
+    0,                        !- Minimum Value of x
+    1;                        !- Maximum Value of x
 
 Curve:Quadratic,
     PSZ-Fine Storage DX Coil Cap-FF,    !- Name
     0.8,                      !- Coefficient1 Constant
     0.2,                      !- Coefficient2 x
-    0.0,                      !- Coefficient3 x2
+    0,                        !- Coefficient3 x2
     0.5,                      !- Minimum Value of x
     1.5;                      !- Maximum Value of x
 
@@ -9669,27 +9653,27 @@ Curve:Quadratic,
     PSZ-Fine Storage DX Coil PLF,    !- Name
     0.85,                     !- Coefficient1 Constant
     0.15,                     !- Coefficient2 x
-    0.0,                      !- Coefficient3 x2
-    0.0,                      !- Minimum Value of x
-    1.0;                      !- Maximum Value of x
+    0,                        !- Coefficient3 x2
+    0,                        !- Minimum Value of x
+    1;                        !- Maximum Value of x
 
 Curve:Cubic,
     PSZ-Office Heating Coil PLF-FPLR,    !- Name
     0.8,                      !- Coefficient1 Constant
     0.2,                      !- Coefficient2 x
-    0.0,                      !- Coefficient3 x2
-    0.0,                      !- Coefficient4 x3
-    0.0,                      !- Minimum Value of x
-    1.0;                      !- Maximum Value of x
+    0,                        !- Coefficient3 x2
+    0,                        !- Coefficient4 x3
+    0,                        !- Minimum Value of x
+    1;                        !- Maximum Value of x
 
 Curve:Cubic,
     PSZ-Fine Storage Heating Coil PLF-FPLR,    !- Name
     0.8,                      !- Coefficient1 Constant
     0.2,                      !- Coefficient2 x
-    0.0,                      !- Coefficient3 x2
-    0.0,                      !- Coefficient4 x3
-    0.0,                      !- Minimum Value of x
-    1.0;                      !- Maximum Value of x
+    0,                        !- Coefficient3 x2
+    0,                        !- Coefficient4 x3
+    0,                        !- Minimum Value of x
+    1;                        !- Maximum Value of x
 
 Curve:Biquadratic,
     PSZ-Office DX Coil Cap-FT,    !- Name
@@ -9824,9 +9808,9 @@ Output:Table:Monthly,
     Heating:Gas,              !- Variable or Meter 9 Name
     ValueWhenMaximumOrMinimum;    !- Aggregation Type for Variable or Meter 9
 
-OutputControl:Table:Style,
-    CommaAndHTML,             !- Column Separator
-    JtoMJ;                    !- Unit Conversion
+OUTPUTCONTROL:TABLE:STYLE,
+    HTML,                     !- Column Separator
+    None;                     !- Unit Conversion
 
 OUTPUT:VARIABLE,
     *,                        !- Key Value
@@ -9836,6 +9820,16 @@ OUTPUT:VARIABLE,
 OUTPUT:VARIABLE,
     *,                        !- Key Value
     Air System Total Cooling Energy,    !- Variable Name
+    hourly;                   !- Reporting Frequency
+
+OUTPUT:VARIABLE,
+    *,                        !- Key Value
+    Zone Ideal Loads Zone Total Heating Energy,    !- Variable Name
+    hourly;                   !- Reporting Frequency
+
+OUTPUT:VARIABLE,
+    *,                        !- Key Value
+    Zone Ideal Loads Zone Total Cooling Energy,    !- Variable Name
     hourly;                   !- Reporting Frequency
 
 OUTPUT:VARIABLE,
@@ -9851,6 +9845,16 @@ OUTPUT:VARIABLE,
 OUTPUT:VARIABLE,
     *,                        !- Key Value
     Heat Exchanger Total Heating Rate,    !- Variable Name
+    hourly;                   !- Reporting Frequency
+
+OUTPUT:VARIABLE,
+    *,                        !- Key Value
+    Heat Exchanger Sensible Effectiveness,    !- Variable Name
+    hourly;                   !- Reporting Frequency
+
+OUTPUT:VARIABLE,
+    *,                        !- Key Value
+    Heat Exchanger Latent Effectiveness,    !- Variable Name
     hourly;                   !- Reporting Frequency
 
 OUTPUT:METER,

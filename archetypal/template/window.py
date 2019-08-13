@@ -358,7 +358,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         constr = idf.add_object(
             "CONSTRUCTION",
             Name="SINGLE PANE HW WINDOW",
-            Outside_Layer="SimpleWindow:SINGLE PANE HW " "WINDOW",
+            Outside_Layer="SimpleWindow:SINGLE PANE HW WINDOW",
             save=False,
         )
         return cls.from_construction(Construction=constr)
@@ -631,7 +631,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 for subsurf in surf.subsurfaces:
                     # For each subsurface, create a WindowSetting object
                     # using the `from_surface` constructor.
-                    window_sets.append(cls.from_surface(subsurf))
+                    if subsurf.Surface_Type.lower() == 'window':
+                        window_sets.append(cls.from_surface(subsurf))
 
         if window_sets:
             # if one or more window has been created, reduce. Using reduce on

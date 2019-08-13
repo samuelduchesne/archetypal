@@ -25,9 +25,9 @@ copyright = '2018, Samuel Letellier-Duchesne'
 author = 'Samuel Letellier-Duchesne'
 
 # The full version, including alpha/beta/rc tags
-import pyTrnsysType
+import archetypal
 
-version = release = pyTrnsysType.__version__
+version = release = archetypal.__version__
 
 # -- General configuration ---------------------------------------------------
 

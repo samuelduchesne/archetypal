@@ -102,9 +102,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
         Args:
             other (UmiSchedule):
-            weights (list-like, optional): A list-like object of len 2. If None,
-                the volume of the zones for which self and other belongs is
-                used.
+            weights (str): Attribute of self and other containing the weight factor.
 
         Returns:
             (UmiSchedule): the combined UmiSchedule object.
@@ -125,7 +123,10 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                 'using 1 as weighting factor in "{}" '
                 "combine.".format(self.__class__.__name__)
             )
-            weights = [1.0, 1.0]
+            weights = [1, 1]
+        elif isinstance(weights, str):
+            weights = [getattr(self, weights), getattr(other, weights)]
+
         new_values = np.average(
             [self.all_values, other.all_values], axis=0, weights=weights
         )
@@ -145,6 +146,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         )
         new_obj.rename(new_name)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj.weights = sum(weights)
         return new_obj
 
     def develop(self):
@@ -387,7 +389,9 @@ class WeekSchedule(UmiSchedule):
         ]
         for day in dayname:
             week_day_schedule_name = epbunch["{}_ScheduleDay_Name".format(day)]
-            blocks.append(self.all_objects[hash(("DaySchedule", week_day_schedule_name))])
+            blocks.append(
+                self.all_objects[hash(("DaySchedule", week_day_schedule_name))]
+            )
 
         return blocks
 

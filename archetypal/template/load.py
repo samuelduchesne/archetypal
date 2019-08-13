@@ -9,10 +9,15 @@ import collections
 
 from archetypal.template import UmiBase, Unique, UmiSchedule
 from archetypal import log, timeit, settings
+from archetypal.utils import reduce
 
 
 class ZoneLoad(UmiBase, metaclass=Unique):
     """Zone Loads
+
+    Important:
+        Please note that the calculation of the equipment power density will sum
+        up the electric equipment objects as well as the gas equipment objects.
 
     .. image:: ../images/template/zoneinfo-loads.png
     """
@@ -180,26 +185,36 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         zone_index = zone.sql["Zones"][
             zone.sql["Zones"]["ZoneName"].str.contains(zone.Name.upper())
         ].index[0]
-        if zone.sql["NominalElectricEquipment"][
+        nominal_elec = zone.sql["NominalElectricEquipment"][
             zone.sql["NominalElectricEquipment"]["ZoneIndex"] == zone_index
-        ].empty:
+        ]
+        nominal_gas = zone.sql["NominalGasEquipment"][
+            zone.sql["NominalGasEquipment"]["ZoneIndex"] == zone_index
+        ]
+        if nominal_elec.empty and nominal_gas.empty:
             EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule(idf=zone.idf)
             EquipmentPowerDensity = 0.0
         else:
-            schedule_equipment_index = zone.sql["NominalElectricEquipment"][
-                zone.sql["NominalElectricEquipment"]["ZoneIndex"] == zone_index
-            ]["ScheduleIndex"].iloc[0]
-            EquipmentAvailabilitySchedule = UmiSchedule(
-                Name=zone.sql["Schedules"]["ScheduleName"].iloc[
-                    schedule_equipment_index - 1
-                ],
-                idf=zone.idf,
-            )
-            EquipmentPowerDensity = (
-                zone.sql["NominalElectricEquipment"][
-                    zone.sql["NominalElectricEquipment"]["ZoneIndex"] == zone_index
-                ]["DesignLevel"].iloc[0]
-                / zone.area
+            if nominal_gas.empty:
+                EquipmentPowerDensity = nominal_elec["DesignLevel"].sum() / zone.area
+            elif nominal_elec.empty:
+                EquipmentPowerDensity = nominal_gas["DesignLevel"].sum() / zone.area
+            else:
+                EquipmentPowerDensity = (
+                    nominal_elec["DesignLevel"].sum() + nominal_gas["DesignLevel"].sum()
+                ) / zone.area
+
+            sched_indexes = nominal_elec["ScheduleIndex"].values
+            design_index = nominal_elec["DesignLevel"].index
+            list_sched = []
+            for sched, design in zip(sched_indexes, design_index):
+                sched_name = zone.sql["Schedules"]["ScheduleName"][sched]
+                schedule = UmiSchedule(Name=sched_name, idf=zone.idf)
+                schedule.weights = nominal_elec["DesignLevel"][design]
+                list_sched.append(schedule)
+
+            EquipmentAvailabilitySchedule = reduce(
+                UmiSchedule.combine, list_sched, weights="weights"
             )
         # Verifies if Lights in zone
         if zone.sql["NominalLighting"][

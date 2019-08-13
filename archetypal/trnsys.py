@@ -111,21 +111,32 @@ def convert_idf_to_trnbuild(
     lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
     # Get objects from IDF file
-    buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, \
-    globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, \
-    peoples, versions, zones = _get_idf_objects(idf)
+    buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
+        idf
+    )
 
     # Get all construction EXCEPT fenestration ones
     constr_list = _get_constr_list(buildingSurfs)
 
     # If ordered=True, ordering idf objects
-    ordered = kwargs.get('ordered', False)
-    buildingSurfs, buildings, constr_list, constructions, equipments, \
-    fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, \
-    materialNoMass, materials, peoples, zones = _order_objects(
-        buildingSurfs, buildings, constr_list, constructions, equipments,
-        fenestrationSurfs, globGeomRules, lights, locations, materialAirGap,
-        materialNoMass, materials, peoples, zones, ordered)
+    ordered = kwargs.get("ordered", False)
+    buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones = _order_objects(
+        buildingSurfs,
+        buildings,
+        constr_list,
+        constructions,
+        equipments,
+        fenestrationSurfs,
+        globGeomRules,
+        lights,
+        locations,
+        materialAirGap,
+        materialNoMass,
+        materials,
+        peoples,
+        zones,
+        ordered,
+    )
 
     # region Get schedules from IDF
     schedule_names, schedules = _get_schedules(idf)
@@ -166,11 +177,9 @@ def convert_idf_to_trnbuild(
     n_ground = _get_ground_vertex(buildingSurfs)
 
     # Writing zones in lines
-    win_slope_dict = _write_zone_buildingSurf_fenestrationSurf(buildingSurfs,
-                                                               coordSys,
-                                                               fenestrationSurfs,
-                                                               idf, lines,
-                                                               n_ground, zones)
+    win_slope_dict = _write_zone_buildingSurf_fenestrationSurf(
+        buildingSurfs, coordSys, fenestrationSurfs, idf, lines, n_ground, zones
+    )
     # endregion
 
     # region Write CONSTRUCTION from IDF to lines (T3D)
@@ -199,12 +208,11 @@ def convert_idf_to_trnbuild(
     #                 t_vis_win, lay_win, width, window_bunches[win_id],
     #                 and maybe tolerance)
     log("Get windows info from window library...")
-    win_u_value = kwargs.get('u_value', 2.2)
-    win_shgc = kwargs.get('shgc', 0.64)
-    win_tvis = kwargs.get('t_vis', 0.8)
-    win_tolerance = kwargs.get('tolerance', 0.05)
-    window = choose_window(win_u_value, win_shgc, win_tvis, win_tolerance,
-                           window_lib)
+    win_u_value = kwargs.get("u_value", 2.2)
+    win_shgc = kwargs.get("shgc", 0.64)
+    win_tvis = kwargs.get("t_vis", 0.8)
+    win_tolerance = kwargs.get("tolerance", 0.05)
+    window = choose_window(win_u_value, win_shgc, win_tvis, win_tolerance, window_lib)
 
     # Write windows in lines
     _write_window(lines, win_slope_dict, window)
@@ -216,8 +224,12 @@ def convert_idf_to_trnbuild(
     # Save T3D file at output_folder
     output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
 
-    log("Write data from IDF to T3D in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO)
+    log(
+        "Write data from IDF to T3D in {:,.2f} seconds".format(
+            time.time() - start_time
+        ),
+        lg.INFO,
+    )
 
     # If asked by the user, save IDF file with modification done on the names,
     # coordinates, etc. at
@@ -266,7 +278,7 @@ def convert_idf_to_trnbuild(
 
 
 def _change_relative_coords(buildingSurfs, coordSys, idf):
-    if coordSys == 'Relative':
+    if coordSys == "Relative":
         # Add zone coordinates to X, Y, Z vectors
         for buildingSurf in buildingSurfs:
             surf_zone = buildingSurf.Zone_Name
@@ -278,10 +290,9 @@ def _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules):
     log("Saving yearly schedules in CSV file...")
     df_sched = pd.DataFrame()
     for schedule_name in schedule_names:
-        df_sched[schedule_name] = schedules[schedule_name]['all values']
-    sched_file_name = 'yearly_schedules_' + os.path.basename(idf_file) + '.csv'
-    df_sched.to_csv(
-        path_or_buf=os.path.join(output_folder, sched_file_name))
+        df_sched[schedule_name] = schedules[schedule_name]["all values"]
+    sched_file_name = "yearly_schedules_" + os.path.basename(idf_file) + ".csv"
+    df_sched.to_csv(path_or_buf=os.path.join(output_folder, sched_file_name))
 
 
 def _get_constr_list(buildingSurfs):
@@ -332,8 +343,7 @@ def _remove_low_conductivity(constructions, idf, materials):
     """
     material_low_res = []
     for material in materials:
-        if material.Thickness / (
-                material.Conductivity * 3.6) < 0.0007:
+        if material.Thickness / (material.Conductivity * 3.6) < 0.0007:
             material_low_res.append(material)
     # Remove materials with resistance lower than 0.0007 from IDF
     mat_name = []
@@ -343,9 +353,10 @@ def _remove_low_conductivity(constructions, idf, materials):
     # Get constructions with only materials with resistance lower than 0.0007
     construct_low_res = []
     for i in range(0, len(constructions)):
-        if len(constructions[i].fieldvalues) == 3 and \
-                constructions[i].fieldvalues[
-                    2] in mat_name:
+        if (
+            len(constructions[i].fieldvalues) == 3
+            and constructions[i].fieldvalues[2] in mat_name
+        ):
             construct_low_res.append(constructions[i])
     # Remove constructions with only materials with resistance lower than
     # 0.0007 from IDF
@@ -354,10 +365,23 @@ def _remove_low_conductivity(constructions, idf, materials):
     return mat_name
 
 
-def _order_objects(buildingSurfs, buildings, constr_list, constructions,
-                   equipments, fenestrationSurfs, globGeomRules, lights,
-                   locations, materialAirGap, materialNoMass, materials,
-                   peoples, zones, ordered=True):
+def _order_objects(
+    buildingSurfs,
+    buildings,
+    constr_list,
+    constructions,
+    equipments,
+    fenestrationSurfs,
+    globGeomRules,
+    lights,
+    locations,
+    materialAirGap,
+    materialNoMass,
+    materials,
+    peoples,
+    zones,
+    ordered=True,
+):
     """
 
     Args:
@@ -398,9 +422,22 @@ def _order_objects(buildingSurfs, buildings, constr_list, constructions,
         lights = list(reversed(lights))
         equipments = list(reversed(equipments))
         constr_list = list(reversed(constr_list))
-    return buildingSurfs, buildings, constr_list, constructions, equipments, \
-           fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, \
-           materialNoMass, materials, peoples, zones
+    return (
+        buildingSurfs,
+        buildings,
+        constr_list,
+        constructions,
+        equipments,
+        fenestrationSurfs,
+        globGeomRules,
+        lights,
+        locations,
+        materialAirGap,
+        materialNoMass,
+        materials,
+        peoples,
+        zones,
+    )
 
 
 def _get_idf_objects(idf):
@@ -428,23 +465,36 @@ def _get_idf_objects(idf):
         equipments (Idf_MSequence): EQUIPMENT object from the IDF
 
     """
-    materials = idf.idfobjects['MATERIAL']
-    materialNoMass = idf.idfobjects['MATERIAL:NOMASS']
-    materialAirGap = idf.idfobjects['MATERIAL:AIRGAP']
-    versions = idf.idfobjects['VERSION']
-    buildings = idf.idfobjects['BUILDING']
-    locations = idf.idfobjects['SITE:LOCATION']
-    globGeomRules = idf.idfobjects['GLOBALGEOMETRYRULES']
-    constructions = idf.idfobjects['CONSTRUCTION']
-    fenestrationSurfs = idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
-    buildingSurfs = idf.idfobjects['BUILDINGSURFACE:DETAILED']
-    zones = idf.idfobjects['ZONE']
-    peoples = idf.idfobjects['PEOPLE']
-    lights = idf.idfobjects['LIGHTS']
-    equipments = idf.idfobjects['ELECTRICEQUIPMENT']
-    return buildingSurfs, buildings, constructions, equipments, \
-           fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, \
-           materialNoMass, materials, peoples, versions, zones
+    materials = idf.idfobjects["MATERIAL"]
+    materialNoMass = idf.idfobjects["MATERIAL:NOMASS"]
+    materialAirGap = idf.idfobjects["MATERIAL:AIRGAP"]
+    versions = idf.idfobjects["VERSION"]
+    buildings = idf.idfobjects["BUILDING"]
+    locations = idf.idfobjects["SITE:LOCATION"]
+    globGeomRules = idf.idfobjects["GLOBALGEOMETRYRULES"]
+    constructions = idf.idfobjects["CONSTRUCTION"]
+    fenestrationSurfs = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"]
+    buildingSurfs = idf.idfobjects["BUILDINGSURFACE:DETAILED"]
+    zones = idf.idfobjects["ZONE"]
+    peoples = idf.idfobjects["PEOPLE"]
+    lights = idf.idfobjects["LIGHTS"]
+    equipments = idf.idfobjects["ELECTRICEQUIPMENT"]
+    return (
+        buildingSurfs,
+        buildings,
+        constructions,
+        equipments,
+        fenestrationSurfs,
+        globGeomRules,
+        lights,
+        locations,
+        materialAirGap,
+        materialNoMass,
+        materials,
+        peoples,
+        versions,
+        zones,
+    )
 
 
 def _load_idf_file_and_clean_names(idf_file, log_clear_names):
@@ -464,30 +514,35 @@ def _load_idf_file_and_clean_names(idf_file, log_clear_names):
     log("Loading IDF file...", lg.INFO)
     start_time = time.time()
     cache_filename = hash_file(idf_file)
-    idf = load_idf_object_from_cache(idf_file, how='idf')
+    idf = load_idf_object_from_cache(idf_file, how="idf")
     if not idf:
         # Load IDF file(s)
         idf = load_idf(idf_file)
-        log("IDF files loaded in {:,.2f} seconds".format(
-            time.time() - start_time),
-            lg.INFO)
+        log(
+            "IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
+            lg.INFO,
+        )
         # Clean names of idf objects (e.g. 'MATERIAL')
         log("Cleaning names of the IDF objects...", lg.INFO)
         start_time = time.time()
         clear_name_idf_objects(idf, log_clear_names)
-        path = os.path.join(settings.cache_folder, cache_filename,
-                            cache_filename + '.idf')
+        path = os.path.join(
+            settings.cache_folder, cache_filename, cache_filename + ".idf"
+        )
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
         idf.saveas(filename=path)
         # save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
-        log("Cleaned IDF object names in {:,.2f} seconds".format(
-            time.time() - start_time), lg.INFO)
+        log(
+            "Cleaned IDF object names in {:,.2f} seconds".format(
+                time.time() - start_time
+            ),
+            lg.INFO,
+        )
     return idf
 
 
-def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
-                  template):
+def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe, template):
     """Ensure the files and directory are here
 
     Args:
@@ -653,13 +708,17 @@ def _get_schedules(idf):
         schedule_names.append(schedule_name)
         schedules[schedule_name] = {}
         year, weeks, days = s.to_year_week_day()
-        schedules[schedule_name]['all values'] = s.all_values
-        schedules[schedule_name]['year'] = year
-        schedules[schedule_name]['weeks'] = weeks
-        schedules[schedule_name]['days'] = days
+        schedules[schedule_name]["all values"] = s.all_values
+        schedules[schedule_name]["year"] = year
+        schedules[schedule_name]["weeks"] = weeks
+        schedules[schedule_name]["days"] = days
 
-    log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO)
+    log(
+        "Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
+            time.time() - start_time
+        ),
+        lg.INFO,
+    )
     return schedule_names, schedules
 
 
@@ -1019,13 +1078,15 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
     if warn:
         log(
             "Window tolerance was not respected. Final tolerance = "
-            "{:,.2f}".format(
-                tolerance), lg.WARNING)
+            "{:,.2f}".format(tolerance),
+            lg.WARNING,
+        )
     # Write in log (info) the characteristics of the window
     log(
         "Characterisitics of the chosen window are: u_value = {:,.2f}, "
         "SHGC= {:,.2f}, t_vis= {:,.2f}".format(u_win, shgc_win, t_vis_win),
-        lg.INFO)
+        lg.INFO,
+    )
 
     # If warn = 1 (tolerance not respected) return tolerance
     if warn:
@@ -1186,9 +1247,9 @@ def trnbuild_idf(
         return True
 
 
-def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys,
-                                              fenestrationSurfs, idf, lines,
-                                              n_ground, zones):
+def _write_zone_buildingSurf_fenestrationSurf(
+    buildingSurfs, coordSys, fenestrationSurfs, idf, lines, n_ground, zones
+):
     """Does several actions on the zones, fenestration and building surfaces.
     Then, writes zone, fenestration and building surfaces information in lines.
 
@@ -1234,14 +1295,16 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys,
             ("ZONES" in the IDF).
     """
     # Get line number where to write
-    variableDictNum = checkStr(lines,
-                               'ALL OBJECTS IN CLASS: '
-                               'OUTPUT:VARIABLEDICTIONARY')
+    variableDictNum = checkStr(
+        lines, "ALL OBJECTS IN CLASS: " "OUTPUT:VARIABLEDICTIONARY"
+    )
     # Initialize list of window's slopes
     count_slope = 0
     win_slope_dict = {}
-    log("Writing geometry (zones, building and fenestration surfaces info from "
-        "idf file to t3d file...")
+    log(
+        "Writing geometry (zones, building and fenestration surfaces info from "
+        "idf file to t3d file..."
+    )
     count_fs = 0
     for zone in zones:
         zone.Direction_of_Relative_North = 0.0
@@ -2084,8 +2147,7 @@ def _write_location_geomrules(globGeomRules, lines, locations):
     """
     # Get line number where to write
     log("Writing location info from idf file to t3d file...")
-    locationNum = checkStr(lines,
-                           'ALL OBJECTS IN CLASS: LOCATION')
+    locationNum = checkStr(lines, "ALL OBJECTS IN CLASS: LOCATION")
     # Writing GLOBALGEOMETRYRULES infos to lines
     for globGeomRule in globGeomRules:
         # Change Geometric rules from Relative to Absolute
@@ -2116,8 +2178,7 @@ def _write_building(buildings, lines):
     """
     # Get line number where to write
     log("Writing building info from idf file to t3d file...")
-    buildingNum = checkStr(lines,
-                           'ALL OBJECTS IN CLASS: BUILDING')
+    buildingNum = checkStr(lines, "ALL OBJECTS IN CLASS: BUILDING")
     # Writing BUILDING infos to lines
     for building in buildings:
         lines.insert(buildingNum, building)
@@ -2134,8 +2195,7 @@ def _write_version(lines, versions):
     """
     # Get line number where to write
     log("Writing data from idf file to t3d file...")
-    versionNum = checkStr(lines,
-                          'ALL OBJECTS IN CLASS: VERSION')
+    versionNum = checkStr(lines, "ALL OBJECTS IN CLASS: VERSION")
     # Writing VERSION infos to lines
     for i in range(0, len(versions)):
         lines.insert(

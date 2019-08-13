@@ -4,47 +4,82 @@ import os
 
 import pytest
 
-from archetypal import convert_idf_to_trnbuild, parallel_process, \
-    trnbuild_idf, copy_file, load_idf, settings, choose_window
+from archetypal import (
+    convert_idf_to_trnbuild,
+    parallel_process,
+    trnbuild_idf,
+    copy_file,
+    load_idf,
+    settings,
+    choose_window,
+)
+
 # Function round to hundreds
-from archetypal.trnsys import _assert_files, _load_idf_file_and_clean_names, \
-    _get_idf_objects, _get_constr_list, _order_objects, _get_schedules, \
-    _yearlySched_to_csv, _remove_low_conductivity, _write_version, \
-    _write_building, _add_change_adj_surf, _write_location_geomrules, \
-    _is_coordSys_world, _change_relative_coords, _get_ground_vertex, \
-    _write_zone_buildingSurf_fenestrationSurf, _write_constructions, \
-    _write_constructions_end, _write_materials, _write_gains, \
-    _write_schedules, \
-    _write_window, _write_winPool, _save_t3d
+from archetypal.trnsys import (
+    _assert_files,
+    _load_idf_file_and_clean_names,
+    _get_idf_objects,
+    _get_constr_list,
+    _order_objects,
+    _get_schedules,
+    _yearlySched_to_csv,
+    _remove_low_conductivity,
+    _write_version,
+    _write_building,
+    _add_change_adj_surf,
+    _write_location_geomrules,
+    _is_coordSys_world,
+    _change_relative_coords,
+    _get_ground_vertex,
+    _write_zone_buildingSurf_fenestrationSurf,
+    _write_constructions,
+    _write_constructions_end,
+    _write_materials,
+    _write_gains,
+    _write_schedules,
+    _write_window,
+    _write_winPool,
+    _save_t3d,
+)
 
 
-class TestsConvert():
+class TestsConvert:
     """Tests convert_idf_to_trnbuild()"""
 
-    @pytest.fixture(scope='class', params=["RefBldgWarehousePost1980_v1.3_5"
-                                           ".0_4A_USA_MD_BALTIMORE.idf",
-                                           "NECB 2011 - Warehouse.idf",
-                                           "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-                                           "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
-                                           "5ZoneGeometryTransform.idf"])
+    @pytest.fixture(
+        scope="class",
+        params=[
+            "RefBldgWarehousePost1980_v1.3_5" ".0_4A_USA_MD_BALTIMORE.idf",
+            "NECB 2011 - Warehouse.idf",
+            "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
+            "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
+            "5ZoneGeometryTransform.idf",
+        ],
+    )
     def converttest(self, config, fresh_start, request):
-        file = os.path.join('tests', 'input_data', 'trnsys', request.param)
-        window_file = 'W74-lib.dat'
-        template_dir = os.path.join('archetypal', 'templates')
+        file = os.path.join("tests", "input_data", "trnsys", request.param)
+        window_file = "W74-lib.dat"
+        template_dir = os.path.join("archetypal", "templates")
         window_filepath = os.path.join(template_dir, window_file)
         template_d18 = None
         trnsidf_exe = None  # 'docker/trnsidf/trnsidf.exe'
 
         # prepare args (key=value). Key is a unique id for the runs (here the
         # file basename is used). Value is a dict of the function arguments
-        kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
-                       'tolerance': 0.05, 'ordered': True}
+        kwargs_dict = {
+            "u_value": 2.5,
+            "shgc": 0.6,
+            "t_vis": 0.78,
+            "tolerance": 0.05,
+            "ordered": True,
+        }
         idf = load_idf(file)
 
         yield idf, file, window_filepath, trnsidf_exe, template_d18, kwargs_dict
 
-    def test_load_idf_file_and_clean_names(self, config,
-                                           converttest):
+        del idf
+
+    def test_load_idf_file_and_clean_names(self, config, converttest):
         idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
         log_clear_names = False
         idf_2 = _load_idf_file_and_clean_names(idf_file, log_clear_names)
@@ -54,23 +89,21 @@ class TestsConvert():
         idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
         try:
-            idf_file, window_lib, output_folder, trnsidf_exe, template = \
-                _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
-                              template)
+            idf_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+                idf_file, window_lib, output_folder, trnsidf_exe, template
+            )
         except:
             output_folder = os.path.relpath(settings.data_folder)
-            print('Could not assert all paths exist - OK for this test')
+            print("Could not assert all paths exist - OK for this test")
         schedule_names, schedules = _get_schedules(idf)
         _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
         _write_schedules(lines, schedule_names, schedules)
 
     def test_write_version_and_building(self, config, converttest):
         idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
-        buildingSurfs, buildings, constructions, equipments, \
-        fenestrationSurfs, \
-        globGeomRules, lights, locations, materialAirGap, materialNoMass, \
-        materials, \
-        peoples, versions, zones = _get_idf_objects(idf)
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
+            idf
+        )
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
         _write_version(lines, versions)
         _write_building(buildings, lines)
@@ -82,23 +115,32 @@ class TestsConvert():
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, \
-        fenestrationSurfs, \
-        globGeomRules, lights, locations, materialAirGap, materialNoMass, \
-        materials, \
-        peoples, versions, zones = _get_idf_objects(idf)
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
+            idf
+        )
 
         # Get all construction EXCEPT fenestration ones
         constr_list = _get_constr_list(buildingSurfs)
 
         # If ordered=True, ordering idf objects
         ordered = True
-        buildingSurfs, buildings, constr_list, constructions, equipments, \
-        fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, \
-        materialNoMass, materials, peoples, zones = _order_objects(
-            buildingSurfs, buildings, constr_list, constructions, equipments,
-            fenestrationSurfs, globGeomRules, lights, locations, materialAirGap,
-            materialNoMass, materials, peoples, zones, ordered)
+        buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones = _order_objects(
+            buildingSurfs,
+            buildings,
+            constr_list,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            zones,
+            ordered,
+        )
 
         mat_name = _remove_low_conductivity(constructions, idf, materials)
         # Write LOCATION and GLOBALGEOMETRYRULES from IDF to lines (T3D) and
@@ -124,11 +166,8 @@ class TestsConvert():
 
         # Writing zones in lines
         win_slope_dict = _write_zone_buildingSurf_fenestrationSurf(
-            buildingSurfs,
-            coordSys,
-            fenestrationSurfs,
-            idf, lines,
-            n_ground, zones)
+            buildingSurfs, coordSys, fenestrationSurfs, idf, lines, n_ground, zones
+        )
 
         # Write CONSTRUCTION from IDF to lines (T3D)
         _write_constructions(constr_list, idf, lines, mat_name, materials)
@@ -143,12 +182,13 @@ class TestsConvert():
         # rf_sol,
         #                 t_vis_win, lay_win, width, window_bunches[win_id],
         #                 and maybe tolerance)
-        win_u_value = kwargs.get('u_value', 2.2)
-        win_shgc = kwargs.get('shgc', 0.64)
-        win_tvis = kwargs.get('t_vis', 0.8)
-        win_tolerance = kwargs.get('tolerance', 0.05)
-        window = choose_window(win_u_value, win_shgc, win_tvis, win_tolerance,
-                               window_lib)
+        win_u_value = kwargs.get("u_value", 2.2)
+        win_shgc = kwargs.get("shgc", 0.64)
+        win_tvis = kwargs.get("t_vis", 0.8)
+        win_tolerance = kwargs.get("tolerance", 0.05)
+        window = choose_window(
+            win_u_value, win_shgc, win_tvis, win_tolerance, window_lib
+        )
 
         # Write windows in lines
         _write_window(lines, win_slope_dict, window)
@@ -163,11 +203,9 @@ class TestsConvert():
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, \
-        fenestrationSurfs, \
-        globGeomRules, lights, locations, materialAirGap, materialNoMass, \
-        materials, \
-        peoples, versions, zones = _get_idf_objects(idf)
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
+            idf
+        )
 
         # Write LAYER from IDF to lines (T3D)
         _write_materials(lines, materialAirGap, materialNoMass, materials)
@@ -179,11 +217,9 @@ class TestsConvert():
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, \
-        fenestrationSurfs, \
-        globGeomRules, lights, locations, materialAirGap, materialNoMass, \
-        materials, \
-        peoples, versions, zones = _get_idf_objects(idf)
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
+            idf
+        )
 
         # Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
         _write_gains(equipments, idf, lights, lines, peoples)
@@ -192,12 +228,12 @@ class TestsConvert():
         output_folder = None
         idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
         try:
-            idf_file, window_lib, output_folder, trnsidf_exe, template = \
-                _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
-                              template)
+            idf_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+                idf_file, window_lib, output_folder, trnsidf_exe, template
+            )
         except:
             output_folder = os.path.relpath(settings.data_folder)
-            print('Could not assert all paths exist - OK for this test')
+            print("Could not assert all paths exist - OK for this test")
 
         # Read IDF_T3D template and write lines in variable
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
@@ -206,16 +242,19 @@ class TestsConvert():
         output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
 
 
-@pytest.mark.xfail("TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-                   reason="Skipping this test on Travis CI.")
+@pytest.mark.xfail(
+    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
+    reason="Skipping this test on Travis CI.",
+)
 def test_trnbuild_from_idf(config):
     # List files here
-    file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
-    files = ["RefBldgWarehousePost1980_v1.3_5"
-             ".0_4A_USA_MD_BALTIMORE.idf",
-             "NECB 2011 - Warehouse.idf",
-             "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-             "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf"]
+    file_upper_path = os.path.join("tests", "input_data", "trnsys")
+    files = [
+        "RefBldgWarehousePost1980_v1.3_5" ".0_4A_USA_MD_BALTIMORE.idf",
+        "NECB 2011 - Warehouse.idf",
+        "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
+        "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
+    ]
     idf_file = [os.path.join(file_upper_path, file) for file in files]
     idf_file = copy_file(idf_file)
 
@@ -234,11 +273,13 @@ def test_trnbuild_from_idf(config):
     }
 
     file = idf_file[2]
-    convert_idf_to_trnbuild(idf_file=file, window_lib=window_filepath,
-                            template="tests/input_data/trnsys/NewFileTemplate"
-                                     ".d18",
-                            trnsidf_exe='docker/trnsidf/trnsidf.exe',
-                            **kwargs_dict)
+    convert_idf_to_trnbuild(
+        idf_file=file,
+        window_lib=window_filepath,
+        template="tests/input_data/trnsys/NewFileTemplate" ".d18",
+        trnsidf_exe="docker/trnsidf/trnsidf.exe",
+        **kwargs_dict
+    )
 
 
 @pytest.mark.win32
@@ -282,12 +323,13 @@ def test_trnbuild_from_idf_parallel(config):
         "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
     ]
     # List files here
-    file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
-    files = ["RefBldgWarehousePost1980_v1.3_5"
-             ".0_4A_USA_MD_BALTIMORE.idf",
-             "NECB 2011 - Warehouse.idf",
-             "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-             "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf"]
+    file_upper_path = os.path.join("tests", "input_data", "trnsys")
+    files = [
+        "RefBldgWarehousePost1980_v1.3_5" ".0_4A_USA_MD_BALTIMORE.idf",
+        "NECB 2011 - Warehouse.idf",
+        "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
+        "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
+    ]
 
     # window_file = 'W74-lib.dat'
     # window_filepath = os.path.join(file_upper_path, window_file)
@@ -346,20 +388,24 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
         "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
     ]
     # List files here
-    file_upper_path = os.path.join('tests', 'input_data', 'trnsys')
-    files = ["RefBldgWarehousePost1980_v1.3_5"
-             ".0_4A_USA_MD_BALTIMORE.idf",
-             "NECB 2011 - Warehouse.idf",
-             "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-             "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf"]
+    file_upper_path = os.path.join("tests", "input_data", "trnsys")
+    files = [
+        "RefBldgWarehousePost1980_v1.3_5" ".0_4A_USA_MD_BALTIMORE.idf",
+        "NECB 2011 - Warehouse.idf",
+        "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
+        "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
+    ]
 
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
-    in_dict = {os.path.basename(file): dict(
-        idf_file=os.path.join(file_upper_path, file),
-        template="tests/input_data/trnsys/NewFileTemplate.d18",
-        trnsidf_exe='docker/trnsidf/trnsidf.exe') for
-        file in files}
+    in_dict = {
+        os.path.basename(file): dict(
+            idf_file=os.path.join(file_upper_path, file),
+            template="tests/input_data/trnsys/NewFileTemplate.d18",
+            trnsidf_exe="docker/trnsidf/trnsidf.exe",
+        )
+        for file in files
+    }
 
     result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
     [print(a) for a in result.values() if isinstance(a, Exception)]

@@ -631,7 +631,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 for subsurf in surf.subsurfaces:
                     # For each subsurface, create a WindowSetting object
                     # using the `from_surface` constructor.
-                    if subsurf.Surface_Type.lower() == 'window':
+                    if subsurf.Surface_Type.lower() == "window":
                         window_sets.append(cls.from_surface(subsurf))
 
         if window_sets:

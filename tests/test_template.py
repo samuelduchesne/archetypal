@@ -42,6 +42,22 @@ def other_idf(config):
     yield idf, sql
 
 
+@pytest.fixture(scope="session")
+def small_office(config):
+    file = "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    idf = ar.load_idf(file)
+    sql = ar.run_eplus(
+        file,
+        weather_file=w,
+        prep_outputs=True,
+        verbose="v",
+        output_report="sql",
+        expandobjects=True,
+    )
+    yield idf, sql
+
+
 core_name = "core"
 perim_name = "perim"
 
@@ -1765,77 +1781,86 @@ class TestBuildingTemplate:
 class TestZoneGraph:
     """Series of tests for the :class:`ZoneGraph` class"""
 
-    def test_traverse_graph(self, config):
-        file = "tests/input_data/trnsys/ASHRAE90" ".1_Warehouse_STD2004_Rochester.idf"
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    def test_traverse_graph(self, small_office):
+        from archetypal import ZoneGraph
 
-        idf = ar.load_idf(file)
-        sql = ar.run_eplus(
-            file,
-            weather_file=w,
-            prep_outputs=True,
-            verbose="v",
-            output_report="sql",
-            expandobjects=True,
+        idf, sql = small_office
+
+        G = ZoneGraph.from_idf(
+            idf, sql=sql, log_adj_report=False, skeleton=False, force=True
         )
-
-        from archetypal import BuildingTemplate
-
-        bt = BuildingTemplate.from_idf(idf, sql=sql)
-        G = bt.zone_graph(log_adj_report=False, skeleton=False, force=True)
-
-        # from operator import add
-        # from functools import reduce
-        #
-        # zone_list = [node[1] for node in G.nodes(data='zone') if
-        #              not G.nodes(data='core')[node[0]]]
-        #
-        # zone = reduce(add, zone)_list
 
         assert G
 
-    @pytest.fixture(scope="class")
-    def G(self, bt):
-        yield bt.zone_graph(skeleton=True, force=True)
+    @pytest.fixture(scope="session")
+    def G(self, small_office):
+        from archetypal import ZoneGraph
+
+        idf, sql = small_office
+        yield ZoneGraph.from_idf(idf, sql, skeleton=True, force=True)
 
     @pytest.mark.parametrize("adj_report", [True, False])
-    def test_graph1(self, config, bt, adj_report):
+    def test_graph1(self, small_office, adj_report):
         """Test the creation of a BuildingTemplate zone graph. Parametrize
         the creation of the adjacency report"""
         import networkx as nx
+        from archetypal import ZoneGraph
 
+        idf, sql = small_office
         clear_cache()
-        G1 = bt.zone_graph(log_adj_report=adj_report, skeleton=True, force=False)
+        G1 = ZoneGraph.from_idf(
+            idf, sql, log_adj_report=adj_report, skeleton=True, force=False
+        )
         assert not nx.is_empty(G1)
 
-    def test_graph2(self, config, bt):
+    def test_graph2(self, small_office):
         """Test the creation of a BuildingTemplate zone graph. Parametrize
             the creation of the adjacency report"""
-        # calling zone_graph a second time should not recalculate it.
-        G2 = bt.zone_graph(log_adj_report=False, skeleton=True, force=False)
+        # calling from_idf a second time should not recalculate it.
+        from archetypal import ZoneGraph
 
-    def test_graph3(self, config, bt):
+        idf, sql = small_office
+        G2 = ZoneGraph.from_idf(
+            idf, sql, log_adj_report=False, skeleton=True, force=False
+        )
+
+    def test_graph3(self, small_office):
         """Test the creation of a BuildingTemplate zone graph. Parametrize
         the creation of the adjacency report"""
-        # calling zone_graph a second time with force=True should
+        # calling from_idf a second time with force=True should
         # recalculate it and produce a new id.
-        G3 = bt.zone_graph(log_adj_report=False, skeleton=True, force=True)
+        from archetypal import ZoneGraph
 
-    def test_graph4(self, config, bt):
+        idf, sql = small_office
+        G3 = ZoneGraph.from_idf(
+            idf, sql, log_adj_report=False, skeleton=True, force=True
+        )
+
+    def test_graph4(self, small_office):
         """Test the creation of a BuildingTemplate zone graph. Parametrize
             the creation of the adjacency report"""
         # skeleton False should build the zone elements.
-        G4 = bt.zone_graph(log_adj_report=False, skeleton=False, force=True)
+        from archetypal import ZoneGraph
+
+        idf, sql = small_office
+        G4 = ZoneGraph.from_idf(
+            idf, sql, log_adj_report=False, skeleton=False, force=True
+        )
 
         from eppy.bunch_subclass import EpBunch
 
-        assert isinstance(G4.nodes["ZN5_Core_Space_1"]["epbunch"], EpBunch)
+        assert isinstance(
+            G4.nodes["Sp-Attic Sys-0 Flr-2 Sch-- undefined - HPlcmt-core ZN"][
+                "epbunch"
+            ],
+            EpBunch,
+        )
 
     def test_graph_info(self, G):
         """test the info method on a ZoneGraph"""
         G.info()
 
-    def test_viewgraph2d(self, config, G):
+    def test_viewgraph2d(self, G):
         """test the visualization of the zonegraph in 2d"""
         import networkx as nx
 
@@ -1860,57 +1885,10 @@ class TestZoneGraph:
     def test_core_graph(self, G):
         H = G.core_graph
 
-        assert len(H) > 0  # assert G has at least one node
+        assert len(H) == 2  # assert G has no nodes since Warehouse does not have a
+        # core zone
 
     def test_perim_graph(self, G):
         H = G.perim_graph
 
         assert len(H) > 0  # assert G has at least one node
-
-    def test_reduce(self, config):
-        file = (
-            "tests/input_data/trnsys/ASHRAE90" ".1_OfficeSmall_STD2004_Rochester" ".idf"
-        )
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-
-        idf = ar.load_idf(file)
-        sql = ar.run_eplus(
-            file,
-            weather_file=w,
-            prep_outputs=True,
-            verbose="v",
-            output_report="sql",
-            expandobjects=True,
-        )
-
-        from archetypal import BuildingTemplate
-
-        bt = BuildingTemplate.from_idf(idf, sql=sql)
-        clear_cache()
-        R = bt.reduce()
-
-    def test_reduce_graph(self, config):
-        file = (
-            "tests/input_data/trnsys/ASHRAE90" ".1_OfficeSmall_STD2004_Rochester" ".idf"
-        )
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-
-        idf = ar.load_idf(file)
-        sql = ar.run_eplus(
-            file,
-            weather_file=w,
-            prep_outputs=True,
-            verbose="v",
-            output_report="sql",
-            expandobjects=True,
-        )
-
-        from archetypal import BuildingTemplate
-
-        bt = BuildingTemplate.from_idf(idf, sql=sql)
-        clear_cache()
-        G = bt.zone_graph(log_adj_report=False, skeleton=False, force=True)
-
-        r_G = bt._graph_reduce(G)
-
-        assert r_G

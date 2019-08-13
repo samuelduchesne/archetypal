@@ -31,7 +31,7 @@ from archetypal.template import (
 from archetypal.utils import reduce
 
 
-class BuildingTemplate(UmiBase, metaclass=Unique):
+class BuildingTemplate(UmiBase):
     """Main class supporting the definition of a single building template.
 
     .. image:: ../images/template/buildingtemplate.png

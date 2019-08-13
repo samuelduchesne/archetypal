@@ -351,7 +351,7 @@ class UmiTemplate:
                 }
             )
 
-            jsonized = []
+            jsonized = {}
 
             def recursive_json(obj):
                 if obj.__class__.mro()[0] == UmiSchedule:
@@ -359,9 +359,11 @@ class UmiTemplate:
                 catname = obj.__class__.__name__ + "s"
                 if catname in data_dict:
                     app_dict = obj.to_json()
-                    if obj not in jsonized:
+                    key = id(obj)
+                    if key not in jsonized.keys():
                         data_dict[catname].append(app_dict)
-                        jsonized.append(obj)
+                        key = id(obj)
+                        jsonized[key] = obj
                 for key, value in obj.__dict__.items():
 
                     if isinstance(

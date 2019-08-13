@@ -59,7 +59,7 @@ class TestsConvert:
     def converttest(self, config, fresh_start, request):
         file = os.path.join("tests", "input_data", "trnsys", request.param)
         window_file = "W74-lib.dat"
-        template_dir = os.path.join("archetypal", "templates")
+        template_dir = os.path.join("archetypal", "ressources")
         window_filepath = os.path.join(template_dir, window_file)
         template_d18 = None
         trnsidf_exe = None  # 'docker/trnsidf/trnsidf.exe'

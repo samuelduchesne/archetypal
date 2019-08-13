@@ -339,8 +339,14 @@ class BuildingTemplate(UmiBase, metaclass=Unique):
         """
         start_time = time.time()
 
-        self.Core = reduce(Zone.combine, cores)
-        self.Perimeter = reduce(Zone.combine, perims)
+        if cores:
+            self.Core = reduce(Zone.combine, cores)
+        if not perims:
+            raise ValueError(
+                "Building complexity reduction must have at least one perimeter zone"
+            )
+        else:
+            self.Perimeter = reduce(Zone.combine, perims)
 
         if self.Perimeter.Windows is None:
             # create generic window

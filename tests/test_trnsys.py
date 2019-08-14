@@ -49,7 +49,7 @@ class TestsConvert:
     @pytest.fixture(
         scope="class",
         params=[
-            "RefBldgWarehousePost1980_v1.3_5" ".0_4A_USA_MD_BALTIMORE.idf",
+            "RefBldgWarehousePost1980_v1.4_7.2_6A_USA_MN_MINNEAPOLIS.idf",
             "NECB 2011 - Warehouse.idf",
             "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
             "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",

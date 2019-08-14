@@ -63,7 +63,7 @@
 ! ***GENERAL SIMULATION PARAMETERS***
 ! Number of Zones: 3
 
-  Version,7.2;
+  Version,8.9;
 
   SimulationControl,
     YES,                     !- Do Zone Sizing Calculation
@@ -230,6 +230,7 @@
     25;                      !- Maximum HVAC Iterations
 
   ShadowCalculation,
+    AverageOverDaysInFrequency,  !- Calculation Method
     7,                       !- Calculation Frequency
     15000;                   !- Maximum Figures in Shadow Overlap Calculations
 
@@ -254,7 +255,7 @@
     -26,                     !- Maximum Dry-Bulb Temperature {C}
     0.0,                     !- Daily Dry-Bulb Temperature Range {deltaC}
     ,                        !- Dry-Bulb Temperature Range Modifier Type
-    ,                        !- Dry-Bulb Temperature Range Modifier Schedule Name
+    ,                        !- Dry-Bulb Temperature Range Modifier Day Schedule Name
     Wetbulb,                 !- Humidity Condition Type
     -26,                     !- Wetbulb or DewPoint at Maximum Dry-Bulb {C}
     ,                        !- Humidity Condition Day Schedule Name
@@ -284,7 +285,7 @@
     30.7,                    !- Maximum Dry-Bulb Temperature {C}
     10.3,                    !- Daily Dry-Bulb Temperature Range {deltaC}
     ,                        !- Dry-Bulb Temperature Range Modifier Type
-    ,                        !- Dry-Bulb Temperature Range Modifier Schedule Name
+    ,                        !- Dry-Bulb Temperature Range Modifier Day Schedule Name
     Wetbulb,                 !- Humidity Condition Type
     24.8,                    !- Wetbulb or DewPoint at Maximum Dry-Bulb {C}
     ,                        !- Humidity Condition Day Schedule Name
@@ -1253,6 +1254,8 @@
     ZoneAveraged,            !- Mean Radiant Temperature Calculation Type
     ,                        !- Surface Name/Angle Factor List Name
     WORK_EFF_SCH,            !- Work Efficiency Schedule Name
+    ClothingInsulationSchedule,  !- Clothing Insulation Calculation Method
+    ,                        !- Clothing Insulation Calculation Method Schedule Name
     CLOTHING_SCH,            !- Clothing Insulation Schedule Name
     AIR_VELO_SCH,            !- Air Velocity Schedule Name
     FANGER;                  !- Thermal Comfort Model 1 Type
@@ -1521,7 +1524,7 @@
   Fan:OnOff,
     FURNACE_PACU_CAV_1:1_Unitary_Package_fan,  !- Name
     HVACOperationSchd,       !- Availability Schedule Name
-    0.56875,                 !- Fan Efficiency
+    0.56875,                 !- Fan Total Efficiency
     622.0,                   !- Pressure Rise {Pa}
     AUTOSIZE,                !- Maximum Flow Rate {m3/s}
     0.875,                   !- Motor Efficiency
@@ -1535,7 +1538,7 @@
   Fan:OnOff,
     FURNACE_PACU_CAV_2:2_Unitary_Package_fan,  !- Name
     HVACOperationSchd,       !- Availability Schedule Name
-    0.6006,                  !- Fan Efficiency
+    0.6006,                  !- Fan Total Efficiency
     1017.592,                !- Pressure Rise {Pa}
     AUTOSIZE,                !- Maximum Flow Rate {m3/s}
     0.924,                   !- Motor Efficiency
@@ -1549,7 +1552,7 @@
   Fan:ConstantVolume,
     BulkStorage Unit HeaterFan,  !- Name
     ALWAYS_ON,               !- Availability Schedule Name
-    0.53625,                 !- Fan Efficiency
+    0.53625,                 !- Fan Total Efficiency
     49.8,                    !- Pressure Rise {Pa}
     AUTOSIZE,                !- Maximum Flow Rate {m3/s}
     0.825,                   !- Motor Efficiency
@@ -1558,26 +1561,29 @@
     BulkStorage Unit Heater Post Fan Node,  !- Air Outlet Node Name
     Unit Heater Fans;        !- End-Use Subcategory
 
-  Coil:Heating:Gas,
+  Coil:Heating:Fuel,
     BulkStorage Unit Heater Coil,  !- Name
     ALWAYS_ON,               !- Availability Schedule Name
-    0.78,                    !- Gas Burner Efficiency
+    NaturalGas,              !- Fuel Type
+    0.78,                    !- Burner Efficiency
     AUTOSIZE,                !- Nominal Capacity {W}
     BulkStorage Unit Heater Post Fan Node,  !- Air Inlet Node Name
     BulkStorage Unit Heater Inlet Node Name;  !- Air Outlet Node Name
 
-  Coil:Heating:Gas,
+  Coil:Heating:Fuel,
     FURNACE_PACU_CAV_1:1_Unitary_Package_HeatCoil,  !- Name
     ALWAYS_ON,               !- Availability Schedule Name
-    0.8,                     !- Gas Burner Efficiency
+    NaturalGas,              !- Fuel Type
+    0.8,                     !- Burner Efficiency
     AUTOSIZE,                !- Nominal Capacity {W}
     FURNACE_PACU_CAV_1:1_Unitary_PackageHeatCoil air inlet,  !- Air Inlet Node Name
     FURNACE_PACU_CAV_1:1 Supply Equipment Outlet Node;  !- Air Outlet Node Name
 
-  Coil:Heating:Gas,
+  Coil:Heating:Fuel,
     FURNACE_PACU_CAV_2:2_Unitary_Package_HeatCoil,  !- Name
     ALWAYS_ON,               !- Availability Schedule Name
-    0.78,                    !- Gas Burner Efficiency
+    NaturalGas,              !- Fuel Type
+    0.78,                    !- Burner Efficiency
     AUTOSIZE,                !- Nominal Capacity {W}
     FURNACE_PACU_CAV_2:2_Unitary_PackageHeatCoil air inlet,  !- Air Inlet Node Name
     FURNACE_PACU_CAV_2:2 Supply Equipment Outlet Node;  !- Air Outlet Node Name
@@ -1585,9 +1591,9 @@
   Coil:Cooling:DX:SingleSpeed,
     FURNACE_PACU_CAV_1:1_Unitary_Package_CoolCoil,  !- Name
     ALWAYS_ON,               !- Availability Schedule Name
-    AUTOSIZE,                !- Rated Total Cooling Capacity {W}
-    AUTOSIZE,                !- Rated Sensible Heat Ratio
-    3.30033038473836,        !- Rated COP {W/W}
+    AUTOSIZE,                !- Gross Rated Total Cooling Capacity {W}
+    AUTOSIZE,                !- Gross Rated Sensible Heat Ratio
+    3.30033038473836,        !- Gross Rated Cooling COP {W/W}
     AUTOSIZE,                !- Rated Air Flow Rate {m3/s}
     ,                        !- Rated Evaporator Fan Power Per Volume Flow Rate {W/(m3/s)}
     FURNACE_PACU_CAV_1:1_Unitary_PackageCoolCoil air inlet,  !- Air Inlet Node Name
@@ -1596,14 +1602,15 @@
     ConstantCubic,           !- Total Cooling Capacity Function of Flow Fraction Curve Name
     Cool-EIR-fT,             !- Energy Input Ratio Function of Temperature Curve Name
     ConstantCubic,           !- Energy Input Ratio Function of Flow Fraction Curve Name
-    Cool-PLF-fPLR;           !- Part Load Fraction Correlation Curve Name
+    Cool-PLF-fPLR,           !- Part Load Fraction Correlation Curve Name
+    ;                        !- Minimum Outdoor Dry-Bulb Temperature for Compressor Operation {C}
 
   Coil:Cooling:DX:SingleSpeed,
     FURNACE_PACU_CAV_2:2_Unitary_Package_CoolCoil,  !- Name
     ALWAYS_ON,               !- Availability Schedule Name
-    AUTOSIZE,                !- Rated Total Cooling Capacity {W}
-    AUTOSIZE,                !- Rated Sensible Heat Ratio
-    3.13380581903442,        !- Rated COP {W/W}
+    AUTOSIZE,                !- Gross Rated Total Cooling Capacity {W}
+    AUTOSIZE,                !- Gross Rated Sensible Heat Ratio
+    3.13380581903442,        !- Gross Rated Cooling COP {W/W}
     AUTOSIZE,                !- Rated Air Flow Rate {m3/s}
     ,                        !- Rated Evaporator Fan Power Per Volume Flow Rate {W/(m3/s)}
     FURNACE_PACU_CAV_2:2_Unitary_PackageCoolCoil air inlet,  !- Air Inlet Node Name
@@ -1612,7 +1619,8 @@
     Measured_CoolCStandard10Ton_CapFF,  !- Total Cooling Capacity Function of Flow Fraction Curve Name
     Measured_CoolCStandard10Ton_EIRFT,  !- Energy Input Ratio Function of Temperature Curve Name
     Measured_CoolCStandard10Ton_EIRFFF,  !- Energy Input Ratio Function of Flow Fraction Curve Name
-    No_PLR_Degredation;      !- Part Load Fraction Correlation Curve Name
+    No_PLR_Degredation,      !- Part Load Fraction Correlation Curve Name
+    ;                        !- Minimum Outdoor Dry-Bulb Temperature for Compressor Operation {C}
 
   ZoneHVAC:UnitHeater,
     BulkStorage Unit Heater, !- Name
@@ -1622,9 +1630,10 @@
     Fan:ConstantVolume,      !- Supply Air Fan Object Type
     BulkStorage Unit HeaterFan,  !- Supply Air Fan Name
     AUTOSIZE,                !- Maximum Supply Air Flow Rate {m3/s}
-    OnOff,                   !- Fan Control Type
-    Coil:Heating:Gas,        !- Heating Coil Object Type
+    Coil:Heating:Fuel,       !- Heating Coil Object Type
     BulkStorage Unit Heater Coil,  !- Heating Coil Name
+    ,                        !- Supply Air Fan Operating Mode Schedule Name
+    No,                      !- Supply Air Fan Operation During No Heating
     AUTOSIZE,                !- Maximum Hot Water or Steam Flow Rate {m3/s}
     0.0,                     !- Minimum Hot Water or Steam Flow Rate {m3/s}
     0.001,                   !- Heating Convergence Tolerance
@@ -1660,6 +1669,7 @@
 
   ZoneHVAC:EquipmentList,
     BulkStorage Equipment,   !- Name
+    SequentialLoad,          !- Load Distribution Scheme
     ZoneHVAC:UnitHeater,     !- Zone Equipment 1 Object Type
     BulkStorage Unit Heater, !- Zone Equipment 1 Name
     1,                       !- Zone Equipment 1 Cooling Sequence
@@ -1667,6 +1677,7 @@
 
   ZoneHVAC:EquipmentList,
     FineStorage Equipment,   !- Name
+    SequentialLoad,          !- Load Distribution Scheme
     AirTerminal:SingleDuct:Uncontrolled,  !- Zone Equipment 1 Object Type
     FineStorage Direct Air,  !- Zone Equipment 1 Name
     1,                       !- Zone Equipment 1 Cooling Sequence
@@ -1674,6 +1685,7 @@
 
   ZoneHVAC:EquipmentList,
     Office Equipment,        !- Name
+    SequentialLoad,          !- Load Distribution Scheme
     AirTerminal:SingleDuct:Uncontrolled,  !- Zone Equipment 1 Object Type
     Office Direct Air,       !- Zone Equipment 1 Name
     1,                       !- Zone Equipment 1 Cooling Sequence
@@ -1834,45 +1846,79 @@
     FURNACE_PACU_CAV_1:1,    !- AirLoop Name
     Sensible,                !- Type of Load to Size On
     AUTOSIZE,                !- Design Outdoor Air Flow Rate {m3/s}
-    1.0,                     !- Minimum System Air Flow Ratio
+    1.0,                     !- Central Heating Maximum System Air Flow Ratio
     7.0,                     !- Preheat Design Temperature {C}
     0.008,                   !- Preheat Design Humidity Ratio {kgWater/kgDryAir}
     12.8000,                 !- Precool Design Temperature {C}
     0.008,                   !- Precool Design Humidity Ratio {kgWater/kgDryAir}
     12.8000,                 !- Central Cooling Design Supply Air Temperature {C}
     40.0,                    !- Central Heating Design Supply Air Temperature {C}
-    NonCoincident,           !- Sizing Option
+    NonCoincident,           !- Type of Zone Sum to Use
     No,                      !- 100% Outdoor Air in Cooling
     No,                      !- 100% Outdoor Air in Heating
     0.0085,                  !- Central Cooling Design Supply Air Humidity Ratio {kgWater/kgDryAir}
     0.0080,                  !- Central Heating Design Supply Air Humidity Ratio {kgWater/kgDryAir}
-    DesignDay,               !- Cooling Design Air Flow Method
-    0.0,                     !- Cooling Design Air Flow Rate {m3/s}
-    DesignDay,               !- Heating Design Air Flow Method
-    0.0,                     !- Heating Design Air Flow Rate {m3/s}
-    ZoneSum;                 !- System Outdoor Air Method
+    DesignDay,               !- Cooling Supply Air Flow Rate Method
+    0.0,                     !- Cooling Supply Air Flow Rate {m3/s}
+    ,                        !- Cooling Supply Air Flow Rate Per Floor Area {m3/s-m2}
+    ,                        !- Cooling Fraction of Autosized Cooling Supply Air Flow Rate
+    ,                        !- Cooling Supply Air Flow Rate Per Unit Cooling Capacity {m3/s-W}
+    DesignDay,               !- Heating Supply Air Flow Rate Method
+    0.0,                     !- Heating Supply Air Flow Rate {m3/s}
+    ,                        !- Heating Supply Air Flow Rate Per Floor Area {m3/s-m2}
+    ,                        !- Heating Fraction of Autosized Heating Supply Air Flow Rate
+    ,                        !- Heating Fraction of Autosized Cooling Supply Air Flow Rate
+    ,                        !- Heating Supply Air Flow Rate Per Unit Heating Capacity {m3/s-W}
+    ZoneSum,                 !- System Outdoor Air Method
+    1.0,                     !- Zone Maximum Outdoor Air Fraction {dimensionless}
+    CoolingDesignCapacity,   !- Cooling Design Capacity Method
+    autosize,                !- Cooling Design Capacity {W}
+    ,                        !- Cooling Design Capacity Per Floor Area {W/m2}
+    ,                        !- Fraction of Autosized Cooling Design Capacity
+    HeatingDesignCapacity,   !- Heating Design Capacity Method
+    autosize,                !- Heating Design Capacity {W}
+    ,                        !- Heating Design Capacity Per Floor Area {W/m2}
+    ,                        !- Fraction of Autosized Heating Design Capacity
+    OnOff;                   !- Central Cooling Capacity Control Method
 
   Sizing:System,
     FURNACE_PACU_CAV_2:2,    !- AirLoop Name
     Sensible,                !- Type of Load to Size On
     AUTOSIZE,                !- Design Outdoor Air Flow Rate {m3/s}
-    1.0,                     !- Minimum System Air Flow Ratio
+    1.0,                     !- Central Heating Maximum System Air Flow Ratio
     7.0,                     !- Preheat Design Temperature {C}
     0.008,                   !- Preheat Design Humidity Ratio {kgWater/kgDryAir}
     12.8000,                 !- Precool Design Temperature {C}
     0.008,                   !- Precool Design Humidity Ratio {kgWater/kgDryAir}
     12.8000,                 !- Central Cooling Design Supply Air Temperature {C}
     40.0,                    !- Central Heating Design Supply Air Temperature {C}
-    NonCoincident,           !- Sizing Option
+    NonCoincident,           !- Type of Zone Sum to Use
     No,                      !- 100% Outdoor Air in Cooling
     No,                      !- 100% Outdoor Air in Heating
     0.0085,                  !- Central Cooling Design Supply Air Humidity Ratio {kgWater/kgDryAir}
     0.0080,                  !- Central Heating Design Supply Air Humidity Ratio {kgWater/kgDryAir}
-    DesignDay,               !- Cooling Design Air Flow Method
-    0.0,                     !- Cooling Design Air Flow Rate {m3/s}
-    DesignDay,               !- Heating Design Air Flow Method
-    0.0,                     !- Heating Design Air Flow Rate {m3/s}
-    ZoneSum;                 !- System Outdoor Air Method
+    DesignDay,               !- Cooling Supply Air Flow Rate Method
+    0.0,                     !- Cooling Supply Air Flow Rate {m3/s}
+    ,                        !- Cooling Supply Air Flow Rate Per Floor Area {m3/s-m2}
+    ,                        !- Cooling Fraction of Autosized Cooling Supply Air Flow Rate
+    ,                        !- Cooling Supply Air Flow Rate Per Unit Cooling Capacity {m3/s-W}
+    DesignDay,               !- Heating Supply Air Flow Rate Method
+    0.0,                     !- Heating Supply Air Flow Rate {m3/s}
+    ,                        !- Heating Supply Air Flow Rate Per Floor Area {m3/s-m2}
+    ,                        !- Heating Fraction of Autosized Heating Supply Air Flow Rate
+    ,                        !- Heating Fraction of Autosized Cooling Supply Air Flow Rate
+    ,                        !- Heating Supply Air Flow Rate Per Unit Heating Capacity {m3/s-W}
+    ZoneSum,                 !- System Outdoor Air Method
+    1.0,                     !- Zone Maximum Outdoor Air Fraction {dimensionless}
+    CoolingDesignCapacity,   !- Cooling Design Capacity Method
+    autosize,                !- Cooling Design Capacity {W}
+    ,                        !- Cooling Design Capacity Per Floor Area {W/m2}
+    ,                        !- Fraction of Autosized Cooling Design Capacity
+    HeatingDesignCapacity,   !- Heating Design Capacity Method
+    autosize,                !- Heating Design Capacity {W}
+    ,                        !- Heating Design Capacity Per Floor Area {W/m2}
+    ,                        !- Fraction of Autosized Heating Design Capacity
+    OnOff;                   !- Central Cooling Capacity Control Method
 
   Controller:OutdoorAir,
     FURNACE_PACU_CAV_1:1_OA_Controller,  !- Name
@@ -2104,14 +2150,14 @@
     FURNACE_PACU_CAV_1:1 Supply Equipment Outlet Node,  !- Unitary System Air Outlet Node Name
     HVACOperationSchd,       !- Supply Air Fan Operating Mode Schedule Name
     AUTOSIZE,                !- Maximum Supply Air Temperature {C}
-    AUTOSIZE,                !- Supply Air Flow Rate During Cooling Operation {m3/s}
-    AUTOSIZE,                !- Supply Air Flow Rate During Heating Operation {m3/s}
-    AUTOSIZE,                !- Supply Air Flow Rate When No Cooling or Heating is Needed {m3/s}
+    AUTOSIZE,                !- Cooling Supply Air Flow Rate {m3/s}
+    AUTOSIZE,                !- Heating Supply Air Flow Rate {m3/s}
+    AUTOSIZE,                !- No Load Supply Air Flow Rate {m3/s}
     Office,                  !- Controlling Zone or Thermostat Location
     Fan:OnOff,               !- Supply Fan Object Type
     FURNACE_PACU_CAV_1:1_Unitary_Package_fan,  !- Supply Fan Name
     BlowThrough,             !- Fan Placement
-    Coil:Heating:Gas,        !- Heating Coil Object Type
+    Coil:Heating:Fuel,       !- Heating Coil Object Type
     FURNACE_PACU_CAV_1:1_Unitary_Package_HeatCoil,  !- Heating Coil Name
     Coil:Cooling:DX:SingleSpeed,  !- Cooling Coil Object Type
     FURNACE_PACU_CAV_1:1_Unitary_Package_CoolCoil,  !- Cooling Coil Name
@@ -2126,14 +2172,14 @@
     FURNACE_PACU_CAV_2:2 Supply Equipment Outlet Node,  !- Unitary System Air Outlet Node Name
     HVACOperationSchd,       !- Supply Air Fan Operating Mode Schedule Name
     AUTOSIZE,                !- Maximum Supply Air Temperature {C}
-    AUTOSIZE,                !- Supply Air Flow Rate During Cooling Operation {m3/s}
-    AUTOSIZE,                !- Supply Air Flow Rate During Heating Operation {m3/s}
-    AUTOSIZE,                !- Supply Air Flow Rate When No Cooling or Heating is Needed {m3/s}
+    AUTOSIZE,                !- Cooling Supply Air Flow Rate {m3/s}
+    AUTOSIZE,                !- Heating Supply Air Flow Rate {m3/s}
+    AUTOSIZE,                !- No Load Supply Air Flow Rate {m3/s}
     FineStorage,             !- Controlling Zone or Thermostat Location
     Fan:OnOff,               !- Supply Fan Object Type
     FURNACE_PACU_CAV_2:2_Unitary_Package_fan,  !- Supply Fan Name
     BlowThrough,             !- Fan Placement
-    Coil:Heating:Gas,        !- Heating Coil Object Type
+    Coil:Heating:Fuel,       !- Heating Coil Object Type
     FURNACE_PACU_CAV_2:2_Unitary_Package_HeatCoil,  !- Heating Coil Name
     Coil:Cooling:DX:SingleSpeed,  !- Cooling Coil Object Type
     FURNACE_PACU_CAV_2:2_Unitary_Package_CoolCoil,  !- Cooling Coil Name
@@ -2149,7 +2195,7 @@
     BulkStorage Inlet Nodes, !- Zone Air Inlet Node or NodeList Name
     BulkStorage Exhaust Nodes,  !- Zone Air Exhaust Node or NodeList Name
     BulkStorage Air Node,    !- Zone Air Node Name
-    BulkStorage Return Air Node Name;  !- Zone Return Air Node Name
+    BulkStorage Return Air Node Name;  !- Zone Return Air Node or NodeList Name
 
   ZoneHVAC:EquipmentConnections,
     FineStorage,             !- Zone Name
@@ -2157,7 +2203,7 @@
     FineStorage Inlet Nodes, !- Zone Air Inlet Node or NodeList Name
     ,                        !- Zone Air Exhaust Node or NodeList Name
     FineStorage Air Node,    !- Zone Air Node Name
-    FineStorage Return Air Node Name;  !- Zone Return Air Node Name
+    FineStorage Return Air Node Name;  !- Zone Return Air Node or NodeList Name
 
   ZoneHVAC:EquipmentConnections,
     Office,                  !- Zone Name
@@ -2165,7 +2211,7 @@
     Office Inlet Nodes,      !- Zone Air Inlet Node or NodeList Name
     ,                        !- Zone Air Exhaust Node or NodeList Name
     Office Air Node,         !- Zone Air Node Name
-    Office Return Air Node Name;  !- Zone Return Air Node Name
+    Office Return Air Node Name;  !- Zone Return Air Node or NodeList Name
 
   NodeList,
     BulkStorage Exhaust Nodes,  !- Name
@@ -2219,6 +2265,7 @@
     HVACOperationSchd,       !- Fan Schedule Name
     CycleOnAny,              !- Control Type
     1.0,                     !- Thermostat Tolerance {deltaC}
+    FixedRunTime,            !- Cycling Run Time Control Type
     1800;                    !- Cycling Run Time {s}
 
   AvailabilityManager:NightCycle,
@@ -2227,6 +2274,7 @@
     HVACOperationSchd,       !- Fan Schedule Name
     CycleOnAny,              !- Control Type
     1.0,                     !- Thermostat Tolerance {deltaC}
+    FixedRunTime,            !- Cycling Run Time Control Type
     1800;                    !- Cycling Run Time {s}
 
   BranchList,
@@ -2239,33 +2287,27 @@
 
   Branch,
     FURNACE_PACU_CAV_1:1 Air Loop Main Branch,  !- Name
-    AUTOSIZE,                !- Maximum Flow Rate {m3/s}
     ,                        !- Pressure Drop Curve Name
     AirLoopHVAC:OutdoorAirSystem,  !- Component 1 Object Type
     FURNACE_PACU_CAV_1:1_OA, !- Component 1 Name
     FURNACE_PACU_CAV_1:1 Supply Equipment Inlet Node,  !- Component 1 Inlet Node Name
     FURNACE_PACU_CAV_1:1_OA-FURNACE_PACU_CAV_1:1_Unitary_PackageNode,  !- Component 1 Outlet Node Name
-    Passive,                 !- Component 1 Branch Control Type
     AirLoopHVAC:UnitaryHeatCool,  !- Component 2 Object Type
     FURNACE_PACU_CAV_1:1_Unitary_Package,  !- Component 2 Name
     FURNACE_PACU_CAV_1:1_OA-FURNACE_PACU_CAV_1:1_Unitary_PackageNode,  !- Component 2 Inlet Node Name
-    FURNACE_PACU_CAV_1:1 Supply Equipment Outlet Node,  !- Component 2 Outlet Node Name
-    Active;                  !- Component 2 Branch Control Type
+    FURNACE_PACU_CAV_1:1 Supply Equipment Outlet Node;  !- Component 2 Outlet Node Name
 
   Branch,
     FURNACE_PACU_CAV_2:2 Air Loop Main Branch,  !- Name
-    AUTOSIZE,                !- Maximum Flow Rate {m3/s}
     ,                        !- Pressure Drop Curve Name
     AirLoopHVAC:OutdoorAirSystem,  !- Component 1 Object Type
     FURNACE_PACU_CAV_2:2_OA, !- Component 1 Name
     FURNACE_PACU_CAV_2:2 Supply Equipment Inlet Node,  !- Component 1 Inlet Node Name
     FURNACE_PACU_CAV_2:2_OA-FURNACE_PACU_CAV_2:2_Unitary_PackageNode,  !- Component 1 Outlet Node Name
-    Passive,                 !- Component 1 Branch Control Type
     AirLoopHVAC:UnitaryHeatCool,  !- Component 2 Object Type
     FURNACE_PACU_CAV_2:2_Unitary_Package,  !- Component 2 Name
     FURNACE_PACU_CAV_2:2_OA-FURNACE_PACU_CAV_2:2_Unitary_PackageNode,  !- Component 2 Inlet Node Name
-    FURNACE_PACU_CAV_2:2 Supply Equipment Outlet Node,  !- Component 2 Outlet Node Name
-    Active;                  !- Component 2 Branch Control Type
+    FURNACE_PACU_CAV_2:2 Supply Equipment Outlet Node;  !- Component 2 Outlet Node Name
 
   AirLoopHVAC:ControllerList,
     FURNACE_PACU_CAV_1:1_OA_Controllers,  !- Name
@@ -2506,7 +2548,7 @@
     Comm Elect;              !- Group Name
 
   UtilityCost:Charge:Block,
-    annualEnergyCharge,      !- Name
+    annualEnergyCharge,      !- Utility Cost Charge Block Name
     NorthernStatesPow_A-14_GeneralService,  !- Tariff Name
     totalEnergy,             !- Source Variable
     annual,                  !- Season
@@ -2519,7 +2561,7 @@
     0.0261;                  !- Block 2 Cost per Unit Value or Variable Name
 
   UtilityCost:Charge:Simple,
-    WinterBasicDemandCharge, !- Name
+    WinterBasicDemandCharge, !- Utility Cost Charge Simple Name
     NorthernStatesPow_A-14_GeneralService,  !- Tariff Name
     TotalDemand,             !- Source Variable
     Winter,                  !- Season
@@ -2527,7 +2569,7 @@
     6.61;                    !- Cost per Unit Value or Variable Name
 
   UtilityCost:Charge:Simple,
-    SummerBasicDemandCharge, !- Name
+    SummerBasicDemandCharge, !- Utility Cost Charge Simple Name
     NorthernStatesPow_A-14_GeneralService,  !- Tariff Name
     TotalDemand,             !- Source Variable
     Summer,                  !- Season
@@ -2535,7 +2577,7 @@
     9.26;                    !- Cost per Unit Value or Variable Name
 
   UtilityCost:Qualify,
-    MinDemand25kw,           !- Name
+    MinDemand25kw,           !- Utility Cost Qualify Name
     NorthernStatesPow_A-14_GeneralService,  !- Tariff Name
     TotalDemand,             !- Variable Name
     Minimum,                 !- Qualify Type
@@ -2545,7 +2587,7 @@
     12;                      !- Number of Months
 
   UtilityCost:Charge:Simple,
-    TaxofSixPercent,         !- Name
+    TaxofSixPercent,         !- Utility Cost Charge Simple Name
     NorthernStatesPow_A-14_GeneralService,  !- Tariff Name
     SubTotal,                !- Source Variable
     Annual,                  !- Season
@@ -2571,7 +2613,7 @@
     Comm Elect;              !- Group Name
 
   UtilityCost:Charge:Simple,
-    SummerBasicEnergyCharge, !- Name
+    SummerBasicEnergyCharge, !- Utility Cost Charge Simple Name
     NorthernStatesPow_A-10_SmallGeneral,  !- Tariff Name
     TotalEnergy,             !- Source Variable
     Summer,                  !- Season
@@ -2579,7 +2621,7 @@
     0.0758;                  !- Cost per Unit Value or Variable Name
 
   UtilityCost:Charge:Simple,
-    WinterBasicEnergyCharge, !- Name
+    WinterBasicEnergyCharge, !- Utility Cost Charge Simple Name
     NorthernStatesPow_A-10_SmallGeneral,  !- Tariff Name
     TotalEnergy,             !- Source Variable
     Winter,                  !- Season
@@ -2587,7 +2629,7 @@
     0.0658;                  !- Cost per Unit Value or Variable Name
 
   UtilityCost:Qualify,
-    MaxDemand25kw,           !- Name
+    MaxDemand25kw,           !- Utility Cost Qualify Name
     NorthernStatesPow_A-10_SmallGeneral,  !- Tariff Name
     TotalDemand,             !- Variable Name
     Maximum,                 !- Qualify Type
@@ -2597,7 +2639,7 @@
     1;                       !- Number of Months
 
   UtilityCost:Charge:Simple,
-    TaxofSixPercent,         !- Name
+    TaxofSixPercent,         !- Utility Cost Charge Simple Name
     NorthernStatesPow_A-10_SmallGeneral,  !- Tariff Name
     SubTotal,                !- Source Variable
     Annual,                  !- Season
@@ -2623,7 +2665,7 @@
     Comm Gas;                !- Group Name
 
   UtilityCost:Charge:Simple,
-    MonthlyRateGasCharge,    !- Name
+    MonthlyRateGasCharge,    !- Utility Cost Charge Simple Name
     MN_EIAMonthlyRateGas,    !- Tariff Name
     totalEnergy,             !- Source Variable
     Annual,                  !- Season
@@ -2648,7 +2690,7 @@
     7.56;                    !- December Value
 
   UtilityCost:Charge:Simple,
-    TaxofSixPercent,         !- Name
+    TaxofSixPercent,         !- Utility Cost Charge Simple Name
     MN_EIAMonthlyRateGas,    !- Tariff Name
     SubTotal,                !- Source Variable
     Annual,                  !- Season
@@ -2668,7 +2710,7 @@
     0.663,                   !- District Heating Efficiency
     4.18,                    !- District Cooling COP {W/W}
     0.585,                   !- Steam Conversion Efficiency
-    80.7272,                 !- Total Carbon Equivalent Emission Factor From NOx {kg/kg}
+    80.7272,                 !- Total Carbon Equivalent Emission Factor From N2O {kg/kg}
     6.2727,                  !- Total Carbon Equivalent Emission Factor From CH4 {kg/kg}
     0.2727;                  !- Total Carbon Equivalent Emission Factor From CO2 {kg/kg}
 

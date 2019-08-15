@@ -595,7 +595,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             object:
             zone:
         """
-        rd = ReportData.from_sql(zone.sql)
+        rd = ReportData.from_sql_dict(zone.sql)
         effectiveness = (
             rd.filter_report_data(
                 name=(
@@ -659,7 +659,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         from archetypal import ReportData
 
-        rd = ReportData.from_sql(zone.sql)
+        rd = ReportData.from_sql_dict(zone.sql)
         energy_out = rd.filter_report_data(name=tuple(energy_out_variable_name))
         energy_in = rd.filter_report_data(name=tuple(energy_in_list))
 
@@ -696,7 +696,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         # zone name (*KeyValue*). Return annual average.
         variable_output_name = "Zone Thermostat Heating Setpoint Temperature"
         h_array = (
-            ReportData.from_sql(zone.sql)
+            ReportData.from_sql_dict(zone.sql)
             .filter_report_data(name=variable_output_name, keyvalue=zone.Name.upper())
             .loc[:, ["TimeIndex", "Value"]]
             .set_index("TimeIndex")
@@ -712,7 +712,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
         variable_output_name = "Zone Thermostat Cooling Setpoint Temperature"
         c_array = (
-            ReportData.from_sql(zone.sql)
+            ReportData.from_sql_dict(zone.sql)
             .filter_report_data(name=variable_output_name, keyvalue=zone.Name.upper())
             .loc[:, ["TimeIndex", "Value"]]
             .set_index("TimeIndex")

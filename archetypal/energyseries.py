@@ -3,6 +3,7 @@ import logging as lg
 import os
 import time
 import warnings
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -17,8 +18,7 @@ from archetypal import log, rmse, piecewise, settings
 
 
 class EnergySeries(Series):
-    """A Series object designed to store energy related data.
-    """
+    """A Series object designed to store energy related data."""
 
     @property
     def _constructor(self):
@@ -31,14 +31,20 @@ class EnergySeries(Series):
         "base_year",
         "frequency",
         "units",
-        "is_sorted",
+        "sort_values",
         "to_units",
         "converted_",
         "concurrent_sort_",
     ]
 
     def __finalize__(self, other, method=None, **kwargs):
-        """ propagate metadata from other to self """
+        """propagate metadata from other to self
+
+        Args:
+            other:
+            method:
+            **kwargs:
+        """
         # NOTE: backported from pandas master (upcoming v0.13)
         for name in self._metadata:
             object.__setattr__(self, name, getattr(other, name, None))
@@ -57,13 +63,33 @@ class EnergySeries(Series):
         fastpath=False,
         base_year=2018,
         normalize=False,
-        is_sorted=False,
+        sort_values=False,
         ascending=False,
         archetypes=None,
         concurrent_sort=False,
         to_units=None,
         use_timeindex=True,
     ):
+        """
+        Args:
+            data:
+            frequency:
+            units:
+            profile_type:
+            index:
+            dtype:
+            copy:
+            name:
+            fastpath:
+            base_year:
+            normalize:
+            is_sorted:
+            ascending:
+            archetypes:
+            concurrent_sort:
+            to_units:
+            use_timeindex:
+        """
         arr = Series.__new__(cls)
         if type(arr) is EnergySeries:
             return arr
@@ -83,7 +109,7 @@ class EnergySeries(Series):
         fastpath=False,
         base_year=2018,
         normalize=False,
-        is_sorted=False,
+        sort_values=False,
         ascending=False,
         archetypes=None,
         concurrent_sort=False,
@@ -91,7 +117,6 @@ class EnergySeries(Series):
         use_timeindex=True,
     ):
         """
-
         Args:
             data:
             frequency:
@@ -104,11 +129,12 @@ class EnergySeries(Series):
             fastpath:
             base_year:
             normalize:
-            is_sorted:
+            sort_values:
             ascending:
             archetypes:
             concurrent_sort:
             to_units:
+            use_timeindex:
         """
         super(EnergySeries, self).__init__(
             data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath
@@ -124,7 +150,7 @@ class EnergySeries(Series):
         self.converted_ = False
         self.concurrent_sort_ = concurrent_sort
         # handle sorting of the data
-        if is_sorted:
+        if sort_values:
             self.is_sorted = True
             if concurrent_sort:
                 self.concurrent_sort(ascending=ascending, inplace=True)
@@ -159,11 +185,69 @@ class EnergySeries(Series):
                 )
             self.index = newindex
 
+    @classmethod
+    def from_sqlite(
+        cls,
+        df,
+        name=None,
+        base_year=2018,
+        normalize=False,
+        sort_values=False,
+        ascending=False,
+        concurrent_sort=False,
+        to_units=None,
+    ):
+        """Create a
+        Args:
+            df (DataFrame):
+            base_year:
+            normalize:
+            sort_values:
+            ascending:
+            concurrent_sort:
+            to_units:
+        """
+        index = pd.to_datetime(
+            {
+                "year": base_year,
+                "month": df.Month,
+                "day": df.Day,
+                "hour": df.Hour,
+                "minute": df.Minute,
+            }
+        )
+        # Adjust timeindex by timedelta
+        index -= df.Interval.apply(lambda x: timedelta(minutes=x))
+
+        # get data
+        data = df.Value
+        units = set(df.Units)
+        if len(units) > 1:
+            raise ValueError("The DataFrame contains mixed units: {}".format(units))
+        else:
+            units = next(iter(units), None)
+
+        # Since we create the index, use_timeindex must be false
+        return cls(
+            data.values,
+            name=name,
+            units=units,
+            index=index,
+            use_timeindex=False,
+            base_year=base_year,
+            normalize=normalize,
+            sort_values=sort_values,
+            ascending=ascending,
+            concurrent_sort=concurrent_sort,
+            to_units=to_units,
+        )
+
     def unit_conversion(self, to_units=None, inplace=False):
         """returns the multiplier to convert units
 
         Args:
             to_units (pint.Unit):
+            inplace:
         """
         reg = settings.unit_registry
         if to_units is None:
@@ -182,6 +266,12 @@ class EnergySeries(Series):
             return result
 
     def concurrent_sort(self, ascending=False, inplace=False, level=0):
+        """
+        Args:
+            ascending:
+            inplace:
+            level:
+        """
         if isinstance(self.index, MultiIndex):
             concurrent = self.unstack(level=level)
             concurrent_sum = concurrent.sum(axis=1)
@@ -199,7 +289,12 @@ class EnergySeries(Series):
                 return result  # todo: make sure results has all the metadata
 
     def normalize(self, feature_range=(0, 1), inplace=False):
-        """Returns a normalized EnergySeries"""
+        """Returns a normalized EnergySeries
+
+        Args:
+            feature_range:
+            inplace:
+        """
         scaler = preprocessing.MinMaxScaler(feature_range=feature_range)
         if self.archetypes:
             result = concat(
@@ -221,8 +316,8 @@ class EnergySeries(Series):
             return result  # todo: make sure result has all the metadata
 
     def ldc_source(self, SCOPH=4, SCOPC=4):
-        """Returns the Load Duration Curve from the source side of
-        theoretical Heat Pumps
+        """Returns the Load Duration Curve from the source side of theoretical
+        Heat Pumps
 
         Args:
             SCOPH: Seasonal COP in Heating
@@ -238,8 +333,8 @@ class EnergySeries(Series):
         return result
 
     def source_side(self, SCOPH=None, SCOPC=None):
-        """Returns the Source Side EnergySeries given a Seasonal COP.
-        Negative values are considered like Cooling Demand.
+        """Returns the Source Side EnergySeries given a Seasonal COP. Negative
+        values are considered like Cooling Demand.
 
         Args:
             SCOPH: Seasonal COP in Heating
@@ -275,7 +370,26 @@ class EnergySeries(Series):
         addMeanMin=None,
         addMeanMax=None,
     ):
-        """uses tsam"""
+        """uses tsam
+
+        Args:
+            resolution:
+            noTypicalPeriods:
+            hoursPerPeriod:
+            clusterMethod:
+            evalSumPeriods:
+            sortValues:
+            sameMean:
+            rescaleClusterPeriods:
+            weightDict:
+            extremePeriodMethod:
+            solver:
+            roundOutput:
+            addPeakMin:
+            addPeakMax:
+            addMeanMin:
+            addMeanMax:
+        """
         try:
             import tsam.timeseriesaggregation as tsam
         except ImportError:
@@ -318,9 +432,6 @@ class EnergySeries(Series):
         Args:
             n_bins (int): Number of bins or steps to discretize the function
             inplace (bool): if True, perform operation in-place
-
-        Returns:
-
         """
         try:
             from scipy.optimize import minimize
@@ -423,7 +534,11 @@ class EnergySeries(Series):
             return result.__finalize__(self)
 
     def unstack(self, level=-1, fill_value=None):
-        """"""
+        """
+        Args:
+            level:
+            fill_value:
+        """
         from pandas.core.reshape.reshape import unstack
 
         result = unstack(self, level, fill_value)
@@ -431,6 +546,11 @@ class EnergySeries(Series):
         return result.__finalize__(self)
 
     def stack(self, level=-1, dropna=True):
+        """
+        Args:
+            level:
+            dropna:
+        """
         from pandas.core.reshape.reshape import stack, stack_multiple
 
         if isinstance(level, (tuple, list)):
@@ -443,12 +563,21 @@ class EnergySeries(Series):
     def plot3d(self, *args, **kwargs):
         """Generate a plot of the EnergySeries.
 
-        Wraps the ``plot_energyseries()`` function, and documentation is copied
-        from there.
+        Wraps the ``plot_energyseries()`` function, and documentation is
+        copied from there.
+
+        Args:
+            *args:
+            **kwargs:
         """
         return plot_energyseries(self, *args, **kwargs)
 
     def plot2d(self, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         return plot_energyseries_map(self, **kwargs)
 
     # @property
@@ -486,7 +615,6 @@ class EnergySeries(Series):
 
     @property
     def bin_edges(self):
-        """"""
         return self.bin_edges_
 
     @property
@@ -521,7 +649,6 @@ def save_and_show(
     """Save a figure to disk and show it, as specified.
 
     Args:
-        extent:
         fig (matplotlib.figure.Figure): the figure
         ax (matplotlib.axes.Axes or list(matplotlib.axes.Axes)): the axes
         save (bool): whether to save the figure to disk or not
@@ -534,6 +661,7 @@ def save_and_show(
         dpi (int): the resolution of the image file if saving (Dots per inch)
         axis_off (bool): if True matplotlib axis was turned off by plot_graph so
             constrain the saved figure's extent to the interior of the axis
+        extent:
 
     Returns:
         (tuple) fig, ax
@@ -626,12 +754,11 @@ def plot_energyseries(
     **kwargs
 ):
     """
-
     Args:
         energy_series (EnergySeries):
         kind (str):
         axis_off (bool):
-        cmap ():
+        cmap:
         fig_height (float):
         fig_width (float):
         show (bool):
@@ -641,14 +768,11 @@ def plot_energyseries(
         dpi (int):
         file_format (str):
         color (str):
-        axes ():
+        axes:
         vmin (float):
         vmax (float):
         filename (str):
         **kwargs:
-
-    Returns:
-
     """
     if energy_series.empty:
         warnings.warn(
@@ -802,9 +926,31 @@ def plot_energyseries_map(
     **kwargs
 ):
     """
-
     Args:
         data (EnergySeries or EnergyDataFrame):
+        periodlength:
+        subplots:
+        vmin:
+        vmax:
+        axis_off:
+        cmap:
+        fig_height:
+        fig_width:
+        show:
+        view_angle:
+        save:
+        close:
+        dpi:
+        file_format:
+        color:
+        ax:
+        filename:
+        extent:
+        sharex:
+        sharey:
+        layout:
+        layout_type:
+        **kwargs:
     """
     if fig_height is None:
         fig_height = fig_width / 3
@@ -849,6 +995,17 @@ def plot_energyseries_map(
 def _plot_poly_collection(
     ax, verts, zs=None, color=None, cmap=None, vmin=None, vmax=None, **kwargs
 ):
+    """
+    Args:
+        ax:
+        verts:
+        zs:
+        color:
+        cmap:
+        vmin:
+        vmax:
+        **kwargs:
+    """
     from matplotlib.collections import PolyCollection
 
     # if None in zs:
@@ -873,6 +1030,15 @@ def _plot_poly_collection(
 
 
 def _plot_surface(ax, x, y, z, cmap=None, **kwargs):
+    """
+    Args:
+        ax:
+        x:
+        y:
+        z:
+        cmap:
+        **kwargs:
+    """
     if cmap is None:
         cmap = cm.gist_earth
 
@@ -897,8 +1063,12 @@ def _plot_surface(ax, x, y, z, cmap=None, **kwargs):
 
 def _polygon_under_graph(xlist, ylist):
     """Construct the vertex list which defines the polygon filling the space
-    under
-    the (xlist, ylist) line graph.  Assumes the xs are in ascending order."""
+    under the (xlist, ylist) line graph. Assumes the xs are in ascending order.
+
+    Args:
+        xlist:
+        ylist:
+    """
     return [(xlist[0], 0.0), *zip(xlist, ylist), (xlist[-1], 0.0)]
 
 

@@ -18,7 +18,7 @@ class EnergyDataFrame(DataFrame):
         "base_year",
         "frequency",
         "units",
-        "is_sorted",
+        "sort_values",
         "to_units",
     ]
 

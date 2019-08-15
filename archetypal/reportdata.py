@@ -1,9 +1,11 @@
 import functools
 import logging as lg
 import time
+from sqlite3 import OperationalError
 
 import numpy as np
 import pandas as pd
+from path import Path
 
 from archetypal import log, EnergySeries
 
@@ -28,7 +30,7 @@ class ReportData(pd.DataFrame):
     UNITS = "Units"
 
     @classmethod
-    def from_sql(cls, sql_dict):
+    def from_sql_dict(cls, sql_dict):
         report_data = sql_dict["ReportData"]
         report_data["ReportDataDictionaryIndex"] = pd.to_numeric(
             report_data["ReportDataDictionaryIndex"]
@@ -41,6 +43,97 @@ class ReportData(pd.DataFrame):
                 report_data_dict, on=["ReportDataDictionaryIndex"]
             )
         )
+
+    @classmethod
+    def from_sqlite(
+        cls,
+        sqlite_file,
+        table_name="WaterSystems:EnergyTransfer",
+        warmup_flag=0,
+        environment_type=3,
+    ):
+        """Reads an EnergyPlus eplusout.sql file and returns a :class:`ReportData`
+        which is a subclass of :class:`DataFrame`.
+
+        Args:
+            environment_type (str): An enumeration of the environment type. (1 = Design
+                Day, 2 = Design Run Period, 3 = Weather Run Period) See the various
+                SizingPeriod objects and the RunPeriod object for details.
+            sqlite_file (str):
+
+        Returns:
+            (ReportData): The ReportData object.
+        """
+        file = Path(sqlite_file)
+        if not file.exists():
+            raise FileNotFoundError("Could not find sql file {}".format(file.relpath()))
+
+        import sqlite3
+
+        # create database connection with sqlite3
+        with sqlite3.connect(sqlite_file) as conn:
+            # empty dict to hold all DataFrames
+            all_tables = {}
+            # Iterate over all tables in the report_tables list
+            sql_query = f"""
+            SELECT rd.ReportDataIndex,
+                   rd.TimeIndex,
+                   rd.ReportDataDictionaryIndex,
+                   red.ReportExtendedDataIndex,
+                   t.Month,
+                   t.Day,
+                   t.Hour,
+                   t.Minute,
+                   t.Dst,
+                   t.Interval,
+                   t.IntervalType,
+                   t.SimulationDays,
+                   t.DayType,
+                   t.EnvironmentPeriodIndex,
+                   t.WarmupFlag,
+                   p.EnvironmentType,
+                   rd.Value,
+                   rdd.IsMeter,
+                   rdd.Type,
+                   rdd.IndexGroup,
+                   rdd.TimestepType,
+                   rdd.KeyValue,
+                   rdd.Name,
+                   rdd.ReportingFrequency,
+                   rdd.ScheduleName,
+                   rdd.Units
+            FROM ReportData As rd
+                    INNER JOIN ReportDataDictionary As rdd ON rd.ReportDataDictionaryIndex = rdd.ReportDataDictionaryIndex
+                    LEFT OUTER JOIN ReportExtendedData As red ON rd.ReportDataIndex = red.ReportDataIndex
+                    INNER JOIN Time As t ON rd.TimeIndex = t.TimeIndex
+                    JOIN EnvironmentPeriods as p ON t.EnvironmentPeriodIndex = p.EnvironmentPeriodIndex
+            WHERE t.WarmupFlag = @warmup_flag;
+            """
+            if any(table_name):
+                sql_query = sql_query.replace(";", """ and Name = @table_name;""")
+            if environment_type:
+                sql_query = sql_query.replace(
+                    ";", """ and EnvironmentType = @environment_type;"""
+                )
+            params = {
+                "warmup_flag": warmup_flag,
+                "table_name": table_name,
+                "environment_type": environment_type,
+            }
+            df = cls.execute(conn, sql_query, params)
+            return df
+
+    @staticmethod
+    def execute(conn, sql_query, params):
+        try:
+            # Try regular str read, could fail if wrong encoding
+            conn.text_factory = str
+            df = pd.read_sql_query(sql_query, conn, params=params, coerce_float=True)
+        except OperationalError as e:
+            # Wring encoding found, the load bytes and decode object
+            # columns only
+            raise e
+        return df
 
     @property
     def _constructor(self):
@@ -89,7 +182,7 @@ class ReportData(pd.DataFrame):
             frequency=freq_map[freq[0]],
             units=units[0],
             normalize=normalize,
-            is_sorted=sort,
+            sort_values=sort,
             ascending=ascending,
             to_units="kWh",
             concurrent_sort=concurrent_sort,
@@ -144,7 +237,7 @@ class ReportData(pd.DataFrame):
             c_1 = (
                 conjunction(
                     *[self[self.ARCHETYPE] == archetype for archetype in archetype],
-                    logical=np.logical_or
+                    logical=np.logical_or,
                 )
                 if isinstance(archetype, tuple)
                 else self[self.ARCHETYPE] == archetype
@@ -157,7 +250,7 @@ class ReportData(pd.DataFrame):
                         self[self.REPORTDATAINDEX] == reportdataindex
                         for reportdataindex in reportdataindex
                     ],
-                    logical=np.logical_or
+                    logical=np.logical_or,
                 )
                 if isinstance(reportdataindex, tuple)
                 else self[self.REPORTDATAINDEX] == reportdataindex
@@ -167,7 +260,7 @@ class ReportData(pd.DataFrame):
             c_3 = (
                 conjunction(
                     *[self[self.TIMEINDEX] == timeindex for timeindex in timeindex],
-                    logical=np.logical_or
+                    logical=np.logical_or,
                 )
                 if isinstance(timeindex, tuple)
                 else self[self.TIMEINDEX] == timeindex
@@ -181,7 +274,7 @@ class ReportData(pd.DataFrame):
                         == reportdatadictionaryindex
                         for reportdatadictionaryindex in reportdatadictionaryindex
                     ],
-                    logical=np.logical_or
+                    logical=np.logical_or,
                 )
                 if isinstance(reportdatadictionaryindex, tuple)
                 else self[self.REPORTDATADICTIONARYINDEX] == reportdatadictionaryindex
@@ -191,7 +284,7 @@ class ReportData(pd.DataFrame):
             c_5 = (
                 conjunction(
                     *[self[self.VALUE] == value for value in value],
-                    logical=np.logical_or
+                    logical=np.logical_or,
                 )
                 if isinstance(value, tuple)
                 else self[self.VALUE] == value
@@ -201,7 +294,7 @@ class ReportData(pd.DataFrame):
             c_6 = (
                 conjunction(
                     *[self[self.ISMETER] == ismeter for ismeter in ismeter],
-                    logical=np.logical_or
+                    logical=np.logical_or,
                 )
                 if isinstance(ismeter, tuple)
                 else self[self.ISMETER] == ismeter
@@ -220,7 +313,7 @@ class ReportData(pd.DataFrame):
             c_8 = (
                 conjunction(
                     *[self[self.INDEXGROUP] == indexgroup for indexgroup in indexgroup],
-                    logical=np.logical_or
+                    logical=np.logical_or,
                 )
                 if isinstance(indexgroup, tuple)
                 else self[self.INDEXGROUP] == indexgroup
@@ -233,7 +326,7 @@ class ReportData(pd.DataFrame):
                         self[self.TIMESTEPTYPE] == timesteptype
                         for timesteptype in timesteptype
                     ],
-                    logical=np.logical_or
+                    logical=np.logical_or,
                 )
                 if isinstance(timesteptype, tuple)
                 else self[self.TIMESTEPTYPE] == timesteptype
@@ -243,7 +336,7 @@ class ReportData(pd.DataFrame):
             c_10 = (
                 conjunction(
                     *[self[self.KEYVALUE] == keyvalue for keyvalue in keyvalue],
-                    logical=np.logical_or
+                    logical=np.logical_or,
                 )
                 if isinstance(keyvalue, tuple)
                 else self[self.KEYVALUE] == keyvalue
@@ -265,7 +358,7 @@ class ReportData(pd.DataFrame):
                         self[self.REPORTINGFREQUENCY] == reportingfrequency
                         for reportingfrequency in reportingfrequency
                     ],
-                    logical=np.logical_or
+                    logical=np.logical_or,
                 )
                 if isinstance(reportingfrequency, tuple)
                 else self[self.REPORTINGFREQUENCY] == reportingfrequency
@@ -278,7 +371,7 @@ class ReportData(pd.DataFrame):
                         self[self.SCHEDULENAME] == schedulename
                         for schedulename in schedulename
                     ],
-                    logical=np.logical_or
+                    logical=np.logical_or,
                 )
                 if isinstance(schedulename, tuple)
                 else self[self.SCHEDULENAME] == schedulename
@@ -288,7 +381,7 @@ class ReportData(pd.DataFrame):
             c_14 = (
                 conjunction(
                     *[self[self.UNITS] == units for units in units],
-                    logical=np.logical_or
+                    logical=np.logical_or,
                 )
                 if isinstance(units, tuple)
                 else self[self.UNITS] == units

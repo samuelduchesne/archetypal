@@ -136,7 +136,7 @@ class IDF(geomeppy.IDF):
         return self._energy_series(energy_out_variable_name, units)
 
     def _energy_series(self, energy_out_variable_name, units):
-        rd = ReportData.from_sql(self.sql)
+        rd = ReportData.from_sql_dict(self.sql)
         energy_out = rd.filter_report_data(name=tuple(energy_out_variable_name))
         values_unit = energy_out.groupby("TimeIndex").agg(
             {"Value": sum, "Units": lambda x: x.iloc[0]}

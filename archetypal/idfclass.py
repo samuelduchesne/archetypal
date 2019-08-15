@@ -24,7 +24,14 @@ from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.easyopen import getiddfile
 from eppy.runner.run_functions import run
 
-from archetypal import log, settings, EnergyPlusProcessError, cd
+from archetypal import (
+    log,
+    settings,
+    EnergyPlusProcessError,
+    cd,
+    ReportData,
+    EnergySeries,
+)
 
 
 class IDF(geomeppy.IDF):
@@ -48,8 +55,8 @@ class IDF(geomeppy.IDF):
 
     @property
     def sql(self):
-        if self._sql is not None:
-            return self.run_eplus()
+        if self._sql is None:
+            return self.run_eplus(annual=True)
         else:
             return self._sql
 
@@ -92,6 +99,55 @@ class IDF(geomeppy.IDF):
                         partition_lineal += surface.width * multiplier
 
         return partition_lineal / self.area_conditioned
+
+    def space_heating_profile(self, units="kWh", energy_out_variable_name=None):
+        """
+        Args:
+            units (str): Units to convert the energy profile to. Will detect the
+                units of the EnergyPlus results.
+            energy_out_variable_name (list-like): a list of EnergyPlus Variable
+                names.
+
+        Returns:
+            EnergySeries
+        """
+        if energy_out_variable_name is None:
+            energy_out_variable_name = (
+                "Air System Total Heating Energy",
+                "Zone Ideal Loads Zone Total Heating Energy",
+            )
+        return self._energy_series(energy_out_variable_name, units)
+
+    def space_cooling_profile(self, units="kWh", energy_out_variable_name=None):
+        """
+        Args:
+            units (str): Units to convert the energy profile to. Will detect the
+                units of the EnergyPlus results.
+            energy_out_variable_name (list-like): a list of EnergyPlus
+
+        Returns:
+            EnergySeries
+        """
+        if energy_out_variable_name is None:
+            energy_out_variable_name = (
+                "Air System Total Cooling Energy",
+                "Zone Ideal Loads Zone Total Cooling Energy",
+            )
+        return self._energy_series(energy_out_variable_name, units)
+
+    def _energy_series(self, energy_out_variable_name, units):
+        rd = ReportData.from_sql(self.sql)
+        energy_out = rd.filter_report_data(name=tuple(energy_out_variable_name))
+        values_unit = energy_out.groupby("TimeIndex").agg(
+            {"Value": sum, "Units": lambda x: x.iloc[0]}
+        )
+        profile = EnergySeries(
+            values_unit.Value,
+            frequency="H",
+            units=values_unit.Units.iloc[0],
+            to_units=units,
+        )
+        return profile
 
     def run_eplus(
         self,
@@ -138,7 +194,6 @@ class IDF(geomeppy.IDF):
             ep_version,
             output_report,
             prep_outputs,
-            design_day=True,
             **kwargs
         )
         if output_report != "sql":
@@ -927,6 +982,25 @@ def run_eplus(
     """Run an energy plus file and return the SummaryReports Tables in a list of
     [(title, table), .....]
 
+    Keywords:
+        annual (bool): If True then force annual simulation (default: False)
+        design_day (bool): Force design-day-only simulation (default: False)
+        epmacro (bool): Run EPMacro prior to simulation (default: False)
+        expandobjects (bool): Run ExpandObjects prior to simulation (default:
+
+            False)
+
+        readvars (bool): Run ReadVarsESO after simulation (default: False)
+        output_prefix (str): Prefix for output file names verbose (str): idf:
+        str output_suffix (str, optional): Suffix style for output file names (
+
+            default: L): - L: Legacy (e.g., eplustbl.csv) C: Capital (e.g.,
+
+                eplusTable.csv)
+            - D: Dash (e.g., eplus-table.csv)
+
+        version (bool, optional): Display version information (default: False)
+
     Args:
         eplus_file (str): path to the idf file.
         weather_file (str): path to the EPW weather file
@@ -939,23 +1013,6 @@ def run_eplus(
             :func:`prepare_outputs`
         return_idf (bool): If True, returns the loaded IDF object.
         **kwargs: keyword arguments to pass to other functions (see below)
-
-    Keywords:
-        annual (bool): If True then force annual simulation (default: False)
-        design_day (bool): Force design-day-only simulation (default: False)
-        epmacro (bool): Run EPMacro prior to simulation (default: False)
-        expandobjects (bool): Run ExpandObjects prior to simulation (default:
-            False)
-        readvars (bool): Run ReadVarsESO after simulation (default: False)
-        output_prefix (str): Prefix for output file names
-        verbose (str):
-        idf: str
-        output_suffix (str, optional): Suffix style for output file names (
-            default: L):
-            - L: Legacy (e.g., eplustbl.csv) C: Capital (e.g.,
-              eplusTable.csv)
-            - D: Dash (e.g., eplus-table.csv)
-        version (bool, optional): Display version information (default: False)
 
     Returns:
         2-tuple: a 1-tuple or a 2-tuple
@@ -1095,7 +1152,11 @@ def run_eplus(
 
 
 def _unpack_tuple(x):
-    """Unpacks one-element tuples for use as return values"""
+    """Unpacks one-element tuples for use as return values
+
+    Args:
+        x:
+    """
     if len(x) == 1:
         return x[0]
     else:

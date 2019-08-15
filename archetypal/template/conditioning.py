@@ -422,7 +422,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             energy_in_list=heating_meters,
             energy_out_variable_name=(
                 "Air System Total Heating Energy",
-                "Zone Ideal Loads Zone Total Heating " "Energy",
+                "Zone Ideal Loads Zone Total Heating Energy",
             ),
         )
         # Cooling
@@ -436,7 +436,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             energy_in_list=cooling_meters,
             energy_out_variable_name=(
                 "Air System Total Cooling Energy",
-                "Zone Ideal Loads Zone Total Cooling " "Energy",
+                "Zone Ideal Loads Zone Total Cooling Energy",
             ),
         )
 

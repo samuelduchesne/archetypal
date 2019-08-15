@@ -17,11 +17,11 @@ warn_if_outdated("archetypal", __version__)
 
 from .utils import *
 from .simple_glazing import *
-from .idfclass import *
 from .energyseries import EnergySeries
 from .energydataframe import EnergyDataFrame
 from .reportdata import ReportData
 from .tabulardata import TabularData
+from .idfclass import *
 from .schedule import Schedule
 from .dataportal import *
 from .plot import *

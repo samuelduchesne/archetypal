@@ -4,9 +4,12 @@ import archetypal as ar
 import pandas as pd
 import pytest
 
+from path import Path
+
 
 @pytest.fixture(scope="module")
 def test_energydf(config):
+    from archetypal import ReportData
     idfs = [
         "tests/input_data/regular/5ZoneNightVent1.idf",
         "tests/input_data/regular/AdultEducationCenter.idf",
@@ -40,6 +43,27 @@ def test_energydf(config):
     hl = sv.heating_load(normalize=False, sort=False, concurrent_sort=False)
 
     yield hl
+
+
+@pytest.fixture(params=["Water Heater Tank Temperature", "WaterSystems:EnergyTransfer"])
+def rd(request):
+    from archetypal import ReportData
+
+    file = Path("tests/input_data/trnsys/HeatPumpWaterHeater.sqlite")
+
+    rd = ReportData.from_sqlite(file, table_name=request.param)
+    assert not rd.empty
+    yield rd
+
+
+def test_EnergySeries(rd):
+    import matplotlib.pyplot as plt
+    from archetypal import EnergySeries
+
+    es = EnergySeries.from_sqlite(rd)
+    es.plot()
+    plt.show()
+    print(es)
 
 
 @pytest.mark.parametrize("kind", ["polygon", "surface"])
@@ -81,7 +105,7 @@ def from_csv(config):
     file = "tests/input_data/test_profile.csv"
     df = pd.read_csv(file, index_col=[0], names=["Heat"])
     ep = ar.EnergySeries(
-        df.Heat, units="BTU/hour", frequency="1H", to_units="kW", is_sorted=False
+        df.Heat, units="BTU/hour", frequency="1H", to_units="kW", sort_values=False
     )
     # ep = ep.unit_conversion(to_units='kW')
     yield ep

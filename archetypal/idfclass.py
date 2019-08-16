@@ -46,6 +46,7 @@ class IDF(geomeppy.IDF):
             **kwargs:
         """
         super(IDF, self).__init__(*args, **kwargs)
+        self._sql_file = None
         self.schedules_dict = self.get_all_schedules()
         self._sql = None
 
@@ -56,9 +57,22 @@ class IDF(geomeppy.IDF):
     @property
     def sql(self):
         if self._sql is None:
-            return self.run_eplus(annual=True)
+            self._sql = self.run_eplus(
+                annual=True, prep_outputs=True, output_report="sql"
+            )
+            return self._sql
         else:
             return self._sql
+
+    @property
+    def sql_file(self):
+        if self._sql_file is None:
+            self._sql_file = self.run_eplus(
+                annual=True, prep_outputs=True, output_report="sql_file"
+            )
+            return self._sql_file
+        else:
+            return self._sql_file
 
     @property
     def area_conditioned(self):
@@ -100,52 +114,88 @@ class IDF(geomeppy.IDF):
 
         return partition_lineal / self.area_conditioned
 
-    def space_heating_profile(self, units="kWh", energy_out_variable_name=None):
+    def space_heating_profile(
+        self,
+        units="kWh",
+        energy_out_variable_name=None,
+        name="Space Heating",
+        EnergySeries_kwds={},
+    ):
         """
         Args:
             units (str): Units to convert the energy profile to. Will detect the
                 units of the EnergyPlus results.
             energy_out_variable_name (list-like): a list of EnergyPlus Variable
                 names.
+            name (str): Name given to the EnergySeries.
+            EnergySeries_kwds (dict, optional): keywords passed to
+                :func:`EnergySeries.from_sqlite`
 
         Returns:
             EnergySeries
         """
+        start_time = time.time()
         if energy_out_variable_name is None:
             energy_out_variable_name = (
                 "Air System Total Heating Energy",
                 "Zone Ideal Loads Zone Total Heating Energy",
             )
-        return self._energy_series(energy_out_variable_name, units)
+        series = self._energy_series(
+            energy_out_variable_name, units, name, EnergySeries_kwds
+        )
+        log(
+            "Retrieved Space Heating Profile in {:,.2f} seconds".format(
+                time.time() - start_time
+            )
+        )
+        return series
 
-    def space_cooling_profile(self, units="kWh", energy_out_variable_name=None):
+    def space_cooling_profile(
+        self,
+        units="kWh",
+        energy_out_variable_name=None,
+        name="Space Cooling",
+        EnergySeries_kwds={},
+    ):
         """
         Args:
             units (str): Units to convert the energy profile to. Will detect the
                 units of the EnergyPlus results.
             energy_out_variable_name (list-like): a list of EnergyPlus
+            name (str): Name given to the EnergySeries.
+            EnergySeries_kwds (dict, optional): keywords passed to
+                :func:`EnergySeries.from_sqlite`
 
         Returns:
             EnergySeries
         """
+        start_time = time.time()
         if energy_out_variable_name is None:
             energy_out_variable_name = (
                 "Air System Total Cooling Energy",
                 "Zone Ideal Loads Zone Total Cooling Energy",
             )
-        return self._energy_series(energy_out_variable_name, units)
-
-    def _energy_series(self, energy_out_variable_name, units):
-        rd = ReportData.from_sql_dict(self.sql)
-        energy_out = rd.filter_report_data(name=tuple(energy_out_variable_name))
-        values_unit = energy_out.groupby("TimeIndex").agg(
-            {"Value": sum, "Units": lambda x: x.iloc[0]}
+        series = self._energy_series(
+            energy_out_variable_name, units, name, EnergySeries_kwds
         )
-        profile = EnergySeries(
-            values_unit.Value,
-            frequency="H",
-            units=values_unit.Units.iloc[0],
-            to_units=units,
+        log(
+            "Retrieved Space Cooling Profile in {:,.2f} seconds".format(
+                time.time() - start_time
+            )
+        )
+        return series
+
+    def _energy_series(self, energy_out_variable_name, units, name, EnergySeries_kwds):
+        """
+        Args:
+            energy_out_variable_name:
+            units:
+            name:
+            EnergySeries_kwds:
+        """
+        rd = ReportData.from_sqlite(self.sql_file, table_name=energy_out_variable_name)
+        profile = EnergySeries.from_sqlite(
+            rd, to_units=units, name=name, **EnergySeries_kwds
         )
         return profile
 
@@ -877,47 +927,47 @@ def prepare_outputs(eplus_file, outputs=None, idd_filename=None):
     # Output variables
     idf[eplus_finename].add_object(
         "Output:Variable".upper(),
-        Variable_Name="Air System Total Heating " "Energy",
+        Variable_Name="Air System Total Heating Energy",
         Reporting_Frequency="hourly",
     )
     idf[eplus_finename].add_object(
         "Output:Variable".upper(),
-        Variable_Name="Air System Total Cooling " "Energy",
+        Variable_Name="Air System Total Cooling Energy",
         Reporting_Frequency="hourly",
     )
     idf[eplus_finename].add_object(
         "Output:Variable".upper(),
-        Variable_Name="Zone Ideal Loads Zone Total " "Heating Energy",
+        Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
         Reporting_Frequency="hourly",
     )
     idf[eplus_finename].add_object(
         "Output:Variable".upper(),
-        Variable_Name="Zone Ideal Loads Zone Total " "Cooling Energy",
+        Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
         Reporting_Frequency="hourly",
     )
     idf[eplus_finename].add_object(
         "Output:Variable".upper(),
-        Variable_Name="Zone Thermostat Heating " "Setpoint Temperature",
+        Variable_Name="Zone Thermostat Heating Setpoint Temperature",
         Reporting_Frequency="hourly",
     )
     idf[eplus_finename].add_object(
         "Output:Variable".upper(),
-        Variable_Name="Zone Thermostat Cooling " "Setpoint Temperature",
+        Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
         Reporting_Frequency="hourly",
     )
     idf[eplus_finename].add_object(
         "Output:Variable".upper(),
-        Variable_Name="Heat Exchanger Total Heating " "Rate",
+        Variable_Name="Heat Exchanger Total Heating Rate",
         Reporting_Frequency="hourly",
     )
     idf[eplus_finename].add_object(
         "Output:Variable".upper(),
-        Variable_Name="Heat Exchanger Sensible " "Effectiveness",
+        Variable_Name="Heat Exchanger Sensible Effectiveness",
         Reporting_Frequency="hourly",
     )
     idf[eplus_finename].add_object(
         "Output:Variable".upper(),
-        Variable_Name="Heat Exchanger Latent " "Effectiveness",
+        Variable_Name="Heat Exchanger Latent Effectiveness",
         Reporting_Frequency="hourly",
     )
 
@@ -950,6 +1000,11 @@ def prepare_outputs(eplus_file, outputs=None, idd_filename=None):
     )
     idf[eplus_finename].add_object(
         "OUTPUT:METER", Key_Name="Cooling:Gas", Reporting_Frequency="hourly"
+    )
+    idf[eplus_finename].add_object(
+        "OUTPUT:METER",
+        Key_Name="WaterSystems:EnergyTransfer",
+        Reporting_Frequency="hourly",
     )
 
 
@@ -1369,7 +1424,7 @@ def get_report(
             raise FileNotFoundError(
                 'File "{}" does not exist'.format(fullpath_filename)
             )
-    elif output_folder == "sql_file":
+    elif output_report.lower() == "sql_file":
         # Get the sql report
         fullpath_filename = os.path.join(
             output_folder,

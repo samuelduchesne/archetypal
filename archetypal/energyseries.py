@@ -196,7 +196,7 @@ class EnergySeries(Series):
         ascending=False,
         concurrent_sort=False,
         to_units=None,
-        agg_func=sum,
+        agg_func="sum",
     ):
         """Create a.
 
@@ -209,8 +209,17 @@ class EnergySeries(Series):
             ascending:
             concurrent_sort:
             to_units:
-            agg_func (func): The aggregation function to use in the case that
-                multiple values have the same index value.
+            agg_func (callable): The aggregation function to use in the case
+                that multiple values have the same index value. If a function,
+                must either work when passed a DataFrame or when passed to
+                DataFrame.apply. For a DataFrame, can pass a dict, if the keys
+                are DataFrame column names.
+
+                Accepted Combinations are:
+                    - string function name
+                    - function
+                    - list of functions
+                    - dict of column names -> functions (or list of functions)
         """
         index = pd.to_datetime(
             {
@@ -226,18 +235,20 @@ class EnergySeries(Series):
 
         # get data
         data = df.Value
+        data.index = index
         units = set(df.Units)
         if len(units) > 1:
             raise ValueError("The DataFrame contains mixed units: {}".format(units))
         else:
             units = next(iter(units), None)
-
+        # group data by index value (level=0) using the agg_func
+        grouped_Data = data.groupby(level=0).agg(agg_func)
         # Since we create the index, use_timeindex must be false
         return cls(
-            data.groupby(level=0).apply(agg_func).values,
+            grouped_Data.values,
             name=name,
             units=units,
-            index=index,
+            index=grouped_Data.index,
             use_timeindex=False,
             base_year=base_year,
             normalize=normalize,

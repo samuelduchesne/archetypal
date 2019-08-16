@@ -1151,11 +1151,11 @@ def run_eplus(
             False)
         readvars (bool): Run ReadVarsESO after simulation (default: False)
         output_prefix (str, optional): Prefix for output file names.
-        output_suffix (str, optional): Suffix style for output file names
-            (default: L)
-
-                L: Legacy (e.g., eplustbl.csv) C: Capital (e.g., eplusTable.csv)
-                D: Dash (e.g., eplus-table.csv)
+        output_suffix (str, optional): Suffix style for output file names (default: L)
+                Choices are:
+                    - L: Legacy (e.g., eplustbl.csv)
+                    - C: Capital (e.g., eplusTable.csv)
+                    - D: Dash (e.g., eplus-table.csv)
         version (bool, optional): Display version information (default: False)
         verbose (str): Set verbosity of runtime messages (default: v) v: verbose
             q: quiet
@@ -1172,7 +1172,8 @@ def run_eplus(
             pandas.read_csv (if they are csv files), resulting in duplicate. The
             only way to bypass this behavior is to add the key "*.csv" to that
             dictionnary.
-        return_idf:
+        return_idf (bool): If Truem returns the :class:`IDF` object part of the return
+            tuple.
 
     Returns:
         2-tuple: a 1-tuple or a 2-tuple
@@ -1260,8 +1261,10 @@ def run_eplus(
         )
 
         start_time = time.time()
-        if include:
+        if isinstance(include, str):
             include = Path().abspath().glob(include)
+        elif include is not None:
+            include = [Path(file) for file in include]
         # run the EnergyPlus Simulation
         with tempdir(
             prefix="eplus_run_", suffix=output_prefix, dir=output_directory

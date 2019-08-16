@@ -157,9 +157,10 @@ def run_schedules_idf(config):
         idf_file,
         weather_file="tests/input_data/CAN_PQ_Montreal.Intl.AP" ".716270_CWEC.epw",
         annual=True,
-        output_folder="tests/input_data/schedules",
+        output_directory="tests/input_data/schedules",
         output_prefix="eprun",
         readvars=True,
+        include=["tests/input_data/schedules/TDV_2008_kBtu_CTZ06.csv"]
     )
     csv = os.path.join("tests", "input_data", "schedules", "eprun", "eprunout.csv")
     yield csv

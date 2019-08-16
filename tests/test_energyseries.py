@@ -6,14 +6,21 @@ import pytest
 
 from path import Path
 
+from archetypal import EnergySeries
 
-@pytest.fixture(scope="module")
-def test_energydf(config):
-    from archetypal import ReportData
-    idfs = [
+import numpy as np
+
+
+@pytest.fixture(
+    scope="module",
+    params=[
         "tests/input_data/regular/5ZoneNightVent1.idf",
         "tests/input_data/regular/AdultEducationCenter.idf",
-    ]
+    ],
+)
+def energy_series(config, request):
+    from archetypal import ReportData
+
     outputs = {
         "ep_object": "Output:Variable".upper(),
         "kwargs": {
@@ -23,29 +30,29 @@ def test_energydf(config):
         },
     }
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    sql = {
-        idf: ar.run_eplus(
-            idf,
-            weather_file=wf,
-            prep_outputs=[outputs],
-            annual=True,
-            expandobjects=True,
-            output_report="sql",
-        )
-        for idf in idfs
-    }
-    report = ar.get_from_reportdata(sql)
-
-    ep = ar.reportdata.ReportData(report)
-    sv = ep.filter_report_data(
-        name=("Heating:Electricity", "Heating:Gas", "Heating:DistrictHeating")
+    sql = ar.run_eplus(
+        request.param,
+        weather_file=wf,
+        prep_outputs=[outputs],
+        annual=True,
+        expandobjects=True,
+        output_report="sql_file",
     )
-    hl = sv.heating_load(normalize=False, sort=False, concurrent_sort=False)
+    report = ReportData.from_sqlite(
+        sql,
+        table_name=("Heating:Electricity", "Heating:Gas", "Heating:DistrictHeating"),
+    )
+
+    hl = EnergySeries.from_sqlite(
+        report, normalize=False, sort_values=False, concurrent_sort=False,
+        to_units="kWh"
+    )
 
     yield hl
 
 
-@pytest.fixture(params=["Water Heater Tank Temperature", "WaterSystems:EnergyTransfer"])
+@pytest.fixture(params=(["Water Heater Tank Temperature",
+                         "WaterSystems:EnergyTransfer"]))
 def rd(request):
     from archetypal import ReportData
 
@@ -67,8 +74,8 @@ def test_EnergySeries(rd):
 
 
 @pytest.mark.parametrize("kind", ["polygon", "surface"])
-def test_plot_3d(test_energydf, kind):
-    hl = test_energydf.copy()
+def test_plot_3d(energy_series, kind):
+    hl = energy_series.copy()
     hl.plot3d(
         save=True,
         axis_off=True,
@@ -85,14 +92,13 @@ def test_plot_3d(test_energydf, kind):
     "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
     reason="Skipping this test on Travis CI.",
 )
-def test_plot_2d(test_energydf):
-    hl = test_energydf.copy()
-    hl = hl.unstack(level=0)
+def test_plot_2d(energy_series):
+    hl = energy_series.copy()
     hl.plot2d(
         save=False,
         axis_off=False,
         cmap="RdBu",
-        subplots=True,
+        subplots=False,
         fig_width=6,
         fig_height=6,
         edgecolors="k",

@@ -1356,7 +1356,7 @@ def get_report(
                 'File "{}" does not exist'.format(fullpath_filename)
             )
 
-    elif "sql" in output_report.lower():
+    elif "sql" == output_report.lower():
         # Get the sql report
         fullpath_filename = os.path.join(
             output_folder,
@@ -1365,6 +1365,19 @@ def get_report(
         )
         if os.path.isfile(fullpath_filename):
             return get_sqlite_report(fullpath_filename)
+        else:
+            raise FileNotFoundError(
+                'File "{}" does not exist'.format(fullpath_filename)
+            )
+    elif output_folder == "sql_file":
+        # Get the sql report
+        fullpath_filename = os.path.join(
+            output_folder,
+            filename_prefix,
+            os.extsep.join([filename_prefix + "out", "sql"]),
+        )
+        if os.path.isfile(fullpath_filename):
+            return fullpath_filename
         else:
             raise FileNotFoundError(
                 'File "{}" does not exist'.format(fullpath_filename)
@@ -1399,7 +1412,7 @@ def get_from_cache(eplus_file, output_report="sql", **kwargs):
             if os.path.isfile(cache_fullpath_filename):
                 return get_html_report(cache_fullpath_filename)
 
-        elif "sql" in output_report.lower():
+        elif "sql" == output_report.lower():
             # get the SQL report
             cache_fullpath_filename = os.path.join(
                 settings.cache_folder,
@@ -1413,6 +1426,15 @@ def get_from_cache(eplus_file, output_report="sql", **kwargs):
                     cache_fullpath_filename,
                     kwargs.get("report_tables", settings.available_sqlite_tables),
                 )
+        elif "sql_file" == output_report.lower():
+            # get the SQL report
+            cache_fullpath_filename = os.path.join(
+                settings.cache_folder,
+                cache_filename_prefix,
+                os.extsep.join([cache_filename_prefix + "out", "sql"]),
+            )
+            if os.path.isfile(cache_fullpath_filename):
+                return cache_fullpath_filename
 
 
 def get_html_report(report_fullpath):

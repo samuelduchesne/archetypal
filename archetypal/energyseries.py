@@ -83,7 +83,7 @@ class EnergySeries(Series):
             fastpath:
             base_year:
             normalize:
-            is_sorted:
+            sort_values:
             ascending:
             archetypes:
             concurrent_sort:
@@ -196,16 +196,21 @@ class EnergySeries(Series):
         ascending=False,
         concurrent_sort=False,
         to_units=None,
+        agg_func=sum,
     ):
-        """Create a
+        """Create a.
+
         Args:
             df (DataFrame):
+            name:
             base_year:
             normalize:
             sort_values:
             ascending:
             concurrent_sort:
             to_units:
+            agg_func (func): The aggregation function to use in the case that
+                multiple values have the same index value.
         """
         index = pd.to_datetime(
             {
@@ -229,7 +234,7 @@ class EnergySeries(Series):
 
         # Since we create the index, use_timeindex must be false
         return cls(
-            data.values,
+            data.groupby(level=0).apply(agg_func).values,
             name=name,
             units=units,
             index=index,

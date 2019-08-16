@@ -107,21 +107,36 @@ class ReportData(pd.DataFrame):
                     LEFT OUTER JOIN ReportExtendedData As red ON rd.ReportDataIndex = red.ReportDataIndex
                     INNER JOIN Time As t ON rd.TimeIndex = t.TimeIndex
                     JOIN EnvironmentPeriods as p ON t.EnvironmentPeriodIndex = p.EnvironmentPeriodIndex
-            WHERE t.WarmupFlag = @warmup_flag;
+            WHERE (IFNULL(t.WarmupFlag, 0) = @warmup_flag);
             """
-            if any(table_name):
-                sql_query = sql_query.replace(";", """ and Name = @table_name;""")
-            if environment_type:
-                sql_query = sql_query.replace(
-                    ";", """ and EnvironmentType = @environment_type;"""
+            if table_name:
+                conditions, table_name = cls.multiple_conditions(
+                    "table_name", table_name, "Name"
                 )
-            params = {
-                "warmup_flag": warmup_flag,
-                "table_name": table_name,
-                "environment_type": environment_type,
-            }
+                sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
+            if environment_type:
+                conditions, env_name = cls.multiple_conditions(
+                    "env_name", environment_type, "EnvironmentType"
+                )
+                sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
+            params = {"warmup_flag": warmup_flag}
+            params.update(table_name)
+            params.update(env_name)
             df = cls.execute(conn, sql_query, params)
             return df
+
+    @classmethod
+    def multiple_conditions(cls, basename, cond_names, var_name):
+        if not isinstance(cond_names, (list, tuple)):
+            cond_names = [cond_names]
+        cond_names = set(cond_names)
+        cond_names = {
+            "%s_%s" % (basename, i): name for i, name in enumerate(cond_names)
+        }
+        conditions = " OR ".join(
+            ["%s = @%s" % (var_name, cond_name) for cond_name in cond_names]
+        )
+        return conditions, cond_names
 
     @staticmethod
     def execute(conn, sql_query, params):

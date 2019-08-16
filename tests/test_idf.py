@@ -178,3 +178,16 @@ def test_partition_ratio():
     idf_file = Path("tests/input_data/necb/").glob("*LargeOffice*.idf")
     idf = load_idf(next(iter(idf_file)))
     print(idf.partition_ratio)
+
+
+def test_space_cooling_profile(config):
+    from archetypal import load_idf
+
+    file = "tests/input_data/regular/AdultEducationCenter.idf"
+    file = ar.copy_file(file)[0]
+    wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+
+    idf = load_idf(file, None, wf)
+
+    assert not idf.space_cooling_profile().empty
+    assert not idf.space_heating_profile().empty

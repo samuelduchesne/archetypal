@@ -49,6 +49,9 @@ class IDF(geomeppy.IDF):
         self._sql_file = None
         self.schedules_dict = self.get_all_schedules()
         self._sql = None
+        self.eplus_run_options = EnergyPlusOptions(
+            self.idfname, self.epw, ep_version="-".join(map(str, self.idd_version))
+        )
 
     @property
     def name(self):
@@ -199,59 +202,29 @@ class IDF(geomeppy.IDF):
         )
         return profile
 
-    def run_eplus(
-        self,
-        weather_file=None,
-        output_folder=None,
-        ep_version=None,
-        output_report="sql",
-        prep_outputs=True,
-        **kwargs
-    ):
+    def run_eplus(self, **kwargs):
         """wrapper around the :func:`archetypal.run_eplus()` method.
 
         If weather file is defined in the IDF object, then this field is
         optional. By default, will load the sql in self.sql.
 
         Args:
-            weather_file (str, optional): path to the EPW weather file.
-            output_folder (str, optional): path to the output folder. Will
-                default to the settings.cache_folder.
-            ep_version (str, optional): EnergyPlus version to use for the
-                simulation, eg: 8-9-0. If the idf file's version is lower than
-                the chosen simulation version, then the file will be upgraded
-                using :func:`archetypal.perform_transition`.
-            output_report (str): 'htm' or 'sql' or None. If None, EnergyPlus
-                runs but nothing is returned in the return statement.
-            prep_outputs (bool or list, optional): if True, default meters and
-                variables outputs are appended to the idf file. see
-                :func:`prepare_outputs` for more details.
             **kwargs:
 
         Returns:
             The output report or the sql file loaded as a dict of DataFrames.
         """
-
-        if not weather_file:
-            weather_file = self.epw
-        if not ep_version:
-            ep_version = "-".join(map(str, self.idd_version))
-        eplus_file = self.idfname
-        results = run_eplus(
-            eplus_file,
-            weather_file,
-            output_folder,
-            ep_version,
-            output_report,
-            prep_outputs,
-            **kwargs
-        )
-        if output_report != "sql":
-            # user wants something more than the sql
-            return results
-        else:
+        self.eplus_run_options.__dict__.update(kwargs)
+        results = run_eplus(**self.eplus_run_options.__dict__)
+        if self.eplus_run_options.output_report == "sql":
             # user simply wants the sql
             self._sql = results
+            return results
+        elif self.eplus_run_options.output_report == "sql_file":
+            self._sql_file = results
+            return results
+        else:
+            # user wants something more than the sql
             return results
 
     def add_object(self, ep_object, save=True, **kwargs):
@@ -474,6 +447,42 @@ class IDF(geomeppy.IDF):
         fieldname = [item for item in theobject.objls if item.endswith("Name")][0]
         theobject[fieldname] = newname
         return theobject
+
+
+class EnergyPlusOptions:
+    def __init__(
+        self,
+        eplus_file,
+        weather_file,
+        output_folder=None,
+        ep_version=None,
+        output_report=None,
+        prep_outputs=False,
+        return_idf=False,
+        annual=False,
+        design_day=False,
+        epmacro=False,
+        expandobjects=True,
+        readvars=False,
+        output_prefix=False,
+        verbose="v",
+        output_suffix="L",
+    ):
+        self.output_suffix = output_suffix
+        self.verbose = verbose
+        self.output_prefix = output_prefix
+        self.readvars = readvars
+        self.expandobjects = expandobjects
+        self.epmacro = epmacro
+        self.design_day = design_day
+        self.annual = annual
+        self.return_idf = return_idf
+        self.prep_outputs = prep_outputs
+        self.output_report = output_report
+        self.ep_version = ep_version
+        self.output_folder = output_folder if output_folder else settings.cache_folder
+        self.weather_file = weather_file
+        self.eplus_file = eplus_file
 
 
 def object_from_idfs(idfs, ep_object, first_occurrence_only=False, processors=1):
@@ -1041,19 +1050,15 @@ def run_eplus(
         annual (bool): If True then force annual simulation (default: False)
         design_day (bool): Force design-day-only simulation (default: False)
         epmacro (bool): Run EPMacro prior to simulation (default: False)
-        expandobjects (bool): Run ExpandObjects prior to simulation (default:
-
-            False)
-
+        expandobjects (bool): Run ExpandObjects prior to simulation (default: False)
         readvars (bool): Run ReadVarsESO after simulation (default: False)
-        output_prefix (str): Prefix for output file names verbose (str): idf:
-        str output_suffix (str, optional): Suffix style for output file names (
-
-            default: L): - L: Legacy (e.g., eplustbl.csv) C: Capital (e.g.,
-
+        output_prefix (str): Prefix for output file names
+        verbose (str):
+        idf (str):
+        output_suffix (str, optional): Suffix style for output file names (default:
+                L): - L: Legacy (e.g., eplustbl.csv) C: Capital (e.g.,
                 eplusTable.csv)
             - D: Dash (e.g., eplus-table.csv)
-
         version (bool, optional): Display version information (default: False)
 
     Args:
@@ -1155,7 +1160,11 @@ def run_eplus(
         processed_runs = {}
 
         # used the hash of the original file (unmodified)
-        filename_prefix = kwargs.get("output_prefix", output_prefix)
+        _pre = kwargs.pop("output_prefix", False)
+        if _pre:
+            filename_prefix = _pre
+        else:
+            filename_prefix = output_prefix
         epw = os.path.abspath(weather_file)
         runargs = {
             "idf": eplus_file,

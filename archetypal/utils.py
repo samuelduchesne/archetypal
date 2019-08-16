@@ -132,7 +132,7 @@ def log(
         name = settings.log_name
     if filename is None:
         filename = settings.log_filename
-
+    logger = None
     # if logging to file is turned on
     if settings.log_file:
         # get the current logger (or create a new one, if none), then log
@@ -146,7 +146,6 @@ def log(
             logger.warning(message)
         elif level == lg.ERROR:
             logger.error(message)
-        return logger
 
     # if logging to console is turned on, convert message to ascii and print to
     # the console
@@ -169,6 +168,8 @@ def log(
 
         if level == lg.WARNING:
             warnings.warn(message)
+
+    return logger
 
 
 def get_logger(level=None, name=None, filename=None, log_dir=None):

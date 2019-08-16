@@ -64,6 +64,8 @@ class ReportData(pd.DataFrame):
         Returns:
             (ReportData): The ReportData object.
         """
+        if not isinstance(sqlite_file, str):
+            raise TypeError("Please provide a str, not a {}".format(type(sqlite_file)))
         file = Path(sqlite_file)
         if not file.exists():
             raise FileNotFoundError("Could not find sql file {}".format(file.relpath()))

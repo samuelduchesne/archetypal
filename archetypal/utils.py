@@ -111,7 +111,9 @@ def validate_trnsys_folder(trnsys_default_folder):
         return trnsys_default_folder
 
 
-def log(message, level=None, name=None, filename=None, avoid_console=False):
+def log(
+    message, level=None, name=None, filename=None, avoid_console=False, log_dir=None
+):
     """Write a message to the log file and/or print to the the console.
 
     Args:
@@ -121,9 +123,8 @@ def log(message, level=None, name=None, filename=None, avoid_console=False):
         filename (str): name of the log file
         avoid_console (bool): If True, don't print to console for this message
             only
-
-    Returns:
-        None
+        log_dir (str, optional): directory of log file. Defaults to
+            settings.log_folder
     """
     if level is None:
         level = settings.log_level
@@ -136,7 +137,7 @@ def log(message, level=None, name=None, filename=None, avoid_console=False):
     if settings.log_file:
         # get the current logger (or create a new one, if none), then log
         # message at requested level
-        logger = get_logger(level=level, name=name, filename=filename)
+        logger = get_logger(level=level, name=name, filename=filename, log_dir=log_dir)
         if level == lg.DEBUG:
             logger.debug(message)
         elif level == lg.INFO:
@@ -145,6 +146,7 @@ def log(message, level=None, name=None, filename=None, avoid_console=False):
             logger.warning(message)
         elif level == lg.ERROR:
             logger.error(message)
+        return logger
 
     # if logging to console is turned on, convert message to ascii and print to
     # the console
@@ -169,13 +171,15 @@ def log(message, level=None, name=None, filename=None, avoid_console=False):
             warnings.warn(message)
 
 
-def get_logger(level=None, name=None, filename=None):
+def get_logger(level=None, name=None, filename=None, log_dir=None):
     """Create a logger or return the current one if already instantiated.
 
     Args:
-        level (int): one of the logger.level constants
-        name (str): name of the logger
-        filename (str): name of the log file
+        level (int): one of the logger.level constants.
+        name (str): name of the logger.
+        filename (str): name of the log file.
+        log_dir (str, optional): directory of the log file. Defaults to
+            settings.log_folder.
 
     Returns:
         logging.Logger: a Logger
@@ -195,9 +199,11 @@ def get_logger(level=None, name=None, filename=None):
 
         # get today's date and construct a log filename
         todays_date = dt.datetime.today().strftime("%Y_%m_%d")
-        log_filename = os.path.join(
-            settings.logs_folder, "{}_{}.log".format(filename, todays_date)
-        )
+
+        if not log_dir:
+            log_dir = settings.logs_folder
+
+        log_filename = os.path.join(log_dir, "{}_{}.log".format(filename, todays_date))
 
         # if the logs folder does not already exist, create it
         if not os.path.exists(settings.logs_folder):
@@ -212,6 +218,16 @@ def get_logger(level=None, name=None, filename=None):
         logger.handler_set = True
 
     return logger
+
+
+def close_logger(logger=None, level=None, name=None, filename=None, log_dir=None):
+    if not logger:
+        # try get logger by name
+        logger = get_logger(level=level, name=name, filename=filename, log_dir=log_dir)
+    handlers = logger.handlers[:]
+    for handler in handlers:
+        handler.close()
+        logger.removeHandler(handler)
 
 
 def make_str(value):

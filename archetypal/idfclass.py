@@ -35,7 +35,7 @@ from archetypal import (
     EnergySeries,
     close_logger,
 )
-from archetypal.utils import _unpack_tuple
+from archetypal.utils import unpack_tuple
 
 
 class IDF(geomeppy.IDF):
@@ -1231,10 +1231,10 @@ def run_eplus(
                 idf = None
             from itertools import compress
 
-            return_elements = tuple(
+            return_elements = list(
                 compress([cached_run_results, idf], [True, return_idf])
             )
-            return _unpack_tuple(return_elements)
+            return unpack_tuple(len(return_elements), return_elements)
 
     runs_not_found = eplus_file
     # </editor-fold>
@@ -1360,7 +1360,7 @@ def run_eplus(
                 results.extend([idf])
             if cached_run_results:
                 results.extend([cached_run_results])
-        return _unpack_tuple(results)
+        return unpack_tuple(len(results), results)
 
 
 def _process_csv(file, working_dir, simulname):

@@ -22,9 +22,8 @@ import sys
 import time
 import unicodedata
 import warnings
-from collections import OrderedDict, Iterable
+from collections import OrderedDict
 from datetime import datetime, timedelta
-from itertools import chain, islice, repeat
 
 import numpy as np
 import pandas as pd
@@ -69,7 +68,6 @@ def config(
         useful_idf_objects (list): a list of useful idf objects
         umitemplate (str): where the umitemplate is located
         trnsys_default_folder (str): root folder of TRNSYS install
-        default_weight_factor:
 
     Returns:
         None
@@ -224,14 +222,6 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
 
 
 def close_logger(logger=None, level=None, name=None, filename=None, log_dir=None):
-    """
-    Args:
-        logger:
-        level:
-        name:
-        filename:
-        log_dir:
-    """
     if not logger:
         # try get logger by name
         logger = get_logger(level=level, name=name, filename=filename, log_dir=log_dir)
@@ -421,7 +411,7 @@ def layer_composition(row):
 
 
 def schedule_composition(row):
-    """Takes in a series with $id and *_ScheduleDay_Name values and return an
+    """Takes in a series with $id and \*_ScheduleDay_Name values and return an
     array of dict of the form {'$ref': ref}
 
     Args:
@@ -543,7 +533,6 @@ def weighted_mean(series, df, weighting_variable):
 def top(series, df, weighting_variable):
     """Compute the highest ranked value weighted by some other variable.
     Implements
-
         :func:`pandas.DataFrame.nlargest`.
 
     Args:
@@ -627,8 +616,7 @@ def copy_file(files, where=None):
         shutil.copyfile(files[file], dst)
         files[file] = dst
 
-    l = list(files.values())
-    return unpack_tuple(len(l), l)
+    return _unpack_tuple(list(files.values()))
 
 
 class Error(Exception):
@@ -827,6 +815,7 @@ def float_round(num, n):
 
     Returns:
         num (float): a float rounded number
+
     """
     num = float(num)
     num = round(num, n)
@@ -881,12 +870,8 @@ def timeit(method):
 
 
 def lcm(x, y):
-    """This function takes two integers and returns the L.C.M.
-
-    Args:
-        x:
-        y:
-    """
+    """This function takes two
+   integers and returns the L.C.M."""
 
     # choose the greater number
     if x > y:
@@ -917,15 +902,13 @@ def reduce(function, iterable, **attr):
     return value
 
 
-def unpack_tuple(n, iterable, padvalue=None):
-    """Return the first n elements of iterable, padded out with padvalue if
-    iterable has fewer than n elements.
+def _unpack_tuple(x):
+    """Unpacks one-element tuples for use as return values
 
     Args:
-        n (int): Number of elements.
-        iterable (Iterable): An iterable.
-        padvalue (any): Padded with.
+        x:
     """
-    if not isinstance(iterable, Iterable):
-        return iterable
-    return islice(chain(iterable, repeat(padvalue)), n)
+    if len(x) == 1:
+        return x[0]
+    else:
+        return x

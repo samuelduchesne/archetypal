@@ -21,7 +21,7 @@ mpl.use("Agg")
 
 def test_small_home_data(config, fresh_start):
     file = "tests/input_data/regular/AdultEducationCenter.idf"
-    file = ar.copy_file(file)[0]
+    file = ar.copy_file(file)
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     return ar.run_eplus(
         file, wf, prep_outputs=True, design_day=True, expandobjects=True, verbose="q"
@@ -29,11 +29,11 @@ def test_small_home_data(config, fresh_start):
 
 
 def test_necb(config):
-    """Test one of the necb files"""
-    import glob
+    """Test all necb files with design_day = True"""
+    from archetypal import parallel_process
 
-    files = random.choice(glob.glob("tests/input_data/necb/*.idf"))
-    files = ar.copy_file(files)
+    necb_dir = Path("tests/input_data/necb")
+    files = necb_dir.glob("*.idf")
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     rundict = {
         file: dict(
@@ -42,10 +42,11 @@ def test_necb(config):
             expandobjects=True,
             verbose="q",
             design_day=True,
+            output_report="sql",
         )
         for file in files
     }
-    result = {file: ar.run_eplus(**rundict[file]) for file in files}
+    result = parallel_process(rundict, ar.run_eplus, use_kwargs=True)
 
     assert not any(isinstance(a, Exception) for a in result.values())
 
@@ -116,7 +117,7 @@ def test_run_olderv_problematic(config, fresh_start):
         ".2_5A_USA_IL_CHICAGO-OHARE.idf"
     )
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    file = ar.copy_file([file])[0]
+    file = ar.copy_file([file])
     ar.run_eplus(
         file, wf, prep_outputs=True, annual=True, expandobjects=True, verbose="q"
     )

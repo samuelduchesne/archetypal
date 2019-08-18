@@ -1695,7 +1695,7 @@ def bt():
     eplus_dir = get_eplus_dire()
     file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
     w = next(iter((eplus_dir / "WeatherData").glob("*.epw")), None)
-    file = ar.copy_file(file)[0]
+    file = ar.copy_file(file)
     idf = ar.load_idf(file)
     sql = ar.run_eplus(
         file,

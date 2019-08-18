@@ -29,7 +29,7 @@ def test_make_umi_schedule(config):
     import matplotlib.pyplot as plt
 
     idf_file = "tests/input_data/schedules/schedules.idf"
-    idf_file = copy_file(idf_file)[0]
+    idf_file = copy_file(idf_file)
     idf = load_idf(idf_file)
 
     s = UmiSchedule(Name="POFF", idf=idf, start_day_of_the_week=0)

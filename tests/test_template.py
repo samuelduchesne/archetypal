@@ -830,7 +830,7 @@ class TestUmiSchedule:
 class TestZoneConstructionSet:
     """Combines different :class:`ZoneConstructionSet` tests"""
 
-    @pytest.fixture(scope="class", params=["RefBldgWarehouseNew2004_Chicago.idf"])
+    @pytest.fixture(params=["RefBldgWarehouseNew2004_Chicago.idf"])
     def zoneConstructionSet_tests(self, config, request):
         from eppy.runner.run_functions import install_paths
 

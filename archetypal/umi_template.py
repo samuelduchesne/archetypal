@@ -237,7 +237,7 @@ class UmiTemplate:
         """wrapper for :func:`run_eplus` function
 
         """
-        sql_report = run_eplus(idf_files, weather, output_report="sql", **kwargs)
+        sql_report = run_eplus(idf_files, weather, output_report="sql")
         self.sql = sql_report
 
         return sql_report

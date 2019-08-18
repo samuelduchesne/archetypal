@@ -33,10 +33,10 @@ def energy_series(config, request):
     sql = ar.run_eplus(
         request.param,
         weather_file=wf,
+        output_report="sql_file",
         prep_outputs=[outputs],
         annual=True,
         expandobjects=True,
-        output_report="sql_file",
     )
     report = ReportData.from_sqlite(
         sql,
@@ -44,15 +44,19 @@ def energy_series(config, request):
     )
 
     hl = EnergySeries.from_sqlite(
-        report, normalize=False, sort_values=False, concurrent_sort=False,
-        to_units="kWh"
+        report,
+        normalize=False,
+        sort_values=False,
+        concurrent_sort=False,
+        to_units="kWh",
     )
 
     yield hl
 
 
-@pytest.fixture(params=(["Water Heater Tank Temperature",
-                         "WaterSystems:EnergyTransfer"]))
+@pytest.fixture(
+    params=(["Water Heater Tank Temperature", "WaterSystems:EnergyTransfer"])
+)
 def rd(request):
     from archetypal import ReportData
 

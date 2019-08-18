@@ -35,6 +35,7 @@ from archetypal import (
     EnergySeries,
     close_logger,
 )
+from archetypal.utils import _unpack_tuple
 
 
 class IDF(geomeppy.IDF):
@@ -270,6 +271,9 @@ class IDF(geomeppy.IDF):
             if save:
                 log('object "{}" added to the idf file'.format(ep_object))
                 self.save()
+            # invalidate the sql statements
+            self._sql = None
+            self._sql_file = None
             # return the ep_object
             return new_object
 
@@ -744,9 +748,10 @@ def eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
         )
     # when parsing is complete, save it to disk, then return object
     save_idf_object_to_cache(idf_object, idf_object.idfname, output_folder)
-    if include:
+    if isinstance(include, str):
         include = Path().abspath().glob(include)
-        [file.copy(output_folder) for file in include]
+    if include is not None:
+        [Path(file).copy(output_folder) for file in include]
     return idf_object
 
 
@@ -1127,11 +1132,14 @@ def run_eplus(
     process_files=False,
     custom_processes=None,
     return_idf=False,
+    return_files=False,
 ):
     """Run an energy plus file and return the SummaryReports Tables in a list of
     [(title, table), .....]
 
     Args:
+        return_files (bool): It True, all files paths created by the energyplus run
+            are returned.
         eplus_file (str): path to the idf file.
         weather_file (str): path to the EPW weather file
         output_directory (str, optional): path to the output folder. Will
@@ -1339,26 +1347,20 @@ def run_eplus(
                     lg.DEBUG,
                     name=eplus_file.basename(),
                 )
+                if return_files:
+                    results.extend((output_directory / "output_data").files())
 
             # Return summary DataFrames
             runargs["output_directory"] = output_directory / "output_data"
             cached_run_results = get_report(**runargs)
-
+            if return_idf:
+                idf = load_idf(
+                    eplus_file, output_folder=output_directory, include=include
+                )
+                results.extend([idf])
             if cached_run_results:
                 results.extend([cached_run_results])
         return _unpack_tuple(results)
-
-
-def _unpack_tuple(x):
-    """Unpacks one-element tuples for use as return values
-
-    Args:
-        x:
-    """
-    if len(x) == 1:
-        return x[0]
-    else:
-        return x
 
 
 def _process_csv(file, working_dir, simulname):

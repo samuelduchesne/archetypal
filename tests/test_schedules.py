@@ -2,7 +2,9 @@ import os
 
 import pytest
 
-from archetypal import Schedule, load_idf, copy_file, run_eplus, UmiSchedule
+from archetypal import Schedule, load_idf, copy_file, run_eplus, UmiSchedule, config
+
+from path import Path
 
 
 def test_schedules_in_necb_specific(config):
@@ -56,7 +58,10 @@ idf_file = "tests/input_data/schedules/test_multizone_EP.idf"
 
 
 def schedules_idf():
-    idf = load_idf(idf_file)
+    config(cache_folder="tests/.temp/cache")
+    idf = load_idf(
+        idf_file, include=["tests/input_data/schedules/TDV_2008_kBtu_CTZ06.csv"]
+    )
     return idf
 
 
@@ -153,16 +158,16 @@ def test_schedules(request, run_schedules_idf):
 def run_schedules_idf(config):
     import os
 
-    run_eplus(
+    files = run_eplus(
         idf_file,
         weather_file="tests/input_data/CAN_PQ_Montreal.Intl.AP" ".716270_CWEC.epw",
         annual=True,
-        output_directory="tests/input_data/schedules",
-        output_prefix="eprun",
         readvars=True,
-        include=["tests/input_data/schedules/TDV_2008_kBtu_CTZ06.csv"]
+        include=["tests/input_data/schedules/TDV_2008_kBtu_CTZ06.csv"],
+        return_files=True,
     )
-    csv = os.path.join("tests", "input_data", "schedules", "eprun", "eprunout.csv")
+    cache_dir = files[0].dirname()
+    csv = next(iter(cache_dir.glob("*out.csv")))
     yield csv
 
 

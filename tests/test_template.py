@@ -16,11 +16,11 @@ def small_idf(config):
     sql: dict = ar.run_eplus(
         file,
         weather_file=w,
-        prep_outputs=True,
         output_report="sql",
-        verbose="v",
-        design_day=False,
+        prep_outputs=True,
         annual=False,
+        design_day=False,
+        verbose="v",
     )
     yield idf, sql
 
@@ -33,11 +33,11 @@ def other_idf(config):
     sql = ar.run_eplus(
         file,
         weather_file=w,
-        prep_outputs=True,
         output_report="sql",
-        verbose="v",
-        design_day=False,
+        prep_outputs=True,
         annual=False,
+        design_day=False,
+        verbose="v",
     )
     yield idf, sql
 
@@ -50,10 +50,10 @@ def small_office(config):
     sql = ar.run_eplus(
         file,
         weather_file=w,
-        prep_outputs=True,
-        verbose="v",
         output_report="sql",
+        prep_outputs=True,
         expandobjects=True,
+        verbose="v",
     )
     yield idf, sql
 
@@ -841,11 +841,11 @@ class TestZoneConstructionSet:
         sql, idf = ar.run_eplus(
             file,
             weather_file=w,
-            prep_outputs=True,
             output_report="sql",
-            verbose="v",
-            design_day=False,
+            prep_outputs=True,
             annual=False,
+            design_day=False,
+            verbose="v",
             return_idf=True,
         )
         yield idf, sql
@@ -928,11 +928,11 @@ class TestZoneLoad:
         sql = ar.run_eplus(
             file,
             weather_file=w,
-            prep_outputs=True,
             output_report="sql",
-            verbose="v",
-            design_day=False,
+            prep_outputs=True,
             annual=False,
+            design_day=False,
+            verbose="v",
         )
         yield idf, sql
 
@@ -1051,11 +1051,11 @@ class TestZoneConditioning:
         sql = ar.run_eplus(
             file,
             weather_file=w,
-            prep_outputs=True,
             output_report="sql",
-            verbose="v",
-            design_day=False,
+            prep_outputs=True,
             annual=False,
+            design_day=False,
+            verbose="v",
         )
         yield idf, sql, request.param
 
@@ -1185,11 +1185,11 @@ class TestVentilationSetting:
         sql = ar.run_eplus(
             file,
             weather_file=w,
-            prep_outputs=True,
             output_report="sql",
-            verbose="v",
-            design_day=False,
+            prep_outputs=True,
             annual=False,
+            design_day=False,
+            verbose="v",
         )
         yield idf, sql, request.param
 
@@ -1381,11 +1381,11 @@ class TestWindowSetting:
         sql = ar.run_eplus(
             file,
             weather_file=w,
-            prep_outputs=True,
             output_report="sql",
-            verbose="v",
-            design_day=False,
+            prep_outputs=True,
             annual=False,
+            design_day=False,
+            verbose="v",
         )
         yield idf, sql
 
@@ -1570,11 +1570,11 @@ class TestZone:
         sql = ar.run_eplus(
             file,
             weather_file=w,
-            prep_outputs=True,
             output_report="sql",
-            verbose="v",
-            design_day=False,
+            prep_outputs=True,
             annual=False,
+            design_day=False,
+            verbose="v",
         )
         zone = idf.getobject(
             "ZONE", "Sp-attic Sys-0 Flr-2 Sch-- undefined - " "HPlcmt-core ZN"
@@ -1700,11 +1700,11 @@ def bt():
     sql = ar.run_eplus(
         file,
         weather_file=w,
-        prep_outputs=True,
-        verbose="v",
         output_report="sql",
-        expandobjects=True,
+        prep_outputs=True,
         annual=True,
+        expandobjects=True,
+        verbose="v",
     )
     from archetypal import BuildingTemplate
 

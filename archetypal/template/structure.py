@@ -12,6 +12,7 @@ from archetypal.template import UmiBase, Unique, OpaqueMaterial
 
 class MassRatio(object):
     """Handles the properties of the"""
+
     def __init__(self, HighLoadRatio=None, Material=None, NormalRatio=None):
         """Initialize a MassRatio object with parameters
 

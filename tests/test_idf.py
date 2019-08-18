@@ -9,6 +9,8 @@ import matplotlib as mpl
 import pytest
 from path import Path
 
+from archetypal import EnergyPlusProcessError
+
 mpl.use("Agg")
 
 
@@ -22,7 +24,7 @@ def test_small_home_data(config, fresh_start):
     file = ar.copy_file(file)[0]
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     return ar.run_eplus(
-        file, wf, expandobjects=True, verbose="q", prep_outputs=True, design_day=True
+        file, wf, prep_outputs=True, design_day=True, expandobjects=True, verbose="q"
     )
 
 
@@ -102,7 +104,9 @@ def test_run_olderv(config, fresh_start, ep_version):
     result = {file: ar.run_eplus(**rundict[file]) for file in files}
 
 
-@pytest.mark.xfail(raises=(subprocess.CalledProcessError, FileNotFoundError))
+@pytest.mark.xfail(
+    raises=(subprocess.CalledProcessError, FileNotFoundError, EnergyPlusProcessError)
+)
 def test_run_olderv_problematic(config, fresh_start):
     """Will run eplus on a file that needs to be upgraded and that should
     fail. Will be ignored in the test suite"""
@@ -114,7 +118,7 @@ def test_run_olderv_problematic(config, fresh_start):
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     file = ar.copy_file([file])[0]
     ar.run_eplus(
-        file, wf, annual=True, expandobjects=True, verbose="q", prep_outputs=True
+        file, wf, prep_outputs=True, annual=True, expandobjects=True, verbose="q"
     )
 
 
@@ -123,7 +127,7 @@ def test_run_eplus_from_idf(config, fresh_start):
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
 
     idf = ar.load_idf(file, weather_file=wf)
-    sql = idf.run_eplus()
+    sql = idf.run_eplus(output_report="sql")
 
     assert sql
 
@@ -184,10 +188,19 @@ def test_space_cooling_profile(config):
     from archetypal import load_idf
 
     file = "tests/input_data/regular/AdultEducationCenter.idf"
-    file = ar.copy_file(file)[0]
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
 
-    idf = load_idf(file, None, wf)
+    idf = load_idf(file, None, weather_file=wf)
 
     assert not idf.space_cooling_profile().empty
+
+
+def test_space_heating_profile(config):
+    from archetypal import load_idf
+
+    file = "tests/input_data/necb/NECB 2011-Warehouse-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+    wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+
+    idf = load_idf(file, None, weather_file=wf)
+
     assert not idf.space_heating_profile().empty

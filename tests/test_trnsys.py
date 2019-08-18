@@ -4,6 +4,8 @@ import os
 
 import pytest
 
+from path import Path
+
 from archetypal import (
     convert_idf_to_trnbuild,
     parallel_process,
@@ -242,21 +244,27 @@ class TestsConvert:
         output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
 
 
-@pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
-)
-def test_trnbuild_from_idf(config):
-    # List files here
-    file_upper_path = os.path.join("tests", "input_data", "trnsys")
-    files = [
-        "RefBldgWarehousePost1980_v1.3_5" ".0_4A_USA_MD_BALTIMORE.idf",
+@pytest.fixture(
+    params=[
+        "RefBldgWarehousePost1980_v1.4_7.2_6A_USA_MN_MINNEAPOLIS.idf",
         "NECB 2011 - Warehouse.idf",
         "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
         "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
     ]
-    idf_file = [os.path.join(file_upper_path, file) for file in files]
-    idf_file = copy_file(idf_file)
+)
+def trnbuild_file(config, request):
+    file_upper_path = Path("tests") / "input_data" / "trnsys"
+    idf_file = file_upper_path / request.param
+    idf_file = copy_file(idf_file, where=settings.cache_folder)
+    yield idf_file
+
+
+@pytest.mark.xfail(
+    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
+    reason="Skipping this test on Travis CI.",
+)
+def test_trnbuild_from_idf(config, trnbuild_file):
+    # List files here
 
     window_file = "W74-lib.dat"
     template_dir = os.path.join("archetypal", "ressources")
@@ -272,7 +280,7 @@ def test_trnbuild_from_idf(config):
         "ordered": True,
     }
 
-    file = idf_file[2]
+    file = trnbuild_file
     convert_idf_to_trnbuild(
         idf_file=file,
         window_lib=window_filepath,
@@ -287,7 +295,7 @@ def test_trnbuild_from_idf(config):
     "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
     reason="Skipping this test on Travis CI.",
 )
-def test_trnbuild_from_idf_parallel(config):
+def test_trnbuild_from_idf_parallel(config, trnbuild_file):
     # All IDF files
     idf_list = [
         "NECB 2011 - Full Service Restaurant.idf",
@@ -323,13 +331,7 @@ def test_trnbuild_from_idf_parallel(config):
         "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
     ]
     # List files here
-    file_upper_path = os.path.join("tests", "input_data", "trnsys")
-    files = [
-        "RefBldgWarehousePost1980_v1.3_5" ".0_4A_USA_MD_BALTIMORE.idf",
-        "NECB 2011 - Warehouse.idf",
-        "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-        "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
-    ]
+    files = trnbuild_file
 
     # window_file = 'W74-lib.dat'
     # window_filepath = os.path.join(file_upper_path, window_file)

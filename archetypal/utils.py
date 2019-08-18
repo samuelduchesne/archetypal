@@ -616,7 +616,7 @@ def copy_file(files, where=None):
         shutil.copyfile(files[file], dst)
         files[file] = dst
 
-    return list(files.values())
+    return _unpack_tuple(list(files.values()))
 
 
 class Error(Exception):
@@ -900,3 +900,15 @@ def reduce(function, iterable, **attr):
     for element in it:
         value = function(value, element, **attr)
     return value
+
+
+def _unpack_tuple(x):
+    """Unpacks one-element tuples for use as return values
+
+    Args:
+        x:
+    """
+    if len(x) == 1:
+        return x[0]
+    else:
+        return x

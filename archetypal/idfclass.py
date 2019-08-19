@@ -1486,24 +1486,23 @@ def _run_exec(
                     cmd.extend([args[arg]])
         cmd.extend([idf_path])
 
-        process = subprocess.Popen(
+        with subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        )
-        with process.stdout:
+        ) as process:
             _log_subprocess_output(
                 process.stdout, name=eplus_file.basename(), verbose=verbose
             )
-        if process.wait() != 0:
-            error_filename = output_prefix + "out.err"
-            with open(error_filename, "r") as stderr:
-                if keep_data_err:
-                    failed_dir = output_directory / "failed"
-                    failed_dir.mkdir_p()
-                    tmp.copytree(failed_dir / output_prefix)
-                tmp.rmtree_p()
-                raise EnergyPlusProcessError(
-                    cmd=cmd, idf=eplus_file.basename(), stderr=stderr.read()
-                )
+            if process.wait() != 0:
+                error_filename = output_prefix + "out.err"
+                with open(error_filename, "r") as stderr:
+                    if keep_data_err:
+                        failed_dir = output_directory / "failed"
+                        failed_dir.mkdir_p()
+                        tmp.copytree(failed_dir / output_prefix)
+                    tmp.rmtree_p()
+                    raise EnergyPlusProcessError(
+                        cmd=cmd, idf=eplus_file.basename(), stderr=stderr.read()
+                    )
 
 
 def _log_subprocess_output(pipe, name, verbose):

@@ -892,7 +892,10 @@ class TestZoneConstructionSet:
     def test_zoneConstructionSet_from_zone(self, config, zoneConstructionSet_tests):
         from archetypal import ZoneConstructionSet, Zone
 
-        idf, sql = zoneConstructionSet_tests
+        sql = next(iter([i for i in zoneConstructionSet_tests if isinstance(i, dict)]))
+        idf = next(
+            iter([i for i in zoneConstructionSet_tests if isinstance(i, ar.IDF)])
+        )
         zone = idf.getobject("ZONE", "Office")
         z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
         constrSet_ = ZoneConstructionSet.from_zone(z)

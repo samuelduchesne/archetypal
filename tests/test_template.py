@@ -10,6 +10,10 @@ from archetypal import get_eplus_dire, clear_cache
 
 @pytest.fixture(scope="session")
 def small_idf(config):
+    """
+    Args:
+        config:
+    """
     file = "tests/input_data/umi_samples/B_Off_0.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = ar.load_idf(file)
@@ -27,6 +31,10 @@ def small_idf(config):
 
 @pytest.fixture(scope="session")
 def other_idf(config):
+    """
+    Args:
+        config:
+    """
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = ar.load_idf(file)
@@ -44,6 +52,10 @@ def other_idf(config):
 
 @pytest.fixture(scope="session")
 def small_office(config):
+    """
+    Args:
+        config:
+    """
     file = "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = ar.load_idf(file)
@@ -117,7 +129,11 @@ class TestDaySchedule:
     # todo: Implement tests for DaySchedule class
 
     def test_from_epbunch(self, small_idf):
-        """test the `from_epbunch` constructor"""
+        """test the `from_epbunch` constructor
+
+        Args:
+            small_idf:
+        """
         from archetypal import DaySchedule
 
         idf, sql = small_idf
@@ -144,6 +160,10 @@ class TestDaySchedule:
         assert repr(sched)
 
     def test_daySchedule_from_to_json(self, config):
+        """
+        Args:
+            config:
+        """
         import json
         from archetypal import load_json_objects
 
@@ -161,6 +181,10 @@ class TestWeekSchedule:
     # todo: Implement tests for WeekSchedule class
 
     def test_weekSchedule_from_to_json(self, config):
+        """
+        Args:
+            config:
+        """
         import json
         from archetypal import WeekSchedule, load_json_objects
 
@@ -181,6 +205,10 @@ class TestYearSchedule:
     # todo: Implement tests for YearSchedule class
 
     def test_yearSchedule_from_to_json(self, config):
+        """
+        Args:
+            config:
+        """
         import json
         from archetypal import YearSchedule, load_json_objects
 
@@ -232,6 +260,10 @@ class TestOpaqueMaterial:
         assert mat_a.id != mat_b.id
 
     def test_opaqueMaterial_from_to_json(config, small_idf):
+        """
+        Args:
+            small_idf:
+        """
         from archetypal import OpaqueMaterial
 
         idf, sql = small_idf
@@ -250,7 +282,12 @@ class TestOpaqueMaterial:
             opaqMat_epBunch.to_json()
 
     def test_hash_eq_opaq_mat(self, small_idf, other_idf):
-        """Test equality and hashing of :class:`TestOpaqueMaterial`"""
+        """Test equality and hashing of :class:`TestOpaqueMaterial`
+
+        Args:
+            small_idf:
+            other_idf:
+        """
         from archetypal.template import OpaqueMaterial
         from copy import copy
 
@@ -345,7 +382,11 @@ class TestGlazingMaterial:
     # todo: Implement from_to_json test for GlazingMaterial class
 
     def test_hash_eq_glaz_mat(self, config):
-        """Test equality and hashing of :class:`OpaqueConstruction`"""
+        """Test equality and hashing of :class:`OpaqueConstruction`
+
+        Args:
+            config:
+        """
         from copy import copy
 
         sg_a = ar.calc_simple_glazing(0.763, 2.716, 0.812)
@@ -407,6 +448,10 @@ class TestGasMaterial:
     # todo: Implement tests for GasMaterial class
 
     def test_GasMaterial_from_to_json(self, config):
+        """
+        Args:
+            config:
+        """
         import json
         from archetypal import GasMaterial
 
@@ -421,7 +466,11 @@ class TestGasMaterial:
         assert gasMat_json[0].Name == gasMat_to_json["Name"]
 
     def test_hash_eq_gas_mat(self, config):
-        """Test equality and hashing of :class:`OpaqueConstruction`"""
+        """Test equality and hashing of :class:`OpaqueConstruction`
+
+        Args:
+            config:
+        """
         from archetypal.template import GasMaterial
         from copy import copy
         import json
@@ -507,7 +556,12 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def construction_a(self, mat_a, mat_b):
-        """A :class:Construction fixture"""
+        """A :class:Construction fixture
+
+        Args:
+            mat_a:
+            mat_b:
+        """
         thickness = 0.10
         layers = [
             ar.MaterialLayer(mat_a, thickness),
@@ -519,7 +573,11 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def construction_b(self, mat_a):
-        """A :class:Construction fixture"""
+        """A :class:Construction fixture
+
+        Args:
+            mat_a:
+        """
         thickness = 0.30
         layers = [ar.MaterialLayer(mat_a, thickness)]
         oc_b = ar.OpaqueConstruction(Layers=layers, Name="oc_b")
@@ -589,7 +647,12 @@ class TestOpaqueConstruction:
         opaqConstr_to_json = opaqConstr_json[0].to_json()
 
     def test_hash_eq_opaq_constr(self, small_idf, other_idf):
-        """Test equality and hashing of :class:`OpaqueConstruction`"""
+        """Test equality and hashing of :class:`OpaqueConstruction`
+
+        Args:
+            small_idf:
+            other_idf:
+        """
         from archetypal.template import OpaqueConstruction
         from copy import copy
 
@@ -694,7 +757,11 @@ class TestStructureDefinition:
         struct_to_json = struct_json[0].to_json()
 
     def test_hash_eq_struc_def(self, config):
-        """Test equality and hashing of :class:`OpaqueConstruction`"""
+        """Test equality and hashing of :class:`OpaqueConstruction`
+
+        Args:
+            config:
+        """
         from archetypal import StructureDefinition, load_json_objects
         from copy import copy
         import json
@@ -761,11 +828,15 @@ class TestStructureDefinition:
 
 
 class TestUmiSchedule:
-    """Tests for :class:`UmiSchedule` class """
+    """Tests for :class:`UmiSchedule` class"""
 
     # todo: Implement from_to_json for UmiSchedule class
 
     def test_constant_umischedule(self, config):
+        """
+        Args:
+            config:
+        """
         from archetypal import UmiSchedule
 
         const = UmiSchedule.constant_schedule()
@@ -773,6 +844,11 @@ class TestUmiSchedule:
         assert const.Name == "AlwaysOn"
 
     def test_schedule_develop(self, config, small_idf):
+        """
+        Args:
+            config:
+            small_idf:
+        """
         from archetypal import UmiSchedule
 
         idf, sql = small_idf
@@ -781,7 +857,12 @@ class TestUmiSchedule:
         assert sched.to_dict()
 
     def test_hash_eq_umi_sched(self, small_idf, other_idf):
-        """Test equality and hashing of :class:`ZoneLoad`"""
+        """Test equality and hashing of :class:`ZoneLoad`
+
+        Args:
+            small_idf:
+            other_idf:
+        """
         from archetypal.template import UmiSchedule
         from copy import copy
 
@@ -846,6 +927,11 @@ class TestZoneConstructionSet:
 
     @pytest.fixture(params=["RefBldgWarehouseNew2004_Chicago.idf"])
     def zoneConstructionSet_tests(self, config, request):
+        """
+        Args:
+            config:
+            request:
+        """
         from eppy.runner.run_functions import install_paths
 
         eplus_exe, eplus_weather = install_paths("8-9-0")
@@ -865,7 +951,11 @@ class TestZoneConstructionSet:
         yield idf, sql
 
     def test_add_zoneconstructionset(self, small_idf):
-        """Test __add__() for ZoneConstructionSet"""
+        """Test __add__() for ZoneConstructionSet
+
+        Args:
+            small_idf:
+        """
         idf, sql = small_idf
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
@@ -880,7 +970,11 @@ class TestZoneConstructionSet:
         assert z_new
 
     def test_iadd_zoneconstructionset(self, small_idf):
-        """Test __iadd__() for ZoneConstructionSet"""
+        """Test __iadd__() for ZoneConstructionSet
+
+        Args:
+            small_idf:
+        """
         idf, sql = small_idf
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
@@ -899,11 +993,20 @@ class TestZoneConstructionSet:
         assert z_core.id != z_perim.id
 
     def test_zoneConstructionSet_init(self, config):
+        """
+        Args:
+            config:
+        """
         from archetypal import ZoneConstructionSet
 
         constrSet = ZoneConstructionSet(Name=None)
 
     def test_zoneConstructionSet_from_zone(self, config, zoneConstructionSet_tests):
+        """
+        Args:
+            config:
+            zoneConstructionSet_tests:
+        """
         from archetypal import ZoneConstructionSet, Zone
 
         sql = next(iter([i for i in zoneConstructionSet_tests if isinstance(i, dict)]))
@@ -915,6 +1018,10 @@ class TestZoneConstructionSet:
         constrSet_ = ZoneConstructionSet.from_zone(z)
 
     def test_zoneConstructionSet_from_to_json(self, config):
+        """
+        Args:
+            config:
+        """
         import json
         from archetypal import ZoneConstructionSet, load_json_objects
 
@@ -935,6 +1042,11 @@ class TestZoneLoad:
 
     @pytest.fixture(scope="class", params=["RefBldgWarehouseNew2004_Chicago.idf"])
     def zoneLoadtests(self, config, request):
+        """
+        Args:
+            config:
+            request:
+        """
         from eppy.runner.run_functions import install_paths
 
         eplus_exe, eplus_weather = install_paths("8-9-0")
@@ -954,11 +1066,20 @@ class TestZoneLoad:
         yield idf, sql
 
     def test_zoneLoad_init(self, config):
+        """
+        Args:
+            config:
+        """
         from archetypal import ZoneLoad
 
         load = ZoneLoad(Name=None)
 
     def test_zoneLoad_from_zone(self, config, zoneLoadtests):
+        """
+        Args:
+            config:
+            zoneLoadtests:
+        """
         from archetypal import ZoneLoad, Zone
 
         idf, sql = zoneLoadtests
@@ -967,6 +1088,10 @@ class TestZoneLoad:
         load_ = ZoneLoad.from_zone(z)
 
     def test_zoneLoad_from_to_json(self, config):
+        """
+        Args:
+            config:
+        """
         import json
         from archetypal import ZoneLoad, load_json_objects
 
@@ -979,7 +1104,11 @@ class TestZoneLoad:
         load_to_json = load_json[0].to_json()
 
     def test_hash_eq_zone_load(self, small_idf):
-        """Test equality and hashing of :class:`ZoneLoad`"""
+        """Test equality and hashing of :class:`ZoneLoad`
+
+        Args:
+            small_idf:
+        """
         from archetypal.template import ZoneLoad, Zone
         from copy import copy
 
@@ -1058,6 +1187,11 @@ class TestZoneConditioning:
         ],
     )
     def zoneConditioningtests(self, config, request):
+        """
+        Args:
+            config:
+            request:
+        """
         from eppy.runner.run_functions import install_paths
 
         eplus_exe, eplus_weather = install_paths("8-9-0")
@@ -1077,12 +1211,21 @@ class TestZoneConditioning:
         yield idf, sql, request.param
 
     def test_zoneConditioning_init(self, config):
+        """
+        Args:
+            config:
+        """
         from archetypal import ZoneConditioning
 
         cond = ZoneConditioning(Name=None)
         assert cond.Name == None
 
     def test_zoneConditioning_from_zone(self, config, zoneConditioningtests):
+        """
+        Args:
+            config:
+            zoneConditioningtests:
+        """
         from archetypal import ZoneConditioning, Zone
 
         idf, sql, idf_name = zoneConditioningtests
@@ -1103,6 +1246,10 @@ class TestZoneConditioning:
             cond_HX_eco = ZoneConditioning.from_zone(z)
 
     def test_zoneConditioning_from_to_json(self, config):
+        """
+        Args:
+            config:
+        """
         import json
         from archetypal import ZoneConditioning, load_json_objects
 
@@ -1118,7 +1265,11 @@ class TestZoneConditioning:
         cond_to_json = cond_json[0].to_json()
 
     def test_hash_eq_zone_cond(self, small_idf):
-        """Test equality and hashing of :class:`ZoneConditioning`"""
+        """Test equality and hashing of :class:`ZoneConditioning`
+
+        Args:
+            small_idf:
+        """
         from archetypal.template import ZoneConditioning, Zone
         from copy import copy
 
@@ -1192,6 +1343,11 @@ class TestVentilationSetting:
         params=["VentilationSimpleTest.idf", "RefBldgWarehouseNew2004_Chicago.idf"],
     )
     def ventilatontests(self, config, request):
+        """
+        Args:
+            config:
+            request:
+        """
         from eppy.runner.run_functions import install_paths
 
         eplus_exe, eplus_weather = install_paths("8-9-0")
@@ -1211,11 +1367,20 @@ class TestVentilationSetting:
         yield idf, sql, request.param
 
     def test_ventilation_init(self, config):
+        """
+        Args:
+            config:
+        """
         from archetypal import VentilationSetting
 
         vent = VentilationSetting(Name=None)
 
     def test_naturalVentilation_from_zone(self, config, ventilatontests):
+        """
+        Args:
+            config:
+            ventilatontests:
+        """
         from archetypal import VentilationSetting, Zone
 
         idf, sql, idf_name = ventilatontests
@@ -1233,6 +1398,10 @@ class TestVentilationSetting:
             infiltVent = VentilationSetting.from_zone(z)
 
     def test_ventilationSetting_from_to_json(self, config):
+        """
+        Args:
+            config:
+        """
         import json
         from archetypal import VentilationSetting, load_json_objects
 
@@ -1248,7 +1417,11 @@ class TestVentilationSetting:
         vent_to_json = vent_json[0].to_json()
 
     def test_hash_eq_vent_settings(self, small_idf):
-        """Test equality and hashing of :class:`DomesticHotWaterSetting`"""
+        """Test equality and hashing of :class:`DomesticHotWaterSetting`
+
+        Args:
+            small_idf:
+        """
         from archetypal.template import VentilationSetting, Zone
         from copy import copy
 
@@ -1318,7 +1491,11 @@ class TestDomesticHotWaterSetting:
     """Series of tests for the :class:`DomesticHotWaterSetting` class"""
 
     def test_hash_eq_dhw(self, small_idf):
-        """Test equality and hashing of :class:`DomesticHotWaterSetting`"""
+        """Test equality and hashing of :class:`DomesticHotWaterSetting`
+
+        Args:
+            small_idf:
+        """
         from archetypal.template import DomesticHotWaterSetting, Zone
         from copy import copy
 
@@ -1391,6 +1568,11 @@ class TestWindowSetting:
         scope="class", params=["WindowTests.idf", "AirflowNetwork3zVent.idf"]
     )
     def windowtests(self, config, request):
+        """
+        Args:
+            config:
+            request:
+        """
         eplusdir = get_eplus_dire()
         file = eplusdir / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
@@ -1407,6 +1589,10 @@ class TestWindowSetting:
         yield idf, sql
 
     def test_window_from_construction_name(self, small_idf):
+        """
+        Args:
+            small_idf:
+        """
         from archetypal import WindowSetting
 
         idf, sql = small_idf
@@ -1418,6 +1604,11 @@ class TestWindowSetting:
 
     @pytest.fixture(scope="class")
     def allwindowtypes(self, config, windowtests):
+        """
+        Args:
+            config:
+            windowtests:
+        """
         from archetypal import WindowSetting
 
         idf, sql = windowtests
@@ -1428,9 +1619,18 @@ class TestWindowSetting:
         yield windows
 
     def test_allwindowtype(self, allwindowtypes):
+        """
+        Args:
+            allwindowtypes:
+        """
         assert allwindowtypes
 
     def test_window_fromsurface(self, config, small_idf):
+        """
+        Args:
+            config:
+            small_idf:
+        """
         from archetypal import WindowSetting
 
         idf, sql = small_idf
@@ -1457,6 +1657,10 @@ class TestWindowSetting:
             print(w)
 
     def test_winow_add2(self, allwindowtypes):
+        """
+        Args:
+            allwindowtypes:
+        """
         from operator import add
         from functools import reduce
 
@@ -1464,6 +1668,10 @@ class TestWindowSetting:
         print(window)
 
     def test_window_add(self, small_idf):
+        """
+        Args:
+            small_idf:
+        """
         from archetypal import WindowSetting
 
         idf, sql = small_idf
@@ -1479,6 +1687,10 @@ class TestWindowSetting:
         assert window_1.id != window_2.id != new_w.id
 
     def test_window_iadd(self, small_idf):
+        """
+        Args:
+            small_idf:
+        """
         from archetypal import WindowSetting
 
         idf, sql = small_idf
@@ -1496,13 +1708,21 @@ class TestWindowSetting:
         assert window_1.id != window_2.id
 
     def test_glazing_material_from_simple_glazing(self, config):
-        """test __add__() for OpaqueMaterial"""
+        """test __add__() for OpaqueMaterial
+
+        Args:
+            config:
+        """
         sg_a = ar.calc_simple_glazing(0.763, 2.716, 0.812)
         mat_a = ar.GlazingMaterial(Name="mat_a", **sg_a)
         glazMat_to_json = mat_a.to_json()
         assert glazMat_to_json
 
     def test_window_generic(self, small_idf):
+        """
+        Args:
+            small_idf:
+        """
         from archetypal import WindowSetting
 
         idf, sql = small_idf
@@ -1511,7 +1731,11 @@ class TestWindowSetting:
         assert w.to_json()
 
     def test_hash_eq_window_settings(self, small_idf):
-        """Test equality and hashing of :class:`DomesticHotWaterSetting`"""
+        """Test equality and hashing of :class:`DomesticHotWaterSetting`
+
+        Args:
+            small_idf:
+        """
         from archetypal.template import WindowSetting
         from copy import copy
 
@@ -1578,7 +1802,11 @@ class TestZone:
     """Tests for :class:`Zone` class"""
 
     def test_zone_volume(self, config):
-        """Test the zone volume for a sloped roof"""
+        """Test the zone volume for a sloped roof
+
+        Args:
+            config:
+        """
         from archetypal import Zone
 
         file = "tests/input_data/trnsys/NECB 2011 - Full Service Restaurant.idf"
@@ -1601,7 +1829,11 @@ class TestZone:
         z.to_json()
 
     def test_add_zone(self, small_idf):
-        """Test __add__() for Zone"""
+        """Test __add__() for Zone
+
+        Args:
+            small_idf:
+        """
         idf, sql = small_idf
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
@@ -1620,7 +1852,11 @@ class TestZone:
         )
 
     def test_iadd_zone(self, small_idf):
-        """Test __iadd__() for Zone"""
+        """Test __iadd__() for Zone
+
+        Args:
+            small_idf:
+        """
         idf, sql = small_idf
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
@@ -1642,7 +1878,11 @@ class TestZone:
         np.testing.assert_almost_equal(actual=area, desired=z_core.area, decimal=3)
 
     def test_hash_eq_zone(self, small_idf):
-        """Test equality and hashing of :class:`ZoneLoad`"""
+        """Test equality and hashing of :class:`ZoneLoad`
+
+        Args:
+            small_idf:
+        """
         from archetypal.template import Zone
         from copy import copy
 
@@ -1733,10 +1973,19 @@ class TestBuildingTemplate:
     """Various tests with the :class:`BuildingTemplate` class"""
 
     def test_viewbuilding(self, config, bt):
-        """test the visualization of a building"""
+        """test the visualization of a building
+
+        Args:
+            config:
+            bt:
+        """
         bt.view_building()
 
     def test_buildingTemplate_from_to_json(self, config):
+        """
+        Args:
+            config:
+        """
         from archetypal import UmiTemplate
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -1747,7 +1996,11 @@ class TestBuildingTemplate:
         w_to_json = bt[0].Windows.to_json()
 
     def test_hash_eq_bt(self, other_idf):
-        """Test equality and hashing of class DomesticHotWaterSetting"""
+        """Test equality and hashing of class DomesticHotWaterSetting
+
+        Args:
+            other_idf:
+        """
         from archetypal.template import BuildingTemplate
         from copy import copy
 
@@ -1799,6 +2052,10 @@ class TestZoneGraph:
     """Series of tests for the :class:`ZoneGraph` class"""
 
     def test_traverse_graph(self, small_office):
+        """
+        Args:
+            small_office:
+        """
         from archetypal import ZoneGraph
 
         idf, sql = small_office
@@ -1811,6 +2068,10 @@ class TestZoneGraph:
 
     @pytest.fixture(scope="session")
     def G(self, small_office):
+        """
+        Args:
+            small_office:
+        """
         from archetypal import ZoneGraph
 
         idf, sql = small_office
@@ -1818,8 +2079,13 @@ class TestZoneGraph:
 
     @pytest.mark.parametrize("adj_report", [True, False])
     def test_graph1(self, small_office, adj_report):
-        """Test the creation of a BuildingTemplate zone graph. Parametrize
-        the creation of the adjacency report"""
+        """Test the creation of a BuildingTemplate zone graph. Parametrize the
+        creation of the adjacency report
+
+        Args:
+            small_office:
+            adj_report:
+        """
         import networkx as nx
         from archetypal import ZoneGraph
 
@@ -1831,8 +2097,12 @@ class TestZoneGraph:
         assert not nx.is_empty(G1)
 
     def test_graph2(self, small_office):
-        """Test the creation of a BuildingTemplate zone graph. Parametrize
-            the creation of the adjacency report"""
+        """Test the creation of a BuildingTemplate zone graph. Parametrize the
+        creation of the adjacency report
+
+        Args:
+            small_office:
+        """
         # calling from_idf a second time should not recalculate it.
         from archetypal import ZoneGraph
 
@@ -1842,8 +2112,12 @@ class TestZoneGraph:
         )
 
     def test_graph3(self, small_office):
-        """Test the creation of a BuildingTemplate zone graph. Parametrize
-        the creation of the adjacency report"""
+        """Test the creation of a BuildingTemplate zone graph. Parametrize the
+        creation of the adjacency report
+
+        Args:
+            small_office:
+        """
         # calling from_idf a second time with force=True should
         # recalculate it and produce a new id.
         from archetypal import ZoneGraph
@@ -1854,8 +2128,12 @@ class TestZoneGraph:
         )
 
     def test_graph4(self, small_office):
-        """Test the creation of a BuildingTemplate zone graph. Parametrize
-            the creation of the adjacency report"""
+        """Test the creation of a BuildingTemplate zone graph. Parametrize the
+        creation of the adjacency report
+
+        Args:
+            small_office:
+        """
         # skeleton False should build the zone elements.
         from archetypal import ZoneGraph
 
@@ -1874,11 +2152,19 @@ class TestZoneGraph:
         )
 
     def test_graph_info(self, G):
-        """test the info method on a ZoneGraph"""
+        """test the info method on a ZoneGraph
+
+        Args:
+            G:
+        """
         G.info()
 
     def test_viewgraph2d(self, G):
-        """test the visualization of the zonegraph in 2d"""
+        """test the visualization of the zonegraph in 2d
+
+        Args:
+            G:
+        """
         import networkx as nx
 
         G.plot_graph2d(
@@ -1896,16 +2182,30 @@ class TestZoneGraph:
 
     @pytest.mark.parametrize("annotate", [True, "Name", ("core", None)])
     def test_viewgraph3d(self, config, G, annotate):
-        """test the visualization of the zonegraph in 3d"""
+        """test the visualization of the zonegraph in 3d
+
+        Args:
+            config:
+            G:
+            annotate:
+        """
         G.plot_graph3d(annotate=annotate, axis_off=True)
 
     def test_core_graph(self, G):
+        """
+        Args:
+            G:
+        """
         H = G.core_graph
 
         assert len(H) == 2  # assert G has no nodes since Warehouse does not have a
         # core zone
 
     def test_perim_graph(self, G):
+        """
+        Args:
+            G:
+        """
         H = G.perim_graph
 
         assert len(H) > 0  # assert G has at least one node

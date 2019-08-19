@@ -150,8 +150,9 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @property
     def specific_heat(self):
-        """float: The overall specific heat of the OpaqueConstruction weighted by
-        wall area mass (kg/m2)"""
+        """float: The overall specific heat of the OpaqueConstruction weighted
+        by wall area mass (J/kg K m2).
+        """
         return np.average(
             [layer.specific_heat for layer in self.Layers],
             weights=[layer.Thickness * layer.Material.Density for layer in self.Layers],
@@ -159,8 +160,9 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @property
     def total_thickness(self):
-        """Returns the total thickness of an OpaqueConstruction by summing up each
-        material layer thicknesses"""
+        """Returns the total thickness of an OpaqueConstruction by summing up
+        each material layer thicknesses
+        """
         return sum([layer.Thickness for layer in self.Layers])
 
     def combine(self, other, weights=None, method="constant_ufactor"):
@@ -290,7 +292,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         if not weights:
             weights = [1.0, 1.0]
 
-        # If weights is a list of zeros. This weigth is used in the
+        # If weights is a list of zeros. This weight is used in the
         if not np.array(weights).any():
             weights = [1, 1]
 

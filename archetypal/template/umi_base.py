@@ -421,6 +421,9 @@ class MaterialLayer(object):
                 [self.Thickness == other.Thickness, self.Material == other.Material]
             )
 
+    def __repr__(self):
+        return "{} with thickness of {:,.3f} m".format(self.Material, self.Thickness)
+
     @property
     def r_value(self):
         """float: The Thermal Resistance of the :class:`MaterialLayer`"""

@@ -149,6 +149,38 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             return 1 / self.r_value
 
     @property
+    def equivalent_heat_capacity(self):
+        """The equivalent per unit wall **volume** heat capacity. Expressed in
+        J/(kg⋅K).
+
+        Hint:
+            The physical quantity which represents the heat storage capability
+            is the wall heat capacity, defined as HC=M·c. While the per unit
+            wall area of this quantity is (HC/A)=ρ·c·δ, where δ the wall
+            thickness, the per unit volume wall heat capacity, being a
+            characteristic wall quantity independent from the wall thickness, is
+            equal to ρ·c. This quantity for a composite wall of an overall
+            thickness L, is usually defined as the equivalent per unit wall
+            volume heat capacity and it is expressed as
+            :math:`{{(ρ·c)}}_{eq}{{=(1/L)·∑}}_{i=1}^n{{(ρ}}_i{{·c}}_i{{·δ}}_i{)}`
+            where :math:`{ρ}_i`, :math:`{c}_i` and :math:`{δ}_i` are the
+            densities, the specific heat capacities and the layer
+            thicknesses of the n parallel layers of the composite wall.
+        """
+        return (
+            (1 / self.total_thickness)
+            * sum(
+                [
+                    layer.Material.Density
+                    * layer.Material.SpecificHeat
+                    * layer.Thickness
+                    for layer in self.Layers
+                ]
+            )
+            * 1e-3
+        )
+
+    @property
     def specific_heat(self):
         """float: The overall specific heat of the OpaqueConstruction weighted
         by wall area mass (J/kg K m2).
@@ -156,6 +188,17 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return np.average(
             [layer.specific_heat for layer in self.Layers],
             weights=[layer.Thickness * layer.Material.Density for layer in self.Layers],
+        )
+
+    @property
+    def heat_capacity_per_unit_wall_area(self):
+        """The per unit wall area of the heat capacity is :math:`(HC/A)=ρ·c·δ`,
+        where :math:`δ` is the wall thickness. Expressed in J/(m2 K)"""
+        return sum(
+            [
+                layer.Material.Density * layer.Material.SpecificHeat * layer.Thickness
+                for layer in self.Layers
+            ]
         )
 
     @property

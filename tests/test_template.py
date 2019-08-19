@@ -527,22 +527,36 @@ class TestOpaqueConstruction:
         yield oc_b
 
     def test_thermal_properties(self, construction_a):
-        """test r_value and u_value properties"""
-        assert 1 / construction_a.r_value == construction_a.u_value
+        """test r_value and u_value properties
+
+        Args:
+            construction_a:
+        """
+        assert 1 / construction_a.r_value == construction_a.u_value()
 
     def test_add_opaque_construction(self, construction_a, construction_b):
-        """Test __add__() for OpaqueConstruction"""
+        """Test __add__() for OpaqueConstruction
+
+        Args:
+            construction_a:
+            construction_b:
+        """
         oc_c = construction_a + construction_b
         assert oc_c
         desired = np.average(
-            [construction_a.u_value, construction_b.u_value],
+            [construction_a.u_value(), construction_b.u_value()],
             weights=[construction_a.total_thickness, construction_b.total_thickness],
         )
-        actual = oc_c.u_value
+        actual = oc_c.u_value()
         np.testing.assert_almost_equal(actual, desired, decimal=3)
 
     def test_iadd_opaque_construction(self, construction_a, construction_b):
-        """Test __iadd__() for OpaqueConstruction"""
+        """Test __iadd__() for OpaqueConstruction
+
+        Args:
+            construction_a:
+            construction_b:
+        """
         id_ = construction_a.id
         construction_a += construction_b
 

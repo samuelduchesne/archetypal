@@ -124,12 +124,29 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """float: The Thermal Resistance of the :class:`OpaqueConstruction`"""
         return sum([layer.r_value for layer in self.Layers])  # (K⋅m2/W)
 
-    @property
-    def u_value(self):
+    def u_value(self, include_h=False, h_in=8.0, h_out=20.0):
         """float: The overall heat transfer coefficient of the
-        :class:`OpaqueConstruction`. Expressed in W/(m2⋅K)
+        :class:`OpaqueConstruction`. Expressed in W/(m2⋅K).
+
+        Hint:
+            The U value of a composite wall made of n layers of uniform
+            thermophysical properties, surface area A and thermal resistance R
+            is defined as U=(A·R) :sup:`−1` and is calculated by the
+            expressionbased on the following expression:
+            :math:`{{U=}{{{1/h}}_{}{{+∑}}_{i=1}^n{{(δ}}_i{{/k}}_i{{)+1/h}}_∞}^{−1}}`
+
+        Args:
+            include_h (bool): If True, the convective heat transfer coefficients
+                are included in the u_value calc.
+            h_in (float): The room side convective heat transfer coefficient
+                (W/m2-k).
+            h_out (float): The ambient convective heat transfer coefficient
+                (W/m2-k).
         """
-        return 1 / self.r_value
+        if include_h:
+            return (1 / h_out + self.r_value + 1 / h_in) ** -1
+        else:
+            return 1 / self.r_value
 
     @property
     def specific_heat(self):
@@ -194,7 +211,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         new_obj = self.__class__(**meta, Layers=layers)
         new_name = (
             "Combined Opaque Construction {{{}}} with u_value "
-            "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value)
+            "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value())
         )
         new_obj.rename(new_name)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
@@ -259,7 +276,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             return (calc - expected) ** 2 + (specific_heat - h_expected) ** 2
 
         equi_u = np.average(
-            [self.u_value, other.u_value],
+            [self.u_value(), other.u_value()],
             weights=[self.total_thickness, other.total_thickness],
         )
 

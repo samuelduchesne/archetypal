@@ -572,6 +572,87 @@ class TestOpaqueConstruction:
         yield oc_a
 
     @pytest.fixture()
+    def face_brick(self):
+        """A :class:Material fixture"""
+        face_brick = ar.OpaqueMaterial(
+            Conductivity=1.20, Density=1900, SpecificHeat=850, Name="Face Brick"
+        )
+        yield face_brick
+
+    @pytest.fixture()
+    def thermal_insulation(self):
+        """A :class:Material fixture"""
+        thermal_insulation = ar.OpaqueMaterial(
+            Conductivity=0.041, Density=40, SpecificHeat=850, Name="Thermal insulation"
+        )
+        yield thermal_insulation
+
+    @pytest.fixture()
+    def hollow_concrete_block(self):
+        """A :class:Material fixture"""
+        hollow_concrete_block = ar.OpaqueMaterial(
+            Conductivity=0.85,
+            Density=2000,
+            SpecificHeat=920,
+            Name="Hollow concrete block",
+        )
+        yield hollow_concrete_block
+
+    @pytest.fixture()
+    def plaster(self):
+        """A :class:Material fixture"""
+        plaster = ar.OpaqueMaterial(
+            Conductivity=1.39, Density=2000, SpecificHeat=1085, Name="Plaster"
+        )
+        yield plaster
+
+    @pytest.fixture()
+    def concrete_layer(self):
+        """A :class:Material fixture"""
+        concrete = ar.OpaqueMaterial(
+            Conductivity=1.70, Density=2300, SpecificHeat=920, Name="Concrete layer"
+        )
+        yield concrete
+
+    @pytest.fixture()
+    def facebrick_and_concrete(
+        self, face_brick, thermal_insulation, hollow_concrete_block, plaster
+    ):
+        """A :class:Construction based on the `Facebrick–concrete wall` from: On
+        the thermal time constant of structural walls. Applied Thermal
+        Engineering, 24(5–6), 743–757.
+        https://doi.org/10.1016/j.applthermaleng.2003.10.015
+        """
+        layers = [
+            ar.MaterialLayer(face_brick, 0.1),
+            ar.MaterialLayer(thermal_insulation, 0.04),
+            ar.MaterialLayer(hollow_concrete_block, 0.2),
+            ar.MaterialLayer(plaster, 0.02),
+        ]
+        oc_a = ar.OpaqueConstruction(Layers=layers, Name="Facebrick–concrete wall")
+
+        yield oc_a
+
+    @pytest.fixture()
+    def insulated_concrete_wall(
+        self, face_brick, thermal_insulation, concrete_layer, plaster
+    ):
+        """A :class:Construction based on the `Facebrick–concrete wall` from: On
+        the thermal time constant of structural walls. Applied Thermal
+        Engineering, 24(5–6), 743–757.
+        https://doi.org/10.1016/j.applthermaleng.2003.10.015
+        """
+        layers = [
+            ar.MaterialLayer(plaster, 0.02),
+            ar.MaterialLayer(concrete_layer, 0.20),
+            ar.MaterialLayer(thermal_insulation, 0.04),
+            ar.MaterialLayer(plaster, 0.02),
+        ]
+        oc_a = ar.OpaqueConstruction(Layers=layers, Name="Insulated Concrete Wall")
+
+        yield oc_a
+
+    @pytest.fixture()
     def construction_b(self, mat_a):
         """A :class:Construction fixture
 
@@ -714,6 +795,37 @@ class TestOpaqueConstruction:
         assert oc is not oc_3
         assert oc == oc_3
 
+    def test_real_word_construction(
+        self, facebrick_and_concrete, insulated_concrete_wall
+    ):
+        """This test is based on wall constructions, materials and results from:
+        Tsilingiris, P. T. (2004). On the thermal time constant of structural
+        walls. Applied Thermal Engineering, 24(5–6), 743–757.
+        https://doi.org/10.1016/j.applthermaleng.2003.10.015
+
+        Args:
+            facebrick_and_concrete:
+        """
+        assert facebrick_and_concrete.u_value(include_h=True) == pytest.approx(
+            0.6740, 0.01
+        )
+        assert facebrick_and_concrete.equivalent_heat_capacity == pytest.approx(
+            1595.1, 0.01
+        )
+        assert facebrick_and_concrete.heat_capacity_per_unit_wall_area == pytest.approx(
+            574260.0, 0.1
+        )
+
+        assert insulated_concrete_wall.u_value(include_h=True) == pytest.approx(
+            0.7710, 0.01
+        )
+        # assert insulated_concrete_wall.equivalent_heat_capacity == pytest.approx(
+        #     1605.5, 0.01
+        # )
+
+        combined_mat = facebrick_and_concrete + insulated_concrete_wall
+
+        print(combined_mat)
 
 class TestWindowConstruction:
     """Series of tests for the :class:`WindowConstruction` class"""

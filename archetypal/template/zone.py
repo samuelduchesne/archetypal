@@ -683,7 +683,7 @@ def is_core(epbunch):
     iscore = True
     for s in epbunch.zonesurfaces:
         try:
-            if math.isclose(int(s.tilt), 90):
+            if (abs(int(s.tilt)) < 180) & (abs(int(s.tilt)) > 0):
                 obc = s.Outside_Boundary_Condition.lower()
                 if obc == "outdoors":
                     iscore = False

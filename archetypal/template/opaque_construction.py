@@ -124,26 +124,88 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """float: The Thermal Resistance of the :class:`OpaqueConstruction`"""
         return sum([layer.r_value for layer in self.Layers])  # (K⋅m2/W)
 
-    @property
-    def u_value(self):
+    def u_value(self, include_h=False, h_in=8.0, h_out=20.0):
         """float: The overall heat transfer coefficient of the
-        :class:`OpaqueConstruction`. Expressed in W/(m2⋅K)
+        :class:`OpaqueConstruction`. Expressed in W/(m2⋅K).
+
+        Hint:
+            The U value of a composite wall made of n layers of uniform
+            thermophysical properties, surface area A and thermal resistance R
+            is defined as U=(A·R) :sup:`−1` and is calculated by the
+            expressionbased on the following expression:
+            :math:`{{U=}{{{1/h}}_{}{{+∑}}_{i=1}^n{{(δ}}_i{{/k}}_i{{)+1/h}}_∞}^{−1}}`
+
+        Args:
+            include_h (bool): If True, the convective heat transfer coefficients
+                are included in the u_value calc.
+            h_in (float): The room side convective heat transfer coefficient
+                (W/m2-k).
+            h_out (float): The ambient convective heat transfer coefficient
+                (W/m2-k).
         """
-        return 1 / self.r_value
+        if include_h:
+            return (1 / h_out + self.r_value + 1 / h_in) ** -1
+        else:
+            return 1 / self.r_value
+
+    @property
+    def equivalent_heat_capacity(self):
+        """The equivalent per unit wall **volume** heat capacity. Expressed in
+        J/(kg⋅K).
+
+        Hint:
+            The physical quantity which represents the heat storage capability
+            is the wall heat capacity, defined as HC=M·c. While the per unit
+            wall area of this quantity is (HC/A)=ρ·c·δ, where δ the wall
+            thickness, the per unit volume wall heat capacity, being a
+            characteristic wall quantity independent from the wall thickness, is
+            equal to ρ·c. This quantity for a composite wall of an overall
+            thickness L, is usually defined as the equivalent per unit wall
+            volume heat capacity and it is expressed as
+            :math:`{{(ρ·c)}}_{eq}{{=(1/L)·∑}}_{i=1}^n{{(ρ}}_i{{·c}}_i{{·δ}}_i{)}`
+            where :math:`{ρ}_i`, :math:`{c}_i` and :math:`{δ}_i` are the
+            densities, the specific heat capacities and the layer
+            thicknesses of the n parallel layers of the composite wall.
+        """
+        return (
+            (1 / self.total_thickness)
+            * sum(
+                [
+                    layer.Material.Density
+                    * layer.Material.SpecificHeat
+                    * layer.Thickness
+                    for layer in self.Layers
+                ]
+            )
+            * 1e-3
+        )
 
     @property
     def specific_heat(self):
-        """float: The overall specific heat of the OpaqueConstruction weighted by
-        wall area mass (kg/m2)"""
+        """float: The overall specific heat of the OpaqueConstruction weighted
+        by wall area mass (J/kg K m2).
+        """
         return np.average(
             [layer.specific_heat for layer in self.Layers],
             weights=[layer.Thickness * layer.Material.Density for layer in self.Layers],
         )
 
     @property
+    def heat_capacity_per_unit_wall_area(self):
+        """The per unit wall area of the heat capacity is :math:`(HC/A)=ρ·c·δ`,
+        where :math:`δ` is the wall thickness. Expressed in J/(m2 K)"""
+        return sum(
+            [
+                layer.Material.Density * layer.Material.SpecificHeat * layer.Thickness
+                for layer in self.Layers
+            ]
+        )
+
+    @property
     def total_thickness(self):
-        """Returns the total thickness of an OpaqueConstruction by summing up each
-        material layer thicknesses"""
+        """Returns the total thickness of an OpaqueConstruction by summing up
+        each material layer thicknesses
+        """
         return sum([layer.Thickness for layer in self.Layers])
 
     def combine(self, other, weights=None, method="constant_ufactor"):
@@ -194,7 +256,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         new_obj = self.__class__(**meta, Layers=layers)
         new_name = (
             "Combined Opaque Construction {{{}}} with u_value "
-            "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value)
+            "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value())
         )
         new_obj.rename(new_name)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
@@ -259,7 +321,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             return (calc - expected) ** 2 + (specific_heat - h_expected) ** 2
 
         equi_u = np.average(
-            [self.u_value, other.u_value],
+            [self.u_value(), other.u_value()],
             weights=[self.total_thickness, other.total_thickness],
         )
 
@@ -273,7 +335,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         if not weights:
             weights = [1.0, 1.0]
 
-        # If weights is a list of zeros. This weigth is used in the
+        # If weights is a list of zeros. This weight is used in the
         if not np.array(weights).any():
             weights = [1, 1]
 

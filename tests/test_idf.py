@@ -9,6 +9,8 @@ import matplotlib as mpl
 import pytest
 from path import Path
 
+from archetypal import EnergyPlusProcessError
+
 mpl.use("Agg")
 
 
@@ -19,19 +21,19 @@ mpl.use("Agg")
 
 def test_small_home_data(config, fresh_start):
     file = "tests/input_data/regular/AdultEducationCenter.idf"
-    file = ar.copy_file(file)[0]
+    file = ar.copy_file(file)
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     return ar.run_eplus(
-        file, wf, expandobjects=True, verbose="q", prep_outputs=True, design_day=True
+        file, wf, prep_outputs=True, design_day=True, expandobjects=True, verbose="q"
     )
 
 
 def test_necb(config):
-    """Test one of the necb files"""
-    import glob
+    """Test all necb files with design_day = True"""
+    from archetypal import parallel_process
 
-    files = random.choice(glob.glob("tests/input_data/necb/*.idf"))
-    files = ar.copy_file(files)
+    necb_dir = Path("tests/input_data/necb")
+    files = necb_dir.glob("*.idf")
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     rundict = {
         file: dict(
@@ -40,10 +42,11 @@ def test_necb(config):
             expandobjects=True,
             verbose="q",
             design_day=True,
+            output_report="sql",
         )
         for file in files
     }
-    result = {file: ar.run_eplus(**rundict[file]) for file in files}
+    result = parallel_process(rundict, ar.run_eplus, use_kwargs=True)
 
     assert not any(isinstance(a, Exception) for a in result.values())
 
@@ -102,7 +105,9 @@ def test_run_olderv(config, fresh_start, ep_version):
     result = {file: ar.run_eplus(**rundict[file]) for file in files}
 
 
-@pytest.mark.xfail(raises=(subprocess.CalledProcessError, FileNotFoundError))
+@pytest.mark.xfail(
+    raises=(subprocess.CalledProcessError, FileNotFoundError, EnergyPlusProcessError)
+)
 def test_run_olderv_problematic(config, fresh_start):
     """Will run eplus on a file that needs to be upgraded and that should
     fail. Will be ignored in the test suite"""
@@ -112,9 +117,9 @@ def test_run_olderv_problematic(config, fresh_start):
         ".2_5A_USA_IL_CHICAGO-OHARE.idf"
     )
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    file = ar.copy_file([file])[0]
+    file = ar.copy_file([file])
     ar.run_eplus(
-        file, wf, annual=True, expandobjects=True, verbose="q", prep_outputs=True
+        file, wf, prep_outputs=True, annual=True, expandobjects=True, verbose="q"
     )
 
 
@@ -123,7 +128,7 @@ def test_run_eplus_from_idf(config, fresh_start):
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
 
     idf = ar.load_idf(file, weather_file=wf)
-    sql = idf.run_eplus()
+    sql = idf.run_eplus(output_report="sql")
 
     assert sql
 
@@ -178,3 +183,25 @@ def test_partition_ratio():
     idf_file = Path("tests/input_data/necb/").glob("*LargeOffice*.idf")
     idf = load_idf(next(iter(idf_file)))
     print(idf.partition_ratio)
+
+
+def test_space_cooling_profile(config):
+    from archetypal import load_idf
+
+    file = "tests/input_data/regular/AdultEducationCenter.idf"
+    wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+
+    idf = load_idf(file, None, weather_file=wf)
+
+    assert not idf.space_cooling_profile().empty
+
+
+def test_space_heating_profile(config):
+    from archetypal import load_idf
+
+    file = "tests/input_data/necb/NECB 2011-Warehouse-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+    wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+
+    idf = load_idf(file, None, weather_file=wf)
+
+    assert not idf.space_heating_profile().empty

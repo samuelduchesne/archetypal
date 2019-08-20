@@ -386,13 +386,13 @@ def reduce(idf, name, ep_version, weather, parallel):
             res[fn] = archetypal.run_eplus(
                 fn,
                 weather,
-                verbose="v",
+                ep_version=ep_version,
                 output_report="sql",
                 prep_outputs=True,
                 annual=True,
                 design_day=False,
+                verbose="v",
                 return_idf=True,
-                ep_version=ep_version,
             )
     from archetypal import BuildingTemplate
 

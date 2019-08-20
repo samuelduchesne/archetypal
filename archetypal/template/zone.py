@@ -17,6 +17,7 @@ from eppy.bunch_subclass import BadEPFieldError
 from geomeppy.geom.polygons import Polygon3D
 
 from archetypal import log, timeit, settings
+from archetypal.utils import reduce
 from archetypal.template import (
     Unique,
     UmiBase,
@@ -839,16 +840,24 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         meta = self._get_predecessors_meta(other)
         new_attr = dict(
-            Slab=self.Slab.combine(other.Slab, weights),
-            IsSlabAdiabatic=self.IsSlabAdiabatic,
-            Roof=self.Roof + other.Roof,
-            IsRoofAdiabatic=self.IsRoofAdiabatic,
-            Partition=self.Partition + other.Partition,
-            IsPartitionAdiabatic=self.IsPartitionAdiabatic,
-            Ground=self.Ground + other.Ground,
-            IsGroundAdiabatic=self.IsGroundAdiabatic,
-            Facade=self.Facade + other.Facade,
-            IsFacadeAdiabatic=self.IsFacadeAdiabatic,
+            Slab=self.Slab.combine(other.Slab, [self.Slab.area, other.Slab.area]),
+            IsSlabAdiabatic=any([self.IsSlabAdiabatic, other.IsSlabAdiabatic]),
+            Roof=self.Roof.combine(other.Roof, [self.Roof.area, other.Roof.area]),
+            IsRoofAdiabatic=any([self.IsRoofAdiabatic, other.IsRoofAdiabatic]),
+            Partition=self.Partition.combine(
+                other.Partition, [self.Partition.area, other.Partition.area]
+            ),
+            IsPartitionAdiabatic=any(
+                [self.IsPartitionAdiabatic, other.IsPartitionAdiabatic]
+            ),
+            Ground=self.Ground.combine(
+                other.Ground, [self.Ground.area, other.Ground.area]
+            ),
+            IsGroundAdiabatic=any([self.IsGroundAdiabatic, other.IsGroundAdiabatic]),
+            Facade=self.Facade.combine(
+                other.Facade, [self.Facade.area, other.Facade.area]
+            ),
+            IsFacadeAdiabatic=any([self.IsFacadeAdiabatic, other.IsFacadeAdiabatic]),
         )
         new_obj = self.__class__(**meta, **new_attr)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
@@ -937,27 +946,27 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         facades = set(facade)
         if facades:
-            facade = functools.reduce(lambda a, b: a + b, facades)
+            facade = reduce(OpaqueConstruction.combine, facades)
         else:
             facade = OpaqueConstruction.generic(idf=zone.idf)
         grounds = set(ground)
         if grounds:
-            ground = functools.reduce(lambda a, b: a + b, grounds)
+            ground = reduce(OpaqueConstruction.combine, grounds)
         else:
             ground = OpaqueConstruction.generic(idf=zone.idf)
         partitions = set(partition)
         if partitions:
-            partition = functools.reduce(lambda a, b: a + b, partitions)
+            partition = reduce(OpaqueConstruction.combine, partitions)
         else:
             partition = OpaqueConstruction.generic(idf=zone.idf)
         roofs = set(roof)
         if roofs:
-            roof = functools.reduce(lambda a, b: a + b, roofs)
+            roof = reduce(OpaqueConstruction.combine, roofs)
         else:
             roof = OpaqueConstruction.generic(idf=zone.idf)
         slabs = set(slab)
         if slabs:
-            slab = functools.reduce(lambda a, b: a + b, slabs)
+            slab = reduce(OpaqueConstruction.combine, slabs)
         else:
             slab = OpaqueConstruction.generic(idf=zone.idf)
 

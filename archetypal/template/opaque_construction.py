@@ -91,6 +91,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             **kwargs:
         """
         super(OpaqueConstruction, self).__init__(Layers, **kwargs)
+        self.area = 1
         self.Surface_Type = Surface_Type
         self.Outside_Boundary_Condition = Outside_Boundary_Condition
         self.IsAdiabatic = IsAdiabatic
@@ -149,7 +150,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             return 1 / self.r_value
 
     @property
-    def equivalent_heat_capacity(self):
+    def equivalent_heat_capacity_per_unit_volume(self):
         """The equivalent per unit wall **volume** heat capacity. Expressed in
         J/(kg⋅K).
 
@@ -167,23 +168,17 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             densities, the specific heat capacities and the layer
             thicknesses of the n parallel layers of the composite wall.
         """
-        return (
-            (1 / self.total_thickness)
-            * sum(
-                [
-                    layer.Material.Density
-                    * layer.Material.SpecificHeat
-                    * layer.Thickness
-                    for layer in self.Layers
-                ]
-            )
-            * 1e-3
+        return (1 / self.total_thickness) * sum(
+            [
+                layer.Material.Density * layer.Material.SpecificHeat * layer.Thickness
+                for layer in self.Layers
+            ]
         )
 
     @property
     def specific_heat(self):
         """float: The overall specific heat of the OpaqueConstruction weighted
-        by wall area mass (J/kg K m2).
+        by wall area mass (J/kg K).
         """
         return np.average(
             [layer.specific_heat for layer in self.Layers],
@@ -234,12 +229,14 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         if self == other:
             return self
 
-        if not weights:
-            log(
-                'using 1 as weighting factor in "{}" '
-                "combine.".format(self.__class__.__name__)
-            )
-            weights = [1.0, 1.0]
+        # if not weights:
+        #     log(
+        #         'using 1 as weighting factor in "{}" '
+        #         "combine.".format(self.__class__.__name__)
+        #     )
+        #     weights = [1.0, 1.0]
+
+        weights = [self.area, other.area]
 
         meta = self._get_predecessors_meta(other)
         # thicknesses & materials for self
@@ -260,6 +257,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         )
         new_obj.rename(new_name)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj.area = sum(weights)
         return new_obj
 
     def equivalent_volume(self, other):
@@ -300,7 +298,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 data are assumed to have a weight equal to one.
         """
 
-        def obj_func(thicknesses, materials, expected, h_expected):
+        def obj_func(thicknesses, materials, expected, h_expected, two_wall_thickness):
             """"""
             calc = 1 / sum(
                 [
@@ -318,7 +316,11 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 for thickness, mat in zip(thicknesses, materials)
             ]
             specific_heat = np.average(h_calc, weights=unit_volume)
-            return (calc - expected) ** 2 + (specific_heat - h_expected) ** 2
+            return (
+                (calc - expected) ** 2
+                + (specific_heat - h_expected) ** 2
+                + (sum(thicknesses) - two_wall_thickness) ** 2
+            )
 
         equi_u = np.average(
             [self.u_value(), other.u_value()],
@@ -342,10 +344,14 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         equi_spec_heat = np.average(
             [self.specific_heat, other.specific_heat], weights=weights
         )
+        two_wall_thickness = np.average([self.total_thickness, other.total_thickness])
         x0 = np.ones(len(materials))
         bnds = tuple([(0.003, None) for layer in materials])
         res = minimize(
-            obj_func, x0, args=(materials, equi_u, equi_spec_heat), bounds=bnds
+            obj_func,
+            x0,
+            args=(materials, equi_u, equi_spec_heat, two_wall_thickness),
+            bounds=bnds,
         )
 
         return np.array(list(materials)), res.x

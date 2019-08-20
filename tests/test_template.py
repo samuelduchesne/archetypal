@@ -809,8 +809,9 @@ class TestOpaqueConstruction:
         assert facebrick_and_concrete.u_value(include_h=True) == pytest.approx(
             0.6740, 0.01
         )
-        assert facebrick_and_concrete.equivalent_heat_capacity == pytest.approx(
-            1595.1, 0.01
+        assert (
+            facebrick_and_concrete.equivalent_heat_capacity_per_unit_volume
+            == pytest.approx(1595166.7, 0.01)
         )
         assert facebrick_and_concrete.heat_capacity_per_unit_wall_area == pytest.approx(
             574260.0, 0.1
@@ -819,13 +820,16 @@ class TestOpaqueConstruction:
         assert insulated_concrete_wall.u_value(include_h=True) == pytest.approx(
             0.7710, 0.01
         )
-        # assert insulated_concrete_wall.equivalent_heat_capacity == pytest.approx(
-        #     1605.5, 0.01
-        # )
+        assert (
+            insulated_concrete_wall.equivalent_heat_capacity_per_unit_volume
+            == pytest.approx(1826285.7, 0.01)
+        )
 
         combined_mat = facebrick_and_concrete + insulated_concrete_wall
+        facebrick_and_concrete.area = 2
+        combined_2xmat = facebrick_and_concrete + insulated_concrete_wall
+        assert combined_mat.specific_heat > combined_2xmat.specific_heat
 
-        print(combined_mat)
 
 class TestWindowConstruction:
     """Series of tests for the :class:`WindowConstruction` class"""

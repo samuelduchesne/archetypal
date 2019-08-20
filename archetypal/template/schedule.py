@@ -115,9 +115,16 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             raise NotImplementedError(msg)
 
         # check if the schedule is the same
-
         if all(self.all_values == other.all_values):
             return self
+
+        # check if self is only zeros. Should not affect other.
+        if all(self.all_values == 0):
+            return other
+        # check if other is only zeros. Should not affect self.
+        if all(other.all_values == 0):
+            return self
+
         if not weights:
             log(
                 'using 1 as weighting factor in "{}" '
@@ -135,7 +142,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         meta = self._get_predecessors_meta(other)
 
         attr = self.__dict__.copy()
-        attr.update(dict(value=new_values))
+        attr.update(dict(values=new_values))
         attr["Name"] = meta["Name"]
         new_obj = super().from_values(**attr)
         new_name = (

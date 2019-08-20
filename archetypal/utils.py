@@ -212,7 +212,9 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
 
         # create file handler and log formatter and set them up
         handler = lg.FileHandler(log_filename, encoding="utf-8")
-        formatter = lg.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
+        formatter = lg.Formatter(
+            "%(asctime)s [%(process)d]  %(levelname)s - %(name)s - %(" "message)s"
+        )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.setLevel(level)

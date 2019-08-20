@@ -51,7 +51,7 @@ class MassRatio(object):
     @classmethod
     def generic(cls):
         mat = OpaqueMaterial.generic()
-        return cls(HighLoadRatio=0, Material=mat, NormalRatio=0)
+        return cls(HighLoadRatio=1, Material=mat, NormalRatio=1)
 
 
 class StructureDefinition(UmiBase, metaclass=Unique):

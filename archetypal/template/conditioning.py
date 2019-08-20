@@ -7,7 +7,7 @@
 
 import collections
 
-from archetypal import float_round, ReportData, log, timeit
+from archetypal import float_round, ReportData, log, timeit, settings
 from archetypal.template import UmiBase, Unique, UmiSchedule
 import numpy as np
 import math

@@ -1353,13 +1353,13 @@ def run_eplus(
             # Return summary DataFrames
             runargs["output_directory"] = output_directory / "output_data"
             cached_run_results = get_report(**runargs)
+            if cached_run_results:
+                results.extend([cached_run_results])
             if return_idf:
                 idf = load_idf(
                     eplus_file, output_folder=output_directory, include=include
                 )
                 results.extend([idf])
-            if cached_run_results:
-                results.extend([cached_run_results])
         return _unpack_tuple(results)
 
 

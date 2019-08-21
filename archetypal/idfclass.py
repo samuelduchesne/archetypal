@@ -1224,8 +1224,9 @@ def run_eplus(
             )
             # return_idf
             if return_idf:
+                filepath = os.path.join(output_directory, "output_data", os.path.basename(eplus_file))
                 idf = load_idf(
-                    eplus_file, output_folder=output_directory, include=include
+                    filepath, output_folder=output_directory, include=include
                 )
             else:
                 idf = None

@@ -28,13 +28,13 @@ class Unique(type):
             *args:
             **kwargs:
         """
-        key = hash((cls.mro()[0].__name__, kwargs["Name"]))
-        if key not in CREATED_OBJECTS:
-            self = cls.__new__(cls, *args, **kwargs)
-            cls.__init__(self, *args, **kwargs)
-            cls._cache[key] = self
-            CREATED_OBJECTS[key] = self
-        return CREATED_OBJECTS[key]
+        # key = hash((cls.mro()[0].__name__, kwargs["Name"]))
+        self = cls.__new__(cls, *args, **kwargs)
+        cls.__init__(self, *args, **kwargs)
+        cls._cache[hash(self)] = self
+        if self not in CREATED_OBJECTS:
+            CREATED_OBJECTS[hash(self)] = self
+        return CREATED_OBJECTS[hash(self)]
 
     def __init__(cls, name, bases, attributes):
         """
@@ -150,13 +150,13 @@ class UmiBase(object):
     def rename(self, name):
         """renames self as well as the cached object"""
         key = hash((self.__class__.mro()[0].__name__, self.Name))
-        self._cache.pop(key)
-        CREATED_OBJECTS.pop(key)
+        self._cache.pop(hash(self))
+        CREATED_OBJECTS.pop(hash(self))
 
         self.Name = name
         newkey = hash((self.__class__.mro()[0].__name__, name))
-        self._cache[newkey] = self
-        CREATED_OBJECTS[newkey] = self
+        self._cache[hash(self)] = self
+        CREATED_OBJECTS[hash(self)] = self
 
     def to_json(self):
         """Convert class properties to dict"""

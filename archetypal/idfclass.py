@@ -1231,7 +1231,7 @@ def run_eplus(
                 idf = None
             from itertools import compress
 
-            return_elements = tuple(
+            return_elements = list(
                 compress([cached_run_results, idf], [True, return_idf])
             )
             return _unpack_tuple(return_elements)

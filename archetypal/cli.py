@@ -398,7 +398,9 @@ def reduce(idf, name, ep_version, weather, parallel):
 
     bts = []
     for fn in res.values():
-        bts.append(BuildingTemplate.from_idf(fn[1], sql=fn[0], DataSource=fn[1].name))
+        sql = next(iter([i for i in fn if isinstance(i, dict)]))
+        idf = next(iter([i for i in fn if isinstance(i, archetypal.IDF)]))
+        bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
 
     template = archetypal.UmiTemplate(name=name, BuildingTemplates=bts)
     print(template.to_json())

@@ -9,7 +9,7 @@ tags:
 authors:
   - name: Samuel Letellier-Duchesne
     orcid: 0000-0001-5790-878X
-    affiliation: 1 # (Multiple affiliations must be quoted)
+    affiliation: 1
   - name: Louis Leroy
     affiliation: 1
 affiliations:
@@ -21,35 +21,24 @@ bibliography: paper.bib
 
 # Summary
 
-The forces on stars, galaxies, and dark matter under external gravitational
-fields lead to the dynamical evolution of structures in the universe. The orbits
-of these bodies are therefore key to understanding the formation, history, and
-future state of galaxies. The field of "galactic dynamics," which aims to model
-the gravitating components of galaxies to study their structure and evolution,
-is now well-established, commonly taught, and frequently used in astronomy.
-Aside from toy problems and demonstrations, the majority of problems require
-efficient numerical tools, many of which require the same base code (e.g., for
-performing numerical orbit integration).
+`archetypal` is a Python package that helps handle building archetypes. It offers the
+possibility of converting [EnergyPlus](https://energyplus.net) IDF models to Trnsys
+[TrnBuild](http://www.trnsys.com/features/suite-of-tools.php) Models (compatible with the
+multizone building model).
 
-``Gala`` is an Astropy-affiliated Python package for galactic dynamics. Python
-enables wrapping low-level languages (e.g., C) for speed without losing
-flexibility or ease-of-use in the user-interface. The API for ``Gala`` was
-designed to provide a class-based and user-friendly interface to fast (C or
-Cython-optimized) implementations of common operations such as gravitational
-potential and force evaluation, orbit integration, dynamical transformations,
-and chaos indicators for nonlinear dynamics. ``Gala`` also relies heavily on and
-interfaces well with the implementations of physical units and astronomical
-coordinate systems in the ``Astropy`` package [@astropy] (``astropy.units`` and
-``astropy.coordinates``).
+## EnergyPlus to TRNBuild
 
-``Gala`` was designed to be used by both astronomical researchers and by
-students in courses on gravitational dynamics or astronomy. It has already been
-used in a number of scientific publications [@Pearson:2017] and has also been
-used in graduate courses on Galactic dynamics to, e.g., provide interactive
-visualizations of textbook material [@Binney:2008]. The combination of speed,
-design, and support for Astropy functionality in ``Gala`` will enable exciting
-scientific explorations of forthcoming data releases from the *Gaia* mission
-[@gaia] by students and experts alike.
+## EnergyPlus to UMI Template
+It aims to provide a solution to the problem of
+scale and lack of data presented in the previous chapter. The algorithm approximates the
+non-geometric parameters of a multi-zone BEM by dissecting and combining core-zones and
+perimeter -zones. The procedure is an attempt to streamline the creation of UBEM models
+based on the Shoeboxer method [@Dogan:2017] by accelerating the creation of building
+archetype templates. As we will discuss, this approach introduces a robust method to
+convert detailed multi-zone models to archetype templates, striped of geometric
+properties. The templates then allow the creation of large numbers of contextually-award
+buildings which abstract their thermo-physical properties from the archetype template,
+ultimately recreating geometric models.
 
 # Mathematics
 
@@ -76,11 +65,10 @@ For a quick reference, the following citation commands can be used:
 
 # Figures
 
-Figures can be included like this: ![Example figure.](figure.png)
+Figures can be included like this: ![Example figure.](../docs/images/20181211121922.png)
 
 # Acknowledgements
 
-We acknowledge contributions from Brigitta Sipocz, Syrtis Major, and Semyeong
-Oh, and support from Kathryn Johnston during the genesis of this project.
+We acknowledge the financial support of the Institut de l'Énergie Trottier.
 
 # References

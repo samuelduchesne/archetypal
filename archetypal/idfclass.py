@@ -673,7 +673,7 @@ def load_idf(
         return idf
     else:
         # Else, run eppy to load the idf objects
-        idf = eppy_load(
+        idf = _eppy_load(
             eplus_file,
             idd_filename,
             output_folder=output_folder,
@@ -684,7 +684,7 @@ def load_idf(
         return idf
 
 
-def eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
+def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
     """Uses package eppy to parse an idf file. Will also try to upgrade the idf
     file using the EnergyPlus Transition executables if the version of
     EnergyPlus is not installed on the machine.
@@ -914,7 +914,7 @@ def load_idf_object_from_cache(idf_file, how=None):
             if os.path.isfile(cache_fullpath_filename):
                 version = get_idf_version(cache_fullpath_filename, doted=True)
                 iddfilename = getiddfile(version)
-                idf = eppy_load(cache_fullpath_filename, iddfilename)
+                idf = _eppy_load(cache_fullpath_filename, iddfilename)
                 return idf
         else:
             cache_fullpath_filename = os.path.join(
@@ -1224,7 +1224,9 @@ def run_eplus(
             )
             # return_idf
             if return_idf:
-                filepath = os.path.join(output_directory, "output_data", os.path.basename(eplus_file))
+                filepath = os.path.join(
+                    output_directory, "output_data", os.path.basename(eplus_file)
+                )
                 idf = load_idf(
                     filepath, output_folder=output_directory, include=include
                 )

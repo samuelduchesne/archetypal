@@ -1,23 +1,21 @@
 ---
-title: 'Gala: A Python package for galactic dynamics'
+title: 'archetypal: A Python package for retrieving, constructing, simulating, converting and analysing building
+ simulation templates'
 tags:
   - Python
-  - astronomy
-  - dynamics
-  - galactic dynamics
-  - milky way
+  - Building Energy Model
+  - EnergyPlus
+  - TRNSYS
 authors:
-  - name: Adrian M. Price-Whelan
-    orcid: 0000-0003-0872-7098
-    affiliation: "1, 2" # (Multiple affiliations must be quoted)
-  - name: Author Without ORCID
-    affiliation: 2
+  - name: Samuel Letellier-Duchesne
+    orcid: 0000-0001-5790-878X
+    affiliation: 1 # (Multiple affiliations must be quoted)
+  - name: Louis Leroy
+    affiliation: 1
 affiliations:
- - name: Lyman Spitzer, Jr. Fellow, Princeton University
+ - name: Department of Mechanical Engineering, Polytechnique Montréal, Montréal, Canada
    index: 1
- - name: Institution 2
-   index: 2
-date: 13 August 2017
+date: 21 August 2019
 bibliography: paper.bib
 ---
 

@@ -28,13 +28,13 @@ class Unique(type):
             *args:
             **kwargs:
         """
-        # key = hash((cls.mro()[0].__name__, kwargs["Name"]))
         self = cls.__new__(cls, *args, **kwargs)
         cls.__init__(self, *args, **kwargs)
-        cls._cache[hash(self)] = self
-        if self not in CREATED_OBJECTS:
-            CREATED_OBJECTS[hash(self)] = self
-        return CREATED_OBJECTS[hash(self)]
+        key = hash(self)
+        if key not in CREATED_OBJECTS:
+            cls._cache[key] = self
+            CREATED_OBJECTS[key] = self
+        return CREATED_OBJECTS[key]
 
     def __init__(cls, name, bases, attributes):
         """

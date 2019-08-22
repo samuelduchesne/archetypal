@@ -516,127 +516,6 @@ class EnergyPlusOptions:
         self.eplus_file = eplus_file
 
 
-def object_from_idfs(idfs, ep_object, first_occurrence_only=False, processors=1):
-    """Takes a list of parsed IDF objects and a single ep_object and returns a
-    DataFrame.
-
-    Args:
-        idfs (list of dict of IDF): List or Dict of IDF objects
-        ep_object (str): EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a string.
-            **Most be in all caps.**
-        first_occurrence_only (bool, optional): if true, returns only the first
-            occurence of the object
-        processors (int, optional): specify how many processors to use for a
-            parallel run
-
-    Returns:
-        pandas.DataFrame: A DataFrame
-    """
-    if not isinstance(idfs, (list, dict)):
-        idfs = [idfs]
-    container = []
-    start_time = time.time()
-    log("Parsing {1} objects for {0} idf files...".format(len(idfs), ep_object))
-    if isinstance(idfs, dict):
-        try:
-            if processors == 1:
-                raise Exception("Loading objects sequentially...")
-            log("Loading objects in parallel...")
-            # Loading objects in parallel is actually slower at the moment,
-            # so we raise an Exception
-            runs = [[idf, ep_object] for idfname, idf in idfs.items()]
-            import concurrent.futures
-
-            with concurrent.futures.ProcessPoolExecutor(
-                max_workers=processors
-            ) as executor:
-                container = {
-                    idfname: result
-                    for (idfname, idf), result in zip(
-                        idfs.items(), executor.map(object_from_idf_pool, runs)
-                    )
-                }
-        except Exception as e:
-            # multiprocessing not present so pass the jobs one at a time
-            log("{}".format(e))
-            container = {}
-            for key, idf in idfs.items():
-                # Load objects from IDF files and concatenate
-                this_frame = object_from_idf(idf, ep_object)
-                container[key] = this_frame
-
-        # If keys given, construct hierarchical index using the passed keys
-        # as the outermost level
-        this_frame = pd.concat(container, names=["Archetype", "$id"], sort=True)
-        this_frame.reset_index(inplace=True)
-        this_frame.drop(columns="$id", inplace=True)
-    else:
-        for idf in idfs:
-            # Load objects from IDF files and concatenate
-            this_frame = object_from_idf(idf, ep_object)
-            container.append(this_frame)
-        # Concat the list of DataFrames
-        this_frame = pd.concat(container)
-
-    if first_occurrence_only:
-        this_frame = this_frame.groupby("Name").first()
-    this_frame.reset_index(inplace=True)
-    this_frame.index.rename("$id", inplace=True)
-    log(
-        "Parsed {} {} object(s) in {} idf file(s) in {:,.2f} seconds".format(
-            len(this_frame), ep_object, len(idfs), time.time() - start_time
-        )
-    )
-    return this_frame
-
-
-def object_from_idf_pool(args):
-    """Wrapper for :py:func:`object_from_idf` to use in parallel calls
-
-    Args:
-        args (list): List of arguments to pass to :func:`object_from_idf`
-
-    Returns:
-        list: A list of DataFrames
-    """
-    return object_from_idf(args[0], args[1])
-
-
-def object_from_idf(idf, ep_object):
-    """Takes one parsed IDF object and a single ep_object and returns a
-    DataFrame.
-
-    Args:
-        idf (eppy.modeleditor.IDF): a parsed eppy object
-        ep_object (str): EnergyPlus object eg. 'WINDOWMATERIAL:GAS' as a string.
-            **Most be in all caps.**
-
-    Returns:
-        pandas.DataFrame: A DataFrame. Returns an empty DataFrame if
-            ep_object is not found in file.
-    """
-    try:
-        df = pd.concat(
-            [
-                pd.DataFrame(
-                    obj.fieldvalues, index=obj.fieldnames[0 : len(obj.fieldvalues)]
-                ).T
-                for obj in idf.idfobjects[ep_object]
-            ],
-            ignore_index=True,
-            sort=False,
-        )
-    except ValueError:
-        log(
-            'ValueError: EP object "{}" does not exist in frame for idf "{}. '
-            'Returning empty DataFrame"'.format(ep_object, idf.idfname),
-            lg.WARNING,
-        )
-        return pd.DataFrame({ep_object: []})
-    else:
-        return df
-
-
 def load_idf(
     eplus_file, idd_filename=None, output_folder=None, include=None, weather_file=None
 ):
@@ -673,7 +552,7 @@ def load_idf(
         return idf
     else:
         # Else, run eppy to load the idf objects
-        idf = eppy_load(
+        idf = _eppy_load(
             eplus_file,
             idd_filename,
             output_folder=output_folder,
@@ -684,7 +563,7 @@ def load_idf(
         return idf
 
 
-def eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
+def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
     """Uses package eppy to parse an idf file. Will also try to upgrade the idf
     file using the EnergyPlus Transition executables if the version of
     EnergyPlus is not installed on the machine.
@@ -914,7 +793,7 @@ def load_idf_object_from_cache(idf_file, how=None):
             if os.path.isfile(cache_fullpath_filename):
                 version = get_idf_version(cache_fullpath_filename, doted=True)
                 iddfilename = getiddfile(version)
-                idf = eppy_load(cache_fullpath_filename, iddfilename)
+                idf = _eppy_load(cache_fullpath_filename, iddfilename)
                 return idf
         else:
             cache_fullpath_filename = os.path.join(
@@ -1224,7 +1103,9 @@ def run_eplus(
             )
             # return_idf
             if return_idf:
-                filepath = os.path.join(output_directory, "output_data", os.path.basename(eplus_file))
+                filepath = os.path.join(
+                    output_directory, "output_data", os.path.basename(eplus_file)
+                )
                 idf = load_idf(
                     filepath, output_folder=output_directory, include=include
                 )

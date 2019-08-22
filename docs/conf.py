@@ -53,6 +53,7 @@ extensions = [
     "sphinx_click.ext",
     "recommonmark",
     "sphinx.ext.autosummary",
+    "sphinx.ext.autosectionlabel",
 ]
 
 # Add any paths that contain templates here, relative to this directory.

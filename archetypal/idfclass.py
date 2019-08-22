@@ -535,9 +535,6 @@ def load_idf(
     Returns:
         (IDF): The parsed IDF object
     """
-    # Determine version of idf file by reading the text file
-    if idd_filename is None:
-        idd_filename = getiddfile(get_idf_version(eplus_file))
 
     idf = load_idf_object_from_cache(eplus_file)
 
@@ -584,29 +581,33 @@ def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
     file = Path(file)
     cache_filename = hash_file(file)
 
-    # Initiate an eppy.modeleditor.IDF object
-    IDF.setiddname(idd_filename, testing=True)
-    if not output_folder:
-        output_folder = settings.cache_folder / cache_filename
-    else:
-        output_folder = Path(output_folder)
-
-    output_folder.makedirs_p()
-
     try:
         # first copy the file
+        if not output_folder:
+            output_folder = settings.cache_folder / cache_filename
+        else:
+            output_folder = Path(output_folder)
+
+        output_folder.makedirs_p()
         try:
             file = Path(file.copy(output_folder))
         except:
-            # The file already exists at the location
-            pass
-        # load the idf object
-        idf_object = IDF(file, epw=epw)
-        # Check version of IDF file against version of IDD file
-        idf_version = idf_object.idfobjects["VERSION"][0].Version_Identifier
-        idd_version = "{}.{}".format(
-            idf_object.idd_version[0], idf_object.idd_version[1]
-        )
+            # The file already exists at the location. Use that file
+            file = output_folder / file.basename()
+        finally:
+            # Determine version of idf file by reading the text file
+            if idd_filename is None:
+                idd_filename = getiddfile(get_idf_version(file))
+
+            # Initiate an eppy.modeleditor.IDF object
+            IDF.setiddname(idd_filename, testing=True)
+            # load the idf object
+            idf_object = IDF(file, epw=epw)
+            # Check version of IDF file against version of IDD file
+            idf_version = idf_object.idfobjects["VERSION"][0].Version_Identifier
+            idd_version = "{}.{}".format(
+                idf_object.idd_version[0], idf_object.idd_version[1]
+            )
     except FileNotFoundError as exception:
         # Loading the idf object will raise a FileNotFoundError if the
         # version of EnergyPlus is not included
@@ -723,7 +724,7 @@ def load_idf_object_from_cache(idf_file, how=None):
     Args:
         idf_file (str): path to the idf file
         how (str, optional): How the pickling is done. Choices are 'json' or
-            'pickle' or 'idf'. json dump doen't quite work yet. 'pickle' will
+            'pickle' or 'idf'. json dump doesn't quite work yet. 'pickle' will
             load from a gzip'ed file instead of a regular binary file (.dat).
             'idf' will load from idf file saved in cache.
 
@@ -1077,18 +1078,18 @@ def run_eplus(
     args, _, _, values = inspect.getargvalues(frame)
     args = {arg: values[arg] for arg in args}
 
-    cache_filename = hash_file(eplus_file, args)
+    cache_filename = hash_file(eplus_file)
     if not output_prefix:
         output_prefix = cache_filename
     if not output_directory:
         output_directory = settings.cache_folder / cache_filename
     else:
         output_directory = Path(output_directory)
-
+    args["output_directory"] = output_directory
     # <editor-fold desc="Try to get cached results">
     try:
         start_time = time.time()
-        cached_run_results = get_from_cache(cache_filename=cache_filename, **args)
+        cached_run_results = get_from_cache(args)
     except Exception as e:
         # catch other exceptions that could occur
         raise Exception("{}".format(e))
@@ -1104,7 +1105,9 @@ def run_eplus(
             # return_idf
             if return_idf:
                 filepath = os.path.join(
-                    output_directory, "output_data", os.path.basename(eplus_file)
+                    output_directory,
+                    hash_file(eplus_file, args),
+                    os.path.basename(eplus_file),
                 )
                 idf = load_idf(
                     filepath, output_folder=output_directory, include=include
@@ -1126,7 +1129,9 @@ def run_eplus(
         # replace the dots with "-"
         ep_version = ep_version.replace(".", "-")
     eplus_file = idf_version_updater(
-        eplus_file, to_version=ep_version, out_dir=output_directory
+        upgraded_file(eplus_file, output_directory),
+        to_version=ep_version,
+        out_dir=output_directory,
     )
     # In case the file has been updated, update the versionid of the file
     # and the idd_file
@@ -1164,14 +1169,15 @@ def run_eplus(
             )
             if include:
                 include = [file.copy(tmp) for file in include]
+            tmp_file = Path(eplus_file.copy(tmp))
             runargs = {
                 "tmp": tmp,
-                "eplus_file": Path(eplus_file.copy(tmp)),
+                "eplus_file": tmp_file,
                 "weather": Path(weather_file.copy(tmp)),
                 "verbose": verbose,
                 "output_directory": output_directory,
                 "ep_version": versionid,
-                "output_prefix": output_prefix,
+                "output_prefix": hash_file(tmp_file, args),
                 "idd": Path(idd_file.copy(tmp)),
                 "annual": annual,
                 "epmacro": epmacro,
@@ -1219,21 +1225,22 @@ def run_eplus(
                         ]
                     )
 
+            save_dir = output_directory / hash_file(eplus_file, args)
             if keep_data:
-                (output_directory / "output_data").rmtree_p()
-                tmp.copytree(output_directory / "output_data")
+                (save_dir).rmtree_p()
+                tmp.copytree(save_dir)
 
                 log(
                     "Files generated at the end of the simulation: %s"
-                    % "\n".join((output_directory / "output_data").files()),
+                    % "\n".join((save_dir).files()),
                     lg.DEBUG,
                     name=eplus_file.basename(),
                 )
                 if return_files:
-                    results.extend((output_directory / "output_data").files())
+                    results.extend((save_dir).files())
 
             # Return summary DataFrames
-            runargs["output_directory"] = output_directory / "output_data"
+            runargs["output_directory"] = save_dir
             cached_run_results = get_report(**runargs)
             if cached_run_results:
                 results.extend([cached_run_results])
@@ -1243,6 +1250,13 @@ def run_eplus(
                 )
                 results.extend([idf])
         return _unpack_tuple(results)
+
+
+def upgraded_file(eplus_file, output_directory):
+    """returns the eplus_file path that would have been copied in the output
+    directory if it exists"""
+    eplus_file = next(iter(output_directory.glob("*.idf")), eplus_file)
+    return eplus_file
 
 
 def _process_csv(file, working_dir, simulname):
@@ -1563,47 +1577,44 @@ def get_report(
         return None
 
 
-def get_from_cache(eplus_file, output_report="sql", output_folder=None, **kwargs):
+def get_from_cache(kwargs):
     """Retrieve a EPlus Tabulated Summary run result from the cache
 
     Args:
-        eplus_file (str): the path of the eplus file
-        output_report: 'html' or 'sql'
-        output_folder:
-        **kwargs: keyword arguments to pass to other functions.
+        kwargs (dict): Args used to create the cache name.
 
     Returns:
         dict: dict of DataFrames
     """
-    if output_folder:
-        output_folder = Path(output_folder)
-
+    output_directory = Path(kwargs.get("output_directory"))
+    output_report = kwargs.get("output_report")
+    eplus_file = next(iter(output_directory.glob("*.idf")), None)
+    if not eplus_file:
+        return None
     if settings.use_cache:
         # determine the filename by hashing the eplus_file
-        cache_filename_prefix = kwargs.pop(
-            "cache_filename", hash_file(eplus_file, kwargs)
-        )
+        cache_filename_prefix = hash_file(eplus_file, kwargs)
 
         if output_report is None:
             return None
         elif "htm" in output_report.lower():
             # Get the html report
-            if not output_folder:
-                output_folder = settings.cache_folder / cache_filename_prefix
 
             cache_fullpath_filename = (
-                output_folder / "output_data" / cache_filename_prefix + "tbl.htm"
+                output_directory / cache_filename_prefix / cache_filename_prefix
+                + "tbl.htm"
             )
             if cache_fullpath_filename.exists():
                 return get_html_report(cache_fullpath_filename)
 
         elif "sql" == output_report.lower():
             # get the SQL report
-            if not output_folder:
-                output_folder = settings.cache_folder / cache_filename_prefix
+            if not output_directory:
+                output_directory = settings.cache_folder / cache_filename_prefix
 
             cache_fullpath_filename = (
-                output_folder / "output_data" / cache_filename_prefix + "out.sql"
+                output_directory / cache_filename_prefix / cache_filename_prefix
+                + "out.sql"
             )
 
             if cache_fullpath_filename.exists():
@@ -1615,11 +1626,12 @@ def get_from_cache(eplus_file, output_report="sql", output_folder=None, **kwargs
                 )
         elif "sql_file" == output_report.lower():
             # get the SQL report
-            if not output_folder:
-                output_folder = settings.cache_folder / cache_filename_prefix
+            if not output_directory:
+                output_directory = settings.cache_folder / cache_filename_prefix
 
             cache_fullpath_filename = (
-                output_folder / "output_data" / cache_filename_prefix + "out.sql"
+                output_directory / cache_filename_prefix / cache_filename_prefix
+                + "out.sql"
             )
             if cache_fullpath_filename.exists():
                 return cache_fullpath_filename
@@ -1969,3 +1981,7 @@ def getoldiddfile(versionid):
     eplusfolder = os.path.dirname(eplus_exe)
     iddfile = "{}/bin/Energy+.idd".format(eplusfolder)
     return iddfile
+
+
+if __name__ == "__main__":
+    pass

@@ -205,3 +205,17 @@ def test_space_heating_profile(config):
     idf = load_idf(file, None, weather_file=wf)
 
     assert not idf.space_heating_profile().empty
+
+
+def test_old_than_change_args(config, fresh_start):
+    """Should upgrade file only once even if run_eplus args are changed afterwards"""
+    from archetypal import run_eplus
+
+    file = "tests/input_data/trnsys/RefBldgQuickServiceRestaurantPost1980_v1.4_7.2_6A_USA_MN_MINNEAPOLIS.idf"
+    epw = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+
+    idf = run_eplus(file, epw, prep_outputs=True, output_report="sql_file")
+
+    idf = run_eplus(file, epw, prep_outputs=True, output_report="sql_file")
+
+    idf = run_eplus(file, epw, prep_outputs=True, output_report="sql")

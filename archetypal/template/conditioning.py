@@ -822,7 +822,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             MinFreshAirPerPerson=s,
             HeatingSchedule=t,
             CoolingSchedule=u,
-            MechVentSchedule=v
+            MechVentSchedule=v,
         )
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj

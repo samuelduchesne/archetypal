@@ -142,12 +142,12 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
 
     @classmethod
     def generic(cls):
+        """generic plaster board"""
         return cls(
-            Conductivity=0.17,
-            SpecificHeat=800,
-            Density=800,
-            Name="generic_Material",
-            DataSource="",
+            Conductivity=1.39,
+            SpecificHeat=1085,
+            Density=2000,
+            Name="generic_plaster_board",
         )
 
     def combine(self, other, weights=None):

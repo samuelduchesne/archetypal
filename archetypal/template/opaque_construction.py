@@ -474,12 +474,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         Args:
             idf:
         """
-        om = OpaqueMaterial(
-            Conductivity=0.17,
-            SpecificHeat=800,
-            Density=800,
-            Name="generic_Material",
-            idf=idf,
-        )
+        om = OpaqueMaterial.generic()
+
         layers = [MaterialLayer(om, 0.0127)]  # half inch
         return cls(Name="generic plaster board half inch", Layers=layers, idf=idf)

@@ -112,7 +112,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, OpaqueMaterial):
@@ -142,8 +142,12 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
 
     @classmethod
     def generic(cls):
+        """generic plaster board"""
         return cls(
-            Conductivity=0.17, SpecificHeat=800, Density=800, Name="generic_Material"
+            Conductivity=1.39,
+            SpecificHeat=1085,
+            Density=2000,
+            Name="generic_plaster_board",
         )
 
     def combine(self, other, weights=None):

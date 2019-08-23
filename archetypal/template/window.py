@@ -61,7 +61,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         self.Layers = None
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, WindowConstruction):
@@ -114,7 +114,10 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         idf = Construction.theidf
         wc = cls(Name=Name, idf=idf, **kwargs)
         wc.Layers = wc.layers()
-
+        catdict = {1: "Single", 2: "Double", 3: "Triple"}
+        wc.Category = catdict[
+            len([lyr for lyr in wc.Layers if isinstance(lyr.Material, GlazingMaterial)])
+        ]
         return wc
 
     def to_json(self):
@@ -310,7 +313,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return repr(self)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, WindowSetting):

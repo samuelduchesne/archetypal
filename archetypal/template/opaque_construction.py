@@ -105,7 +105,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, OpaqueConstruction):
@@ -496,12 +496,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         Args:
             idf:
         """
-        om = OpaqueMaterial(
-            Conductivity=0.17,
-            SpecificHeat=800,
-            Density=800,
-            Name="generic_Material",
-            idf=idf,
-        )
+        om = OpaqueMaterial.generic()
+
         layers = [MaterialLayer(om, 0.0127)]  # half inch
         return cls(Name="generic plaster board half inch", Layers=layers, idf=idf)

@@ -981,7 +981,7 @@ def cache_runargs(eplus_file, runargs):
     """
     import json
 
-    output_directory = runargs["output_directory"]
+    output_directory = runargs["output_directory"] / runargs["output_prefix"]
 
     runargs.update({"run_time": datetime.datetime.now().isoformat()})
     runargs.update({"idf_file": eplus_file})
@@ -1191,9 +1191,6 @@ def run_eplus(
                 "include": include,
             }
 
-            # save runargs
-            cache_runargs(eplus_file, runargs.copy())
-
             _run_exec(**runargs)
 
             log(
@@ -1238,6 +1235,9 @@ def run_eplus(
                 )
                 if return_files:
                     results.extend((save_dir).files())
+
+                # save runargs
+                cache_runargs(tmp_file, runargs.copy())
 
             # Return summary DataFrames
             runargs["output_directory"] = save_dir

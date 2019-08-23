@@ -114,7 +114,10 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         idf = Construction.theidf
         wc = cls(Name=Name, idf=idf, **kwargs)
         wc.Layers = wc.layers()
-
+        catdict = {1: "Single", 2: "Double", 3: "Triple"}
+        wc.Category = catdict[
+            len([lyr for lyr in wc.Layers if isinstance(lyr.Material, GlazingMaterial)])
+        ]
         return wc
 
     def to_json(self):

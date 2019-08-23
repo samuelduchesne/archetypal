@@ -114,7 +114,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         idf = Construction.theidf
         wc = cls(Name=Name, idf=idf, **kwargs)
         wc.Layers = wc.layers()
-        catdict = {1: "Single", 2: "Double", 3: "Triple"}
+        catdict = {1: "Single", 2: "Double", 3: "Triple", 4: "Quadruple"}
         wc.Category = catdict[
             len([lyr for lyr in wc.Layers if isinstance(lyr.Material, GlazingMaterial)])
         ]
@@ -439,7 +439,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Returns:
             (WindowSetting): The window setting object.
         """
-        if isinstance(surface, EpBunch):
+        if isinstance(surface, EpBunch) and not surface.Surface_Type.upper() == "DOOR":
             construction = surface.get_referenced_object("Construction_Name")
             construction = WindowConstruction.from_epbunch(construction)
             name = surface.Name

@@ -1022,16 +1022,15 @@ class TestUmiSchedule:
         # don't have the same hash.
         assert len(set(sched_list)) == 2
 
-        # 2 UmiSchedule from different idf should not have the same hash if they
-        # have different names, not be the same object, yet be equal if they have the
-        # same values
+        # 2 UmiSchedule from different idf should not have the same hash,
+        # not be the same object, yet be equal if they have the same values
         idf_2, sql_2 = other_idf
         clear_cache()
         assert idf is not idf_2
         sched_3 = UmiSchedule(Name="On", idf=idf_2)
         assert sched is not sched_3
         assert sched == sched_3
-        assert hash(sched) == hash(sched_3)
+        assert hash(sched) != hash(sched_3)
         assert id(sched) != id(sched_3)
 
 
@@ -1780,7 +1779,7 @@ class TestWindowSetting:
         window = reduce(add, allwindowtypes)
         print(window)
 
-    def test_window_add(self, small_idf):
+    def test_window_add(self, small_idf, other_idf):
         """
         Args:
             small_idf:
@@ -1788,18 +1787,21 @@ class TestWindowSetting:
         from archetypal import WindowSetting
 
         idf, sql = small_idf
+        idf2, sql2 = other_idf
         zone = idf.idfobjects["ZONE"][0]
-        iterator = iter(zone.zonesurfaces)
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
         window_1 = WindowSetting.from_surface(surface)
-        surface = next(iterator, None)
+        zone = idf2.idfobjects["ZONE"][0]
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
+        surface = next(iterator)
         window_2 = WindowSetting.from_surface(surface)
 
         new_w = window_1 + window_2
         assert new_w
         assert window_1.id != window_2.id != new_w.id
 
-    def test_window_iadd(self, small_idf):
+    def test_window_iadd(self, small_idf, other_idf):
         """
         Args:
             small_idf:
@@ -1807,11 +1809,14 @@ class TestWindowSetting:
         from archetypal import WindowSetting
 
         idf, sql = small_idf
+        idf2, sql2 = other_idf
         zone = idf.idfobjects["ZONE"][0]
-        iterator = iter(zone.zonesurfaces)
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
         window_1 = WindowSetting.from_surface(surface)
         id_ = window_1.id
+        zone = idf2.idfobjects["ZONE"][0]
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
         window_2 = WindowSetting.from_surface(surface)
 
@@ -2101,7 +2106,9 @@ class TestBuildingTemplate:
         """
         from archetypal import UmiTemplate
 
-        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        filename = (
+            "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        )
         clear_cache()
         b = UmiTemplate.from_json(filename)
         bt = b.BuildingTemplates

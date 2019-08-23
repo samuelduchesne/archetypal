@@ -114,6 +114,10 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         idf = Construction.theidf
         wc = cls(Name=Name, idf=idf, **kwargs)
         wc.Layers = wc.layers()
+        catdict = {1: "Single", 2: "Double", 3: "Triple"}
+        wc.Category = catdict[
+            len([mat for mat in wc.Layers if isinstance(mat, GlazingMaterial)])
+        ]
 
         return wc
 

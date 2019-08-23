@@ -381,9 +381,9 @@ def reduce(idf, name, ep_version, weather, parallel):
         res = loaded_idf
     else:
         # else, run sequentially
-        res = defaultdict(tuple)
+        res = defaultdict(dict)
         for fn in idf:
-            res[fn] = archetypal.run_eplus(
+            res[fn][0], res[fn][1] = archetypal.run_eplus(
                 fn,
                 weather,
                 ep_version=ep_version,

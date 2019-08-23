@@ -61,7 +61,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         self.Layers = None
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, WindowConstruction):
@@ -310,7 +310,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return repr(self)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, WindowSetting):

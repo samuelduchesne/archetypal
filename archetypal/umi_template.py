@@ -30,6 +30,7 @@ from archetypal import (
     MaterialLayer,
     YearScheduleParts,
     UmiSchedule,
+    MassRatio,
 )
 
 
@@ -359,10 +360,10 @@ class UmiTemplate:
                 catname = obj.__class__.__name__ + "s"
                 if catname in data_dict:
                     app_dict = obj.to_json()
-                    key = id(obj)
+                    key = obj.id
                     if key not in jsonized.keys():
                         data_dict[catname].append(app_dict)
-                        key = id(obj)
+                        key = obj.id
                         jsonized[key] = obj
                 for key, value in obj.__dict__.items():
 
@@ -375,7 +376,8 @@ class UmiTemplate:
                             recursive_json(value)
                             for value in value
                             if isinstance(
-                                value, (UmiBase, MaterialLayer, YearScheduleParts)
+                                value,
+                                (UmiBase, MaterialLayer, YearScheduleParts, MassRatio),
                             )
                         ]
 

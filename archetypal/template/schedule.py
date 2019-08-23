@@ -82,7 +82,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         return repr(self)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, UmiSchedule):
@@ -397,7 +397,9 @@ class WeekSchedule(UmiSchedule):
         for day in dayname:
             week_day_schedule_name = epbunch["{}_ScheduleDay_Name".format(day)]
             blocks.append(
-                self.all_objects[hash(("DaySchedule", week_day_schedule_name))]
+                self.all_objects[
+                    hash(("DaySchedule", week_day_schedule_name, self.DataSource))
+                ]
             )
 
         return blocks
@@ -489,7 +491,9 @@ class YearSchedule(UmiSchedule):
                     FromMonth,
                     ToDay,
                     ToMonth,
-                    self.all_objects[hash(("WeekSchedule", week_day_schedule_name))],
+                    self.all_objects[
+                        hash(("WeekSchedule", week_day_schedule_name, self.DataSource))
+                    ],
                 )
             )
         return parts

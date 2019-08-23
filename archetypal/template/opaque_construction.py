@@ -297,6 +297,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 according to its associated weight. If `weights=None` , then all
                 data are assumed to have a weight equal to one.
         """
+        from scipy.optimize import minimize
 
         def obj_func(
             thicknesses,
@@ -331,18 +332,27 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 + (sum(thicknesses) - expected_total_thickness) ** 2
             )
 
-        equi_u = np.average(
+        # U_eq is the weighted average of the wall u_values by their respected total
+        # thicknesses. Here, the U_value does not take into account the convective heat
+        # transfer coefficients.
+        u_equivalent = np.average(
             [self.u_value(), other.u_value()],
             weights=[self.total_thickness, other.total_thickness],
         )
 
-        materials = set(
-            [layer.Material for layer in self.Layers]
-            + [layer.Material for layer in other.Layers]
+        # Get a set of all materials sorted by Material Density (descending order)
+        materials = list(
+            sorted(
+                set(
+                    [layer.Material for layer in self.Layers]
+                    + [layer.Material for layer in other.Layers]
+                ),
+                key=lambda x: x.Density,
+                reverse=True,
+            )
         )
 
-        from scipy.optimize import minimize
-
+        # Setup weights
         if not weights:
             weights = [1.0, 1.0]
 
@@ -350,20 +360,23 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         if not np.array(weights).any():
             weights = [1, 1]
 
+        # Calculate the desired equivalent specific heat
         equi_spec_heat = np.average(
             [self.specific_heat, other.specific_heat], weights=weights
         )
-        two_wall_thickness = np.average([self.total_thickness, other.total_thickness])
+        two_wall_thickness = np.average(
+            [self.total_thickness, other.total_thickness], weights=weights
+        )
         x0 = np.ones(len(materials))
         bnds = tuple([(0.003, None) for layer in materials])
         res = minimize(
             obj_func,
             x0,
-            args=(materials, equi_u, equi_spec_heat, two_wall_thickness),
+            args=(materials, u_equivalent, equi_spec_heat, two_wall_thickness),
             bounds=bnds,
         )
 
-        return np.array(list(materials)), res.x
+        return np.array(materials), res.x
 
     @classmethod
     def from_json(cls, *args, **kwargs):

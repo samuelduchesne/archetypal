@@ -1106,8 +1106,8 @@ def run_eplus(
             if return_idf:
                 filepath = os.path.join(
                     output_directory,
-                    hash_file(eplus_file, args),
-                    os.path.basename(eplus_file),
+                    hash_file(output_directory / eplus_file.basename(), args),
+                    eplus_file.basename(),
                 )
                 idf = load_idf(
                     filepath, output_folder=output_directory, include=include

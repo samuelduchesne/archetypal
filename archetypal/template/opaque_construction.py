@@ -298,28 +298,37 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 data are assumed to have a weight equal to one.
         """
 
-        def obj_func(thicknesses, materials, expected, h_expected, two_wall_thickness):
-            """"""
-            calc = 1 / sum(
+        def obj_func(
+            thicknesses,
+            materials,
+            expected_u_value,
+            expected_specific_heat,
+            expected_total_thickness,
+        ):
+            """Objective function for thickness evaluation"""
+
+            u_value = 1 / sum(
                 [
                     thickness / mat.Conductivity
                     for thickness, mat in zip(thicknesses, materials)
                 ]
             )
 
+            # Specific_heat: (J/kg K)
             h_calc = [
                 mat.SpecificHeat for thickness, mat in zip(thicknesses, materials)
             ]
 
-            unit_volume = [
+            # (kg/m3) x (m) = (kg/m2)
+            mass_per_unit_area = [
                 mat.Density * thickness
                 for thickness, mat in zip(thicknesses, materials)
             ]
-            specific_heat = np.average(h_calc, weights=unit_volume)
+            specific_heat = np.average(h_calc, weights=mass_per_unit_area)
             return (
-                (calc - expected) ** 2
-                + (specific_heat - h_expected) ** 2
-                + (sum(thicknesses) - two_wall_thickness) ** 2
+                (u_value - expected_u_value) ** 2
+                + (specific_heat - expected_specific_heat) ** 2
+                + (sum(thicknesses) - expected_total_thickness) ** 2
             )
 
         equi_u = np.average(

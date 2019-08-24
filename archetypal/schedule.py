@@ -504,11 +504,11 @@ class Schedule(object):
                     from_time = "00:00"
 
                     for_condition = self.invalidate_condition(series)
-                    epbunch = value.split()
-                    if len(epbunch) > 1:
+                    fors = value.split()
+                    if len(fors) > 1:
                         # if multiple `For`. eg.: For: Weekends Holidays,
                         # Combine both conditions
-                        for value in epbunch:
+                        for value in fors:
                             if value.lower() == "allotherdays":
                                 # Apply condition to slice
                                 how = self.field_set(value, slicer_)
@@ -517,7 +517,7 @@ class Schedule(object):
                                 for_condition = how
                             else:
                                 how = self.field_set(value, slicer_)
-                                if not how is None:
+                                if how is not None:
                                     for_condition.loc[how] = True
                     elif value.lower() == "allotherdays":
                         # Apply condition to slice

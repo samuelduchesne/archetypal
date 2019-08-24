@@ -14,13 +14,9 @@ import matplotlib.collections
 import matplotlib.colors
 import networkx
 import tabulate
-from eppy.bunch_subclass import EpBunch
-from tqdm import tqdm
-
 from archetypal import log, save_and_show
 from archetypal.template import (
     UmiBase,
-    Unique,
     Zone,
     resolve_obco,
     WindowSetting,
@@ -29,6 +25,9 @@ from archetypal.template import (
     is_core,
 )
 from archetypal.utils import reduce
+from eppy.bunch_subclass import EpBunch
+from path import Path
+from tqdm import tqdm
 
 
 class BuildingTemplate(UmiBase):
@@ -216,7 +215,7 @@ class BuildingTemplate(UmiBase):
             **kwargs:
         """
         # initialize empty BuildingTemplate
-        name = kwargs.pop("Name", idf.idfobjects["BUILDING"][0].Name)
+        name = kwargs.pop("Name", Path(idf.idfname).basename().splitext()[0])
         bt = cls(Name=name, idf=idf, **kwargs)
         zones = [
             Zone.from_zone_epbunch(zone, sql=bt.sql)

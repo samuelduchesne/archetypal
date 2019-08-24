@@ -9,7 +9,7 @@ import collections
 
 import archetypal
 from archetypal import log, timeit, settings
-from archetypal.template import UmiBase, Unique
+from archetypal.template import UmiBase, Unique, UniqueName
 
 
 def resolve_temp(temp, idf):
@@ -198,7 +198,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 
@@ -465,14 +465,14 @@ def do_scheduled_ventilation(index, scd_df, zone):
             )
         except:
             ScheduledVentilationSchedule = archetypal.UmiSchedule.constant_schedule(
-                hourly_value=0, idf=zone.idf
+                hourly_value=0, idf=zone.idf, Name="AlwaysOff"
             )
             IsScheduledVentilationOn = False
             ScheduledVentilationAch = 0
             ScheduledVentilationSetpoint = 18
     else:
         ScheduledVentilationSchedule = archetypal.UmiSchedule.constant_schedule(
-            hourly_value=0, idf=zone.idf
+            hourly_value=0, idf=zone.idf, Name="AlwaysOff"
         )
         IsScheduledVentilationOn = False
         ScheduledVentilationAch = 0

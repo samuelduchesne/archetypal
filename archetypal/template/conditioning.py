@@ -6,11 +6,11 @@
 ################################################################################
 
 import collections
-
-from archetypal import float_round, ReportData, log, timeit, settings
-from archetypal.template import UmiBase, Unique, UmiSchedule
-import numpy as np
 import math
+
+import numpy as np
+from archetypal import float_round, ReportData, log, timeit, settings
+from archetypal.template import UmiBase, Unique, UmiSchedule, UniqueName
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
@@ -266,7 +266,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 

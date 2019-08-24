@@ -14,6 +14,7 @@ import multiprocessing
 import os
 import subprocess
 import time
+from itertools import compress
 from sqlite3 import OperationalError
 from subprocess import CalledProcessError
 from tempfile import tempdir
@@ -1127,10 +1128,19 @@ def run_eplus(
                 )
             else:
                 idf = None
-            from itertools import compress
-
+            if return_files:
+                files = Path(
+                    os.path.join(
+                        output_directory,
+                        hash_file(output_directory / eplus_file.basename(), args),
+                    )
+                ).files()
+            else:
+                files = None
             return_elements = list(
-                compress([cached_run_results, idf], [True, return_idf])
+                compress(
+                    [cached_run_results, idf, files], [True, return_idf, return_files]
+                )
             )
             return _unpack_tuple(return_elements)
 
@@ -1247,7 +1257,9 @@ def run_eplus(
                     name=eplus_file.basename(),
                 )
                 if return_files:
-                    results.extend(save_dir.files())
+                    files = save_dir.files()
+                else:
+                    files = None
 
                 # save runargs
                 cache_runargs(tmp_file, runargs.copy())
@@ -1255,14 +1267,18 @@ def run_eplus(
             # Return summary DataFrames
             runargs["output_directory"] = save_dir
             cached_run_results = get_report(**runargs)
-            if cached_run_results:
-                results.extend([cached_run_results])
             if return_idf:
                 idf = load_idf(
                     eplus_file, output_folder=output_directory, include=include
                 )
-                results.extend([idf])
-        return _unpack_tuple(results)
+            else:
+                idf = None
+            return_elements = list(
+                compress(
+                    [cached_run_results, idf, files], [True, return_idf, return_files]
+                )
+            )
+        return _unpack_tuple(return_elements)
 
 
 def upgraded_file(eplus_file, output_directory):

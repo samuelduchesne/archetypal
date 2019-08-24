@@ -22,10 +22,6 @@ import eppy
 import eppy.modeleditor
 import geomeppy
 import pandas as pd
-from eppy.EPlusInterfaceFunctions import parse_idd
-from eppy.easyopen import getiddfile
-from path import Path, tempdir
-
 from archetypal import (
     log,
     settings,
@@ -36,6 +32,9 @@ from archetypal import (
     close_logger,
 )
 from archetypal.utils import _unpack_tuple
+from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.easyopen import getiddfile
+from path import Path, tempdir
 
 
 class IDF(geomeppy.IDF):

@@ -27,10 +27,9 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
+from archetypal import settings
 from pandas.io.json import json_normalize
 from path import Path
-
-from archetypal import settings
 
 
 def config(

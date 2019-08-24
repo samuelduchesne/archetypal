@@ -11,13 +11,12 @@ from enum import IntEnum
 from functools import reduce
 
 import tabulate
-from eppy.bunch_subclass import EpBunch
-
 from archetypal import log, IDF, calc_simple_glazing, timeit
 from archetypal.template import MaterialLayer, UmiSchedule, UniqueName
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
 from archetypal.template.umi_base import UmiBase, Unique
+from eppy.bunch_subclass import EpBunch
 
 
 class WindowConstruction(UmiBase, metaclass=Unique):

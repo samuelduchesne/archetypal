@@ -9,7 +9,6 @@ import logging as lg
 
 import numpy as np
 import pandas as pd
-
 from archetypal import log
 from archetypal import weighted_mean, top
 

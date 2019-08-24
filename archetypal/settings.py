@@ -7,11 +7,10 @@
 
 import logging as lg
 
-import pint
-from path import Path
-
 # locations to save data, logs, images, and cache
 import archetypal
+import pint
+from path import Path
 
 data_folder = Path("data")
 logs_folder = Path("logs")

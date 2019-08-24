@@ -7,13 +7,11 @@
 
 import collections
 import logging as lg
+import math
 import random
 import re
 
 import numpy as np
-
-import math
-
 from archetypal import log
 from archetypal.utils import lcm
 

@@ -1156,7 +1156,7 @@ class Schedule(object):
             return self.special_day(field, slicer_)
         elif not self.strict:
             # If not strict, ignore missing field-sets such as CustomDay1
-            return pd.IndexSlice[:]
+            return None
         else:
             raise NotImplementedError(
                 "Archetypal does not yet support The " 'Field_set "{}"'.format(field)

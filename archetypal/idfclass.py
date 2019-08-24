@@ -1237,7 +1237,7 @@ def run_eplus(
 
             save_dir = output_directory / hash_file(eplus_file, args)
             if keep_data:
-                (save_dir).rmtree_p()
+                save_dir.rmtree_p()
                 tmp.copytree(save_dir)
 
                 log(
@@ -1247,7 +1247,7 @@ def run_eplus(
                     name=eplus_file.basename(),
                 )
                 if return_files:
-                    results.extend((save_dir).files())
+                    results.extend(save_dir.files())
 
                 # save runargs
                 cache_runargs(tmp_file, runargs.copy())

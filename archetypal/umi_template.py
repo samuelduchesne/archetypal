@@ -4,7 +4,6 @@ import os
 from collections import OrderedDict
 
 import numpy as np
-
 from archetypal import (
     load_idf,
     BuildingTemplate,
@@ -359,11 +358,10 @@ class UmiTemplate:
                     obj = obj.develop()
                 catname = obj.__class__.__name__ + "s"
                 if catname in data_dict:
-                    app_dict = obj.to_json()
                     key = obj.id
                     if key not in jsonized.keys():
+                        app_dict = obj.to_json()
                         data_dict[catname].append(app_dict)
-                        key = obj.id
                         jsonized[key] = obj
                 for key, value in obj.__dict__.items():
 

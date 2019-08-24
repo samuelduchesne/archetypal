@@ -53,8 +53,8 @@ class IDF(geomeppy.IDF):
         self.schedules_dict = self.get_all_schedules()
         self._sql = None
         self.eplus_run_options = EnergyPlusOptions(
-            self.idfname,
-            getattr(self, "epw", None),
+            eplus_file=self.idfname,
+            weather_file=getattr(self, "epw", None),
             ep_version="-".join(map(str, self.idd_version)),
         )
 
@@ -468,15 +468,23 @@ class EnergyPlusOptions:
         ep_version=None,
         output_report=None,
         prep_outputs=False,
-        return_idf=False,
+        simulname=None,
+        keep_data=True,
         annual=False,
         design_day=False,
         epmacro=False,
         expandobjects=True,
         readvars=False,
         output_prefix=False,
-        verbose="v",
         output_suffix="L",
+        version=None,
+        verbose="v",
+        keep_data_err=False,
+        include=None,
+        process_files=False,
+        custom_processes=None,
+        return_idf=False,
+        return_files=False,
     ):
         """
         Args:
@@ -496,6 +504,14 @@ class EnergyPlusOptions:
             verbose:
             output_suffix:
         """
+        self.return_files = return_files
+        self.custom_processes = custom_processes
+        self.process_files = process_files
+        self.include = include
+        self.keep_data_err = keep_data_err
+        self.version = version
+        self.keep_data = keep_data
+        self.simulname = simulname
         self.output_suffix = output_suffix
         self.verbose = verbose
         self.output_prefix = output_prefix
@@ -508,9 +524,7 @@ class EnergyPlusOptions:
         self.prep_outputs = prep_outputs
         self.output_report = output_report
         self.ep_version = ep_version
-        self.output_directory = (
-            output_directory if output_directory else settings.cache_folder
-        )
+        self.output_directory = output_directory
         self.weather_file = weather_file
         self.eplus_file = eplus_file
 

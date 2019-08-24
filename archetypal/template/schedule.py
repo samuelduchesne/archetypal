@@ -10,7 +10,6 @@ import uuid
 
 import numpy as np
 import pandas as pd
-
 from archetypal import Schedule, log
 from archetypal.template import UmiBase, Unique, UniqueName
 from eppy.bunch_subclass import EpBunch

@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
-from pandas import DataFrame, Series, DatetimeIndex
-
 from archetypal import EnergySeries, settings
 from archetypal.energyseries import plot_energyseries_map, save_and_show
+from pandas import DataFrame, Series, DatetimeIndex
 
 
 class EnergyDataFrame(DataFrame):

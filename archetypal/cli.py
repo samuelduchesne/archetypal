@@ -6,11 +6,9 @@
 ################################################################################
 import os
 from collections import defaultdict
-from pprint import pprint
-
-import click
 
 import archetypal
+import click
 from archetypal import settings, cd, load_idf
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])

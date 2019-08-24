@@ -9,9 +9,13 @@ import collections
 import uuid
 
 import numpy as np
-
-from archetypal import log
-from archetypal.template import Unique, MaterialLayer, OpaqueMaterial, UmiBase
+from archetypal.template import (
+    Unique,
+    MaterialLayer,
+    OpaqueMaterial,
+    UmiBase,
+    UniqueName,
+)
 
 
 class ConstructionBase(UmiBase):
@@ -228,13 +232,6 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         # Check if other is not the same as self
         if self == other:
             return self
-
-        # if not weights:
-        #     log(
-        #         'using 1 as weighting factor in "{}" '
-        #         "combine.".format(self.__class__.__name__)
-        #     )
-        #     weights = [1.0, 1.0]
 
         weights = [self.area, other.area]
 
@@ -485,7 +482,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = str(self.DataSource)
-        data_dict["Name"] = str(self.Name)
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 

@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from archetypal import Schedule, log
-from archetypal.template import UmiBase, Unique
+from archetypal.template import UmiBase, Unique, UniqueName
 from eppy.bunch_subclass import EpBunch
 
 
@@ -317,7 +317,7 @@ class DaySchedule(UmiSchedule):
         data_dict["Values"] = self.all_values.round(3).tolist()
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 
@@ -375,7 +375,7 @@ class WeekSchedule(UmiSchedule):
         data_dict["Type"] = self.schTypeLimitsName
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 
@@ -468,7 +468,7 @@ class YearSchedule(UmiSchedule):
         data_dict["Type"] = self.schTypeLimitsName
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 

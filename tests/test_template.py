@@ -2106,9 +2106,7 @@ class TestBuildingTemplate:
         """
         from archetypal import UmiTemplate
 
-        filename = (
-            "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        )
+        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
         b = UmiTemplate.from_json(filename)
         bt = b.BuildingTemplates
@@ -2329,3 +2327,14 @@ class TestZoneGraph:
         H = G.perim_graph
 
         assert len(H) > 0  # assert G has at least one node
+
+
+class TestUniqueName(object):
+    def test_uniquename(self):
+        from archetypal import UniqueName
+
+        name1 = UniqueName("myname")
+        name2 = UniqueName("myname")
+
+        assert name1 != name2
+        print([name1, name2])

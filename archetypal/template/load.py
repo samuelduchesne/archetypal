@@ -7,8 +7,8 @@
 
 import collections
 
-from archetypal.template import UmiBase, Unique, UmiSchedule
 from archetypal import log, timeit, settings
+from archetypal.template import UmiBase, Unique, UmiSchedule, UniqueName
 from archetypal.utils import reduce
 
 
@@ -168,7 +168,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 

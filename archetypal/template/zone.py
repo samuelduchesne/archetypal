@@ -13,11 +13,7 @@ import random
 import time
 
 import numpy as np
-from eppy.bunch_subclass import BadEPFieldError
-from geomeppy.geom.polygons import Polygon3D
-
 from archetypal import log, timeit, settings
-from archetypal.utils import reduce
 from archetypal.template import (
     Unique,
     UmiBase,
@@ -28,7 +24,11 @@ from archetypal.template import (
     OpaqueConstruction,
     WindowSetting,
     CREATED_OBJECTS,
+    UniqueName,
 )
+from archetypal.utils import reduce
+from eppy.bunch_subclass import BadEPFieldError
+from geomeppy.geom.polygons import Polygon3D
 
 
 class Zone(UmiBase):
@@ -309,7 +309,7 @@ class Zone(UmiBase):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 
@@ -784,7 +784,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, ZoneConstructionSet):
@@ -907,7 +907,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 

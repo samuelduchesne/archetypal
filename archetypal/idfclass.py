@@ -893,7 +893,19 @@ def prepare_outputs(
     )
     idf.add_object(
         "Output:Variable".upper(),
+        Variable_Name="Air System Total Cooling Energy",
+        Reporting_Frequency="hourly",
+        save=save,
+    )
+    idf.add_object(
+        "Output:Variable".upper(),
         Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
+        Reporting_Frequency="hourly",
+        save=save,
+    )
+    idf.add_object(
+        "Output:Variable".upper(),
+        Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
         Reporting_Frequency="hourly",
         save=save,
     )

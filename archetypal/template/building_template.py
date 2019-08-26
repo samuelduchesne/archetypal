@@ -260,7 +260,16 @@ class BuildingTemplate(UmiBase):
 
         if not self.Core:
             self.Core = self.Perimeter
-
+        log(
+            "Equivalent core zone has an area of {:,.0f} m2".format(self.Core.area),
+            level=lg.DEBUG,
+        )
+        log(
+            "Equivalent perimeter zone has an area of {:,.0f} m2".format(
+                self.Perimeter.area
+            ),
+            level=lg.DEBUG,
+        )
         log(
             'Completed model complexity reduction for BuildingTemplate "{}" in {:,.2f} seconds'.format(
                 self.Name, time.time() - start_time

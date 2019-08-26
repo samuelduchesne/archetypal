@@ -384,7 +384,7 @@ class UmiTemplate:
 
             for key in data_dict:
                 data_dict[key] = sorted(
-                    data_dict[key], key=lambda x: float(x["$id"]) if "$id" in x else 1
+                    data_dict[key], key=lambda x: float(x["Name"]) if "Name" in x else 1
                 )
 
             class CustomJSONEncoder(json.JSONEncoder):

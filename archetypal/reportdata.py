@@ -110,19 +110,19 @@ class ReportData(pd.DataFrame):
                     JOIN EnvironmentPeriods as p ON t.EnvironmentPeriodIndex = p.EnvironmentPeriodIndex
             WHERE (IFNULL(t.WarmupFlag, 0) = @warmup_flag);
             """
+            params = {"warmup_flag": warmup_flag}
             if table_name:
                 conditions, table_name = cls.multiple_conditions(
                     "table_name", table_name, "Name"
                 )
                 sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
+                params.update(table_name)
             if environment_type:
                 conditions, env_name = cls.multiple_conditions(
                     "env_name", environment_type, "EnvironmentType"
                 )
                 sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
-            params = {"warmup_flag": warmup_flag}
-            params.update(table_name)
-            params.update(env_name)
+                params.update(env_name)
             df = cls.execute(conn, sql_query, params)
             return df
 

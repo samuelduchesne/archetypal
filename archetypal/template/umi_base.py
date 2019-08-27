@@ -52,13 +52,10 @@ def _resolve_combined_names(predecessors):
     from collections import Counter
 
     all_names = [obj.Name for obj in predecessors]
+    class_ = list(set([obj.__class__.__name__ for obj in predecessors]))[0]
     counter = Counter(all_names)
-    unique_names = counter.keys()
-    n_unique_names = counter.values()
-    long_name = " + ".join(
-        ["{}x_{{{}}}".format(n, name) for n, name in zip(n_unique_names, unique_names)]
-    )
-    return _shorten_name(long_name)
+
+    return "Combined_%s_%s" % (class_, str(hash(str(counter))))
 
 
 def _shorten_name(long_name):
@@ -453,7 +450,7 @@ class MetaData(collections.UserList):
 
     @property
     def comments(self):
-        return "Object composed of a combination of these " "objects:\n{}".format(
+        return "Object composed of a combination of these objects:\n{}".format(
             set(obj.Name for obj in self)
         )
 

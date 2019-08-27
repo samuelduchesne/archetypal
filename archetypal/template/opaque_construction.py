@@ -296,7 +296,12 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     def dominant_wall(self, other, weights):
         """Simply returns dominant wall properties"""
-        oc = list(sorted([self, other], key=weights, reverse=True))[0]
+        oc = [
+            x
+            for _, x in sorted(
+                zip([2, 1], [self, other]), key=lambda pair: pair[0], reverse=True
+            )
+        ][0]
         return oc
 
     def constant_ufactor(self, other, weights=None):

@@ -207,6 +207,14 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """
         return sum([layer.Thickness for layer in self.Layers])
 
+    @property
+    def mass_per_unit_area(self):
+        return sum([layer.Thickness * layer.Material.Density for layer in self.Layers])
+
+    @property
+    def timeconstant_per_unit_area(self):
+        return self.mass_per_unit_area * self.specific_heat / self.u_value()
+
     def combine(self, other, weights=None, method="constant_ufactor"):
         """Combine two OpaqueConstruction together.
 

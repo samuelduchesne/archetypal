@@ -215,7 +215,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     def timeconstant_per_unit_area(self):
         return self.mass_per_unit_area * self.specific_heat / self.u_value()
 
-    def combine(self, other, weights=None, method="constant_ufactor"):
+    def combine(self, other, weights=None, method="dominant_wall"):
         """Combine two OpaqueConstruction together.
 
         Args:
@@ -249,9 +249,13 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             new_m, new_t = self.equivalent_volume(other)
         elif method == "constant_ufactor":
             new_m, new_t = self.constant_ufactor(other, weights)
+        elif method == "dominant_wall":
+            # simply return the dominant wall construction
+            oc = self.dominant_wall(other, weights)
+            return oc
         else:
             raise ValueError(
-                'Possible choices are ["equivalent_volume","constant_ufactor"]'
+                'Possible choices are ["equivalent_volume", "constant_ufactor", "dominant_wall"]'
             )
         # layers for the new OpaqueConstruction
         layers = [MaterialLayer(mat, t) for mat, t in zip(new_m, new_t)]
@@ -289,6 +293,11 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         new_t = new_t / 2
         new_m = self_m + other_m
         return new_m, new_t
+
+    def dominant_wall(self, other, weights):
+        """Simply returns dominant wall properties"""
+        oc = list(sorted([self, other], key=weights, reverse=True))[0]
+        return oc
 
     def constant_ufactor(self, other, weights=None):
         """The constant u-factor method will produce an assembly that has the

@@ -159,6 +159,42 @@ class IDF(geomeppy.IDF):
         )
         return series
 
+    def service_water_heating_profile(
+        self,
+        units="kWh",
+        energy_out_variable_name=None,
+        name="Space Heating",
+        EnergySeries_kwds={},
+    ):
+        """
+        Args:
+            units (str): Units to convert the energy profile to. Will detect the
+                units of the EnergyPlus results.
+            energy_out_variable_name (list-like): a list of EnergyPlus Variable
+                names.
+            name (str): Name given to the EnergySeries.
+            EnergySeries_kwds (dict, optional): keywords passed to
+                :func:`EnergySeries.from_sqlite`
+
+        Returns:
+            EnergySeries
+        """
+        start_time = time.time()
+        if energy_out_variable_name is None:
+            energy_out_variable_name = (
+                "Water Heater Heating Energy",
+                "WaterSystems:EnergyTransfer",
+            )
+        series = self._energy_series(
+            energy_out_variable_name, units, name, EnergySeries_kwds
+        )
+        log(
+            "Retrieved Service Water Heating Profile in {:,.2f} seconds".format(
+                time.time() - start_time
+            )
+        )
+        return series
+
     def space_cooling_profile(
         self,
         units="kWh",
@@ -939,6 +975,12 @@ def prepare_outputs(
     idf.add_object(
         "Output:Variable".upper(),
         Variable_Name="Heat Exchanger Latent Effectiveness",
+        Reporting_Frequency="hourly",
+        save=save,
+    )
+    idf.add_object(
+        "Output:Variable".upper(),
+        Variable_Name="Water Heater Heating Energy",
         Reporting_Frequency="hourly",
         save=save,
     )

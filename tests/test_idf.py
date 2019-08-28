@@ -207,6 +207,19 @@ def test_space_heating_profile(config):
     assert not idf.space_heating_profile().empty
 
 
+def test_dhw_profile(config):
+    from archetypal import load_idf
+
+    file = "tests/input_data/necb/NECB 2011-Warehouse-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+    wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+
+    idf = load_idf(file, None, weather_file=wf)
+
+    shw = idf.service_water_heating_profile()
+    assert shw.sum() > 0
+    print(shw.resample("M").sum())
+
+
 def test_old_than_change_args(config, fresh_start):
     """Should upgrade file only once even if run_eplus args are changed afterwards"""
     from archetypal import run_eplus

@@ -169,8 +169,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             volume heat capacity and it is expressed as
             :math:`{{(ρ·c)}}_{eq}{{=(1/L)·∑}}_{i=1}^n{{(ρ}}_i{{·c}}_i{{·δ}}_i{)}`
             where :math:`{ρ}_i`, :math:`{c}_i` and :math:`{δ}_i` are the
-            densities, the specific heat capacities and the layer
-            thicknesses of the n parallel layers of the composite wall.
+            densities, the specific heat capacities and the layer thicknesses of
+            the n parallel layers of the composite wall.
         """
         return (1 / self.total_thickness) * sum(
             [
@@ -192,7 +192,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     @property
     def heat_capacity_per_unit_wall_area(self):
         """The per unit wall area of the heat capacity is :math:`(HC/A)=ρ·c·δ`,
-        where :math:`δ` is the wall thickness. Expressed in J/(m2 K)"""
+        where :math:`δ` is the wall thickness. Expressed in J/(m2 K)
+        """
         return sum(
             [
                 layer.Material.Density * layer.Material.SpecificHeat * layer.Thickness
@@ -223,8 +224,11 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 combine with.
             weights (list-like, optional): A list-like object of len 2. If None,
                 the weight is the same for both self and other.
-            method (str): Equivalent wall assembly method. Only
-                'constan_ufactor' is implemented for now.
+            method (str): Equivalent wall assembly method. Only 'dominant_wall'
+                is safe to use. 'constant_ufactor' is still weird in terms of
+                respecting the thermal response of the walls and may cause
+                conversion issues with Conduction Transfer Functions (CTFs) in
+                EnergyPlus.
 
         Returns:
             (OpaqueConstruction): the combined ZoneLoad object.
@@ -241,7 +245,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         if self == other:
             return self
 
-        weights = [self.area, other.area]
+        if not weights:
+            weights = [self.area, other.area]
 
         meta = self._get_predecessors_meta(other)
         # thicknesses & materials for self
@@ -295,7 +300,12 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return new_m, new_t
 
     def dominant_wall(self, other, weights):
-        """Simply returns dominant wall properties"""
+        """Simply returns dominant wall properties
+
+        Args:
+            other:
+            weights:
+        """
         oc = [
             x
             for _, x in sorted(

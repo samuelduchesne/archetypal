@@ -680,7 +680,7 @@ class TestOpaqueConstruction:
             construction_a:
             construction_b:
         """
-        oc_c = construction_a + construction_b
+        oc_c = construction_a.combine(construction_b, method="constant_ufactor")
         assert oc_c
         desired = 3.237
         actual = oc_c.u_value()
@@ -822,7 +822,9 @@ class TestOpaqueConstruction:
             == pytest.approx(1826285.7, 0.01)
         )
 
-        combined_mat = facebrick_and_concrete + insulated_concrete_wall
+        combined_mat = facebrick_and_concrete.combine(
+            insulated_concrete_wall, method="constant_ufactor"
+        )
         facebrick_and_concrete.area = 2
         combined_2xmat = facebrick_and_concrete + insulated_concrete_wall
         assert combined_mat.specific_heat > combined_2xmat.specific_heat

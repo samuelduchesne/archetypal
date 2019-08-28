@@ -190,6 +190,7 @@ class EnergySeries(Series):
         df,
         name=None,
         base_year=2018,
+        units=None,
         normalize=False,
         sort_values=False,
         ascending=False,
@@ -203,6 +204,7 @@ class EnergySeries(Series):
             df (DataFrame):
             name:
             base_year:
+            units:
             normalize:
             sort_values:
             ascending:
@@ -235,13 +237,17 @@ class EnergySeries(Series):
         # get data
         data = df.Value
         data.index = index
-        units = set(df.Units)
+        units = [units] if units else set(df.Units)
         if len(units) > 1:
             raise ValueError("The DataFrame contains mixed units: {}".format(units))
         else:
             units = next(iter(units), None)
         # group data by index value (level=0) using the agg_func
-        grouped_Data = data.groupby(level=0).agg(agg_func)
+        if agg_func:
+            grouped_Data = data.groupby(level=0).agg(agg_func)
+        else:
+            df["DateTimeIndex"] = index
+            grouped_Data = df.set_index(["DateTimeIndex", "Name"]).Value
         # Since we create the index, use_timeindex must be false
         return cls(
             grouped_Data.values,
@@ -270,7 +276,9 @@ class EnergySeries(Series):
         else:
             to_units = reg.parse_expression(to_units).units
         to_multiple = reg(str(self.units)).to(to_units).m
-        result = self.apply(lambda x: x * to_multiple)
+        cdata = reg.Quantity(self.values, self.units).to(to_units).m
+        result = self.copy()
+        result.update(pd.Series(cdata, index=result.index))
         result.__class__ = EnergySeries
         result.converted_ = True
         result.units = to_units

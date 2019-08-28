@@ -275,7 +275,6 @@ class EnergySeries(Series):
             to_units = self.to_units
         else:
             to_units = reg.parse_expression(to_units).units
-        to_multiple = reg(str(self.units)).to(to_units).m
         cdata = reg.Quantity(self.values, self.units).to(to_units).m
         result = self.copy()
         result.update(pd.Series(cdata, index=result.index))

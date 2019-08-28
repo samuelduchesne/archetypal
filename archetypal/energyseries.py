@@ -24,6 +24,7 @@ class EnergySeries(Series):
         return EnergySeries
 
     _metadata = [
+        "name",
         "bin_edges_",
         "bin_scaling_factors_",
         "profile_type",
@@ -35,19 +36,6 @@ class EnergySeries(Series):
         "converted_",
         "concurrent_sort_",
     ]
-
-    def __finalize__(self, other, method=None, **kwargs):
-        """propagate metadata from other to self
-
-        Args:
-            other:
-            method:
-            **kwargs:
-        """
-        # NOTE: backported from pandas master (upcoming v0.13)
-        for name in self._metadata:
-            object.__setattr__(self, name, getattr(other, name, None))
-        return self
 
     def __new__(
         cls,
@@ -67,7 +55,7 @@ class EnergySeries(Series):
         archetypes=None,
         concurrent_sort=False,
         to_units=None,
-        use_timeindex=True,
+        use_timeindex=False,
     ):
         """
         Args:
@@ -89,11 +77,8 @@ class EnergySeries(Series):
             to_units:
             use_timeindex:
         """
-        arr = Series.__new__(cls)
-        if type(arr) is EnergySeries:
-            return arr
-        else:
-            return arr.view(EnergySeries)
+        self = super(EnergySeries, cls).__new__(cls)
+        return self
 
     def __init__(
         self,
@@ -113,7 +98,7 @@ class EnergySeries(Series):
         archetypes=None,
         concurrent_sort=False,
         to_units=None,
-        use_timeindex=True,
+        use_timeindex=False,
     ):
         """
         Args:
@@ -233,7 +218,7 @@ class EnergySeries(Series):
         )
         # Adjust timeindex by timedelta
         index -= df.Interval.apply(lambda x: timedelta(minutes=x))
-
+        index = pd.DatetimeIndex(index)
         # get data
         data = df.Value
         data.index = index
@@ -276,13 +261,13 @@ class EnergySeries(Series):
         else:
             to_units = reg.parse_expression(to_units).units
         cdata = reg.Quantity(self.values, self.units).to(to_units).m
-        result = self.copy()
+        result = self.apply(lambda x: x)
         result.update(pd.Series(cdata, index=result.index))
         result.__class__ = EnergySeries
         result.converted_ = True
         result.units = to_units
         if inplace:
-            self._data = result._data
+            self._update_inplace(result)
             self.__finalize__(result)
         else:
             return result

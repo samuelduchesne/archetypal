@@ -827,7 +827,10 @@ def load_idf_object_from_cache(idf_file, how=None):
             if os.path.isfile(cache_fullpath_filename):
                 if os.path.getsize(cache_fullpath_filename) > 0:
                     with gzip.GzipFile(cache_fullpath_filename, "rb") as file_handle:
-                        idf = pickle.load(file_handle)
+                        try:
+                            idf = pickle.load(file_handle)
+                        except EOFError:
+                            return None
                     if idf.iddname is None:
                         idf.setiddname(getiddfile(idf.model.dt["VERSION"][0][1]))
                         # idf.read()
@@ -862,7 +865,10 @@ def load_idf_object_from_cache(idf_file, how=None):
             if os.path.isfile(cache_fullpath_filename):
                 if os.path.getsize(cache_fullpath_filename) > 0:
                     with open(cache_fullpath_filename, "rb") as file_handle:
-                        idf = pickle.load(file_handle)
+                        try:
+                            idf = pickle.load(file_handle)
+                        except EOFError:
+                            return None
                     if idf.iddname is None:
                         idf.setiddname(getiddfile(idf.model.dt["VERSION"][0][1]))
                         idf.read()

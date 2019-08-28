@@ -745,7 +745,7 @@ def load_idf_object_from_cache(idf_file, how=None):
     Returns:
         None
     """
-    # upper() can't tahe NoneType as input.
+    # upper() can't take NoneType as input.
     if how is None:
         how = ""
     # The main function
@@ -765,14 +765,15 @@ def load_idf_object_from_cache(idf_file, how=None):
                 import pickle
             start_time = time.time()
             if os.path.isfile(cache_fullpath_filename):
-                with open(cache_fullpath_filename, "rb") as file_handle:
-                    idf = json.load(file_handle)
-                log(
-                    'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
-                        os.path.basename(idf_file), time.time() - start_time
+                if os.path.getsize(cache_fullpath_filename) > 0:
+                    with open(cache_fullpath_filename, "rb") as file_handle:
+                        idf = json.load(file_handle)
+                    log(
+                        'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
+                            os.path.basename(idf_file), time.time() - start_time
+                        )
                     )
-                )
-                return idf
+                    return idf
 
         elif how.upper() == "PICKLE":
             cache_fullpath_filename = os.path.join(
@@ -788,17 +789,18 @@ def load_idf_object_from_cache(idf_file, how=None):
                 import pickle
             start_time = time.time()
             if os.path.isfile(cache_fullpath_filename):
-                with gzip.GzipFile(cache_fullpath_filename, "rb") as file_handle:
-                    idf = pickle.load(file_handle)
-                if idf.iddname is None:
-                    idf.setiddname(getiddfile(idf.model.dt["VERSION"][0][1]))
-                    # idf.read()
-                log(
-                    'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
-                        os.path.basename(idf_file), time.time() - start_time
+                if os.path.getsize(cache_fullpath_filename) > 0:
+                    with gzip.GzipFile(cache_fullpath_filename, "rb") as file_handle:
+                        idf = pickle.load(file_handle)
+                    if idf.iddname is None:
+                        idf.setiddname(getiddfile(idf.model.dt["VERSION"][0][1]))
+                        # idf.read()
+                    log(
+                        'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
+                            os.path.basename(idf_file), time.time() - start_time
+                        )
                     )
-                )
-                return idf
+                    return idf
         elif how.upper() == "IDF":
             cache_fullpath_filename = os.path.join(
                 settings.cache_folder,
@@ -822,17 +824,18 @@ def load_idf_object_from_cache(idf_file, how=None):
                 import pickle
             start_time = time.time()
             if os.path.isfile(cache_fullpath_filename):
-                with open(cache_fullpath_filename, "rb") as file_handle:
-                    idf = pickle.load(file_handle)
-                if idf.iddname is None:
-                    idf.setiddname(getiddfile(idf.model.dt["VERSION"][0][1]))
-                    idf.read()
-                log(
-                    'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
-                        os.path.basename(idf_file), time.time() - start_time
+                if os.path.getsize(cache_fullpath_filename) > 0:
+                    with open(cache_fullpath_filename, "rb") as file_handle:
+                        idf = pickle.load(file_handle)
+                    if idf.iddname is None:
+                        idf.setiddname(getiddfile(idf.model.dt["VERSION"][0][1]))
+                        idf.read()
+                    log(
+                        'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
+                            os.path.basename(idf_file), time.time() - start_time
+                        )
                     )
-                )
-                return idf
+                    return idf
 
 
 def prepare_outputs(

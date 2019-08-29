@@ -184,7 +184,8 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
     Returns:
         logging.Logger: a Logger
     """
-
+    if isinstance(log_dir, str):
+        log_dir = Path(log_dir)
     if level is None:
         level = settings.log_level
     if name is None:
@@ -203,12 +204,11 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
         if not log_dir:
             log_dir = settings.logs_folder
 
-        log_filename = os.path.join(log_dir, "{}_{}.log".format(filename, todays_date))
+        log_filename = log_dir / "{}_{}.log".format(filename, todays_date)
 
         # if the logs folder does not already exist, create it
-        if not os.path.exists(settings.logs_folder):
-            os.makedirs(settings.logs_folder)
-
+        if not log_dir.exists():
+            log_dir.makedirs_p()
         # create file handler and log formatter and set them up
         handler = lg.FileHandler(log_filename, encoding="utf-8")
         formatter = lg.Formatter(

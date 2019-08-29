@@ -210,7 +210,10 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
         if not log_dir.exists():
             log_dir.makedirs_p()
         # create file handler and log formatter and set them up
-        handler = lg.FileHandler(log_filename, encoding="utf-8")
+        try:
+            handler = lg.FileHandler(log_filename, encoding="utf-8")
+        except:
+            handler = lg.StreamHandler()
         formatter = lg.Formatter(
             "%(asctime)s [%(process)d]  %(levelname)s - %(name)s - %(" "message)s"
         )

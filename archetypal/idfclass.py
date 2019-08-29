@@ -59,6 +59,20 @@ class IDF(geomeppy.IDF):
             ep_version="-".join(map(str, self.idd_version)),
         )
 
+    @classmethod
+    def setiddname(cls, iddname, testing=False):
+        """Set the path to the EnergyPlus IDD for the version of EnergyPlus which
+        is to be used by eppy.
+
+        Parameters
+        ----------
+        iddname : str
+            Path to the IDD file.
+        """
+        cls.iddname = iddname
+        cls.idd_info = None
+        cls.block = None
+
     @property
     def name(self):
         return os.path.basename(self.idfname)

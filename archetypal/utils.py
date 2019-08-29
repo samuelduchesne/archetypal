@@ -12,7 +12,7 @@
 # project, which is licensed MIT License. This code therefore is also
 # licensed under the terms of the The MIT License (MIT).
 ################################################################################
-
+import contextlib
 import datetime as dt
 import json
 import logging as lg
@@ -646,32 +646,20 @@ class EnergyPlusProcessError(Error):
         return msg
 
 
-class cd:
-    """Context manager for changing the current working directory"""
+@contextlib.contextmanager
+def cd(path):
+    print('initially inside {0}'.format(os.getcwd()))
+    CWD = os.getcwd()
 
-    def __init__(self, new_path):
-        """
-        Args:
-            new_path:
-        """
-        self.newPath = os.path.expanduser(new_path)
-
-    def __enter__(self):
-        self.savedPath = os.getcwd()
-        if os.path.isdir(self.newPath):
-            os.chdir(self.newPath)
-        else:
-            os.mkdir(self.newPath)
-            os.chdir(self.newPath)
-
-    def __exit__(self, etype, value, traceback):
-        """
-        Args:
-            etype:
-            value:
-            traceback:
-        """
-        os.chdir(self.savedPath)
+    os.chdir(path)
+    print('inside {0}'.format(os.getcwd()))
+    try:
+        yield
+    except:
+        print('Exception caught: ', sys.exc_info()[0])
+    finally:
+        os.chdir(CWD)
+        print('finally inside {0}'.format(os.getcwd()))
 
 
 def rmse(data, targets):

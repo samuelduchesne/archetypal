@@ -1521,14 +1521,15 @@ def _run_exec(
             if process.wait() != 0:
                 error_filename = output_prefix + "out.err"
                 with open(error_filename, "r") as stderr:
-                    if keep_data_err:
-                        failed_dir = output_directory / "failed"
-                        failed_dir.mkdir_p()
-                        tmp.copytree(failed_dir / output_prefix)
-                    tmp.rmtree_p()
-                    raise EnergyPlusProcessError(
-                        cmd=cmd, idf=eplus_file.basename(), stderr=stderr.read()
-                    )
+                    stderr_r = stderr.read()
+                if keep_data_err:
+                    failed_dir = output_directory / "failed"
+                    failed_dir.mkdir_p()
+                    tmp.copytree(failed_dir / output_prefix)
+                tmp.rmtree_p()
+                raise EnergyPlusProcessError(
+                    cmd=cmd, idf=eplus_file.basename(), stderr=stderr_r
+                )
 
 
 def _log_subprocess_output(pipe, name, verbose):

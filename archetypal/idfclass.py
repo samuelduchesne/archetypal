@@ -123,6 +123,30 @@ class IDF(geomeppy.IDF):
 
         return partition_lineal / self.area_conditioned
 
+    @property
+    def wwr(self):
+        """ Window-to-Wall Ratio of a building"""
+
+        total_wall_area = 0
+        total_window_area = 0
+        buildingSurfs = self.idfobjects["buildingsurface:detailed".upper()]
+        fenestrationSurfs = self.idfobjects["fenestrationsurface:detailed".upper()]
+        for surface in buildingSurfs:
+            if (
+                surface.key.lower() != "internalmass"
+                and surface.Surface_Type.lower() != "roof"
+                and surface.Surface_Type.lower() != "ceiling"
+                and surface.Surface_Type.lower() != "floor"
+            ):
+                if surface.Outside_Boundary_Condition == "Outdoors":
+                    total_wall_area += surface.area
+        for surface in fenestrationSurfs:
+            if surface.key.lower() != "internalmass":
+                total_window_area += surface.area
+
+        wwr = total_window_area / total_wall_area
+        return wwr
+
     def space_heating_profile(
         self,
         units="kWh",

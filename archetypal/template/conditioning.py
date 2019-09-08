@@ -45,13 +45,13 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         MechVentSchedule=None,
         **kwargs,
     ):
-        """Initialize a new ZoneCondition object
+        """Initialize a new :class:`ZoneConditioning` object.
 
         Args:
-            CoolingCoeffOfPerf (float): Performance factor of cooling system.
-                This value is used in deriving the total cooling energy use by
-                dividing the cooling load by the COP. The COP is of each zone is
-                equal, and refer to the COP of the entire building.
+            CoolingCoeffOfPerf (float): Performance factor of the cooling system.
+                This value is used to calculate the total cooling energy use by
+                dividing the cooling load by the COP. The COP of the zone shared with all zones
+                and refers to the COP of the entire building.
             CoolingLimitType (str): The input must be either LimitFlowRate,
                 LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
             CoolingSetpoint (float): The temperature above which zone heating is

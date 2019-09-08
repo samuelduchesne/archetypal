@@ -409,7 +409,7 @@ def get_from_cache(url):
     # if the tool is configured to use the cache
     if settings.use_cache:
         # determine the filename by hashing the url
-        filename = hashlib.md5(url.encode("utf-8")).hexdigest()
+        filename = hashlib.md5(str(url).encode("utf-8")).hexdigest()
 
         cache_path_filename = os.path.join(
             settings.cache_folder, os.extsep.join([filename, "json"])
@@ -421,7 +421,7 @@ def get_from_cache(url):
                 response_json = json.load(cache_file)
             log(
                 'Retrieved response from cache file "{}" for URL "{}"'.format(
-                    cache_path_filename, url
+                    cache_path_filename, str(url)
                 )
             )
             return response_json
@@ -443,7 +443,7 @@ def save_to_cache(url, response_json):
 
             # hash the url (to make filename shorter than the often extremely
             # long url)
-            filename = hashlib.md5(url.encode("utf-8")).hexdigest()
+            filename = hashlib.md5(str(url).encode("utf-8")).hexdigest()
             cache_path_filename = os.path.join(
                 settings.cache_folder, os.extsep.join([filename, "json"])
             )

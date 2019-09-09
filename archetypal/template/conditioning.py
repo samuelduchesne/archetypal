@@ -54,7 +54,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 and refers to the COP of the entire building.
             CoolingLimitType (str): The input must be either LimitFlowRate,
                 LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
-            CoolingSetpoint (float): The temperature above which zone heating is
+            CoolingSetpoint (float): The temperature above which the zone heating is
                 turned on. Here, we take the mean value over the year.
             CoolingSchedule (UmiSchedule): The availability schedule for space
                 cooling in this zone.
@@ -62,8 +62,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 economizer. The choices are: NoEconomizer, DifferentialDryBulb,
                 or DifferentialEnthalpy. For the moment, the EconomizerType is
                 applied for the entire building (every zone with the same
-                EconomizerType). Moreover, some hypotheses are done knowing
-                there is more EconomizerType existing in EnergyPlus than in UMI:
+                EconomizerType). Moreover, since UMI does not support all Economizer
+                Types, some assumptions are made:
 
                 - If 'NoEconomizer' in EnergyPlus, EconomizerType='NoEconomizer'
                 - If 'DifferentialEnthalpy' in EnergyPlus,EconomizerType =
@@ -92,7 +92,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                   suppose that HeatRecoveryEfficiencyLatent = Latent
                   Effectiveness at 100% Heating Air Flow
                 - If the HeatExchanger is a Desiccant BalancedFlow, we use the
-                  default value for the efficiency (=0.65)
+                  default value for the efficiency (=0.65).
             HeatRecoveryEfficiencySensible (float): The sensible heat recovery
                 effectiveness, where effectiveness is defined as the change in
                 supply temperature divided by the difference in entering supply

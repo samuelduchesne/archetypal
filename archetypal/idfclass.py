@@ -14,7 +14,9 @@ import multiprocessing
 import os
 import subprocess
 import time
+from collections import defaultdict
 from itertools import compress
+from math import isclose
 from sqlite3 import OperationalError
 from subprocess import CalledProcessError
 from tempfile import tempdir
@@ -61,13 +63,12 @@ class IDF(geomeppy.IDF):
 
     @classmethod
     def setiddname(cls, iddname, testing=False):
-        """Set the path to the EnergyPlus IDD for the version of EnergyPlus which
-        is to be used by eppy.
+        """Set the path to the EnergyPlus IDD for the version of EnergyPlus
+        which is to be used by eppy.
 
-        Parameters
-        ----------
-        iddname : str
-            Path to the IDD file.
+        Args:
+            iddname (str): Path to the IDD file.
+            testing:
         """
         cls.iddname = iddname
         cls.idd_info = None
@@ -92,7 +93,7 @@ class IDF(geomeppy.IDF):
         if self._sql_file is None:
             log("No sql file for {}. Running EnergyPlus...".format(self.name))
             self._sql_file = self.run_eplus(
-                annual=True, prep_outputs=True, output_report="sql_file", verbose="q",
+                annual=True, prep_outputs=True, output_report="sql_file", verbose="q"
             )
             return self._sql_file
         else:
@@ -138,29 +139,69 @@ class IDF(geomeppy.IDF):
 
         return partition_lineal / self.area_conditioned
 
-    @property
-    def wwr(self):
-        """ Window-to-Wall Ratio of a building"""
+    def wwr(self, azimuth_threshold=10, round_to=None):
+        """Returns the Window-to-Wall Ratio by major orientation for the IDF
+        model. Optionally round up the WWR value to nearest value (eg.: nearest
+        10).
 
-        total_wall_area = 0
-        total_window_area = 0
-        buildingSurfs = self.idfobjects["buildingsurface:detailed".upper()]
-        fenestrationSurfs = self.idfobjects["fenestrationsurface:detailed".upper()]
-        for surface in buildingSurfs:
-            if (
-                surface.key.lower() != "internalmass"
-                and surface.Surface_Type.lower() != "roof"
-                and surface.Surface_Type.lower() != "ceiling"
-                and surface.Surface_Type.lower() != "floor"
-            ):
-                if surface.Outside_Boundary_Condition == "Outdoors":
-                    total_wall_area += surface.area
-        for surface in fenestrationSurfs:
-            if surface.key.lower() != "internalmass":
-                total_window_area += surface.area
+        Args:
+            azimuth_threshold (int): Defines the incremental major orientation
+                azimuth angle. Due to possible rounding errors, some surface
+                azimuth can be rounded to values different than the main
+                directions (eg.: 89 degrees instead of 90 degrees). Defaults to
+                increments of 10 degrees.
+            round_to (float): Optionally round the WWR value to nearest value
+                (eg.: nearest 10). If None, this is ignored and the float is
+                returned.
 
-        wwr = total_window_area / total_wall_area
-        return wwr
+        Returns:
+            (pd.DataFrame): A DataFrame with the total wall area, total window
+            area and WWR for each main orientation of the building.
+        """
+        import math
+
+        def roundto(x, to=10.0):
+            """Rounds up to closest `to` number"""
+            if to and not math.isnan(x):
+                return int(round(x / to)) * to
+            else:
+                return x
+
+        total_wall_area = defaultdict(int)
+        total_window_area = defaultdict(int)
+
+        zones = self.idfobjects["ZONE"]
+        for zone in zones:
+            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
+            for surface in zone.zonesurfaces:
+                if surface.key.lower() != "internalmass":
+                    if isclose(surface.tilt, 90, abs_tol=10):
+                        if surface.Outside_Boundary_Condition == "Outdoors":
+                            surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
+                            total_wall_area[surf_azim] += surface.area * multiplier
+                    for subsurface in surface.subsurfaces:
+                        if isclose(subsurface.tilt, 90, abs_tol=10):
+                            if subsurface.Surface_Type.lower() == "window":
+                                surf_azim = roundto(
+                                    subsurface.azimuth, to=azimuth_threshold
+                                )
+                                total_window_area[surf_azim] += (
+                                    subsurface.area * multiplier
+                                )
+        # Fix azimuth = 360 which is the same as azimuth 0
+        total_wall_area[0] += total_wall_area.pop(360, 0)
+        total_window_area[0] += total_window_area.pop(360, 0)
+
+        # Create dataframe with wall_area, window_area and wwr as columns and azimuth
+        # as indexes
+        df = pd.DataFrame(
+            {"wall_area": total_wall_area, "window_area": total_window_area}
+        ).rename_axis("Azimuth")
+        df["wwr"] = (df.window_area / df.wall_area)
+        df["wwr_rounded_%"] = (df.window_area / df.wall_area * 100).apply(
+            lambda x: roundto(x, to=round_to)
+        )
+        return df
 
     def space_heating_profile(
         self,
@@ -570,15 +611,23 @@ class EnergyPlusOptions:
             ep_version:
             output_report:
             prep_outputs:
-            return_idf:
+            simulname:
+            keep_data:
             annual:
             design_day:
             epmacro:
             expandobjects:
             readvars:
             output_prefix:
-            verbose:
             output_suffix:
+            version:
+            verbose:
+            keep_data_err:
+            include:
+            process_files:
+            custom_processes:
+            return_idf:
+            return_files:
         """
         self.return_files = return_files
         self.custom_processes = custom_processes
@@ -1134,8 +1183,6 @@ def run_eplus(
     [(title, table), .....]
 
     Args:
-        return_files (bool): It True, all files paths created by the energyplus run
-            are returned.
         eplus_file (str): path to the idf file.
         weather_file (str): path to the EPW weather file
         output_directory (str, optional): path to the output folder. Will
@@ -1155,11 +1202,11 @@ def run_eplus(
             False)
         readvars (bool): Run ReadVarsESO after simulation (default: False)
         output_prefix (str, optional): Prefix for output file names.
-        output_suffix (str, optional): Suffix style for output file names (default: L)
-                Choices are:
-                    - L: Legacy (e.g., eplustbl.csv)
-                    - C: Capital (e.g., eplusTable.csv)
-                    - D: Dash (e.g., eplus-table.csv)
+        output_suffix (str, optional): Suffix style for output file names
+            (default: L) Choices are:
+                - L: Legacy (e.g., eplustbl.csv)
+                - C: Capital (e.g., eplusTable.csv)
+                - D: Dash (e.g., eplus-table.csv)
         version (bool, optional): Display version information (default: False)
         verbose (str): Set verbosity of runtime messages (default: v) v: verbose
             q: quiet
@@ -1176,8 +1223,10 @@ def run_eplus(
             pandas.read_csv (if they are csv files), resulting in duplicate. The
             only way to bypass this behavior is to add the key "*.csv" to that
             dictionnary.
-        return_idf (bool): If Truem returns the :class:`IDF` object part of the return
-            tuple.
+        return_idf (bool): If Truem returns the :class:`IDF` object part of the
+            return tuple.
+        return_files (bool): It True, all files paths created by the energyplus
+            run are returned.
 
     Returns:
         2-tuple: a 1-tuple or a 2-tuple
@@ -1385,7 +1434,12 @@ def run_eplus(
 
 def upgraded_file(eplus_file, output_directory):
     """returns the eplus_file path that would have been copied in the output
-    directory if it exists"""
+    directory if it exists
+
+    Args:
+        eplus_file:
+        output_directory:
+    """
     eplus_file = next(iter(output_directory.glob("*.idf")), eplus_file)
     return eplus_file
 

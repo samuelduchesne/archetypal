@@ -235,6 +235,14 @@ class BuildingTemplate(UmiBase):
         bt.Windows = bt.Perimeter.Windows
         bt.PartitionRatio = idf.partition_ratio
 
+        bt.Comments += "\n".join(
+            [
+                "WWR calculated for original model: ",
+                bt.idf.wwr().to_string(),
+                "where East=90, South=180, West=270, North=0\n",
+            ]
+        )
+
         return bt
 
     def reduce(self, cores, perims):

@@ -177,6 +177,17 @@ def test_area(archetype, area):
     np.testing.assert_almost_equal(actual=idf.area_conditioned, desired=area, decimal=0)
 
 
+def test_wwr():
+    from archetypal import load_idf
+
+    idf_file = Path("tests/input_data/necb/").glob(
+        "*{}*.idf".format("FullServiceRestaurant")
+    )
+    idf = load_idf(next(iter(idf_file)))
+    print(idf.name)
+    print(idf.wwr(round_to=10))
+
+
 def test_partition_ratio():
     from archetypal import load_idf
 

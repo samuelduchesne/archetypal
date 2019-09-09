@@ -115,7 +115,8 @@ def from_csv(config):
     file = "tests/input_data/test_profile.csv"
     df = pd.read_csv(file, index_col=[0], names=["Heat"])
     ep = ar.EnergySeries(
-        df.Heat, units="BTU/hour", frequency="1H", to_units="kW", sort_values=False
+        df.Heat, units="BTU/hour", frequency="1H", to_units="kW", sort_values=False,
+        use_timeindex=True,
     )
     # ep = ep.unit_conversion(to_units='kW')
     yield ep

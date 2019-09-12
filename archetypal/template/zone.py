@@ -181,6 +181,10 @@ class Zone(UmiBase):
     def is_core(self):
         return is_core(self)
 
+    @property
+    def is_part_of_conditioned_floor_area(self):
+        return is_part_of_conditioned_floor_area(self)
+
     @staticmethod
     def get_volume_from_surfs(zone_surfs):
         """Calculate the volume of a zone only and only if the surfaces are such
@@ -692,6 +696,15 @@ def is_core(epbunch):
             pass  # pass surfaces that don't have an OBC,
             # eg. InternalMass
     return iscore
+
+
+def is_part_of_conditioned_floor_area(zone):
+    """Returns True if Zone epbunch has :attr:`Part_of_Total_Floor_Area` == "YES"
+
+    Args:
+        zone (Zone): The Zone object.
+    """
+    return zone._epbunch.Part_of_Total_Floor_Area.upper() != "NO"
 
 
 def iscore(row):

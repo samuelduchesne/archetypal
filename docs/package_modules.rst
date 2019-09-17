@@ -1,9 +1,23 @@
 Modules
 =======
 
+IDF Class
+---------
+
+.. currentmodule:: archetypal.idfclass
+
+.. autosummary::
+    :template: autosummary.rst
+    :nosignatures:
+    :toctree: reference/
+
+    load_idf
+    IDF
+    run_eplus
+
 .. _templates_label:
 
-Template Objects
+Template Classes
 ----------------
 
 .. currentmodule:: archetypal.template

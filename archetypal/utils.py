@@ -651,18 +651,18 @@ class EnergyPlusProcessError(Error):
 
 @contextlib.contextmanager
 def cd(path):
-    log('initially inside {0}'.format(os.getcwd()))
+    log("initially inside {0}".format(os.getcwd()))
     CWD = os.getcwd()
 
     os.chdir(path)
-    log('inside {0}'.format(os.getcwd()))
+    log("inside {0}".format(os.getcwd()))
     try:
         yield
     except:
-        log('Exception caught: ', sys.exc_info()[0])
+        log("Exception caught: ", sys.exc_info()[0])
     finally:
         os.chdir(CWD)
-        log('finally inside {0}'.format(os.getcwd()))
+        log("finally inside {0}".format(os.getcwd()))
 
 
 def rmse(data, targets):

@@ -331,7 +331,7 @@ class IDF(geomeppy.IDF):
         optional. By default, will load the sql in self.sql.
 
         Args:
-            **kwargs:
+            kwargs:
 
         Returns:
             The output report or the sql file loaded as a dict of DataFrames.
@@ -661,17 +661,22 @@ def load_idf(
     is true, then the idf object is loaded from cache.
 
     Args:
-        eplus_file (str): path of the idf file.
-        idd_filename (str, optional): name of the EnergyPlus IDD file. If None,
-            the function tries to find it.
-        output_folder (Path):
+        eplus_file (str): Either the absolute or relative path to the idf file.
+        idd_filename (str, optional): Either the absolute or relative path to
+            the EnergyPlus IDD file. If None, the function tries to find it at
+            the default EnergyPlus install location.
+        output_folder (Path, optional): Either the absolute or relative path of
+            the output folder. Specify if the cache location is different than
+            archetypal.settings.cache_folder.
         include (str, optional): List input files that need to be copied to the
-            simulation directory. If a string is provided, it should be in a
-            glob form (see pathlib.Path.glob).
-        weather_file:
+            simulation directory. Those can be, for example, schedule files read
+            by the idf file. If a string is provided, it should be in a glob
+            form (see pathlib.Path.glob).
+        weather_file: Either the absolute or relative path to the weather epw
+            file.
 
     Returns:
-        (IDF): The parsed IDF object
+        IDF: The IDF object.
     """
 
     idf = load_idf_object_from_cache(eplus_file)
@@ -857,17 +862,17 @@ def save_idf_object_to_cache(idf_object, idf_file, output_folder=None, how=None)
 
 
 def load_idf_object_from_cache(idf_file, how=None):
-    """Load an idf instance from cache
+    """Load an idf instance from cache.
 
     Args:
-        idf_file (str): path to the idf file
+        idf_file (str): Either the absolute or relative path to the idf file.
         how (str, optional): How the pickling is done. Choices are 'json' or
             'pickle' or 'idf'. json dump doesn't quite work yet. 'pickle' will
-            load from a gzip'ed file instead of a regular binary file (.dat).
-            'idf' will load from idf file saved in cache.
+            load from a gzip'ed file instead of a regular binary file (.gzip).
+            'idf' will load from idf file saved in cache (.dat).
 
     Returns:
-        None
+        IDF: The IDF object.
     """
     # upper() can't take NoneType as input.
     if how is None:
@@ -1179,20 +1184,34 @@ def run_eplus(
     return_idf=False,
     return_files=False,
 ):
-    """Run an energy plus file and return the SummaryReports Tables in a list of
-    [(title, table), .....]
+    """Run an energy plus file using the EnergyPlus executable.
+
+    Specify run options:
+        Run options are specified in the same way as the E+ command line
+        interface: annual, design_day, epmacro, expandobjects, etc. are all
+        supported.
+
+    Specify outputs:
+        Optionally define the desired outputs by specifying the
+        :attr:`output_report` attribute.
+
+        With the :attr:`prep_outputs` parameter, specify additional outputs
+        objects to append to the energy plus file. If True, a selection of
+        usefull options will be append by default (see: :func:`prepare_outputs`
+        for more details).
 
     Args:
         eplus_file (str): path to the idf file.
-        weather_file (str): path to the EPW weather file
+        weather_file (str): path to the EPW weather file.
         output_directory (str, optional): path to the output folder. Will
             default to the settings.cache_folder.
         ep_version (str, optional): EnergyPlus version to use, eg: 8-9-0
-        output_report: 'htm' or 'sql'.
+        output_report: 'sql' or 'htm'.
         prep_outputs (bool or list, optional): if true, meters and variable
             outputs will be appended to the idf files. see
-            :func:`prepare_outputs`
-        simulname (str):
+            :func:`prepare_outputs`.
+        simulname (str): The name of the simulation. (Todo: Currently not
+            implemented).
         keep_data (bool): If True, files created by EnergyPlus are saved to the
             output_directory.
         annual (bool): If True then force annual simulation (default: False)
@@ -1210,7 +1229,7 @@ def run_eplus(
         version (bool, optional): Display version information (default: False)
         verbose (str): Set verbosity of runtime messages (default: v) v: verbose
             q: quiet
-        keep_data_err:
+        keep_data_err (bool):
         include (str, optional): List input files that need to be copied to the
             simulation directory.if a string is provided, it should be in a glob
             form (see pathlib.Path.glob).
@@ -1686,7 +1705,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
 
 def hash_file(eplus_file, kwargs=None):
     """Simple function to hash a file and return it as a string. Will also hash
-    the :py:func:`eppy.runner.run_functions.run()` arguments so that correct
+    the :func:`eppy.runner.run_functions.run()` arguments so that correct
     results are returned when different run arguments are used
 
     Todo:

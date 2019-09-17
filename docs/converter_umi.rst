@@ -7,7 +7,8 @@ complex EnergyPlus model is be converted to a generalized core- and perimeter-zo
 
 First, load the EnergyPlus idf file using the :func:`archetypal.idfclass.load_idf` method.
 
-.. code-block::
+
+.. code-block:: shell
 
     >>> from archetypal import load_idf
     >>> weather = "path/to/weather/file.epw"
@@ -15,7 +16,7 @@ First, load the EnergyPlus idf file using the :func:`archetypal.idfclass.load_id
     >>> idf = load_idf(eplus_file=eplus_file, weather_file=weather)
 
 
-.. code-block::
+.. code-block:: shell
 
     >>> from archetypal import BuildingTemplate
     >>> template_obj = BuildingTemplate.from_idf(
@@ -23,7 +24,7 @@ First, load the EnergyPlus idf file using the :func:`archetypal.idfclass.load_id
     >>> )
 
 
-.. code-block::
+.. code-block:: shell
 
     >>> from archetypal import UmiTemplate
     >>> template_json = UmiTemplate(

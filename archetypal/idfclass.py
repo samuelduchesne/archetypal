@@ -60,6 +60,7 @@ class IDF(geomeppy.IDF):
             weather_file=getattr(self, "epw", None),
             ep_version="-".join(map(str, self.idd_version)),
         )
+        self.OutputPrep = None
 
     @classmethod
     def setiddname(cls, iddname, testing=False):
@@ -230,7 +231,7 @@ class IDF(geomeppy.IDF):
                 "Zone Ideal Loads Zone Total Heating Energy",
             )
         series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds
+            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
         )
         log(
             "Retrieved Space Heating Profile in {:,.2f} seconds".format(
@@ -266,7 +267,7 @@ class IDF(geomeppy.IDF):
                 "WaterSystems:EnergyTransfer",
             )
         series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds
+            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
         )
         log(
             "Retrieved Service Water Heating Profile in {:,.2f} seconds".format(
@@ -301,7 +302,7 @@ class IDF(geomeppy.IDF):
                 "Zone Ideal Loads Zone Total Cooling Energy",
             )
         series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds
+            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
         )
         log(
             "Retrieved Space Cooling Profile in {:,.2f} seconds".format(
@@ -311,7 +312,12 @@ class IDF(geomeppy.IDF):
         return series
 
     def custom_profile(
-        self, energy_out_variable_name, name, units="kWh", EnergySeries_kwds={}
+        self,
+        energy_out_variable_name,
+        name,
+        units="kWh",
+        prep_outputs=None,
+        EnergySeries_kwds={},
     ):
         """
         Args:
@@ -327,19 +333,38 @@ class IDF(geomeppy.IDF):
         """
         start_time = time.time()
         series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds
+            energy_out_variable_name,
+            units,
+            name,
+            prep_outputs,
+            EnergySeries_kwds=EnergySeries_kwds,
         )
         log("Retrieved {} in {:,.2f} seconds".format(name, time.time() - start_time))
         return series
 
-    def _energy_series(self, energy_out_variable_name, units, name, EnergySeries_kwds):
+    def _energy_series(
+        self,
+        energy_out_variable_name,
+        units,
+        name,
+        prep_outputs=None,
+        EnergySeries_kwds=None,
+    ):
         """
         Args:
+            prep_outputs (list):
             energy_out_variable_name:
             units:
             name:
             EnergySeries_kwds:
         """
+        if prep_outputs:
+            self._sql = self.run_eplus(
+                annual=True,
+                prep_outputs=prep_outputs,
+                output_report="sql_file",
+                verbose="q",
+            )
         rd = ReportData.from_sqlite(self.sql_file, table_name=energy_out_variable_name)
         profile = EnergySeries.from_sqlite(
             rd, to_units=units, name=name, **EnergySeries_kwds
@@ -1014,10 +1039,12 @@ class OutputPrep:
         """
         self.idf = idf
         self.save = save
+        self.outputs = []
 
     def add_custom(self, outputs):
         if isinstance(outputs, list):
             prepare_outputs(self.idf, outputs=outputs, save=self.save)
+            self.outputs.extend(outputs)
         return self
 
     def add_basics(self):
@@ -1033,6 +1060,7 @@ class OutputPrep:
             }
         ]
         prepare_outputs(self.idf, outputs=outputs, save=self.save)
+        self.outputs.extend(outputs)
         return self
 
     def add_sql(self, sql_output_style="SimpleAndTabular"):
@@ -1043,6 +1071,7 @@ class OutputPrep:
             }
         ]
         prepare_outputs(self.idf, outputs=outputs, save=self.save)
+        self.outputs.extend(outputs)
         return self
 
     def add_output_control(self, output_control_table_style="CommaAndHTML"):
@@ -1061,6 +1090,7 @@ class OutputPrep:
             )
         ]
         prepare_outputs(self.idf, outputs=outputs, save=self.save)
+        self.outputs.extend(outputs)
         return self
 
     def add_template_outputs(self):
@@ -1241,7 +1271,7 @@ class OutputPrep:
         ]
 
         prepare_outputs(self.idf, outputs=outputs, save=self.save)
-
+        self.outputs.extend(outputs)
         return self
 
     def add_umi_ouputs(self):
@@ -1293,7 +1323,7 @@ class OutputPrep:
         ]
 
         prepare_outputs(self.idf, outputs=outputs, save=self.save)
-
+        self.outputs.extend(outputs)
         return self
 
 

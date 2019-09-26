@@ -310,6 +310,28 @@ class IDF(geomeppy.IDF):
         )
         return series
 
+    def custom_profile(
+        self, energy_out_variable_name, name, units="kWh", EnergySeries_kwds={}
+    ):
+        """
+        Args:
+            units (str): Units to convert the energy profile to. Will detect the
+                units of the EnergyPlus results.
+            energy_out_variable_name (list-like): a list of EnergyPlus
+            name (str): Name given to the EnergySeries.
+            EnergySeries_kwds (dict, optional): keywords passed to
+                :func:`EnergySeries.from_sqlite`
+
+        Returns:
+            EnergySeries
+        """
+        start_time = time.time()
+        series = self._energy_series(
+            energy_out_variable_name, units, name, EnergySeries_kwds
+        )
+        log("Retrieved {} in {:,.2f} seconds".format(name, time.time() - start_time))
+        return series
+
     def _energy_series(self, energy_out_variable_name, units, name, EnergySeries_kwds):
         """
         Args:

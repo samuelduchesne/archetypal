@@ -1027,7 +1027,7 @@ class OutputPrep:
     go.
 
     For example:
-        >>> OutputPrep(idf=idf_obj).add_output_control().add_umi_ouputs()
+        >>> OutputPrep(idf=idf_obj).add_output_control().add_umi_ouputs().add_profile_gs_elect_ouputs()
     """
 
     def __init__(self, idf, save=True):
@@ -1325,6 +1325,55 @@ class OutputPrep:
         self.outputs.extend(outputs)
         return self
 
+    def add_profile_gas_elect_ouputs(self):
+        """Adds the necessary outputs in order to return the energy profile.
+        """
+        # list the ouputs here
+        outputs = [
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Electricity:Facility",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Gas:Facility", Reporting_Frequency="hourly", save=True
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="WaterSystems:Electricity",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Heating:Electricity",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Cooling:Electricity",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+        ]
+
+        prepare_outputs(self.idf, outputs=outputs, save=self.save)
+        self.outputs.extend(outputs)
+        return self
+
 
 def prepare_outputs(
     idf, outputs=None, idd_filename=None, output_directory=None, save=True, epw=None
@@ -1563,7 +1612,9 @@ def run_eplus(
         # necessary outputs + custom ones defined in the parameters of this function.
         OutputPrep(
             idf=idf_obj, save=True
-        ).add_basics().add_template_outputs().add_custom(outputs=prep_outputs)
+        ).add_basics().add_template_outputs().add_custom(
+            outputs=prep_outputs
+        ).add_profile_gas_elect_ouputs()
 
     if runs_not_found:
         # continue with simulation of other files

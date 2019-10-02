@@ -263,7 +263,6 @@ class IDF(geomeppy.IDF):
         start_time = time.time()
         if energy_out_variable_name is None:
             energy_out_variable_name = (
-                "Water Heater Heating Energy",
                 "WaterSystems:EnergyTransfer",
             )
         series = self._energy_series(

@@ -60,6 +60,7 @@ class IDF(geomeppy.IDF):
             weather_file=getattr(self, "epw", None),
             ep_version="-".join(map(str, self.idd_version)),
         )
+        self.OutputPrep = None
 
     @classmethod
     def setiddname(cls, iddname, testing=False):
@@ -230,7 +231,7 @@ class IDF(geomeppy.IDF):
                 "Zone Ideal Loads Zone Total Heating Energy",
             )
         series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds
+            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
         )
         log(
             "Retrieved Space Heating Profile in {:,.2f} seconds".format(
@@ -261,12 +262,9 @@ class IDF(geomeppy.IDF):
         """
         start_time = time.time()
         if energy_out_variable_name is None:
-            energy_out_variable_name = (
-                "Water Heater Heating Energy",
-                "WaterSystems:EnergyTransfer",
-            )
+            energy_out_variable_name = ("WaterSystems:EnergyTransfer",)
         series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds
+            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
         )
         log(
             "Retrieved Service Water Heating Profile in {:,.2f} seconds".format(
@@ -301,7 +299,7 @@ class IDF(geomeppy.IDF):
                 "Zone Ideal Loads Zone Total Cooling Energy",
             )
         series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds
+            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
         )
         log(
             "Retrieved Space Cooling Profile in {:,.2f} seconds".format(
@@ -311,7 +309,12 @@ class IDF(geomeppy.IDF):
         return series
 
     def custom_profile(
-        self, energy_out_variable_name, name, units="kWh", EnergySeries_kwds={}
+        self,
+        energy_out_variable_name,
+        name,
+        units="kWh",
+        prep_outputs=None,
+        EnergySeries_kwds={},
     ):
         """
         Args:
@@ -327,19 +330,38 @@ class IDF(geomeppy.IDF):
         """
         start_time = time.time()
         series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds
+            energy_out_variable_name,
+            units,
+            name,
+            prep_outputs,
+            EnergySeries_kwds=EnergySeries_kwds,
         )
         log("Retrieved {} in {:,.2f} seconds".format(name, time.time() - start_time))
         return series
 
-    def _energy_series(self, energy_out_variable_name, units, name, EnergySeries_kwds):
+    def _energy_series(
+        self,
+        energy_out_variable_name,
+        units,
+        name,
+        prep_outputs=None,
+        EnergySeries_kwds=None,
+    ):
         """
         Args:
+            prep_outputs (list):
             energy_out_variable_name:
             units:
             name:
             EnergySeries_kwds:
         """
+        if prep_outputs:
+            self._sql = self.run_eplus(
+                annual=True,
+                prep_outputs=prep_outputs,
+                output_report="sql_file",
+                verbose="q",
+            )
         rd = ReportData.from_sqlite(self.sql_file, table_name=energy_out_variable_name)
         profile = EnergySeries.from_sqlite(
             rd, to_units=units, name=name, **EnergySeries_kwds
@@ -404,7 +426,13 @@ class IDF(geomeppy.IDF):
             # `idf.newidfobject()` automatically adds it
             self.removeidfobject(new_object)
             if not save:
-                return self.getobject(ep_object, kwargs["Name"])
+                return self.getobject(
+                    ep_object,
+                    kwargs.get(
+                        "Variable_Name",
+                        kwargs.get("Key_Name", kwargs.get("Name", None)),
+                    ),
+                )
         else:
             if save:
                 log('object "{}" added to the idf file'.format(ep_object))
@@ -995,174 +1023,391 @@ def load_idf_object_from_cache(idf_file, how=None):
                     return idf
 
 
+class OutputPrep:
+    """Handles preparation of EnergyPlus outputs. Different instance methods
+    allow to chain methods together and to add predefined bundles of outputs in one
+    go.
+
+    For example:
+        >>> OutputPrep(idf=idf_obj).add_output_control().add_umi_ouputs().add_profile_gs_elect_ouputs()
+    """
+
+    def __init__(self, idf, save=True):
+        """
+        Args:
+            idf:
+            save:
+        """
+        self.idf = idf
+        self.save = save
+        self.outputs = []
+
+    def add_custom(self, outputs):
+        if isinstance(outputs, list):
+            prepare_outputs(self.idf, outputs=outputs, save=self.save)
+            self.outputs.extend(outputs)
+        return self
+
+    def add_basics(self):
+        """Adds the summary report and the sql file to the idf outputs"""
+        return self.add_summary_report().add_output_control().add_sql()
+
+    def add_summary_report(self):
+        """SummaryReports"""
+        outputs = [
+            {
+                "ep_object": "Output:Table:SummaryReports".upper(),
+                "kwargs": dict(Report_1_Name="AllSummary", save=self.save),
+            }
+        ]
+        prepare_outputs(self.idf, outputs=outputs, save=self.save)
+        self.outputs.extend(outputs)
+        return self
+
+    def add_sql(self, sql_output_style="SimpleAndTabular"):
+        outputs = [
+            {
+                "ep_object": "Output:SQLite".upper(),
+                "kwargs": dict(Option_Type=sql_output_style, save=self.save),
+            }
+        ]
+        prepare_outputs(self.idf, outputs=outputs, save=self.save)
+        self.outputs.extend(outputs)
+        return self
+
+    def add_output_control(self, output_control_table_style="CommaAndHTML"):
+        """
+        Args:
+            output_control_table_style:
+        """
+        outputs = [
+            {
+                "ep_object": "OutputControl:Table:Style".upper(),
+                "kwargs": dict(
+                    Column_Separator=output_control_table_style, save=self.save
+                ),
+            }
+        ]
+        prepare_outputs(self.idf, outputs=outputs, save=self.save)
+        self.outputs.extend(outputs)
+        return self
+
+    def add_template_outputs(self):
+        """Adds the necessary outputs in order to create an UMI template.
+        """
+        # list the ouputs here
+        outputs = [
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Air System Total Heating Energy",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Air System Total Cooling Energy",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Zone Thermostat Heating Setpoint Temperature",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Heat Exchanger Total Heating Rate",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Heat Exchanger Sensible Effectiveness",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Heat Exchanger Latent Effectiveness",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Water Heater Heating Energy",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="HeatRejection:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Heating:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Cooling:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Heating:DistrictHeating",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Heating:Electricity",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Heating:Gas", Reporting_Frequency="hourly", save=self.save
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Cooling:DistrictCooling",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Cooling:Electricity",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Cooling:Electricity",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Cooling:Gas", Reporting_Frequency="hourly", save=self.save
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="WaterSystems:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Cooling:Gas", Reporting_Frequency="hourly", save=self.save
+                ),
+            },
+        ]
+
+        prepare_outputs(self.idf, outputs=outputs, save=self.save)
+        self.outputs.extend(outputs)
+        return self
+
+    def add_umi_ouputs(self):
+        """Adds the necessary outputs in order to return the same energy profile
+        as in UMI.
+        """
+        # list the ouputs here
+        outputs = [
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Air System Total Heating Energy",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Air System Total Cooling Energy",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Water Heater Heating Energy",
+                    Reporting_Frequency="hourly",
+                    save=self.save,
+                ),
+            },
+        ]
+
+        prepare_outputs(self.idf, outputs=outputs, save=self.save)
+        self.outputs.extend(outputs)
+        return self
+
+    def add_profile_gas_elect_ouputs(self):
+        """Adds the necessary outputs in order to return the energy profile.
+        """
+        # list the ouputs here
+        outputs = [
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Electricity:Facility",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Gas:Facility", Reporting_Frequency="hourly", save=True
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="WaterSystems:Electricity",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Heating:Electricity",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Cooling:Electricity",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+        ]
+
+        prepare_outputs(self.idf, outputs=outputs, save=self.save)
+        self.outputs.extend(outputs)
+        return self
+
+
 def prepare_outputs(
-    eplus_file,
-    outputs=None,
-    idd_filename=None,
-    output_directory=None,
-    save=True,
-    epw=None,
+    idf, outputs=None, idd_filename=None, output_directory=None, save=True, epw=None
 ):
     """Add additional epobjects to the idf file. Users can pass in an outputs
 
     Examples:
         >>> objects = [{'ep_object':'OUTPUT:DIAGNOSTICS',
         >>>             'kwargs':{'Key_1':'DisplayUnusedSchedules'}}]
-        >>> prepare_outputs(eplus_file, outputs=objects)
+        >>> prepare_outputs(idf, outputs=objects)
 
     Args:
-        eplus_file (Path): the file describing the model (.idf)
+        idf (IDF or Path): The IDF object or the path to the file describing
+            the model (.idf).
         outputs (bool or list):
         idd_filename:
         output_directory:
         save (bool): if True, saves the idf inplace to disk with added objects
         epw:
+        sql_output_style:
     """
-
-    log("first, loading the idf file")
-    idf = load_idf(
-        eplus_file,
-        idd_filename=idd_filename,
-        output_folder=output_directory,
-        weather_file=epw,
-    )
+    if isinstance(idf, (Path, str)):
+        log("first, loading the idf file")
+        idf = load_idf(
+            idf,
+            idd_filename=idd_filename,
+            output_folder=output_directory,
+            weather_file=epw,
+        )
 
     if isinstance(outputs, list):
         for output in outputs:
+            save = output["kwargs"].pop("save", save)
             idf.add_object(output["ep_object"], **output["kwargs"], save=save)
-
-    # SummaryReports
-    idf.add_object(
-        "Output:Table:SummaryReports".upper(), Report_1_Name="AllSummary", save=save
-    )
-
-    # OutputControl:Table:Style
-    idf.add_object(
-        "OutputControl:Table:Style".upper(), Column_Separator="CommaAndHTML", save=save
-    )
-
-    # SQL output
-    idf.add_object("Output:SQLite".upper(), Option_Type="SimpleAndTabular", save=save)
-
-    # Output variables
-    idf.add_object(
-        "Output:Variable".upper(),
-        Variable_Name="Air System Total Heating Energy",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "Output:Variable".upper(),
-        Variable_Name="Air System Total Cooling Energy",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "Output:Variable".upper(),
-        Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "Output:Variable".upper(),
-        Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "Output:Variable".upper(),
-        Variable_Name="Zone Thermostat Heating Setpoint Temperature",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "Output:Variable".upper(),
-        Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "Output:Variable".upper(),
-        Variable_Name="Heat Exchanger Total Heating Rate",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "Output:Variable".upper(),
-        Variable_Name="Heat Exchanger Sensible Effectiveness",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "Output:Variable".upper(),
-        Variable_Name="Heat Exchanger Latent Effectiveness",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "Output:Variable".upper(),
-        Variable_Name="Water Heater Heating Energy",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-
-    # Output meters
-    idf.add_object(
-        "OUTPUT:METER",
-        Key_Name="HeatRejection:EnergyTransfer",
-        Reporting_Frequency="hourly",
-    )
-    idf.add_object(
-        "OUTPUT:METER",
-        Key_Name="Heating:EnergyTransfer",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "OUTPUT:METER",
-        Key_Name="Cooling:EnergyTransfer",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "OUTPUT:METER",
-        Key_Name="Heating:DistrictHeating",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "OUTPUT:METER",
-        Key_Name="Heating:Electricity",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "OUTPUT:METER", Key_Name="Heating:Gas", Reporting_Frequency="hourly", save=save
-    )
-    idf.add_object(
-        "OUTPUT:METER",
-        Key_Name="Cooling:DistrictCooling",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "OUTPUT:METER",
-        Key_Name="Cooling:Electricity",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "OUTPUT:METER", Key_Name="Cooling:Gas", Reporting_Frequency="hourly", save=save
-    )
-    idf.add_object(
-        "OUTPUT:METER",
-        Key_Name="WaterSystems:EnergyTransfer",
-        Reporting_Frequency="hourly",
-        save=save,
-    )
-    idf.add_object(
-        "OUTPUT:METER", Key_Name="Cooling:Gas", Reporting_Frequency="hourly", save=save
-    )
 
 
 def cache_runargs(eplus_file, runargs):
@@ -1357,9 +1602,19 @@ def run_eplus(
     # Prepare outputs e.g. sql table
     if prep_outputs:
         # Check if idf file has necessary objects (eg specific outputs)
-        prepare_outputs(
-            eplus_file, prep_outputs, idd_file, output_directory, epw=weather_file
+        idf_obj = load_idf(
+            eplus_file,
+            idd_filename=idd_file,
+            output_folder=output_directory,
+            weather_file=weather_file,
         )
+        # Call the OutputPrep class with chained instance methods to add all
+        # necessary outputs + custom ones defined in the parameters of this function.
+        OutputPrep(
+            idf=idf_obj, save=True
+        ).add_basics().add_template_outputs().add_custom(
+            outputs=prep_outputs
+        ).add_profile_gas_elect_ouputs()
 
     if runs_not_found:
         # continue with simulation of other files

@@ -10,9 +10,8 @@ import uuid
 
 import numpy as np
 import pandas as pd
-
 from archetypal import Schedule, log
-from archetypal.template import UmiBase, Unique
+from archetypal.template import UmiBase, Unique, UniqueName
 from eppy.bunch_subclass import EpBunch
 
 
@@ -82,7 +81,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         return repr(self)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, UmiSchedule):
@@ -317,7 +316,7 @@ class DaySchedule(UmiSchedule):
         data_dict["Values"] = self.all_values.round(3).tolist()
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 
@@ -375,7 +374,7 @@ class WeekSchedule(UmiSchedule):
         data_dict["Type"] = self.schTypeLimitsName
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 
@@ -397,7 +396,9 @@ class WeekSchedule(UmiSchedule):
         for day in dayname:
             week_day_schedule_name = epbunch["{}_ScheduleDay_Name".format(day)]
             blocks.append(
-                self.all_objects[hash(("DaySchedule", week_day_schedule_name))]
+                self.all_objects[
+                    hash(("DaySchedule", week_day_schedule_name, self.DataSource))
+                ]
             )
 
         return blocks
@@ -466,7 +467,7 @@ class YearSchedule(UmiSchedule):
         data_dict["Type"] = self.schTypeLimitsName
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 
@@ -489,7 +490,9 @@ class YearSchedule(UmiSchedule):
                     FromMonth,
                     ToDay,
                     ToMonth,
-                    self.all_objects[hash(("WeekSchedule", week_day_schedule_name))],
+                    self.all_objects[
+                        hash(("WeekSchedule", week_day_schedule_name, self.DataSource))
+                    ],
                 )
             )
         return parts

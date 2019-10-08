@@ -1,11 +1,9 @@
 import functools
-import logging as lg
 import time
 
 import numpy as np
 import pandas as pd
-
-from archetypal import log, EnergySeries
+from archetypal import log
 
 
 class TabularData(pd.DataFrame):

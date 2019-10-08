@@ -7,12 +7,11 @@
 
 import collections
 import logging as lg
+import math
 import random
+import re
 
 import numpy as np
-
-import math
-
 from archetypal import log
 from archetypal.utils import lcm
 
@@ -28,10 +27,10 @@ class Unique(type):
             *args:
             **kwargs:
         """
-        key = hash((cls.mro()[0].__name__, kwargs["Name"]))
+        self = cls.__new__(cls, *args, **kwargs)
+        cls.__init__(self, *args, **kwargs)
+        key = hash(self)
         if key not in CREATED_OBJECTS:
-            self = cls.__new__(cls, *args, **kwargs)
-            cls.__init__(self, *args, **kwargs)
             cls._cache[key] = self
             CREATED_OBJECTS[key] = self
         return CREATED_OBJECTS[key]
@@ -53,13 +52,10 @@ def _resolve_combined_names(predecessors):
     from collections import Counter
 
     all_names = [obj.Name for obj in predecessors]
+    class_ = list(set([obj.__class__.__name__ for obj in predecessors]))[0]
     counter = Counter(all_names)
-    unique_names = counter.keys()
-    n_unique_names = counter.values()
-    long_name = " + ".join(
-        ["{}x_{{{}}}".format(n, name) for n, name in zip(n_unique_names, unique_names)]
-    )
-    return _shorten_name(long_name)
+
+    return "Combined_%s_%s" % (class_, str(hash(str(counter))))
 
 
 def _shorten_name(long_name):
@@ -149,18 +145,16 @@ class UmiBase(object):
 
     def rename(self, name):
         """renames self as well as the cached object"""
-        key = hash((self.__class__.mro()[0].__name__, self.Name))
-        self._cache.pop(key)
-        CREATED_OBJECTS.pop(key)
+        self._cache.pop(hash(self))
+        CREATED_OBJECTS.pop(hash(self))
 
         self.Name = name
-        newkey = hash((self.__class__.mro()[0].__name__, name))
-        self._cache[newkey] = self
-        CREATED_OBJECTS[newkey] = self
+        self._cache[hash(self)] = self
+        CREATED_OBJECTS[hash(self)] = self
 
     def to_json(self):
         """Convert class properties to dict"""
-        return {"$id": "{}".format(self.id), "Name": "{}".format(self.Name)}
+        return {"$id": "{}".format(self.id), "Name": "{}".format(UniqueName(self.Name))}
 
     def get_ref(self, ref):
         """Gets item matching ref id
@@ -456,7 +450,7 @@ class MetaData(collections.UserList):
 
     @property
     def comments(self):
-        return "Object composed of a combination of these " "objects:\n{}".format(
+        return "Object composed of a combination of these objects:\n{}".format(
             set(obj.Name for obj in self)
         )
 
@@ -557,3 +551,34 @@ def load_json_objects(datastore):
         ]
     )
     return loading_json_list
+
+
+class UniqueName(str):
+    """Handles the attribution of user defined names for :class:`UmiBase`,
+    :class:`EquationCollection` and makes sure they are unique.
+    """
+
+    existing = {}  # a dict to store the created names
+
+    def __new__(cls, content):
+        """Pick a name. Will increment the name if already used"""
+        return str.__new__(cls, cls.create_unique(content))
+
+    @classmethod
+    def create_unique(cls, name):
+        """Check if name has already been used. If so, try to increment until
+        not used
+
+        Args:
+            name:
+        """
+        if not name:
+            return None
+        key = name
+        key, *_ = re.split(r"_\d+(?!\d+)", key)  # match last digit with the underscore
+
+        if key not in cls.existing:
+            cls.existing[key] = 0
+        cls.existing[key] += 1
+        the_name = key + "_{}".format(cls.existing[key])
+        return the_name

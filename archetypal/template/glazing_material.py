@@ -8,7 +8,7 @@
 import collections
 
 from archetypal import log
-from archetypal.template import MaterialBase, Unique
+from archetypal.template import MaterialBase, Unique, UniqueName
 
 
 class GlazingMaterial(MaterialBase, metaclass=Unique):
@@ -94,7 +94,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, GlazingMaterial):
@@ -204,6 +204,6 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict

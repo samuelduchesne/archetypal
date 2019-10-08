@@ -10,9 +10,8 @@ from operator import add
 from statistics import mean
 
 import numpy as np
-
 from archetypal import settings, log, timeit, reduce
-from archetypal.template import Unique, UmiBase, UmiSchedule
+from archetypal.template import Unique, UmiBase, UmiSchedule, UniqueName
 
 
 class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
@@ -57,7 +56,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, DomesticHotWaterSetting):
@@ -98,7 +97,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 

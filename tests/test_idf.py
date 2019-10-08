@@ -177,6 +177,17 @@ def test_area(archetype, area):
     np.testing.assert_almost_equal(actual=idf.area_conditioned, desired=area, decimal=0)
 
 
+def test_wwr():
+    from archetypal import load_idf
+
+    idf_file = Path("tests/input_data/necb/").glob(
+        "*{}*.idf".format("FullServiceRestaurant")
+    )
+    idf = load_idf(next(iter(idf_file)))
+    print(idf.name)
+    print(idf.wwr(round_to=10))
+
+
 def test_partition_ratio():
     from archetypal import load_idf
 
@@ -205,3 +216,30 @@ def test_space_heating_profile(config):
     idf = load_idf(file, None, weather_file=wf)
 
     assert not idf.space_heating_profile().empty
+
+
+def test_dhw_profile(config):
+    from archetypal import load_idf
+
+    file = "tests/input_data/necb/NECB 2011-Warehouse-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+    wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+
+    idf = load_idf(file, None, weather_file=wf)
+
+    shw = idf.service_water_heating_profile()
+    assert shw.sum() > 0
+    print(shw.resample("M").sum())
+
+
+def test_old_than_change_args(config, fresh_start):
+    """Should upgrade file only once even if run_eplus args are changed afterwards"""
+    from archetypal import run_eplus
+
+    file = "tests/input_data/trnsys/RefBldgQuickServiceRestaurantPost1980_v1.4_7.2_6A_USA_MN_MINNEAPOLIS.idf"
+    epw = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+
+    idf = run_eplus(file, epw, prep_outputs=True, output_report="sql_file")
+
+    idf = run_eplus(file, epw, prep_outputs=True, output_report="sql_file")
+
+    idf = run_eplus(file, epw, prep_outputs=True, output_report="sql")

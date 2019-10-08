@@ -45,6 +45,7 @@ def energy_series(config, request):
 
     hl = EnergySeries.from_sqlite(
         report,
+        name="Heating",
         normalize=False,
         sort_values=False,
         concurrent_sort=False,
@@ -77,18 +78,18 @@ def test_EnergySeries(rd):
     print(es)
 
 
-@pytest.mark.parametrize("kind", ["polygon", "surface"])
+@pytest.mark.parametrize("kind", ["polygon", "surface", "contour"])
 def test_plot_3d(energy_series, kind):
     hl = energy_series.copy()
     hl.plot3d(
         save=True,
-        axis_off=True,
+        axis_off=False,
         kind=kind,
-        cmap=None,
-        fig_width=3,
-        fig_height=8,
-        edgecolors="k",
-        linewidths=0.5,
+        cmap="Reds",
+        fig_width=4,
+        fig_height=4,
+        edgecolors="grey",
+        linewidths=0.01,
     )
 
 
@@ -99,14 +100,15 @@ def test_plot_3d(energy_series, kind):
 def test_plot_2d(energy_series):
     hl = energy_series.copy()
     hl.plot2d(
-        save=False,
+        save=True,
         axis_off=False,
-        cmap="RdBu",
+        cmap="Reds",
         subplots=False,
         fig_width=6,
-        fig_height=6,
+        fig_height=2,
         edgecolors="k",
         linewidths=0.5,
+        filename=hl.name + "_heatmap",
     )
 
 
@@ -115,7 +117,12 @@ def from_csv(config):
     file = "tests/input_data/test_profile.csv"
     df = pd.read_csv(file, index_col=[0], names=["Heat"])
     ep = ar.EnergySeries(
-        df.Heat, units="BTU/hour", frequency="1H", to_units="kW", sort_values=False
+        df.Heat,
+        units="BTU/hour",
+        frequency="1H",
+        to_units="kW",
+        sort_values=False,
+        use_timeindex=True,
     )
     # ep = ep.unit_conversion(to_units='kW')
     yield ep

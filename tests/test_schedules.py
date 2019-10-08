@@ -1,10 +1,7 @@
 import os
 
 import pytest
-
 from archetypal import Schedule, load_idf, copy_file, run_eplus, UmiSchedule, config
-
-from path import Path
 
 
 def test_schedules_in_necb_specific(config):
@@ -156,8 +153,6 @@ def test_schedules(request, run_schedules_idf):
 
 @pytest.fixture(scope="module")
 def run_schedules_idf(config):
-    import os
-
     files = run_eplus(
         idf_file,
         weather_file="tests/input_data/CAN_PQ_Montreal.Intl.AP" ".716270_CWEC.epw",
@@ -166,7 +161,7 @@ def run_schedules_idf(config):
         include=["tests/input_data/schedules/TDV_2008_kBtu_CTZ06.csv"],
         return_files=True,
     )
-    cache_dir = files[0].dirname()
+    cache_dir = files[1][0].dirname()
     csv = next(iter(cache_dir.glob("*out.csv")))
     yield csv
 

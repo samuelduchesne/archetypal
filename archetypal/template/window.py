@@ -11,13 +11,12 @@ from enum import IntEnum
 from functools import reduce
 
 import tabulate
-from eppy.bunch_subclass import EpBunch
-
 from archetypal import log, IDF, calc_simple_glazing, timeit
-from archetypal.template import MaterialLayer, UmiSchedule
+from archetypal.template import MaterialLayer, UmiSchedule, UniqueName
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
 from archetypal.template.umi_base import UmiBase, Unique
+from eppy.bunch_subclass import EpBunch
 
 
 class WindowConstruction(UmiBase, metaclass=Unique):
@@ -61,7 +60,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         self.Layers = None
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, WindowConstruction):
@@ -114,7 +113,10 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         idf = Construction.theidf
         wc = cls(Name=Name, idf=idf, **kwargs)
         wc.Layers = wc.layers()
-
+        catdict = {1: "Single", 2: "Double", 3: "Triple", 4: "Quadruple"}
+        wc.Category = catdict[
+            len([lyr for lyr in wc.Layers if isinstance(lyr.Material, GlazingMaterial)])
+        ]
         return wc
 
     def to_json(self):
@@ -131,7 +133,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 
@@ -310,7 +312,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return repr(self)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, WindowSetting):
@@ -436,7 +438,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Returns:
             (WindowSetting): The window setting object.
         """
-        if isinstance(surface, EpBunch):
+        if isinstance(surface, EpBunch) and not surface.Surface_Type.upper() == "DOOR":
             construction = surface.get_referenced_object("Construction_Name")
             construction = WindowConstruction.from_epbunch(construction)
             name = surface.Name
@@ -740,7 +742,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 

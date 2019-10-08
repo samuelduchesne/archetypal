@@ -6,11 +6,9 @@
 ################################################################################
 import os
 from collections import defaultdict
-from pprint import pprint
-
-import click
 
 import archetypal
+import click
 from archetypal import settings, cd, load_idf
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -381,9 +379,9 @@ def reduce(idf, name, ep_version, weather, parallel):
         res = loaded_idf
     else:
         # else, run sequentially
-        res = defaultdict(tuple)
+        res = defaultdict(dict)
         for fn in idf:
-            res[fn] = archetypal.run_eplus(
+            res[fn][0], res[fn][1] = archetypal.run_eplus(
                 fn,
                 weather,
                 ep_version=ep_version,
@@ -398,8 +396,18 @@ def reduce(idf, name, ep_version, weather, parallel):
 
     bts = []
     for fn in res.values():
-        sql = next(iter([i for i in fn if isinstance(i, dict)]))
-        idf = next(iter([i for i in fn if isinstance(i, archetypal.IDF)]))
+        sql = next(
+            iter([value for key, value in fn.items() if isinstance(value, dict)])
+        )
+        idf = next(
+            iter(
+                [
+                    value
+                    for key, value in fn.items()
+                    if isinstance(value, archetypal.IDF)
+                ]
+            )
+        )
         bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
 
     template = archetypal.UmiTemplate(name=name, BuildingTemplates=bts)

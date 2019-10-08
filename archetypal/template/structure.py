@@ -7,7 +7,7 @@
 
 import collections
 
-from archetypal.template import UmiBase, Unique, OpaqueMaterial
+from archetypal.template import UmiBase, Unique, OpaqueMaterial, UniqueName
 
 
 class MassRatio(object):
@@ -91,7 +91,7 @@ class StructureDefinition(UmiBase, metaclass=Unique):
         self.MassRatios = MassRatios
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, StructureDefinition):
@@ -140,6 +140,6 @@ class StructureDefinition(UmiBase, metaclass=Unique):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict

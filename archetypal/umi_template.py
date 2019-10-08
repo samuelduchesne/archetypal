@@ -4,7 +4,6 @@ import os
 from collections import OrderedDict
 
 import numpy as np
-
 from archetypal import (
     load_idf,
     BuildingTemplate,
@@ -30,6 +29,7 @@ from archetypal import (
     MaterialLayer,
     YearScheduleParts,
     UmiSchedule,
+    MassRatio,
 )
 
 
@@ -358,11 +358,10 @@ class UmiTemplate:
                     obj = obj.develop()
                 catname = obj.__class__.__name__ + "s"
                 if catname in data_dict:
-                    app_dict = obj.to_json()
-                    key = id(obj)
+                    key = obj.id
                     if key not in jsonized.keys():
+                        app_dict = obj.to_json()
                         data_dict[catname].append(app_dict)
-                        key = id(obj)
                         jsonized[key] = obj
                 for key, value in obj.__dict__.items():
 
@@ -375,7 +374,8 @@ class UmiTemplate:
                             recursive_json(value)
                             for value in value
                             if isinstance(
-                                value, (UmiBase, MaterialLayer, YearScheduleParts)
+                                value,
+                                (UmiBase, MaterialLayer, YearScheduleParts, MassRatio),
                             )
                         ]
 
@@ -384,7 +384,7 @@ class UmiTemplate:
 
             for key in data_dict:
                 data_dict[key] = sorted(
-                    data_dict[key], key=lambda x: float(x["$id"]) if "$id" in x else 1
+                    data_dict[key], key=lambda x: x["Name"] if "Name" in x else "A"
                 )
 
             class CustomJSONEncoder(json.JSONEncoder):

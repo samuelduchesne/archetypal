@@ -14,13 +14,9 @@ import matplotlib.collections
 import matplotlib.colors
 import networkx
 import tabulate
-from eppy.bunch_subclass import EpBunch
-from tqdm import tqdm
-
 from archetypal import log, save_and_show
 from archetypal.template import (
     UmiBase,
-    Unique,
     Zone,
     resolve_obco,
     WindowSetting,
@@ -29,6 +25,9 @@ from archetypal.template import (
     is_core,
 )
 from archetypal.utils import reduce
+from eppy.bunch_subclass import EpBunch
+from path import Path
+from tqdm import tqdm
 
 
 class BuildingTemplate(UmiBase):
@@ -76,7 +75,7 @@ class BuildingTemplate(UmiBase):
         self.Windows = Windows
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, BuildingTemplate):
@@ -216,14 +215,22 @@ class BuildingTemplate(UmiBase):
             **kwargs:
         """
         # initialize empty BuildingTemplate
-        name = kwargs.pop("Name", idf.idfobjects["BUILDING"][0].Name)
+        name = kwargs.pop("Name", Path(idf.idfname).basename().splitext()[0])
         bt = cls(Name=name, idf=idf, **kwargs)
         zones = [
             Zone.from_zone_epbunch(zone, sql=bt.sql)
             for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop")
         ]
-        cores = [zone for zone in zones if zone.is_core]
-        perims = [zone for zone in zones if not zone.is_core]
+        cores = [
+            zone
+            for zone in zones
+            if zone.is_core and zone.is_part_of_conditioned_floor_area
+        ]
+        perims = [
+            zone
+            for zone in zones
+            if not zone.is_core and zone.is_part_of_conditioned_floor_area
+        ]
         # do Core and Perim zone reduction
         bt.reduce(cores, perims)
 
@@ -235,6 +242,14 @@ class BuildingTemplate(UmiBase):
         )
         bt.Windows = bt.Perimeter.Windows
         bt.PartitionRatio = idf.partition_ratio
+
+        bt.Comments += "\n".join(
+            [
+                "WWR calculated for original model: ",
+                bt.idf.wwr().to_string(),
+                "where East=90, South=180, West=270, North=0\n",
+            ]
+        )
 
         return bt
 
@@ -261,7 +276,16 @@ class BuildingTemplate(UmiBase):
 
         if not self.Core:
             self.Core = self.Perimeter
-
+        log(
+            "Equivalent core zone has an area of {:,.0f} m2".format(self.Core.area),
+            level=lg.DEBUG,
+        )
+        log(
+            "Equivalent perimeter zone has an area of {:,.0f} m2".format(
+                self.Perimeter.area
+            ),
+            level=lg.DEBUG,
+        )
         log(
             'Completed model complexity reduction for BuildingTemplate "{}" in {:,.2f} seconds'.format(
                 self.Name, time.time() - start_time

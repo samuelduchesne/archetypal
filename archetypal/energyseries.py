@@ -3,18 +3,17 @@ import logging as lg
 import os
 import time
 import warnings
-from datetime import datetime, timedelta
+from datetime import timedelta
 
+import archetypal
 import numpy as np
 import pandas as pd
 import tsam.timeseriesaggregation as tsam
+from archetypal import log, rmse, piecewise, settings
 from matplotlib import pyplot as plt, cm
 from matplotlib.colors import LightSource
 from pandas import Series, DataFrame, concat, MultiIndex, date_range
 from sklearn import preprocessing
-
-import archetypal
-from archetypal import log, rmse, piecewise, settings
 
 
 class EnergySeries(Series):
@@ -25,6 +24,7 @@ class EnergySeries(Series):
         return EnergySeries
 
     _metadata = [
+        "name",
         "bin_edges_",
         "bin_scaling_factors_",
         "profile_type",
@@ -36,19 +36,6 @@ class EnergySeries(Series):
         "converted_",
         "concurrent_sort_",
     ]
-
-    def __finalize__(self, other, method=None, **kwargs):
-        """propagate metadata from other to self
-
-        Args:
-            other:
-            method:
-            **kwargs:
-        """
-        # NOTE: backported from pandas master (upcoming v0.13)
-        for name in self._metadata:
-            object.__setattr__(self, name, getattr(other, name, None))
-        return self
 
     def __new__(
         cls,
@@ -68,7 +55,7 @@ class EnergySeries(Series):
         archetypes=None,
         concurrent_sort=False,
         to_units=None,
-        use_timeindex=True,
+        use_timeindex=False,
     ):
         """
         Args:
@@ -90,11 +77,8 @@ class EnergySeries(Series):
             to_units:
             use_timeindex:
         """
-        arr = Series.__new__(cls)
-        if type(arr) is EnergySeries:
-            return arr
-        else:
-            return arr.view(EnergySeries)
+        self = super(EnergySeries, cls).__new__(cls)
+        return self
 
     def __init__(
         self,
@@ -114,7 +98,7 @@ class EnergySeries(Series):
         archetypes=None,
         concurrent_sort=False,
         to_units=None,
-        use_timeindex=True,
+        use_timeindex=False,
     ):
         """
         Args:
@@ -191,6 +175,7 @@ class EnergySeries(Series):
         df,
         name=None,
         base_year=2018,
+        units=None,
         normalize=False,
         sort_values=False,
         ascending=False,
@@ -204,6 +189,7 @@ class EnergySeries(Series):
             df (DataFrame):
             name:
             base_year:
+            units:
             normalize:
             sort_values:
             ascending:
@@ -232,17 +218,21 @@ class EnergySeries(Series):
         )
         # Adjust timeindex by timedelta
         index -= df.Interval.apply(lambda x: timedelta(minutes=x))
-
+        index = pd.DatetimeIndex(index)
         # get data
         data = df.Value
         data.index = index
-        units = set(df.Units)
+        units = [units] if units else set(df.Units)
         if len(units) > 1:
             raise ValueError("The DataFrame contains mixed units: {}".format(units))
         else:
             units = next(iter(units), None)
         # group data by index value (level=0) using the agg_func
-        grouped_Data = data.groupby(level=0).agg(agg_func)
+        if agg_func:
+            grouped_Data = data.groupby(level=0).agg(agg_func)
+        else:
+            df["DateTimeIndex"] = index
+            grouped_Data = df.set_index(["DateTimeIndex", "Name"]).Value
         # Since we create the index, use_timeindex must be false
         return cls(
             grouped_Data.values,
@@ -270,13 +260,14 @@ class EnergySeries(Series):
             to_units = self.to_units
         else:
             to_units = reg.parse_expression(to_units).units
-        to_multiple = reg(str(self.units)).to(to_units).m
-        result = self.apply(lambda x: x * to_multiple)
+        cdata = reg.Quantity(self.values, self.units).to(to_units).m
+        result = self.apply(lambda x: x)
+        result.update(pd.Series(cdata, index=result.index))
         result.__class__ = EnergySeries
         result.converted_ = True
         result.units = to_units
         if inplace:
-            self._data = result._data
+            self._update_inplace(result)
             self.__finalize__(result)
         else:
             return result
@@ -767,6 +758,7 @@ def plot_energyseries(
     vmin=None,
     vmax=None,
     filename=None,
+    timeStepsPerPeriod=24,
     **kwargs
 ):
     """
@@ -788,6 +780,8 @@ def plot_energyseries(
         vmin (float):
         vmax (float):
         filename (str):
+        timeStepsPerPeriod (int): The number of discrete timesteps which
+            describe one period.
         **kwargs:
     """
     if energy_series.empty:
@@ -833,7 +827,7 @@ def plot_energyseries(
         if kind == "polygon":
             import tsam.timeseriesaggregation as tsam
 
-            z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=24)
+            z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=timeStepsPerPeriod)
             nrows, ncols = z.shape
 
             xs = z.columns
@@ -856,13 +850,23 @@ def plot_energyseries(
         elif kind == "surface":
             import tsam.timeseriesaggregation as tsam
 
-            z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=24)
+            z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=timeStepsPerPeriod)
             nrows, ncols = z.shape
             x = z.columns
             y = z.index.values
 
             x, y = np.meshgrid(x, y)
             _plot_surface(ax, x, y, z.values, cmap=cmap, **kwargs)
+        elif kind == "contour":
+            import tsam.timeseriesaggregation as tsam
+
+            z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=timeStepsPerPeriod)
+            nrows, ncols = z.shape
+            x = z.columns
+            y = z.index.values
+
+            x, y = np.meshgrid(x, y)
+            _plot_contour(ax, x, y, z.values, cmap=cmap, **kwargs)
         else:
             raise NameError('plot kind "{}" is not supported'.format(kind))
 
@@ -875,7 +879,8 @@ def plot_energyseries(
         ax.set_ylim3d(-1, nrows)
         ax.set_ylabel("Y")
         ax.set_zlim3d(vmin, vmax)
-        ax.set_zlabel("Z")
+        z_label = energy_series.name if energy_series.name is not None else "Z"
+        ax.set_zlabel(z_label)
 
         # configure axis appearance
         xaxis = ax.xaxis
@@ -1074,6 +1079,22 @@ def _plot_surface(ax, x, y, z, cmap=None, **kwargs):
         shade=False,
         **kwargs
     )
+    return surf
+
+
+def _plot_contour(ax, x, y, z, cmap=None, **kwargs):
+    """
+    Args:
+        ax:
+        x:
+        y:
+        z:
+        cmap:
+        **kwargs:
+    """
+    if cmap is None:
+        cmap = cm.gist_earth
+    surf = ax.contour3D(x, y, z, 150, cmap=cmap, **kwargs)
     return surf
 
 

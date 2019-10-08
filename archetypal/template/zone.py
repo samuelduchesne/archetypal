@@ -13,11 +13,7 @@ import random
 import time
 
 import numpy as np
-from eppy.bunch_subclass import BadEPFieldError
-from geomeppy.geom.polygons import Polygon3D
-
 from archetypal import log, timeit, settings
-from archetypal.utils import reduce
 from archetypal.template import (
     Unique,
     UmiBase,
@@ -28,7 +24,11 @@ from archetypal.template import (
     OpaqueConstruction,
     WindowSetting,
     CREATED_OBJECTS,
+    UniqueName,
 )
+from archetypal.utils import reduce
+from eppy.bunch_subclass import BadEPFieldError
+from geomeppy.geom.polygons import Polygon3D
 
 
 class Zone(UmiBase):
@@ -181,6 +181,10 @@ class Zone(UmiBase):
     def is_core(self):
         return is_core(self)
 
+    @property
+    def is_part_of_conditioned_floor_area(self):
+        return is_part_of_conditioned_floor_area(self)
+
     @staticmethod
     def get_volume_from_surfs(zone_surfs):
         """Calculate the volume of a zone only and only if the surfaces are such
@@ -309,7 +313,7 @@ class Zone(UmiBase):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 
@@ -694,6 +698,15 @@ def is_core(epbunch):
     return iscore
 
 
+def is_part_of_conditioned_floor_area(zone):
+    """Returns True if Zone epbunch has :attr:`Part_of_Total_Floor_Area` == "YES"
+
+    Args:
+        zone (Zone): The Zone object.
+    """
+    return zone._epbunch.Part_of_Total_Floor_Area.upper() != "NO"
+
+
 def iscore(row):
     """Helps to group by core and perimeter zones. If any of "has `core` in
     name" and "ExtGrossWallArea == 0" is true, will consider zone_loads as core,
@@ -784,7 +797,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, ZoneConstructionSet):
@@ -907,7 +920,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 

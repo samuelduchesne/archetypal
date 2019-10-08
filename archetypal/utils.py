@@ -12,7 +12,7 @@
 # project, which is licensed MIT License. This code therefore is also
 # licensed under the terms of the The MIT License (MIT).
 ################################################################################
-
+import contextlib
 import datetime as dt
 import json
 import logging as lg
@@ -27,10 +27,9 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
+from archetypal import settings
 from pandas.io.json import json_normalize
 from path import Path
-
-from archetypal import settings
 
 
 def config(
@@ -185,7 +184,8 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
     Returns:
         logging.Logger: a Logger
     """
-
+    if isinstance(log_dir, str):
+        log_dir = Path(log_dir)
     if level is None:
         level = settings.log_level
     if name is None:
@@ -204,14 +204,16 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
         if not log_dir:
             log_dir = settings.logs_folder
 
-        log_filename = os.path.join(log_dir, "{}_{}.log".format(filename, todays_date))
+        log_filename = log_dir / "{}_{}.log".format(filename, todays_date)
 
         # if the logs folder does not already exist, create it
-        if not os.path.exists(settings.logs_folder):
-            os.makedirs(settings.logs_folder)
-
+        if not log_dir.exists():
+            log_dir.makedirs_p()
         # create file handler and log formatter and set them up
-        handler = lg.FileHandler(log_filename, encoding="utf-8")
+        try:
+            handler = lg.FileHandler(log_filename, encoding="utf-8")
+        except:
+            handler = lg.StreamHandler()
         formatter = lg.Formatter(
             "%(asctime)s [%(process)d]  %(levelname)s - %(name)s - %(" "message)s"
         )
@@ -647,32 +649,20 @@ class EnergyPlusProcessError(Error):
         return msg
 
 
-class cd:
-    """Context manager for changing the current working directory"""
+@contextlib.contextmanager
+def cd(path):
+    log("initially inside {0}".format(os.getcwd()))
+    CWD = os.getcwd()
 
-    def __init__(self, new_path):
-        """
-        Args:
-            new_path:
-        """
-        self.newPath = os.path.expanduser(new_path)
-
-    def __enter__(self):
-        self.savedPath = os.getcwd()
-        if os.path.isdir(self.newPath):
-            os.chdir(self.newPath)
-        else:
-            os.mkdir(self.newPath)
-            os.chdir(self.newPath)
-
-    def __exit__(self, etype, value, traceback):
-        """
-        Args:
-            etype:
-            value:
-            traceback:
-        """
-        os.chdir(self.savedPath)
+    os.chdir(path)
+    log("inside {0}".format(os.getcwd()))
+    try:
+        yield
+    except:
+        log("Exception caught: ", sys.exc_info()[0])
+    finally:
+        os.chdir(CWD)
+        log("finally inside {0}".format(os.getcwd()))
 
 
 def rmse(data, targets):

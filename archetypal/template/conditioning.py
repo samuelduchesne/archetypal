@@ -6,11 +6,11 @@
 ################################################################################
 
 import collections
-
-from archetypal import float_round, ReportData, log, timeit, settings
-from archetypal.template import UmiBase, Unique, UmiSchedule
-import numpy as np
 import math
+
+import numpy as np
+from archetypal import float_round, ReportData, log, timeit, settings
+from archetypal.template import UmiBase, Unique, UmiSchedule, UniqueName
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
@@ -43,18 +43,18 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         MinFreshAirPerArea=0,
         MinFreshAirPerPerson=0.00944,
         MechVentSchedule=None,
-        **kwargs
+        **kwargs,
     ):
-        """Initialize a new ZoneCondition object
+        """Initialize a new :class:`ZoneConditioning` object.
 
         Args:
-            CoolingCoeffOfPerf (float): Performance factor of cooling system.
-                This value is used in deriving the total cooling energy use by
-                dividing the cooling load by the COP. The COP is of each zone is
-                equal, and refer to the COP of the entire building.
+            CoolingCoeffOfPerf (float): Performance factor of the cooling system.
+                This value is used to calculate the total cooling energy use by
+                dividing the cooling load by the COP. The COP of the zone shared with all zones
+                and refers to the COP of the entire building.
             CoolingLimitType (str): The input must be either LimitFlowRate,
                 LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
-            CoolingSetpoint (float): The temperature above which zone heating is
+            CoolingSetpoint (float): The temperature above which the zone heating is
                 turned on. Here, we take the mean value over the year.
             CoolingSchedule (UmiSchedule): The availability schedule for space
                 cooling in this zone.
@@ -62,8 +62,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 economizer. The choices are: NoEconomizer, DifferentialDryBulb,
                 or DifferentialEnthalpy. For the moment, the EconomizerType is
                 applied for the entire building (every zone with the same
-                EconomizerType). Moreover, some hypotheses are done knowing
-                there is more EconomizerType existing in EnergyPlus than in UMI:
+                EconomizerType). Moreover, since UMI does not support all Economizer
+                Types, some assumptions are made:
 
                 - If 'NoEconomizer' in EnergyPlus, EconomizerType='NoEconomizer'
                 - If 'DifferentialEnthalpy' in EnergyPlus,EconomizerType =
@@ -92,7 +92,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                   suppose that HeatRecoveryEfficiencyLatent = Latent
                   Effectiveness at 100% Heating Air Flow
                 - If the HeatExchanger is a Desiccant BalancedFlow, we use the
-                  default value for the efficiency (=0.65)
+                  default value for the efficiency (=0.65).
             HeatRecoveryEfficiencySensible (float): The sensible heat recovery
                 effectiveness, where effectiveness is defined as the change in
                 supply temperature divided by the difference in entering supply
@@ -178,7 +178,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, ZoneConditioning):
@@ -266,7 +266,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 
@@ -822,7 +822,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             MinFreshAirPerPerson=s,
             HeatingSchedule=t,
             CoolingSchedule=u,
-            MechVentSchedule=v
+            MechVentSchedule=v,
         )
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj

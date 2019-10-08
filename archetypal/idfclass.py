@@ -14,6 +14,9 @@ import multiprocessing
 import os
 import subprocess
 import time
+from collections import defaultdict
+from itertools import compress
+from math import isclose
 from sqlite3 import OperationalError
 from subprocess import CalledProcessError
 from tempfile import tempdir
@@ -22,10 +25,6 @@ import eppy
 import eppy.modeleditor
 import geomeppy
 import pandas as pd
-from eppy.EPlusInterfaceFunctions import parse_idd
-from eppy.easyopen import getiddfile
-from path import Path, tempdir
-
 from archetypal import (
     log,
     settings,
@@ -36,6 +35,9 @@ from archetypal import (
     close_logger,
 )
 from archetypal.utils import _unpack_tuple
+from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.easyopen import getiddfile
+from path import Path, tempdir
 
 
 class IDF(geomeppy.IDF):
@@ -54,10 +56,23 @@ class IDF(geomeppy.IDF):
         self.schedules_dict = self.get_all_schedules()
         self._sql = None
         self.eplus_run_options = EnergyPlusOptions(
-            self.idfname,
-            getattr(self, "epw", None),
+            eplus_file=self.idfname,
+            weather_file=getattr(self, "epw", None),
             ep_version="-".join(map(str, self.idd_version)),
         )
+
+    @classmethod
+    def setiddname(cls, iddname, testing=False):
+        """Set the path to the EnergyPlus IDD for the version of EnergyPlus
+        which is to be used by eppy.
+
+        Args:
+            iddname (str): Path to the IDD file.
+            testing:
+        """
+        cls.iddname = iddname
+        cls.idd_info = None
+        cls.block = None
 
     @property
     def name(self):
@@ -76,8 +91,9 @@ class IDF(geomeppy.IDF):
     @property
     def sql_file(self):
         if self._sql_file is None:
+            log("No sql file for {}. Running EnergyPlus...".format(self.name))
             self._sql_file = self.run_eplus(
-                annual=True, prep_outputs=True, output_report="sql_file"
+                annual=True, prep_outputs=True, output_report="sql_file", verbose="q"
             )
             return self._sql_file
         else:
@@ -123,6 +139,70 @@ class IDF(geomeppy.IDF):
 
         return partition_lineal / self.area_conditioned
 
+    def wwr(self, azimuth_threshold=10, round_to=None):
+        """Returns the Window-to-Wall Ratio by major orientation for the IDF
+        model. Optionally round up the WWR value to nearest value (eg.: nearest
+        10).
+
+        Args:
+            azimuth_threshold (int): Defines the incremental major orientation
+                azimuth angle. Due to possible rounding errors, some surface
+                azimuth can be rounded to values different than the main
+                directions (eg.: 89 degrees instead of 90 degrees). Defaults to
+                increments of 10 degrees.
+            round_to (float): Optionally round the WWR value to nearest value
+                (eg.: nearest 10). If None, this is ignored and the float is
+                returned.
+
+        Returns:
+            (pd.DataFrame): A DataFrame with the total wall area, total window
+            area and WWR for each main orientation of the building.
+        """
+        import math
+
+        def roundto(x, to=10.0):
+            """Rounds up to closest `to` number"""
+            if to and not math.isnan(x):
+                return int(round(x / to)) * to
+            else:
+                return x
+
+        total_wall_area = defaultdict(int)
+        total_window_area = defaultdict(int)
+
+        zones = self.idfobjects["ZONE"]
+        for zone in zones:
+            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
+            for surface in zone.zonesurfaces:
+                if surface.key.lower() != "internalmass":
+                    if isclose(surface.tilt, 90, abs_tol=10):
+                        if surface.Outside_Boundary_Condition == "Outdoors":
+                            surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
+                            total_wall_area[surf_azim] += surface.area * multiplier
+                    for subsurface in surface.subsurfaces:
+                        if isclose(subsurface.tilt, 90, abs_tol=10):
+                            if subsurface.Surface_Type.lower() == "window":
+                                surf_azim = roundto(
+                                    subsurface.azimuth, to=azimuth_threshold
+                                )
+                                total_window_area[surf_azim] += (
+                                    subsurface.area * multiplier
+                                )
+        # Fix azimuth = 360 which is the same as azimuth 0
+        total_wall_area[0] += total_wall_area.pop(360, 0)
+        total_window_area[0] += total_window_area.pop(360, 0)
+
+        # Create dataframe with wall_area, window_area and wwr as columns and azimuth
+        # as indexes
+        df = pd.DataFrame(
+            {"wall_area": total_wall_area, "window_area": total_window_area}
+        ).rename_axis("Azimuth")
+        df["wwr"] = df.window_area / df.wall_area
+        df["wwr_rounded_%"] = (df.window_area / df.wall_area * 100).apply(
+            lambda x: roundto(x, to=round_to)
+        )
+        return df
+
     def space_heating_profile(
         self,
         units="kWh",
@@ -154,6 +234,42 @@ class IDF(geomeppy.IDF):
         )
         log(
             "Retrieved Space Heating Profile in {:,.2f} seconds".format(
+                time.time() - start_time
+            )
+        )
+        return series
+
+    def service_water_heating_profile(
+        self,
+        units="kWh",
+        energy_out_variable_name=None,
+        name="Space Heating",
+        EnergySeries_kwds={},
+    ):
+        """
+        Args:
+            units (str): Units to convert the energy profile to. Will detect the
+                units of the EnergyPlus results.
+            energy_out_variable_name (list-like): a list of EnergyPlus Variable
+                names.
+            name (str): Name given to the EnergySeries.
+            EnergySeries_kwds (dict, optional): keywords passed to
+                :func:`EnergySeries.from_sqlite`
+
+        Returns:
+            EnergySeries
+        """
+        start_time = time.time()
+        if energy_out_variable_name is None:
+            energy_out_variable_name = (
+                "Water Heater Heating Energy",
+                "WaterSystems:EnergyTransfer",
+            )
+        series = self._energy_series(
+            energy_out_variable_name, units, name, EnergySeries_kwds
+        )
+        log(
+            "Retrieved Service Water Heating Profile in {:,.2f} seconds".format(
                 time.time() - start_time
             )
         )
@@ -194,6 +310,28 @@ class IDF(geomeppy.IDF):
         )
         return series
 
+    def custom_profile(
+        self, energy_out_variable_name, name, units="kWh", EnergySeries_kwds={}
+    ):
+        """
+        Args:
+            units (str): Units to convert the energy profile to. Will detect the
+                units of the EnergyPlus results.
+            energy_out_variable_name (list-like): a list of EnergyPlus
+            name (str): Name given to the EnergySeries.
+            EnergySeries_kwds (dict, optional): keywords passed to
+                :func:`EnergySeries.from_sqlite`
+
+        Returns:
+            EnergySeries
+        """
+        start_time = time.time()
+        series = self._energy_series(
+            energy_out_variable_name, units, name, EnergySeries_kwds
+        )
+        log("Retrieved {} in {:,.2f} seconds".format(name, time.time() - start_time))
+        return series
+
     def _energy_series(self, energy_out_variable_name, units, name, EnergySeries_kwds):
         """
         Args:
@@ -215,7 +353,7 @@ class IDF(geomeppy.IDF):
         optional. By default, will load the sql in self.sql.
 
         Args:
-            **kwargs:
+            kwargs:
 
         Returns:
             The output report or the sql file loaded as a dict of DataFrames.
@@ -261,7 +399,7 @@ class IDF(geomeppy.IDF):
         # Check if new object exists in previous list
         # If True, delete the object
         if sum([str(obj).upper() == str(new_object).upper() for obj in objs]) > 1:
-            log('object "{}" already exists in idf file'.format(ep_object), lg.WARNING)
+            log('object "{}" already exists in idf file'.format(ep_object), lg.DEBUG)
             # Remove the newly created object since the function
             # `idf.newidfobject()` automatically adds it
             self.removeidfobject(new_object)
@@ -469,15 +607,23 @@ class EnergyPlusOptions:
         ep_version=None,
         output_report=None,
         prep_outputs=False,
-        return_idf=False,
+        simulname=None,
+        keep_data=True,
         annual=False,
         design_day=False,
         epmacro=False,
         expandobjects=True,
         readvars=False,
         output_prefix=False,
-        verbose="v",
         output_suffix="L",
+        version=None,
+        verbose="v",
+        keep_data_err=False,
+        include=None,
+        process_files=False,
+        custom_processes=None,
+        return_idf=False,
+        return_files=False,
     ):
         """
         Args:
@@ -487,16 +633,32 @@ class EnergyPlusOptions:
             ep_version:
             output_report:
             prep_outputs:
-            return_idf:
+            simulname:
+            keep_data:
             annual:
             design_day:
             epmacro:
             expandobjects:
             readvars:
             output_prefix:
-            verbose:
             output_suffix:
+            version:
+            verbose:
+            keep_data_err:
+            include:
+            process_files:
+            custom_processes:
+            return_idf:
+            return_files:
         """
+        self.return_files = return_files
+        self.custom_processes = custom_processes
+        self.process_files = process_files
+        self.include = include
+        self.keep_data_err = keep_data_err
+        self.version = version
+        self.keep_data = keep_data
+        self.simulname = simulname
         self.output_suffix = output_suffix
         self.verbose = verbose
         self.output_prefix = output_prefix
@@ -509,9 +671,7 @@ class EnergyPlusOptions:
         self.prep_outputs = prep_outputs
         self.output_report = output_report
         self.ep_version = ep_version
-        self.output_directory = (
-            output_directory if output_directory else settings.cache_folder
-        )
+        self.output_directory = output_directory
         self.weather_file = weather_file
         self.eplus_file = eplus_file
 
@@ -523,21 +683,23 @@ def load_idf(
     is true, then the idf object is loaded from cache.
 
     Args:
-        eplus_file (str): path of the idf file.
-        idd_filename (str, optional): name of the EnergyPlus IDD file. If None,
-            the function tries to find it.
-        output_folder (Path):
+        eplus_file (str): Either the absolute or relative path to the idf file.
+        idd_filename (str, optional): Either the absolute or relative path to
+            the EnergyPlus IDD file. If None, the function tries to find it at
+            the default EnergyPlus install location.
+        output_folder (Path, optional): Either the absolute or relative path of
+            the output folder. Specify if the cache location is different than
+            archetypal.settings.cache_folder.
         include (str, optional): List input files that need to be copied to the
-            simulation directory. If a string is provided, it should be in a
-            glob form (see pathlib.Path.glob).
-        weather_file:
+            simulation directory. Those can be, for example, schedule files read
+            by the idf file. If a string is provided, it should be in a glob
+            form (see pathlib.Path.glob).
+        weather_file: Either the absolute or relative path to the weather epw
+            file.
 
     Returns:
-        (IDF): The parsed IDF object
+        IDF: The IDF object.
     """
-    # Determine version of idf file by reading the text file
-    if idd_filename is None:
-        idd_filename = getiddfile(get_idf_version(eplus_file))
 
     idf = load_idf_object_from_cache(eplus_file)
 
@@ -584,29 +746,33 @@ def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
     file = Path(file)
     cache_filename = hash_file(file)
 
-    # Initiate an eppy.modeleditor.IDF object
-    IDF.setiddname(idd_filename, testing=True)
-    if not output_folder:
-        output_folder = settings.cache_folder / cache_filename
-    else:
-        output_folder = Path(output_folder)
-
-    output_folder.makedirs_p()
-
     try:
         # first copy the file
+        if not output_folder:
+            output_folder = settings.cache_folder / cache_filename
+        else:
+            output_folder = Path(output_folder)
+
+        output_folder.makedirs_p()
         try:
             file = Path(file.copy(output_folder))
         except:
-            # The file already exists at the location
-            pass
-        # load the idf object
-        idf_object = IDF(file, epw=epw)
-        # Check version of IDF file against version of IDD file
-        idf_version = idf_object.idfobjects["VERSION"][0].Version_Identifier
-        idd_version = "{}.{}".format(
-            idf_object.idd_version[0], idf_object.idd_version[1]
-        )
+            # The file already exists at the location. Use that file
+            file = output_folder / file.basename()
+        finally:
+            # Determine version of idf file by reading the text file
+            if idd_filename is None:
+                idd_filename = getiddfile(get_idf_version(file))
+
+            # Initiate an eppy.modeleditor.IDF object
+            IDF.setiddname(idd_filename, testing=True)
+            # load the idf object
+            idf_object = IDF(file, epw=epw)
+            # Check version of IDF file against version of IDD file
+            idf_version = idf_object.idfobjects["VERSION"][0].Version_Identifier
+            idd_version = "{}.{}".format(
+                idf_object.idd_version[0], idf_object.idd_version[1]
+            )
     except FileNotFoundError as exception:
         # Loading the idf object will raise a FileNotFoundError if the
         # version of EnergyPlus is not included
@@ -718,19 +884,19 @@ def save_idf_object_to_cache(idf_object, idf_file, output_folder=None, how=None)
 
 
 def load_idf_object_from_cache(idf_file, how=None):
-    """Load an idf instance from cache
+    """Load an idf instance from cache.
 
     Args:
-        idf_file (str): path to the idf file
+        idf_file (str): Either the absolute or relative path to the idf file.
         how (str, optional): How the pickling is done. Choices are 'json' or
-            'pickle' or 'idf'. json dump doen't quite work yet. 'pickle' will
-            load from a gzip'ed file instead of a regular binary file (.dat).
-            'idf' will load from idf file saved in cache.
+            'pickle' or 'idf'. json dump doesn't quite work yet. 'pickle' will
+            load from a gzip'ed file instead of a regular binary file (.gzip).
+            'idf' will load from idf file saved in cache (.dat).
 
     Returns:
-        None
+        IDF: The IDF object.
     """
-    # upper() can't tahe NoneType as input.
+    # upper() can't take NoneType as input.
     if how is None:
         how = ""
     # The main function
@@ -750,14 +916,15 @@ def load_idf_object_from_cache(idf_file, how=None):
                 import pickle
             start_time = time.time()
             if os.path.isfile(cache_fullpath_filename):
-                with open(cache_fullpath_filename, "rb") as file_handle:
-                    idf = json.load(file_handle)
-                log(
-                    'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
-                        os.path.basename(idf_file), time.time() - start_time
+                if os.path.getsize(cache_fullpath_filename) > 0:
+                    with open(cache_fullpath_filename, "rb") as file_handle:
+                        idf = json.load(file_handle)
+                    log(
+                        'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
+                            os.path.basename(idf_file), time.time() - start_time
+                        )
                     )
-                )
-                return idf
+                    return idf
 
         elif how.upper() == "PICKLE":
             cache_fullpath_filename = os.path.join(
@@ -773,17 +940,21 @@ def load_idf_object_from_cache(idf_file, how=None):
                 import pickle
             start_time = time.time()
             if os.path.isfile(cache_fullpath_filename):
-                with gzip.GzipFile(cache_fullpath_filename, "rb") as file_handle:
-                    idf = pickle.load(file_handle)
-                if idf.iddname is None:
-                    idf.setiddname(getiddfile(idf.model.dt["VERSION"][0][1]))
-                    # idf.read()
-                log(
-                    'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
-                        os.path.basename(idf_file), time.time() - start_time
+                if os.path.getsize(cache_fullpath_filename) > 0:
+                    with gzip.GzipFile(cache_fullpath_filename, "rb") as file_handle:
+                        try:
+                            idf = pickle.load(file_handle)
+                        except EOFError:
+                            return None
+                    if idf.iddname is None:
+                        idf.setiddname(getiddfile(idf.model.dt["VERSION"][0][1]))
+                        # idf.read()
+                    log(
+                        'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
+                            os.path.basename(idf_file), time.time() - start_time
+                        )
                     )
-                )
-                return idf
+                    return idf
         elif how.upper() == "IDF":
             cache_fullpath_filename = os.path.join(
                 settings.cache_folder,
@@ -807,17 +978,21 @@ def load_idf_object_from_cache(idf_file, how=None):
                 import pickle
             start_time = time.time()
             if os.path.isfile(cache_fullpath_filename):
-                with open(cache_fullpath_filename, "rb") as file_handle:
-                    idf = pickle.load(file_handle)
-                if idf.iddname is None:
-                    idf.setiddname(getiddfile(idf.model.dt["VERSION"][0][1]))
-                    idf.read()
-                log(
-                    'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
-                        os.path.basename(idf_file), time.time() - start_time
+                if os.path.getsize(cache_fullpath_filename) > 0:
+                    with open(cache_fullpath_filename, "rb") as file_handle:
+                        try:
+                            idf = pickle.load(file_handle)
+                        except EOFError:
+                            return None
+                    if idf.iddname is None:
+                        idf.setiddname(getiddfile(idf.model.dt["VERSION"][0][1]))
+                        idf.read()
+                    log(
+                        'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
+                            os.path.basename(idf_file), time.time() - start_time
+                        )
                     )
-                )
-                return idf
+                    return idf
 
 
 def prepare_outputs(
@@ -878,7 +1053,19 @@ def prepare_outputs(
     )
     idf.add_object(
         "Output:Variable".upper(),
+        Variable_Name="Air System Total Cooling Energy",
+        Reporting_Frequency="hourly",
+        save=save,
+    )
+    idf.add_object(
+        "Output:Variable".upper(),
         Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
+        Reporting_Frequency="hourly",
+        save=save,
+    )
+    idf.add_object(
+        "Output:Variable".upper(),
+        Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
         Reporting_Frequency="hourly",
         save=save,
     )
@@ -909,6 +1096,12 @@ def prepare_outputs(
     idf.add_object(
         "Output:Variable".upper(),
         Variable_Name="Heat Exchanger Latent Effectiveness",
+        Reporting_Frequency="hourly",
+        save=save,
+    )
+    idf.add_object(
+        "Output:Variable".upper(),
+        Variable_Name="Water Heater Heating Energy",
         Reporting_Frequency="hourly",
         save=save,
     )
@@ -980,7 +1173,7 @@ def cache_runargs(eplus_file, runargs):
     """
     import json
 
-    output_directory = runargs["output_directory"]
+    output_directory = runargs["output_directory"] / runargs["output_prefix"]
 
     runargs.update({"run_time": datetime.datetime.now().isoformat()})
     runargs.update({"idf_file": eplus_file})
@@ -1013,22 +1206,34 @@ def run_eplus(
     return_idf=False,
     return_files=False,
 ):
-    """Run an energy plus file and return the SummaryReports Tables in a list of
-    [(title, table), .....]
+    """Run an energy plus file using the EnergyPlus executable.
+
+    Specify run options:
+        Run options are specified in the same way as the E+ command line
+        interface: annual, design_day, epmacro, expandobjects, etc. are all
+        supported.
+
+    Specify outputs:
+        Optionally define the desired outputs by specifying the
+        :attr:`output_report` attribute.
+
+        With the :attr:`prep_outputs` parameter, specify additional outputs
+        objects to append to the energy plus file. If True, a selection of
+        usefull options will be append by default (see: :func:`prepare_outputs`
+        for more details).
 
     Args:
-        return_files (bool): It True, all files paths created by the energyplus run
-            are returned.
         eplus_file (str): path to the idf file.
-        weather_file (str): path to the EPW weather file
+        weather_file (str): path to the EPW weather file.
         output_directory (str, optional): path to the output folder. Will
             default to the settings.cache_folder.
         ep_version (str, optional): EnergyPlus version to use, eg: 8-9-0
-        output_report: 'htm' or 'sql'.
+        output_report: 'sql' or 'htm'.
         prep_outputs (bool or list, optional): if true, meters and variable
             outputs will be appended to the idf files. see
-            :func:`prepare_outputs`
-        simulname (str):
+            :func:`prepare_outputs`.
+        simulname (str): The name of the simulation. (Todo: Currently not
+            implemented).
         keep_data (bool): If True, files created by EnergyPlus are saved to the
             output_directory.
         annual (bool): If True then force annual simulation (default: False)
@@ -1038,15 +1243,15 @@ def run_eplus(
             False)
         readvars (bool): Run ReadVarsESO after simulation (default: False)
         output_prefix (str, optional): Prefix for output file names.
-        output_suffix (str, optional): Suffix style for output file names (default: L)
-                Choices are:
-                    - L: Legacy (e.g., eplustbl.csv)
-                    - C: Capital (e.g., eplusTable.csv)
-                    - D: Dash (e.g., eplus-table.csv)
+        output_suffix (str, optional): Suffix style for output file names
+            (default: L) Choices are:
+                - L: Legacy (e.g., eplustbl.csv)
+                - C: Capital (e.g., eplusTable.csv)
+                - D: Dash (e.g., eplus-table.csv)
         version (bool, optional): Display version information (default: False)
         verbose (str): Set verbosity of runtime messages (default: v) v: verbose
             q: quiet
-        keep_data_err:
+        keep_data_err (bool):
         include (str, optional): List input files that need to be copied to the
             simulation directory.if a string is provided, it should be in a glob
             form (see pathlib.Path.glob).
@@ -1059,8 +1264,10 @@ def run_eplus(
             pandas.read_csv (if they are csv files), resulting in duplicate. The
             only way to bypass this behavior is to add the key "*.csv" to that
             dictionnary.
-        return_idf (bool): If Truem returns the :class:`IDF` object part of the return
-            tuple.
+        return_idf (bool): If Truem returns the :class:`IDF` object part of the
+            return tuple.
+        return_files (bool): It True, all files paths created by the energyplus
+            run are returned.
 
     Returns:
         2-tuple: a 1-tuple or a 2-tuple
@@ -1077,18 +1284,18 @@ def run_eplus(
     args, _, _, values = inspect.getargvalues(frame)
     args = {arg: values[arg] for arg in args}
 
-    cache_filename = hash_file(eplus_file, args)
+    cache_filename = hash_file(eplus_file)
     if not output_prefix:
         output_prefix = cache_filename
     if not output_directory:
         output_directory = settings.cache_folder / cache_filename
     else:
         output_directory = Path(output_directory)
-
+    args["output_directory"] = output_directory
     # <editor-fold desc="Try to get cached results">
     try:
         start_time = time.time()
-        cached_run_results = get_from_cache(cache_filename=cache_filename, **args)
+        cached_run_results = get_from_cache(args)
     except Exception as e:
         # catch other exceptions that could occur
         raise Exception("{}".format(e))
@@ -1104,17 +1311,28 @@ def run_eplus(
             # return_idf
             if return_idf:
                 filepath = os.path.join(
-                    output_directory, "output_data", os.path.basename(eplus_file)
+                    output_directory,
+                    hash_file(output_directory / eplus_file.basename(), args),
+                    eplus_file.basename(),
                 )
                 idf = load_idf(
                     filepath, output_folder=output_directory, include=include
                 )
             else:
                 idf = None
-            from itertools import compress
-
+            if return_files:
+                files = Path(
+                    os.path.join(
+                        output_directory,
+                        hash_file(output_directory / eplus_file.basename(), args),
+                    )
+                ).files()
+            else:
+                files = None
             return_elements = list(
-                compress([cached_run_results, idf], [True, return_idf])
+                compress(
+                    [cached_run_results, idf, files], [True, return_idf, return_files]
+                )
             )
             return _unpack_tuple(return_elements)
 
@@ -1126,7 +1344,9 @@ def run_eplus(
         # replace the dots with "-"
         ep_version = ep_version.replace(".", "-")
     eplus_file = idf_version_updater(
-        eplus_file, to_version=ep_version, out_dir=output_directory
+        upgraded_file(eplus_file, output_directory),
+        to_version=ep_version,
+        out_dir=output_directory,
     )
     # In case the file has been updated, update the versionid of the file
     # and the idd_file
@@ -1164,14 +1384,15 @@ def run_eplus(
             )
             if include:
                 include = [file.copy(tmp) for file in include]
+            tmp_file = Path(eplus_file.copy(tmp))
             runargs = {
                 "tmp": tmp,
-                "eplus_file": Path(eplus_file.copy(tmp)),
+                "eplus_file": tmp_file,
                 "weather": Path(weather_file.copy(tmp)),
                 "verbose": verbose,
                 "output_directory": output_directory,
                 "ep_version": versionid,
-                "output_prefix": output_prefix,
+                "output_prefix": hash_file(tmp_file, args),
                 "idd": Path(idd_file.copy(tmp)),
                 "annual": annual,
                 "epmacro": epmacro,
@@ -1184,9 +1405,6 @@ def run_eplus(
                 "output_report": output_report,
                 "include": include,
             }
-
-            # save runargs
-            cache_runargs(eplus_file, runargs.copy())
 
             _run_exec(**runargs)
 
@@ -1219,30 +1437,52 @@ def run_eplus(
                         ]
                     )
 
+            save_dir = output_directory / hash_file(eplus_file, args)
             if keep_data:
-                (output_directory / "output_data").rmtree_p()
-                tmp.copytree(output_directory / "output_data")
+                save_dir.rmtree_p()
+                tmp.copytree(save_dir)
 
                 log(
                     "Files generated at the end of the simulation: %s"
-                    % "\n".join((output_directory / "output_data").files()),
+                    % "\n".join((save_dir).files()),
                     lg.DEBUG,
                     name=eplus_file.basename(),
                 )
                 if return_files:
-                    results.extend((output_directory / "output_data").files())
+                    files = save_dir.files()
+                else:
+                    files = None
+
+                # save runargs
+                cache_runargs(tmp_file, runargs.copy())
 
             # Return summary DataFrames
-            runargs["output_directory"] = output_directory / "output_data"
+            runargs["output_directory"] = save_dir
             cached_run_results = get_report(**runargs)
-            if cached_run_results:
-                results.extend([cached_run_results])
             if return_idf:
                 idf = load_idf(
                     eplus_file, output_folder=output_directory, include=include
                 )
-                results.extend([idf])
-        return _unpack_tuple(results)
+            else:
+                idf = None
+            return_elements = list(
+                compress(
+                    [cached_run_results, idf, files], [True, return_idf, return_files]
+                )
+            )
+        return _unpack_tuple(return_elements)
+
+
+def upgraded_file(eplus_file, output_directory):
+    """returns the eplus_file path that would have been copied in the output
+    directory if it exists
+
+    Args:
+        eplus_file:
+        output_directory:
+    """
+    eplus_file = next(iter(output_directory.glob("*.idf")), eplus_file)
+    return eplus_file
 
 
 def _process_csv(file, working_dir, simulname):
@@ -1377,14 +1617,15 @@ def _run_exec(
             if process.wait() != 0:
                 error_filename = output_prefix + "out.err"
                 with open(error_filename, "r") as stderr:
-                    if keep_data_err:
-                        failed_dir = output_directory / "failed"
-                        failed_dir.mkdir_p()
-                        tmp.copytree(failed_dir / output_prefix)
-                    tmp.rmtree_p()
-                    raise EnergyPlusProcessError(
-                        cmd=cmd, idf=eplus_file.basename(), stderr=stderr.read()
-                    )
+                    stderr_r = stderr.read()
+                if keep_data_err:
+                    failed_dir = output_directory / "failed"
+                    failed_dir.mkdir_p()
+                    tmp.copytree(failed_dir / output_prefix)
+                tmp.rmtree_p()
+                raise EnergyPlusProcessError(
+                    cmd=cmd, idf=eplus_file.basename(), stderr=stderr_r
+                )
 
 
 def _log_subprocess_output(pipe, name, verbose):
@@ -1486,7 +1727,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
 
 def hash_file(eplus_file, kwargs=None):
     """Simple function to hash a file and return it as a string. Will also hash
-    the :py:func:`eppy.runner.run_functions.run()` arguments so that correct
+    the :func:`eppy.runner.run_functions.run()` arguments so that correct
     results are returned when different run arguments are used
 
     Todo:
@@ -1563,47 +1804,44 @@ def get_report(
         return None
 
 
-def get_from_cache(eplus_file, output_report="sql", output_folder=None, **kwargs):
+def get_from_cache(kwargs):
     """Retrieve a EPlus Tabulated Summary run result from the cache
 
     Args:
-        eplus_file (str): the path of the eplus file
-        output_report: 'html' or 'sql'
-        output_folder:
-        **kwargs: keyword arguments to pass to other functions.
+        kwargs (dict): Args used to create the cache name.
 
     Returns:
         dict: dict of DataFrames
     """
-    if output_folder:
-        output_folder = Path(output_folder)
-
+    output_directory = Path(kwargs.get("output_directory"))
+    output_report = kwargs.get("output_report")
+    eplus_file = next(iter(output_directory.glob("*.idf")), None)
+    if not eplus_file:
+        return None
     if settings.use_cache:
         # determine the filename by hashing the eplus_file
-        cache_filename_prefix = kwargs.pop(
-            "cache_filename", hash_file(eplus_file, kwargs)
-        )
+        cache_filename_prefix = hash_file(eplus_file, kwargs)
 
         if output_report is None:
             return None
         elif "htm" in output_report.lower():
             # Get the html report
-            if not output_folder:
-                output_folder = settings.cache_folder / cache_filename_prefix
 
             cache_fullpath_filename = (
-                output_folder / "output_data" / cache_filename_prefix + "tbl.htm"
+                output_directory / cache_filename_prefix / cache_filename_prefix
+                + "tbl.htm"
             )
             if cache_fullpath_filename.exists():
                 return get_html_report(cache_fullpath_filename)
 
         elif "sql" == output_report.lower():
             # get the SQL report
-            if not output_folder:
-                output_folder = settings.cache_folder / cache_filename_prefix
+            if not output_directory:
+                output_directory = settings.cache_folder / cache_filename_prefix
 
             cache_fullpath_filename = (
-                output_folder / "output_data" / cache_filename_prefix + "out.sql"
+                output_directory / cache_filename_prefix / cache_filename_prefix
+                + "out.sql"
             )
 
             if cache_fullpath_filename.exists():
@@ -1615,11 +1853,12 @@ def get_from_cache(eplus_file, output_report="sql", output_folder=None, **kwargs
                 )
         elif "sql_file" == output_report.lower():
             # get the SQL report
-            if not output_folder:
-                output_folder = settings.cache_folder / cache_filename_prefix
+            if not output_directory:
+                output_directory = settings.cache_folder / cache_filename_prefix
 
             cache_fullpath_filename = (
-                output_folder / "output_data" / cache_filename_prefix + "out.sql"
+                output_directory / cache_filename_prefix / cache_filename_prefix
+                + "out.sql"
             )
             if cache_fullpath_filename.exists():
                 return cache_fullpath_filename
@@ -1969,3 +2208,7 @@ def getoldiddfile(versionid):
     eplusfolder = os.path.dirname(eplus_exe)
     iddfile = "{}/bin/Energy+.idd".format(eplusfolder)
     return iddfile
+
+
+if __name__ == "__main__":
+    pass

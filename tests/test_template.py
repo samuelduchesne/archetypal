@@ -680,7 +680,7 @@ class TestOpaqueConstruction:
             construction_a:
             construction_b:
         """
-        oc_c = construction_a + construction_b
+        oc_c = construction_a.combine(construction_b, method="constant_ufactor")
         assert oc_c
         desired = 3.237
         actual = oc_c.u_value()
@@ -822,7 +822,9 @@ class TestOpaqueConstruction:
             == pytest.approx(1826285.7, 0.01)
         )
 
-        combined_mat = facebrick_and_concrete + insulated_concrete_wall
+        combined_mat = facebrick_and_concrete.combine(
+            insulated_concrete_wall, method="constant_ufactor"
+        )
         facebrick_and_concrete.area = 2
         combined_2xmat = facebrick_and_concrete + insulated_concrete_wall
         assert combined_mat.specific_heat > combined_2xmat.specific_heat
@@ -1022,16 +1024,15 @@ class TestUmiSchedule:
         # don't have the same hash.
         assert len(set(sched_list)) == 2
 
-        # 2 UmiSchedule from different idf should not have the same hash if they
-        # have different names, not be the same object, yet be equal if they have the
-        # same values
+        # 2 UmiSchedule from different idf should not have the same hash,
+        # not be the same object, yet be equal if they have the same values
         idf_2, sql_2 = other_idf
         clear_cache()
         assert idf is not idf_2
         sched_3 = UmiSchedule(Name="On", idf=idf_2)
         assert sched is not sched_3
         assert sched == sched_3
-        assert hash(sched) == hash(sched_3)
+        assert hash(sched) != hash(sched_3)
         assert id(sched) != id(sched_3)
 
 
@@ -1780,7 +1781,7 @@ class TestWindowSetting:
         window = reduce(add, allwindowtypes)
         print(window)
 
-    def test_window_add(self, small_idf):
+    def test_window_add(self, small_idf, other_idf):
         """
         Args:
             small_idf:
@@ -1788,18 +1789,21 @@ class TestWindowSetting:
         from archetypal import WindowSetting
 
         idf, sql = small_idf
+        idf2, sql2 = other_idf
         zone = idf.idfobjects["ZONE"][0]
-        iterator = iter(zone.zonesurfaces)
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
         window_1 = WindowSetting.from_surface(surface)
-        surface = next(iterator, None)
+        zone = idf2.idfobjects["ZONE"][0]
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
+        surface = next(iterator)
         window_2 = WindowSetting.from_surface(surface)
 
         new_w = window_1 + window_2
         assert new_w
         assert window_1.id != window_2.id != new_w.id
 
-    def test_window_iadd(self, small_idf):
+    def test_window_iadd(self, small_idf, other_idf):
         """
         Args:
             small_idf:
@@ -1807,11 +1811,14 @@ class TestWindowSetting:
         from archetypal import WindowSetting
 
         idf, sql = small_idf
+        idf2, sql2 = other_idf
         zone = idf.idfobjects["ZONE"][0]
-        iterator = iter(zone.zonesurfaces)
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
         window_1 = WindowSetting.from_surface(surface)
         id_ = window_1.id
+        zone = idf2.idfobjects["ZONE"][0]
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
         window_2 = WindowSetting.from_surface(surface)
 
@@ -2322,3 +2329,14 @@ class TestZoneGraph:
         H = G.perim_graph
 
         assert len(H) > 0  # assert G has at least one node
+
+
+class TestUniqueName(object):
+    def test_uniquename(self):
+        from archetypal import UniqueName
+
+        name1 = UniqueName("myname")
+        name2 = UniqueName("myname")
+
+        assert name1 != name2
+        print([name1, name2])

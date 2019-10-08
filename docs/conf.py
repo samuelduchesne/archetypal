@@ -14,6 +14,7 @@
 #
 import os
 import sys
+import datetime
 
 sys.path.insert(0, os.path.abspath("."))
 sys.path.insert(0, os.path.abspath("archetypal"))
@@ -21,7 +22,7 @@ sys.path.insert(0, os.path.abspath("archetypal"))
 # -- Project information -----------------------------------------------------
 
 project = "archetypal"
-copyright = "2018, Samuel Letellier-Duchesne"
+copyright = "{}, Samuel Letellier-Duchesne".format(datetime.datetime.now().year)
 author = "Samuel Letellier-Duchesne"
 
 # The full version, including alpha/beta/rc tags

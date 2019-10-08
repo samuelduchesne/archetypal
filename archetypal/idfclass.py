@@ -427,7 +427,11 @@ class IDF(geomeppy.IDF):
             self.removeidfobject(new_object)
             if not save:
                 return self.getobject(
-                    ep_object, kwargs.get("Variable_Name", kwargs.get("Key_Name"))
+                    ep_object,
+                    kwargs.get(
+                        "Variable_Name",
+                        kwargs.get("Key_Name", kwargs.get("Name", None)),
+                    ),
                 )
         else:
             if save:

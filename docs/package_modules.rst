@@ -91,6 +91,6 @@ Schedule Module
     :nosignatures:
     :toctree: reference/
 
-    ZoneGraph
+    Schedule
 
 

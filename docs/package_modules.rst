@@ -68,10 +68,23 @@ Classes that support the :ref:`templates_label` classes above.
     YearSchedule
     WindowType
 
-Graph module
+Graph Module
 ------------
 
 .. currentmodule:: archetypal.template
+
+.. autosummary::
+    :template: autosummary.rst
+    :nosignatures:
+    :toctree: reference/
+
+    ZoneGraph
+
+
+Schedule Module
+---------------
+
+.. currentmodule:: archetypal.schedule
 
 .. autosummary::
     :template: autosummary.rst

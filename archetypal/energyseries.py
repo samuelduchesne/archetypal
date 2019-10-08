@@ -758,6 +758,7 @@ def plot_energyseries(
     vmin=None,
     vmax=None,
     filename=None,
+    timeStepsPerPeriod=24,
     **kwargs
 ):
     """
@@ -779,6 +780,8 @@ def plot_energyseries(
         vmin (float):
         vmax (float):
         filename (str):
+        timeStepsPerPeriod (int): The number of discrete timesteps which
+            describe one period.
         **kwargs:
     """
     if energy_series.empty:
@@ -824,7 +827,7 @@ def plot_energyseries(
         if kind == "polygon":
             import tsam.timeseriesaggregation as tsam
 
-            z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=24)
+            z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=timeStepsPerPeriod)
             nrows, ncols = z.shape
 
             xs = z.columns
@@ -847,13 +850,23 @@ def plot_energyseries(
         elif kind == "surface":
             import tsam.timeseriesaggregation as tsam
 
-            z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=24)
+            z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=timeStepsPerPeriod)
             nrows, ncols = z.shape
             x = z.columns
             y = z.index.values
 
             x, y = np.meshgrid(x, y)
             _plot_surface(ax, x, y, z.values, cmap=cmap, **kwargs)
+        elif kind == "contour":
+            import tsam.timeseriesaggregation as tsam
+
+            z, _ = tsam.unstackToPeriods(profile, timeStepsPerPeriod=timeStepsPerPeriod)
+            nrows, ncols = z.shape
+            x = z.columns
+            y = z.index.values
+
+            x, y = np.meshgrid(x, y)
+            _plot_contour(ax, x, y, z.values, cmap=cmap, **kwargs)
         else:
             raise NameError('plot kind "{}" is not supported'.format(kind))
 
@@ -866,7 +879,8 @@ def plot_energyseries(
         ax.set_ylim3d(-1, nrows)
         ax.set_ylabel("Y")
         ax.set_zlim3d(vmin, vmax)
-        ax.set_zlabel("Z")
+        z_label = energy_series.name if energy_series.name is not None else "Z"
+        ax.set_zlabel(z_label)
 
         # configure axis appearance
         xaxis = ax.xaxis
@@ -1065,6 +1079,22 @@ def _plot_surface(ax, x, y, z, cmap=None, **kwargs):
         shade=False,
         **kwargs
     )
+    return surf
+
+
+def _plot_contour(ax, x, y, z, cmap=None, **kwargs):
+    """
+    Args:
+        ax:
+        x:
+        y:
+        z:
+        cmap:
+        **kwargs:
+    """
+    if cmap is None:
+        cmap = cm.gist_earth
+    surf = ax.contour3D(x, y, z, 150, cmap=cmap, **kwargs)
     return surf
 
 

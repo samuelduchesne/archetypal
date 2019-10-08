@@ -663,18 +663,14 @@ def stat_can_request(data):
             # There seems to be a double backlash in the response. We try
             # removing it here.
             try:
-                response = response.content.decode("UTF-8").replace("//", "")
-                response_json = json.loads(response)
+                response_str = response.content.decode("UTF-8").replace("//", "")
+                response_json = json.loads(response_str)
             except Exception:
-                log(
-                    "Server at {} returned status code {} and no JSON "
-                    "data.".format(domain, response.status_code),
-                    level=lg.ERROR,
-                )
+                pass
             else:
                 save_to_cache(prepared_url, response_json)
                 return response_json
-            # deal with response satus_code here
+            # deal with response status_code here
             log(
                 "Server at {} returned status code {} and no JSON "
                 "data.".format(domain, response.status_code),

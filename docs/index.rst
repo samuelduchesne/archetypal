@@ -6,9 +6,9 @@
 archetypal |version|
 ====================
 
-`archetypal` is a python package designed with the objective of helping building energy modelers maintain building
-archetypes. `archetypal` depends on `eppy`_ for EnergyPlus models and makes use of great packages such as `pandas`_
-for data structure processing and `tsam`_ for time series aggregation.
+`archetypal` is a Python package designed with the objective of helping building energy modelers and researchers
+maintain collections of building archetypes. `archetypal` depends on `eppy`_ for EnergyPlus models and makes use of
+great packages such as `pandas`_ for data structure processing and `tsam`_ for time series aggregation.
 
 .. _eppy: https://eppy.readthedocs.io/
 .. _pandas: http://pandas.pydata.org
@@ -17,14 +17,16 @@ for data structure processing and `tsam`_ for time series aggregation.
 Description
 ===========
 
-As building energy modelers ourselves, we found it was sometimes difficult to use scripting techniques to retrieve,
+As building energy modelers ourselves, we found it was sometimes difficult to use scripting language to retrieve,
 modify, simulate and analyze Building Energy Models (BEM). This is why `archetypal` was created. We built two main
-capabilities into the package: 1. The conversion of EnergyPlus to TRNBuild models (shout out to TRNSYS users!) and 2.
-the conversion of EnergyPlus to UMI Templates.
+capabilities into the package:
 
-`archetypal` offers a :ref:`Command Line Interface (CLI)<Command reference>` which means that users can execute commands
-in the terminal instead of writing a python script. Nevertheless, we believe reproducible research through Jupyter
-Notebooks, for instance, is the way foreword. Therefore, all the modules are discoverable and can be imported
+1. The conversion of EnergyPlus to `TRNBuild <http://sel.me.wisc.edu/trnsys/index.html>`_ models (shout out to TRNSYS users!)
+2. The conversion of EnergyPlus to `UMI <http://web.mit.edu/sustainabledesignlab/projects/umi/index.html>`_ Template Files.
+
+`archetypal` also features a :ref:`Command Line Interface (CLI)<Command reference>` which means that users can execute
+commands in the terminal instead of writing a python script. In addition, we believe reproducible research through
+Jupyter Notebooks, for instance, is the way foreword. Therefore, all the modules are discoverable and can be imported
 independently.
 
 .. toctree::
@@ -41,7 +43,7 @@ independently.
 
    Getting Started <first.rst>
    Convert IDF to UMI <converter_umi.rst>
-   Convert IDF to BUI <converter_idf.rst>
+   Convert IDF to BUI <converter_bui.rst>
    Tutorials <tutorials.rst>
 
 .. toctree::

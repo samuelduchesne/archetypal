@@ -28,7 +28,7 @@ offers 3 majors functionalities:
 
 1. Run, modify and analyze collections of EnergyPlus models in a persistent environment;
 2. Convert [EnergyPlus](https://energyplus.net) IDF models to [UMI Template Files](http://web.mit.edu/sustainabledesignlab/projects/umi/index.html);
-2. Convert [EnergyPlus](https://energyplus.net) IDF models to Trnsys [TrnBuild](http://www.trnsys.com/features/suite-of-tools.php) BUI Models.
+3. Convert [EnergyPlus](https://energyplus.net) IDF models to Trnsys [TrnBuild](http://www.trnsys.com/features/suite-of-tools.php) BUI Models.
  
 ## EnergyPlus Simulation Environment
 

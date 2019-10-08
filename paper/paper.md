@@ -28,24 +28,24 @@ offers 3 majors functionalities:
 
 1. Run, modify and analyze collections of EnergyPlus models in a persistent environment;
 2. Convert [EnergyPlus](https://energyplus.net) IDF models to [UMI Template Files](http://web.mit.edu/sustainabledesignlab/projects/umi/index.html);
-3. Convert [EnergyPlus](https://energyplus.net) IDF models to Trnsys [TrnBuild](http://www.trnsys.com/features/suite-of-tools.php) BUI Models.
+3. Convert [EnergyPlus](https://energyplus.net) IDF models to TRNSYS [TrnBuild](http://www.trnsys.com/features/suite-of-tools.php) BUI Models.
  
 ## EnergyPlus Simulation Environment
 
-`archetypal` is built on top of Python’s eppy [@Philip2004] and geomeppy packages to
+`archetypal` leverages the Python Eppy [@Philip2004] and GeomEppy [@Bull2016] packages to
 handle parsing and modifications of EnergyPlus files. Additional functionalities where
-developed such as a caching system as well as other class methods and properties that are
-specific to building archetype analysis. `archetypal` lets users query EnergyPlus results
-to return specific time series in a DataFrame format. For convenience, useful time series
-such as the space heating, space cooling and domestic hot water profiles are accessible by
-default. Users can also specify other output names and `archetypal` will append the IDF
-file and rerun the simulation.
+developed such as a caching system and a file upgrade system as well as other class
+methods and properties that are specific to building archetype analysis. `archetypal` lets
+users query EnergyPlus results to return specific time series in a DataFrame format. For
+convenience, useful time series such as the space heating, space cooling and domestic hot
+water profiles are accessible by default. Users can also specify other output names and
+`archetypal` will append the IDF file and rerun the simulation.
 
 Furthermore, `archetypal` features a caching method that handles simulation results. This
 is particularly useful for reproducible workflows such as the Jupyter Notebook programing
 environment. Reopening a closed notebook and running a cell containing the `run` command
-will use the cached simulation results instead of lunching EnergyPlus again. This offers a
-drastic workflow speed gain especially when larger IDF files can take several minutes to
+will use the cached simulation results instead of executing EnergyPlus again. This offers
+a drastic workflow speed gain especially when larger IDF files can take several minutes to
 complete.
 
 ## EnergyPlus to UMI Template

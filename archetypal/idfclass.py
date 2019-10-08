@@ -262,9 +262,7 @@ class IDF(geomeppy.IDF):
         """
         start_time = time.time()
         if energy_out_variable_name is None:
-            energy_out_variable_name = (
-                "WaterSystems:EnergyTransfer",
-            )
+            energy_out_variable_name = ("WaterSystems:EnergyTransfer",)
         series = self._energy_series(
             energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
         )
@@ -1079,14 +1077,12 @@ class OutputPrep:
             output_control_table_style:
         """
         outputs = [
-            (
-                {
-                    "ep_object": "OutputControl:Table:Style".upper(),
-                    "kwargs": dict(
-                        Column_Separator=output_control_table_style, save=self.save
-                    ),
-                }
-            )
+            {
+                "ep_object": "OutputControl:Table:Style".upper(),
+                "kwargs": dict(
+                    Column_Separator=output_control_table_style, save=self.save
+                ),
+            }
         ]
         prepare_outputs(self.idf, outputs=outputs, save=self.save)
         self.outputs.extend(outputs)

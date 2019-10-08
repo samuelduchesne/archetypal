@@ -47,10 +47,11 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
     # Limits
     if u_factor > 7:
         raise ValueError(
-            'The model cannot support glazing systems with a U higher than '
-            '7.0 because  the thermal resistance of the film coefficients '
-            'alone can provide this level of performance and  none of the '
-            'various resistances can be negative.')
+            "The model cannot support glazing systems with a U higher than "
+            "7.0 because  the thermal resistance of the film coefficients "
+            "alone can provide this level of performance and  none of the "
+            "various resistances can be negative."
+        )
 
     dict = {}
 
@@ -101,39 +102,44 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
     R_vis_b = r_vis_b(T_vis)
     R_vis_f = r_vis_f(T_vis)
 
+    # sanity checks
+    assert T_vis + R_vis_f <= 1.0
+    assert T_vis + R_vis_b <= 1.0
+
     # Last Step. Saving results to dict
-    dict['SolarHeatGainCoefficient'] = shgc
-    dict['UFactor'] = u_factor
-    dict['Conductivity'] = Lambda_eff
-    dict['Thickness'] = Thickness
-    dict['SolarTransmittance'] = T_sol
-    dict['SolarReflectanceFront'] = R_s_f
-    dict['SolarReflectanceBack'] = R_s_b
-    dict['IRTransmittance'] = 0.0
-    dict['VisibleTransmittance'] = T_vis
-    dict['VisibleReflectanceFront'] = R_vis_f
-    dict['VisibleReflectanceBack'] = R_vis_b
-    dict['IREmissivityFront'] = 0.84
-    dict['IREmissivityBack'] = 0.84
-    dict['DirtFactor'] = 1.0  # Clean glass
+    dict["SolarHeatGainCoefficient"] = shgc
+    dict["UFactor"] = u_factor
+    dict["Conductivity"] = Lambda_eff
+    dict["Thickness"] = Thickness
+    dict["SolarTransmittance"] = T_sol
+    dict["SolarReflectanceFront"] = R_s_f
+    dict["SolarReflectanceBack"] = R_s_b
+    dict["IRTransmittance"] = 0.0
+    dict["VisibleTransmittance"] = T_vis
+    dict["VisibleReflectanceFront"] = R_vis_f
+    dict["VisibleReflectanceBack"] = R_vis_b
+    dict["IREmissivityFront"] = 0.84
+    dict["IREmissivityBack"] = 0.84
+    dict["DirtFactor"] = 1.0  # Clean glass
 
-    dict['Cost'] = 0
-    dict['Density'] = 2500
-    dict['EmbodiedCarbon'] = 0
-    dict['EmbodiedCarbonStdDev'] = 0
-    dict['EmbodiedEnergy'] = 0
-    dict['EmbodiedEnergyStdDev'] = 0
-    dict['Life'] = 1
-    dict[
-        'SubstitutionRatePattern'] = np.NaN  # ! Might have to change to an
-    # empty array
-    dict['SubstitutionTimestep'] = 0
-    dict['TransportCarbon'] = 0
-    dict['TransportDistance'] = 0
-    dict['TransportEnergy'] = 0
-    dict['Type'] = 'Uncoated'  # TODO Further investigation necessary
+    dict["Cost"] = 0
+    dict["Density"] = 2500
+    dict["EmbodiedCarbon"] = 0
+    dict["EmbodiedCarbonStdDev"] = 0
+    dict["EmbodiedEnergy"] = 0
+    dict["EmbodiedEnergyStdDev"] = 0
+    dict["Life"] = 1
+    dict["SubstitutionRatePattern"] = [1.0]
+    dict["SubstitutionTimestep"] = 0
+    dict["TransportCarbon"] = 0
+    dict["TransportDistance"] = 0
+    dict["TransportEnergy"] = 0
+    dict["Type"] = "Uncoated"  # TODO Further investigation necessary
 
-    dict['Comments'] = 'Properties calculated from Simple Glazing System'
+    dict["Comments"] = (
+        "Properties calculated from Simple Glazing System with "
+        "SHGC={:.3f}, UFactor={:.3f} and Tvis={:.3f}".format(shgc, u_factor, T_vis)
+    )
 
     return dict
 
@@ -202,7 +208,9 @@ def r_l_w(u_factor):
             "than 7.0 because the thermal resistance "
             "of the film coefficients alone can provide this level of "
             "performance and none of the various resistances"
-            "can be negative.", lg.WARNING)
+            "can be negative.",
+            lg.WARNING,
+        )
         pass
     return (1 / u_factor) - r_i_w(u_factor) - r_o_w(u_factor)
 
@@ -278,8 +286,11 @@ def t_sol(shgc, u_factor):
 
     """
     if 3.4 <= u_factor <= 4.5:
-        return np.interp(u_factor, [3.4, 4.5], [t_sol_intermediate(shgc, 3.4),
-                                                t_sol_intermediate(shgc, 4.5)])
+        return np.interp(
+            u_factor,
+            [3.4, 4.5],
+            [t_sol_intermediate(shgc, 3.4), t_sol_intermediate(shgc, 4.5)],
+        )
     return t_sol_intermediate(shgc, u_factor)
 
 
@@ -288,13 +299,19 @@ def t_sol(shgc, u_factor):
 # region Step 5. Determine Layer Solar Reflectance
 def r_i_s_intermediate(shgc, t_sol, u_factor):
     if u_factor >= 4.5:
-        return 1 / (29.436546 * (shgc - t_sol) ** 3 - 21.943415 * (
-                shgc - t_sol) ** 2 + 9.945872 * (
-                            shgc - t_sol) + 7.426151)
+        return 1 / (
+            29.436546 * (shgc - t_sol) ** 3
+            - 21.943415 * (shgc - t_sol) ** 2
+            + 9.945872 * (shgc - t_sol)
+            + 7.426151
+        )
     if u_factor <= 3.4:
-        return 1 / (199.8208128 * (shgc - t_sol) ** 3 - 90.639733 * (
-                shgc - t_sol) ** 2 + 19.737055 * (
-                            shgc - t_sol) + 6.766575)
+        return 1 / (
+            199.8208128 * (shgc - t_sol) ** 3
+            - 90.639733 * (shgc - t_sol) ** 2
+            + 19.737055 * (shgc - t_sol)
+            + 6.766575
+        )
 
 
 def r_i_s(shgc, t_sol, u_factor):
@@ -310,9 +327,14 @@ def r_i_s(shgc, t_sol, u_factor):
 
     """
     if 3.4 <= u_factor <= 4.5:
-        return np.interp(u_factor, [3.4, 4.5],
-                         [r_i_s_intermediate(shgc, t_sol, 3.4),
-                          r_i_s_intermediate(shgc, t_sol, 4.5)])
+        return np.interp(
+            u_factor,
+            [3.4, 4.5],
+            [
+                r_i_s_intermediate(shgc, t_sol, 3.4),
+                r_i_s_intermediate(shgc, t_sol, 4.5),
+            ],
+        )
     return r_i_s_intermediate(shgc, t_sol, u_factor)
 
 
@@ -336,9 +358,14 @@ def r_o_s(shgc, t_sol, u_factor):
 
     """
     if 3.4 <= u_factor <= 4.5:
-        return np.interp(u_factor, [3.4, 4.5],
-                         [r_o_s_intermediate(shgc, t_sol, 3.4),
-                          r_o_s_intermediate(shgc, t_sol, 4.5)])
+        return np.interp(
+            u_factor,
+            [3.4, 4.5],
+            [
+                r_o_s_intermediate(shgc, t_sol, 3.4),
+                r_o_s_intermediate(shgc, t_sol, 4.5),
+            ],
+        )
     return r_o_s_intermediate(shgc, t_sol, u_factor)
 
 
@@ -410,4 +437,6 @@ def r_vis_f(t_vis):
 
     """
     return -0.0622 * t_vis ** 3 + 0.4277 * t_vis ** 2 - 0.4169 * t_vis + 0.2399
+
+
 # endregion

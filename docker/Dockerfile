@@ -39,7 +39,7 @@ ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 ENV PATH /opt/conda/bin:$PATH
 
 RUN apt-get update --fix-missing && \
-    apt-get install -y wget bzip2 ca-certificates curl git && \
+    apt-get install -y wget bzip2 ca-certificates curl git libxml2-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -73,7 +73,7 @@ RUN curl -SLO $ENERGYPLUS_DOWNLOAD_URL && \
 COPY ./trnsidf /app/trnsidf
 
 # configure conda and install packages in one RUN to keep image tidy
-RUN git clone --branch=develop --verbose https://github.com/samuelduchesne/archetypal.git && \
+RUN git clone --branch=feature/umi --verbose https://github.com/samuelduchesne/archetypal.git && \
     cd archetypal && \
     conda update -n base conda && \
     conda config --append channels conda-forge && \

@@ -1,9 +1,11 @@
 ---
-title: 'archetypal: A Python package for retrieving, constructing, simulating, converting and analysing building
- simulation templates'
+title: 'archetypal: A Python package for collecting, simulating, converting and analysing
+ building archetypes'
 tags:
   - Python
   - Building Energy Model
+  - Archetype
+  - Archetype Template
   - EnergyPlus
   - TRNSYS
 authors:
@@ -15,16 +17,19 @@ authors:
 affiliations:
  - name: Department of Mechanical Engineering, Polytechnique Montréal, Montréal, Canada
    index: 1
-date: 21 August 2019
+date: 8 October 2019
 bibliography: paper.bib
 ---
 
 # Summary
 
-`archetypal` is a Python package that helps handle building archetypes. It offers the
-possibility of converting [EnergyPlus](https://energyplus.net) IDF models to Trnsys
-[TrnBuild](http://www.trnsys.com/features/suite-of-tools.php) Models (compatible with the
-multizone building model).
+`archetypal` is a Python package that helps handle collections of building archetypes. It
+offers 2 majors functionalities:
+1. The conversion of [EnergyPlus](https://energyplus.net) IDF models to [UMI Template
+ Files](http://web.mit.edu/sustainabledesignlab/projects/umi/index.html);
+2. The conversion of [EnergyPlus](https://energyplus.net) IDF models to
+Trnsys [TrnBuild](http://www.trnsys.com/features/suite-of-tools.php) Models (compatible
+with the multizone building model).
 
 ## EnergyPlus to TRNBuild
 

@@ -99,3 +99,5 @@ tests/\.temp/
 
 tests/input_data/schedules/eprun/
 trnsidf.exe
+
+docs/reference/

@@ -6,7 +6,8 @@ env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101ea
 addons:
   apt:
     packages:
-      wine
+      - wine
+      - libgfortran3
 
 before_install:
   # install EnergyPlus
@@ -16,33 +17,34 @@ before_install:
   - ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
   - ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-$ENERGYPLUS_VERSION-$ENERGYPLUS_SHA-$PLATFORM-x86_64
   - ENERGYPLUS_DOWNLOAD_URL=$ENERGYPLUS_DOWNLOAD_BASE_URL/$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ATTCH=97/8230; fi
+  - EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/$ATTCH
   - curl -SLO $ENERGYPLUS_DOWNLOAD_URL
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+    curl -SLO $EXTRAS_DOWNLOAD_URL; fi
   
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
     sudo hdiutil attach $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     sudo installer -pkg /Volumes/$ENERGYPLUS_DOWNLOAD_FILENAME/$ENERGYPLUS_DOWNLOAD_FILENAME.pkg -target /; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
     sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-    echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi
+    echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
+    sudo tar zxvf 8230 -C /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
+    sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
+    sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles; fi
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
     sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi
   
   - sudo rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
+  - sudo rm 8230
   
   # Install python
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
-  - conda config --set always_yes yes --set show_channel_urls true
-  - conda update -n base conda
-  - conda config --prepend channels conda-forge
-  - conda create -n archetypal python=$TRAVIS_PYTHON_VERSION
-  - conda env update -n archetypal -f environment.yml --prune
-  - conda install -n archetypal --file requirements-dev.txt
-  - source activate archetypal
-  - conda info --all
+  - pip install .[dev]
 
 install:
   - python setup.py install

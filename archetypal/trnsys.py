@@ -16,19 +16,35 @@ import time
 
 import numpy as np
 import pandas as pd
+from archetypal import (
+    log,
+    settings,
+    Schedule,
+    checkStr,
+    check_unique_name,
+    angle,
+    load_idf,
+    load_idf_object_from_cache,
+    hash_file,
+)
 from geomeppy.geom.polygons import Polygon3D
+from path import Path
 from tqdm import tqdm
 
-from archetypal import log, settings, Schedule, checkStr, \
-    check_unique_name, angle, load_idf, load_idf_object_from_cache, hash_file
 
-
-def convert_idf_to_trnbuild(idf_file, window_lib=None,
-                            return_idf=False, return_b18=True,
-                            return_t3d=False, return_dck=False,
-                            output_folder=None, trnsidf_exe=None,
-                            template=None, log_clear_names=False,
-                            **kwargs):
+def convert_idf_to_trnbuild(
+    idf_file,
+    window_lib=None,
+    return_idf=False,
+    return_b18=True,
+    return_t3d=False,
+    return_dck=False,
+    output_folder=None,
+    trnsidf_exe=None,
+    template=None,
+    log_clear_names=False,
+    **kwargs
+):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
 
     There are three optional outputs:
@@ -42,7 +58,7 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
     Example:
         >>> # Exemple of setting kwargs to be unwrapped in the function
         >>> kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
-                           'tolerance': 0.05, 'ordered': True}
+        >>>                'tolerance': 0.05, 'ordered': True}
         >>> # Exemple how to call the function
         >>> idf_file = "/file.idf"
         >>> window_filepath = "/W74-lib.dat"
@@ -51,8 +67,8 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         >>>                         **kwargs_dict)
 
     Args:
-        idf_file:
-        window_lib (str): File path of the window library (from Berkeley Lab).
+        idf_file (str): path to the idf file to convert
+        window_lib (str): File path of the window library (from Berkeley Lab)
         return_idf (bool, optional): If True, also return the path to the
             modified IDF with the new names, coordinates, etc. of the IDF
             objects. It is an input file for EnergyPlus (.idf)
@@ -62,9 +78,11 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         return_dck (bool, optional): If True, also return the path to the TRNSYS
             dck file (.dck).
         output_folder (str, optional): location where output files will be
-        trnsidf_exe_dir (str): Path to *trnsidf.exe*.
+        trnsidf_exe (str): Path to *trnsidf.exe*.
         template (str): Path to d18 template file.
-        kwargs (dict): keyword arguments sent to
+        log_clear_names (bool): If True, DOES NOT log the equivalence between
+            the old and new names in the console.
+        kwargs: keyword arguments sent to
             :func:`convert_idf_to_trnbuild()` or :func:`trnbuild_idf()` or
             :func:`choose_window`. "ordered=True" to have the name of idf
             objects in the outputfile in ascendant order. See
@@ -82,61 +100,316 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
               provided if *return_dck* is True.
     """
 
-    idf_file, window_lib, output_folder, trnsidf_exe, template = \
-        _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
-                      template)
+    idf_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+        idf_file, window_lib, output_folder, trnsidf_exe, template
+    )
 
     # Check if cache exists
-    log("Loading IDF file...", lg.INFO)
-    start_time = time.time()
-    cache_filename = hash_file(idf_file)
-    idf = load_idf_object_from_cache(idf_file, how='idf')
-    if not idf:
-        # Load IDF file(s)
-        idf = load_idf(idf_file)
-        log("IDF files loaded in {:,.2f} seconds".format(
-            time.time() - start_time),
-            lg.INFO)
-        # Clean names of idf objects (e.g. 'MATERIAL')
-        log("Cleaning names of the IDF objects...", lg.INFO)
-        start_time = time.time()
-        clear_name_idf_objects(idf, log_clear_names)
-        path = os.path.join(settings.cache_folder, cache_filename,
-                            cache_filename + '.idf')
-        if not os.path.exists(os.path.dirname(path)):
-            os.makedirs(os.path.dirname(path))
-        idf.saveas(filename=path)
-        # save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
-        log("Cleaned IDF object names in {:,.2f} seconds".format(
-            time.time() - start_time), lg.INFO)
+    idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
 
     # Read IDF_T3D template and write lines in variable
     lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
     # Get objects from IDF file
-    materials = idf.idfobjects['MATERIAL']
-    materialNoMass = idf.idfobjects['MATERIAL:NOMASS']
-    materialAirGap = idf.idfobjects['MATERIAL:AIRGAP']
-    versions = idf.idfobjects['VERSION']
-    buildings = idf.idfobjects['BUILDING']
-    locations = idf.idfobjects['SITE:LOCATION']
-    globGeomRules = idf.idfobjects['GLOBALGEOMETRYRULES']
-    constructions = idf.idfobjects['CONSTRUCTION']
-    fenestrationSurfs = idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
-    buildingSurfs = idf.idfobjects['BUILDINGSURFACE:DETAILED']
-    zones = idf.idfobjects['ZONE']
-    peoples = idf.idfobjects['PEOPLE']
-    lights = idf.idfobjects['LIGHTS']
-    equipments = idf.idfobjects['ELECTRICEQUIPMENT']
+    buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
+        idf
+    )
 
     # Get all construction EXCEPT fenestration ones
+    constr_list = _get_constr_list(buildingSurfs)
+
+    # If ordered=True, ordering idf objects
+    ordered = kwargs.get("ordered", False)
+    buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones = _order_objects(
+        buildingSurfs,
+        buildings,
+        constr_list,
+        constructions,
+        equipments,
+        fenestrationSurfs,
+        globGeomRules,
+        lights,
+        locations,
+        materialAirGap,
+        materialNoMass,
+        materials,
+        peoples,
+        zones,
+        ordered,
+    )
+
+    # region Get schedules from IDF
+    schedule_names, schedules = _get_schedules(idf)
+
+    _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
+    # endregion
+
+    # Gets and removes from IDF materials with resistance lower than 0.0007
+    mat_name = _remove_low_conductivity(constructions, idf, materials)
+
+    # Write data from IDF file to T3D file
+    start_time = time.time()
+    # Write VERSION from IDF to lines (T3D)
+    _write_version(lines, versions)
+
+    # Write BUILDING from IDF to lines (T3D)
+    _write_building(buildings, lines)
+
+    # Write LOCATION and GLOBALGEOMETRYRULES from IDF to lines (T3D) and
+    # define if coordinate system is "Relative"
+    coordSys = _write_location_geomrules(globGeomRules, lines, locations)
+
+    # Determine if coordsSystem is "World" (all zones at (0,0,0))
+    coordSys = _is_coordSys_world(coordSys, zones)
+
+    # Change coordinates from relative to absolute for building surfaces
+    _change_relative_coords(buildingSurfs, coordSys, idf)
+
+    # Adds or changes adjacent surface if needed
+    _add_change_adj_surf(buildingSurfs, idf)
+    buildingSurfs = idf.idfobjects["BUILDINGSURFACE:DETAILED"]
+
+    # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf)
+    # from IDF to lines (T3D)
+
+    # Get all surfaces having Outside boundary condition with the ground.
+    # To be used to find the window's slopes
+    n_ground = _get_ground_vertex(buildingSurfs)
+
+    # Writing zones in lines
+    win_slope_dict = _write_zone_buildingSurf_fenestrationSurf(
+        buildingSurfs, coordSys, fenestrationSurfs, idf, lines, n_ground, zones
+    )
+    # endregion
+
+    # region Write CONSTRUCTION from IDF to lines (T3D)
+    _write_constructions(constr_list, idf, lines, mat_name, materials)
+    # endregion
+
+    # Write CONSTRUCTION from IDF to lines, at the end of the T3D file
+    _write_constructions_end(constr_list, idf, lines)
+
+    # region Write LAYER from IDF to lines (T3D)
+    _write_materials(lines, materialAirGap, materialNoMass, materials)
+    # endregion
+
+    # region Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
+    _write_gains(equipments, idf, lights, lines, peoples)
+    # endregion
+
+    # region Write SCHEDULES from IDF to lines (T3D)
+    _write_schedules(lines, schedule_names, schedules)
+    # endregion
+
+    # region Write WINDOWS chosen by the user (from Berkeley lab library) in
+    # lines (T3D)
+    # Get window from library
+    # window = (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
+    #                 t_vis_win, lay_win, width, window_bunches[win_id],
+    #                 and maybe tolerance)
+    log("Get windows info from window library...")
+    win_u_value = kwargs.get("u_value", 2.2)
+    win_shgc = kwargs.get("shgc", 0.64)
+    win_tvis = kwargs.get("t_vis", 0.8)
+    win_tolerance = kwargs.get("tolerance", 0.05)
+    window = choose_window(win_u_value, win_shgc, win_tvis, win_tolerance, window_lib)
+
+    # Write windows in lines
+    _write_window(lines, win_slope_dict, window)
+
+    # Write window pool in lines
+    _write_winPool(lines, window)
+    # endregion
+
+    # Save T3D file at output_folder
+    output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
+
+    log(
+        "Write data from IDF to T3D in {:,.2f} seconds".format(
+            time.time() - start_time
+        ),
+        lg.INFO,
+    )
+
+    # If asked by the user, save IDF file with modification done on the names,
+    # coordinates, etc. at
+    # output_folder
+    new_idf_path = os.path.join(output_folder, "MODIFIED_" + os.path.basename(idf_file))
+    if return_idf:
+        idf.saveas(filename=new_idf_path)
+
+    # Run trnsidf to convert T3D to BUI
+    log("Converting t3d file to bui file. Running trnsidf.exe...")
+    dck = return_dck
+    nonum = kwargs.get("nonum", False)
+    N = kwargs.get("N", False)
+    geo_floor = kwargs.get("geo_floor", 0.6)
+    refarea = kwargs.get("refarea", False)
+    volume = kwargs.get("volume", False)
+    capacitance = kwargs.get("capacitance", False)
+    trnbuild_idf(
+        t3d_path,
+        output_folder=output_folder,
+        template=template,
+        dck=dck,
+        nonum=nonum,
+        N=N,
+        geo_floor=geo_floor,
+        refarea=refarea,
+        volume=volume,
+        capacitance=capacitance,
+        trnsidf_exe=trnsidf_exe,
+    )
+
+    # Prepare return arguments
+    pre, ext = os.path.splitext(t3d_path)
+    b18_path = pre + ".b18"
+    dck_path = pre + ".dck"
+
+    from itertools import compress
+
+    return_path = tuple(
+        compress(
+            [new_idf_path, b18_path, t3d_path, dck_path],
+            [return_idf, return_b18, return_t3d, return_dck],
+        )
+    )
+    return return_path
+
+
+def _change_relative_coords(buildingSurfs, coordSys, idf):
+    if coordSys == "Relative":
+        # Add zone coordinates to X, Y, Z vectors
+        for buildingSurf in buildingSurfs:
+            surf_zone = buildingSurf.Zone_Name
+            incrX, incrY, incrZ = zone_origin(idf.getobject("ZONE", surf_zone))
+            _relative_to_absolute(buildingSurf, incrX, incrY, incrZ)
+
+
+def _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules):
+    log("Saving yearly schedules in CSV file...")
+    df_sched = pd.DataFrame()
+    for schedule_name in schedule_names:
+        df_sched[schedule_name] = schedules[schedule_name]["all values"]
+    sched_file_name = "yearly_schedules_" + os.path.basename(idf_file) + ".csv"
+    output_folder = Path(output_folder)
+    if not output_folder.exists():
+        output_folder.mkdir_p()
+    df_sched.to_csv(path_or_buf=os.path.join(output_folder, sched_file_name))
+
+
+def _get_constr_list(buildingSurfs):
     constr_list = []
     for buildingSurf in buildingSurfs:
         constr_list.append(buildingSurf.Construction_Name)
     constr_list = list(set(constr_list))
     constr_list.sort()
+    return constr_list
 
-    ordered = kwargs.get('ordered', False)
+
+def _save_t3d(idf_file, lines, output_folder):
+    """Saves T3D file
+
+    Args:
+        idf_file (str): path to the idf file to convert
+        lines (list): lines to copy in the T3D file
+        output_folder (str): path to the output folder (can be None)
+
+    Returns:
+        output_folder (str): path to the output folder
+        t3d_path (str): path to the T3D file
+
+    """
+    if output_folder is None:
+        # User did not provide an output folder path. We use the default setting
+        output_folder = os.path.relpath(settings.data_folder)
+    if not os.path.isdir(output_folder):
+        os.makedirs(output_folder)
+    t3d_path = os.path.join(output_folder, "T3D_" + os.path.basename(idf_file))
+    with open(t3d_path, "w") as converted_file:
+        for line in lines:
+            converted_file.writelines(str(line))
+    return output_folder, t3d_path
+
+
+def _remove_low_conductivity(constructions, idf, materials):
+    """Removes materials form idf with conductivity too low (0.0007 kJ/h-m-K)
+
+    Args:
+        constructions (Idf_MSequence): CONSTRUCTION object from the IDF
+        idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
+        materials (Idf_MSequence): MATERIAL object from the IDF
+
+    Returns:
+        mat_name (list): list of name of the removed materials
+
+    """
+    material_low_res = []
+    for material in materials:
+        if material.Thickness / (material.Conductivity * 3.6) < 0.0007:
+            material_low_res.append(material)
+    # Remove materials with resistance lower than 0.0007 from IDF
+    mat_name = []
+    for mat in material_low_res:
+        mat_name.append(mat.Name)
+        idf.removeidfobject(mat)
+    # Get constructions with only materials with resistance lower than 0.0007
+    construct_low_res = []
+    for i in range(0, len(constructions)):
+        if (
+            len(constructions[i].fieldvalues) == 3
+            and constructions[i].fieldvalues[2] in mat_name
+        ):
+            construct_low_res.append(constructions[i])
+    # Remove constructions with only materials with resistance lower than
+    # 0.0007 from IDF
+    for construct in construct_low_res:
+        idf.removeidfobject(construct)
+    return mat_name
+
+
+def _order_objects(
+    buildingSurfs,
+    buildings,
+    constr_list,
+    constructions,
+    equipments,
+    fenestrationSurfs,
+    globGeomRules,
+    lights,
+    locations,
+    materialAirGap,
+    materialNoMass,
+    materials,
+    peoples,
+    zones,
+    ordered=True,
+):
+    """
+
+    Args:
+        ordered:
+        materials (Idf_MSequence): MATERIAL object from the IDF
+        materialNoMass (Idf_MSequence): MATERIAL:NOMASS object from the IDF
+        materialAirGap (Idf_MSequence): MATERIAL:AIRGAP object from the IDF
+        versions (Idf_MSequence): VERSION object from the IDF
+        buildings (Idf_MSequence): BUILDING object from the IDF
+        locations (Idf_MSequence): SITE:LOCATION object from the IDF
+        globGeomRules (Idf_MSequence): GLOBALGEOMETRYRULES object from the IDF
+        constructions (Idf_MSequence): CONSTRUCTION object from the IDF
+        buildingSurfs (Idf_MSequence): BUILDINGSURFACE:DETAILED object
+            from the IDF
+        fenestrationSurfs (Idf_MSequence): FENESTRATIONSURFACE:DETAILED object
+            from the IDF
+        zones (Idf_MSequence): ZONE object from the IDF
+        peoples (Idf_MSequence): PEOPLE object from the IDF
+        lights (Idf_MSequence): LIGHTs object from the IDF
+        equipments (Idf_MSequence): EQUIPMENT object from the IDF
+
+    Returns:
+        IDF objects (see Args) with their order reversed
+
+    """
     if ordered:
         materials = list(reversed(materials))
         materialNoMass = list(reversed(materialNoMass))
@@ -152,214 +425,135 @@ def convert_idf_to_trnbuild(idf_file, window_lib=None,
         lights = list(reversed(lights))
         equipments = list(reversed(equipments))
         constr_list = list(reversed(constr_list))
+    return (
+        buildingSurfs,
+        buildings,
+        constr_list,
+        constructions,
+        equipments,
+        fenestrationSurfs,
+        globGeomRules,
+        lights,
+        locations,
+        materialAirGap,
+        materialNoMass,
+        materials,
+        peoples,
+        zones,
+    )
 
-    # region Get schedules from IDF
-    start_time = time.time()
-    log("Reading schedules from the IDF file...")
-    schedule_names, schedules = _get_schedules(idf)
 
-    log("Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO)
-    # endregion
+def _get_idf_objects(idf):
+    """Gets idf objects
 
-    # Get materials with resistance lower than 0.0007
-    material_low_res = []
-    for material in materials:
-        if material.Thickness / (
-                material.Conductivity * 3.6) < 0.0007:
-            material_low_res.append(material)
+    Args:
+        idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
 
-    # Remove materials with resistance lower than 0.0007 from IDF
-    mat_name = []
-    for mat in material_low_res:
-        mat_name.append(mat.Name)
-        idf.removeidfobject(mat)
+    Returns:
+        materials (Idf_MSequence): MATERIAL object from the IDF
+        materialNoMass (Idf_MSequence): MATERIAL:NOMASS object from the IDF
+        materialAirGap (Idf_MSequence): MATERIAL:AIRGAP object from the IDF
+        versions (Idf_MSequence): VERSION object from the IDF
+        buildings (Idf_MSequence): BUILDING object from the IDF
+        locations (Idf_MSequence): SITE:LOCATION object from the IDF
+        globGeomRules (Idf_MSequence): GLOBALGEOMETRYRULES object from the IDF
+        constructions (Idf_MSequence): CONSTRUCTION object from the IDF
+        buildingSurfs (Idf_MSequence): BUILDINGSURFACE:DETAILED object
+            from the IDF
+        fenestrationSurfs (Idf_MSequence): FENESTRATIONSURFACE:DETAILED object
+            from the IDF
+        zones (Idf_MSequence): ZONE object from the IDF
+        peoples (Idf_MSequence): PEOPLE object from the IDF
+        lights (Idf_MSequence): LIGHTs object from the IDF
+        equipments (Idf_MSequence): EQUIPMENT object from the IDF
 
-    # Get constructions with only materials with resistance lower than 0.0007
-    construct_low_res = []
-    for i in range(0, len(constructions)):
-        if len(constructions[i].fieldvalues) == 3 and \
-                constructions[i].fieldvalues[
-                    2] in mat_name:
-            construct_low_res.append(constructions[i])
-
-    # Remove constructions with only materials with resistance lower than
-    # 0.0007 from IDF
-    for construct in construct_low_res:
-        idf.removeidfobject(construct)
-
-    # Write data from IDF file to T3D file
-    start_time = time.time()
-    log("Writing data from idf file to t3d file...")
-    # Write VERSION from IDF to lines (T3D)
-    _write_version(lines, versions)
-
-    # Write BUILDING from IDF to lines (T3D)
-    log("Writing building info from idf file to t3d file...")
-    _write_building(buildings, lines)
-
-    # Write LOCATION and GLOBALGEOMETRYRULES from IDF to lines (T3D) and
-    # define if coordinate system is "Relative"
-    log("Writing location info from idf file to t3d file...")
-    coordSys = _write_location_geomrules(globGeomRules, lines, locations)
-
-    # Determine if coordsSystem is "World" (all zones at (0,0,0))
-    coordSys = _is_coordSys_world(coordSys, zones)
-
-    # Change coordinates from relative to absolute for building surfaces
-    if coordSys == 'Relative':
-        # Add zone coordinates to X, Y, Z vectors
-        for buildingSurf in buildingSurfs:
-            surf_zone = buildingSurf.Zone_Name
-            incrX, incrY, incrZ = zone_origin(idf.getobject("ZONE", surf_zone))
-            _relative_to_absolute(buildingSurf, incrX, incrY, incrZ)
-
-    # Adds or changes adjacent surface if needed
-    _add_change_adj_surf(buildingSurfs, idf)
+    """
+    materials = idf.idfobjects["MATERIAL"]
+    materialNoMass = idf.idfobjects["MATERIAL:NOMASS"]
+    materialAirGap = idf.idfobjects["MATERIAL:AIRGAP"]
+    versions = idf.idfobjects["VERSION"]
+    buildings = idf.idfobjects["BUILDING"]
+    locations = idf.idfobjects["SITE:LOCATION"]
+    globGeomRules = idf.idfobjects["GLOBALGEOMETRYRULES"]
+    constructions = idf.idfobjects["CONSTRUCTION"]
+    fenestrationSurfs = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"]
     buildingSurfs = idf.idfobjects["BUILDINGSURFACE:DETAILED"]
+    zones = idf.idfobjects["ZONE"]
+    peoples = idf.idfobjects["PEOPLE"]
+    lights = idf.idfobjects["LIGHTS"]
+    equipments = idf.idfobjects["ELECTRICEQUIPMENT"]
+    return (
+        buildingSurfs,
+        buildings,
+        constructions,
+        equipments,
+        fenestrationSurfs,
+        globGeomRules,
+        lights,
+        locations,
+        materialAirGap,
+        materialNoMass,
+        materials,
+        peoples,
+        versions,
+        zones,
+    )
 
-    # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf)
-    # from IDF to lines (T3D)
-    # Get line number where to write
-    variableDictNum = checkStr(lines,
-                               'ALL OBJECTS IN CLASS: '
-                               'OUTPUT:VARIABLEDICTIONARY')
 
-    # Get all surfaces having Outside boundary condition with the ground.
-    # To be used to find the window's slopes
-    n_ground = _get_ground_vertex(buildingSurfs)
+def _load_idf_file_and_clean_names(idf_file, log_clear_names):
+    """Load idf file from cache if cache exist and user ask for use_cache=True.
+        Moreover cleans idf object names and log in the console the equivalence
+        between the old and new names if log_clear_names=False
 
-    # Initialize list of window's slopes
-    count_slope = 0
-    win_slope_dict = {}
+    Args:
+        idf_file (str): Path to the idf file
+        log_clear_names (bool): If True, DOES NOT log the equivalence between
+            the old and new names in the console.
 
-    # Writing zones in lines
-    log("Writing geometry (zones, building and fenestration surfaces info from "
-        "idf file to t3d file...")
-    count_fs = 0
-    _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
-                                              count_slope, fenestrationSurfs,
-                                              idf, lines, n_ground,
-                                              variableDictNum, win_slope_dict,
-                                              zones)
-    # endregion
+    Returns:
+        idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
 
-    # region Write CONSTRUCTION from IDF to lines (T3D)
-    log("Writing constructions info from idf file to t3d file...")
-    _write_constructions(constr_list, idf, lines, mat_name, materials)
-    # endregion
-
-    # Write CONSTRUCTION from IDF to lines, at the end of the T3D file
-    _write_constructions_end(constr_list, idf, lines)
-
-    # region Write LAYER from IDF to lines (T3D)
-    log("Writing materials (layers) info from idf file to t3d file...")
-    _write_materials(lines, materialAirGap, materialNoMass, materials)
-    # endregion
-
-    # region Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
-    log("Writing gains info from idf file to t3d file...")
-    _write_gains(equipments, idf, lights, lines, peoples)
-    # endregion
-
-    # region Write SCHEDULES from IDF to lines (T3D)
-    log("Writing schedules info from idf file to t3d file...")
-    _write_schedules(lines, schedule_names, schedules)
-    # endregion
-
-    # region Write WINDOWS chosen by the user (from Berkeley lab library) in
-    # lines (T3D)
-    # Get window from library
-    # window = (win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol,
-    #                 t_vis_win, lay_win, width, window_bunches[win_id],
-    #                 and maybe tolerance)
-    log("Get windows info from window library...")
-    win_u_value = kwargs.get('u_value', 2.2)
-    win_shgc = kwargs.get('shgc', 0.64)
-    win_tvis = kwargs.get('t_vis', 0.8)
-    win_tolerance = kwargs.get('tolerance', 0.05)
-    window = choose_window(win_u_value, win_shgc, win_tvis, win_tolerance,
-                           window_lib)
-    # If tolerance was not respected to find a window, write in log a warning
-    if len(window) > 11:
+    """
+    log("Loading IDF file...", lg.INFO)
+    start_time = time.time()
+    cache_filename = hash_file(idf_file)
+    idf = load_idf_object_from_cache(idf_file, how="idf")
+    if not idf:
+        # Load IDF file(s)
+        idf = load_idf(idf_file)
         log(
-            "Window tolerance was not respected. Final tolerance = "
-            "{:,.2f}".format(
-                window[-1]), lg.WARNING)
-    # Write in log (info) the characteristics of the window
-    log(
-        "Characterisitics of the chosen window are: u_value = {:,.2f}, "
-        "SHGC= {:,.2f}, t_vis= {:,.2f}".format(window[3], window[4], window[7]),
-        lg.INFO)
-
-    # Write windows in lines
-    log("Writing windows info from idf file to t3d file...")
-    _write_window(lines, win_slope_dict, window)
-
-    # Write window pool in lines
-    _write_winPool(lines, window)
-    # endregion
-
-    # Save T3D file at output_folder
-    if output_folder is None:
-        # User did not provide an output folder path. We use the default setting
-        output_folder = os.path.relpath(settings.data_folder)
-
-    if not os.path.isdir(output_folder):
-        os.makedirs(output_folder)
-
-    t3d_path = os.path.join(output_folder, "T3D_" + os.path.basename(idf_file))
-    with open(t3d_path, "w") as converted_file:
-        for line in lines:
-            converted_file.writelines(str(line))
-
-    log("Write data from IDF to T3D in {:,.2f} seconds".format(
-        time.time() - start_time), lg.INFO)
-
-    # If asked by the user, save IDF file with modification done on the names,
-    # coordinates, etc. at
-    # output_folder
-    new_idf_path = os.path.join(output_folder, "MODIFIED_" +
-                                os.path.basename(idf_file))
-    if return_idf:
-        idf.saveas(filename=new_idf_path)
-
-    # Run trnsidf to convert T3D to BUI
-    log("Converting t3d file to bui file. Running trnsidf.exe...")
-    dck = return_dck
-    nonum = kwargs.get('nonum', False)
-    N = kwargs.get('N', False)
-    geo_floor = kwargs.get('geo_floor', 0.6)
-    refarea = kwargs.get('refarea', False)
-    volume = kwargs.get('volume', False)
-    capacitance = kwargs.get('capacitance', False)
-    trnbuild_idf(t3d_path, output_folder=output_folder, template=template,
-                 dck=dck, nonum=nonum, N=N, geo_floor=geo_floor,
-                 refarea=refarea, volume=volume, capacitance=capacitance,
-                 trnsidf_exe=trnsidf_exe)
-
-    # Prepare return arguments
-    pre, ext = os.path.splitext(t3d_path)
-    b18_path = pre + '.b18'
-    dck_path = pre + '.dck'
-
-    from itertools import compress
-    return_path = tuple(compress([new_idf_path, b18_path, t3d_path, dck_path],
-                                 [return_idf, return_b18, return_t3d,
-                                  return_dck]))
-    return return_path
+            "IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
+            lg.INFO,
+        )
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        log("Cleaning names of the IDF objects...", lg.INFO)
+        start_time = time.time()
+        clear_name_idf_objects(idf, log_clear_names)
+        path = os.path.join(
+            settings.cache_folder, cache_filename, cache_filename + ".idf"
+        )
+        if not os.path.exists(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
+        idf.saveas(filename=path)
+        # save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
+        log(
+            "Cleaned IDF object names in {:,.2f} seconds".format(
+                time.time() - start_time
+            ),
+            lg.INFO,
+        )
+    return idf
 
 
-def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
-                  template):
+def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe, template):
     """Ensure the files and directory are here
 
     Args:
-        idf_file:
-        window_lib:
-        output_folder:
-        trnsidf_exe:
-        template:
+        idf_file (str): path to the idf file to convert
+        window_lib (str): File path of the window library (from Berkeley Lab)
+        output_folder (str): path to the output folder (can be None)
+        trnsidf_exe (str): Path to *trnsidf.exe*.
+        template (str): Path to d18 template file.
     """
     if not os.path.isfile(idf_file):
         raise IOError("idf_file file not found")
@@ -373,18 +567,19 @@ def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe,
         if not os.path.exists(output_folder):
             os.mkdir(output_folder)
 
-    if not trnsidf_exe:
-        trnsidf_exe = os.path.join(settings.trnsys_default_folder,
-                                   r"Building\trnsIDF\trnsidf.exe")
-
-    if not os.path.isfile(trnsidf_exe):
-        raise IOError("trnsidf.exe not found")
-
     if not template:
         template = settings.path_template_d18
 
     if not os.path.isfile(template):
         raise IOError("template file not found")
+
+    if not trnsidf_exe:
+        trnsidf_exe = os.path.join(
+            settings.trnsys_default_folder, r"Building\trnsIDF\trnsidf.exe"
+        )
+
+    if not os.path.isfile(trnsidf_exe):
+        raise IOError("trnsidf.exe not found")
 
     return idf_file, window_lib, output_folder, trnsidf_exe, template
 
@@ -402,12 +597,12 @@ def _add_change_adj_surf(buildingSurfs, idf):
     adj_surfs_to_change = {}
     adj_surfs_to_make = []
     for buildingSurf in buildingSurfs:
-        if 'zone' in buildingSurf.Outside_Boundary_Condition.lower():
+        if "zone" in buildingSurf.Outside_Boundary_Condition.lower():
             # Get the surface EpBunch that is adjacent to the building surface
-            outside_bound_zone = \
-                buildingSurf.Outside_Boundary_Condition_Object
-            surfs_in_bound_zone = [surf for surf in buildingSurfs if
-                                   surf.Zone_Name == outside_bound_zone]
+            outside_bound_zone = buildingSurf.Outside_Boundary_Condition_Object
+            surfs_in_bound_zone = [
+                surf for surf in buildingSurfs if surf.Zone_Name == outside_bound_zone
+            ]
             poly_buildingSurf = Polygon3D(buildingSurf.coords)
             n_buildingSurf = poly_buildingSurf.normal_vector
             area_build = poly_buildingSurf.area
@@ -422,22 +617,15 @@ def _add_change_adj_surf(buildingSurfs, idf):
                     # Check if boundary surface already exist: sum of normal
                     # vectors must be equal to 0 AND surfaces must have the
                     # same centroid AND surfaces must have the same area
-                    if round(n_surf_bound.x + n_buildingSurf.x, 3) == 0 \
-                            and \
-                            round(n_surf_bound.y + n_buildingSurf.y, 3) == 0 \
-                            and \
-                            round(n_surf_bound.z + n_buildingSurf.z, 3) == 0 \
-                            and \
-                            round(centroid_bound.x, 3) == round(
-                        centroid_build.x, 3) \
-                            and \
-                            round(centroid_bound.y, 3) == round(
-                        centroid_build.y, 3) \
-                            and \
-                            round(centroid_bound.z, 3) == round(
-                        centroid_build.z, 3) \
-                            and \
-                            round(area_bound, 3) == round(area_build, 3):
+                    if (
+                        round(n_surf_bound.x + n_buildingSurf.x, 3) == 0
+                        and round(n_surf_bound.y + n_buildingSurf.y, 3) == 0
+                        and round(n_surf_bound.z + n_buildingSurf.z, 3) == 0
+                        and round(centroid_bound.x, 3) == round(centroid_build.x, 3)
+                        and round(centroid_bound.y, 3) == round(centroid_build.y, 3)
+                        and round(centroid_bound.z, 3) == round(centroid_build.z, 3)
+                        and round(area_bound, 3) == round(area_build, 3)
+                    ):
                         # If boundary surface exists, append the list of surface
                         # to change
                         if not surf.Name in adj_surfs_to_change:
@@ -451,20 +639,22 @@ def _add_change_adj_surf(buildingSurfs, idf):
     # If adjacent surface found, check if Outside boundary
     # condition is a Zone and not "Outdoors"
     for key, value in adj_surfs_to_change.items():
-        idf.getobject("BUILDINGSURFACE:DETAILED",
-                      value).Outside_Boundary_Condition = "Zone"
-        idf.getobject("BUILDINGSURFACE:DETAILED",
-                      value).Outside_Boundary_Condition_Object = \
-            idf.getobject("BUILDINGSURFACE:DETAILED",
-                          key).Zone_Name
-        idf.getobject("BUILDINGSURFACE:DETAILED",
-                      value).Construction_Name = \
-            idf.getobject("BUILDINGSURFACE:DETAILED",
-                          key).Construction_Name
+        idf.getobject(
+            "BUILDINGSURFACE:DETAILED", value
+        ).Outside_Boundary_Condition = "Zone"
+        idf.getobject(
+            "BUILDINGSURFACE:DETAILED", value
+        ).Outside_Boundary_Condition_Object = idf.getobject(
+            "BUILDINGSURFACE:DETAILED", key
+        ).Zone_Name
+        idf.getobject(
+            "BUILDINGSURFACE:DETAILED", value
+        ).Construction_Name = idf.getobject(
+            "BUILDINGSURFACE:DETAILED", key
+        ).Construction_Name
     # If did not find any adjacent surface
     for adj_surf_to_make in adj_surfs_to_make:
-        buildSurf = idf.getobject("BUILDINGSURFACE:DETAILED",
-                                  adj_surf_to_make)
+        buildSurf = idf.getobject("BUILDINGSURFACE:DETAILED", adj_surf_to_make)
         surf_type = buildSurf.Surface_Type
         if surf_type.lower() == "wall":
             surf_type_bound = "Wall"
@@ -475,29 +665,31 @@ def _add_change_adj_surf(buildingSurfs, idf):
         if surf_type.lower() == "roof":
             surf_type_bound = "Floor"
         # Create a new surface
-        idf.newidfobject("BUILDINGSURFACE:DETAILED",
-                         Name=buildSurf.Name + "_adj",
-                         Surface_Type=surf_type_bound,
-                         Construction_Name=buildSurf.Construction_Name,
-                         Zone_Name=buildSurf.Outside_Boundary_Condition_Object,
-                         Outside_Boundary_Condition="Zone",
-                         Outside_Boundary_Condition_Object=buildSurf.Zone_Name,
-                         Sun_Exposure="NoSun",
-                         Wind_Exposure="NoWind",
-                         View_Factor_to_Ground="autocalculate",
-                         Number_of_Vertices=buildSurf.Number_of_Vertices,
-                         Vertex_1_Xcoordinate=buildSurf.Vertex_4_Xcoordinate,
-                         Vertex_1_Ycoordinate=buildSurf.Vertex_4_Ycoordinate,
-                         Vertex_1_Zcoordinate=buildSurf.Vertex_4_Zcoordinate,
-                         Vertex_2_Xcoordinate=buildSurf.Vertex_3_Xcoordinate,
-                         Vertex_2_Ycoordinate=buildSurf.Vertex_3_Ycoordinate,
-                         Vertex_2_Zcoordinate=buildSurf.Vertex_3_Zcoordinate,
-                         Vertex_3_Xcoordinate=buildSurf.Vertex_2_Xcoordinate,
-                         Vertex_3_Ycoordinate=buildSurf.Vertex_2_Ycoordinate,
-                         Vertex_3_Zcoordinate=buildSurf.Vertex_2_Zcoordinate,
-                         Vertex_4_Xcoordinate=buildSurf.Vertex_1_Xcoordinate,
-                         Vertex_4_Ycoordinate=buildSurf.Vertex_1_Ycoordinate,
-                         Vertex_4_Zcoordinate=buildSurf.Vertex_1_Zcoordinate)
+        idf.newidfobject(
+            "BUILDINGSURFACE:DETAILED",
+            Name=buildSurf.Name + "_adj",
+            Surface_Type=surf_type_bound,
+            Construction_Name=buildSurf.Construction_Name,
+            Zone_Name=buildSurf.Outside_Boundary_Condition_Object,
+            Outside_Boundary_Condition="Zone",
+            Outside_Boundary_Condition_Object=buildSurf.Zone_Name,
+            Sun_Exposure="NoSun",
+            Wind_Exposure="NoWind",
+            View_Factor_to_Ground="autocalculate",
+            Number_of_Vertices=buildSurf.Number_of_Vertices,
+            Vertex_1_Xcoordinate=buildSurf.Vertex_4_Xcoordinate,
+            Vertex_1_Ycoordinate=buildSurf.Vertex_4_Ycoordinate,
+            Vertex_1_Zcoordinate=buildSurf.Vertex_4_Zcoordinate,
+            Vertex_2_Xcoordinate=buildSurf.Vertex_3_Xcoordinate,
+            Vertex_2_Ycoordinate=buildSurf.Vertex_3_Ycoordinate,
+            Vertex_2_Zcoordinate=buildSurf.Vertex_3_Zcoordinate,
+            Vertex_3_Xcoordinate=buildSurf.Vertex_2_Xcoordinate,
+            Vertex_3_Ycoordinate=buildSurf.Vertex_2_Ycoordinate,
+            Vertex_3_Zcoordinate=buildSurf.Vertex_2_Zcoordinate,
+            Vertex_4_Xcoordinate=buildSurf.Vertex_1_Xcoordinate,
+            Vertex_4_Ycoordinate=buildSurf.Vertex_1_Ycoordinate,
+            Vertex_4_Zcoordinate=buildSurf.Vertex_1_Zcoordinate,
+        )
 
 
 def _get_schedules(idf):
@@ -506,19 +698,30 @@ def _get_schedules(idf):
     Args:
         idf (archetypal.idfclass.IDF): IDF object
     """
+    start_time = time.time()
+    log("Reading schedules from the IDF file...")
     schedule_names = []
     used_schedules = idf.get_used_schedules(yearly_only=True)
     schedules = {}
     for schedule_name in used_schedules:
-        s = Schedule(schedule_name, idf,
-                     start_day_of_the_week=idf.day_of_week_for_start_day)
+        s = Schedule(
+            schedule_name, idf, start_day_of_the_week=idf.day_of_week_for_start_day
+        )
 
         schedule_names.append(schedule_name)
         schedules[schedule_name] = {}
         year, weeks, days = s.to_year_week_day()
-        schedules[schedule_name]['year'] = year
-        schedules[schedule_name]['weeks'] = weeks
-        schedules[schedule_name]['days'] = days
+        schedules[schedule_name]["all values"] = s.all_values
+        schedules[schedule_name]["year"] = year
+        schedules[schedule_name]["weeks"] = weeks
+        schedules[schedule_name]["days"] = days
+
+    log(
+        "Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
+            time.time() - start_time
+        ),
+        lg.INFO,
+    )
     return schedule_names, schedules
 
 
@@ -530,15 +733,15 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
     new name will be "stl_00000n" - limits length to 10 characters
 
     Args:
-        log_clear_names:
         idfFile (archetypal.idfclass.IDF): IDF object where to clean names
+        log_clear_names:
     """
 
     uniqueList = []
     old_name_list = []
 
     # For all categories of objects in the IDF file
-    for obj in tqdm(idfFile.idfobjects, desc='cleaning_names'):
+    for obj in tqdm(idfFile.idfobjects, desc="cleaning_names"):
         epObjects = idfFile.idfobjects[obj]
 
         # For all objects in Category
@@ -546,10 +749,11 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
         for epObject in epObjects:
             # Do not take fenestration, to be treated later
             try:
-                fenestration = [s for s in ['fenestration', 'shgc', 'window',
-                                            'glazing'] if
-                                s in epObject.Name.lower() or s in
-                                epObject.key.lower()]
+                fenestration = [
+                    s
+                    for s in ["fenestration", "shgc", "window", "glazing"]
+                    if s in epObject.Name.lower() or s in epObject.key.lower()
+                ]
             except:
                 fenestration = []
             if not fenestration:
@@ -561,23 +765,23 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
                     # the epObject type and an increment depending on the number
                     # of this epObject type. Making sure we
                     # have an unique new name
-                    list_word_epObject_type = re.sub(r"([A-Z])", r" \1",
-                                                     epObject.fieldvalues[
-                                                         0]).split()
+                    list_word_epObject_type = re.sub(
+                        r"([A-Z])", r" \1", epObject.fieldvalues[0]
+                    ).split()
                     # Making sure new name will be max 10 characters
                     if len(list_word_epObject_type) > 4:
                         list_word_epObject_type = list_word_epObject_type[:4]
 
-                    first_letters = ''.join(word[0].lower() for word in
-                                            list_word_epObject_type)
-                    end_count = '%06d' % count_name
-                    new_name = first_letters + '_' + end_count
+                    first_letters = "".join(
+                        word[0].lower() for word in list_word_epObject_type
+                    )
+                    end_count = "%06d" % count_name
+                    new_name = first_letters + "_" + end_count
 
                     # Make sure new name does not already exist
-                    new_name, count_name = check_unique_name(first_letters,
-                                                             count_name,
-                                                             new_name,
-                                                             uniqueList)
+                    new_name, count_name = check_unique_name(
+                        first_letters, count_name, new_name, uniqueList
+                    )
 
                     uniqueList.append(new_name)
                     old_name_list.append(old_name)
@@ -591,9 +795,12 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
 
     d = {"Old names": old_name_list, "New names": uniqueList}
     from tabulate import tabulate
+
     log_name = os.path.basename(idfFile.idfname) + "_clear_names.log"
-    log_msg = "Here is the equivalence between the old names and the new " \
-              "ones." + "\n\n" + tabulate(d, headers="keys")
+    log_msg = (
+        "Here is the equivalence between the old names and the new "
+        "ones." + "\n\n" + tabulate(d, headers="keys")
+    )
     log(log_msg, name=log_name, level=lg.INFO, avoid_console=log_clear_names)
 
 
@@ -621,8 +828,8 @@ def closest_coords(surfList, to=[0, 0, 0]):
         "to")
     """
     from scipy.spatial import cKDTree
-    size = recursive_len(
-        [buildingSurf.coords for buildingSurf in surfList])
+
+    size = recursive_len([buildingSurf.coords for buildingSurf in surfList])
     tuple_list = []
     for surf in surfList:
         for i in range(0, len(surf.coords)):
@@ -682,25 +889,24 @@ def parse_window_lib(window_file_path):
 
     # Read window library and write lines in variable
     if window_file_path is None:
-        all_lines = io.TextIOWrapper(io.BytesIO(
-            settings.template_winLib)).readlines()
+        all_lines = io.TextIOWrapper(io.BytesIO(settings.template_winLib)).readlines()
     else:
         all_lines = open(window_file_path).readlines()
 
     # Select list of windows at the end of the file
-    end = '*** END OF LIBRARY ***'
-    indice_end = [k for k, s in enumerate(all_lines) if
-                  end in s]
+    end = "*** END OF LIBRARY ***"
+    indice_end = [k for k, s in enumerate(all_lines) if end in s]
 
-    window_list = all_lines[indice_end[0] + 1:]
+    window_list = all_lines[indice_end[0] + 1 :]
 
     # Delete asterisk lines
-    asterisk = '*'
-    indices_asterisk = [k for k, line in enumerate(window_list) if
-                        asterisk in line]
-    window_list = [','.join(line.split()) for i, line in enumerate(window_list)
-                   if
-                   i not in indices_asterisk]
+    asterisk = "*"
+    indices_asterisk = [k for k, line in enumerate(window_list) if asterisk in line]
+    window_list = [
+        ",".join(line.split())
+        for i, line in enumerate(window_list)
+        if i not in indices_asterisk
+    ]
 
     # Save lines_for_df in text file
     # User did not provide an output folder path. We use the default setting
@@ -709,21 +915,31 @@ def parse_window_lib(window_file_path):
     if not os.path.isdir(data_dir):
         os.mkdir(data_dir)
 
-    with open(os.path.join(data_dir, "winPOOL.txt"),
-              "w") as converted_file:
+    with open(os.path.join(data_dir, "winPOOL.txt"), "w") as converted_file:
         for line in window_list:
-            converted_file.write(str(line) + '\n')
+            converted_file.write(str(line) + "\n")
 
-    df_windows = pd.read_csv(os.path.join(data_dir, "winPOOL.txt"),
-                             header=None)
-    columns = ['WinID', 'Description', 'Design', 'u_value', 'g_value', 'T_sol',
-               'Rf_sol', 't_vis', 'Lay', 'Width']
+    df_windows = pd.read_csv(os.path.join(data_dir, "winPOOL.txt"), header=None)
+    columns = [
+        "WinID",
+        "Description",
+        "Design",
+        "u_value",
+        "g_value",
+        "T_sol",
+        "Rf_sol",
+        "t_vis",
+        "Lay",
+        "Width",
+    ]
     df_windows.columns = columns
 
     # Select list of windows with all their characteristics (bunch)
-    bunch_delimiter = 'BERKELEY LAB WINDOW v7.4.6.0  DOE-2 Data File : Multi ' \
-                      'Band Calculation : generated with Trnsys18.std\n'
-    detailed_windows = all_lines[0:indice_end[0]]
+    bunch_delimiter = (
+        "BERKELEY LAB WINDOW v7.4.6.0  DOE-2 Data File : Multi "
+        "Band Calculation : generated with Trnsys18.std\n"
+    )
+    detailed_windows = all_lines[0 : indice_end[0]]
 
     # 1 window = 55 lines
     bunches_list = list(chunks(detailed_windows, 55))
@@ -740,11 +956,11 @@ def get_window_id(bunches):
         bunches (dict): dict with the window id as key and
             description/properties of each window as value
     """
-    id_line = 'Window ID   :'
+    id_line = "Window ID   :"
     for bunch in bunches:
         for line in bunch:
             if id_line in line:
-                _, value = line.split(':')
+                _, value = line.split(":")
                 value = int(value.strip())
                 yield value, bunch
 
@@ -757,7 +973,7 @@ def chunks(l, n):
         n (int): number of chunks we want
     """
     for i in range(0, len(l), n):
-        yield l[i:i + n]
+        yield l[i : i + n]
 
 
 def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
@@ -806,54 +1022,120 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
     df_windows, window_bunches = parse_window_lib(window_lib_path)
 
     # Find window(s) in the tolerance limit
-    cond1 = (df_windows['u_value'] <= u_value * (1 + tolerance)) & (
-            df_windows['u_value'] >= u_value * (1 - tolerance))
-    cond2 = (df_windows['g_value'] <= shgc * (1 + tolerance)) & (
-            df_windows['g_value'] >= shgc * (1 - tolerance))
-    cond3 = (df_windows['t_vis'] <= t_vis * (1 + tolerance)) & (
-            df_windows['t_vis'] >= t_vis * (1 - tolerance))
+    cond1 = (df_windows["u_value"] <= u_value * (1 + tolerance)) & (
+        df_windows["u_value"] >= u_value * (1 - tolerance)
+    )
+    cond2 = (df_windows["g_value"] <= shgc * (1 + tolerance)) & (
+        df_windows["g_value"] >= shgc * (1 - tolerance)
+    )
+    cond3 = (df_windows["t_vis"] <= t_vis * (1 + tolerance)) & (
+        df_windows["t_vis"] >= t_vis * (1 - tolerance)
+    )
 
     # Every window's IDs satisfying the tolerance
-    win_ids = df_windows.loc[(cond1 & cond2 & cond3), 'WinID']
+    win_ids = df_windows.loc[(cond1 & cond2 & cond3), "WinID"]
 
     # If nothing found, increase the tolerance
     while win_ids.empty:
         warn = 1
         tolerance += 0.01
-        cond1 = (df_windows['u_value'] <= u_value * (1 + tolerance)) & (
-                df_windows['u_value'] >= u_value * (1 - tolerance))
-        cond2 = (df_windows['g_value'] <= shgc * (1 + tolerance)) & (
-                df_windows['g_value'] >= shgc * (1 - tolerance))
-        cond3 = (df_windows['t_vis'] <= t_vis * (1 + tolerance)) & (
-                df_windows['t_vis'] >= t_vis * (1 - tolerance))
-        win_ids = df_windows.loc[(cond1 & cond2 & cond3), 'WinID']
+        cond1 = (df_windows["u_value"] <= u_value * (1 + tolerance)) & (
+            df_windows["u_value"] >= u_value * (1 - tolerance)
+        )
+        cond2 = (df_windows["g_value"] <= shgc * (1 + tolerance)) & (
+            df_windows["g_value"] >= shgc * (1 - tolerance)
+        )
+        cond3 = (df_windows["t_vis"] <= t_vis * (1 + tolerance)) & (
+            df_windows["t_vis"] >= t_vis * (1 - tolerance)
+        )
+        win_ids = df_windows.loc[(cond1 & cond2 & cond3), "WinID"]
 
     # If several windows found, get the one with the minimal square error sum.
-    best_window_index = df_windows.loc[win_ids.index, :].apply(
-        lambda x: (x.u_value - u_value) ** 2 + (x.g_value - shgc) ** 2 + (
-                x.t_vis - t_vis) ** 2, axis=1).idxmin()
-    win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win, \
-    t_vis_win, lay_win, width = \
-        df_windows.loc[
-            best_window_index, ['WinID', 'Description', 'Design', 'u_value',
-                                'g_value', 'T_sol', 'Rf_sol', 't_vis', 'Lay',
-                                'Width']]
+    best_window_index = (
+        df_windows.loc[win_ids.index, :]
+        .apply(
+            lambda x: (x.u_value - u_value) ** 2
+            + (x.g_value - shgc) ** 2
+            + (x.t_vis - t_vis) ** 2,
+            axis=1,
+        )
+        .idxmin()
+    )
+    win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win, t_vis_win, lay_win, width = df_windows.loc[
+        best_window_index,
+        [
+            "WinID",
+            "Description",
+            "Design",
+            "u_value",
+            "g_value",
+            "T_sol",
+            "Rf_sol",
+            "t_vis",
+            "Lay",
+            "Width",
+        ],
+    ]
+
+    # If tolerance was not respected to find a window, write in log a warning
+    if warn:
+        log(
+            "Window tolerance was not respected. Final tolerance = "
+            "{:,.2f}".format(tolerance),
+            lg.WARNING,
+        )
+    # Write in log (info) the characteristics of the window
+    log(
+        "Characterisitics of the chosen window are: u_value = {:,.2f}, "
+        "SHGC= {:,.2f}, t_vis= {:,.2f}".format(u_win, shgc_win, t_vis_win),
+        lg.INFO,
+    )
 
     # If warn = 1 (tolerance not respected) return tolerance
     if warn:
         return (
-            win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win,
-            t_vis_win, lay_win, width, window_bunches[win_id], tolerance)
+            win_id,
+            description,
+            design,
+            u_win,
+            shgc_win,
+            t_sol_win,
+            rf_sol_win,
+            t_vis_win,
+            lay_win,
+            width,
+            window_bunches[win_id],
+            tolerance,
+        )
     else:
         return (
-            win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win,
-            t_vis_win, lay_win, width, window_bunches[win_id])
+            win_id,
+            description,
+            design,
+            u_win,
+            shgc_win,
+            t_sol_win,
+            rf_sol_win,
+            t_vis_win,
+            lay_win,
+            width,
+            window_bunches[win_id],
+        )
 
 
-def trnbuild_idf(idf_file, output_folder=None, template=None, dck=False,
-                 nonum=False,
-                 N=False, geo_floor=0.6, refarea=False, volume=False,
-                 capacitance=False, trnsidf_exe=None):
+def trnbuild_idf(
+    idf_file,
+    output_folder=None,
+    template=None,
+    dck=False,
+    nonum=False,
+    N=False,
+    geo_floor=0.6,
+    refarea=False,
+    volume=False,
+    capacitance=False,
+    trnsidf_exe=None,
+):
     """This program sorts and renumbers the IDF file and writes a B18 file based
     on the geometric information of the IDF file and the template D18 file. In
     addition, an template DCK file can be generated.
@@ -871,20 +1153,20 @@ def trnbuild_idf(idf_file, output_folder=None, template=None, dck=False,
         >>>              r"Building\\trnsIDF\\NewFileTemplate.d18"
 
     Args:
-        output_folder:
         idf_file (str): path/filename.idf
+        output_folder (str, optional): location where output files will be
         template (str): path/NewFileTemplate.d18
         dck (bool): If True, create a template DCK
         nonum (bool, optional): If True, no renumeration of surfaces
         N (optional): BatchJob Modus
         geo_floor (float, optional): generates GEOSURF values for distributing
-            direct solar radiation where `geo_floor` % is directed to the floor, the rest
-            to walls/windows. Default = 0.6
+            direct solar radiation where `geo_floor` % is directed to the floor,
+            the rest to walls/windows. Default = 0.6
         refarea (bool, optional): If True, floor reference area of airnodes is
             updated
         volume (bool, True): If True, volume of airnodes is updated
         capacitance (bool, True): If True, capacitance of airnodes is updated
-        trnidf_exe_dir (str): Path of the trnsidf.exe executable
+        trnsidf_exe (str): Path of the trnsidf.exe executable
 
     Returns:
         str: status
@@ -895,8 +1177,9 @@ def trnbuild_idf(idf_file, output_folder=None, template=None, dck=False,
     """
     # assert files
     if not trnsidf_exe:
-        trnsidf_exe = os.path.join(settings.trnsys_default_folder,
-                                   r"Building\trnsIDF\trnsidf.exe")
+        trnsidf_exe = os.path.join(
+            settings.trnsys_default_folder, r"Building\trnsIDF\trnsidf.exe"
+        )
 
     if not os.path.isfile(trnsidf_exe):
         raise IOError("trnsidf.exe not found")
@@ -921,57 +1204,55 @@ def trnbuild_idf(idf_file, output_folder=None, template=None, dck=False,
 
     # Continue
     args = locals().copy()
-    idf = os.path.abspath(args.pop('idf_file'))
-    template = os.path.abspath(args.pop('template'))
-    trnsysidf_exe = os.path.abspath(args.pop('trnsidf_exe'))
+    idf = os.path.abspath(args.pop("idf_file"))
+    template = os.path.abspath(args.pop("template"))
+    trnsysidf_exe = os.path.abspath(args.pop("trnsidf_exe"))
 
     if not os.path.isfile(idf) or not os.path.isfile(template):
         raise FileNotFoundError()
 
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         cmd = [trnsysidf_exe]
     else:
-        cmd = ['wine', trnsysidf_exe]
+        cmd = ["wine", trnsysidf_exe]
     cmd.extend([idf])
     cmd.extend([template])
     for arg in args:
         if args[arg]:
             if isinstance(args[arg], bool):
-                args[arg] = ''
+                args[arg] = ""
             if args[arg] != "":
-                cmd.extend(['/{}={}'.format(arg, args[arg])])
+                cmd.extend(["/{}={}".format(arg, args[arg])])
             else:
-                cmd.extend(['/{}'.format(arg)])
+                cmd.extend(["/{}".format(arg)])
 
     try:
         # execute the command
-        log('Running cmd: {}'.format(cmd), lg.DEBUG)
-        command_line_process = subprocess.Popen(cmd,
-                                                stdout=subprocess.PIPE,
-                                                stderr=subprocess.STDOUT)
+        log("Running cmd: {}".format(cmd), lg.DEBUG)
+        command_line_process = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
         process_output, _ = command_line_process.communicate()
         # process_output is now a string, not a file
-        log(process_output.decode('utf-8'), lg.DEBUG)
+        log(process_output.decode("utf-8"), lg.DEBUG)
     except subprocess.CalledProcessError as exception:
-        log('Exception occured: ' + str(exception), lg.ERROR)
-        log('Trnsidf.exe failed', lg.ERROR)
+        log("Exception occured: " + str(exception), lg.ERROR)
+        log("Trnsidf.exe failed", lg.ERROR)
         return False
     else:
         # Send trnsidf log to logger
         pre, ext = os.path.splitext(idf)
-        log_file = pre + '.log'
+        log_file = pre + ".log"
         if os.path.isfile(log_file):
-            with open(log_file, 'r') as f:
+            with open(log_file, "r") as f:
                 log(f.read(), lg.DEBUG)
 
         return True
 
 
-def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
-                                              count_slope, fenestrationSurfs,
-                                              idf, lines, n_ground,
-                                              variableDictNum, win_slope_dict,
-                                              zones):
+def _write_zone_buildingSurf_fenestrationSurf(
+    buildingSurfs, coordSys, fenestrationSurfs, idf, lines, n_ground, zones
+):
     """Does several actions on the zones, fenestration and building surfaces.
     Then, writes zone, fenestration and building surfaces information in lines.
 
@@ -1006,8 +1287,6 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
         buildingSurfs (idf_MSequence): IDF object from idf.idfobjects(). List of
             building surfaces ("BUILDINGSURFACE:DETAILED" in the IDF).
         coordSys (str): Coordinate system of the IDF file. Can be 'Absolute'
-        count_fs (int): Count of the number of fenestration surfaces.
-        count_slope (int): Count of the different window's slopes
         fenestrationSurfs (idf_MSequence): IDF object from idf.idfobjects().
             List of fenestration surfaces ("FENESTRATIONSURFACE:DETAILED" in the
             IDF).
@@ -1015,16 +1294,24 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
         n_ground (Vector 3D): Normal vector of the ground surface
-        variableDictNum (int): Line number where to write the zones,
-            fenestration and building surfaces
-        win_slope_dict (dict): Dictionary with window's names as key and
-            window's slope as value
         zones (idf_MSequence): IDF object from idf.idfobjects(). List of zones
             ("ZONES" in the IDF).
     """
+    # Get line number where to write
+    variableDictNum = checkStr(
+        lines, "ALL OBJECTS IN CLASS: " "OUTPUT:VARIABLEDICTIONARY"
+    )
+    # Initialize list of window's slopes
+    count_slope = 0
+    win_slope_dict = {}
+    log(
+        "Writing geometry (zones, building and fenestration surfaces info from "
+        "idf file to t3d file..."
+    )
+    count_fs = 0
     for zone in zones:
         zone.Direction_of_Relative_North = 0.0
-        if zone.Multiplier == '':
+        if zone.Multiplier == "":
             zone.Multiplier = 1
         # Coords of zone
         incrX, incrY, incrZ = zone_origin(zone)
@@ -1032,17 +1319,18 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
         # Writing fenestrationSurface:Detailed in lines
         for fenestrationSurf in fenestrationSurfs:
             surfName = fenestrationSurf.Building_Surface_Name
-            if idf.getobject("BUILDINGSURFACE:DETAILED",
-                             surfName).Zone_Name == zone.Name:
+            if (
+                idf.getobject("BUILDINGSURFACE:DETAILED", surfName).Zone_Name
+                == zone.Name
+            ):
                 count_fs += 1
                 # Clear fenestrationSurface:Detailed name
-                fenestrationSurf.Name = 'fsd_' + '%06d' % count_fs
+                fenestrationSurf.Name = "fsd_" + "%06d" % count_fs
                 # Insure right number of vertices
-                fenestrationSurf.Number_of_Vertices = len(
-                    fenestrationSurf.coords)
+                fenestrationSurf.Number_of_Vertices = len(fenestrationSurf.coords)
 
                 # Change coordinates from relative to absolute
-                if coordSys == 'Relative':
+                if coordSys == "Relative":
                     # Add zone coordinates to X, Y, Z vectors to fenestration
                     # surface
                     _relative_to_absolute(fenestrationSurf, incrX, incrY, incrZ)
@@ -1066,15 +1354,17 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
                     count_slope += 1
                     # Insure right construction name
                     fenestrationSurf.Construction_Name = "EXT_WINDOW{}".format(
-                        count_slope)
+                        count_slope
+                    )
                     # Append win_slope_dict
-                    win_slope_dict[
-                        fenestrationSurf.Construction_Name] = win_slope
+                    win_slope_dict[fenestrationSurf.Construction_Name] = win_slope
 
                 else:
-                    fenestrationSurf.Construction_Name = \
-                        [key for key in win_slope_dict.keys() if
-                         win_slope == win_slope_dict[key]][0]
+                    fenestrationSurf.Construction_Name = [
+                        key
+                        for key in win_slope_dict.keys()
+                        if win_slope == win_slope_dict[key]
+                    ][0]
 
                 lines.insert(variableDictNum + 2, fenestrationSurf)
 
@@ -1083,37 +1373,43 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
         for buildingSurf in buildingSurfs:
             # Change Outside Boundary Condition and Objects
             if buildingSurf.Zone_Name == zone.Name:
-                buildingSurf.Number_of_Vertices = len(
-                    buildingSurf.coords)
+                buildingSurf.Number_of_Vertices = len(buildingSurf.coords)
                 surfList.append(buildingSurf)
                 # Verify if surface is adjacent. If yes, modifies it
-                if 'surface' in buildingSurf.Outside_Boundary_Condition.lower():
+                if "surface" in buildingSurf.Outside_Boundary_Condition.lower():
                     _modify_adj_surface(buildingSurf, idf)
 
-                if 'ground' in buildingSurf.Outside_Boundary_Condition.lower():
-                    buildingSurf.Outside_Boundary_Condition_Object = \
+                if "ground" in buildingSurf.Outside_Boundary_Condition.lower():
+                    buildingSurf.Outside_Boundary_Condition_Object = (
                         "BOUNDARY=INPUT 1*TGROUND"
+                    )
 
-                if 'adiabatic' in \
-                        buildingSurf.Outside_Boundary_Condition.lower():
-                    buildingSurf.Outside_Boundary_Condition = \
-                        "OtherSideCoefficients"
-                    buildingSurf.Outside_Boundary_Condition_Object = \
+                if "adiabatic" in buildingSurf.Outside_Boundary_Condition.lower():
+                    buildingSurf.Outside_Boundary_Condition = "OtherSideCoefficients"
+                    buildingSurf.Outside_Boundary_Condition_Object = (
                         "BOUNDARY=IDENTICAL"
+                    )
 
-                if 'othersidecoefficients' in \
-                        buildingSurf.Outside_Boundary_Condition.lower():
-                    buildingSurf.Outside_Boundary_Condition = \
-                        "OtherSideCoefficients"
-                    buildingSurf.Outside_Boundary_Condition_Object = \
+                if (
+                    "othersidecoefficients"
+                    in buildingSurf.Outside_Boundary_Condition.lower()
+                ):
+                    buildingSurf.Outside_Boundary_Condition = "OtherSideCoefficients"
+                    buildingSurf.Outside_Boundary_Condition_Object = (
                         "BOUNDARY=INPUT 1*TBOUNDARY"
+                    )
 
-                if 'othersideconditionsmodel' in \
-                        buildingSurf.Outside_Boundary_Condition.lower():
-                    msg = 'Surface {"buildSurfName"} has ' \
-                          '"OtherSideConditionsModel" as an outside ' \
-                          'boundary condition, this method is not implemented'.format(
-                        buildSurfName=buildingSurf.Name)
+                if (
+                    "othersideconditionsmodel"
+                    in buildingSurf.Outside_Boundary_Condition.lower()
+                ):
+                    msg = (
+                        'Surface "{}" has '
+                        '"OtherSideConditionsModel" as an outside '
+                        "boundary condition, this method is not implemented".format(
+                            buildingSurf.Name
+                        )
+                    )
                     raise NotImplementedError(msg)
 
                 # Round vertex to 4 decimal digit max
@@ -1125,9 +1421,10 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
                 lines.insert(variableDictNum + 2, buildingSurf)
 
         # Change coordinates from world (all zones to 0) to absolute
-        if coordSys == 'World':
+        if coordSys == "World":
             zone.X_Origin, zone.Y_Origin, zone.Z_Origin = closest_coords(
-                surfList, to=zone_origin(zone))
+                surfList, to=zone_origin(zone)
+            )
 
         # Round vertex to 4 decimal digit max
         zone.X_Origin = round(zone.X_Origin, 4)
@@ -1135,6 +1432,7 @@ def _write_zone_buildingSurf_fenestrationSurf(buildingSurfs, coordSys, count_fs,
         zone.Z_Origin = round(zone.Z_Origin, 4)
 
         lines.insert(variableDictNum + 2, zone)
+    return win_slope_dict
 
 
 def _modify_adj_surface(buildingSurf, idf):
@@ -1151,53 +1449,52 @@ def _modify_adj_surface(buildingSurf, idf):
     outside_bound_surf = buildingSurf.Outside_Boundary_Condition_Object
     # If outside_bound_surf is the same surface as buildingSurf, raises error
     if outside_bound_surf == buildingSurf.Name:
-        msg = 'The IDF file "{idfname}" could not be converted. The problem ' \
-              'comes from adjacent surfaces that have themselves as an ' \
-              'Outside Boundary Condition Object. For example, surf_1 has ' \
-              '"Surface" as Outside Boundary Condition, but the Outside ' \
-              'Boundary Condition Object is surf_1 too. This comes from the ' \
-              'EnergyPlus IDF. Here it is surface ' \
-              '"{surfname}" that have "{outside_bound}" as Outside ' \
-              'Boundary Condition Object.'.format(
-            idfname=os.path.basename(
-                idf.idfname), surfname=buildingSurf.Name,
-            outside_bound=outside_bound_surf)
-        raise NotImplementedError(msg)
+        buildingSurf.Outside_Boundary_Condition = "OtherSideCoefficients"
+        buildingSurf.Outside_Boundary_Condition_Object = "BOUNDARY=IDENTICAL"
+        # Prevents the user in the log of the change of the Boumdary Conditions
+        msg = (
+            'Surface "{surfname}" has "{outside_bound}" as Outside '
+            "Boundary Condition Object (adjacent to itself). To solve this "
+            "problem, we forced the Boundary Condition of this surface to "
+            'be "IDENTICAL".'.format(
+                surfname=buildingSurf.Name, outside_bound=outside_bound_surf
+            )
+        )
+        log(msg, lg.WARNING)
     else:
         # Replace the Outside_Boundary_Condition_Object that was the
         # outside_bound_surf, by the adjacent zone name
         buildingSurf.Outside_Boundary_Condition_Object = idf.getobject(
-            'ZONE', idf.getobject('BUILDINGSURFACE:DETAILED',
-                                  outside_bound_surf).Zone_Name).Name
+            "ZONE",
+            idf.getobject("BUILDINGSURFACE:DETAILED", outside_bound_surf).Zone_Name,
+        ).Name
         # Force same construction for adjacent surfaces
         buildingSurf.Construction_Name = idf.getobject(
-            'BUILDINGSURFACE:DETAILED',
-            outside_bound_surf).Construction_Name
+            "BUILDINGSURFACE:DETAILED", outside_bound_surf
+        ).Construction_Name
         # Polygon from vector's adjacent surfaces
         poly1 = Polygon3D(buildingSurf.coords)
-        poly2 = Polygon3D(idf.getobject('BUILDINGSURFACE:DETAILED',
-                                        outside_bound_surf).coords)
+        poly2 = Polygon3D(
+            idf.getobject("BUILDINGSURFACE:DETAILED", outside_bound_surf).coords
+        )
         # Normal vectors of each polygon
         n1 = poly1.normal_vector
         n2 = poly2.normal_vector
         # Verify if normal vectors of adjacent surfaces have
         # opposite directions
-        if round((n1 + n2).x, 2) != 0 or round((n1 + n2).y,
-                                               2) != 0 or round(
-            (n1 + n2).z, 2) != 0:
+        if (
+            round((n1 + n2).x, 2) != 0
+            or round((n1 + n2).y, 2) != 0
+            or round((n1 + n2).z, 2) != 0
+        ):
             # If not, inverse vertice of buildingSurf
             # (Vertex4 become Vertex1, Vertex2 become Vertex3, etc.)
-            _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf,
-                                   'BUILDINGSURFACE:DETAILED')
-
-    a = idf.getobject(
-        'BUILDINGSURFACE:DETAILED',
-        outside_bound_surf)
-    b = 1
+            _inverse_vertices_surf(
+                buildingSurf, idf, outside_bound_surf, "BUILDINGSURFACE:DETAILED"
+            )
 
 
-def _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf,
-                           idfobject_key):
+def _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf, idfobject_key):
     """Inverses the vertices of a surface (last vertex becomes the first one,
     etc.)
 
@@ -1209,24 +1506,18 @@ def _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf,
         idfobject_key (str): Section name of the IDF where to find the
             outside_bound_surf
     """
-    for j, k in zip(range(1, len(
-            buildingSurf.coords) + 1), range(
-        len(buildingSurf.coords), 0, -1)):
-        idf.getobject(idfobject_key,
-                      outside_bound_surf)[
-            "Vertex_" + str(j) + "_Xcoordinate"] \
-            = buildingSurf[
-            "Vertex_" + str(k) + "_Xcoordinate"]
-        idf.getobject(idfobject_key,
-                      outside_bound_surf)[
-            "Vertex_" + str(j) + "_Ycoordinate"] \
-            = buildingSurf[
-            "Vertex_" + str(k) + "_Ycoordinate"]
-        idf.getobject(idfobject_key,
-                      outside_bound_surf)[
-            "Vertex_" + str(j) + "_Zcoordinate"] \
-            = buildingSurf[
-            "Vertex_" + str(k) + "_Zcoordinate"]
+    for j, k in zip(
+        range(1, len(buildingSurf.coords) + 1), range(len(buildingSurf.coords), 0, -1)
+    ):
+        idf.getobject(idfobject_key, outside_bound_surf)[
+            "Vertex_" + str(j) + "_Xcoordinate"
+        ] = buildingSurf["Vertex_" + str(k) + "_Xcoordinate"]
+        idf.getobject(idfobject_key, outside_bound_surf)[
+            "Vertex_" + str(j) + "_Ycoordinate"
+        ] = buildingSurf["Vertex_" + str(k) + "_Ycoordinate"]
+        idf.getobject(idfobject_key, outside_bound_surf)[
+            "Vertex_" + str(j) + "_Zcoordinate"
+        ] = buildingSurf["Vertex_" + str(k) + "_Zcoordinate"]
 
 
 def _round_vertex(surface, nbr_decimal=4):
@@ -1236,20 +1527,16 @@ def _round_vertex(surface, nbr_decimal=4):
         surface (EpBunch): Surface object to which we want to round its vertices
         nbr_decimal (int): Number of decimal to round
     """
-    for j in range(1, len(
-            surface.coords) + 1):
-        surface["Vertex_" + str(j) + "_Xcoordinate"] \
-            = \
-            round(surface[
-                      "Vertex_" + str(j) + "_Xcoordinate"], nbr_decimal)
-        surface["Vertex_" + str(j) + "_Ycoordinate"] \
-            = \
-            round(surface[
-                      "Vertex_" + str(j) + "_Ycoordinate"], nbr_decimal)
-        surface["Vertex_" + str(j) + "_Zcoordinate"] \
-            = \
-            round(surface[
-                      "Vertex_" + str(j) + "_Zcoordinate"], nbr_decimal)
+    for j in range(1, len(surface.coords) + 1):
+        surface["Vertex_" + str(j) + "_Xcoordinate"] = round(
+            surface["Vertex_" + str(j) + "_Xcoordinate"], nbr_decimal
+        )
+        surface["Vertex_" + str(j) + "_Ycoordinate"] = round(
+            surface["Vertex_" + str(j) + "_Ycoordinate"], nbr_decimal
+        )
+        surface["Vertex_" + str(j) + "_Zcoordinate"] = round(
+            surface["Vertex_" + str(j) + "_Zcoordinate"], nbr_decimal
+        )
 
 
 def _relative_to_absolute(surface, incrX, incrY, incrZ):
@@ -1262,20 +1549,16 @@ def _relative_to_absolute(surface, incrX, incrY, incrZ):
         incrY (str): Y coordinate of the surface's zone
         incrZ (str): Z coordinate of the surface's zone
     """
-    for j in range(1, len(
-            surface.coords) + 1):
-        surface["Vertex_" + str(j) + "_Xcoordinate"] \
-            = \
-            surface[
-                "Vertex_" + str(j) + "_Xcoordinate"] + incrX
-        surface["Vertex_" + str(j) + "_Ycoordinate"] \
-            = \
-            surface[
-                "Vertex_" + str(j) + "_Ycoordinate"] + incrY
-        surface["Vertex_" + str(j) + "_Zcoordinate"] \
-            = \
-            surface[
-                "Vertex_" + str(j) + "_Zcoordinate"] + incrZ
+    for j in range(1, len(surface.coords) + 1):
+        surface["Vertex_" + str(j) + "_Xcoordinate"] = (
+            surface["Vertex_" + str(j) + "_Xcoordinate"] + incrX
+        )
+        surface["Vertex_" + str(j) + "_Ycoordinate"] = (
+            surface["Vertex_" + str(j) + "_Ycoordinate"] + incrY
+        )
+        surface["Vertex_" + str(j) + "_Zcoordinate"] = (
+            surface["Vertex_" + str(j) + "_Zcoordinate"] + incrZ
+        )
 
 
 def _write_winPool(lines, window):
@@ -1287,21 +1570,37 @@ def _write_winPool(lines, window):
         window (tuple): Information to write in the window pool extension (
     """
     # Get line number to write the EXTENSION_WINPOOL
-    extWinpoolNum = checkStr(lines,
-                             '!-_EXTENSION_WINPOOL_START_')
+    extWinpoolNum = checkStr(lines, "!-_EXTENSION_WINPOOL_START_")
     count = 0
     for line in window[10]:
-        lines.insert(extWinpoolNum + count, '!-' + line)
+        lines.insert(extWinpoolNum + count, "!-" + line)
         count += 1
     # Get line number to write the Window description
-    winDescriptionNum = checkStr(lines,
-                                 'WinID Description')
-    lines.insert(winDescriptionNum + 1,
-                 '!-' + str(window[0]) + ' ' + str(window[1])
-                 + ' ' + str(window[2]) + ' ' + str(window[3]) + ' ' +
-                 str(window[4]) + ' ' + str(window[5]) + ' ' + str(window[6]) +
-                 ' ' + str(window[7]) + ' ' + str(window[8]) + ' ' + str(
-                     window[9]) + '\n')
+    winDescriptionNum = checkStr(lines, "WinID Description")
+    lines.insert(
+        winDescriptionNum + 1,
+        "!-"
+        + str(window[0])
+        + " "
+        + str(window[1])
+        + " "
+        + str(window[2])
+        + " "
+        + str(window[3])
+        + " "
+        + str(window[4])
+        + " "
+        + str(window[5])
+        + " "
+        + str(window[6])
+        + " "
+        + str(window[7])
+        + " "
+        + str(window[8])
+        + " "
+        + str(window[9])
+        + "\n",
+    )
 
 
 def _write_window(lines, win_slope_dict, window):
@@ -1314,37 +1613,37 @@ def _write_window(lines, win_slope_dict, window):
             window's slope as value
         window (tuple): Information to write in the window pool extension (
     """
+    log("Writing windows info from idf file to t3d file...")
     # Get line number where to write
-    windowNum = checkStr(lines,
-                         'W i n d o w s')
+    windowNum = checkStr(lines, "W i n d o w s")
     # Write
     for key in win_slope_dict.keys():
-        lines.insert(windowNum + 1, "WINDOW " + str(key) + '\n')
-        lines.insert(windowNum + 2,
-                     '!- WINID = ' + str(window[0]) +
-                     ': HINSIDE = 11:'
-                     ' HOUTSIDE = 64: SLOPE '
-                     '= ' + str(win_slope_dict[key]) +
-                     ': '
-                     'SPACID = 4: WWID = 0.77: '
-                     'WHEIG = 1.08: '
-                     'FFRAME = 0.15: UFRAME = '
-                     '8.17: ABSFRAME = 0.6: '
-                     'RISHADE = 0: RESHADE = 0: '
-                     'REFLISHADE = 0.5: '
-                     'REFLOSHADE = 0.5: CCISHADE '
-                     '= 0.5: '
-                     'EPSFRAME = 0.9: EPSISHADE '
-                     '= 0.9: '
-                     'ITSHADECLOSE = INPUT 1 * '
-                     'SHADE_CLOSE: '
-                     'ITSHADEOPEN = INPUT 1 * '
-                     'SHADE_OPEN: '
-                     'FLOWTOAIRNODE = 1: PERT = '
-                     '0: PENRT = 0: '
-                     'RADMATERIAL = undefined: '
-                     'RADMATERIAL_SHD1 = '
-                     'undefined' + '\n')
+        lines.insert(windowNum + 1, "WINDOW " + str(key) + "\n")
+        lines.insert(
+            windowNum + 2,
+            "!- WINID = " + str(window[0]) + ": HINSIDE = 11:"
+            " HOUTSIDE = 64: SLOPE "
+            "= " + str(win_slope_dict[key]) + ": "
+            "SPACID = 4: WWID = 0.77: "
+            "WHEIG = 1.08: "
+            "FFRAME = 0.15: UFRAME = "
+            "8.17: ABSFRAME = 0.6: "
+            "RISHADE = 0: RESHADE = 0: "
+            "REFLISHADE = 0.5: "
+            "REFLOSHADE = 0.5: CCISHADE "
+            "= 0.5: "
+            "EPSFRAME = 0.9: EPSISHADE "
+            "= 0.9: "
+            "ITSHADECLOSE = INPUT 1 * "
+            "SHADE_CLOSE: "
+            "ITSHADEOPEN = INPUT 1 * "
+            "SHADE_OPEN: "
+            "FLOWTOAIRNODE = 1: PERT = "
+            "0: PENRT = 0: "
+            "RADMATERIAL = undefined: "
+            "RADMATERIAL_SHD1 = "
+            "undefined" + "\n",
+        )
 
 
 def _write_schedules(lines, schedule_names, schedules):
@@ -1356,40 +1655,56 @@ def _write_schedules(lines, schedule_names, schedules):
         schedule_names (list): Names of all the schedules to be written in lines
         schedules (dict): Dictionary with the schedule names as key and with
     """
+    log("Writing schedules info from idf file to t3d file...")
     # Get line number where to write
-    scheduleNum = checkStr(lines, 'S c h e d u l e s')
+    scheduleNum = checkStr(lines, "S c h e d u l e s")
     hour_list = list(range(25))
     week_list = list(range(1, 8))
     # Write schedules DAY and WEEK in lines
     for schedule_name in schedule_names:
-        for period in ['weeks', 'days']:
+        for period in ["weeks", "days"]:
             for i in range(0, len(schedules[schedule_name][period])):
 
-                lines.insert(scheduleNum + 1,
-                             '!-SCHEDULE ' + schedules[schedule_name][period][
-                                 i].Name + '\n')
+                lines.insert(
+                    scheduleNum + 1,
+                    "!-SCHEDULE " + schedules[schedule_name][period][i].Name + "\n",
+                )
 
-                if period == 'days':
-                    lines.insert(scheduleNum + 2,
-                                 '!- HOURS= ' + " ".join(
-                                     str(item) for item in hour_list) + '\n')
+                if period == "days":
+                    lines.insert(
+                        scheduleNum + 2,
+                        "!- HOURS= " + " ".join(str(item) for item in hour_list) + "\n",
+                    )
 
-                    lines.insert(scheduleNum + 3,
-                                 '!- VALUES= ' + " ".join(
-                                     str(item) for item in
-                                     schedules[schedule_name][period][
-                                         i].fieldvalues[3:]) + '\n')
+                    lines.insert(
+                        scheduleNum + 3,
+                        "!- VALUES= "
+                        + " ".join(
+                            str(item)
+                            for item in schedules[schedule_name][period][i].fieldvalues[
+                                3:
+                            ]
+                        )
+                        + "\n",
+                    )
 
-                if period == 'weeks':
-                    lines.insert(scheduleNum + 2,
-                                 '!- DAYS= ' + " ".join(
-                                     str(item) for item in week_list) + '\n')
+                if period == "weeks":
+                    lines.insert(
+                        scheduleNum + 2,
+                        "!- DAYS= " + " ".join(str(item) for item in week_list) + "\n",
+                    )
 
-                    lines.insert(scheduleNum + 3,
-                                 '!- VALUES= ' + " ".join(
-                                     str(item) for item in
-                                     rotate(schedules[schedule_name][period][
-                                                i].fieldvalues[2:9], 1)) + '\n')
+                    lines.insert(
+                        scheduleNum + 3,
+                        "!- VALUES= "
+                        + " ".join(
+                            str(item)
+                            for item in rotate(
+                                schedules[schedule_name][period][i].fieldvalues[2:9], 1
+                            )
+                        )
+                        + "\n",
+                    )
 
 
 def _write_gains(equipments, idf, lights, lines, peoples):
@@ -1405,8 +1720,9 @@ def _write_gains(equipments, idf, lights, lines, peoples):
             TRNBuild). To be appended (insert) here
         peoples (idf_MSequence): IDF object from idf.idfobjects()
     """
+    log("Writing gains info from idf file to t3d file...")
     # Get line number where to write
-    gainNum = checkStr(lines, 'G a i n s')
+    gainNum = checkStr(lines, "G a i n s")
     # Writing PEOPLE gains infos to lines
     _write_people_gain(gainNum, idf, lines, peoples)
     # Writing LIGHT gains infos to lines
@@ -1433,8 +1749,8 @@ def _write_equipment_gain(equipments, gainNum, lines):
                 power = round(float(equipments[i].Design_Level), 4)
             except Exception:
                 log(
-                    "Could not find the Light Power Density in the IDF file",
-                    lg.WARNING)
+                    "Could not find the Light Power Density in the IDF file", lg.WARNING
+                )
                 continue
         elif equipments[i].Design_Level_Calculation_Method == "Watts/Area":
             areaMethod = "AREA_RELATED"
@@ -1442,14 +1758,15 @@ def _write_equipment_gain(equipments, gainNum, lines):
                 power = round(float(equipments[i].Watts_per_Zone_Floor_Area), 4)
             except Exception:
                 log(
-                    "Could not find the Light Power Density in the IDF file",
-                    lg.WARNING)
+                    "Could not find the Light Power Density in the IDF file", lg.WARNING
+                )
                 continue
         else:
             log(
                 "Could not find the Equipment Power Density, cause depend on "
                 "the number of peoples (Watts/Person)",
-                lg.WARNING)
+                lg.WARNING,
+            )
             continue
 
         # Find the radiant fractions
@@ -1464,13 +1781,17 @@ def _write_equipment_gain(equipments, gainNum, lines):
             radFract = float(radFract)
 
         # Write gain from equipment in lines
-        lines.insert(gainNum + 1,
-                     'GAIN EQUIPMENT' + '_' + equipments[i].Name + '\n')
-        lines.insert(gainNum + 2, ' CONVECTIVE=' + \
-                     str(round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + \
-                     str(round(power * radFract, 3)) + \
-                     ' : HUMIDITY=0 : ELPOWERFRAC=1 : ' + \
-                     areaMethod + ' : CATEGORY=LIGHTS\n')
+        lines.insert(gainNum + 1, "GAIN EQUIPMENT" + "_" + equipments[i].Name + "\n")
+        lines.insert(
+            gainNum + 2,
+            " CONVECTIVE="
+            + str(round(power * (1 - radFract), 3))
+            + " : RADIATIVE="
+            + str(round(power * radFract, 3))
+            + " : HUMIDITY=0 : ELPOWERFRAC=1 : "
+            + areaMethod
+            + " : CATEGORY=LIGHTS\n",
+        )
 
 
 def _write_light_gain(gainNum, lights, lines):
@@ -1491,8 +1812,8 @@ def _write_light_gain(gainNum, lights, lines):
                 power = round(float(lights[i].Lighting_Level), 4)
             except Exception:
                 log(
-                    "Could not find the Light Power Density in the IDF file",
-                    lg.WARNING)
+                    "Could not find the Light Power Density in the IDF file", lg.WARNING
+                )
                 continue
         elif lights[i].Design_Level_Calculation_Method == "Watts/Area":
             areaMethod = "AREA_RELATED"
@@ -1500,14 +1821,15 @@ def _write_light_gain(gainNum, lights, lines):
                 power = round(float(lights[i].Watts_per_Zone_Floor_Area), 4)
             except Exception:
                 log(
-                    "Could not find the Light Power Density in the IDF file",
-                    lg.WARNING)
+                    "Could not find the Light Power Density in the IDF file", lg.WARNING
+                )
                 continue
         else:
             log(
                 "Could not find the Light Power Density, cause depend on the "
                 "number of peoples (Watts/Person)",
-                lg.WARNING)
+                lg.WARNING,
+            )
             continue
 
         # Find the radiant fractions
@@ -1522,12 +1844,17 @@ def _write_light_gain(gainNum, lights, lines):
             radFract = float(radFract)
 
         # Write gain from light in lines
-        lines.insert(gainNum + 1,
-                     'GAIN LIGHT' + '_' + lights[i].Name + '\n')
-        lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
-            round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + str(
-            round(power * radFract, 3)) + ' : HUMIDITY=0 : ELPOWERFRAC=1 : '
-                     + areaMethod + ' : CATEGORY=LIGHTS\n')
+        lines.insert(gainNum + 1, "GAIN LIGHT" + "_" + lights[i].Name + "\n")
+        lines.insert(
+            gainNum + 2,
+            " CONVECTIVE="
+            + str(round(power * (1 - radFract), 3))
+            + " : RADIATIVE="
+            + str(round(power * radFract, 3))
+            + " : HUMIDITY=0 : ELPOWERFRAC=1 : "
+            + areaMethod
+            + " : CATEGORY=LIGHTS\n",
+        )
 
 
 def _write_people_gain(gainNum, idf, lines, peoples):
@@ -1541,8 +1868,7 @@ def _write_people_gain(gainNum, idf, lines, peoples):
     """
     for i in range(0, len(peoples)):
         # Write gain name in lines
-        lines.insert(gainNum + 1,
-                     'GAIN PEOPLE' + '_' + peoples[i].Name + '\n')
+        lines.insert(gainNum + 1, "GAIN PEOPLE" + "_" + peoples[i].Name + "\n")
         # Determine if gain is absolute or relative and write it into lines
         if peoples[i].Number_of_People_Calculation_Method == "People":
             areaMethod = "ABSOLUTE"
@@ -1560,14 +1886,18 @@ def _write_people_gain(gainNum, idf, lines, peoples):
             radFract = float(radFract)
 
         # Find the the total power of the people gain
-        power = Schedule(sch_name=peoples[i].Activity_Level_Schedule_Name,
-                         idf=idf).max
+        power = Schedule(Name=peoples[i].Activity_Level_Schedule_Name, idf=idf).max
         # Write gain characteristics into lines
-        lines.insert(gainNum + 2, ' CONVECTIVE=' + str(
-            round(power * (1 - radFract), 3)) + ' : RADIATIVE=' + str(
-            round(power * radFract, 3)) + ' : HUMIDITY=0.066 : ELPOWERFRAC=0 '
-                                          ': ' + areaMethod + ' : '
-                                                              'CATEGORY=PEOPLE\n')
+        lines.insert(
+            gainNum + 2,
+            " CONVECTIVE="
+            + str(round(power * (1 - radFract), 3))
+            + " : RADIATIVE="
+            + str(round(power * radFract, 3))
+            + " : HUMIDITY=0.066 : ELPOWERFRAC=0 "
+            ": " + areaMethod + " : "
+            "CATEGORY=PEOPLE\n",
+        )
 
 
 def _write_materials(lines, materialAirGap, materialNoMass, materials):
@@ -1581,8 +1911,9 @@ def _write_materials(lines, materialAirGap, materialNoMass, materials):
         materials (idf_MSequence): IDF object from idf.idfobjects(). List of
             materials ("MATERIAL" in the IDF)
     """
+    log("Writing materials (layers) info from idf file to t3d file...")
     # Get line number where to write
-    layerNum = checkStr(lines, 'L a y e r s')
+    layerNum = checkStr(lines, "L a y e r s")
     listLayerName = []
     # Writing MATERIAL infos to lines
     _write_material(layerNum, lines, listLayerName, materials)
@@ -1605,13 +1936,15 @@ def _write_material_airgap(layerNum, lines, listLayerName, materialAirGap):
 
         duplicate = [s for s in listLayerName if s == materialAirGap[i].Name]
         if not duplicate:
-            lines.insert(layerNum + 1,
-                         '!-LAYER ' + materialAirGap[i].Name + '\n')
+            lines.insert(layerNum + 1, "!-LAYER " + materialAirGap[i].Name + "\n")
             listLayerName.append(materialAirGap[i].Name)
 
-            lines.insert(layerNum + 2, '!- RESISTANCE=' + str(
-                round(materialAirGap[i].Thermal_Resistance / 3.6, 4)) +
-                         ' : PERT= 0 : PENRT= 0\n')
+            lines.insert(
+                layerNum + 2,
+                "!- RESISTANCE="
+                + str(round(materialAirGap[i].Thermal_Resistance / 3.6, 4))
+                + " : PERT= 0 : PENRT= 0\n",
+            )
         else:
             continue
 
@@ -1629,13 +1962,15 @@ def _write_material_nomass(layerNum, lines, listLayerName, materialNoMass):
 
         duplicate = [s for s in listLayerName if s == materialNoMass[i].Name]
         if not duplicate:
-            lines.insert(layerNum + 1,
-                         '!-LAYER ' + materialNoMass[i].Name + '\n')
+            lines.insert(layerNum + 1, "!-LAYER " + materialNoMass[i].Name + "\n")
             listLayerName.append(materialNoMass[i].Name)
 
-            lines.insert(layerNum + 2, '!- RESISTANCE=' + str(
-                round(materialNoMass[i].Thermal_Resistance / 3.6, 4)) +
-                         ' : PERT= 0 : PENRT= 0\n')
+            lines.insert(
+                layerNum + 2,
+                "!- RESISTANCE="
+                + str(round(materialNoMass[i].Thermal_Resistance / 3.6, 4))
+                + " : PERT= 0 : PENRT= 0\n",
+            )
         else:
             continue
 
@@ -1651,15 +1986,19 @@ def _write_material(layerNum, lines, listLayerName, materials):
             materials ("MATERIAL" in the IDF)
     """
     for i in range(0, len(materials)):
-        lines.insert(layerNum + 1, '!-LAYER ' + materials[i].Name + '\n')
+        lines.insert(layerNum + 1, "!-LAYER " + materials[i].Name + "\n")
         listLayerName.append(materials[i].Name)
 
-        lines.insert(layerNum + 2, '!- CONDUCTIVITY=' + str(
-            round(materials[i].Conductivity * 3.6, 4)) +
-                     ' : CAPACITY= ' + str(
-            round(materials[i].Specific_Heat / 1000, 4)) + ' : DENSITY= ' +
-                     str(round(materials[i].Density,
-                               4)) + ' : PERT= 0 : PENRT= 0\n')
+        lines.insert(
+            layerNum + 2,
+            "!- CONDUCTIVITY="
+            + str(round(materials[i].Conductivity * 3.6, 4))
+            + " : CAPACITY= "
+            + str(round(materials[i].Specific_Heat / 1000, 4))
+            + " : DENSITY= "
+            + str(round(materials[i].Density, 4))
+            + " : PERT= 0 : PENRT= 0\n",
+        )
 
 
 def _write_constructions_end(constr_list, idf, lines):
@@ -1672,8 +2011,7 @@ def _write_constructions_end(constr_list, idf, lines):
             TRNBuild). To be appended (insert) here
     """
     # Get line number where to write
-    constructionEndNum = checkStr(lines,
-                                  'ALL OBJECTS IN CLASS: CONSTRUCTION')
+    constructionEndNum = checkStr(lines, "ALL OBJECTS IN CLASS: CONSTRUCTION")
     # Writing CONSTRUCTION infos to lines
     for constr in constr_list:
         construction = idf.getobject("CONSTRUCTION", constr)
@@ -1692,13 +2030,13 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials):
         materials (idf_MSequence): IDF object from idf.idfobjects(). List of
             materials ("MATERIAL" in the IDF)
     """
+    log("Writing constructions info from idf file to t3d file...")
     # Get line number where to write
-    constructionNum = checkStr(lines, 'C O N S T R U C T I O N')
+    constructionNum = checkStr(lines, "C O N S T R U C T I O N")
     # Writing CONSTRUCTION in lines
     for constr in constr_list:
         construction = idf.getobject("CONSTRUCTION", constr)
-        lines.insert(constructionNum + 1,
-                     '!-CONSTRUCTION ' + construction.Name + '\n')
+        lines.insert(constructionNum + 1, "!-CONSTRUCTION " + construction.Name + "\n")
 
         # Create lists to append with layers and thickness of construction
         layerList = []
@@ -1708,37 +2046,40 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials):
 
             if construction.fieldvalues[j] not in mat_name:
 
-                indiceMat = [k for k, s in enumerate(materials) if
-                             construction.fieldvalues[j] == s.Name]
+                indiceMat = [
+                    k
+                    for k, s in enumerate(materials)
+                    if construction.fieldvalues[j] == s.Name
+                ]
 
                 if not indiceMat:
                     thickList.append(0.0)
                 else:
-                    thickList.append(
-                        round(materials[indiceMat[0]].Thickness, 4))
+                    thickList.append(round(materials[indiceMat[0]].Thickness, 4))
 
                 layerList.append(construction.fieldvalues[j])
 
             else:
                 continue
 
-        lines.insert(constructionNum + 2, '!- LAYERS = ' + " ".join(
-            str(item) for item in layerList[::-1]) + '\n')
-        lines.insert(constructionNum + 3, '!- THICKNESS= ' + " ".join(
-            str(item) for item in thickList[::-1]) + '\n')
-        lines.insert(constructionNum + 4,
-                     '!- ABS-FRONT= 0.4   : ABS-BACK= 0.5\n')
-        lines.insert(constructionNum + 5,
-                     '!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n')
+        lines.insert(
+            constructionNum + 2,
+            "!- LAYERS = " + " ".join(str(item) for item in layerList[::-1]) + "\n",
+        )
+        lines.insert(
+            constructionNum + 3,
+            "!- THICKNESS= " + " ".join(str(item) for item in thickList[::-1]) + "\n",
+        )
+        lines.insert(constructionNum + 4, "!- ABS-FRONT= 0.4   : ABS-BACK= 0.5\n")
+        lines.insert(constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n")
 
-        basement = [s for s in ['basement', 'floor'] if
-                    s in construction.fieldvalues[1].lower()]
+        basement = [
+            s for s in ["basement", "floor"] if s in construction.fieldvalues[1].lower()
+        ]
         if not basement:
-            lines.insert(constructionNum + 6,
-                         '!- HFRONT   = 11 : HBACK= 64\n')
+            lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 64\n")
         else:
-            lines.insert(constructionNum + 6,
-                         '!- HFRONT   = 11 : HBACK= 0\n')
+            lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 0\n")
 
 
 def _get_ground_vertex(buildingSurfs):
@@ -1748,8 +2089,11 @@ def _get_ground_vertex(buildingSurfs):
         buildingSurfs (idf_MSequence): IDF object from idf.idfobjects(). List of
             building surfaces ("BUILDINGSURFACE:DETAILED" in the IDF).
     """
-    ground_surfs = [buildingSurf for buildingSurf in buildingSurfs if
-                    buildingSurf.Outside_Boundary_Condition.lower() == 'ground']
+    ground_surfs = [
+        buildingSurf
+        for buildingSurf in buildingSurfs
+        if buildingSurf.Outside_Boundary_Condition.lower() == "ground"
+    ]
     if ground_surfs:
         ground = ground_surfs[0].coords
     else:
@@ -1780,8 +2124,14 @@ def _is_coordSys_world(coordSys, zones):
         Y_zones.append(y)
         Z_zones.append(z)
     # If 2 zones have same coords and are equal to 0 -> coordSys = "World"
-    if X_zones == Y_zones and X_zones == Z_zones and Y_zones == Z_zones and \
-            X_zones[0] == 0 and Y_zones[0] == 0 and Z_zones[0] == 0:
+    if (
+        X_zones == Y_zones
+        and X_zones == Z_zones
+        and Y_zones == Z_zones
+        and X_zones[0] == 0
+        and Y_zones[0] == 0
+        and Z_zones[0] == 0
+    ):
         coordSys = "World"
     return coordSys
 
@@ -1799,23 +2149,21 @@ def _write_location_geomrules(globGeomRules, lines, locations):
             should be only one location.
     """
     # Get line number where to write
-    locationNum = checkStr(lines,
-                           'ALL OBJECTS IN CLASS: LOCATION')
+    log("Writing location info from idf file to t3d file...")
+    locationNum = checkStr(lines, "ALL OBJECTS IN CLASS: LOCATION")
     # Writing GLOBALGEOMETRYRULES infos to lines
     for globGeomRule in globGeomRules:
         # Change Geometric rules from Relative to Absolute
         coordSys = "Absolute"
-        if globGeomRule.Coordinate_System == 'Relative':
+        if globGeomRule.Coordinate_System == "Relative":
             coordSys = "Relative"
-            globGeomRule.Coordinate_System = 'Absolute'
+            globGeomRule.Coordinate_System = "Absolute"
 
-        if globGeomRule.Daylighting_Reference_Point_Coordinate_System == \
-                'Relative':
-            globGeomRule.Daylighting_Reference_Point_Coordinate_System = \
-                'Absolute'
+        if globGeomRule.Daylighting_Reference_Point_Coordinate_System == "Relative":
+            globGeomRule.Daylighting_Reference_Point_Coordinate_System = "Absolute"
 
-        if globGeomRule.Rectangular_Surface_Coordinate_System == 'Relative':
-            globGeomRule.Rectangular_Surface_Coordinate_System = 'Absolute'
+        if globGeomRule.Rectangular_Surface_Coordinate_System == "Relative":
+            globGeomRule.Rectangular_Surface_Coordinate_System = "Absolute"
 
         lines.insert(locationNum, globGeomRule)
     # Writing LOCATION infos to lines
@@ -1832,8 +2180,8 @@ def _write_building(buildings, lines):
             TRNBuild). To be appended (insert) here
     """
     # Get line number where to write
-    buildingNum = checkStr(lines,
-                           'ALL OBJECTS IN CLASS: BUILDING')
+    log("Writing building info from idf file to t3d file...")
+    buildingNum = checkStr(lines, "ALL OBJECTS IN CLASS: BUILDING")
     # Writing BUILDING infos to lines
     for building in buildings:
         lines.insert(buildingNum, building)
@@ -1849,10 +2197,11 @@ def _write_version(lines, versions):
             only one version.
     """
     # Get line number where to write
-    versionNum = checkStr(lines,
-                          'ALL OBJECTS IN CLASS: VERSION')
+    log("Writing data from idf file to t3d file...")
+    versionNum = checkStr(lines, "ALL OBJECTS IN CLASS: VERSION")
     # Writing VERSION infos to lines
     for i in range(0, len(versions)):
-        lines.insert(versionNum,
-                     ",".join(str(item) for item in versions[i].fieldvalues)
-                     + ';' + '\n')
+        lines.insert(
+            versionNum,
+            ",".join(str(item) for item in versions[i].fieldvalues) + ";" + "\n",
+        )

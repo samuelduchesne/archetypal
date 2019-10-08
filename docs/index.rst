@@ -3,12 +3,31 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to archetypal's documentation!
-======================================
+archetypal |version|
+====================
 
-archetypal is a python module that can reduce EnergyPlus reference building models from a complex definition (multiple
-zones) to a 2-zone model. This complexity-decution is particularly usefull for umi, the Urban Modeling Interface
-developed by the MIT Sustainable Design Lab.
+`archetypal` is a Python package designed with the objective of helping building energy modelers and researchers
+maintain collections of building archetypes. `archetypal` depends on `eppy`_ for EnergyPlus models and makes use of
+great packages such as `pandas`_ for data structure processing and `tsam`_ for time series aggregation.
+
+.. _eppy: https://eppy.readthedocs.io/
+.. _pandas: http://pandas.pydata.org
+.. _tsam: https://github.com/FZJ-IEK3-VSA/tsam
+
+Description
+===========
+
+As building energy modelers ourselves, we found it was sometimes difficult to use scripting language to retrieve,
+modify, simulate and analyze Building Energy Models (BEM). This is why `archetypal` was created. We built two main
+capabilities into the package:
+
+1. The conversion of EnergyPlus to `TRNBuild <http://sel.me.wisc.edu/trnsys/index.html>`_ models (shout out to TRNSYS users!)
+2. The conversion of EnergyPlus to `UMI <http://web.mit.edu/sustainabledesignlab/projects/umi/index.html>`_ Template Files.
+
+`archetypal` also features a :ref:`Command Line Interface (CLI)<Command reference>` which means that users can execute
+commands in the terminal instead of writing a python script. In addition, we believe reproducible research through
+Jupyter Notebooks, for instance, is the way foreword. Therefore, all the modules are discoverable and can be imported
+independently.
 
 .. toctree::
    :maxdepth: 1
@@ -19,19 +38,20 @@ developed by the MIT Sustainable Design Lab.
 
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: User Guide
 
    Getting Started <first.rst>
-   Schedules <schedules.rst>
-   Convert IDF to BUI <converter_idf.rst>
+   Convert IDF to UMI <converter_umi.rst>
+   Convert IDF to BUI <converter_bui.rst>
+   Tutorials <tutorials.rst>
 
 .. toctree::
    :maxdepth: 1
    :caption: Reference Guide
 
    commands
-   Package Modules <package_modules.rst>
+   package_modules
 
 
 Indices and tables

@@ -1,3 +1,4 @@
+networkx
 shapely
 geomeppy
 matplotlib>=2.1
@@ -7,10 +8,14 @@ requests>=2.18
 pycountry
 scikit-learn
 scipy
-pandas>=0.21
+pandas>=0.24
 pyomo
 numpy>=1.13
 tqdm
 tabulate
+path.py
+tsam
+pint
 click
 outdated
+path.py

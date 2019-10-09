@@ -71,7 +71,7 @@ Editor](https://github.com/MITSustainableDesignLab/basilisk).
 ## EnergyPlus to TRNBuild Conversion
 
 Intermodel comparison methods are important in the field of building energy modelling
-because they allow model methodologies and results to be reviewed [Judkoff1995 ].
+because they allow model methodologies and results to be reviewed [@Judkoff1995].
 Furthermore, some model engines include features that others don't already implement.
 Since it can be long and error-prone to create archetype buildings by hand, converting
 EnergyPlus models to TrnBuild models emerged as a way of speeding both the intermodel

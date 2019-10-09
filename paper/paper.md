@@ -1,5 +1,5 @@
 ---
-title: 'archetypal: A Python package for collecting, simulating, converting and analysing
+title: 'archetypal: A Python package for collecting, simulating, converting and analyzing
  building archetypes'
 tags:
   - Python
@@ -23,22 +23,20 @@ bibliography: paper.bib
 
 # Summary
 
-
-
-The field of Urban Building Energy Modeling, which assesses the energy performance of
+The field of Urban Building Energy Modelling, which assesses the energy performance of
 buildings in cities relies on advanced physical models known as Building Energy Models
 (BEM) or simply, building archetypes. *archetypal* is a Python package that helps handle
-collections of such archetypes developed on the EnergyPlus model architecture. It offers 3
-majors capabilities:
+collections of such archetypes developed on the EnergyPlus model architecture. It offers three
+major capabilities:
 
 1. Run, modify and analyze collections of EnergyPlus models in a persistent environment;
 2. Convert [EnergyPlus](https://energyplus.net) models to [UMI Template Files](http://web.mit.edu/sustainabledesignlab/projects/umi/index.html);
-3. Convert [EnergyPlus](https://energyplus.net) models to TRNSYS [TrnBuild](http://www.trnsys.com/features/suite-of-tools.php) BUI Models.
+3. Convert [EnergyPlus](https://energyplus.net) models to TRNSYS [TrnBuild](http://www.trnsys.com/features/suite-of-tools.php) Models.
  
 ## EnergyPlus Simulation Environment
 
 *archetypal* leverages the Python Eppy [@Philip2004] and GeomEppy [@Bull2016] packages to
-handle parsing and modifications of EnergyPlus files. Additional functionalities where
+handle parsing and modifications of EnergyPlus files. Additional functionalities were
 developed such as a caching system and a file upgrade system as well as other class
 methods and properties that are specific to building archetype analysis. *archetypal* lets
 users query EnergyPlus results to return specific time series in a DataFrame format. For
@@ -47,10 +45,10 @@ water profiles are accessible by default. Users can also specify other output na
 *archetypal* will append the IDF file and rerun the simulation.
 
 Furthermore, *archetypal* features a caching method that handles simulation results. This
-is particularly useful for reproducible workflows such as the Jupyter Notebook programing
+is particularly useful for reproducible workflows such as the Jupyter Notebook programming
 environment. Reopening a closed notebook and running a cell containing the `run_eplus`
 command will use the cached simulation results instead of executing EnergyPlus again. This
-offers a drastic workflow speed gain especially when larger IDF files can take several
+offers a drastic workflow speed gain, especially when larger IDF files can take several
 minutes to complete.
 
 ## EnergyPlus to UMI Template File Conversion
@@ -72,10 +70,10 @@ Editor](https://github.com/MITSustainableDesignLab/basilisk).
 
 ## EnergyPlus to TRNBuild Conversion
 
-Intermodel comparison methods are important in the field of building energy modeling
+Intermodel comparison methods are important in the field of building energy modelling
 because they allow model methodologies and results to be reviewed [Judkoff1995 ].
 Furthermore, some model engines include features that others don't already implement.
-Since, it can be long and error-prone to create archetype buildings by hand, converting
+Since it can be long and error-prone to create archetype buildings by hand, converting
 EnergyPlus models to TrnBuild models emerged as a way of speeding both the intermodel
 comparisons and the supplemental model creation. That is to say, a large repository of
 prototype building models exists in the literature with a large majority developed in the

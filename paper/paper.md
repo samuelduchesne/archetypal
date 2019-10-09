@@ -64,11 +64,11 @@ templates. This approach introduces a robust method to convert detailed multi-zo
 to archetype templates, striped of geometric properties. Consequently, *archetypal* offers
 researchers and designers a way of more quickly creating UBEM studies.
 
-![Archetypal converts a multizone EnergyPlus model to an UMI Template File by combining core and perimeter zones](../docs/images/model_complexity_reduction@3x.png)
-
 *archetypal* also aims at providing a scripting language for the modification UMI Template
 Files. It essentially is a Python interface to the data format of the [UMI Template
 Editor](https://github.com/MITSustainableDesignLab/basilisk).
+
+![Archetypal converts a multizone EnergyPlus model to an UMI Template File by combining core and perimeter zones](../docs/images/model_complexity_reduction@3x.png)
 
 ## EnergyPlus to TRNBuild Conversion
 

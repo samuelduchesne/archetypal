@@ -544,7 +544,7 @@ class IDF(geomeppy.IDF):
                     for fieldvalue in object.fieldvalues:
                         try:
                             if (
-                                fieldvalue in all_schedules
+                                fieldvalue.upper() in all_schedules.keys()
                                 and fieldvalue not in used_schedules
                             ):
                                 used_schedules.append(fieldvalue)

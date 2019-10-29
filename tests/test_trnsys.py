@@ -337,10 +337,7 @@ def test_trnbuild_from_idf_parallel(config, trnbuild_file):
 
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
-    in_dict = {
-        os.path.basename(file): dict(idf_file=file)
-        for file in files
-    }
+    in_dict = {os.path.basename(file): dict(idf_file=file) for file in files}
 
     result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
 

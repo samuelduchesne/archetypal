@@ -698,7 +698,7 @@ def piecewise(data):
     return y
 
 
-def checkStr(datafile, string):
+def checkStr(datafile, string, begin_line=0):
     """Find the last occurrence of a string and return its line number
 
     Returns: the list index containing the string
@@ -709,6 +709,7 @@ def checkStr(datafile, string):
     """
     value = []
     count = 0
+    datafile =  datafile[begin_line:]
     for line in datafile:
         count = count + 1
         match = re.search(string, str(line))

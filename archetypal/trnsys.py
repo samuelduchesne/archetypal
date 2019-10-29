@@ -26,6 +26,7 @@ from archetypal import (
     load_idf,
     load_idf_object_from_cache,
     hash_file,
+    run_eplus,
 )
 from geomeppy.geom.polygons import Polygon3D
 from path import Path
@@ -43,6 +44,7 @@ def convert_idf_to_trnbuild(
     trnsidf_exe=None,
     template=None,
     log_clear_names=False,
+    weather_file=None,
     **kwargs
 ):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
@@ -82,6 +84,8 @@ def convert_idf_to_trnbuild(
         template (str): Path to d18 template file.
         log_clear_names (bool): If True, DOES NOT log the equivalence between
             the old and new names in the console.
+        weather_file (epw file): To run EnergyPlus simulation and be able to modify
+            b18 file
         kwargs: keyword arguments sent to
             :func:`convert_idf_to_trnbuild()` or :func:`trnbuild_idf()` or
             :func:`choose_window`. "ordered=True" to have the name of idf
@@ -274,7 +278,60 @@ def convert_idf_to_trnbuild(
             [return_idf, return_b18, return_t3d, return_dck],
         )
     )
+
+    # Adds infiltration to b18 file
+    infilt_to_b18(b18_path, idf_file, weather_file)
+
+    #
+
+    b = 1
     return return_path
+
+
+def infilt_to_b18(b18_path, idf_file, weather_file):
+    if weather_file == None:
+        print(
+            "Infiltration could not be added to B18. "
+            "Please add a weather_file in the inputs if you want to set "
+            "the infiltration in the b18 file"
+        )
+    else:
+        key = idf_file.basename().stripext()
+        res = {
+            key: run_eplus(
+                idf_file,
+                weather_file,
+                output_directory=None,
+                ep_version=None,
+                output_report="htm",
+                prep_outputs=True,
+                design_day=True,
+            )
+        }
+
+        mean_infilt = round(
+            np.average(
+                res[key]["ZoneInfiltration Airflow Stats Nominal"][
+                    "ACH - Air Changes per Hour"
+                ].values,
+                weights=res[key]["ZoneInfiltration Airflow Stats Nominal"][
+                    "Zone Floor Area {m2}"
+                ].values,
+            ),
+            3,
+        )
+
+        with open(b18_path) as b18_file:
+            b18_lines = b18_file.readlines()
+
+        log("Writing infiltration info from idf file to b18 file...")
+        # Get line number where to write
+        infiltNum = checkStr(b18_lines, "I n f i l t r a t i o n")
+        # Write
+        b18_lines.insert(infiltNum + 1, "INFILTRATION Constant" + "\n")
+        b18_lines.insert(infiltNum + 2, "AIRCHANGE=" + str(mean_infilt) + "\n")
+
+        a = 1
 
 
 def _change_relative_coords(buildingSurfs, coordSys, idf):

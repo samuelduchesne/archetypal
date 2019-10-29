@@ -1,4 +1,3 @@
-import os
 import io
 import os
 
@@ -284,7 +283,7 @@ def test_trnbuild_from_idf(config, trnbuild_file):
     convert_idf_to_trnbuild(
         idf_file=file,
         window_lib=window_filepath,
-        template="tests/input_data/trnsys/NewFileTemplate" ".d18",
+        template="tests/input_data/trnsys/NewFileTemplate.d18",
         trnsidf_exe="docker/trnsidf/trnsidf.exe",
         **kwargs_dict
     )
@@ -339,7 +338,7 @@ def test_trnbuild_from_idf_parallel(config, trnbuild_file):
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
     in_dict = {
-        os.path.basename(file): dict(idf_file=os.path.join(file_upper_path, file))
+        os.path.basename(file): dict(idf_file=file)
         for file in files
     }
 

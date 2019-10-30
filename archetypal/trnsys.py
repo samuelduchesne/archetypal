@@ -202,7 +202,7 @@ def convert_idf_to_trnbuild(
     # endregion
 
     # region Write SCHEDULES from IDF to lines (T3D)
-    _write_schedules(lines, schedule_names, schedules)
+    schedule_not_written = _write_schedules(lines, schedule_names, schedules)
     # endregion
 
     # region Write WINDOWS chosen by the user (from Berkeley lab library) in
@@ -1772,6 +1772,7 @@ def _write_schedules(lines, schedule_names, schedules):
         values = np.round(values, decimals=1)
 
         # Writes schedule in lines
+        schedule_not_written = []
         if (
             len(hours_list) <= 1500
         ):  # Todo: Now, only writes "short" schedules. Make method that write them all
@@ -1784,52 +1785,10 @@ def _write_schedules(lines, schedule_names, schedules):
                 scheduleNum + 3,
                 "!- VALUES= " + " ".join(str(item) for item in values) + "\n",
             )
+        else:
+            schedule_not_written.append(schedule_name)
 
-
-# DO NOT DELETE !!!
-# for period in ["year", "weeks", "days"]:
-# for i in range(0, len(schedules[schedule_name][period])):
-#
-#     lines.insert(
-#         scheduleNum + 1,
-#         "!-SCHEDULE " + schedules[schedule_name][period][i].Name + "\n",
-#     )
-#
-#     if period == "days":
-#         lines.insert(
-#             scheduleNum + 2,
-#             "!- HOURS= " + " ".join(str(item) for item in hour_list) + "\n",
-#         )
-#
-#         lines.insert(
-#             scheduleNum + 3,
-#             "!- VALUES= "
-#             + " ".join(
-#                 str(item)
-#                 for item in schedules[schedule_name][period][i].fieldvalues[
-#                     3:
-#                 ]
-#             )
-#             + "\n",
-#         )
-#
-#     if period == "weeks":
-#         lines.insert(
-#             scheduleNum + 2,
-#             "!- DAYS= " + " ".join(str(item) for item in week_list) + "\n",
-#         )
-#
-#         lines.insert(
-#             scheduleNum + 3,
-#             "!- VALUES= "
-#             + " ".join(
-#                 str(item)
-#                 for item in rotate(
-#                     schedules[schedule_name][period][i].fieldvalues[2:9], 1
-#                 )
-#             )
-#             + "\n",
-#         )
+    return schedule_not_written
 
 
 def _write_gains(equipments, idf, lights, lines, peoples):

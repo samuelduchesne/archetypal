@@ -112,7 +112,7 @@ class TestsConvert:
             print("Could not assert all paths exist - OK for this test")
         schedule_names, schedules = _get_schedules(idf)
         _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
-        _write_schedules(lines, schedule_names, schedules)
+        schedule_not_written = _write_schedules(lines, schedule_names, schedules)
 
     def test_write_version_and_building(self, config, converttest):
         idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest

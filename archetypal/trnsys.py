@@ -115,7 +115,7 @@ def convert_idf_to_trnbuild(
     lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
     # Get objects from IDF file
-    buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
+    buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
         idf
     )
 
@@ -124,7 +124,7 @@ def convert_idf_to_trnbuild(
 
     # If ordered=True, ordering idf objects
     ordered = kwargs.get("ordered", False)
-    buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones = _order_objects(
+    buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones, zonelists = _order_objects(
         buildingSurfs,
         buildings,
         constr_list,
@@ -139,6 +139,7 @@ def convert_idf_to_trnbuild(
         materials,
         peoples,
         zones,
+        zonelists,
         ordered,
     )
 
@@ -440,6 +441,7 @@ def _order_objects(
     materials,
     peoples,
     zones,
+    zonelists,
     ordered=True,
 ):
     """
@@ -478,6 +480,7 @@ def _order_objects(
         fenestrationSurfs = list(reversed(fenestrationSurfs))
         buildingSurfs = list(reversed(buildingSurfs))
         zones = list(reversed(zones))
+        zonelists = list(reversed(zonelists))
         peoples = list(reversed(peoples))
         lights = list(reversed(lights))
         equipments = list(reversed(equipments))
@@ -497,6 +500,7 @@ def _order_objects(
         materials,
         peoples,
         zones,
+        zonelists,
     )
 
 
@@ -539,6 +543,7 @@ def _get_idf_objects(idf):
     peoples = idf.idfobjects["PEOPLE"]
     lights = idf.idfobjects["LIGHTS"]
     equipments = idf.idfobjects["ELECTRICEQUIPMENT"]
+    zonelists = idf.idfobjects["ZONELIST"]
     return (
         buildingSurfs,
         buildings,
@@ -554,6 +559,7 @@ def _get_idf_objects(idf):
         peoples,
         versions,
         zones,
+        zonelists,
     )
 
 

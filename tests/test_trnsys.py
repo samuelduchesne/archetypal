@@ -99,11 +99,11 @@ class TestsConvert:
             print("Could not assert all paths exist - OK for this test")
         schedule_names, schedules = _get_schedules(idf)
         _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
-        schedule_not_written = _write_schedules(lines, schedule_names, schedules)
+        schedules_not_written = _write_schedules(lines, schedule_names, schedules)
 
     def test_write_version_and_building(self, config, converttest):
         idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
             idf
         )
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
@@ -117,7 +117,7 @@ class TestsConvert:
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
             idf
         )
 
@@ -126,7 +126,7 @@ class TestsConvert:
 
         # If ordered=True, ordering idf objects
         ordered = True
-        buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones = _order_objects(
+        buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones, zonelists = _order_objects(
             buildingSurfs,
             buildings,
             constr_list,
@@ -205,7 +205,7 @@ class TestsConvert:
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
             idf
         )
 
@@ -219,7 +219,7 @@ class TestsConvert:
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
             idf
         )
 

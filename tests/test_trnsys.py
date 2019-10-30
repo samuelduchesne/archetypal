@@ -77,22 +77,26 @@ class TestsConvert:
         }
         idf = load_idf(file)
 
-        yield idf, file, window_filepath, trnsidf_exe, template_d18, kwargs_dict
+        weather_file = os.path.join(
+            "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        )
+
+        yield idf, file, weather_file, window_filepath, trnsidf_exe, template_d18, kwargs_dict
 
         del idf
 
     def test_load_idf_file_and_clean_names(self, config, converttest):
-        idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
         log_clear_names = False
         idf_2 = _load_idf_file_and_clean_names(idf_file, log_clear_names)
 
     def test_get_save_write_schedules(self, config, converttest):
         output_folder = None
-        idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
         try:
-            idf_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
-                idf_file, window_lib, output_folder, trnsidf_exe, template
+            idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
             )
         except:
             output_folder = os.path.relpath(settings.data_folder)
@@ -102,7 +106,7 @@ class TestsConvert:
         schedules_not_written = _write_schedules(lines, schedule_names, schedules)
 
     def test_write_version_and_building(self, config, converttest):
-        idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
         buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
             idf
         )
@@ -111,7 +115,9 @@ class TestsConvert:
         _write_building(buildings, lines)
 
     def test_write_idf_objects(self, config, converttest):
-        idf, idf_file, window_lib, trnsidf_exe, template, kwargs = converttest
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, kwargs = (
+            converttest
+        )
 
         # Read IDF_T3D template and write lines in variable
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
@@ -199,7 +205,7 @@ class TestsConvert:
         _write_winPool(lines, window)
 
     def test_write_material(self, config, converttest):
-        idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
 
         # Read IDF_T3D template and write lines in variable
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
@@ -213,7 +219,27 @@ class TestsConvert:
         _write_materials(lines, materialAirGap, materialNoMass, materials)
 
     def test_write_gains(self, config, converttest):
-        idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
+
+        # Run EnergyPlus Simulation
+        res = run_eplus(
+            idf_file,
+            weather_file,
+            output_directory=None,
+            ep_version=None,
+            output_report="htm",
+            prep_outputs=True,
+            design_day=True,
+        )
+
+        # Check if cache exists
+        log_clear_names = False
+        idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
+
+        # Get old:new names equivalence
+        old_new_names = pd.read_csv(
+            os.path.join(settings.data_folder, "old_new_names_equivalence.csv")
+        ).to_dict()
 
         # Read IDF_T3D template and write lines in variable
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
@@ -269,6 +295,9 @@ def test_trnbuild_from_idf(config, trnbuild_file):
     window_file = "W74-lib.dat"
     template_dir = os.path.join("archetypal", "ressources")
     window_filepath = os.path.join(template_dir, window_file)
+    weather_file = os.path.join(
+        "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    )
 
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
@@ -283,6 +312,7 @@ def test_trnbuild_from_idf(config, trnbuild_file):
     file = trnbuild_file
     convert_idf_to_trnbuild(
         idf_file=file,
+        weather_file=weather_file,
         window_lib=window_filepath,
         template="tests/input_data/trnsys/NewFileTemplate.d18",
         trnsidf_exe="docker/trnsidf/trnsidf.exe",
@@ -336,9 +366,16 @@ def test_trnbuild_from_idf_parallel(config, trnbuild_file):
     # window_file = 'W74-lib.dat'
     # window_filepath = os.path.join(file_upper_path, window_file)
 
+    weather_file = os.path.join(
+        "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    )
+
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
-    in_dict = {os.path.basename(file): dict(idf_file=file) for file in files}
+    in_dict = {
+        os.path.basename(file): dict(idf_file=file, weather_file=weather_file)
+        for file in files
+    }
 
     result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
 
@@ -395,11 +432,16 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
         "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
     ]
 
+    weather_file = os.path.join(
+        "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    )
+
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
     in_dict = {
         os.path.basename(file): dict(
             idf_file=os.path.join(file_upper_path, file),
+            weather_file=weather_file,
             template="tests/input_data/trnsys/NewFileTemplate.d18",
             trnsidf_exe="docker/trnsidf/trnsidf.exe",
         )
@@ -432,10 +474,14 @@ def test_trnbuild_idf_win32(config):
 )
 def test_trnbuild_idf_darwin_or_linux(config):
     idf_file = "tests/input_data/trnsys/Building.idf"
+    weather_file = os.path.join(
+        "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    )
     template = "tests/input_data/trnsys/NewFileTemplate.d18"
     trnsidf_exe = "docker/trnsidf/trnsidf.exe"
     res = trnbuild_idf(
         idf_file,
+        weather_file,
         template=template,
         dck=True,
         nonum=False,

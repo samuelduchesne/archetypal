@@ -35,6 +35,7 @@ from tqdm import tqdm
 
 def convert_idf_to_trnbuild(
     idf_file,
+    weather_file,
     window_lib=None,
     return_idf=False,
     return_b18=True,
@@ -44,7 +45,6 @@ def convert_idf_to_trnbuild(
     trnsidf_exe=None,
     template=None,
     log_clear_names=False,
-    weather_file=None,
     **kwargs
 ):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
@@ -64,12 +64,14 @@ def convert_idf_to_trnbuild(
         >>> # Exemple how to call the function
         >>> idf_file = "/file.idf"
         >>> window_filepath = "/W74-lib.dat"
-        >>> convert_idf_to_trnbuild(idf_file=idf_file,
+        >>> convert_idf_to_trnbuild(idf_file=idf_file, weather_file=weather_file,
         >>>                         window_lib=window_filepath,
         >>>                         **kwargs_dict)
 
     Args:
         idf_file (str): path to the idf file to convert
+        weather_file (str): To run EnergyPlus simulation and be able to get some
+            values (e.g. internal gain, infiltration, etc.)
         window_lib (str): File path of the window library (from Berkeley Lab)
         return_idf (bool, optional): If True, also return the path to the
             modified IDF with the new names, coordinates, etc. of the IDF
@@ -84,8 +86,6 @@ def convert_idf_to_trnbuild(
         template (str): Path to d18 template file.
         log_clear_names (bool): If True, DOES NOT log the equivalence between
             the old and new names in the console.
-        weather_file (epw file): To run EnergyPlus simulation and be able to modify
-            b18 file
         kwargs: keyword arguments sent to
             :func:`convert_idf_to_trnbuild()` or :func:`trnbuild_idf()` or
             :func:`choose_window`. "ordered=True" to have the name of idf
@@ -608,7 +608,9 @@ def _load_idf_file_and_clean_names(idf_file, log_clear_names):
     return idf
 
 
-def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe, template):
+def _assert_files(
+    idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+):
     """Ensure the files and directory are here
 
     Args:
@@ -619,6 +621,9 @@ def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe, template):
         template (str): Path to d18 template file.
     """
     if not os.path.isfile(idf_file):
+        raise IOError("idf_file file not found")
+
+    if not os.path.isfile(weather_file):
         raise IOError("idf_file file not found")
 
     if window_lib:
@@ -644,7 +649,7 @@ def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe, template):
     if not os.path.isfile(trnsidf_exe):
         raise IOError("trnsidf.exe not found")
 
-    return idf_file, window_lib, output_folder, trnsidf_exe, template
+    return idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
 
 
 def _add_change_adj_surf(buildingSurfs, idf):

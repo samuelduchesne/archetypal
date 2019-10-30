@@ -146,6 +146,7 @@ def cli(
 
 @cli.command()
 @click.argument("idf-file", type=click.Path(exists=True))
+@click.argument("weather-file", type=click.Path(exists=True))
 @click.argument(
     "output-folder", type=click.Path(exists=True), required=False, default="."
 )
@@ -232,6 +233,7 @@ def cli(
 )
 def convert(
     idf_file,
+    weather_file,
     window_lib,
     return_idf,
     return_t3d,
@@ -254,6 +256,7 @@ def convert(
 
     Args:
         idf_file:
+        weather_file:
         window_lib:
         return_idf:
         return_t3d:
@@ -281,6 +284,7 @@ def convert(
     with cd(output_folder):
         paths = archetypal.convert_idf_to_trnbuild(
             idf_file,
+            weather_file,
             window_lib,
             return_idf,
             True,

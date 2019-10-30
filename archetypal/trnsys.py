@@ -202,7 +202,7 @@ def convert_idf_to_trnbuild(
     # endregion
 
     # region Write SCHEDULES from IDF to lines (T3D)
-    schedule_not_written = _write_schedules(lines, schedule_names, schedules)
+    schedules_not_written = _write_schedules(lines, schedule_names, schedules)
     # endregion
 
     # region Write WINDOWS chosen by the user (from Berkeley lab library) in
@@ -1715,9 +1715,8 @@ def _write_schedules(lines, schedule_names, schedules):
     log("Writing schedules info from idf file to t3d file...")
     # Get line number where to write
     scheduleNum = checkStr(lines, "S c h e d u l e s")
-    hour_list = list(range(25))
-    week_list = list(range(1, 8))
     # Write schedules YEAR in lines
+    schedules_not_written = []
     for schedule_name in schedule_names:
 
         lines.insert(
@@ -1772,7 +1771,6 @@ def _write_schedules(lines, schedule_names, schedules):
         values = np.round(values, decimals=1)
 
         # Writes schedule in lines
-        schedule_not_written = []
         if (
             len(hours_list) <= 1500
         ):  # Todo: Now, only writes "short" schedules. Make method that write them all
@@ -1786,9 +1784,9 @@ def _write_schedules(lines, schedule_names, schedules):
                 "!- VALUES= " + " ".join(str(item) for item in values) + "\n",
             )
         else:
-            schedule_not_written.append(schedule_name)
+            schedules_not_written.append(schedule_name)
 
-    return schedule_not_written
+    return schedules_not_written
 
 
 def _write_gains(equipments, idf, lights, lines, peoples):

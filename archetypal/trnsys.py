@@ -770,8 +770,8 @@ def _get_schedules(idf):
         year, weeks, days = s.to_year_week_day()
         schedules[schedule_name]["all values"] = s.all_values
         schedules[schedule_name]["year"] = year
-        schedules[schedule_name]["weeks"] = weeks
-        schedules[schedule_name]["days"] = days
+        # schedules[schedule_name]["weeks"] = weeks
+        # schedules[schedule_name]["days"] = days
 
     log(
         "Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
@@ -1717,51 +1717,119 @@ def _write_schedules(lines, schedule_names, schedules):
     scheduleNum = checkStr(lines, "S c h e d u l e s")
     hour_list = list(range(25))
     week_list = list(range(1, 8))
-    # Write schedules DAY and WEEK in lines
+    # Write schedules YEAR in lines
     for schedule_name in schedule_names:
-        for period in ["weeks", "days"]:
-            for i in range(0, len(schedules[schedule_name][period])):
 
-                lines.insert(
-                    scheduleNum + 1,
-                    "!-SCHEDULE " + schedules[schedule_name][period][i].Name + "\n",
-                )
+        lines.insert(
+            scheduleNum + 1,
+            "!-SCHEDULE " + schedules[schedule_name]["year"].Name + "\n",
+        )
 
-                if period == "days":
-                    lines.insert(
-                        scheduleNum + 2,
-                        "!- HOURS= " + " ".join(str(item) for item in hour_list) + "\n",
-                    )
+        first_hour_month = [
+            0,
+            744,
+            1416,
+            2160,
+            2880,
+            3624,
+            4344,
+            5088,
+            5832,
+            6552,
+            7296,
+            8016,
+            8760,
+        ]
 
-                    lines.insert(
-                        scheduleNum + 3,
-                        "!- VALUES= "
-                        + " ".join(
-                            str(item)
-                            for item in schedules[schedule_name][period][i].fieldvalues[
-                                3:
-                            ]
-                        )
-                        + "\n",
-                    )
+        # Get annual hourly values of schedules
+        arr = schedules[schedule_name]["all values"]
+        # Find the hours where hourly values change
+        hours_list, = np.where(np.roll(arr, 1) != arr)
+        # Get schedule values where values change and add first schedule value
+        values = arr[hours_list]
+        # Add hour 0 and first value if not in array
+        if 0 not in hours_list:
+            hours_list = np.insert(hours_list, 0, np.array([0]))
+            values = np.insert(values, 0, arr[0])
+        # Add hour 8760 and if not in array
+        if 8760 not in hours_list:
+            hours_list = np.append(hours_list, 8760)
+            values = np.append(values, arr[len(arr) - 1])
 
-                if period == "weeks":
-                    lines.insert(
-                        scheduleNum + 2,
-                        "!- DAYS= " + " ".join(str(item) for item in week_list) + "\n",
-                    )
+        # Makes sure fisrt hour of every month in hour and value lists
+        for hour in first_hour_month:
+            if hour not in hours_list:
+                temp = hours_list > hour
+                count = 0
+                for t in temp:
+                    if t:
+                        hours_list = np.insert(hours_list, count, hour)
+                        values = np.insert(values, count, values[count - 1])
+                        break
+                    count += 1
 
-                    lines.insert(
-                        scheduleNum + 3,
-                        "!- VALUES= "
-                        + " ".join(
-                            str(item)
-                            for item in rotate(
-                                schedules[schedule_name][period][i].fieldvalues[2:9], 1
-                            )
-                        )
-                        + "\n",
-                    )
+        # Round values to 1 decimal
+        values = np.round(values, decimals=1)
+
+        # Writes schedule in lines
+        if (
+            len(hours_list) <= 1500
+        ):  # Todo: Now, only writes "short" schedules. Make method that write them all
+            lines.insert(
+                scheduleNum + 2,
+                "!- HOURS= " + " ".join(str(item) for item in hours_list) + "\n",
+            )
+
+            lines.insert(
+                scheduleNum + 3,
+                "!- VALUES= " + " ".join(str(item) for item in values) + "\n",
+            )
+
+
+# DO NOT DELETE !!!
+# for period in ["year", "weeks", "days"]:
+# for i in range(0, len(schedules[schedule_name][period])):
+#
+#     lines.insert(
+#         scheduleNum + 1,
+#         "!-SCHEDULE " + schedules[schedule_name][period][i].Name + "\n",
+#     )
+#
+#     if period == "days":
+#         lines.insert(
+#             scheduleNum + 2,
+#             "!- HOURS= " + " ".join(str(item) for item in hour_list) + "\n",
+#         )
+#
+#         lines.insert(
+#             scheduleNum + 3,
+#             "!- VALUES= "
+#             + " ".join(
+#                 str(item)
+#                 for item in schedules[schedule_name][period][i].fieldvalues[
+#                     3:
+#                 ]
+#             )
+#             + "\n",
+#         )
+#
+#     if period == "weeks":
+#         lines.insert(
+#             scheduleNum + 2,
+#             "!- DAYS= " + " ".join(str(item) for item in week_list) + "\n",
+#         )
+#
+#         lines.insert(
+#             scheduleNum + 3,
+#             "!- VALUES= "
+#             + " ".join(
+#                 str(item)
+#                 for item in rotate(
+#                     schedules[schedule_name][period][i].fieldvalues[2:9], 1
+#                 )
+#             )
+#             + "\n",
+#         )
 
 
 def _write_gains(equipments, idf, lights, lines, peoples):

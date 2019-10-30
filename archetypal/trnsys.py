@@ -100,16 +100,31 @@ def convert_idf_to_trnbuild(
               provided if *return_b18* is True.
             * return_trn (str): the path to the TRNBuild input file (.idf). Only
               provided if *return_t3d* is True.
-            * retrun_trn (str): the path to the TRNSYS dck file (.dck). Only
+            * retrun_dck (str): the path to the TRNSYS dck file (.dck). Only
               provided if *return_dck* is True.
     """
 
-    idf_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
-        idf_file, window_lib, output_folder, trnsidf_exe, template
+    # Run EnergyPlus Simulation
+    res = run_eplus(
+        idf_file,
+        weather_file,
+        output_directory=None,
+        ep_version=None,
+        output_report="htm",
+        prep_outputs=True,
+        design_day=True,
+    )
+    idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+        idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
     )
 
     # Check if cache exists
     idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
+
+    # Get old:new names equivalence
+    old_new_names = pd.read_csv(
+        os.path.join(settings.data_folder, "old_new_names_equivalence.csv")
+    ).to_dict()
 
     # Read IDF_T3D template and write lines in variable
     lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
@@ -807,6 +822,7 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
 
     uniqueList = []
     old_name_list = []
+    old_new_eq = {}
 
     # For all categories of objects in the IDF file
     for obj in tqdm(idfFile.idfobjects, desc="cleaning_names"):
@@ -853,6 +869,7 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
 
                     uniqueList.append(new_name)
                     old_name_list.append(old_name)
+                    old_new_eq[old_name] = new_name
 
                     # Changing the name in the IDF object
                     idfFile.rename(obj, old_name, new_name)
@@ -860,6 +877,10 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
                     pass
             else:
                 continue
+
+    # Save equivalence between old and new names
+    df = pd.DataFrame([old_new_eq])
+    df.to_csv(os.path.join(settings.data_folder, "old_new_names_equivalence.csv"))
 
     d = {"Old names": old_name_list, "New names": uniqueList}
     from tabulate import tabulate

@@ -3,6 +3,8 @@ import os
 
 import pytest
 
+import pandas as pd
+
 from path import Path
 
 from archetypal import (
@@ -13,7 +15,7 @@ from archetypal import (
     load_idf,
     settings,
     choose_window,
-)
+    run_eplus)
 
 # Function round to hundreds
 from archetypal.trnsys import (

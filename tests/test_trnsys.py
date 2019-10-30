@@ -44,19 +44,6 @@ from archetypal.trnsys import (
     gains_to_b18,
 )
 
-from archetypal.utils import checkStr
-
-
-
-def test_add_gains_to_b18(config):
-    b18_path = os.path.join("tests", ".temp", "data", "T3D_NECB 2011 - Warehouse.b18")
-    gains_to_b18(b18_path)
-    with open(b18_path) as b18_files:
-        b18_lines = b18_files.readlines()
-
-
-    checkStr(b18_lines, "REGIME")
-
 
 class TestsConvert:
     """Tests convert_idf_to_trnbuild()"""

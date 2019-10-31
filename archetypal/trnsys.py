@@ -1860,11 +1860,6 @@ def _write_schedules(lines, schedule_names, schedules):
     schedules_not_written = []
     for schedule_name in schedule_names:
 
-        lines.insert(
-            scheduleNum + 1,
-            "!-SCHEDULE " + schedules[schedule_name]["year"].Name + "\n",
-        )
-
         first_hour_month = [
             0,
             744,
@@ -1885,6 +1880,9 @@ def _write_schedules(lines, schedule_names, schedules):
         arr = schedules[schedule_name]["all values"]
         # Find the hours where hourly values change
         hours_list, = np.where(np.roll(arr, 1) != arr)
+        # if hours_list is empty, give it hour 0
+        if hours_list.size == 0:
+            hours_list = np.array([0])
         # Get schedule values where values change and add first schedule value
         values = arr[hours_list]
         # Add hour 0 and first value if not in array
@@ -1916,10 +1914,13 @@ def _write_schedules(lines, schedule_names, schedules):
             len(hours_list) <= 1500
         ):  # Todo: Now, only writes "short" schedules. Make method that write them all
             lines.insert(
+                scheduleNum + 1,
+                "!-SCHEDULE " + schedules[schedule_name]["year"].Name + "\n",
+            )
+            lines.insert(
                 scheduleNum + 2,
                 "!- HOURS= " + " ".join(str(item) for item in hours_list) + "\n",
             )
-
             lines.insert(
                 scheduleNum + 3,
                 "!- VALUES= " + " ".join(str(item) for item in values) + "\n",

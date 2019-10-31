@@ -869,7 +869,7 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
 
                     uniqueList.append(new_name)
                     old_name_list.append(old_name)
-                    old_new_eq[old_name] = new_name
+                    old_new_eq[new_name.upper()] = old_name.upper()
 
                     # Changing the name in the IDF object
                     idfFile.rename(obj, old_name, new_name)

@@ -253,7 +253,7 @@ class TestsConvert:
         )
 
         # Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
-        _write_gains(equipments, idf, lights, lines, peoples, res, old_new_names)
+        _write_gains(equipments, lights, lines, peoples, res, old_new_names)
 
     def test_save_t3d(self, config, converttest):
         output_folder = None

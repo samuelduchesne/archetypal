@@ -709,9 +709,11 @@ def checkStr(datafile, string, begin_line=0):
     """
     value = []
     count = 0
-    datafile =  datafile[begin_line:]
     for line in datafile:
-        count = count + 1
+        if count < begin_line:
+            count += 1
+            continue
+        count += 1
         match = re.search(string, str(line))
         if match:
             return count

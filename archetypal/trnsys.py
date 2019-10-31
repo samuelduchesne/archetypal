@@ -214,7 +214,7 @@ def convert_idf_to_trnbuild(
     # endregion
 
     # region Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
-    _write_gains(equipments, idf, lights, lines, peoples)
+    _write_gains(equipments, idf, lights, lines, peoples, res, old_new_names)
     # endregion
 
     # region Write SCHEDULES from IDF to lines (T3D)
@@ -1821,7 +1821,7 @@ def _write_schedules(lines, schedule_names, schedules):
     return schedules_not_written
 
 
-def _write_gains(equipments, idf, lights, lines, peoples):
+def _write_gains(equipments, idf, lights, lines, peoples, res, old_new_names):
     """Write gains in lines
 
     Args:
@@ -1838,14 +1838,14 @@ def _write_gains(equipments, idf, lights, lines, peoples):
     # Get line number where to write
     gainNum = checkStr(lines, "G a i n s")
     # Writing PEOPLE gains infos to lines
-    _write_people_gain(gainNum, idf, lines, peoples)
+    _write_people_gain(gainNum, lines, peoples, res, old_new_names)
     # Writing LIGHT gains infos to lines
-    _write_light_gain(gainNum, lights, lines)
+    _write_light_gain(gainNum, lights, lines, res, old_new_names)
     # Writing EQUIPMENT gains infos to lines
-    _write_equipment_gain(equipments, gainNum, lines)
+    _write_equipment_gain(equipments, gainNum, lines, res, old_new_names)
 
 
-def _write_equipment_gain(equipments, gainNum, lines):
+def _write_equipment_gain(equipments, gainNum, lines, res, old_new_names):
     """Write equipment gains in lines
 
     Args:
@@ -1855,60 +1855,30 @@ def _write_equipment_gain(equipments, gainNum, lines):
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
     """
-    for i in range(0, len(equipments)):
-        # Determine if gain is absolute or relative and write it into lines
-        if equipments[i].Design_Level_Calculation_Method == "EquipmentLevel":
-            areaMethod = "ABSOLUTE"
-            try:
-                power = round(float(equipments[i].Design_Level), 4)
-            except Exception:
-                log(
-                    "Could not find the Light Power Density in the IDF file", lg.WARNING
-                )
-                continue
-        elif equipments[i].Design_Level_Calculation_Method == "Watts/Area":
-            areaMethod = "AREA_RELATED"
-            try:
-                power = round(float(equipments[i].Watts_per_Zone_Floor_Area), 4)
-            except Exception:
-                log(
-                    "Could not find the Light Power Density in the IDF file", lg.WARNING
-                )
-                continue
-        else:
-            log(
-                "Could not find the Equipment Power Density, cause depend on "
-                "the number of peoples (Watts/Person)",
-                lg.WARNING,
+    for equipment in equipments:
+        gain = res["ElectricEquipment Internal Gains Nominal"][
+            res["ElectricEquipment Internal Gains Nominal"]["Name"].str.contains(
+                old_new_names[equipment.Name.upper()][0]
             )
-            continue
-
-        # Find the radiant fractions
-        radFract = equipments[i].Fraction_Radiant
-        if len(str(radFract)) == 0:
-            # Find the radiant fractions
-            try:
-                radFract = float(1 - equipments[i].Sensible_Heat_Fraction)
-            except Exception:
-                radFract = 0.42
-        else:
-            radFract = float(radFract)
-
-        # Write gain from equipment in lines
-        lines.insert(gainNum + 1, "GAIN EQUIPMENT" + "_" + equipments[i].Name + "\n")
+        ]
+        # Write gain name in lines
+        lines.insert(gainNum + 1, "GAIN PEOPLE" + "_" + equipment.Name + "\n")
+        areaMethod = "AREA_RELATED"
+        power = gain["Equipment/Floor Area {W/m2}"].values[0]
+        radFract = gain["Fraction Radiant"].values[0]
         lines.insert(
             gainNum + 2,
             " CONVECTIVE="
             + str(round(power * (1 - radFract), 3))
             + " : RADIATIVE="
             + str(round(power * radFract, 3))
-            + " : HUMIDITY=0 : ELPOWERFRAC=1 : "
-            + areaMethod
-            + " : CATEGORY=LIGHTS\n",
+            + " : HUMIDITY=0.066 : ELPOWERFRAC=0 "
+            ": " + areaMethod + " : "
+            "CATEGORY=PEOPLE\n",
         )
 
 
-def _write_light_gain(gainNum, lights, lines):
+def _write_light_gain(gainNum, lights, lines, res, old_new_names):
     """Write gain from lights in lines
 
     Args:
@@ -1918,90 +1888,48 @@ def _write_light_gain(gainNum, lights, lines):
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
     """
-    for i in range(0, len(lights)):
-        # Determine if gain is absolute or relative and write it into lines
-        if lights[i].Design_Level_Calculation_Method == "LightingLevel":
-            areaMethod = "ABSOLUTE"
-            try:
-                power = round(float(lights[i].Lighting_Level), 4)
-            except Exception:
-                log(
-                    "Could not find the Light Power Density in the IDF file", lg.WARNING
-                )
-                continue
-        elif lights[i].Design_Level_Calculation_Method == "Watts/Area":
-            areaMethod = "AREA_RELATED"
-            try:
-                power = round(float(lights[i].Watts_per_Zone_Floor_Area), 4)
-            except Exception:
-                log(
-                    "Could not find the Light Power Density in the IDF file", lg.WARNING
-                )
-                continue
-        else:
-            log(
-                "Could not find the Light Power Density, cause depend on the "
-                "number of peoples (Watts/Person)",
-                lg.WARNING,
+    for light in lights:
+        gain = res["Lights Internal Gains Nominal"][
+            res["Lights Internal Gains Nominal"]["Name"].str.contains(
+                old_new_names[light.Name.upper()][0]
             )
-            continue
-
-        # Find the radiant fractions
-        radFract = lights[i].Fraction_Radiant
-        if len(str(radFract)) == 0:
-            # Find the radiant fractions
-            try:
-                radFract = float(1 - lights[i].Sensible_Heat_Fraction)
-            except Exception:
-                radFract = 0.42
-        else:
-            radFract = float(radFract)
-
-        # Write gain from light in lines
-        lines.insert(gainNum + 1, "GAIN LIGHT" + "_" + lights[i].Name + "\n")
+        ]
+        # Write gain name in lines
+        lines.insert(gainNum + 1, "GAIN PEOPLE" + "_" + light.Name + "\n")
+        areaMethod = "AREA_RELATED"
+        power = gain["Lights/Floor Area {W/m2}"].values[0]
+        radFract = gain["Fraction Radiant"].values[0]
         lines.insert(
             gainNum + 2,
             " CONVECTIVE="
             + str(round(power * (1 - radFract), 3))
             + " : RADIATIVE="
             + str(round(power * radFract, 3))
-            + " : HUMIDITY=0 : ELPOWERFRAC=1 : "
-            + areaMethod
-            + " : CATEGORY=LIGHTS\n",
+            + " : HUMIDITY=0.066 : ELPOWERFRAC=0 "
+            ": " + areaMethod + " : "
+            "CATEGORY=PEOPLE\n",
         )
 
 
-def _write_people_gain(gainNum, idf, lines, peoples):
+def _write_people_gain(gainNum, lines, peoples, res, old_new_names):
     """
     Args:
         gainNum (int): Line number where to write the equipment gains
-        idf (archetypal.idfclass.IDF): IDF object
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
         peoples (idf_MSequence): IDF object from idf.idfobjects()
     """
-    for i in range(0, len(peoples)):
+    for people in peoples:
+        gain = res["People Internal Gains Nominal"][
+            res["People Internal Gains Nominal"]["Name"].str.contains(
+                old_new_names[people.Name.upper()][0]
+            )
+        ]
         # Write gain name in lines
-        lines.insert(gainNum + 1, "GAIN PEOPLE" + "_" + peoples[i].Name + "\n")
-        # Determine if gain is absolute or relative and write it into lines
-        if peoples[i].Number_of_People_Calculation_Method == "People":
-            areaMethod = "ABSOLUTE"
-        else:
-            areaMethod = "AREA_RELATED"
-        # Find the radiant fractions
-        radFract = peoples[i].Fraction_Radiant
-        if len(str(radFract)) == 0:
-            # Find the radiant fractions
-            try:
-                radFract = float(1 - peoples[i].Sensible_Heat_Fraction)
-            except Exception:
-                radFract = 0.3
-        else:
-            radFract = float(radFract)
-
-        # Find the the total power of the people gain
-        power = Schedule(Name=peoples[i].Activity_Level_Schedule_Name, idf=idf).max
-        # Write gain characteristics into lines
+        lines.insert(gainNum + 1, "GAIN PEOPLE" + "_" + people.Name + "\n")
+        areaMethod = "AREA_RELATED"
+        power = gain["People/Floor Area {person/m2}"].values[0]
+        radFract = gain["Fraction Radiant"].values[0]
         lines.insert(
             gainNum + 2,
             " CONVECTIVE="

@@ -253,14 +253,14 @@ class TestsConvert:
         )
 
         # Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
-        _write_gains(equipments, idf, lights, lines, peoples)
+        _write_gains(equipments, idf, lights, lines, peoples, res, old_new_names)
 
     def test_save_t3d(self, config, converttest):
         output_folder = None
-        idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
         try:
-            idf_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
-                idf_file, window_lib, output_folder, trnsidf_exe, template
+            idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
             )
         except:
             output_folder = os.path.relpath(settings.data_folder)

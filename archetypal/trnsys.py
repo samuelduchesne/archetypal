@@ -123,7 +123,10 @@ def convert_idf_to_trnbuild(
 
     # Get old:new names equivalence
     old_new_names = pd.read_csv(
-        os.path.join(settings.data_folder, "old_new_names_equivalence.csv")
+        os.path.join(
+            settings.data_folder,
+            idf_file.basename().stripext() + "_old_new_names_equivalence.csv",
+        )
     ).to_dict()
 
     # Read IDF_T3D template and write lines in variable
@@ -989,7 +992,11 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
 
     # Save equivalence between old and new names
     df = pd.DataFrame([old_new_eq])
-    df.to_csv(os.path.join(settings.data_folder, "old_new_names_equivalence.csv"))
+    df.to_csv(
+        os.path.join(
+            settings.data_folder, idfFile.name[:-4] + "_old_new_names_equivalence.csv"
+        )
+    )
 
     d = {"Old names": old_name_list, "New names": uniqueList}
     from tabulate import tabulate

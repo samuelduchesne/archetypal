@@ -295,59 +295,163 @@ def convert_idf_to_trnbuild(
         )
     )
 
+    # region Modify B18 file
+    with open(b18_path) as b18_file:
+        b18_lines = b18_file.readlines()
+
     # Adds infiltration to b18 file
-    infilt_to_b18(b18_path, idf_file, weather_file)
+    infilt_to_b18(b18_lines, res)
 
-    #
+    # Adds internal gain to b18 file
+    gains_to_b18(
+        b18_lines,
+        zones,
+        zonelists,
+        peoples,
+        lights,
+        equipments,
+        schedules_not_written,
+        res,
+        old_new_names,
+    )
 
-    b = 1
+    # Save B18 file at output_folder
+    if output_folder is None:
+        # User did not provide an output folder path. We use the default setting
+        output_folder = os.path.relpath(settings.data_folder)
+    if not os.path.isdir(output_folder):
+        os.makedirs(output_folder)
+    with open(b18_path, "w") as converted_file:
+        for line in b18_lines:
+            converted_file.writelines(str(line))
+    # endregion
+
     return return_path
 
 
-def infilt_to_b18(b18_path, idf_file, weather_file):
-    if weather_file == None:
-        print(
-            "Infiltration could not be added to B18. "
-            "Please add a weather_file in the inputs if you want to set "
-            "the infiltration in the b18 file"
+def infilt_to_b18(b18_lines, res):
+    mean_infilt = round(
+        np.average(
+            res["ZoneInfiltration Airflow Stats Nominal"][
+                "ACH - Air Changes per Hour"
+            ].values,
+            weights=res["ZoneInfiltration Airflow Stats Nominal"][
+                "Zone Floor Area {m2}"
+            ].values,
+        ),
+        3,
+    )
+
+    log("Writing infiltration info from idf file to b18 file...")
+    # Get line number where to write
+    infiltNum = checkStr(b18_lines, "I n f i l t r a t i o n")
+    # Write
+    b18_lines.insert(infiltNum + 1, "INFILTRATION Constant" + "\n")
+    b18_lines.insert(infiltNum + 2, "AIRCHANGE=" + str(mean_infilt) + "\n")
+
+
+def gains_to_b18(
+    b18_lines,
+    zones,
+    zonelists,
+    peoples,
+    lights,
+    equipments,
+    schedules_not_written,
+    res,
+    old_new_names,
+):
+    peoples_in_zone = zone_where_gain_is(peoples, zones, zonelists)
+    lights_in_zone = zone_where_gain_is(lights, zones, zonelists)
+    equipments_in_zone = zone_where_gain_is(equipments, zones, zonelists)
+
+    for zone in zones:
+        # Write people gains
+        _write_gain_to_b18(
+            b18_lines,
+            zone,
+            peoples,
+            peoples_in_zone,
+            schedules_not_written,
+            res,
+            old_new_names,
+            "People",
         )
-    else:
-        key = idf_file.basename().stripext()
-        res = {
-            key: run_eplus(
-                idf_file,
-                weather_file,
-                output_directory=None,
-                ep_version=None,
-                output_report="htm",
-                prep_outputs=True,
-                design_day=True,
+        # Write light gains
+        _write_gain_to_b18(
+            b18_lines,
+            zone,
+            lights,
+            lights_in_zone,
+            schedules_not_written,
+            res,
+            old_new_names,
+            "Lights",
+        )
+        # Write equipment gains
+        _write_gain_to_b18(
+            b18_lines,
+            zone,
+            equipments,
+            equipments_in_zone,
+            schedules_not_written,
+            res,
+            old_new_names,
+            "ElectricEquipment",
+        )
+
+
+def _write_gain_to_b18(
+    b18_lines,
+    zone,
+    gains,
+    gains_in_zone,
+    schedules_not_written,
+    res,
+    old_new_names,
+    string,
+):
+    for gain in gains:
+        if zone.Name in gains_in_zone[gain.Name]:
+            f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
+            regimeNum = checkStr(b18_lines, "REGIME", f_count)
+            schedule = res[string + " Internal Gains Nominal"][
+                res[string + " Internal Gains Nominal"]["Name"].str.contains(
+                    old_new_names[gain.Name.upper()][0]
+                )
+            ]["Schedule Name"].values[0]
+            schedule = [
+                key for (key, value) in old_new_names.items() if value[0] == schedule
+            ][0].lower()
+            if schedule in schedules_not_written:
+                continue
+            # Write
+            b18_lines.insert(
+                regimeNum,
+                " GAIN= "
+                + gain.Name
+                + " : SCALE="
+                + schedule
+                + " : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= -1"
+                + "\n",
             )
-        }
 
-        mean_infilt = round(
-            np.average(
-                res[key]["ZoneInfiltration Airflow Stats Nominal"][
-                    "ACH - Air Changes per Hour"
-                ].values,
-                weights=res[key]["ZoneInfiltration Airflow Stats Nominal"][
-                    "Zone Floor Area {m2}"
-                ].values,
-            ),
-            3,
-        )
 
-        with open(b18_path) as b18_file:
-            b18_lines = b18_file.readlines()
+def zone_where_gain_is(gains, zones, zonelists):
+    gain_in_zone = {}
+    for gain in gains:
+        list_zone = []
+        for zone in zones:
+            if zone.Name == gain.Zone_or_ZoneList_Name:
+                list_zone.append([zone.Name])
+        for zonelist in zonelists:
+            if zonelist.Name == gain.Zone_or_ZoneList_Name:
+                list_zone.append(zonelist.fieldvalues[2:])
 
-        log("Writing infiltration info from idf file to b18 file...")
-        # Get line number where to write
-        infiltNum = checkStr(b18_lines, "I n f i l t r a t i o n")
-        # Write
-        b18_lines.insert(infiltNum + 1, "INFILTRATION Constant" + "\n")
-        b18_lines.insert(infiltNum + 2, "AIRCHANGE=" + str(mean_infilt) + "\n")
+        flat_list = [item for sublist in list_zone for item in sublist]
+        gain_in_zone[gain.Name] = flat_list
 
-        a = 1
+    return gain_in_zone
 
 
 def _change_relative_coords(buildingSurfs, coordSys, idf):

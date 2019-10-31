@@ -214,7 +214,7 @@ def convert_idf_to_trnbuild(
     # endregion
 
     # region Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
-    _write_gains(equipments, idf, lights, lines, peoples, res, old_new_names)
+    _write_gains(equipments, lights, lines, peoples, res, old_new_names)
     # endregion
 
     # region Write SCHEDULES from IDF to lines (T3D)
@@ -1821,7 +1821,7 @@ def _write_schedules(lines, schedule_names, schedules):
     return schedules_not_written
 
 
-def _write_gains(equipments, idf, lights, lines, peoples, res, old_new_names):
+def _write_gains(equipments, lights, lines, peoples, res, old_new_names):
     """Write gains in lines
 
     Args:

@@ -300,7 +300,7 @@ def convert_idf_to_trnbuild(
         b18_lines = b18_file.readlines()
 
     # Adds infiltration to b18 file
-    infilt_to_b18(b18_lines, res)
+    infilt_to_b18(b18_lines, zones, res)
 
     # Adds internal gain to b18 file
     gains_to_b18(
@@ -329,7 +329,7 @@ def convert_idf_to_trnbuild(
     return return_path
 
 
-def infilt_to_b18(b18_lines, res):
+def infilt_to_b18(b18_lines, zones, res):
     mean_infilt = round(
         np.average(
             res["ZoneInfiltration Airflow Stats Nominal"][
@@ -345,9 +345,14 @@ def infilt_to_b18(b18_lines, res):
     log("Writing infiltration info from idf file to b18 file...")
     # Get line number where to write
     infiltNum = checkStr(b18_lines, "I n f i l t r a t i o n")
-    # Write
+    # Write in infiltration section
     b18_lines.insert(infiltNum + 1, "INFILTRATION Constant" + "\n")
     b18_lines.insert(infiltNum + 2, "AIRCHANGE=" + str(mean_infilt) + "\n")
+    # Write in zone section
+    for zone in zones:
+        f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
+        regimeInfiltNum = checkStr(b18_lines, "REGIME", f_count)
+        b18_lines.insert(regimeInfiltNum, " INFILTRATION = Constant" + "\n")
 
 
 def gains_to_b18(

@@ -992,6 +992,8 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
 
     # Save equivalence between old and new names
     df = pd.DataFrame([old_new_eq])
+    if not os.path.isdir(settings.data_folder):
+        os.makedirs(settings.data_folder)
     df.to_csv(
         os.path.join(
             settings.data_folder, idfFile.name[:-4] + "_old_new_names_equivalence.csv"

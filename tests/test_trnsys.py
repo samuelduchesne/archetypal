@@ -60,7 +60,6 @@ class TestsConvert:
             "RefBldgWarehousePost1980_v1.4_7.2_6A_USA_MN_MINNEAPOLIS.idf",
             "NECB 2011 - Warehouse.idf",
             "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-            "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
             "5ZoneGeometryTransform.idf",
         ],
     )
@@ -289,13 +288,14 @@ class TestsConvert:
         "RefBldgWarehousePost1980_v1.4_7.2_6A_USA_MN_MINNEAPOLIS.idf",
         "NECB 2011 - Warehouse.idf",
         "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-        "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
+        "5ZoneGeometryTransform.idf",
     ]
 )
 def trnbuild_file(config, request):
     file_upper_path = Path("tests") / "input_data" / "trnsys"
     idf_file = file_upper_path / request.param
     idf_file = copy_file(idf_file, where=settings.cache_folder)
+
     yield idf_file
 
 

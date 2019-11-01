@@ -241,7 +241,10 @@ class TestsConvert:
 
         # Get old:new names equivalence
         old_new_names = pd.read_csv(
-            os.path.join(settings.data_folder, "old_new_names_equivalence.csv")
+            os.path.join(
+                settings.data_folder,
+                Path(idf_file).basename().stripext() + "_old_new_names_equivalence.csv",
+            )
         ).to_dict()
 
         # Read IDF_T3D template and write lines in variable

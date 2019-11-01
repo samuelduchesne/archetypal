@@ -15,7 +15,8 @@ from archetypal import (
     load_idf,
     settings,
     choose_window,
-    run_eplus)
+    run_eplus,
+)
 
 # Function round to hundreds
 from archetypal.trnsys import (

@@ -7,6 +7,8 @@ import pandas as pd
 
 from path import Path
 
+from copy import copy
+
 from archetypal import (
     convert_idf_to_trnbuild,
     parallel_process,
@@ -22,6 +24,7 @@ from archetypal import (
 from archetypal.trnsys import (
     _assert_files,
     _load_idf_file_and_clean_names,
+    clear_name_idf_objects,
     _get_idf_objects,
     _get_constr_list,
     _order_objects,
@@ -238,7 +241,11 @@ class TestsConvert:
 
         # Check if cache exists
         log_clear_names = False
-        idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
+        idf = load_idf(idf_file)
+
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        idf_2 = copy(idf)
+        clear_name_idf_objects(idf_2, log_clear_names)
 
         # Get old:new names equivalence
         old_new_names = pd.read_csv(
@@ -253,7 +260,7 @@ class TestsConvert:
 
         # Get objects from IDF file
         buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
-            idf
+            idf_2
         )
 
         # Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)

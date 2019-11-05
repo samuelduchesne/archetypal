@@ -1034,7 +1034,16 @@ def zone_origin(zone_object):
     Returns:
         Coordinates [X, Y, Z] of the zone in a list.
     """
-    return [zone_object.X_Origin, zone_object.Y_Origin, zone_object.Z_Origin]
+    x = zone_object.X_Origin
+    if x == "":
+        x = 0
+    y = zone_object.Y_Origin
+    if y == "":
+        y = 0
+    z = zone_object.Z_Origin
+    if z == "":
+        z = 0
+    return [x, y, z]
 
 
 def closest_coords(surfList, to=[0, 0, 0]):

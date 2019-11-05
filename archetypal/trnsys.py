@@ -34,6 +34,7 @@ from path import Path
 from tqdm import tqdm
 from copy import copy
 
+
 def convert_idf_to_trnbuild(
     idf_file,
     weather_file,
@@ -129,9 +130,7 @@ def convert_idf_to_trnbuild(
     start_time = time.time()
     clear_name_idf_objects(idf_2, log_clear_names)
     log(
-        "Cleaned IDF object names in {:,.2f} seconds".format(
-            time.time() - start_time
-        ),
+        "Cleaned IDF object names in {:,.2f} seconds".format(time.time() - start_time),
         lg.INFO,
     )
 

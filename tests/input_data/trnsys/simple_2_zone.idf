@@ -465,19 +465,19 @@ Schedule:Year,
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:CONSTANT ===========
 
 Schedule:Constant,
-    Always On Discrete,      !- Name
-    ,                        !- Schedule Type Limits Name
+    Always On,               !- Name
+    Fractional,              !- Schedule Type Limits Name
     1;                       !- Hourly Value
 
 Schedule:Constant,
-    Always Off Discrete,     !- Name
-    ,                        !- Schedule Type Limits Name
-    0;                       !- Hourly Value
+    Always Heating,          !- Name
+    Temperature,             !- Schedule Type Limits Name
+    20;                      !- Hourly Value
 
 Schedule:Constant,
-    Always On Continuous,    !- Name
-    ,                        !- Schedule Type Limits Name
-    1;                       !- Hourly Value
+    Always Cooling,          !- Name
+    Temperature,             !- Schedule Type Limits Name
+    30;                      !- Hourly Value
 
 
 !-   ===========  ALL OBJECTS IN CLASS: MATERIAL ===========
@@ -1233,7 +1233,7 @@ ElectricEquipment,
 ZoneInfiltration:DesignFlowRate,
     Infilt,                  !- Name
     All_zones,               !- Zone or ZoneList Name
-    Always On Discrete,      !- Schedule Name
+    Always On,               !- Schedule Name
     AirChanges/Hour,         !- Design Flow Rate Calculation Method
     ,                        !- Design Flow Rate {m3/s}
     ,                        !- Flow per Zone Floor Area {m3/s-m2}
@@ -1249,9 +1249,9 @@ ZoneInfiltration:DesignFlowRate,
 
 HVACTemplate:Thermostat,
     Thermostat,              !- Name
-    Always On Discrete,      !- Heating Setpoint Schedule Name
+    Always Heating,          !- Heating Setpoint Schedule Name
     20,                      !- Constant Heating Setpoint {C}
-    Always On Discrete,      !- Cooling Setpoint Schedule Name
+    Always Cooling,          !- Cooling Setpoint Schedule Name
     30;                      !- Constant Cooling Setpoint {C}
 
 
@@ -1262,7 +1262,7 @@ HVACTemplate:Zone:BaseboardHeat,
     Thermostat,              !- Template Thermostat Name
     1,                       !- Zone Heating Sizing Factor
     Electric,                !- Baseboard Heating Type
-    Always On Discrete,      !- Baseboard Heating Availability Schedule Name
+    Heating_setpoint_year,   !- Baseboard Heating Availability Schedule Name
     autosize,                !- Baseboard Heating Capacity {W}
     ,                        !- Dedicated Outdoor Air System Name
     Flow/Person,             !- Outdoor Air Method
@@ -1275,7 +1275,7 @@ HVACTemplate:Zone:BaseboardHeat,
     Thermostat,              !- Template Thermostat Name
     1,                       !- Zone Heating Sizing Factor
     Electric,                !- Baseboard Heating Type
-    Always On Discrete,      !- Baseboard Heating Availability Schedule Name
+    Heating_setpoint_year,   !- Baseboard Heating Availability Schedule Name
     autosize,                !- Baseboard Heating Capacity {W}
     ,                        !- Dedicated Outdoor Air System Name
     Flow/Person,             !- Outdoor Air Method

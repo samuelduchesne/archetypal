@@ -506,3 +506,40 @@ def test_trnbuild_idf_darwin_or_linux(config):
     )
 
     assert res
+
+@pytest.mark.xfail(
+    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
+    reason="Skipping this test on Travis CI.",
+)
+def test_trnbuild_from_simple_idf(config):
+    # List files here
+
+    window_file = "W74-lib.dat"
+    template_dir = os.path.join("archetypal", "ressources")
+    window_filepath = os.path.join(template_dir, window_file)
+    weather_file = os.path.join(
+        "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    )
+
+    # prepare args (key=value). Key is a unique id for the runs (here the
+    # file basename is used). Value is a dict of the function arguments
+    # WINDOW = 2-WSV_#3_Air
+    kwargs_dict = {
+        "u_value": 1.62,
+        "shgc": 0.64,
+        "t_vis": 0.8,
+        "tolerance": 0.05,
+        "ordered": True,
+    }
+
+    file = os.path.join(
+        "tests", "input_data", "simple_2_zone.idf"
+    )
+    convert_idf_to_trnbuild(
+        idf_file=file,
+        weather_file=weather_file,
+        window_lib=window_filepath,
+        template="tests/input_data/trnsys/NewFileTemplate.d18",
+        trnsidf_exe="docker/trnsidf/trnsidf.exe",
+        **kwargs_dict
+    )

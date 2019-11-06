@@ -1438,7 +1438,7 @@ def run_eplus(
     annual=False,
     design_day=False,
     epmacro=False,
-    expandobjects=True,
+    expandobjects=False,
     readvars=False,
     output_prefix=None,
     output_suffix=None,

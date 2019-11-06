@@ -138,7 +138,7 @@ def convert_idf_to_trnbuild(
     old_new_names = pd.read_csv(
         os.path.join(
             settings.data_folder,
-            idf_file.basename().stripext() + "_old_new_names_equivalence.csv",
+            Path(idf_file).basename().stripext() + "_old_new_names_equivalence.csv",
         )
     ).to_dict()
 

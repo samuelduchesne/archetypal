@@ -533,7 +533,7 @@ def test_trnbuild_from_simple_idf(config):
     }
 
     file = os.path.join(
-        "tests", "input_data", "simple_2_zone.idf"
+        "tests", "input_data", "trnsys", "simple_2_zone.idf"
     )
     convert_idf_to_trnbuild(
         idf_file=file,

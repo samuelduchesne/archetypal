@@ -787,6 +787,11 @@ ZoneList,
     Space Type 2,            !- Name
     Thermal Zone 2;          !- Zone 1 Name
 
+ZoneList,
+    All_zones,               !- Name
+    Thermal Zone 1,          !- Zone 1 Name
+    Thermal Zone 2;          !- Zone 2 Name
+
 
 !-   ===========  ALL OBJECTS IN CLASS: BUILDINGSURFACE:DETAILED ===========
 
@@ -1190,6 +1195,23 @@ ElectricEquipment,
     0.5,                     !- Fraction Radiant
     ,                        !- Fraction Lost
     General;                 !- End-Use Subcategory
+
+
+!-   ===========  ALL OBJECTS IN CLASS: ZONEINFILTRATION:DESIGNFLOWRATE ===========
+
+ZoneInfiltration:DesignFlowRate,
+    Infilt,                  !- Name
+    All_zones,               !- Zone or ZoneList Name
+    Always On Discrete,      !- Schedule Name
+    AirChanges/Hour,         !- Design Flow Rate Calculation Method
+    ,                        !- Design Flow Rate {m3/s}
+    ,                        !- Flow per Zone Floor Area {m3/s-m2}
+    ,                        !- Flow per Exterior Surface Area {m3/s-m2}
+    0.5,                     !- Air Changes per Hour {1/hr}
+    0,                       !- Constant Term Coefficient
+    ,                        !- Temperature Term Coefficient
+    0.224,                   !- Velocity Term Coefficient
+    ;                        !- Velocity Squared Term Coefficient
 
 
 !-   ===========  ALL OBJECTS IN CLASS: SIZING:PARAMETERS ===========

@@ -2003,7 +2003,7 @@ def _write_equipment_gain(equipments, gainNum, lines, res, old_new_names):
             )
         ]
         # Write gain name in lines
-        lines.insert(gainNum + 1, "GAIN PEOPLE" + "_" + equipment.Name + "\n")
+        lines.insert(gainNum + 1, "GAIN " + equipment.Name + "\n")
         areaMethod = "AREA_RELATED"
         power = gain["Equipment/Floor Area {W/m2}"].values[0]
         radFract = gain["Fraction Radiant"].values[0]
@@ -2036,7 +2036,7 @@ def _write_light_gain(gainNum, lights, lines, res, old_new_names):
             )
         ]
         # Write gain name in lines
-        lines.insert(gainNum + 1, "GAIN PEOPLE" + "_" + light.Name + "\n")
+        lines.insert(gainNum + 1, "GAIN " + light.Name + "\n")
         areaMethod = "AREA_RELATED"
         power = gain["Lights/Floor Area {W/m2}"].values[0]
         radFract = gain["Fraction Radiant"].values[0]
@@ -2067,7 +2067,7 @@ def _write_people_gain(gainNum, lines, peoples, res, old_new_names):
             )
         ]
         # Write gain name in lines
-        lines.insert(gainNum + 1, "GAIN PEOPLE" + "_" + people.Name + "\n")
+        lines.insert(gainNum + 1, "GAIN " + people.Name + "\n")
         areaMethod = "AREA_RELATED"
         power = gain["People/Floor Area {person/m2}"].values[0]
         radFract = gain["Fraction Radiant"].values[0]

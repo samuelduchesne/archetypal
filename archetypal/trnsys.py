@@ -115,6 +115,7 @@ def convert_idf_to_trnbuild(
         output_report="htm",
         prep_outputs=True,
         design_day=True,
+        expandobjects=True,
     )
     idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
         idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template

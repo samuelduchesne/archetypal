@@ -14,7 +14,7 @@ Version,
 !-   ===========  ALL OBJECTS IN CLASS: SIMULATIONCONTROL ===========
 
 SimulationControl,
-    No,                      !- Do Zone Sizing Calculation
+    Yes,                     !- Do Zone Sizing Calculation
     No,                      !- Do System Sizing Calculation
     No,                      !- Do Plant Sizing Calculation
     Yes,                     !- Run Simulation for Sizing Periods
@@ -256,6 +256,13 @@ Schedule:Day:Interval,
     24:00,                   !- Time 1 {hh:mm}
     0.4;                     !- Value Until Time 1
 
+Schedule:Day:Interval,
+    Heating_Setpoint_day,    !- Name
+    Temperature,             !- Schedule Type Limits Name
+    No,                      !- Interpolate to Timestep
+    24:00,                   !- Time 1 {hh:mm}
+    20;                      !- Value Until Time 1
+
 
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:WEEK:DAILY ===========
 
@@ -364,6 +371,21 @@ Schedule:Week:Daily,
     People_day_sch,          !- CustomDay1 Schedule:Day Name
     People_day_sch;          !- CustomDay2 Schedule:Day Name
 
+Schedule:Week:Daily,
+    Heating_setpoint_week,   !- Name
+    Heating_Setpoint_day,    !- Sunday Schedule:Day Name
+    Heating_Setpoint_day,    !- Monday Schedule:Day Name
+    Heating_Setpoint_day,    !- Tuesday Schedule:Day Name
+    Heating_Setpoint_day,    !- Wednesday Schedule:Day Name
+    Heating_Setpoint_day,    !- Thursday Schedule:Day Name
+    Heating_Setpoint_day,    !- Friday Schedule:Day Name
+    Heating_Setpoint_day,    !- Saturday Schedule:Day Name
+    Heating_Setpoint_day,    !- Holiday Schedule:Day Name
+    Heating_Setpoint_day,    !- SummerDesignDay Schedule:Day Name
+    Heating_Setpoint_day,    !- WinterDesignDay Schedule:Day Name
+    Heating_Setpoint_day,    !- CustomDay1 Schedule:Day Name
+    Heating_Setpoint_day;    !- CustomDay2 Schedule:Day Name
+
 
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:YEAR ===========
 
@@ -425,6 +447,15 @@ Schedule:Year,
     People_year_sch,         !- Name
     Fractional,              !- Schedule Type Limits Name
     People_week_sch,         !- Schedule:Week Name 1
+    1,                       !- Start Month 1
+    1,                       !- Start Day 1
+    12,                      !- End Month 1
+    31;                      !- End Day 1
+
+Schedule:Year,
+    Heating_setpoint_year,   !- Name
+    Temperature,             !- Schedule Type Limits Name
+    Heating_setpoint_week,   !- Schedule:Week Name 1
     1,                       !- Start Month 1
     1,                       !- Start Day 1
     12,                      !- End Month 1
@@ -1212,6 +1243,45 @@ ZoneInfiltration:DesignFlowRate,
     ,                        !- Temperature Term Coefficient
     0.224,                   !- Velocity Term Coefficient
     ;                        !- Velocity Squared Term Coefficient
+
+
+!-   ===========  ALL OBJECTS IN CLASS: HVACTEMPLATE:THERMOSTAT ===========
+
+HVACTemplate:Thermostat,
+    Thermostat,              !- Name
+    Always On Discrete,      !- Heating Setpoint Schedule Name
+    20,                      !- Constant Heating Setpoint {C}
+    Always On Discrete,      !- Cooling Setpoint Schedule Name
+    30;                      !- Constant Cooling Setpoint {C}
+
+
+!-   ===========  ALL OBJECTS IN CLASS: HVACTEMPLATE:ZONE:BASEBOARDHEAT ===========
+
+HVACTemplate:Zone:BaseboardHeat,
+    Thermal Zone 1,          !- Zone Name
+    Thermostat,              !- Template Thermostat Name
+    1,                       !- Zone Heating Sizing Factor
+    Electric,                !- Baseboard Heating Type
+    Always On Discrete,      !- Baseboard Heating Availability Schedule Name
+    autosize,                !- Baseboard Heating Capacity {W}
+    ,                        !- Dedicated Outdoor Air System Name
+    Flow/Person,             !- Outdoor Air Method
+    0,                       !- Outdoor Air Flow Rate per Person {m3/s}
+    ,                        !- Outdoor Air Flow Rate per Zone Floor Area {m3/s-m2}
+    ;                        !- Outdoor Air Flow Rate per Zone {m3/s}
+
+HVACTemplate:Zone:BaseboardHeat,
+    Thermal Zone 2,          !- Zone Name
+    Thermostat,              !- Template Thermostat Name
+    1,                       !- Zone Heating Sizing Factor
+    Electric,                !- Baseboard Heating Type
+    Always On Discrete,      !- Baseboard Heating Availability Schedule Name
+    autosize,                !- Baseboard Heating Capacity {W}
+    ,                        !- Dedicated Outdoor Air System Name
+    Flow/Person,             !- Outdoor Air Method
+    0,                       !- Outdoor Air Flow Rate per Person {m3/s}
+    ,                        !- Outdoor Air Flow Rate per Zone Floor Area {m3/s-m2}
+    ;                        !- Outdoor Air Flow Rate per Zone {m3/s}
 
 
 !-   ===========  ALL OBJECTS IN CLASS: SIZING:PARAMETERS ===========

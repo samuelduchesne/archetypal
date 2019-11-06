@@ -2324,9 +2324,6 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             "8-9-0": os.path.join(vupdater_path, "Transition-V8-9-0-to-V9-0-0"),
             "9-0-0": os.path.join(vupdater_path, "Transition-V9-0-0-to-V9-1-0"),
         }
-        # store the directory we start in
-        cwd = os.getcwd()
-        run_dir = Path(os.path.dirname(trans_exec[versionid]))
 
         if versionid == to_version:
             # if file version and to_veersion are the same, we don't need to
@@ -2338,6 +2335,10 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             )
             idf_file = Path(idf_file.copy(out_dir))
             return idf_file
+
+        # store the directory we start in
+        cwd = os.getcwd()
+        run_dir = Path(os.path.dirname(trans_exec[versionid]))
 
         # build a list of command line arguments
         with cd(run_dir):

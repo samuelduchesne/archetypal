@@ -2015,7 +2015,7 @@ def _write_equipment_gain(equipments, gainNum, lines, res, old_new_names):
             + str(round(power * radFract, 3))
             + " : HUMIDITY=0.066 : ELPOWERFRAC=0 "
             ": " + areaMethod + " : "
-            "CATEGORY=PEOPLE\n",
+            "CATEGORY=EQUIPMENT\n",
         )
 
 
@@ -2048,7 +2048,7 @@ def _write_light_gain(gainNum, lights, lines, res, old_new_names):
             + str(round(power * radFract, 3))
             + " : HUMIDITY=0.066 : ELPOWERFRAC=0 "
             ": " + areaMethod + " : "
-            "CATEGORY=PEOPLE\n",
+            "CATEGORY=LIGHTS\n",
         )
 
 

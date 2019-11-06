@@ -1941,25 +1941,78 @@ def _write_schedules(lines, schedule_names, schedules):
         values = np.round(values, decimals=1)
 
         # Writes schedule in lines
-        if (
-            len(hours_list) <= 1500
-        ):  # Todo: Now, only writes "short" schedules. Make method that write them all
-            lines.insert(
-                scheduleNum + 1,
-                "!-SCHEDULE " + schedules[schedule_name]["year"].Name + "\n",
-            )
-            lines.insert(
-                scheduleNum + 2,
-                "!- HOURS= " + " ".join(str(item) for item in hours_list) + "\n",
-            )
-            lines.insert(
-                scheduleNum + 3,
-                "!- VALUES= " + " ".join(str(item) for item in values) + "\n",
-            )
-        else:
-            schedules_not_written.append(schedule_name)
+        # Write values
+        _write_schedule_values(values, lines, scheduleNum, "VALUES")
+        # Write hours
+        _write_schedule_values(hours_list, lines, scheduleNum, "HOURS")
+
+        # Write schedule name
+        lines.insert(
+            scheduleNum + 1,
+            "!-SCHEDULE " + schedules[schedule_name]["year"].Name + "\n",
+        )
+
+        # if (
+        #     len(hours_list) <= 1500
+        # ):  # Todo: Now, only writes "short" schedules. Make method that write them all
+        #     lines.insert(
+        #         scheduleNum + 1,
+        #         "!-SCHEDULE " + schedules[schedule_name]["year"].Name + "\n",
+        #     )
+        #     lines.insert(
+        #         scheduleNum + 2,
+        #         "!- HOURS= " + " ".join(str(item) for item in hours_list) + "\n",
+        #     )
+        #     lines.insert(
+        #         scheduleNum + 3,
+        #         "!- VALUES= " + " ".join(str(item) for item in values) + "\n",
+        #     )
+        # else:
+        #     schedules_not_written.append(schedule_name)
 
     return schedules_not_written
+
+
+def _write_schedule_values(list, lines, scheduleNum, string):
+    count = 0
+    while count * 14 < len(list):
+        begin = count * 14
+        end = begin + 13
+        if begin == 0 and len(list) == 13:
+            lines.insert(
+                scheduleNum + 1,
+                "!- "
+                + string
+                + "= "
+                + " ".join(str(item) for item in list[begin:end])
+                + "\n",
+            )
+            count += 1
+            continue
+        if begin == 0 and len(list) != 13:
+            lines.insert(
+                scheduleNum + 1,
+                "!- "
+                + string
+                + "= "
+                + " ".join(str(item) for item in list[begin:end])
+                + ";"
+                + "\n",
+            )
+            count += 1
+            continue
+        if end >= len(list):
+            end = len(list)
+            lines.insert(
+                scheduleNum + count + 1,
+                " ".join(str(item) for item in list[begin:end]) + "\n",
+            )
+        else:
+            lines.insert(
+                scheduleNum + count + 1,
+                " ".join(str(item) for item in list[begin:end]) + ";" + "\n",
+            )
+        count += 1
 
 
 def _write_gains(equipments, lights, lines, peoples, res, old_new_names):

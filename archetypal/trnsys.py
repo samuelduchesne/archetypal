@@ -234,6 +234,10 @@ def convert_idf_to_trnbuild(
     _write_gains(equipments, lights, lines, peoples, res, old_new_names)
     # endregion
 
+    # region Write basic conditioning systems (HEATING and COOLING) from IDF to lines (T3D)
+    heat_name, cool_name = _write_conditioning(res, lines)
+    # endregion
+
     # region Write SCHEDULES from IDF to lines (T3D)
     schedules_not_written = _write_schedules(lines, schedule_names, schedules)
     # endregion
@@ -315,6 +319,11 @@ def convert_idf_to_trnbuild(
     # region Modify B18 file
     with open(b18_path) as b18_file:
         b18_lines = b18_file.readlines()
+
+    # Adds conditionning to B18 file
+    _write_conditioning_to_b18(
+        b18_lines, heat_name, cool_name, zones, res, old_new_names
+    )
 
     # Adds infiltration to b18 file
     infilt_to_b18(b18_lines, zones, res)
@@ -457,6 +466,25 @@ def _write_gain_to_b18(
                 + " : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= -1"
                 + "\n",
             )
+
+
+def _write_conditioning_to_b18(
+    b18_lines, heat_name, cool_name, zones, res, old_new_names
+):
+    for zone in zones:
+        # Heating
+        _write_heat_cool_to_b18(heat_name, old_new_names, zone, b18_lines, " HEATING")
+        # Cooling
+        _write_heat_cool_to_b18(cool_name, old_new_names, zone, b18_lines, " COOLING")
+
+
+def _write_heat_cool_to_b18(list_name, old_new_names, zone, b18_lines, string):
+    for key in list_name.keys():
+        if old_new_names[zone.Name.upper()][0] in key:
+            f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
+            regimeNum = checkStr(b18_lines, "REGIME", f_count)
+            # Write
+            b18_lines.insert(regimeNum, string + " = " + list_name[key] + "\n")
 
 
 def zone_where_gain_is(gains, zones, zonelists):
@@ -2014,6 +2042,58 @@ def _write_schedule_values(list, lines, scheduleNum, string):
                 " ".join(str(item) for item in list[begin:end]) + ";" + "\n",
             )
         count += 1
+
+
+def _write_conditioning(res, lines):
+    # Heating
+    heat_name = {}
+    if res["Zone Sensible Heating"].iloc[0, 0] != "None":
+        for i in range(0, len(res["Zone Sensible Heating"])):
+            key = res["Zone Sensible Heating"].iloc[i, 0]
+            name = "HEAT_z" + str(res["Zone Sensible Heating"].iloc[i].name)
+            heat_name[key] = name
+            heatingNum = checkStr(lines, "H e a t i n g")
+            lines.insert(heatingNum + 1, " AREA_RELATED_POWER=1" + "\n")
+            lines.insert(heatingNum + 1, " ELPOWERFRAC=0" + "\n")
+            lines.insert(heatingNum + 1, " RRAD=0" + "\n")
+            lines.insert(heatingNum + 1, " HUMIDITY=0" + "\n")
+            lines.insert(heatingNum + 1, "POWER=999999999" + "\n")
+            lines.insert(
+                heatingNum + 1,
+                " ON="
+                + str(
+                    res["Zone Sensible Heating"]
+                    .iloc[i]
+                    .loc["Thermostat Setpoint Temperature at Peak Load [C]"]
+                )
+                + "\n",
+            )
+            lines.insert(heatingNum + 1, "HEATING " + name + "\n")
+    # Cooling
+    cool_name = {}
+    if res["Zone Sensible Cooling"].iloc[0, 0] != "None":
+        for i in range(0, len(res["Zone Sensible Cooling"])):
+            key = res["Zone Sensible Cooling"].iloc[i, 0]
+            name = "COOL_z" + str(res["Zone Sensible Cooling"].iloc[i].name)
+            cool_name[key] = name
+            coolingNum = checkStr(lines, "C o o l i n g")
+            lines.insert(coolingNum + 1, " AREA_RELATED_POWER=1" + "\n")
+            lines.insert(coolingNum + 1, " ELPOWERFRAC=0" + "\n")
+            lines.insert(coolingNum + 1, " HUMIDITY=0" + "\n")
+            lines.insert(coolingNum + 1, "POWER=999999999" + "\n")
+            lines.insert(
+                coolingNum + 1,
+                " ON="
+                + str(
+                    res["Zone Sensible Cooling"]
+                    .iloc[i]
+                    .loc["Thermostat Setpoint Temperature at Peak Load [C]"]
+                )
+                + "\n",
+            )
+            lines.insert(coolingNum + 1, "COOLING " + name + "\n")
+
+    return heat_name, cool_name
 
 
 def _write_gains(equipments, lights, lines, peoples, res, old_new_names):

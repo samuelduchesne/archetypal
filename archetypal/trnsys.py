@@ -461,9 +461,9 @@ def _write_gain_to_b18(
                 regimeNum,
                 " GAIN= "
                 + gain.Name
-                + " : SCALE="
+                + " : SCALE= SCHEDULE 1*"
                 + schedule
-                + " : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= -1"
+                + " : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= 1"
                 + "\n",
             )
 
@@ -1976,10 +1976,7 @@ def _write_schedules(lines, schedule_names, schedules):
         _write_schedule_values(hours_list, lines, scheduleNum, "HOURS")
 
         # Write schedule name
-        lines.insert(
-            scheduleNum + 1,
-            "!-SCHEDULE " + schedules[schedule_name]["year"].Name + "\n",
-        )
+        lines.insert(scheduleNum + 1, "!-SCHEDULE " + schedule_name + "\n")
 
         # if (
         #     len(hours_list) <= 1500

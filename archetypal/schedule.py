@@ -248,7 +248,8 @@ class Schedule(object):
             slice = pd.IndexSlice[:]
         elif len(slice) > 1:
             slice = pd.IndexSlice[slice[0] : slice[1]]
-        ax = series.loc[slice].plot(**kwargs, label=self.Name)
+        label = kwargs.pop("label", self.Name)
+        ax = series.loc[slice].plot(**kwargs, label=label)
         return ax
 
     def get_interval_day_ep_schedule_values(self, epbunch):

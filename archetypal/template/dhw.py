@@ -32,7 +32,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         """
         Args:
             IsOn (bool):
-            WaterSchedule (UmiSchedule, optional):
+            WaterSchedule (UmiSchedule):
             FlowRatePerFloorArea (float):
             WaterSupplyTemperature (float):
             WaterTemperatureInlet (float):

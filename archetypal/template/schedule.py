@@ -269,13 +269,13 @@ class DaySchedule(UmiSchedule):
     """
 
     def __init__(self, **kwargs):
-        """Initialize a DaySchedule object with parameters: :param **kwargs:
+        """Initialize a DaySchedule object with parameters: :param ** kwargs:
         keywords passed to the :class:`UmiSchedule`:param constructor. See
         :class:`UmiSchedule` for more info.:
 
         Args:
-            **kwargs: Keywords passed to the :class:`UmiSchedule`
-                constructor. See :class:`UmiSchedule` for more details.
+            **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
+                See :class:`UmiSchedule` for more details.
         """
         super(DaySchedule, self).__init__(**kwargs)
 
@@ -286,8 +286,8 @@ class DaySchedule(UmiSchedule):
         Args:
             epbunch (EpBunch): The EpBunch object to construct a DaySchedule
                 from.
-            **kwargs: Keywords passed to the :class:`UmiSchedule`
-                constructor. See :class:`UmiSchedule` for more details.
+            **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
+                See :class:`UmiSchedule` for more details.
         """
 
         sched = cls(
@@ -306,8 +306,8 @@ class DaySchedule(UmiSchedule):
 
         Args:
             Values (array-like): A list of values of length 24.
-            **kwargs: Keywords passed to the :class:`UmiSchedule`
-             constructor. See :class:`UmiSchedule` for more details.
+            **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
+                See :class:`UmiSchedule` for more details.
         """
         sched = cls(**kwargs)
         sched.values = Values
@@ -316,6 +316,11 @@ class DaySchedule(UmiSchedule):
 
     @classmethod
     def from_json(cls, Type, **kwargs):
+        """
+        Args:
+            Type:
+            **kwargs:
+        """
         values = kwargs.pop("Values")
         sched = cls.from_values(values, schTypeLimitsName=Type, **kwargs)
 
@@ -351,7 +356,7 @@ class WeekSchedule(UmiSchedule):
     def __init__(self, days=None, **kwargs):
         """
         Args:
-            *args:
+            days:
             **kwargs:
         """
         super(WeekSchedule, self).__init__(**kwargs)
@@ -359,6 +364,11 @@ class WeekSchedule(UmiSchedule):
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
+        """
+        Args:
+            epbunch:
+            **kwargs:
+        """
         sched = cls(
             idf=epbunch.theidf, Name=epbunch.Name, schType=epbunch.key, **kwargs
         )
@@ -370,7 +380,6 @@ class WeekSchedule(UmiSchedule):
     def from_json(cls, **kwargs):
         """
         Args:
-            *args:
             **kwargs:
         """
         sch_type_limits_name = kwargs.pop("Type")
@@ -459,7 +468,6 @@ class YearSchedule(UmiSchedule):
     def from_json(cls, **kwargs):
         """
         Args:
-            *args:
             **kwargs:
         """
         schtypelimitsname = kwargs.pop("Type")

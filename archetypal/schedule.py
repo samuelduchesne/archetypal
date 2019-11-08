@@ -45,6 +45,7 @@ class Schedule(object):
             base_year (int): The base year of the schedule. Defaults to 2018
                 since the first day of that year is a Monday.
             schType (str): The EnergyPlus schedule type. eg.: "Schedule:Year"
+            schTypeLimitsName:
             values:
             **kwargs:
         """
@@ -788,7 +789,6 @@ class Schedule(object):
             sched_epbunch (EpBunch): the schedule epbunch object
             start_date:
             index:
-            sch_type:
         """
         if self.count == 0:
             # This is the first time, get the schedule type and the type limits.
@@ -1288,13 +1288,16 @@ class Schedule(object):
             date = self._date_field_interpretation(date)
             return lambda x: x.index == date
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, quantity=None):
         """Combine two schedule objects together.
 
         Args:
             other (Schedule): the other Schedule object to combine with.
             weights (list-like, optional): A list-like object of len 2. If None,
                 equal weights are used.
+            quantity: scalar value that will be multiplied by self before the
+                averaging occurs. This ensures that the resulting schedule
+                returns the correct integrated value.
 
         Returns:
             (Schedule): the combined Schedule object.

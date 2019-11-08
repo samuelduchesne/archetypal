@@ -96,12 +96,16 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                 ]
             )
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, quantity=None):
         """Combine two UmiSchedule objects together.
 
         Args:
-            other (UmiSchedule):
-            weights (str): Attribute of self and other containing the weight factor.
+            other (UmiSchedule): The other Schedule object to combine with.
+            weights (list): Attribute of self and other containing the weight
+                factor.
+            quantity (list): Scalar value that will be multiplied by self before
+                the averaging occurs. This ensures that the resulting schedule
+                returns the correct integrated value.
 
         Returns:
             (UmiSchedule): the combined UmiSchedule object.
@@ -133,9 +137,20 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         elif isinstance(weights, str):
             weights = [getattr(self, weights), getattr(other, weights)]
 
-        new_values = np.average(
-            [self.all_values, other.all_values], axis=0, weights=weights
-        )
+        if quantity is None:
+            new_values = np.average(
+                [self.all_values, other.all_values], axis=0, weights=weights
+            )
+        else:
+            new_values = np.average(
+                [
+                    self.all_values * quantity[0],
+                    other.all_values * quantity[1],
+                ],
+                axis=0,
+                weights=weights,
+            )
+            new_values /= new_values.max()
 
         # the new object's name
         meta = self._get_predecessors_meta(other)

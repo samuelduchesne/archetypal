@@ -529,6 +529,8 @@ def test_trnbuild_from_simple_idf(config):
         "shgc": 0.64,
         "t_vis": 0.8,
         "tolerance": 0.05,
+        "fframe": 0.0,
+        "uframe": 0.5,
         "ordered": True,
     }
 

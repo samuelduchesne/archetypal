@@ -253,6 +253,8 @@ def convert_idf_to_trnbuild(
     win_shgc = kwargs.get("shgc", 0.64)
     win_tvis = kwargs.get("t_vis", 0.8)
     win_tolerance = kwargs.get("tolerance", 0.05)
+    win_fframe = kwargs.get("fframe", 0.15)
+    win_uframe = kwargs.get("uframe", 8.17)
     window = choose_window(win_u_value, win_shgc, win_tvis, win_tolerance, window_lib)
 
     # Write windows in lines
@@ -1861,7 +1863,7 @@ def _write_winPool(lines, window):
     )
 
 
-def _write_window(lines, win_slope_dict, window):
+def _write_window(lines, win_slope_dict, window, fframe=0.15, uframe=8.17):
     """Write window information in lines
 
     Args:
@@ -1869,7 +1871,9 @@ def _write_window(lines, win_slope_dict, window):
             TRNBuild). To be appended (insert) here
         win_slope_dict (dict): Dictionary with window's names as key and
             window's slope as value
-        window (tuple): Information to write in the window pool extension (
+        window (tuple): Information to write in the window pool extension
+        fframe (float): fraction of the window frame (between 0 and 1)
+        uframe (float): u-value of the window frame
     """
     log("Writing windows info from idf file to t3d file...")
     # Get line number where to write
@@ -1884,8 +1888,11 @@ def _write_window(lines, win_slope_dict, window):
             "= " + str(win_slope_dict[key]) + ": "
             "SPACID = 4: WWID = 0.77: "
             "WHEIG = 1.08: "
-            "FFRAME = 0.15: UFRAME = "
-            "8.17: ABSFRAME = 0.6: "
+            "FFRAME = "
+            + str(fframe)
+            + ": UFRAME = "
+            + str(uframe)
+            + ": ABSFRAME = 0.6: "
             "RISHADE = 0: RESHADE = 0: "
             "REFLISHADE = 0.5: "
             "REFLOSHADE = 0.5: CCISHADE "

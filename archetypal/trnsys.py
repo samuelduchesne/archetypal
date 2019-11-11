@@ -2056,12 +2056,21 @@ def _write_conditioning(res, lines):
             key = res["Zone Sensible Heating"].iloc[i, 0]
             name = "HEAT_z" + str(res["Zone Sensible Heating"].iloc[i].name)
             heat_name[key] = name
+            power = (
+                float(
+                    res["Zone Sensible Heating"].iloc[i, :][
+                        "User Design Load per Area [W/m2]"
+                    ]
+                )
+                / 1000
+                * 3600
+            )  # kJ/h-m2
             heatingNum = checkStr(lines, "H e a t i n g")
             lines.insert(heatingNum + 1, " AREA_RELATED_POWER=1" + "\n")
             lines.insert(heatingNum + 1, " ELPOWERFRAC=0" + "\n")
             lines.insert(heatingNum + 1, " RRAD=0" + "\n")
             lines.insert(heatingNum + 1, " HUMIDITY=0" + "\n")
-            lines.insert(heatingNum + 1, "POWER=999999999" + "\n")
+            lines.insert(heatingNum + 1, "POWER=" + str(power) + "\n")
             lines.insert(
                 heatingNum + 1,
                 " ON="
@@ -2080,11 +2089,20 @@ def _write_conditioning(res, lines):
             key = res["Zone Sensible Cooling"].iloc[i, 0]
             name = "COOL_z" + str(res["Zone Sensible Cooling"].iloc[i].name)
             cool_name[key] = name
+            power = (
+                float(
+                    res["Zone Sensible Cooling"].iloc[i, :][
+                        "User Design Load per Area [W/m2]"
+                    ]
+                )
+                / 1000
+                * 3600
+            )  # kJ/h-m2
             coolingNum = checkStr(lines, "C o o l i n g")
             lines.insert(coolingNum + 1, " AREA_RELATED_POWER=1" + "\n")
             lines.insert(coolingNum + 1, " ELPOWERFRAC=0" + "\n")
             lines.insert(coolingNum + 1, " HUMIDITY=0" + "\n")
-            lines.insert(coolingNum + 1, "POWER=999999999" + "\n")
+            lines.insert(coolingNum + 1, "POWER=" + str(power) + "\n")
             lines.insert(
                 coolingNum + 1,
                 " ON="

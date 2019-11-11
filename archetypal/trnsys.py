@@ -2074,7 +2074,10 @@ def _write_conditioning(res, lines):
             key = res["Zone Sensible Heating"].iloc[i, 0]
             name = "HEAT_z" + str(res["Zone Sensible Heating"].iloc[i].name)
             heat_name[key] = name
-            power = (
+            size_factor = res["Heating Sizing Factor Information"][
+                res["Heating Sizing Factor Information"]["Sizing Factor ID"] == "Global"
+            ]["Value"].max()
+            power = size_factor * (
                 float(
                     res["Zone Sensible Heating"].iloc[i, :][
                         "User Design Load per Area [W/m2]"
@@ -2107,7 +2110,10 @@ def _write_conditioning(res, lines):
             key = res["Zone Sensible Cooling"].iloc[i, 0]
             name = "COOL_z" + str(res["Zone Sensible Cooling"].iloc[i].name)
             cool_name[key] = name
-            power = (
+            size_factor = res["Cooling Sizing Factor Information"][
+                res["Heating Sizing Factor Information"]["Sizing Factor ID"] == "Global"
+            ]["Value"].max()
+            power = size_factor * (
                 float(
                     res["Zone Sensible Cooling"].iloc[i, :][
                         "User Design Load per Area [W/m2]"

@@ -2265,12 +2265,15 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
         doted_version = get_idf_version(idf_file, doted=True)
         iddfile = getiddfile(doted_version)
         if os.path.exists(iddfile):
-            # if a E+ exists, pass
-            pass
+            # if a E+ exists, means there is an E+ install that can be used
+            if versionid == to_version:
+                return None
             # might be an old version of E+
         elif tuple(map(int, doted_version.split("."))) < (8, 0):
-            # else if the version is an old E+ version (< 8.0)
+            # the version is an old E+ version (< 8.0)
             iddfile = getoldiddfile(doted_version)
+            if versionid == to_version:
+                return None
         # use to_version
         if to_version is None:
             # What is the latest E+ installed version
@@ -2323,11 +2326,13 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             "8-8-0": os.path.join(vupdater_path, "Transition-V8-8-0-to-V8-9-0"),
             "8-9-0": os.path.join(vupdater_path, "Transition-V8-9-0-to-V9-0-0"),
             "9-0-0": os.path.join(vupdater_path, "Transition-V9-0-0-to-V9-1-0"),
+            "9-1-0": os.path.join(vupdater_path, "Transition-V9-1-0-to-V9-2-0"),
         }
-        # store the directory we start in
-        cwd = os.getcwd()
+        # set directory to run transition executables
         run_dir = Path(os.path.dirname(trans_exec[versionid]))
 
+        # check the file version, if it corresponds to the latest version found on
+        # the machine, means its already upgraded to the correct version. Return it.
         if versionid == to_version:
             # if file version and to_veersion are the same, we don't need to
             # perform transition
@@ -2339,6 +2344,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             idf_file = Path(idf_file.copy(out_dir))
             return idf_file
 
+        # Otherwise,
         # build a list of command line arguments
         with cd(run_dir):
             transitions = [

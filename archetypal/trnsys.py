@@ -1992,7 +1992,7 @@ def _write_schedules(lines, schedule_names, schedules):
                     count += 1
 
         # Round values to 1 decimal
-        values = np.round(values, decimals=1)
+        values = np.round(values.astype("float64"), decimals=1)
 
         # Writes schedule in lines
         # Write values

@@ -14,6 +14,7 @@ import multiprocessing
 import os
 import subprocess
 import time
+import warnings
 from collections import defaultdict
 from itertools import compress
 from math import isclose
@@ -44,6 +45,8 @@ class IDF(geomeppy.IDF):
     """Wrapper over the geomeppy.IDF class and subsequently the
     eppy.modeleditor.IDF class
     """
+
+    _functions = set()
 
     def __init__(self, *args, **kwargs):
         """
@@ -2463,6 +2466,28 @@ def getoldiddfile(versionid):
     eplusfolder = os.path.dirname(eplus_exe)
     iddfile = "{}/bin/Energy+.idd".format(eplusfolder)
     return iddfile
+
+
+def _register_function(name, cls):
+    def decorator(function):
+        if hasattr(cls, name):
+            warnings.warn(
+                "registration of function {!r} under name {!r} for type "
+                "{!r} is overriding a preexisting attribute with the same "
+                "name.".format(function, name, cls),
+                UserWarning,
+                stacklevel=2,
+            )
+        setattr(cls, name, function)
+        cls._functions.add(name)
+        return function
+
+    return decorator
+
+
+def register_idf_function(name):
+    """adds a function to the IDF object"""
+    return _register_function(name, IDF)
 
 
 if __name__ == "__main__":

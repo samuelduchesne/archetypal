@@ -178,6 +178,24 @@ def convert_idf_to_trnbuild(
     # region Get schedules from IDF
     schedule_names, schedules = _get_schedules(idf_2)
 
+    # Adds ground temperature to schedule
+    schedule_names.append("sch_ground")
+    values = np.append(
+        res["Site:GroundTemperature:BuildingSurface"].values[0][1:],
+        res["Site:GroundTemperature:BuildingSurface"].values[0][-1],
+    )
+    all_values = (
+        pd.DataFrame(
+            values,
+            index=pd.date_range(freq="MS", start="01/01/2019", periods=13),
+        )
+        .resample("H")
+        .ffill()[:-1]
+        .T.values[0]
+    )
+
+    schedules["sch_ground"] = {"all values": all_values}
+
     _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
     # endregion
 
@@ -1641,7 +1659,7 @@ def _write_zone_buildingSurf_fenestrationSurf(
 
                 if "ground" in buildingSurf.Outside_Boundary_Condition.lower():
                     buildingSurf.Outside_Boundary_Condition_Object = (
-                        "BOUNDARY=INPUT 1*TGROUND"
+                        "BOUNDARY=SCHEDULE 1*sch_ground"
                     )
 
                 if "adiabatic" in buildingSurf.Outside_Boundary_Condition.lower():

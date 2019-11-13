@@ -33,6 +33,11 @@ BUI file
 
 Internal thermal gains such as “people”, “lights” and “equipment” are translated from the IDF file to the BUI file.
 
+4. Conditioning
+
+Heating and cooling demands are translated from the IDF file to the BUI file such as power per floor area (W/m²) and a temperature setpoint.
+The temperature setpoint is the setpoint at the peak time for heating (or cooling).
+
 Methodology
 -----------
 

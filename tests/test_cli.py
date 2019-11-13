@@ -1,6 +1,6 @@
 from click.testing import CliRunner
 
-from archetypal import get_eplus_dire
+from archetypal import get_eplus_dirs, ep_version
 from archetypal.cli import cli
 from path import Path
 
@@ -11,7 +11,7 @@ class TestCli:
     def test_reduce(self, config):
         """Tests the 'reduce' method"""
         runner = CliRunner()
-        examples = get_eplus_dire() / "ExampleFiles"
+        examples = get_eplus_dirs(ep_version) / "ExampleFiles"
         necb = Path("tests/input_data/necb")
         test_file = examples / "2ZoneDataCenterHVAC_wEconomizer.idf"
         test_file_list = [

@@ -334,7 +334,7 @@ def convert(
     "-w",
     type=click.Path(exists=True),
     help="path to the EPW weather file",
-    default=archetypal.get_eplus_dire()
+    default=archetypal.get_eplus_dirs(archetypal.ep_version)
     / "WeatherData"
     / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
 )

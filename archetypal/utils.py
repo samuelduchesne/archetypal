@@ -17,6 +17,7 @@ import datetime as dt
 import json
 import logging as lg
 import os
+import platform
 import re
 import sys
 import time
@@ -27,7 +28,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
-from archetypal import settings
+from archetypal import settings, ep_version
 from pandas.io.json import json_normalize
 from path import Path
 
@@ -814,12 +815,55 @@ def float_round(num, n):
     return num
 
 
-def get_eplus_dire():
+def get_eplus_dirs(version=ep_version):
+    """Returns EnergyPlus root folder for a specific version.
+
+    Args:
+        version (str): Version number in the form "8-9-0" to search for.
+
+    Returns (Path): The folder path.
+    """
     from eppy.runner.run_functions import install_paths
 
-    eplus_exe, eplus_weather = install_paths("8-9-0")
+    eplus_exe, eplus_weather = install_paths(version)
     eplusdir = Path(eplus_exe).dirname()
     return Path(eplusdir)
+
+
+def warn_if_not_compatible():
+    """Checks if an EnergyPlus install is detected. If the latest version detected
+    is higher than the one specified by archetypal, a warning is also raised."""
+    eplus_homes = get_eplus_basedirs()
+
+    if not eplus_homes:
+        warnings.warn(
+            "No installation of EnergyPlus could be detected on this "
+            "machine. Please install EnergyPlus from https://energyplus.net before using archetypal"
+        )
+    if len(eplus_homes) > 1:
+        # more than one installs
+        warnings.warn(
+            "There are more than one versions of EnergyPlus on this machine. Make "
+            "sure you provide the appropriate version number when possible. "
+        )
+
+
+def get_eplus_basedirs():
+    """Returns a list of possible E+ install paths"""
+    if platform.system() == "Windows":
+        eplus_homes = Path("C:").glob("EnergyPlusV*")
+        return eplus_homes
+    elif platform.system() == "Linux":
+        eplus_homes = Path("/usr/local/").glob("EnergyPlus-*")
+        return eplus_homes
+    elif platform.system() == "Darwin":
+        eplus_homes = Path("/Applications").glob("EnergyPlus-*")
+        return eplus_homes
+    else:
+        warnings.warn(
+            "Archetypal is not compatuble with %s. It is only compatible "
+            "with Winodws, Linux or MacOs" % platform.system()
+        )
 
 
 def timeit(method):

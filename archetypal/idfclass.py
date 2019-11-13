@@ -2267,13 +2267,17 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
         if os.path.exists(iddfile):
             # if a E+ exists, means there is an E+ install that can be used
             if versionid == to_version:
-                return None
+                # if version of idf file is equal to intended version, copy file from
+                # temp transition folder into cache folder and return path
+                return idf_file.copy(out_dir / idf_file.basename())
             # might be an old version of E+
         elif tuple(map(int, doted_version.split("."))) < (8, 0):
             # the version is an old E+ version (< 8.0)
             iddfile = getoldiddfile(doted_version)
             if versionid == to_version:
-                return None
+                # if version of idf file is equal to intended version, copy file from
+                # temp transition folder into cache folder and return path
+                return idf_file.copy(out_dir / idf_file.basename())
         # use to_version
         if to_version is None:
             # What is the latest E+ installed version

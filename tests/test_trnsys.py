@@ -507,6 +507,7 @@ def test_trnbuild_idf_darwin_or_linux(config):
 
     assert res
 
+
 @pytest.mark.xfail(
     "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
     reason="Skipping this test on Travis CI.",
@@ -534,9 +535,7 @@ def test_trnbuild_from_simple_idf(config):
         "ordered": True,
     }
 
-    file = os.path.join(
-        "tests", "input_data", "trnsys", "simple_2_zone.idf"
-    )
+    file = os.path.join("tests", "input_data", "trnsys", "simple_2_zone.idf")
     convert_idf_to_trnbuild(
         idf_file=file,
         weather_file=weather_file,

@@ -185,8 +185,7 @@ def convert_idf_to_trnbuild(
     )
     all_values = (
         pd.DataFrame(
-            values,
-            index=pd.date_range(freq="MS", start="01/01/2019", periods=13),
+            values, index=pd.date_range(freq="MS", start="01/01/2019", periods=13)
         )
         .resample("H")
         .ffill()[:-1]

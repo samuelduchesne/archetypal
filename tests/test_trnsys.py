@@ -43,11 +43,16 @@ from archetypal.trnsys import (
     _write_constructions_end,
     _write_materials,
     _write_gains,
+    _write_conditioning,
     _write_schedules,
     _write_window,
     _write_winPool,
     _save_t3d,
+    _relative_to_absolute,
+    infilt_to_b18,
     gains_to_b18,
+    conditioning_to_b18,
+
 )
 
 
@@ -68,8 +73,8 @@ class TestsConvert:
         window_file = "W74-lib.dat"
         template_dir = os.path.join("archetypal", "ressources")
         window_filepath = os.path.join(template_dir, window_file)
-        template_d18 = None
-        trnsidf_exe = None  # 'docker/trnsidf/trnsidf.exe'
+        template_d18 = "tests/input_data/trnsys/NewFileTemplate.d18"
+        trnsidf_exe = "docker/trnsidf/trnsidf.exe"  # 'docker/trnsidf/trnsidf.exe'
 
         # prepare args (key=value). Key is a unique id for the runs (here the
         # file basename is used). Value is a dict of the function arguments
@@ -219,7 +224,7 @@ class TestsConvert:
         # Write LAYER from IDF to lines (T3D)
         _write_materials(lines, materialAirGap, materialNoMass, materials)
 
-    def test_write_gains(self, config, converttest):
+    def test_write_gains_conditioning(self, config, converttest):
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
 
         # Run EnergyPlus Simulation
@@ -260,6 +265,35 @@ class TestsConvert:
         # Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
         _write_gains(equipments, lights, lines, peoples, res, old_new_names)
 
+        heat_name, cool_name = _write_conditioning(res, lines)
+
+    def test_relative_to_absolute(self, config, converttest):
+        output_folder = None
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
+        try:
+            idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+            )
+        except:
+            output_folder = os.path.relpath(settings.data_folder)
+            print("Could not assert all paths exist - OK for this test")
+
+        # Check if cache exists
+        log_clear_names = False
+        idf = load_idf(idf_file)
+
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        idf_2 = deepcopy(idf)
+        clear_name_idf_objects(idf_2, log_clear_names)
+
+        # Get objects from IDF file
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
+            idf_2
+        )
+
+        _relative_to_absolute(buildingSurfs[0], 1, 2, 3)
+
+
     def test_save_t3d(self, config, converttest):
         output_folder = None
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
@@ -276,6 +310,89 @@ class TestsConvert:
 
         # Save T3D file at output_folder
         output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
+
+    def test_write_to_b18(self, config, converttest):
+        output_folder = None
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, kwargs = converttest
+        try:
+            idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+            )
+        except:
+            output_folder = os.path.relpath(settings.data_folder)
+            print("Could not assert all paths exist - OK for this test")
+
+        # Run EnergyPlus Simulation
+        res = run_eplus(
+            idf_file,
+            weather_file,
+            output_directory=None,
+            ep_version=None,
+            output_report="htm",
+            prep_outputs=True,
+            design_day=True,
+        )
+
+        # Check if cache exists
+        log_clear_names = False
+        idf = load_idf(idf_file)
+
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        idf_2 = deepcopy(idf)
+        clear_name_idf_objects(idf_2, log_clear_names)
+
+        # Get old:new names equivalence
+        old_new_names = pd.read_csv(
+            os.path.join(
+                settings.data_folder,
+                Path(idf_file).basename().stripext() + "_old_new_names_equivalence.csv",
+            )
+        ).to_dict()
+
+        # Get objects from IDF file
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
+            idf_2
+        )
+
+        b18_path = "tests/input_data/trnsys/T3D_simple_2_zone.b18"
+
+        schedules_not_written =[]
+
+        heat_name = {}
+        for i in range(0, len(res["Zone Sensible Heating"])):
+            key = res["Zone Sensible Heating"].iloc[i, 0]
+            name = "HEAT_z" + str(res["Zone Sensible Heating"].iloc[i].name)
+            heat_name[key] = name
+
+        cool_name = {}
+        for i in range(0, len(res["Zone Sensible Cooling"])):
+            key = res["Zone Sensible Cooling"].iloc[i, 0]
+            name = "HEAT_z" + str(res["Zone Sensible Cooling"].iloc[i].name)
+            cool_name[key] = name
+
+        with open(b18_path) as b18_file:
+            b18_lines = b18_file.readlines()
+
+        zones = zones[0:2]
+        peoples = peoples[0:2]
+        equipments = equipments[0:2]
+        lights = lights[0:2]
+
+        infilt_to_b18(b18_lines, zones, res)
+
+        gains_to_b18(
+            b18_lines,
+            zones,
+            zonelists,
+            peoples,
+            lights,
+            equipments,
+            schedules_not_written,
+            res,
+            old_new_names,
+        )
+
+        conditioning_to_b18(b18_lines, heat_name, cool_name, zones, old_new_names)
 
     def test_load_idf_file_and_clean_names(self, config, converttest):
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest

@@ -53,14 +53,14 @@ minutes to complete.
 
 ## EnergyPlus to UMI Template File Conversion
 
-*archetypal* aims at providing a way of creating UMI Template Files from EnergyPlus models.
-The algorithm approximates the non-geometric parameters of a multi-zone EnergyPlus model
-by dissecting and combining core zones and perimeter zones. The procedure is an attempt to
-streamline the creation of Urban Building Energy Models (UBEM) [@Reinhart2016] based on
-the "Shoeboxer" method [@Dogan2017] by accelerating the creation of building archetype
-templates. This approach introduces a robust method to convert detailed multi-zone models
-to archetype templates, striped of geometric properties. Consequently, *archetypal* offers
-researchers and designers a way of more quickly creating UBEM studies.
+*archetypal* aims at providing a way of creating UMI Template Files from EnergyPlus
+models. The algorithm approximates the non-geometric parameters of a multi-zone EnergyPlus
+model by dissecting and combining core zones and perimeter zones. The procedure is an
+attempt to streamline the creation of Urban Building Energy Models (UBEM) [@Reinhart2016]
+based on the "Shoeboxer" method [@Dogan2017] by accelerating the creation of building
+archetype templates. This approach introduces a robust method to convert detailed
+multi-zone models to archetype templates, stripped of geometric properties. Consequently,
+*archetypal offers researchers and designers a way of more quickly creating UBEM studies.
 
 *archetypal* also aims at providing a scripting language for the modification UMI Template
 Files. It essentially is a Python interface to the data format of the [UMI Template

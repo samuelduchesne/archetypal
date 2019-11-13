@@ -33,6 +33,11 @@ BUI file
 
 Internal thermal gains such as “people”, “lights” and “equipment” are translated from the IDF file to the BUI file.
 
+4. Conditioning
+
+Heating and cooling demands are translated from the IDF file to the BUI file such as power per floor area (W/m²) and a temperature setpoint.
+The temperature setpoint is the setpoint at the peak time for heating (or cooling).
+
 Methodology
 -----------
 
@@ -50,7 +55,8 @@ necessary and re-transcribe them in the T3D file
 2. T3D to BUI
 
 The operation to convert the T3D file to the BUI file is done by running the trnsidf.exe executable with a command
-line.
+line. After this operation, the infiltration rate, internal gains and conditioning systems are written in the "REGIME"
+section of each zone in the BUI file.
 
 How to convert an IDF file
 --------------------------

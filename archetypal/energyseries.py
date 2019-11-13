@@ -995,15 +995,15 @@ def plot_energyseries_map(
 
     stacked, timeindex = tsam.unstackToPeriods(copy.deepcopy(data), periodlength)
     cmap = plt.get_cmap(cmap)
-    cax = axes.imshow(
+    im = axes.imshow(
         stacked.values.T, interpolation="nearest", vmin=vmin, vmax=vmax, cmap=cmap
     )
     axes.set_aspect("auto")
     axes.set_ylabel("Hour")
     plt.xlabel("Day")
 
-    fig.subplots_adjust(right=1.2)
-    cbar = plt.colorbar(cax)
+    # fig.subplots_adjust(right=1.1)
+    cbar = fig.colorbar(im, ax=axes)
     cbar.set_label("{} [{:~P}]".format(data.name, data.units))
 
     fig, axes = save_and_show(

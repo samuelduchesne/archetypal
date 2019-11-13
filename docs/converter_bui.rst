@@ -55,7 +55,8 @@ necessary and re-transcribe them in the T3D file
 2. T3D to BUI
 
 The operation to convert the T3D file to the BUI file is done by running the trnsidf.exe executable with a command
-line.
+line. After this operation, the infiltration rate, internal gains and conditioning systems are written in the "REGIME"
+section of each zone in the BUI file.
 
 How to convert an IDF file
 --------------------------

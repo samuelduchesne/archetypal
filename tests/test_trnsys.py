@@ -90,11 +90,6 @@ class TestsConvert:
 
         del idf
 
-    def test_load_idf_file_and_clean_names(self, config, converttest):
-        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
-        log_clear_names = False
-        idf_2 = _load_idf_file_and_clean_names(idf_file, log_clear_names)
-
     def test_get_save_write_schedules(self, config, converttest):
         output_folder = None
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
@@ -281,6 +276,11 @@ class TestsConvert:
 
         # Save T3D file at output_folder
         output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
+
+    def test_load_idf_file_and_clean_names(self, config, converttest):
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
+        log_clear_names = False
+        idf_2 = _load_idf_file_and_clean_names(idf_file, log_clear_names)
 
 
 @pytest.fixture(

@@ -339,9 +339,7 @@ def convert_idf_to_trnbuild(
         b18_lines = b18_file.readlines()
 
     # Adds conditionning to B18 file
-    _write_conditioning_to_b18(
-        b18_lines, heat_name, cool_name, zones, res, old_new_names
-    )
+    conditioning_to_b18(b18_lines, heat_name, cool_name, zones, old_new_names)
 
     # Adds infiltration to b18 file
     infilt_to_b18(b18_lines, zones, res)
@@ -486,9 +484,7 @@ def _write_gain_to_b18(
             )
 
 
-def _write_conditioning_to_b18(
-    b18_lines, heat_name, cool_name, zones, res, old_new_names
-):
+def conditioning_to_b18(b18_lines, heat_name, cool_name, zones, old_new_names):
     for zone in zones:
         # Heating
         _write_heat_cool_to_b18(heat_name, old_new_names, zone, b18_lines, " HEATING")

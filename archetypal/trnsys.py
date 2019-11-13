@@ -27,12 +27,11 @@ from archetypal import (
     load_idf_object_from_cache,
     hash_file,
     run_eplus,
-    copy_file,
 )
 from geomeppy.geom.polygons import Polygon3D
 from path import Path
 from tqdm import tqdm
-from copy import copy
+from copy import deepcopy
 
 
 def convert_idf_to_trnbuild(
@@ -126,7 +125,7 @@ def convert_idf_to_trnbuild(
     idf = load_idf(idf_file)
 
     # Clean names of idf objects (e.g. 'MATERIAL')
-    idf_2 = copy(idf)
+    idf_2 = deepcopy(idf)
     log("Cleaning names of the IDF objects...", lg.INFO)
     start_time = time.time()
     clear_name_idf_objects(idf_2, log_clear_names)

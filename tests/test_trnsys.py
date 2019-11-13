@@ -7,7 +7,7 @@ import pandas as pd
 
 from path import Path
 
-from copy import copy
+from copy import deepcopy
 
 from archetypal import (
     convert_idf_to_trnbuild,
@@ -243,7 +243,7 @@ class TestsConvert:
         idf = load_idf(idf_file)
 
         # Clean names of idf objects (e.g. 'MATERIAL')
-        idf_2 = copy(idf)
+        idf_2 = deepcopy(idf)
         clear_name_idf_objects(idf_2, log_clear_names)
 
         # Get old:new names equivalence

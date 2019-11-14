@@ -105,6 +105,11 @@ def convert_idf_to_trnbuild(
               provided if *return_dck* is True.
     """
 
+    # Assert all path needed exist
+    idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+        idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+    )
+
     # Run EnergyPlus Simulation
     res = run_eplus(
         idf_file,
@@ -115,9 +120,6 @@ def convert_idf_to_trnbuild(
         prep_outputs=True,
         design_day=True,
         expandobjects=True,
-    )
-    idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
-        idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
     )
 
     # Check if cache exists

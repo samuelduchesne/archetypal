@@ -274,12 +274,14 @@ def convert(
         volume:
         capacitance:
     """
-    u_value, shgc, t_vis, tolerance = window
+    u_value, shgc, t_vis, tolerance, fframe, uframe = window
     window_kwds = {
         "u_value": u_value,
         "shgc": shgc,
         "t_vis": t_vis,
         "tolerance": tolerance,
+        "fframe": fframe,
+        "uframe": uframe,
     }
     with cd(output_folder):
         paths = archetypal.convert_idf_to_trnbuild(

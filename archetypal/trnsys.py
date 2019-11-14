@@ -61,7 +61,7 @@ def convert_idf_to_trnbuild(
     Example:
         >>> # Exemple of setting kwargs to be unwrapped in the function
         >>> kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
-        >>>                'tolerance': 0.05, 'ordered': True}
+        >>>                'tolerance': 0.05, "fframe": 0.0, "uframe": 0.5, 'ordered': True}
         >>> # Exemple how to call the function
         >>> idf_file = "/file.idf"
         >>> window_filepath = "/W74-lib.dat"

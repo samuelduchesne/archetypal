@@ -69,12 +69,15 @@ Then simply run the following command:
 
 .. code-block:: python
 
-    archetypal convert [OPTIONS] IDF_FILE OUTPUT_FOLDER
+    archetypal convert [OPTIONS] IDF_FILE WEATHER_FILE OUTPUT_FOLDER
 
 1. ``IDF_FILE`` is the file path of the IDF file to convert. If there are space characters in the path, it should be
 enclosed in quotation marks.
 
-2. ``OUTPUT_FOLDER`` is the folder where we want the output folders to be written. If there are space characters in
+2. ``WEATHER_FILE`` is the file path of the weather file to use to run the EnergyPlus simulation. If there are space characters in the path, it should be
+enclosed in quotation marks.
+
+3. ``OUTPUT_FOLDER`` is the folder where we want the output folders to be written. If there are space characters in
 the path, it should enclosed in quotation marks.
 
 Here is an example. Make sure to replace the last two arguments with the idf file path and the output folder path
@@ -82,9 +85,9 @@ respectively.
 
 .. code-block:: python
 
-    archetypal convert "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+    archetypal convert "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
-3. `OPTIONS`: There are different options to the `convert` command. The first 3 manage the requested output files.
+4. `OPTIONS`: There are different options to the `convert` command. The first 3 manage the requested output files.
 Users can chose to return a combination of flags
 
     - if ``-i`` is added, the path to the modified IDF file is returned in the console, and the modified
@@ -96,36 +99,35 @@ Users can chose to return a combination of flags
         archetypal convert -i -t -d "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
     - ``--window-lib`` is the path of the window library (W74-lib.dat).
+        This library must be in the same format as the Berkeley Lab library used by default in TRNBuild.
 
     .. code-block:: python
 
         archetypal convert --window-lib "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--trnsidf-exe`` is the path of the trnsidf.exe executable.
+    - ``--trnsidf-exe`` is the path of the trnsidf.exe executable. Usually located in the TRNSYS18 folder under "Building/trnsIDF/trnsidf.exe".
 
     .. code-block:: python
 
         archetypal convert --trnsidf-exe "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--template`` is the path of the .d18 template file (usually in the same directory of the `trnsidf.exe`
-      executable)
+    - ``--template`` is the path of the .d18 template file (usually in the same directory as the `trnsidf.exe` executable).
 
     .. code-block:: python
 
         archetypal convert --template "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--log-clear-names`` if added, do not print log of "clear_names" (equivalence between old and new names) in the console
-      executable)
+    - ``--log-clear-names`` if added, do not print log of "clear_names" (equivalence between old and new names) in the console.
 
     .. code-block:: python
 
         archetypal convert --log-clear-names "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--window`` specifies the window properties <u_value> <shgc> <t_vis> <tolerance>
+    - ``--window`` specifies the window properties <u_value> <shgc> <t_vis> <tolerance> <fframe> <uframe>
 
     .. code-block:: python
 
-        archetypal convert --window 2.2 0.65 0.8 0.05 "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+        archetypal convert --window 2.2 0.65 0.8 0.05 0.15 5.4 "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
     - ``--ordered`` sorts the idf object names
 

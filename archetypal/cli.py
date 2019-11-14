@@ -148,7 +148,10 @@ def cli(
 @click.argument("idf-file", type=click.Path(exists=True))
 @click.argument("weather-file", type=click.Path(exists=True))
 @click.argument(
-    "output-folder", type=click.Path(exists=True), required=False, default="."
+    "output-folder",
+    type=click.Path(exists=True),
+    required=False,
+    default=".",
 )
 @click.option(
     "--return-idf",

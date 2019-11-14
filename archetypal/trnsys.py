@@ -274,7 +274,7 @@ def convert_idf_to_trnbuild(
     window = choose_window(win_u_value, win_shgc, win_tvis, win_tolerance, window_lib)
 
     # Write windows in lines
-    _write_window(lines, win_slope_dict, window)
+    _write_window(lines, win_slope_dict, window, win_fframe, win_uframe)
 
     # Write window pool in lines
     _write_winPool(lines, window)

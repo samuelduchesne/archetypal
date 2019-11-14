@@ -8,6 +8,41 @@ from path import Path
 class TestCli:
     """Defines tests for usage of the archetypal Command Line Interface"""
 
+    def test_convert(self, config):
+        """Tests the 'reduce' method"""
+        runner = CliRunner()
+        examples = get_eplus_dire() / "ExampleFiles"
+        necb = Path("tests/input_data/necb")
+        test_file = "tests/input_data/trnsys/5ZoneGeometryTransform.idf"
+        test_file_list = [
+            "tests/input_data/umi_samples/B_Off_0.idf",
+            "tests/input_data/umi_samples/B_Res_0_Masonry.idf",
+        ]
+        test_files = necb.glob("*Retail*.idf")
+        result = runner.invoke(
+            cli,
+            [
+                "--use-cache",
+                "--cache-folder",
+                "tests/.temp/cache",
+                "--data-folder",
+                "tests/.temp/data",
+                "--imgs-folder",
+                "tests/.temp/images",
+                "--logs-folder",
+                "tests/.temp/logs",
+                "--log-console",
+                "convert",
+                test_file,
+                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+                "--trnsidf-exe",
+                "docker/trnsidf/trnsidf.exe",
+            ],
+            catch_exceptions=False,
+        )
+        print(result.stdout)
+        assert result.exit_code == 0
+
     def test_reduce(self, config):
         """Tests the 'reduce' method"""
         runner = CliRunner()

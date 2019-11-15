@@ -503,9 +503,10 @@ def weighted_mean(series, df, weighting_variable):
     :func:`numpy.average`.
 
     Args:
-        series (pandas.Series):
-        df (pandas.DataFrame):
-        weighting_variable (str or list or tuple): Weight name to use in
+        series (pandas.Series): the *series* on which to compute the mean.
+        df (pandas.DataFrame): the *df* containing weighting variables.
+        weighting_variable (str or list or tuple): Name of weights to use in
+            *df*. If multiple values given, the values are multiplied together.
 
     Returns:
         numpy.ndarray: the weighted average
@@ -599,8 +600,8 @@ def copy_file(files, where=None):
     """Handles a copy of test idf files
 
     Args:
-        files:
-        where:
+        files (str or list): path(s) of the file(s) to copy
+        where (str): path where to save the copy(ies)
     """
     import shutil, os
 
@@ -699,7 +700,7 @@ def piecewise(data):
 
 
 def checkStr(datafile, string, begin_line=0):
-    """Find the last occurrence of a string and return its line number
+    """Find the first occurrence of a string and return its line number
 
     Returns: the list index containing the string
 
@@ -866,7 +867,7 @@ def timeit(method):
 
 def lcm(x, y):
     """This function takes two
-   integers and returns the L.C.M."""
+   integers and returns the L.C.M. (Least Common Multiple)"""
 
     # choose the greater number
     if x > y:

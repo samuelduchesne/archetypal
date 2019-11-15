@@ -226,13 +226,13 @@ def cli(
     "--refarea",
     is_flag=True,
     default=False,
-    help="Upadtes floor reference area of airnodes",
+    help="Updates floor reference area of airnodes",
 )
 @click.option(
-    "--volume", is_flag=True, default=False, help="Upadtes volume of airnodes"
+    "--volume", is_flag=True, default=False, help="Updates volume of airnodes"
 )
 @click.option(
-    "--capacitance", is_flag=True, default=False, help="Upadtes capacitance of airnodes"
+    "--capacitance", is_flag=True, default=False, help="Updates capacitance of airnodes"
 )
 def convert(
     idf_file,

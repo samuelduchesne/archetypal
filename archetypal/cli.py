@@ -205,11 +205,11 @@ def cli(
 )
 @click.option(
     "--window",
-    nargs=4,
+    nargs=6,
     type=float,
     default=(2.2, 0.64, 0.8, 0.05, 0.15, 8.17),
     help="Specify window properties <u_value> <shgc> <t_vis> "
-    "<tolerance> <fframe> <uframe>. Default = 2.2 0.64 0.8 0.05",
+    "<tolerance> <fframe> <uframe>. Default = 2.2 0.64 0.8 0.05 0.15 8.17",
 )
 @click.option("--ordered", is_flag=True, help="sort idf object names")
 @click.option("--nonum", is_flag=True, default=False, help="Do not renumber surfaces")

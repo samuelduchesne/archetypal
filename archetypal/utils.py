@@ -669,6 +669,7 @@ def cd(path):
 def rmse(data, targets):
     """calculate rmse with target values
 
+    # Todo : write de description of the args
     Args:
         data:
         targets:
@@ -683,6 +684,7 @@ def piecewise(data):
     """returns a piecewise function from an array of the form [hour1, hour2,
     ..., value1, value2, ...]
 
+    # Todo : write de description of the args
     Args:
         data:
     """

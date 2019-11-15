@@ -23,9 +23,9 @@ from archetypal import (
 # Function round to hundreds
 from archetypal.trnsys import (
     _assert_files,
-    _load_idf_file_and_clean_names,
+    load_idf_file_and_clean_names,
     clear_name_idf_objects,
-    _get_idf_objects,
+    get_idf_objects,
     _get_constr_list,
     _order_objects,
     _get_schedules,
@@ -112,7 +112,7 @@ class TestsConvert:
 
     def test_write_version_and_building(self, config, converttest):
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
             idf
         )
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
@@ -128,7 +128,7 @@ class TestsConvert:
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
             idf
         )
 
@@ -217,7 +217,7 @@ class TestsConvert:
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
             idf
         )
 
@@ -258,7 +258,7 @@ class TestsConvert:
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
             idf_2
         )
 
@@ -287,7 +287,7 @@ class TestsConvert:
         clear_name_idf_objects(idf_2, log_clear_names)
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
             idf_2
         )
 
@@ -350,7 +350,7 @@ class TestsConvert:
         ).to_dict()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
+        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
             idf_2
         )
 
@@ -397,7 +397,7 @@ class TestsConvert:
     def test_load_idf_file_and_clean_names(self, config, converttest):
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
         log_clear_names = False
-        idf_2 = _load_idf_file_and_clean_names(idf_file, log_clear_names)
+        idf_2 = load_idf_file_and_clean_names(idf_file, log_clear_names)
 
 
 @pytest.fixture(

@@ -149,7 +149,7 @@ def convert_idf_to_trnbuild(
     lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
     # Get objects from IDF file
-    buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = _get_idf_objects(
+    buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
         idf_2
     )
 
@@ -690,7 +690,7 @@ def _order_objects(
     )
 
 
-def _get_idf_objects(idf):
+def get_idf_objects(idf):
     """Gets idf objects
 
     Args:
@@ -749,7 +749,7 @@ def _get_idf_objects(idf):
     )
 
 
-def _load_idf_file_and_clean_names(idf_file, log_clear_names):
+def load_idf_file_and_clean_names(idf_file, log_clear_names):
     """Load idf file from cache if cache exist and user ask for use_cache=True.
         Moreover cleans idf object names and log in the console the equivalence
         between the old and new names if log_clear_names=False

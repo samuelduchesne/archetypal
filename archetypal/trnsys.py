@@ -1400,7 +1400,7 @@ def trnbuild_idf(
         >>>              r"Building\\trnsIDF\\NewFileTemplate.d18"
 
     Args:
-        idf_file (str): path/filename.idf
+        idf_file (str): path/filename.idf to the T3D file "a SketchUp idf file"
         output_folder (str, optional): location where output files will be
         template (str): path/NewFileTemplate.d18
         dck (bool): If True, create a template DCK

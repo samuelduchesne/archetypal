@@ -907,3 +907,30 @@ def _unpack_tuple(x):
         return x[0]
     else:
         return x
+
+def recursive_len(item):
+    """Calculate the number of elements in nested list
+
+    Args:
+        item (list): list of lists (i.e. nested list)
+
+    Returns:
+        Total number of elements in nested list
+    """
+    if type(item) == list:
+        return sum(recursive_len(subitem) for subitem in item)
+    else:
+        return 1
+
+
+def rotate(l, n):
+    """Shift list elements to the left
+
+    Args:
+        l (list): list to rotate
+        n (int): number to shift list to the left
+
+    Returns:
+        list: shifted list.
+    """
+    return l[n:] + l[:n]

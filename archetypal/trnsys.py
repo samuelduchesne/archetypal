@@ -27,6 +27,7 @@ from archetypal import (
     load_idf_object_from_cache,
     hash_file,
     run_eplus,
+    recursive_len,
 )
 from geomeppy.geom.polygons import Polygon3D
 from path import Path
@@ -1114,34 +1115,6 @@ def closest_coords(surfList, to=[0, 0, 0]):
     dist, idx = btree.query(np.array(to).T, k=1)
     x, y, z = nbdata[idx]
     return x, y, z
-
-
-def recursive_len(item):
-    """Calculate the number of elements in nested list
-
-    Args:
-        item (list): list of lists (i.e. nested list)
-
-    Returns:
-        Total number of elements in nested list
-    """
-    if type(item) == list:
-        return sum(recursive_len(subitem) for subitem in item)
-    else:
-        return 1
-
-
-def rotate(l, n):
-    """Shift list elements to the left
-
-    Args:
-        l (list): list to rotate
-        n (int): number to shift list to the left
-
-    Returns:
-        list: shifted list.
-    """
-    return l[n:] + l[:n]
 
 
 def parse_window_lib(window_file_path):

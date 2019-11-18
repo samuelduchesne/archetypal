@@ -2281,7 +2281,7 @@ class TestZoneGraph:
         """
         G.info()
 
-    def test_viewgraph2d(self, G):
+    def test_viewgraph2d(self, config, G):
         """test the visualization of the zonegraph in 2d
 
         Args:

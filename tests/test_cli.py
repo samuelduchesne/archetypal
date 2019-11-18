@@ -1,6 +1,7 @@
 from click.testing import CliRunner
 
-from archetypal import get_eplus_dirs, ep_version
+from archetypal import get_eplus_dirs
+from archetypal.settings import ep_version
 from archetypal.cli import cli
 from path import Path
 

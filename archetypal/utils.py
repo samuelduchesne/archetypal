@@ -241,6 +241,14 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
 
 
 def close_logger(logger=None, level=None, name=None, filename=None, log_dir=None):
+    """
+    Args:
+        logger:
+        level:
+        name:
+        filename:
+        log_dir:
+    """
     if not logger:
         # try get logger by name
         logger = get_logger(level=level, name=name, filename=filename, log_dir=log_dir)
@@ -552,6 +560,7 @@ def weighted_mean(series, df, weighting_variable):
 def top(series, df, weighting_variable):
     """Compute the highest ranked value weighted by some other variable.
     Implements
+
         :func:`pandas.DataFrame.nlargest`.
 
     Args:
@@ -666,6 +675,10 @@ class EnergyPlusProcessError(Error):
 
 @contextlib.contextmanager
 def cd(path):
+    """
+    Args:
+        path:
+    """
     log("initially inside {0}".format(os.getcwd()))
     CWD = os.getcwd()
 
@@ -822,7 +835,6 @@ def float_round(num, n):
 
     Returns:
         num (float): a float rounded number
-
     """
     num = float(num)
     num = round(num, n)
@@ -832,10 +844,10 @@ def float_round(num, n):
 def get_eplus_dirs(version=ep_version):
     """Returns EnergyPlus root folder for a specific version.
 
+    Returns (Path): The folder path.
+
     Args:
         version (str): Version number in the form "8-9-0" to search for.
-
-    Returns (Path): The folder path.
     """
     from eppy.runner.run_functions import install_paths
 
@@ -845,8 +857,10 @@ def get_eplus_dirs(version=ep_version):
 
 
 def warn_if_not_compatible():
-    """Checks if an EnergyPlus install is detected. If the latest version detected
-    is higher than the one specified by archetypal, a warning is also raised."""
+    """Checks if an EnergyPlus install is detected. If the latest version
+    detected is higher than the one specified by archetypal, a warning is also
+    raised.
+    """
     eplus_homes = get_eplus_basedirs()
 
     if not eplus_homes:
@@ -920,8 +934,12 @@ def timeit(method):
 
 
 def lcm(x, y):
-    """This function takes two
-   integers and returns the L.C.M."""
+    """This function takes two integers and returns the L.C.M.
+
+    Args:
+        x:
+        y:
+    """
 
     # choose the greater number
     if x > y:

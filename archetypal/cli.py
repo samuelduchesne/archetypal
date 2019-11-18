@@ -40,6 +40,7 @@ class CliConfig(object):
         self.useful_idf_objects = settings.useful_idf_objects
         self.umitemplate = settings.umitemplate
         self.trnsys_default_folder = settings.trnsys_default_folder
+        self.ep_version = settings.ep_version
 
 
 pass_config = click.make_pass_decorator(CliConfig, ensure=True)
@@ -107,6 +108,12 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     help="root folder of TRNSYS install",
     default=settings.trnsys_default_folder,
 )
+@click.option(
+    "--ep_version",
+    type=click.STRING,
+    default=settings.ep_version,
+    help='the EnergyPlus version to use. eg. "8-9-0"',
+)
 @pass_config
 def cli(
     cli_config,
@@ -121,6 +128,7 @@ def cli(
     log_name,
     log_filename,
     trnsys_default_folder,
+    ep_version,
 ):
     """archetypal: Retrieve, construct, simulate, convert and analyse building
     simulation templates
@@ -143,6 +151,7 @@ def cli(
         log_name (str): name of the logger.
         log_filename (str): name of the log file.
         trnsys_default_folder (str): root folder of TRNSYS install.
+        ep_version (str): EnergyPlus version to use. eg.: "8-9-0".
     """
     cli_config.data_folder = data_folder
     cli_config.logs_folder = logs_folder
@@ -155,6 +164,7 @@ def cli(
     cli_config.log_name = log_name
     cli_config.log_filename = log_filename
     cli_config.trnsys_default_folder = trnsys_default_folder
+    cli_config.ep_version = ep_version
     # apply new config params
     config(**cli_config.__dict__)
 
@@ -339,12 +349,6 @@ def convert(
     help="The name of the output json file",
 )
 @click.option(
-    "--ep-version",
-    type=click.STRING,
-    help="specify the version of EnergyPlus to use, eg.: '8-9-0'",
-    default="8-9-0",
-)
-@click.option(
     "--weather",
     "-w",
     type=click.Path(exists=True),
@@ -360,7 +364,7 @@ def convert(
     default=True,
     help="process each idf file on different cores",
 )
-def reduce(idf, name, ep_version, weather, parallel):
+def reduce(idf, name, weather, parallel):
     """Perform the model reduction and translate to an UMI template file.
 
     Args:
@@ -381,7 +385,7 @@ def reduce(idf, name, ep_version, weather, parallel):
                 verbose="v",
                 output_report="sql",
                 return_idf=False,
-                ep_version=ep_version,
+                ep_version=settings.ep_version,
             )
             for file in idf
         }
@@ -399,7 +403,7 @@ def reduce(idf, name, ep_version, weather, parallel):
             res[fn][0], res[fn][1] = run_eplus(
                 fn,
                 weather,
-                ep_version=ep_version,
+                ep_version=settings.ep_version,
                 output_report="sql",
                 prep_outputs=True,
                 annual=True,

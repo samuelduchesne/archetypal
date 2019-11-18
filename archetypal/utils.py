@@ -28,9 +28,11 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
-from archetypal import settings, ep_version
 from pandas.io.json import json_normalize
 from path import Path
+
+from archetypal import settings
+from archetypal.settings import ep_version
 
 
 def config(
@@ -48,26 +50,30 @@ def config(
     umitemplate=settings.umitemplate,
     trnsys_default_folder=settings.trnsys_default_folder,
     default_weight_factor="area",
+    ep_version=settings.ep_version,
 ):
-    """Configurations
+    """Package configurations. Call this method at the beginning of script or at the
+    top of an interactive python environment to set package-wide settings.
 
     Args:
-        data_folder (str): where to save and load data files
-        logs_folder (str): where to write the log files
-        imgs_folder (str): where to save figures
-        cache_folder (str): where to save the simluation results
+        data_folder (str): where to save and load data files.
+        logs_folder (str): where to write the log files.
+        imgs_folder (str): where to save figures.
+        cache_folder (str): where to save the simluation results.
         use_cache (bool): if True, use a local cache to save/retrieve many of
             archetypal outputs such as EnergyPlus simulation results. This can
             save a lot of time by not calling the simulation and dataportal APIs
             repetitively for the same requests.
-        log_file (bool): if true, save log output to a log file in logs_folder
-        log_console (bool): if true, print log output to the console
-        log_level (int): one of the logger.level constants
-        log_name (str): name of the logger
-        log_filename (str): name of the log file
-        useful_idf_objects (list): a list of useful idf objects
-        umitemplate (str): where the umitemplate is located
-        trnsys_default_folder (str): root folder of TRNSYS install
+        log_file (bool): if true, save log output to a log file in logs_folder.
+        log_console (bool): if true, print log output to the console.
+        log_level (int): one of the logger.level constants.
+        log_name (str): name of the logger.
+        log_filename (str): name of the log file.
+        useful_idf_objects (list): a list of useful idf objects.
+        umitemplate (str): where the umitemplate is located.
+        trnsys_default_folder (str): root folder of TRNSYS install.
+        default_weight_factor:
+        ep_version (str): EnergyPlus version to use. eg. "8-9-0".
 
     Returns:
         None
@@ -87,10 +93,18 @@ def config(
     settings.umitemplate = umitemplate
     settings.trnsys_default_folder = validate_trnsys_folder(trnsys_default_folder)
     settings.zone_weight.set_weigth_attr(default_weight_factor)
+    settings.ep_version = validate_epversion(ep_version)
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
         log("Configured archetypal")
+
+
+def validate_epversion(ep_version):
+    """Validates the ep_version form"""
+    if "." in ep_version:
+        raise NameError('Enter the EnergyPlus version in the form "8-9-0"')
+    return ep_version
 
 
 def validate_trnsys_folder(trnsys_default_folder):

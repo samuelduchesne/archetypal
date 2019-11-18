@@ -5,7 +5,9 @@ import pytest
 from path import Path
 
 import archetypal as ar
-from archetypal import get_eplus_dirs, clear_cache, ep_version
+import archetypal.settings
+from archetypal import get_eplus_dirs, clear_cache
+from archetypal.settings import ep_version
 
 
 @pytest.fixture(scope="session")
@@ -1687,7 +1689,7 @@ class TestWindowSetting:
             config:
             request:
         """
-        eplusdir = get_eplus_dirs(ar.ep_version)
+        eplusdir = get_eplus_dirs(archetypal.settings.ep_version)
         file = eplusdir / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = ar.load_idf(file)
@@ -2069,7 +2071,7 @@ class TestZone:
 @pytest.fixture(scope="session")
 def bt():
     """A building template fixture used in subsequent tests"""
-    eplus_dir = get_eplus_dirs(ar.ep_version)
+    eplus_dir = get_eplus_dirs(archetypal.settings.ep_version)
     file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
     w = next(iter((eplus_dir / "WeatherData").glob("*.epw")), None)
     file = ar.copy_file(file)

@@ -9,6 +9,7 @@ import matplotlib as mpl
 import pytest
 from path import Path
 
+import archetypal.settings
 from archetypal import EnergyPlusProcessError
 
 mpl.use("Agg")
@@ -76,7 +77,7 @@ def test_load_old(config):
 
 @pytest.mark.parametrize(
     "ep_version",
-    [ar.ep_version, None],
+    [archetypal.settings.ep_version, None],
     ids=["specific-ep-version", "no-specific-ep-version"],
 )
 def test_run_olderv(config, fresh_start, ep_version):

@@ -25,8 +25,12 @@ import eppy
 import eppy.modeleditor
 import geomeppy
 import pandas as pd
+from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.easyopen import getiddfile
+from path import Path, tempdir
 
 import archetypal
+import archetypal.settings
 from archetypal import (
     log,
     settings,
@@ -37,9 +41,6 @@ from archetypal import (
     close_logger,
 )
 from archetypal.utils import _unpack_tuple
-from eppy.EPlusInterfaceFunctions import parse_idd
-from eppy.easyopen import getiddfile
-from path import Path, tempdir
 
 
 class IDF(geomeppy.IDF):
@@ -1592,7 +1593,7 @@ def run_eplus(
         ep_version = ep_version.replace(".", "-")
     else:
         # if no version is specified, take the package default version
-        ep_version = archetypal.ep_version
+        ep_version = archetypal.settings.ep_version
     eplus_file = idf_version_updater(
         upgraded_file(eplus_file, output_directory),
         to_version=ep_version,

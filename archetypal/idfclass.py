@@ -25,6 +25,8 @@ import eppy
 import eppy.modeleditor
 import geomeppy
 import pandas as pd
+
+import archetypal
 from archetypal import (
     log,
     settings,
@@ -1586,8 +1588,11 @@ def run_eplus(
 
     # <editor-fold desc="Upgrade the file version if needed">
     if ep_version:
-        # replace the dots with "-"
+        # if users specifies version, make sure dots are replaced with "-".
         ep_version = ep_version.replace(".", "-")
+    else:
+        # if no version is specified, take the package default version
+        ep_version = archetypal.ep_version
     eplus_file = idf_version_updater(
         upgraded_file(eplus_file, output_directory),
         to_version=ep_version,
@@ -2253,7 +2258,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             the simulname is the same. (default: None)
 
     Returns:
-        Path: The path of the transitioned idf file.
+        Path: The path of the new transitioned idf file.
     """
     if not out_dir.isdir():
         out_dir.makedirs_p()

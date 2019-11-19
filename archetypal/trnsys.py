@@ -89,6 +89,12 @@ def convert_idf_to_trnbuild(
         template (str): Path to d18 template file.
         log_clear_names (bool): If True, DOES NOT log the equivalence between
             the old and new names in the console.
+        schedule_as_input (bool): If True, writes the schedules as INPUTS in the BUI
+            file. Then, the user would have to link in TRNSYS studio the csv file
+            with the schedules to those INPUTS. If False, the schedules are written as
+            SCHEDULES in the BUI file. Be aware that this last option (False) can make
+            crash TRNBuild because the schedules are too long are there is too many
+            schedules.
         kwargs: keyword arguments sent to
             :func:`convert_idf_to_trnbuild()` or :func:`trnbuild_idf()` or
             :func:`choose_window`. "ordered=True" to have the name of idf

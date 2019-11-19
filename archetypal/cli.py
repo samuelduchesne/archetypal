@@ -148,10 +148,7 @@ def cli(
 @click.argument("idf-file", type=click.Path(exists=True))
 @click.argument("weather-file", type=click.Path(exists=True))
 @click.argument(
-    "output-folder",
-    type=click.Path(exists=True),
-    required=False,
-    default=".",
+    "output-folder", type=click.Path(exists=True), required=False, default="."
 )
 @click.option(
     "--return-idf",
@@ -200,8 +197,17 @@ def cli(
     "--log-clear-names",
     is_flag=True,
     default=False,
-    help='Do not print log of "clear_names" (equivalence between '
-    "old and new names) in the console",
+    help='If mentioned (True), DO NOT print log of "clear_names" (equivalence between '
+    "old and new names) in the console. Default (not mentioned) is False.",
+)
+@click.option(
+    "--schedule_as_input",
+    is_flag=False,
+    default=True,
+    help="If mentioned (False), writes schedules as SCHEDULES in BUI file. Be aware that "
+    "this option might make crash TRNBuild. Default (not mentioned) is True, and "
+    "writes the schedules as INPUTS. This option requires the user to link "
+    "(in the TRNSYS Studio) the csv file containing the schedules with those INPUTS",
 )
 @click.option(
     "--window",

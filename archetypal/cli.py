@@ -201,8 +201,8 @@ def cli(
     "old and new names) in the console. Default (not mentioned) is False.",
 )
 @click.option(
-    "--schedule_as_input",
-    is_flag=False,
+    "--schedule-as-input",
+    is_flag=True,
     default=True,
     help="If mentioned (False), writes schedules as SCHEDULES in BUI file. Be aware that "
     "this option might make crash TRNBuild. Default (not mentioned) is True, and "
@@ -251,6 +251,7 @@ def convert(
     trnsidf_exe,
     template,
     log_clear_names,
+    schedule_as_input,
     window,
     ordered,
     nonum,
@@ -274,6 +275,7 @@ def convert(
         trnsidf_exe:
         template:
         log_clear_names:
+        schedule_as_input:
         window:
         ordered:
         nonum:
@@ -305,6 +307,7 @@ def convert(
             trnsidf_exe,
             template,
             log_clear_names=log_clear_names,
+            schedule_as_input=schedule_as_input,
             **window_kwds,
             ordered=ordered,
             nonum=nonum,

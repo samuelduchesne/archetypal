@@ -52,7 +52,6 @@ from archetypal.trnsys import (
     infilt_to_b18,
     gains_to_b18,
     conditioning_to_b18,
-
 )
 
 
@@ -95,7 +94,7 @@ class TestsConvert:
 
         del idf
 
-    def test_get_save_write_schedules(self, config, converttest):
+    def test_get_save_write_schedules_as_input(self, config, converttest):
         output_folder = None
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
@@ -108,7 +107,28 @@ class TestsConvert:
             print("Could not assert all paths exist - OK for this test")
         schedule_names, schedules = _get_schedules(idf)
         _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
-        schedules_not_written = _write_schedules(lines, schedule_names, schedules)
+        schedule_as_input = True
+        schedules_not_written = _write_schedules(
+            lines, schedule_names, schedules, schedule_as_input, idf_file
+        )
+
+    def test_get_save_write_schedules_as_sched(self, config, converttest):
+        output_folder = None
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
+        lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
+        try:
+            idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+            )
+        except:
+            output_folder = os.path.relpath(settings.data_folder)
+            print("Could not assert all paths exist - OK for this test")
+        schedule_names, schedules = _get_schedules(idf)
+        _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
+        schedule_as_input = False
+        schedules_not_written = _write_schedules(
+            lines, schedule_names, schedules, schedule_as_input, idf_file
+        )
 
     def test_write_version_and_building(self, config, converttest):
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
@@ -179,8 +199,16 @@ class TestsConvert:
         n_ground = _get_ground_vertex(buildingSurfs)
 
         # Writing zones in lines
+        schedule_as_input = True
         win_slope_dict = _write_zone_buildingSurf_fenestrationSurf(
-            buildingSurfs, coordSys, fenestrationSurfs, idf, lines, n_ground, zones
+            buildingSurfs,
+            coordSys,
+            fenestrationSurfs,
+            idf,
+            lines,
+            n_ground,
+            zones,
+            schedule_as_input,
         )
 
         # Write CONSTRUCTION from IDF to lines (T3D)
@@ -293,7 +321,6 @@ class TestsConvert:
 
         _relative_to_absolute(buildingSurfs[0], 1, 2, 3)
 
-
     def test_save_t3d(self, config, converttest):
         output_folder = None
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
@@ -313,7 +340,9 @@ class TestsConvert:
 
     def test_write_to_b18(self, config, converttest):
         output_folder = None
-        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, kwargs = converttest
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, kwargs = (
+            converttest
+        )
         try:
             idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
                 idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
@@ -356,7 +385,7 @@ class TestsConvert:
 
         b18_path = "tests/input_data/trnsys/T3D_simple_2_zone.b18"
 
-        schedules_not_written =[]
+        schedules_not_written = []
 
         heat_name = {}
         for i in range(0, len(res["Zone Sensible Heating"])):
@@ -380,6 +409,7 @@ class TestsConvert:
 
         infilt_to_b18(b18_lines, zones, res)
 
+        schedule_as_input = True
         gains_to_b18(
             b18_lines,
             zones,
@@ -390,6 +420,7 @@ class TestsConvert:
             schedules_not_written,
             res,
             old_new_names,
+            schedule_as_input,
         )
 
         conditioning_to_b18(b18_lines, heat_name, cool_name, zones, old_new_names)

@@ -47,6 +47,7 @@ def convert_idf_to_trnbuild(
     trnsidf_exe=None,
     template=None,
     log_clear_names=False,
+    schedule_as_input=True,
     **kwargs
 ):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
@@ -237,7 +238,14 @@ def convert_idf_to_trnbuild(
 
     # Writing zones in lines
     win_slope_dict = _write_zone_buildingSurf_fenestrationSurf(
-        buildingSurfs, coordSys, fenestrationSurfs, idf_2, lines, n_ground, zones
+        buildingSurfs,
+        coordSys,
+        fenestrationSurfs,
+        idf_2,
+        lines,
+        n_ground,
+        zones,
+        schedule_as_input,
     )
     # endregion
 
@@ -261,7 +269,9 @@ def convert_idf_to_trnbuild(
     # endregion
 
     # region Write SCHEDULES from IDF to lines (T3D)
-    schedules_not_written = _write_schedules(lines, schedule_names, schedules)
+    schedules_not_written = _write_schedules(
+        lines, schedule_names, schedules, schedule_as_input, idf_file
+    )
     # endregion
 
     # region Write WINDOWS chosen by the user (from Berkeley lab library) in
@@ -361,6 +371,7 @@ def convert_idf_to_trnbuild(
         schedules_not_written,
         res,
         old_new_names,
+        schedule_as_input,
     )
 
     # Save B18 file at output_folder
@@ -413,6 +424,7 @@ def gains_to_b18(
     schedules_not_written,
     res,
     old_new_names,
+    schedule_as_input,
 ):
     peoples_in_zone = zone_where_gain_is(peoples, zones, zonelists)
     lights_in_zone = zone_where_gain_is(lights, zones, zonelists)
@@ -429,6 +441,7 @@ def gains_to_b18(
             res,
             old_new_names,
             "People",
+            schedule_as_input,
         )
         # Write light gains
         _write_gain_to_b18(
@@ -440,6 +453,7 @@ def gains_to_b18(
             res,
             old_new_names,
             "Lights",
+            schedule_as_input,
         )
         # Write equipment gains
         _write_gain_to_b18(
@@ -451,6 +465,7 @@ def gains_to_b18(
             res,
             old_new_names,
             "ElectricEquipment",
+            schedule_as_input,
         )
 
 
@@ -463,6 +478,7 @@ def _write_gain_to_b18(
     res,
     old_new_names,
     string,
+    schedule_as_input,
 ):
     for gain in gains:
         if zone.Name in gains_in_zone[gain.Name]:
@@ -479,15 +495,26 @@ def _write_gain_to_b18(
             if schedule in schedules_not_written:
                 continue
             # Write
-            b18_lines.insert(
-                regimeNum,
-                " GAIN= "
-                + gain.Name
-                + " : SCALE= SCHEDULE 1*"
-                + schedule
-                + " : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= 1"
-                + "\n",
-            )
+            if schedule_as_input:
+                b18_lines.insert(
+                    regimeNum,
+                    " GAIN= "
+                    + gain.Name
+                    + " : SCALE= INPUT 1*"
+                    + schedule
+                    + " : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= 1"
+                    + "\n",
+                )
+            else:
+                b18_lines.insert(
+                    regimeNum,
+                    " GAIN= "
+                    + gain.Name
+                    + " : SCALE= SCHEDULE 1*"
+                    + schedule
+                    + " : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= 1"
+                    + "\n",
+                )
 
 
 def conditioning_to_b18(b18_lines, heat_name, cool_name, zones, old_new_names):
@@ -535,10 +562,11 @@ def _change_relative_coords(buildingSurfs, coordSys, idf):
 
 def _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules):
     log("Saving yearly schedules in CSV file...")
+    idf_file = Path(idf_file)
     df_sched = pd.DataFrame()
     for schedule_name in schedule_names:
         df_sched[schedule_name] = schedules[schedule_name]["all values"]
-    sched_file_name = "yearly_schedules_" + os.path.basename(idf_file) + ".csv"
+    sched_file_name = "yearly_schedules_" + idf_file.basename().stripext() + ".csv"
     output_folder = Path(output_folder)
     if not output_folder.exists():
         output_folder.mkdir_p()
@@ -1501,7 +1529,14 @@ def trnbuild_idf(
 
 
 def _write_zone_buildingSurf_fenestrationSurf(
-    buildingSurfs, coordSys, fenestrationSurfs, idf, lines, n_ground, zones
+    buildingSurfs,
+    coordSys,
+    fenestrationSurfs,
+    idf,
+    lines,
+    n_ground,
+    zones,
+    schedule_as_input,
 ):
     """Does several actions on the zones, fenestration and building surfaces.
     Then, writes zone, fenestration and building surfaces information in lines.
@@ -1630,9 +1665,14 @@ def _write_zone_buildingSurf_fenestrationSurf(
                     _modify_adj_surface(buildingSurf, idf)
 
                 if "ground" in buildingSurf.Outside_Boundary_Condition.lower():
-                    buildingSurf.Outside_Boundary_Condition_Object = (
-                        "BOUNDARY=SCHEDULE 1*sch_ground"
-                    )
+                    if schedule_as_input:
+                        buildingSurf.Outside_Boundary_Condition_Object = (
+                            "BOUNDARY=INPUT 1*sch_ground"
+                        )
+                    else:
+                        buildingSurf.Outside_Boundary_Condition_Object = (
+                            "BOUNDARY=SCHEDULE 1*sch_ground"
+                        )
 
                 if "adiabatic" in buildingSurf.Outside_Boundary_Condition.lower():
                     buildingSurf.Outside_Boundary_Condition = "OtherSideCoefficients"
@@ -1901,7 +1941,7 @@ def _write_window(lines, win_slope_dict, window, fframe=0.15, uframe=8.17):
         )
 
 
-def _write_schedules(lines, schedule_names, schedules):
+def _write_schedules(lines, schedule_names, schedules, schedule_as_input, idf_file):
     """Write schedules information in lines
 
     Args:
@@ -1911,87 +1951,112 @@ def _write_schedules(lines, schedule_names, schedules):
         schedules (dict): Dictionary with the schedule names as key and with
     """
     log("Writing schedules info from idf file to t3d file...")
-    # Get line number where to write
-    scheduleNum = checkStr(lines, "S c h e d u l e s")
-    # Write schedules YEAR in lines
     schedules_not_written = []
-    for schedule_name in schedule_names:
+    # Writes schedules as INPUTS
+    if schedule_as_input:
+        # Get line number where to write INPUTS
+        inputNum = checkStr(lines, "I n p u t s")
+        ind = lines[inputNum + 1].find("\n")
+        lines[inputNum + 1] = (
+            lines[inputNum + 1][:ind]
+            + " "
+            + " ".join(schedule_names)
+            + lines[inputNum + 1][ind:]
+        )
+        # Writes INPUTS DESCRIPTION
+        idf_file = Path(idf_file)
+        inputDescrNum = checkStr(lines, "INPUTS_DESCRIPTION")
+        lines.insert(
+            inputDescrNum,
+            " sy_XXXXXX : any : yearly schedules for internal gains. "
+            "Should be found in the yearly_schedules_"
+            + idf_file.basename().stripext()
+            + ".csv file"
+            + "\n",
+        )
 
-        first_hour_month = [
-            0,
-            744,
-            1416,
-            2160,
-            2880,
-            3624,
-            4344,
-            5088,
-            5832,
-            6552,
-            7296,
-            8016,
-            8760,
-        ]
+    # Writes schedules as SCHEDULES
+    else:
+        # Get line number where to write
+        scheduleNum = checkStr(lines, "S c h e d u l e s")
+        # Write schedules YEAR in lines
+        for schedule_name in schedule_names:
 
-        # Get annual hourly values of schedules
-        arr = schedules[schedule_name]["all values"]
-        # Find the hours where hourly values change
-        hours_list, = np.where(np.roll(arr, 1) != arr)
-        # if hours_list is empty, give it hour 0
-        if hours_list.size == 0:
-            hours_list = np.array([0])
-        # Get schedule values where values change and add first schedule value
-        values = arr[hours_list]
-        # Add hour 0 and first value if not in array
-        if 0 not in hours_list:
-            hours_list = np.insert(hours_list, 0, np.array([0]))
-            values = np.insert(values, 0, arr[0])
-        # Add hour 8760 and if not in array
-        if 8760 not in hours_list:
-            hours_list = np.append(hours_list, 8760)
-            values = np.append(values, arr[len(arr) - 1])
+            first_hour_month = [
+                0,
+                744,
+                1416,
+                2160,
+                2880,
+                3624,
+                4344,
+                5088,
+                5832,
+                6552,
+                7296,
+                8016,
+                8760,
+            ]
 
-        # Makes sure fisrt hour of every month in hour and value lists
-        for hour in first_hour_month:
-            if hour not in hours_list:
-                temp = hours_list > hour
-                count = 0
-                for t in temp:
-                    if t:
-                        hours_list = np.insert(hours_list, count, hour)
-                        values = np.insert(values, count, values[count - 1])
-                        break
-                    count += 1
+            # Get annual hourly values of schedules
+            arr = schedules[schedule_name]["all values"]
+            # Find the hours where hourly values change
+            hours_list, = np.where(np.roll(arr, 1) != arr)
+            # if hours_list is empty, give it hour 0
+            if hours_list.size == 0:
+                hours_list = np.array([0])
+            # Get schedule values where values change and add first schedule value
+            values = arr[hours_list]
+            # Add hour 0 and first value if not in array
+            if 0 not in hours_list:
+                hours_list = np.insert(hours_list, 0, np.array([0]))
+                values = np.insert(values, 0, arr[0])
+            # Add hour 8760 and if not in array
+            if 8760 not in hours_list:
+                hours_list = np.append(hours_list, 8760)
+                values = np.append(values, arr[len(arr) - 1])
 
-        # Round values to 1 decimal
-        values = np.round(values.astype("float64"), decimals=1)
+            # Makes sure fisrt hour of every month in hour and value lists
+            for hour in first_hour_month:
+                if hour not in hours_list:
+                    temp = hours_list > hour
+                    count = 0
+                    for t in temp:
+                        if t:
+                            hours_list = np.insert(hours_list, count, hour)
+                            values = np.insert(values, count, values[count - 1])
+                            break
+                        count += 1
 
-        # Writes schedule in lines
-        # Write values
-        _write_schedule_values(values, lines, scheduleNum, "VALUES")
-        # Write hours
-        _write_schedule_values(hours_list, lines, scheduleNum, "HOURS")
+            # Round values to 1 decimal
+            values = np.round(values.astype("float64"), decimals=1)
 
-        # Write schedule name
-        lines.insert(scheduleNum + 1, "!-SCHEDULE " + schedule_name + "\n")
+            # Writes schedule in lines
+            # Write values
+            _write_schedule_values(values, lines, scheduleNum, "VALUES")
+            # Write hours
+            _write_schedule_values(hours_list, lines, scheduleNum, "HOURS")
 
-        # if (
-        #     len(hours_list) <= 1500
-        # ):  # Todo: Now, only writes "short" schedules. Make method that write them all
-        #     lines.insert(
-        #         scheduleNum + 1,
-        #         "!-SCHEDULE " + schedules[schedule_name]["year"].Name + "\n",
-        #     )
-        #     lines.insert(
-        #         scheduleNum + 2,
-        #         "!- HOURS= " + " ".join(str(item) for item in hours_list) + "\n",
-        #     )
-        #     lines.insert(
-        #         scheduleNum + 3,
-        #         "!- VALUES= " + " ".join(str(item) for item in values) + "\n",
-        #     )
-        # else:
-        #     schedules_not_written.append(schedule_name)
+            # Write schedule name
+            lines.insert(scheduleNum + 1, "!-SCHEDULE " + schedule_name + "\n")
+
+            # if (
+            #     len(hours_list) <= 1500
+            # ):  # Todo: Now, only writes "short" schedules. Make method that write them all
+            #     lines.insert(
+            #         scheduleNum + 1,
+            #         "!-SCHEDULE " + schedules[schedule_name]["year"].Name + "\n",
+            #     )
+            #     lines.insert(
+            #         scheduleNum + 2,
+            #         "!- HOURS= " + " ".join(str(item) for item in hours_list) + "\n",
+            #     )
+            #     lines.insert(
+            #         scheduleNum + 3,
+            #         "!- VALUES= " + " ".join(str(item) for item in values) + "\n",
+            #     )
+            # else:
+            #     schedules_not_written.append(schedule_name)
 
     return schedules_not_written
 

@@ -178,6 +178,25 @@ class TestCli:
                 "--trnsidf-exe",
                 "docker/trnsidf/trnsidf.exe",
             ],
+            [
+                9,
+                "--use-cache",
+                "--cache-folder",
+                "tests/.temp/cache",
+                "--data-folder",
+                "tests/.temp/data",
+                "--imgs-folder",
+                "tests/.temp/images",
+                "--logs-folder",
+                "tests/.temp/logs",
+                "--log-console",
+                "convert",
+                "--schedule-as-input",
+                "tests/input_data/trnsys/simple_2_zone.idf",
+                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+                "--trnsidf-exe",
+                "docker/trnsidf/trnsidf.exe",
+            ],
         ]
     )
     def cli_args(config, request):
@@ -217,6 +236,8 @@ class TestCli:
                 "5) Updates volume of airnodes"
                 "6) Updates the capacitance of airnodes"
             )
+        elif request.param[0] == 9:
+            print("Runs convert cli with writing the schedules as SCHEDULES")
         else:
             print("Runs convert cli with other parameters")
 

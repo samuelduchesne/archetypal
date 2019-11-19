@@ -182,10 +182,12 @@ def convert_idf_to_trnbuild(
 
     # Adds ground temperature to schedule
     schedule_names.append("sch_ground")
+    # Get the monthly values from htm output file from EP simulation
     values = np.append(
         res["Site:GroundTemperature:BuildingSurface"].values[0][1:],
         res["Site:GroundTemperature:BuildingSurface"].values[0][-1],
     )
+    # Create array of 8760 values from monthly values
     all_values = (
         pd.DataFrame(
             values, index=pd.date_range(freq="MS", start="01/01/2019", periods=13)
@@ -194,9 +196,10 @@ def convert_idf_to_trnbuild(
         .ffill()[:-1]
         .T.values[0]
     )
-
+    # Adds "sch_ground" to schedules dict
     schedules["sch_ground"] = {"all values": all_values}
 
+    # Save schedules to csv file
     _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
     # endregion
 

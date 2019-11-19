@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import time
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -33,10 +34,6 @@ from archetypal import (
     run_eplus,
     recursive_len,
 )
-from geomeppy.geom.polygons import Polygon3D
-from path import Path
-from tqdm import tqdm
-from copy import deepcopy
 
 
 def convert_idf_to_trnbuild(

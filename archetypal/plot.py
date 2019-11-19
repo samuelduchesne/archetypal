@@ -20,9 +20,10 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from archetypal import settings, log
 from matplotlib import cm
 from matplotlib.colors import LightSource
+
+from archetypal import settings, log
 
 
 def save_and_show(

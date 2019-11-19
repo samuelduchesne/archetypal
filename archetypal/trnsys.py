@@ -16,6 +16,10 @@ import time
 
 import numpy as np
 import pandas as pd
+from geomeppy.geom.polygons import Polygon3D
+from path import Path
+from tqdm import tqdm
+
 from archetypal import (
     log,
     settings,
@@ -27,9 +31,6 @@ from archetypal import (
     load_idf_object_from_cache,
     hash_file,
 )
-from geomeppy.geom.polygons import Polygon3D
-from path import Path
-from tqdm import tqdm
 
 
 def convert_idf_to_trnbuild(

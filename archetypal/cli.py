@@ -7,14 +7,25 @@
 import os
 from collections import defaultdict
 
-import archetypal
 import click
-from archetypal import settings, cd, load_idf
+
+from archetypal import (
+    settings,
+    cd,
+    load_idf,
+    convert_idf_to_trnbuild,
+    get_eplus_dirs,
+    parallel_process,
+    run_eplus,
+    IDF,
+    UmiTemplate,
+    config,
+)
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
-class Config(object):
+class CliConfig(object):
     def __init__(self):
         self.data_folder = settings.data_folder
         self.logs_folder = settings.logs_folder
@@ -29,9 +40,10 @@ class Config(object):
         self.useful_idf_objects = settings.useful_idf_objects
         self.umitemplate = settings.umitemplate
         self.trnsys_default_folder = settings.trnsys_default_folder
+        self.ep_version = settings.ep_version
 
 
-pass_config = click.make_pass_decorator(Config, ensure=True)
+pass_config = click.make_pass_decorator(CliConfig, ensure=True)
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
@@ -96,9 +108,15 @@ pass_config = click.make_pass_decorator(Config, ensure=True)
     help="root folder of TRNSYS install",
     default=settings.trnsys_default_folder,
 )
+@click.option(
+    "--ep_version",
+    type=click.STRING,
+    default=settings.ep_version,
+    help='the EnergyPlus version to use. eg. "8-9-0"',
+)
 @pass_config
 def cli(
-    config,
+    cli_config,
     data_folder,
     logs_folder,
     imgs_folder,
@@ -110,6 +128,7 @@ def cli(
     log_name,
     log_filename,
     trnsys_default_folder,
+    ep_version,
 ):
     """archetypal: Retrieve, construct, simulate, convert and analyse building
     simulation templates
@@ -117,31 +136,37 @@ def cli(
     Visit archetypal.readthedocs.io for the online documentation
 
     Args:
-        config:
-        data_folder:
-        logs_folder:
-        imgs_folder:
-        cache_folder:
-        use_cache:
-        log_file:
-        log_console:
-        log_level:
-        log_name:
-        log_filename:
-        trnsys_default_folder:
+        cli_config: Package configuration. See :class:`CliConfig` for more details.
+        data_folder (str): where to save and load data files.
+        logs_folder (str): where to write the log files.
+        imgs_folder (str): where to save figures.
+        cache_folder (str): where to save the simluation results.
+        use_cache (bool): if True, use a local cache to save/retrieve many of
+            archetypal outputs such as EnergyPlus simulation results. This can
+            save a lot of time by not calling the simulation and dataportal APIs
+            repetitively for the same requests.
+        log_file (bool): if true, save log output to a log file in logs_folder.
+        log_console (bool): if true, print log output to the console.
+        log_level (int): one of the logger.level constants.
+        log_name (str): name of the logger.
+        log_filename (str): name of the log file.
+        trnsys_default_folder (str): root folder of TRNSYS install.
+        ep_version (str): EnergyPlus version to use. eg.: "8-9-0".
     """
-    config.data_folder = data_folder
-    config.logs_folder = logs_folder
-    config.imgs_folder = imgs_folder
-    config.cache_folder = cache_folder
-    config.use_cache = use_cache
-    config.log_file = log_file
-    config.log_console = log_console
-    config.log_level = log_level
-    config.log_name = log_name
-    config.log_filename = log_filename
-    config.trnsys_default_folder = trnsys_default_folder
-    archetypal.config(**config.__dict__)
+    cli_config.data_folder = data_folder
+    cli_config.logs_folder = logs_folder
+    cli_config.imgs_folder = imgs_folder
+    cli_config.cache_folder = cache_folder
+    cli_config.use_cache = use_cache
+    cli_config.log_file = log_file
+    cli_config.log_console = log_console
+    cli_config.log_level = log_level
+    cli_config.log_name = log_name
+    cli_config.log_filename = log_filename
+    cli_config.trnsys_default_folder = trnsys_default_folder
+    cli_config.ep_version = ep_version
+    # apply new config params
+    config(**cli_config.__dict__)
 
 
 @cli.command()
@@ -279,7 +304,7 @@ def convert(
         "tolerance": tolerance,
     }
     with cd(output_folder):
-        paths = archetypal.convert_idf_to_trnbuild(
+        paths = convert_idf_to_trnbuild(
             idf_file,
             window_lib,
             return_idf,
@@ -324,17 +349,11 @@ def convert(
     help="The name of the output json file",
 )
 @click.option(
-    "--ep-version",
-    type=click.STRING,
-    help="specify the version of EnergyPlus to use, eg.: '8-9-0'",
-    default="8-9-0",
-)
-@click.option(
     "--weather",
     "-w",
     type=click.Path(exists=True),
     help="path to the EPW weather file",
-    default=archetypal.get_eplus_dire()
+    default=get_eplus_dirs(settings.ep_version)
     / "WeatherData"
     / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
 )
@@ -345,7 +364,7 @@ def convert(
     default=True,
     help="process each idf file on different cores",
 )
-def reduce(idf, name, ep_version, weather, parallel):
+def reduce(idf, name, weather, parallel):
     """Perform the model reduction and translate to an UMI template file.
 
     Args:
@@ -366,11 +385,11 @@ def reduce(idf, name, ep_version, weather, parallel):
                 verbose="v",
                 output_report="sql",
                 return_idf=False,
-                ep_version=ep_version,
+                ep_version=settings.ep_version,
             )
             for file in idf
         }
-        res = archetypal.parallel_process(rundict, archetypal.run_eplus)
+        res = parallel_process(rundict, run_eplus)
         loaded_idf = {}
         for key, sql in res.items():
             loaded_idf[key] = {}
@@ -381,10 +400,10 @@ def reduce(idf, name, ep_version, weather, parallel):
         # else, run sequentially
         res = defaultdict(dict)
         for fn in idf:
-            res[fn][0], res[fn][1] = archetypal.run_eplus(
+            res[fn][0], res[fn][1] = run_eplus(
                 fn,
                 weather,
-                ep_version=ep_version,
+                ep_version=settings.ep_version,
                 output_report="sql",
                 prep_outputs=True,
                 annual=True,
@@ -399,16 +418,8 @@ def reduce(idf, name, ep_version, weather, parallel):
         sql = next(
             iter([value for key, value in fn.items() if isinstance(value, dict)])
         )
-        idf = next(
-            iter(
-                [
-                    value
-                    for key, value in fn.items()
-                    if isinstance(value, archetypal.IDF)
-                ]
-            )
-        )
+        idf = next(iter([value for key, value in fn.items() if isinstance(value, IDF)]))
         bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
 
-    template = archetypal.UmiTemplate(name=name, BuildingTemplates=bts)
+    template = UmiTemplate(name=name, BuildingTemplates=bts)
     print(template.to_json())

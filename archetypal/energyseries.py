@@ -5,15 +5,16 @@ import time
 import warnings
 from datetime import timedelta
 
-import archetypal
 import numpy as np
 import pandas as pd
 import tsam.timeseriesaggregation as tsam
-from archetypal import log, rmse, piecewise, settings
 from matplotlib import pyplot as plt, cm
 from matplotlib.colors import LightSource
 from pandas import Series, DataFrame, concat, MultiIndex, date_range
 from sklearn import preprocessing
+
+import archetypal
+from archetypal import log, rmse, piecewise, settings
 
 
 class EnergySeries(Series):

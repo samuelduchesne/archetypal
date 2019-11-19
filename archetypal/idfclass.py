@@ -25,6 +25,12 @@ import eppy
 import eppy.modeleditor
 import geomeppy
 import pandas as pd
+from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.easyopen import getiddfile
+from path import Path, tempdir
+
+import archetypal
+import archetypal.settings
 from archetypal import (
     log,
     settings,
@@ -35,9 +41,6 @@ from archetypal import (
     close_logger,
 )
 from archetypal.utils import _unpack_tuple
-from eppy.EPlusInterfaceFunctions import parse_idd
-from eppy.easyopen import getiddfile
-from path import Path, tempdir
 
 
 class IDF(geomeppy.IDF):
@@ -1586,8 +1589,11 @@ def run_eplus(
 
     # <editor-fold desc="Upgrade the file version if needed">
     if ep_version:
-        # replace the dots with "-"
+        # if users specifies version, make sure dots are replaced with "-".
         ep_version = ep_version.replace(".", "-")
+    else:
+        # if no version is specified, take the package default version
+        ep_version = archetypal.settings.ep_version
     eplus_file = idf_version_updater(
         upgraded_file(eplus_file, output_directory),
         to_version=ep_version,
@@ -2253,7 +2259,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             the simulname is the same. (default: None)
 
     Returns:
-        Path: The path of the transitioned idf file.
+        Path: The path of the new transitioned idf file.
     """
     if not out_dir.isdir():
         out_dir.makedirs_p()
@@ -2265,12 +2271,19 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
         doted_version = get_idf_version(idf_file, doted=True)
         iddfile = getiddfile(doted_version)
         if os.path.exists(iddfile):
-            # if a E+ exists, pass
-            pass
+            # if a E+ exists, means there is an E+ install that can be used
+            if versionid == to_version:
+                # if version of idf file is equal to intended version, copy file from
+                # temp transition folder into cache folder and return path
+                return idf_file.copy(out_dir / idf_file.basename())
             # might be an old version of E+
         elif tuple(map(int, doted_version.split("."))) < (8, 0):
-            # else if the version is an old E+ version (< 8.0)
+            # the version is an old E+ version (< 8.0)
             iddfile = getoldiddfile(doted_version)
+            if versionid == to_version:
+                # if version of idf file is equal to intended version, copy file from
+                # temp transition folder into cache folder and return path
+                return idf_file.copy(out_dir / idf_file.basename())
         # use to_version
         if to_version is None:
             # What is the latest E+ installed version
@@ -2323,8 +2336,13 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             "8-8-0": os.path.join(vupdater_path, "Transition-V8-8-0-to-V8-9-0"),
             "8-9-0": os.path.join(vupdater_path, "Transition-V8-9-0-to-V9-0-0"),
             "9-0-0": os.path.join(vupdater_path, "Transition-V9-0-0-to-V9-1-0"),
+            "9-1-0": os.path.join(vupdater_path, "Transition-V9-1-0-to-V9-2-0"),
         }
+        # set directory to run transition executables
+        run_dir = Path(os.path.dirname(trans_exec[versionid]))
 
+        # check the file version, if it corresponds to the latest version found on
+        # the machine, means its already upgraded to the correct version. Return it.
         if versionid == to_version:
             # if file version and to_veersion are the same, we don't need to
             # perform transition
@@ -2336,10 +2354,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             idf_file = Path(idf_file.copy(out_dir))
             return idf_file
 
-        # store the directory we start in
-        cwd = os.getcwd()
-        run_dir = Path(os.path.dirname(trans_exec[versionid]))
-
+        # Otherwise,
         # build a list of command line arguments
         with cd(run_dir):
             transitions = [

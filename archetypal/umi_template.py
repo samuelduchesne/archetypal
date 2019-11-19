@@ -4,6 +4,7 @@ import os
 from collections import OrderedDict
 
 import numpy as np
+
 from archetypal import (
     load_idf,
     BuildingTemplate,

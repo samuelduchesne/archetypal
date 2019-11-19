@@ -17,6 +17,7 @@ import datetime as dt
 import json
 import logging as lg
 import os
+import platform
 import re
 import sys
 import time
@@ -27,9 +28,11 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
-from archetypal import settings
 from pandas.io.json import json_normalize
 from path import Path
+
+from archetypal import settings
+from archetypal.settings import ep_version
 
 
 def config(
@@ -47,26 +50,30 @@ def config(
     umitemplate=settings.umitemplate,
     trnsys_default_folder=settings.trnsys_default_folder,
     default_weight_factor="area",
+    ep_version=settings.ep_version,
 ):
-    """Configurations
+    """Package configurations. Call this method at the beginning of script or at the
+    top of an interactive python environment to set package-wide settings.
 
     Args:
-        data_folder (str): where to save and load data files
-        logs_folder (str): where to write the log files
-        imgs_folder (str): where to save figures
-        cache_folder (str): where to save the simluation results
+        data_folder (str): where to save and load data files.
+        logs_folder (str): where to write the log files.
+        imgs_folder (str): where to save figures.
+        cache_folder (str): where to save the simluation results.
         use_cache (bool): if True, use a local cache to save/retrieve many of
             archetypal outputs such as EnergyPlus simulation results. This can
             save a lot of time by not calling the simulation and dataportal APIs
             repetitively for the same requests.
-        log_file (bool): if true, save log output to a log file in logs_folder
-        log_console (bool): if true, print log output to the console
-        log_level (int): one of the logger.level constants
-        log_name (str): name of the logger
-        log_filename (str): name of the log file
-        useful_idf_objects (list): a list of useful idf objects
-        umitemplate (str): where the umitemplate is located
-        trnsys_default_folder (str): root folder of TRNSYS install
+        log_file (bool): if true, save log output to a log file in logs_folder.
+        log_console (bool): if true, print log output to the console.
+        log_level (int): one of the logger.level constants.
+        log_name (str): name of the logger.
+        log_filename (str): name of the log file.
+        useful_idf_objects (list): a list of useful idf objects.
+        umitemplate (str): where the umitemplate is located.
+        trnsys_default_folder (str): root folder of TRNSYS install.
+        default_weight_factor:
+        ep_version (str): EnergyPlus version to use. eg. "8-9-0".
 
     Returns:
         None
@@ -86,10 +93,18 @@ def config(
     settings.umitemplate = umitemplate
     settings.trnsys_default_folder = validate_trnsys_folder(trnsys_default_folder)
     settings.zone_weight.set_weigth_attr(default_weight_factor)
+    settings.ep_version = validate_epversion(ep_version)
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
         log("Configured archetypal")
+
+
+def validate_epversion(ep_version):
+    """Validates the ep_version form"""
+    if "." in ep_version:
+        raise NameError('Enter the EnergyPlus version in the form "8-9-0"')
+    return ep_version
 
 
 def validate_trnsys_folder(trnsys_default_folder):
@@ -226,6 +241,14 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
 
 
 def close_logger(logger=None, level=None, name=None, filename=None, log_dir=None):
+    """
+    Args:
+        logger:
+        level:
+        name:
+        filename:
+        log_dir:
+    """
     if not logger:
         # try get logger by name
         logger = get_logger(level=level, name=name, filename=filename, log_dir=log_dir)
@@ -538,6 +561,7 @@ def weighted_mean(series, df, weighting_variable):
 def top(series, df, weighting_variable):
     """Compute the highest ranked value weighted by some other variable.
     Implements
+
         :func:`pandas.DataFrame.nlargest`.
 
     Args:
@@ -652,6 +676,10 @@ class EnergyPlusProcessError(Error):
 
 @contextlib.contextmanager
 def cd(path):
+    """
+    Args:
+        path:
+    """
     log("initially inside {0}".format(os.getcwd()))
     CWD = os.getcwd()
 
@@ -813,19 +841,63 @@ def float_round(num, n):
 
     Returns:
         num (float): a float rounded number
-
     """
     num = float(num)
     num = round(num, n)
     return num
 
 
-def get_eplus_dire():
+def get_eplus_dirs(version=ep_version):
+    """Returns EnergyPlus root folder for a specific version.
+
+    Returns (Path): The folder path.
+
+    Args:
+        version (str): Version number in the form "8-9-0" to search for.
+    """
     from eppy.runner.run_functions import install_paths
 
-    eplus_exe, eplus_weather = install_paths("8-9-0")
+    eplus_exe, eplus_weather = install_paths(version)
     eplusdir = Path(eplus_exe).dirname()
     return Path(eplusdir)
+
+
+def warn_if_not_compatible():
+    """Checks if an EnergyPlus install is detected. If the latest version
+    detected is higher than the one specified by archetypal, a warning is also
+    raised.
+    """
+    eplus_homes = get_eplus_basedirs()
+
+    if not eplus_homes:
+        warnings.warn(
+            "No installation of EnergyPlus could be detected on this "
+            "machine. Please install EnergyPlus from https://energyplus.net before using archetypal"
+        )
+    if len(eplus_homes) > 1:
+        # more than one installs
+        warnings.warn(
+            "There are more than one versions of EnergyPlus on this machine. Make "
+            "sure you provide the appropriate version number when possible. "
+        )
+
+
+def get_eplus_basedirs():
+    """Returns a list of possible E+ install paths"""
+    if platform.system() == "Windows":
+        eplus_homes = Path("C:").glob("EnergyPlusV*")
+        return eplus_homes
+    elif platform.system() == "Linux":
+        eplus_homes = Path("/usr/local/").glob("EnergyPlus-*")
+        return eplus_homes
+    elif platform.system() == "Darwin":
+        eplus_homes = Path("/Applications").glob("EnergyPlus-*")
+        return eplus_homes
+    else:
+        warnings.warn(
+            "Archetypal is not compatuble with %s. It is only compatible "
+            "with Winodws, Linux or MacOs" % platform.system()
+        )
 
 
 def timeit(method):
@@ -868,8 +940,12 @@ def timeit(method):
 
 
 def lcm(x, y):
-    """This function takes two
-   integers and returns the L.C.M. (Least Common Multiple)"""
+    """This function takes two integers and returns the L.C.M.
+
+    Args:
+        x:
+        y:
+    """
 
     # choose the greater number
     if x > y:

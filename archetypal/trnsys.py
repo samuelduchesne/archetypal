@@ -213,12 +213,11 @@ def convert_idf_to_trnbuild(
     # region Get schedules from IDF
     schedule_names, schedules = _get_schedules(idf_2)
 
-    # Adds ground temperature to schedule
-    schedule_names.append("sch_ground")
+    # Adds ground temperature to schedules
     # Get the monthly values from htm output file from EP simulation
     values = np.append(
-        res["Site:GroundTemperature:BuildingSurface"].values[0][1:],
-        res["Site:GroundTemperature:BuildingSurface"].values[0][-1],
+        htm["Site:GroundTemperature:BuildingSurface"].values[0][1:],
+        htm["Site:GroundTemperature:BuildingSurface"].values[0][-1],
     )
     # Create array of 8760 values from monthly values
     all_values = (
@@ -428,7 +427,7 @@ def convert_idf_to_trnbuild(
         lights,
         equipments,
         schedules_not_written,
-        res,
+        htm,
         old_new_names,
         schedule_as_input,
     )
@@ -447,13 +446,13 @@ def convert_idf_to_trnbuild(
     return return_path
 
 
-def infilt_to_b18(b18_lines, zones, res):
+def infilt_to_b18(b18_lines, zones, htm):
     mean_infilt = round(
         np.average(
-            res["ZoneInfiltration Airflow Stats Nominal"][
+            htm["ZoneInfiltration Airflow Stats Nominal"][
                 "ACH - Air Changes per Hour"
             ].values,
-            weights=res["ZoneInfiltration Airflow Stats Nominal"][
+            weights=htm["ZoneInfiltration Airflow Stats Nominal"][
                 "Zone Floor Area {m2}"
             ].values,
         ),
@@ -481,7 +480,7 @@ def gains_to_b18(
     lights,
     equipments,
     schedules_not_written,
-    res,
+    htm,
     old_new_names,
     schedule_as_input,
 ):
@@ -497,7 +496,7 @@ def gains_to_b18(
             peoples,
             peoples_in_zone,
             schedules_not_written,
-            res,
+            htm,
             old_new_names,
             "People",
             schedule_as_input,
@@ -509,7 +508,7 @@ def gains_to_b18(
             lights,
             lights_in_zone,
             schedules_not_written,
-            res,
+            htm,
             old_new_names,
             "Lights",
             schedule_as_input,
@@ -521,7 +520,7 @@ def gains_to_b18(
             equipments,
             equipments_in_zone,
             schedules_not_written,
-            res,
+            htm,
             old_new_names,
             "ElectricEquipment",
             schedule_as_input,
@@ -534,7 +533,7 @@ def _write_gain_to_b18(
     gains,
     gains_in_zone,
     schedules_not_written,
-    res,
+    htm,
     old_new_names,
     string,
     schedule_as_input,
@@ -543,8 +542,8 @@ def _write_gain_to_b18(
         if zone.Name in gains_in_zone[gain.Name]:
             f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
             regimeNum = checkStr(b18_lines, "REGIME", f_count)
-            schedule = res[string + " Internal Gains Nominal"][
-                res[string + " Internal Gains Nominal"]["Name"].str.contains(
+            schedule = htm[string + " Internal Gains Nominal"][
+                htm[string + " Internal Gains Nominal"]["Name"].str.contains(
                     old_new_names[gain.Name.upper()][0]
                 )
             ]["Schedule Name"].values[0]
@@ -2255,14 +2254,14 @@ def _write_gains(equipments, lights, lines, peoples, res, old_new_names):
     # Get line number where to write
     gainNum = checkStr(lines, "G a i n s")
     # Writing PEOPLE gains infos to lines
-    _write_people_gain(gainNum, lines, peoples, res, old_new_names)
+    _write_people_gain(gainNum, lines, peoples, htm, old_new_names)
     # Writing LIGHT gains infos to lines
-    _write_light_gain(gainNum, lights, lines, res, old_new_names)
+    _write_light_gain(gainNum, lights, lines, htm, old_new_names)
     # Writing EQUIPMENT gains infos to lines
-    _write_equipment_gain(equipments, gainNum, lines, res, old_new_names)
+    _write_equipment_gain(equipments, gainNum, lines, htm, old_new_names)
 
 
-def _write_equipment_gain(equipments, gainNum, lines, res, old_new_names):
+def _write_equipment_gain(equipments, gainNum, lines, htm, old_new_names):
     """Write equipment gains in lines
 
     Args:
@@ -2273,8 +2272,8 @@ def _write_equipment_gain(equipments, gainNum, lines, res, old_new_names):
             TRNBuild). To be appended (insert) here
     """
     for equipment in equipments:
-        gain = res["ElectricEquipment Internal Gains Nominal"][
-            res["ElectricEquipment Internal Gains Nominal"]["Name"].str.contains(
+        gain = htm["ElectricEquipment Internal Gains Nominal"][
+            htm["ElectricEquipment Internal Gains Nominal"]["Name"].str.contains(
                 old_new_names[equipment.Name.upper()][0]
             )
         ]
@@ -2295,7 +2294,7 @@ def _write_equipment_gain(equipments, gainNum, lines, res, old_new_names):
         )
 
 
-def _write_light_gain(gainNum, lights, lines, res, old_new_names):
+def _write_light_gain(gainNum, lights, lines, htm, old_new_names):
     """Write gain from lights in lines
 
     Args:
@@ -2306,8 +2305,8 @@ def _write_light_gain(gainNum, lights, lines, res, old_new_names):
             TRNBuild). To be appended (insert) here
     """
     for light in lights:
-        gain = res["Lights Internal Gains Nominal"][
-            res["Lights Internal Gains Nominal"]["Name"].str.contains(
+        gain = htm["Lights Internal Gains Nominal"][
+            htm["Lights Internal Gains Nominal"]["Name"].str.contains(
                 old_new_names[light.Name.upper()][0]
             )
         ]
@@ -2328,7 +2327,7 @@ def _write_light_gain(gainNum, lights, lines, res, old_new_names):
         )
 
 
-def _write_people_gain(gainNum, lines, peoples, res, old_new_names):
+def _write_people_gain(gainNum, lines, peoples, htm, old_new_names):
     """
     Args:
         gainNum (int): Line number where to write the equipment gains
@@ -2337,8 +2336,8 @@ def _write_people_gain(gainNum, lines, peoples, res, old_new_names):
         peoples (idf_MSequence): IDF object from idf.idfobjects()
     """
     for people in peoples:
-        gain = res["People Internal Gains Nominal"][
-            res["People Internal Gains Nominal"]["Name"].str.contains(
+        gain = htm["People Internal Gains Nominal"][
+            htm["People Internal Gains Nominal"]["Name"].str.contains(
                 old_new_names[people.Name.upper()][0]
             )
         ]

@@ -319,11 +319,13 @@ def convert_idf_to_trnbuild(
     # endregion
 
     # region Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
-    _write_gains(equipments, lights, lines, peoples, res, old_new_names)
+    _write_gains(equipments, lights, lines, peoples, htm, old_new_names)
     # endregion
 
     # region Write basic conditioning systems (HEATING and COOLING) from IDF to lines (T3D)
-    heat_name, cool_name = _write_conditioning(res, lines)
+    heat_dict, cool_dict = _write_conditioning(
+        htm, lines, schedules, old_new_names, schedule_as_input
+    )
     # endregion
 
     # region Write SCHEDULES from IDF to lines (T3D)
@@ -374,12 +376,12 @@ def convert_idf_to_trnbuild(
     # Run trnsidf to convert T3D to BUI
     log("Converting t3d file to bui file. Running trnsidf.exe...")
     dck = return_dck
-    nonum = kwargs.get("nonum", False)
-    N = kwargs.get("N", False)
-    geo_floor = kwargs.get("geo_floor", 0.6)
-    refarea = kwargs.get("refarea", False)
-    volume = kwargs.get("volume", False)
-    capacitance = kwargs.get("capacitance", False)
+    nonum = kwargs.pop("nonum", False)
+    N = kwargs.pop("N", False)
+    geo_floor = kwargs.pop("geo_floor", 0.6)
+    refarea = kwargs.pop("refarea", False)
+    volume = kwargs.pop("volume", False)
+    capacitance = kwargs.pop("capacitance", False)
     trnbuild_idf(
         t3d_path,
         output_folder=output_folder,
@@ -413,10 +415,10 @@ def convert_idf_to_trnbuild(
         b18_lines = b18_file.readlines()
 
     # Adds conditionning to B18 file
-    conditioning_to_b18(b18_lines, heat_name, cool_name, zones, old_new_names)
+    conditioning_to_b18(b18_lines, heat_dict, cool_dict, zones, old_new_names)
 
     # Adds infiltration to b18 file
-    infilt_to_b18(b18_lines, zones, res)
+    infilt_to_b18(b18_lines, zones, htm)
 
     # Adds internal gain to b18 file
     gains_to_b18(
@@ -575,21 +577,21 @@ def _write_gain_to_b18(
                 )
 
 
-def conditioning_to_b18(b18_lines, heat_name, cool_name, zones, old_new_names):
+def conditioning_to_b18(b18_lines, heat_dict, cool_dict, zones, old_new_names):
     for zone in zones:
         # Heating
-        _write_heat_cool_to_b18(heat_name, old_new_names, zone, b18_lines, " HEATING")
+        _write_heat_cool_to_b18(heat_dict, old_new_names, zone, b18_lines, " HEATING")
         # Cooling
-        _write_heat_cool_to_b18(cool_name, old_new_names, zone, b18_lines, " COOLING")
+        _write_heat_cool_to_b18(cool_dict, old_new_names, zone, b18_lines, " COOLING")
 
 
-def _write_heat_cool_to_b18(list_name, old_new_names, zone, b18_lines, string):
-    for key in list_name.keys():
+def _write_heat_cool_to_b18(list_dict, old_new_names, zone, b18_lines, string):
+    for key in list_dict.keys():
         if old_new_names[zone.Name.upper()][0] in key:
             f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
             regimeNum = checkStr(b18_lines, "REGIME", f_count)
             # Write
-            b18_lines.insert(regimeNum, string + " = " + list_name[key] + "\n")
+            b18_lines.insert(regimeNum, string + " = " + list_dict[key][0] + "\n")
 
 
 def zone_where_gain_is(gains, zones, zonelists):
@@ -2161,83 +2163,89 @@ def _write_schedule_values(list, lines, scheduleNum, string):
         count += 1
 
 
-def _write_conditioning(res, lines):
+def _write_conditioning(htm, lines, schedules, old_new_names, schedule_as_input):
     # Heating
-    heat_name = {}
-    if res["Zone Sensible Heating"].iloc[0, 0] != "None":
-        for i in range(0, len(res["Zone Sensible Heating"])):
-            key = res["Zone Sensible Heating"].iloc[i, 0]
-            name = "HEAT_z" + str(res["Zone Sensible Heating"].iloc[i].name)
-            heat_name[key] = name
-            size_factor = res["Heating Sizing Factor Information"][
-                res["Heating Sizing Factor Information"]["Sizing Factor ID"] == "Global"
+    heat_dict = {}
+    schedule = None
+    if htm["Zone Sensible Heating"].iloc[0, 0] != "None":
+        for i in range(0, len(htm["Zone Sensible Heating"])):
+            key = htm["Zone Sensible Heating"].iloc[i, 0]
+            for key_2 in schedules:
+                try:
+                    if "_h_" in key_2 and old_new_names[key_2[-8:].upper()][0] == key:
+                        schedule = key_2
+                        break
+                except:
+                    pass
+            name = "HEAT_z" + str(htm["Zone Sensible Heating"].iloc[i].name)
+            heat_dict[key] = [name, schedule]
+            size_factor = htm["Heating Sizing Factor Information"][
+                htm["Heating Sizing Factor Information"]["Sizing Factor ID"] == "Global"
             ]["Value"].max()
             power = size_factor * (
                 float(
-                    res["Zone Sensible Heating"].iloc[i, :][
+                    htm["Zone Sensible Heating"].iloc[i, :][
                         "User Design Load per Area [W/m2]"
                     ]
                 )
                 / 1000
                 * 3600
             )  # kJ/h-m2
+            # Writes in lines
             heatingNum = checkStr(lines, "H e a t i n g")
             lines.insert(heatingNum + 1, " AREA_RELATED_POWER=1" + "\n")
             lines.insert(heatingNum + 1, " ELPOWERFRAC=0" + "\n")
             lines.insert(heatingNum + 1, " RRAD=0" + "\n")
             lines.insert(heatingNum + 1, " HUMIDITY=0" + "\n")
             lines.insert(heatingNum + 1, "POWER=" + str(power) + "\n")
-            lines.insert(
-                heatingNum + 1,
-                " ON="
-                + str(
-                    res["Zone Sensible Heating"]
-                    .iloc[i]
-                    .loc["Thermostat Setpoint Temperature at Peak Load [C]"]
-                )
-                + "\n",
-            )
+            if schedule_as_input:
+                lines.insert(heatingNum + 1, " ON= INPUT 1*" + schedule + "\n")
+            else:
+                lines.insert(heatingNum + 1, " ON= SCHEDULE 1*" + schedule + "\n")
             lines.insert(heatingNum + 1, "HEATING " + name + "\n")
     # Cooling
-    cool_name = {}
-    if res["Zone Sensible Cooling"].iloc[0, 0] != "None":
-        for i in range(0, len(res["Zone Sensible Cooling"])):
-            key = res["Zone Sensible Cooling"].iloc[i, 0]
-            name = "COOL_z" + str(res["Zone Sensible Cooling"].iloc[i].name)
-            cool_name[key] = name
-            size_factor = res["Cooling Sizing Factor Information"][
-                res["Heating Sizing Factor Information"]["Sizing Factor ID"] == "Global"
+    cool_dict = {}
+    schedule = None
+    if htm["Zone Sensible Cooling"].iloc[0, 0] != "None":
+        for i in range(0, len(htm["Zone Sensible Cooling"])):
+            key = htm["Zone Sensible Cooling"].iloc[i, 0]
+            for key_2 in schedules:
+                try:
+                    if "_c_" in key_2 and old_new_names[key_2[-8:].upper()][0] == key:
+                        schedule = key_2
+                        break
+                except:
+                    pass
+            name = "COOL_z" + str(htm["Zone Sensible Cooling"].iloc[i].name)
+            cool_dict[key] = [name, schedule]
+            size_factor = htm["Cooling Sizing Factor Information"][
+                htm["Heating Sizing Factor Information"]["Sizing Factor ID"] == "Global"
             ]["Value"].max()
             power = size_factor * (
                 float(
-                    res["Zone Sensible Cooling"].iloc[i, :][
+                    htm["Zone Sensible Cooling"].iloc[i, :][
                         "User Design Load per Area [W/m2]"
                     ]
                 )
                 / 1000
                 * 3600
             )  # kJ/h-m2
+            # Writes in lines
             coolingNum = checkStr(lines, "C o o l i n g")
             lines.insert(coolingNum + 1, " AREA_RELATED_POWER=1" + "\n")
             lines.insert(coolingNum + 1, " ELPOWERFRAC=0" + "\n")
             lines.insert(coolingNum + 1, " HUMIDITY=0" + "\n")
             lines.insert(coolingNum + 1, "POWER=" + str(power) + "\n")
-            lines.insert(
-                coolingNum + 1,
-                " ON="
-                + str(
-                    res["Zone Sensible Cooling"]
-                    .iloc[i]
-                    .loc["Thermostat Setpoint Temperature at Peak Load [C]"]
-                )
-                + "\n",
-            )
+            if schedule_as_input:
+                lines.insert(coolingNum + 1, " ON= INPUT 1*" + schedule + "\n")
+            else:
+                lines.insert(coolingNum + 1, " ON= SCHEDULE 1*" + schedule + "\n")
             lines.insert(coolingNum + 1, "COOLING " + name + "\n")
 
-    return heat_name, cool_name
+    return heat_dict, cool_dict
 
 
-def _write_gains(equipments, lights, lines, peoples, res, old_new_names):
+def _write_gains(equipments, lights, lines, peoples, htm, old_new_names):
     """Write gains in lines
 
     Args:

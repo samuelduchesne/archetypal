@@ -18,6 +18,7 @@ from archetypal import (
     settings,
     choose_window,
     run_eplus,
+    ReportData,
 )
 
 # Function round to hundreds
@@ -52,6 +53,8 @@ from archetypal.trnsys import (
     infilt_to_b18,
     gains_to_b18,
     conditioning_to_b18,
+    adds_sch_ground,
+    adds_sch_setpoint,
 )
 
 
@@ -256,19 +259,45 @@ class TestsConvert:
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
 
         # Run EnergyPlus Simulation
-        res = run_eplus(
+        ep_version = "8-9-0"
+        outputs = [
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Zone Thermostat Heating Setpoint Temperature",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+        ]
+        _, idf = run_eplus(
             idf_file,
             weather_file,
             output_directory=None,
-            ep_version=None,
-            output_report="htm",
-            prep_outputs=True,
-            design_day=True,
+            ep_version=ep_version,
+            output_report=None,
+            prep_outputs=outputs,
+            design_day=False,
+            annual=True,
+            expandobjects=True,
+            return_idf=True,
         )
+
+        # Outpout reports
+        htm = idf.htm
+        sql = idf.sql
+        sql_file = idf.sql_file
 
         # Check if cache exists
         log_clear_names = False
-        idf = load_idf(idf_file)
 
         # Clean names of idf objects (e.g. 'MATERIAL')
         idf_2 = deepcopy(idf)
@@ -291,9 +320,34 @@ class TestsConvert:
         )
 
         # Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
-        _write_gains(equipments, lights, lines, peoples, res, old_new_names)
+        _write_gains(equipments, lights, lines, peoples, htm, old_new_names)
 
-        heat_name, cool_name = _write_conditioning(res, lines)
+        # Gets schedules from IDF
+        schedule_names, schedules = _get_schedules(idf_2)
+
+        # Adds ground temperature to schedules
+        adds_sch_ground(htm, schedule_names, schedules)
+
+        # Adds "sch_setpoint_ZONES" to schedules
+        df_heating_setpoint = ReportData.from_sqlite(
+            sql_file, table_name="Zone Thermostat Heating Setpoint Temperature"
+        )
+        df_cooling_setpoint = ReportData.from_sqlite(
+            sql_file, table_name="Zone Thermostat Cooling Setpoint Temperature"
+        )
+        # Heating
+        adds_sch_setpoint(
+            zones, df_heating_setpoint, old_new_names, schedule_names, schedules, "h"
+        )
+        # Cooling
+        adds_sch_setpoint(
+            zones, df_cooling_setpoint, old_new_names, schedule_names, schedules, "c"
+        )
+
+        schedule_as_input = True
+        heat_dict, cool_dict = _write_conditioning(
+            htm, lines, schedules, old_new_names, schedule_as_input
+        )
 
     def test_relative_to_absolute(self, config, converttest):
         output_folder = None

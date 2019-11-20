@@ -33,6 +33,7 @@ from archetypal import (
     hash_file,
     run_eplus,
     recursive_len,
+    ReportData,
 )
 
 
@@ -121,20 +122,43 @@ def convert_idf_to_trnbuild(
 
     # Run EnergyPlus Simulation
     ep_version = kwargs.pop("ep_version", None)
-    res = run_eplus(
+    outputs = [
+        {
+            "ep_object": "Output:Variable".upper(),
+            "kwargs": dict(
+                Variable_Name="Zone Thermostat Heating Setpoint Temperature",
+                Reporting_Frequency="hourly",
+                save=True,
+            ),
+        },
+        {
+            "ep_object": "Output:Variable".upper(),
+            "kwargs": dict(
+                Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
+                Reporting_Frequency="hourly",
+                save=True,
+            ),
+        },
+    ]
+    _, idf = run_eplus(
         idf_file,
         weather_file,
         output_directory=None,
         ep_version=ep_version,
-        output_report="htm",
-        prep_outputs=True,
-        design_day=True,
+        output_report=None,
+        prep_outputs=outputs,
+        design_day=False,
+        annual=True,
         expandobjects=True,
+        return_idf=True,
     )
 
     # Check if cache exists
     # idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
-    idf = load_idf(idf_file)
+    # Outpout reports
+    htm = idf.htm
+    sql = idf.sql
+    sql_file = idf.sql_file
 
     # Clean names of idf objects (e.g. 'MATERIAL')
     idf_2 = deepcopy(idf)

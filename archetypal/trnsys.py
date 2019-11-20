@@ -214,23 +214,7 @@ def convert_idf_to_trnbuild(
     schedule_names, schedules = _get_schedules(idf_2)
 
     # Adds ground temperature to schedules
-    # Get the monthly values from htm output file from EP simulation
-    values = np.append(
-        htm["Site:GroundTemperature:BuildingSurface"].values[0][1:],
-        htm["Site:GroundTemperature:BuildingSurface"].values[0][-1],
-    )
-    # Create array of 8760 values from monthly values
-    all_values = (
-        pd.DataFrame(
-            values, index=pd.date_range(freq="MS", start="01/01/2019", periods=13)
-        )
-        .resample("H")
-        .ffill()[:-1]
-        .T.values[0]
-    )
-    schedule_names.append("sch_ground")
-    # Adds "sch_ground" to schedules dict
-    schedules["sch_ground"] = {"all values": all_values}
+    adds_sch_ground(htm, schedule_names, schedules)
 
     # Adds "sch_setpoint_ZONES" to schedules
     df_heating_setpoint = ReportData.from_sqlite(
@@ -239,24 +223,14 @@ def convert_idf_to_trnbuild(
     df_cooling_setpoint = ReportData.from_sqlite(
         sql_file, table_name="Zone Thermostat Cooling Setpoint Temperature"
     )
-    for zone in zones:
-        # Heating
-        all_values = df_heating_setpoint[
-            df_heating_setpoint.loc[:, "KeyValue"]
-            == old_new_names[zone.Name.upper()][0].upper()
-        ].Value.values
-        schedule_name = "sch_h_setpoint_" + zone.Name
-        schedule_names.append(schedule_name)
-        schedules[schedule_name] = {"all values": all_values}
-
-        # Cooling
-        all_values = df_cooling_setpoint[
-            df_cooling_setpoint.loc[:, "KeyValue"]
-            == old_new_names[zone.Name.upper()][0].upper()
-        ].Value.values
-        schedule_name = "sch_c_setpoint_" + zone.Name
-        schedule_names.append(schedule_name)
-        schedules[schedule_name] = {"all values": all_values}
+    # Heating
+    adds_sch_setpoint(
+        zones, df_heating_setpoint, old_new_names, schedule_names, schedules, 'h'
+    )
+    # Cooling
+    adds_sch_setpoint(
+        zones, df_cooling_setpoint, old_new_names, schedule_names, schedules, 'c'
+    )
 
     # Save schedules to csv file
     _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
@@ -446,6 +420,39 @@ def convert_idf_to_trnbuild(
     # endregion
 
     return return_path
+
+
+def adds_sch_setpoint(
+    zones, report_sqlite, old_new_names, schedule_names, schedules, string
+):
+    for zone in zones:
+        all_values = report_sqlite[
+            report_sqlite.loc[:, "KeyValue"]
+            == old_new_names[zone.Name.upper()][0].upper()
+        ].Value.values
+        schedule_name = "sch_" + string + "_setpoint_" + zone.Name
+        schedule_names.append(schedule_name)
+        schedules[schedule_name] = {"all values": all_values}
+
+
+def adds_sch_ground(htm, schedule_names, schedules):
+    # Get the monthly values from htm output file from EP simulation
+    values = np.append(
+        htm["Site:GroundTemperature:BuildingSurface"].values[0][1:],
+        htm["Site:GroundTemperature:BuildingSurface"].values[0][-1],
+    )
+    # Create array of 8760 values from monthly values
+    all_values = (
+        pd.DataFrame(
+            values, index=pd.date_range(freq="MS", start="01/01/2019", periods=13)
+        )
+        .resample("H")
+        .ffill()[:-1]
+        .T.values[0]
+    )
+    schedule_names.append("sch_ground")
+    # Adds "sch_ground" to schedules dict
+    schedules["sch_ground"] = {"all values": all_values}
 
 
 def infilt_to_b18(b18_lines, zones, htm):

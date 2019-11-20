@@ -59,6 +59,7 @@ class IDF(geomeppy.IDF):
         self._sql_file = None
         self.schedules_dict = self.get_all_schedules()
         self._sql = None
+        self._htm = None
         self.eplus_run_options = EnergyPlusOptions(
             eplus_file=self.idfname,
             weather_file=getattr(self, "epw", None),
@@ -92,6 +93,16 @@ class IDF(geomeppy.IDF):
             return self._sql
         else:
             return self._sql
+
+    @property
+    def htm(self):
+        if self._htm is None:
+            self._htm = self.run_eplus(
+                annual=True, prep_outputs=True, output_report="htm"
+            )
+            return self._htm
+        else:
+            return self._htm
 
     @property
     def sql_file(self):
@@ -1725,6 +1736,12 @@ def run_eplus(
                 idf = load_idf(
                     eplus_file, output_folder=output_directory, include=include
                 )
+                runargs["output_report"] = "sql"
+                idf._sql = get_report(**runargs)
+                runargs["output_report"] = "sql_file"
+                idf._sql_file = get_report(**runargs)
+                runargs["output_report"] = "htm"
+                idf._htm = get_report(**runargs)
             else:
                 idf = None
             return_elements = list(

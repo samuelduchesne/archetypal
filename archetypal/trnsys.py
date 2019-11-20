@@ -120,11 +120,12 @@ def convert_idf_to_trnbuild(
     )
 
     # Run EnergyPlus Simulation
+    ep_version = kwargs.pop("ep_version", None)
     res = run_eplus(
         idf_file,
         weather_file,
         output_directory=None,
-        ep_version=None,
+        ep_version=ep_version,
         output_report="htm",
         prep_outputs=True,
         design_day=True,

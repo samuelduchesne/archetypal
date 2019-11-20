@@ -229,8 +229,35 @@ def convert_idf_to_trnbuild(
         .ffill()[:-1]
         .T.values[0]
     )
+    schedule_names.append("sch_ground")
     # Adds "sch_ground" to schedules dict
     schedules["sch_ground"] = {"all values": all_values}
+
+    # Adds "sch_setpoint_ZONES" to schedules
+    df_heating_setpoint = ReportData.from_sqlite(
+        sql_file, table_name="Zone Thermostat Heating Setpoint Temperature"
+    )
+    df_cooling_setpoint = ReportData.from_sqlite(
+        sql_file, table_name="Zone Thermostat Cooling Setpoint Temperature"
+    )
+    for zone in zones:
+        # Heating
+        all_values = df_heating_setpoint[
+            df_heating_setpoint.loc[:, "KeyValue"]
+            == old_new_names[zone.Name.upper()][0].upper()
+        ].Value.values
+        schedule_name = "sch_h_setpoint_" + zone.Name
+        schedule_names.append(schedule_name)
+        schedules[schedule_name] = {"all values": all_values}
+
+        # Cooling
+        all_values = df_cooling_setpoint[
+            df_cooling_setpoint.loc[:, "KeyValue"]
+            == old_new_names[zone.Name.upper()][0].upper()
+        ].Value.values
+        schedule_name = "sch_c_setpoint_" + zone.Name
+        schedule_names.append(schedule_name)
+        schedules[schedule_name] = {"all values": all_values}
 
     # Save schedules to csv file
     _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)

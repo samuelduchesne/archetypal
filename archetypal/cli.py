@@ -235,6 +235,12 @@ def cli(
     "(in the TRNSYS Studio) the csv file containing the schedules with those INPUTS",
 )
 @click.option(
+    "--ep-version",
+    type=str,
+    default=None,
+    help="Specify the EnergyPlus version to use. Default = None",
+)
+@click.option(
     "--window",
     nargs=6,
     type=float,
@@ -277,6 +283,7 @@ def convert(
     template,
     log_clear_names,
     schedule_as_input,
+    ep_version,
     window,
     ordered,
     nonum,
@@ -301,6 +308,7 @@ def convert(
         template:
         log_clear_names:
         schedule_as_input:
+        ep_version:
         window:
         ordered:
         nonum:
@@ -333,6 +341,7 @@ def convert(
             template,
             log_clear_names=log_clear_names,
             schedule_as_input=schedule_as_input,
+            ep_version=ep_version,
             **window_kwds,
             ordered=ordered,
             nonum=nonum,

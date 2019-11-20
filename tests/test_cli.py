@@ -26,6 +26,8 @@ class TestCli:
                 "tests/.temp/logs",
                 "--log-console",
                 "convert",
+                "--ep-version",
+                "9-1-0",
                 "tests/input_data/trnsys/simple_2_zone.idf",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
                 "--trnsidf-exe",
@@ -44,6 +46,8 @@ class TestCli:
                 "tests/.temp/logs",
                 "--log-console",
                 "convert",
+                "--ep-version",
+                "9-1-0",
                 "-i",
                 "-t",
                 "-d",
@@ -65,6 +69,8 @@ class TestCli:
                 "tests/.temp/logs",
                 "--log-console",
                 "convert",
+                "--ep-version",
+                "9-1-0",
                 "--window-lib",
                 "archetypal/ressources/W74-lib.dat",
                 "tests/input_data/trnsys/simple_2_zone.idf",
@@ -85,6 +91,8 @@ class TestCli:
                 "tests/.temp/logs",
                 "--log-console",
                 "convert",
+                "--ep-version",
+                "9-1-0",
                 "--template",
                 "archetypal/ressources/NewFileTemplate.d18",
                 "tests/input_data/trnsys/simple_2_zone.idf",
@@ -105,6 +113,8 @@ class TestCli:
                 "tests/.temp/logs",
                 "--log-console",
                 "convert",
+                "--ep-version",
+                "9-1-0",
                 "--log-clear-names",
                 "tests/input_data/trnsys/simple_2_zone.idf",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
@@ -124,6 +134,8 @@ class TestCli:
                 "tests/.temp/logs",
                 "--log-console",
                 "convert",
+                "--ep-version",
+                "9-1-0",
                 "--window",
                 1.5,
                 0.6,
@@ -149,6 +161,8 @@ class TestCli:
                 "tests/.temp/logs",
                 "--log-console",
                 "convert",
+                "--ep-version",
+                "9-1-0",
                 "--ordered",
                 "tests/input_data/trnsys/simple_2_zone.idf",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
@@ -168,6 +182,8 @@ class TestCli:
                 "tests/.temp/logs",
                 "--log-console",
                 "convert",
+                "--ep-version",
+                "9-1-0",
                 "--nonum",
                 "-N",
                 "--geofloor",
@@ -193,6 +209,8 @@ class TestCli:
                 "tests/.temp/logs",
                 "--log-console",
                 "convert",
+                "--ep-version",
+                "9-1-0",
                 "--schedule-as-input",
                 "tests/input_data/trnsys/simple_2_zone.idf",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
@@ -203,34 +221,39 @@ class TestCli:
     )
     def cli_args(config, request):
         if request.param[0] == 1:
-            print("Runs convert cli with default parameters")
+            print("Runs convert cli with EnergyPlus version 9-1-0")
         elif request.param[0] == 2:
             print(
-                "Runs convert cli with default parameters AND returns paths to "
+                "Runs convert cli with EnergyPlus version 9-1-0 AND returns paths to "
                 "modified IDF, T3D file and the DCK file"
             )
         elif request.param[0] == 3:
-            print("Runs convert cli with a given window library")
+            print(
+                "Runs convert cli with EnergyPlus version 9-1-0 AND a given window library"
+            )
         elif request.param[0] == 4:
-            print("Runs convert cli with a given d18 template")
+            print(
+                "Runs convert cli with EnergyPlus version 9-1-0 AND a given d18 template"
+            )
         elif request.param[0] == 5:
             print(
-                "Runs convert cli without logging in console the equivalence between"
+                "Runs convert cli with EnergyPlus version 9-1-0 AND without logging "
+                "in console the equivalence between"
                 " old and new names"
             )
         elif request.param[0] == 6:
             print(
-                "Runs convert cli with given window parameters "
+                "Runs convert cli with EnergyPlus version 9-1-0 AND given window parameters "
                 "(u-value, shgc, t_vis, etc.) to find in default window library"
             )
         elif request.param[0] == 7:
             print(
-                "Runs convert cli with the ordered option "
+                "Runs convert cli with EnergyPlus version 9-1-0 AND the ordered option "
                 "(sorting the idf object names)"
             )
         elif request.param[0] == 8:
             print(
-                "Runs convert cli with trnsidf.exe arguments:"
+                "Runs convert cli with EnergyPlus version 9-1-0 AND trnsidf.exe arguments:"
                 "1) Will not renumber surfaces"
                 "2) Does BatchJob Modus"
                 "3) 60% of solar radiation is directed to the floor"
@@ -239,9 +262,12 @@ class TestCli:
                 "6) Updates the capacitance of airnodes"
             )
         elif request.param[0] == 9:
-            print("Runs convert cli with writing the schedules as SCHEDULES")
+            print(
+                "Runs convert cli with EnergyPlus version 9-1-0 AND writing the "
+                "schedules as SCHEDULES"
+            )
         else:
-            print("Runs convert cli with other parameters")
+            print("Runs convert cli with EnergyPlus version 9-1-0 AND other parameters")
 
         yield request.param[1:]
 

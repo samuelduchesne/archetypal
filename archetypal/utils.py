@@ -674,6 +674,31 @@ class EnergyPlusProcessError(Error):
         return msg
 
 
+class EnergyPlusVersionError(Error):
+    """EnergyPlus Version call error"""
+
+    def __init__(self, idf_file, idf_version, ep_version):
+        self.idf_file = idf_file
+        self.idf_version = idf_version
+        self.ep_version = ep_version
+
+    def __str__(self):
+        """Override that only returns the stderr"""
+        if tuple(self.idf_version.split("-")) > tuple(self.ep_version.split("-")):
+            compares_ = "higher"
+        else:
+            compares_ = "lower"
+        msg = (
+            "The version of the idf file {} (v{}) is {} than the specified "
+            "EnergyPlus version (v{}). Specify the default EnergyPlus version "
+            "with :func:`config` that corresponds with the one installed on your machine"
+            " or specify the version in related module functions, e.g. :func:`run_eplus`.".format(
+                self.idf_file.basename(), self.idf_version, compares_, self.ep_version
+            )
+        )
+        return msg
+
+
 @contextlib.contextmanager
 def cd(path):
     """
@@ -986,6 +1011,7 @@ def _unpack_tuple(x):
         return x[0]
     else:
         return x
+
 
 def recursive_len(item):
     """Calculate the number of elements in nested list

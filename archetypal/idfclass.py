@@ -39,6 +39,7 @@ from archetypal import (
     ReportData,
     EnergySeries,
     close_logger,
+    EnergyPlusVersionError,
 )
 from archetypal.utils import _unpack_tuple
 
@@ -2289,16 +2290,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             # What is the latest E+ installed version
             to_version = find_eplus_installs(iddfile)
         if tuple(versionid.split("-")) > tuple(to_version.split("-")):
-            log(
-                'The version of the idf file "{}: v{}" is higher than any '
-                "version of EnergyPlus installed on this machine. Please "
-                'install EnergyPlus version "{}" or higher. Latest version '
-                "found: {}".format(
-                    os.path.basename(idf_file), versionid, versionid, to_version
-                ),
-                lg.WARNING,
-            )
-            return None
+            raise EnergyPlusVersionError(idf_file, versionid, to_version)
         to_iddfile = Path(getiddfile(to_version.replace("-", ".")))
         vupdater_path = to_iddfile.dirname() / "PreProcess" / "IDFVersionUpdater"
         trans_exec = {

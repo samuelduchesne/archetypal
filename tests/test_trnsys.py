@@ -518,10 +518,13 @@ def test_trnbuild_from_idf(config, trnbuild_file):
     # prepare args (key=value). Key is a unique id for the runs (here the
     # file basename is used). Value is a dict of the function arguments
     kwargs_dict = {
+        "ep_version": "8-9-0",
         "u_value": 2.5,
         "shgc": 0.6,
         "t_vis": 0.78,
         "tolerance": 0.05,
+        "fframe": 0.1,
+        "uframe": 7.5,
         "ordered": True,
     }
 

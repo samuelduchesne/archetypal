@@ -768,12 +768,7 @@ def load_idf(
 
 
 def _eppy_load(
-    file,
-    idd_filename,
-    output_folder=None,
-    include=None,
-    epw=None,
-    ep_version=None,
+    file, idd_filename, output_folder=None, include=None, epw=None, ep_version=None
 ):
     """Uses package eppy to parse an idf file. Will also try to upgrade the idf
     file using the EnergyPlus Transition executables if the version of
@@ -2391,10 +2386,9 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
                     raise EnergyPlusProcessError(
                         cmd=trans_exec[trans],
                         stderr="The specified EnergyPlus version (v{}) does not have the"
-                        " transition file '{}' in the PreProcess folder. "
-                        "See the documentation (#LIEN#) to solve this issue".format(
-                            to_version, trans_exec[trans]
-                        ),
+                        " required transition program '{}' in the PreProcess folder. "
+                        "See the documentation (archetypal.readthedocs.io/troubleshooting.html#missing-transition-programs) to solve "
+                        "this issue".format(to_version, trans_exec[trans]),
                     )
                 else:
                     cmd = [trans_exec[trans], idf_file]

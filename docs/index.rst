@@ -45,6 +45,7 @@ independently.
    Convert IDF to UMI <converter_umi.rst>
    Convert IDF to BUI <converter_bui.rst>
    Tutorials <tutorials.rst>
+   Troubleshooting <troubleshooting.rst>
 
 .. toctree::
    :maxdepth: 1

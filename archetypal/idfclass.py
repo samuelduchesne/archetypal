@@ -6,6 +6,7 @@
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
 import datetime
+import errno
 import glob
 import hashlib
 import inspect
@@ -805,7 +806,7 @@ def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
             idd_version = "{}.{}".format(
                 idf_object.idd_version[0], idf_object.idd_version[1]
             )
-    except FileNotFoundError as exception:
+    except FileNotFoundError:
         # Loading the idf object will raise a FileNotFoundError if the
         # version of EnergyPlus is not included
         log("Transitioning idf file {}".format(file))
@@ -2359,10 +2360,25 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             ]
             for trans in transitions:
                 try:
-                    trans_exec[trans]
+                    exists = Path(trans_exec[trans]).exists()
+                    if not exists:
+                        raise FileNotFoundError(
+                            errno.ENOENT,
+                            os.strerror(errno.ENOENT),
+                            Path(trans_exec[trans]),
+                        )
                 except KeyError:
                     # there is no more updates to perfrom
                     result = 0
+                except FileNotFoundError:
+                    raise EnergyPlusProcessError(
+                        cmd=trans_exec[trans],
+                        stderr="The specified EnergyPlus version (v{}) does not have the"
+                        " transition file '{}' in the PreProcess folder. "
+                        "See the documentation (#LIEN#) to solve this issue".format(
+                            to_version, trans_exec[trans]
+                        ),
+                    )
                 else:
                     cmd = [trans_exec[trans], idf_file]
                     try:

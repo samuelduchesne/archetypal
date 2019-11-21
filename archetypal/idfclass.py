@@ -322,10 +322,11 @@ class IDF(geomeppy.IDF):
     ):
         """
         Args:
-            units (str): Units to convert the energy profile to. Will detect the
-                units of the EnergyPlus results.
             energy_out_variable_name (list-like): a list of EnergyPlus
             name (str): Name given to the EnergySeries.
+            units (str): Units to convert the energy profile to. Will detect the
+                units of the EnergyPlus results.
+            prep_outputs:
             EnergySeries_kwds (dict, optional): keywords passed to
                 :func:`EnergySeries.from_sqlite`
 
@@ -353,10 +354,10 @@ class IDF(geomeppy.IDF):
     ):
         """
         Args:
-            prep_outputs (list):
             energy_out_variable_name:
             units:
             name:
+            prep_outputs (list):
             EnergySeries_kwds:
         """
         if prep_outputs:
@@ -709,7 +710,12 @@ class EnergyPlusOptions:
 
 
 def load_idf(
-    eplus_file, idd_filename=None, output_folder=None, include=None, weather_file=None
+    eplus_file,
+    idd_filename=None,
+    output_folder=None,
+    include=None,
+    weather_file=None,
+    ep_version=None,
 ):
     """Returns a parsed IDF object from file. If *archetypal.settings.use_cache*
     is true, then the idf object is loaded from cache.
@@ -728,6 +734,8 @@ def load_idf(
             form (see pathlib.Path.glob).
         weather_file: Either the absolute or relative path to the weather epw
             file.
+        ep_version (str, optional): EnergyPlus version number to use, eg.: "8-9-0".
+            Defaults to `settings.ep_version`.
 
     Returns:
         IDF: The IDF object.
@@ -752,12 +760,20 @@ def load_idf(
             output_folder=output_folder,
             include=include,
             epw=weather_file,
+            ep_version=ep_version,
         )
         log("Eppy load completed in {:,.2f} seconds\n".format(time.time() - start_time))
         return idf
 
 
-def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
+def _eppy_load(
+    file,
+    idd_filename,
+    output_folder=None,
+    include=None,
+    epw=None,
+    ep_version=None,
+):
     """Uses package eppy to parse an idf file. Will also try to upgrade the idf
     file using the EnergyPlus Transition executables if the version of
     EnergyPlus is not installed on the machine.
@@ -770,7 +786,8 @@ def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
         include (str, optional): List input files that need to be copied to the
             simulation directory.if a string is provided, it should be in a glob
             form (see pathlib.Path.glob).
-        epw:
+        epw (str, optional): path of the epw weather file.
+        ep_version (str): EnergyPlus version number to use.
 
     Returns:
         eppy.modeleditor.IDF: IDF object
@@ -810,7 +827,7 @@ def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
         # version of EnergyPlus is not included
         log("Transitioning idf file {}".format(file))
         # if they don't fit, upgrade file
-        file = idf_version_updater(file, out_dir=output_folder)
+        file = idf_version_updater(file, out_dir=output_folder, to_version=ep_version)
         idd_filename = getiddfile(get_idf_version(file))
         IDF.iddname = idd_filename
         idf_object = IDF(file, epw=epw)

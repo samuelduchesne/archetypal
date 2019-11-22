@@ -2024,12 +2024,46 @@ def _write_schedules(lines, schedule_names, schedules, schedule_as_input, idf_fi
         # Get line number where to write INPUTS
         inputNum = checkStr(lines, "I n p u t s")
         ind = lines[inputNum + 1].find("\n")
-        lines[inputNum + 1] = (
-            lines[inputNum + 1][:ind]
-            + " "
-            + " ".join(schedule_names)
-            + lines[inputNum + 1][ind:]
-        )
+        count = 0
+        while count * 13 < len(schedule_names):
+            begin = count * 13
+            end = begin + 13
+            if begin == 0 and len(schedule_names) == 13:
+                lines[inputNum + 1] = (
+                    lines[inputNum + 1][:ind]
+                    + " "
+                    + " ".join(str(item) for item in schedule_names[begin:end])
+                    + "\n"
+                )
+                count += 1
+                continue
+            if begin == 0 and len(schedule_names) != 13:
+                lines[inputNum + 1] = (
+                    lines[inputNum + 1][:ind]
+                    + " "
+                    + " ".join(str(item) for item in schedule_names[begin:end])
+                    + ";"
+                    + "\n"
+                )
+                count += 1
+                continue
+            if end >= len(schedule_names):
+                end = len(schedule_names)
+                lines.insert(
+                    inputNum + count + 1,
+                    " "
+                    + " ".join(str(item) for item in schedule_names[begin:end])
+                    + "\n",
+                )
+            else:
+                lines.insert(
+                    inputNum + count + 1,
+                    " "
+                    + " ".join(str(item) for item in schedule_names[begin:end])
+                    + ";"
+                    + "\n",
+                )
+            count += 1
         # Writes INPUTS DESCRIPTION
         idf_file = Path(idf_file)
         inputDescrNum = checkStr(lines, "INPUTS_DESCRIPTION")

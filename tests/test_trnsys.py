@@ -691,14 +691,10 @@ def test_trnbuild_idf_win32(config):
 )
 def test_trnbuild_idf_darwin_or_linux(config):
     idf_file = "tests/input_data/trnsys/Building.idf"
-    weather_file = os.path.join(
-        "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    )
     template = "tests/input_data/trnsys/NewFileTemplate.d18"
     trnsidf_exe = "docker/trnsidf/trnsidf.exe"
     res = trnbuild_idf(
         idf_file,
-        weather_file,
         template=template,
         dck=True,
         nonum=False,

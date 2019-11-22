@@ -15,7 +15,7 @@ programs`_ for more details on downloading and installing older transition progr
     :align: center
 
 It seems that clicking "cancel" will still work, although the prompt will appear for all older transition files
-repetitively. An issue has been submitted `here <https://github com/NREL/EnergyPlus/issues/7631>`_ on the EnergyPlus
+repetitively. An issue has been submitted `here <https://github.com/NREL/EnergyPlus/issues/7631>`_ on the EnergyPlus
 github repository. Hopefully, the developers of EnergyPlus will be able to address this issue soon.
 
 Missing transition programs

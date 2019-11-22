@@ -456,17 +456,20 @@ def adds_sch_ground(htm, schedule_names, schedules):
 
 
 def infilt_to_b18(b18_lines, zones, htm):
-    mean_infilt = round(
-        np.average(
-            htm["ZoneInfiltration Airflow Stats Nominal"][
-                "ACH - Air Changes per Hour"
-            ].values,
-            weights=htm["ZoneInfiltration Airflow Stats Nominal"][
-                "Zone Floor Area {m2}"
-            ].values,
-        ),
-        3,
-    )
+    try:
+        mean_infilt = round(
+            np.average(
+                htm["ZoneInfiltration Airflow Stats Nominal"][
+                    "ACH - Air Changes per Hour"
+                ].values,
+                weights=htm["ZoneInfiltration Airflow Stats Nominal"][
+                    "Zone Floor Area {m2}"
+                ].values,
+            ),
+            3,
+        )
+    except KeyError:
+        mean_infilt = 0
 
     log("Writing infiltration info from idf file to b18 file...")
     # Get line number where to write

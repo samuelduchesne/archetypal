@@ -225,11 +225,11 @@ def convert_idf_to_trnbuild(
     )
     # Heating
     adds_sch_setpoint(
-        zones, df_heating_setpoint, old_new_names, schedule_names, schedules, 'h'
+        zones, df_heating_setpoint, old_new_names, schedule_names, schedules, "h"
     )
     # Cooling
     adds_sch_setpoint(
-        zones, df_cooling_setpoint, old_new_names, schedule_names, schedules, 'c'
+        zones, df_cooling_setpoint, old_new_names, schedule_names, schedules, "c"
     )
 
     # Save schedules to csv file
@@ -2041,7 +2041,6 @@ def _write_schedules(lines, schedule_names, schedules, schedule_as_input, idf_fi
             + ".csv file"
             + "\n",
         )
-
     # Writes schedules as SCHEDULES
     else:
         # Get line number where to write

@@ -2161,44 +2161,44 @@ def _write_schedules(lines, schedule_names, schedules, schedule_as_input, idf_fi
     return schedules_not_written
 
 
-def _write_schedule_values(list, lines, scheduleNum, string):
+def _write_schedule_values(liste, lines, scheduleNum, string):
     count = 0
-    while count * 14 < len(list):
-        begin = count * 14
+    while count * 13 < len(liste):
+        begin = count * 13
         end = begin + 13
-        if begin == 0 and len(list) == 13:
+        if begin == 0 and len(liste) == 13:
             lines.insert(
                 scheduleNum + 1,
                 "!- "
                 + string
                 + "= "
-                + " ".join(str(item) for item in list[begin:end])
+                + " ".join(str(item) for item in liste[begin:end])
                 + "\n",
             )
             count += 1
             continue
-        if begin == 0 and len(list) != 13:
+        if begin == 0 and len(liste) != 13:
             lines.insert(
                 scheduleNum + 1,
                 "!- "
                 + string
                 + "= "
-                + " ".join(str(item) for item in list[begin:end])
+                + " ".join(str(item) for item in liste[begin:end])
                 + ";"
                 + "\n",
             )
             count += 1
             continue
-        if end >= len(list):
-            end = len(list)
+        if end >= len(liste):
+            end = len(liste)
             lines.insert(
                 scheduleNum + count + 1,
-                " ".join(str(item) for item in list[begin:end]) + "\n",
+                " ".join(str(item) for item in liste[begin:end]) + "\n",
             )
         else:
             lines.insert(
                 scheduleNum + count + 1,
-                " ".join(str(item) for item in list[begin:end]) + ";" + "\n",
+                " ".join(str(item) for item in liste[begin:end]) + ";" + "\n",
             )
         count += 1
 

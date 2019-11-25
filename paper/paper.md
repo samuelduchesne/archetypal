@@ -77,10 +77,9 @@ Since it can be long and error-prone to create archetype buildings by hand, conv
 EnergyPlus models to TrnBuild models emerged as a way of speeding both the intermodel
 comparisons and the supplemental model creation. That is to say, a large repository of
 prototype building models exists in the literature with a large majority developed in the
-popular EnergyPlus environment [@USDOE-BuildingEnergyCodesProgram2012,
-@USDOE-BuildingTechnologyOffice2018]. `archetypal ` answers a need from researchers and
-building energy model specialists to create TrnBuild Models from existing EnergyPlus
-models.
+popular EnergyPlus environment [@USDOE2012, @USDOE2018]. `archetypal ` answers a need from
+researchers and building energy model specialists to create TrnBuild Models from existing
+EnergyPlus models.
 
 The latest stable release of the software can be installed via pip and full documentation
 can be found at https://archetypal.readthedocs.io.

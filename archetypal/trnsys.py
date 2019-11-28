@@ -2626,7 +2626,7 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials):
         except:
             condition = False
         if condition:
-            lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 0\n")
+            lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 0.002\n")
         else:
             lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 64\n")
 

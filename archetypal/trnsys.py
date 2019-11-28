@@ -2579,16 +2579,56 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials):
             constructionNum + 3,
             "!- THICKNESS= " + " ".join(str(item) for item in thickList[::-1]) + "\n",
         )
-        lines.insert(constructionNum + 4, "!- ABS-FRONT= 0.4   : ABS-BACK= 0.5\n")
-        lines.insert(constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n")
+        try:
+            mat_ = idf.getobject("MATERIAL", construction.fieldvalues[2])
+            if mat_:
+                sol_abs = mat_.Solar_Absorptance
+                lines.insert(
+                    constructionNum + 4,
+                    "!- ABS-FRONT= 0.4   : ABS-BACK= " + str(sol_abs) + "\n",
+                )
+                lines.insert(constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n")
+            else:
+                mat_ = idf.getobject("MATERIAL:NOMASS", construction.fieldvalues[2])
+                if mat_:
+                    sol_abs = mat_.Solar_Absorptance
+                    lines.insert(
+                        constructionNum + 4,
+                        "!- ABS-FRONT= 0.4   : ABS-BACK= " + str(sol_abs) + "\n",
+                    )
+                    lines.insert(
+                        constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n"
+                    )
+                else:
+                    mat_ = idf.getobject("MATERIAL:AIRGAP", construction.fieldvalues[2])
+                    sol_abs = mat_.Solar_Absorptance
+                    lines.insert(
+                        constructionNum + 4,
+                        "!- ABS-FRONT= 0.4   : ABS-BACK= " + str(sol_abs) + "\n",
+                    )
+                    lines.insert(
+                        constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n"
+                    )
+        except:
+            lines.insert(
+                constructionNum + 4,
+                "!- ABS-FRONT= 0.4   : ABS-BACK= 0.5\n",
+            )
+            lines.insert(
+                constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n"
+            )
 
-        basement = [
-            s for s in ["basement", "floor"] if s in construction.fieldvalues[1].lower()
-        ]
-        if not basement:
-            lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 64\n")
-        else:
+        try:
+            condition = (
+                construction.getreferingobjs()[0].Outside_Boundary_Condition.lower()
+                == "ground"
+            )
+        except:
+            condition = False
+        if condition:
             lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 0\n")
+        else:
+            lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 64\n")
 
 
 def _get_ground_vertex(buildingSurfs):

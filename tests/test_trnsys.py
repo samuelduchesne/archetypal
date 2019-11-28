@@ -718,7 +718,7 @@ def test_trnbuild_from_simple_idf(config):
     template_dir = os.path.join("archetypal", "ressources")
     window_filepath = os.path.join(template_dir, window_file)
     weather_file = os.path.join(
-        "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        "tests", "input_data", "CAN_QC_Montreal-McTavish.716120_CWEC2016.epw"
     )
 
     # prepare args (key=value). Key is a unique id for the runs (here the

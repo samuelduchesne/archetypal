@@ -408,6 +408,9 @@ def convert_idf_to_trnbuild(
         schedule_as_input,
     )
 
+    # T initial to b18
+    t_initial_to_b18(b18_lines, zones, schedules)
+
     # Save B18 file at output_folder
     if output_folder is None:
         # User did not provide an output folder path. We use the default setting
@@ -420,6 +423,24 @@ def convert_idf_to_trnbuild(
     # endregion
 
     return return_path
+
+
+def t_initial_to_b18(b18_lines, zones, schedules):
+    for zone in zones:
+        t_ini = schedules["sch_h_setpoint_" + zone.Name]["all values"][0]
+        # Get line number where to write TINITIAL
+        f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
+        tIniNum = checkStr(b18_lines, "TINITIAL", f_count)
+        ind_tini = b18_lines[tIniNum - 1].find("TINITIAL")
+        ind_phini = b18_lines[tIniNum - 1].find("PHINITIAL")
+        b18_lines[tIniNum - 1] = (
+            b18_lines[tIniNum - 1][: ind_tini + len("TINITIAL=")]
+            + " "
+            + str(t_ini)
+            + "      : "
+            + b18_lines[tIniNum - 1][ind_phini:]
+            + "\n"
+        )
 
 
 def adds_sch_setpoint(

@@ -2571,6 +2571,7 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials):
             else:
                 continue
 
+        # Writes layers and thicknesses
         lines.insert(
             constructionNum + 2,
             "!- LAYERS = " + " ".join(str(item) for item in layerList[::-1]) + "\n",
@@ -2579,45 +2580,39 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials):
             constructionNum + 3,
             "!- THICKNESS= " + " ".join(str(item) for item in thickList[::-1]) + "\n",
         )
-        try:
-            mat_ = idf.getobject("MATERIAL", construction.fieldvalues[2])
+
+        # Writes ABS-BACK
+        mat_ = idf.getobject("MATERIAL", layerList[-1])
+        if mat_:
+            sol_abs = mat_.Solar_Absorptance
+            lines.insert(
+                constructionNum + 4,
+                "!- ABS-FRONT= 0.4   : ABS-BACK= " + str(sol_abs) + "\n",
+            )
+            lines.insert(constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n")
+        else:
+            mat_ = idf.getobject("MATERIAL:NOMASS", layerList[-1])
             if mat_:
                 sol_abs = mat_.Solar_Absorptance
                 lines.insert(
                     constructionNum + 4,
                     "!- ABS-FRONT= 0.4   : ABS-BACK= " + str(sol_abs) + "\n",
                 )
-                lines.insert(constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n")
+                lines.insert(
+                    constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n"
+                )
             else:
-                mat_ = idf.getobject("MATERIAL:NOMASS", construction.fieldvalues[2])
-                if mat_:
-                    sol_abs = mat_.Solar_Absorptance
-                    lines.insert(
-                        constructionNum + 4,
-                        "!- ABS-FRONT= 0.4   : ABS-BACK= " + str(sol_abs) + "\n",
-                    )
-                    lines.insert(
-                        constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n"
-                    )
-                else:
-                    mat_ = idf.getobject("MATERIAL:AIRGAP", construction.fieldvalues[2])
-                    sol_abs = mat_.Solar_Absorptance
-                    lines.insert(
-                        constructionNum + 4,
-                        "!- ABS-FRONT= 0.4   : ABS-BACK= " + str(sol_abs) + "\n",
-                    )
-                    lines.insert(
-                        constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n"
-                    )
-        except:
-            lines.insert(
-                constructionNum + 4,
-                "!- ABS-FRONT= 0.4   : ABS-BACK= 0.5\n",
-            )
-            lines.insert(
-                constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n"
-            )
+                mat_ = idf.getobject("MATERIAL:AIRGAP", layerList[-1])
+                sol_abs = mat_.Solar_Absorptance
+                lines.insert(
+                    constructionNum + 4,
+                    "!- ABS-FRONT= 0.4   : ABS-BACK= " + str(sol_abs) + "\n",
+                )
+                lines.insert(
+                    constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n"
+                )
 
+        # Writes HBACK
         try:
             condition = (
                 construction.getreferingobjs()[0].Outside_Boundary_Condition.lower()

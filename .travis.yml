@@ -1,15 +1,39 @@
-dist: xenial
-language: python
-os: 
-  - linux
-  - osx
-env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
+language: generic
+dist: trusty
+sudo: required
+
+env: 
+  global:
+    - ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
 
 addons:
   apt:
     packages:
       - wine
       - libgfortran3
+      
+jobs:
+  include:
+    # Linux, on master
+  - os: linux
+    dist: xenial
+    language: python
+    python: 3.7
+    env: TRAVIS_PYTHON_VERSION=3.7 NUMPY=True
+    install:
+      - pip install --upgrade setuptools
+      - pip install --upgrade pip
+      - python setup.py install
+      - conda list
+    script:
+      - pytest --cov=archetypal --verbose tests/
+
+    after_success:
+      - coverage report -m
+      - coveralls
+  - os: osx
+    env: TRAVIS_PYTHON_VERSION=3.7 NUMPY=True
+   
 
 before_install:
   # install EnergyPlus
@@ -47,14 +71,3 @@ before_install:
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
   - pip install .[dev]
-
-install:
-  - python setup.py install
-  - conda list
-
-script:
-  - pytest --cov=archetypal --verbose tests/
-
-after_success:
-  - coverage report -m
-  - coveralls

@@ -19,9 +19,9 @@ jobs:
     dist: xenial
     language: python
     python: 3.7
-    env: TRAVIS_PYTHON_VERSION=3.7 NUMPY=True
+    env: TRAVIS_PYTHON_VERSION=3.7
   - os: osx
-    env: TRAVIS_PYTHON_VERSION=3.7 NUMPY=True
+    env: TRAVIS_PYTHON_VERSION=3.7
    
 
 before_install:
@@ -57,11 +57,10 @@ before_install:
   
   # Install python for Linux
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-    wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-    bash miniconda.sh -b -p $HOME/miniconda
-    export PATH="$HOME/miniconda/bin:$PATH"
-    hash -r
-    pip install .[dev];
+    wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+    bash miniconda.sh -b -p $HOME/miniconda;
+    export PATH="$HOME/miniconda/bin:$PATH";
+    hash -r;
     fi
   
   # install python for OSX
@@ -80,15 +79,14 @@ before_install:
     source venv/bin/activate;
     fi
   - python --version;
-  
+
+# Main script
 install:
   - pip install --upgrade setuptools
   - pip install --upgrade pip
-  - python setup.py install
-  - conda list
+  - pip install .[dev]
 script:
-  - pytest --cov=archetypal --verbose tests/
-
+  - py.test --cov=archetypal --verbose tests/
 after_success:
   - coverage report -m
   - coveralls

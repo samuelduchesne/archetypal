@@ -20,17 +20,6 @@ jobs:
     language: python
     python: 3.7
     env: TRAVIS_PYTHON_VERSION=3.7 NUMPY=True
-    install:
-      - pip install --upgrade setuptools
-      - pip install --upgrade pip
-      - python setup.py install
-      - conda list
-    script:
-      - pytest --cov=archetypal --verbose tests/
-
-    after_success:
-      - coverage report -m
-      - coveralls
   - os: osx
     env: TRAVIS_PYTHON_VERSION=3.7 NUMPY=True
    
@@ -66,9 +55,39 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
     sudo rm 8230; fi
   
-  # Install python
-  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - pip install .[dev]
+  # Install python for Linux
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+    wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+    bash miniconda.sh -b -p $HOME/miniconda
+    export PATH="$HOME/miniconda/bin:$PATH"
+    hash -r
+    pip install .[dev]
+  
+  # install python for OSX
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+    wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh;
+    bash ~/miniconda.sh -b -p $HOME/miniconda;
+    export PATH="$HOME/miniconda/bin:$PATH";
+    conda update --yes conda;
+    conda create --yes -n venv python=$TRAVIS_PYTHON_VERSION;
+    fi
+    
+  # activate environment
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then source activate venv; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+    virtualenv venv;
+    source venv/bin/activate;
+    fi
+  - python --version;
+  
+install:
+  - pip install --upgrade setuptools
+  - pip install --upgrade pip
+  - python setup.py install
+  - conda list
+script:
+  - pytest --cov=archetypal --verbose tests/
+
+after_success:
+  - coverage report -m
+  - coveralls

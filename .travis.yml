@@ -61,7 +61,8 @@ before_install:
     bash miniconda.sh -b -p $HOME/miniconda
     export PATH="$HOME/miniconda/bin:$PATH"
     hash -r
-    pip install .[dev]
+    pip install .[dev];
+    fi
   
   # install python for OSX
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then

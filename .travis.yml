@@ -25,7 +25,7 @@ jobs:
    
 
 before_install:
-  # install EnergyPlus
+  # download EnergyPlus
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then EXT=dmg; PLATFORM=Darwin; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then EXT=sh; PLATFORM=Linux; fi
   - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then EXT=exe; PLATFORM=Windows; fi
@@ -37,8 +37,7 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ATTCHBASE=97; ATTCHNUM=8230; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ATTCHBASE=98; ATTCHNUM=8232; fi
   - EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/$ATTCHBASE/$ATTCHNUM
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-    curl -SLO $EXTRAS_DOWNLOAD_URL; fi
+  - curl -SLO $EXTRAS_DOWNLOAD_URL
   # install EnergyPlus
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
     sudo hdiutil attach $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;

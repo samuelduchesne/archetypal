@@ -2602,36 +2602,18 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials):
             "!- THICKNESS= " + " ".join(str(item) for item in thickList[::-1]) + "\n",
         )
 
-        # Writes ABS-BACK
-        mat_ = idf.getobject("MATERIAL", layerList[-1])
-        if mat_:
-            sol_abs = mat_.Solar_Absorptance
-            lines.insert(
-                constructionNum + 4,
-                "!- ABS-FRONT= 0.4   : ABS-BACK= " + str(sol_abs) + "\n",
-            )
-            lines.insert(constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n")
-        else:
-            mat_ = idf.getobject("MATERIAL:NOMASS", layerList[-1])
-            if mat_:
-                sol_abs = mat_.Solar_Absorptance
-                lines.insert(
-                    constructionNum + 4,
-                    "!- ABS-FRONT= 0.4   : ABS-BACK= " + str(sol_abs) + "\n",
-                )
-                lines.insert(
-                    constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n"
-                )
-            else:
-                mat_ = idf.getobject("MATERIAL:AIRGAP", layerList[-1])
-                sol_abs = mat_.Solar_Absorptance
-                lines.insert(
-                    constructionNum + 4,
-                    "!- ABS-FRONT= 0.4   : ABS-BACK= " + str(sol_abs) + "\n",
-                )
-                lines.insert(
-                    constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n"
-                )
+        # Writes ABS-FRONT and ABS-BACK
+        sol_abs_front = get_sol_abs(idf, layerList[0])
+        sol_abs_back = get_sol_abs(idf, layerList[-1])
+        lines.insert(
+            constructionNum + 4,
+            "!- ABS-FRONT= "
+            + str(sol_abs_front)
+            + "   : ABS-BACK= "
+            + str(sol_abs_back)
+            + "\n",
+        )
+        lines.insert(constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n")
 
         # Writes HBACK
         try:
@@ -2645,6 +2627,20 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials):
             lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 0.0005\n")
         else:
             lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 64\n")
+
+
+def get_sol_abs(idf, layer):
+    mat_ = idf.getobject("MATERIAL", layer)
+    if mat_:
+        sol_abs = mat_.Solar_Absorptance
+    else:
+        mat_ = idf.getobject("MATERIAL:NOMASS", layer)
+        if mat_:
+            sol_abs = mat_.Solar_Absorptance
+        else:
+            mat_ = idf.getobject("MATERIAL:AIRGAP", layer)
+            sol_abs = mat_.Solar_Absorptance
+    return sol_abs
 
 
 def _get_ground_vertex(buildingSurfs):

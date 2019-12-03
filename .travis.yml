@@ -49,8 +49,6 @@ before_install:
     sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
     sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles; fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-    sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-    echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     sudo tar zxvf $ATTCHNUM -C /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
     sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
     sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles; fi
@@ -59,8 +57,7 @@ before_install:
     echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi
   # clean install files
   - sudo rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-    sudo rm 8230; fi
+  - sudo rm $ATTCHNUM
   
   # Install python for Linux
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then

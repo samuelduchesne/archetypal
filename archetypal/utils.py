@@ -116,10 +116,11 @@ def validate_trnsys_folder(trnsys_default_folder):
         if os.path.isdir(trnsys_default_folder):
             return trnsys_default_folder
         else:
-            raise ValueError(
+            warnings.warn(
                 "The TRNSYS path does not exist. Please set the TRNSYS "
-                "path with the --trnsys-default-folder option}".format(trnsys_default_folder)
+                "path with the --trnsys-default-folder option".format(trnsys_default_folder)
             )
+        return None
     else:
         return trnsys_default_folder
 

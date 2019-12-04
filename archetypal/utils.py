@@ -117,9 +117,8 @@ def validate_trnsys_folder(trnsys_default_folder):
             return trnsys_default_folder
         else:
             raise ValueError(
-                "The provided TRNSYS path does not exist. Path={"
-                ". Please set the TRNSYS path with the "
-                '"--trnsys-default-folder" option}'.format(trnsys_default_folder)
+                "The TRNSYS path does not exist. Please set the TRNSYS "
+                "path with the --trnsys-default-folder option}".format(trnsys_default_folder)
             )
     else:
         return trnsys_default_folder

@@ -904,7 +904,7 @@ def warn_if_not_compatible():
 def get_eplus_basedirs():
     """Returns a list of possible E+ install paths"""
     if platform.system() == "Windows":
-        eplus_homes = Path("C:").glob("EnergyPlusV*")
+        eplus_homes = Path("C:\\").glob("EnergyPlusV*")
         return eplus_homes
     elif platform.system() == "Linux":
         eplus_homes = Path("/usr/local/").glob("EnergyPlus-*")

@@ -80,7 +80,7 @@ def test_load_old(config):
     [archetypal.settings.ep_version, None],
     ids=["specific-ep-version", "no-specific-ep-version"],
 )
-def test_run_olderv(config, fresh_start, ep_version):
+def test_run_olderv(clean_config, fresh_start, ep_version):
     """Will run eplus on a file that needs to be upgraded with one that does
     not"""
     ar.settings.use_cache = False

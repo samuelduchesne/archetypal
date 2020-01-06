@@ -385,13 +385,13 @@ class WeekSchedule(UmiSchedule):
         """
         blocks = []
         dayname = [
-            "Sunday",
             "Monday",
             "Tuesday",
             "Wednesday",
             "Thursday",
             "Friday",
             "Saturday",
+            "Sunday",
         ]
         for day in dayname:
             week_day_schedule_name = epbunch["{}_ScheduleDay_Name".format(day)]

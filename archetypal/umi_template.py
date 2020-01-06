@@ -319,8 +319,14 @@ class UmiTemplate:
 
             return t
 
-    def to_json(self, path_or_buf=None, indent=2):
-        """Writes the umi template to json format"""
+    def to_json(self, path_or_buf=None, indent=2, all_zones=False):
+        """Writes the umi template to json format
+
+        Args:
+            all_zones (bool): If True, all zones that have participated in
+                the creation of the core and perimeter zones will be outputed to the
+                json file.
+        """
         # todo: check is bools are created as lowercase 'false' pr 'true'
 
         if not path_or_buf:
@@ -381,7 +387,19 @@ class UmiTemplate:
                         ]
 
             for bld in self.BuildingTemplates:
-                recursive_json(bld)
+                if all_zones:
+                    recursive_json(bld)
+                else:
+                    # First, remove cores and perims lists
+                    cores = bld.__dict__.pop("cores", None)
+                    perims = bld.__dict__.pop("perims", None)
+
+                    # apply the recursion
+                    recursive_json(bld)
+
+                    # put back objects
+                    bld.cores = cores
+                    bld.perims = perims
 
             for key in data_dict:
                 data_dict[key] = sorted(

@@ -5,8 +5,9 @@ from sqlite3 import OperationalError
 
 import numpy as np
 import pandas as pd
-from archetypal import log, EnergySeries
 from path import Path
+
+from archetypal import log, EnergySeries
 
 
 class ReportData(pd.DataFrame):

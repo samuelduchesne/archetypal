@@ -10,12 +10,13 @@ import logging as lg
 import tempfile
 from datetime import datetime, timedelta
 
-import archetypal
 import numpy as np
 import pandas as pd
-from archetypal import log, settings
 from eppy.bunch_subclass import EpBunch
 from path import Path
+
+import archetypal
+from archetypal import log, settings
 
 
 class Schedule(object):

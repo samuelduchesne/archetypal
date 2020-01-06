@@ -817,7 +817,7 @@ class ZoneGraph(networkx.Graph):
 
                 groups = set(networkx.get_node_attributes(G, color_nodes).values())
                 mapping = dict(zip(sorted(groups), count()))
-                colors = [mapping[G.node[n][color_nodes]] for n in tree.nodes]
+                colors = [mapping[G.nodes[n][color_nodes]] for n in tree.nodes]
                 colors = [discrete_cmap(len(groups), cmap).colors[i] for i in colors]
 
             paths_ = []

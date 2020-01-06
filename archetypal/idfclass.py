@@ -6,6 +6,7 @@
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
 import datetime
+import errno
 import glob
 import hashlib
 import inspect
@@ -25,6 +26,12 @@ import eppy
 import eppy.modeleditor
 import geomeppy
 import pandas as pd
+from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.easyopen import getiddfile
+from path import Path, tempdir
+
+import archetypal
+import archetypal.settings
 from archetypal import (
     log,
     settings,
@@ -33,11 +40,9 @@ from archetypal import (
     ReportData,
     EnergySeries,
     close_logger,
+    EnergyPlusVersionError,
 )
 from archetypal.utils import _unpack_tuple
-from eppy.EPlusInterfaceFunctions import parse_idd
-from eppy.easyopen import getiddfile
-from path import Path, tempdir
 
 
 class IDF(geomeppy.IDF):
@@ -82,8 +87,9 @@ class IDF(geomeppy.IDF):
     @property
     def sql(self):
         if self._sql is None:
+            log("No sql object for {}. Running EnergyPlus...".format(self.name))
             self._sql = self.run_eplus(
-                annual=True, prep_outputs=True, output_report="sql"
+                annual=True, prep_outputs=True, output_report="sql", verbose="q"
             )
             return self._sql
         else:
@@ -318,10 +324,11 @@ class IDF(geomeppy.IDF):
     ):
         """
         Args:
-            units (str): Units to convert the energy profile to. Will detect the
-                units of the EnergyPlus results.
             energy_out_variable_name (list-like): a list of EnergyPlus
             name (str): Name given to the EnergySeries.
+            units (str): Units to convert the energy profile to. Will detect the
+                units of the EnergyPlus results.
+            prep_outputs:
             EnergySeries_kwds (dict, optional): keywords passed to
                 :func:`EnergySeries.from_sqlite`
 
@@ -349,10 +356,10 @@ class IDF(geomeppy.IDF):
     ):
         """
         Args:
-            prep_outputs (list):
             energy_out_variable_name:
             units:
             name:
+            prep_outputs (list):
             EnergySeries_kwds:
         """
         if prep_outputs:
@@ -705,7 +712,12 @@ class EnergyPlusOptions:
 
 
 def load_idf(
-    eplus_file, idd_filename=None, output_folder=None, include=None, weather_file=None
+    eplus_file,
+    idd_filename=None,
+    output_folder=None,
+    include=None,
+    weather_file=None,
+    ep_version=None,
 ):
     """Returns a parsed IDF object from file. If *archetypal.settings.use_cache*
     is true, then the idf object is loaded from cache.
@@ -724,6 +736,8 @@ def load_idf(
             form (see pathlib.Path.glob).
         weather_file: Either the absolute or relative path to the weather epw
             file.
+        ep_version (str, optional): EnergyPlus version number to use, eg.: "8-9-0".
+            Defaults to `settings.ep_version`.
 
     Returns:
         IDF: The IDF object.
@@ -748,12 +762,15 @@ def load_idf(
             output_folder=output_folder,
             include=include,
             epw=weather_file,
+            ep_version=ep_version,
         )
         log("Eppy load completed in {:,.2f} seconds\n".format(time.time() - start_time))
         return idf
 
 
-def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
+def _eppy_load(
+    file, idd_filename, output_folder=None, include=None, epw=None, ep_version=None
+):
     """Uses package eppy to parse an idf file. Will also try to upgrade the idf
     file using the EnergyPlus Transition executables if the version of
     EnergyPlus is not installed on the machine.
@@ -766,7 +783,8 @@ def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
         include (str, optional): List input files that need to be copied to the
             simulation directory.if a string is provided, it should be in a glob
             form (see pathlib.Path.glob).
-        epw:
+        epw (str, optional): path of the epw weather file.
+        ep_version (str): EnergyPlus version number to use.
 
     Returns:
         eppy.modeleditor.IDF: IDF object
@@ -801,12 +819,12 @@ def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
             idd_version = "{}.{}".format(
                 idf_object.idd_version[0], idf_object.idd_version[1]
             )
-    except FileNotFoundError as exception:
+    except FileNotFoundError:
         # Loading the idf object will raise a FileNotFoundError if the
         # version of EnergyPlus is not included
         log("Transitioning idf file {}".format(file))
         # if they don't fit, upgrade file
-        file = idf_version_updater(file, out_dir=output_folder)
+        file = idf_version_updater(file, out_dir=output_folder, to_version=ep_version)
         idd_filename = getiddfile(get_idf_version(file))
         IDF.iddname = idd_filename
         idf_object = IDF(file, epw=epw)
@@ -1561,7 +1579,10 @@ def run_eplus(
                     eplus_file.basename(),
                 )
                 idf = load_idf(
-                    filepath, output_folder=output_directory, include=include
+                    filepath,
+                    weather_file=weather_file,
+                    output_folder=output_directory,
+                    include=include,
                 )
             else:
                 idf = None
@@ -1586,8 +1607,11 @@ def run_eplus(
 
     # <editor-fold desc="Upgrade the file version if needed">
     if ep_version:
-        # replace the dots with "-"
+        # if users specifies version, make sure dots are replaced with "-".
         ep_version = ep_version.replace(".", "-")
+    else:
+        # if no version is specified, take the package default version
+        ep_version = archetypal.settings.ep_version
     eplus_file = idf_version_updater(
         upgraded_file(eplus_file, output_directory),
         to_version=ep_version,
@@ -2253,7 +2277,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             the simulname is the same. (default: None)
 
     Returns:
-        Path: The path of the transitioned idf file.
+        Path: The path of the new transitioned idf file.
     """
     if not out_dir.isdir():
         out_dir.makedirs_p()
@@ -2265,27 +2289,25 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
         doted_version = get_idf_version(idf_file, doted=True)
         iddfile = getiddfile(doted_version)
         if os.path.exists(iddfile):
-            # if a E+ exists, pass
-            pass
+            # if a E+ exists, means there is an E+ install that can be used
+            if versionid == to_version:
+                # if version of idf file is equal to intended version, copy file from
+                # temp transition folder into cache folder and return path
+                return idf_file.copy(out_dir / idf_file.basename())
             # might be an old version of E+
         elif tuple(map(int, doted_version.split("."))) < (8, 0):
-            # else if the version is an old E+ version (< 8.0)
+            # the version is an old E+ version (< 8.0)
             iddfile = getoldiddfile(doted_version)
+            if versionid == to_version:
+                # if version of idf file is equal to intended version, copy file from
+                # temp transition folder into cache folder and return path
+                return idf_file.copy(out_dir / idf_file.basename())
         # use to_version
         if to_version is None:
             # What is the latest E+ installed version
             to_version = find_eplus_installs(iddfile)
         if tuple(versionid.split("-")) > tuple(to_version.split("-")):
-            log(
-                'The version of the idf file "{}: v{}" is higher than any '
-                "version of EnergyPlus installed on this machine. Please "
-                'install EnergyPlus version "{}" or higher. Latest version '
-                "found: {}".format(
-                    os.path.basename(idf_file), versionid, versionid, to_version
-                ),
-                lg.WARNING,
-            )
-            return None
+            raise EnergyPlusVersionError(idf_file, versionid, to_version)
         to_iddfile = Path(getiddfile(to_version.replace("-", ".")))
         vupdater_path = to_iddfile.dirname() / "PreProcess" / "IDFVersionUpdater"
         trans_exec = {
@@ -2323,11 +2345,13 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             "8-8-0": os.path.join(vupdater_path, "Transition-V8-8-0-to-V8-9-0"),
             "8-9-0": os.path.join(vupdater_path, "Transition-V8-9-0-to-V9-0-0"),
             "9-0-0": os.path.join(vupdater_path, "Transition-V9-0-0-to-V9-1-0"),
+            "9-1-0": os.path.join(vupdater_path, "Transition-V9-1-0-to-V9-2-0"),
         }
-        # store the directory we start in
-        cwd = os.getcwd()
+        # set directory to run transition executables
         run_dir = Path(os.path.dirname(trans_exec[versionid]))
 
+        # check the file version, if it corresponds to the latest version found on
+        # the machine, means its already upgraded to the correct version. Return it.
         if versionid == to_version:
             # if file version and to_veersion are the same, we don't need to
             # perform transition
@@ -2339,6 +2363,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             idf_file = Path(idf_file.copy(out_dir))
             return idf_file
 
+        # Otherwise,
         # build a list of command line arguments
         with cd(run_dir):
             transitions = [
@@ -2351,10 +2376,24 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             ]
             for trans in transitions:
                 try:
-                    trans_exec[trans]
+                    exists = Path(trans_exec[trans]).exists()
+                    if not exists:
+                        raise FileNotFoundError(
+                            errno.ENOENT,
+                            os.strerror(errno.ENOENT),
+                            Path(trans_exec[trans]),
+                        )
                 except KeyError:
                     # there is no more updates to perfrom
                     result = 0
+                except FileNotFoundError:
+                    raise EnergyPlusProcessError(
+                        cmd=trans_exec[trans],
+                        stderr="The specified EnergyPlus version (v{}) does not have the"
+                        " required transition program '{}' in the PreProcess folder. "
+                        "See the documentation (archetypal.readthedocs.io/troubleshooting.html#missing-transition-programs) to solve "
+                        "this issue".format(to_version, trans_exec[trans]),
+                    )
                 else:
                     cmd = [trans_exec[trans], idf_file]
                     try:

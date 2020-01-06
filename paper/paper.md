@@ -53,14 +53,14 @@ minutes to complete.
 
 ## EnergyPlus to UMI Template File Conversion
 
-*archetypal* aims at providing a way of creating UMI Template Files from EnergyPlus models.
-The algorithm approximates the non-geometric parameters of a multi-zone EnergyPlus model
-by dissecting and combining core zones and perimeter zones. The procedure is an attempt to
-streamline the creation of Urban Building Energy Models (UBEM) [@Reinhart2016] based on
-the "Shoeboxer" method [@Dogan2017] by accelerating the creation of building archetype
-templates. This approach introduces a robust method to convert detailed multi-zone models
-to archetype templates, striped of geometric properties. Consequently, *archetypal* offers
-researchers and designers a way of more quickly creating UBEM studies.
+*archetypal* aims at providing a way of creating UMI Template Files from EnergyPlus
+models. The algorithm approximates the non-geometric parameters of a multi-zone EnergyPlus
+model by dissecting and combining core zones and perimeter zones. The procedure is an
+attempt to streamline the creation of Urban Building Energy Models (UBEM) [@Reinhart2016]
+based on the "Shoeboxer" method [@Dogan2017] by accelerating the creation of building
+archetype templates. This approach introduces a robust method to convert detailed
+multi-zone models to archetype templates, stripped of geometric properties. Consequently,
+*archetypal offers researchers and designers a way of more quickly creating UBEM studies.
 
 *archetypal* also aims at providing a scripting language for the modification UMI Template
 Files. It essentially is a Python interface to the data format of the [UMI Template
@@ -77,10 +77,9 @@ Since it can be long and error-prone to create archetype buildings by hand, conv
 EnergyPlus models to TrnBuild models emerged as a way of speeding both the intermodel
 comparisons and the supplemental model creation. That is to say, a large repository of
 prototype building models exists in the literature with a large majority developed in the
-popular EnergyPlus environment [@USDOE-BuildingEnergyCodesProgram2012,
-@USDOE-BuildingTechnologyOffice2018]. `archetypal ` answers a need from researchers and
-building energy model specialists to create TrnBuild Models from existing EnergyPlus
-models.
+popular EnergyPlus environment [@USDOE2012; @USDOE2018]. `archetypal ` answers a need from
+researchers and building energy model specialists to create TrnBuild Models from existing
+EnergyPlus models.
 
 The latest stable release of the software can be installed via pip and full documentation
 can be found at https://archetypal.readthedocs.io.

@@ -60,15 +60,36 @@ def idf_source(request):
 @pytest.fixture(scope="session")
 def config():
     ar.config(
-        log_console=True,
-        log_file=True,
-        use_cache=True,
         data_folder="tests/.temp/data",
         logs_folder="tests/.temp/logs",
         imgs_folder="tests/.temp/imgs",
         cache_folder="tests/.temp/cache",
+        use_cache=True,
+        log_file=True,
+        log_console=True,
         umitemplate="tests/input_data/umi_samples" "/BostonTemplateLibrary_2.json",
     )
+
+@pytest.fixture(scope="session")
+def clean_config():
+    ar.config(
+        data_folder="tests/.temp/data",
+        logs_folder="tests/.temp/logs",
+        imgs_folder="tests/.temp/imgs",
+        cache_folder="tests/.temp/cache",
+        use_cache=True,
+        log_file=True,
+        log_console=True,
+        umitemplate="tests/input_data/umi_samples" "/BostonTemplateLibrary_2.json",
+    )
+
+    dirs = [ar.settings.data_folder, ar.settings.cache_folder, ar.settings.imgs_folder]
+    for dir in dirs:
+        if os.path.exists(dir):
+            try:
+                shutil.rmtree(dir)
+            finally:
+                assert not os.path.exists(dir)
 
 
 # List fixtures that are located outiside of conftest.py so that they can be

@@ -1740,7 +1740,10 @@ def run_eplus(
             cached_run_results = get_report(**runargs)
             if return_idf:
                 idf = load_idf(
-                    eplus_file, output_folder=output_directory, include=include
+                    eplus_file,
+                    output_folder=output_directory,
+                    include=include,
+                    weather_file=weather_file,
                 )
             else:
                 idf = None

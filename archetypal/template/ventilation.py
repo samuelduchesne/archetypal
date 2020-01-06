@@ -376,6 +376,17 @@ def do_natural_ventilation(index, nat_df, zone):
             IsNatVentOn = any(nat_df.loc[index, "Name"])
             schedule_name_ = nat_df.loc[index, "Schedule Name"]
             NatVentSchedule = archetypal.UmiSchedule(Name=schedule_name_, idf=zone.idf)
+        except KeyError:
+            # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
+            #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
+            #  in the nat_df. For the mean time, a zone containing such an
+            #  object will be turned on with an AlwaysOn schedule.
+            IsNatVentOn = True
+            NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
+        except Exception:
+            IsNatVentOn = False
+            NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
+        finally:
             NatVentMaxRelHumidity = 90  # todo: not sure if it is being used
             NatVentMaxOutdoorAirTemp = resolve_temp(
                 nat_df.loc[index, "Maximum " "Outdoor " "Temperature{" "C}/Schedule"],
@@ -389,17 +400,6 @@ def do_natural_ventilation(index, nat_df, zone):
                 nat_df.loc[index, "Minimum Indoor " "Temperature{" "C}/Schedule"],
                 zone.idf,
             )
-        except:
-            # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
-            #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
-            #  in the nat_df. For the mean time, a zone containing such an
-            #  object will revert to defaults (below).
-            IsNatVentOn = False
-            NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
-            NatVentMaxRelHumidity = 90
-            NatVentMaxOutdoorAirTemp = 30
-            NatVentMinOutdoorAirTemp = 0
-            NatVentZoneTempSetpoint = 18
 
     else:
         IsNatVentOn = False
@@ -414,20 +414,8 @@ def do_natural_ventilation(index, nat_df, zone):
         IsWindOn = False
         IsBuoyancyOn = False
     else:
-        try:
-            equ_b = nat_df.loc[index, "Equation B - Temperature Term Coefficient {1/C}"]
-            if equ_b != 0:
-                IsBuoyancyOn = True
-            else:
-                IsBuoyancyOn = False
-            equ_w = nat_df.loc[index, "Equation C - Velocity Term Coefficient {s/m}"]
-            if equ_w != 0:
-                IsWindOn = True
-            else:
-                IsWindOn = False
-        except:
-            IsWindOn = False
-            IsBuoyancyOn = False
+        IsWindOn = True
+        IsBuoyancyOn = True
 
     return (
         IsNatVentOn,

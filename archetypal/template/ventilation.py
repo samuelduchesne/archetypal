@@ -630,10 +630,14 @@ def nominal_ventilation_aggregation(x):
             x["Design Volume Flow Rate {m3/s}"], x, "Zone Floor Area {m2}"
         ),
         "Volume Flow Rate/Floor Area {m3/s/m2}": weighted_mean(
-            x["Volume Flow Rate/Floor Area {m3/s/m2}"], x, "Zone Floor Area {m2}"
+            x.filter(like="Volume Flow Rate/Floor Area").squeeze(axis=1),
+            x,
+            "Zone Floor Area {m2}",
         ),
         "Volume Flow Rate/person Area {m3/s/person}": weighted_mean(
-            x["Volume Flow Rate/person Area {m3/s/person}"], x, "Zone Floor Area {m2}"
+            x.filter(like="Volume Flow Rate/person Area").squeeze(axis=1),
+            x,
+            "Zone Floor " "Area {m2}",
         ),
         "ACH - Air Changes per Hour": weighted_mean(
             x["ACH - Air Changes per Hour"], x, "Zone Floor Area {m2}"

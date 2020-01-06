@@ -328,7 +328,9 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         attr = dict(
             DimmingType=self._str_mean(other, "DimmingType"),
             EquipmentAvailabilitySchedule=self.EquipmentAvailabilitySchedule.combine(
-                other.EquipmentAvailabilitySchedule
+                other.EquipmentAvailabilitySchedule,
+                weights=weights,
+                quantity=[self.EquipmentPowerDensity, other.EquipmentPowerDensity],
             ),
             EquipmentPowerDensity=self._float_mean(
                 other, "EquipmentPowerDensity", weights
@@ -338,10 +340,14 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 other, "LightingPowerDensity", weights
             ),
             LightsAvailabilitySchedule=self.LightsAvailabilitySchedule.combine(
-                other.LightsAvailabilitySchedule, weights
+                other.LightsAvailabilitySchedule,
+                weights=weights,
+                quantity=[self.LightingPowerDensity, other.LightingPowerDensity],
             ),
             OccupancySchedule=self.OccupancySchedule.combine(
-                other.OccupancySchedule, weights
+                other.OccupancySchedule,
+                weights=weights,
+                quantity=[self.PeopleDensity, other.PeopleDensity],
             ),
             IsEquipmentOn=any([self.IsEquipmentOn, other.IsEquipmentOn]),
             IsLightingOn=any([self.IsLightingOn, other.IsLightingOn]),

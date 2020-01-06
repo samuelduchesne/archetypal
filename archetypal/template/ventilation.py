@@ -301,8 +301,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
 
         a = self.NatVentSchedule.combine(other.NatVentSchedule, weights)
         b = self.ScheduledVentilationSchedule.combine(
-            other.ScheduledVentilationSchedule, weights
-        )
+            other.ScheduledVentilationSchedule, weights)
         c = any((self.Afn, other.Afn))
         d = self._float_mean(other, "Infiltration", weights)
         e = any((self.IsBuoyancyOn, other.IsBuoyancyOn))

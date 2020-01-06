@@ -87,8 +87,9 @@ class IDF(geomeppy.IDF):
     @property
     def sql(self):
         if self._sql is None:
+            log("No sql object for {}. Running EnergyPlus...".format(self.name))
             self._sql = self.run_eplus(
-                annual=True, prep_outputs=True, output_report="sql"
+                annual=True, prep_outputs=True, output_report="sql", verbose="q"
             )
             return self._sql
         else:

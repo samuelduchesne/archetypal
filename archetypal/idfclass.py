@@ -1579,7 +1579,10 @@ def run_eplus(
                     eplus_file.basename(),
                 )
                 idf = load_idf(
-                    filepath, output_folder=output_directory, include=include
+                    filepath,
+                    weather_file=weather_file,
+                    output_folder=output_directory,
+                    include=include,
                 )
             else:
                 idf = None

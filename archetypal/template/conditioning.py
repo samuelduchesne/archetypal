@@ -518,6 +518,16 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         from itertools import chain
 
+        # Todo: Implement loop that detects HVAC linked to Zone; than parse heat
+        #  recovery. Needs to happen when a zone has a ZoneHVAC:IdealLoadsAirSystem
+        # connections = zone._epbunch.getreferingobjs(
+        #     iddgroups=["Zone HVAC Equipment Connections"], fields=["Zone_Name"]
+        # )
+        # nodes = [
+        #     con.get_referenced_object("Zone_Air_Inlet_Node_or_NodeList_Name")
+        #     for con in connections
+        # ]
+
         # get possible heat recovery objects from idd
         heat_recovery_objects = zone.idf.getiddgroupdict()["Heat Recovery"]
 

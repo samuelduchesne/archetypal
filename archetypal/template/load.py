@@ -58,7 +58,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
                 * If `Off`: Lights switch off completely when the minimum
                       dimming point is reached
-            EquipmentAvailabilitySchedule (UmiSchedule, optional): The name of
+            EquipmentAvailabilitySchedule (UmiSchedule): The name of
                 the schedule (Day | Week | Year) that modifies the design level
                 parameter for electric equipment.
             EquipmentPowerDensity (float): Equipment Power Density in the zone
@@ -66,10 +66,10 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             IlluminanceTarget (float): Number of lux to be respected in the zone
             LightingPowerDensity (float): Lighting Power Density in the zone
                 (W/m²)
-            LightsAvailabilitySchedule (UmiSchedule, optional): The name of the
+            LightsAvailabilitySchedule (UmiSchedule): The name of the
                 schedule (Day | Week | Year) that modifies the design level
                 parameter for lighting.
-            OccupancySchedule (UmiSchedule, optional): The name of the schedule
+            OccupancySchedule (UmiSchedule): The name of the schedule
                 (Day | Week | Year) that modifies the number of people parameter
                 for electric equipment.
             IsEquipmentOn (bool): If True, heat gains from Equipment are taken
@@ -328,7 +328,9 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         attr = dict(
             DimmingType=self._str_mean(other, "DimmingType"),
             EquipmentAvailabilitySchedule=self.EquipmentAvailabilitySchedule.combine(
-                other.EquipmentAvailabilitySchedule
+                other.EquipmentAvailabilitySchedule,
+                weights=weights,
+                quantity=[self.EquipmentPowerDensity, other.EquipmentPowerDensity],
             ),
             EquipmentPowerDensity=self._float_mean(
                 other, "EquipmentPowerDensity", weights
@@ -338,10 +340,14 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 other, "LightingPowerDensity", weights
             ),
             LightsAvailabilitySchedule=self.LightsAvailabilitySchedule.combine(
-                other.LightsAvailabilitySchedule, weights
+                other.LightsAvailabilitySchedule,
+                weights=weights,
+                quantity=[self.LightingPowerDensity, other.LightingPowerDensity],
             ),
             OccupancySchedule=self.OccupancySchedule.combine(
-                other.OccupancySchedule, weights
+                other.OccupancySchedule,
+                weights=weights,
+                quantity=[self.PeopleDensity, other.PeopleDensity],
             ),
             IsEquipmentOn=any([self.IsEquipmentOn, other.IsEquipmentOn]),
             IsLightingOn=any([self.IsLightingOn, other.IsLightingOn]),

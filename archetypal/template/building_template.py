@@ -221,18 +221,18 @@ class BuildingTemplate(UmiBase):
             Zone.from_zone_epbunch(zone, sql=bt.sql)
             for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop")
         ]
-        cores = [
+        bt.cores = [
             zone
             for zone in zones
             if zone.is_core and zone.is_part_of_conditioned_floor_area
         ]
-        perims = [
+        bt.perims = [
             zone
             for zone in zones
             if not zone.is_core and zone.is_part_of_conditioned_floor_area
         ]
         # do Core and Perim zone reduction
-        bt.reduce(cores, perims)
+        bt.reduce(bt.cores, bt.perims)
 
         # resolve StructureDefinition and WindowSetting
         bt.Structure = StructureDefinition(

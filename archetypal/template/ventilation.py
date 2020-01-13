@@ -301,7 +301,8 @@ class VentilationSetting(UmiBase, metaclass=Unique):
 
         a = self.NatVentSchedule.combine(other.NatVentSchedule, weights)
         b = self.ScheduledVentilationSchedule.combine(
-            other.ScheduledVentilationSchedule, weights)
+            other.ScheduledVentilationSchedule, weights
+        )
         c = any((self.Afn, other.Afn))
         d = self._float_mean(other, "Infiltration", weights)
         e = any((self.IsBuoyancyOn, other.IsBuoyancyOn))
@@ -386,19 +387,26 @@ def do_natural_ventilation(index, nat_df, zone):
             IsNatVentOn = False
             NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
         finally:
-            NatVentMaxRelHumidity = 90  # todo: not sure if it is being used
-            NatVentMaxOutdoorAirTemp = resolve_temp(
-                nat_df.loc[index, "Maximum " "Outdoor " "Temperature{" "C}/Schedule"],
-                zone.idf,
-            )
-            NatVentMinOutdoorAirTemp = resolve_temp(
-                nat_df.loc[index, "Minimum " "Outdoor " "Temperature{" "C}/Schedule"],
-                zone.idf,
-            )
-            NatVentZoneTempSetpoint = resolve_temp(
-                nat_df.loc[index, "Minimum Indoor " "Temperature{" "C}/Schedule"],
-                zone.idf,
-            )
+            try:
+                NatVentMaxRelHumidity = 90  # todo: not sure if it is being used
+                NatVentMaxOutdoorAirTemp = resolve_temp(
+                    nat_df.loc[index, "Maximum Outdoor Temperature{C}/Schedule"],
+                    zone.idf,
+                )
+                NatVentMinOutdoorAirTemp = resolve_temp(
+                    nat_df.loc[index, "Minimum Outdoor Temperature{C}/Schedule"],
+                    zone.idf,
+                )
+                NatVentZoneTempSetpoint = resolve_temp(
+                    nat_df.loc[index, "Minimum Indoor Temperature{C}/Schedule"],
+                    zone.idf,
+                )
+            except KeyError:
+                # this zone is not in the nat_df. Revert to defaults.
+                NatVentMaxRelHumidity = 90
+                NatVentMaxOutdoorAirTemp = 30
+                NatVentMinOutdoorAirTemp = 0
+                NatVentZoneTempSetpoint = 18
 
     else:
         IsNatVentOn = False

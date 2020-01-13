@@ -261,7 +261,7 @@ class Zone(UmiBase):
                 save=False,
                 Name=internal_mass,
                 Construction_Name=new.Name,
-                Zone_Name=self.Name,
+                Zone_or_ZoneList_Name=self.Name,
                 Surface_Area=0,
             )
 

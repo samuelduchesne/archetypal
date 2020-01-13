@@ -32,7 +32,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         """
         Args:
             IsOn (bool):
-            WaterSchedule (UmiSchedule, optional):
+            WaterSchedule (UmiSchedule):
             FlowRatePerFloorArea (float):
             WaterSupplyTemperature (float):
             WaterTemperatureInlet (float):
@@ -292,13 +292,19 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             dhw_objs:
             zone:
         """
-        water_schds = []
+        water_schds = collections.defaultdict(dict)
         for obj in dhw_objs:
             water_schd_name = UmiSchedule(
                 Name=obj.Flow_Rate_Fraction_Schedule_Name, idf=zone._epbunch.theidf
             )
-            water_schds.append(water_schd_name)
-        return reduce(UmiSchedule.combine, water_schds, weights=[1, 1])
+            water_schds[water_schd_name.Name]["schedule"] = water_schd_name
+            water_schds[water_schd_name.Name]["quantity"] = obj.Peak_Flow_Rate
+        return reduce(
+            UmiSchedule.combine,
+            [v["schedule"] for k, v in water_schds.items()],
+            weights=None,
+            quantity={k: v["quantity"] for k, v in water_schds.items()},
+        )
 
     @classmethod
     @timeit
@@ -365,7 +371,11 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         new_obj = DomesticHotWaterSetting(
             **meta,
             IsOn=any((self.IsOn, other.IsOn)),
-            WaterSchedule=self.WaterSchedule.combine(other.WaterSchedule, weights),
+            WaterSchedule=self.WaterSchedule.combine(
+                other.WaterSchedule,
+                weights,
+                [self.FlowRatePerFloorArea, other.FlowRatePerFloorArea],
+            ),
             FlowRatePerFloorArea=self._float_mean(
                 other, "FlowRatePerFloorArea", weights
             ),

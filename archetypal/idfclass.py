@@ -736,7 +736,7 @@ def load_idf(
             form (see pathlib.Path.glob).
         weather_file: Either the absolute or relative path to the weather epw
             file.
-        ep_version (str, optional): EnergyPlus version number to use, eg.: "8-9-0".
+        ep_version (str, optional): EnergyPlus version number to use, eg.: "9-2-0".
             Defaults to `settings.ep_version`.
 
     Returns:
@@ -1490,7 +1490,7 @@ def run_eplus(
         weather_file (str): path to the EPW weather file.
         output_directory (str, optional): path to the output folder. Will
             default to the settings.cache_folder.
-        ep_version (str, optional): EnergyPlus version to use, eg: 8-9-0
+        ep_version (str, optional): EnergyPlus version to use, eg: 9-2-0
         output_report: 'sql' or 'htm'.
         prep_outputs (bool or list, optional): if true, meters and variable
             outputs will be appended to the idf files. see
@@ -2258,7 +2258,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
 
     Update the EnergyPlus simulation file (.idf) to the latest available
     EnergyPlus version installed on this machine. Optionally specify a version
-    (eg.: "8-9-0") to aim for a specific version. The output will be the path of
+    (eg.: "9-2-0") to aim for a specific version. The output will be the path of
     the updated file. The run is multiprocessing_safe.
 
     Hint:

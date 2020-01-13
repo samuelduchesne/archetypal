@@ -1,7 +1,7 @@
 import archetypal as ar
 import pandas as pd
 
-from archetypal import download_bld_window
+from archetypal import download_bld_window, settings
 
 
 def test_tabula_available_country(config, scratch_then_cache):
@@ -76,7 +76,7 @@ def test_download_and_load_bld_window(config):
         oauth_key=oauth_consumer_key,
         tolerance=0.05,
     )
-    idf = ar.load_idf(response[0], ep_version="8-9-0")
+    idf = ar.load_idf(response[0], ep_version=settings.ep_version)
     construct = idf.getobject("CONSTRUCTION", "AEDG-SmOffice 1A Window Fixed")
     ws = ar.WindowSetting.from_construction(Name="test_window", Construction=construct)
 

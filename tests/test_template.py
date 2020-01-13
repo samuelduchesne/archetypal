@@ -6,7 +6,7 @@ from path import Path
 
 import archetypal as ar
 import archetypal.settings
-from archetypal import get_eplus_dirs, clear_cache
+from archetypal import get_eplus_dirs, clear_cache, settings
 from archetypal.settings import ep_version
 
 
@@ -1050,7 +1050,7 @@ class TestZoneConstructionSet:
         """
         from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths("8-9-0")
+        eplus_exe, eplus_weather = install_paths(settings.ep_versions)
         eplusdir = Path(eplus_exe).dirname()
         file = eplusdir / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
@@ -1165,7 +1165,7 @@ class TestZoneLoad:
         """
         from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths("8-9-0")
+        eplus_exe, eplus_weather = install_paths(settings.ep_version)
         eplusdir = Path(eplus_exe).dirname()
         file = eplusdir / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
@@ -1310,7 +1310,7 @@ class TestZoneConditioning:
         """
         from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths("8-9-0")
+        eplus_exe, eplus_weather = install_paths(settings.ep_version)
         eplusdir = Path(eplus_exe).dirname()
         file = eplusdir / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
@@ -1466,7 +1466,7 @@ class TestVentilationSetting:
         """
         from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths("8-9-0")
+        eplus_exe, eplus_weather = install_paths(settings.ep_version)
         eplusdir = Path(eplus_exe).dirname()
         file = eplusdir / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"

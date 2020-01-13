@@ -1,6 +1,6 @@
 from click.testing import CliRunner
 
-from archetypal import get_eplus_dirs
+from archetypal import get_eplus_dirs, settings
 from archetypal.settings import ep_version
 from archetypal.cli import cli
 from path import Path
@@ -30,7 +30,7 @@ class TestCli:
                 "tests/.temp/logs",
                 "--log-console",
                 "--ep_version",
-                "8-9-0",
+                settings.ep_version,
                 "reduce",
                 "-n",
                 "Retail",

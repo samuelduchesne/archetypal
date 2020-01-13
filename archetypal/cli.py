@@ -112,7 +112,7 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     "--ep_version",
     type=click.STRING,
     default=settings.ep_version,
-    help='the EnergyPlus version to use. eg. "8-9-0"',
+    help='the EnergyPlus version to use. eg. "{}"'.format(settings.ep_version),
 )
 @pass_config
 def cli(
@@ -151,7 +151,7 @@ def cli(
         log_name (str): name of the logger.
         log_filename (str): name of the log file.
         trnsys_default_folder (str): root folder of TRNSYS install.
-        ep_version (str): EnergyPlus version to use. eg.: "8-9-0".
+        ep_version (str): EnergyPlus version to use. eg.: "9-2-0".
     """
     cli_config.data_folder = data_folder
     cli_config.logs_folder = logs_folder

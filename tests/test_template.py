@@ -1050,9 +1050,7 @@ class TestZoneConstructionSet:
         """
         from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths(settings.ep_versions)
-        eplusdir = Path(eplus_exe).dirname()
-        file = eplusdir / "ExampleFiles" / request.param
+        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         sql, idf = ar.run_eplus(
             file,
@@ -1466,10 +1464,9 @@ class TestVentilationSetting:
         """
         from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths(settings.ep_version)
-        eplusdir = Path(eplus_exe).dirname()
+        eplusdir = get_eplus_dirs(settings.ep_version)
         file = eplusdir / "ExampleFiles" / request.param
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         idf = ar.load_idf(file)
         sql = ar.run_eplus(
             file,
@@ -1931,7 +1928,7 @@ class TestZone:
         """
         from archetypal import Zone
 
-        file = "tests/input_data/trnsys/NECB 2011 - Full Service Restaurant.idf"
+        file = "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = ar.load_idf(file)
         sql = ar.run_eplus(

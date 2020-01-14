@@ -10,7 +10,7 @@ import pytest
 from path import Path
 
 import archetypal.settings
-from archetypal import EnergyPlusProcessError
+from archetypal import EnergyPlusProcessError, get_eplus_dirs, settings
 
 mpl.use("Agg")
 
@@ -21,7 +21,12 @@ mpl.use("Agg")
 
 
 def test_small_home_data(config, fresh_start):
-    file = "tests/input_data/regular/AdultEducationCenter.idf"
+    file = (
+        get_eplus_dirs(settings.ep_version)
+        / "ExampleFiles"
+        / "BasicsFiles"
+        / "AdultEducationCenter.idf"
+    )
     file = ar.copy_file(file)
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     return ar.run_eplus(
@@ -56,8 +61,11 @@ def test_load_idf(config):
     """Will load an idf object"""
 
     files = [
-        "tests/input_data/regular/5ZoneNightVent1.idf",
-        "tests/input_data/regular/AdultEducationCenter.idf",
+        get_eplus_dirs(settings.ep_version) / "ExampleFiles" / "5ZoneNightVent1.idf",
+        get_eplus_dirs(settings.ep_version)
+        / "ExampleFiles"
+        / "BasicsFiles"
+        / "AdultEducationCenter.idf",
     ]
 
     obj = {os.path.basename(file): ar.load_idf(file) for file in files}
@@ -67,7 +75,7 @@ def test_load_idf(config):
 def test_load_old(config):
     files = [
         "tests/input_data/problematic/nat_ventilation_SAMPLE0.idf",
-        "tests/input_data/regular/5ZoneNightVent1.idf",
+        get_eplus_dirs(settings.ep_version) / "ExampleFiles" / "5ZoneNightVent1.idf",
     ]
 
     obj = {os.path.basename(file): ar.load_idf(file) for file in files}
@@ -86,7 +94,7 @@ def test_run_olderv(clean_config, fresh_start, ep_version):
     ar.settings.use_cache = False
     files = [
         "tests/input_data/problematic/nat_ventilation_SAMPLE0.idf",
-        "tests/input_data/regular/5ZoneNightVent1.idf",
+        get_eplus_dirs(settings.ep_version) / "ExampleFiles" / "5ZoneNightVent1.idf",
     ]
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     files = ar.copy_file(files)
@@ -114,8 +122,9 @@ def test_run_olderv_problematic(config, fresh_start):
     fail. Will be ignored in the test suite"""
 
     file = (
-        "tests/input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7"
-        ".2_5A_USA_IL_CHICAGO-OHARE.idf"
+        get_eplus_dirs(settings.ep_version)
+        / "ExampleFiles"
+        / "RefBldgLargeOfficeNew2004_Chicago.idf"
     )
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     file = ar.copy_file([file])
@@ -125,7 +134,7 @@ def test_run_olderv_problematic(config, fresh_start):
 
 
 def test_run_eplus_from_idf(config, fresh_start):
-    file = "tests/input_data/regular/5ZoneNightVent1.idf"
+    file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / "5ZoneNightVent1.idf"
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
 
     idf = ar.load_idf(file, weather_file=wf)
@@ -200,7 +209,12 @@ def test_partition_ratio():
 def test_space_cooling_profile(config):
     from archetypal import load_idf
 
-    file = "tests/input_data/regular/AdultEducationCenter.idf"
+    file = (
+        get_eplus_dirs(settings.ep_version)
+        / "ExampleFiles"
+        / "BasicsFiles"
+        / "AdultEducationCenter.idf"
+    )
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
 
     idf = load_idf(file, None, weather_file=wf)
@@ -236,7 +250,11 @@ def test_old_than_change_args(config, fresh_start):
     """Should upgrade file only once even if run_eplus args are changed afterwards"""
     from archetypal import run_eplus
 
-    file = "tests/input_data/trnsys/RefBldgQuickServiceRestaurantPost1980_v1.4_7.2_6A_USA_MN_MINNEAPOLIS.idf"
+    file = (
+        get_eplus_dirs(settings.ep_version)
+        / "ExampleFiles"
+        / "RefBldgQuickServiceRestaurantNew2004_Chicago.idf"
+    )
     epw = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
 
     idf = run_eplus(file, epw, prep_outputs=True, output_report="sql_file")

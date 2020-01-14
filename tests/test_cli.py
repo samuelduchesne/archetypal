@@ -28,16 +28,14 @@ class TestCli:
                 "tests/.temp/images",
                 "--logs-folder",
                 "tests/.temp/logs",
-                "--log-console",
                 "--ep_version",
                 settings.ep_version,
                 "reduce",
-                "-n",
-                "Retail",
                 "-w",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
                 "-p",
                 *test_file_list,
+                "tests/.temp/retail.json"
             ],
             catch_exceptions=False,
         )

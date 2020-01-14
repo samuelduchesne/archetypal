@@ -6,7 +6,7 @@ import pytest
 
 from path import Path
 
-from archetypal import EnergySeries
+from archetypal import EnergySeries, get_eplus_dirs, settings
 
 import numpy as np
 
@@ -14,8 +14,11 @@ import numpy as np
 @pytest.fixture(
     scope="module",
     params=[
-        "tests/input_data/regular/5ZoneNightVent1.idf",
-        "tests/input_data/regular/AdultEducationCenter.idf",
+        get_eplus_dirs(settings.ep_version) / "ExampleFiles" / "5ZoneNightVent1.idf",
+        get_eplus_dirs(settings.ep_version)
+        / "ExampleFiles"
+        / "BasicsFiles"
+        / "AdultEducationCenter.idf",
     ],
 )
 def energy_series(config, request):

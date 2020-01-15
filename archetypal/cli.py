@@ -5,6 +5,7 @@
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
 import os
+import time
 from collections import defaultdict
 from typing import Any, Union
 
@@ -24,6 +25,7 @@ from archetypal import (
     UmiTemplate,
     config,
     log,
+    idf_version_updater,
 )
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -392,3 +394,37 @@ def reduce(idf, output, weather, parallel, all_zones):
     final_path: Path = dir_ / name + ext
     template.to_json(path_or_buf=final_path, all_zones=all_zones)
     log("Successfully created template file at {}".format(final_path.abspath()))
+
+
+@cli.command()
+@click.argument("idf", nargs=-1, type=click.Path(exists=True))
+@click.option(
+    "-v",
+    "--version",
+    "to_version",
+    default=settings.ep_version,
+    help="EnergyPlus version to upgrade to - e.g., '9-2-0'",
+)
+@click.option(
+    "-p",
+    "--parallel",
+    "cores",
+    default=-1,
+    help="Specify number of cores to run in parallel"
+)
+def transition(idf, to_version, cores):
+    """Upgrade an IDF file to a newer version"""
+    start_time = time.time()
+    rundict = {
+        idf: dict(
+            idf_file=idf,
+            to_version=to_version,
+        )
+        for idf in idf
+    }
+    parallel_process(rundict, idf_version_updater, processors=cores)
+    log(
+        "Successfully transitioned files to version '{}' in {:,.2f} seconds".format(
+            to_version, time.time() - start_time
+        )
+    )

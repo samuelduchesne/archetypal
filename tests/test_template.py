@@ -1163,9 +1163,7 @@ class TestZoneLoad:
         """
         from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths(settings.ep_version)
-        eplusdir = Path(eplus_exe).dirname()
-        file = eplusdir / "ExampleFiles" / request.param
+        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = ar.load_idf(file)
         sql = ar.run_eplus(
@@ -1297,7 +1295,6 @@ class TestZoneConditioning:
             "RefMedOffVAVAllDefVRP.idf",
             "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf",
             "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf",
-            "2ZoneDataCenterHVAC_wEconomizer.idf",
         ],
     )
     def zoneConditioningtests(self, config, request):
@@ -1306,11 +1303,8 @@ class TestZoneConditioning:
             config:
             request:
         """
-        from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths(settings.ep_version)
-        eplusdir = Path(eplus_exe).dirname()
-        file = eplusdir / "ExampleFiles" / request.param
+        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = ar.load_idf(file)
         sql = ar.run_eplus(
@@ -1347,14 +1341,11 @@ class TestZoneConditioning:
             zone = idf.getobject("ZONE", "Core_mid")
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_ = ZoneConditioning.from_zone(z)
-        if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL" ".idf":
+        if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf":
             zone = idf.getobject("ZONE", "West Zone")
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_HX = ZoneConditioning.from_zone(z)
-        if (
-            idf_name == "2ZoneDataCenterHVAC_wEconomizer.idf"
-            or idf_name == "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf"
-        ):
+        if idf_name == "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf":
             zone = idf.getobject("ZONE", "East Zone")
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_HX_eco = ZoneConditioning.from_zone(z)

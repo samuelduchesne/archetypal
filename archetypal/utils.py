@@ -877,8 +877,7 @@ def get_eplus_dirs(version=ep_version):
     from eppy.runner.run_functions import install_paths
 
     eplus_exe, eplus_weather = install_paths(version)
-    eplusdir = Path(eplus_exe).dirname()
-    return Path(eplusdir)
+    return Path(eplus_exe).dirname()
 
 
 def warn_if_not_compatible():

@@ -2088,8 +2088,36 @@ def bt():
     yield bt
 
 
+@pytest.fixture(scope="session")
+def climatestudio():
+    """A building template fixture from a climate studio idf file used in subsequent
+    tests"""
+    eplus_dir = get_eplus_dirs(archetypal.settings.ep_version)
+    file = "tests/input_data/umi_samples/climatestudio_test.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    _, idf, res = ar.run_eplus(
+        file,
+        w,
+        ep_version="9-2-0",
+        return_idf=True,
+        return_files=True,
+        prep_outputs=True,
+        output_report="sql",
+    )
+    from archetypal import BuildingTemplate
+
+    bt = BuildingTemplate.from_idf(idf, sql=idf.sql)
+    yield bt
+
+
 class TestBuildingTemplate:
     """Various tests with the :class:`BuildingTemplate` class"""
+
+    def test_climatestudio(self, config, climatestudio):
+        template_json = ar.UmiTemplate(
+            name="my_umi_template", BuildingTemplates=[climatestudio]
+        ).to_json(all_zones=True)
+        print(template_json)
 
     def test_viewbuilding(self, config, bt):
         """test the visualization of a building

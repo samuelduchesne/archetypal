@@ -138,7 +138,7 @@ class Zone(UmiBase):
             zone_surfs = [
                 surf
                 for surf in self._epbunch.zonesurfaces
-                if surf.key.lower() != "internalmass"
+                if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
             ]
             floors = [s for s in zone_surfs if s.Surface_Type.upper() == "FLOOR"]
             area = sum([floor.area for floor in floors])
@@ -550,7 +550,7 @@ def surface_dispatcher(surf, zone):
         ("Ceiling", "Surface"): ZoneConstructionSet._do_slab,
         ("Ceiling", "Zone"): ZoneConstructionSet._do_slab,
     }
-    if surf.key.upper() != "INTERNALMASS":
+    if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]:
         a, b = surf["Surface_Type"].capitalize(), surf["Outside_Boundary_Condition"]
         try:
             yield dispatch[a, b](surf)

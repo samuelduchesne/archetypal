@@ -1748,14 +1748,14 @@ class TestWindowSetting:
                 save=False,
             )
             idf.add_object(
-                "WINDOWPROPERTY:SHADINGCONTROL",
+                "WindowShadingControl".upper(),
                 Construction_with_Shading_Name=constr,
                 Setpoint=14,
                 Shading_Device_Material_Name="Roll Shade",
                 save=False,
-                Name="test_constrol",
+                Fenestration_Surface_1_Name="test_control",
             )
-            f.Shading_Control_Name = "test_constrol"
+            f.Name = "test_control"
             w = WindowSetting.from_surface(f)
             assert w
             print(w)

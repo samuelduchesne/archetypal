@@ -133,7 +133,7 @@ def test_run_eplus_from_idf(config, fresh_start):
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
 
     idf = ar.load_idf(file, weather_file=wf)
-    sql = idf.run_eplus(output_report="sql")
+    sql = idf.run_eplus(prep_outputs=True, output_report="sql")
 
     assert sql
 

@@ -16,8 +16,7 @@ from archetypal import (
 
 def test_schedules_in_necb_specific(config):
     files = [
-        "tests/input_data/regular/NECB 2011-MediumOffice-NECB HDD "
-        "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
     ]
     idfs = {os.path.basename(file): load_idf(file) for file in files}
     import matplotlib.pyplot as plt
@@ -175,8 +174,10 @@ def run_schedules_idf(config):
         annual=True,
         readvars=True,
         include=[
-            get_eplus_dirs(settings.ep_version) / "DataSets/TDV"
-            "TDV_2008_kBtu_CTZ06.csv"
+            get_eplus_dirs(settings.ep_version)
+            / "DataSets"
+            / "TDV"
+            / "TDV_2008_kBtu_CTZ06.csv"
         ],
         return_files=True,
     )

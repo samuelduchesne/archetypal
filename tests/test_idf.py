@@ -121,13 +121,8 @@ def test_run_olderv_problematic(config, fresh_start):
     """Will run eplus on a file that needs to be upgraded and that should
     fail. Will be ignored in the test suite"""
 
-    file = (
-        get_eplus_dirs(settings.ep_version)
-        / "ExampleFiles"
-        / "RefBldgLargeOfficeNew2004_Chicago.idf"
-    )
+    file = "tests/input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7.2_5A_USA_IL_CHICAGO-OHARE.idf"
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    file = ar.copy_file([file])
     ar.run_eplus(
         file, wf, prep_outputs=True, annual=True, expandobjects=True, verbose="q"
     )

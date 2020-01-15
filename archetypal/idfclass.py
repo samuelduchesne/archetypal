@@ -20,7 +20,7 @@ from itertools import compress
 from math import isclose
 from sqlite3 import OperationalError
 from subprocess import CalledProcessError
-from tempfile import tempdir
+from tempfile import TemporaryDirectory
 
 import eppy
 import eppy.modeleditor
@@ -41,6 +41,7 @@ from archetypal import (
     EnergySeries,
     close_logger,
     EnergyPlusVersionError,
+    get_eplus_dirs,
 )
 from archetypal.utils import _unpack_tuple
 
@@ -2282,9 +2283,14 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
     Returns:
         Path: The path of the new transitioned idf file.
     """
+    idf_file = Path(idf_file)
+    if not out_dir:
+        # if no directory is provided, use directory of file
+        out_dir = idf_file.dirname()
     if not out_dir.isdir():
+        # check if dir exists
         out_dir.makedirs_p()
-    with tempdir(prefix="transition_run_", suffix=simulname, dir=out_dir) as tmp:
+    with TemporaryDirectory(prefix="transition_run_", suffix=simulname, dir=out_dir) as tmp:
         log("temporary dir (%s) created" % tmp, lg.DEBUG)
         idf_file = Path(idf_file.copy(tmp)).abspath()  # copy and return abspath
 
@@ -2311,8 +2317,9 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             to_version = find_eplus_installs(iddfile)
         if tuple(versionid.split("-")) > tuple(to_version.split("-")):
             raise EnergyPlusVersionError(idf_file, versionid, to_version)
-        to_iddfile = Path(getiddfile(to_version.replace("-", ".")))
-        vupdater_path = to_iddfile.dirname() / "PreProcess" / "IDFVersionUpdater"
+        vupdater_path = (
+            get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
+        )
         trans_exec = {
             "1-0-0": os.path.join(vupdater_path, "Transition-V1-0-0-to-V1-0-1"),
             "1-0-1": os.path.join(vupdater_path, "Transition-V1-0-1-to-V1-0-2"),
@@ -2350,8 +2357,6 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             "9-0-0": os.path.join(vupdater_path, "Transition-V9-0-0-to-V9-1-0"),
             "9-1-0": os.path.join(vupdater_path, "Transition-V9-1-0-to-V9-2-0"),
         }
-        # set directory to run transition executables
-        run_dir = Path(os.path.dirname(trans_exec[versionid]))
 
         # check the file version, if it corresponds to the latest version found on
         # the machine, means its already upgraded to the correct version. Return it.
@@ -2368,7 +2373,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
 
         # Otherwise,
         # build a list of command line arguments
-        with cd(run_dir):
+        with cd(vupdater_path):
             transitions = [
                 key
                 for key in trans_exec

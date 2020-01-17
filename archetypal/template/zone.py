@@ -246,23 +246,32 @@ class Zone(UmiBase):
             # Todo: Create Equivalent InternalMassConstruction from
             #  partitions. For now, creating dummy InternalMass
 
-            #   InternalMass,
-            #     PerimInternalMass,       !- Name
-            #     B_Ret_Thm_0,             !- Construction Name
-            #     Perim,                   !- Zone Name
-            #     2.05864785735637;        !- Surface Area {m2}
+            mat = self.idf.add_object(ep_object="Material".upper(),
+                                Name="Wood 6inch",
+                                Roughness="MediumSmooth",
+                                Thickness=0.15,
+                                Conductivity=0.12,
+                                Density=540,
+                                Specific_Heat=1210,
+                                Thermal_Absorptance=0.7,
+                                Visible_Absorptance=0.7)
 
-            existgin_cons = self.idf.idfobjects["CONSTRUCTION"][0]
-            new = self.idf.copyidfobject(existgin_cons)
+            cons = self.idf.add_object(
+                ep_object="Construction".upper(),
+                save=False,
+                Name="InteriorFurnishings",
+                Outside_Layer="Wood 6inch",
+            )
+
             internal_mass = "{}_InternalMass".format(self.Name)
-            new.Name = internal_mass + "_construction"
+            cons.Name = internal_mass + "_construction"
             new_epbunch = self.idf.add_object(
                 ep_object="InternalMass".upper(),
                 save=False,
                 Name=internal_mass,
-                Construction_Name=new.Name,
+                Construction_Name=cons.Name,
                 Zone_or_ZoneList_Name=self.Name,
-                Surface_Area=0,
+                Surface_Area=1,
             )
 
             oc.append(OpaqueConstruction.from_epbunch(new_epbunch, idf=self.idf))

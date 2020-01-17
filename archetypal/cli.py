@@ -309,7 +309,7 @@ def convert(
 
 
 @cli.command()
-@click.argument("idf", nargs=-1)
+@click.argument("idf", nargs=-1, type=click.Path(exists=True), required=True)
 @click.argument("output", type=click.Path(), default="myumitemplate.json")
 @click.option(
     "--weather",
@@ -337,6 +337,9 @@ def convert(
 )
 def reduce(idf, output, weather, parallel, all_zones):
     """Perform the model reduction and translate to an UMI template file.
+
+    IDF is one or multiple idf files to process.
+    OUTPUT is the output file name (or path) to write to. Optional.
     """
     if parallel:
         # if parallel is True, run eplus in parallel
@@ -397,7 +400,7 @@ def reduce(idf, output, weather, parallel, all_zones):
 
 
 @cli.command()
-@click.argument("idf", nargs=-1, type=click.Path(exists=True))
+@click.argument("idf", nargs=-1, type=click.Path(exists=True), required=True)
 @click.option(
     "-v",
     "--version",
@@ -410,18 +413,12 @@ def reduce(idf, output, weather, parallel, all_zones):
     "--parallel",
     "cores",
     default=-1,
-    help="Specify number of cores to run in parallel"
+    help="Specify number of cores to run in parallel",
 )
 def transition(idf, to_version, cores):
     """Upgrade an IDF file to a newer version"""
     start_time = time.time()
-    rundict = {
-        idf: dict(
-            idf_file=idf,
-            to_version=to_version,
-        )
-        for idf in idf
-    }
+    rundict = {idf: dict(idf_file=idf, to_version=to_version) for idf in idf}
     parallel_process(rundict, idf_version_updater, processors=cores)
     log(
         "Successfully transitioned files to version '{}' in {:,.2f} seconds".format(

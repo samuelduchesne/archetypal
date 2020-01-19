@@ -2417,7 +2417,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
                             ),
                             lg.ERROR,
                         )
-        for f in tmp.files("*.idfnew"):
+        for f in Path(tmp).files("*.idfnew"):
             f.copy(out_dir / idf_file.basename())
         return Path(out_dir / idf_file.basename())
 

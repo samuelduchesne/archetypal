@@ -28,7 +28,7 @@ install:
   - ps: "ls \"C:/\""
 
   - ECHO "Installed SDKs:"
-    - ps: "ls \"C:/Program Files/Microsoft SDKs/Windows\""
+  - ps: "ls \"C:/Program Files/Microsoft SDKs/Windows\""
     
   # install EnergyPlus
   - ECHO "Installing EnergyPlus"
@@ -45,4 +45,4 @@ install:
   # install archetypal
   - "pip install .[dev]"
 test_script:
-- cmd: pytest --cov=archetypal --verbose tests/
+  - cmd: pytest --cov=archetypal --verbose tests/

@@ -1,4 +1,4 @@
-version: 1.0.{build}
+build: false
 environment:
   matrix:
   - PYTHON: C:\\Python37
@@ -19,7 +19,6 @@ environment:
     ENERGYPLUS_INSTALL_VERSION: 9-2-0
     ENERGYPLUS_SHA: 921312fa1d
     EXT: exe
-build: off
 install:
   # set up Miniconda test environment
   - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"

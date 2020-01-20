@@ -6,12 +6,14 @@ environment:
     ARCHITECTURE: i386
     MINICONDA: C:\\Miniconda37
     ENERGYPLUS_VERSION: 9.2.0
+    ENERGYPLUS_INSTALL_VERSION=9-2-0
     ENERGYPLUS_SHA: 921312fa1d
   - PYTHON: C:\\Python37-x64
     PYTHONVERSION: 3.7
     ARCHITECTURE: x86_64
     MINICONDA: C:\\Miniconda37-x64
     ENERGYPLUS_VERSION: 9.2.0
+    ENERGYPLUS_INSTALL_VERSION=9-2-0
     ENERGYPLUS_SHA: 921312fa1d
 build: off
 install:
@@ -31,14 +33,40 @@ install:
   - ps: "ls \"C:/Program Files/Microsoft SDKs/Windows\""
     
   # install EnergyPlus
-  - ECHO "Installing EnergyPlus"
-  - ps: $env:ENERGYPLUS_INSTALL_VERSION = $env:ENERGYPLUS_VERSION -replace '\.','-'
-  - ps: $env:ENERGYPLUS_DOWNLOAD_BASE_URL = "https://github.com/NREL/EnergyPlus/releases/download/v$env:ENERGYPLUS_VERSION"
-  - ps: $env:ENERGYPLUS_DOWNLOAD_FILENAME = "EnergyPlus-$env:ENERGYPLUS_VERSION-$env:ENERGYPLUS_SHA-Windows-$env:ARCHITECTURE.exe"
-  - ps: $env:ENERGYPLUS_DOWNLOAD_URL = "$env:ENERGYPLUS_DOWNLOAD_BASE_URL/$env:ENERGYPLUS_DOWNLOAD_FILENAME"
-
-  - ps: "curl $env:ENERGYPLUS_DOWNLOAD_URL -OutFile $env:TMP\\$env:ENERGYPLUS_DOWNLOAD_FILENAME"
-  - ps: "& $env:TMP\\$env:ENERGYPLUS_DOWNLOAD_FILENAME /S | Out-Null"
+  - cmd: SET ENERGYPLUS_VERSION=8.9.0
+  - cmd: SET ENERGYPLUS_SHA=40101eaafd
+  - cmd: SET ENERGYPLUS_INSTALL_VERSION=8-9-0
+  - cmd: SET EXT=exe
+  - cmd: SET PLATFORM=Windows
+  
+  - cmd: SET ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v%ENERGYPLUS_VERSION%
+  - cmd: SET ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-%ENERGYPLUS_VERSION%-%ENERGYPLUS_SHA%-%PLATFORM%-x86_64
+  - cmd: SET ENERGYPLUS_DOWNLOAD_URL=%ENERGYPLUS_DOWNLOAD_BASE_URL%/%ENERGYPLUS_DOWNLOAD_FILENAME%.%EXT%
+  
+  - cmd: ECHO Downloading EnergyPlus at...
+  - cmd: ECHO %ENERGYPLUS_DOWNLOAD_URL%
+  - cmd: curl -SLO %ENERGYPLUS_DOWNLOAD_URL%
+  
+  - cmd: ECHO Installing EnergyPlus...
+  - cmd: %ENERGYPLUS_DOWNLOAD_FILENAME% /S
+  - cmd: ECHO Done
+  
+    # Install additional material
+  - cmd: SET ATTCHBASE=86
+  - cmd: SET ATTCHNUM=8231
+  - cmd: SET EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/%ATTCHBASE%/%ATTCHNUM%
+  
+  - cmd: ECHO Installing older conversion files from...
+  - cmd: ECHO %EXTRAS_DOWNLOAD_URL%
+  - cmd: curl -SLO %EXTRAS_DOWNLOAD_URL%
+  
+  - cmd: SET DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater
+  - cmd: ECHO Extracting and Copying files to...
+  - cmd: ECHO %DEST%
+  - cmd: tar xvf %ATTCHNUM% -C %DEST%
+  - cmd: DEL /s %ATTCHNUM%
+  
+  - cmd: ECHO Succesfully installed EnergyPlus and conversion files
 
   - ps: echo $env:PYTHON
 

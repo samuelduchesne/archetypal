@@ -13,6 +13,7 @@ import inspect
 import logging as lg
 import multiprocessing
 import os
+import platform
 import subprocess
 import time
 from collections import defaultdict
@@ -763,7 +764,7 @@ def load_idf(
             output_folder=output_folder,
             include=include,
             epw=weather_file,
-            ep_version=ep_version,
+            ep_version=ep_version if ep_version is not None else settings.ep_version,
         )
         log("Eppy load completed in {:,.2f} seconds\n".format(time.time() - start_time))
         return idf
@@ -2320,48 +2321,49 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
         vupdater_path = (
             get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
         )
+        exe = ".exe" if platform.system() == "Windows" else ""
         trans_exec = {
-            "1-0-0": os.path.join(vupdater_path, "Transition-V1-0-0-to-V1-0-1"),
-            "1-0-1": os.path.join(vupdater_path, "Transition-V1-0-1-to-V1-0-2"),
-            "1-0-2": os.path.join(vupdater_path, "Transition-V1-0-2-to-V1-0-3"),
-            "1-0-3": os.path.join(vupdater_path, "Transition-V1-0-3-to-V1-1-0"),
-            "1-1-0": os.path.join(vupdater_path, "Transition-V1-1-0-to-V1-1-1"),
-            "1-1-1": os.path.join(vupdater_path, "Transition-V1-1-1-to-V1-2-0"),
-            "1-2-0": os.path.join(vupdater_path, "Transition-V1-2-0-to-V1-2-1"),
-            "1-2-1": os.path.join(vupdater_path, "Transition-V1-2-1-to-V1-2-2"),
-            "1-2-2": os.path.join(vupdater_path, "Transition-V1-2-2-to-V1-2-3"),
-            "1-2-3": os.path.join(vupdater_path, "Transition-V1-2-3-to-V1-3-0"),
-            "1-3-0": os.path.join(vupdater_path, "Transition-V1-3-0-to-V1-4-0"),
-            "1-4-0": os.path.join(vupdater_path, "Transition-V1-4-0-to-V2-0-0"),
-            "2-0-0": os.path.join(vupdater_path, "Transition-V2-0-0-to-V2-1-0"),
-            "2-1-0": os.path.join(vupdater_path, "Transition-V2-1-0-to-V2-2-0"),
-            "2-2-0": os.path.join(vupdater_path, "Transition-V2-2-0-to-V3-0-0"),
-            "3-0-0": os.path.join(vupdater_path, "Transition-V3-0-0-to-V3-1-0"),
-            "3-1-0": os.path.join(vupdater_path, "Transition-V3-1-0-to-V4-0-0"),
-            "4-0-0": os.path.join(vupdater_path, "Transition-V4-0-0-to-V5-0-0"),
-            "5-0-0": os.path.join(vupdater_path, "Transition-V5-0-0-to-V6-0-0"),
-            "6-0-0": os.path.join(vupdater_path, "Transition-V6-0-0-to-V7-0-0"),
-            "7-0-0": os.path.join(vupdater_path, "Transition-V7-0-0-to-V7-1-0"),
-            "7-1-0": os.path.join(vupdater_path, "Transition-V7-1-0-to-V7-2-0"),
-            "7-2-0": os.path.join(vupdater_path, "Transition-V7-2-0-to-V8-0-0"),
-            "8-0-0": os.path.join(vupdater_path, "Transition-V8-0-0-to-V8-1-0"),
-            "8-1-0": os.path.join(vupdater_path, "Transition-V8-1-0-to-V8-2-0"),
-            "8-2-0": os.path.join(vupdater_path, "Transition-V8-2-0-to-V8-3-0"),
-            "8-3-0": os.path.join(vupdater_path, "Transition-V8-3-0-to-V8-4-0"),
-            "8-4-0": os.path.join(vupdater_path, "Transition-V8-4-0-to-V8-5-0"),
-            "8-5-0": os.path.join(vupdater_path, "Transition-V8-5-0-to-V8-6-0"),
-            "8-6-0": os.path.join(vupdater_path, "Transition-V8-6-0-to-V8-7-0"),
-            "8-7-0": os.path.join(vupdater_path, "Transition-V8-7-0-to-V8-8-0"),
-            "8-8-0": os.path.join(vupdater_path, "Transition-V8-8-0-to-V8-9-0"),
-            "8-9-0": os.path.join(vupdater_path, "Transition-V8-9-0-to-V9-0-0"),
-            "9-0-0": os.path.join(vupdater_path, "Transition-V9-0-0-to-V9-1-0"),
-            "9-1-0": os.path.join(vupdater_path, "Transition-V9-1-0-to-V9-2-0"),
+            "1-0-0": vupdater_path / "Transition-V1-0-0-to-V1-0-1" + exe,
+            "1-0-1": vupdater_path / "Transition-V1-0-1-to-V1-0-2" + exe,
+            "1-0-2": vupdater_path / "Transition-V1-0-2-to-V1-0-3" + exe,
+            "1-0-3": vupdater_path / "Transition-V1-0-3-to-V1-1-0" + exe,
+            "1-1-0": vupdater_path / "Transition-V1-1-0-to-V1-1-1" + exe,
+            "1-1-1": vupdater_path / "Transition-V1-1-1-to-V1-2-0" + exe,
+            "1-2-0": vupdater_path / "Transition-V1-2-0-to-V1-2-1" + exe,
+            "1-2-1": vupdater_path / "Transition-V1-2-1-to-V1-2-2" + exe,
+            "1-2-2": vupdater_path / "Transition-V1-2-2-to-V1-2-3" + exe,
+            "1-2-3": vupdater_path / "Transition-V1-2-3-to-V1-3-0" + exe,
+            "1-3-0": vupdater_path / "Transition-V1-3-0-to-V1-4-0" + exe,
+            "1-4-0": vupdater_path / "Transition-V1-4-0-to-V2-0-0" + exe,
+            "2-0-0": vupdater_path / "Transition-V2-0-0-to-V2-1-0" + exe,
+            "2-1-0": vupdater_path / "Transition-V2-1-0-to-V2-2-0" + exe,
+            "2-2-0": vupdater_path / "Transition-V2-2-0-to-V3-0-0" + exe,
+            "3-0-0": vupdater_path / "Transition-V3-0-0-to-V3-1-0" + exe,
+            "3-1-0": vupdater_path / "Transition-V3-1-0-to-V4-0-0" + exe,
+            "4-0-0": vupdater_path / "Transition-V4-0-0-to-V5-0-0" + exe,
+            "5-0-0": vupdater_path / "Transition-V5-0-0-to-V6-0-0" + exe,
+            "6-0-0": vupdater_path / "Transition-V6-0-0-to-V7-0-0" + exe,
+            "7-0-0": vupdater_path / "Transition-V7-0-0-to-V7-1-0" + exe,
+            "7-1-0": vupdater_path / "Transition-V7-1-0-to-V7-2-0" + exe,
+            "7-2-0": vupdater_path / "Transition-V7-2-0-to-V8-0-0" + exe,
+            "8-0-0": vupdater_path / "Transition-V8-0-0-to-V8-1-0" + exe,
+            "8-1-0": vupdater_path / "Transition-V8-1-0-to-V8-2-0" + exe,
+            "8-2-0": vupdater_path / "Transition-V8-2-0-to-V8-3-0" + exe,
+            "8-3-0": vupdater_path / "Transition-V8-3-0-to-V8-4-0" + exe,
+            "8-4-0": vupdater_path / "Transition-V8-4-0-to-V8-5-0" + exe,
+            "8-5-0": vupdater_path / "Transition-V8-5-0-to-V8-6-0" + exe,
+            "8-6-0": vupdater_path / "Transition-V8-6-0-to-V8-7-0" + exe,
+            "8-7-0": vupdater_path / "Transition-V8-7-0-to-V8-8-0" + exe,
+            "8-8-0": vupdater_path / "Transition-V8-8-0-to-V8-9-0" + exe,
+            "8-9-0": vupdater_path / "Transition-V8-9-0-to-V9-0-0" + exe,
+            "9-0-0": vupdater_path / "Transition-V9-0-0-to-V9-1-0" + exe,
+            "9-1-0": vupdater_path / "Transition-V9-1-0-to-V9-2-0" + exe,
         }
 
         # check the file version, if it corresponds to the latest version found on
         # the machine, means its already upgraded to the correct version. Return it.
         if versionid == to_version:
-            # if file version and to_veersion are the same, we don't need to
+            # if file version and to_version are the same, we don't need to
             # perform transition
             log(
                 'file {} already upgraded to latest version "{}"'.format(

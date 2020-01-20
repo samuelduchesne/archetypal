@@ -46,7 +46,7 @@ install:
   - cmd: curl -SLO %ENERGYPLUS_DOWNLOAD_URL%
   
   - cmd: ECHO Installing EnergyPlus...
-  - ps: "& $env:ENERGYPLUS_DOWNLOAD_FILENAME /S | Out-Null"
+  - ps: "& $env:ENERGYPLUS_DOWNLOAD_FILENAME.%env:EXT /S | Out-Null"
   - cmd: ECHO Done
   
     # Install additional material

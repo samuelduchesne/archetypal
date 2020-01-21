@@ -655,6 +655,7 @@ def _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules):
     log("Saving yearly schedules in CSV file...")
     idf_file = Path(idf_file)
     df_sched = pd.DataFrame()
+    schedule_names.sort()
     for schedule_name in schedule_names:
         df_sched[schedule_name] = schedules[schedule_name]["all values"]
     sched_file_name = "yearly_schedules_" + idf_file.basename().stripext() + ".csv"

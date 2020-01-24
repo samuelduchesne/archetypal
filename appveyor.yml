@@ -62,7 +62,7 @@ install:
   - ECHO Installing older conversion files from...
   - ECHO %EXTRAS_DOWNLOAD_URL%
   - ps: $wc = New-Object net.webclient
-  - ps: $wc.Downloadfile("$env:EXTRAS_DOWNLOAD_URL", "$env:TMP\\ATTCHNUM.qs")
+  - ps: $wc.Downloadfile("$env:EXTRAS_DOWNLOAD_URL", "$env:TMP\\ATTCHNUM")
   
   - cmd: SET DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater
   - cmd: ECHO Extracting and Copying files to...

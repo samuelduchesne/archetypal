@@ -42,10 +42,16 @@ install:
   
   - ECHO Downloading EnergyPlus at...
   - ECHO %ENERGYPLUS_DOWNLOAD_URL%
-  - ps: "curl $env:ENERGYPLUS_DOWNLOAD_URL -OutFile $env:TMP\\$env:ENERGYPLUS_DOWNLOAD_FILENAME"
+  - ps: "$wc = New-Object net.webclient"
+  - ps: $wc.Downloadfile("$env:ENERGYPLUS_DOWNLOAD_URL", "$env:TMP\\$env:ENERGYPLUS_DOWNLOAD_FILENAME")
+  
+  # getting install script for silent install
+  - ps: $env:INSTALLSCRIPT_URL = "https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs"
+  - ps: $wc = New-Object net.webclient
+  - ps: $wc.Downloadfile("$env:INSTALLSCRIPT_URL", "$env:TMP\\install_script.qs")
   - ECHO Installing EnergyPlus...
-  - ps: "& $env:TMP\\$env:ENERGYPLUS_DOWNLOAD_FILENAME /S | Out-Null"
-  - cmd: ECHO Done
+  - ps: $command = "$env:TMP\\$env:ENERGYPLUS_DOWNLOAD_FILENAME --verbose --script install_script.qs"
+  - ps: iex $command
   
     # Install additional material
   - ECHO Installing additional files...

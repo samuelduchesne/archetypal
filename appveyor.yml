@@ -49,8 +49,7 @@ install:
   - ps: $env:INSTALLSCRIPT_URL = "https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs"
   - ps: $wc = New-Object net.webclient
   - ps: $wc.Downloadfile("$env:INSTALLSCRIPT_URL", "$env:TMP\\install_script.qs")
-  - ECHO Installing EnergyPlus...
-  - ps: $command = "$env:TMP\\$env:ENERGYPLUS_DOWNLOAD_FILENAME --verbose --script $env:TMP\\install_script.qs"
+  - ps: $command = "$env:TMP\$env:ENERGYPLUS_DOWNLOAD_FILENAME --verbose --script $env:TMP\install_script.qs"
   - ps: iex $command
   
     # Install additional material
@@ -62,7 +61,7 @@ install:
   - ECHO Installing older conversion files from...
   - ECHO %EXTRAS_DOWNLOAD_URL%
   - ps: $wc = New-Object net.webclient
-  - ps: $wc.Downloadfile("$env:EXTRAS_DOWNLOAD_URL", "$env:TMP\\ATTCHNUM")
+  - ps: $wc.Downloadfile("$env:EXTRAS_DOWNLOAD_URL", "$env:TMP\ATTCHNUM")
   
   - cmd: SET DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater
   - cmd: ECHO Extracting and Copying files to...

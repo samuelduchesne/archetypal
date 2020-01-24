@@ -36,24 +36,24 @@ install:
   - ps: "ls \"C:/Program Files/Microsoft SDKs/Windows\""
     
   # install EnergyPlus
-  - SET ENERGYPLUS_DOWNLOAD_BASE_URL = https://github.com/NREL/EnergyPlus/releases/download/v%ENERGYPLUS_VERSION%
-  - SET ENERGYPLUS_DOWNLOAD_FILENAME = EnergyPlus-%ENERGYPLUS_VERSION%-%ENERGYPLUS_SHA%-%PLATFORM%-%ARCHITECTURE%.%EXT%
-  - SET ENERGYPLUS_DOWNLOAD_URL = %ENERGYPLUS_DOWNLOAD_BASE_URL%/%ENERGYPLUS_DOWNLOAD_FILENAME%
+  - SET ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v%ENERGYPLUS_VERSION%
+  - SET ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-%ENERGYPLUS_VERSION%-%ENERGYPLUS_SHA%-%PLATFORM%-%ARCHITECTURE%.%EXT%
+  - SET ENERGYPLUS_DOWNLOAD_URL=%ENERGYPLUS_DOWNLOAD_BASE_URL%/%ENERGYPLUS_DOWNLOAD_FILENAME%
   
   - ECHO Downloading EnergyPlus at...
   - ECHO %ENERGYPLUS_DOWNLOAD_URL%
   - curl -SLO %ENERGYPLUS_DOWNLOAD_URL% -O %TMP%\%ENERGYPLUS_DOWNLOAD_FILENAME%
   
   # getting install script for silent install
-  - SET INSTALLSCRIPT_URL = "https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs"
-  - curl -SLO %INSTALLSCRIPT_URL% -O %TMP%\install_script.qs
-  - cmd: & %TMP%\%ENERGYPLUS_DOWNLOAD_FILENAME% --verbose --script %TMP%\install_script.qs
+  - "SET INSTALLSCRIPT_URL=https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs"
+  - "curl -SLO %INSTALLSCRIPT_URL% -O %TMP%\install_script.qs"
+  - "%TMP%\%ENERGYPLUS_DOWNLOAD_FILENAME%" --verbose --script %TMP%\install_script.qs"
   
     # Install additional material
   - ECHO Installing additional files...
-  - SET ATTCHBASE = 86
-  - SET ATTCHNUM = 8231
-  - SET EXTRAS_DOWNLOAD_URL = "http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/%ATTCHBASE%/%ATTCHNUM%"
+  - SET ATTCHBASE=86
+  - SET ATTCHNUM=8231
+  - SET EXTRAS_DOWNLOAD_URL="http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/%ATTCHBASE%/%ATTCHNUM%"
   
   - ECHO Installing older conversion files from...
   - ECHO %EXTRAS_DOWNLOAD_URL%

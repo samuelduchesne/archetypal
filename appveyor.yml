@@ -36,18 +36,18 @@ install:
   - ps: "ls \"C:/Program Files/Microsoft SDKs/Windows\""
     
   # install EnergyPlus
-  - SET ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v%ENERGYPLUS_VERSION%
-  - SET ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-%ENERGYPLUS_VERSION%-%ENERGYPLUS_SHA%-%PLATFORM%-%ARCHITECTURE%.%EXT%
-  - SET ENERGYPLUS_DOWNLOAD_URL=%ENERGYPLUS_DOWNLOAD_BASE_URL%/%ENERGYPLUS_DOWNLOAD_FILENAME%
+  - cmd: SET ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v%ENERGYPLUS_VERSION%
+  - cmd: SET ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-%ENERGYPLUS_VERSION%-%ENERGYPLUS_SHA%-%PLATFORM%-%ARCHITECTURE%.%EXT%
+  - cmd: SET ENERGYPLUS_DOWNLOAD_URL=%ENERGYPLUS_DOWNLOAD_BASE_URL%/%ENERGYPLUS_DOWNLOAD_FILENAME%
   
-  - ECHO Downloading EnergyPlus at...
-  - ECHO %ENERGYPLUS_DOWNLOAD_URL%
-  - curl -SLO %ENERGYPLUS_DOWNLOAD_URL% -O %TMP%\%ENERGYPLUS_DOWNLOAD_FILENAME%
+  - cmd: ECHO Downloading EnergyPlus at...
+  - cmd: ECHO %ENERGYPLUS_DOWNLOAD_URL%
+  - cmd: curl -SLO %ENERGYPLUS_DOWNLOAD_URL% -O %TMP%\%ENERGYPLUS_DOWNLOAD_FILENAME%
   
   # getting install script for silent install
-  - "SET INSTALLSCRIPT_URL=https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs"
-  - "curl -SLO %INSTALLSCRIPT_URL% -O %TMP%\install_script.qs"
-  - "%TMP%\%ENERGYPLUS_DOWNLOAD_FILENAME%" --verbose --script %TMP%\install_script.qs"
+  - cmd: SET INSTALLSCRIPT_URL=https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs
+  - cmd: curl -SLO %INSTALLSCRIPT_URL% -O %TMP%\install_script.qs
+  - cmd: & %TMP%\%ENERGYPLUS_DOWNLOAD_FILENAME%" --verbose --script %TMP%\install_script.qs
   
     # Install additional material
   - ECHO Installing additional files...

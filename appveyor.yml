@@ -62,7 +62,9 @@ install:
   - SET DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater
   - ECHO Extracting and Copying files to...
   - ECHO %DEST%
-  - tar xvf %ATTCHNUM% -C %DEST%
+  - ps: $env:ATTCHNUM=8231
+  - ps: $env:DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater
+  - ps: Expand-Archive -Path $env:ATTCHNUM -DestinationPath $env:DEST
   - DEL /s %ATTCHNUM%
   
   - ECHO Succesfully installed EnergyPlus and conversion files

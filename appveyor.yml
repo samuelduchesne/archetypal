@@ -63,7 +63,7 @@ install:
   - ECHO Extracting and Copying files to...
   - ECHO %DEST%
   - ps: $env:ATTCHNUM=8231
-  - ps: $env:DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater
+  - ps: $env:DEST=C:\EnergyPlusV$env:ENERGYPLUS_INSTALL_VERSION\PreProcess\IDFVersionUpdater
   - ps: Expand-Archive -Path $env:ATTCHNUM -DestinationPath $env:DEST
   - DEL /s %ATTCHNUM%
   

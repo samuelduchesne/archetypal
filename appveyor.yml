@@ -46,8 +46,8 @@ install:
   
   # getting install script for silent install
   - cmd: SET INSTALLSCRIPT_URL=https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs
-  - cmd: "curl -SLO %INSTALLSCRIPT_URL% -O %TMP%\\install_script.qs"
-  - cmd: "%ENERGYPLUS_DOWNLOAD_FILENAME% --verbose --script %TMP%\\install_script.qs"
+  - cmd: "curl -SLO %INSTALLSCRIPT_URL%"
+  - cmd: "%ENERGYPLUS_DOWNLOAD_FILENAME% --verbose --script install_script.qs"
   
     # Install additional material
   - ECHO Installing additional files...

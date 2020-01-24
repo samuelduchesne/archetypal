@@ -61,13 +61,14 @@ install:
   
   - ECHO Installing older conversion files from...
   - ECHO %EXTRAS_DOWNLOAD_URL%
-  - ps: "curl -SLO $env:EXTRAS_DOWNLOAD_URL"
+  - ps: $wc = New-Object net.webclient
+  - ps: $wc.Downloadfile("$env:EXTRAS_DOWNLOAD_URL", "$env:TMP\\ATTCHNUM.qs")
   
   - cmd: SET DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater
   - cmd: ECHO Extracting and Copying files to...
   - cmd: ECHO %DEST%
-  - cmd: tar xvf %ATTCHNUM% -C %DEST%
-  - cmd: DEL /s %ATTCHNUM%
+  - cmd: tar xvf %TMP%\%ATTCHNUM% -C %DEST%
+  - cmd: DEL /s %TMP%\%ATTCHNUM%
   
   - cmd: ECHO Succesfully installed EnergyPlus and conversion files
 

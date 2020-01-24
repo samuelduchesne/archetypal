@@ -36,26 +36,27 @@ install:
   - ps: "ls \"C:/Program Files/Microsoft SDKs/Windows\""
     
   # install EnergyPlus
-  - cmd: SET ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v%ENERGYPLUS_VERSION%
-  - cmd: SET ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-%ENERGYPLUS_VERSION%-%ENERGYPLUS_SHA%-%PLATFORM%-%ARCHITECTURE%.%EXT%
-  - cmd: SET ENERGYPLUS_DOWNLOAD_URL=%ENERGYPLUS_DOWNLOAD_BASE_URL%/%ENERGYPLUS_DOWNLOAD_FILENAME%
+  - ps: $env:ENERGYPLUS_DOWNLOAD_BASE_URL = "https://github.com/NREL/EnergyPlus/releases/download/v$env:ENERGYPLUS_VERSION"
+  - ps: $env:ENERGYPLUS_DOWNLOAD_FILENAME = "EnergyPlus-$env:ENERGYPLUS_VERSION-$env:ENERGYPLUS_SHA-$env:PLATFORM-$env:ARCHITECTURE.$env:EXT"
+  - ps: $env:ENERGYPLUS_DOWNLOAD_URL = "$env:ENERGYPLUS_DOWNLOAD_BASE_URL/$env:ENERGYPLUS_DOWNLOAD_FILENAME"
   
-  - cmd: ECHO Downloading EnergyPlus at...
-  - cmd: ECHO %ENERGYPLUS_DOWNLOAD_URL%
-  - cmd: curl -SLO %ENERGYPLUS_DOWNLOAD_URL%
+  - ECHO Downloading EnergyPlus at...
+  - ECHO %ENERGYPLUS_DOWNLOAD_URL%
+  - ps: "curl -SLO $env:ENERGYPLUS_DOWNLOAD_URL -OutFile $env:TMP\\$env:ENERGYPLUS_DOWNLOAD_FILENAME"
   
-  - cmd: ECHO Installing EnergyPlus...
-  - cmd: "%ENERGYPLUS_DOWNLOAD_FILENAME% /S"
+  - ECHO Installing EnergyPlus...
+  - ps: "& $env:TMP\\$env:ENERGYPLUS_DOWNLOAD_FILENAME /S | Out-Null"
   - cmd: ECHO Done
   
     # Install additional material
-  - cmd: SET ATTCHBASE=86
-  - cmd: SET ATTCHNUM=8231
-  - cmd: SET EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/%ATTCHBASE%/%ATTCHNUM%
+  - ECHO Installing additional files...
+  - ps: $env:ATTCHBASE = 86
+  - ps: $env:ATTCHNUM = 8231
+  - ps: $env:EXTRAS_DOWNLOAD_URL = "http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/$env:ATTCHBASE/$env:ATTCHNUM"
   
-  - cmd: ECHO Installing older conversion files from...
-  - cmd: ECHO %EXTRAS_DOWNLOAD_URL%
-  - cmd: curl -SLO %EXTRAS_DOWNLOAD_URL%
+  - ECHO Installing older conversion files from...
+  - ECHO %EXTRAS_DOWNLOAD_URL%
+  - ps: "curl -SLO $env:EXTRAS_DOWNLOAD_URL"
   
   - cmd: SET DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater
   - cmd: ECHO Extracting and Copying files to...

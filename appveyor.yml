@@ -36,42 +36,38 @@ install:
   - ps: "ls \"C:/Program Files/Microsoft SDKs/Windows\""
     
   # install EnergyPlus
-  - ps: $env:ENERGYPLUS_DOWNLOAD_BASE_URL = "https://github.com/NREL/EnergyPlus/releases/download/v$env:ENERGYPLUS_VERSION"
-  - ps: $env:ENERGYPLUS_DOWNLOAD_FILENAME = "EnergyPlus-$env:ENERGYPLUS_VERSION-$env:ENERGYPLUS_SHA-$env:PLATFORM-$env:ARCHITECTURE.$env:EXT"
-  - ps: $env:ENERGYPLUS_DOWNLOAD_URL = "$env:ENERGYPLUS_DOWNLOAD_BASE_URL/$env:ENERGYPLUS_DOWNLOAD_FILENAME"
+  - %ENERGYPLUS_DOWNLOAD_BASE_URL% = "https://github.com/NREL/EnergyPlus/releases/download/v%ENERGYPLUS_VERSION%"
+  - %ENERGYPLUS_DOWNLOAD_FILENAME% = "EnergyPlus-%ENERGYPLUS_VERSION%-%ENERGYPLUS_SHA%-%PLATFORM%-%ARCHITECTURE%.%EXT%"
+  - %ENERGYPLUS_DOWNLOAD_URL% = "%ENERGYPLUS_DOWNLOAD_BASE_URL%/%ENERGYPLUS_DOWNLOAD_FILENAME%"
   
   - ECHO Downloading EnergyPlus at...
   - ECHO %ENERGYPLUS_DOWNLOAD_URL%
-  - ps: "$wc = New-Object net.webclient"
-  - ps: $wc.Downloadfile("$env:ENERGYPLUS_DOWNLOAD_URL", "$env:TMP\\$env:ENERGYPLUS_DOWNLOAD_FILENAME")
+  - curl -SLO %ENERGYPLUS_DOWNLOAD_URL% -O %TMP%\%ENERGYPLUS_DOWNLOAD_FILENAME%
   
   # getting install script for silent install
-  - ps: $env:INSTALLSCRIPT_URL = "https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs"
-  - ps: $wc = New-Object net.webclient
-  - ps: $wc.Downloadfile("$env:INSTALLSCRIPT_URL", "$env:TMP\\install_script.qs")
-  - ps: $command = "$env:TMP\$env:ENERGYPLUS_DOWNLOAD_FILENAME --verbose --script $env:TMP\install_script.qs"
-  - ps: iex $command
+  - %INSTALLSCRIPT_URL% = "https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs"
+  - curl -SLO %INSTALLSCRIPT_URL% -O %TMP%\install_script.qs
+  - %TMP%\%ENERGYPLUS_DOWNLOAD_FILENAME% --verbose --script %TMP%\install_script.qs"
   
     # Install additional material
   - ECHO Installing additional files...
-  - ps: $env:ATTCHBASE = 86
-  - ps: $env:ATTCHNUM = 8231
-  - ps: $env:EXTRAS_DOWNLOAD_URL = "http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/$env:ATTCHBASE/$env:ATTCHNUM"
+  - %ATTCHBASE% = 86
+  - %ATTCHNUM% = 8231
+  - %EXTRAS_DOWNLOAD_URL% = "http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/%ATTCHBASE%/%ATTCHNUM%"
   
   - ECHO Installing older conversion files from...
   - ECHO %EXTRAS_DOWNLOAD_URL%
-  - ps: $wc = New-Object net.webclient
-  - ps: $wc.Downloadfile("$env:EXTRAS_DOWNLOAD_URL", "$env:TMP\ATTCHNUM")
+  - curl -SLO %EXTRAS_DOWNLOAD_URL% -O %TMP%\%ATTCHNUM%
   
-  - cmd: SET DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater
-  - cmd: ECHO Extracting and Copying files to...
-  - cmd: ECHO %DEST%
-  - cmd: tar xvf %TMP%\%ATTCHNUM% -C %DEST%
-  - cmd: DEL /s %TMP%\%ATTCHNUM%
+  - SET DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater
+  - ECHO Extracting and Copying files to...
+  - ECHO %DEST%
+  - tar xvf %TMP%\%ATTCHNUM% -C %DEST%
+  - DEL /s %TMP%\%ATTCHNUM%
   
-  - cmd: ECHO Succesfully installed EnergyPlus and conversion files
+  - ECHO Succesfully installed EnergyPlus and conversion files
 
-  - ps: echo $env:PYTHON
+  - ECHO %PYTHON%
 
   # install archetypal
   - "pip install .[dev]"

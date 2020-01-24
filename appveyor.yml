@@ -1,24 +1,24 @@
 build: false
 environment:
   matrix:
-  - PYTHON: C:\\Python37
+  - PYTHON: "C:\\Python37"
     PYTHONVERSION: 3.7
-    PLATFORM: Windows
-    ARCHITECTURE: i386
-    MINICONDA: C:\\Miniconda37
-    ENERGYPLUS_VERSION: 9.2.0
-    ENERGYPLUS_INSTALL_VERSION: 9-2-0
-    ENERGYPLUS_SHA: 921312fa1d
-    EXT: exe
-  - PYTHON: C:\\Python37-x64
+    PLATFORM: "Windows"
+    ARCHITECTURE: "i386"
+    MINICONDA: "C:\\Miniconda37"
+    ENERGYPLUS_VERSION: "9.2.0"
+    ENERGYPLUS_INSTALL_VERSION: "9-2-0"
+    ENERGYPLUS_SHA: "921312fa1d"
+    EXT: "exe"
+  - PYTHON: "C:\\Python37-x64"
     PYTHONVERSION: 3.7
-    PLATFORM: Windows
-    ARCHITECTURE: x86_64
-    MINICONDA: C:\\Miniconda37-x64
-    ENERGYPLUS_VERSION: 9.2.0
-    ENERGYPLUS_INSTALL_VERSION: 9-2-0
-    ENERGYPLUS_SHA: 921312fa1d
-    EXT: exe
+    PLATFORM: "Windows"
+    ARCHITECTURE: "x86_64"
+    MINICONDA: "C:\\Miniconda37-x64"
+    ENERGYPLUS_VERSION: "9.2.0"
+    ENERGYPLUS_INSTALL_VERSION: "9-2-0"
+    ENERGYPLUS_SHA: "921312fa1d"
+    EXT: "exe"
 install:
   # set up Miniconda test environment
   - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"

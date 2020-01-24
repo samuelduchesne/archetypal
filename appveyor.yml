@@ -50,7 +50,7 @@ install:
   - ps: $wc = New-Object net.webclient
   - ps: $wc.Downloadfile("$env:INSTALLSCRIPT_URL", "$env:TMP\\install_script.qs")
   - ECHO Installing EnergyPlus...
-  - ps: $command = $env:TMP\\$env:ENERGYPLUS_DOWNLOAD_FILENAME --verbose --script "$env:TMP\\install_script.qs"
+  - ps: $command = "$env:TMP\\$env:ENERGYPLUS_DOWNLOAD_FILENAME --verbose --script $env:TMP\\install_script.qs"
   - ps: iex $command
   
     # Install additional material

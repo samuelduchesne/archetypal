@@ -57,7 +57,7 @@ install:
   
   - ECHO Installing older conversion files from...
   - ECHO %EXTRAS_DOWNLOAD_URL%
-  - curl -SLO %EXTRAS_DOWNLOAD_URL%
+  - curl -SLO %EXTRAS_DOWNLOAD_URL% -o %ATTCHNUM%
   
   - SET DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater
   - ECHO Extracting and Copying files to...

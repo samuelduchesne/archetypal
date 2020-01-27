@@ -57,7 +57,7 @@ install:
   
   - ECHO Installing older conversion files from...
   - ECHO %EXTRAS_DOWNLOAD_URL%
-  - curl -SLO %EXTRAS_DOWNLOAD_URL% -o "%ATTCHNUM%.zip"
+  - curl -SL %EXTRAS_DOWNLOAD_URL% -o %ATTCHNUM%.zip
   
   - ECHO Listing all files in current directory
   - ps: ls

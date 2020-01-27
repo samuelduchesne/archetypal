@@ -1906,7 +1906,6 @@ def _run_exec(
                     failed_dir = output_directory / "failed"
                     failed_dir.mkdir_p()
                     tmp.copytree(failed_dir / output_prefix)
-                tmp.rmtree_p()
                 raise EnergyPlusProcessError(
                     cmd=cmd, idf=eplus_file.basename(), stderr=stderr_r
                 )

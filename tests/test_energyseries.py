@@ -97,8 +97,8 @@ def test_plot_3d(energy_series, kind):
 
 
 @pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
+    os.environ["CI"].lower() == "true",
+    reason="Skipping this test on CI environment.",
 )
 def test_plot_2d(energy_series):
     hl = energy_series.copy()
@@ -132,8 +132,8 @@ def from_csv(config):
 
 
 @pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
+    os.environ["CI"].lower() == "true",
+    reason="Skipping this test on CI environment.",
 )
 def test_discretize(from_csv):
     epc = from_csv.copy()

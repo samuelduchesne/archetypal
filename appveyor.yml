@@ -67,7 +67,7 @@ install:
   - ECHO %DEST%
   - ps: $env:ATTCHNUM = 8231
   - ps: $env:DEST = "C:\EnergyPlusV$env:ENERGYPLUS_INSTALL_VERSION\PreProcess\IDFVersionUpdater"
-  - ps: "Expand-Archive -Path C:\projects\archetypal\$env:ATTCHNUM.zip -DestinationPath $env:DEST"
+  - ps: "Expand-Archive -Path C:\\projects\\archetypal\\$env:ATTCHNUM.zip -DestinationPath $env:DEST"
   - DEL /s "%ATTCHNUM%.zip"
   
   - ECHO Succesfully installed EnergyPlus and conversion files

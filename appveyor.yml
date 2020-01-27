@@ -59,6 +59,9 @@ install:
   - ECHO %EXTRAS_DOWNLOAD_URL%
   - curl -SLO %EXTRAS_DOWNLOAD_URL% -o %ATTCHNUM%.zip
   
+  - ECHO Listing all files in current directory
+  - ps: ls
+  
   - SET DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater
   - ECHO Extracting and Copying files to...
   - ECHO %DEST%

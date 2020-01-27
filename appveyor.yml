@@ -74,9 +74,8 @@ install:
 
   - ECHO %PYTHON%
   
-  - curl -SLO https://download.lfd.uci.edu/pythonlibs/q4hpdf1k/Shapely-1.6.4.post2-cp37-cp37m-win_amd64.whl
-  - pip wheel Shapely-1.6.4.post2-cp37-cp37m-win_amd64.whl
-  - DEL /s Shapely-1.6.4.post2-cp37-cp37m-win_amd64.whl
+  # Install dependencies that often crash on Windows using conda
+  - conda install shapely
 
   # install archetypal
   - "pip install .[dev]"

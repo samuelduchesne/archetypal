@@ -57,15 +57,15 @@ install:
   
   - ECHO Installing older conversion files from...
   - ECHO %EXTRAS_DOWNLOAD_URL%
-  - curl -SLO %EXTRAS_DOWNLOAD_URL% -o %ATTCHNUM%
+  - curl -SLO %EXTRAS_DOWNLOAD_URL% -o %ATTCHNUM%.zip
   
   - SET DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater
   - ECHO Extracting and Copying files to...
   - ECHO %DEST%
   - ps: $env:ATTCHNUM = 8231
   - ps: $env:DEST = "C:\EnergyPlusV$env:ENERGYPLUS_INSTALL_VERSION\PreProcess\IDFVersionUpdater"
-  - ps: "Expand-Archive -Path $env:ATTCHNUM -DestinationPath $env:DEST"
-  - DEL /s %ATTCHNUM%
+  - ps: "Expand-Archive -Path $env:ATTCHNUM.zip -DestinationPath $env:DEST"
+  - DEL /s %ATTCHNUM%.zip
   
   - ECHO Succesfully installed EnergyPlus and conversion files
 

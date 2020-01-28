@@ -428,12 +428,20 @@ def test_trnbuild_idf_win32(config):
 
 
 def get_platform():
-    """Returns the MacOs release number as tuple of ints"""
+    """Returns the MacOS release number as tuple of ints"""
     import platform
 
     release, versioninfo, machine = platform.mac_ver()
     release_split = release.split(".")
-    return tuple(map(int, release_split))
+    return tuple(map(safe_int_cast, release_split))
+
+
+def safe_int_cast(val, default=0):
+    """Safely casts a value to an int"""
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return default
 
 
 @pytest.mark.darwin

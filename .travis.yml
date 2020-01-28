@@ -56,8 +56,6 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
     sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi
-  # list content of Transition files directory
-  - ls /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater
   # remove install files
   - sudo rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
   - sudo rm $ATTCHNUM.zip

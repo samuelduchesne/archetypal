@@ -38,29 +38,29 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ATTCHBASE=98; ATTCHNUM=8232; fi
   - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then ATTCHBASE=86; ATTCHNUM=8231; fi
   - EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/$ATTCHBASE/$ATTCHNUM
-  - curl -SLO $EXTRAS_DOWNLOAD_URL
+  - curl -SL $EXTRAS_DOWNLOAD_URL -o $ATTCHNUM.zip
   # install EnergyPlus
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-    curl -SLO https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs;
-    sudo hdiutil attach $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-    sudo /Volumes/$ENERGYPLUS_DOWNLOAD_FILENAME/$ENERGYPLUS_DOWNLOAD_FILENAME.app/Contents/MacOS/$ENERGYPLUS_DOWNLOAD_FILENAME --verbose --script install_script.qs; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
     sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-    sudo tar zxvf $ATTCHNUM -C /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
+    sudo tar zxvf $ATTCHNUM.zip -C /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
     sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
     sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles; fi
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-    sudo tar zxvf $ATTCHNUM -C /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
+    curl -SLO https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs;
+    sudo hdiutil attach $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
+    sudo /Volumes/$ENERGYPLUS_DOWNLOAD_FILENAME/$ENERGYPLUS_DOWNLOAD_FILENAME.app/Contents/MacOS/$ENERGYPLUS_DOWNLOAD_FILENAME --verbose --script install_script.qs;
+    sudo tar zxvf $ATTCHNUM.zip -C /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess;
     sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
-    sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles;
-    ls /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater; fi
+    sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles; fi
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
     sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi
-  # clean install files
+  # list content of Transition files directory
+  - ls /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater
+  # remove install files
   - sudo rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
-  - sudo rm $ATTCHNUM
+  - sudo rm $ATTCHNUM.zip
   
   # Install python for Linux
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then

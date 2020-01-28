@@ -310,7 +310,11 @@ def convert(
 
 @cli.command()
 @click.argument("idf", nargs=-1, type=click.Path(exists=True), required=True)
-@click.argument("output", type=click.Path(), default="myumitemplate.json")
+@click.argument(
+    "output",
+    type=click.Path(dir_okay=True, writable=True),
+    default="myumitemplate.json",
+)
 @click.option(
     "--weather",
     "-w",

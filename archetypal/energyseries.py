@@ -876,11 +876,14 @@ def plot_energyseries(
 
         # set the extent of the figure
         ax.set_xlim3d(-1, ncols)
-        ax.set_xlabel("X")
+        ax.set_xlabel(kwargs.get("xlabel", "hour of day"))
         ax.set_ylim3d(-1, nrows)
-        ax.set_ylabel("Y")
+        ax.set_ylabel(kwargs.get("ylabel", "day of year"))
         ax.set_zlim3d(vmin, vmax)
-        z_label = energy_series.name if energy_series.name is not None else "Z"
+        z_label = "{} [{:~P}]".format(
+            energy_series.name if energy_series.name is not None else "Z",
+            energy_series.units,
+        )
         ax.set_zlabel(z_label)
 
         # configure axis appearance

@@ -1,6 +1,7 @@
 import os
 
 import pytest
+
 from archetypal import Schedule, load_idf, copy_file, run_eplus, UmiSchedule, config
 
 
@@ -78,40 +79,6 @@ schedules = [
     else schedule
     for schedule in schedules
 ]
-
-
-def test_ep_versus_schedule(test_data):
-    """Main test. Will run the idf using EnergyPlus, retrieve the csv file,
-    create the schedules and compare"""
-
-    orig, new, expected = test_data
-
-    # slice_ = ('2018/01/01 00:00', '2018/01/08 00:00')  # first week
-    # slice_ = ('2018/05/20 12:00', '2018/05/22 12:00')
-    slice_ = ("2018/04/30 12:00", "2018/05/02 12:00")  # Holiday
-    # slice_ = ('2018/01/01 00:00', '2018/12/31 23:00')  # all year
-    # slice_ = ('2018/04/30 12:00', '2018/05/01 12:00')  # break
-
-    mask = expected.values != orig.all_values
-    diff = mask.sum()
-
-    # # region Plot
-    # fig, ax = plt.subplots(1, 1, figsize=(5, 4))
-    # orig.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post',
-    #           linestyle='dashed')
-    # new.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post',
-    #          linestyle='dotted')
-    # expected.loc[slice_[0]:slice_[1]].plot(label='E+', legend=True, ax=ax,
-    #                                        drawstyle='steps-post',
-    #                                        linestyle='dashdot')
-    # ax.set_title(orig.Name.capitalize())
-    # plt.show()
-    # # endregion
-
-    print(diff)
-    print(orig.series[mask])
-    assert (orig.all_values[0 : 52 * 7 * 24] == expected[0 : 52 * 7 * 24]).all()
-    assert (new.all_values[0 : 52 * 7 * 24] == expected[0 : 52 * 7 * 24]).all()
 
 
 @pytest.fixture(params=schedules, ids=ids)

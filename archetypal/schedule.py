@@ -9,6 +9,7 @@ import functools
 import logging as lg
 import tempfile
 from datetime import datetime, timedelta
+from itertools import groupby
 
 import numpy as np
 import pandas as pd
@@ -46,6 +47,7 @@ class Schedule(object):
             base_year (int): The base year of the schedule. Defaults to 2018
                 since the first day of that year is a Monday.
             schType (str): The EnergyPlus schedule type. eg.: "Schedule:Year"
+            schTypeLimitsName:
             values:
             **kwargs:
         """
@@ -789,7 +791,6 @@ class Schedule(object):
             sched_epbunch (EpBunch): the schedule epbunch object
             start_date:
             index:
-            sch_type:
         """
         if self.count == 0:
             # This is the first time, get the schedule type and the type limits.
@@ -911,17 +912,13 @@ class Schedule(object):
                         dict_week[week_id]["day_{}".format(i)] = key
 
         # Create idf_objects for schedule:week:daily
-        list_day_of_week = [
-            "Sunday",
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-        ]
-        ordered_day_n = np.array([6, 0, 1, 2, 3, 4, 5])
-        ordered_day_n = np.roll(ordered_day_n, self.startDayOfTheWeek)
+        # We use the calendar module to set the week days order
+        import calendar
+
+        # initialize the calendar object
+        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
+
+        # Create ep_weeks list and iterate over dict_week
         ep_weeks = []
         for week_id in dict_week:
             ep_week = self.idf.add_object(
@@ -930,10 +927,10 @@ class Schedule(object):
                 **dict(
                     Name=week_id,
                     **{
-                        "{}_ScheduleDay_Name".format(weekday): dict_week[week_id][
-                            "day_{}".format(i)
-                        ]
-                        for i, weekday in zip(ordered_day_n, list_day_of_week)
+                        "{}_ScheduleDay_Name".format(
+                            calendar.day_name[day_num]
+                        ): dict_week[week_id]["day_{}".format(day_num)]
+                        for day_num in c.iterweekdays()
                     },
                     Holiday_ScheduleDay_Name=dict_week[week_id]["day_6"],
                     SummerDesignDay_ScheduleDay_Name=dict_week[week_id]["day_1"],
@@ -944,17 +941,13 @@ class Schedule(object):
             )
             ep_weeks.append(ep_week)
 
-        import itertools
-
         blocks = {}
         from_date = datetime(self.year, 1, 1)
-        bincount = [
-            sum(1 for _ in group) for key, group in itertools.groupby(nws + 1) if key
-        ]
+        bincount = [sum(1 for _ in group) for key, group in groupby(nws + 1) if key]
         week_order = {
             i: v
             for i, v in enumerate(
-                np.array([key for key, group in itertools.groupby(nws + 1) if key]) - 1
+                np.array([key for key, group in groupby(nws + 1) if key]) - 1
             )
         }
         for i, (week_n, count) in enumerate(zip(week_order, bincount)):
@@ -1289,13 +1282,16 @@ class Schedule(object):
             date = self._date_field_interpretation(date)
             return lambda x: x.index == date
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, quantity=None):
         """Combine two schedule objects together.
 
         Args:
             other (Schedule): the other Schedule object to combine with.
             weights (list-like, optional): A list-like object of len 2. If None,
                 equal weights are used.
+            quantity: scalar value that will be multiplied by self before the
+                averaging occurs. This ensures that the resulting schedule
+                returns the correct integrated value.
 
         Returns:
             (Schedule): the combined Schedule object.

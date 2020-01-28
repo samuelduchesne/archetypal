@@ -376,30 +376,37 @@ def do_natural_ventilation(index, nat_df, zone):
             IsNatVentOn = any(nat_df.loc[index, "Name"])
             schedule_name_ = nat_df.loc[index, "Schedule Name"]
             NatVentSchedule = archetypal.UmiSchedule(Name=schedule_name_, idf=zone.idf)
-            NatVentMaxRelHumidity = 90  # todo: not sure if it is being used
-            NatVentMaxOutdoorAirTemp = resolve_temp(
-                nat_df.loc[index, "Maximum " "Outdoor " "Temperature{" "C}/Schedule"],
-                zone.idf,
-            )
-            NatVentMinOutdoorAirTemp = resolve_temp(
-                nat_df.loc[index, "Minimum " "Outdoor " "Temperature{" "C}/Schedule"],
-                zone.idf,
-            )
-            NatVentZoneTempSetpoint = resolve_temp(
-                nat_df.loc[index, "Minimum Indoor " "Temperature{" "C}/Schedule"],
-                zone.idf,
-            )
-        except:
+        except KeyError:
             # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
             #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
             #  in the nat_df. For the mean time, a zone containing such an
-            #  object will revert to defaults (below).
+            #  object will be turned on with an AlwaysOn schedule.
+            IsNatVentOn = True
+            NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
+        except Exception:
             IsNatVentOn = False
             NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
-            NatVentMaxRelHumidity = 90
-            NatVentMaxOutdoorAirTemp = 30
-            NatVentMinOutdoorAirTemp = 0
-            NatVentZoneTempSetpoint = 18
+        finally:
+            try:
+                NatVentMaxRelHumidity = 90  # todo: not sure if it is being used
+                NatVentMaxOutdoorAirTemp = resolve_temp(
+                    nat_df.loc[index, "Maximum Outdoor Temperature{C}/Schedule"],
+                    zone.idf,
+                )
+                NatVentMinOutdoorAirTemp = resolve_temp(
+                    nat_df.loc[index, "Minimum Outdoor Temperature{C}/Schedule"],
+                    zone.idf,
+                )
+                NatVentZoneTempSetpoint = resolve_temp(
+                    nat_df.loc[index, "Minimum Indoor Temperature{C}/Schedule"],
+                    zone.idf,
+                )
+            except KeyError:
+                # this zone is not in the nat_df. Revert to defaults.
+                NatVentMaxRelHumidity = 90
+                NatVentMaxOutdoorAirTemp = 30
+                NatVentMinOutdoorAirTemp = 0
+                NatVentZoneTempSetpoint = 18
 
     else:
         IsNatVentOn = False
@@ -414,20 +421,8 @@ def do_natural_ventilation(index, nat_df, zone):
         IsWindOn = False
         IsBuoyancyOn = False
     else:
-        try:
-            equ_b = nat_df.loc[index, "Equation B - Temperature Term Coefficient {1/C}"]
-            if equ_b != 0:
-                IsBuoyancyOn = True
-            else:
-                IsBuoyancyOn = False
-            equ_w = nat_df.loc[index, "Equation C - Velocity Term Coefficient {s/m}"]
-            if equ_w != 0:
-                IsWindOn = True
-            else:
-                IsWindOn = False
-        except:
-            IsWindOn = False
-            IsBuoyancyOn = False
+        IsWindOn = True
+        IsBuoyancyOn = True
 
     return (
         IsNatVentOn,
@@ -630,10 +625,14 @@ def nominal_ventilation_aggregation(x):
             x["Design Volume Flow Rate {m3/s}"], x, "Zone Floor Area {m2}"
         ),
         "Volume Flow Rate/Floor Area {m3/s/m2}": weighted_mean(
-            x["Volume Flow Rate/Floor Area {m3/s/m2}"], x, "Zone Floor Area {m2}"
+            x.filter(like="Volume Flow Rate/Floor Area").squeeze(axis=1),
+            x,
+            "Zone Floor Area {m2}",
         ),
         "Volume Flow Rate/person Area {m3/s/person}": weighted_mean(
-            x["Volume Flow Rate/person Area {m3/s/person}"], x, "Zone Floor Area {m2}"
+            x.filter(like="Volume Flow Rate/person Area").squeeze(axis=1),
+            x,
+            "Zone Floor " "Area {m2}",
         ),
         "ACH - Air Changes per Hour": weighted_mean(
             x["ACH - Air Changes per Hour"], x, "Zone Floor Area {m2}"

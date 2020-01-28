@@ -116,11 +116,11 @@ def validate_trnsys_folder(trnsys_default_folder):
         if os.path.isdir(trnsys_default_folder):
             return trnsys_default_folder
         else:
-            raise ValueError(
-                "The provided TRNSYS path does not exist. Path={"
-                ". Please set the TRNSYS path with the "
-                '"--trnsys-default-folder" option}'.format(trnsys_default_folder)
+            warnings.warn(
+                "The TRNSYS path does not exist. Please set the TRNSYS "
+                "path with the --trnsys-default-folder option".format(trnsys_default_folder)
             )
+        return None
     else:
         return trnsys_default_folder
 
@@ -904,7 +904,7 @@ def warn_if_not_compatible():
 def get_eplus_basedirs():
     """Returns a list of possible E+ install paths"""
     if platform.system() == "Windows":
-        eplus_homes = Path("C:").glob("EnergyPlusV*")
+        eplus_homes = Path("C:\\").glob("EnergyPlusV*")
         return eplus_homes
     elif platform.system() == "Linux":
         eplus_homes = Path("/usr/local/").glob("EnergyPlus-*")

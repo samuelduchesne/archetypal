@@ -684,8 +684,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
             AfnDischargeC=self._float_mean(other, "AfnDischargeC", weights),
             AfnTempSetpoint=self._float_mean(other, "AfnTempSetpoint", weights),
             AfnWindowAvailability=self.AfnWindowAvailability.combine(
-                other.AfnWindowAvailability, weights
-            ),
+                other.AfnWindowAvailability, weights),
             IsShadingSystemOn=any([self.IsShadingSystemOn, other.IsShadingSystemOn]),
             IsVirtualPartition=any([self.IsVirtualPartition, other.IsVirtualPartition]),
             IsZoneMixingOn=any([self.IsZoneMixingOn, other.IsZoneMixingOn]),
@@ -704,11 +703,10 @@ class WindowSetting(UmiBase, metaclass=Unique):
             ),
             ZoneMixingFlowRate=self._float_mean(other, "ZoneMixingFlowRate", weights),
             ZoneMixingAvailabilitySchedule=self.ZoneMixingAvailabilitySchedule.combine(
-                other.ZoneMixingAvailabilitySchedule, weights
-            ),
-            ShadingSystemAvailabilitySchedule=self.ShadingSystemAvailabilitySchedule.combine(
-                other.ShadingSystemAvailabilitySchedule, weights
-            ),
+                other.ZoneMixingAvailabilitySchedule, weights),
+            ShadingSystemAvailabilitySchedule=self.ShadingSystemAvailabilitySchedule
+                .combine(
+                other.ShadingSystemAvailabilitySchedule, weights),
         )
         new_obj = self.__class__(**meta, **new_attr)
         new_obj._predecessors.extend(self._predecessors + other._predecessors)

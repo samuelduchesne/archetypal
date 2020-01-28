@@ -1,58 +1,97 @@
-dist: xenial
-language: python
-os: linux
-env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
+language: generic
+dist: trusty
+sudo: required
+
+env: 
+  global:
+    - ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
 
 addons:
   apt:
     packages:
       - wine
       - libgfortran3
+      
+jobs:
+  include:
+    # Linux, on master
+  - os: linux
+    dist: xenial
+    language: python
+    python: 3.7
+    env: TRAVIS_PYTHON_VERSION=3.7
+  - os: osx
+    env: TRAVIS_PYTHON_VERSION=3.7
+   
 
 before_install:
-  # install EnergyPlus
+  # download EnergyPlus
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then EXT=dmg; PLATFORM=Darwin; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then EXT=sh; PLATFORM=Linux; fi
   - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then EXT=exe; PLATFORM=Windows; fi
   - ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
   - ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-$ENERGYPLUS_VERSION-$ENERGYPLUS_SHA-$PLATFORM-x86_64
   - ENERGYPLUS_DOWNLOAD_URL=$ENERGYPLUS_DOWNLOAD_BASE_URL/$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ATTCH=97/8230; fi
-  - EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/$ATTCH
   - curl -SLO $ENERGYPLUS_DOWNLOAD_URL
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-    curl -SLO $EXTRAS_DOWNLOAD_URL; fi
-  
+  # download extras
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ATTCHBASE=97; ATTCHNUM=8230; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ATTCHBASE=98; ATTCHNUM=8232; fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then ATTCHBASE=86; ATTCHNUM=8231; fi
+  - EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/$ATTCHBASE/$ATTCHNUM
+  - curl -SLO $EXTRAS_DOWNLOAD_URL
+  # install EnergyPlus
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
     sudo hdiutil attach $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     sudo installer -pkg /Volumes/$ENERGYPLUS_DOWNLOAD_FILENAME/$ENERGYPLUS_DOWNLOAD_FILENAME.pkg -target /; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
     sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-    sudo tar zxvf 8230 -C /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
+    sudo tar zxvf $ATTCHNUM -C /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
     sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
     sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles; fi
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+    sudo tar zxvf $ATTCHNUM -C /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
+    sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
+    sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles; fi
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
     sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi
-  
+  # clean install files
   - sudo rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
-  - sudo rm 8230
+  - sudo rm $ATTCHNUM
   
-  # Install python
-  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - pip install .[dev]
+  # Install python for Linux
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+    wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+    bash miniconda.sh -b -p $HOME/miniconda;
+    export PATH="$HOME/miniconda/bin:$PATH";
+    hash -r;
+    fi
+  
+  # install python for OSX
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+    wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh;
+    bash ~/miniconda.sh -b -p $HOME/miniconda;
+    export PATH="$HOME/miniconda/bin:$PATH";
+    conda update --yes conda;
+    conda create --yes -n venv python=$TRAVIS_PYTHON_VERSION;
+    fi
+    
+  # activate environment
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then source activate venv; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+    virtualenv venv;
+    source venv/bin/activate;
+    fi
+  - python --version;
 
+# Main script
 install:
-  - python setup.py install
-  - conda list
-
+  - pip install --upgrade setuptools
+  - pip install --upgrade pip
+  - pip install .[dev]
 script:
-  - pytest --cov=archetypal --verbose tests/
-
+  - py.test --cov=archetypal --verbose tests/
 after_success:
   - coverage report -m
   - coveralls

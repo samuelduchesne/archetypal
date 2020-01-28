@@ -427,11 +427,37 @@ def test_trnbuild_idf_win32(config):
     assert res
 
 
+def get_platform():
+    """Returns the MacOS release number as tuple of ints"""
+    import platform
+
+    release, versioninfo, machine = platform.mac_ver()
+    release_split = release.split(".")
+    return tuple(map(safe_int_cast, release_split))
+
+
+def safe_int_cast(val, default=0):
+    """Safely casts a value to an int"""
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return default
+
+
 @pytest.mark.darwin
 @pytest.mark.linux
-@pytest.mark.xfail(
+@pytest.mark.skipif(
     "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
     reason="Skipping this test on Travis CI.",
+)
+@pytest.mark.xfail(
+    not Path("docker/trnsidf/trnsidf.exe").exists(),
+    reason="xfail since trnsidf.exe is not installed. This test can work if the "
+    "trnsidf.exe is copied in ./docker/trnsidf",
+)
+@pytest.mark.skipif(
+    get_platform() > (10, 15, 0),
+    reason="Skipping since wine 32bit can't run on MacOs >10.15 (Catalina)",
 )
 def test_trnbuild_idf_darwin_or_linux(config):
     idf_file = "tests/input_data/trnsys/Building.idf"

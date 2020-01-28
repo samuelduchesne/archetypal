@@ -2444,10 +2444,8 @@ def find_eplus_installs(iddfile):
     # check if any EnergyPlus install exists
     if not list_eplus_dir:
         raise Exception(
-            "No EnergyPlus installation found. Make sure "
-            "you have EnergyPlus installed. Go to "
-            "https://energyplus.net/downloads to download the "
-            "latest version of EnergyPlus."
+            "No EnergyPlus installation found. Make sure you have EnergyPlus installed. "
+            "Go to https://energyplus.net/downloads to download the latest version of EnergyPlus."
         )
 
     # Find the most recent version of EnergyPlus installed from the version

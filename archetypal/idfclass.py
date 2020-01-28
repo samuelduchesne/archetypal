@@ -823,7 +823,7 @@ def _eppy_load(
             )
     except FileNotFoundError:
         # Loading the idf object will raise a FileNotFoundError if the
-        # version of EnergyPlus is not included
+        # version of EnergyPlus is not installed
         log("Transitioning idf file {}".format(file))
         # if they don't fit, upgrade file
         file = idf_version_updater(file, out_dir=output_folder, to_version=ep_version)
@@ -2292,7 +2292,9 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
     if not out_dir.isdir():
         # check if dir exists
         out_dir.makedirs_p()
-    with TemporaryDirectory(prefix="transition_run_", suffix=simulname, dir=out_dir) as tmp:
+    with TemporaryDirectory(
+        prefix="transition_run_", suffix=simulname, dir=out_dir
+    ) as tmp:
         log("temporary dir (%s) created" % tmp, lg.DEBUG)
         idf_file = Path(idf_file.copy(tmp)).abspath()  # copy and return abspath
 
@@ -2376,50 +2378,44 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
 
         # Otherwise,
         # build a list of command line arguments
-        with cd(vupdater_path):
-            transitions = [
-                key
-                for key in trans_exec
-                if tuple(map(int, key.split("-")))
-                < tuple(map(int, to_version.split("-")))
-                and tuple(map(int, key.split("-")))
-                >= tuple(map(int, versionid.split("-")))
-            ]
-            for trans in transitions:
-                try:
-                    exists = Path(trans_exec[trans]).exists()
-                    if not exists:
-                        raise FileNotFoundError(
-                            errno.ENOENT,
-                            os.strerror(errno.ENOENT),
-                            Path(trans_exec[trans]),
+        try:
+            with cd(vupdater_path):
+                transitions = [
+                    key
+                    for key in trans_exec
+                    if tuple(map(int, key.split("-")))
+                    < tuple(map(int, to_version.split("-")))
+                    and tuple(map(int, key.split("-")))
+                    >= tuple(map(int, versionid.split("-")))
+                ]
+                for trans in transitions:
+                    if not trans_exec[trans].exists():
+                        raise EnergyPlusProcessError(
+                            cmd=trans_exec[trans],
+                            stderr="The specified EnergyPlus version (v{}) does not have"
+                            " the required transition program '{}' in the "
+                            "PreProcess folder. See the documentation "
+                            "(archetypal.readthedocs.io/troubleshooting.html#missing-transition-programs) "
+                            "to solve this issue".format(to_version, trans_exec[trans]),
+                            idf=idf_file.basename()
                         )
-                except KeyError:
-                    # there is no more updates to perfrom
-                    result = 0
-                except FileNotFoundError:
-                    raise EnergyPlusProcessError(
-                        cmd=trans_exec[trans],
-                        stderr="The specified EnergyPlus version (v{}) does not have the"
-                        " required transition program '{}' in the PreProcess folder. "
-                        "See the documentation (archetypal.readthedocs.io/troubleshooting.html#missing-transition-programs) to solve "
-                        "this issue".format(to_version, trans_exec[trans]),
-                    )
-                else:
-                    cmd = [trans_exec[trans], idf_file]
-                    try:
-                        process = subprocess.Popen(
-                            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-                        )
-                        process_output, error_output = process.communicate()
-                        log(process_output.decode("utf-8"), lg.DEBUG)
-                    except CalledProcessError as exception:
-                        log(
-                            "{} failed with error\n".format(
-                                idf_version_updater.__name__, str(exception)
-                            ),
-                            lg.ERROR,
-                        )
+                    else:
+                        cmd = [trans_exec[trans], idf_file]
+                        try:
+                            process = subprocess.Popen(
+                                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+                            )
+                            process_output, error_output = process.communicate()
+                            log(process_output.decode("utf-8"), lg.DEBUG)
+                        except CalledProcessError as exception:
+                            log(
+                                "{} failed with error\n".format(
+                                    idf_version_updater.__name__, str(exception)
+                                ),
+                                lg.ERROR,
+                            )
+        except EnergyPlusProcessError as e:
+            raise e
         for f in Path(tmp).files("*.idfnew"):
             f.copy(out_dir / idf_file.basename())
         return Path(out_dir / idf_file.basename())

@@ -118,7 +118,9 @@ def validate_trnsys_folder(trnsys_default_folder):
         else:
             warnings.warn(
                 "The TRNSYS path does not exist. Please set the TRNSYS "
-                "path with the --trnsys-default-folder option".format(trnsys_default_folder)
+                "path with the --trnsys-default-folder option".format(
+                    trnsys_default_folder
+                )
             )
         return None
     else:
@@ -647,22 +649,17 @@ def copy_file(files, where=None):
     return _unpack_tuple(list(files.values()))
 
 
-class Error(Exception):
-    """Base class for exceptions in this module."""
-
-    pass
-
-
-class EnergyPlusProcessError(Error):
+class EnergyPlusProcessError(Exception):
     """EnergyPlus Process call error"""
 
-    def __init__(self, cmd, stderr, idf=None):
+    def __init__(self, cmd, stderr, idf):
         """
         Args:
             cmd:
             stderr:
             idf:
         """
+        super().__init__(stderr)
         self.cmd = cmd
         self.idf = idf
         self.stderr = stderr
@@ -673,10 +670,11 @@ class EnergyPlusProcessError(Error):
         return msg
 
 
-class EnergyPlusVersionError(Error):
+class EnergyPlusVersionError(Exception):
     """EnergyPlus Version call error"""
 
     def __init__(self, idf_file, idf_version, ep_version):
+        super(EnergyPlusVersionError, self).__init__(None)
         self.idf_file = idf_file
         self.idf_version = idf_version
         self.ep_version = ep_version
@@ -711,8 +709,6 @@ def cd(path):
     log("inside {0}".format(os.getcwd()))
     try:
         yield
-    except:
-        log("Exception caught: ", sys.exc_info()[0])
     finally:
         os.chdir(CWD)
         log("finally inside {0}".format(os.getcwd()))

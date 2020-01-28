@@ -53,7 +53,8 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
     sudo tar zxvf $ATTCHNUM -C /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
     sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
-    sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles; fi
+    sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles;
+    ls /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater; fi
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
     sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi

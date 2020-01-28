@@ -41,8 +41,10 @@ before_install:
   - curl -SLO $EXTRAS_DOWNLOAD_URL
   # install EnergyPlus
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+    INSTALLSCRIPT_URL=https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs;
+    curl -SLO %INSTALLSCRIPT_URL;
     sudo hdiutil attach $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-    sudo installer -pkg /Volumes/$ENERGYPLUS_DOWNLOAD_FILENAME/$ENERGYPLUS_DOWNLOAD_FILENAME.pkg -target /; fi
+    sudo /Volumes/$ENERGYPLUS_DOWNLOAD_FILENAME/$ENERGYPLUS_DOWNLOAD_FILENAME.app/Contents/MacOS/$ENERGYPLUS_DOWNLOAD_FILENAME --verbose --script install_script.qs; fi
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
     sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
     echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;

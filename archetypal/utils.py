@@ -913,8 +913,8 @@ def get_eplus_basedirs():
         return eplus_homes
     else:
         warnings.warn(
-            "Archetypal is not compatuble with %s. It is only compatible "
-            "with Winodws, Linux or MacOs" % platform.system()
+            "Archetypal is not compatible with %s. It is only compatible "
+            "with Windows, Linux or MacOs" % platform.system()
         )
 
 

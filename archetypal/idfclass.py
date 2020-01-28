@@ -826,7 +826,9 @@ def _eppy_load(
         # if they don't fit, upgrade file
         file = idf_version_updater(file, out_dir=output_folder, to_version=ep_version)
         idd_filename = getiddfile(get_idf_version(file))
-        IDF.iddname = idd_filename
+        # Initiate an eppy.modeleditor.IDF object
+        IDF.setiddname(idd_filename, testing=True)
+        # load the idf object
         idf_object = IDF(file, epw=epw)
     else:
         # the versions fit, great!

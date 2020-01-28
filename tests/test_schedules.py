@@ -2,13 +2,21 @@ import os
 
 import pytest
 
-from archetypal import Schedule, load_idf, copy_file, run_eplus, UmiSchedule, config
+from archetypal import (
+    Schedule,
+    load_idf,
+    copy_file,
+    run_eplus,
+    UmiSchedule,
+    config,
+    get_eplus_dirs,
+    settings,
+)
 
 
 def test_schedules_in_necb_specific(config):
     files = [
-        "tests/input_data/regular/NECB 2011-MediumOffice-NECB HDD "
-        "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
     ]
     idfs = {os.path.basename(file): load_idf(file) for file in files}
     import matplotlib.pyplot as plt
@@ -58,7 +66,13 @@ idf_file = "tests/input_data/schedules/test_multizone_EP.idf"
 def schedules_idf():
     config(cache_folder="tests/.temp/cache")
     idf = load_idf(
-        idf_file, include=["tests/input_data/schedules/TDV_2008_kBtu_CTZ06.csv"]
+        idf_file,
+        include=[
+            get_eplus_dirs(settings.ep_version)
+            / "DataSets"
+            / "TDV"
+            / "TDV_2008_kBtu_CTZ06.csv"
+        ],
     )
     return idf
 
@@ -125,7 +139,12 @@ def run_schedules_idf(config):
         weather_file="tests/input_data/CAN_PQ_Montreal.Intl.AP" ".716270_CWEC.epw",
         annual=True,
         readvars=True,
-        include=["tests/input_data/schedules/TDV_2008_kBtu_CTZ06.csv"],
+        include=[
+            get_eplus_dirs(settings.ep_version)
+            / "DataSets"
+            / "TDV"
+            / "TDV_2008_kBtu_CTZ06.csv"
+        ],
         return_files=True,
     )
     cache_dir = files[1][0].dirname()

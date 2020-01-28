@@ -1,6 +1,6 @@
 from click.testing import CliRunner
 
-from archetypal import get_eplus_dirs
+from archetypal import get_eplus_dirs, settings, copy_file, log
 from archetypal.settings import ep_version
 from archetypal.cli import cli
 from path import Path
@@ -28,18 +28,26 @@ class TestCli:
                 "tests/.temp/images",
                 "--logs-folder",
                 "tests/.temp/logs",
-                "--log-console",
                 "--ep_version",
-                "8-9-0",
+                settings.ep_version,
                 "reduce",
-                "-n",
-                "Retail",
                 "-w",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
                 "-p",
                 *test_file_list,
+                "tests/.temp/retail.json",
             ],
             catch_exceptions=False,
         )
         print(result.stdout)
+        assert result.exit_code == 0
+
+    def test_transition(self, config):
+        """Tests the transition method for the CLI"""
+        file = copy_file(
+            "tests/input_data/problematic/ASHRAE90.1_ApartmentHighRise_STD2016_Buffalo.idf"
+        )
+        runner = CliRunner()
+        result = runner.invoke(cli, ["transition", file], catch_exceptions=False)
+        log(result.stdout)
         assert result.exit_code == 0

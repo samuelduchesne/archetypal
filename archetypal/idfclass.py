@@ -13,6 +13,7 @@ import inspect
 import logging as lg
 import multiprocessing
 import os
+import platform
 import subprocess
 import time
 from collections import defaultdict
@@ -20,7 +21,7 @@ from itertools import compress
 from math import isclose
 from sqlite3 import OperationalError
 from subprocess import CalledProcessError
-from tempfile import tempdir
+from tempfile import TemporaryDirectory
 
 import eppy
 import eppy.modeleditor
@@ -41,6 +42,7 @@ from archetypal import (
     EnergySeries,
     close_logger,
     EnergyPlusVersionError,
+    get_eplus_dirs,
 )
 from archetypal.utils import _unpack_tuple
 
@@ -736,7 +738,7 @@ def load_idf(
             form (see pathlib.Path.glob).
         weather_file: Either the absolute or relative path to the weather epw
             file.
-        ep_version (str, optional): EnergyPlus version number to use, eg.: "8-9-0".
+        ep_version (str, optional): EnergyPlus version number to use, eg.: "9-2-0".
             Defaults to `settings.ep_version`.
 
     Returns:
@@ -762,7 +764,7 @@ def load_idf(
             output_folder=output_folder,
             include=include,
             epw=weather_file,
-            ep_version=ep_version,
+            ep_version=ep_version if ep_version is not None else settings.ep_version,
         )
         log("Eppy load completed in {:,.2f} seconds\n".format(time.time() - start_time))
         return idf
@@ -1492,7 +1494,7 @@ def run_eplus(
         weather_file (str): path to the EPW weather file.
         output_directory (str, optional): path to the output folder. Will
             default to the settings.cache_folder.
-        ep_version (str, optional): EnergyPlus version to use, eg: 8-9-0
+        ep_version (str, optional): EnergyPlus version to use, eg: 9-2-0
         output_report: 'sql' or 'htm'.
         prep_outputs (bool or list, optional): if true, meters and variable
             outputs will be appended to the idf files. see
@@ -1906,7 +1908,6 @@ def _run_exec(
                     failed_dir = output_directory / "failed"
                     failed_dir.mkdir_p()
                     tmp.copytree(failed_dir / output_prefix)
-                tmp.rmtree_p()
                 raise EnergyPlusProcessError(
                     cmd=cmd, idf=eplus_file.basename(), stderr=stderr_r
                 )
@@ -2260,7 +2261,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
 
     Update the EnergyPlus simulation file (.idf) to the latest available
     EnergyPlus version installed on this machine. Optionally specify a version
-    (eg.: "8-9-0") to aim for a specific version. The output will be the path of
+    (eg.: "9-2-0") to aim for a specific version. The output will be the path of
     the updated file. The run is multiprocessing_safe.
 
     Hint:
@@ -2284,9 +2285,14 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
     Returns:
         Path: The path of the new transitioned idf file.
     """
+    idf_file = Path(idf_file)
+    if not out_dir:
+        # if no directory is provided, use directory of file
+        out_dir = idf_file.dirname()
     if not out_dir.isdir():
+        # check if dir exists
         out_dir.makedirs_p()
-    with tempdir(prefix="transition_run_", suffix=simulname, dir=out_dir) as tmp:
+    with TemporaryDirectory(prefix="transition_run_", suffix=simulname, dir=out_dir) as tmp:
         log("temporary dir (%s) created" % tmp, lg.DEBUG)
         idf_file = Path(idf_file.copy(tmp)).abspath()  # copy and return abspath
 
@@ -2313,52 +2319,52 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             to_version = find_eplus_installs(iddfile)
         if tuple(versionid.split("-")) > tuple(to_version.split("-")):
             raise EnergyPlusVersionError(idf_file, versionid, to_version)
-        to_iddfile = Path(getiddfile(to_version.replace("-", ".")))
-        vupdater_path = to_iddfile.dirname() / "PreProcess" / "IDFVersionUpdater"
+        vupdater_path = (
+            get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
+        )
+        exe = ".exe" if platform.system() == "Windows" else ""
         trans_exec = {
-            "1-0-0": os.path.join(vupdater_path, "Transition-V1-0-0-to-V1-0-1"),
-            "1-0-1": os.path.join(vupdater_path, "Transition-V1-0-1-to-V1-0-2"),
-            "1-0-2": os.path.join(vupdater_path, "Transition-V1-0-2-to-V1-0-3"),
-            "1-0-3": os.path.join(vupdater_path, "Transition-V1-0-3-to-V1-1-0"),
-            "1-1-0": os.path.join(vupdater_path, "Transition-V1-1-0-to-V1-1-1"),
-            "1-1-1": os.path.join(vupdater_path, "Transition-V1-1-1-to-V1-2-0"),
-            "1-2-0": os.path.join(vupdater_path, "Transition-V1-2-0-to-V1-2-1"),
-            "1-2-1": os.path.join(vupdater_path, "Transition-V1-2-1-to-V1-2-2"),
-            "1-2-2": os.path.join(vupdater_path, "Transition-V1-2-2-to-V1-2-3"),
-            "1-2-3": os.path.join(vupdater_path, "Transition-V1-2-3-to-V1-3-0"),
-            "1-3-0": os.path.join(vupdater_path, "Transition-V1-3-0-to-V1-4-0"),
-            "1-4-0": os.path.join(vupdater_path, "Transition-V1-4-0-to-V2-0-0"),
-            "2-0-0": os.path.join(vupdater_path, "Transition-V2-0-0-to-V2-1-0"),
-            "2-1-0": os.path.join(vupdater_path, "Transition-V2-1-0-to-V2-2-0"),
-            "2-2-0": os.path.join(vupdater_path, "Transition-V2-2-0-to-V3-0-0"),
-            "3-0-0": os.path.join(vupdater_path, "Transition-V3-0-0-to-V3-1-0"),
-            "3-1-0": os.path.join(vupdater_path, "Transition-V3-1-0-to-V4-0-0"),
-            "4-0-0": os.path.join(vupdater_path, "Transition-V4-0-0-to-V5-0-0"),
-            "5-0-0": os.path.join(vupdater_path, "Transition-V5-0-0-to-V6-0-0"),
-            "6-0-0": os.path.join(vupdater_path, "Transition-V6-0-0-to-V7-0-0"),
-            "7-0-0": os.path.join(vupdater_path, "Transition-V7-0-0-to-V7-1-0"),
-            "7-1-0": os.path.join(vupdater_path, "Transition-V7-1-0-to-V7-2-0"),
-            "7-2-0": os.path.join(vupdater_path, "Transition-V7-2-0-to-V8-0-0"),
-            "8-0-0": os.path.join(vupdater_path, "Transition-V8-0-0-to-V8-1-0"),
-            "8-1-0": os.path.join(vupdater_path, "Transition-V8-1-0-to-V8-2-0"),
-            "8-2-0": os.path.join(vupdater_path, "Transition-V8-2-0-to-V8-3-0"),
-            "8-3-0": os.path.join(vupdater_path, "Transition-V8-3-0-to-V8-4-0"),
-            "8-4-0": os.path.join(vupdater_path, "Transition-V8-4-0-to-V8-5-0"),
-            "8-5-0": os.path.join(vupdater_path, "Transition-V8-5-0-to-V8-6-0"),
-            "8-6-0": os.path.join(vupdater_path, "Transition-V8-6-0-to-V8-7-0"),
-            "8-7-0": os.path.join(vupdater_path, "Transition-V8-7-0-to-V8-8-0"),
-            "8-8-0": os.path.join(vupdater_path, "Transition-V8-8-0-to-V8-9-0"),
-            "8-9-0": os.path.join(vupdater_path, "Transition-V8-9-0-to-V9-0-0"),
-            "9-0-0": os.path.join(vupdater_path, "Transition-V9-0-0-to-V9-1-0"),
-            "9-1-0": os.path.join(vupdater_path, "Transition-V9-1-0-to-V9-2-0"),
+            "1-0-0": vupdater_path / "Transition-V1-0-0-to-V1-0-1" + exe,
+            "1-0-1": vupdater_path / "Transition-V1-0-1-to-V1-0-2" + exe,
+            "1-0-2": vupdater_path / "Transition-V1-0-2-to-V1-0-3" + exe,
+            "1-0-3": vupdater_path / "Transition-V1-0-3-to-V1-1-0" + exe,
+            "1-1-0": vupdater_path / "Transition-V1-1-0-to-V1-1-1" + exe,
+            "1-1-1": vupdater_path / "Transition-V1-1-1-to-V1-2-0" + exe,
+            "1-2-0": vupdater_path / "Transition-V1-2-0-to-V1-2-1" + exe,
+            "1-2-1": vupdater_path / "Transition-V1-2-1-to-V1-2-2" + exe,
+            "1-2-2": vupdater_path / "Transition-V1-2-2-to-V1-2-3" + exe,
+            "1-2-3": vupdater_path / "Transition-V1-2-3-to-V1-3-0" + exe,
+            "1-3-0": vupdater_path / "Transition-V1-3-0-to-V1-4-0" + exe,
+            "1-4-0": vupdater_path / "Transition-V1-4-0-to-V2-0-0" + exe,
+            "2-0-0": vupdater_path / "Transition-V2-0-0-to-V2-1-0" + exe,
+            "2-1-0": vupdater_path / "Transition-V2-1-0-to-V2-2-0" + exe,
+            "2-2-0": vupdater_path / "Transition-V2-2-0-to-V3-0-0" + exe,
+            "3-0-0": vupdater_path / "Transition-V3-0-0-to-V3-1-0" + exe,
+            "3-1-0": vupdater_path / "Transition-V3-1-0-to-V4-0-0" + exe,
+            "4-0-0": vupdater_path / "Transition-V4-0-0-to-V5-0-0" + exe,
+            "5-0-0": vupdater_path / "Transition-V5-0-0-to-V6-0-0" + exe,
+            "6-0-0": vupdater_path / "Transition-V6-0-0-to-V7-0-0" + exe,
+            "7-0-0": vupdater_path / "Transition-V7-0-0-to-V7-1-0" + exe,
+            "7-1-0": vupdater_path / "Transition-V7-1-0-to-V7-2-0" + exe,
+            "7-2-0": vupdater_path / "Transition-V7-2-0-to-V8-0-0" + exe,
+            "8-0-0": vupdater_path / "Transition-V8-0-0-to-V8-1-0" + exe,
+            "8-1-0": vupdater_path / "Transition-V8-1-0-to-V8-2-0" + exe,
+            "8-2-0": vupdater_path / "Transition-V8-2-0-to-V8-3-0" + exe,
+            "8-3-0": vupdater_path / "Transition-V8-3-0-to-V8-4-0" + exe,
+            "8-4-0": vupdater_path / "Transition-V8-4-0-to-V8-5-0" + exe,
+            "8-5-0": vupdater_path / "Transition-V8-5-0-to-V8-6-0" + exe,
+            "8-6-0": vupdater_path / "Transition-V8-6-0-to-V8-7-0" + exe,
+            "8-7-0": vupdater_path / "Transition-V8-7-0-to-V8-8-0" + exe,
+            "8-8-0": vupdater_path / "Transition-V8-8-0-to-V8-9-0" + exe,
+            "8-9-0": vupdater_path / "Transition-V8-9-0-to-V9-0-0" + exe,
+            "9-0-0": vupdater_path / "Transition-V9-0-0-to-V9-1-0" + exe,
+            "9-1-0": vupdater_path / "Transition-V9-1-0-to-V9-2-0" + exe,
         }
-        # set directory to run transition executables
-        run_dir = Path(os.path.dirname(trans_exec[versionid]))
 
         # check the file version, if it corresponds to the latest version found on
         # the machine, means its already upgraded to the correct version. Return it.
         if versionid == to_version:
-            # if file version and to_veersion are the same, we don't need to
+            # if file version and to_version are the same, we don't need to
             # perform transition
             log(
                 'file {} already upgraded to latest version "{}"'.format(
@@ -2370,7 +2376,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
 
         # Otherwise,
         # build a list of command line arguments
-        with cd(run_dir):
+        with cd(vupdater_path):
             transitions = [
                 key
                 for key in trans_exec
@@ -2414,7 +2420,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
                             ),
                             lg.ERROR,
                         )
-        for f in tmp.files("*.idfnew"):
+        for f in Path(tmp).files("*.idfnew"):
             f.copy(out_dir / idf_file.basename())
         return Path(out_dir / idf_file.basename())
 

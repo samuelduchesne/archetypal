@@ -3,7 +3,7 @@ import io
 import os
 
 import pytest
-from archetypal import copy_file, settings
+from archetypal import copy_file, settings, get_eplus_dirs
 from archetypal.umi_template import UmiTemplate
 
 
@@ -64,7 +64,7 @@ def test_umi_routine(config):
         "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
         "tests/input_data/necb/NECB 2011-LargeHotel-NECB HDD "
         "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        "tests/input_data/umi_samples/VentilationSimpleTest.idf",
+        get_eplus_dirs(settings.ep_version) / "ExampleFiles/VentilationSimpleTest.idf",
     ]
     idf = copy_file(idf_source)
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"

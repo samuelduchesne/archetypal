@@ -6,7 +6,7 @@ from path import Path
 
 import archetypal as ar
 import archetypal.settings
-from archetypal import get_eplus_dirs, clear_cache
+from archetypal import get_eplus_dirs, clear_cache, settings
 from archetypal.settings import ep_version
 
 
@@ -1050,9 +1050,7 @@ class TestZoneConstructionSet:
         """
         from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths("8-9-0")
-        eplusdir = Path(eplus_exe).dirname()
-        file = eplusdir / "ExampleFiles" / request.param
+        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         sql, idf = ar.run_eplus(
             file,
@@ -1165,9 +1163,7 @@ class TestZoneLoad:
         """
         from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths("8-9-0")
-        eplusdir = Path(eplus_exe).dirname()
-        file = eplusdir / "ExampleFiles" / request.param
+        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = ar.load_idf(file)
         sql = ar.run_eplus(
@@ -1299,7 +1295,6 @@ class TestZoneConditioning:
             "RefMedOffVAVAllDefVRP.idf",
             "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf",
             "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf",
-            "2ZoneDataCenterHVAC_wEconomizer.idf",
         ],
     )
     def zoneConditioningtests(self, config, request):
@@ -1308,11 +1303,8 @@ class TestZoneConditioning:
             config:
             request:
         """
-        from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths("8-9-0")
-        eplusdir = Path(eplus_exe).dirname()
-        file = eplusdir / "ExampleFiles" / request.param
+        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = ar.load_idf(file)
         sql = ar.run_eplus(
@@ -1349,14 +1341,11 @@ class TestZoneConditioning:
             zone = idf.getobject("ZONE", "Core_mid")
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_ = ZoneConditioning.from_zone(z)
-        if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL" ".idf":
+        if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf":
             zone = idf.getobject("ZONE", "West Zone")
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_HX = ZoneConditioning.from_zone(z)
-        if (
-            idf_name == "2ZoneDataCenterHVAC_wEconomizer.idf"
-            or idf_name == "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf"
-        ):
+        if idf_name == "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf":
             zone = idf.getobject("ZONE", "East Zone")
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_HX_eco = ZoneConditioning.from_zone(z)
@@ -1466,10 +1455,9 @@ class TestVentilationSetting:
         """
         from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths("8-9-0")
-        eplusdir = Path(eplus_exe).dirname()
+        eplusdir = get_eplus_dirs(settings.ep_version)
         file = eplusdir / "ExampleFiles" / request.param
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         idf = ar.load_idf(file)
         sql = ar.run_eplus(
             file,
@@ -1760,14 +1748,14 @@ class TestWindowSetting:
                 save=False,
             )
             idf.add_object(
-                "WINDOWPROPERTY:SHADINGCONTROL",
+                "WindowShadingControl".upper(),
                 Construction_with_Shading_Name=constr,
                 Setpoint=14,
                 Shading_Device_Material_Name="Roll Shade",
                 save=False,
-                Name="test_constrol",
+                Fenestration_Surface_1_Name="test_control",
             )
-            f.Shading_Control_Name = "test_constrol"
+            f.Name = "test_control"
             w = WindowSetting.from_surface(f)
             assert w
             print(w)
@@ -1931,7 +1919,7 @@ class TestZone:
         """
         from archetypal import Zone
 
-        file = "tests/input_data/trnsys/NECB 2011 - Full Service Restaurant.idf"
+        file = "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = ar.load_idf(file)
         sql = ar.run_eplus(
@@ -2091,8 +2079,36 @@ def bt():
     yield bt
 
 
+@pytest.fixture(scope="session")
+def climatestudio():
+    """A building template fixture from a climate studio idf file used in subsequent
+    tests"""
+    eplus_dir = get_eplus_dirs(archetypal.settings.ep_version)
+    file = "tests/input_data/umi_samples/climatestudio_test.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    _, idf, res = ar.run_eplus(
+        file,
+        w,
+        ep_version="9-2-0",
+        return_idf=True,
+        return_files=True,
+        prep_outputs=True,
+        output_report="sql",
+    )
+    from archetypal import BuildingTemplate
+
+    bt = BuildingTemplate.from_idf(idf, sql=idf.sql)
+    yield bt
+
+
 class TestBuildingTemplate:
     """Various tests with the :class:`BuildingTemplate` class"""
+
+    def test_climatestudio(self, config, climatestudio):
+        template_json = ar.UmiTemplate(
+            name="my_umi_template", BuildingTemplates=[climatestudio]
+        ).to_json(all_zones=True)
+        print(template_json)
 
     def test_viewbuilding(self, config, bt):
         """test the visualization of a building

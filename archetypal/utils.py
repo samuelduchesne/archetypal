@@ -73,7 +73,7 @@ def config(
         umitemplate (str): where the umitemplate is located.
         trnsys_default_folder (str): root folder of TRNSYS install.
         default_weight_factor:
-        ep_version (str): EnergyPlus version to use. eg. "8-9-0".
+        ep_version (str): EnergyPlus version to use. eg. "9-2-0".
 
     Returns:
         None
@@ -103,7 +103,7 @@ def config(
 def validate_epversion(ep_version):
     """Validates the ep_version form"""
     if "." in ep_version:
-        raise NameError('Enter the EnergyPlus version in the form "8-9-0"')
+        raise NameError('Enter the EnergyPlus version in the form "9-2-0"')
     return ep_version
 
 
@@ -872,13 +872,12 @@ def get_eplus_dirs(version=ep_version):
     Returns (Path): The folder path.
 
     Args:
-        version (str): Version number in the form "8-9-0" to search for.
+        version (str): Version number in the form "9-2-0" to search for.
     """
     from eppy.runner.run_functions import install_paths
 
     eplus_exe, eplus_weather = install_paths(version)
-    eplusdir = Path(eplus_exe).dirname()
-    return Path(eplusdir)
+    return Path(eplus_exe).dirname()
 
 
 def warn_if_not_compatible():

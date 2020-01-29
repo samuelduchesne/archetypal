@@ -41,7 +41,6 @@ independently.
    :maxdepth: 2
    :caption: User Guide
 
-   Getting Started <first.rst>
    Convert IDF to UMI <converter_umi.rst>
    Convert IDF to BUI <converter_bui.rst>
    Tutorials <tutorials.rst>

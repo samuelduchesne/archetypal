@@ -41,9 +41,9 @@ independently.
    :maxdepth: 2
    :caption: User Guide
 
-   Convert IDF to UMI <converter_umi.rst>
-   Convert IDF to BUI <converter_bui.rst>
-   Tutorials <tutorials.rst>
+   Converting IDF models <converting.rst>
+   Managing Schedules <tutorials/schedules.rst>
+   Parallel Processing <tutorials/parallel_process.rst>
    Troubleshooting <troubleshooting.rst>
 
 .. toctree::

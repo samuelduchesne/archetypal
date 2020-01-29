@@ -1,5 +1,5 @@
 Convert IDF to BUI
-==================
+------------------
 
 .. figure:: images/converter@2x.png
    :alt: converter logo
@@ -12,7 +12,8 @@ have already been developed under EnergyPlus, and it can be a tedious task to cr
 editor (e.g. TRNBuild), we assume the development of a file translator could be useful for simulationists.
 
 Objectives
-----------
+..........
+
 The principal ojectives of this module was to translate (from IDF to BUI) the geometry of the building, the different schedules used in
 the model, and the thermal gains.
 
@@ -34,7 +35,7 @@ BUI file
 Internal thermal gains such as “people”, “lights” and “equipment” are translated from the IDF file to the BUI file.
 
 Methodology
------------
+...........
 
 The module is divided in 2 major operations. The first one consist in translating the IDF file from EnergyPlus, to an
 IDF file proper to an input file for TRNBuild (T3D file), usually created by the TRNSYS plugin "Trnsys3D_" in SketchUp.
@@ -53,7 +54,7 @@ The operation to convert the T3D file to the BUI file is done by running the trn
 line.
 
 How to convert an IDF file
---------------------------
+..........................
 
 Converting an IDF file to a BUI file is done using the terminal with a command line. First, open the Command Prompt on Windows
 or the Terminal on Mac. Note that if you used Anaconda to install python on your machine, you will most likely avoid some issues
@@ -147,7 +148,8 @@ Users can chose to return a combination of flags
     stock we want to model.
 
 Equivalence between idf object names when converting a file
------------------------------------------------------------
+...........................................................
+
 .. csv-table:: Equivalences
     :file: ./_static/name_equivalence.csv
     :header-rows: 1

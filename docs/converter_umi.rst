@@ -1,5 +1,5 @@
-Converting an IDF to an UMI
-===========================
+Convert IDF to UMI
+------------------
 
 The IDF to UMI converter generates an Umi Template from one or more EnergyPlus models (IDF files). The conversion is
 performed by simplifying a multi-zone and geometric model to a 2-zone and non-geometric template. In other words, a
@@ -10,7 +10,7 @@ line is useful for getting started quickly but does not offer any intermediate l
 you would rather use archetypal inside a python script, then the archetypal module is fully accessible and documented.
 
 Using the Command Line
-----------------------
+......................
 
 .. hint::
 
@@ -37,12 +37,11 @@ used.
     archetypal reduce "/Applications/EnergyPlus-9-2-0/ExampleFiles/BasicsFiles/AdultEducationCenter.idf" "./converted/myumitemplate.json"
 
 Using the Python Console
-------------------------
+........................
 
 `archetypal` methods are accessible by importing the package.
 
 1. Load the file
-................
 
 First, load the EnergyPlus idf file using the :func:`archetypal.idfclass.load_idf` method. In the following example,
 the AdultEducationCenter.idf model is used.
@@ -56,7 +55,6 @@ the AdultEducationCenter.idf model is used.
     >>> idf = load_idf(eplus_file=eplus_file, weather_file=weather)  # IDF load
 
 2. Create a BuildingTemplate Object
-...................................
 
 .. code-block:: python
 
@@ -66,7 +64,6 @@ the AdultEducationCenter.idf model is used.
     >>> )
 
 3. Create an UmiTemplate Object and Save
-........................................
 
 .. code-block:: python
 

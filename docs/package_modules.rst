@@ -94,3 +94,16 @@ Schedule Module
     Schedule
 
 
+Data Portals
+------------
+
+.. currentmodule:: archetypal.dataportal
+
+.. autosummary::
+    :template: autosummary.rst
+    :nosignatures:
+    :toctree: reference/
+
+    tabula_available_buildings
+    tabula_building_details_sheet
+    download_bld_window

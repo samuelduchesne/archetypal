@@ -1,5 +1,5 @@
-Convert IDF to UMI
-------------------
+Converting IDF to UMI
+---------------------
 
 The IDF to UMI converter generates an Umi Template from one or more EnergyPlus models (IDF files). The conversion is
 performed by simplifying a multi-zone and geometric model to a 2-zone and non-geometric template. In other words, a

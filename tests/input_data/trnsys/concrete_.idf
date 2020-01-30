@@ -1,29 +1,23 @@
 !-Generator IDFEditor 1.50
 !-Option SortedOrder
-
 !-NOTE: All comments with '!-' are ignored by the IDFEditor and are generated automatically.
 !-      Use '!' comments if they need to be retained when using the IDFEditor.
-
-
 !-   ===========  ALL OBJECTS IN CLASS: VERSION ===========
 
-Version,
-    9.1;                     !- Version Identifier
-
+  Version,9.2;
 
 !-   ===========  ALL OBJECTS IN CLASS: SIMULATIONCONTROL ===========
 
-SimulationControl,
+  SimulationControl,
     No,                      !- Do Zone Sizing Calculation
     No,                      !- Do System Sizing Calculation
     No,                      !- Do Plant Sizing Calculation
     Yes,                     !- Run Simulation for Sizing Periods
     Yes;                     !- Run Simulation for Weather File Run Periods
 
-
 !-   ===========  ALL OBJECTS IN CLASS: BUILDING ===========
 
-Building,
+  Building,
     Building 1,              !- Name
     ,                        !- North Axis {deg}
     ,                        !- Terrain
@@ -33,47 +27,37 @@ Building,
     ,                        !- Maximum Number of Warmup Days
     ;                        !- Minimum Number of Warmup Days
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SHADOWCALCULATION ===========
 
-ShadowCalculation,
+  ShadowCalculation,
     AverageOverDaysInFrequency,  !- Calculation Method
     20,                      !- Calculation Frequency
     15000;                   !- Maximum Figures in Shadow Overlap Calculations
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SURFACECONVECTIONALGORITHM:INSIDE ===========
 
-SurfaceConvectionAlgorithm:Inside,
-    Simple;                  !- Algorithm
-
+  SurfaceConvectionAlgorithm:Inside,Simple;
 
 !-   ===========  ALL OBJECTS IN CLASS: HEATBALANCEALGORITHM ===========
 
-HeatBalanceAlgorithm,
-    ConductionTransferFunction,  !- Algorithm
-    200;                     !- Surface Temperature Upper Limit {C}
-
+  HeatBalanceAlgorithm,ConductionTransferFunction,200;
 
 !-   ===========  ALL OBJECTS IN CLASS: TIMESTEP ===========
 
-Timestep,
-    6;                       !- Number of Timesteps per Hour
-
+  Timestep,6;
 
 !-   ===========  ALL OBJECTS IN CLASS: SITE:LOCATION ===========
 
-Site:Location,
+  Site:Location,
     Site 1,                  !- Name
     0,                       !- Latitude {deg}
     0,                       !- Longitude {deg}
     0,                       !- Time Zone {hr}
     0;                       !- Elevation {m}
 
-
 !-   ===========  ALL OBJECTS IN CLASS: RUNPERIOD ===========
 
-RunPeriod,
+  RunPeriod,
     Run Period 1,            !- Name
     1,                       !- Begin Month
     1,                       !- Begin Day of Month
@@ -88,28 +72,17 @@ RunPeriod,
     Yes,                     !- Use Weather File Rain Indicators
     Yes;                     !- Use Weather File Snow Indicators
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:CONSTANT ===========
 
-Schedule:Constant,
-    Always On Discrete,      !- Name
-    ,                        !- Schedule Type Limits Name
-    1;                       !- Hourly Value
+  Schedule:Constant,Always On Discrete,,1;
 
-Schedule:Constant,
-    Always Off Discrete,     !- Name
-    ,                        !- Schedule Type Limits Name
-    0;                       !- Hourly Value
+  Schedule:Constant,Always Off Discrete,,0;
 
-Schedule:Constant,
-    Always On Continuous,    !- Name
-    ,                        !- Schedule Type Limits Name
-    1;                       !- Hourly Value
-
+  Schedule:Constant,Always On Continuous,,1;
 
 !-   ===========  ALL OBJECTS IN CLASS: MATERIAL ===========
 
-Material,
+  Material,
     4IN Concrete HW,         !- Name
     MediumRough,             !- Roughness
     0.1,                     !- Thickness {m}
@@ -120,7 +93,7 @@ Material,
     0.65,                    !- Solar Absorptance
     0.65;                    !- Visible Absorptance
 
-Material,
+  Material,
     Insulation,              !- Name
     Smooth,                  !- Roughness
     0.1,                     !- Thickness {m}
@@ -131,10 +104,9 @@ Material,
     0.7,                     !- Solar Absorptance
     0.7;                     !- Visible Absorptance
 
-
 !-   ===========  ALL OBJECTS IN CLASS: MATERIAL:NOMASS ===========
 
-Material:NoMass,
+  Material:NoMass,
     Ins_floor,               !- Name
     Smooth,                  !- Roughness
     72,                      !- Thermal Resistance {m2-K/W}
@@ -142,45 +114,42 @@ Material:NoMass,
     0.7,                     !- Solar Absorptance
     0.7;                     !- Visible Absorptance
 
-
 !-   ===========  ALL OBJECTS IN CLASS: CONSTRUCTION ===========
 
-Construction,
+  Construction,
     floor,                   !- Name
     4IN Concrete HW,         !- Outside Layer
     Insulation,              !- Layer 2
     4IN Concrete HW;         !- Layer 3
 
-Construction,
+  Construction,
     roof,                    !- Name
     4IN Concrete HW,         !- Outside Layer
     Insulation,              !- Layer 2
     4IN Concrete HW;         !- Layer 3
 
-Construction,
+  Construction,
     wall,                    !- Name
     4IN Concrete HW,         !- Outside Layer
     Insulation,              !- Layer 2
     4IN Concrete HW;         !- Layer 3
 
-Construction,
+  Construction,
     ins_floor_constr,        !- Name
     Ins_floor;               !- Outside Layer
 
-
 !-   ===========  ALL OBJECTS IN CLASS: GLOBALGEOMETRYRULES ===========
 
-GlobalGeometryRules,
+  GlobalGeometryRules,
     UpperLeftCorner,         !- Starting Vertex Position
     Counterclockwise,        !- Vertex Entry Direction
     Relative,                !- Coordinate System
     Relative,                !- Daylighting Reference Point Coordinate System
     Relative;                !- Rectangular Surface Coordinate System
 
-
 !-   ===========  ALL OBJECTS IN CLASS: ZONE ===========
 
-Zone,
+  Zone,
     Thermal Zone 1,          !- Name
     ,                        !- Direction of Relative North {deg}
     ,                        !- X Origin {m}
@@ -189,10 +158,9 @@ Zone,
     ,                        !- Type
     1;                       !- Multiplier
 
-
 !-   ===========  ALL OBJECTS IN CLASS: BUILDINGSURFACE:DETAILED ===========
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 0,                  !- Name
     Floor,                   !- Surface Type
     ins_floor_constr,        !- Construction Name
@@ -203,20 +171,12 @@ BuildingSurface:Detailed,
     NoWind,                  !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    -85,                     !- Vertex 1 X-coordinate {m}
-    95,                      !- Vertex 1 Y-coordinate {m}
-    0,                       !- Vertex 1 Z-coordinate {m}
-    -85,                     !- Vertex 2 X-coordinate {m}
-    85,                      !- Vertex 2 Y-coordinate {m}
-    0,                       !- Vertex 2 Z-coordinate {m}
-    -95,                     !- Vertex 3 X-coordinate {m}
-    85,                      !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    -95,                     !- Vertex 4 X-coordinate {m}
-    95,                      !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
+    -85,95,0,  !- X,Y,Z ==> Vertex 1 {m}
+    -85,85,0,  !- X,Y,Z ==> Vertex 2 {m}
+    -95,85,0,  !- X,Y,Z ==> Vertex 3 {m}
+    -95,95,0;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 1,                  !- Name
     Roof,                    !- Surface Type
     roof,                    !- Construction Name
@@ -227,20 +187,12 @@ BuildingSurface:Detailed,
     WindExposed,             !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    -95,                     !- Vertex 1 X-coordinate {m}
-    95,                      !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    -95,                     !- Vertex 2 X-coordinate {m}
-    85,                      !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    -85,                     !- Vertex 3 X-coordinate {m}
-    85,                      !- Vertex 3 Y-coordinate {m}
-    2.4384,                  !- Vertex 3 Z-coordinate {m}
-    -85,                     !- Vertex 4 X-coordinate {m}
-    95,                      !- Vertex 4 Y-coordinate {m}
-    2.4384;                  !- Vertex 4 Z-coordinate {m}
+    -95,95,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    -95,85,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    -85,85,2.4384,  !- X,Y,Z ==> Vertex 3 {m}
+    -85,95,2.4384;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 2,                  !- Name
     Wall,                    !- Surface Type
     wall,                    !- Construction Name
@@ -251,20 +203,12 @@ BuildingSurface:Detailed,
     WindExposed,             !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    -85,                     !- Vertex 1 X-coordinate {m}
-    95,                      !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    -85,                     !- Vertex 2 X-coordinate {m}
-    85,                      !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    -85,                     !- Vertex 3 X-coordinate {m}
-    85,                      !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    -85,                     !- Vertex 4 X-coordinate {m}
-    95,                      !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
+    -85,95,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    -85,85,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    -85,85,0,  !- X,Y,Z ==> Vertex 3 {m}
+    -85,95,0;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 3,                  !- Name
     Wall,                    !- Surface Type
     wall,                    !- Construction Name
@@ -275,20 +219,12 @@ BuildingSurface:Detailed,
     WindExposed,             !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    -85,                     !- Vertex 1 X-coordinate {m}
-    85,                      !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    -95,                     !- Vertex 2 X-coordinate {m}
-    85,                      !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    -95,                     !- Vertex 3 X-coordinate {m}
-    85,                      !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    -85,                     !- Vertex 4 X-coordinate {m}
-    85,                      !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
+    -85,85,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    -95,85,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    -95,85,0,  !- X,Y,Z ==> Vertex 3 {m}
+    -85,85,0;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 4,                  !- Name
     Wall,                    !- Surface Type
     wall,                    !- Construction Name
@@ -299,20 +235,12 @@ BuildingSurface:Detailed,
     WindExposed,             !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    -95,                     !- Vertex 1 X-coordinate {m}
-    85,                      !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    -95,                     !- Vertex 2 X-coordinate {m}
-    95,                      !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    -95,                     !- Vertex 3 X-coordinate {m}
-    95,                      !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    -95,                     !- Vertex 4 X-coordinate {m}
-    85,                      !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
+    -95,85,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    -95,95,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    -95,95,0,  !- X,Y,Z ==> Vertex 3 {m}
+    -95,85,0;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 5,                  !- Name
     Wall,                    !- Surface Type
     wall,                    !- Construction Name
@@ -323,36 +251,25 @@ BuildingSurface:Detailed,
     WindExposed,             !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    -95,                     !- Vertex 1 X-coordinate {m}
-    95,                      !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    -85,                     !- Vertex 2 X-coordinate {m}
-    95,                      !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    -85,                     !- Vertex 3 X-coordinate {m}
-    95,                      !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    -95,                     !- Vertex 4 X-coordinate {m}
-    95,                      !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
-
+    -95,95,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    -85,95,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    -85,95,0,  !- X,Y,Z ==> Vertex 3 {m}
+    -95,95,0;  !- X,Y,Z ==> Vertex 4 {m}
 
 !-   ===========  ALL OBJECTS IN CLASS: SIZING:PARAMETERS ===========
 
-Sizing:Parameters,
+  Sizing:Parameters,
     1.25,                    !- Heating Sizing Factor
     1.15;                    !- Cooling Sizing Factor
 
-
 !-   ===========  ALL OBJECTS IN CLASS: OUTDOORAIR:NODE ===========
 
-OutdoorAir:Node,
+  OutdoorAir:Node,
     Model Outdoor Air Node;  !- Name
-
 
 !-   ===========  ALL OBJECTS IN CLASS: LIFECYCLECOST:PARAMETERS ===========
 
-LifeCycleCost:Parameters,
+  LifeCycleCost:Parameters,
     Life Cycle Cost Parameters,  !- Name
     EndOfYear,               !- Discounting Convention
     ConstantDollar,          !- Inflation Approach
@@ -367,19 +284,17 @@ LifeCycleCost:Parameters,
     ,                        !- Tax rate
     None;                    !- Depreciation Method
 
-
 !-   ===========  ALL OBJECTS IN CLASS: LIFECYCLECOST:NONRECURRINGCOST ===========
 
-LifeCycleCost:NonrecurringCost,
+  LifeCycleCost:NonrecurringCost,
     Default Cost,            !- Name
     Construction,            !- Category
     0,                       !- Cost
     ServicePeriod;           !- Start of Costs
 
-
 !-   ===========  ALL OBJECTS IN CLASS: LIFECYCLECOST:USEPRICEESCALATION ===========
 
-LifeCycleCost:UsePriceEscalation,
+  LifeCycleCost:UsePriceEscalation,
     U.S. Avg  Commercial-Electricity,  !- LCC Price Escalation Name
     Electricity,             !- Resource
     2011,                    !- Escalation Start Year
@@ -393,29 +308,29 @@ LifeCycleCost:UsePriceEscalation,
     0.9539,                  !- Year 7 Escalation
     0.9521,                  !- Year 8 Escalation
     0.9546,                  !- Year 9 Escalation
-    0.9550,                  !- N11
-    0.9553,                  !- N12
-    0.9564,                  !- N13
-    0.9575,                  !- N14
-    0.9596,                  !- N15
-    0.9618,                  !- N16
-    0.9614,                  !- N17
-    0.9618,                  !- N18
-    0.9618,                  !- N19
-    0.9593,                  !- N20
-    0.9589,                  !- N21
-    0.9607,                  !- N22
-    0.9625,                  !- N23
-    0.9650,                  !- N24
-    0.9708,                  !- N25
-    0.9751,                  !- N26
-    0.9762,                  !- N27
-    0.9766,                  !- N28
-    0.9766,                  !- N29
-    0.9769,                  !- N30
-    0.9773;                  !- N31
+    0.9550,                  !- <none>
+    0.9553,                  !- <none>
+    0.9564,                  !- <none>
+    0.9575,                  !- <none>
+    0.9596,                  !- <none>
+    0.9618,                  !- <none>
+    0.9614,                  !- <none>
+    0.9618,                  !- <none>
+    0.9618,                  !- <none>
+    0.9593,                  !- <none>
+    0.9589,                  !- <none>
+    0.9607,                  !- <none>
+    0.9625,                  !- <none>
+    0.9650,                  !- <none>
+    0.9708,                  !- <none>
+    0.9751,                  !- <none>
+    0.9762,                  !- <none>
+    0.9766,                  !- <none>
+    0.9766,                  !- <none>
+    0.9769,                  !- <none>
+    0.9773;                  !- <none>
 
-LifeCycleCost:UsePriceEscalation,
+  LifeCycleCost:UsePriceEscalation,
     U.S. Avg  Commercial-Distillate Oil,  !- LCC Price Escalation Name
     FuelOil#1,               !- Resource
     2011,                    !- Escalation Start Year
@@ -429,29 +344,29 @@ LifeCycleCost:UsePriceEscalation,
     1.1267,                  !- Year 7 Escalation
     1.1580,                  !- Year 8 Escalation
     1.1792,                  !- Year 9 Escalation
-    1.1967,                  !- N11
-    1.2200,                  !- N12
-    1.2333,                  !- N13
-    1.2566,                  !- N14
-    1.2709,                  !- N15
-    1.2826,                  !- N16
-    1.2985,                  !- N17
-    1.3102,                  !- N18
-    1.3250,                  !- N19
-    1.3261,                  !- N20
-    1.3282,                  !- N21
-    1.3324,                  !- N22
-    1.3356,                  !- N23
-    1.3431,                  !- N24
-    1.3510,                  !- N25
-    1.3568,                  !- N26
-    1.3606,                  !- N27
-    1.3637,                  !- N28
-    1.3674,                  !- N29
-    1.3706,                  !- N30
-    1.3743;                  !- N31
+    1.1967,                  !- <none>
+    1.2200,                  !- <none>
+    1.2333,                  !- <none>
+    1.2566,                  !- <none>
+    1.2709,                  !- <none>
+    1.2826,                  !- <none>
+    1.2985,                  !- <none>
+    1.3102,                  !- <none>
+    1.3250,                  !- <none>
+    1.3261,                  !- <none>
+    1.3282,                  !- <none>
+    1.3324,                  !- <none>
+    1.3356,                  !- <none>
+    1.3431,                  !- <none>
+    1.3510,                  !- <none>
+    1.3568,                  !- <none>
+    1.3606,                  !- <none>
+    1.3637,                  !- <none>
+    1.3674,                  !- <none>
+    1.3706,                  !- <none>
+    1.3743;                  !- <none>
 
-LifeCycleCost:UsePriceEscalation,
+  LifeCycleCost:UsePriceEscalation,
     U.S. Avg  Commercial-Residual Oil,  !- LCC Price Escalation Name
     FuelOil#2,               !- Resource
     2011,                    !- Escalation Start Year
@@ -465,29 +380,29 @@ LifeCycleCost:UsePriceEscalation,
     0.9897,                  !- Year 7 Escalation
     1.0075,                  !- Year 8 Escalation
     1.0314,                  !- Year 9 Escalation
-    1.0554,                  !- N11
-    1.0861,                  !- N12
-    1.1278,                  !- N13
-    1.1497,                  !- N14
-    1.1620,                  !- N15
-    1.1743,                  !- N16
-    1.1852,                  !- N17
-    1.1948,                  !- N18
-    1.2037,                  !- N19
-    1.2071,                  !- N20
-    1.2119,                  !- N21
-    1.2139,                  !- N22
-    1.2194,                  !- N23
-    1.2276,                  !- N24
-    1.2365,                  !- N25
-    1.2420,                  !- N26
-    1.2461,                  !- N27
-    1.2509,                  !- N28
-    1.2550,                  !- N29
-    1.2591,                  !- N30
-    1.2638;                  !- N31
+    1.0554,                  !- <none>
+    1.0861,                  !- <none>
+    1.1278,                  !- <none>
+    1.1497,                  !- <none>
+    1.1620,                  !- <none>
+    1.1743,                  !- <none>
+    1.1852,                  !- <none>
+    1.1948,                  !- <none>
+    1.2037,                  !- <none>
+    1.2071,                  !- <none>
+    1.2119,                  !- <none>
+    1.2139,                  !- <none>
+    1.2194,                  !- <none>
+    1.2276,                  !- <none>
+    1.2365,                  !- <none>
+    1.2420,                  !- <none>
+    1.2461,                  !- <none>
+    1.2509,                  !- <none>
+    1.2550,                  !- <none>
+    1.2591,                  !- <none>
+    1.2638;                  !- <none>
 
-LifeCycleCost:UsePriceEscalation,
+  LifeCycleCost:UsePriceEscalation,
     U.S. Avg  Commercial-Natural gas,  !- LCC Price Escalation Name
     NaturalGas,              !- Resource
     2011,                    !- Escalation Start Year
@@ -501,29 +416,29 @@ LifeCycleCost:UsePriceEscalation,
     0.9512,                  !- Year 7 Escalation
     0.9645,                  !- Year 8 Escalation
     0.9856,                  !- Year 9 Escalation
-    1.0067,                  !- N11
-    1.0222,                  !- N12
-    1.0410,                  !- N13
-    1.0610,                  !- N14
-    1.0787,                  !- N15
-    1.0942,                  !- N16
-    1.1098,                  !- N17
-    1.1220,                  !- N18
-    1.1308,                  !- N19
-    1.1386,                  !- N20
-    1.1486,                  !- N21
-    1.1619,                  !- N22
-    1.1763,                  !- N23
-    1.1918,                  !- N24
-    1.2118,                  !- N25
-    1.2284,                  !- N26
-    1.2439,                  !- N27
-    1.2605,                  !- N28
-    1.2772,                  !- N29
-    1.2938,                  !- N30
-    1.3115;                  !- N31
+    1.0067,                  !- <none>
+    1.0222,                  !- <none>
+    1.0410,                  !- <none>
+    1.0610,                  !- <none>
+    1.0787,                  !- <none>
+    1.0942,                  !- <none>
+    1.1098,                  !- <none>
+    1.1220,                  !- <none>
+    1.1308,                  !- <none>
+    1.1386,                  !- <none>
+    1.1486,                  !- <none>
+    1.1619,                  !- <none>
+    1.1763,                  !- <none>
+    1.1918,                  !- <none>
+    1.2118,                  !- <none>
+    1.2284,                  !- <none>
+    1.2439,                  !- <none>
+    1.2605,                  !- <none>
+    1.2772,                  !- <none>
+    1.2938,                  !- <none>
+    1.3115;                  !- <none>
 
-LifeCycleCost:UsePriceEscalation,
+  LifeCycleCost:UsePriceEscalation,
     U.S. Avg  Commercial-Coal,  !- LCC Price Escalation Name
     Coal,                    !- Resource
     2011,                    !- Escalation Start Year
@@ -537,83 +452,60 @@ LifeCycleCost:UsePriceEscalation,
     1.0030,                  !- Year 7 Escalation
     1.0059,                  !- Year 8 Escalation
     1.0089,                  !- Year 9 Escalation
-    1.0119,                  !- N11
-    1.0148,                  !- N12
-    1.0178,                  !- N13
-    1.0208,                  !- N14
-    1.0267,                  !- N15
-    1.0297,                  !- N16
-    1.0356,                  !- N17
-    1.0415,                  !- N18
-    1.0534,                  !- N19
-    1.0564,                  !- N20
-    1.0593,                  !- N21
-    1.0653,                  !- N22
-    1.0712,                  !- N23
-    1.0742,                  !- N24
-    1.0801,                  !- N25
-    1.0831,                  !- N26
-    1.0831,                  !- N27
-    1.0861,                  !- N28
-    1.0890,                  !- N29
-    1.0920,                  !- N30
-    1.0950;                  !- N31
-
+    1.0119,                  !- <none>
+    1.0148,                  !- <none>
+    1.0178,                  !- <none>
+    1.0208,                  !- <none>
+    1.0267,                  !- <none>
+    1.0297,                  !- <none>
+    1.0356,                  !- <none>
+    1.0415,                  !- <none>
+    1.0534,                  !- <none>
+    1.0564,                  !- <none>
+    1.0593,                  !- <none>
+    1.0653,                  !- <none>
+    1.0712,                  !- <none>
+    1.0742,                  !- <none>
+    1.0801,                  !- <none>
+    1.0831,                  !- <none>
+    1.0831,                  !- <none>
+    1.0861,                  !- <none>
+    1.0890,                  !- <none>
+    1.0920,                  !- <none>
+    1.0950;                  !- <none>
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:VARIABLEDICTIONARY ===========
 
-Output:VariableDictionary,
-    IDF,                     !- Key Field
-    Unsorted;                !- Sort Option
-
+  Output:VariableDictionary,IDF,Unsorted;
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:TABLE:SUMMARYREPORTS ===========
 
-Output:Table:SummaryReports,
+  Output:Table:SummaryReports,
     AllSummary;              !- Report 1 Name
-
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUTCONTROL:TABLE:STYLE ===========
 
-OutputControl:Table:Style,
+  OutputControl:Table:Style,
     HTML;                    !- Column Separator
-
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:VARIABLE ===========
 
-Output:Variable,
-    *,                       !- Key Value
-    Baseboard Electric Energy,  !- Variable Name
-    Timestep;                !- Reporting Frequency
+  Output:Variable,*,Baseboard Electric Energy,Timestep;
 
-Output:Variable,
-    *,                       !- Key Value
-    Site Outdoor Air Drybulb Temperature,  !- Variable Name
-    Timestep;                !- Reporting Frequency
+  Output:Variable,*,Site Outdoor Air Drybulb Temperature,Timestep;
 
-Output:Variable,
-    *,                       !- Key Value
-    Zone Air Temperature,    !- Variable Name
-    Timestep;                !- Reporting Frequency
-
+  Output:Variable,*,Zone Air Temperature,Timestep;
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:METER ===========
 
-Output:Meter,
-    InteriorEquipment:Electricity,  !- Key Name
-    Timestep;                !- Reporting Frequency
+  Output:Meter,InteriorEquipment:Electricity,Timestep;
 
-Output:Meter,
-    InteriorLights:Electricity,  !- Key Name
-    Timestep;                !- Reporting Frequency
+  Output:Meter,InteriorLights:Electricity,Timestep;
 
-Output:Meter,
-    Cooling:EnergyTransfer,  !- Key Name
-    Timestep;                !- Reporting Frequency
-
+  Output:Meter,Cooling:EnergyTransfer,Timestep;
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:SQLITE ===========
 
-Output:SQLite,
+  Output:SQLite,
     SimpleAndTabular;        !- Option Type
 

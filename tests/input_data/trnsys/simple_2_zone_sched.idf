@@ -1,29 +1,23 @@
 !-Generator IDFEditor 1.50
 !-Option SortedOrder
-
 !-NOTE: All comments with '!-' are ignored by the IDFEditor and are generated automatically.
 !-      Use '!' comments if they need to be retained when using the IDFEditor.
-
-
 !-   ===========  ALL OBJECTS IN CLASS: VERSION ===========
 
-Version,
-    9.1;                     !- Version Identifier
-
+  Version,9.2;
 
 !-   ===========  ALL OBJECTS IN CLASS: SIMULATIONCONTROL ===========
 
-SimulationControl,
+  SimulationControl,
     Yes,                     !- Do Zone Sizing Calculation
     No,                      !- Do System Sizing Calculation
     No,                      !- Do Plant Sizing Calculation
     Yes,                     !- Run Simulation for Sizing Periods
     Yes;                     !- Run Simulation for Weather File Run Periods
 
-
 !-   ===========  ALL OBJECTS IN CLASS: BUILDING ===========
 
-Building,
+  Building,
     Building 1,              !- Name
     ,                        !- North Axis {deg}
     ,                        !- Terrain
@@ -33,49 +27,38 @@ Building,
     ,                        !- Maximum Number of Warmup Days
     ;                        !- Minimum Number of Warmup Days
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SHADOWCALCULATION ===========
 
-ShadowCalculation,
+  ShadowCalculation,
     AverageOverDaysInFrequency,  !- Calculation Method
     20,                      !- Calculation Frequency
     15000;                   !- Maximum Figures in Shadow Overlap Calculations
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SURFACECONVECTIONALGORITHM:INSIDE ===========
 
-SurfaceConvectionAlgorithm:Inside,
-    TARP;                    !- Algorithm
-
+  SurfaceConvectionAlgorithm:Inside,TARP;
 
 !-   ===========  ALL OBJECTS IN CLASS: SURFACECONVECTIONALGORITHM:OUTSIDE ===========
 
-SurfaceConvectionAlgorithm:Outside,
-    DOE-2;                   !- Algorithm
-
+  SurfaceConvectionAlgorithm:Outside,DOE-2;
 
 !-   ===========  ALL OBJECTS IN CLASS: HEATBALANCEALGORITHM ===========
 
-HeatBalanceAlgorithm,
-    ConductionTransferFunction,  !- Algorithm
-    200;                     !- Surface Temperature Upper Limit {C}
-
+  HeatBalanceAlgorithm,ConductionTransferFunction,200;
 
 !-   ===========  ALL OBJECTS IN CLASS: ZONEAIRHEATBALANCEALGORITHM ===========
 
-ZoneAirHeatBalanceAlgorithm,
+  ZoneAirHeatBalanceAlgorithm,
     ThirdOrderBackwardDifference;  !- Algorithm
-
 
 !-   ===========  ALL OBJECTS IN CLASS: ZONEAIRCONTAMINANTBALANCE ===========
 
-ZoneAirContaminantBalance,
+  ZoneAirContaminantBalance,
     No;                      !- Carbon Dioxide Concentration
-
 
 !-   ===========  ALL OBJECTS IN CLASS: ZONECAPACITANCEMULTIPLIER:RESEARCHSPECIAL ===========
 
-ZoneCapacitanceMultiplier:ResearchSpecial,
+  ZoneCapacitanceMultiplier:ResearchSpecial,
     Zone Capacitance Multiplier Research Special,  !- Name
     ,                        !- Zone or ZoneList Name
     ,                        !- Temperature Capacity Multiplier
@@ -83,32 +66,27 @@ ZoneCapacitanceMultiplier:ResearchSpecial,
     ,                        !- Carbon Dioxide Capacity Multiplier
     ;                        !- Generic Contaminant Capacity Multiplier
 
-
 !-   ===========  ALL OBJECTS IN CLASS: TIMESTEP ===========
 
-Timestep,
-    6;                       !- Number of Timesteps per Hour
-
+  Timestep,6;
 
 !-   ===========  ALL OBJECTS IN CLASS: CONVERGENCELIMITS ===========
 
-ConvergenceLimits,
+  ConvergenceLimits,
     1;                       !- Minimum System Timestep {minutes}
-
 
 !-   ===========  ALL OBJECTS IN CLASS: SITE:LOCATION ===========
 
-Site:Location,
+  Site:Location,
     Site 1,                  !- Name
     0,                       !- Latitude {deg}
     0,                       !- Longitude {deg}
     0,                       !- Time Zone {hr}
     0;                       !- Elevation {m}
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SIZINGPERIOD:DESIGNDAY ===========
 
-SizingPeriod:DesignDay,
+  SizingPeriod:DesignDay,
     Montreal Int'l Ann Clg .4% Condns DB=>MWB,  !- Name
     7,                       !- Month
     21,                      !- Day of Month
@@ -135,7 +113,7 @@ SizingPeriod:DesignDay,
     0.465,                   !- ASHRAE Clear Sky Optical Depth for Beam Irradiance (taub) {dimensionless}
     1.966;                   !- ASHRAE Clear Sky Optical Depth for Diffuse Irradiance (taud) {dimensionless}
 
-SizingPeriod:DesignDay,
+  SizingPeriod:DesignDay,
     Montreal Int'l Ann Htg 99.6% Condns DB,  !- Name
     1,                       !- Month
     21,                      !- Day of Month
@@ -163,10 +141,9 @@ SizingPeriod:DesignDay,
     ,                        !- ASHRAE Clear Sky Optical Depth for Diffuse Irradiance (taud) {dimensionless}
     0;                       !- Sky Clearness
 
-
 !-   ===========  ALL OBJECTS IN CLASS: RUNPERIOD ===========
 
-RunPeriod,
+  RunPeriod,
     Run Period 1,            !- Name
     1,                       !- Begin Month
     1,                       !- Begin Day of Month
@@ -181,96 +158,93 @@ RunPeriod,
     Yes,                     !- Use Weather File Rain Indicators
     Yes;                     !- Use Weather File Snow Indicators
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULETYPELIMITS ===========
 
-ScheduleTypeLimits,
+  ScheduleTypeLimits,
     Fractional,              !- Name
     0,                       !- Lower Limit Value
     1,                       !- Upper Limit Value
     Continuous;              !- Numeric Type
 
-ScheduleTypeLimits,
+  ScheduleTypeLimits,
     Temperature,             !- Name
     ,                        !- Lower Limit Value
     ,                        !- Upper Limit Value
     Continuous,              !- Numeric Type
     temperature;             !- Unit Type
 
-ScheduleTypeLimits,
+  ScheduleTypeLimits,
     Watt,                    !- Name
     ,                        !- Lower Limit Value
     ,                        !- Upper Limit Value
     Continuous,              !- Numeric Type
     ActivityLevel;           !- Unit Type
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:DAY:INTERVAL ===========
 
-Schedule:Day:Interval,
+  Schedule:Day:Interval,
     WaterUse Latent Fraction Schedule 5p Day,  !- Name
     Fractional,              !- Schedule Type Limits Name
     No,                      !- Interpolate to Timestep
-    24:00,                   !- Time 1 {hh:mm}
+    24:00,                   !- Time 1
     0.05;                    !- Value Until Time 1
 
-Schedule:Day:Interval,
+  Schedule:Day:Interval,
     WaterUse Schedule 120F Day,  !- Name
     Temperature,             !- Schedule Type Limits Name
     No,                      !- Interpolate to Timestep
-    24:00,                   !- Time 1 {hh:mm}
+    24:00,                   !- Time 1
     48.8888888888889;        !- Value Until Time 1
 
-Schedule:Day:Interval,
+  Schedule:Day:Interval,
     WaterUse Sensible Fraction Schedule 20p Day,  !- Name
     Fractional,              !- Schedule Type Limits Name
     No,                      !- Interpolate to Timestep
-    24:00,                   !- Time 1 {hh:mm}
+    24:00,                   !- Time 1
     0.2;                     !- Value Until Time 1
 
-Schedule:Day:Interval,
+  Schedule:Day:Interval,
     Light_day_sch,           !- Name
     Fractional,              !- Schedule Type Limits Name
     No,                      !- Interpolate to Timestep
-    6:00,                    !- Time 1 {hh:mm}
+    6:00,                    !- Time 1
     0.1,                     !- Value Until Time 1
-    18:00,                   !- Time 2 {hh:mm}
+    18:00,                   !- Time 2
     0.5,                     !- Value Until Time 2
-    24:00,                   !- Time 3 {hh:mm}
+    24:00,                   !- Time 3
     0.2;                     !- Value Until Time 3
 
-Schedule:Day:Interval,
+  Schedule:Day:Interval,
     Equip_day_sch,           !- Name
     Fractional,              !- Schedule Type Limits Name
     No,                      !- Interpolate to Timestep
-    24:00,                   !- Time 1 {hh:mm}
+    24:00,                   !- Time 1
     0.3;                     !- Value Until Time 1
 
-Schedule:Day:Interval,
+  Schedule:Day:Interval,
     Activity_day_sch,        !- Name
     Watt,                    !- Schedule Type Limits Name
     No,                      !- Interpolate to Timestep
-    24:00,                   !- Time 1 {hh:mm}
+    24:00,                   !- Time 1
     100;                     !- Value Until Time 1
 
-Schedule:Day:Interval,
+  Schedule:Day:Interval,
     People_day_sch,          !- Name
     Fractional,              !- Schedule Type Limits Name
     No,                      !- Interpolate to Timestep
-    24:00,                   !- Time 1 {hh:mm}
+    24:00,                   !- Time 1
     0.4;                     !- Value Until Time 1
 
-Schedule:Day:Interval,
+  Schedule:Day:Interval,
     Heating_Setpoint_day,    !- Name
     Temperature,             !- Schedule Type Limits Name
     No,                      !- Interpolate to Timestep
-    24:00,                   !- Time 1 {hh:mm}
+    24:00,                   !- Time 1
     20;                      !- Value Until Time 1
-
 
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:WEEK:DAILY ===========
 
-Schedule:Week:Daily,
+  Schedule:Week:Daily,
     WaterUse Latent Fraction Schedule 5p Week Rule - Jan1-Dec31,  !- Name
     WaterUse Latent Fraction Schedule 5p Day,  !- Sunday Schedule:Day Name
     WaterUse Latent Fraction Schedule 5p Day,  !- Monday Schedule:Day Name
@@ -285,7 +259,7 @@ Schedule:Week:Daily,
     WaterUse Latent Fraction Schedule 5p Day,  !- CustomDay1 Schedule:Day Name
     WaterUse Latent Fraction Schedule 5p Day;  !- CustomDay2 Schedule:Day Name
 
-Schedule:Week:Daily,
+  Schedule:Week:Daily,
     WaterUse Schedule 120F Week Rule - Jan1-Dec31,  !- Name
     WaterUse Schedule 120F Day,  !- Sunday Schedule:Day Name
     WaterUse Schedule 120F Day,  !- Monday Schedule:Day Name
@@ -300,7 +274,7 @@ Schedule:Week:Daily,
     WaterUse Schedule 120F Day,  !- CustomDay1 Schedule:Day Name
     WaterUse Schedule 120F Day;  !- CustomDay2 Schedule:Day Name
 
-Schedule:Week:Daily,
+  Schedule:Week:Daily,
     WaterUse Sensible Fraction Schedule 20p Week Rule - Jan1-Dec31,  !- Name
     WaterUse Sensible Fraction Schedule 20p Day,  !- Sunday Schedule:Day Name
     WaterUse Sensible Fraction Schedule 20p Day,  !- Monday Schedule:Day Name
@@ -315,7 +289,7 @@ Schedule:Week:Daily,
     WaterUse Sensible Fraction Schedule 20p Day,  !- CustomDay1 Schedule:Day Name
     WaterUse Sensible Fraction Schedule 20p Day;  !- CustomDay2 Schedule:Day Name
 
-Schedule:Week:Daily,
+  Schedule:Week:Daily,
     Light_week_sch,          !- Name
     Light_day_sch,           !- Sunday Schedule:Day Name
     Light_day_sch,           !- Monday Schedule:Day Name
@@ -330,7 +304,7 @@ Schedule:Week:Daily,
     Light_day_sch,           !- CustomDay1 Schedule:Day Name
     Light_day_sch;           !- CustomDay2 Schedule:Day Name
 
-Schedule:Week:Daily,
+  Schedule:Week:Daily,
     Equip_week_sch,          !- Name
     Equip_day_sch,           !- Sunday Schedule:Day Name
     Equip_day_sch,           !- Monday Schedule:Day Name
@@ -345,7 +319,7 @@ Schedule:Week:Daily,
     Equip_day_sch,           !- CustomDay1 Schedule:Day Name
     Equip_day_sch;           !- CustomDay2 Schedule:Day Name
 
-Schedule:Week:Daily,
+  Schedule:Week:Daily,
     Activity_week_sch,       !- Name
     Activity_day_sch,        !- Sunday Schedule:Day Name
     Activity_day_sch,        !- Monday Schedule:Day Name
@@ -360,7 +334,7 @@ Schedule:Week:Daily,
     Activity_day_sch,        !- CustomDay1 Schedule:Day Name
     Activity_day_sch;        !- CustomDay2 Schedule:Day Name
 
-Schedule:Week:Daily,
+  Schedule:Week:Daily,
     People_week_sch,         !- Name
     People_day_sch,          !- Sunday Schedule:Day Name
     People_day_sch,          !- Monday Schedule:Day Name
@@ -375,7 +349,7 @@ Schedule:Week:Daily,
     People_day_sch,          !- CustomDay1 Schedule:Day Name
     People_day_sch;          !- CustomDay2 Schedule:Day Name
 
-Schedule:Week:Daily,
+  Schedule:Week:Daily,
     Heating_setpoint_week,   !- Name
     Heating_Setpoint_day,    !- Sunday Schedule:Day Name
     Heating_Setpoint_day,    !- Monday Schedule:Day Name
@@ -390,10 +364,9 @@ Schedule:Week:Daily,
     Heating_Setpoint_day,    !- CustomDay1 Schedule:Day Name
     Heating_Setpoint_day;    !- CustomDay2 Schedule:Day Name
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:YEAR ===========
 
-Schedule:Year,
+  Schedule:Year,
     WaterUse Latent Fraction Schedule 5p,  !- Name
     Fractional,              !- Schedule Type Limits Name
     WaterUse Latent Fraction Schedule 5p Week Rule - Jan1-Dec31,  !- Schedule:Week Name 1
@@ -402,7 +375,7 @@ Schedule:Year,
     12,                      !- End Month 1
     31;                      !- End Day 1
 
-Schedule:Year,
+  Schedule:Year,
     WaterUse Schedule 120F,  !- Name
     Temperature,             !- Schedule Type Limits Name
     WaterUse Schedule 120F Week Rule - Jan1-Dec31,  !- Schedule:Week Name 1
@@ -411,7 +384,7 @@ Schedule:Year,
     12,                      !- End Month 1
     31;                      !- End Day 1
 
-Schedule:Year,
+  Schedule:Year,
     WaterUse Sensible Fraction Schedule 20p,  !- Name
     Fractional,              !- Schedule Type Limits Name
     WaterUse Sensible Fraction Schedule 20p Week Rule - Jan1-Dec31,  !- Schedule:Week Name 1
@@ -420,7 +393,7 @@ Schedule:Year,
     12,                      !- End Month 1
     31;                      !- End Day 1
 
-Schedule:Year,
+  Schedule:Year,
     Light_year_sch,          !- Name
     Fractional,              !- Schedule Type Limits Name
     Light_week_sch,          !- Schedule:Week Name 1
@@ -429,7 +402,7 @@ Schedule:Year,
     12,                      !- End Month 1
     31;                      !- End Day 1
 
-Schedule:Year,
+  Schedule:Year,
     Equip_year_sch,          !- Name
     Fractional,              !- Schedule Type Limits Name
     Equip_week_sch,          !- Schedule:Week Name 1
@@ -438,7 +411,7 @@ Schedule:Year,
     12,                      !- End Month 1
     31;                      !- End Day 1
 
-Schedule:Year,
+  Schedule:Year,
     Activity_year_sch,       !- Name
     Watt,                    !- Schedule Type Limits Name
     Activity_week_sch,       !- Schedule:Week Name 1
@@ -447,7 +420,7 @@ Schedule:Year,
     12,                      !- End Month 1
     31;                      !- End Day 1
 
-Schedule:Year,
+  Schedule:Year,
     People_year_sch,         !- Name
     Fractional,              !- Schedule Type Limits Name
     People_week_sch,         !- Schedule:Week Name 1
@@ -456,7 +429,7 @@ Schedule:Year,
     12,                      !- End Month 1
     31;                      !- End Day 1
 
-Schedule:Year,
+  Schedule:Year,
     Heating_setpoint_year,   !- Name
     Temperature,             !- Schedule Type Limits Name
     Heating_setpoint_week,   !- Schedule:Week Name 1
@@ -465,28 +438,17 @@ Schedule:Year,
     12,                      !- End Month 1
     31;                      !- End Day 1
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:CONSTANT ===========
 
-Schedule:Constant,
-    Always On,               !- Name
-    Fractional,              !- Schedule Type Limits Name
-    1;                       !- Hourly Value
+  Schedule:Constant,Always On,Fractional,1;
 
-Schedule:Constant,
-    Always Heating,          !- Name
-    Temperature,             !- Schedule Type Limits Name
-    20;                      !- Hourly Value
+  Schedule:Constant,Always Heating,Temperature,20;
 
-Schedule:Constant,
-    Always Cooling,          !- Name
-    Temperature,             !- Schedule Type Limits Name
-    30;                      !- Hourly Value
-
+  Schedule:Constant,Always Cooling,Temperature,30;
 
 !-   ===========  ALL OBJECTS IN CLASS: MATERIAL ===========
 
-Material,
+  Material,
     1/2IN Gypsum,            !- Name
     Smooth,                  !- Roughness
     0.0127,                  !- Thickness {m}
@@ -497,7 +459,7 @@ Material,
     0.4,                     !- Solar Absorptance
     0.4;                     !- Visible Absorptance
 
-Material,
+  Material,
     1IN Stucco,              !- Name
     Smooth,                  !- Roughness
     0.0253,                  !- Thickness {m}
@@ -508,7 +470,7 @@ Material,
     0.92,                    !- Solar Absorptance
     0.92;                    !- Visible Absorptance
 
-Material,
+  Material,
     8IN Concrete HW,         !- Name
     MediumRough,             !- Roughness
     0.2033,                  !- Thickness {m}
@@ -519,7 +481,7 @@ Material,
     0.65,                    !- Solar Absorptance
     0.65;                    !- Visible Absorptance
 
-Material,
+  Material,
     F08 Metal surface,       !- Name
     Smooth,                  !- Roughness
     0.0008,                  !- Thickness {m}
@@ -530,7 +492,7 @@ Material,
     0.7,                     !- Solar Absorptance
     0.7;                     !- Visible Absorptance
 
-Material,
+  Material,
     F16 Acoustic tile,       !- Name
     MediumSmooth,            !- Roughness
     0.0191,                  !- Thickness {m}
@@ -541,7 +503,7 @@ Material,
     0.3,                     !- Solar Absorptance
     0.3;                     !- Visible Absorptance
 
-Material,
+  Material,
     G01a 19mm gypsum board,  !- Name
     MediumSmooth,            !- Roughness
     0.019,                   !- Thickness {m}
@@ -552,7 +514,7 @@ Material,
     0.4,                     !- Solar Absorptance
     0.4;                     !- Visible Absorptance
 
-Material,
+  Material,
     G05 25mm wood,           !- Name
     MediumSmooth,            !- Roughness
     0.0254,                  !- Thickness {m}
@@ -563,7 +525,7 @@ Material,
     0.5,                     !- Solar Absorptance
     0.5;                     !- Visible Absorptance
 
-Material,
+  Material,
     I01 25mm insulation board,  !- Name
     MediumRough,             !- Roughness
     0.0254,                  !- Thickness {m}
@@ -574,7 +536,7 @@ Material,
     0.6,                     !- Solar Absorptance
     0.6;                     !- Visible Absorptance
 
-Material,
+  Material,
     M11 100mm lightweight concrete,  !- Name
     MediumRough,             !- Roughness
     0.1016,                  !- Thickness {m}
@@ -585,7 +547,7 @@ Material,
     0.5,                     !- Solar Absorptance
     0.5;                     !- Visible Absorptance
 
-Material,
+  Material,
     MAT-CC05 4 HW CONCRETE,  !- Name
     Rough,                   !- Roughness
     0.1016,                  !- Thickness {m}
@@ -596,7 +558,7 @@ Material,
     0.85,                    !- Solar Absorptance
     0.85;                    !- Visible Absorptance
 
-Material,
+  Material,
     Metal Decking,           !- Name
     MediumSmooth,            !- Roughness
     0.0015,                  !- Thickness {m}
@@ -607,7 +569,7 @@ Material,
     0.6,                     !- Solar Absorptance
     0.6;                     !- Visible Absorptance
 
-Material,
+  Material,
     Metal Roofing,           !- Name
     MediumSmooth,            !- Roughness
     0.0015,                  !- Thickness {m}
@@ -618,7 +580,7 @@ Material,
     0.6,                     !- Solar Absorptance
     0.6;                     !- Visible Absorptance
 
-Material,
+  Material,
     Roof Insulation [25],    !- Name
     MediumRough,             !- Roughness
     0.263,                   !- Thickness {m}
@@ -629,7 +591,7 @@ Material,
     0.7,                     !- Solar Absorptance
     0.7;                     !- Visible Absorptance
 
-Material,
+  Material,
     Wall Insulation [42],    !- Name
     MediumRough,             !- Roughness
     0.0913999999999999,      !- Thickness {m}
@@ -640,10 +602,9 @@ Material,
     0.5,                     !- Solar Absorptance
     0.5;                     !- Visible Absorptance
 
-
 !-   ===========  ALL OBJECTS IN CLASS: MATERIAL:NOMASS ===========
 
-Material:NoMass,
+  Material:NoMass,
     CP02 CARPET PAD,         !- Name
     Smooth,                  !- Roughness
     0.1,                     !- Thermal Resistance {m2-K/W}
@@ -651,30 +612,27 @@ Material:NoMass,
     0.8,                     !- Solar Absorptance
     0.8;                     !- Visible Absorptance
 
-
 !-   ===========  ALL OBJECTS IN CLASS: MATERIAL:AIRGAP ===========
 
-Material:AirGap,
+  Material:AirGap,
     F04 Wall air space resistance,  !- Name
     0.15;                    !- Thermal Resistance {m2-K/W}
 
-Material:AirGap,
+  Material:AirGap,
     F05 Ceiling air space resistance,  !- Name
     0.18;                    !- Thermal Resistance {m2-K/W}
 
-
 !-   ===========  ALL OBJECTS IN CLASS: WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM ===========
 
-WindowMaterial:SimpleGlazingSystem,
-    _2_WSV_3_Air ,           !- Name
+  WindowMaterial:SimpleGlazingSystem,
+    _2_WSV_3_Air,            !- Name
     1.62,                    !- U-Factor {W/m2-K}
     0.64,                    !- Solar Heat Gain Coefficient
     0.8;                     !- Visible Transmittance
 
-
 !-   ===========  ALL OBJECTS IN CLASS: WINDOWMATERIAL:GLAZING ===========
 
-WindowMaterial:Glazing,
+  WindowMaterial:Glazing,
     Theoretical Glass [216], !- Name
     SpectralAverage,         !- Optical Data Type
     ,                        !- Window Glass Spectral Data Set Name
@@ -692,108 +650,105 @@ WindowMaterial:Glazing,
     1,                       !- Dirt Correction Factor for Solar and Visible Transmittance
     No;                      !- Solar Diffusing
 
-
 !-   ===========  ALL OBJECTS IN CLASS: CONSTRUCTION ===========
 
-Construction,
+  Construction,
     _2_WSV_3_Air,            !- Name
     _2_WSV_3_Air;            !- Outside Layer
 
-Construction,
+  Construction,
     ASHRAE 189.1-2009 ExtRoof Metal ClimateZone 6,  !- Name
     Metal Roofing,           !- Outside Layer
     Roof Insulation [25],    !- Layer 2
     Metal Decking;           !- Layer 3
 
-Construction,
+  Construction,
     ASHRAE 189.1-2009 ExtWall Mass ClimateZone 6,  !- Name
     1IN Stucco,              !- Outside Layer
     8IN Concrete HW,         !- Layer 2
     Wall Insulation [42],    !- Layer 3
     1/2IN Gypsum;            !- Layer 4
 
-Construction,
+  Construction,
     ASHRAE 189.1-2009 ExtWall Mass ClimateZone 7,  !- Name
     1IN Stucco,              !- Outside Layer
     8IN Concrete HW,         !- Layer 2
     Wall Insulation [42],    !- Layer 3
     1/2IN Gypsum;            !- Layer 4
 
-Construction,
+  Construction,
     ASHRAE 189.1-2009 ExtWindow ClimateZone 6,  !- Name
     Theoretical Glass [216]; !- Outside Layer
 
-Construction,
+  Construction,
     ASHRAE 189.1-2009 ExtWindow ClimateZone 7,  !- Name
     Theoretical Glass [216]; !- Outside Layer
 
-Construction,
+  Construction,
     ASHRAE 189.1-2009 ExtWindow ClimateZone 8,  !- Name
     Theoretical Glass [216]; !- Outside Layer
 
-Construction,
+  Construction,
     Exterior Door,           !- Name
     F08 Metal surface,       !- Outside Layer
     I01 25mm insulation board;  !- Layer 2
 
-Construction,
+  Construction,
     ExtSlabCarpet 4in ClimateZone 1-8,  !- Name
     MAT-CC05 4 HW CONCRETE,  !- Outside Layer
     CP02 CARPET PAD;         !- Layer 2
 
-Construction,
+  Construction,
     ExtSlabCarpet 4in ClimateZone 1-8 1,  !- Name
     MAT-CC05 4 HW CONCRETE,  !- Outside Layer
     CP02 CARPET PAD;         !- Layer 2
 
-Construction,
+  Construction,
     Interior Ceiling,        !- Name
     M11 100mm lightweight concrete,  !- Outside Layer
     F05 Ceiling air space resistance,  !- Layer 2
     F16 Acoustic tile;       !- Layer 3
 
-Construction,
+  Construction,
     Interior Ceiling 1,      !- Name
     M11 100mm lightweight concrete,  !- Outside Layer
     F05 Ceiling air space resistance,  !- Layer 2
     F16 Acoustic tile;       !- Layer 3
 
-Construction,
+  Construction,
     Interior Floor,          !- Name
     F16 Acoustic tile,       !- Outside Layer
     F05 Ceiling air space resistance,  !- Layer 2
     M11 100mm lightweight concrete;  !- Layer 3
 
-Construction,
+  Construction,
     Interior Floor 1,        !- Name
     F16 Acoustic tile,       !- Outside Layer
     F05 Ceiling air space resistance,  !- Layer 2
     M11 100mm lightweight concrete;  !- Layer 3
 
-Construction,
+  Construction,
     Interior Partition,      !- Name
     G05 25mm wood;           !- Outside Layer
 
-Construction,
+  Construction,
     Interior Wall,           !- Name
     G01a 19mm gypsum board,  !- Outside Layer
     F04 Wall air space resistance,  !- Layer 2
     G01a 19mm gypsum board;  !- Layer 3
 
-
 !-   ===========  ALL OBJECTS IN CLASS: GLOBALGEOMETRYRULES ===========
 
-GlobalGeometryRules,
+  GlobalGeometryRules,
     UpperLeftCorner,         !- Starting Vertex Position
     Counterclockwise,        !- Vertex Entry Direction
     Relative,                !- Coordinate System
     Relative,                !- Daylighting Reference Point Coordinate System
     Relative;                !- Rectangular Surface Coordinate System
 
-
 !-   ===========  ALL OBJECTS IN CLASS: ZONE ===========
 
-Zone,
+  Zone,
     Thermal Zone 1,          !- Name
     ,                        !- Direction of Relative North {deg}
     ,                        !- X Origin {m}
@@ -802,7 +757,7 @@ Zone,
     ,                        !- Type
     1;                       !- Multiplier
 
-Zone,
+  Zone,
     Thermal Zone 2,          !- Name
     ,                        !- Direction of Relative North {deg}
     ,                        !- X Origin {m}
@@ -811,26 +766,24 @@ Zone,
     ,                        !- Type
     1;                       !- Multiplier
 
-
 !-   ===========  ALL OBJECTS IN CLASS: ZONELIST ===========
 
-ZoneList,
+  ZoneList,
     Space Type 1,            !- Name
     Thermal Zone 1;          !- Zone 1 Name
 
-ZoneList,
+  ZoneList,
     Space Type 2,            !- Name
     Thermal Zone 2;          !- Zone 1 Name
 
-ZoneList,
+  ZoneList,
     All_zones,               !- Name
     Thermal Zone 1,          !- Zone 1 Name
     Thermal Zone 2;          !- Zone 2 Name
 
-
 !-   ===========  ALL OBJECTS IN CLASS: BUILDINGSURFACE:DETAILED ===========
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 0,                  !- Name
     Floor,                   !- Surface Type
     ExtSlabCarpet 4in ClimateZone 1-8 1,  !- Construction Name
@@ -841,20 +794,12 @@ BuildingSurface:Detailed,
     NoWind,                  !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    5,                       !- Vertex 1 X-coordinate {m}
-    225,                     !- Vertex 1 Y-coordinate {m}
-    0,                       !- Vertex 1 Z-coordinate {m}
-    5,                       !- Vertex 2 X-coordinate {m}
-    220,                     !- Vertex 2 Y-coordinate {m}
-    0,                       !- Vertex 2 Z-coordinate {m}
-    -5,                      !- Vertex 3 X-coordinate {m}
-    220,                     !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    -5,                      !- Vertex 4 X-coordinate {m}
-    225,                     !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
+    5,225,0,  !- X,Y,Z ==> Vertex 1 {m}
+    5,220,0,  !- X,Y,Z ==> Vertex 2 {m}
+    -5,220,0,  !- X,Y,Z ==> Vertex 3 {m}
+    -5,225,0;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 1,                  !- Name
     Roof,                    !- Surface Type
     ASHRAE 189.1-2009 ExtRoof Metal ClimateZone 6,  !- Construction Name
@@ -865,20 +810,12 @@ BuildingSurface:Detailed,
     WindExposed,             !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    -5,                      !- Vertex 1 X-coordinate {m}
-    225,                     !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    -5,                      !- Vertex 2 X-coordinate {m}
-    220,                     !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    5,                       !- Vertex 3 X-coordinate {m}
-    220,                     !- Vertex 3 Y-coordinate {m}
-    2.4384,                  !- Vertex 3 Z-coordinate {m}
-    5,                       !- Vertex 4 X-coordinate {m}
-    225,                     !- Vertex 4 Y-coordinate {m}
-    2.4384;                  !- Vertex 4 Z-coordinate {m}
+    -5,225,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    -5,220,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    5,220,2.4384,  !- X,Y,Z ==> Vertex 3 {m}
+    5,225,2.4384;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 12,                 !- Name
     Wall,                    !- Surface Type
     ASHRAE 189.1-2009 ExtWall Mass ClimateZone 7,  !- Construction Name
@@ -889,20 +826,12 @@ BuildingSurface:Detailed,
     WindExposed,             !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    -5,                      !- Vertex 1 X-coordinate {m}
-    225,                     !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    5,                       !- Vertex 2 X-coordinate {m}
-    225,                     !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    5,                       !- Vertex 3 X-coordinate {m}
-    225,                     !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    -5,                      !- Vertex 4 X-coordinate {m}
-    225,                     !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
+    -5,225,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    5,225,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    5,225,0,  !- X,Y,Z ==> Vertex 3 {m}
+    -5,225,0;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 2,                  !- Name
     Wall,                    !- Surface Type
     ASHRAE 189.1-2009 ExtWall Mass ClimateZone 7,  !- Construction Name
@@ -913,20 +842,12 @@ BuildingSurface:Detailed,
     WindExposed,             !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    5,                       !- Vertex 1 X-coordinate {m}
-    225,                     !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    5,                       !- Vertex 2 X-coordinate {m}
-    220,                     !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    5,                       !- Vertex 3 X-coordinate {m}
-    220,                     !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    5,                       !- Vertex 4 X-coordinate {m}
-    225,                     !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
+    5,225,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    5,220,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    5,220,0,  !- X,Y,Z ==> Vertex 3 {m}
+    5,225,0;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 3,                  !- Name
     Wall,                    !- Surface Type
     Interior Wall,           !- Construction Name
@@ -937,20 +858,12 @@ BuildingSurface:Detailed,
     NoWind,                  !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    5,                       !- Vertex 1 X-coordinate {m}
-    220,                     !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    -5,                      !- Vertex 2 X-coordinate {m}
-    220,                     !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    -5,                      !- Vertex 3 X-coordinate {m}
-    220,                     !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    5,                       !- Vertex 4 X-coordinate {m}
-    220,                     !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
+    5,220,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    -5,220,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    -5,220,0,  !- X,Y,Z ==> Vertex 3 {m}
+    5,220,0;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 5,                  !- Name
     Wall,                    !- Surface Type
     ASHRAE 189.1-2009 ExtWall Mass ClimateZone 7,  !- Construction Name
@@ -961,20 +874,12 @@ BuildingSurface:Detailed,
     WindExposed,             !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    -5,                      !- Vertex 1 X-coordinate {m}
-    220,                     !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    -5,                      !- Vertex 2 X-coordinate {m}
-    225,                     !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    -5,                      !- Vertex 3 X-coordinate {m}
-    225,                     !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    -5,                      !- Vertex 4 X-coordinate {m}
-    220,                     !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
+    -5,220,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    -5,225,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    -5,225,0,  !- X,Y,Z ==> Vertex 3 {m}
+    -5,220,0;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 10,                 !- Name
     Wall,                    !- Surface Type
     ASHRAE 189.1-2009 ExtWall Mass ClimateZone 7,  !- Construction Name
@@ -985,20 +890,12 @@ BuildingSurface:Detailed,
     WindExposed,             !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    5,                       !- Vertex 1 X-coordinate {m}
-    215,                     !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    -5,                      !- Vertex 2 X-coordinate {m}
-    215,                     !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    -5,                      !- Vertex 3 X-coordinate {m}
-    215,                     !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    5,                       !- Vertex 4 X-coordinate {m}
-    215,                     !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
+    5,215,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    -5,215,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    -5,215,0,  !- X,Y,Z ==> Vertex 3 {m}
+    5,215,0;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 11,                 !- Name
     Wall,                    !- Surface Type
     ASHRAE 189.1-2009 ExtWall Mass ClimateZone 7,  !- Construction Name
@@ -1009,20 +906,12 @@ BuildingSurface:Detailed,
     WindExposed,             !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    -5,                      !- Vertex 1 X-coordinate {m}
-    215,                     !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    -5,                      !- Vertex 2 X-coordinate {m}
-    220,                     !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    -5,                      !- Vertex 3 X-coordinate {m}
-    220,                     !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    -5,                      !- Vertex 4 X-coordinate {m}
-    215,                     !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
+    -5,215,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    -5,220,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    -5,220,0,  !- X,Y,Z ==> Vertex 3 {m}
+    -5,215,0;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 13,                 !- Name
     Wall,                    !- Surface Type
     Interior Wall,           !- Construction Name
@@ -1033,20 +922,12 @@ BuildingSurface:Detailed,
     NoWind,                  !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    -5,                      !- Vertex 1 X-coordinate {m}
-    220,                     !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    5,                       !- Vertex 2 X-coordinate {m}
-    220,                     !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    5,                       !- Vertex 3 X-coordinate {m}
-    220,                     !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    -5,                      !- Vertex 4 X-coordinate {m}
-    220,                     !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
+    -5,220,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    5,220,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    5,220,0,  !- X,Y,Z ==> Vertex 3 {m}
+    -5,220,0;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 7,                  !- Name
     Floor,                   !- Surface Type
     ExtSlabCarpet 4in ClimateZone 1-8 1,  !- Construction Name
@@ -1057,20 +938,12 @@ BuildingSurface:Detailed,
     NoWind,                  !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    5,                       !- Vertex 1 X-coordinate {m}
-    220,                     !- Vertex 1 Y-coordinate {m}
-    0,                       !- Vertex 1 Z-coordinate {m}
-    5,                       !- Vertex 2 X-coordinate {m}
-    215,                     !- Vertex 2 Y-coordinate {m}
-    0,                       !- Vertex 2 Z-coordinate {m}
-    -5,                      !- Vertex 3 X-coordinate {m}
-    215,                     !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    -5,                      !- Vertex 4 X-coordinate {m}
-    220,                     !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
+    5,220,0,  !- X,Y,Z ==> Vertex 1 {m}
+    5,215,0,  !- X,Y,Z ==> Vertex 2 {m}
+    -5,215,0,  !- X,Y,Z ==> Vertex 3 {m}
+    -5,220,0;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 8,                  !- Name
     Roof,                    !- Surface Type
     ASHRAE 189.1-2009 ExtRoof Metal ClimateZone 6,  !- Construction Name
@@ -1081,20 +954,12 @@ BuildingSurface:Detailed,
     WindExposed,             !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    -5,                      !- Vertex 1 X-coordinate {m}
-    220,                     !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    -5,                      !- Vertex 2 X-coordinate {m}
-    215,                     !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    5,                       !- Vertex 3 X-coordinate {m}
-    215,                     !- Vertex 3 Y-coordinate {m}
-    2.4384,                  !- Vertex 3 Z-coordinate {m}
-    5,                       !- Vertex 4 X-coordinate {m}
-    220,                     !- Vertex 4 Y-coordinate {m}
-    2.4384;                  !- Vertex 4 Z-coordinate {m}
+    -5,220,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    -5,215,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    5,215,2.4384,  !- X,Y,Z ==> Vertex 3 {m}
+    5,220,2.4384;  !- X,Y,Z ==> Vertex 4 {m}
 
-BuildingSurface:Detailed,
+  BuildingSurface:Detailed,
     Face 9,                  !- Name
     Wall,                    !- Surface Type
     ASHRAE 189.1-2009 ExtWall Mass ClimateZone 7,  !- Construction Name
@@ -1105,23 +970,14 @@ BuildingSurface:Detailed,
     WindExposed,             !- Wind Exposure
     ,                        !- View Factor to Ground
     ,                        !- Number of Vertices
-    5,                       !- Vertex 1 X-coordinate {m}
-    220,                     !- Vertex 1 Y-coordinate {m}
-    2.4384,                  !- Vertex 1 Z-coordinate {m}
-    5,                       !- Vertex 2 X-coordinate {m}
-    215,                     !- Vertex 2 Y-coordinate {m}
-    2.4384,                  !- Vertex 2 Z-coordinate {m}
-    5,                       !- Vertex 3 X-coordinate {m}
-    215,                     !- Vertex 3 Y-coordinate {m}
-    0,                       !- Vertex 3 Z-coordinate {m}
-    5,                       !- Vertex 4 X-coordinate {m}
-    220,                     !- Vertex 4 Y-coordinate {m}
-    0;                       !- Vertex 4 Z-coordinate {m}
-
+    5,220,2.4384,  !- X,Y,Z ==> Vertex 1 {m}
+    5,215,2.4384,  !- X,Y,Z ==> Vertex 2 {m}
+    5,215,0,  !- X,Y,Z ==> Vertex 3 {m}
+    5,220,0;  !- X,Y,Z ==> Vertex 4 {m}
 
 !-   ===========  ALL OBJECTS IN CLASS: FENESTRATIONSURFACE:DETAILED ===========
 
-FenestrationSurface:Detailed,
+  FenestrationSurface:Detailed,
     Face 101,                !- Name
     Window,                  !- Surface Type
     _2_WSV_3_Air,            !- Construction Name
@@ -1131,23 +987,14 @@ FenestrationSurface:Detailed,
     ,                        !- Frame and Divider Name
     ,                        !- Multiplier
     ,                        !- Number of Vertices
-    215.5,                   !- Vertex 1 X-coordinate {m}
-    5,                       !- Vertex 1 Y-coordinate {m}
-    0.5,                     !- Vertex 1 Z-coordinate {m}
-    215.5,                   !- Vertex 2 X-coordinate {m}
-    5,                       !- Vertex 2 Y-coordinate {m}
-    2,                       !- Vertex 2 Z-coordinate {m}
-    217,                     !- Vertex 3 X-coordinate {m}
-    5,                       !- Vertex 3 Y-coordinate {m}
-    2,                       !- Vertex 3 Z-coordinate {m}
-    217,                     !- Vertex 4 X-coordinate {m}
-    5,                       !- Vertex 4 Y-coordinate {m}
-    0.5;                     !- Vertex 4 Z-coordinate {m}
-
+    215.5,5,0.5,  !- X,Y,Z ==> Vertex 1 {m}
+    215.5,5,2,  !- X,Y,Z ==> Vertex 2 {m}
+    217,5,2,  !- X,Y,Z ==> Vertex 3 {m}
+    217,5,0.5;  !- X,Y,Z ==> Vertex 4 {m}
 
 !-   ===========  ALL OBJECTS IN CLASS: PEOPLE ===========
 
-People,
+  People,
     People 1,                !- Name
     Space Type 1,            !- Zone or ZoneList Name
     People_year_sch,         !- Number of People Schedule Name
@@ -1159,7 +1006,7 @@ People,
     ,                        !- Sensible Heat Fraction
     Activity_year_sch;       !- Activity Level Schedule Name
 
-People,
+  People,
     People 2,                !- Name
     Space Type 2,            !- Zone or ZoneList Name
     People_year_sch,         !- Number of People Schedule Name
@@ -1171,10 +1018,9 @@ People,
     ,                        !- Sensible Heat Fraction
     Activity_year_sch;       !- Activity Level Schedule Name
 
-
 !-   ===========  ALL OBJECTS IN CLASS: LIGHTS ===========
 
-Lights,
+  Lights,
     Lights 1,                !- Name
     Space Type 1,            !- Zone or ZoneList Name
     Light_year_sch,          !- Schedule Name
@@ -1188,7 +1034,7 @@ Lights,
     1,                       !- Fraction Replaceable
     General;                 !- End-Use Subcategory
 
-Lights,
+  Lights,
     Lights 2,                !- Name
     Space Type 2,            !- Zone or ZoneList Name
     Equip_year_sch,          !- Schedule Name
@@ -1202,10 +1048,9 @@ Lights,
     1,                       !- Fraction Replaceable
     General;                 !- End-Use Subcategory
 
-
 !-   ===========  ALL OBJECTS IN CLASS: ELECTRICEQUIPMENT ===========
 
-ElectricEquipment,
+  ElectricEquipment,
     Electric Equipment 1,    !- Name
     Space Type 1,            !- Zone or ZoneList Name
     Equip_year_sch,          !- Schedule Name
@@ -1218,7 +1063,7 @@ ElectricEquipment,
     ,                        !- Fraction Lost
     General;                 !- End-Use Subcategory
 
-ElectricEquipment,
+  ElectricEquipment,
     Electric Equipment 2,    !- Name
     Space Type 2,            !- Zone or ZoneList Name
     Equip_year_sch,          !- Schedule Name
@@ -1231,10 +1076,9 @@ ElectricEquipment,
     ,                        !- Fraction Lost
     General;                 !- End-Use Subcategory
 
-
 !-   ===========  ALL OBJECTS IN CLASS: ZONEINFILTRATION:DESIGNFLOWRATE ===========
 
-ZoneInfiltration:DesignFlowRate,
+  ZoneInfiltration:DesignFlowRate,
     Infilt,                  !- Name
     All_zones,               !- Zone or ZoneList Name
     Always On,               !- Schedule Name
@@ -1248,20 +1092,18 @@ ZoneInfiltration:DesignFlowRate,
     0.224,                   !- Velocity Term Coefficient
     ;                        !- Velocity Squared Term Coefficient
 
-
 !-   ===========  ALL OBJECTS IN CLASS: HVACTEMPLATE:THERMOSTAT ===========
 
-HVACTemplate:Thermostat,
+  HVACTemplate:Thermostat,
     Thermostat,              !- Name
     Always Heating,          !- Heating Setpoint Schedule Name
     20,                      !- Constant Heating Setpoint {C}
     Always Cooling,          !- Cooling Setpoint Schedule Name
     30;                      !- Constant Cooling Setpoint {C}
 
-
 !-   ===========  ALL OBJECTS IN CLASS: HVACTEMPLATE:ZONE:BASEBOARDHEAT ===========
 
-HVACTemplate:Zone:BaseboardHeat,
+  HVACTemplate:Zone:BaseboardHeat,
     Thermal Zone 1,          !- Zone Name
     Thermostat,              !- Template Thermostat Name
     1,                       !- Zone Heating Sizing Factor
@@ -1274,7 +1116,7 @@ HVACTemplate:Zone:BaseboardHeat,
     ,                        !- Outdoor Air Flow Rate per Zone Floor Area {m3/s-m2}
     ;                        !- Outdoor Air Flow Rate per Zone {m3/s}
 
-HVACTemplate:Zone:BaseboardHeat,
+  HVACTemplate:Zone:BaseboardHeat,
     Thermal Zone 2,          !- Zone Name
     Thermostat,              !- Template Thermostat Name
     1,                       !- Zone Heating Sizing Factor
@@ -1287,23 +1129,20 @@ HVACTemplate:Zone:BaseboardHeat,
     ,                        !- Outdoor Air Flow Rate per Zone Floor Area {m3/s-m2}
     ;                        !- Outdoor Air Flow Rate per Zone {m3/s}
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SIZING:PARAMETERS ===========
 
-Sizing:Parameters,
+  Sizing:Parameters,
     1.25,                    !- Heating Sizing Factor
     1.15;                    !- Cooling Sizing Factor
 
-
 !-   ===========  ALL OBJECTS IN CLASS: OUTDOORAIR:NODE ===========
 
-OutdoorAir:Node,
+  OutdoorAir:Node,
     Model Outdoor Air Node;  !- Name
-
 
 !-   ===========  ALL OBJECTS IN CLASS: LIFECYCLECOST:PARAMETERS ===========
 
-LifeCycleCost:Parameters,
+  LifeCycleCost:Parameters,
     Life Cycle Cost Parameters,  !- Name
     EndOfYear,               !- Discounting Convention
     ConstantDollar,          !- Inflation Approach
@@ -1318,19 +1157,17 @@ LifeCycleCost:Parameters,
     ,                        !- Tax rate
     None;                    !- Depreciation Method
 
-
 !-   ===========  ALL OBJECTS IN CLASS: LIFECYCLECOST:NONRECURRINGCOST ===========
 
-LifeCycleCost:NonrecurringCost,
+  LifeCycleCost:NonrecurringCost,
     Default Cost,            !- Name
     Construction,            !- Category
     0,                       !- Cost
     ServicePeriod;           !- Start of Costs
 
-
 !-   ===========  ALL OBJECTS IN CLASS: LIFECYCLECOST:USEPRICEESCALATION ===========
 
-LifeCycleCost:UsePriceEscalation,
+  LifeCycleCost:UsePriceEscalation,
     U.S. Avg  Commercial-Electricity,  !- LCC Price Escalation Name
     Electricity,             !- Resource
     2011,                    !- Escalation Start Year
@@ -1344,29 +1181,29 @@ LifeCycleCost:UsePriceEscalation,
     0.9539,                  !- Year 7 Escalation
     0.9521,                  !- Year 8 Escalation
     0.9546,                  !- Year 9 Escalation
-    0.9550,                  !- N11
-    0.9553,                  !- N12
-    0.9564,                  !- N13
-    0.9575,                  !- N14
-    0.9596,                  !- N15
-    0.9618,                  !- N16
-    0.9614,                  !- N17
-    0.9618,                  !- N18
-    0.9618,                  !- N19
-    0.9593,                  !- N20
-    0.9589,                  !- N21
-    0.9607,                  !- N22
-    0.9625,                  !- N23
-    0.9650,                  !- N24
-    0.9708,                  !- N25
-    0.9751,                  !- N26
-    0.9762,                  !- N27
-    0.9766,                  !- N28
-    0.9766,                  !- N29
-    0.9769,                  !- N30
-    0.9773;                  !- N31
+    0.9550,                  !- <none>
+    0.9553,                  !- <none>
+    0.9564,                  !- <none>
+    0.9575,                  !- <none>
+    0.9596,                  !- <none>
+    0.9618,                  !- <none>
+    0.9614,                  !- <none>
+    0.9618,                  !- <none>
+    0.9618,                  !- <none>
+    0.9593,                  !- <none>
+    0.9589,                  !- <none>
+    0.9607,                  !- <none>
+    0.9625,                  !- <none>
+    0.9650,                  !- <none>
+    0.9708,                  !- <none>
+    0.9751,                  !- <none>
+    0.9762,                  !- <none>
+    0.9766,                  !- <none>
+    0.9766,                  !- <none>
+    0.9769,                  !- <none>
+    0.9773;                  !- <none>
 
-LifeCycleCost:UsePriceEscalation,
+  LifeCycleCost:UsePriceEscalation,
     U.S. Avg  Commercial-Distillate Oil,  !- LCC Price Escalation Name
     FuelOil#1,               !- Resource
     2011,                    !- Escalation Start Year
@@ -1380,29 +1217,29 @@ LifeCycleCost:UsePriceEscalation,
     1.1267,                  !- Year 7 Escalation
     1.1580,                  !- Year 8 Escalation
     1.1792,                  !- Year 9 Escalation
-    1.1967,                  !- N11
-    1.2200,                  !- N12
-    1.2333,                  !- N13
-    1.2566,                  !- N14
-    1.2709,                  !- N15
-    1.2826,                  !- N16
-    1.2985,                  !- N17
-    1.3102,                  !- N18
-    1.3250,                  !- N19
-    1.3261,                  !- N20
-    1.3282,                  !- N21
-    1.3324,                  !- N22
-    1.3356,                  !- N23
-    1.3431,                  !- N24
-    1.3510,                  !- N25
-    1.3568,                  !- N26
-    1.3606,                  !- N27
-    1.3637,                  !- N28
-    1.3674,                  !- N29
-    1.3706,                  !- N30
-    1.3743;                  !- N31
+    1.1967,                  !- <none>
+    1.2200,                  !- <none>
+    1.2333,                  !- <none>
+    1.2566,                  !- <none>
+    1.2709,                  !- <none>
+    1.2826,                  !- <none>
+    1.2985,                  !- <none>
+    1.3102,                  !- <none>
+    1.3250,                  !- <none>
+    1.3261,                  !- <none>
+    1.3282,                  !- <none>
+    1.3324,                  !- <none>
+    1.3356,                  !- <none>
+    1.3431,                  !- <none>
+    1.3510,                  !- <none>
+    1.3568,                  !- <none>
+    1.3606,                  !- <none>
+    1.3637,                  !- <none>
+    1.3674,                  !- <none>
+    1.3706,                  !- <none>
+    1.3743;                  !- <none>
 
-LifeCycleCost:UsePriceEscalation,
+  LifeCycleCost:UsePriceEscalation,
     U.S. Avg  Commercial-Residual Oil,  !- LCC Price Escalation Name
     FuelOil#2,               !- Resource
     2011,                    !- Escalation Start Year
@@ -1416,29 +1253,29 @@ LifeCycleCost:UsePriceEscalation,
     0.9897,                  !- Year 7 Escalation
     1.0075,                  !- Year 8 Escalation
     1.0314,                  !- Year 9 Escalation
-    1.0554,                  !- N11
-    1.0861,                  !- N12
-    1.1278,                  !- N13
-    1.1497,                  !- N14
-    1.1620,                  !- N15
-    1.1743,                  !- N16
-    1.1852,                  !- N17
-    1.1948,                  !- N18
-    1.2037,                  !- N19
-    1.2071,                  !- N20
-    1.2119,                  !- N21
-    1.2139,                  !- N22
-    1.2194,                  !- N23
-    1.2276,                  !- N24
-    1.2365,                  !- N25
-    1.2420,                  !- N26
-    1.2461,                  !- N27
-    1.2509,                  !- N28
-    1.2550,                  !- N29
-    1.2591,                  !- N30
-    1.2638;                  !- N31
+    1.0554,                  !- <none>
+    1.0861,                  !- <none>
+    1.1278,                  !- <none>
+    1.1497,                  !- <none>
+    1.1620,                  !- <none>
+    1.1743,                  !- <none>
+    1.1852,                  !- <none>
+    1.1948,                  !- <none>
+    1.2037,                  !- <none>
+    1.2071,                  !- <none>
+    1.2119,                  !- <none>
+    1.2139,                  !- <none>
+    1.2194,                  !- <none>
+    1.2276,                  !- <none>
+    1.2365,                  !- <none>
+    1.2420,                  !- <none>
+    1.2461,                  !- <none>
+    1.2509,                  !- <none>
+    1.2550,                  !- <none>
+    1.2591,                  !- <none>
+    1.2638;                  !- <none>
 
-LifeCycleCost:UsePriceEscalation,
+  LifeCycleCost:UsePriceEscalation,
     U.S. Avg  Commercial-Natural gas,  !- LCC Price Escalation Name
     NaturalGas,              !- Resource
     2011,                    !- Escalation Start Year
@@ -1452,29 +1289,29 @@ LifeCycleCost:UsePriceEscalation,
     0.9512,                  !- Year 7 Escalation
     0.9645,                  !- Year 8 Escalation
     0.9856,                  !- Year 9 Escalation
-    1.0067,                  !- N11
-    1.0222,                  !- N12
-    1.0410,                  !- N13
-    1.0610,                  !- N14
-    1.0787,                  !- N15
-    1.0942,                  !- N16
-    1.1098,                  !- N17
-    1.1220,                  !- N18
-    1.1308,                  !- N19
-    1.1386,                  !- N20
-    1.1486,                  !- N21
-    1.1619,                  !- N22
-    1.1763,                  !- N23
-    1.1918,                  !- N24
-    1.2118,                  !- N25
-    1.2284,                  !- N26
-    1.2439,                  !- N27
-    1.2605,                  !- N28
-    1.2772,                  !- N29
-    1.2938,                  !- N30
-    1.3115;                  !- N31
+    1.0067,                  !- <none>
+    1.0222,                  !- <none>
+    1.0410,                  !- <none>
+    1.0610,                  !- <none>
+    1.0787,                  !- <none>
+    1.0942,                  !- <none>
+    1.1098,                  !- <none>
+    1.1220,                  !- <none>
+    1.1308,                  !- <none>
+    1.1386,                  !- <none>
+    1.1486,                  !- <none>
+    1.1619,                  !- <none>
+    1.1763,                  !- <none>
+    1.1918,                  !- <none>
+    1.2118,                  !- <none>
+    1.2284,                  !- <none>
+    1.2439,                  !- <none>
+    1.2605,                  !- <none>
+    1.2772,                  !- <none>
+    1.2938,                  !- <none>
+    1.3115;                  !- <none>
 
-LifeCycleCost:UsePriceEscalation,
+  LifeCycleCost:UsePriceEscalation,
     U.S. Avg  Commercial-Coal,  !- LCC Price Escalation Name
     Coal,                    !- Resource
     2011,                    !- Escalation Start Year
@@ -1488,90 +1325,66 @@ LifeCycleCost:UsePriceEscalation,
     1.0030,                  !- Year 7 Escalation
     1.0059,                  !- Year 8 Escalation
     1.0089,                  !- Year 9 Escalation
-    1.0119,                  !- N11
-    1.0148,                  !- N12
-    1.0178,                  !- N13
-    1.0208,                  !- N14
-    1.0267,                  !- N15
-    1.0297,                  !- N16
-    1.0356,                  !- N17
-    1.0415,                  !- N18
-    1.0534,                  !- N19
-    1.0564,                  !- N20
-    1.0593,                  !- N21
-    1.0653,                  !- N22
-    1.0712,                  !- N23
-    1.0742,                  !- N24
-    1.0801,                  !- N25
-    1.0831,                  !- N26
-    1.0831,                  !- N27
-    1.0861,                  !- N28
-    1.0890,                  !- N29
-    1.0920,                  !- N30
-    1.0950;                  !- N31
-
+    1.0119,                  !- <none>
+    1.0148,                  !- <none>
+    1.0178,                  !- <none>
+    1.0208,                  !- <none>
+    1.0267,                  !- <none>
+    1.0297,                  !- <none>
+    1.0356,                  !- <none>
+    1.0415,                  !- <none>
+    1.0534,                  !- <none>
+    1.0564,                  !- <none>
+    1.0593,                  !- <none>
+    1.0653,                  !- <none>
+    1.0712,                  !- <none>
+    1.0742,                  !- <none>
+    1.0801,                  !- <none>
+    1.0831,                  !- <none>
+    1.0831,                  !- <none>
+    1.0861,                  !- <none>
+    1.0890,                  !- <none>
+    1.0920,                  !- <none>
+    1.0950;                  !- <none>
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:VARIABLEDICTIONARY ===========
 
-Output:VariableDictionary,
-    IDF,                     !- Key Field
-    Unsorted;                !- Sort Option
-
+  Output:VariableDictionary,IDF,Unsorted;
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:TABLE:SUMMARYREPORTS ===========
 
-Output:Table:SummaryReports,
+  Output:Table:SummaryReports,
     AllSummary;              !- Report 1 Name
-
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUTCONTROL:TABLE:STYLE ===========
 
-OutputControl:Table:Style,
+  OutputControl:Table:Style,
     HTML;                    !- Column Separator
-
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUTCONTROL:REPORTINGTOLERANCES ===========
 
-OutputControl:ReportingTolerances,
+  OutputControl:ReportingTolerances,
     0.2,                     !- Tolerance for Time Heating Setpoint Not Met {deltaC}
     0.2;                     !- Tolerance for Time Cooling Setpoint Not Met {deltaC}
 
-
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:VARIABLE ===========
 
-Output:Variable,
-    *,                       !- Key Value
-    Baseboard Electric Energy,  !- Variable Name
-    Timestep;                !- Reporting Frequency
+  Output:Variable,*,Baseboard Electric Energy,Timestep;
 
-Output:Variable,
-    *,                       !- Key Value
-    Site Outdoor Air Drybulb Temperature,  !- Variable Name
-    Timestep;                !- Reporting Frequency
+  Output:Variable,*,Site Outdoor Air Drybulb Temperature,Timestep;
 
-Output:Variable,
-    *,                       !- Key Value
-    Zone Air Temperature,    !- Variable Name
-    Timestep;                !- Reporting Frequency
-
+  Output:Variable,*,Zone Air Temperature,Timestep;
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:METER ===========
 
-Output:Meter,
-    InteriorEquipment:Electricity,  !- Key Name
-    Timestep;                !- Reporting Frequency
+  Output:Meter,InteriorEquipment:Electricity,Timestep;
 
-Output:Meter,
-    InteriorLights:Electricity,  !- Key Name
-    Timestep;                !- Reporting Frequency
+  Output:Meter,InteriorLights:Electricity,Timestep;
 
-Output:Meter,
-    Cooling:EnergyTransfer,  !- Key Name
-    Timestep;                !- Reporting Frequency
-
+  Output:Meter,Cooling:EnergyTransfer,Timestep;
 
 !-   ===========  ALL OBJECTS IN CLASS: OUTPUT:SQLITE ===========
 
-Output:SQLite,
+  Output:SQLite,
     SimpleAndTabular;        !- Option Type
 

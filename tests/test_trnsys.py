@@ -577,7 +577,7 @@ def test_trnbuild_from_idf_parallel(config, trnbuild_file):
 def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
     # All IDF files
     # List files here
-    file_upper_path = os.path.join("tests", "input_data", "trnsys")
+    file_upper_path = os.path.join(settings.ep_version, "ExampleFiles")
     files = [
         "RefBldgWarehouseNew2004_Chicago.idf",
         "ASHRAE9012016_Warehouse_Denver.idf",

@@ -4,16 +4,23 @@ channels:
   - conda-forge
 dependencies:
   - shapely
+  - networkx
+  - six
   - matplotlib>=2.1
   - requests>=2.18
+  - pycountry
   - scikit-learn
   - scipy
-  - pandas>=0.21
-  - numpy>=1.13
+  - pandas>=0.24
+  - numpy>=1.17
   - tqdm
+  - tabulate
+  - path.py
+  - pyomo
+  - pint
+  - click
+  - outdated
   - pip:
-    - pycountry
+    - tsam
     - eppy
     - geomeppy
-    - pyomo
-    - utm

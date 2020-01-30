@@ -501,7 +501,7 @@ def trnbuild_file(config, request):
 
 
 @pytest.mark.xfail(
-    os.environ["CI"].lower() == "true",
+    os.environ.get("CI", True),
     reason="Skipping this test on CI environment.",
 )
 def test_trnbuild_from_idf(config, trnbuild_file):
@@ -540,7 +540,7 @@ def test_trnbuild_from_idf(config, trnbuild_file):
 
 @pytest.mark.win32
 @pytest.mark.xfail(
-    os.environ["CI"].lower() == "true",
+    os.environ.get("CI", True),
     reason="Skipping this test on CI environment.",
 )
 def test_trnbuild_from_idf_parallel(config, trnbuild_file):
@@ -570,7 +570,7 @@ def test_trnbuild_from_idf_parallel(config, trnbuild_file):
 @pytest.mark.darwin
 @pytest.mark.linux
 @pytest.mark.xfail(
-    os.environ["CI"].lower() == "true",
+    os.environ.get("CI", True),
     reason="Skipping this test on CI environment.",
 )
 def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
@@ -606,7 +606,7 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
 
 @pytest.mark.win32
 @pytest.mark.xfail(
-    os.environ["CI"].lower() == "true",
+    os.environ.get("CI", True),
     reason="Skipping this test on CI environment.",
 )
 def test_trnbuild_idf_win32(config):
@@ -637,7 +637,7 @@ def safe_int_cast(val, default=0):
 @pytest.mark.darwin
 @pytest.mark.linux
 @pytest.mark.skipif(
-    os.environ["CI"].lower() == "true",
+    os.environ.get("CI", True),
     reason="Skipping this test on CI environment.",
 )
 @pytest.mark.xfail(

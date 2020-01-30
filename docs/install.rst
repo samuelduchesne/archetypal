@@ -5,10 +5,18 @@ Installation
 Requirements
 ------------
 
-Prior to installing this package, you must have the 8.9.0 version (download_ here at the bottom of the page) of
-`EnergyPlus`_ installed in it's default location. On Windows that would be in `C:\\EnergyPlusV8-9-0` and on MacOS that
-would be in `/Applications/EnergyPlus-8-9-0`. For a step-by-step installation of EnergyPlus, see `Installation from
-scratch (Windows)`_
+.. warning::
+
+    Prior to installing this package, you must have EnergyPlus version 9.2.0 (download_ here at the bottom of
+    the page).
+
+`EnergyPlus`_ should be installed in it's default location. On Windows that would be in `C:\\EnergyPlusV9-2-0` and on
+MacOS that would be in `/Applications/EnergyPlus-9-2-0`.
+
+It is also recommended that the older transition programs be installed as well. These programs allow older IDF files
+(versions 7.2 and below) to be upgraded to version 9-2-0. Since these, don't come by default with EnergyPlus, they
+need to be installed by hand. A script has been created for windows (see `Installation from scratch (Windows)`_). For
+macOS, refer to the `supplementary conversion programs`_.
 
 Installing using ``pip``
 ------------------------
@@ -169,7 +177,7 @@ To install *archetypal*, follow the steps detailed above in `Installing using pi
 .. _virtual environment: https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#managing-environments
 .. _EnergyPlus: https://energyplus.net
 .. _umi: https://umidocs.readthedocs.io/en/latest/
-.. _download: https://github.com/NREL/EnergyPlus/releases/tag/v8.9.0
+.. _download: https://github.com/NREL/EnergyPlus/releases/tag/v9.2.0
 .. _supplementary conversion programs: http://energyplus.helpserve.com/Knowledgebase/List/Index/46/converting-older-version-files
 .. _script: https://gist.github.com/samuelduchesne/aef233396167e0f961df3d62a193573e
 .. _environment.yml: https://github.com/samuelduchesne/archetypal/blob/master/environment.yml

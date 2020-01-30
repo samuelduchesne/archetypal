@@ -294,18 +294,17 @@ def convert(
             capacitance=capacitance
         )
     # Print path of output files in console
-    if paths:
-        click.echo("Here are the paths to the different output files: ")
+    click.echo("Here are the paths to the different output files: ")
 
-        for path in paths:
-            if "MODIFIED" in path:
-                click.echo("Path to the modified IDF file: {}".format(path))
-            elif "b18" in path:
-                click.echo("Path to the BUI file: {}".format(path))
-            elif "dck" in path:
-                click.echo("Path to the DCK file: {}".format(path))
-            else:
-                click.echo("Path to the T3D file: {}".format(path))
+    for path in paths:
+        if "MODIFIED" in path:
+            click.echo("Path to the modified IDF file: {}".format(path))
+        elif "b18" in path:
+            click.echo("Path to the BUI file: {}".format(path))
+        elif "dck" in path:
+            click.echo("Path to the DCK file: {}".format(path))
+        else:
+            click.echo("Path to the T3D file: {}".format(path))
 
 
 @cli.command()

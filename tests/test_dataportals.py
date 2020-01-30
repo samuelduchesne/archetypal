@@ -1,7 +1,11 @@
+import os
+
+import pytest
+
 import archetypal as ar
 import pandas as pd
 
-from archetypal import download_bld_window
+from archetypal import download_bld_window, settings
 
 
 def test_tabula_available_country(config, scratch_then_cache):
@@ -39,21 +43,29 @@ def test_tabula_multiple(config, scratch_then_cache):
         keys=ab.code_buildingtype_column1 + "." + ab.suffix_building_column1,
     )
 
-
+@pytest.mark.xfail(
+    condition=os.environ.get("NREL_CONSUMER_KEY") is None,
+    reason="Must provide an NREL API key as ENV Variable 'NREL_CONSUMER_KEY'",
+    strict=True,
+)
 def test_nrel_api_request(config, scratch_then_cache):
     data = {
         "keyword": "Window",
         "format": "json",
         "f[]": ["fs_a_Overall_U-factor:[3.4 TO 3.6]", 'sm_component_type:"Window"'],
-        "oauth_consumer_key": "f2d08b2d6cf7c8abd7d7c580ede79fa4",
+        "oauth_consumer_key": os.environ.get("NREL_CONSUMER_KEY"),
     }
 
     response = ar.dataportal.nrel_bcl_api_request(data)
     assert response["result"]
 
-
+@pytest.mark.xfail(
+    condition=os.environ.get("NREL_CONSUMER_KEY") is None,
+    reason="Must provide an NREL API key as ENV Variable 'NREL_CONSUMER_KEY'",
+    strict=True,
+)
 def test_download_bld_window(config, scratch_then_cache):
-    oauth_consumer_key = "f2d08b2d6cf7c8abd7d7c580ede79fa4"
+    oauth_consumer_key = os.environ.get("NREL_CONSUMER_KEY")
 
     response = download_bld_window(
         u_factor=3.18,
@@ -64,10 +76,14 @@ def test_download_bld_window(config, scratch_then_cache):
     )
     assert response
 
-
+@pytest.mark.xfail(
+    condition=os.environ.get("NREL_CONSUMER_KEY") is None,
+    reason="Must provide an NREL API key as ENV Variable 'NREL_CONSUMER_KEY'",
+    strict=True,
+)
 def test_download_and_load_bld_window(config):
     """Download window and load its idf file"""
-    oauth_consumer_key = "f2d08b2d6cf7c8abd7d7c580ede79fa4"
+    oauth_consumer_key = os.environ.get("NREL_CONSUMER_KEY")
 
     response = download_bld_window(
         u_factor=3.18,
@@ -76,7 +92,7 @@ def test_download_and_load_bld_window(config):
         oauth_key=oauth_consumer_key,
         tolerance=0.05,
     )
-    idf = ar.load_idf(response[0], ep_version="8-9-0")
+    idf = ar.load_idf(response[0], ep_version=settings.ep_version)
     construct = idf.getobject("CONSTRUCTION", "AEDG-SmOffice 1A Window Fixed")
     ws = ar.WindowSetting.from_construction(Name="test_window", Construction=construct)
 

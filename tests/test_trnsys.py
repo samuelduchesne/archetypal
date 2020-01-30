@@ -19,6 +19,7 @@ from archetypal import (
     choose_window,
     run_eplus,
     ReportData,
+    get_eplus_dirs,
 )
 
 # Function round to hundreds
@@ -64,14 +65,14 @@ class TestsConvert:
     @pytest.fixture(
         scope="class",
         params=[
-            "RefBldgWarehousePost1980_v1.4_7.2_6A_USA_MN_MINNEAPOLIS.idf",
-            "NECB 2011 - Warehouse.idf",
-            "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
+            "RefBldgWarehouseNew2004_Chicago.idf",
+            "ASHRAE9012016_Warehouse_Denver.idf",
+            "ASHRAE9012016_ApartmentMidRise_Denver.idf",
             "5ZoneGeometryTransform.idf",
         ],
     )
     def converttest(self, config, fresh_start, request):
-        file = os.path.join("tests", "input_data", "trnsys", request.param)
+        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         window_file = "W74-lib.dat"
         template_dir = os.path.join("archetypal", "ressources")
         window_filepath = os.path.join(template_dir, window_file)
@@ -487,23 +488,21 @@ class TestsConvert:
 
 @pytest.fixture(
     params=[
-        "RefBldgWarehousePost1980_v1.4_7.2_6A_USA_MN_MINNEAPOLIS.idf",
-        "NECB 2011 - Warehouse.idf",
-        "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-        "5ZoneGeometryTransform.idf",
+        "RefBldgWarehouseNew2004_Chicago.idf",
+        "ASHRAE9012016_Warehouse_Denver.idf",
+        "ASHRAE9012016_ApartmentMidRise_Denver.idf",
     ]
 )
 def trnbuild_file(config, request):
-    file_upper_path = Path("tests") / "input_data" / "trnsys"
-    idf_file = file_upper_path / request.param
+    idf_file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
     idf_file = copy_file(idf_file, where=settings.cache_folder)
 
     yield idf_file
 
 
 @pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
+    os.environ["CI"].lower() == "true",
+    reason="Skipping this test on CI environment.",
 )
 def test_trnbuild_from_idf(config, trnbuild_file):
     # List files here
@@ -541,43 +540,11 @@ def test_trnbuild_from_idf(config, trnbuild_file):
 
 @pytest.mark.win32
 @pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
+    os.environ["CI"].lower() == "true",
+    reason="Skipping this test on CI environment.",
 )
 def test_trnbuild_from_idf_parallel(config, trnbuild_file):
     # All IDF files
-    idf_list = [
-        "NECB 2011 - Full Service Restaurant.idf",
-        "NECB 2011 - HighRise Apartment.idf",
-        "NECB 2011 - Hospital.idf",
-        "NECB 2011 - Large Hotel.idf",
-        "NECB 2011 - MidRise Apartment.idf",
-        "NECB 2011 - Outpatient.idf",
-        "NECB 2011 - Primary School.idf",
-        "NECB 2011 - Quick Service Restaurant.idf",
-        "NECB 2011 - Retail Standalone.idf",
-        "NECB 2011 - Retail Stripmall.idf",
-        "NECB 2011 - Secondary School.idf",
-        "NECB 2011 - Small Hotel.idf",
-        "NECB 2011 - Small Office.idf",
-        "NECB 2011 - Warehouse.idf",
-        "ASHRAE90.1_ApartmentHighRise_STD2004_Rochester.idf",
-        "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
-        "ASHRAE90.1_Hospital_STD2004_Rochester.idf",
-        "ASHRAE90.1_HotelLarge_STD2004_Rochester.idf",
-        "ASHRAE90.1_HotelSmall_STD2004_Rochester.idf",
-        "ASHRAE90.1_OfficeLarge_STD2004_Rochester.idf",
-        "ASHRAE90.1_OfficeMedium_STD2004_Rochester.idf",
-        "ASHRAE90.1_OfficeSmall_STD2004_Rochester.idf",
-        "ASHRAE90.1_OutPatientHealthCare_STD2004_Rochester.idf",
-        "ASHRAE90.1_RestaurantFastFood_STD2004_Rochester.idf",
-        "ASHRAE90.1_RestaurantSitDown_STD2004_Rochester.idf",
-        "ASHRAE90.1_RetailStandalone_STD2004_Rochester.idf",
-        "ASHRAE90.1_RetailStripmall_STD2004_Rochester.idf",
-        "ASHRAE90.1_SchoolPrimary_STD2004_Rochester.idf",
-        "ASHRAE90.1_SchoolSecondary_STD2004_Rochester.idf",
-        "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-    ]
     # List files here
     files = trnbuild_file
 
@@ -603,50 +570,17 @@ def test_trnbuild_from_idf_parallel(config, trnbuild_file):
 @pytest.mark.darwin
 @pytest.mark.linux
 @pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
+    os.environ["CI"].lower() == "true",
+    reason="Skipping this test on CI environment.",
 )
 def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
     # All IDF files
-    idf_list = [
-        "NECB 2011 - Full Service Restaurant.idf",
-        "NECB 2011 - HighRise Apartment.idf",
-        "NECB 2011 - Hospital.idf",
-        "NECB 2011 - Large Hotel.idf",
-        "NECB 2011 - MidRise Apartment.idf",
-        "NECB 2011 - Outpatient.idf",
-        "NECB 2011 - Primary School.idf",
-        "NECB 2011 - Quick Service Restaurant.idf",
-        "NECB 2011 - Retail Standalone.idf",
-        "NECB 2011 - Retail Stripmall.idf",
-        "NECB 2011 - Secondary School.idf",
-        "NECB 2011 - Small Hotel.idf",
-        "NECB 2011 - Small Office.idf",
-        "NECB 2011 - Warehouse.idf",
-        "ASHRAE90.1_ApartmentHighRise_STD2004_Rochester.idf",
-        "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
-        "ASHRAE90.1_Hospital_STD2004_Rochester.idf",
-        "ASHRAE90.1_HotelLarge_STD2004_Rochester.idf",
-        "ASHRAE90.1_HotelSmall_STD2004_Rochester.idf",
-        "ASHRAE90.1_OfficeLarge_STD2004_Rochester.idf",
-        "ASHRAE90.1_OfficeMedium_STD2004_Rochester.idf",
-        "ASHRAE90.1_OfficeSmall_STD2004_Rochester.idf",
-        "ASHRAE90.1_OutPatientHealthCare_STD2004_Rochester.idf",
-        "ASHRAE90.1_RestaurantFastFood_STD2004_Rochester.idf",
-        "ASHRAE90.1_RestaurantSitDown_STD2004_Rochester.idf",
-        "ASHRAE90.1_RetailStandalone_STD2004_Rochester.idf",
-        "ASHRAE90.1_RetailStripmall_STD2004_Rochester.idf",
-        "ASHRAE90.1_SchoolPrimary_STD2004_Rochester.idf",
-        "ASHRAE90.1_SchoolSecondary_STD2004_Rochester.idf",
-        "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-    ]
     # List files here
     file_upper_path = os.path.join("tests", "input_data", "trnsys")
     files = [
-        "RefBldgWarehousePost1980_v1.3_5" ".0_4A_USA_MD_BALTIMORE.idf",
-        "NECB 2011 - Warehouse.idf",
-        "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-        "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
+        "RefBldgWarehouseNew2004_Chicago.idf",
+        "ASHRAE9012016_Warehouse_Denver.idf",
+        "ASHRAE9012016_ApartmentMidRise_Denver.idf",
     ]
 
     weather_file = os.path.join(
@@ -672,8 +606,8 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
 
 @pytest.mark.win32
 @pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
+    os.environ["CI"].lower() == "true",
+    reason="Skipping this test on CI environment.",
 )
 def test_trnbuild_idf_win32(config):
     idf_file = "tests/input_data/trnsys/Building.idf"
@@ -683,11 +617,37 @@ def test_trnbuild_idf_win32(config):
     assert res
 
 
+def get_platform():
+    """Returns the MacOS release number as tuple of ints"""
+    import platform
+
+    release, versioninfo, machine = platform.mac_ver()
+    release_split = release.split(".")
+    return tuple(map(safe_int_cast, release_split))
+
+
+def safe_int_cast(val, default=0):
+    """Safely casts a value to an int"""
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return default
+
+
 @pytest.mark.darwin
 @pytest.mark.linux
+@pytest.mark.skipif(
+    os.environ["CI"].lower() == "true",
+    reason="Skipping this test on CI environment.",
+)
 @pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
+    not Path("docker/trnsidf/trnsidf.exe").exists(),
+    reason="xfail since trnsidf.exe is not installed. This test can work if the "
+    "trnsidf.exe is copied in ./docker/trnsidf",
+)
+@pytest.mark.skipif(
+    get_platform() > (10, 15, 0),
+    reason="Skipping since wine 32bit can't run on MacOs >10.15 (Catalina)",
 )
 def test_trnbuild_idf_darwin_or_linux(config):
     idf_file = "tests/input_data/trnsys/Building.idf"

@@ -73,7 +73,7 @@ def config(
         umitemplate (str): where the umitemplate is located.
         trnsys_default_folder (str): root folder of TRNSYS install.
         default_weight_factor:
-        ep_version (str): EnergyPlus version to use. eg. "8-9-0".
+        ep_version (str): EnergyPlus version to use. eg. "9-2-0".
 
     Returns:
         None
@@ -103,7 +103,7 @@ def config(
 def validate_epversion(ep_version):
     """Validates the ep_version form"""
     if "." in ep_version:
-        raise NameError('Enter the EnergyPlus version in the form "8-9-0"')
+        raise NameError('Enter the EnergyPlus version in the form "9-2-0"')
     return ep_version
 
 
@@ -118,7 +118,9 @@ def validate_trnsys_folder(trnsys_default_folder):
         else:
             warnings.warn(
                 "The TRNSYS path does not exist. Please set the TRNSYS "
-                "path with the --trnsys-default-folder option".format(trnsys_default_folder)
+                "path with the --trnsys-default-folder option".format(
+                    trnsys_default_folder
+                )
             )
         return None
     else:
@@ -648,22 +650,17 @@ def copy_file(files, where=None):
     return _unpack_tuple(list(files.values()))
 
 
-class Error(Exception):
-    """Base class for exceptions in this module."""
-
-    pass
-
-
-class EnergyPlusProcessError(Error):
+class EnergyPlusProcessError(Exception):
     """EnergyPlus Process call error"""
 
-    def __init__(self, cmd, stderr, idf=None):
+    def __init__(self, cmd, stderr, idf):
         """
         Args:
             cmd:
             stderr:
             idf:
         """
+        super().__init__(stderr)
         self.cmd = cmd
         self.idf = idf
         self.stderr = stderr
@@ -674,10 +671,11 @@ class EnergyPlusProcessError(Error):
         return msg
 
 
-class EnergyPlusVersionError(Error):
+class EnergyPlusVersionError(Exception):
     """EnergyPlus Version call error"""
 
     def __init__(self, idf_file, idf_version, ep_version):
+        super(EnergyPlusVersionError, self).__init__(None)
         self.idf_file = idf_file
         self.idf_version = idf_version
         self.ep_version = ep_version
@@ -712,8 +710,6 @@ def cd(path):
     log("inside {0}".format(os.getcwd()))
     try:
         yield
-    except:
-        log("Exception caught: ", sys.exc_info()[0])
     finally:
         os.chdir(CWD)
         log("finally inside {0}".format(os.getcwd()))
@@ -878,13 +874,12 @@ def get_eplus_dirs(version=ep_version):
     Returns (Path): The folder path.
 
     Args:
-        version (str): Version number in the form "8-9-0" to search for.
+        version (str): Version number in the form "9-2-0" to search for.
     """
     from eppy.runner.run_functions import install_paths
 
     eplus_exe, eplus_weather = install_paths(version)
-    eplusdir = Path(eplus_exe).dirname()
-    return Path(eplusdir)
+    return Path(eplus_exe).dirname()
 
 
 def warn_if_not_compatible():
@@ -920,8 +915,8 @@ def get_eplus_basedirs():
         return eplus_homes
     else:
         warnings.warn(
-            "Archetypal is not compatuble with %s. It is only compatible "
-            "with Winodws, Linux or MacOs" % platform.system()
+            "Archetypal is not compatible with %s. It is only compatible "
+            "with Windows, Linux or MacOs" % platform.system()
         )
 
 

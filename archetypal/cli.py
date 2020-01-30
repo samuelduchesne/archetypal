@@ -5,7 +5,11 @@
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
 import os
+import time
 from collections import defaultdict
+from typing import Any, Union
+
+from path import Path
 
 import click
 
@@ -20,6 +24,8 @@ from archetypal import (
     IDF,
     UmiTemplate,
     config,
+    log,
+    idf_version_updater,
 )
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -72,24 +78,24 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     default=settings.cache_folder,
 )
 @click.option(
-    "--use-cache",
-    is_flag=True,
+    "-c/-nc",
+    "--use-cache/--no-cache",
     help="Use a local cache to save/retrieve many of "
     "archetypal outputs such as EnergyPlus simulation results",
-    default=settings.use_cache,
+    default=True,
 )
 @click.option(
+    "-l",
     "--log-file",
     is_flag=True,
     help="save log output to a log file in logs_folder",
     default=settings.log_file,
 )
 @click.option(
-    "--log-console",
-    "--verbose",
-    "-v",
-    is_flag=True,
-    default=settings.log_console,
+    "--verbose/--noverbose",
+    "-v/-nv",
+    "log_console",
+    default=True,
     help="print log output to the console",
 )
 @click.option(
@@ -112,7 +118,7 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     "--ep_version",
     type=click.STRING,
     default=settings.ep_version,
-    help='the EnergyPlus version to use. eg. "8-9-0"',
+    help='the EnergyPlus version to use. eg. "{}"'.format(settings.ep_version),
 )
 @pass_config
 def cli(
@@ -133,25 +139,7 @@ def cli(
     """archetypal: Retrieve, construct, simulate, convert and analyse building
     simulation templates
 
-    Visit archetypal.readthedocs.io for the online documentation
-
-    Args:
-        cli_config: Package configuration. See :class:`CliConfig` for more details.
-        data_folder (str): where to save and load data files.
-        logs_folder (str): where to write the log files.
-        imgs_folder (str): where to save figures.
-        cache_folder (str): where to save the simluation results.
-        use_cache (bool): if True, use a local cache to save/retrieve many of
-            archetypal outputs such as EnergyPlus simulation results. This can
-            save a lot of time by not calling the simulation and dataportal APIs
-            repetitively for the same requests.
-        log_file (bool): if true, save log output to a log file in logs_folder.
-        log_console (bool): if true, print log output to the console.
-        log_level (int): one of the logger.level constants.
-        log_name (str): name of the logger.
-        log_filename (str): name of the log file.
-        trnsys_default_folder (str): root folder of TRNSYS install.
-        ep_version (str): EnergyPlus version to use. eg.: "8-9-0".
+    Visit archetypal.readthedocs.io for the online documentation.
     """
     cli_config.data_folder = data_folder
     cli_config.logs_folder = logs_folder
@@ -352,53 +340,55 @@ def convert(
             capacitance=capacitance
         )
     # Print path of output files in console
-    if paths:
-        click.echo("Here are the paths to the different output files: ")
+    click.echo("Here are the paths to the different output files: ")
 
-        for path in paths:
-            if "MODIFIED" in path:
-                click.echo("Path to the modified IDF file: {}".format(path))
-            elif "b18" in path:
-                click.echo("Path to the BUI file: {}".format(path))
-            elif "dck" in path:
-                click.echo("Path to the DCK file: {}".format(path))
-            else:
-                click.echo("Path to the T3D file: {}".format(path))
+    for path in paths:
+        if "MODIFIED" in path:
+            click.echo("Path to the modified IDF file: {}".format(path))
+        elif "b18" in path:
+            click.echo("Path to the BUI file: {}".format(path))
+        elif "dck" in path:
+            click.echo("Path to the DCK file: {}".format(path))
+        else:
+            click.echo("Path to the T3D file: {}".format(path))
 
 
 @cli.command()
-@click.argument("idf", nargs=-1)
-@click.option(
-    "--name",
-    "-n",
-    type=click.STRING,
-    default="umitemplate",
-    help="The name of the output json file",
+@click.argument("idf", nargs=-1, type=click.Path(exists=True), required=True)
+@click.argument(
+    "output",
+    type=click.Path(dir_okay=True, writable=True),
+    default="myumitemplate.json",
 )
 @click.option(
     "--weather",
     "-w",
     type=click.Path(exists=True),
-    help="path to the EPW weather file",
+    help="EPW weather file path",
     default=get_eplus_dirs(settings.ep_version)
     / "WeatherData"
     / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+    show_default=True,
 )
 @click.option(
-    "--parallel/--no-parallel",
-    "-p/-np",
+    "-p",
+    "parallel",
     is_flag=True,
     default=True,
-    help="process each idf file on different cores",
+    help="Parallel process; each idf file on different cores",
 )
-def reduce(idf, name, weather, parallel):
+@click.option(
+    "-z",
+    "all_zones",
+    is_flag=True,
+    default=False,
+    help="Include all zones in the " "output template",
+)
+def reduce(idf, output, weather, parallel, all_zones):
     """Perform the model reduction and translate to an UMI template file.
 
-    Args:
-        idf:
-        name:
-        weather:
-        parallel:
+    IDF is one or multiple idf files to process.
+    OUTPUT is the output file name (or path) to write to. Optional.
     """
     if parallel:
         # if parallel is True, run eplus in parallel
@@ -448,5 +438,39 @@ def reduce(idf, name, weather, parallel):
         idf = next(iter([value for key, value in fn.items() if isinstance(value, IDF)]))
         bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
 
+    output = Path(output)
+    name = output.namebase
+    ext = output.ext if output.ext == ".json" else ".json"
+    dir_ = output.dirname()
     template = UmiTemplate(name=name, BuildingTemplates=bts)
-    print(template.to_json())
+    final_path: Path = dir_ / name + ext
+    template.to_json(path_or_buf=final_path, all_zones=all_zones)
+    log("Successfully created template file at {}".format(final_path.abspath()))
+
+
+@cli.command()
+@click.argument("idf", nargs=-1, type=click.Path(exists=True), required=True)
+@click.option(
+    "-v",
+    "--version",
+    "to_version",
+    default=settings.ep_version,
+    help="EnergyPlus version to upgrade to - e.g., '9-2-0'",
+)
+@click.option(
+    "-p",
+    "--parallel",
+    "cores",
+    default=-1,
+    help="Specify number of cores to run in parallel",
+)
+def transition(idf, to_version, cores):
+    """Upgrade an IDF file to a newer version"""
+    start_time = time.time()
+    rundict = {idf: dict(idf_file=idf, to_version=to_version) for idf in idf}
+    parallel_process(rundict, idf_version_updater, processors=cores)
+    log(
+        "Successfully transitioned files to version '{}' in {:,.2f} seconds".format(
+            to_version, time.time() - start_time
+        )
+    )

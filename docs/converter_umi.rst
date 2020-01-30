@@ -1,33 +1,77 @@
-Convert IDF to UMI
-==================
+Converting an IDF to an UMI
+===========================
 
-The IDF to UMI converter generates an Umi Template from one or more EnergyPlus models (IDF file). The conversion is
-performed by simpliying a multi-zone and geometric model to a 2-zone and non-geometric template. In other words, a
+The IDF to UMI converter generates an Umi Template from one or more EnergyPlus models (IDF files). The conversion is
+performed by simplifying a multi-zone and geometric model to a 2-zone and non-geometric template. In other words, a
 complex EnergyPlus model is be converted to a generalized core- and perimeter-zone with aggregated performances.
 
-First, load the EnergyPlus idf file using the :func:`archetypal.idfclass.load_idf` method.
+Conversion can be achieved either with the command line or within a python console (interactive shell). The command
+line is useful for getting started quickly but does not offer any intermediate like the interactive shell does. If
+you would rather use archetypal inside a python script, then the archetypal module is fully accessible and documented.
 
+Using the Command Line
+----------------------
+
+.. hint::
+
+    In this tutorial, we will be using an IDF model from the ExampleFiles folder located inside the EnergyPlus folder.
+
+Terminal and Command Prompt may not be the most convenient tool to use, which is quite understandable, since users may
+be more familiar with graphical interfaces. `archetypal` does not feature a graphical interface as it is meant to be
+used in a scripting environment.
+
+The first step would be to change the current directory to the one where the idf file is located. When `archetypal` is
+executed, temporary folders may be created to enable the conversion process. It is recommended to change the current
+directory of the terminal window to any working directory of your choice.
 
 .. code-block:: shell
 
-    >>> from archetypal import load_idf
-    >>> weather = "path/to/weather/file.epw"
-    >>> eplus_file = "path/to/energyplus/file.idf"
-    >>> idf = load_idf(eplus_file=eplus_file, weather_file=weather)
+    cd "/path/to/directory"
 
+An idf file can be converted to an umi template using the `reduce` command. For example, the following code will convert
+the model `AdultEducationCenter.idf` to a json file named *myumitemplate.json*. Both absolute and relative paths can be
+used.
 
 .. code-block:: shell
+
+    archetypal reduce "/Applications/EnergyPlus-9-2-0/ExampleFiles/BasicsFiles/AdultEducationCenter.idf" "./converted/myumitemplate.json"
+
+Using the Python Console
+------------------------
+
+`archetypal` methods are accessible by importing the package.
+
+1. Load the file
+................
+
+First, load the EnergyPlus idf file using the :func:`archetypal.idfclass.load_idf` method. In the following example,
+the AdultEducationCenter.idf model is used.
+
+.. code-block:: python
+
+    >>> from archetypal import get_eplus_dirs, load_idf
+    >>> eplus_dir = get_eplus_dirs("9-2-0")  # Getting EnergyPlus install path
+    >>> eplus_file = eplus_dir / "ExampleFiles" / "BasicsFiles" / "AdultEducationCenter.idf"  # Model path
+    >>> weather = eplus_dir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"  # Weather file path
+    >>> idf = load_idf(eplus_file=eplus_file, weather_file=weather)  # IDF load
+
+2. Create a BuildingTemplate Object
+...................................
+
+.. code-block:: python
 
     >>> from archetypal import BuildingTemplate
     >>> template_obj = BuildingTemplate.from_idf(
-    >>>     x.idf, sql=x.idf.sql, DataSource=x.idf.name
+    >>>     idf, sql=idf.sql, DataSource=idf.name
     >>> )
 
+3. Create an UmiTemplate Object and Save
+........................................
 
-.. code-block:: shell
+.. code-block:: python
 
     >>> from archetypal import UmiTemplate
     >>> template_json = UmiTemplate(
     >>>     name="my_umi_template",
-    >>>     BuildingTemplates=template_obj
+    >>>     BuildingTemplates=[template_obj]
     >>> ).to_json()

@@ -172,4 +172,4 @@ class ZoneWeight(object):
 zone_weight = ZoneWeight(n=0)
 
 # Latest version of EnergyPlus compatible with archetypal
-ep_version = "8-9-0"
+ep_version = "9-2-0"

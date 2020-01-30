@@ -491,6 +491,7 @@ class TestsConvert:
         "RefBldgWarehouseNew2004_Chicago.idf",
         "ASHRAE9012016_Warehouse_Denver.idf",
         "ASHRAE9012016_ApartmentMidRise_Denver.idf",
+        "5ZoneGeometryTransform.idf",
     ]
 )
 def trnbuild_file(config, request):
@@ -581,6 +582,7 @@ def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
         "RefBldgWarehouseNew2004_Chicago.idf",
         "ASHRAE9012016_Warehouse_Denver.idf",
         "ASHRAE9012016_ApartmentMidRise_Denver.idf",
+        "5ZoneGeometryTransform.idf",
     ]
 
     weather_file = os.path.join(

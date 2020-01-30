@@ -20,6 +20,7 @@ dependencies:
   - pint
   - click
   - outdated
+  - pip
   - pip:
     - tsam
     - eppy

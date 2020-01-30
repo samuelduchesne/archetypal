@@ -158,13 +158,13 @@ def cli(
 
 
 @cli.command()
-@click.argument("idf-file", type=click.Path(exists=True))
-@click.argument("weather-file", type=click.Path(exists=True))
+@click.argument("idf_file", type=click.Path(exists=True))
+@click.argument("weather_file", type=click.Path(exists=True))
 @click.argument(
-    "output-folder", type=click.Path(exists=True), required=False, default="."
+    "output_folder", type=click.Path(exists=True), required=False, default="."
 )
 @click.option(
-    "--return-idf",
+    "--return_idf",
     "-i",
     is_flag=True,
     default=False,
@@ -187,13 +187,13 @@ def cli(
     "path to the file in the console",
 )
 @click.option(
-    "--window-lib",
+    "--window_lib",
     type=click.Path(),
     default=None,
     help="Path of the window library (from Berkeley Lab)",
 )
 @click.option(
-    "--trnsidf-exe",
+    "--trnsidf_exe",
     type=click.Path(),
     help="Path to trnsidf.exe",
     default=os.path.join(
@@ -207,14 +207,14 @@ def cli(
     help="Path to d18 template file",
 )
 @click.option(
-    "--log-clear-names",
+    "--log_clear_names",
     is_flag=True,
     default=False,
     help='If mentioned (True), DO NOT print log of "clear_names" (equivalence between '
     "old and new names) in the console. Default (not mentioned) is False.",
 )
 @click.option(
-    "--schedule-as-input",
+    "--schedule_as_input",
     is_flag=True,
     default=True,
     help="If mentioned (False), writes schedules as SCHEDULES in BUI file. Be aware that "
@@ -223,7 +223,7 @@ def cli(
     "(in the TRNSYS Studio) the csv file containing the schedules with those INPUTS",
 )
 @click.option(
-    "--ep-version",
+    "--ep_version",
     type=str,
     default=None,
     help="Specify the EnergyPlus version to use. Default = None",
@@ -262,11 +262,11 @@ def cli(
 def convert(
     idf_file,
     weather_file,
-    window_lib,
+    output_folder,
     return_idf,
     return_t3d,
     return_dck,
-    output_folder,
+    window_lib,
     trnsidf_exe,
     template,
     log_clear_names,

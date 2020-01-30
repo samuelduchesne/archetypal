@@ -98,14 +98,16 @@ Users can chose to return a combination of flags
 
         archetypal convert -i -t -d "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--window-lib`` is the path of the window library (W74-lib.dat). This library must be in the same format as the Berkeley Lab library used by default in TRNBuild.
-        If nothing is passed, the "W74-lib.dat" file available in the package "ressources" folder will be used.
+    - ``--window_lib`` is the path of the window library (W74-lib.dat). This library must be in the same format as the
+        Berkeley Lab library used by default in TRNBuild. If nothing is passed, the "W74-lib.dat" file available in the
+        package "ressources" folder will be used.
 
     .. code-block:: python
 
         archetypal convert --window-lib "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--trnsidf-exe`` is the path of the trnsidf.exe executable. Usually located in the TRNSYS18 folder under "Building/trnsIDF/trnsidf.exe".
+    - ``--trnsidf_exe`` is the path of the trnsidf.exe executable. Usually located in the TRNSYS18 folder under
+        "Building/trnsIDF/trnsidf.exe".
         If nothing is passed, the following path will be used : "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe".
 
     .. code-block:: python
@@ -119,7 +121,8 @@ Users can chose to return a combination of flags
 
         archetypal convert --template "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--log-clear-names`` if added, do not print log of "clear_names" (equivalence between old and new names) in the console.
+    - ``--log_clear_names`` if added, do not print log of "clear_names" (equivalence between old and new names) in
+        the console.
 
     .. code-block:: python
 

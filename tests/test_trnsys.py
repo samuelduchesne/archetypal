@@ -687,7 +687,7 @@ def test_trnbuild_from_simple_idf(config):
     # file basename is used). Value is a dict of the function arguments
     # WINDOW = 2-WSV_#3_Air
     kwargs_dict = {
-        "ep_version": "9-1-0",
+        "ep_version": "9-2-0",
         "u_value": 1.62,
         "shgc": 0.64,
         "t_vis": 0.8,

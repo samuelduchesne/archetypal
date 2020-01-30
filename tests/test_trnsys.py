@@ -260,7 +260,7 @@ class TestsConvert:
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
 
         # Run EnergyPlus Simulation
-        ep_version = "8-9-0"
+        ep_version = settings.ep_version
         outputs = [
             {
                 "ep_object": "Output:Variable".upper(),

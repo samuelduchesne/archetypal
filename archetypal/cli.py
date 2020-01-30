@@ -315,30 +315,28 @@ def convert(
         "fframe": fframe,
         "uframe": uframe,
     }
-    with cd(output_folder):
-        paths = convert_idf_to_trnbuild(
-            idf_file,
-            weather_file,
-            window_lib,
-            return_idf,
-            True,
-            return_t3d,
-            return_dck,
-            output_folder,
-            trnsidf_exe,
-            template,
-            log_clear_names=log_clear_names,
-            schedule_as_input=schedule_as_input,
-            ep_version=ep_version,
-            **window_kwds,
-            ordered=ordered,
-            nonum=nonum,
-            N=batchjob,
-            geo_floor=geofloor,
-            refarea=refarea,
-            volume=volume,
-            capacitance=capacitance
-        )
+    paths = convert_idf_to_trnbuild(
+        idf_file,
+        weather_file,
+        window_lib,
+        return_idf,
+        True,
+        return_t3d,
+        return_dck,
+        output_folder,
+        trnsidf_exe,
+        template,
+        log_clear_names=log_clear_names,
+        schedule_as_input=schedule_as_input,
+        ep_version=ep_version,
+        **window_kwds,
+        ordered=ordered,
+        nonum=nonum,
+        N=batchjob,
+        geo_floor=geofloor,
+        refarea=refarea,
+        volume=volume,
+        capacitance=capacitance)
     # Print path of output files in console
     click.echo("Here are the paths to the different output files: ")
 

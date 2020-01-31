@@ -14,7 +14,7 @@ editor (e.g. TRNBuild), we assume the development of a file translator could be 
 Objectives
 ..........
 
-The principal ojectives of this module was to translate (from IDF to BUI) the geometry of the building, the different schedules used in
+The principal objectives of this module was to translate (from IDF to BUI) the geometry of the building, the different schedules used in
 the model, and the thermal gains.
 
 1. Geometry
@@ -37,7 +37,7 @@ Internal thermal gains such as “people”, “lights” and “equipment” ar
 4. Conditioning
 
 Heating and cooling demands are translated from the IDF file to the BUI file such as power per floor area (W/m²) and a temperature setpoint.
-The temperature setpoint is the setpoint at the peak time for heating (or cooling).
+The temperature set-point is the set-point at the peak time for heating (or cooling).
 
 Methodology
 ...........

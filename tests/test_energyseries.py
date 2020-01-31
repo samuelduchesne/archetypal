@@ -97,7 +97,7 @@ def test_plot_3d(energy_series, kind):
 
 
 @pytest.mark.xfail(
-    os.environ.get("CI", False).lower() == "true",
+    os.environ.get("CI", "False").lower() == "true",
     reason="Skipping this test on CI environment.",
 )
 def test_plot_2d(energy_series):
@@ -132,7 +132,7 @@ def from_csv(config):
 
 
 @pytest.mark.xfail(
-    os.environ.get("CI", False).lower() == "true",
+    os.environ.get("CI", "False").lower() == "true",
     reason="Skipping this test on CI environment.",
 )
 def test_discretize(from_csv):

@@ -64,7 +64,7 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
     wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
     bash miniconda.sh -b -p $HOME/miniconda;
-    export PATH="$HOME/miniconda/bin:$PATH";
+    source "$HOME/miniconda/etc/profile.d/conda.sh"
     hash -r;
     fi
   
@@ -76,11 +76,13 @@ before_install:
     fi
     
   # create and activate environment
-  - conda config --set always_yes yes
+  - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda;
-  - conda env update -n test-env python=$TRAVIS_PYTHON_VERSION -f environment.yml
+  # Useful for debugging any issues with conda
+  - conda info -a
+  # new env
+  - conda env update -q -n test-env python=$TRAVIS_PYTHON_VERSION -f environment.yml
   - conda activate test-env
-  - python --version;
 
 # Main script
 install:

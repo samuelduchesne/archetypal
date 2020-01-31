@@ -1,10 +1,9 @@
-language: generic
-dist: trusty
-sudo: required
+# Don't use language: python; this gives us an unnecessary virtualenv
+language: c
 
-env: 
+env:
   global:
-    - ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=9.2.0 ENERGYPLUS_SHA=921312fa1d ENERGYPLUS_INSTALL_VERSION=9-2-0
+    - ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=9.2.0 ENERGYPLUS_SHA=921312fa1d ENERGYPLUS_INSTALL_VERSION=9-2-0 MINICONDA_VERSION=latest
 
 addons:
   apt:
@@ -14,15 +13,10 @@ addons:
       
 jobs:
   include:
-    # Linux, on master
   - os: linux
-    dist: xenial
-    language: python
-    python: 3.7
     env: TRAVIS_PYTHON_VERSION=3.7
   - os: osx
     env: TRAVIS_PYTHON_VERSION=3.7
-   
 
 before_install:
   # download EnergyPlus
@@ -60,30 +54,20 @@ before_install:
   - sudo rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
   - sudo rm $ATTCHNUM.zip
   
-  # Install python for Linux
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-    wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-    bash miniconda.sh -b -p $HOME/miniconda;
-    export PATH="$HOME/miniconda/bin:$PATH";
-    hash -r;
-    fi
+  # Install python for Linux and macOS
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then MINICONDA_OS=Linux; else MINICONDA_OS=MacOSX; fi
+  - wget https://repo.anaconda.com/miniconda/Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.sh -O miniconda.sh
+  - bash miniconda.sh -b -p "$HOME"/miniconda
+  - source "$HOME"/miniconda/etc/profile.d/conda.sh
   
-  # install python for OSX
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-    wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh;
-    bash ~/miniconda.sh -b -p $HOME/miniconda;
-    export PATH="$HOME/miniconda/bin:$PATH";
-    conda update --yes conda;
-    conda create --yes -n venv python=$TRAVIS_PYTHON_VERSION;
-    fi
-    
-  # activate environment
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then source activate venv; fi
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-    virtualenv venv;
-    source venv/bin/activate;
-    fi
-  - python --version;
+  # create and activate environment
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda;
+  # Useful for debugging any issues with conda
+  - conda info -a
+  # new env
+  - conda env update -q -n test-env python=$TRAVIS_PYTHON_VERSION -f environment.yml
+  - conda activate test-env
 
 # Main script
 install:
@@ -91,7 +75,7 @@ install:
   - pip install --upgrade pip
   - pip install .[dev]
 script:
-  - py.test --cov=archetypal tests/
+  - py.test --cov=archetypal --verbose tests/
 after_success:
   - coverage report -m
   - coveralls

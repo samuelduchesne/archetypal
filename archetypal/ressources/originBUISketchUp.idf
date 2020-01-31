@@ -55,7 +55,6 @@
 !-*--------------------------------------------------------------------------------
 !-INPUTS TGROUND TBOUNDARY SHADE_CLOSE SHADE_OPEN MAX_ISHADE MAX_ESHADE
 !-INPUTS_DESCRIPTION
-!- TGROUND : C : Ground Temperature (boundary temperature used for floors adjacent to the ground)
 !- TBOUNDARY : C : Boundary Temperature (boundary temperature used for boundary floors, walls, ceilings)
 !- SHADE_CLOSE : kJ/hr.m^2 : threshold of total radiation on facade where shading device is activated
 !- SHADE_OPEN : kJ/hr.m^2 : threshold of total radiation on facade where shading device is deactivated

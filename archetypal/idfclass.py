@@ -749,8 +749,8 @@ def load_idf(
             form (see pathlib.Path.glob).
         weather_file: Either the absolute or relative path to the weather epw
             file.
-        ep_version (str, optional): EnergyPlus version number to use, eg.: "9-2-0".
-            Defaults to `settings.ep_version`.
+        ep_version (str, optional): EnergyPlus version number to use, eg.:
+            "9-2-0". Defaults to `settings.ep_version` .
 
     Returns:
         IDF: The IDF object.
@@ -1058,8 +1058,8 @@ def load_idf_object_from_cache(idf_file, how=None):
 
 class OutputPrep:
     """Handles preparation of EnergyPlus outputs. Different instance methods
-    allow to chain methods together and to add predefined bundles of outputs in one
-    go.
+    allow to chain methods together and to add predefined bundles of outputs in
+    one go.
 
     For example:
         >>> OutputPrep(idf=idf_obj).add_output_control().add_umi_ouputs().add_profile_gs_elect_ouputs()
@@ -1126,8 +1126,7 @@ class OutputPrep:
         return self
 
     def add_template_outputs(self):
-        """Adds the necessary outputs in order to create an UMI template.
-        """
+        """Adds the necessary outputs in order to create an UMI template."""
         # list the ouputs here
         outputs = [
             {
@@ -1359,8 +1358,7 @@ class OutputPrep:
         return self
 
     def add_profile_gas_elect_ouputs(self):
-        """Adds the necessary outputs in order to return the energy profile.
-        """
+        """Adds the necessary outputs in order to return the energy profile."""
         # list the ouputs here
         outputs = [
             {
@@ -1419,14 +1417,13 @@ def prepare_outputs(
         >>> prepare_outputs(idf, outputs=objects)
 
     Args:
-        idf (IDF or Path): The IDF object or the path to the file describing
-            the model (.idf).
+        idf (IDF or Path): The IDF object or the path to the file describing the
+            model (.idf).
         outputs (bool or list):
         idd_filename:
         output_directory:
         save (bool): if True, saves the idf inplace to disk with added objects
         epw:
-        sql_output_style:
     """
     if isinstance(idf, (Path, str)):
         log("first, loading the idf file")

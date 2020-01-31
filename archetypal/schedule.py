@@ -112,7 +112,9 @@ class Schedule(object):
             return cls(Name=Name, idf=idf, **kwargs)
         else:
             # Create a new idf object and add the schedule to it.
-            idftxt = "VERSION, {};".format(settings.ep_version.replace("-", ".")[0:3])  # Not an empty string. has just the
+            idftxt = "VERSION, {};".format(
+                settings.ep_version.replace("-", ".")[0:3]
+            )  # Not an empty string. has just the
             # version number
             # we can make a file handle of a string
             if not Path(settings.cache_folder).exists():

@@ -452,7 +452,7 @@ class YearSchedule(UmiSchedule):
 
     @property
     def all_values(self):
-        index = pd.DatetimeIndex(start=self.startDate, freq="1H", periods=8760)
+        index = pd.date_range(start=self.startDate, freq="1H", periods=8760)
         series = pd.Series(index=index)
         for part in self.Parts:
             start = "{}-{}-{}".format(self.year, part.FromMonth, part.FromDay)

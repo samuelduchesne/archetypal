@@ -28,41 +28,15 @@ except ImportError as e:
     gdal = None
 
 
-def tabula_available_buildings(code_country="France"):
+def tabula_available_buildings(country_name="France"):
     """Returns all available building types for a specific country.
 
     Args:
-        code_country:
+        country_name (str): The name of the country. pycountry is used to resolve
+            country names. Therefore, a country code (e.g. "FRA") can be passed as well.
     """
     # Check code country
-    if code_country.upper() not in [
-        "AT",
-        "BA",
-        "BE",
-        "BG",
-        "CY",
-        "CZ",
-        "DE",
-        "DK",
-        "ES",
-        "FR",
-        "GB",
-        "GR",
-        "HU",
-        "IE",
-        "IT",
-        "NL",
-        "NO",
-        "PL",
-        "RS",
-        "SE",
-        "SI",
-    ]:
-        code_country = pycountry.countries.get(name=code_country)
-        if code_country is not None:
-            code_country = code_country.alpha_2
-        else:
-            raise ValueError("Country name {} is invalid".format(code_country))
+    code_country = _resolve_codecountry(country_name)
     data = {"code_country": code_country}
     json_response = tabula_api_request(data, table="all-country")
 
@@ -206,35 +180,7 @@ def tabula_building_details_sheet(
             raise ValueError(msg)
 
     # Check code country
-    if code_country.upper() not in [
-        "AT",
-        "BA",
-        "BE",
-        "BG",
-        "CY",
-        "CZ",
-        "DE",
-        "DK",
-        "ES",
-        "FR",
-        "GB",
-        "GR",
-        "HU",
-        "IE",
-        "IT",
-        "NL",
-        "NO",
-        "PL",
-        "RS",
-        "SE",
-        "SI",
-    ]:
-        code_country = pycountry.countries.get(name=code_country)
-        if code_country is not None:
-            # if country is valid, return ISO 3166-1-alpha-2 code
-            code_country = code_country.alpha_2
-        else:
-            raise ValueError("Country name {} is invalid".format(code_country))
+    code_country = _resolve_codecountry(code_country)
 
     # Check code_buildingsizeclass
     if code_buildingsizeclass.upper() not in ["SFH", "TH", "MFH", "AB"]:
@@ -288,41 +234,14 @@ def tabula_building_details_sheet(
 
 def tabula_system(code_country, code_boundarycond="SUH", code_variantnumber=1):
     """
+
     Args:
         code_country:
         code_boundarycond:
         code_variantnumber:
     """
     # Check code country
-    if code_country.upper() not in [
-        "AT",
-        "BA",
-        "BE",
-        "BG",
-        "CY",
-        "CZ",
-        "DE",
-        "DK",
-        "ES",
-        "FR",
-        "GB",
-        "GR",
-        "HU",
-        "IE",
-        "IT",
-        "NL",
-        "NO",
-        "PL",
-        "RS",
-        "SE",
-        "SI",
-    ]:
-        code_country = pycountry.countries.get(name=code_country)
-        if code_country is not None:
-            # if country is valid, return ISO 3166-1-alpha-2 code
-            code_country = code_country.alpha_2
-        else:
-            raise ValueError("Country name {} is invalid")
+    code_country = _resolve_codecountry(code_country)
 
     # Check code_buildingsizeclass
     if code_boundarycond.upper() not in ["SUH", "MUH"]:
@@ -398,6 +317,25 @@ def tabula_system_request(data):
             pass
         else:
             return response_json
+
+
+def _resolve_codecountry(code_country):
+    """check country name against pycountry and return alpha_2 code"""
+    if len(code_country) == 2:
+        code_country = pycountry.countries.get(alpha_2=code_country)
+    elif len(code_country) == 3:
+        code_country = pycountry.countries.get(alpha_3=code_country)
+    elif isinstance(code_country, int):
+        code_country = pycountry.countries.get(numeric=str(code_country))
+    else:
+        code_country = pycountry.countries.get(name=code_country)
+
+    if code_country is not None:
+        # if country is valid, return ISO 3166-1-alpha-2 code
+        code_country = code_country.alpha_2
+    else:
+        raise ValueError("Country name {} is invalid".format(code_country))
+    return code_country
 
 
 def get_from_cache(url):
@@ -855,4 +793,3 @@ def download_bld_window(
         return results
     else:
         return response["result"]
-

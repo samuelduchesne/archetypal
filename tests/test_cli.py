@@ -1,11 +1,11 @@
-import pytest
 import os
+
+import pytest
 from click.testing import CliRunner
 
-from archetypal import get_eplus_dirs, settings, copy_file, log
-from archetypal.settings import ep_version
+from archetypal import settings, copy_file, log
 from archetypal.cli import cli
-from path import Path
+from tests.test_trnsys import get_platform
 
 
 class TestCli:
@@ -274,6 +274,10 @@ class TestCli:
     @pytest.mark.xfail(
         "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
         reason="Skipping this test on Travis CI.",
+    )
+    @pytest.mark.skipif(
+        get_platform() > (10, 15, 0),
+        reason="Skipping since wine 32bit can't run on MacOs >10.15 (Catalina)",
     )
     def test_convert(self, config, cli_args):
         """Tests the 'reduce' method"""

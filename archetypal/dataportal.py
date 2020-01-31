@@ -148,9 +148,7 @@ def tabula_building_details_sheet(
     code_num=1,
     code_variantnumber=1,
 ):
-    """
-    How to format ``code_building``:
-        Format the :attr:`code_building` string as such::
+    """How to format ``code_building``. Format the :attr:`code_building` string as such:
 
     Args:
         code_building (str) : The building code string.
@@ -857,3 +855,4 @@ def download_bld_window(
         return results
     else:
         return response["result"]
+

@@ -34,6 +34,11 @@ BUI file
 
 Internal thermal gains such as “people”, “lights” and “equipment” are translated from the IDF file to the BUI file.
 
+4. Conditioning
+
+Heating and cooling demands are translated from the IDF file to the BUI file such as power per floor area (W/m²) and a temperature setpoint.
+The temperature setpoint is the setpoint at the peak time for heating (or cooling).
+
 Methodology
 ...........
 
@@ -51,7 +56,8 @@ necessary and re-transcribe them in the T3D file
 2. T3D to BUI
 
 The operation to convert the T3D file to the BUI file is done by running the trnsidf.exe executable with a command
-line.
+line. After this operation, the infiltration rate, internal gains and conditioning systems are written in the "REGIME"
+section of each zone in the BUI file.
 
 How to convert an IDF file
 ..........................
@@ -64,22 +70,25 @@ Then simply run the following command:
 
 .. code-block:: python
 
-    archetypal convert [OPTIONS] IDF_FILE OUTPUT_FOLDER
+    archetypal convert [OPTIONS] IDF_FILE WEATHER_FILE OUTPUT_FOLDER
 
 1. ``IDF_FILE`` is the file path of the IDF file to convert. If there are space characters in the path, it should be
 enclosed in quotation marks.
 
-2. ``OUTPUT_FOLDER`` is the folder where we want the output folders to be written. If there are space characters in
-the path, it should enclosed in quotation marks.
+2. ``WEATHER_FILE`` is the file path of the weather file to use to run the EnergyPlus simulation. If there are space characters in the path, it should be
+enclosed in quotation marks.
+
+3. ``OUTPUT_FOLDER`` is the folder where we want the output folders to be written. If there are space characters in
+the path, it should enclosed in quotation marks. If nothing is passed, the output folder will be the current working directory.
 
 Here is an example. Make sure to replace the last two arguments with the idf file path and the output folder path
 respectively.
 
 .. code-block:: python
 
-    archetypal convert "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+    archetypal convert "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
-3. `OPTIONS`: There are different options to the `convert` command. The first 3 manage the requested output files.
+4. `OPTIONS`: There are different options to the `convert` command. The first 3 manage the requested output files.
 Users can chose to return a combination of flags
 
     - if ``-i`` is added, the path to the modified IDF file is returned in the console, and the modified
@@ -90,37 +99,42 @@ Users can chose to return a combination of flags
 
         archetypal convert -i -t -d "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--window-lib`` is the path of the window library (W74-lib.dat).
+    - ``--window_lib`` is the path of the window library (W74-lib.dat). This library must be in the same format as the
+        Berkeley Lab library used by default in TRNBuild. If nothing is passed, the "W74-lib.dat" file available in the
+        package "ressources" folder will be used.
 
     .. code-block:: python
 
         archetypal convert --window-lib "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--trnsidf-exe`` is the path of the trnsidf.exe executable.
+    - ``--trnsidf_exe`` is the path of the trnsidf.exe executable. Usually located in the TRNSYS18 folder under
+        "Building/trnsIDF/trnsidf.exe".
+        If nothing is passed, the following path will be used : "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe".
 
     .. code-block:: python
 
         archetypal convert --trnsidf-exe "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--template`` is the path of the .d18 template file (usually in the same directory of the `trnsidf.exe`
-      executable)
+    - ``--template`` is the path of the .d18 template file (usually in the same directory as the `trnsidf.exe` executable).
+        If nothing is passed, the following path will be used : "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18".
 
     .. code-block:: python
 
         archetypal convert --template "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--log-clear-names`` if added, do not print log of "clear_names" (equivalence between old and new names) in the console
-      executable)
+    - ``--log_clear_names`` if added, do not print log of "clear_names" (equivalence between old and new names) in
+        the console.
 
     .. code-block:: python
 
         archetypal convert --log-clear-names "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
-    - ``--window`` specifies the window properties <u_value> <shgc> <t_vis> <tolerance>
+    - ``--window`` specifies the window properties <u_value (W/m²-K)> <shgc (-)> <t_vis (-)> <tolerance (-)> <fframe (-)> <uframe (kJ/m²-K-h)>.
+        If nothing is passed, the following values will be used : 2.2 0.65 0.8 0.05 0.15 8.17
 
     .. code-block:: python
 
-        archetypal convert --window 2.2 0.65 0.8 0.05 "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+        archetypal convert --window 2.2 0.65 0.8 0.05 0.15 8.17 "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
 
     - ``--ordered`` sorts the idf object names
 

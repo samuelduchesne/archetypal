@@ -528,9 +528,10 @@ def weighted_mean(series, df, weighting_variable):
     :func:`numpy.average`.
 
     Args:
-        series (pandas.Series):
-        df (pandas.DataFrame):
-        weighting_variable (str or list or tuple): Weight name to use in
+        series (pandas.Series): the *series* on which to compute the mean.
+        df (pandas.DataFrame): the *df* containing weighting variables.
+        weighting_variable (str or list or tuple): Name of weights to use in
+            *df*. If multiple values given, the values are multiplied together.
 
     Returns:
         numpy.ndarray: the weighted average
@@ -625,8 +626,8 @@ def copy_file(files, where=None):
     """Handles a copy of test idf files
 
     Args:
-        files:
-        where:
+        files (str or list): path(s) of the file(s) to copy
+        where (str): path where to save the copy(ies)
     """
     import shutil, os
 
@@ -717,6 +718,7 @@ def cd(path):
 def rmse(data, targets):
     """calculate rmse with target values
 
+    # Todo : write de description of the args
     Args:
         data:
         targets:
@@ -731,6 +733,7 @@ def piecewise(data):
     """returns a piecewise function from an array of the form [hour1, hour2,
     ..., value1, value2, ...]
 
+    # Todo : write de description of the args
     Args:
         data:
     """
@@ -747,8 +750,8 @@ def piecewise(data):
     return y
 
 
-def checkStr(datafile, string):
-    """Find the last occurrence of a string and return its line number
+def checkStr(datafile, string, begin_line=0):
+    """Find the first occurrence of a string and return its line number
 
     Returns: the list index containing the string
 
@@ -759,7 +762,10 @@ def checkStr(datafile, string):
     value = []
     count = 0
     for line in datafile:
-        count = count + 1
+        if count < begin_line:
+            count += 1
+            continue
+        count += 1
         match = re.search(string, str(line))
         if match:
             return count
@@ -1000,3 +1006,31 @@ def _unpack_tuple(x):
         return x[0]
     else:
         return x
+
+
+def recursive_len(item):
+    """Calculate the number of elements in nested list
+
+    Args:
+        item (list): list of lists (i.e. nested list)
+
+    Returns:
+        Total number of elements in nested list
+    """
+    if type(item) == list:
+        return sum(recursive_len(subitem) for subitem in item)
+    else:
+        return 1
+
+
+def rotate(l, n):
+    """Shift list elements to the left
+
+    Args:
+        l (list): list to rotate
+        n (int): number to shift list to the left
+
+    Returns:
+        list: shifted list.
+    """
+    return l[n:] + l[:n]

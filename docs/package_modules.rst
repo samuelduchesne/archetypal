@@ -43,8 +43,8 @@ Template Classes
     Zone
     ZoneConstructionSet
 
-Helper Classes
---------------
+Template Helper Classes
+-----------------------
 
 Classes that support the :ref:`templates_label` classes above.
 

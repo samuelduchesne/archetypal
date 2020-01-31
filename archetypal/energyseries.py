@@ -219,7 +219,7 @@ class EnergySeries(Series):
         )
         # Adjust timeindex by timedelta
         index -= df.Interval.apply(lambda x: timedelta(minutes=x))
-        index = pd.date_range(index)
+        index = pd.DatetimeIndex(index)
         # get data
         data = df.Value
         data.index = index

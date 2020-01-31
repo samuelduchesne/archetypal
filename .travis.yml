@@ -73,16 +73,13 @@ before_install:
     wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh;
     bash ~/miniconda.sh -b -p $HOME/miniconda;
     export PATH="$HOME/miniconda/bin:$PATH";
-    conda update --yes conda;
-    conda create --yes -n venv python=$TRAVIS_PYTHON_VERSION;
     fi
     
-  # activate environment
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then source activate venv; fi
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-    virtualenv venv;
-    source venv/bin/activate;
-    fi
+  # create and activate environment
+  - conda config --set always_yes yes
+  - conda update -q conda;
+  - conda env update -n test-env python=$TRAVIS_PYTHON_VERSION -f environment.yml
+  - conda activate test-env
   - python --version;
 
 # Main script
@@ -91,7 +88,7 @@ install:
   - pip install --upgrade pip
   - pip install .[dev]
 script:
-  - py.test --cov=archetypal tests/
+  - py.test --cov=archetypal --verbose tests/
 after_success:
   - coverage report -m
   - coveralls

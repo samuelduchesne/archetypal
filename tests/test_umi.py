@@ -50,7 +50,7 @@ def test_template_to_template(config, fresh_start):
             path_or_buf.write(a)
         with open(path, "r") as f:
             a = json.load(f)
-    b = UmiTemplate.from_json(file).to_json(
+    b = UmiTemplate.read_file(file).to_json(
         os.path.join(os.path.relpath(settings.data_folder), "b.json")
     )
     b = json.loads(b)

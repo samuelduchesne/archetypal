@@ -2128,7 +2128,7 @@ class TestBuildingTemplate:
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
-        b = UmiTemplate.from_json(filename)
+        b = UmiTemplate.read_file(filename)
         bt = b.BuildingTemplates
         bt_to_json = bt[0].to_json()
         w_to_json = bt[0].Windows.to_json()

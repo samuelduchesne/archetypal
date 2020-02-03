@@ -228,7 +228,7 @@ UMI Template
     :toctree: reference/
 
     UmiTemplate.from_idf
-    UmiTemplate.from_json
+    UmiTemplate.read_file
     UmiTemplate.to_json
 
 

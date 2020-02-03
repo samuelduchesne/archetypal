@@ -244,8 +244,8 @@ class UmiTemplate:
         return sql_report
 
     @classmethod
-    def from_json(cls, filename):
-        """Initializes a UmiTemplate class from a json file
+    def read_file(cls, filename):
+        """Initializes an UmiTemplate object from an UMI Template File.
 
         Args:
             filename (str):

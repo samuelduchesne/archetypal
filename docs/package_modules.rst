@@ -242,6 +242,7 @@ Utils
     :nosignatures:
     :toctree: reference/
 
+    config
     validate_trnsys_folder
     log
     load_umi_template_objects

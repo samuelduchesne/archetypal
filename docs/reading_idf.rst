@@ -64,3 +64,19 @@ is equivalent to:
 
     >>> idf_path = "path/to/idf_file"
     >>> run_eplus(idf_path, weather_file, **other_options)
+
+.. hint:: Caching system.
+
+    When running EnergyPlus simulations, a caching system can be activated to reduce the number of calls to the
+    EnergyPlus executable. This can be helpful when `archetypal` is called many times. This caching system will save
+    simulation results in a folder identified by a unique identifier. This identifier is based on the content of the IDF
+    file, as well as the various :meth:`~archetypal.idfclass.run_eplus` options. If caching is activated, then
+    subsequent calls to the :meth:`~archetypal.idfclass.run_eplus` method will return the cached results.
+
+    The caching system is activated by calling the :meth:`archetypal.utils.config` method, which can also be used to
+    set a series of package-wide options. ``config`` would typically be put at the top of a python script:
+
+    .. code-block:: python
+
+        >>> from archetypal import config
+        >>> config(use_cache=True)

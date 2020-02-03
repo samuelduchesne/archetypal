@@ -1062,20 +1062,41 @@ class OutputPrep:
     one go.
 
     For example:
-        >>> OutputPrep(idf=idf_obj).add_output_control().add_umi_ouputs().add_profile_gs_elect_ouputs()
+        >>> OutputPrep(idf=idf_obj).add_output_control().add_umi_ouputs().add_profile_gas_elect_ouputs()
     """
 
     def __init__(self, idf, save=True):
-        """
+        """Initialize an OutputPrep object.
+
         Args:
-            idf:
-            save:
+            idf (IDF): the IDF object for wich this OutputPrep object is created.
+            save (bool): weather to save or not changes after adding outputs to the
+                IDF file.
         """
         self.idf = idf
         self.save = save
         self.outputs = []
 
     def add_custom(self, outputs):
+        """Add custom-defined outputs as a list of objects.
+
+        Examples:
+            >>> outputs = [
+            >>>         {
+            >>>             "ep_object": "OUTPUT:METER",
+            >>>             "kwargs": dict(
+            >>>                 Key_Name="Electricity:Facility",
+            >>>                 Reporting_Frequency="hourly",
+            >>>                 save=True,
+            >>>             ),
+            >>>         },
+            >>>     ]
+            >>> OutputPrep().add_custom(outputs)
+
+        Args:
+            outputs (list): Pass a list of ep-objects defined as dictionary. See
+                examples.
+        """
         if isinstance(outputs, list):
             prepare_outputs(self.idf, outputs=outputs, save=self.save)
             self.outputs.extend(outputs)
@@ -1085,12 +1106,29 @@ class OutputPrep:
         """Adds the summary report and the sql file to the idf outputs"""
         return self.add_summary_report().add_output_control().add_sql()
 
-    def add_summary_report(self):
-        """SummaryReports"""
+    def add_summary_report(self, summary="AllSummary"):
+        """Adds the Output:Table:SummaryReports object.
+
+        Args:
+            summary (str): Choices are AllSummary, AllMonthly,
+                AllSummaryAndMonthly, AllSummaryAndSizingPeriod,
+                AllSummaryMonthlyAndSizingPeriod,
+                AnnualBuildingUtilityPerformanceSummary,
+                InputVerificationandResultsSummary,
+                SourceEnergyEndUseComponentsSummary, ClimaticDataSummary,
+                EnvelopeSummary, SurfaceShadowingSummary, ShadingSummary,
+                LightingSummary, EquipmentSummary, HVACSizingSummary,
+                ComponentSizingSummary, CoilSizingDetails, OutdoorAirSummary,
+                SystemSummary, AdaptiveComfortSummary, SensibleHeatGainSummary,
+                Standard62.1Summary, EnergyMeters, InitializationSummary,
+                LEEDSummary, TariffReport, EconomicResultSummary,
+                ComponentCostEconomicsSummary, LifeCycleCostReport,
+                HeatEmissionsSummary,
+        """
         outputs = [
             {
                 "ep_object": "Output:Table:SummaryReports".upper(),
-                "kwargs": dict(Report_1_Name="AllSummary", save=self.save),
+                "kwargs": dict(Report_1_Name=summary, save=self.save),
             }
         ]
         prepare_outputs(self.idf, outputs=outputs, save=self.save)
@@ -1098,6 +1136,19 @@ class OutputPrep:
         return self
 
     def add_sql(self, sql_output_style="SimpleAndTabular"):
+        """Adds the `Output:SQLite` object. This object will produce an sql file
+        that contains the simulation results in a database format. See
+        `eplusout.sql
+        <https://bigladdersoftware.com/epx/docs/9-2/output-details-and
+        -examples/eplusout-sql.html#eplusout.sql>`_ for more details.
+
+        Args:
+            sql_output_style (str): The *Simple* option will include all of the
+                predefined database tables as well as time series related data.
+                Using the *SimpleAndTabular* choice adds database tables related
+                to the tabular reports that are already output by EnergyPlus in
+                other formats.
+        """
         outputs = [
             {
                 "ep_object": "Output:SQLite".upper(),
@@ -1109,9 +1160,11 @@ class OutputPrep:
         return self
 
     def add_output_control(self, output_control_table_style="CommaAndHTML"):
-        """
+        """Sets the `OutputControl:Table:Style` object.
+
         Args:
-            output_control_table_style:
+            output_control_table_style (str): Choices are: Comma, Tab, Fixed,
+                HTML, XML, CommaAndHTML, TabAndHTML, XMLAndHTML, All
         """
         outputs = [
             {
@@ -1127,7 +1180,7 @@ class OutputPrep:
 
     def add_template_outputs(self):
         """Adds the necessary outputs in order to create an UMI template."""
-        # list the ouputs here
+        # list the outputs here
         outputs = [
             {
                 "ep_object": "Output:Variable".upper(),
@@ -1309,7 +1362,7 @@ class OutputPrep:
         """Adds the necessary outputs in order to return the same energy profile
         as in UMI.
         """
-        # list the ouputs here
+        # list the outputs here
         outputs = [
             {
                 "ep_object": "Output:Variable".upper(),
@@ -1358,8 +1411,10 @@ class OutputPrep:
         return self
 
     def add_profile_gas_elect_ouputs(self):
-        """Adds the necessary outputs in order to return the energy profile."""
-        # list the ouputs here
+        """Adds the following meters: Electricity:Facility, Gas:Facility,
+        WaterSystems:Electricity, Heating:Electricity, Cooling:Electricity
+        """
+        # list the outputs here
         outputs = [
             {
                 "ep_object": "OUTPUT:METER",

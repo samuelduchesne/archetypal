@@ -105,7 +105,6 @@ Data Portal
     :toctree: reference/
 
     tabula_available_buildings
-    tabula_api_request
     tabula_building_details_sheet
     tabula_system
     tabula_system_request
@@ -115,8 +114,6 @@ Data Portal
     stat_can_request
     stat_can_geo_request
     download_bld_window
-    save_to_cache
-    get_from_cache
 
 
 EnergyDataFrame

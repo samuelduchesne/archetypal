@@ -389,7 +389,7 @@ class IDF(geomeppy.IDF):
         return profile
 
     def run_eplus(self, **kwargs):
-        """wrapper around the :func:`archetypal.run_eplus()` method.
+        """wrapper around the :meth:`archetypal.idfclass.run_eplus` method.
 
         If weather file is defined in the IDF object, then this field is
         optional. By default, will load the sql in self.sql.
@@ -1536,7 +1536,7 @@ def run_eplus(
     return_idf=False,
     return_files=False,
 ):
-    """Run an energy plus file using the EnergyPlus executable.
+    """Run an EnergyPlus file using the EnergyPlus executable.
 
     Specify run options:
         Run options are specified in the same way as the E+ command line
@@ -1545,11 +1545,11 @@ def run_eplus(
 
     Specify outputs:
         Optionally define the desired outputs by specifying the
-        :attr:`output_report` attribute.
+        :attr:`prep_outputs` attribute.
 
-        With the :attr:`prep_outputs` parameter, specify additional outputs
-        objects to append to the energy plus file. If True, a selection of
-        usefull options will be append by default (see: :func:`prepare_outputs`
+        With the :attr:`prep_outputs` attribute, specify additional outputs
+        objects to append to the energy plus file. If True is specified, a selection of
+        useful options will be append by default (see: :class:`OutputPrep`
         for more details).
 
     Args:
@@ -1559,11 +1559,10 @@ def run_eplus(
             default to the settings.cache_folder.
         ep_version (str, optional): EnergyPlus version to use, eg: 9-2-0
         output_report: 'sql' or 'htm'.
-        prep_outputs (bool or list, optional): if true, meters and variable
-            outputs will be appended to the idf files. see
-            :func:`prepare_outputs`.
-        simulname (str): The name of the simulation. (Todo: Currently not
-            implemented).
+        prep_outputs (bool or list, optional): if True, meters and variable
+            outputs will be appended to the idf files. Can also specify custom
+            outputs as list of ep-object outputs.
+        simulname (str): The name of the simulation. (Todo: Currently not implemented).
         keep_data (bool): If True, files created by EnergyPlus are saved to the
             output_directory.
         annual (bool): If True then force annual simulation (default: False)
@@ -1581,22 +1580,23 @@ def run_eplus(
         version (bool, optional): Display version information (default: False)
         verbose (str): Set verbosity of runtime messages (default: v) v: verbose
             q: quiet
-        keep_data_err (bool):
+        keep_data_err (bool): If True, errored directory where simluation occured is
+            kept.
         include (str, optional): List input files that need to be copied to the
-            simulation directory.if a string is provided, it should be in a glob
-            form (see pathlib.Path.glob).
+            simulation directory. If a string is provided, it should be in a glob
+            form (see :meth:`pathlib.Path.glob`).
         process_files:
         custom_processes (dict(Callback), optional): if provided, it has to be a
-            dictionnary with the keys beeing a glob (see pathlib.Path.glob), and
+            dictionary with the keys being a glob (see :meth:`pathlib.Path.glob`), and
             the value a Callback taking as signature `callback(file: str,
             working_dir, simulname) -> Any` All the file matching this glob will
-            be processed by this callback. Note: they still be processed by
+            be processed by this callback. Note: they will still be processed by
             pandas.read_csv (if they are csv files), resulting in duplicate. The
             only way to bypass this behavior is to add the key "*.csv" to that
-            dictionnary.
-        return_idf (bool): If Truem returns the :class:`IDF` object part of the
+            dictionary.
+        return_idf (bool): If True, returns the :class:`IDF` object part of the
             return tuple.
-        return_files (bool): It True, all files paths created by the energyplus
+        return_files (bool): It True, all files paths created by the EnergyPlus
             run are returned.
 
     Returns:

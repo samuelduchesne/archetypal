@@ -14,6 +14,7 @@ IDF Class
     load_idf
     IDF
     run_eplus
+    OutputPrep
 
 .. _templates_label:
 

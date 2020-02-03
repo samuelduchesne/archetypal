@@ -43,6 +43,7 @@ def test_tabula_multiple(config, scratch_then_cache):
         keys=ab.code_buildingtype_column1 + "." + ab.suffix_building_column1,
     )
 
+
 @pytest.mark.xfail(
     condition=os.environ.get("NREL_CONSUMER_KEY") is None,
     reason="Must provide an NREL API key as ENV Variable 'NREL_CONSUMER_KEY'",
@@ -58,6 +59,7 @@ def test_nrel_api_request(config, scratch_then_cache):
 
     response = ar.dataportal.nrel_bcl_api_request(data)
     assert response["result"]
+
 
 @pytest.mark.xfail(
     condition=os.environ.get("NREL_CONSUMER_KEY") is None,
@@ -75,6 +77,7 @@ def test_download_bld_window(config, scratch_then_cache):
         tolerance=0.05,
     )
     assert response
+
 
 @pytest.mark.xfail(
     condition=os.environ.get("NREL_CONSUMER_KEY") is None,
@@ -102,12 +105,12 @@ def test_download_and_load_bld_window(config):
 def test_statcan(config):
     data = dict(type="json", lang="E", dguid="2016A000011124", topic=5, notes=0)
 
-    response = ar.dataportal.stat_can_request(data)
+    response = ar.dataportal.stat_can_request(**data)
     print(response)
 
 
 def test_statcan_geo(config):
     data = dict(type="json", lang="E", geos="PR", cpt="00")
 
-    response = ar.dataportal.stat_can_geo_request(data)
+    response = ar.dataportal.stat_can_geo_request(**data)
     print(response)

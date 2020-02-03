@@ -43,6 +43,7 @@ independently.
 
    Converting IDF models <converting.rst>
    Managing Schedules <tutorials/schedules.rst>
+   Reading and Running IDF files <reading_idf.rst>
    Parallel Processing <tutorials/parallel_process.rst>
    Troubleshooting <troubleshooting.rst>
 

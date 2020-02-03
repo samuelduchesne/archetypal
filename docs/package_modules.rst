@@ -227,9 +227,8 @@ UMI Template
     :nosignatures:
     :toctree: reference/
 
-    UmiTemplate.from_idf
-    UmiTemplate.read_file
-    UmiTemplate.to_json
+    UmiTemplate
+
 
 
 Utils

@@ -234,15 +234,6 @@ class UmiTemplate:
             building_template = BuildingTemplate.from_idf(**in_dict[idf])
             self.BuildingTemplates.append(building_template)
 
-    def run_eplus(self, idf_files, weather, **kwargs):
-        """wrapper for :func:`run_eplus` function
-
-        """
-        sql_report = run_eplus(idf_files, weather, output_report="sql")
-        self.sql = sql_report
-
-        return sql_report
-
     @classmethod
     def read_file(cls, filename):
         """Initializes an UmiTemplate object from an UMI Template File.

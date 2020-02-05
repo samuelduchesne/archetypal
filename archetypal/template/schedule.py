@@ -103,9 +103,10 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             other (UmiSchedule): The other Schedule object to combine with.
             weights (list): Attribute of self and other containing the weight
                 factor.
-            quantity (list): Scalar value that will be multiplied by self before
+            quantity (list or dict): Scalar value that will be multiplied by self before
                 the averaging occurs. This ensures that the resulting schedule
-                returns the correct integrated value.
+                returns the correct integrated value. If a dict is passed, keys are
+                schedules Names and values are quantities.
 
         Returns:
             (UmiSchedule): the combined UmiSchedule object.
@@ -141,6 +142,14 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             new_values = np.average(
                 [self.all_values, other.all_values], axis=0, weights=weights
             )
+        elif isinstance(quantity, dict):
+            new_values = np.average(
+                [self.all_values * quantity[self.Name], other.all_values * quantity[
+                    other.Name]],
+                axis=0,
+                weights=weights,
+            )
+            new_values /= new_values.max()
         else:
             new_values = np.average(
                 [self.all_values * quantity[0], other.all_values * quantity[1]],

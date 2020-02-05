@@ -16,6 +16,7 @@ import contextlib
 import datetime as dt
 import json
 import logging as lg
+import multiprocessing
 import os
 import platform
 import re
@@ -1034,3 +1035,79 @@ def rotate(l, n):
         list: shifted list.
     """
     return l[n:] + l[:n]
+
+
+def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
+    """A parallel version of the map function with a progress bar.
+
+    Examples:
+        >>> import archetypal as ar
+        >>> files = ['tests/input_data/problematic/nat_ventilation_SAMPLE0.idf',
+        >>>          'tests/input_data/regular/5ZoneNightVent1.idf']
+        >>> wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+        >>> files = ar.copy_file(files)
+        >>> rundict = {file: dict(eplus_file=file, weather_file=wf,
+        >>>                      ep_version=ep_version, annual=True,
+        >>>                      prep_outputs=True, expandobjects=True,
+        >>>                      verbose='q', output_report='sql')
+        >>>           for file in files}
+        >>> result = parallel_process(rundict, ar.run_eplus, use_kwargs=True)
+
+    Args:
+        in_dict (dict-like): A dictionary to iterate over.
+        function (function): A python function to apply to the elements of
+            in_dict
+        processors (int): The number of cores to use
+        use_kwargs (bool): If True, pass the kwargs as arguments to `function` .
+
+    Returns:
+        [function(array[0]), function(array[1]), ...]
+    """
+    from tqdm import tqdm
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+
+    if processors == -1:
+        processors = min(len(in_dict), multiprocessing.cpu_count())
+
+    if processors == 1:
+        kwargs = {
+            "desc": function.__name__,
+            "total": len(in_dict),
+            "unit": "runs",
+            "unit_scale": True,
+            "leave": True,
+        }
+        if use_kwargs:
+            futures = {a: function(**in_dict[a]) for a in tqdm(in_dict, **kwargs)}
+        else:
+            futures = {a: function(in_dict[a]) for a in tqdm(in_dict, **kwargs)}
+    else:
+        with ProcessPoolExecutor(max_workers=processors) as pool:
+            if use_kwargs:
+                futures = {pool.submit(function, **in_dict[a]): a for a in in_dict}
+            else:
+                futures = {pool.submit(function, in_dict[a]): a for a in in_dict}
+
+            kwargs = {
+                "desc": function.__name__,
+                "total": len(futures),
+                "unit": "runs",
+                "unit_scale": True,
+                "leave": True,
+            }
+
+            # Print out the progress as tasks complete
+            for f in tqdm(as_completed(futures), **kwargs):
+                pass
+    out = {}
+    # Get the results from the futures.
+    for key in futures:
+        try:
+            if processors > 1:
+                out[futures[key]] = key.result()
+            else:
+                out[key] = futures[key]
+        except Exception as e:
+            log(str(e), lg.ERROR)
+            out[futures[key]] = e
+    return out

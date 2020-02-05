@@ -25,13 +25,15 @@ You can optionally pass the weather file path as well:
 Editing
 -------
 
-Editing IDF files is based on the :ref:`eppy` package. The :class:`~archetypal.idfclass.IDF` object that the
-:meth:`~archetypal.idfclass.load_idf` method returns exposes the EnergyPlus objects that make up the IDF file.
+Editing IDF files is based on the :ref:`eppy` package. The :class:`~archetypal.idfclass.IDF` object returned by
+:meth:`~archetypal.idfclass.load_idf` exposes the EnergyPlus objects that make up the IDF file. These objects can be
+edited and new objects can be created. See the `eppy documentation <https://eppy.readthedocs.io/en/latest/>`_ for
+more information on how to edit IDF files.
 
 .. hint:: Pre-sets
 
-    EnergyPlus outputs can be defined quickly using the :class:`archetypal.idfclass.OutputPrep` class. This class
-    and its methods handles adding predefined or custom output EnergyPlus objects to an IDF object. For example, the
+    EnergyPlus outputs can be quickly defined using the :class:`archetypal.idfclass.OutputPrep` class. This class
+    and its methods handle adding predefined or custom outputs to an IDF object. For example, the
     idf object created above can be modified by adding a basic set of outputs:
 
     .. code-block:: python
@@ -52,7 +54,7 @@ previously read. In both cases, users can also specify run options as well as ou
 creating an OutputPrep object, one can specify custom outputs in the :attr:`archetypal.idfclass.run_eplus.prep_outputs`
 attribute. These outputs will be appended to the IDF file before the simulation is run.
 
-For the same IDF object read above, the following:
+For the same IDF object above, the following:
 
 .. code-block:: python
 

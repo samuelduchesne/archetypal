@@ -42,8 +42,10 @@ independently.
    :caption: User Guide
 
    Converting IDF models <converting.rst>
-   Managing Schedules <tutorials/schedules.rst>
+   Reading and Running IDF files <reading_idf.rst>
    Parallel Processing <tutorials/parallel_process.rst>
+   Managing Schedules <tutorials/schedules.rst>
+   Reading and Editing UMI Template Files <tutorials/edit_umitemplate.rst>
    Troubleshooting <troubleshooting.rst>
 
 .. toctree::

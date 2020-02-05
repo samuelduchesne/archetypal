@@ -32,8 +32,9 @@ def tabula_available_buildings(country_name="France"):
     """Returns all available building types for a specific country.
 
     Args:
-        country_name (str): The name of the country. pycountry is used to resolve
-            country names. Therefore, a country code (e.g. "FRA") can be passed as well.
+        country_name (str): The name of the country. pycountry is used to
+            resolve country names. Therefore, a country code (e.g. "FRA") can be
+            passed as well.
     """
     # Check code country
     code_country = _resolve_codecountry(country_name)
@@ -122,11 +123,14 @@ def tabula_building_details_sheet(
     code_num=1,
     code_variantnumber=1,
 ):
-    """How to format ``code_building``. Format the :attr:`code_building` string as such:
+    """How to format ``code_building``. Format the :attr:`code_building` string
+    as such:
 
     Args:
-        code_building (str) : The building code string.
+        code_building (str): The building code string.
+
             ::
+
                 Whole building code e.g.:
 
                 AT.MT.AB.02.Gen.ReEx.001.001"
@@ -233,12 +237,13 @@ def tabula_building_details_sheet(
 
 
 def tabula_system(code_country, code_boundarycond="SUH", code_variantnumber=1):
-    """
+    """Return system level information from TABULA archetypes.
 
     Args:
-        code_country:
-        code_boundarycond:
-        code_variantnumber:
+        code_country (str): the alpha-2 code of the country. eg. "FR"
+        code_boundarycond (str): choices are "SUH" and "MUH".
+        code_variantnumber (int):
+
     """
     # Check code country
     code_country = _resolve_codecountry(code_country)
@@ -320,7 +325,11 @@ def tabula_system_request(data):
 
 
 def _resolve_codecountry(code_country):
-    """check country name against pycountry and return alpha_2 code"""
+    """check country name against pycountry and return alpha_2 code
+
+    Args:
+        code_country:
+    """
     if len(code_country) == 2:
         code_country = pycountry.countries.get(alpha_2=code_country)
     elif len(code_country) == 3:
@@ -392,21 +401,15 @@ def save_to_cache(url, response_json):
             log('Saved response to cache file "{}"'.format(cache_path_filename))
 
 
-def openei_api_request(
-    data, pause_duration=None, timeout=180, error_pause_duration=None
-):
-    """
+def openei_api_request(data,):
+    """Query the OpenEI.org API.
+
     Args:
         data (dict or OrderedDict): key-value pairs of parameters to post to the
-            API
-        pause_duration:
-        timeout (int): how long to pause in seconds before requests, if None,
-            will query API status endpoint to find when next slot is available
-        error_pause_duration (int): the timeout interval for the requests
-            library
+            API.
 
     Returns:
-        dict
+        dict: the json response
     """
     # define the Overpass API URL, then construct a GET-style URL as a string to
     # hash to look up/save to cache
@@ -421,11 +424,7 @@ def openei_api_request(
 
 
 def nrel_api_cbr_request(data):
-    """
-    Notes:
-        For a detailed description of data arguments, visit
-        https://developer.nrel.gov/docs/buildings/commercial-building
-        -resource-database-v1/resources/
+    """Query the NREL Commercial Building Resource Database
 
     Examples:
         >>> import archetypal as ar
@@ -437,6 +436,11 @@ def nrel_api_cbr_request(data):
 
     Returns:
         dict: the json response
+
+    Hint:
+        For a detailed description of data arguments, visit
+        `Commercial Building Resource API <https://developer.nrel.gov/docs/buildings
+        /commercial-building-resource-database-v1/resources/>`_
     """
     # define the Overpass API URL, then construct a GET-style URL as a string to
     # hash to look up/save to cache
@@ -495,7 +499,7 @@ def nrel_bcl_api_request(data):
             API
 
     Returns:
-        dict
+        dict: the json response
     """
     try:
         kformat = data.pop("format")  # json or xml
@@ -548,20 +552,39 @@ def nrel_bcl_api_request(data):
             return response_json
 
 
-def stat_can_request(data):
-    """
+def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, stat=0):
+    """Send a request to the StatCan API via HTTP GET and return the JSON
+    response.
+
     Args:
-        data:
+        type (str): "json" or "xml". json = json response format and xml = xml
+            response format.
+        lang (str): "E" or "F". E = English and F = French.
+        dguid (str): Dissemination Geography Unique Identifier - DGUID. It is an
+            alphanumeric code, composed of four components. It varies from 10 to
+            21 characters in length. The first 9 characters are fixed in
+            composition and length. Vintage (4) + Type (1) + Schema (4) +
+            Geographic Unique Identifier (1-12). To find dguid, use any GEO_UID
+            ( i.e., DGUID) returned by the 2016 Census geography web data
+            service. For more information on the DGUID definition and structure,
+            please refer to the `Dissemination Geography Unique Identifier,
+            Definition and Structure
+            <https://www150.statcan.gc.ca/n1/pub/92f0138m/92f0138m2019001-eng.htm>`_ ,
+            Statistics Canada catalogue no. 92F0138M-2019001.
+        topic (str): Integer 0-14 (default=0) where: 1. All topics 2. Aboriginal
+            peoples 3. Education 4. Ethnic origin 5. Families, households and
+            marital status 6. Housing 7. Immigration and citizenship 8. Income
+            9. Journey to work 10. Labour 11. Language 12. Language of work 13.
+            Mobility 14. Population 15. Visible minority.
+        notes (int): 0 or 1. 0 = do not include footnotes. 1 = include
+            footnotes.
+        stat (int): 0 or 1. 0 = counts. 1 = rates.
     """
     prepared_url = (
         "https://www12.statcan.gc.ca/rest/census-recensement"
         "/CPR2016.{type}?lang={lang}&dguid={dguid}&topic="
-        "{topic}&notes={notes}".format(
-            type=data.get("type", "json"),
-            lang=data.get("land", "E"),
-            dguid=data.get("dguid", "2016A000011124"),
-            topic=data.get("topic", 1),
-            notes=data.get("notes", 0),
+        "{topic}&notes={notes}&stat={stat}".format(
+            type=type, lang=lang, dguid=dguid, topic=topic, notes=notes, stat=stat
         )
     )
 
@@ -575,7 +598,7 @@ def stat_can_request(data):
     else:
         # if this URL is not already in the cache, request it
         start_time = time.time()
-        log('Getting from {}, "{}"'.format(prepared_url, data))
+        log("Getting from {}".format(prepared_url))
         response = requests.get(prepared_url)
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
@@ -617,18 +640,30 @@ def stat_can_request(data):
             return response_json
 
 
-def stat_can_geo_request(data):
+def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
     """
     Args:
-        data:
+        type (str): "json" or "xml". json = json response format and xml = xml
+            response format.
+        lang (str): "E" or "F". where: E = English F = French.
+        geos (str): one geographic level code (default = PR). where: CD = Census
+            divisions CMACA = Census metropolitan areas and census
+            agglomerations CSD = Census subdivisions (municipalities) CT =
+            Census tracts DA = Dissemination areas DPL = Designated places ER =
+            Economic regions FED = Federal electoral districts (2013
+            Representation Order) FSA = Forward sortation areas HR = Health
+            regions (including LHINs and PHUs) POPCNTR = Population centres PR =
+            Canada, provinces and territories.
+        cpt (str): one province or territory code (default = 00). where: 00 =
+            All provinces and territories 10 = Newfoundland and Labrador 11 =
+            Prince Edward Island 12 = Nova Scotia 13 = New Brunswick 24 = Quebec
+            35 = Ontario 46 = Manitoba 47 = Saskatchewan 48 = Alberta 59 =
+            British Columbia 60 = Yukon 61 = Northwest Territories 62 = Nunavut.
     """
     prepared_url = (
         "https://www12.statcan.gc.ca/rest/census-recensement"
         "/CR2016Geo.{type}?lang={lang}&geos={geos}&cpt={cpt}".format(
-            type=data.get("type", "json"),
-            lang=data.get("land", "E"),
-            geos=data.get("geos", "PR"),
-            cpt=data.get("cpt", "00"),
+            type=type, lang=lang, geos=geos, cpt=cpt
         )
     )
 
@@ -642,7 +677,7 @@ def stat_can_geo_request(data):
     else:
         # if this URL is not already in the cache, request it
         start_time = time.time()
-        log('Getting from {}, "{}"'.format(prepared_url, data))
+        log("Getting from {}".format(prepared_url))
         response = requests.get(prepared_url)
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
@@ -723,7 +758,7 @@ def download_bld_window(
 
     Returns:
         (list of archetypal.IDF): a list of IDF files containing window objects
-            matching the  parameters.
+            matching the parameters.
 
     Note:
         An authentication key from NREL is required to download building

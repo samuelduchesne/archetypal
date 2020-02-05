@@ -283,28 +283,6 @@ def convert(
 ):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS) The
     output folder path defaults to the working directory. Equivalent to '.'
-
-    Args:
-        idf_file:
-        weather_file:
-        window_lib:
-        return_idf:
-        return_t3d:
-        return_dck:
-        output_folder:
-        trnsidf_exe:
-        template:
-        log_clear_names:
-        schedule_as_input:
-        ep_version:
-        window:
-        ordered:
-        nonum:
-        batchjob:
-        geofloor:
-        refarea:
-        volume:
-        capacitance:
     """
     u_value, shgc, t_vis, tolerance, fframe, uframe = window
     window_kwds = {

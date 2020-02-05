@@ -11,14 +11,8 @@ You can also access help from the command line with the
 
    archetypal --help
 
+.. include:: commands/convert.rst
 
-Archetypal general commands
-===========================
+.. include:: commands/reduce.rst
 
-The following commands are part of archetypal:
-
-.. toctree::
-   :glob:
-   :maxdepth: 2
-
-   commands/*
+.. include:: commands/transition.rst

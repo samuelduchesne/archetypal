@@ -4,6 +4,7 @@ import os
 from collections import OrderedDict
 
 import numpy as np
+from path import Path
 
 from archetypal import (
     load_idf,
@@ -11,8 +12,6 @@ from archetypal import (
     GasMaterial,
     GlazingMaterial,
     OpaqueMaterial,
-    parallel_process,
-    run_eplus,
     OpaqueConstruction,
     WindowConstruction,
     StructureDefinition,
@@ -35,10 +34,9 @@ from archetypal import (
 
 
 class UmiTemplate:
+    """Main class supporting the definition of a multiple building templates and
+    corresponding template objects.
     """
-
-    """
-
     def __init__(
         self,
         name="unnamed",
@@ -60,27 +58,38 @@ class UmiTemplate:
         ZoneLoads=None,
         Zones=None,
     ):
-        """
+        """Initialize a new UmiTemplate with empty attributes.
 
         Args:
-            name (str): The name of the template
-            Zones (list of Zone):
-            ZoneLoads (list of ZoneLoad):
-            ZoneConstructionSets (list of ZoneConstructionSet):
-            ZoneConditionings (list of ZoneConditioning):
-            WindowSettings (list of WindowSetting):
-            VentilationSettings (list of VentilationSetting):
-            DomesticHotWaterSettings (list of DomesticHotWaterSetting):
-            YearSchedules (list of YearSchedule):
-            WeekSchedules (list of WeekSchedule):
-            DaySchedules (list of DaySchedule):
-            StructureDefinitions (list of StructureDefinition):
-            WindowConstructions (list of WindowConstruction):
-            OpaqueMaterials (list of OpaqueMaterial):
-            OpaqueConstructions (list of OpaqueConstruction):
-            GlazingMaterials (list of GlazingMaterial):
-            GasMaterials (list of GasMaterial):
-            BuildingTemplates (list of BuildingTemplate):
+            name (str): The name of the UMI Template.
+            BuildingTemplates (list of BuildingTemplate): list of
+                BuildingTemplate objects.
+            GasMaterials (list of GasMaterial): list of GasMaterial objects.
+            GlazingMaterials (list of GlazingMaterial): list of GlazingMaterial
+                objects.
+            OpaqueConstructions (list of OpaqueConstruction): list of
+                OpaqueConstruction objects.
+            OpaqueMaterials (list of OpaqueMaterial): list of OpaqueMaterial
+                objects.
+            WindowConstructions (list of WindowConstruction): list of
+                WindowConstruction objects.
+            StructureDefinitions (list of StructureDefinition): list of
+                StructureDefinition objects.
+            DaySchedules (list of DaySchedule): list of DaySchedule objects.
+            WeekSchedules (list of WeekSchedule): list of WeekSchedule objects.
+            YearSchedules (list of YearSchedule): list of YearSchedule objects.
+            DomesticHotWaterSettings (list of DomesticHotWaterSetting): list of
+                DomesticHotWaterSetting objects.
+            VentilationSettings (list of VentilationSetting): list of
+                VentilationSetting objects.
+            WindowSettings (list of WindowSetting): list of WindowSetting
+                objects.
+            ZoneConditionings (list of ZoneConditioning): list of
+                ZoneConditioning objects.
+            ZoneConstructionSets (list of ZoneConstructionSet): list of
+                ZoneConstructionSet objects.
+            ZoneLoads (list of ZoneLoad): list of ZoneLoad objects.
+            Zones (list of Zone): list of Zone objects
         """
         if Zones is None:
             Zones = []
@@ -139,126 +148,86 @@ class UmiTemplate:
         self.GlazingMaterials = GlazingMaterials
 
     @classmethod
-    def from_idf(
-        self,
-        idf_files,
-        weather,
-        sql=None,
-        load=False,
-        name="unnamed",
-        load_idf_kwargs=None,
-        run_eplus_kwargs=None,
+    def read_idf(
+        cls, idf_files, weather, sql=None, name="unnamed", load_idf_kwargs=None
     ):
-        """Initializes a UmiTemplate class from one or more idf_files.
+        """Initializes an UmiTemplate object from one or more idf_files.
 
-        Iterates over each building zones and creates corresponding objects
-        from the building object to material objects.
+        The resulting object contains the reduced version of the IDF files.
+        To save to file, call the :meth:`to_json` method.
 
         Args:
-            idf_files (str or list):
-            weather (str):
-            load (bool):
-            run_eplus_kwargs:
-            load_idf_kwargs:
+            idf_files (str or list): One or more IDF file paths.
+            weather (str): Path to the weather file.
+            sql:
+            name:
+            load_idf_kwargs (dict): kwargs passed to the
+                :meth:`archetypal.idfclass.load_idf` method.
         """
-        # instanciate class
-        if run_eplus_kwargs is None:
-            run_eplus_kwargs = {}
         if load_idf_kwargs is None:
             load_idf_kwargs = {}
-        t = UmiTemplate(name)
+        # instantiate class
+        t = cls(name)
 
         # fill in arguments
         t.idf_files = idf_files
         t.weather = weather
         t.sql = sql
 
-        t.idfs = [load_idf(idf_file) for idf_file in idf_files]
+        # Load IDF objects
+        t.idfs = [
+            load_idf(idf_file, weather_file=weather, **load_idf_kwargs)
+            for idf_file in idf_files
+        ]
 
         # For each idf load
-        gms, glazms, oms = [], [], []
+        template_obj = []
         for idf in t.idfs:
-            b = BuildingTemplate.from_idf(idf)
-            # with each idf, append each objects
-            gms.extend(GasMaterial.from_idf(idf))
-            glazms.extend(GlazingMaterial.from_idf(idf))
-            oms.extend(OpaqueMaterial.from_idf(idf))
-        # use set() to remove duplicates
-        t.GasMaterials.extend(set(gms))
-        t.GlazingMaterials.extend(set(glazms))
-        t.OpaqueMaterials.extend(set(oms))
-
-        if load:
-            rundict = {
-                idf_file: dict(
-                    eplus_file=idf_file,
-                    weather_file=weather,
-                    output_report="sql",
-                    **run_eplus_kwargs
+            bldg = BuildingTemplate.from_idf(idf, sql=idf.sql, DataSource=idf.name)
+            template_obj.append(bldg)
+            for name in [
+                DaySchedule,
+                DomesticHotWaterSetting,
+                GasMaterial,
+                GlazingMaterial,
+                OpaqueConstruction,
+                OpaqueMaterial,
+                StructureDefinition,
+                VentilationSetting,
+                WeekSchedule,
+                WindowConstruction,
+                YearSchedule,
+                ZoneConditioning,
+                ZoneConstructionSet,
+                ZoneLoad,
+                Zone,
+            ]:
+                t.__dict__[name.__name__ + "s"].extend(
+                    [obj for obj in bldg.all_objects.values() if isinstance(obj, name)]
                 )
-                for idf_file in idf_files
-            }
-            t.sql = parallel_process(rundict, run_eplus, use_kwargs=True)
-            t.read()
-            t.fill()
+
+        t.BuildingTemplates = template_obj
 
         return t
 
-    def fill(self):
-        # Todo: Finish enumerating all UmiTempalate objects
-
-        if self.BuildingTemplates:
-            for bt in self.BuildingTemplates:
-                day_schedules = [
-                    bt.all_objects[obj]
-                    for obj in bt.all_objects
-                    if "UmiSchedule" in obj
-                ]
-                self.DaySchedules.extend(day_schedules)
-
-                dhws = [
-                    bt.all_objects[obj]
-                    for obj in bt.all_objects
-                    if "DomesticHotWaterSetting" in obj
-                ]
-                self.DomesticHotWaterSettings.extend(dhws)
-
-    def read(self):
-        """Initialize UMI objects"""
-        # Umi stuff
-        in_dict = {
-            idf.name: {"Name": idf.name, "idf": idf, "sql": idf.sql}
-            for idf in self.idfs
-        }
-        for idf in in_dict:
-            building_template = BuildingTemplate.from_idf(**in_dict[idf])
-            self.BuildingTemplates.append(building_template)
-
-    def run_eplus(self, idf_files, weather, **kwargs):
-        """wrapper for :func:`run_eplus` function
-
-        """
-        sql_report = run_eplus(idf_files, weather, output_report="sql")
-        self.sql = sql_report
-
-        return sql_report
-
     @classmethod
-    def from_json(cls, filename):
-        """Initializes a UmiTemplate class from a json file
+    def read_file(cls, filename):
+        """Initializes an UmiTemplate object from an UMI Template File.
 
         Args:
-            filename (str):
+            filename (path-like): Path-like object giving the pathname (absolute
+                or relative to the current working directory) of the UMI
+                Template File.
 
         Returns:
-            UmiTemplate: The template object
+            UmiTemplate: The template object.
         """
-        name = os.path.basename(filename)
-        t = UmiTemplate(name)
-
-        import json
+        name = Path(filename)
+        t = cls(name)
 
         with open(filename, "r") as f:
+            import json
+
             datastore = json.load(f)
 
             # with datastore, create each objects
@@ -317,17 +286,31 @@ class UmiTemplate:
                 for store in datastore["BuildingTemplates"]
             ]
 
-            return t
+        return t
 
-    def to_json(self, path_or_buf=None, indent=2, all_zones=False):
+    def to_json(self, path_or_buf=None, indent=2, all_zones=False, sort_keys=False):
         """Writes the umi template to json format
 
         Args:
-            all_zones (bool): If True, all zones that have participated in
-                the creation of the core and perimeter zones will be outputed to the
+            path_or_buf (path-like): Path-like object giving the pathname
+                (absolute or relative to the current working directory)
+            indent (bool or str): If indent is a non-negative integer or string,
+                then JSON array elements and object members will be
+                pretty-printed with that indent level. An indent level of 0,
+                negative, or "" will only insert newlines. None (the default)
+                selects the most compact representation. Using a positive
+                integer indent indents that many spaces per level. If indent is
+                a string (such as "t"), that string is used to indent each
+                level.
+            all_zones (bool): If True, all zones that have participated in the
+                creation of the core and perimeter zones will be outputed to the
                 json file.
+            sort_keys (bool): If sort_keys is true (default: False), then the
+                output of dictionaries will be sorted by key; this is useful for
+                regression tests to ensure that JSON serializations can be
+                compared on a day-to-day basis.
         """
-        # todo: check is bools are created as lowercase 'false' pr 'true'
+        # todo: check if bools are created as lowercase 'false' or 'true'
 
         if not path_or_buf:
             json_name = "%s.json" % self.name
@@ -414,11 +397,12 @@ class UmiTemplate:
                     return obj
 
             if not data_dict["GasMaterials"]:
-                # Umi needs at least one gas material even if it is not
-                # necessary.
+                # Umi needs at least one gas material even if it is not necessary.
                 data_dict["GasMaterials"].append(GasMaterial(Name="AIR").to_json())
             # Write the dict to json using json.dumps
-            response = json.dumps(data_dict, indent=indent, cls=CustomJSONEncoder)
+            response = json.dumps(
+                data_dict, indent=indent, sort_keys=sort_keys, cls=CustomJSONEncoder
+            )
             path_or_buf.write(response)
 
         return response

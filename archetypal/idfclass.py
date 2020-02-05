@@ -6,12 +6,10 @@
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
 import datetime
-import errno
 import glob
 import hashlib
 import inspect
 import logging as lg
-import multiprocessing
 import os
 import platform
 import subprocess
@@ -389,7 +387,7 @@ class IDF(geomeppy.IDF):
         return profile
 
     def run_eplus(self, **kwargs):
-        """wrapper around the :func:`archetypal.run_eplus()` method.
+        """wrapper around the :meth:`archetypal.idfclass.run_eplus` method.
 
         If weather file is defined in the IDF object, then this field is
         optional. By default, will load the sql in self.sql.
@@ -749,8 +747,8 @@ def load_idf(
             form (see pathlib.Path.glob).
         weather_file: Either the absolute or relative path to the weather epw
             file.
-        ep_version (str, optional): EnergyPlus version number to use, eg.: "9-2-0".
-            Defaults to `settings.ep_version`.
+        ep_version (str, optional): EnergyPlus version number to use, eg.:
+            "9-2-0". Defaults to `settings.ep_version` .
 
     Returns:
         IDF: The IDF object.
@@ -1058,24 +1056,45 @@ def load_idf_object_from_cache(idf_file, how=None):
 
 class OutputPrep:
     """Handles preparation of EnergyPlus outputs. Different instance methods
-    allow to chain methods together and to add predefined bundles of outputs in one
-    go.
+    allow to chain methods together and to add predefined bundles of outputs in
+    one go.
 
     For example:
-        >>> OutputPrep(idf=idf_obj).add_output_control().add_umi_ouputs().add_profile_gs_elect_ouputs()
+        >>> OutputPrep(idf=idf_obj).add_output_control().add_umi_ouputs().add_profile_gas_elect_ouputs()
     """
 
     def __init__(self, idf, save=True):
-        """
+        """Initialize an OutputPrep object.
+
         Args:
-            idf:
-            save:
+            idf (IDF): the IDF object for wich this OutputPrep object is created.
+            save (bool): weather to save or not changes after adding outputs to the
+                IDF file.
         """
         self.idf = idf
         self.save = save
         self.outputs = []
 
     def add_custom(self, outputs):
+        """Add custom-defined outputs as a list of objects.
+
+        Examples:
+            >>> outputs = [
+            >>>         {
+            >>>             "ep_object": "OUTPUT:METER",
+            >>>             "kwargs": dict(
+            >>>                 Key_Name="Electricity:Facility",
+            >>>                 Reporting_Frequency="hourly",
+            >>>                 save=True,
+            >>>             ),
+            >>>         },
+            >>>     ]
+            >>> OutputPrep().add_custom(outputs)
+
+        Args:
+            outputs (list): Pass a list of ep-objects defined as dictionary. See
+                examples.
+        """
         if isinstance(outputs, list):
             prepare_outputs(self.idf, outputs=outputs, save=self.save)
             self.outputs.extend(outputs)
@@ -1085,12 +1104,29 @@ class OutputPrep:
         """Adds the summary report and the sql file to the idf outputs"""
         return self.add_summary_report().add_output_control().add_sql()
 
-    def add_summary_report(self):
-        """SummaryReports"""
+    def add_summary_report(self, summary="AllSummary"):
+        """Adds the Output:Table:SummaryReports object.
+
+        Args:
+            summary (str): Choices are AllSummary, AllMonthly,
+                AllSummaryAndMonthly, AllSummaryAndSizingPeriod,
+                AllSummaryMonthlyAndSizingPeriod,
+                AnnualBuildingUtilityPerformanceSummary,
+                InputVerificationandResultsSummary,
+                SourceEnergyEndUseComponentsSummary, ClimaticDataSummary,
+                EnvelopeSummary, SurfaceShadowingSummary, ShadingSummary,
+                LightingSummary, EquipmentSummary, HVACSizingSummary,
+                ComponentSizingSummary, CoilSizingDetails, OutdoorAirSummary,
+                SystemSummary, AdaptiveComfortSummary, SensibleHeatGainSummary,
+                Standard62.1Summary, EnergyMeters, InitializationSummary,
+                LEEDSummary, TariffReport, EconomicResultSummary,
+                ComponentCostEconomicsSummary, LifeCycleCostReport,
+                HeatEmissionsSummary,
+        """
         outputs = [
             {
                 "ep_object": "Output:Table:SummaryReports".upper(),
-                "kwargs": dict(Report_1_Name="AllSummary", save=self.save),
+                "kwargs": dict(Report_1_Name=summary, save=self.save),
             }
         ]
         prepare_outputs(self.idf, outputs=outputs, save=self.save)
@@ -1098,6 +1134,19 @@ class OutputPrep:
         return self
 
     def add_sql(self, sql_output_style="SimpleAndTabular"):
+        """Adds the `Output:SQLite` object. This object will produce an sql file
+        that contains the simulation results in a database format. See
+        `eplusout.sql
+        <https://bigladdersoftware.com/epx/docs/9-2/output-details-and
+        -examples/eplusout-sql.html#eplusout.sql>`_ for more details.
+
+        Args:
+            sql_output_style (str): The *Simple* option will include all of the
+                predefined database tables as well as time series related data.
+                Using the *SimpleAndTabular* choice adds database tables related
+                to the tabular reports that are already output by EnergyPlus in
+                other formats.
+        """
         outputs = [
             {
                 "ep_object": "Output:SQLite".upper(),
@@ -1109,9 +1158,11 @@ class OutputPrep:
         return self
 
     def add_output_control(self, output_control_table_style="CommaAndHTML"):
-        """
+        """Sets the `OutputControl:Table:Style` object.
+
         Args:
-            output_control_table_style:
+            output_control_table_style (str): Choices are: Comma, Tab, Fixed,
+                HTML, XML, CommaAndHTML, TabAndHTML, XMLAndHTML, All
         """
         outputs = [
             {
@@ -1126,9 +1177,8 @@ class OutputPrep:
         return self
 
     def add_template_outputs(self):
-        """Adds the necessary outputs in order to create an UMI template.
-        """
-        # list the ouputs here
+        """Adds the necessary outputs in order to create an UMI template."""
+        # list the outputs here
         outputs = [
             {
                 "ep_object": "Output:Variable".upper(),
@@ -1310,7 +1360,7 @@ class OutputPrep:
         """Adds the necessary outputs in order to return the same energy profile
         as in UMI.
         """
-        # list the ouputs here
+        # list the outputs here
         outputs = [
             {
                 "ep_object": "Output:Variable".upper(),
@@ -1359,9 +1409,10 @@ class OutputPrep:
         return self
 
     def add_profile_gas_elect_ouputs(self):
-        """Adds the necessary outputs in order to return the energy profile.
+        """Adds the following meters: Electricity:Facility, Gas:Facility,
+        WaterSystems:Electricity, Heating:Electricity, Cooling:Electricity
         """
-        # list the ouputs here
+        # list the outputs here
         outputs = [
             {
                 "ep_object": "OUTPUT:METER",
@@ -1419,14 +1470,13 @@ def prepare_outputs(
         >>> prepare_outputs(idf, outputs=objects)
 
     Args:
-        idf (IDF or Path): The IDF object or the path to the file describing
-            the model (.idf).
+        idf (IDF or Path): The IDF object or the path to the file describing the
+            model (.idf).
         outputs (bool or list):
         idd_filename:
         output_directory:
         save (bool): if True, saves the idf inplace to disk with added objects
         epw:
-        sql_output_style:
     """
     if isinstance(idf, (Path, str)):
         log("first, loading the idf file")
@@ -1484,7 +1534,7 @@ def run_eplus(
     return_idf=False,
     return_files=False,
 ):
-    """Run an energy plus file using the EnergyPlus executable.
+    """Run an EnergyPlus file using the EnergyPlus executable.
 
     Specify run options:
         Run options are specified in the same way as the E+ command line
@@ -1493,11 +1543,11 @@ def run_eplus(
 
     Specify outputs:
         Optionally define the desired outputs by specifying the
-        :attr:`output_report` attribute.
+        :attr:`prep_outputs` attribute.
 
-        With the :attr:`prep_outputs` parameter, specify additional outputs
-        objects to append to the energy plus file. If True, a selection of
-        usefull options will be append by default (see: :func:`prepare_outputs`
+        With the :attr:`prep_outputs` attribute, specify additional outputs
+        objects to append to the energy plus file. If True is specified, a selection of
+        useful options will be append by default (see: :class:`OutputPrep`
         for more details).
 
     Args:
@@ -1507,11 +1557,10 @@ def run_eplus(
             default to the settings.cache_folder.
         ep_version (str, optional): EnergyPlus version to use, eg: 9-2-0
         output_report: 'sql' or 'htm'.
-        prep_outputs (bool or list, optional): if true, meters and variable
-            outputs will be appended to the idf files. see
-            :func:`prepare_outputs`.
-        simulname (str): The name of the simulation. (Todo: Currently not
-            implemented).
+        prep_outputs (bool or list, optional): if True, meters and variable
+            outputs will be appended to the idf files. Can also specify custom
+            outputs as list of ep-object outputs.
+        simulname (str): The name of the simulation. (Todo: Currently not implemented).
         keep_data (bool): If True, files created by EnergyPlus are saved to the
             output_directory.
         annual (bool): If True then force annual simulation (default: False)
@@ -1529,22 +1578,23 @@ def run_eplus(
         version (bool, optional): Display version information (default: False)
         verbose (str): Set verbosity of runtime messages (default: v) v: verbose
             q: quiet
-        keep_data_err (bool):
+        keep_data_err (bool): If True, errored directory where simluation occured is
+            kept.
         include (str, optional): List input files that need to be copied to the
-            simulation directory.if a string is provided, it should be in a glob
-            form (see pathlib.Path.glob).
+            simulation directory. If a string is provided, it should be in a glob
+            form (see :meth:`pathlib.Path.glob`).
         process_files:
         custom_processes (dict(Callback), optional): if provided, it has to be a
-            dictionnary with the keys beeing a glob (see pathlib.Path.glob), and
+            dictionary with the keys being a glob (see :meth:`pathlib.Path.glob`), and
             the value a Callback taking as signature `callback(file: str,
             working_dir, simulname) -> Any` All the file matching this glob will
-            be processed by this callback. Note: they still be processed by
+            be processed by this callback. Note: they will still be processed by
             pandas.read_csv (if they are csv files), resulting in duplicate. The
             only way to bypass this behavior is to add the key "*.csv" to that
-            dictionnary.
-        return_idf (bool): If Truem returns the :class:`IDF` object part of the
+            dictionary.
+        return_idf (bool): If True, returns the :class:`IDF` object part of the
             return tuple.
-        return_files (bool): It True, all files paths created by the energyplus
+        return_files (bool): It True, all files paths created by the EnergyPlus
             run are returned.
 
     Returns:
@@ -1949,82 +1999,6 @@ def _log_subprocess_output(pipe, name, verbose):
             )
     if logger:
         close_logger(logger)
-
-
-def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
-    """A parallel version of the map function with a progress bar.
-
-    Examples:
-        >>> import archetypal as ar
-        >>> files = ['tests/input_data/problematic/nat_ventilation_SAMPLE0.idf',
-        >>>          'tests/input_data/regular/5ZoneNightVent1.idf']
-        >>> wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-        >>> files = ar.copy_file(files)
-        >>> rundict = {file: dict(eplus_file=file, weather_file=wf,
-        >>>                      ep_version=ep_version, annual=True,
-        >>>                      prep_outputs=True, expandobjects=True,
-        >>>                      verbose='q', output_report='sql')
-        >>>           for file in files}
-        >>> result = parallel_process(rundict, ar.run_eplus, use_kwargs=True)
-
-    Args:
-        in_dict (dict-like): A dictionary to iterate over.
-        function (function): A python function to apply to the elements of
-            in_dict
-        processors (int): The number of cores to use
-        use_kwargs (bool): If True, pass the kwargs as arguments to `function` .
-
-    Returns:
-        [function(array[0]), function(array[1]), ...]
-    """
-    from tqdm import tqdm
-    from concurrent.futures import ProcessPoolExecutor, as_completed
-
-    if processors == -1:
-        processors = min(len(in_dict), multiprocessing.cpu_count())
-
-    if processors == 1:
-        kwargs = {
-            "desc": function.__name__,
-            "total": len(in_dict),
-            "unit": "runs",
-            "unit_scale": True,
-            "leave": True,
-        }
-        if use_kwargs:
-            futures = {a: function(**in_dict[a]) for a in tqdm(in_dict, **kwargs)}
-        else:
-            futures = {a: function(in_dict[a]) for a in tqdm(in_dict, **kwargs)}
-    else:
-        with ProcessPoolExecutor(max_workers=processors) as pool:
-            if use_kwargs:
-                futures = {pool.submit(function, **in_dict[a]): a for a in in_dict}
-            else:
-                futures = {pool.submit(function, in_dict[a]): a for a in in_dict}
-
-            kwargs = {
-                "desc": function.__name__,
-                "total": len(futures),
-                "unit": "runs",
-                "unit_scale": True,
-                "leave": True,
-            }
-
-            # Print out the progress as tasks complete
-            for f in tqdm(as_completed(futures), **kwargs):
-                pass
-    out = {}
-    # Get the results from the futures.
-    for key in futures:
-        try:
-            if processors > 1:
-                out[futures[key]] = key.result()
-            else:
-                out[key] = futures[key]
-        except Exception as e:
-            log(str(e), lg.ERROR)
-            out[futures[key]] = e
-    return out
 
 
 def hash_file(eplus_file, kwargs=None):

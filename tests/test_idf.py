@@ -10,7 +10,8 @@ import pytest
 from path import Path
 
 import archetypal.settings
-from archetypal import EnergyPlusProcessError, get_eplus_dirs, settings
+from archetypal import EnergyPlusProcessError, get_eplus_dirs, settings, \
+    parallel_process
 
 mpl.use("Agg")
 
@@ -36,7 +37,6 @@ def test_small_home_data(config, fresh_start):
 
 def test_necb(config):
     """Test all necb files with design_day = True"""
-    from archetypal import parallel_process
 
     necb_dir = Path("tests/input_data/necb")
     files = necb_dir.glob("*.idf")

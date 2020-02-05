@@ -112,7 +112,9 @@ class Schedule(object):
             return cls(Name=Name, idf=idf, **kwargs)
         else:
             # Create a new idf object and add the schedule to it.
-            idftxt = "VERSION, {};".format(settings.ep_version.replace("-", ".")[0:3])  # Not an empty string. has just the
+            idftxt = "VERSION, {};".format(
+                settings.ep_version.replace("-", ".")[0:3]
+            )  # Not an empty string. has just the
             # version number
             # we can make a file handle of a string
             if not Path(settings.cache_folder).exists():
@@ -237,12 +239,21 @@ class Schedule(object):
         return datetime(start_date.year, start_date.month, start_date.day)
 
     def plot(self, slice=None, **kwargs):
-        """Plot the schedule :param slice: Implements the .loc method on the
-        schedule Series object.
+        """Plot the schedule. Implements the .loc accessor on the series object.
+
+        Examples:
+            >>> s = Schedule(
+            >>>         Name="NECB-A-Thermostat Setpoint-Heating",
+            >>>         idf=idf_object)
+            >>>     )
+            >>> s.plot(slice=("2018/01/02", "2018/01/03"), drawstyle="steps-post")
+            >>> plt.show()
 
         Args:
-            slice:
-            **kwargs:
+            slice (tuple): define a 2-tuple object the will be passed to
+                :class:`pandas.IndexSlice` as a range.
+            **kwargs (dict): keyword arguments passed to
+                :meth:`pandas.Series.plot`.
         """
         hourlyvalues = self.all_values
         index = pd.date_range(self.startDate, periods=len(hourlyvalues), freq="1H")

@@ -14,6 +14,7 @@ IDF Class
     load_idf
     IDF
     run_eplus
+    OutputPrep
 
 .. _templates_label:
 
@@ -43,8 +44,8 @@ Template Classes
     Zone
     ZoneConstructionSet
 
-Helper Classes
---------------
+Template Helper Classes
+-----------------------
 
 Classes that support the :ref:`templates_label` classes above.
 
@@ -105,7 +106,6 @@ Data Portal
     :toctree: reference/
 
     tabula_available_buildings
-    tabula_api_request
     tabula_building_details_sheet
     tabula_system
     tabula_system_request
@@ -115,8 +115,6 @@ Data Portal
     stat_can_request
     stat_can_geo_request
     download_bld_window
-    save_to_cache
-    get_from_cache
 
 
 EnergyDataFrame
@@ -229,9 +227,8 @@ UMI Template
     :nosignatures:
     :toctree: reference/
 
-    UmiTemplate.from_idf
-    UmiTemplate.from_json
-    UmiTemplate.to_json
+    UmiTemplate
+
 
 
 Utils
@@ -244,6 +241,7 @@ Utils
     :nosignatures:
     :toctree: reference/
 
+    config
     validate_trnsys_folder
     log
     load_umi_template_objects
@@ -266,3 +264,4 @@ Utils
     lcm
     recursive_len
     rotate
+    parallel_process

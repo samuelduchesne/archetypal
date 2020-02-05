@@ -182,6 +182,7 @@ class UmiBase(object):
         return hash((self.__class__.mro()[0].__name__, self.Name))
 
     def to_dict(self):
+        """returns umi template repr"""
         return {"$ref": str(self.id)}
 
     def _float_mean(self, other, attr, weights=None):

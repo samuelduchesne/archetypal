@@ -27,4 +27,4 @@ python:
       path: .
       extra_requirements:
         - requirements-dev.txt
-    - system_packages: true
+    system_packages: true

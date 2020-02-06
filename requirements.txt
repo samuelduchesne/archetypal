@@ -13,7 +13,7 @@ pyomo
 numpy>=1.17
 tqdm
 tabulate
-path.py
+path
 tsam
 pint
 click

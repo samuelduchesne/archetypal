@@ -2280,7 +2280,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
     if not out_dir:
         # if no directory is provided, use directory of file
         out_dir = idf_file.dirname()
-    if not out_dir.isdir():
+    if not out_dir.isdir() and out_dir != '':
         # check if dir exists
         out_dir.makedirs_p()
     with TemporaryDirectory(

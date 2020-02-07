@@ -443,7 +443,7 @@ def reduce(idf, output, weather, parallel, all_zones):
 def transition(idf, to_version, cores):
     """Upgrade an IDF file to a newer version"""
     start_time = time.time()
-    rundict = {idf: dict(idf_file=idf, to_version=to_version) for idf in idf}
+    rundict = {file: dict(idf_file=file, to_version=to_version) for file in idf}
     parallel_process(rundict, idf_version_updater, processors=cores)
     log(
         "Successfully transitioned files to version '{}' in {:,.2f} seconds".format(

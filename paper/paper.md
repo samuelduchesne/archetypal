@@ -34,7 +34,7 @@ Interface (UMI), developed by the MIT Sustainable Design Lab, leverages EnergyPl
 enable BEM at the urban scale. The three tools offer many advantages in their respective
 fields, but all suffer from the same flaw: creating building archetypes for any platform
 is a time-consuming, tedious and error-prone process. `archetypal` is a Python package
-that helps handle collections of such archetypes and to enable the interoperability
+that helps handling collections of such archetypes and to enabling the interoperability
 between these energy simulation platforms to accelerate the creation of reliable UBEMs.
 This package offers three major capabilities for researchers and practitioners:
 
@@ -50,7 +50,7 @@ read, edit and run EnergyPlus files. It includes additional functionalities deve
 improve building energy analysis workflows. For instance, `archetypal` exposes simulation
 results as time-series DataFrames and typical building energy profiles such as the space
 heating, space cooling and domestic hot water profiles are accessible by default. Other
-user-specified output names can also be specified.
+output names can be specified by the user.
 
 Furthermore, for a drastic workflow speed gain, especially when larger IDF files can take
 several minutes to complete, `archetypal` features a caching method that handles

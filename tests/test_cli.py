@@ -272,8 +272,8 @@ class TestCli:
         yield request.param[1:]
 
     @pytest.mark.xfail(
-        "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-        reason="Skipping this test on Travis CI.",
+        os.environ.get("CI", "False").lower() == "true",
+        reason="Skipping this test on CI environment.",
     )
     @pytest.mark.skipif(
         get_platform() > (10, 15, 0),

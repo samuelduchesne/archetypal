@@ -14,7 +14,7 @@ import os
 import platform
 import subprocess
 import time
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from itertools import compress
 from math import isclose
 from sqlite3 import OperationalError
@@ -753,17 +753,11 @@ def load_idf(
     Returns:
         IDF: The IDF object.
     """
+    eplus_file = Path(eplus_file)
+    start_time = time.time()
 
     idf = load_idf_object_from_cache(eplus_file)
-
-    start_time = time.time()
     if idf:
-        # if found in cache, return
-        log(
-            "Eppy load from cache completed in {:,.2f} seconds\n".format(
-                time.time() - start_time
-            )
-        )
         return idf
     else:
         # Else, run eppy to load the idf objects
@@ -775,7 +769,11 @@ def load_idf(
             epw=weather_file,
             ep_version=ep_version if ep_version is not None else settings.ep_version,
         )
-        log("Eppy load completed in {:,.2f} seconds\n".format(time.time() - start_time))
+        log(
+            'Loaded "{}" in {:,.2f} seconds\n'.format(
+                eplus_file.basename(), time.time() - start_time
+            )
+        )
         return idf
 
 
@@ -811,25 +809,28 @@ def _eppy_load(
             output_folder = Path(output_folder)
 
         output_folder.makedirs_p()
-        try:
+        if file.basename() not in [
+            file.basename() for file in output_folder.glob("*.idf")
+        ]:
+            # The file does not exist; copy it to the output_folder & override path name
             file = Path(file.copy(output_folder))
-        except:
+        else:
             # The file already exists at the location. Use that file
             file = output_folder / file.basename()
-        finally:
-            # Determine version of idf file by reading the text file
-            if idd_filename is None:
-                idd_filename = getiddfile(get_idf_version(file))
 
-            # Initiate an eppy.modeleditor.IDF object
-            IDF.setiddname(idd_filename, testing=True)
-            # load the idf object
-            idf_object = IDF(file, epw=epw)
-            # Check version of IDF file against version of IDD file
-            idf_version = idf_object.idfobjects["VERSION"][0].Version_Identifier
-            idd_version = "{}.{}".format(
-                idf_object.idd_version[0], idf_object.idd_version[1]
-            )
+        # Determine version of idf file by reading the text file
+        if idd_filename is None:
+            idd_filename = getiddfile(get_idf_version(file))
+
+        # Initiate an eppy.modeleditor.IDF object
+        IDF.setiddname(idd_filename, testing=True)
+        # load the idf object
+        idf_object = IDF(file, epw=epw)
+        # Check version of IDF file against version of IDD file
+        idf_version = idf_object.idfobjects["VERSION"][0].Version_Identifier
+        idd_version = "{}.{}".format(
+            idf_object.idd_version[0], idf_object.idd_version[1]
+        )
     except FileNotFoundError:
         # Loading the idf object will raise a FileNotFoundError if the
         # version of EnergyPlus is not installed
@@ -1736,7 +1737,7 @@ def run_eplus(
                 "verbose": verbose,
                 "output_directory": output_directory,
                 "ep_version": versionid,
-                "output_prefix": hash_file(tmp_file, args),
+                "output_prefix": hash_file(eplus_file, args),
                 "idd": Path(idd_file.copy(tmp)),
                 "annual": annual,
                 "epmacro": epmacro,
@@ -2013,12 +2014,15 @@ def hash_file(eplus_file, kwargs=None):
         loading old results without the user knowing.
 
     Args:
-        eplus_file (str): path of the idf file
-        kwargs:
+        eplus_file (str): path of the idf file.
+        kwargs (dict): keywargs to serialize in addition to the file content.
 
     Returns:
         str: The digest value as a string of hexadecimal digits
     """
+    if kwargs:
+        # sorting keys for serialization of dictionary
+        kwargs = OrderedDict(sorted(kwargs.items()))
     hasher = hashlib.md5()
     with open(eplus_file, "rb") as afile:
         buf = afile.read()
@@ -2099,7 +2103,12 @@ def get_from_cache(kwargs):
         cache_filename_prefix = hash_file(eplus_file, kwargs)
 
         if output_report is None:
-            return None
+            # No report is expected but we should still return the path if it exists.
+            cached_run_dir = output_directory / cache_filename_prefix
+            if cached_run_dir.exists():
+                return cached_run_dir
+            else:
+                return None
         elif "htm" in output_report.lower():
             # Get the html report
 
@@ -2280,7 +2289,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
     if not out_dir:
         # if no directory is provided, use directory of file
         out_dir = idf_file.dirname()
-    if not out_dir.isdir() and out_dir != '':
+    if not out_dir.isdir() and out_dir != "":
         # check if dir exists
         out_dir.makedirs_p()
     with TemporaryDirectory(
@@ -2388,7 +2397,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
                             "PreProcess folder. See the documentation "
                             "(archetypal.readthedocs.io/troubleshooting.html#missing-transition-programs) "
                             "to solve this issue".format(to_version, trans_exec[trans]),
-                            idf=idf_file.basename()
+                            idf=idf_file.basename(),
                         )
                     else:
                         cmd = [trans_exec[trans], idf_file]

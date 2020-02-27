@@ -1632,7 +1632,7 @@ def run_eplus(
         if cached_run_results:
             # if cached run found, simply return it
             log(
-                "Succesfully parsed cached idf run in {:,.2f} seconds".format(
+                "Successfully parsed cached idf run in {:,.2f} seconds".format(
                     time.time() - start_time
                 ),
                 name=eplus_file.basename(),

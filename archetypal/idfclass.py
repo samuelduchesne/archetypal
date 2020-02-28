@@ -9,6 +9,7 @@ import datetime
 import glob
 import hashlib
 import inspect
+import json
 import logging as lg
 import os
 import platform
@@ -720,6 +721,12 @@ class EnergyPlusOptions:
         self.output_directory = output_directory
         self.weather_file = weather_file
         self.eplus_file = eplus_file
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return json.dumps(self.__dict__, indent=2)
 
 
 def load_idf(
@@ -1749,6 +1756,7 @@ def run_eplus(
                 "keep_data_err": keep_data_err,
                 "output_report": output_report,
                 "include": include,
+                "custom_processes": custom_processes,
             }
 
             _run_exec(**runargs)
@@ -1882,6 +1890,7 @@ def _run_exec(
     keep_data_err,
     output_report,
     include,
+    custom_processes,
 ):
     """Wrapper around the EnergyPlus command line interface.
 
@@ -1919,6 +1928,7 @@ def _run_exec(
     output_report = args.pop("output_report")
     idd = args.pop("idd")
     include = args.pop("include")
+    custom_processes = args.pop("custom_processes")
     try:
         idf_path = os.path.abspath(eplus_file.idfname)
     except AttributeError:

@@ -2031,8 +2031,16 @@ def hash_file(eplus_file, kwargs=None):
         str: The digest value as a string of hexadecimal digits
     """
     if kwargs:
+        # Before we hash the kwargs, remove the ones that don't have an impact on
+        # simulation results and so should not change the cache dirname.
+        no_impact = ["keep_data", "keep_data_err", "return_idf", "return_files"]
+        for argument in no_impact:
+            _ = kwargs.pop(argument, None)
+
         # sorting keys for serialization of dictionary
         kwargs = OrderedDict(sorted(kwargs.items()))
+
+    # create hasher
     hasher = hashlib.md5()
     with open(eplus_file, "rb") as afile:
         buf = afile.read()

@@ -1586,13 +1586,15 @@ def run_eplus(
         version (bool, optional): Display version information (default: False)
         verbose (str): Set verbosity of runtime messages (default: v) v: verbose
             q: quiet
-        keep_data_err (bool): If True, errored directory where simluation occured is
+        keep_data_err (bool): If True, errored directory where simulation occurred is
             kept.
         include (str, optional): List input files that need to be copied to the
             simulation directory. If a string is provided, it should be in a glob
             form (see :meth:`pathlib.Path.glob`).
-        process_files:
-        custom_processes (dict(Callback), optional): if provided, it has to be a
+        process_files (bool): If True, process the output files and load to a
+            :class:`~pandas.DataFrame`. Custom processes can be passed using the
+            :attr:`custom_processes` attribute.
+        custom_processes (dict(Callback)): if provided, it has to be a
             dictionary with the keys being a glob (see :meth:`pathlib.Path.glob`), and
             the value a Callback taking as signature `callback(file: str,
             working_dir, simulname) -> Any` All the file matching this glob will
@@ -1855,7 +1857,7 @@ def _process_csv(file, working_dir, simulname):
         simulname:
     """
     try:
-        log("looking for csv output, return the csv files " "in DataFrames if " "any")
+        log("looking for csv output, return the csv files in DataFrames if any")
         if "table" in file.basename():
             tables_out = working_dir.abspath() / "tables"
             tables_out.makedirs_p()
@@ -2015,7 +2017,7 @@ def _log_subprocess_output(pipe, name, verbose):
 def hash_file(eplus_file, kwargs=None):
     """Simple function to hash a file and return it as a string. Will also hash
     the :func:`eppy.runner.run_functions.run()` arguments so that correct
-    results are returned when different run arguments are used
+    results are returned when different run arguments are used.
 
     Todo:
         Hashing should include the external files used an idf file. For example,

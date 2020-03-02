@@ -27,6 +27,7 @@ import eppy.modeleditor
 import geomeppy
 import pandas as pd
 from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.bunch_subclass import EpBunch
 from eppy.easyopen import getiddfile
 from path import Path, tempdir
 
@@ -125,6 +126,7 @@ class IDF(geomeppy.IDF):
         """
         area = 0
         zones = self.idfobjects["ZONE"]
+        zone: EpBunch
         for zone in zones:
             for surface in zone.zonesurfaces:
                 if hasattr(surface, "tilt"):
@@ -144,8 +146,13 @@ class IDF(geomeppy.IDF):
         """
         partition_lineal = 0
         zones = self.idfobjects["ZONE"]
+        zone: EpBunch
         for zone in zones:
-            for surface in zone.zonesurfaces:
+            for surface in [
+                surf
+                for surf in zone.zonesurfaces
+                if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
+            ]:
                 if hasattr(surface, "tilt"):
                     if (
                         surface.tilt == 90.0
@@ -190,23 +197,27 @@ class IDF(geomeppy.IDF):
         total_window_area = defaultdict(int)
 
         zones = self.idfobjects["ZONE"]
+        zone: EpBunch
         for zone in zones:
             multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
-            for surface in zone.zonesurfaces:
-                if surface.key.lower() != "internalmass":
-                    if isclose(surface.tilt, 90, abs_tol=10):
-                        if surface.Outside_Boundary_Condition == "Outdoors":
-                            surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
-                            total_wall_area[surf_azim] += surface.area * multiplier
-                    for subsurface in surface.subsurfaces:
-                        if isclose(subsurface.tilt, 90, abs_tol=10):
-                            if subsurface.Surface_Type.lower() == "window":
-                                surf_azim = roundto(
-                                    subsurface.azimuth, to=azimuth_threshold
-                                )
-                                total_window_area[surf_azim] += (
-                                    subsurface.area * multiplier
-                                )
+            for surface in [
+                surf
+                for surf in zone.zonesurfaces
+                if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
+            ]:
+                if isclose(surface.tilt, 90, abs_tol=10):
+                    if surface.Outside_Boundary_Condition == "Outdoors":
+                        surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
+                        total_wall_area[surf_azim] += surface.area * multiplier
+                for subsurface in surface.subsurfaces:
+                    if isclose(subsurface.tilt, 90, abs_tol=10):
+                        if subsurface.Surface_Type.lower() == "window":
+                            surf_azim = roundto(
+                                subsurface.azimuth, to=azimuth_threshold
+                            )
+                            total_window_area[surf_azim] += (
+                                subsurface.area * multiplier
+                            )
         # Fix azimuth = 360 which is the same as azimuth 0
         total_wall_area[0] += total_wall_area.pop(360, 0)
         total_window_area[0] += total_window_area.pop(360, 0)

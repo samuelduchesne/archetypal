@@ -1533,6 +1533,7 @@ def run_eplus(
     custom_processes=None,
     return_idf=False,
     return_files=False,
+    **kwargs,
 ):
     """Run an EnergyPlus file using the EnergyPlus executable.
 

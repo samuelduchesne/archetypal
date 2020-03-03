@@ -1540,7 +1540,7 @@ def run_eplus(
     annual=False,
     design_day=False,
     epmacro=False,
-    expandobjects=False,
+    expandobjects=True,
     readvars=False,
     output_prefix=None,
     output_suffix=None,
@@ -1552,6 +1552,7 @@ def run_eplus(
     custom_processes=None,
     return_idf=False,
     return_files=False,
+    **kwargs,
 ):
     """Run an EnergyPlus file using the EnergyPlus executable.
 
@@ -1586,7 +1587,7 @@ def run_eplus(
         design_day (bool): Force design-day-only simulation (default: False)
         epmacro (bool): Run EPMacro prior to simulation (default: False)
         expandobjects (bool): Run ExpandObjects prior to simulation (default:
-            False)
+            True)
         readvars (bool): Run ReadVarsESO after simulation (default: False)
         output_prefix (str, optional): Prefix for output file names.
         output_suffix (str, optional): Suffix style for output file names

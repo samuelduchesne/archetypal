@@ -20,7 +20,7 @@ You can optionally pass the weather file path as well:
 .. code-block:: python
 
     >>> weather = eplus_dir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"  # Weather file path
-    >>> idf = load_idf(eplus_file, weather)  # IDF load
+    >>> idf = load_idf(eplus_file, weather_file=weather)  # IDF load
 
 Editing
 -------
@@ -51,21 +51,22 @@ Running an EnerguPlus file can be done in two ways. The first way is to call the
 function with the path of the IDF file and the path of the weather file. The second method is to call the
 :meth:`~archetypal.idfclass.IDF.run_eplus` method on an :class:`~archetypal.idfclass.IDF` object that has been
 previously read. In both cases, users can also specify run options as well as output options. For example, instead of
-creating an OutputPrep object, one can specify custom outputs in the :attr:`archetypal.idfclass.run_eplus.prep_outputs`
-attribute. These outputs will be appended to the IDF file before the simulation is run.
+creating an OutputPrep object, one can specify custom outputs in the
+:py:attr:`archetypal.idfclass.run_eplus.prep_outputs` attribute. These outputs will be appended to the IDF file before
+the simulation is run. See :meth:`~archetypal.idfclass.run_eplus` for other parameters to pass to `run_eplus`.
 
 For the same IDF object above, the following:
 
 .. code-block:: python
 
-    >>> idf.run_eplus(weather_file, **other_options)
+    >>> idf.run_eplus(weather_file=weather)
 
 is equivalent to:
 
 .. code-block:: python
 
-    >>> idf_path = "path/to/idf_file"
-    >>> run_eplus(idf_path, weather_file, **other_options)
+    >>> from archetypal import run_eplus
+    >>> run_eplus(eplus_file, weather)
 
 .. hint:: Caching system.
 

@@ -20,7 +20,7 @@ You can optionally pass the weather file path as well:
 .. code-block:: python
 
     >>> weather = eplus_dir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"  # Weather file path
-    >>> idf = load_idf(eplus_file, weather)  # IDF load
+    >>> idf = load_idf(eplus_file, weather_file=weather)  # IDF load
 
 Editing
 -------

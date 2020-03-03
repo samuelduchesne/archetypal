@@ -1781,11 +1781,13 @@ class TestWindowSetting:
         idf, sql = small_idf
         idf2, sql2 = other_idf
         zone = idf.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
+        iterator = iter([win for surf in zone.zonesurfaces() for win in
+                         surf.subsurfaces])
         surface = next(iterator, None)
         window_1 = WindowSetting.from_surface(surface)
         zone = idf2.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
+        iterator = iter([win for surf in zone.zonesurfaces() for win in
+                         surf.subsurfaces])
         surface = next(iterator)
         window_2 = WindowSetting.from_surface(surface)
 
@@ -1803,12 +1805,14 @@ class TestWindowSetting:
         idf, sql = small_idf
         idf2, sql2 = other_idf
         zone = idf.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
+        iterator = iter([win for surf in zone.zonesurfaces() for win in
+                         surf.subsurfaces])
         surface = next(iterator, None)
         window_1 = WindowSetting.from_surface(surface)
         id_ = window_1.id
         zone = idf2.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
+        iterator = iter([win for surf in zone.zonesurfaces() for win in
+                         surf.subsurfaces])
         surface = next(iterator, None)
         window_2 = WindowSetting.from_surface(surface)
 

@@ -576,10 +576,11 @@ class UniqueName(str):
         if not name:
             return None
         key = name
-        key, *_ = re.split(r"_\d+(?!\d+)", key)  # match last digit with the underscore
+        key, *_ = re.split(r"_\d+(?!.*\d+)", key)  # match last digit with the underscore
 
         if key not in cls.existing:
             cls.existing[key] = 0
+            return name
         cls.existing[key] += 1
         the_name = key + "_{}".format(cls.existing[key])
         return the_name

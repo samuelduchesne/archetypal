@@ -9,12 +9,13 @@ import datetime
 import glob
 import hashlib
 import inspect
+import json
 import logging as lg
 import os
 import platform
 import subprocess
 import time
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from itertools import compress
 from math import isclose
 from sqlite3 import OperationalError
@@ -26,6 +27,7 @@ import eppy.modeleditor
 import geomeppy
 import pandas as pd
 from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.bunch_subclass import EpBunch
 from eppy.easyopen import getiddfile
 from path import Path, tempdir
 
@@ -124,6 +126,7 @@ class IDF(geomeppy.IDF):
         """
         area = 0
         zones = self.idfobjects["ZONE"]
+        zone: EpBunch
         for zone in zones:
             for surface in zone.zonesurfaces:
                 if hasattr(surface, "tilt"):
@@ -143,8 +146,13 @@ class IDF(geomeppy.IDF):
         """
         partition_lineal = 0
         zones = self.idfobjects["ZONE"]
+        zone: EpBunch
         for zone in zones:
-            for surface in zone.zonesurfaces:
+            for surface in [
+                surf
+                for surf in zone.zonesurfaces
+                if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
+            ]:
                 if hasattr(surface, "tilt"):
                     if (
                         surface.tilt == 90.0
@@ -189,23 +197,27 @@ class IDF(geomeppy.IDF):
         total_window_area = defaultdict(int)
 
         zones = self.idfobjects["ZONE"]
+        zone: EpBunch
         for zone in zones:
             multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
-            for surface in zone.zonesurfaces:
-                if surface.key.lower() != "internalmass":
-                    if isclose(surface.tilt, 90, abs_tol=10):
-                        if surface.Outside_Boundary_Condition == "Outdoors":
-                            surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
-                            total_wall_area[surf_azim] += surface.area * multiplier
-                    for subsurface in surface.subsurfaces:
-                        if isclose(subsurface.tilt, 90, abs_tol=10):
-                            if subsurface.Surface_Type.lower() == "window":
-                                surf_azim = roundto(
-                                    subsurface.azimuth, to=azimuth_threshold
-                                )
-                                total_window_area[surf_azim] += (
-                                    subsurface.area * multiplier
-                                )
+            for surface in [
+                surf
+                for surf in zone.zonesurfaces
+                if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
+            ]:
+                if isclose(surface.tilt, 90, abs_tol=10):
+                    if surface.Outside_Boundary_Condition == "Outdoors":
+                        surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
+                        total_wall_area[surf_azim] += surface.area * multiplier
+                for subsurface in surface.subsurfaces:
+                    if isclose(subsurface.tilt, 90, abs_tol=10):
+                        if subsurface.Surface_Type.lower() == "window":
+                            surf_azim = roundto(
+                                subsurface.azimuth, to=azimuth_threshold
+                            )
+                            total_window_area[surf_azim] += (
+                                subsurface.area * multiplier
+                            )
         # Fix azimuth = 360 which is the same as azimuth 0
         total_wall_area[0] += total_wall_area.pop(360, 0)
         total_window_area[0] += total_window_area.pop(360, 0)
@@ -721,6 +733,12 @@ class EnergyPlusOptions:
         self.weather_file = weather_file
         self.eplus_file = eplus_file
 
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return json.dumps(self.__dict__, indent=2)
+
 
 def load_idf(
     eplus_file,
@@ -753,17 +771,11 @@ def load_idf(
     Returns:
         IDF: The IDF object.
     """
+    eplus_file = Path(eplus_file)
+    start_time = time.time()
 
     idf = load_idf_object_from_cache(eplus_file)
-
-    start_time = time.time()
     if idf:
-        # if found in cache, return
-        log(
-            "Eppy load from cache completed in {:,.2f} seconds\n".format(
-                time.time() - start_time
-            )
-        )
         return idf
     else:
         # Else, run eppy to load the idf objects
@@ -775,7 +787,11 @@ def load_idf(
             epw=weather_file,
             ep_version=ep_version if ep_version is not None else settings.ep_version,
         )
-        log("Eppy load completed in {:,.2f} seconds\n".format(time.time() - start_time))
+        log(
+            'Loaded "{}" in {:,.2f} seconds\n'.format(
+                eplus_file.basename(), time.time() - start_time
+            )
+        )
         return idf
 
 
@@ -811,25 +827,28 @@ def _eppy_load(
             output_folder = Path(output_folder)
 
         output_folder.makedirs_p()
-        try:
+        if file.basename() not in [
+            file.basename() for file in output_folder.glob("*.idf")
+        ]:
+            # The file does not exist; copy it to the output_folder & override path name
             file = Path(file.copy(output_folder))
-        except:
+        else:
             # The file already exists at the location. Use that file
             file = output_folder / file.basename()
-        finally:
-            # Determine version of idf file by reading the text file
-            if idd_filename is None:
-                idd_filename = getiddfile(get_idf_version(file))
 
-            # Initiate an eppy.modeleditor.IDF object
-            IDF.setiddname(idd_filename, testing=True)
-            # load the idf object
-            idf_object = IDF(file, epw=epw)
-            # Check version of IDF file against version of IDD file
-            idf_version = idf_object.idfobjects["VERSION"][0].Version_Identifier
-            idd_version = "{}.{}".format(
-                idf_object.idd_version[0], idf_object.idd_version[1]
-            )
+        # Determine version of idf file by reading the text file
+        if idd_filename is None:
+            idd_filename = getiddfile(get_idf_version(file))
+
+        # Initiate an eppy.modeleditor.IDF object
+        IDF.setiddname(idd_filename, testing=True)
+        # load the idf object
+        idf_object = IDF(file, epw=epw)
+        # Check version of IDF file against version of IDD file
+        idf_version = idf_object.idfobjects["VERSION"][0].Version_Identifier
+        idd_version = "{}.{}".format(
+            idf_object.idd_version[0], idf_object.idd_version[1]
+        )
     except FileNotFoundError:
         # Loading the idf object will raise a FileNotFoundError if the
         # version of EnergyPlus is not installed
@@ -1579,13 +1598,15 @@ def run_eplus(
         version (bool, optional): Display version information (default: False)
         verbose (str): Set verbosity of runtime messages (default: v) v: verbose
             q: quiet
-        keep_data_err (bool): If True, errored directory where simluation occured is
+        keep_data_err (bool): If True, errored directory where simulation occurred is
             kept.
         include (str, optional): List input files that need to be copied to the
             simulation directory. If a string is provided, it should be in a glob
             form (see :meth:`pathlib.Path.glob`).
-        process_files:
-        custom_processes (dict(Callback), optional): if provided, it has to be a
+        process_files (bool): If True, process the output files and load to a
+            :class:`~pandas.DataFrame`. Custom processes can be passed using the
+            :attr:`custom_processes` attribute.
+        custom_processes (dict(Callback)): if provided, it has to be a
             dictionary with the keys being a glob (see :meth:`pathlib.Path.glob`), and
             the value a Callback taking as signature `callback(file: str,
             working_dir, simulname) -> Any` All the file matching this glob will
@@ -1632,7 +1653,7 @@ def run_eplus(
         if cached_run_results:
             # if cached run found, simply return it
             log(
-                "Succesfully parsed cached idf run in {:,.2f} seconds".format(
+                "Successfully parsed cached idf run in {:,.2f} seconds".format(
                     time.time() - start_time
                 ),
                 name=eplus_file.basename(),
@@ -1737,7 +1758,7 @@ def run_eplus(
                 "verbose": verbose,
                 "output_directory": output_directory,
                 "ep_version": versionid,
-                "output_prefix": hash_file(tmp_file, args),
+                "output_prefix": hash_file(eplus_file, args),
                 "idd": Path(idd_file.copy(tmp)),
                 "annual": annual,
                 "epmacro": epmacro,
@@ -1749,6 +1770,7 @@ def run_eplus(
                 "keep_data_err": keep_data_err,
                 "output_report": output_report,
                 "include": include,
+                "custom_processes": custom_processes,
             }
 
             _run_exec(**runargs)
@@ -1847,7 +1869,7 @@ def _process_csv(file, working_dir, simulname):
         simulname:
     """
     try:
-        log("looking for csv output, return the csv files " "in DataFrames if " "any")
+        log("looking for csv output, return the csv files in DataFrames if any")
         if "table" in file.basename():
             tables_out = working_dir.abspath() / "tables"
             tables_out.makedirs_p()
@@ -1882,6 +1904,7 @@ def _run_exec(
     keep_data_err,
     output_report,
     include,
+    custom_processes,
 ):
     """Wrapper around the EnergyPlus command line interface.
 
@@ -1919,6 +1942,7 @@ def _run_exec(
     output_report = args.pop("output_report")
     idd = args.pop("idd")
     include = args.pop("include")
+    custom_processes = args.pop("custom_processes")
     try:
         idf_path = os.path.abspath(eplus_file.idfname)
     except AttributeError:
@@ -2005,7 +2029,7 @@ def _log_subprocess_output(pipe, name, verbose):
 def hash_file(eplus_file, kwargs=None):
     """Simple function to hash a file and return it as a string. Will also hash
     the :func:`eppy.runner.run_functions.run()` arguments so that correct
-    results are returned when different run arguments are used
+    results are returned when different run arguments are used.
 
     Todo:
         Hashing should include the external files used an idf file. For example,
@@ -2014,12 +2038,23 @@ def hash_file(eplus_file, kwargs=None):
         loading old results without the user knowing.
 
     Args:
-        eplus_file (str): path of the idf file
-        kwargs:
+        eplus_file (str): path of the idf file.
+        kwargs (dict): keywargs to serialize in addition to the file content.
 
     Returns:
         str: The digest value as a string of hexadecimal digits
     """
+    if kwargs:
+        # Before we hash the kwargs, remove the ones that don't have an impact on
+        # simulation results and so should not change the cache dirname.
+        no_impact = ["keep_data", "keep_data_err", "return_idf", "return_files"]
+        for argument in no_impact:
+            _ = kwargs.pop(argument, None)
+
+        # sorting keys for serialization of dictionary
+        kwargs = OrderedDict(sorted(kwargs.items()))
+
+    # create hasher
     hasher = hashlib.md5()
     with open(eplus_file, "rb") as afile:
         buf = afile.read()
@@ -2100,7 +2135,12 @@ def get_from_cache(kwargs):
         cache_filename_prefix = hash_file(eplus_file, kwargs)
 
         if output_report is None:
-            return None
+            # No report is expected but we should still return the path if it exists.
+            cached_run_dir = output_directory / cache_filename_prefix
+            if cached_run_dir.exists():
+                return cached_run_dir
+            else:
+                return None
         elif "htm" in output_report.lower():
             # Get the html report
 
@@ -2281,7 +2321,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
     if not out_dir:
         # if no directory is provided, use directory of file
         out_dir = idf_file.dirname()
-    if not out_dir.isdir() and out_dir != '':
+    if not out_dir.isdir() and out_dir != "":
         # check if dir exists
         out_dir.makedirs_p()
     with TemporaryDirectory(
@@ -2389,7 +2429,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
                             "PreProcess folder. See the documentation "
                             "(archetypal.readthedocs.io/troubleshooting.html#missing-transition-programs) "
                             "to solve this issue".format(to_version, trans_exec[trans]),
-                            idf=idf_file.basename()
+                            idf=idf_file.basename(),
                         )
                     else:
                         cmd = [trans_exec[trans], idf_file]

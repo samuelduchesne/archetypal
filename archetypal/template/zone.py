@@ -135,11 +135,9 @@ class Zone(UmiBase):
         Returns (float): zone's area in m²
         """
         if self._area is None:
-            zone_surfs = [
-                surf
-                for surf in self._epbunch.zonesurfaces
-                if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
-            ]
+            zone_surfs = self.zonesurfaces(
+                exclude=["INTERNALMASS", "WINDOWSHADINGCONTROL"]
+            )
             floors = [s for s in zone_surfs if s.Surface_Type.upper() == "FLOOR"]
             area = sum([floor.area for floor in floors])
             return area
@@ -153,11 +151,9 @@ class Zone(UmiBase):
         Returns (float): zone's volume in m³
         """
         if not self._volume:
-            zone_surfs = [
-                surf
-                for surf in self._epbunch.zonesurfaces
-                if surf.key.lower() != "internalmass"
-            ]
+            zone_surfs = self.zonesurfaces(
+                exclude=["INTERNALMASS", "WINDOWSHADINGCONTROL"]
+            )
 
             vol = self.get_volume_from_surfs(zone_surfs)
 
@@ -170,12 +166,26 @@ class Zone(UmiBase):
         else:
             return self._volume
 
-    @property
-    def zonesurfaces(self):
+    def zonesurfaces(self, exclude=None):
+        """Returns list of surfaces belonging to this zone. Optionally filter
+        surface types.
+
+        Args:
+            exclude (list): exclude surface types, e.g.: ["INTERNALMASS",
+                "WINDOWSHADINGCONTROL"]. Object key must be in capital letters.
+        """
+        if exclude is None:
+            exclude = []
         if self._zonesurfaces is None:
-            return self._epbunch.zonesurfaces
+            return [
+                surf
+                for surf in self._epbunch.zonesurfaces
+                if surf.key.upper() not in exclude
+            ]
         else:
-            return self._zonesurfaces
+            return [
+                surf for surf in self._zonesurfaces if surf.key.upper() not in exclude
+            ]
 
     @property
     def is_core(self):
@@ -234,7 +244,9 @@ class Zone(UmiBase):
         """Group internal walls into a ThermalMass object for this Zone"""
 
         oc = []
-        for surface in self._zonesurfaces:
+        for surface in self.zonesurfaces(
+            exclude=["WINDOWSHADINGCONTROL"]
+        ):
             # for surf_type in self.idf.idd_index['ref2names'][
             # 'AllHeatTranSurfNames']:
             if surface.key.upper() == "INTERNALMASS":
@@ -246,15 +258,17 @@ class Zone(UmiBase):
             # Todo: Create Equivalent InternalMassConstruction from
             #  partitions. For now, creating dummy InternalMass
 
-            mat = self.idf.add_object(ep_object="Material".upper(),
-                                Name="Wood 6inch",
-                                Roughness="MediumSmooth",
-                                Thickness=0.15,
-                                Conductivity=0.12,
-                                Density=540,
-                                Specific_Heat=1210,
-                                Thermal_Absorptance=0.7,
-                                Visible_Absorptance=0.7)
+            mat = self.idf.add_object(
+                ep_object="Material".upper(),
+                Name="Wood 6inch",
+                Roughness="MediumSmooth",
+                Thickness=0.15,
+                Conductivity=0.12,
+                Density=540,
+                Specific_Heat=1210,
+                Thermal_Absorptance=0.7,
+                Visible_Absorptance=0.7,
+            )
 
             cons = self.idf.add_object(
                 ep_object="Construction".upper(),
@@ -355,7 +369,7 @@ class Zone(UmiBase):
         """Create a Zone object from an eppy 'ZONE' epbunch.
 
         Args:
-            zone_ep (EpBunch): The Zone EpBunch.
+            zone_ep (eppy.bunch_subclass.EpBunch): The Zone EpBunch.
             sql (dict): The sql dict for this IDF object.
         """
         cached = cls.get_cached(zone_ep.Name, zone_ep.theidf)
@@ -694,7 +708,7 @@ def get_from_tabulardata(sql):
 def is_core(epbunch):
     # if all surfaces don't have boundary condition == "Outdoors"
     iscore = True
-    for s in epbunch.zonesurfaces:
+    for s in epbunch.zonesurfaces():
         try:
             if (abs(int(s.tilt)) < 180) & (abs(int(s.tilt)) > 0):
                 obc = s.Outside_Boundary_Condition.lower()

@@ -21,7 +21,7 @@ mpl.use("Agg")
 # arrange, act, assert
 
 
-def test_small_home_data(config, fresh_start):
+def test_small_home_data(clean_config):
     file = (
         get_eplus_dirs(settings.ep_version)
         / "ExampleFiles"
@@ -88,7 +88,7 @@ def test_load_old(config):
     [archetypal.settings.ep_version, None],
     ids=["specific-ep-version", "no-specific-ep-version"],
 )
-def test_run_olderv(clean_config, fresh_start, ep_version):
+def test_run_olderv(clean_config, ep_version):
     """Will run eplus on a file that needs to be upgraded with one that does
     not"""
     ar.settings.use_cache = False
@@ -117,7 +117,7 @@ def test_run_olderv(clean_config, fresh_start, ep_version):
 @pytest.mark.xfail(
     raises=(subprocess.CalledProcessError, FileNotFoundError, EnergyPlusProcessError)
 )
-def test_run_olderv_problematic(config, fresh_start):
+def test_run_olderv_problematic(clean_config):
     """Will run eplus on a file that needs to be upgraded and that should
     fail. Will be ignored in the test suite"""
 
@@ -128,7 +128,7 @@ def test_run_olderv_problematic(config, fresh_start):
     )
 
 
-def test_run_eplus_from_idf(config, fresh_start):
+def test_run_eplus_from_idf(clean_config):
     file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / "5ZoneNightVent1.idf"
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
 
@@ -241,7 +241,7 @@ def test_dhw_profile(config):
     print(shw.resample("M").sum())
 
 
-def test_old_than_change_args(config, fresh_start):
+def test_old_than_change_args(clean_config):
     """Should upgrade file only once even if run_eplus args are changed afterwards"""
     from archetypal import run_eplus
 

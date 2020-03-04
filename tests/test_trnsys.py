@@ -71,7 +71,7 @@ class TestsConvert:
             "5ZoneGeometryTransform.idf",
         ],
     )
-    def converttest(self, config, fresh_start, request):
+    def converttest(self, request):
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         window_file = "W74-lib.dat"
         template_dir = os.path.join("archetypal", "ressources")

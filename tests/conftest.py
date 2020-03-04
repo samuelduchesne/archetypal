@@ -8,21 +8,6 @@ import pytest
 import archetypal as ar
 
 
-@pytest.fixture(scope="session")
-def fresh_start():
-    """# remove the tests/temp folder if it already exists so we
-    start fresh with tests. Needs to be called after `config`"""
-    settings = [
-        ar.settings.cache_folder,
-        ar.settings.data_folder,
-        ar.settings.imgs_folder,
-    ]
-    for setting in settings:
-        if os.path.exists(setting):
-            shutil.rmtree(setting)
-            assert not os.path.exists(setting)
-
-
 # Parametrization of the fixture scratch_then_cache. The following array
 # tells pytest to use True than False for all tests that use this fixture.
 # This is very usefull to test the behavior of methods that use cached data
@@ -70,18 +55,10 @@ def config():
         umitemplate="tests/input_data/umi_samples" "/BostonTemplateLibrary_2.json",
     )
 
-@pytest.fixture(scope="session")
-def clean_config():
-    ar.config(
-        data_folder="tests/.temp/data",
-        logs_folder="tests/.temp/logs",
-        imgs_folder="tests/.temp/imgs",
-        cache_folder="tests/.temp/cache",
-        use_cache=True,
-        log_file=True,
-        log_console=True,
-        umitemplate="tests/input_data/umi_samples" "/BostonTemplateLibrary_2.json",
-    )
+
+@pytest.fixture(scope="class")
+def clean_config(config):
+    """calls config fixture and clears default folders"""
 
     dirs = [ar.settings.data_folder, ar.settings.cache_folder, ar.settings.imgs_folder]
     for dir in dirs:

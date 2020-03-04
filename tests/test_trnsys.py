@@ -57,46 +57,49 @@ from archetypal.trnsys import (
     adds_sch_ground,
     adds_sch_setpoint,
 )
+from tests.conftest import get_platform
 
 
-class TestsConvert:
-    """Tests convert_idf_to_trnbuild()"""
+@pytest.fixture(
+    scope="class",
+    params=[
+        "RefBldgWarehouseNew2004_Chicago.idf",
+        "ASHRAE9012016_Warehouse_Denver.idf",
+        "ASHRAE9012016_ApartmentMidRise_Denver.idf",
+        "5ZoneGeometryTransform.idf",
+    ],
+)
+def converttest(self, request):
+    file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
+    window_file = "W74-lib.dat"
+    template_dir = os.path.join("archetypal", "ressources")
+    window_filepath = os.path.join(template_dir, window_file)
+    template_d18 = "tests/input_data/trnsys/NewFileTemplate.d18"
+    trnsidf_exe = "docker/trnsidf/trnsidf.exe"  # 'docker/trnsidf/trnsidf.exe'
 
-    @pytest.fixture(
-        scope="class",
-        params=[
-            "RefBldgWarehouseNew2004_Chicago.idf",
-            "ASHRAE9012016_Warehouse_Denver.idf",
-            "ASHRAE9012016_ApartmentMidRise_Denver.idf",
-            "5ZoneGeometryTransform.idf",
-        ],
+    # prepare args (key=value). Key is a unique id for the runs (here the
+    # file basename is used). Value is a dict of the function arguments
+    kwargs_dict = {
+        "u_value": 2.5,
+        "shgc": 0.6,
+        "t_vis": 0.78,
+        "tolerance": 0.05,
+        "ordered": True,
+    }
+    idf = load_idf(file)
+
+    weather_file = os.path.join(
+        "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     )
-    def converttest(self, request):
-        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
-        window_file = "W74-lib.dat"
-        template_dir = os.path.join("archetypal", "ressources")
-        window_filepath = os.path.join(template_dir, window_file)
-        template_d18 = "tests/input_data/trnsys/NewFileTemplate.d18"
-        trnsidf_exe = "docker/trnsidf/trnsidf.exe"  # 'docker/trnsidf/trnsidf.exe'
 
-        # prepare args (key=value). Key is a unique id for the runs (here the
-        # file basename is used). Value is a dict of the function arguments
-        kwargs_dict = {
-            "u_value": 2.5,
-            "shgc": 0.6,
-            "t_vis": 0.78,
-            "tolerance": 0.05,
-            "ordered": True,
-        }
-        idf = load_idf(file)
+    yield idf, file, weather_file, window_filepath, trnsidf_exe, template_d18, kwargs_dict
 
-        weather_file = os.path.join(
-            "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        )
+    del idf
 
-        yield idf, file, weather_file, window_filepath, trnsidf_exe, template_d18, kwargs_dict
 
-        del idf
+class TestConvert:
+
+    """Tests convert_idf_to_trnbuild()"""
 
     def test_get_save_write_schedules_as_input(self, config, converttest):
         output_folder = None
@@ -501,209 +504,168 @@ def trnbuild_file(config, request):
     yield idf_file
 
 
-@pytest.mark.xfail(
-    os.environ.get("CI", "False").lower() == "true",
-    reason="Skipping this test on CI environment.",
-)
-def test_trnbuild_from_idf(config, trnbuild_file):
-    # List files here
-
-    window_file = "W74-lib.dat"
-    template_dir = os.path.join("archetypal", "ressources")
-    window_filepath = os.path.join(template_dir, window_file)
-    weather_file = os.path.join(
-        "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    )
-
-    # prepare args (key=value). Key is a unique id for the runs (here the
-    # file basename is used). Value is a dict of the function arguments
-    kwargs_dict = {
-        "ep_version": settings.ep_version,
-        "u_value": 2.5,
-        "shgc": 0.6,
-        "t_vis": 0.78,
-        "tolerance": 0.05,
-        "fframe": 0.1,
-        "uframe": 7.5,
-        "ordered": True,
-    }
-
-    file = trnbuild_file
-    convert_idf_to_trnbuild(
-        idf_file=file,
-        weather_file=weather_file,
-        window_lib=window_filepath,
-        template="tests/input_data/trnsys/NewFileTemplate.d18",
-        trnsidf_exe="docker/trnsidf/trnsidf.exe",
-        **kwargs_dict
-    )
-
-
-@pytest.mark.win32
-@pytest.mark.xfail(
-    os.environ.get("CI", "False").lower() == "true",
-    reason="Skipping this test on CI environment.",
-)
-def test_trnbuild_from_idf_parallel(config, trnbuild_file):
-    # All IDF files
-    # List files here
-    files = trnbuild_file
-
-    # window_file = 'W74-lib.dat'
-    # window_filepath = os.path.join(file_upper_path, window_file)
-
-    weather_file = os.path.join(
-        "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    )
-
-    # prepare args (key=value). Key is a unique id for the runs (here the
-    # file basename is used). Value is a dict of the function arguments
-    in_dict = {
-        os.path.basename(file): dict(idf_file=file, weather_file=weather_file)
-        for file in files
-    }
-
-    result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
-
-    assert not any(isinstance(a, Exception) for a in result.values())
-
-
-@pytest.mark.darwin
-@pytest.mark.linux
-@pytest.mark.xfail(
-    os.environ.get("CI", "False").lower() == "true",
-    reason="Skipping this test on CI environment.",
-)
-def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
-    # All IDF files
-    # List files here
-    file_upper_path = os.path.join(settings.ep_version, "ExampleFiles")
-    files = [
-        "RefBldgWarehouseNew2004_Chicago.idf",
-        "ASHRAE9012016_Warehouse_Denver.idf",
-        "ASHRAE9012016_ApartmentMidRise_Denver.idf",
-        "5ZoneGeometryTransform.idf",
-    ]
-
-    weather_file = os.path.join(
-        "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    )
-
-    # prepare args (key=value). Key is a unique id for the runs (here the
-    # file basename is used). Value is a dict of the function arguments
-    in_dict = {
-        os.path.basename(file): dict(
-            idf_file=os.path.join(file_upper_path, file),
-            weather_file=weather_file,
-            template="tests/input_data/trnsys/NewFileTemplate.d18",
-            trnsidf_exe="docker/trnsidf/trnsidf.exe",
-        )
-        for file in files
-    }
-
-    result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
-    [print(a) for a in result.values() if isinstance(a, Exception)]
-    assert not any(isinstance(a, Exception) for a in result.values())
-
-
-@pytest.mark.win32
-@pytest.mark.xfail(
-    os.environ.get("CI", "False").lower() == "true",
-    reason="Skipping this test on CI environment.",
-)
-def test_trnbuild_idf_win32(config):
-    idf_file = "tests/input_data/trnsys/Building.idf"
-    template = "tests/input_data/trnsys/NewFileTemplate.d18"
-    res = trnbuild_idf(idf_file, template=template, nonum=True)
-
-    assert res
-
-
-def get_platform():
-    """Returns the MacOS release number as tuple of ints"""
-    import platform
-
-    release, versioninfo, machine = platform.mac_ver()
-    release_split = release.split(".")
-    return tuple(map(safe_int_cast, release_split))
-
-
-def safe_int_cast(val, default=0):
-    """Safely casts a value to an int"""
-    try:
-        return int(val)
-    except (ValueError, TypeError):
-        return default
-
-
-@pytest.mark.darwin
-@pytest.mark.linux
-@pytest.mark.skipif(
-    os.environ.get("CI", "False").lower() == "true",
-    reason="Skipping this test on CI environment.",
-)
-@pytest.mark.xfail(
-    not Path("docker/trnsidf/trnsidf.exe").exists(),
-    reason="xfail since trnsidf.exe is not installed. This test can work if the "
-    "trnsidf.exe is copied in ./docker/trnsidf",
-)
 @pytest.mark.skipif(
     get_platform() > (10, 15, 0),
     reason="Skipping since wine 32bit can't run on MacOs >10.15 (Catalina)",
 )
-def test_trnbuild_idf_darwin_or_linux(config):
-    idf_file = "tests/input_data/trnsys/Building.idf"
-    template = "tests/input_data/trnsys/NewFileTemplate.d18"
-    trnsidf_exe = "docker/trnsidf/trnsidf.exe"
-    res = trnbuild_idf(
-        idf_file,
-        template=template,
-        dck=True,
-        nonum=False,
-        refarea=False,
-        volume=False,
-        capacitance=True,
-        trnsidf_exe=trnsidf_exe,
-    )
-
-    assert res
-
-
-@pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
+@pytest.mark.skipif(
+    os.environ.get("CI", "False").lower() == "true",
+    reason="Skipping this test on CI environment.",
 )
-def test_trnbuild_from_simple_idf(config):
-    # List files here
+class TestTrnBuild:
+    def test_trnbuild_from_idf(self, config, trnbuild_file):
+        # List files here
 
-    window_file = "W74-lib.dat"
-    template_dir = os.path.join("archetypal", "ressources")
-    window_filepath = os.path.join(template_dir, window_file)
-    weather_file = os.path.join(
-        "tests", "input_data", "CAN_QC_Montreal-McTavish.716120_CWEC2016.epw"
+        window_file = "W74-lib.dat"
+        template_dir = os.path.join("archetypal", "ressources")
+        window_filepath = os.path.join(template_dir, window_file)
+        weather_file = os.path.join(
+            "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        )
+
+        # prepare args (key=value). Key is a unique id for the runs (here the
+        # file basename is used). Value is a dict of the function arguments
+        kwargs_dict = {
+            "ep_version": settings.ep_version,
+            "u_value": 2.5,
+            "shgc": 0.6,
+            "t_vis": 0.78,
+            "tolerance": 0.05,
+            "fframe": 0.1,
+            "uframe": 7.5,
+            "ordered": True,
+        }
+
+        file = trnbuild_file
+        convert_idf_to_trnbuild(
+            idf_file=file,
+            weather_file=weather_file,
+            window_lib=window_filepath,
+            template="tests/input_data/trnsys/NewFileTemplate.d18",
+            trnsidf_exe="docker/trnsidf/trnsidf.exe",
+            **kwargs_dict
+        )
+
+    @pytest.mark.win32
+    def test_trnbuild_from_idf_parallel(self, config, trnbuild_file):
+        # All IDF files
+        # List files here
+        files = trnbuild_file
+
+        # window_file = 'W74-lib.dat'
+        # window_filepath = os.path.join(file_upper_path, window_file)
+
+        weather_file = os.path.join(
+            "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        )
+
+        # prepare args (key=value). Key is a unique id for the runs (here the
+        # file basename is used). Value is a dict of the function arguments
+        in_dict = {
+            os.path.basename(file): dict(idf_file=file, weather_file=weather_file)
+            for file in files
+        }
+
+        result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
+
+        assert not any(isinstance(a, Exception) for a in result.values())
+
+    @pytest.mark.darwin
+    @pytest.mark.linux
+    def test_trnbuild_from_idf_parallel_darwin_or_linux(self, config):
+        # All IDF files
+        # List files here
+        file_upper_path = os.path.join(settings.ep_version, "ExampleFiles")
+        files = [
+            "RefBldgWarehouseNew2004_Chicago.idf",
+            "ASHRAE9012016_Warehouse_Denver.idf",
+            "ASHRAE9012016_ApartmentMidRise_Denver.idf",
+            "5ZoneGeometryTransform.idf",
+        ]
+
+        weather_file = os.path.join(
+            "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        )
+
+        # prepare args (key=value). Key is a unique id for the runs (here the
+        # file basename is used). Value is a dict of the function arguments
+        in_dict = {
+            os.path.basename(file): dict(
+                idf_file=os.path.join(file_upper_path, file),
+                weather_file=weather_file,
+                template="tests/input_data/trnsys/NewFileTemplate.d18",
+                trnsidf_exe="docker/trnsidf/trnsidf.exe",
+            )
+            for file in files
+        }
+
+        result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
+        [print(a) for a in result.values() if isinstance(a, Exception)]
+        assert not any(isinstance(a, Exception) for a in result.values())
+
+    @pytest.mark.win32
+    def test_trnbuild_idf_win32(self, config):
+        idf_file = "tests/input_data/trnsys/Building.idf"
+        template = "tests/input_data/trnsys/NewFileTemplate.d18"
+        res = trnbuild_idf(idf_file, template=template, nonum=True)
+
+        assert res
+
+    @pytest.mark.darwin
+    @pytest.mark.linux
+    @pytest.mark.xfail(
+        not Path("docker/trnsidf/trnsidf.exe").exists(),
+        reason="xfail since trnsidf.exe is not installed. This test can work if the "
+        "trnsidf.exe is copied in ./docker/trnsidf",
     )
+    def test_trnbuild_idf_darwin_or_linux(self, config):
+        idf_file = "tests/input_data/trnsys/Building.idf"
+        template = "tests/input_data/trnsys/NewFileTemplate.d18"
+        trnsidf_exe = "docker/trnsidf/trnsidf.exe"
+        res = trnbuild_idf(
+            idf_file,
+            template=template,
+            dck=True,
+            nonum=False,
+            refarea=False,
+            volume=False,
+            capacitance=True,
+            trnsidf_exe=trnsidf_exe,
+        )
 
-    # prepare args (key=value). Key is a unique id for the runs (here the
-    # file basename is used). Value is a dict of the function arguments
-    # WINDOW = 2-WSV_#3_Air
-    kwargs_dict = {
-        "ep_version": "9-2-0",
-        "u_value": 1.62,
-        "shgc": 0.64,
-        "t_vis": 0.8,
-        "tolerance": 0.05,
-        "fframe": 0.0,
-        "uframe": 0.5,
-        "ordered": True,
-    }
+        assert res
 
-    file = os.path.join("tests", "input_data", "trnsys", "simple_2_zone.idf")
-    convert_idf_to_trnbuild(
-        idf_file=file,
-        weather_file=weather_file,
-        window_lib=window_filepath,
-        template="tests/input_data/trnsys/NewFileTemplate.d18",
-        trnsidf_exe="docker/trnsidf/trnsidf.exe",
-        schedule_as_input=False,
-        **kwargs_dict
-    )
+    def test_trnbuild_from_simple_idf(self, config):
+        # List files here
+
+        window_file = "W74-lib.dat"
+        template_dir = os.path.join("archetypal", "ressources")
+        window_filepath = os.path.join(template_dir, window_file)
+        weather_file = os.path.join(
+            "tests", "input_data", "CAN_QC_Montreal-McTavish.716120_CWEC2016.epw"
+        )
+
+        # prepare args (key=value). Key is a unique id for the runs (here the
+        # file basename is used). Value is a dict of the function arguments
+        # WINDOW = 2-WSV_#3_Air
+        kwargs_dict = {
+            "ep_version": "9-2-0",
+            "u_value": 1.62,
+            "shgc": 0.64,
+            "t_vis": 0.8,
+            "tolerance": 0.05,
+            "fframe": 0.0,
+            "uframe": 0.5,
+            "ordered": True,
+        }
+
+        file = os.path.join("tests", "input_data", "trnsys", "simple_2_zone.idf")
+        convert_idf_to_trnbuild(
+            idf_file=file,
+            weather_file=weather_file,
+            window_lib=window_filepath,
+            template="tests/input_data/trnsys/NewFileTemplate.d18",
+            trnsidf_exe="docker/trnsidf/trnsidf.exe",
+            schedule_as_input=False,
+            **kwargs_dict
+        )

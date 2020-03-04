@@ -96,7 +96,7 @@ def test_plot_3d(energy_series, kind):
     )
 
 
-@pytest.mark.xfail(
+@pytest.mark.skipif(
     os.environ.get("CI", "False").lower() == "true",
     reason="Skipping this test on CI environment.",
 )
@@ -131,7 +131,7 @@ def from_csv(config):
     yield ep
 
 
-@pytest.mark.xfail(
+@pytest.mark.skipif(
     os.environ.get("CI", "False").lower() == "true",
     reason="Skipping this test on CI environment.",
 )

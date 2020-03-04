@@ -271,7 +271,7 @@ class TestCli:
 
         yield request.param[1:]
 
-    @pytest.mark.xfail(
+    @pytest.mark.skipif(
         os.environ.get("CI", "False").lower() == "true",
         reason="Skipping this test on CI environment.",
     )

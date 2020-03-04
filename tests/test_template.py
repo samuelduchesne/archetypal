@@ -2193,7 +2193,7 @@ class TestBuildingTemplate:
 class TestZoneGraph:
     """Series of tests for the :class:`ZoneGraph` class"""
 
-    def test_traverse_graph(self, small_office):
+    def test_traverse_graph(self, config, small_office):
         """
         Args:
             small_office:
@@ -2209,7 +2209,7 @@ class TestZoneGraph:
         assert G
 
     @pytest.fixture(scope="session")
-    def G(self, small_office):
+    def G(self, config, small_office):
         """
         Args:
             small_office:
@@ -2220,7 +2220,7 @@ class TestZoneGraph:
         yield ZoneGraph.from_idf(idf, sql, skeleton=True, force=True)
 
     @pytest.mark.parametrize("adj_report", [True, False])
-    def test_graph1(self, small_office, adj_report):
+    def test_graph1(self, config, small_office, adj_report):
         """Test the creation of a BuildingTemplate zone graph. Parametrize the
         creation of the adjacency report
 
@@ -2238,7 +2238,7 @@ class TestZoneGraph:
         )
         assert not nx.is_empty(G1)
 
-    def test_graph2(self, small_office):
+    def test_graph2(self, config, small_office):
         """Test the creation of a BuildingTemplate zone graph. Parametrize the
         creation of the adjacency report
 
@@ -2253,7 +2253,7 @@ class TestZoneGraph:
             idf, sql, log_adj_report=False, skeleton=True, force=False
         )
 
-    def test_graph3(self, small_office):
+    def test_graph3(self, config, small_office):
         """Test the creation of a BuildingTemplate zone graph. Parametrize the
         creation of the adjacency report
 
@@ -2269,7 +2269,7 @@ class TestZoneGraph:
             idf, sql, log_adj_report=False, skeleton=True, force=True
         )
 
-    def test_graph4(self, small_office):
+    def test_graph4(self, config, small_office):
         """Test the creation of a BuildingTemplate zone graph. Parametrize the
         creation of the adjacency report
 
@@ -2293,7 +2293,7 @@ class TestZoneGraph:
             EpBunch,
         )
 
-    def test_graph_info(self, G):
+    def test_graph_info(self, config, G):
         """test the info method on a ZoneGraph
 
         Args:
@@ -2333,7 +2333,7 @@ class TestZoneGraph:
         """
         G.plot_graph3d(annotate=annotate, axis_off=True)
 
-    def test_core_graph(self, G):
+    def test_core_graph(self, config, G):
         """
         Args:
             G:
@@ -2343,7 +2343,7 @@ class TestZoneGraph:
         assert len(H) == 1  # assert G has no nodes since Warehouse does not have a
         # core zone
 
-    def test_perim_graph(self, G):
+    def test_perim_graph(self, config, G):
         """
         Args:
             G:

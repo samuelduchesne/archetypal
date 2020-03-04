@@ -69,7 +69,7 @@ from tests.conftest import get_platform
         "5ZoneGeometryTransform.idf",
     ],
 )
-def converttest(self, request):
+def converttest(request):
     file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
     window_file = "W74-lib.dat"
     template_dir = os.path.join("archetypal", "ressources")

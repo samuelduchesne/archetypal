@@ -9,12 +9,14 @@ import collections
 import logging as lg
 import time
 from collections import defaultdict
+from typing import Any, Union
 
+import eppy
 import matplotlib.collections
 import matplotlib.colors
 import networkx
 import tabulate
-from archetypal import log, save_and_show
+from archetypal import log, save_and_show, Zone
 from archetypal.template import (
     UmiBase,
     Zone,
@@ -221,6 +223,7 @@ class BuildingTemplate(UmiBase):
             Zone.from_zone_epbunch(zone, sql=bt.sql)
             for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop")
         ]
+        zone: Zone
         bt.cores = [
             zone
             for zone in zones
@@ -425,16 +428,16 @@ class ZoneGraph(networkx.Graph):
             zone_obj = None
             if not skeleton:
                 zone_obj = Zone.from_zone_epbunch(zone, sql=sql)
-                zonesurfaces = zone.zonesurfaces()
+                zonesurfaces = zone.zonesurfaces
                 zone_obj._zonesurfaces = zonesurfaces
                 _is_core = zone_obj.is_core
             else:
-                zonesurfaces = zone.zonesurfaces()
+                zonesurfaces = zone.zonesurfaces
                 _is_core = is_core(zone)
             G.add_node(zone.Name, epbunch=zone, core=_is_core, zone=zone_obj)
 
             for surface in zonesurfaces:
-                if surface.key.upper() == "INTERNALMASS":
+                if surface.key.upper() in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]:
                     # Todo deal with internal mass surfaces
                     pass
                 else:
@@ -577,7 +580,7 @@ class ZoneGraph(networkx.Graph):
         import matplotlib.pyplot as plt
         import numpy as np
 
-        def avg(zone):
+        def avg(zone: eppy.bunch_subclass.EpBunch):
             """calculate the zone centroid coordinates"""
             x_, y_, z_, dem = 0, 0, 0, 0
             from geomeppy.geom.polygons import Polygon3D, Vector3D
@@ -585,10 +588,8 @@ class ZoneGraph(networkx.Graph):
 
             ggr = zone.theidf.idfobjects["GLOBALGEOMETRYRULES"][0]
 
-            for surface in zone.zonesurfaces(
-                exclude=["INTERNALMASS", "WINDOWSHADINGCONTROL"]
-            ):
-                if surface.key.lower() == "internalmass":
+            for surface in zone.zonesurfaces:
+                if surface.key.upper() in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]:
                     pass
                 else:
                     dem += 1  # Counter for average calc at return

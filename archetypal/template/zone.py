@@ -189,7 +189,7 @@ class Zone(UmiBase):
 
     @property
     def is_core(self):
-        return is_core(self)
+        return is_core(self._epbunch)
 
     @property
     def is_part_of_conditioned_floor_area(self):
@@ -705,10 +705,18 @@ def get_from_tabulardata(sql):
     return tab_data_wstring
 
 
-def is_core(epbunch):
+def is_core(zone):
+    """
+
+    Args:
+        zone (eppy.bunch_subclass.EpBunch): The Zone object.
+
+    Returns:
+        (bool): Whether the zone is a core zone or not.
+    """
     # if all surfaces don't have boundary condition == "Outdoors"
     iscore = True
-    for s in epbunch.zonesurfaces():
+    for s in zone.zonesurfaces:
         try:
             if (abs(int(s.tilt)) < 180) & (abs(int(s.tilt)) > 0):
                 obc = s.Outside_Boundary_Condition.lower()

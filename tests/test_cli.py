@@ -291,8 +291,7 @@ class TestCli:
         """Tests the 'reduce' method"""
         runner = CliRunner()
         test_file_list = [
-            "tests/input_data/umi_samples/B_Off_0.idf",
-            "tests/input_data/umi_samples/B_Res_0_Masonry.idf",
+            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         ]
         result = runner.invoke(
             cli,

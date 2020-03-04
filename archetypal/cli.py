@@ -26,6 +26,7 @@ from archetypal import (
     config,
     log,
     idf_version_updater,
+    timeit,
 )
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -314,7 +315,8 @@ def convert(
         geo_floor=geofloor,
         refarea=refarea,
         volume=volume,
-        capacitance=capacitance)
+        capacitance=capacitance
+    )
     # Print path of output files in console
     click.echo("Here are the paths to the different output files: ")
 
@@ -329,6 +331,7 @@ def convert(
             click.echo("Path to the T3D file: {}".format(path))
 
 
+@timeit
 @cli.command()
 @click.argument("idf", nargs=-1, type=click.Path(exists=True), required=True)
 @click.argument(

@@ -9,14 +9,17 @@ import collections
 import logging as lg
 import time
 from collections import defaultdict
-from typing import Any, Union
 
 import eppy
 import matplotlib.collections
 import matplotlib.colors
 import networkx
 import tabulate
-from archetypal import log, save_and_show, Zone
+from eppy.bunch_subclass import EpBunch
+from path import Path
+from tqdm import tqdm
+
+from archetypal import log, save_and_show
 from archetypal.template import (
     UmiBase,
     Zone,
@@ -27,9 +30,6 @@ from archetypal.template import (
     is_core,
 )
 from archetypal.utils import reduce
-from eppy.bunch_subclass import EpBunch
-from path import Path
-from tqdm import tqdm
 
 
 class BuildingTemplate(UmiBase):

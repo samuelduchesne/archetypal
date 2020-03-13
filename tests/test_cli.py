@@ -2,8 +2,9 @@ import os
 
 import pytest
 from click.testing import CliRunner
+from path import Path
 
-from archetypal import settings, copy_file, log
+from archetypal import settings, copy_file, log, load_idf
 from archetypal.cli import cli
 from tests.test_trnsys import get_platform
 
@@ -317,6 +318,45 @@ class TestCli:
             catch_exceptions=False,
         )
         print(result.stdout)
+        assert result.exit_code == 0
+
+    def test_reduce_failed(self, clean_config):
+        """Tests the 'reduce' method on a failed file"""
+        runner = CliRunner()
+        test_file = "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+
+        # First, modify file so that it breaks. We will removing the building object.
+        idf = load_idf(test_file)
+        bldg = idf.idfobjects["BUILDING"][0]
+        idf.removeidfobject(bldg)
+        idf.save()
+
+        result = runner.invoke(
+            cli,
+            [
+                "--use-cache",
+                "--cache-folder",
+                "tests/.temp/cache",
+                "--data-folder",
+                "tests/.temp/data",
+                "--imgs-folder",
+                "tests/.temp/images",
+                "--logs-folder",
+                "tests/.temp/logs",
+                "--ep_version",
+                settings.ep_version,
+                "reduce",
+                "-w",
+                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+                "-p",
+                *[idf.idfname, idf.idfname],
+                "tests/.temp/retail.json",
+            ],
+            catch_exceptions=False,
+        )
+        print(result.stdout)
+        # check an error file has been created
+        assert Path("failed_reduce.txt").exists()
         assert result.exit_code == 0
 
     def test_transition(self, config):

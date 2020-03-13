@@ -12,6 +12,7 @@ from typing import Any, Union
 from path import Path
 
 import click
+from tabulate import tabulate
 
 from archetypal import (
     settings,
@@ -27,6 +28,7 @@ from archetypal import (
     log,
     idf_version_updater,
     timeit,
+    EnergyPlusProcessError,
 )
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -386,6 +388,8 @@ def reduce(idf, output, weather, parallel, all_zones):
             for file in idf
         }
         res = parallel_process(rundict, run_eplus)
+        res = _write_invalid(res)
+
         loaded_idf = {}
         for key, sql in res.items():
             loaded_idf[key] = {}
@@ -395,18 +399,30 @@ def reduce(idf, output, weather, parallel, all_zones):
     else:
         # else, run sequentially
         res = defaultdict(dict)
-        for fn in idf:
-            res[fn][0], res[fn][1] = run_eplus(
-                fn,
-                weather,
-                ep_version=settings.ep_version,
-                output_report="sql",
-                prep_outputs=True,
-                annual=True,
-                design_day=False,
-                verbose="v",
-                return_idf=True,
-            )
+        invalid = []
+        for i, fn in enumerate(idf):
+            try:
+                res[fn][0], res[fn][1] = run_eplus(
+                    fn,
+                    weather,
+                    ep_version=settings.ep_version,
+                    output_report="sql",
+                    prep_outputs=True,
+                    annual=True,
+                    design_day=False,
+                    verbose="v",
+                    return_idf=True,
+                )
+            except EnergyPlusProcessError as e:
+                invalid.append({"#": i, "Filename": fn.basename(), "Error": e})
+        if invalid:
+            filename = Path("failed_reduce.txt")
+            with open(filename, "w") as failures:
+                failures.writelines(
+                    tabulate(invalid, headers="keys")
+                )
+                log('Invalid run listed in "%s"' % filename)
+
     from archetypal import BuildingTemplate
 
     bts = []
@@ -425,6 +441,17 @@ def reduce(idf, output, weather, parallel, all_zones):
     final_path: Path = dir_ / name + ext
     template.to_json(path_or_buf=final_path, all_zones=all_zones)
     log("Successfully created template file at {}".format(final_path.abspath()))
+
+
+def _write_invalid(res):
+    res = dict(filter(lambda k, v: isinstance(v, Exception), res.items()))
+    invalid = dict(filter(lambda k, v: ~isinstance(v, Exception), res.items()))
+
+    if invalid:
+        with open("failed_transition.csv", "w") as failures:
+            failures.writelines(str(invalid))
+            log("Invalid runs listed in %s" % "failed_transition.txt")
+    return res
 
 
 @cli.command()

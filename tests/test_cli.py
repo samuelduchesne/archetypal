@@ -323,7 +323,7 @@ class TestCli:
     def test_reduce_failed(self, clean_config):
         """Tests the 'reduce' method on a failed file"""
         runner = CliRunner()
-        test_file = "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        test_file = "tests/input_data/necb/NECB 2011-Warehouse-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
 
         # First, modify file so that it breaks. We will removing the building object.
         idf = load_idf(test_file)

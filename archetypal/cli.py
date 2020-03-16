@@ -443,11 +443,15 @@ def reduce(idf, output, weather, parallel, all_zones):
 
 def _write_invalid(res):
     res = {k: v for k, v in res.items() if ~isinstance(res[k], Exception)}
-    invalid = {k: v for k, v in res.items() if isinstance(res[k], Exception)}
+    invalid_runs = {k: v for k, v in res.items() if isinstance(res[k], Exception)}
 
-    if invalid:
-        with open("failed_transition.csv", "w") as failures:
-            failures.writelines(str(invalid))
+    if invalid_runs:
+        invalid = []
+        for i, k, v in enumerate(invalid_runs.items()):
+            invalid.append({"#": i, "Filename": k.basename(), "Error": invalid_runs[k]})
+        filename = Path("failed_reduce.txt")
+        with open(filename, "w") as failures:
+            failures.writelines(tabulate(invalid, headers="keys"))
             log("Invalid runs listed in %s" % "failed_transition.txt")
     return res
 

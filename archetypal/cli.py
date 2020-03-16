@@ -418,9 +418,7 @@ def reduce(idf, output, weather, parallel, all_zones):
         if invalid:
             filename = Path("failed_reduce.txt")
             with open(filename, "w") as failures:
-                failures.writelines(
-                    tabulate(invalid, headers="keys")
-                )
+                failures.writelines(tabulate(invalid, headers="keys"))
                 log('Invalid run listed in "%s"' % filename)
 
     from archetypal import BuildingTemplate
@@ -444,8 +442,8 @@ def reduce(idf, output, weather, parallel, all_zones):
 
 
 def _write_invalid(res):
-    res = dict(filter(lambda k, v: isinstance(v, Exception), res.items()))
-    invalid = dict(filter(lambda k, v: ~isinstance(v, Exception), res.items()))
+    res = {k: v for k, v in res.items() if ~isinstance(res[k], Exception)}
+    invalid = {k: v for k, v in res.items() if isinstance(res[k], Exception)}
 
     if invalid:
         with open("failed_transition.csv", "w") as failures:

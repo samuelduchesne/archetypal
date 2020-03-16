@@ -447,7 +447,7 @@ def _write_invalid(res):
 
     if invalid_runs:
         invalid = []
-        for i, k, v in enumerate(invalid_runs.items()):
+        for i, (k, v) in enumerate(invalid_runs.items()):
             invalid.append({"#": i, "Filename": k.basename(), "Error": invalid_runs[k]})
         filename = Path("failed_reduce.txt")
         with open(filename, "w") as failures:

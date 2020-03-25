@@ -171,9 +171,16 @@ def tabula_building_details_sheet(
     # Parse builsing_code
     if code_building is not None:
         try:
-            code_country, code_typologyregion, code_buildingsizeclass, code_construcionyearclass, code_additional_parameter, code_type, code_num, code_variantnumber = code_building.split(
-                "."
-            )
+            (
+                code_country,
+                code_typologyregion,
+                code_buildingsizeclass,
+                code_construcionyearclass,
+                code_additional_parameter,
+                code_type,
+                code_num,
+                code_variantnumber,
+            ) = code_building.split(".")
         except ValueError:
             msg = (
                 'the query "{}" is missing a parameter. Make sure the '
@@ -512,7 +519,7 @@ def nrel_bcl_api_request(data):
     print(prepared_url)
     cached_response_json = get_from_cache(prepared_url)
 
-    if cached_response_json is not None:
+    if cached_response_json:
         # found this request in the cache, just return it instead of making a
         # new HTTP call
         return cached_response_json
@@ -521,6 +528,10 @@ def nrel_bcl_api_request(data):
         start_time = time.time()
         log('Getting from {}, "{}"'.format(url, data))
         response = requests.get(prepared_url)
+
+        # check if an error has occurred
+        log(response.raise_for_status(), lg.DEBUG)
+
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
         size_kb = len(response.content) / 1000.0
@@ -530,26 +541,17 @@ def nrel_bcl_api_request(data):
             " in {:,.2f} seconds".format(size_kb, domain, time.time() - start_time)
         )
 
-        try:
-            response_json = response.json()
-            if "remark" in response_json:
-                log(
-                    'Server remark: "{}"'.format(
-                        response_json["remark"], level=lg.WARNING
-                    )
-                )
-            save_to_cache(prepared_url, response_json)
-        except Exception:
-            # deal with response satus_code here
+        # Since raise_for_status has not raised any error, we can check the response
+        # json safely
+        response_json = response.json()
+        if "remark" in response_json:
             log(
-                "Server at {} returned status code {} and no JSON data.".format(
-                    domain, response.status_code
-                ),
-                level=lg.ERROR,
+                'Server remark: "{}"'.format(
+                    response_json["remark"], level=lg.WARNING
+                )
             )
-            return response.content
-        else:
-            return response_json
+        save_to_cache(prepared_url, response_json)
+        return response.content
 
 
 def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, stat=0):
@@ -798,33 +800,36 @@ def download_bld_window(
     }
     response = nrel_bcl_api_request(data)
 
-    if response["result"]:
+    if response:
         log(
             "found {} possible window component(s) matching "
             "the range {}".format(len(response["result"]), str(data["f[]"]))
         )
 
-    # download components
-    uids = []
-    for component in response["result"]:
-        uids.append(component["component"]["uid"])
-    url = "https://bcl.nrel.gov/api/component/download?uids={}".format(
-        "," "".join(uids)
-    )
-    # actual download with get()
-    d_response = requests.get(url)
+        # download components
+        uids = []
+        for component in response["result"]:
+            uids.append(component["component"]["uid"])
+        url = "https://bcl.nrel.gov/api/component/download?uids={}".format(
+            "," "".join(uids)
+        )
+        # actual download with get()
+        d_response = requests.get(url)
 
-    if d_response.ok:
-        # loop through files and extract the ones that match the extension
-        # parameter
-        results = []
-        if output_folder is None:
-            output_folder = settings.data_folder
-        with zipfile.ZipFile(io.BytesIO(d_response.content)) as z:
-            for info in z.infolist():
-                if info.filename.endswith(extension):
-                    z.extract(info, path=output_folder)
-                    results.append(os.path.join(settings.data_folder, info.filename))
-        return results
+        if d_response.ok:
+            # loop through files and extract the ones that match the extension
+            # parameter
+            results = []
+            if output_folder is None:
+                output_folder = settings.data_folder
+            with zipfile.ZipFile(io.BytesIO(d_response.content)) as z:
+                for info in z.infolist():
+                    if info.filename.endswith(extension):
+                        z.extract(info, path=output_folder)
+                        results.append(os.path.join(settings.data_folder, info.filename))
+            return results
+        else:
+            return response["result"]
     else:
-        return response["result"]
+        raise ValueError("Could not download window from NREL Building Components "
+                         "Library. An error occurred with the nrel_api_request")

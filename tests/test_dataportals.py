@@ -84,7 +84,7 @@ def test_download_bld_window(config, scratch_then_cache):
     reason="Must provide an NREL API key as ENV Variable 'NREL_CONSUMER_KEY'",
     strict=True,
 )
-def test_download_and_load_bld_window(config):
+def test_download_and_load_bld_window(clean_config):
     """Download window and load its idf file"""
     oauth_consumer_key = os.environ.get("NREL_CONSUMER_KEY")
 

@@ -551,7 +551,7 @@ def nrel_bcl_api_request(data):
                 )
             )
         save_to_cache(prepared_url, response_json)
-        return response.content
+        return response_json
 
 
 def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, stat=0):

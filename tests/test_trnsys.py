@@ -106,7 +106,14 @@ class TestConvert:
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
         try:
-            idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
                 idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
             )
         except:
@@ -124,7 +131,14 @@ class TestConvert:
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
         try:
-            idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
                 idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
             )
         except:
@@ -139,32 +153,82 @@ class TestConvert:
 
     def test_write_version_and_building(self, config, converttest):
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
-            idf
-        )
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf)
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
         _write_version(lines, versions)
         _write_building(buildings, lines)
 
     def test_write_idf_objects(self, config, converttest):
-        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, kwargs = (
-            converttest
-        )
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            kwargs,
+        ) = converttest
 
         # Read IDF_T3D template and write lines in variable
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
-            idf
-        )
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf)
 
         # Get all construction EXCEPT fenestration ones
         constr_list = _get_constr_list(buildingSurfs)
 
         # If ordered=True, ordering idf objects
         ordered = True
-        buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones, zonelists = _order_objects(
+        (
+            buildingSurfs,
+            buildings,
+            constr_list,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            zones,
+            zonelists,
+        ) = _order_objects(
             buildingSurfs,
             buildings,
             constr_list,
@@ -252,9 +316,23 @@ class TestConvert:
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
-            idf
-        )
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf)
 
         # Write LAYER from IDF to lines (T3D)
         _write_materials(lines, materialAirGap, materialNoMass, materials)
@@ -319,9 +397,23 @@ class TestConvert:
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
-            idf_2
-        )
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf_2)
 
         # Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
         _write_gains(equipments, lights, lines, peoples, htm, old_new_names)
@@ -357,7 +449,14 @@ class TestConvert:
         output_folder = None
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
         try:
-            idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
                 idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
             )
         except:
@@ -373,9 +472,23 @@ class TestConvert:
         clear_name_idf_objects(idf_2, log_clear_names)
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
-            idf_2
-        )
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf_2)
 
         _relative_to_absolute(buildingSurfs[0], 1, 2, 3)
 
@@ -383,7 +496,14 @@ class TestConvert:
         output_folder = None
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
         try:
-            idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
                 idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
             )
         except:
@@ -398,11 +518,24 @@ class TestConvert:
 
     def test_write_to_b18(self, config, converttest):
         output_folder = None
-        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, kwargs = (
-            converttest
-        )
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            kwargs,
+        ) = converttest
         try:
-            idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
                 idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
             )
         except:
@@ -437,9 +570,23 @@ class TestConvert:
         ).to_dict()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
-            idf_2
-        )
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf_2)
 
         b18_path = "tests/input_data/trnsys/T3D_simple_2_zone.b18"
 
@@ -575,7 +722,9 @@ class TestTrnBuild:
     def test_trnbuild_from_idf_parallel_darwin_or_linux(self, config):
         # All IDF files
         # List files here
-        file_upper_path = os.path.join(settings.ep_version, "ExampleFiles")
+        file_upper_path = os.path.join(
+            get_eplus_dirs(settings.ep_version), "ExampleFiles"
+        )
         files = [
             "RefBldgWarehouseNew2004_Chicago.idf",
             "ASHRAE9012016_Warehouse_Denver.idf",

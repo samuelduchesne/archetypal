@@ -150,6 +150,9 @@ in case). You should see something like this:
 Install EnergyPlus & Conversion Programs
 ........................................
 
+Note: To follow this procedure, git must be installed beforehand with default installation parameters.
+See https://git-scm.com/downloads to download git.
+
 EnergyPlus is a prerequisite of archetypal. It must be installed beforehand. Moreover, archetypal contains routines that
 may download IDF components that are coded in earlier versions of EnergyPlus (e.g., 7.1). For this reason, users should
 also download the `supplementary conversion programs`_.

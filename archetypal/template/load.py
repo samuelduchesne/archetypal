@@ -430,8 +430,8 @@ def _resolve_illuminance_target(zone):
     else:
         # Else, there are no dimming controls => set to "Off".
         log(
-            "No illuminance target found for zone {}. Setting to default 300 "
+            "No illuminance target found for zone {}. Setting to default 500 "
             "lux".format(zone.Name),
             lg.DEBUG,
         )
-        return 300
+        return 500

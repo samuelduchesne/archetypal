@@ -10,6 +10,7 @@ import collections
 from archetypal import log, timeit, settings
 from archetypal.template import UmiBase, Unique, UmiSchedule, UniqueName
 from archetypal.utils import reduce
+import logging as lg
 
 
 class ZoneLoad(UmiBase, metaclass=Unique):
@@ -36,7 +37,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         IsLightingOn=True,
         IsPeopleOn=True,
         PeopleDensity=0.2,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a new ZoneLoad object
 
@@ -180,8 +181,8 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             zone (archetypal.template.zone.Zone): zone to gets information from
         """
 
-        # Get schedule index for different loads and creates ZoneLoad arguments
-        # Verifies if Equipment in zone
+        # Get schedule index for different loads and create ZoneLoad arguments
+        # Verify if Equipment in zone
         zone_index = zone.sql["Zones"][
             zone.sql["Zones"]["ZoneName"].str.contains(zone.Name.upper())
         ].index[0]
@@ -202,7 +203,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             else:
                 EquipmentPowerDensity = (
                     nominal_elec["DesignLevel"].sum() + nominal_gas["DesignLevel"].sum()
-                ) / zone.area
+                ) / zone.area  # todo: Should nominal gas really be added to elec?
 
             sched_indexes = nominal_elec["ScheduleIndex"].values
             design_index = nominal_elec["DesignLevel"].index
@@ -210,11 +211,11 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             for sched, design in zip(sched_indexes, design_index):
                 sched_name = zone.sql["Schedules"]["ScheduleName"][sched]
                 schedule = UmiSchedule(Name=sched_name, idf=zone.idf)
-                schedule.weights = nominal_elec["DesignLevel"][design]
+                schedule.combine_weight = nominal_elec["DesignLevel"][design]
                 list_sched.append(schedule)
 
             EquipmentAvailabilitySchedule = reduce(
-                UmiSchedule.combine, list_sched, weights="weights"
+                UmiSchedule.combine, list_sched, weights="combine_weight"
             )
         # Verifies if Lights in zone
         if zone.sql["NominalLighting"][
@@ -265,10 +266,10 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         z_load = cls(
             Name=name,
             zone=zone,
-            DimmingType="Continuous",
+            DimmingType=_resolve_dimming_type(zone),
             EquipmentAvailabilitySchedule=EquipmentAvailabilitySchedule,
             EquipmentPowerDensity=EquipmentPowerDensity,
-            IlluminanceTarget=500,
+            IlluminanceTarget=_resolve_illuminance_target(zone),
             LightingPowerDensity=LightingPowerDensity,
             LightsAvailabilitySchedule=LightsAvailabilitySchedule,
             OccupancySchedule=OccupancySchedule,
@@ -359,3 +360,85 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         new_obj._belongs_to_zone = self._belongs_to_zone
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
+
+
+def _resolve_dimming_type(zone):
+    """Resolves the dimming type for the Zone object"""
+    # First, retrieve the list of Daylighting objects for this zone. Uses the eppy
+    # `getreferingobjs` method.
+    ep_obj = zone._epbunch
+    possible_ctrls = ep_obj.getreferingobjs(
+        iddgroups=["Daylighting"], fields=["Zone_Name"]
+    )
+    # Then, if there are controls
+    if possible_ctrls:
+        # Filter only the "Daylighting:Controls"
+        ctrls = [
+            ctrl
+            for ctrl in possible_ctrls
+            if ctrl.key.upper() == "Daylighting:Controls".upper()
+        ]
+        ctrl_types = [ctrl["Lighting_Control_Type"] for ctrl in ctrls]
+
+        # There should only be one control per zone. A set of controls should return 1.
+        if len(set(ctrl_types)) == 1:
+            dimming_type = next(iter(set(ctrl_types)))
+            if dimming_type.lower() not in ["continuous", "stepped"]:
+                raise ValueError(
+                    f"A dimming type of type '{dimming_type}' for zone '{zone.Name}' is not yet supported in UMI"
+                )
+            else:
+                log(f"Dimming type for zone '{zone.Name}' set to '{dimming_type}'")
+                return dimming_type  # Return first element
+        else:
+            raise ValueError(
+                "Could not resolve more than one dimming types for Zone {}. "
+                "Make sure there is only one".format(zone.Name)
+            )
+    else:
+        # Else, there are no dimming controls => set to "Off".
+        log(
+            "No dimming type found for zone {}. Setting as Off".format(zone.Name),
+            lg.DEBUG,
+        )
+        return "Off"
+
+
+def _resolve_illuminance_target(zone):
+    """Resolves the illuminance target for the Zone object"""
+    # First, retrieve the list of Daylighting objects for this zone. Uses the eppy
+    # `getreferingobjs` method.
+    ep_obj = zone._epbunch
+    possible_ctrls = ep_obj.getreferingobjs(
+        iddgroups=["Daylighting"], fields=["Zone_Name"]
+    )
+    # Then, if there are controls
+    if possible_ctrls:
+        # Filter only the "Daylighting:Controls"
+        ctrls = [
+            ctrl
+            for ctrl in possible_ctrls
+            if ctrl.key.upper() == "Daylighting:Controls".upper()
+        ]
+        ctrl_types = [
+            ctrl["Illuminance_Setpoint_at_Reference_Point_1"] for ctrl in ctrls
+        ]
+
+        # There should only be one control per zone. A set of controls should return 1.
+        if len(set(ctrl_types)) == 1:
+            dimming_type = next(iter(set(ctrl_types)))
+            log(f"Illuminance target for zone '{zone.Name}' set to '{dimming_type}'")
+            return float(dimming_type)  # Return first element
+        else:
+            raise ValueError(
+                "Could not resolve more than one illuminance targets for Zone {}. "
+                "Make sure there is only one".format(zone.Name)
+            )
+    else:
+        # Else, there are no dimming controls => set to "Off".
+        log(
+            "No illuminance target found for zone {}. Setting to default 300 "
+            "lux".format(zone.Name),
+            lg.DEBUG,
+        )
+        return 300

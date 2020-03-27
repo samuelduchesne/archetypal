@@ -146,12 +146,11 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             if self.quantity and other.quantity:
                 self.quantity += other.quantity
             return self
-
         # check if self is only zeros. Should not affect other.
-        if all(self.all_values == 0):
+        if not np.any(self.all_values):
             return other
         # check if other is only zeros. Should not affect self.
-        if all(other.all_values == 0):
+        if not np.any(other.all_values):
             return self
 
         if not weights:

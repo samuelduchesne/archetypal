@@ -25,7 +25,7 @@ def small_idf(config):
         output_report="sql",
         prep_outputs=True,
         annual=False,
-        design_day=False,
+        design_day=False,  # This idf model cannot do DesignDay
         verbose="v",
     )
     yield idf, sql
@@ -46,7 +46,7 @@ def other_idf(config):
         output_report="sql",
         prep_outputs=True,
         annual=False,
-        design_day=False,
+        design_day=False,  # This idf model cannot do DesignDay
         verbose="v",
     )
     yield idf, sql

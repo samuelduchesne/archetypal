@@ -160,13 +160,26 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             )
             weights = [1, 1]
         elif isinstance(weights, str):
+            # get the attribute from self and other
             weights = [getattr(self, weights), getattr(other, weights)]
+        elif isinstance(weights, (list, tuple)):
+            # check if length is 2.
+            l = len(weights)
+            if l != 2:
+                raise ValueError(
+                    "USing a list or tuple, the weights attribute must "
+                    "have a length of 2. A length of {}".format(l)
+                )
+        elif isinstance(weights, dict):
+            weights = [weights[self.Name], weights[other.Name]]
 
         if quantity is None:
             new_values = np.average(
                 [self.all_values, other.all_values], axis=0, weights=weights
             )
         elif isinstance(quantity, dict):
+            # Multiplying the schedule values by the quantity for both self and other
+            # and then using a weighted average. Finally, new values are normalized.
             new_values = np.average(
                 [
                     self.all_values * quantity[self.Name],
@@ -187,6 +200,8 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             )
             new_values /= new_values.max()
         else:
+            # Multiplying the schedule values by the quantity for both self and other
+            # and then using a weighted average. Finally, new values are normalized.
             new_values = np.average(
                 [self.all_values * quantity[0], other.all_values * quantity[1]],
                 axis=0,

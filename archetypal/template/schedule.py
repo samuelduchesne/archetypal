@@ -114,13 +114,15 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
         Args:
             other (UmiSchedule): The other Schedule object to combine with.
-            weights (list): Attribute of self and other containing the weight
-                factor.
-            quantity (list, dict or callable): Scalar value that will be multiplied by
-                self before the averaging occurs. This ensures that the
-                resulting schedule returns the correct integrated value. If a
-                dict is passed, keys are schedules Names and values are
-                quantities.
+            weights (list, dict or string): Attribute of self and other containing the
+                weight factor. If a list is passed, it must have len = 2; the first
+                element is applied to self and the second element is applied to other.
+                If a dict is passed, the self.Name and other.Name are the keys. If a
+                str is passed, the
+            quantity (list or dict): Scalar value that will be multiplied by self before
+                the averaging occurs. This ensures that the resulting schedule
+                returns the correct integrated value. If a dict is passed, keys are
+                schedules Names and values are quantities.
 
         Returns:
             (UmiSchedule): the combined UmiSchedule object.

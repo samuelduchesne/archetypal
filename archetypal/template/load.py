@@ -25,7 +25,6 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
     def __init__(
         self,
-        *args,
         DimmingType="Continuous",
         EquipmentAvailabilitySchedule=None,
         EquipmentPowerDensity=12,
@@ -82,7 +81,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             PeopleDensity (float): Density of people in the zone (people/m²)
             **kwargs:
         """
-        super(ZoneLoad, self).__init__(*args, **kwargs)
+        super(ZoneLoad, self).__init__(**kwargs)
         self.DimmingType = DimmingType
         self.EquipmentAvailabilitySchedule = EquipmentAvailabilitySchedule
         self.EquipmentPowerDensity = EquipmentPowerDensity

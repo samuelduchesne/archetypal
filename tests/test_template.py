@@ -1419,7 +1419,7 @@ class TestZoneConditioning:
         ]
         cond_to_json = cond_json[0].to_json()
 
-    def test_hash_eq_zone_cond(self, small_idf):
+    def test_hash_eq_zone_cond(self, zoneConditioningtests):
         """Test equality and hashing of :class:`ZoneConditioning`
 
         Args:
@@ -1428,7 +1428,7 @@ class TestZoneConditioning:
         from archetypal.template import ZoneConditioning, Zone
         from copy import copy
 
-        idf, sql = small_idf
+        idf, sql, idf_name = zoneConditioningtests
         clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
@@ -1831,13 +1831,11 @@ class TestWindowSetting:
         idf, sql = small_idf
         idf2, sql2 = other_idf
         zone = idf.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in
-                         surf.subsurfaces])
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
         window_1 = WindowSetting.from_surface(surface)
         zone = idf2.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in
-                         surf.subsurfaces])
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator)
         window_2 = WindowSetting.from_surface(surface)
 
@@ -1855,14 +1853,12 @@ class TestWindowSetting:
         idf, sql = small_idf
         idf2, sql2 = other_idf
         zone = idf.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in
-                         surf.subsurfaces])
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
         window_1 = WindowSetting.from_surface(surface)
         id_ = window_1.id
         zone = idf2.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in
-                         surf.subsurfaces])
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
         window_2 = WindowSetting.from_surface(surface)
 

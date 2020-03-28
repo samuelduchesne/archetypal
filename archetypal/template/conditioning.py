@@ -11,6 +11,7 @@ import math
 import numpy as np
 from archetypal import float_round, ReportData, log, timeit, settings
 from archetypal.template import UmiBase, Unique, UmiSchedule, UniqueName
+import logging as lg
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
@@ -341,69 +342,126 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """Iterate on 'Controller:MechanicalVentilation' objects to find the
         'DesignSpecifactionOutdoorAirName' for the zone.
 
-        Todo:
-            - Get mechanical sizing by zone.
-
         Args:
             zone (Zone): The zone object.
         """
-        if not zone.idf.idfobjects["Controller:MechanicalVentilation".upper()]:
-            IsMechVentOn = False
-            MinFreshAirPerArea = 0  # use defaults
-            MinFreshAirPerPerson = 0
-            MechVentSchedule = UmiSchedule.constant_schedule(idf=zone.idf)
-        else:
-            design_spe_outdoor_air_name = ""
-            for object in zone.idf.idfobjects[
-                "Controller:MechanicalVentilation".upper()
-            ]:
-                if zone.Name in object.fieldvalues:
-                    indice_zone = [
-                        k for k, s in enumerate(object.fieldvalues) if s == zone.Name
-                    ][0]
-                    design_spe_outdoor_air_name = object.fieldvalues[indice_zone + 1]
+        # For models with ZoneSizes
+        try:
+            try:
+                (
+                    self.IsMechVentOn,
+                    self.MinFreshAirPerArea,
+                    self.MinFreshAirPerPerson,
+                    self.MechVentSchedule,
+                ) = self.fresh_air_from_zone_sizes(zone)
+            except ValueError:
+                (
+                    self.IsMechVentOn,
+                    self.MinFreshAirPerArea,
+                    self.MinFreshAirPerPerson,
+                    self.MechVentSchedule,
+                ) = self.fresh_air_from_ideal_loads(zone)
+        except:
+            self.IsMechVentOn = False
+            self.MinFreshAirPerPerson = 0
+            self.MinFreshAirPerArea = 0
+            self.MechVentSchedule = UmiSchedule.constant_schedule(idf=zone.idf)
 
-                    if object.Availability_Schedule_Name != "":
-                        MechVentSchedule = UmiSchedule(
-                            Name=object.Availability_Schedule_Name, idf=zone.idf
-                        )
-                    else:
-                        MechVentSchedule = UmiSchedule.constant_schedule(idf=zone.idf)
-                    break
-            # If 'DesignSpecifactionOutdoorAirName', MechVent is ON, and gets
-            # the minimum fresh air (per person and area)
-            if design_spe_outdoor_air_name != "":
-                IsMechVentOn = True
-                design_spe_outdoor_air = zone.idf.getobject(
-                    "DesignSpecification:OutdoorAir".upper(),
-                    design_spe_outdoor_air_name,
-                )
-                MinFreshAirPerPerson = (
-                    design_spe_outdoor_air.Outdoor_Air_Flow_per_Person
-                )
-                # If MinFreshAirPerPerson NOT a number, MinFreshAirPerPerson=0
-                try:
-                    MinFreshAirPerPerson = float(MinFreshAirPerPerson)
-                except:
-                    MinFreshAirPerPerson = 0
-                MinFreshAirPerArea = (
-                    design_spe_outdoor_air.Outdoor_Air_Flow_per_Zone_Floor_Area
-                )
-                # If MinFreshAirPerArea NOT a number, MinFreshAirPerArea=0
-                try:
-                    MinFreshAirPerArea = float(MinFreshAirPerArea)
-                except:
-                    MinFreshAirPerArea = 0
-            else:
-                IsMechVentOn = False
-                MinFreshAirPerPerson = 0
-                MinFreshAirPerArea = 0
-                MechVentSchedule = UmiSchedule.constant_schedule(idf=zone.idf)
+    @staticmethod
+    def get_equipment_list(zone):
+        # get zone equipment list
+        connections = zone._epbunch.getreferingobjs(
+            iddgroups=["Zone HVAC Equipment Connections"], fields=["Zone_Name"]
+        )
+        referenced_object = next(iter(connections)).get_referenced_object(
+            "Zone_Conditioning_Equipment_List_Name"
+        )
+        # EquipmentList can have 18 objects. Filter out the None objects.
+        return filter(
+            None,
+            [
+                referenced_object.get_referenced_object(f"Zone_Equipment_{i}_Name")
+                for i in range(1, 19)
+            ],
+        )
 
-        self.IsMechVentOn = IsMechVentOn
-        self.MinFreshAirPerArea = MinFreshAirPerArea
-        self.MinFreshAirPerPerson = MinFreshAirPerPerson
-        self.MechVentSchedule = MechVentSchedule
+    def fresh_air_from_ideal_loads(self, zone):
+        """
+
+        Args:
+            zone:
+
+        Returns:
+            4-tuple: (IsMechVentOn, MinFreshAirPerArea, MinFreshAirPerPerson, MechVentSchedule)
+        """
+        equip_list = self.get_equipment_list(zone)
+        equipment = next(
+            iter(
+                [
+                    eq
+                    for eq in equip_list
+                    if eq.key.lower() == "ZoneHVAC:IdealLoadsAirSystem".lower()
+                ]
+            )
+        )
+        oa_spec = equipment.get_referenced_object(
+            "Design_Specification_Outdoor_Air_Object_Name"
+        )
+        oa_area = float(oa_spec.Outdoor_Air_Flow_per_Zone_Floor_Area)
+        oa_person = float(oa_spec.Outdoor_Air_Flow_per_Person)
+        mechvent_schedule = self._mechanical_schedule_from_outdoorair_object(
+            oa_spec, zone
+        )
+        return True, oa_area, oa_person, mechvent_schedule
+
+    def fresh_air_from_zone_sizes(self, zone):
+        """Returns the Mechanical Ventilation from the ZoneSizes Table in the sql db.
+
+        Args:
+            zone:
+
+        Returns:
+            4-tuple: (IsMechVentOn, MinFreshAirPerArea, MinFreshAirPerPerson, MechVentSchedule)
+        """
+        import sqlite3
+
+        # create database connection with sqlite3
+        with sqlite3.connect(zone.idf.sql_file) as conn:
+            sql_query = f"""
+                        select CalcOutsideAirFlow
+                        from ZoneSizes
+                        where ZoneName = "{zone.Name.upper()}";"""
+            oa_area = float(max(conn.execute(sql_query)) / zone.area)
+            designobjs = zone._epbunch.getreferingobjs(
+                iddgroups=["HVAC Design Objects"]
+            )
+            obj = next(iter(eq for eq in designobjs if eq.key.lower() == "sizing:zone"))
+            oa_spec = obj.get_referenced_object(
+                "Design_Specification_Outdoor_Air_Object_Name"
+            )
+            mechvent_schedule = self._mechanical_schedule_from_outdoorair_object(
+                oa_spec, zone
+            )
+            return True, oa_area, 0, mechvent_schedule
+
+    def _mechanical_schedule_from_outdoorair_object(self, oa_spec, zone):
+        try:
+            umi_schedule = UmiSchedule(
+                Name=oa_spec.Outdoor_Air_Schedule_Name, idf=zone.idf
+            )
+            log(
+                f"Mechanical Ventilation Schedule set as {UmiSchedule} for "
+                f"zone {zone.Name}",
+                lg.DEBUG,
+            )
+            return umi_schedule
+        except KeyError:
+            # Schedule is not specified so return a constant schedule
+            log(
+                f"No Mechanical Ventilation Schedule specified for zone "
+                f"{zone.Name}. Reverting to always on."
+            )
+            return UmiSchedule.constant_schedule(idf=zone.idf)
 
     def _set_zone_cops(self, zone):
         """
@@ -487,9 +545,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # Set Thermostat set points
         # Heating and Cooling set points and schedules
-        self.HeatingSetpoint, self.HeatingSchedule, self.CoolingSetpoint, self.CoolingSchedule = self._get_setpoint_and_scheds(
-            zone
-        )
+        (
+            self.HeatingSetpoint,
+            self.HeatingSchedule,
+            self.CoolingSetpoint,
+            self.CoolingSchedule,
+        ) = self._get_setpoint_and_scheds(zone)
 
         # If HeatingSetpoint == nan, means there is no heat or cold input,
         # therefore system is off.

@@ -244,9 +244,7 @@ class Zone(UmiBase):
         """Group internal walls into a ThermalMass object for this Zone"""
 
         oc = []
-        for surface in self.zonesurfaces(
-            exclude=["WINDOWSHADINGCONTROL"]
-        ):
+        for surface in self.zonesurfaces(exclude=["WINDOWSHADINGCONTROL"]):
             # for surf_type in self.idf.idd_index['ref2names'][
             # 'AllHeatTranSurfNames']:
             if surface.key.upper() == "INTERNALMASS":
@@ -968,23 +966,23 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         zonesurfaces = zone._zonesurfaces
         for surf in zonesurfaces:
             for disp_surf in surface_dispatcher(surf, zone):
-
-                if disp_surf.Surface_Type == "Facade":
-                    facade.append(disp_surf)
-                elif disp_surf.Surface_Type == "Ground":
-                    ground.append(disp_surf)
-                elif disp_surf.Surface_Type == "Partition":
-                    partition.append(disp_surf)
-                elif disp_surf.Surface_Type == "Roof":
-                    roof.append(disp_surf)
-                elif disp_surf.Surface_Type == "Slab":
-                    slab.append(disp_surf)
-                else:
-                    msg = (
-                        'Surface Type "{}" is not known, this method is not'
-                        " implemented".format(disp_surf.Surface_Type)
-                    )
-                    raise NotImplementedError(msg)
+                if disp_surf:
+                    if disp_surf.Surface_Type == "Facade":
+                        facade.append(disp_surf)
+                    elif disp_surf.Surface_Type == "Ground":
+                        ground.append(disp_surf)
+                    elif disp_surf.Surface_Type == "Partition":
+                        partition.append(disp_surf)
+                    elif disp_surf.Surface_Type == "Roof":
+                        roof.append(disp_surf)
+                    elif disp_surf.Surface_Type == "Slab":
+                        slab.append(disp_surf)
+                    else:
+                        msg = (
+                            'Surface Type "{}" is not known, this method is not'
+                            " implemented".format(disp_surf.Surface_Type)
+                        )
+                        raise NotImplementedError(msg)
 
         # Returning a set() for each groups of Constructions.
 
@@ -1069,17 +1067,24 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         Args:
             surf (EpBunch):
         """
-        log(
-            'surface "%s" assigned as a Partition' % surf.Name,
-            lg.DEBUG,
-            name=surf.theidf.name,
+        the_construction = surf.theidf.getobject(
+            "Construction".upper(), surf.Construction_Name
         )
-        oc = OpaqueConstruction.from_epbunch(
-            surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
-        )
-        oc.area = surf.area
-        oc.Surface_Type = "Partition"
-        return oc
+        if the_construction:
+            oc = OpaqueConstruction.from_epbunch(the_construction)
+            oc.area = surf.area
+            oc.Surface_Type = "Partition"
+            log(
+                'surface "%s" assigned as a Partition' % surf.Name,
+                lg.DEBUG,
+                name=surf.theidf.name,
+            )
+            return oc
+        else:
+            # we might be in a situation where the construction does not exist in the
+            # file. For example, this can happen when the construction is defined as
+            # "Air Wall", which is a construction type internal to EnergyPlus.
+            return None
 
     @staticmethod
     def _do_roof(surf):

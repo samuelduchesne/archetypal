@@ -25,7 +25,7 @@ def small_idf(config):
         output_report="sql",
         prep_outputs=True,
         annual=False,
-        design_day=False,
+        design_day=False,  # This idf model cannot do DesignDay
         verbose="v",
     )
     yield idf, sql
@@ -46,7 +46,7 @@ def other_idf(config):
         output_report="sql",
         prep_outputs=True,
         annual=False,
-        design_day=False,
+        design_day=False,  # This idf model cannot do DesignDay
         verbose="v",
     )
     yield idf, sql
@@ -1154,6 +1154,28 @@ class TestZoneConstructionSet:
 class TestZoneLoad:
     """Combines different :class:`ZoneLoad` tests"""
 
+    @pytest.fixture(scope="class")
+    def fiveZoneEndUses(self, config):
+        file = (
+            get_eplus_dirs(settings.ep_version)
+            / "ExampleFiles"
+            / "5ZoneAirCooled_AirBoundaries_Daylighting.idf"
+        )
+        w = (
+            get_eplus_dirs(settings.ep_version)
+            / "WeatherData"
+            / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
+        )
+        idf = ar.load_idf(file, weather_file=w)
+        sql = idf.run_eplus(
+            output_report="sql",
+            prep_outputs=True,
+            annual=False,
+            design_day=True,
+            verbose="v",
+        )
+        yield idf, sql
+
     @pytest.fixture(scope="class", params=["RefBldgWarehouseNew2004_Chicago.idf"])
     def zoneLoadtests(self, config, request):
         """
@@ -1172,7 +1194,7 @@ class TestZoneLoad:
             output_report="sql",
             prep_outputs=True,
             annual=False,
-            design_day=False,
+            design_day=True,
             verbose="v",
         )
         yield idf, sql
@@ -1197,7 +1219,35 @@ class TestZoneLoad:
         idf, sql = zoneLoadtests
         zone = idf.getobject("ZONE", "Office")
         z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
-        load_ = ZoneLoad.from_zone(z)
+        zone_loads = ZoneLoad.from_zone(z)
+
+        assert zone_loads.DimmingType == "Off"
+        assert zone_loads.EquipmentPowerDensity == 8.07
+        assert zone_loads.IlluminanceTarget == 500
+        assert zone_loads.IsEquipmentOn
+        assert zone_loads.IsPeopleOn
+        assert zone_loads.LightingPowerDensity == 11.84
+        np.testing.assert_almost_equal(zone_loads.PeopleDensity, 0.021107919980354082)
+
+    def test_zoneLoad_from_zone_mixedparams(self, config, fiveZoneEndUses):
+        from archetypal import ZoneLoad, Zone
+
+        idf, sql = fiveZoneEndUses
+        zone = idf.getobject("ZONE", "SPACE1-1")
+        z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+        zone_loads = ZoneLoad.from_zone(z)
+
+        assert zone_loads.DimmingType == "Stepped"
+        np.testing.assert_almost_equal(
+            zone_loads.EquipmentPowerDensity, 10.649455425574827
+        )
+        assert zone_loads.IlluminanceTarget == 400
+        assert zone_loads.IsEquipmentOn
+        assert zone_loads.IsPeopleOn
+        np.testing.assert_almost_equal(
+            zone_loads.LightingPowerDensity, 15.974, decimal=3
+        )
+        np.testing.assert_almost_equal(zone_loads.PeopleDensity, 0.111, decimal=3)
 
     def test_zoneLoad_from_to_json(self, config):
         """
@@ -1313,7 +1363,7 @@ class TestZoneConditioning:
             output_report="sql",
             prep_outputs=True,
             annual=False,
-            design_day=False,
+            design_day=True,
             verbose="v",
         )
         yield idf, sql, request.param
@@ -1369,7 +1419,7 @@ class TestZoneConditioning:
         ]
         cond_to_json = cond_json[0].to_json()
 
-    def test_hash_eq_zone_cond(self, small_idf):
+    def test_hash_eq_zone_cond(self, zoneConditioningtests):
         """Test equality and hashing of :class:`ZoneConditioning`
 
         Args:
@@ -1378,7 +1428,7 @@ class TestZoneConditioning:
         from archetypal.template import ZoneConditioning, Zone
         from copy import copy
 
-        idf, sql = small_idf
+        idf, sql, idf_name = zoneConditioningtests
         clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
@@ -1781,13 +1831,11 @@ class TestWindowSetting:
         idf, sql = small_idf
         idf2, sql2 = other_idf
         zone = idf.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in
-                         surf.subsurfaces])
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
         window_1 = WindowSetting.from_surface(surface)
         zone = idf2.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in
-                         surf.subsurfaces])
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator)
         window_2 = WindowSetting.from_surface(surface)
 
@@ -1805,14 +1853,12 @@ class TestWindowSetting:
         idf, sql = small_idf
         idf2, sql2 = other_idf
         zone = idf.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in
-                         surf.subsurfaces])
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
         window_1 = WindowSetting.from_surface(surface)
         id_ = window_1.id
         zone = idf2.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in
-                         surf.subsurfaces])
+        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
         window_2 = WindowSetting.from_surface(surface)
 

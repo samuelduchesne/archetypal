@@ -630,9 +630,10 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             ):
                 # Do HeatExchanger:AirToAir:SensibleAndLatent
 
-                HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible = self._get_recoverty_effectiveness(
-                    object, zone
-                )
+                (
+                    HeatRecoveryEfficiencyLatent,
+                    HeatRecoveryEfficiencySensible,
+                ) = self._get_recoverty_effectiveness(object, zone)
                 HeatRecoveryType = "Enthalpy"
 
                 comment = (

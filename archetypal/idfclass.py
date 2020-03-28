@@ -215,9 +215,7 @@ class IDF(geomeppy.IDF):
                             surf_azim = roundto(
                                 subsurface.azimuth, to=azimuth_threshold
                             )
-                            total_window_area[surf_azim] += (
-                                subsurface.area * multiplier
-                            )
+                            total_window_area[surf_azim] += subsurface.area * multiplier
         # Fix azimuth = 360 which is the same as azimuth 0
         total_wall_area[0] += total_wall_area.pop(360, 0)
         total_window_area[0] += total_window_area.pop(360, 0)
@@ -1121,7 +1119,19 @@ class OutputPrep:
 
     def add_basics(self):
         """Adds the summary report and the sql file to the idf outputs"""
-        return self.add_summary_report().add_output_control().add_sql()
+        return self.add_summary_report().add_output_control().add_sql().add_schedules()
+
+    def add_schedules(self):
+        """Adds Schedules object"""
+        outputs = [
+            {
+                "ep_object": "Output:Schedules".upper(),
+                "kwargs": dict(Key_Field="Hourly", save=self.save),
+            }
+        ]
+        prepare_outputs(self.idf, outputs=outputs, save=self.save)
+        self.outputs.extend(outputs)
+        return self
 
     def add_summary_report(self, summary="AllSummary"):
         """Adds the Output:Table:SummaryReports object.

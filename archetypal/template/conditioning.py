@@ -691,8 +691,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         ]
         return HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible
 
-    @classmethod
-    def _get_design_limits(cls, zone, zone_size, load_name):
+    @staticmethod
+    def _get_design_limits(zone, zone_size, load_name):
         """Gets design limits for heating and cooling systems
 
         Args:
@@ -719,8 +719,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             LimitType = "NoLimit"
         return LimitType, cap, flow
 
-    @classmethod
-    def _get_cop(cls, zone, energy_in_list, energy_out_variable_name):
+    @staticmethod
+    def _get_cop(zone, energy_in_list, energy_out_variable_name):
         """Calculates COP for heating or cooling systems
 
         Args:
@@ -760,7 +760,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
         return cop
 
-    def _get_setpoint_and_scheds(self, zone):
+    @staticmethod
+    def _get_setpoint_and_scheds(zone):
         """Gets temperature set points from sql EnergyPlus output and associated
         schedules.
 

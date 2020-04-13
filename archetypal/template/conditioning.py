@@ -339,8 +339,18 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 self.EconomizerType = "DifferentialEnthalphy"
 
     def _set_mechanical_ventilation(self, zone):
-        """Iterate on 'Controller:MechanicalVentilation' objects to find the
-        'DesignSpecifactionOutdoorAirName' for the zone.
+        """Mechanical Ventilation in UMI (or Archsim-based models) is applied to an
+        `ZoneHVAC:IdealLoadsAirSystem` through the `Design Specification Outdoor Air
+        Object Name` which in turn is a `DesignSpecification:OutdoorAir` object. It
+        is this last object that performs the calculation for the outdoor air
+        flowrate. Moreover, UMI defaults to the "sum" method, meaning that the
+        Outdoor Air Flow per Person {m3/s-person} and the Outdoor Air Flow per Area {
+        m3/s-m2} are summed to obtain the zone outdoor air flow rate. Moreover,
+        not all models have the `DesignSpecification:OutdoorAir` object which poses a
+        difficulty when trying to resolve the mechanical ventilation parameters.
+
+        Two general cases exist: 1) models with a `Zone:Sizing` object (and possibly
+        no `DesignSpecification:OutdoorAir`) and 2) models with
 
         Args:
             zone (Zone): The zone object.

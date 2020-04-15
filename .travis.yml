@@ -17,7 +17,7 @@ jobs:
       osx_image: xcode11.2
       language: objective-c
       env: PYENV_VERSION=3.8
-    - name: "Python 3.7 on Windows"
+    - name: "Python 3.8 on Windows"
       os: windows           # Windows 10.0.17134 N/A Build 17134
       language: shell       # 'language: python' is an error on Travis CI Windows
       env: PATH=/c/Python38:/c/Python38/Scripts:$PATH
@@ -78,7 +78,8 @@ before_install:
 - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
   DEST=C:\\EnergyPlusV$ENERGYPLUS_INSTALL_VERSION\\PreProcess\IDFVersionUpdater; ECHO Extracting and Copying files to
   ...; ECHO $env:DEST; DEST=C:\\EnergyPlusV$env:ENERGYPLUS_INSTALL_VERSION\\PreProcess\\IDFVersionUpdater;
-  powershell Expand-Archive -Path C:\\projects\\archetypal\\$env:ATTCHNUM.zip -DestinationPath $env:DEST -Force; DEL /s
+  powershell -command "Expand-Archive -Path C:\\projects\\archetypal\\$env:ATTCHNUM.zip -DestinationPath $env:DEST
+  -Force"; DEL /s
   "$env:ATTCHNUM.zip"; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then MINICONDA_OS=Linux; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then MINICONDA_OS=MacOSX; fi

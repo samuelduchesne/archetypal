@@ -27,14 +27,12 @@ jobs:
       script: echo "Deploying to PyPi and GitHub releases ..."
       deploy:
       - provider: pypi
-        user: samueld
-        password:
-          secure: ULsmo10liyAUeo3zh6gz8ORuYsg39kMt07uGz4x8YHAAg/d21tXv23H3R7NKUKqoNlcPPPlQXNOZD7lrKvpUSdHlth8xTunrABxjYNcvaFD0eQolV3N3XPP+ePHftNCz3hm65aKh014DdwueWISFsOun0S16jlhJkak7yRJ5zWEKC/9kIhh/iH6DToMWCLc/o5wNT7b7G2OKvojXbotkyh1GiTgSgIVHYEOPVlKUsUsifvu9wvWuf2u3ymbEKLDTKoUDyjaao8Gs1H7Wms0BB0UjjQquJnbwJjB5bx4gDp7HytoLOdzanfdt3zykgx6K5+dq0533vOUTCFWeedLknwt6HUrqXSGOYQxQwoTmHjDrmpgG+Rw8zHoGhCzGtQ0co6JYrSpdnbjv98xJkPKKanam/WkZ+SQIzDgBzFn4S4fa9hJsM/qkgxuY9r4FUA5WFaMRwOQ3NW52hj9WYJ7bjDRmh9XjAbHnyYvgS1B/9Q21GurgT9B1C9uKQ70vzKmIC8jrYeSPTOVNE4MN3hptFjIgHVFP5Va/xcLSbkFnX1oDmCMm0eKaemjABBMboy9k2Wc+rPGhCksyWom4v7Mm6i042MB7IEowCC4toYvkoXZCOtdKjzG4nsKccTf2xBYM+f8NT4H/TIfRI60NE8wKTEHzq2YaTRHYX2aYMYA4JKc=
-        on:
-          tags: false
-          distributions: sdist bdist_wheel
-          repo: samuelduchesne/archetypal
-          branch: release/v1.2.7
+        user: __token__
+          password:
+            secure: cVK75OF2LPDNdPuocxRmuWu4XUgdd81kNo5u/zah7XQf0oKW3TqgVSRhp06XYdQlnCSJZMfe8VJuHoBoCETTDdXFYZMIe6OBlSZeg1xclOtg+Wf4s4zkQ7gMSdzlUKJn9zkINUo7NwRn8Q0GGZCvldJvODzR0xDTcmbeVpeG3WHV8GNosYD7xWNscGBYrF3xVB0euLOHkPyJuFlxzpEhW2XFE7bdMk1/4gwOtfUcCgivpok4dWpgITVEdxRhcBI+ea9NDgpKlJfYHdRX9bBTSFoy8qLEQyvGeNG5cFXW3p+XwsPOKVPnEZv1e2nSYk3Od+sNa+45jte5PNkI43FcIdGaZJadUGck5SUQB9dCWFyLHMQgCtJg4fFLfWBHW5xrfxgOWMK5nqn93qbqOJbLrlw52eNimepfb0FksUpgdkLErkSWGvM5vOSK20Vb4nySjht6PJO88VSUixBd7cdGsioz8X0a69WfVVQhIdYlrjO2N0EGXXi3wh4QTp5VywZue3/cVvC5ainjFq8wuLiBg+LLCObwjj++Qp0OKr9Iw00942HpWhWKEZfpuepMowet8KVCE5SYh5lpKXtZv3+YNrkVy6jfzdZiw4QvMs3VAuQxCdNvILI7h/ktXntwdMT2CIUTKbQrX2uvuSuiwUgo6yRWX+5TkmRVCULpz4qE0lY=
+          on:
+            distributions: sdist bdist_wheel
+            repo: samuelduchesne/archetypal
         skip_cleanup: true
       - provider: releases
         api_key:

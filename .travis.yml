@@ -2,32 +2,41 @@ language: c
 env:
   global:
   - ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=9.2.0 ENERGYPLUS_SHA=921312fa1d
-    ENERGYPLUS_INSTALL_VERSION=9-2-0 MINICONDA_VERSION=latest
+    ENERGYPLUS_INSTALL_VERSION=9-2-0 MINICONDA_VERSION=latest TRAVIS_PYTHON_VERSION=3.7
 addons:
   apt:
     packages:
     - wine
     - libgfortran3
+os:
+- osx
+- linux
 jobs:
   include:
-  - os: linux
-    env: TRAVIS_PYTHON_VERSION=3.7
-    script: echo "Running Tests ..." # py.test --cov=archetypal --verbose tests/
-  - os: osx
-    env: TRAVIS_PYTHON_VERSION=3.7
-    script: echo "Running Tests ..." #py.test --cov=archetypal --verbose tests/
+  - stage: test
+    script: echo "Running Tests ..."
+    if: branch != release/v1.2.7
   - stage: deploy
     script: echo "Deploying to GitHub releases ..."
     deploy:
-      - provider: pypi
-        user: samueld
-        password:
-          secure: ULsmo10liyAUeo3zh6gz8ORuYsg39kMt07uGz4x8YHAAg/d21tXv23H3R7NKUKqoNlcPPPlQXNOZD7lrKvpUSdHlth8xTunrABxjYNcvaFD0eQolV3N3XPP+ePHftNCz3hm65aKh014DdwueWISFsOun0S16jlhJkak7yRJ5zWEKC/9kIhh/iH6DToMWCLc/o5wNT7b7G2OKvojXbotkyh1GiTgSgIVHYEOPVlKUsUsifvu9wvWuf2u3ymbEKLDTKoUDyjaao8Gs1H7Wms0BB0UjjQquJnbwJjB5bx4gDp7HytoLOdzanfdt3zykgx6K5+dq0533vOUTCFWeedLknwt6HUrqXSGOYQxQwoTmHjDrmpgG+Rw8zHoGhCzGtQ0co6JYrSpdnbjv98xJkPKKanam/WkZ+SQIzDgBzFn4S4fa9hJsM/qkgxuY9r4FUA5WFaMRwOQ3NW52hj9WYJ7bjDRmh9XjAbHnyYvgS1B/9Q21GurgT9B1C9uKQ70vzKmIC8jrYeSPTOVNE4MN3hptFjIgHVFP5Va/xcLSbkFnX1oDmCMm0eKaemjABBMboy9k2Wc+rPGhCksyWom4v7Mm6i042MB7IEowCC4toYvkoXZCOtdKjzG4nsKccTf2xBYM+f8NT4H/TIfRI60NE8wKTEHzq2YaTRHYX2aYMYA4JKc=
-        on:
-          tags: true
-          distributions: sdist bdist_wheel
-          repo: samuelduchesne/archetypal
-          branch: release/v1.2.7
+    - provider: pypi
+      user: samueld
+      password:
+        secure: ULsmo10liyAUeo3zh6gz8ORuYsg39kMt07uGz4x8YHAAg/d21tXv23H3R7NKUKqoNlcPPPlQXNOZD7lrKvpUSdHlth8xTunrABxjYNcvaFD0eQolV3N3XPP+ePHftNCz3hm65aKh014DdwueWISFsOun0S16jlhJkak7yRJ5zWEKC/9kIhh/iH6DToMWCLc/o5wNT7b7G2OKvojXbotkyh1GiTgSgIVHYEOPVlKUsUsifvu9wvWuf2u3ymbEKLDTKoUDyjaao8Gs1H7Wms0BB0UjjQquJnbwJjB5bx4gDp7HytoLOdzanfdt3zykgx6K5+dq0533vOUTCFWeedLknwt6HUrqXSGOYQxQwoTmHjDrmpgG+Rw8zHoGhCzGtQ0co6JYrSpdnbjv98xJkPKKanam/WkZ+SQIzDgBzFn4S4fa9hJsM/qkgxuY9r4FUA5WFaMRwOQ3NW52hj9WYJ7bjDRmh9XjAbHnyYvgS1B/9Q21GurgT9B1C9uKQ70vzKmIC8jrYeSPTOVNE4MN3hptFjIgHVFP5Va/xcLSbkFnX1oDmCMm0eKaemjABBMboy9k2Wc+rPGhCksyWom4v7Mm6i042MB7IEowCC4toYvkoXZCOtdKjzG4nsKccTf2xBYM+f8NT4H/TIfRI60NE8wKTEHzq2YaTRHYX2aYMYA4JKc=
+      on:
+        tags: false
+        distributions: sdist bdist_wheel
+        repo: samuelduchesne/archetypal
+        branch: release/v1.2.7
+      skip_cleanup: true
+    - provider: releases
+      api_key:
+        secure: T0s3DtR5Gqnw7tMIC82Pn/pqWYwF5IJ1sppX2E+VqgJnZ37g59qFDK2g53e4PgXqkoNb5VhO54wYu/v8pms8LOtH9DYq/OsERAw0vr/qlJRIe78qFI+RaWdLS6lXE4K3fN7au+yqSpxmWmeZFq0k9BkiX7tWcNxsykcVCsI/MYziMbJD6mku1KSr9+/dYQO/XqARDOK8+faPE0jJrE6aBBMJa27c6jmoZsvnsgRL4tx73f8hsW2HXh2mmpBvsBcKi0FG9XwSjmLF/vL4pad0rF2XSdsCHwoVHzFfdUIi3Iu6FKsUTy6pxtOA/TMPdJ6xRzP/snURX1UAAIRWy+hg+bt2VsGcsCndWY78DGKHO3xolRIdc6JoOh+qRwcQyJfJVC1MjTyFhyhdgpZzhdqDp4bomatwGEyWtRU6L7MDIbhv3wiui28Jdfyw++ftxVa+JqOJRJ0MNDF9XBa+cze/os4MvHcrCFg7HBasdnqUSVz/exmPVBVsYIQWcgOQGbAFguXgCOf6N02wg1NHW9qWGbk+MMgv8sE3spBMZAnY/9Ll5dfXYHwEipnLYRIAN87fR64fKtkdY6/rxQMAY/qQzvPO9WSPHGOMDanywryctX5Ki+L0H8fXMpuwZhYMb85sJlEiIUo2/LCmD76gCqGj+pt8jigH2y9W76XU6EENEjc=
+      file_glob: true
+      file: "dist/archetypal*"
+      on:
+        repo: samuelduchesne/archetypal
+        branch: release/v1.2.7
 before_install:
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then EXT=dmg; PLATFORM=Darwin; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then EXT=sh; PLATFORM=Linux; fi

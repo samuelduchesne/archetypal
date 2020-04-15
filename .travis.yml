@@ -81,7 +81,7 @@ before_install:
   DEST=C:\\EnergyPlusV$ENERGYPLUS_INSTALL_VERSION\\PreProcess\IDFVersionUpdater; echo "Extracting and Copying files to
   ..."; echo $DEST;
   powershell -command Expand-Archive -Path $ATTCHNUM.zip -DestinationPath $DEST -Force; fi
-- curl -SL https://repo.anaconda.com/miniconda/Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.sh -O miniconda.sh
+- curl -SL https://repo.anaconda.com/miniconda/Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.sh -o miniconda.sh
 - bash miniconda.sh -b -p $HOME/miniconda
 - source $HOME/miniconda/etc/profile.d/conda.sh
 - conda config --set always_yes yes --set changeps1 no

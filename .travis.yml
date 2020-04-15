@@ -12,6 +12,9 @@ jobs:
   include:
     - name: Python 3.8 on Xenial Linux
       python: 3.8           # this works for Linux but is ignored on macOS or Windows
+      after_success:
+        - coverage report -m
+        - coveralls
     - name: Python 3.8 on macOS
       os: osx
       osx_image: xcode11.2
@@ -91,7 +94,4 @@ install:
 - pip install --upgrade pip
 - pip install --upgrade setuptools
 - pip install .[dev]
-after_success:
-- coverage report -m
-- coveralls
 script: echo "Running Tests ..." # stage: test

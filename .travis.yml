@@ -10,18 +10,19 @@ addons:
     - libgfortran3
 jobs:
   include:
-    - name: "Python 3.7 on Xenial Linux"
+    - name: Python 3.7 on Xenial Linux
       python: 3.7           # this works for Linux but is ignored on macOS or Windows
-    - name: "Python 3.7 on macOS"
+    - name: Python 3.7.5 on macOS
       os: osx
-      osx_image: xcode11.3  # Python 3.7.4 running on macOS 10.14.4
-      language: shell       # 'language: python' is an error on Travis CI macOS
-    - name: "Python 3.8 on Windows"
+      osx_image: xcode11.3
+      language: objective-c
+      env: PYENV_VERSION=3.7.5
+    - name: "Python 3.7 on Windows"
       os: windows           # Windows 10.0.17134 N/A Build 17134
       language: shell       # 'language: python' is an error on Travis CI Windows
       before_install:
-        - choco install python --version 3.7.0
-        - python -m pip install --upgrade pip
+        - choco install python --version 3.7.4
+        # - python -m pip install --upgrade pip
       env: PATH=/c/Python38:/c/Python38/Scripts:$PATH
     - stage: deploy
       script: echo "Deploying to PyPi and GitHub releases ..."
@@ -40,7 +41,9 @@ jobs:
         api_key:
           secure: T0s3DtR5Gqnw7tMIC82Pn/pqWYwF5IJ1sppX2E+VqgJnZ37g59qFDK2g53e4PgXqkoNb5VhO54wYu/v8pms8LOtH9DYq/OsERAw0vr/qlJRIe78qFI+RaWdLS6lXE4K3fN7au+yqSpxmWmeZFq0k9BkiX7tWcNxsykcVCsI/MYziMbJD6mku1KSr9+/dYQO/XqARDOK8+faPE0jJrE6aBBMJa27c6jmoZsvnsgRL4tx73f8hsW2HXh2mmpBvsBcKi0FG9XwSjmLF/vL4pad0rF2XSdsCHwoVHzFfdUIi3Iu6FKsUTy6pxtOA/TMPdJ6xRzP/snURX1UAAIRWy+hg+bt2VsGcsCndWY78DGKHO3xolRIdc6JoOh+qRwcQyJfJVC1MjTyFhyhdgpZzhdqDp4bomatwGEyWtRU6L7MDIbhv3wiui28Jdfyw++ftxVa+JqOJRJ0MNDF9XBa+cze/os4MvHcrCFg7HBasdnqUSVz/exmPVBVsYIQWcgOQGbAFguXgCOf6N02wg1NHW9qWGbk+MMgv8sE3spBMZAnY/9Ll5dfXYHwEipnLYRIAN87fR64fKtkdY6/rxQMAY/qQzvPO9WSPHGOMDanywryctX5Ki+L0H8fXMpuwZhYMb85sJlEiIUo2/LCmD76gCqGj+pt8jigH2y9W76XU6EENEjc=
         file_glob: true
-        file: dist/archetypal*
+        file:
+          - dist/*.whl
+          - dist/*.tar.gz
         on:
           repo: samuelduchesne/archetypal
           branch: release/v1.2.7

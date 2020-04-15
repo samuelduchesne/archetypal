@@ -91,46 +91,47 @@ respectively.
 4. `OPTIONS`: There are different options to the `convert` command. The first 3 manage the requested output files.
 Users can chose to return a combination of flags
 
-    - if ``-i`` is added, the path to the modified IDF file is returned in the console, and the modified
-      IDF file is returned in the output folder. If ``-t`` is added, the path to the T3D file (converted from the IDF file) is returned.
-      If ``-d`` is added, the DCK file (TRNSYS input file) is returned in the output folder, and the path to this DCK file is returned in the console.
+    - if ``-i`` is added, the path to the modified IDF file is returned in the console, and the modified IDF file is
+      returned in the output folder. If ``-t`` is added, the path to the T3D file (converted from the IDF file) is
+      returned. If ``-d`` is added, the DCK file (TRNSYS input file) is returned in the output folder, and the path to
+      this DCK file is returned in the console.
 
     .. code-block:: python
 
         archetypal convert -i -t -d "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - ``--window_lib`` is the path of the window library (W74-lib.dat). This library must be in the same format as the
-        Berkeley Lab library used by default in TRNBuild. If nothing is passed, the "W74-lib.dat" file available in the
-        package "ressources" folder will be used.
+      Berkeley Lab library used by default in TRNBuild. If nothing is passed, the "W74-lib.dat" file available in the
+      package "ressources" folder will be used.
 
     .. code-block:: python
 
         archetypal convert --window-lib "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - ``--trnsidf_exe`` is the path of the trnsidf.exe executable. Usually located in the TRNSYS18 folder under
-        "Building/trnsIDF/trnsidf.exe".
-        If nothing is passed, the following path will be used : "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe".
+      "Building/trnsIDF/trnsidf.exe".
+      If nothing is passed, the following path will be used : "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe".
 
     .. code-block:: python
 
         archetypal convert --trnsidf-exe "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - ``--template`` is the path of the .d18 template file (usually in the same directory as the `trnsidf.exe` executable).
-        If nothing is passed, the following path will be used : "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18".
+      If nothing is passed, the following path will be used : "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18".
 
     .. code-block:: python
 
         archetypal convert --template "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - ``--log_clear_names`` if added, do not print log of "clear_names" (equivalence between old and new names) in
-        the console.
+      the console.
 
     .. code-block:: python
 
         archetypal convert --log-clear-names "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - ``--window`` specifies the window properties <u_value (W/m²-K)> <shgc (-)> <t_vis (-)> <tolerance (-)> <fframe (-)> <uframe (kJ/m²-K-h)>.
-        If nothing is passed, the following values will be used : 2.2 0.65 0.8 0.05 0.15 8.17
+      If nothing is passed, the following values will be used : 2.2 0.65 0.8 0.05 0.15 8.17
 
     .. code-block:: python
 
@@ -158,8 +159,8 @@ Users can chose to return a combination of flags
         archetypal convert -h
 
 .. [#] Archetype: building model representing a type of building based on its geometry, thermal properties and its
-    usage. Usually used to create urban building model by assigning different archetypes to represent at best the building
-    stock we want to model.
+   usage. Usually used to create urban building model by assigning different archetypes to represent at best the
+   building stock we want to model.
 
 Equivalence between idf object names when converting a file
 ...........................................................

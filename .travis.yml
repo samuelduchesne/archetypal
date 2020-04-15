@@ -13,8 +13,7 @@ os:
 - linux
 jobs:
   include:
-  - stage: test
-    script: echo "Running Tests ..."
+  - script: echo "Running Tests ..." # stage: test
   - stage: deploy
     script: echo "Deploying to PyPi and GitHub releases ..."
     deploy:

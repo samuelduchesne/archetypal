@@ -211,8 +211,8 @@ intersphinx_mapping = {
     "eppy": ("https://eppy.readthedocs.io/en/latest/", None),
     "numpy": ("https://docs.scipy.org/doc/numpy/", None),
     "networkx": (
-        "https://networkx.github.io/documentation/stable" "/index" ".html",
-        "https://networkx.github.io/objects.inv",
+        "https://networkx.github.io/documentation/stable/index.html",
+        "https://networkx.github.io/documentation/stable/objects.inv",
     ),
     "umidocs": ("https://umidocs.readthedocs.io/en/latest/", None),
 }

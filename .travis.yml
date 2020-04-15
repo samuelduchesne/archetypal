@@ -75,7 +75,9 @@ before_install:
   $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
   sudo rm $ATTCHNUM.zip;
   fi
-- if [ "$TRAVIS_OS_NAME" == "windows" ]; then
+- if [ "$TRAVIS_OS_NAME" == "windows" ]; then curl -SLO https://raw.githubusercontent
+  .com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs;
+  $ENERGYPLUS_DOWNLOAD_FILENAME --verbose --script install_script.qs;
   DEST=C:\\EnergyPlusV$ENERGYPLUS_INSTALL_VERSION\\PreProcess\IDFVersionUpdater; ECHO Extracting and Copying files to
   ...; ECHO $env:DEST; DEST=C:\\EnergyPlusV$env:ENERGYPLUS_INSTALL_VERSION\\PreProcess\\IDFVersionUpdater;
   powershell -command "Expand-Archive -Path C:\\projects\\archetypal\\$env:ATTCHNUM.zip -DestinationPath $env:DEST

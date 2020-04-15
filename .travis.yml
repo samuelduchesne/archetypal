@@ -71,12 +71,16 @@ before_install:
   sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
   sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles;
   fi
-- if [ "$TRAVIS_OS_NAME" == "windows" ]; then sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-  echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi
+- if [ "$TRAVIS_OS_NAME" == "windows" ]; then curl -SL %EXTRAS_DOWNLOAD_URL% -o %ATTCHNUM%.zip; SET
+  DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater; ECHO Extracting and Copying files to.
+  ..; ECHO %DEST%; ATTCHNUM = 8231; DEST =
+  "C:\EnergyPlusV$env:ENERGYPLUS_INSTALL_VERSION\PreProcess\IDFVersionUpdater"; ps: "Expand-Archive -Path
+  C:\\projects\\archetypal\\$env:ATTCHNUM.zip -DestinationPath $env:DEST -Force"; DEL /s "%ATTCHNUM%.zip"; fi
 - sudo rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
 - sudo rm $ATTCHNUM.zip
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then MINICONDA_OS=Linux; else MINICONDA_OS=MacOSX;
-  fi
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then MINICONDA_OS=Linux; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then MINICONDA_OS=MacOSX; fi
+- if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then MINICONDA_OS=Windows; fi
 - wget https://repo.anaconda.com/miniconda/Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.sh
   -O miniconda.sh
 - bash miniconda.sh -b -p $HOME/miniconda

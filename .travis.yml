@@ -78,9 +78,8 @@ before_install:
 - if [ "$TRAVIS_OS_NAME" == "windows" ]; then curl -0 https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs -o install_script.qs;
   $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT --verbose --script install_script.qs; dir;
   DEST=C:\\EnergyPlusV$ENERGYPLUS_INSTALL_VERSION\\PreProcess\IDFVersionUpdater; echo "Extracting and Copying files to
-  ..."; echo $env:DEST;
-  powershell -command "Expand-Archive -Path C:\\projects\\archetypal\\$env:ATTCHNUM.zip -DestinationPath $env:DEST
-  -Force"; fi
+  ..."; echo $DEST;
+  powershell -command Expand-Archive -Path C:\projects\archetypal\$ATTCHNUM.zip -DestinationPath $DEST -Force; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then MINICONDA_OS=Linux; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then MINICONDA_OS=MacOSX; fi
 - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then MINICONDA_OS=Windows; fi

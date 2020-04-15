@@ -84,7 +84,7 @@ before_install:
 - curl -SL https://repo.anaconda.com/miniconda/Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.$MINICONDAEXT -o Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.$MINICONDAEXT
 - if [ "$TRAVIS_OS_NAME" == "linux" ]; then bash miniconda.sh -b -p $HOME/miniconda; fi
 - if [ "$TRAVIS_OS_NAME" == "osx" ]; then bash miniconda.sh -b -p $HOME/miniconda; fi
-- if [ "$TRAVIS_OS_NAME" == "windows" ]; then start Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.$MINICONDAEXT
+- if [ "$TRAVIS_OS_NAME" == "windows" ]; then start Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.$MINICONDAEXT; fi
 - source $HOME/miniconda/etc/profile.d/conda.sh
 - conda config --set always_yes yes --set changeps1 no
 - conda update -q conda;

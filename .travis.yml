@@ -28,11 +28,11 @@ jobs:
       deploy:
       - provider: pypi
         user: __token__
-          password:
-            secure: cVK75OF2LPDNdPuocxRmuWu4XUgdd81kNo5u/zah7XQf0oKW3TqgVSRhp06XYdQlnCSJZMfe8VJuHoBoCETTDdXFYZMIe6OBlSZeg1xclOtg+Wf4s4zkQ7gMSdzlUKJn9zkINUo7NwRn8Q0GGZCvldJvODzR0xDTcmbeVpeG3WHV8GNosYD7xWNscGBYrF3xVB0euLOHkPyJuFlxzpEhW2XFE7bdMk1/4gwOtfUcCgivpok4dWpgITVEdxRhcBI+ea9NDgpKlJfYHdRX9bBTSFoy8qLEQyvGeNG5cFXW3p+XwsPOKVPnEZv1e2nSYk3Od+sNa+45jte5PNkI43FcIdGaZJadUGck5SUQB9dCWFyLHMQgCtJg4fFLfWBHW5xrfxgOWMK5nqn93qbqOJbLrlw52eNimepfb0FksUpgdkLErkSWGvM5vOSK20Vb4nySjht6PJO88VSUixBd7cdGsioz8X0a69WfVVQhIdYlrjO2N0EGXXi3wh4QTp5VywZue3/cVvC5ainjFq8wuLiBg+LLCObwjj++Qp0OKr9Iw00942HpWhWKEZfpuepMowet8KVCE5SYh5lpKXtZv3+YNrkVy6jfzdZiw4QvMs3VAuQxCdNvILI7h/ktXntwdMT2CIUTKbQrX2uvuSuiwUgo6yRWX+5TkmRVCULpz4qE0lY=
-          on:
-            distributions: sdist bdist_wheel
-            repo: samuelduchesne/archetypal
+        password:
+          secure: cVK75OF2LPDNdPuocxRmuWu4XUgdd81kNo5u/zah7XQf0oKW3TqgVSRhp06XYdQlnCSJZMfe8VJuHoBoCETTDdXFYZMIe6OBlSZeg1xclOtg+Wf4s4zkQ7gMSdzlUKJn9zkINUo7NwRn8Q0GGZCvldJvODzR0xDTcmbeVpeG3WHV8GNosYD7xWNscGBYrF3xVB0euLOHkPyJuFlxzpEhW2XFE7bdMk1/4gwOtfUcCgivpok4dWpgITVEdxRhcBI+ea9NDgpKlJfYHdRX9bBTSFoy8qLEQyvGeNG5cFXW3p+XwsPOKVPnEZv1e2nSYk3Od+sNa+45jte5PNkI43FcIdGaZJadUGck5SUQB9dCWFyLHMQgCtJg4fFLfWBHW5xrfxgOWMK5nqn93qbqOJbLrlw52eNimepfb0FksUpgdkLErkSWGvM5vOSK20Vb4nySjht6PJO88VSUixBd7cdGsioz8X0a69WfVVQhIdYlrjO2N0EGXXi3wh4QTp5VywZue3/cVvC5ainjFq8wuLiBg+LLCObwjj++Qp0OKr9Iw00942HpWhWKEZfpuepMowet8KVCE5SYh5lpKXtZv3+YNrkVy6jfzdZiw4QvMs3VAuQxCdNvILI7h/ktXntwdMT2CIUTKbQrX2uvuSuiwUgo6yRWX+5TkmRVCULpz4qE0lY=
+        on:
+          distributions: sdist bdist_wheel
+          repo: samuelduchesne/archetypal
         skip_cleanup: true
       - provider: releases
         api_key:

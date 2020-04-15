@@ -19,6 +19,7 @@ jobs:
     - name: "Python 3.8 on Windows"
       os: windows           # Windows 10.0.17134 N/A Build 17134
       language: shell       # 'language: python' is an error on Travis CI Windows
+      env: YARN_GPG=no      # https://travis-ci.community/t/timeout-after-build-finished-and-succeeded/1336
     - stage: deploy
       script: echo "Deploying to PyPi and GitHub releases ..."
       deploy:

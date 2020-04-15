@@ -86,10 +86,11 @@ before_install:
 - conda info -a
 - conda env update -q -n test-env python=$TRAVIS_PYTHON_VERSION -f environment.yml
 - conda activate test-env
+- python --version
 install:
 - pip3 install --upgrade pip
 - pip3 install --upgrade setuptools
-- pip3 install --user .[dev]
+- pip3 install .[dev]
 after_success:
 - coverage report -m
 - coveralls

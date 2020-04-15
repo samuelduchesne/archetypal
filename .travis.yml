@@ -80,7 +80,7 @@ before_install:
   DEST=C:\\EnergyPlusV$ENERGYPLUS_INSTALL_VERSION\\PreProcess\IDFVersionUpdater; echo "Extracting and Copying files to
   ..."; echo $env:DEST;
   powershell -command "Expand-Archive -Path C:\\projects\\archetypal\\$env:ATTCHNUM.zip -DestinationPath $env:DEST
-  -Force"; del /s $env:ATTCHNUM.zip; fi
+  -Force"; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then MINICONDA_OS=Linux; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then MINICONDA_OS=MacOSX; fi
 - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then MINICONDA_OS=Windows; fi

@@ -77,9 +77,9 @@ before_install:
   fi
 - if [ "$TRAVIS_OS_NAME" == "windows" ]; then curl -SL %EXTRAS_DOWNLOAD_URL% -o %ATTCHNUM%.zip; SET
   DEST=C:\EnergyPlusV%ENERGYPLUS_INSTALL_VERSION%\PreProcess\IDFVersionUpdater; ECHO Extracting and Copying files to.
-  ..; ECHO %DEST%; ATTCHNUM = 8231; DEST =
-  "C:\\EnergyPlusV$env:ENERGYPLUS_INSTALL_VERSION\\PreProcess\\IDFVersionUpdater"; ps: "Expand-Archive -Path C:\\projects\\archetypal\\$env:ATTCHNUM.zip -DestinationPath $env:DEST -Force";
-  DEL /s "%ATTCHNUM%.zip"; fi
+  ..; ECHO %DEST%; ATTCHNUM = 8231; DEST="C:\\EnergyPlusV$env:ENERGYPLUS_INSTALL_VERSION\\PreProcess\\IDFVersionUpdater"; fi
+- if [ "$TRAVIS_OS_NAME" == "windows" ] then Expand-Archive -Path C:\\projects\\archetypal\\$env:ATTCHNUM.zip
+  -DestinationPath $env:DEST -Force"; DEL /s "%ATTCHNUM%.zip"; fi
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then MINICONDA_OS=Linux; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then MINICONDA_OS=MacOSX; fi
 - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then MINICONDA_OS=Windows; fi

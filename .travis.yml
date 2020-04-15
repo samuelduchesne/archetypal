@@ -77,14 +77,14 @@ before_install:
   sudo rm $ATTCHNUM.zip;
   fi
 - if [ "$TRAVIS_OS_NAME" == "windows" ]; then curl -0 https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs -o install_script.qs;
-  start /wait "" $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT --verbose --script install_script.qs; dir;
+  start $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT --verbose --script install_script.qs; dir;
   DEST=C:\\EnergyPlusV$ENERGYPLUS_INSTALL_VERSION\\PreProcess\IDFVersionUpdater; echo "Extracting and Copying files to
   ..."; echo $DEST;
   powershell -command Expand-Archive -Path $ATTCHNUM.zip -DestinationPath $DEST -Force; fi
 - curl -SL https://repo.anaconda.com/miniconda/Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.$MINICONDAEXT -o Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.$MINICONDAEXT
 - if [ "$TRAVIS_OS_NAME" == "linux" ]; then bash miniconda.sh -b -p $HOME/miniconda; fi
 - if [ "$TRAVIS_OS_NAME" == "osx" ]; then bash miniconda.sh -b -p $HOME/miniconda; fi
-- if [ "$TRAVIS_OS_NAME" == "windows" ]; then start /wait "" Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.$MINICONDAEXT
+- if [ "$TRAVIS_OS_NAME" == "windows" ]; then start Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.$MINICONDAEXT
 - source $HOME/miniconda/etc/profile.d/conda.sh
 - conda config --set always_yes yes --set changeps1 no
 - conda update -q conda;

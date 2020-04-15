@@ -85,8 +85,8 @@ before_install:
 - if [ "$TRAVIS_OS_NAME" == "linux" ]; then bash miniconda.sh -b -p "$HOME"/miniconda; source
   $HOME/miniconda/etc/profile.d/conda.sh; fi
 - if [ "$TRAVIS_OS_NAME" == "osx" ]; then bash miniconda.sh -b -p "$HOME"/miniconda; source
-  ME/miniconda/etc/profile.d/conda.sh; fi
-- if [ "$TRAVIS_OS_NAME" == "windows" ]; then choco install miniconda3; fi
+  $HOME/miniconda/etc/profile.d/conda.sh; fi
+- if [ "$TRAVIS_OS_NAME" == "windows" ]; then choco install miniconda3 --params="'/AddToPath:1'"; fi
 - conda config --set always_yes yes --set changeps1 no
 - conda update -q conda;
 - conda info -a

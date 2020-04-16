@@ -111,7 +111,7 @@ class UmiBase(object):
         self.sql = sql
         self.Category = Category
         self.Comments = Comments
-        if DataSource is "":
+        if DataSource == "":
             try:
                 self.DataSource = self.idf.building_name(use_idfname=True)
             except:

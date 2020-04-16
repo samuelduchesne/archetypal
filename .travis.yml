@@ -35,6 +35,8 @@ jobs:
         on:
           distributions: sdist bdist_wheel
           repo: samuelduchesne/archetypal
+          branch: master
+          tags: true
         cleanup: false
       - provider: releases
         api_key:
@@ -45,7 +47,7 @@ jobs:
           - dist/*.tar.gz
         on:
           repo: samuelduchesne/archetypal
-          branch: release/v1.2.7
+          all_branches: true
         cleanup: false
 before_install:
 - source install_energyplus.sh

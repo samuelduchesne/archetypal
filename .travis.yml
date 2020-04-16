@@ -40,7 +40,7 @@ jobs:
         cleanup: false
       - provider: releases
         api_key:
-          secure: T0s3DtR5Gqnw7tMIC82Pn/pqWYwF5IJ1sppX2E+VqgJnZ37g59qFDK2g53e4PgXqkoNb5VhO54wYu/v8pms8LOtH9DYq/OsERAw0vr/qlJRIe78qFI+RaWdLS6lXE4K3fN7au+yqSpxmWmeZFq0k9BkiX7tWcNxsykcVCsI/MYziMbJD6mku1KSr9+/dYQO/XqARDOK8+faPE0jJrE6aBBMJa27c6jmoZsvnsgRL4tx73f8hsW2HXh2mmpBvsBcKi0FG9XwSjmLF/vL4pad0rF2XSdsCHwoVHzFfdUIi3Iu6FKsUTy6pxtOA/TMPdJ6xRzP/snURX1UAAIRWy+hg+bt2VsGcsCndWY78DGKHO3xolRIdc6JoOh+qRwcQyJfJVC1MjTyFhyhdgpZzhdqDp4bomatwGEyWtRU6L7MDIbhv3wiui28Jdfyw++ftxVa+JqOJRJ0MNDF9XBa+cze/os4MvHcrCFg7HBasdnqUSVz/exmPVBVsYIQWcgOQGbAFguXgCOf6N02wg1NHW9qWGbk+MMgv8sE3spBMZAnY/9Ll5dfXYHwEipnLYRIAN87fR64fKtkdY6/rxQMAY/qQzvPO9WSPHGOMDanywryctX5Ki+L0H8fXMpuwZhYMb85sJlEiIUo2/LCmD76gCqGj+pt8jigH2y9W76XU6EENEjc=
+          secure: fnWLQlgUCcRD+q6Js/IgRnAQYPqoLrQfGlvqBpwhH/iO88UKmXp1hco4dnHSditFUy23QmLwSNzS4cb1GzoDnKnH022+u5GgL2NDxqm3lB5jEuKvUlMA59mJiSbr84Of2RAlHAwPTj0Ux7esq8tPyjipKJkdiKAX85/lCuEOOBs18WbJaBzbYrYiw6dTGT57xCOB7e+0CDAwdTVBB7388rvbCgGkTji7hC/jkThjkVqnPFXNcH/6ehcqE6vCkJzlT9tf1AypweWjifoyW3e5H7vKWrEt0v+GJfEG81SekaNhXpFcm6mACBfcGUNMDoNwsCpp/de93o3oQl/OYyuZ7tB2FcDzIJ4nytJNEGxs6ZN8tDgcMaKU/H6FEpVskrwQElGPK72SXnhmv9lX4e2Rm2ku4jt7rFukn+cFrkWkKDzP64o2giAn7a1yaWpMvAVPhmaT8eX6am8lqzOIESQDpspFaNp0owYO/mj3LVItKC0fsuCANuyUFZx98AoNuyXY8hXtF4sd/Oq+UcgLAVXU5KljSQ9KZi7XNvTh953OtB2O/jJyC+IbQGQaNJB+TTimvHBFohUTM18uXMP+2bcAGzv4b6uyh3N5u2oRVaeQ115fTmnJibQVkvMsPKm95QiysTNqhA/rNMRo8dz/DW6SdjzlqTE4LWJjZqjbsmKh0hQ=
         file_glob: true
         file:
           - dist/*.whl
@@ -48,7 +48,7 @@ jobs:
         on:
           repo: samuelduchesne/archetypal
           all_branches: true
-        cleanup: false
+        skip_cleanup: true
 before_install:
 - source install_energyplus.sh
 - wget https://raw.githubusercontent.com/trichter/conda4travis/latest/conda4travis.sh -O conda4travis.sh

@@ -46,6 +46,7 @@ class BuildingTemplate(UmiBase):
         Windows=None,
         Lifespan=60,
         PartitionRatio=0.35,
+        DefaultWindowToWallRatio=0.4,
         **kwargs
     ):
         """Initialize a :class:`BuildingTemplate` object with the following
@@ -63,8 +64,11 @@ class BuildingTemplate(UmiBase):
             Lifespan (float): The projected lifespan of the building template in
                 years. Used in various calculations such as embodied energy.
             PartitionRatio (float): The number of lineal meters of partitions
-                (Floor to ceiling) present in average in the building floor
-                plan by m2.
+                (Floor to ceiling) present in average in the building floor plan
+                by m2.
+            DefaultWindowToWallRatio (float): The default Window to Wall Ratio
+                (WWR) for this template (same for all orientations). Number
+                between 0 and 1.
             **kwargs: other optional keywords passed to other constructors.
         """
         super(BuildingTemplate, self).__init__(**kwargs)
@@ -75,6 +79,7 @@ class BuildingTemplate(UmiBase):
         self.Perimeter = Perimeter
         self.Structure = Structure
         self.Windows = Windows
+        self.DefaultWindowToWallRatio = DefaultWindowToWallRatio
 
     def __hash__(self):
         return hash((self.__class__.__name__, self.Name, self.DataSource))

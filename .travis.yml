@@ -37,7 +37,6 @@ jobs:
           repo: samuelduchesne/archetypal
           branch: master
           tags: true
-        cleanup: false
       - provider: releases
         api_key:
           secure: hAbE9izaOts/fDGHD/l+8I6rcB9ax8QEepdL7VNCtU9Ta3geY64P+G3mh3EDK3dKMrtoLbpcgkP5XobUz3MP7ifPBxbXYE+AHF74oMyxGnqAjAl51drMbrgd+veCOd1k/0xdqK/GOxAg6yrPgUsW2hqiEueB/CG9NV+U/cRXo5HBhNPjuA52Ea+9FCEM0Ufd6m+QyQw8HOrJlpNQYWxctPw2hULmmR+wphdEwQxSU+E5Cfj3yEAfOBS6vMwysItSG9T0Is1E4yw8NC9tJDodpVMyxgp4V/4iMqX5txnycaynP1yxPBEVciY4pwAHWsSy51UVL83lUFqc/zOYCV7XD3mNHA7pTs3uRAsI+Ac1J9iqDqLt8GitE89vKq2hExMFPi+F7EXpvrRHFF5asfOb/RJpt5LH0fAVgPLNcWZS1vsXSpQ2N6Ws//2V4hzx8kiYP/d3GQtW7aSU9EzRp/Sl/WIQz0dNeTsTYQiHrgOMrWo8SV9RO2enghlSUA5aep9gqA7zhjXYQJNtqPUdWSi3UCENKD87P4FrerHR+uP2C7tpuWbi/76RFA7XWm9nZPkhQR7eDOGnWw2doHt6DYM3cMUI68udThiuTb8IgNig9JLrOiZzI7n8ndffUJrumznMh9Ud4mn38eFVm+YA+qWjJyMljqKCOBSt7b5xBq9eE3Q=
@@ -48,7 +47,6 @@ jobs:
         on:
           repo: samuelduchesne/archetypal
           all_branches: true
-        skip_cleanup: true
 before_install:
 - source install_energyplus.sh
 - wget https://raw.githubusercontent.com/trichter/conda4travis/latest/conda4travis.sh -O conda4travis.sh

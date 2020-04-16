@@ -70,7 +70,7 @@ fi
 if [ "$TRAVIS_OS_NAME" == "windows" ]; then
   # getting custom install script https://github.com/NREL/EnergyPlus/pull/7615
   curl -SL -C - https://raw.githubusercontent.com/jmarrec/EnergyPlus/40afb275f66201db5305f54df6c070d0b0cb4fc3/cmake/qtifw/install_script.qs -o install_script.qs
-  ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT --verbose --script install_script.qs
+  ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT --verbose --script install_script.qs CopyAndRegisterSystemDLLs=false
   DEST=C:\\EnergyPlusV"$ENERGYPLUS_INSTALL_VERSION"\\PreProcess\\IDFVersionUpdater
   echo "Extracting and Copying files to... $DEST"
   powershell Expand-Archive -Path $ATTCHNUM.zip -DestinationPath "$DEST" -Force

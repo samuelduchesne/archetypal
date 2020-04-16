@@ -68,9 +68,10 @@ if [ "$TRAVIS_OS_NAME" == "osx" ]; then
   sudo rm $ATTCHNUM.zip
 fi
 if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-  DEST=C:\\EnergyPlusV"$ENERGYPLUS_INSTALL_VERSION"
-  echo "Extracting and Copying files to... $DEST"
-  powershell Expand-Archive -Path $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT -DestinationPath "$DEST" -Force
+  # On windows, we are simply extracting the zip file to c:\\
+  echo "Extracting and Copying files to... C:\\"
+  powershell Expand-Archive -Path $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT -DestinationPath C:\\
+  powershell Rename-Item -Path c:\\$ENERGYPLUS_DOWNLOAD_FILENAME -NewName EnergyPlusV"$ENERGYPLUS_INSTALL_VERSION"
   # cleanup
   rm -v $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
   IDD=C:\\EnergyPlusV"$ENERGYPLUS_INSTALL_VERSION"\\Energy+.idd

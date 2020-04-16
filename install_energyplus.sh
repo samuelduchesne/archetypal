@@ -81,10 +81,8 @@ if [ "$TRAVIS_OS_NAME" == "windows" ]; then
   IDD=C:\\EnergyPlusV"$ENERGYPLUS_INSTALL_VERSION"\\Energy+.idd
   if [ -f "$IDD" ]; then
     echo "$IDD" exists
-    sleep 10
   else
-    echo "$IDD" does not exist
-    echo exit 1
-    sleep 10
+    echo "$IDD" does not exist;
+    travis_terminate 1;
   fi
 fi

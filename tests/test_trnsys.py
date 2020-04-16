@@ -61,6 +61,356 @@ from tests.conftest import get_platform
 
 
 @pytest.fixture(
+    scope="class", params=["tests/input_data/trnsys/simple_2_zone_sched.idf",],
+)
+def converttesteasy(request):
+    file = request.param
+    window_file = "W74-lib.dat"
+    template_dir = os.path.join("archetypal", "ressources")
+    window_filepath = os.path.join(template_dir, window_file)
+    template_d18 = "tests/input_data/trnsys/NewFileTemplate.d18"
+    trnsidf_exe = "docker/trnsidf/trnsidf.exe"  # 'docker/trnsidf/trnsidf.exe'
+
+    # prepare args (key=value). Key is a unique id for the runs (here the
+    # file basename is used). Value is a dict of the function arguments
+    kwargs_dict = {
+        "u_value": 2.5,
+        "shgc": 0.6,
+        "t_vis": 0.78,
+        "tolerance": 0.05,
+        "ordered": True,
+    }
+    idf = load_idf(file)
+
+    weather_file = os.path.join(
+        "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    )
+
+    yield idf, file, weather_file, window_filepath, trnsidf_exe, template_d18, kwargs_dict
+
+    del idf
+
+
+class TestConvertEasy:
+
+    """Tests convert_idf_to_trnbuild() 1 file"""
+
+    def test_get_save_write_schedules_as_sched(self, config, converttesteasy):
+        output_folder = None
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            _,
+        ) = converttesteasy
+        lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
+        try:
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+            )
+        except:
+            output_folder = os.path.relpath(settings.data_folder)
+            print("Could not assert all paths exist - OK for this test")
+        schedule_names, schedules = _get_schedules(idf)
+        _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
+        schedule_as_input = False
+        schedules_not_written = _write_schedules(
+            lines, schedule_names, schedules, schedule_as_input, idf_file
+        )
+
+    def test_write_version_and_building(self, config, converttesteasy):
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            _,
+        ) = converttesteasy
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf)
+        lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
+        _write_version(lines, versions)
+        _write_building(buildings, lines)
+
+    def test_write_material(self, config, converttesteasy):
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            _,
+        ) = converttesteasy
+
+        # Read IDF_T3D template and write lines in variable
+        lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
+
+        # Get objects from IDF file
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf)
+
+        # Write LAYER from IDF to lines (T3D)
+        _write_materials(lines, materialAirGap, materialNoMass, materials)
+
+    def test_relative_to_absolute(self, config, converttesteasy):
+        output_folder = None
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            _,
+        ) = converttesteasy
+        try:
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+            )
+        except:
+            output_folder = os.path.relpath(settings.data_folder)
+            print("Could not assert all paths exist - OK for this test")
+
+        # Check if cache exists
+        log_clear_names = False
+        idf = load_idf(idf_file)
+
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        idf_2 = deepcopy(idf)
+        clear_name_idf_objects(idf_2, log_clear_names)
+
+        # Get objects from IDF file
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf_2)
+
+        _relative_to_absolute(buildingSurfs[0], 1, 2, 3)
+
+    def test_save_t3d(self, config, converttesteasy):
+        output_folder = None
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            _,
+        ) = converttesteasy
+        try:
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+            )
+        except:
+            output_folder = os.path.relpath(settings.data_folder)
+            print("Could not assert all paths exist - OK for this test")
+
+        # Read IDF_T3D template and write lines in variable
+        lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
+
+        # Save T3D file at output_folder
+        output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
+
+    def test_write_to_b18(self, config, converttesteasy):
+        output_folder = None
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            kwargs,
+        ) = converttesteasy
+        try:
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+            )
+        except:
+            output_folder = os.path.relpath(settings.data_folder)
+            print("Could not assert all paths exist - OK for this test")
+
+        # Run EnergyPlus Simulation
+        res = run_eplus(
+            idf_file,
+            weather_file,
+            output_directory=None,
+            ep_version=None,
+            output_report="htm",
+            prep_outputs=True,
+            design_day=True,
+        )
+
+        # Check if cache exists
+        log_clear_names = False
+        idf = load_idf(idf_file)
+
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        idf_2 = deepcopy(idf)
+        clear_name_idf_objects(idf_2, log_clear_names)
+
+        # Get old:new names equivalence
+        old_new_names = pd.read_csv(
+            os.path.join(
+                settings.data_folder,
+                Path(idf_file).basename().stripext() + "_old_new_names_equivalence.csv",
+            )
+        ).to_dict()
+
+        # Get objects from IDF file
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf_2)
+
+        b18_path = "tests/input_data/trnsys/T3D_simple_2_zone.b18"
+
+        schedules_not_written = []
+
+        heat_name = {}
+        for i in range(0, len(res["Zone Sensible Heating"])):
+            key = res["Zone Sensible Heating"].iloc[i, 0]
+            name = "HEAT_z" + str(res["Zone Sensible Heating"].iloc[i].name)
+            heat_name[key] = name
+
+        cool_name = {}
+        for i in range(0, len(res["Zone Sensible Cooling"])):
+            key = res["Zone Sensible Cooling"].iloc[i, 0]
+            name = "HEAT_z" + str(res["Zone Sensible Cooling"].iloc[i].name)
+            cool_name[key] = name
+
+        with open(b18_path) as b18_file:
+            b18_lines = b18_file.readlines()
+
+        zones = zones[0:2]
+        peoples = peoples[0:2]
+        equipments = equipments[0:2]
+        lights = lights[0:2]
+
+        infilt_to_b18(b18_lines, zones, res)
+
+        schedule_as_input = True
+        gains_to_b18(
+            b18_lines,
+            zones,
+            zonelists,
+            peoples,
+            lights,
+            equipments,
+            schedules_not_written,
+            res,
+            old_new_names,
+            schedule_as_input,
+        )
+
+        conditioning_to_b18(b18_lines, heat_name, cool_name, zones, old_new_names)
+
+    def test_load_idf_file_and_clean_names(self, config, converttesteasy):
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            _,
+        ) = converttesteasy
+        log_clear_names = False
+        idf_2 = load_idf_file_and_clean_names(idf_file, log_clear_names)
+
+
+@pytest.fixture(
     scope="class",
     params=[
         "RefBldgWarehouseNew2004_Chicago.idf",
@@ -71,6 +421,7 @@ from tests.conftest import get_platform
 )
 def converttest(request):
     file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
+    # file = request.param
     window_file = "W74-lib.dat"
     template_dir = os.path.join("archetypal", "ressources")
     window_filepath = os.path.join(template_dir, window_file)
@@ -99,7 +450,7 @@ def converttest(request):
 
 class TestConvert:
 
-    """Tests convert_idf_to_trnbuild()"""
+    """Tests convert_idf_to_trnbuild() with several files"""
 
     def test_get_save_write_schedules_as_input(self, config, converttest):
         output_folder = None
@@ -125,54 +476,6 @@ class TestConvert:
         schedules_not_written = _write_schedules(
             lines, schedule_names, schedules, schedule_as_input, idf_file
         )
-
-    def test_get_save_write_schedules_as_sched(self, config, converttest):
-        output_folder = None
-        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
-        lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
-        try:
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
-            )
-        except:
-            output_folder = os.path.relpath(settings.data_folder)
-            print("Could not assert all paths exist - OK for this test")
-        schedule_names, schedules = _get_schedules(idf)
-        _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
-        schedule_as_input = False
-        schedules_not_written = _write_schedules(
-            lines, schedule_names, schedules, schedule_as_input, idf_file
-        )
-
-    def test_write_version_and_building(self, config, converttest):
-        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
-        (
-            buildingSurfs,
-            buildings,
-            constructions,
-            equipments,
-            fenestrationSurfs,
-            globGeomRules,
-            lights,
-            locations,
-            materialAirGap,
-            materialNoMass,
-            materials,
-            peoples,
-            versions,
-            zones,
-            zonelists,
-        ) = get_idf_objects(idf)
-        lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
-        _write_version(lines, versions)
-        _write_building(buildings, lines)
 
     def test_write_idf_objects(self, config, converttest):
         (
@@ -309,34 +612,6 @@ class TestConvert:
         # Write window pool in lines
         _write_winPool(lines, window)
 
-    def test_write_material(self, config, converttest):
-        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
-
-        # Read IDF_T3D template and write lines in variable
-        lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
-
-        # Get objects from IDF file
-        (
-            buildingSurfs,
-            buildings,
-            constructions,
-            equipments,
-            fenestrationSurfs,
-            globGeomRules,
-            lights,
-            locations,
-            materialAirGap,
-            materialNoMass,
-            materials,
-            peoples,
-            versions,
-            zones,
-            zonelists,
-        ) = get_idf_objects(idf)
-
-        # Write LAYER from IDF to lines (T3D)
-        _write_materials(lines, materialAirGap, materialNoMass, materials)
-
     def test_write_gains_conditioning(self, config, converttest):
         idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
 
@@ -444,196 +719,6 @@ class TestConvert:
         heat_dict, cool_dict = _write_conditioning(
             htm, lines, schedules, old_new_names, schedule_as_input
         )
-
-    def test_relative_to_absolute(self, config, converttest):
-        output_folder = None
-        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
-        try:
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
-            )
-        except:
-            output_folder = os.path.relpath(settings.data_folder)
-            print("Could not assert all paths exist - OK for this test")
-
-        # Check if cache exists
-        log_clear_names = False
-        idf = load_idf(idf_file)
-
-        # Clean names of idf objects (e.g. 'MATERIAL')
-        idf_2 = deepcopy(idf)
-        clear_name_idf_objects(idf_2, log_clear_names)
-
-        # Get objects from IDF file
-        (
-            buildingSurfs,
-            buildings,
-            constructions,
-            equipments,
-            fenestrationSurfs,
-            globGeomRules,
-            lights,
-            locations,
-            materialAirGap,
-            materialNoMass,
-            materials,
-            peoples,
-            versions,
-            zones,
-            zonelists,
-        ) = get_idf_objects(idf_2)
-
-        _relative_to_absolute(buildingSurfs[0], 1, 2, 3)
-
-    def test_save_t3d(self, config, converttest):
-        output_folder = None
-        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
-        try:
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
-            )
-        except:
-            output_folder = os.path.relpath(settings.data_folder)
-            print("Could not assert all paths exist - OK for this test")
-
-        # Read IDF_T3D template and write lines in variable
-        lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
-
-        # Save T3D file at output_folder
-        output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
-
-    def test_write_to_b18(self, config, converttest):
-        output_folder = None
-        (
-            idf,
-            idf_file,
-            weather_file,
-            window_lib,
-            trnsidf_exe,
-            template,
-            kwargs,
-        ) = converttest
-        try:
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
-            )
-        except:
-            output_folder = os.path.relpath(settings.data_folder)
-            print("Could not assert all paths exist - OK for this test")
-
-        # Run EnergyPlus Simulation
-        res = run_eplus(
-            idf_file,
-            weather_file,
-            output_directory=None,
-            ep_version=None,
-            output_report="htm",
-            prep_outputs=True,
-            design_day=True,
-        )
-
-        # Check if cache exists
-        log_clear_names = False
-        idf = load_idf(idf_file)
-
-        # Clean names of idf objects (e.g. 'MATERIAL')
-        idf_2 = deepcopy(idf)
-        clear_name_idf_objects(idf_2, log_clear_names)
-
-        # Get old:new names equivalence
-        old_new_names = pd.read_csv(
-            os.path.join(
-                settings.data_folder,
-                Path(idf_file).basename().stripext() + "_old_new_names_equivalence.csv",
-            )
-        ).to_dict()
-
-        # Get objects from IDF file
-        (
-            buildingSurfs,
-            buildings,
-            constructions,
-            equipments,
-            fenestrationSurfs,
-            globGeomRules,
-            lights,
-            locations,
-            materialAirGap,
-            materialNoMass,
-            materials,
-            peoples,
-            versions,
-            zones,
-            zonelists,
-        ) = get_idf_objects(idf_2)
-
-        b18_path = "tests/input_data/trnsys/T3D_simple_2_zone.b18"
-
-        schedules_not_written = []
-
-        heat_name = {}
-        for i in range(0, len(res["Zone Sensible Heating"])):
-            key = res["Zone Sensible Heating"].iloc[i, 0]
-            name = "HEAT_z" + str(res["Zone Sensible Heating"].iloc[i].name)
-            heat_name[key] = name
-
-        cool_name = {}
-        for i in range(0, len(res["Zone Sensible Cooling"])):
-            key = res["Zone Sensible Cooling"].iloc[i, 0]
-            name = "HEAT_z" + str(res["Zone Sensible Cooling"].iloc[i].name)
-            cool_name[key] = name
-
-        with open(b18_path) as b18_file:
-            b18_lines = b18_file.readlines()
-
-        zones = zones[0:2]
-        peoples = peoples[0:2]
-        equipments = equipments[0:2]
-        lights = lights[0:2]
-
-        infilt_to_b18(b18_lines, zones, res)
-
-        schedule_as_input = True
-        gains_to_b18(
-            b18_lines,
-            zones,
-            zonelists,
-            peoples,
-            lights,
-            equipments,
-            schedules_not_written,
-            res,
-            old_new_names,
-            schedule_as_input,
-        )
-
-        conditioning_to_b18(b18_lines, heat_name, cool_name, zones, old_new_names)
-
-    def test_load_idf_file_and_clean_names(self, config, converttest):
-        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
-        log_clear_names = False
-        idf_2 = load_idf_file_and_clean_names(idf_file, log_clear_names)
 
 
 @pytest.fixture(

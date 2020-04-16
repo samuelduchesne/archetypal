@@ -58,7 +58,7 @@ fi
 if [ "$TRAVIS_OS_NAME" == "osx" ]; then
   curl -SLO https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs
   sudo hdiutil attach "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
-  sudo /Volumes/"$ENERGYPLUS_DOWNLOAD_FILENAME"/"$ENERGYPLUS_DOWNLOAD_FILENAME".app/Contents/MacOS/"$ENERGYPLUS_DOWNLOAD_FILENAME"--verbose --script install_script.qs
+  sudo /Volumes/"$ENERGYPLUS_DOWNLOAD_FILENAME"/"$ENERGYPLUS_DOWNLOAD_FILENAME".app/Contents/MacOS/"$ENERGYPLUS_DOWNLOAD_FILENAME" --verbose --script install_script.qs
   sudo tar zxvf $ATTCHNUM.zip -C /Applications/EnergyPlus-"$ENERGYPLUS_INSTALL_VERSION"/PreProcess
   sudo chmod -R a+rwx /Applications/EnergyPlus-"$ENERGYPLUS_INSTALL_VERSION"/PreProcess/IDFVersionUpdater
   sudo chmod -R a+rwx /Applications/EnergyPlus-"$ENERGYPLUS_INSTALL_VERSION"/ExampleFiles

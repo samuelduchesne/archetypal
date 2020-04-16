@@ -10,21 +10,21 @@ addons:
     - libgfortran3
 jobs:
   include:
-#    - name: Python 3.8 on Xenial Linux
-#      python: 3.8           # this works for Linux but is ignored on macOS or Windows
-#      script: echo "Testing build..."  # py.test --cov=archetypal --verbose tests/
-#      after_success:
-#        - coverage report -m
-#        - coveralls
-#    - name: Python 3.8 on macOS
-#      os: osx
-#      osx_image: xcode11.2
-#      language: objective-c
-#      script: echo "Testing build..."  # py.test --cov=archetypal --verbose tests/
-#    - name: "Python 3.8 on Windows"
-#      os: windows           # Windows 10.0.17134 N/A Build 17134
-#      language: shell       # 'language: python' is an error on Travis CI Windows
-#      script: echo "Testing build..."  # py.test --cov=archetypal --verbose tests/
+    - name: Python 3.8 on Xenial Linux
+      python: 3.8           # this works for Linux but is ignored on macOS or Windows
+      script: py.test --cov=archetypal --verbose tests/
+      after_success:
+        - coverage report -m
+        - coveralls
+    - name: Python 3.8 on macOS
+      os: osx
+      osx_image: xcode11.2
+      language: objective-c
+      script: py.test --cov=archetypal --verbose tests/
+    - name: "Python 3.8 on Windows"
+      os: windows           # Windows 10.0.17134 N/A Build 17134
+      language: shell       # 'language: python' is an error on Travis CI Windows
+      script: py.test --cov=archetypal --verbose tests/
     - stage: deploy
       script: echo "Deploying to PyPi and GitHub releases ..."
       deploy:

@@ -72,8 +72,13 @@ if [ "$TRAVIS_OS_NAME" == "windows" ]; then
   echo "Extracting and Copying files to... C:\\"
   powershell Expand-Archive -Path $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT -DestinationPath C:\\
   powershell Rename-Item -Path c:\\$ENERGYPLUS_DOWNLOAD_FILENAME -NewName EnergyPlusV"$ENERGYPLUS_INSTALL_VERSION"
+  # extract extra downloads to destination
+  DEST=C:\\EnergyPlusV"$ENERGYPLUS_INSTALL_VERSION"\\PreProcess\\IDFVersionUpdater
+  echo "Extracting and Copying files to... $DEST"
+  powershell Expand-Archive -Path $ATTCHNUM.zip -DestinationPath "$DEST" -Force
   # cleanup
   rm -v $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
+  rm -v $ATTCHNUM.zip
   IDD=C:\\EnergyPlusV"$ENERGYPLUS_INSTALL_VERSION"\\Energy+.idd
   if [ -f "$IDD" ]; then
     echo "$IDD" exists

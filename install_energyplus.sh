@@ -76,4 +76,13 @@ if [ "$TRAVIS_OS_NAME" == "windows" ]; then
   rm -v install_script.qs
   rm -v $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
   rm -v $ATTCHNUM.zip
+  IDD=C:\\EnergyPlusV"$ENERGYPLUS_INSTALL_VERSION"\\Energy+.idd
+  if [ -f "$IDD" ]; then
+    echo "$IDD" exists
+    sleep 10
+  else
+    echo "$IDD" does not exist
+    echo exit 1
+    sleep 10
+  fi
 fi

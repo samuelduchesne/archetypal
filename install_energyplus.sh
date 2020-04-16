@@ -51,7 +51,6 @@ if [ "$TRAVIS_OS_NAME" == "linux" ]; then
   sudo chmod -R a+rwx /usr/local/EnergyPlus-"$ENERGYPLUS_INSTALL_VERSION"/PreProcess/IDFVersionUpdater
   sudo chmod -R a+rwx /usr/local/EnergyPlus-"$ENERGYPLUS_INSTALL_VERSION"/ExampleFiles
   # cleanup
-  sudo rm install_script.qs
   sudo rm "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
   sudo rm $ATTCHNUM.zip
 fi

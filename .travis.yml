@@ -48,40 +48,7 @@ jobs:
           branch: release/v1.2.7
         cleanup: false
 before_install:
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then EXT=dmg; PLATFORM=Darwin; fi
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then EXT=sh; PLATFORM=Linux; fi
-- if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then EXT=exe; PLATFORM=Windows; fi
-- ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
-- ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-$ENERGYPLUS_VERSION-$ENERGYPLUS_SHA-$PLATFORM-x86_64
-- ENERGYPLUS_DOWNLOAD_URL=$ENERGYPLUS_DOWNLOAD_BASE_URL/$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
-- echo $ENERGYPLUS_DOWNLOAD_URL
-- curl -SL $ENERGYPLUS_DOWNLOAD_URL -o $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ATTCHBASE=97; ATTCHNUM=8230; fi
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ATTCHBASE=98; ATTCHNUM=8232; fi
-- if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then ATTCHBASE=86; ATTCHNUM=8231; fi
-- EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/$ATTCHBASE/$ATTCHNUM
-- curl -SL $EXTRAS_DOWNLOAD_URL -o $ATTCHNUM.zip
-- if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-  echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; sudo tar zxvf $ATTCHNUM.zip
-  -C /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
-  sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
-  sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles; sudo rm
-  $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-  sudo rm $ATTCHNUM.zip;
-  fi
-- if [ "$TRAVIS_OS_NAME" == "osx" ]; then curl -SLO https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs;
-  sudo hdiutil attach $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; sudo /Volumes/$ENERGYPLUS_DOWNLOAD_FILENAME/$ENERGYPLUS_DOWNLOAD_FILENAME.app/Contents/MacOS/$ENERGYPLUS_DOWNLOAD_FILENAME
-  --verbose --script install_script.qs; sudo tar zxvf $ATTCHNUM.zip -C /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess;
-  sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
-  sudo chmod -R a+rwx /Applications/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles; sudo rm
-  $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-  sudo rm $ATTCHNUM.zip;
-  fi
-- if [ "$TRAVIS_OS_NAME" == "windows" ]; then curl -0 https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs -o install_script.qs;
-  start $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT --verbose --script install_script.qs; dir;
-  DEST=C:\\EnergyPlusV$ENERGYPLUS_INSTALL_VERSION\\PreProcess\IDFVersionUpdater; echo "Extracting and Copying files to
-  ..."; echo $DEST;
-  powershell -command Expand-Archive -Path $ATTCHNUM.zip -DestinationPath $DEST -Force; fi
+- source install_energyplus.sh
 - wget https://raw.githubusercontent.com/trichter/conda4travis/latest/conda4travis.sh -O conda4travis.sh
 - source conda4travis.sh
 - conda config --set always_yes yes --set changeps1 no

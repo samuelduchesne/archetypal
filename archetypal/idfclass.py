@@ -9,22 +9,30 @@ import datetime
 import glob
 import hashlib
 import inspect
+import json
 import logging as lg
-import multiprocessing
 import os
+import platform
 import subprocess
 import time
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from itertools import compress
 from math import isclose
 from sqlite3 import OperationalError
 from subprocess import CalledProcessError
-from tempfile import tempdir
+from tempfile import TemporaryDirectory
 
 import eppy
 import eppy.modeleditor
 import geomeppy
 import pandas as pd
+from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.bunch_subclass import EpBunch
+from eppy.easyopen import getiddfile
+from path import Path, tempdir
+
+import archetypal
+import archetypal.settings
 from archetypal import (
     log,
     settings,
@@ -33,11 +41,10 @@ from archetypal import (
     ReportData,
     EnergySeries,
     close_logger,
+    EnergyPlusVersionError,
+    get_eplus_dirs,
 )
 from archetypal.utils import _unpack_tuple
-from eppy.EPlusInterfaceFunctions import parse_idd
-from eppy.easyopen import getiddfile
-from path import Path, tempdir
 
 
 class IDF(geomeppy.IDF):
@@ -55,6 +62,7 @@ class IDF(geomeppy.IDF):
         self._sql_file = None
         self.schedules_dict = self.get_all_schedules()
         self._sql = None
+        self._htm = None
         self.eplus_run_options = EnergyPlusOptions(
             eplus_file=self.idfname,
             weather_file=getattr(self, "epw", None),
@@ -82,12 +90,23 @@ class IDF(geomeppy.IDF):
     @property
     def sql(self):
         if self._sql is None:
+            log("No sql object for {}. Running EnergyPlus...".format(self.name))
             self._sql = self.run_eplus(
-                annual=True, prep_outputs=True, output_report="sql"
+                annual=True, prep_outputs=True, output_report="sql", verbose="q"
             )
             return self._sql
         else:
             return self._sql
+
+    @property
+    def htm(self):
+        if self._htm is None:
+            self._htm = self.run_eplus(
+                annual=True, prep_outputs=True, output_report="htm"
+            )
+            return self._htm
+        else:
+            return self._htm
 
     @property
     def sql_file(self):
@@ -107,6 +126,7 @@ class IDF(geomeppy.IDF):
         """
         area = 0
         zones = self.idfobjects["ZONE"]
+        zone: EpBunch
         for zone in zones:
             for surface in zone.zonesurfaces:
                 if hasattr(surface, "tilt"):
@@ -126,8 +146,13 @@ class IDF(geomeppy.IDF):
         """
         partition_lineal = 0
         zones = self.idfobjects["ZONE"]
+        zone: EpBunch
         for zone in zones:
-            for surface in zone.zonesurfaces:
+            for surface in [
+                surf
+                for surf in zone.zonesurfaces
+                if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
+            ]:
                 if hasattr(surface, "tilt"):
                     if (
                         surface.tilt == 90.0
@@ -172,23 +197,25 @@ class IDF(geomeppy.IDF):
         total_window_area = defaultdict(int)
 
         zones = self.idfobjects["ZONE"]
+        zone: EpBunch
         for zone in zones:
             multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
-            for surface in zone.zonesurfaces:
-                if surface.key.lower() != "internalmass":
-                    if isclose(surface.tilt, 90, abs_tol=10):
-                        if surface.Outside_Boundary_Condition == "Outdoors":
-                            surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
-                            total_wall_area[surf_azim] += surface.area * multiplier
-                    for subsurface in surface.subsurfaces:
-                        if isclose(subsurface.tilt, 90, abs_tol=10):
-                            if subsurface.Surface_Type.lower() == "window":
-                                surf_azim = roundto(
-                                    subsurface.azimuth, to=azimuth_threshold
-                                )
-                                total_window_area[surf_azim] += (
-                                    subsurface.area * multiplier
-                                )
+            for surface in [
+                surf
+                for surf in zone.zonesurfaces
+                if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
+            ]:
+                if isclose(surface.tilt, 90, abs_tol=10):
+                    if surface.Outside_Boundary_Condition == "Outdoors":
+                        surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
+                        total_wall_area[surf_azim] += surface.area * multiplier
+                for subsurface in surface.subsurfaces:
+                    if isclose(subsurface.tilt, 90, abs_tol=10):
+                        if subsurface.Surface_Type.lower() == "window":
+                            surf_azim = roundto(
+                                subsurface.azimuth, to=azimuth_threshold
+                            )
+                            total_window_area[surf_azim] += subsurface.area * multiplier
         # Fix azimuth = 360 which is the same as azimuth 0
         total_wall_area[0] += total_wall_area.pop(360, 0)
         total_window_area[0] += total_window_area.pop(360, 0)
@@ -318,10 +345,11 @@ class IDF(geomeppy.IDF):
     ):
         """
         Args:
-            units (str): Units to convert the energy profile to. Will detect the
-                units of the EnergyPlus results.
             energy_out_variable_name (list-like): a list of EnergyPlus
             name (str): Name given to the EnergySeries.
+            units (str): Units to convert the energy profile to. Will detect the
+                units of the EnergyPlus results.
+            prep_outputs:
             EnergySeries_kwds (dict, optional): keywords passed to
                 :func:`EnergySeries.from_sqlite`
 
@@ -349,10 +377,10 @@ class IDF(geomeppy.IDF):
     ):
         """
         Args:
-            prep_outputs (list):
             energy_out_variable_name:
             units:
             name:
+            prep_outputs (list):
             EnergySeries_kwds:
         """
         if prep_outputs:
@@ -369,7 +397,7 @@ class IDF(geomeppy.IDF):
         return profile
 
     def run_eplus(self, **kwargs):
-        """wrapper around the :func:`archetypal.run_eplus()` method.
+        """wrapper around the :meth:`archetypal.idfclass.run_eplus` method.
 
         If weather file is defined in the IDF object, then this field is
         optional. By default, will load the sql in self.sql.
@@ -544,7 +572,7 @@ class IDF(geomeppy.IDF):
                     for fieldvalue in object.fieldvalues:
                         try:
                             if (
-                                fieldvalue in all_schedules
+                                fieldvalue.upper() in all_schedules.keys()
                                 and fieldvalue not in used_schedules
                             ):
                                 used_schedules.append(fieldvalue)
@@ -703,9 +731,20 @@ class EnergyPlusOptions:
         self.weather_file = weather_file
         self.eplus_file = eplus_file
 
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return json.dumps(self.__dict__, indent=2)
+
 
 def load_idf(
-    eplus_file, idd_filename=None, output_folder=None, include=None, weather_file=None
+    eplus_file,
+    idd_filename=None,
+    output_folder=None,
+    include=None,
+    weather_file=None,
+    ep_version=None,
 ):
     """Returns a parsed IDF object from file. If *archetypal.settings.use_cache*
     is true, then the idf object is loaded from cache.
@@ -724,21 +763,17 @@ def load_idf(
             form (see pathlib.Path.glob).
         weather_file: Either the absolute or relative path to the weather epw
             file.
+        ep_version (str, optional): EnergyPlus version number to use, eg.:
+            "9-2-0". Defaults to `settings.ep_version` .
 
     Returns:
         IDF: The IDF object.
     """
+    eplus_file = Path(eplus_file)
+    start_time = time.time()
 
     idf = load_idf_object_from_cache(eplus_file)
-
-    start_time = time.time()
     if idf:
-        # if found in cache, return
-        log(
-            "Eppy load from cache completed in {:,.2f} seconds\n".format(
-                time.time() - start_time
-            )
-        )
         return idf
     else:
         # Else, run eppy to load the idf objects
@@ -748,12 +783,19 @@ def load_idf(
             output_folder=output_folder,
             include=include,
             epw=weather_file,
+            ep_version=ep_version if ep_version is not None else settings.ep_version,
         )
-        log("Eppy load completed in {:,.2f} seconds\n".format(time.time() - start_time))
+        log(
+            'Loaded "{}" in {:,.2f} seconds\n'.format(
+                eplus_file.basename(), time.time() - start_time
+            )
+        )
         return idf
 
 
-def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
+def _eppy_load(
+    file, idd_filename, output_folder=None, include=None, epw=None, ep_version=None
+):
     """Uses package eppy to parse an idf file. Will also try to upgrade the idf
     file using the EnergyPlus Transition executables if the version of
     EnergyPlus is not installed on the machine.
@@ -766,7 +808,8 @@ def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
         include (str, optional): List input files that need to be copied to the
             simulation directory.if a string is provided, it should be in a glob
             form (see pathlib.Path.glob).
-        epw:
+        epw (str, optional): path of the epw weather file.
+        ep_version (str): EnergyPlus version number to use.
 
     Returns:
         eppy.modeleditor.IDF: IDF object
@@ -782,33 +825,38 @@ def _eppy_load(file, idd_filename, output_folder=None, include=None, epw=None):
             output_folder = Path(output_folder)
 
         output_folder.makedirs_p()
-        try:
+        if file.basename() not in [
+            file.basename() for file in output_folder.glob("*.idf")
+        ]:
+            # The file does not exist; copy it to the output_folder & override path name
             file = Path(file.copy(output_folder))
-        except:
+        else:
             # The file already exists at the location. Use that file
             file = output_folder / file.basename()
-        finally:
-            # Determine version of idf file by reading the text file
-            if idd_filename is None:
-                idd_filename = getiddfile(get_idf_version(file))
 
-            # Initiate an eppy.modeleditor.IDF object
-            IDF.setiddname(idd_filename, testing=True)
-            # load the idf object
-            idf_object = IDF(file, epw=epw)
-            # Check version of IDF file against version of IDD file
-            idf_version = idf_object.idfobjects["VERSION"][0].Version_Identifier
-            idd_version = "{}.{}".format(
-                idf_object.idd_version[0], idf_object.idd_version[1]
-            )
-    except FileNotFoundError as exception:
+        # Determine version of idf file by reading the text file
+        if idd_filename is None:
+            idd_filename = getiddfile(get_idf_version(file))
+
+        # Initiate an eppy.modeleditor.IDF object
+        IDF.setiddname(idd_filename, testing=True)
+        # load the idf object
+        idf_object = IDF(file, epw=epw)
+        # Check version of IDF file against version of IDD file
+        idf_version = idf_object.idfobjects["VERSION"][0].Version_Identifier
+        idd_version = "{}.{}".format(
+            idf_object.idd_version[0], idf_object.idd_version[1]
+        )
+    except FileNotFoundError:
         # Loading the idf object will raise a FileNotFoundError if the
-        # version of EnergyPlus is not included
+        # version of EnergyPlus is not installed
         log("Transitioning idf file {}".format(file))
         # if they don't fit, upgrade file
-        file = idf_version_updater(file, out_dir=output_folder)
+        file = idf_version_updater(file, out_dir=output_folder, to_version=ep_version)
         idd_filename = getiddfile(get_idf_version(file))
-        IDF.iddname = idd_filename
+        # Initiate an eppy.modeleditor.IDF object
+        IDF.setiddname(idd_filename, testing=True)
+        # load the idf object
         idf_object = IDF(file, epw=epw)
     else:
         # the versions fit, great!
@@ -1025,24 +1073,45 @@ def load_idf_object_from_cache(idf_file, how=None):
 
 class OutputPrep:
     """Handles preparation of EnergyPlus outputs. Different instance methods
-    allow to chain methods together and to add predefined bundles of outputs in one
-    go.
+    allow to chain methods together and to add predefined bundles of outputs in
+    one go.
 
     For example:
-        >>> OutputPrep(idf=idf_obj).add_output_control().add_umi_ouputs().add_profile_gs_elect_ouputs()
+        >>> OutputPrep(idf=idf_obj).add_output_control().add_umi_ouputs().add_profile_gas_elect_ouputs()
     """
 
     def __init__(self, idf, save=True):
-        """
+        """Initialize an OutputPrep object.
+
         Args:
-            idf:
-            save:
+            idf (IDF): the IDF object for wich this OutputPrep object is created.
+            save (bool): weather to save or not changes after adding outputs to the
+                IDF file.
         """
         self.idf = idf
         self.save = save
         self.outputs = []
 
     def add_custom(self, outputs):
+        """Add custom-defined outputs as a list of objects.
+
+        Examples:
+            >>> outputs = [
+            >>>         {
+            >>>             "ep_object": "OUTPUT:METER",
+            >>>             "kwargs": dict(
+            >>>                 Key_Name="Electricity:Facility",
+            >>>                 Reporting_Frequency="hourly",
+            >>>                 save=True,
+            >>>             ),
+            >>>         },
+            >>>     ]
+            >>> OutputPrep().add_custom(outputs)
+
+        Args:
+            outputs (list): Pass a list of ep-objects defined as dictionary. See
+                examples.
+        """
         if isinstance(outputs, list):
             prepare_outputs(self.idf, outputs=outputs, save=self.save)
             self.outputs.extend(outputs)
@@ -1050,14 +1119,43 @@ class OutputPrep:
 
     def add_basics(self):
         """Adds the summary report and the sql file to the idf outputs"""
-        return self.add_summary_report().add_output_control().add_sql()
+        return self.add_summary_report().add_output_control().add_sql().add_schedules()
 
-    def add_summary_report(self):
-        """SummaryReports"""
+    def add_schedules(self):
+        """Adds Schedules object"""
+        outputs = [
+            {
+                "ep_object": "Output:Schedules".upper(),
+                "kwargs": dict(Key_Field="Hourly", save=self.save),
+            }
+        ]
+        prepare_outputs(self.idf, outputs=outputs, save=self.save)
+        self.outputs.extend(outputs)
+        return self
+
+    def add_summary_report(self, summary="AllSummary"):
+        """Adds the Output:Table:SummaryReports object.
+
+        Args:
+            summary (str): Choices are AllSummary, AllMonthly,
+                AllSummaryAndMonthly, AllSummaryAndSizingPeriod,
+                AllSummaryMonthlyAndSizingPeriod,
+                AnnualBuildingUtilityPerformanceSummary,
+                InputVerificationandResultsSummary,
+                SourceEnergyEndUseComponentsSummary, ClimaticDataSummary,
+                EnvelopeSummary, SurfaceShadowingSummary, ShadingSummary,
+                LightingSummary, EquipmentSummary, HVACSizingSummary,
+                ComponentSizingSummary, CoilSizingDetails, OutdoorAirSummary,
+                SystemSummary, AdaptiveComfortSummary, SensibleHeatGainSummary,
+                Standard62.1Summary, EnergyMeters, InitializationSummary,
+                LEEDSummary, TariffReport, EconomicResultSummary,
+                ComponentCostEconomicsSummary, LifeCycleCostReport,
+                HeatEmissionsSummary,
+        """
         outputs = [
             {
                 "ep_object": "Output:Table:SummaryReports".upper(),
-                "kwargs": dict(Report_1_Name="AllSummary", save=self.save),
+                "kwargs": dict(Report_1_Name=summary, save=self.save),
             }
         ]
         prepare_outputs(self.idf, outputs=outputs, save=self.save)
@@ -1065,6 +1163,19 @@ class OutputPrep:
         return self
 
     def add_sql(self, sql_output_style="SimpleAndTabular"):
+        """Adds the `Output:SQLite` object. This object will produce an sql file
+        that contains the simulation results in a database format. See
+        `eplusout.sql
+        <https://bigladdersoftware.com/epx/docs/9-2/output-details-and
+        -examples/eplusout-sql.html#eplusout.sql>`_ for more details.
+
+        Args:
+            sql_output_style (str): The *Simple* option will include all of the
+                predefined database tables as well as time series related data.
+                Using the *SimpleAndTabular* choice adds database tables related
+                to the tabular reports that are already output by EnergyPlus in
+                other formats.
+        """
         outputs = [
             {
                 "ep_object": "Output:SQLite".upper(),
@@ -1076,9 +1187,11 @@ class OutputPrep:
         return self
 
     def add_output_control(self, output_control_table_style="CommaAndHTML"):
-        """
+        """Sets the `OutputControl:Table:Style` object.
+
         Args:
-            output_control_table_style:
+            output_control_table_style (str): Choices are: Comma, Tab, Fixed,
+                HTML, XML, CommaAndHTML, TabAndHTML, XMLAndHTML, All
         """
         outputs = [
             {
@@ -1093,9 +1206,8 @@ class OutputPrep:
         return self
 
     def add_template_outputs(self):
-        """Adds the necessary outputs in order to create an UMI template.
-        """
-        # list the ouputs here
+        """Adds the necessary outputs in order to create an UMI template."""
+        # list the outputs here
         outputs = [
             {
                 "ep_object": "Output:Variable".upper(),
@@ -1277,7 +1389,7 @@ class OutputPrep:
         """Adds the necessary outputs in order to return the same energy profile
         as in UMI.
         """
-        # list the ouputs here
+        # list the outputs here
         outputs = [
             {
                 "ep_object": "Output:Variable".upper(),
@@ -1326,9 +1438,10 @@ class OutputPrep:
         return self
 
     def add_profile_gas_elect_ouputs(self):
-        """Adds the necessary outputs in order to return the energy profile.
+        """Adds the following meters: Electricity:Facility, Gas:Facility,
+        WaterSystems:Electricity, Heating:Electricity, Cooling:Electricity
         """
-        # list the ouputs here
+        # list the outputs here
         outputs = [
             {
                 "ep_object": "OUTPUT:METER",
@@ -1386,14 +1499,13 @@ def prepare_outputs(
         >>> prepare_outputs(idf, outputs=objects)
 
     Args:
-        idf (IDF or Path): The IDF object or the path to the file describing
-            the model (.idf).
+        idf (IDF or Path): The IDF object or the path to the file describing the
+            model (.idf).
         outputs (bool or list):
         idd_filename:
         output_directory:
         save (bool): if True, saves the idf inplace to disk with added objects
         epw:
-        sql_output_style:
     """
     if isinstance(idf, (Path, str)):
         log("first, loading the idf file")
@@ -1438,7 +1550,7 @@ def run_eplus(
     annual=False,
     design_day=False,
     epmacro=False,
-    expandobjects=False,
+    expandobjects=True,
     readvars=False,
     output_prefix=None,
     output_suffix=None,
@@ -1450,8 +1562,9 @@ def run_eplus(
     custom_processes=None,
     return_idf=False,
     return_files=False,
+    **kwargs,
 ):
-    """Run an energy plus file using the EnergyPlus executable.
+    """Run an EnergyPlus file using the EnergyPlus executable.
 
     Specify run options:
         Run options are specified in the same way as the E+ command line
@@ -1460,11 +1573,11 @@ def run_eplus(
 
     Specify outputs:
         Optionally define the desired outputs by specifying the
-        :attr:`output_report` attribute.
+        :attr:`prep_outputs` attribute.
 
-        With the :attr:`prep_outputs` parameter, specify additional outputs
-        objects to append to the energy plus file. If True, a selection of
-        usefull options will be append by default (see: :func:`prepare_outputs`
+        With the :attr:`prep_outputs` attribute, specify additional outputs
+        objects to append to the energy plus file. If True is specified, a selection of
+        useful options will be append by default (see: :class:`OutputPrep`
         for more details).
 
     Args:
@@ -1472,20 +1585,19 @@ def run_eplus(
         weather_file (str): path to the EPW weather file.
         output_directory (str, optional): path to the output folder. Will
             default to the settings.cache_folder.
-        ep_version (str, optional): EnergyPlus version to use, eg: 8-9-0
+        ep_version (str, optional): EnergyPlus version to use, eg: 9-2-0
         output_report: 'sql' or 'htm'.
-        prep_outputs (bool or list, optional): if true, meters and variable
-            outputs will be appended to the idf files. see
-            :func:`prepare_outputs`.
-        simulname (str): The name of the simulation. (Todo: Currently not
-            implemented).
+        prep_outputs (bool or list, optional): if True, meters and variable
+            outputs will be appended to the idf files. Can also specify custom
+            outputs as list of ep-object outputs.
+        simulname (str): The name of the simulation. (Todo: Currently not implemented).
         keep_data (bool): If True, files created by EnergyPlus are saved to the
             output_directory.
         annual (bool): If True then force annual simulation (default: False)
         design_day (bool): Force design-day-only simulation (default: False)
         epmacro (bool): Run EPMacro prior to simulation (default: False)
         expandobjects (bool): Run ExpandObjects prior to simulation (default:
-            False)
+            True)
         readvars (bool): Run ReadVarsESO after simulation (default: False)
         output_prefix (str, optional): Prefix for output file names.
         output_suffix (str, optional): Suffix style for output file names
@@ -1496,22 +1608,25 @@ def run_eplus(
         version (bool, optional): Display version information (default: False)
         verbose (str): Set verbosity of runtime messages (default: v) v: verbose
             q: quiet
-        keep_data_err (bool):
+        keep_data_err (bool): If True, errored directory where simulation occurred is
+            kept.
         include (str, optional): List input files that need to be copied to the
-            simulation directory.if a string is provided, it should be in a glob
-            form (see pathlib.Path.glob).
-        process_files:
-        custom_processes (dict(Callback), optional): if provided, it has to be a
-            dictionnary with the keys beeing a glob (see pathlib.Path.glob), and
+            simulation directory. If a string is provided, it should be in a glob
+            form (see :meth:`pathlib.Path.glob`).
+        process_files (bool): If True, process the output files and load to a
+            :class:`~pandas.DataFrame`. Custom processes can be passed using the
+            :attr:`custom_processes` attribute.
+        custom_processes (dict(Callback)): if provided, it has to be a
+            dictionary with the keys being a glob (see :meth:`pathlib.Path.glob`), and
             the value a Callback taking as signature `callback(file: str,
             working_dir, simulname) -> Any` All the file matching this glob will
-            be processed by this callback. Note: they still be processed by
+            be processed by this callback. Note: they will still be processed by
             pandas.read_csv (if they are csv files), resulting in duplicate. The
             only way to bypass this behavior is to add the key "*.csv" to that
-            dictionnary.
-        return_idf (bool): If Truem returns the :class:`IDF` object part of the
+            dictionary.
+        return_idf (bool): If True, returns the :class:`IDF` object part of the
             return tuple.
-        return_files (bool): It True, all files paths created by the energyplus
+        return_files (bool): It True, all files paths created by the EnergyPlus
             run are returned.
 
     Returns:
@@ -1548,7 +1663,7 @@ def run_eplus(
         if cached_run_results:
             # if cached run found, simply return it
             log(
-                "Succesfully parsed cached idf run in {:,.2f} seconds".format(
+                "Successfully parsed cached idf run in {:,.2f} seconds".format(
                     time.time() - start_time
                 ),
                 name=eplus_file.basename(),
@@ -1561,7 +1676,10 @@ def run_eplus(
                     eplus_file.basename(),
                 )
                 idf = load_idf(
-                    filepath, output_folder=output_directory, include=include
+                    filepath,
+                    weather_file=weather_file,
+                    output_folder=output_directory,
+                    include=include,
                 )
             else:
                 idf = None
@@ -1586,8 +1704,11 @@ def run_eplus(
 
     # <editor-fold desc="Upgrade the file version if needed">
     if ep_version:
-        # replace the dots with "-"
+        # if users specifies version, make sure dots are replaced with "-".
         ep_version = ep_version.replace(".", "-")
+    else:
+        # if no version is specified, take the package default version
+        ep_version = archetypal.settings.ep_version
     eplus_file = idf_version_updater(
         upgraded_file(eplus_file, output_directory),
         to_version=ep_version,
@@ -1647,7 +1768,7 @@ def run_eplus(
                 "verbose": verbose,
                 "output_directory": output_directory,
                 "ep_version": versionid,
-                "output_prefix": hash_file(tmp_file, args),
+                "output_prefix": hash_file(eplus_file, args),
                 "idd": Path(idd_file.copy(tmp)),
                 "annual": annual,
                 "epmacro": epmacro,
@@ -1659,6 +1780,7 @@ def run_eplus(
                 "keep_data_err": keep_data_err,
                 "output_report": output_report,
                 "include": include,
+                "custom_processes": custom_processes,
             }
 
             _run_exec(**runargs)
@@ -1716,8 +1838,17 @@ def run_eplus(
             cached_run_results = get_report(**runargs)
             if return_idf:
                 idf = load_idf(
-                    eplus_file, output_folder=output_directory, include=include
+                    eplus_file,
+                    output_folder=output_directory,
+                    include=include,
+                    weather_file=weather_file,
                 )
+                runargs["output_report"] = "sql"
+                idf._sql = get_report(**runargs)
+                runargs["output_report"] = "sql_file"
+                idf._sql_file = get_report(**runargs)
+                runargs["output_report"] = "htm"
+                idf._htm = get_report(**runargs)
             else:
                 idf = None
             return_elements = list(
@@ -1748,7 +1879,7 @@ def _process_csv(file, working_dir, simulname):
         simulname:
     """
     try:
-        log("looking for csv output, return the csv files " "in DataFrames if " "any")
+        log("looking for csv output, return the csv files in DataFrames if any")
         if "table" in file.basename():
             tables_out = working_dir.abspath() / "tables"
             tables_out.makedirs_p()
@@ -1783,6 +1914,7 @@ def _run_exec(
     keep_data_err,
     output_report,
     include,
+    custom_processes,
 ):
     """Wrapper around the EnergyPlus command line interface.
 
@@ -1820,6 +1952,7 @@ def _run_exec(
     output_report = args.pop("output_report")
     idd = args.pop("idd")
     include = args.pop("include")
+    custom_processes = args.pop("custom_processes")
     try:
         idf_path = os.path.abspath(eplus_file.idfname)
     except AttributeError:
@@ -1877,7 +2010,6 @@ def _run_exec(
                     failed_dir = output_directory / "failed"
                     failed_dir.mkdir_p()
                     tmp.copytree(failed_dir / output_prefix)
-                tmp.rmtree_p()
                 raise EnergyPlusProcessError(
                     cmd=cmd, idf=eplus_file.basename(), stderr=stderr_r
                 )
@@ -1904,86 +2036,10 @@ def _log_subprocess_output(pipe, name, verbose):
         close_logger(logger)
 
 
-def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
-    """A parallel version of the map function with a progress bar.
-
-    Examples:
-        >>> import archetypal as ar
-        >>> files = ['tests/input_data/problematic/nat_ventilation_SAMPLE0.idf',
-        >>>          'tests/input_data/regular/5ZoneNightVent1.idf']
-        >>> wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-        >>> files = ar.copy_file(files)
-        >>> rundict = {file: dict(eplus_file=file, weather_file=wf,
-        >>>                      ep_version=ep_version, annual=True,
-        >>>                      prep_outputs=True, expandobjects=True,
-        >>>                      verbose='q', output_report='sql')
-        >>>           for file in files}
-        >>> result = parallel_process(rundict, ar.run_eplus, use_kwargs=True)
-
-    Args:
-        in_dict (dict-like): A dictionary to iterate over.
-        function (function): A python function to apply to the elements of
-            in_dict
-        processors (int): The number of cores to use
-        use_kwargs (bool): If True, pass the kwargs as arguments to `function` .
-
-    Returns:
-        [function(array[0]), function(array[1]), ...]
-    """
-    from tqdm import tqdm
-    from concurrent.futures import ProcessPoolExecutor, as_completed
-
-    if processors == -1:
-        processors = min(len(in_dict), multiprocessing.cpu_count())
-
-    if processors == 1:
-        kwargs = {
-            "desc": function.__name__,
-            "total": len(in_dict),
-            "unit": "runs",
-            "unit_scale": True,
-            "leave": True,
-        }
-        if use_kwargs:
-            futures = {a: function(**in_dict[a]) for a in tqdm(in_dict, **kwargs)}
-        else:
-            futures = {a: function(in_dict[a]) for a in tqdm(in_dict, **kwargs)}
-    else:
-        with ProcessPoolExecutor(max_workers=processors) as pool:
-            if use_kwargs:
-                futures = {pool.submit(function, **in_dict[a]): a for a in in_dict}
-            else:
-                futures = {pool.submit(function, in_dict[a]): a for a in in_dict}
-
-            kwargs = {
-                "desc": function.__name__,
-                "total": len(futures),
-                "unit": "runs",
-                "unit_scale": True,
-                "leave": True,
-            }
-
-            # Print out the progress as tasks complete
-            for f in tqdm(as_completed(futures), **kwargs):
-                pass
-    out = {}
-    # Get the results from the futures.
-    for key in futures:
-        try:
-            if processors > 1:
-                out[futures[key]] = key.result()
-            else:
-                out[key] = futures[key]
-        except Exception as e:
-            log(str(e), lg.ERROR)
-            out[futures[key]] = e
-    return out
-
-
 def hash_file(eplus_file, kwargs=None):
     """Simple function to hash a file and return it as a string. Will also hash
     the :func:`eppy.runner.run_functions.run()` arguments so that correct
-    results are returned when different run arguments are used
+    results are returned when different run arguments are used.
 
     Todo:
         Hashing should include the external files used an idf file. For example,
@@ -1992,12 +2048,23 @@ def hash_file(eplus_file, kwargs=None):
         loading old results without the user knowing.
 
     Args:
-        eplus_file (str): path of the idf file
-        kwargs:
+        eplus_file (str): path of the idf file.
+        kwargs (dict): keywargs to serialize in addition to the file content.
 
     Returns:
         str: The digest value as a string of hexadecimal digits
     """
+    if kwargs:
+        # Before we hash the kwargs, remove the ones that don't have an impact on
+        # simulation results and so should not change the cache dirname.
+        no_impact = ["keep_data", "keep_data_err", "return_idf", "return_files"]
+        for argument in no_impact:
+            _ = kwargs.pop(argument, None)
+
+        # sorting keys for serialization of dictionary
+        kwargs = OrderedDict(sorted(kwargs.items()))
+
+    # create hasher
     hasher = hashlib.md5()
     with open(eplus_file, "rb") as afile:
         buf = afile.read()
@@ -2078,7 +2145,12 @@ def get_from_cache(kwargs):
         cache_filename_prefix = hash_file(eplus_file, kwargs)
 
         if output_report is None:
-            return None
+            # No report is expected but we should still return the path if it exists.
+            cached_run_dir = output_directory / cache_filename_prefix
+            if cached_run_dir.exists():
+                return cached_run_dir
+            else:
+                return None
         elif "htm" in output_report.lower():
             # Get the html report
 
@@ -2231,7 +2303,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
 
     Update the EnergyPlus simulation file (.idf) to the latest available
     EnergyPlus version installed on this machine. Optionally specify a version
-    (eg.: "8-9-0") to aim for a specific version. The output will be the path of
+    (eg.: "9-2-0") to aim for a specific version. The output will be the path of
     the updated file. The run is multiprocessing_safe.
 
     Hint:
@@ -2253,11 +2325,18 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             the simulname is the same. (default: None)
 
     Returns:
-        Path: The path of the transitioned idf file.
+        Path: The path of the new transitioned idf file.
     """
-    if not out_dir.isdir():
+    idf_file = Path(idf_file)
+    if not out_dir:
+        # if no directory is provided, use directory of file
+        out_dir = idf_file.dirname()
+    if not out_dir.isdir() and out_dir != "":
+        # check if dir exists
         out_dir.makedirs_p()
-    with tempdir(prefix="transition_run_", suffix=simulname, dir=out_dir) as tmp:
+    with TemporaryDirectory(
+        prefix="transition_run_", suffix=simulname, dir=out_dir
+    ) as tmp:
         log("temporary dir (%s) created" % tmp, lg.DEBUG)
         idf_file = Path(idf_file.copy(tmp)).abspath()  # copy and return abspath
 
@@ -2265,71 +2344,71 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
         doted_version = get_idf_version(idf_file, doted=True)
         iddfile = getiddfile(doted_version)
         if os.path.exists(iddfile):
-            # if a E+ exists, pass
-            pass
+            # if a E+ exists, means there is an E+ install that can be used
+            if versionid == to_version:
+                # if version of idf file is equal to intended version, copy file from
+                # temp transition folder into cache folder and return path
+                return idf_file.copy(out_dir / idf_file.basename())
             # might be an old version of E+
         elif tuple(map(int, doted_version.split("."))) < (8, 0):
-            # else if the version is an old E+ version (< 8.0)
+            # the version is an old E+ version (< 8.0)
             iddfile = getoldiddfile(doted_version)
+            if versionid == to_version:
+                # if version of idf file is equal to intended version, copy file from
+                # temp transition folder into cache folder and return path
+                return idf_file.copy(out_dir / idf_file.basename())
         # use to_version
         if to_version is None:
             # What is the latest E+ installed version
             to_version = find_eplus_installs(iddfile)
         if tuple(versionid.split("-")) > tuple(to_version.split("-")):
-            log(
-                'The version of the idf file "{}: v{}" is higher than any '
-                "version of EnergyPlus installed on this machine. Please "
-                'install EnergyPlus version "{}" or higher. Latest version '
-                "found: {}".format(
-                    os.path.basename(idf_file), versionid, versionid, to_version
-                ),
-                lg.WARNING,
-            )
-            return None
-        to_iddfile = Path(getiddfile(to_version.replace("-", ".")))
-        vupdater_path = to_iddfile.dirname() / "PreProcess" / "IDFVersionUpdater"
+            raise EnergyPlusVersionError(idf_file, versionid, to_version)
+        vupdater_path = (
+            get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
+        )
+        exe = ".exe" if platform.system() == "Windows" else ""
         trans_exec = {
-            "1-0-0": os.path.join(vupdater_path, "Transition-V1-0-0-to-V1-0-1"),
-            "1-0-1": os.path.join(vupdater_path, "Transition-V1-0-1-to-V1-0-2"),
-            "1-0-2": os.path.join(vupdater_path, "Transition-V1-0-2-to-V1-0-3"),
-            "1-0-3": os.path.join(vupdater_path, "Transition-V1-0-3-to-V1-1-0"),
-            "1-1-0": os.path.join(vupdater_path, "Transition-V1-1-0-to-V1-1-1"),
-            "1-1-1": os.path.join(vupdater_path, "Transition-V1-1-1-to-V1-2-0"),
-            "1-2-0": os.path.join(vupdater_path, "Transition-V1-2-0-to-V1-2-1"),
-            "1-2-1": os.path.join(vupdater_path, "Transition-V1-2-1-to-V1-2-2"),
-            "1-2-2": os.path.join(vupdater_path, "Transition-V1-2-2-to-V1-2-3"),
-            "1-2-3": os.path.join(vupdater_path, "Transition-V1-2-3-to-V1-3-0"),
-            "1-3-0": os.path.join(vupdater_path, "Transition-V1-3-0-to-V1-4-0"),
-            "1-4-0": os.path.join(vupdater_path, "Transition-V1-4-0-to-V2-0-0"),
-            "2-0-0": os.path.join(vupdater_path, "Transition-V2-0-0-to-V2-1-0"),
-            "2-1-0": os.path.join(vupdater_path, "Transition-V2-1-0-to-V2-2-0"),
-            "2-2-0": os.path.join(vupdater_path, "Transition-V2-2-0-to-V3-0-0"),
-            "3-0-0": os.path.join(vupdater_path, "Transition-V3-0-0-to-V3-1-0"),
-            "3-1-0": os.path.join(vupdater_path, "Transition-V3-1-0-to-V4-0-0"),
-            "4-0-0": os.path.join(vupdater_path, "Transition-V4-0-0-to-V5-0-0"),
-            "5-0-0": os.path.join(vupdater_path, "Transition-V5-0-0-to-V6-0-0"),
-            "6-0-0": os.path.join(vupdater_path, "Transition-V6-0-0-to-V7-0-0"),
-            "7-0-0": os.path.join(vupdater_path, "Transition-V7-0-0-to-V7-1-0"),
-            "7-1-0": os.path.join(vupdater_path, "Transition-V7-1-0-to-V7-2-0"),
-            "7-2-0": os.path.join(vupdater_path, "Transition-V7-2-0-to-V8-0-0"),
-            "8-0-0": os.path.join(vupdater_path, "Transition-V8-0-0-to-V8-1-0"),
-            "8-1-0": os.path.join(vupdater_path, "Transition-V8-1-0-to-V8-2-0"),
-            "8-2-0": os.path.join(vupdater_path, "Transition-V8-2-0-to-V8-3-0"),
-            "8-3-0": os.path.join(vupdater_path, "Transition-V8-3-0-to-V8-4-0"),
-            "8-4-0": os.path.join(vupdater_path, "Transition-V8-4-0-to-V8-5-0"),
-            "8-5-0": os.path.join(vupdater_path, "Transition-V8-5-0-to-V8-6-0"),
-            "8-6-0": os.path.join(vupdater_path, "Transition-V8-6-0-to-V8-7-0"),
-            "8-7-0": os.path.join(vupdater_path, "Transition-V8-7-0-to-V8-8-0"),
-            "8-8-0": os.path.join(vupdater_path, "Transition-V8-8-0-to-V8-9-0"),
-            "8-9-0": os.path.join(vupdater_path, "Transition-V8-9-0-to-V9-0-0"),
-            "9-0-0": os.path.join(vupdater_path, "Transition-V9-0-0-to-V9-1-0"),
+            "1-0-0": vupdater_path / "Transition-V1-0-0-to-V1-0-1" + exe,
+            "1-0-1": vupdater_path / "Transition-V1-0-1-to-V1-0-2" + exe,
+            "1-0-2": vupdater_path / "Transition-V1-0-2-to-V1-0-3" + exe,
+            "1-0-3": vupdater_path / "Transition-V1-0-3-to-V1-1-0" + exe,
+            "1-1-0": vupdater_path / "Transition-V1-1-0-to-V1-1-1" + exe,
+            "1-1-1": vupdater_path / "Transition-V1-1-1-to-V1-2-0" + exe,
+            "1-2-0": vupdater_path / "Transition-V1-2-0-to-V1-2-1" + exe,
+            "1-2-1": vupdater_path / "Transition-V1-2-1-to-V1-2-2" + exe,
+            "1-2-2": vupdater_path / "Transition-V1-2-2-to-V1-2-3" + exe,
+            "1-2-3": vupdater_path / "Transition-V1-2-3-to-V1-3-0" + exe,
+            "1-3-0": vupdater_path / "Transition-V1-3-0-to-V1-4-0" + exe,
+            "1-4-0": vupdater_path / "Transition-V1-4-0-to-V2-0-0" + exe,
+            "2-0-0": vupdater_path / "Transition-V2-0-0-to-V2-1-0" + exe,
+            "2-1-0": vupdater_path / "Transition-V2-1-0-to-V2-2-0" + exe,
+            "2-2-0": vupdater_path / "Transition-V2-2-0-to-V3-0-0" + exe,
+            "3-0-0": vupdater_path / "Transition-V3-0-0-to-V3-1-0" + exe,
+            "3-1-0": vupdater_path / "Transition-V3-1-0-to-V4-0-0" + exe,
+            "4-0-0": vupdater_path / "Transition-V4-0-0-to-V5-0-0" + exe,
+            "5-0-0": vupdater_path / "Transition-V5-0-0-to-V6-0-0" + exe,
+            "6-0-0": vupdater_path / "Transition-V6-0-0-to-V7-0-0" + exe,
+            "7-0-0": vupdater_path / "Transition-V7-0-0-to-V7-1-0" + exe,
+            "7-1-0": vupdater_path / "Transition-V7-1-0-to-V7-2-0" + exe,
+            "7-2-0": vupdater_path / "Transition-V7-2-0-to-V8-0-0" + exe,
+            "8-0-0": vupdater_path / "Transition-V8-0-0-to-V8-1-0" + exe,
+            "8-1-0": vupdater_path / "Transition-V8-1-0-to-V8-2-0" + exe,
+            "8-2-0": vupdater_path / "Transition-V8-2-0-to-V8-3-0" + exe,
+            "8-3-0": vupdater_path / "Transition-V8-3-0-to-V8-4-0" + exe,
+            "8-4-0": vupdater_path / "Transition-V8-4-0-to-V8-5-0" + exe,
+            "8-5-0": vupdater_path / "Transition-V8-5-0-to-V8-6-0" + exe,
+            "8-6-0": vupdater_path / "Transition-V8-6-0-to-V8-7-0" + exe,
+            "8-7-0": vupdater_path / "Transition-V8-7-0-to-V8-8-0" + exe,
+            "8-8-0": vupdater_path / "Transition-V8-8-0-to-V8-9-0" + exe,
+            "8-9-0": vupdater_path / "Transition-V8-9-0-to-V9-0-0" + exe,
+            "9-0-0": vupdater_path / "Transition-V9-0-0-to-V9-1-0" + exe,
+            "9-1-0": vupdater_path / "Transition-V9-1-0-to-V9-2-0" + exe,
         }
-        # store the directory we start in
-        cwd = os.getcwd()
-        run_dir = Path(os.path.dirname(trans_exec[versionid]))
 
+        # check the file version, if it corresponds to the latest version found on
+        # the machine, means its already upgraded to the correct version. Return it.
         if versionid == to_version:
-            # if file version and to_veersion are the same, we don't need to
+            # if file version and to_version are the same, we don't need to
             # perform transition
             log(
                 'file {} already upgraded to latest version "{}"'.format(
@@ -2339,38 +2418,47 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             idf_file = Path(idf_file.copy(out_dir))
             return idf_file
 
+        # Otherwise,
         # build a list of command line arguments
-        with cd(run_dir):
-            transitions = [
-                key
-                for key in trans_exec
-                if tuple(map(int, key.split("-")))
-                < tuple(map(int, to_version.split("-")))
-                and tuple(map(int, key.split("-")))
-                >= tuple(map(int, versionid.split("-")))
-            ]
-            for trans in transitions:
-                try:
-                    trans_exec[trans]
-                except KeyError:
-                    # there is no more updates to perfrom
-                    result = 0
-                else:
-                    cmd = [trans_exec[trans], idf_file]
-                    try:
-                        process = subprocess.Popen(
-                            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        try:
+            with cd(vupdater_path):
+                transitions = [
+                    key
+                    for key in trans_exec
+                    if tuple(map(int, key.split("-")))
+                    < tuple(map(int, to_version.split("-")))
+                    and tuple(map(int, key.split("-")))
+                    >= tuple(map(int, versionid.split("-")))
+                ]
+                for trans in transitions:
+                    if not trans_exec[trans].exists():
+                        raise EnergyPlusProcessError(
+                            cmd=trans_exec[trans],
+                            stderr="The specified EnergyPlus version (v{}) does not have"
+                            " the required transition program '{}' in the "
+                            "PreProcess folder. See the documentation "
+                            "(archetypal.readthedocs.io/troubleshooting.html#missing-transition-programs) "
+                            "to solve this issue".format(to_version, trans_exec[trans]),
+                            idf=idf_file.basename(),
                         )
-                        process_output, error_output = process.communicate()
-                        log(process_output.decode("utf-8"), lg.DEBUG)
-                    except CalledProcessError as exception:
-                        log(
-                            "{} failed with error\n".format(
-                                idf_version_updater.__name__, str(exception)
-                            ),
-                            lg.ERROR,
-                        )
-        for f in tmp.files("*.idfnew"):
+                    else:
+                        cmd = [trans_exec[trans], idf_file]
+                        try:
+                            process = subprocess.Popen(
+                                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+                            )
+                            process_output, error_output = process.communicate()
+                            log(process_output.decode("utf-8"), lg.DEBUG)
+                        except CalledProcessError as exception:
+                            log(
+                                "{} failed with error\n".format(
+                                    idf_version_updater.__name__, str(exception)
+                                ),
+                                lg.ERROR,
+                            )
+        except EnergyPlusProcessError as e:
+            raise e
+        for f in Path(tmp).files("*.idfnew"):
             f.copy(out_dir / idf_file.basename())
         return Path(out_dir / idf_file.basename())
 
@@ -2394,10 +2482,8 @@ def find_eplus_installs(iddfile):
     # check if any EnergyPlus install exists
     if not list_eplus_dir:
         raise Exception(
-            "No EnergyPlus installation found. Make sure "
-            "you have EnergyPlus installed. Go to "
-            "https://energyplus.net/downloads to download the "
-            "latest version of EnergyPlus."
+            "No EnergyPlus installation found. Make sure you have EnergyPlus installed. "
+            "Go to https://energyplus.net/downloads to download the latest version of EnergyPlus."
         )
 
     # Find the most recent version of EnergyPlus installed from the version

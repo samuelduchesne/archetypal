@@ -5,7 +5,9 @@ import pytest
 from path import Path
 
 import archetypal as ar
-from archetypal import get_eplus_dire, clear_cache
+import archetypal.settings
+from archetypal import get_eplus_dirs, clear_cache, settings
+from archetypal.settings import ep_version
 
 
 @pytest.fixture(scope="session")
@@ -23,7 +25,7 @@ def small_idf(config):
         output_report="sql",
         prep_outputs=True,
         annual=False,
-        design_day=False,
+        design_day=False,  # This idf model cannot do DesignDay
         verbose="v",
     )
     yield idf, sql
@@ -44,7 +46,7 @@ def other_idf(config):
         output_report="sql",
         prep_outputs=True,
         annual=False,
-        design_day=False,
+        design_day=False,  # This idf model cannot do DesignDay
         verbose="v",
     )
     yield idf, sql
@@ -1048,9 +1050,7 @@ class TestZoneConstructionSet:
         """
         from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths("8-9-0")
-        eplusdir = Path(eplus_exe).dirname()
-        file = eplusdir / "ExampleFiles" / request.param
+        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         sql, idf = ar.run_eplus(
             file,
@@ -1154,6 +1154,28 @@ class TestZoneConstructionSet:
 class TestZoneLoad:
     """Combines different :class:`ZoneLoad` tests"""
 
+    @pytest.fixture(scope="class")
+    def fiveZoneEndUses(self, config):
+        file = (
+            get_eplus_dirs(settings.ep_version)
+            / "ExampleFiles"
+            / "5ZoneAirCooled_AirBoundaries_Daylighting.idf"
+        )
+        w = (
+            get_eplus_dirs(settings.ep_version)
+            / "WeatherData"
+            / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
+        )
+        idf = ar.load_idf(file, weather_file=w)
+        sql = idf.run_eplus(
+            output_report="sql",
+            prep_outputs=True,
+            annual=False,
+            design_day=True,
+            verbose="v",
+        )
+        yield idf, sql
+
     @pytest.fixture(scope="class", params=["RefBldgWarehouseNew2004_Chicago.idf"])
     def zoneLoadtests(self, config, request):
         """
@@ -1163,9 +1185,7 @@ class TestZoneLoad:
         """
         from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths("8-9-0")
-        eplusdir = Path(eplus_exe).dirname()
-        file = eplusdir / "ExampleFiles" / request.param
+        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = ar.load_idf(file)
         sql = ar.run_eplus(
@@ -1174,7 +1194,7 @@ class TestZoneLoad:
             output_report="sql",
             prep_outputs=True,
             annual=False,
-            design_day=False,
+            design_day=True,
             verbose="v",
         )
         yield idf, sql
@@ -1199,7 +1219,35 @@ class TestZoneLoad:
         idf, sql = zoneLoadtests
         zone = idf.getobject("ZONE", "Office")
         z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
-        load_ = ZoneLoad.from_zone(z)
+        zone_loads = ZoneLoad.from_zone(z)
+
+        assert zone_loads.DimmingType == "Off"
+        assert zone_loads.EquipmentPowerDensity == 8.07
+        assert zone_loads.IlluminanceTarget == 500
+        assert zone_loads.IsEquipmentOn
+        assert zone_loads.IsPeopleOn
+        assert zone_loads.LightingPowerDensity == 11.84
+        np.testing.assert_almost_equal(zone_loads.PeopleDensity, 0.021107919980354082)
+
+    def test_zoneLoad_from_zone_mixedparams(self, config, fiveZoneEndUses):
+        from archetypal import ZoneLoad, Zone
+
+        idf, sql = fiveZoneEndUses
+        zone = idf.getobject("ZONE", "SPACE1-1")
+        z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+        zone_loads = ZoneLoad.from_zone(z)
+
+        assert zone_loads.DimmingType == "Stepped"
+        np.testing.assert_almost_equal(
+            zone_loads.EquipmentPowerDensity, 10.649455425574827
+        )
+        assert zone_loads.IlluminanceTarget == 400
+        assert zone_loads.IsEquipmentOn
+        assert zone_loads.IsPeopleOn
+        np.testing.assert_almost_equal(
+            zone_loads.LightingPowerDensity, 15.974, decimal=3
+        )
+        np.testing.assert_almost_equal(zone_loads.PeopleDensity, 0.111, decimal=3)
 
     def test_zoneLoad_from_to_json(self, config):
         """
@@ -1297,7 +1345,6 @@ class TestZoneConditioning:
             "RefMedOffVAVAllDefVRP.idf",
             "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf",
             "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf",
-            "2ZoneDataCenterHVAC_wEconomizer.idf",
         ],
     )
     def zoneConditioningtests(self, config, request):
@@ -1306,11 +1353,8 @@ class TestZoneConditioning:
             config:
             request:
         """
-        from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths("8-9-0")
-        eplusdir = Path(eplus_exe).dirname()
-        file = eplusdir / "ExampleFiles" / request.param
+        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = ar.load_idf(file)
         sql = ar.run_eplus(
@@ -1319,7 +1363,7 @@ class TestZoneConditioning:
             output_report="sql",
             prep_outputs=True,
             annual=False,
-            design_day=False,
+            design_day=True,
             verbose="v",
         )
         yield idf, sql, request.param
@@ -1347,14 +1391,11 @@ class TestZoneConditioning:
             zone = idf.getobject("ZONE", "Core_mid")
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_ = ZoneConditioning.from_zone(z)
-        if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL" ".idf":
+        if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf":
             zone = idf.getobject("ZONE", "West Zone")
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_HX = ZoneConditioning.from_zone(z)
-        if (
-            idf_name == "2ZoneDataCenterHVAC_wEconomizer.idf"
-            or idf_name == "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf"
-        ):
+        if idf_name == "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf":
             zone = idf.getobject("ZONE", "East Zone")
             z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_HX_eco = ZoneConditioning.from_zone(z)
@@ -1378,7 +1419,7 @@ class TestZoneConditioning:
         ]
         cond_to_json = cond_json[0].to_json()
 
-    def test_hash_eq_zone_cond(self, small_idf):
+    def test_hash_eq_zone_cond(self, zoneConditioningtests):
         """Test equality and hashing of :class:`ZoneConditioning`
 
         Args:
@@ -1387,7 +1428,7 @@ class TestZoneConditioning:
         from archetypal.template import ZoneConditioning, Zone
         from copy import copy
 
-        idf, sql = small_idf
+        idf, sql, idf_name = zoneConditioningtests
         clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
@@ -1464,10 +1505,9 @@ class TestVentilationSetting:
         """
         from eppy.runner.run_functions import install_paths
 
-        eplus_exe, eplus_weather = install_paths("8-9-0")
-        eplusdir = Path(eplus_exe).dirname()
+        eplusdir = get_eplus_dirs(settings.ep_version)
         file = eplusdir / "ExampleFiles" / request.param
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         idf = ar.load_idf(file)
         sql = ar.run_eplus(
             file,
@@ -1687,7 +1727,7 @@ class TestWindowSetting:
             config:
             request:
         """
-        eplusdir = get_eplus_dire()
+        eplusdir = get_eplus_dirs(archetypal.settings.ep_version)
         file = eplusdir / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = ar.load_idf(file)
@@ -1758,14 +1798,14 @@ class TestWindowSetting:
                 save=False,
             )
             idf.add_object(
-                "WINDOWPROPERTY:SHADINGCONTROL",
+                "WindowShadingControl".upper(),
                 Construction_with_Shading_Name=constr,
                 Setpoint=14,
                 Shading_Device_Material_Name="Roll Shade",
                 save=False,
-                Name="test_constrol",
+                Fenestration_Surface_1_Name="test_control",
             )
-            f.Shading_Control_Name = "test_constrol"
+            f.Name = "test_control"
             w = WindowSetting.from_surface(f)
             assert w
             print(w)
@@ -1929,7 +1969,7 @@ class TestZone:
         """
         from archetypal import Zone
 
-        file = "tests/input_data/trnsys/NECB 2011 - Full Service Restaurant.idf"
+        file = "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = ar.load_idf(file)
         sql = ar.run_eplus(
@@ -2069,7 +2109,7 @@ class TestZone:
 @pytest.fixture(scope="session")
 def bt():
     """A building template fixture used in subsequent tests"""
-    eplus_dir = get_eplus_dire()
+    eplus_dir = get_eplus_dirs(archetypal.settings.ep_version)
     file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
     w = next(iter((eplus_dir / "WeatherData").glob("*.epw")), None)
     file = ar.copy_file(file)
@@ -2089,8 +2129,36 @@ def bt():
     yield bt
 
 
+@pytest.fixture(scope="session")
+def climatestudio():
+    """A building template fixture from a climate studio idf file used in subsequent
+    tests"""
+    eplus_dir = get_eplus_dirs(archetypal.settings.ep_version)
+    file = "tests/input_data/umi_samples/climatestudio_test.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    _, idf, res = ar.run_eplus(
+        file,
+        w,
+        ep_version="9-2-0",
+        return_idf=True,
+        return_files=True,
+        prep_outputs=True,
+        output_report="sql",
+    )
+    from archetypal import BuildingTemplate
+
+    bt = BuildingTemplate.from_idf(idf, sql=idf.sql)
+    yield bt
+
+
 class TestBuildingTemplate:
     """Various tests with the :class:`BuildingTemplate` class"""
+
+    def test_climatestudio(self, config, climatestudio):
+        template_json = ar.UmiTemplate(
+            name="my_umi_template", BuildingTemplates=[climatestudio]
+        ).to_json(all_zones=True)
+        print(template_json)
 
     def test_viewbuilding(self, config, bt):
         """test the visualization of a building
@@ -2110,7 +2178,7 @@ class TestBuildingTemplate:
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
-        b = UmiTemplate.from_json(filename)
+        b = UmiTemplate.read_file(filename)
         bt = b.BuildingTemplates
         bt_to_json = bt[0].to_json()
         w_to_json = bt[0].Windows.to_json()
@@ -2171,7 +2239,7 @@ class TestBuildingTemplate:
 class TestZoneGraph:
     """Series of tests for the :class:`ZoneGraph` class"""
 
-    def test_traverse_graph(self, small_office):
+    def test_traverse_graph(self, config, small_office):
         """
         Args:
             small_office:
@@ -2187,7 +2255,7 @@ class TestZoneGraph:
         assert G
 
     @pytest.fixture(scope="session")
-    def G(self, small_office):
+    def G(self, config, small_office):
         """
         Args:
             small_office:
@@ -2198,7 +2266,7 @@ class TestZoneGraph:
         yield ZoneGraph.from_idf(idf, sql, skeleton=True, force=True)
 
     @pytest.mark.parametrize("adj_report", [True, False])
-    def test_graph1(self, small_office, adj_report):
+    def test_graph1(self, config, small_office, adj_report):
         """Test the creation of a BuildingTemplate zone graph. Parametrize the
         creation of the adjacency report
 
@@ -2216,7 +2284,7 @@ class TestZoneGraph:
         )
         assert not nx.is_empty(G1)
 
-    def test_graph2(self, small_office):
+    def test_graph2(self, config, small_office):
         """Test the creation of a BuildingTemplate zone graph. Parametrize the
         creation of the adjacency report
 
@@ -2231,7 +2299,7 @@ class TestZoneGraph:
             idf, sql, log_adj_report=False, skeleton=True, force=False
         )
 
-    def test_graph3(self, small_office):
+    def test_graph3(self, config, small_office):
         """Test the creation of a BuildingTemplate zone graph. Parametrize the
         creation of the adjacency report
 
@@ -2247,7 +2315,7 @@ class TestZoneGraph:
             idf, sql, log_adj_report=False, skeleton=True, force=True
         )
 
-    def test_graph4(self, small_office):
+    def test_graph4(self, config, small_office):
         """Test the creation of a BuildingTemplate zone graph. Parametrize the
         creation of the adjacency report
 
@@ -2271,7 +2339,7 @@ class TestZoneGraph:
             EpBunch,
         )
 
-    def test_graph_info(self, G):
+    def test_graph_info(self, config, G):
         """test the info method on a ZoneGraph
 
         Args:
@@ -2279,7 +2347,7 @@ class TestZoneGraph:
         """
         G.info()
 
-    def test_viewgraph2d(self, G):
+    def test_viewgraph2d(self, config, G):
         """test the visualization of the zonegraph in 2d
 
         Args:
@@ -2311,7 +2379,7 @@ class TestZoneGraph:
         """
         G.plot_graph3d(annotate=annotate, axis_off=True)
 
-    def test_core_graph(self, G):
+    def test_core_graph(self, config, G):
         """
         Args:
             G:
@@ -2321,7 +2389,7 @@ class TestZoneGraph:
         assert len(H) == 1  # assert G has no nodes since Warehouse does not have a
         # core zone
 
-    def test_perim_graph(self, G):
+    def test_perim_graph(self, config, G):
         """
         Args:
             G:

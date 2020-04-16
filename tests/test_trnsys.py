@@ -1,10 +1,13 @@
-import os
 import io
 import os
 
 import pytest
 
+import pandas as pd
+
 from path import Path
+
+from copy import deepcopy
 
 from archetypal import (
     convert_idf_to_trnbuild,
@@ -14,13 +17,17 @@ from archetypal import (
     load_idf,
     settings,
     choose_window,
+    run_eplus,
+    ReportData,
+    get_eplus_dirs,
 )
 
 # Function round to hundreds
 from archetypal.trnsys import (
     _assert_files,
-    _load_idf_file_and_clean_names,
-    _get_idf_objects,
+    load_idf_file_and_clean_names,
+    clear_name_idf_objects,
+    get_idf_objects,
     _get_constr_list,
     _order_objects,
     _get_schedules,
@@ -38,95 +45,174 @@ from archetypal.trnsys import (
     _write_constructions_end,
     _write_materials,
     _write_gains,
+    _write_conditioning,
     _write_schedules,
     _write_window,
     _write_winPool,
     _save_t3d,
+    _relative_to_absolute,
+    infilt_to_b18,
+    gains_to_b18,
+    conditioning_to_b18,
+    adds_sch_ground,
+    adds_sch_setpoint,
 )
+from tests.conftest import get_platform
 
 
-class TestsConvert:
+@pytest.fixture(
+    scope="class",
+    params=[
+        "RefBldgWarehouseNew2004_Chicago.idf",
+        "ASHRAE9012016_Warehouse_Denver.idf",
+        "ASHRAE9012016_ApartmentMidRise_Denver.idf",
+        "5ZoneGeometryTransform.idf",
+    ],
+)
+def converttest(request):
+    file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
+    window_file = "W74-lib.dat"
+    template_dir = os.path.join("archetypal", "ressources")
+    window_filepath = os.path.join(template_dir, window_file)
+    template_d18 = "tests/input_data/trnsys/NewFileTemplate.d18"
+    trnsidf_exe = "docker/trnsidf/trnsidf.exe"  # 'docker/trnsidf/trnsidf.exe'
+
+    # prepare args (key=value). Key is a unique id for the runs (here the
+    # file basename is used). Value is a dict of the function arguments
+    kwargs_dict = {
+        "u_value": 2.5,
+        "shgc": 0.6,
+        "t_vis": 0.78,
+        "tolerance": 0.05,
+        "ordered": True,
+    }
+    idf = load_idf(file)
+
+    weather_file = os.path.join(
+        "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    )
+
+    yield idf, file, weather_file, window_filepath, trnsidf_exe, template_d18, kwargs_dict
+
+    del idf
+
+
+class TestConvert:
+
     """Tests convert_idf_to_trnbuild()"""
 
-    @pytest.fixture(
-        scope="class",
-        params=[
-            "RefBldgWarehousePost1980_v1.4_7.2_6A_USA_MN_MINNEAPOLIS.idf",
-            "NECB 2011 - Warehouse.idf",
-            "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-            "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
-            "5ZoneGeometryTransform.idf",
-        ],
-    )
-    def converttest(self, config, fresh_start, request):
-        file = os.path.join("tests", "input_data", "trnsys", request.param)
-        window_file = "W74-lib.dat"
-        template_dir = os.path.join("archetypal", "ressources")
-        window_filepath = os.path.join(template_dir, window_file)
-        template_d18 = None
-        trnsidf_exe = None  # 'docker/trnsidf/trnsidf.exe'
-
-        # prepare args (key=value). Key is a unique id for the runs (here the
-        # file basename is used). Value is a dict of the function arguments
-        kwargs_dict = {
-            "u_value": 2.5,
-            "shgc": 0.6,
-            "t_vis": 0.78,
-            "tolerance": 0.05,
-            "ordered": True,
-        }
-        idf = load_idf(file)
-
-        yield idf, file, window_filepath, trnsidf_exe, template_d18, kwargs_dict
-
-        del idf
-
-    def test_load_idf_file_and_clean_names(self, config, converttest):
-        idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
-        log_clear_names = False
-        idf_2 = _load_idf_file_and_clean_names(idf_file, log_clear_names)
-
-    def test_get_save_write_schedules(self, config, converttest):
+    def test_get_save_write_schedules_as_input(self, config, converttest):
         output_folder = None
-        idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
         try:
-            idf_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
-                idf_file, window_lib, output_folder, trnsidf_exe, template
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
             )
         except:
             output_folder = os.path.relpath(settings.data_folder)
             print("Could not assert all paths exist - OK for this test")
         schedule_names, schedules = _get_schedules(idf)
         _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
-        _write_schedules(lines, schedule_names, schedules)
+        schedule_as_input = True
+        schedules_not_written = _write_schedules(
+            lines, schedule_names, schedules, schedule_as_input, idf_file
+        )
+
+    def test_get_save_write_schedules_as_sched(self, config, converttest):
+        output_folder = None
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
+        lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
+        try:
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+            )
+        except:
+            output_folder = os.path.relpath(settings.data_folder)
+            print("Could not assert all paths exist - OK for this test")
+        schedule_names, schedules = _get_schedules(idf)
+        _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
+        schedule_as_input = False
+        schedules_not_written = _write_schedules(
+            lines, schedule_names, schedules, schedule_as_input, idf_file
+        )
 
     def test_write_version_and_building(self, config, converttest):
-        idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
-            idf
-        )
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf)
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
         _write_version(lines, versions)
         _write_building(buildings, lines)
 
     def test_write_idf_objects(self, config, converttest):
-        idf, idf_file, window_lib, trnsidf_exe, template, kwargs = converttest
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            kwargs,
+        ) = converttest
 
         # Read IDF_T3D template and write lines in variable
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
-            idf
-        )
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf)
 
         # Get all construction EXCEPT fenestration ones
         constr_list = _get_constr_list(buildingSurfs)
 
         # If ordered=True, ordering idf objects
         ordered = True
-        buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones = _order_objects(
+        (
             buildingSurfs,
             buildings,
             constr_list,
@@ -141,6 +227,23 @@ class TestsConvert:
             materials,
             peoples,
             zones,
+            zonelists,
+        ) = _order_objects(
+            buildingSurfs,
+            buildings,
+            constr_list,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            zones,
+            zonelists,
             ordered,
         )
 
@@ -167,8 +270,16 @@ class TestsConvert:
         n_ground = _get_ground_vertex(buildingSurfs)
 
         # Writing zones in lines
+        schedule_as_input = True
         win_slope_dict = _write_zone_buildingSurf_fenestrationSurf(
-            buildingSurfs, coordSys, fenestrationSurfs, idf, lines, n_ground, zones
+            buildingSurfs,
+            coordSys,
+            fenestrationSurfs,
+            idf,
+            lines,
+            n_ground,
+            zones,
+            schedule_as_input,
         )
 
         # Write CONSTRUCTION from IDF to lines (T3D)
@@ -199,39 +310,201 @@ class TestsConvert:
         _write_winPool(lines, window)
 
     def test_write_material(self, config, converttest):
-        idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
 
         # Read IDF_T3D template and write lines in variable
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
-            idf
-        )
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf)
 
         # Write LAYER from IDF to lines (T3D)
         _write_materials(lines, materialAirGap, materialNoMass, materials)
 
-    def test_write_gains(self, config, converttest):
-        idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
+    def test_write_gains_conditioning(self, config, converttest):
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
+
+        # Run EnergyPlus Simulation
+        ep_version = settings.ep_version
+        outputs = [
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Zone Thermostat Heating Setpoint Temperature",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+        ]
+        _, idf = run_eplus(
+            idf_file,
+            weather_file,
+            output_directory=None,
+            ep_version=ep_version,
+            output_report=None,
+            prep_outputs=outputs,
+            design_day=False,
+            annual=True,
+            expandobjects=True,
+            return_idf=True,
+        )
+
+        # Outpout reports
+        htm = idf.htm
+        sql = idf.sql
+        sql_file = idf.sql_file
+
+        # Check if cache exists
+        log_clear_names = False
+
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        idf_2 = deepcopy(idf)
+        clear_name_idf_objects(idf_2, log_clear_names)
+
+        # Get old:new names equivalence
+        old_new_names = pd.read_csv(
+            os.path.join(
+                settings.data_folder,
+                Path(idf_file).basename().stripext() + "_old_new_names_equivalence.csv",
+            )
+        ).to_dict()
 
         # Read IDF_T3D template and write lines in variable
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
         # Get objects from IDF file
-        buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
-            idf
-        )
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf_2)
 
         # Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
-        _write_gains(equipments, idf, lights, lines, peoples)
+        _write_gains(equipments, lights, lines, peoples, htm, old_new_names)
+
+        # Gets schedules from IDF
+        schedule_names, schedules = _get_schedules(idf_2)
+
+        # Adds ground temperature to schedules
+        adds_sch_ground(htm, schedule_names, schedules)
+
+        # Adds "sch_setpoint_ZONES" to schedules
+        df_heating_setpoint = ReportData.from_sqlite(
+            sql_file, table_name="Zone Thermostat Heating Setpoint Temperature"
+        )
+        df_cooling_setpoint = ReportData.from_sqlite(
+            sql_file, table_name="Zone Thermostat Cooling Setpoint Temperature"
+        )
+        # Heating
+        adds_sch_setpoint(
+            zones, df_heating_setpoint, old_new_names, schedule_names, schedules, "h"
+        )
+        # Cooling
+        adds_sch_setpoint(
+            zones, df_cooling_setpoint, old_new_names, schedule_names, schedules, "c"
+        )
+
+        schedule_as_input = True
+        heat_dict, cool_dict = _write_conditioning(
+            htm, lines, schedules, old_new_names, schedule_as_input
+        )
+
+    def test_relative_to_absolute(self, config, converttest):
+        output_folder = None
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
+        try:
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+            )
+        except:
+            output_folder = os.path.relpath(settings.data_folder)
+            print("Could not assert all paths exist - OK for this test")
+
+        # Check if cache exists
+        log_clear_names = False
+        idf = load_idf(idf_file)
+
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        idf_2 = deepcopy(idf)
+        clear_name_idf_objects(idf_2, log_clear_names)
+
+        # Get objects from IDF file
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf_2)
+
+        _relative_to_absolute(buildingSurfs[0], 1, 2, 3)
 
     def test_save_t3d(self, config, converttest):
         output_folder = None
-        idf, idf_file, window_lib, trnsidf_exe, template, _ = converttest
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
         try:
-            idf_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
-                idf_file, window_lib, output_folder, trnsidf_exe, template
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
             )
         except:
             output_folder = os.path.relpath(settings.data_folder)
@@ -243,209 +516,305 @@ class TestsConvert:
         # Save T3D file at output_folder
         output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
 
+    def test_write_to_b18(self, config, converttest):
+        output_folder = None
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            kwargs,
+        ) = converttest
+        try:
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+            )
+        except:
+            output_folder = os.path.relpath(settings.data_folder)
+            print("Could not assert all paths exist - OK for this test")
+
+        # Run EnergyPlus Simulation
+        res = run_eplus(
+            idf_file,
+            weather_file,
+            output_directory=None,
+            ep_version=None,
+            output_report="htm",
+            prep_outputs=True,
+            design_day=True,
+        )
+
+        # Check if cache exists
+        log_clear_names = False
+        idf = load_idf(idf_file)
+
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        idf_2 = deepcopy(idf)
+        clear_name_idf_objects(idf_2, log_clear_names)
+
+        # Get old:new names equivalence
+        old_new_names = pd.read_csv(
+            os.path.join(
+                settings.data_folder,
+                Path(idf_file).basename().stripext() + "_old_new_names_equivalence.csv",
+            )
+        ).to_dict()
+
+        # Get objects from IDF file
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf_2)
+
+        b18_path = "tests/input_data/trnsys/T3D_simple_2_zone.b18"
+
+        schedules_not_written = []
+
+        heat_name = {}
+        for i in range(0, len(res["Zone Sensible Heating"])):
+            key = res["Zone Sensible Heating"].iloc[i, 0]
+            name = "HEAT_z" + str(res["Zone Sensible Heating"].iloc[i].name)
+            heat_name[key] = name
+
+        cool_name = {}
+        for i in range(0, len(res["Zone Sensible Cooling"])):
+            key = res["Zone Sensible Cooling"].iloc[i, 0]
+            name = "HEAT_z" + str(res["Zone Sensible Cooling"].iloc[i].name)
+            cool_name[key] = name
+
+        with open(b18_path) as b18_file:
+            b18_lines = b18_file.readlines()
+
+        zones = zones[0:2]
+        peoples = peoples[0:2]
+        equipments = equipments[0:2]
+        lights = lights[0:2]
+
+        infilt_to_b18(b18_lines, zones, res)
+
+        schedule_as_input = True
+        gains_to_b18(
+            b18_lines,
+            zones,
+            zonelists,
+            peoples,
+            lights,
+            equipments,
+            schedules_not_written,
+            res,
+            old_new_names,
+            schedule_as_input,
+        )
+
+        conditioning_to_b18(b18_lines, heat_name, cool_name, zones, old_new_names)
+
+    def test_load_idf_file_and_clean_names(self, config, converttest):
+        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
+        log_clear_names = False
+        idf_2 = load_idf_file_and_clean_names(idf_file, log_clear_names)
+
 
 @pytest.fixture(
     params=[
-        "RefBldgWarehousePost1980_v1.4_7.2_6A_USA_MN_MINNEAPOLIS.idf",
-        "NECB 2011 - Warehouse.idf",
-        "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-        "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
+        "RefBldgWarehouseNew2004_Chicago.idf",
+        "ASHRAE9012016_Warehouse_Denver.idf",
+        "ASHRAE9012016_ApartmentMidRise_Denver.idf",
+        "5ZoneGeometryTransform.idf",
     ]
 )
 def trnbuild_file(config, request):
-    file_upper_path = Path("tests") / "input_data" / "trnsys"
-    idf_file = file_upper_path / request.param
+    idf_file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
     idf_file = copy_file(idf_file, where=settings.cache_folder)
+
     yield idf_file
 
 
-@pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
+@pytest.mark.skipif(
+    get_platform() > (10, 15, 0),
+    reason="Skipping since wine 32bit can't run on MacOs >10.15 (Catalina)",
 )
-def test_trnbuild_from_idf(config, trnbuild_file):
-    # List files here
-
-    window_file = "W74-lib.dat"
-    template_dir = os.path.join("archetypal", "ressources")
-    window_filepath = os.path.join(template_dir, window_file)
-
-    # prepare args (key=value). Key is a unique id for the runs (here the
-    # file basename is used). Value is a dict of the function arguments
-    kwargs_dict = {
-        "u_value": 2.5,
-        "shgc": 0.6,
-        "t_vis": 0.78,
-        "tolerance": 0.05,
-        "ordered": True,
-    }
-
-    file = trnbuild_file
-    convert_idf_to_trnbuild(
-        idf_file=file,
-        window_lib=window_filepath,
-        template="tests/input_data/trnsys/NewFileTemplate" ".d18",
-        trnsidf_exe="docker/trnsidf/trnsidf.exe",
-        **kwargs_dict
-    )
-
-
-@pytest.mark.win32
-@pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
+@pytest.mark.skipif(
+    os.environ.get("CI", "False").lower() == "true",
+    reason="Skipping this test on CI environment.",
 )
-def test_trnbuild_from_idf_parallel(config, trnbuild_file):
-    # All IDF files
-    idf_list = [
-        "NECB 2011 - Full Service Restaurant.idf",
-        "NECB 2011 - HighRise Apartment.idf",
-        "NECB 2011 - Hospital.idf",
-        "NECB 2011 - Large Hotel.idf",
-        "NECB 2011 - Medium Office.idf",
-        "NECB 2011 - MidRise Apartment.idf",
-        "NECB 2011 - Outpatient.idf",
-        "NECB 2011 - Primary School.idf",
-        "NECB 2011 - Quick Service Restaurant.idf",
-        "NECB 2011 - Retail Standalone.idf",
-        "NECB 2011 - Retail Stripmall.idf",
-        "NECB 2011 - Secondary School.idf",
-        "NECB 2011 - Small Hotel.idf",
-        "NECB 2011 - Small Office.idf",
-        "NECB 2011 - Warehouse.idf",
-        "ASHRAE90.1_ApartmentHighRise_STD2004_Rochester.idf",
-        "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
-        "ASHRAE90.1_Hospital_STD2004_Rochester.idf",
-        "ASHRAE90.1_HotelLarge_STD2004_Rochester.idf",
-        "ASHRAE90.1_HotelSmall_STD2004_Rochester.idf",
-        "ASHRAE90.1_OfficeLarge_STD2004_Rochester.idf",
-        "ASHRAE90.1_OfficeMedium_STD2004_Rochester.idf",
-        "ASHRAE90.1_OfficeSmall_STD2004_Rochester.idf",
-        "ASHRAE90.1_OutPatientHealthCare_STD2004_Rochester.idf",
-        "ASHRAE90.1_RestaurantFastFood_STD2004_Rochester.idf",
-        "ASHRAE90.1_RestaurantSitDown_STD2004_Rochester.idf",
-        "ASHRAE90.1_RetailStandalone_STD2004_Rochester.idf",
-        "ASHRAE90.1_RetailStripmall_STD2004_Rochester.idf",
-        "ASHRAE90.1_SchoolPrimary_STD2004_Rochester.idf",
-        "ASHRAE90.1_SchoolSecondary_STD2004_Rochester.idf",
-        "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-    ]
-    # List files here
-    files = trnbuild_file
+class TestTrnBuild:
+    def test_trnbuild_from_idf(self, config, trnbuild_file):
+        # List files here
 
-    # window_file = 'W74-lib.dat'
-    # window_filepath = os.path.join(file_upper_path, window_file)
+        window_file = "W74-lib.dat"
+        template_dir = os.path.join("archetypal", "ressources")
+        window_filepath = os.path.join(template_dir, window_file)
+        weather_file = os.path.join(
+            "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        )
 
-    # prepare args (key=value). Key is a unique id for the runs (here the
-    # file basename is used). Value is a dict of the function arguments
-    in_dict = {
-        os.path.basename(file): dict(idf_file=os.path.join(file_upper_path, file))
-        for file in files
-    }
+        # prepare args (key=value). Key is a unique id for the runs (here the
+        # file basename is used). Value is a dict of the function arguments
+        kwargs_dict = {
+            "ep_version": settings.ep_version,
+            "u_value": 2.5,
+            "shgc": 0.6,
+            "t_vis": 0.78,
+            "tolerance": 0.05,
+            "fframe": 0.1,
+            "uframe": 7.5,
+            "ordered": True,
+        }
 
-    result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
-
-    assert not any(isinstance(a, Exception) for a in result.values())
-
-
-@pytest.mark.darwin
-@pytest.mark.linux
-@pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
-)
-def test_trnbuild_from_idf_parallel_darwin_or_linux(config):
-    # All IDF files
-    idf_list = [
-        "NECB 2011 - Full Service Restaurant.idf",
-        "NECB 2011 - HighRise Apartment.idf",
-        "NECB 2011 - Hospital.idf",
-        "NECB 2011 - Large Hotel.idf",
-        "NECB 2011 - Medium Office.idf",
-        "NECB 2011 - MidRise Apartment.idf",
-        "NECB 2011 - Outpatient.idf",
-        "NECB 2011 - Primary School.idf",
-        "NECB 2011 - Quick Service Restaurant.idf",
-        "NECB 2011 - Retail Standalone.idf",
-        "NECB 2011 - Retail Stripmall.idf",
-        "NECB 2011 - Secondary School.idf",
-        "NECB 2011 - Small Hotel.idf",
-        "NECB 2011 - Small Office.idf",
-        "NECB 2011 - Warehouse.idf",
-        "ASHRAE90.1_ApartmentHighRise_STD2004_Rochester.idf",
-        "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
-        "ASHRAE90.1_Hospital_STD2004_Rochester.idf",
-        "ASHRAE90.1_HotelLarge_STD2004_Rochester.idf",
-        "ASHRAE90.1_HotelSmall_STD2004_Rochester.idf",
-        "ASHRAE90.1_OfficeLarge_STD2004_Rochester.idf",
-        "ASHRAE90.1_OfficeMedium_STD2004_Rochester.idf",
-        "ASHRAE90.1_OfficeSmall_STD2004_Rochester.idf",
-        "ASHRAE90.1_OutPatientHealthCare_STD2004_Rochester.idf",
-        "ASHRAE90.1_RestaurantFastFood_STD2004_Rochester.idf",
-        "ASHRAE90.1_RestaurantSitDown_STD2004_Rochester.idf",
-        "ASHRAE90.1_RetailStandalone_STD2004_Rochester.idf",
-        "ASHRAE90.1_RetailStripmall_STD2004_Rochester.idf",
-        "ASHRAE90.1_SchoolPrimary_STD2004_Rochester.idf",
-        "ASHRAE90.1_SchoolSecondary_STD2004_Rochester.idf",
-        "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-    ]
-    # List files here
-    file_upper_path = os.path.join("tests", "input_data", "trnsys")
-    files = [
-        "RefBldgWarehousePost1980_v1.3_5" ".0_4A_USA_MD_BALTIMORE.idf",
-        "NECB 2011 - Warehouse.idf",
-        "ASHRAE90.1_Warehouse_STD2004_Rochester.idf",
-        "ASHRAE90.1_ApartmentMidRise_STD2004_Rochester.idf",
-    ]
-
-    # prepare args (key=value). Key is a unique id for the runs (here the
-    # file basename is used). Value is a dict of the function arguments
-    in_dict = {
-        os.path.basename(file): dict(
-            idf_file=os.path.join(file_upper_path, file),
+        file = trnbuild_file
+        convert_idf_to_trnbuild(
+            idf_file=file,
+            weather_file=weather_file,
+            window_lib=window_filepath,
             template="tests/input_data/trnsys/NewFileTemplate.d18",
             trnsidf_exe="docker/trnsidf/trnsidf.exe",
+            **kwargs_dict
         )
-        for file in files
-    }
 
-    result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
-    [print(a) for a in result.values() if isinstance(a, Exception)]
-    assert not any(isinstance(a, Exception) for a in result.values())
+    @pytest.mark.win32
+    def test_trnbuild_from_idf_parallel(self, config, trnbuild_file):
+        # All IDF files
+        # List files here
+        files = trnbuild_file
 
+        # window_file = 'W74-lib.dat'
+        # window_filepath = os.path.join(file_upper_path, window_file)
 
-@pytest.mark.win32
-@pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
-)
-def test_trnbuild_idf_win32(config):
-    idf_file = "tests/input_data/trnsys/Building.idf"
-    template = "tests/input_data/trnsys/NewFileTemplate.d18"
-    res = trnbuild_idf(idf_file, template=template, nonum=True)
+        weather_file = os.path.join(
+            "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        )
 
-    assert res
+        # prepare args (key=value). Key is a unique id for the runs (here the
+        # file basename is used). Value is a dict of the function arguments
+        in_dict = {
+            os.path.basename(file): dict(idf_file=file, weather_file=weather_file)
+            for file in files
+        }
 
+        result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
 
-@pytest.mark.darwin
-@pytest.mark.linux
-@pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
-)
-def test_trnbuild_idf_darwin_or_linux(config):
-    idf_file = "tests/input_data/trnsys/Building.idf"
-    template = "tests/input_data/trnsys/NewFileTemplate.d18"
-    trnsidf_exe = "docker/trnsidf/trnsidf.exe"
-    res = trnbuild_idf(
-        idf_file,
-        template=template,
-        dck=True,
-        nonum=False,
-        refarea=False,
-        volume=False,
-        capacitance=True,
-        trnsidf_exe=trnsidf_exe,
+        assert not any(isinstance(a, Exception) for a in result.values())
+
+    @pytest.mark.darwin
+    @pytest.mark.linux
+    def test_trnbuild_from_idf_parallel_darwin_or_linux(self, config):
+        # All IDF files
+        # List files here
+        file_upper_path = os.path.join(
+            get_eplus_dirs(settings.ep_version), "ExampleFiles"
+        )
+        files = [
+            "RefBldgWarehouseNew2004_Chicago.idf",
+            "ASHRAE9012016_Warehouse_Denver.idf",
+            "ASHRAE9012016_ApartmentMidRise_Denver.idf",
+            "5ZoneGeometryTransform.idf",
+        ]
+
+        weather_file = os.path.join(
+            "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        )
+
+        # prepare args (key=value). Key is a unique id for the runs (here the
+        # file basename is used). Value is a dict of the function arguments
+        in_dict = {
+            os.path.basename(file): dict(
+                idf_file=os.path.join(file_upper_path, file),
+                weather_file=weather_file,
+                template="tests/input_data/trnsys/NewFileTemplate.d18",
+                trnsidf_exe="docker/trnsidf/trnsidf.exe",
+            )
+            for file in files
+        }
+
+        result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
+        [print(a) for a in result.values() if isinstance(a, Exception)]
+        assert not any(isinstance(a, Exception) for a in result.values())
+
+    @pytest.mark.win32
+    def test_trnbuild_idf_win32(self, config):
+        idf_file = "tests/input_data/trnsys/Building.idf"
+        template = "tests/input_data/trnsys/NewFileTemplate.d18"
+        res = trnbuild_idf(idf_file, template=template, nonum=True)
+
+        assert res
+
+    @pytest.mark.darwin
+    @pytest.mark.linux
+    @pytest.mark.xfail(
+        not Path("docker/trnsidf/trnsidf.exe").exists(),
+        reason="xfail since trnsidf.exe is not installed. This test can work if the "
+        "trnsidf.exe is copied in ./docker/trnsidf",
     )
+    def test_trnbuild_idf_darwin_or_linux(self, config):
+        idf_file = "tests/input_data/trnsys/Building.idf"
+        template = "tests/input_data/trnsys/NewFileTemplate.d18"
+        trnsidf_exe = "docker/trnsidf/trnsidf.exe"
+        res = trnbuild_idf(
+            idf_file,
+            template=template,
+            dck=True,
+            nonum=False,
+            refarea=False,
+            volume=False,
+            capacitance=True,
+            trnsidf_exe=trnsidf_exe,
+        )
 
-    assert res
+        assert res
+
+    def test_trnbuild_from_simple_idf(self, config):
+        # List files here
+
+        window_file = "W74-lib.dat"
+        template_dir = os.path.join("archetypal", "ressources")
+        window_filepath = os.path.join(template_dir, window_file)
+        weather_file = os.path.join(
+            "tests", "input_data", "CAN_QC_Montreal-McTavish.716120_CWEC2016.epw"
+        )
+
+        # prepare args (key=value). Key is a unique id for the runs (here the
+        # file basename is used). Value is a dict of the function arguments
+        # WINDOW = 2-WSV_#3_Air
+        kwargs_dict = {
+            "ep_version": "9-2-0",
+            "u_value": 1.62,
+            "shgc": 0.64,
+            "t_vis": 0.8,
+            "tolerance": 0.05,
+            "fframe": 0.0,
+            "uframe": 0.5,
+            "ordered": True,
+        }
+
+        file = os.path.join("tests", "input_data", "trnsys", "simple_2_zone.idf")
+        convert_idf_to_trnbuild(
+            idf_file=file,
+            weather_file=weather_file,
+            window_lib=window_filepath,
+            template="tests/input_data/trnsys/NewFileTemplate.d18",
+            trnsidf_exe="docker/trnsidf/trnsidf.exe",
+            schedule_as_input=False,
+            **kwargs_dict
+        )

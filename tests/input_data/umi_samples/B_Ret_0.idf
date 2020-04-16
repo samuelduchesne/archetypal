@@ -1,20 +1,22 @@
 ! ----  This file was generated with Archsim v.4.0.2.17
 
-  Version,8.9;
+  Version,9.2;
 
   RunPeriod,
     ArchSim,                 !- Name
     1,                       !- Begin Month
     1,                       !- Begin Day of Month
+    ,                        !- Begin Year
     12,                      !- End Month
     31,                      !- End Day of Month
-    UseWeatherFile,          !- Day of Week for Start Day
+    ,                        !- End Year
+    ,                        !- Day of Week for Start Day
     No,                      !- Use Weather File Holidays and Special Days
     No,                      !- Use Weather File Daylight Saving Period
     Yes,                     !- Apply Weekend Holiday Rule
     Yes,                     !- Use Weather File Rain Indicators
     Yes,                     !- Use Weather File Snow Indicators
-    1;                       !- Number of Times Runperiod to be Repeated
+    ;                        !- Treat Weather as Actual
 
   RunPeriodControl:DaylightSavingTime,
     Last Sunday in March,    !- Start Date
@@ -1153,7 +1155,9 @@
     ZoneHVAC:IdealLoadsAirSystem,  !- Zone Equipment 1 Object Type
     Perim Ideal Loads Air,   !- Zone Equipment 1 Name
     1,                       !- Zone Equipment 1 Cooling Sequence
-    1;                       !- Zone Equipment 1 Heating or No-Load Sequence
+    1,                       !- Zone Equipment 1 Heating or No-Load Sequence
+    ,                        !- Zone Equipment 1 Sequential Cooling Fraction Schedule Name
+    ;                        !- Zone Equipment 1 Sequential Heating Fraction Schedule Name
 
   NodeList,
     Perim Inlets,            !- Name
@@ -1246,7 +1250,7 @@
   InternalMass,
     PerimInternalMass,       !- Name
     B_Ret_Thm_0,             !- Construction Name
-    Perim,                   !- Zone Name
+    Perim,                   !- Zone or ZoneList Name
     2.05864785735637;        !- Surface Area {m2}
 
 ! ------------------------ GEOMETRY
@@ -1275,7 +1279,6 @@
     Perim:f0,                !- Building Surface Name
     ,                        !- Outside Boundary Condition Object
     Autocalculate,           !- View Factor to Ground
-    ,                        !- Shading Control Name
     ,                        !- Frame and Divider Name
     1,                       !- Multiplier
     4,                       !- Number of Vertices
@@ -1521,7 +1524,9 @@
     ZoneHVAC:IdealLoadsAirSystem,  !- Zone Equipment 1 Object Type
     Core Ideal Loads Air,    !- Zone Equipment 1 Name
     1,                       !- Zone Equipment 1 Cooling Sequence
-    1;                       !- Zone Equipment 1 Heating or No-Load Sequence
+    1,                       !- Zone Equipment 1 Heating or No-Load Sequence
+    ,                        !- Zone Equipment 1 Sequential Cooling Fraction Schedule Name
+    ;                        !- Zone Equipment 1 Sequential Heating Fraction Schedule Name
 
   NodeList,
     Core Inlets,             !- Name
@@ -1614,7 +1619,7 @@
   InternalMass,
     CoreInternalMass,        !- Name
     B_Ret_Thm_0,             !- Construction Name
-    Core,                    !- Zone Name
+    Core,                    !- Zone or ZoneList Name
     0.674999999999993;       !- Surface Area {m2}
 
 ! ------------------------ GEOMETRY
@@ -1814,3 +1819,4 @@
 
   Output:Diagnostics,
     DisplayAdvancedReportVariables;  !- Key 1
+

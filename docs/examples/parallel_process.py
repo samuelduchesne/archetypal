@@ -1,10 +1,9 @@
 import pandas as pd
 from path import Path
 
-from archetypal import config, run_eplus
-from archetypal import parallel_process
+from archetypal import config, run_eplus, parallel_process
 
-config(use_cache=True, log_console=True, cache_folder="../../tests/.temp/cache")
+config(cache_folder="../../tests/.temp/cache", use_cache=True, log_console=True)
 
 
 def main():

@@ -57,7 +57,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             CoolingSetpoint (float): The temperature above which the zone heating is
                 turned on. Here, we take the mean value over the year.
             CoolingSchedule (UmiSchedule): The availability schedule for space
-                cooling in this zone.
+                cooling in this zone. If the value is 0, cooling is not available,
+                and cooling is not supplied to the zone.
             EconomizerType (str): Specifies if there is an outdoor air
                 economizer. The choices are: NoEconomizer, DifferentialDryBulb,
                 or DifferentialEnthalpy. For the moment, the EconomizerType is
@@ -122,9 +123,10 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             HeatingSetpoint (float): The temperature below which zone heating is
                 turned on. Here, we take the mean value over the year.
             HeatingSchedule (UmiSchedule): The availability schedule for space
-                heating in this zone.
-            IsCoolingOn (bool): Whether or not this cooling is available.
-            IsHeatingOn (bool): Whether or not this cooling is available.
+                heating in this zone. If the value is 0, heating is not available,
+                and heating is not supplied to the zone.
+            IsCoolingOn (bool): Whether or not cooling is available.
+            IsHeatingOn (bool): Whether or not heating is available.
             IsMechVentOn (bool): If True, an outdoor air quantity for use by the
                 model is calculated.
             MaxCoolFlow (float): The maximum cooling supply air flow rate in
@@ -144,7 +146,9 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             MinFreshAirPerPerson (float): The design outdoor air volume flow
                 rate per person for this zone in cubic meters per second per
                 person. The default is 0.00944 (20 cfm per person).
-            MechVentSchedule:
+            MechVentSchedule (UmiSchedule): The availability schedule of the
+                mechanical ventilation. If the value is 0, the mechanical ventilation is
+                not available and air flow is not requested.
             **kwargs: Other arguments passed to the base class
                 :class:`archetypal.template.UmiBase`
         """
@@ -513,6 +517,16 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             zone (Zone): The Zone object.
         """
         from itertools import chain
+
+        # Todo: Implement loop that detects HVAC linked to Zone; than parse heat
+        #  recovery. Needs to happen when a zone has a ZoneHVAC:IdealLoadsAirSystem
+        # connections = zone._epbunch.getreferingobjs(
+        #     iddgroups=["Zone HVAC Equipment Connections"], fields=["Zone_Name"]
+        # )
+        # nodes = [
+        #     con.get_referenced_object("Zone_Air_Inlet_Node_or_NodeList_Name")
+        #     for con in connections
+        # ]
 
         # get possible heat recovery objects from idd
         heat_recovery_objects = zone.idf.getiddgroupdict()["Heat Recovery"]

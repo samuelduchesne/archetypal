@@ -41,10 +41,12 @@ independently.
    :maxdepth: 2
    :caption: User Guide
 
-   Getting Started <first.rst>
-   Convert IDF to UMI <converter_umi.rst>
-   Convert IDF to BUI <converter_bui.rst>
-   Tutorials <tutorials.rst>
+   Converting IDF models <converting.rst>
+   Reading and Running IDF files <reading_idf.rst>
+   Parallel Processing <tutorials/parallel_process.rst>
+   Managing Schedules <tutorials/schedules.rst>
+   Reading and Editing UMI Template Files <tutorials/edit_umitemplate.rst>
+   Troubleshooting <troubleshooting.rst>
 
 .. toctree::
    :maxdepth: 1

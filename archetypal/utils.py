@@ -16,7 +16,9 @@ import contextlib
 import datetime as dt
 import json
 import logging as lg
+import multiprocessing
 import os
+import platform
 import re
 import sys
 import time
@@ -27,9 +29,11 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
-from archetypal import settings
 from pandas.io.json import json_normalize
 from path import Path
+
+from archetypal import settings
+from archetypal.settings import ep_version
 
 
 def config(
@@ -47,26 +51,30 @@ def config(
     umitemplate=settings.umitemplate,
     trnsys_default_folder=settings.trnsys_default_folder,
     default_weight_factor="area",
+    ep_version=settings.ep_version,
 ):
-    """Configurations
+    """Package configurations. Call this method at the beginning of script or at the
+    top of an interactive python environment to set package-wide settings.
 
     Args:
-        data_folder (str): where to save and load data files
-        logs_folder (str): where to write the log files
-        imgs_folder (str): where to save figures
-        cache_folder (str): where to save the simluation results
+        data_folder (str): where to save and load data files.
+        logs_folder (str): where to write the log files.
+        imgs_folder (str): where to save figures.
+        cache_folder (str): where to save the simluation results.
         use_cache (bool): if True, use a local cache to save/retrieve many of
             archetypal outputs such as EnergyPlus simulation results. This can
             save a lot of time by not calling the simulation and dataportal APIs
             repetitively for the same requests.
-        log_file (bool): if true, save log output to a log file in logs_folder
-        log_console (bool): if true, print log output to the console
-        log_level (int): one of the logger.level constants
-        log_name (str): name of the logger
-        log_filename (str): name of the log file
-        useful_idf_objects (list): a list of useful idf objects
-        umitemplate (str): where the umitemplate is located
-        trnsys_default_folder (str): root folder of TRNSYS install
+        log_file (bool): if true, save log output to a log file in logs_folder.
+        log_console (bool): if true, print log output to the console.
+        log_level (int): one of the logger.level constants.
+        log_name (str): name of the logger.
+        log_filename (str): name of the log file.
+        useful_idf_objects (list): a list of useful idf objects.
+        umitemplate (str): where the umitemplate is located.
+        trnsys_default_folder (str): root folder of TRNSYS install.
+        default_weight_factor:
+        ep_version (str): EnergyPlus version to use. eg. "9-2-0".
 
     Returns:
         None
@@ -86,10 +94,18 @@ def config(
     settings.umitemplate = umitemplate
     settings.trnsys_default_folder = validate_trnsys_folder(trnsys_default_folder)
     settings.zone_weight.set_weigth_attr(default_weight_factor)
+    settings.ep_version = validate_epversion(ep_version)
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
         log("Configured archetypal")
+
+
+def validate_epversion(ep_version):
+    """Validates the ep_version form"""
+    if "." in ep_version:
+        raise NameError('Enter the EnergyPlus version in the form "9-2-0"')
+    return ep_version
 
 
 def validate_trnsys_folder(trnsys_default_folder):
@@ -101,11 +117,13 @@ def validate_trnsys_folder(trnsys_default_folder):
         if os.path.isdir(trnsys_default_folder):
             return trnsys_default_folder
         else:
-            raise ValueError(
-                "The provided TRNSYS path does not exist. Path={"
-                ". Please set the TRNSYS path with the "
-                '"--trnsys-default-folder" option}'.format(trnsys_default_folder)
+            warnings.warn(
+                "The TRNSYS path does not exist. Please set the TRNSYS "
+                "path with the --trnsys-default-folder option".format(
+                    trnsys_default_folder
+                )
             )
+        return None
     else:
         return trnsys_default_folder
 
@@ -226,6 +244,14 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
 
 
 def close_logger(logger=None, level=None, name=None, filename=None, log_dir=None):
+    """
+    Args:
+        logger:
+        level:
+        name:
+        filename:
+        log_dir:
+    """
     if not logger:
         # try get logger by name
         logger = get_logger(level=level, name=name, filename=filename, log_dir=log_dir)
@@ -503,9 +529,10 @@ def weighted_mean(series, df, weighting_variable):
     :func:`numpy.average`.
 
     Args:
-        series (pandas.Series):
-        df (pandas.DataFrame):
-        weighting_variable (str or list or tuple): Weight name to use in
+        series (pandas.Series): the *series* on which to compute the mean.
+        df (pandas.DataFrame): the *df* containing weighting variables.
+        weighting_variable (str or list or tuple): Name of weights to use in
+            *df*. If multiple values given, the values are multiplied together.
 
     Returns:
         numpy.ndarray: the weighted average
@@ -537,6 +564,7 @@ def weighted_mean(series, df, weighting_variable):
 def top(series, df, weighting_variable):
     """Compute the highest ranked value weighted by some other variable.
     Implements
+
         :func:`pandas.DataFrame.nlargest`.
 
     Args:
@@ -599,8 +627,8 @@ def copy_file(files, where=None):
     """Handles a copy of test idf files
 
     Args:
-        files:
-        where:
+        files (str or list): path(s) of the file(s) to copy
+        where (str): path where to save the copy(ies)
     """
     import shutil, os
 
@@ -623,22 +651,17 @@ def copy_file(files, where=None):
     return _unpack_tuple(list(files.values()))
 
 
-class Error(Exception):
-    """Base class for exceptions in this module."""
-
-    pass
-
-
-class EnergyPlusProcessError(Error):
+class EnergyPlusProcessError(Exception):
     """EnergyPlus Process call error"""
 
-    def __init__(self, cmd, stderr, idf=None):
+    def __init__(self, cmd, stderr, idf):
         """
         Args:
             cmd:
             stderr:
             idf:
         """
+        super().__init__(stderr)
         self.cmd = cmd
         self.idf = idf
         self.stderr = stderr
@@ -649,8 +672,38 @@ class EnergyPlusProcessError(Error):
         return msg
 
 
+class EnergyPlusVersionError(Exception):
+    """EnergyPlus Version call error"""
+
+    def __init__(self, idf_file, idf_version, ep_version):
+        super(EnergyPlusVersionError, self).__init__(None)
+        self.idf_file = idf_file
+        self.idf_version = idf_version
+        self.ep_version = ep_version
+
+    def __str__(self):
+        """Override that only returns the stderr"""
+        if tuple(self.idf_version.split("-")) > tuple(self.ep_version.split("-")):
+            compares_ = "higher"
+        else:
+            compares_ = "lower"
+        msg = (
+            "The version of the idf file {} (v{}) is {} than the specified "
+            "EnergyPlus version (v{}). Specify the default EnergyPlus version "
+            "with :func:`config` that corresponds with the one installed on your machine"
+            " or specify the version in related module functions, e.g. :func:`run_eplus`.".format(
+                self.idf_file.basename(), self.idf_version, compares_, self.ep_version
+            )
+        )
+        return msg
+
+
 @contextlib.contextmanager
 def cd(path):
+    """
+    Args:
+        path:
+    """
     log("initially inside {0}".format(os.getcwd()))
     CWD = os.getcwd()
 
@@ -658,8 +711,6 @@ def cd(path):
     log("inside {0}".format(os.getcwd()))
     try:
         yield
-    except:
-        log("Exception caught: ", sys.exc_info()[0])
     finally:
         os.chdir(CWD)
         log("finally inside {0}".format(os.getcwd()))
@@ -668,6 +719,7 @@ def cd(path):
 def rmse(data, targets):
     """calculate rmse with target values
 
+    # Todo : write de description of the args
     Args:
         data:
         targets:
@@ -682,6 +734,7 @@ def piecewise(data):
     """returns a piecewise function from an array of the form [hour1, hour2,
     ..., value1, value2, ...]
 
+    # Todo : write de description of the args
     Args:
         data:
     """
@@ -698,8 +751,8 @@ def piecewise(data):
     return y
 
 
-def checkStr(datafile, string):
-    """Find the last occurrence of a string and return its line number
+def checkStr(datafile, string, begin_line=0):
+    """Find the first occurrence of a string and return its line number
 
     Returns: the list index containing the string
 
@@ -710,7 +763,10 @@ def checkStr(datafile, string):
     value = []
     count = 0
     for line in datafile:
-        count = count + 1
+        if count < begin_line:
+            count += 1
+            continue
+        count += 1
         match = re.search(string, str(line))
         if match:
             return count
@@ -807,19 +863,62 @@ def float_round(num, n):
 
     Returns:
         num (float): a float rounded number
-
     """
     num = float(num)
     num = round(num, n)
     return num
 
 
-def get_eplus_dire():
+def get_eplus_dirs(version=ep_version):
+    """Returns EnergyPlus root folder for a specific version.
+
+    Returns (Path): The folder path.
+
+    Args:
+        version (str): Version number in the form "9-2-0" to search for.
+    """
     from eppy.runner.run_functions import install_paths
 
-    eplus_exe, eplus_weather = install_paths("8-9-0")
-    eplusdir = Path(eplus_exe).dirname()
-    return Path(eplusdir)
+    eplus_exe, eplus_weather = install_paths(version)
+    return Path(eplus_exe).dirname()
+
+
+def warn_if_not_compatible():
+    """Checks if an EnergyPlus install is detected. If the latest version
+    detected is higher than the one specified by archetypal, a warning is also
+    raised.
+    """
+    eplus_homes = get_eplus_basedirs()
+
+    if not eplus_homes:
+        warnings.warn(
+            "No installation of EnergyPlus could be detected on this "
+            "machine. Please install EnergyPlus from https://energyplus.net before using archetypal"
+        )
+    if len(eplus_homes) > 1:
+        # more than one installs
+        warnings.warn(
+            "There are more than one versions of EnergyPlus on this machine. Make "
+            "sure you provide the appropriate version number when possible. "
+        )
+
+
+def get_eplus_basedirs():
+    """Returns a list of possible E+ install paths"""
+    if platform.system() == "Windows":
+        eplus_homes = Path("C:\\").glob("EnergyPlusV*")
+        return eplus_homes
+    elif platform.system() == "Linux":
+        eplus_homes = Path("/usr/local/").glob("EnergyPlus-*")
+        return eplus_homes
+    elif platform.system() == "Darwin":
+        eplus_homes = Path("/Applications").glob("EnergyPlus-*")
+        return eplus_homes
+    else:
+        warnings.warn(
+            "Archetypal is not compatible with %s. It is only compatible "
+            "with Windows, Linux or MacOs" % platform.system()
+        )
 
 
 def timeit(method):
@@ -862,8 +961,12 @@ def timeit(method):
 
 
 def lcm(x, y):
-    """This function takes two
-   integers and returns the L.C.M."""
+    """This function takes two integers and returns the L.C.M.
+
+    Args:
+        x:
+        y:
+    """
 
     # choose the greater number
     if x > y:
@@ -904,3 +1007,107 @@ def _unpack_tuple(x):
         return x[0]
     else:
         return x
+
+
+def recursive_len(item):
+    """Calculate the number of elements in nested list
+
+    Args:
+        item (list): list of lists (i.e. nested list)
+
+    Returns:
+        Total number of elements in nested list
+    """
+    if type(item) == list:
+        return sum(recursive_len(subitem) for subitem in item)
+    else:
+        return 1
+
+
+def rotate(l, n):
+    """Shift list elements to the left
+
+    Args:
+        l (list): list to rotate
+        n (int): number to shift list to the left
+
+    Returns:
+        list: shifted list.
+    """
+    return l[n:] + l[:n]
+
+
+def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
+    """A parallel version of the map function with a progress bar.
+
+    Examples:
+        >>> import archetypal as ar
+        >>> files = ['tests/input_data/problematic/nat_ventilation_SAMPLE0.idf',
+        >>>          'tests/input_data/regular/5ZoneNightVent1.idf']
+        >>> wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
+        >>> files = ar.copy_file(files)
+        >>> rundict = {file: dict(eplus_file=file, weather_file=wf,
+        >>>                      ep_version=ep_version, annual=True,
+        >>>                      prep_outputs=True, expandobjects=True,
+        >>>                      verbose='q', output_report='sql')
+        >>>           for file in files}
+        >>> result = parallel_process(rundict, ar.run_eplus, use_kwargs=True)
+
+    Args:
+        in_dict (dict-like): A dictionary to iterate over.
+        function (function): A python function to apply to the elements of
+            in_dict
+        processors (int): The number of cores to use
+        use_kwargs (bool): If True, pass the kwargs as arguments to `function` .
+
+    Returns:
+        [function(array[0]), function(array[1]), ...]
+    """
+    from tqdm import tqdm
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+
+    if processors == -1:
+        processors = min(len(in_dict), multiprocessing.cpu_count())
+
+    if processors == 1:
+        kwargs = {
+            "desc": function.__name__,
+            "total": len(in_dict),
+            "unit": "runs",
+            "unit_scale": True,
+            "leave": True,
+        }
+        if use_kwargs:
+            futures = {a: function(**in_dict[a]) for a in tqdm(in_dict, **kwargs)}
+        else:
+            futures = {a: function(in_dict[a]) for a in tqdm(in_dict, **kwargs)}
+    else:
+        with ProcessPoolExecutor(max_workers=processors) as pool:
+            if use_kwargs:
+                futures = {pool.submit(function, **in_dict[a]): a for a in in_dict}
+            else:
+                futures = {pool.submit(function, in_dict[a]): a for a in in_dict}
+
+            kwargs = {
+                "desc": function.__name__,
+                "total": len(futures),
+                "unit": "runs",
+                "unit_scale": True,
+                "leave": True,
+            }
+
+            # Print out the progress as tasks complete
+            for f in tqdm(as_completed(futures), **kwargs):
+                pass
+    out = {}
+    # Get the results from the futures.
+    for key in futures:
+        try:
+            if processors > 1:
+                out[futures[key]] = key.result()
+            else:
+                out[key] = futures[key]
+        except Exception as e:
+            log(str(e), lg.ERROR)
+            out[futures[key]] = e
+    return out

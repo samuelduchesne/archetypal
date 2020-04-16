@@ -5,15 +5,16 @@ import time
 import warnings
 from datetime import timedelta
 
-import archetypal
 import numpy as np
 import pandas as pd
 import tsam.timeseriesaggregation as tsam
-from archetypal import log, rmse, piecewise, settings
 from matplotlib import pyplot as plt, cm
 from matplotlib.colors import LightSource
 from pandas import Series, DataFrame, concat, MultiIndex, date_range
 from sklearn import preprocessing
+
+import archetypal
+from archetypal import log, rmse, piecewise, settings
 
 
 class EnergySeries(Series):
@@ -875,11 +876,14 @@ def plot_energyseries(
 
         # set the extent of the figure
         ax.set_xlim3d(-1, ncols)
-        ax.set_xlabel("X")
+        ax.set_xlabel(kwargs.get("xlabel", "hour of day"))
         ax.set_ylim3d(-1, nrows)
-        ax.set_ylabel("Y")
+        ax.set_ylabel(kwargs.get("ylabel", "day of year"))
         ax.set_zlim3d(vmin, vmax)
-        z_label = energy_series.name if energy_series.name is not None else "Z"
+        z_label = "{} [{:~P}]".format(
+            energy_series.name if energy_series.name is not None else "Z",
+            energy_series.units,
+        )
         ax.set_zlabel(z_label)
 
         # configure axis appearance
@@ -995,15 +999,15 @@ def plot_energyseries_map(
 
     stacked, timeindex = tsam.unstackToPeriods(copy.deepcopy(data), periodlength)
     cmap = plt.get_cmap(cmap)
-    cax = axes.imshow(
+    im = axes.imshow(
         stacked.values.T, interpolation="nearest", vmin=vmin, vmax=vmax, cmap=cmap
     )
     axes.set_aspect("auto")
     axes.set_ylabel("Hour")
     plt.xlabel("Day")
 
-    fig.subplots_adjust(right=1.2)
-    cbar = plt.colorbar(cax)
+    # fig.subplots_adjust(right=1.1)
+    cbar = fig.colorbar(im, ax=axes)
     cbar.set_label("{} [{:~P}]".format(data.name, data.units))
 
     fig, axes = save_and_show(

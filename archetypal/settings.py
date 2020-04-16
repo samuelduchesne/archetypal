@@ -7,10 +7,11 @@
 
 import logging as lg
 
-# locations to save data, logs, images, and cache
-import archetypal
 import pint
 from path import Path
+
+# locations to save data, logs, images, and cache
+import archetypal
 
 data_folder = Path("data")
 logs_folder = Path("logs")
@@ -169,3 +170,6 @@ class ZoneWeight(object):
 
 
 zone_weight = ZoneWeight(n=0)
+
+# Latest version of EnergyPlus compatible with archetypal
+ep_version = "9-2-0"

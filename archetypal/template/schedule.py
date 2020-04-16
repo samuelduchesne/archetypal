@@ -96,12 +96,17 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                 ]
             )
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, quantity=None):
         """Combine two UmiSchedule objects together.
 
         Args:
-            other (UmiSchedule):
-            weights (str): Attribute of self and other containing the weight factor.
+            other (UmiSchedule): The other Schedule object to combine with.
+            weights (list): Attribute of self and other containing the weight
+                factor.
+            quantity (list or dict): Scalar value that will be multiplied by self before
+                the averaging occurs. This ensures that the resulting schedule
+                returns the correct integrated value. If a dict is passed, keys are
+                schedules Names and values are quantities.
 
         Returns:
             (UmiSchedule): the combined UmiSchedule object.
@@ -133,9 +138,25 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         elif isinstance(weights, str):
             weights = [getattr(self, weights), getattr(other, weights)]
 
-        new_values = np.average(
-            [self.all_values, other.all_values], axis=0, weights=weights
-        )
+        if quantity is None:
+            new_values = np.average(
+                [self.all_values, other.all_values], axis=0, weights=weights
+            )
+        elif isinstance(quantity, dict):
+            new_values = np.average(
+                [self.all_values * quantity[self.Name], other.all_values * quantity[
+                    other.Name]],
+                axis=0,
+                weights=weights,
+            )
+            new_values /= new_values.max()
+        else:
+            new_values = np.average(
+                [self.all_values * quantity[0], other.all_values * quantity[1]],
+                axis=0,
+                weights=weights,
+            )
+            new_values /= new_values.max()
 
         # the new object's name
         meta = self._get_predecessors_meta(other)
@@ -204,16 +225,25 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
 
 class YearScheduleParts:
+    """Helper Class for YearSchedules that are defined using FromDay FromMonth
+    ToDay ToMonth attributes.
+    """
+
     def __init__(
         self, FromDay=None, FromMonth=None, ToDay=None, ToMonth=None, Schedule=None
     ):
         """
         Args:
-            FromDay:
-            FromMonth:
-            ToDay:
-            ToMonth:
-            Schedule:
+            FromDay (int): This numeric field is the starting day for the
+                schedule time period.
+            FromMonth (int): This numeric field is the starting month for the
+                schedule time period.
+            ToDay (int): This numeric field is the ending day for the schedule
+                time period.
+            ToMonth (int): This numeric field is the ending month for the
+                schedule time period.
+            Schedule (UmiSchedule): The associated UmiSchedule related to this
+                object.
         """
         self.FromDay = FromDay
         self.FromMonth = FromMonth
@@ -249,30 +279,26 @@ class YearScheduleParts:
 
 
 class DaySchedule(UmiSchedule):
-    """A DaySchedule is a superclass of UmiSchedule and handles the conversion
-    to and from the json UmiTemplate.
-    """
+    """Superclass of UmiSchedule that handles daily schedules."""
 
     def __init__(self, **kwargs):
-        """Initialize a DaySchedule object with parameters: :param **kwargs:
-        keywords passed to the :class:`UmiSchedule`:param constructor. See
-        :class:`UmiSchedule` for more info.:
+        """Initialize a DaySchedule object with parameters:
 
         Args:
-            **kwargs: Keywords passed to the :class:`UmiSchedule`
-                constructor. See :class:`UmiSchedule` for more details.
+            **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
         """
         super(DaySchedule, self).__init__(**kwargs)
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
-        """Create a DaySchedule from a :class:`EpBunch` object
+        """Create a DaySchedule from a :class:`~eppy.bunch_subclass.EpBunch`
+        object
 
         Args:
             epbunch (EpBunch): The EpBunch object to construct a DaySchedule
                 from.
-            **kwargs: Keywords passed to the :class:`UmiSchedule`
-                constructor. See :class:`UmiSchedule` for more details.
+            **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
+                See :class:`UmiSchedule` for more details.
         """
 
         sched = cls(
@@ -291,8 +317,8 @@ class DaySchedule(UmiSchedule):
 
         Args:
             Values (array-like): A list of values of length 24.
-            **kwargs: Keywords passed to the :class:`UmiSchedule`
-             constructor. See :class:`UmiSchedule` for more details.
+            **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
+                See :class:`UmiSchedule` for more details.
         """
         sched = cls(**kwargs)
         sched.values = Values
@@ -301,13 +327,25 @@ class DaySchedule(UmiSchedule):
 
     @classmethod
     def from_json(cls, Type, **kwargs):
+        """Create a DaySchedule from a Umi Template json file.
+
+        Args:
+            Type (str): The schedule type limits name.
+            **kwargs:
+        """
         values = kwargs.pop("Values")
         sched = cls.from_values(values, schTypeLimitsName=Type, **kwargs)
 
         return sched
 
     def to_json(self):
-        """Convert class properties to dict"""
+        """Returns a dict-like representation of the schedule.
+
+        Returns:
+            dict: The dict-like representation of the schedule
+
+        """
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -325,18 +363,18 @@ class DaySchedule(UmiSchedule):
         return np.array(self.values)
 
     def to_dict(self):
+        """returns umi template repr"""
         return {"$ref": str(self.id)}
 
 
 class WeekSchedule(UmiSchedule):
-    """
-    $id, Category, Comments, DataSource, Days, Name, Type
-    """
+    """Superclass of UmiSchedule that handles weekly schedules."""
 
     def __init__(self, days=None, **kwargs):
-        """
+        """Initialize a WeekSchedule object with parameters:
+
         Args:
-            *args:
+            days (list of DaySchedule): list of :class:`DaySchedule`.
             **kwargs:
         """
         super(WeekSchedule, self).__init__(**kwargs)
@@ -344,6 +382,11 @@ class WeekSchedule(UmiSchedule):
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
+        """
+        Args:
+            epbunch:
+            **kwargs:
+        """
         sched = cls(
             idf=epbunch.theidf, Name=epbunch.Name, schType=epbunch.key, **kwargs
         )
@@ -355,7 +398,6 @@ class WeekSchedule(UmiSchedule):
     def from_json(cls, **kwargs):
         """
         Args:
-            *args:
             **kwargs:
         """
         sch_type_limits_name = kwargs.pop("Type")
@@ -365,7 +407,12 @@ class WeekSchedule(UmiSchedule):
         return wc
 
     def to_json(self):
-        """Convert class properties to dict"""
+        """Returns a dict-like representation of the schedule.
+
+        Returns:
+            dict: The dict-like representation of the schedule
+
+        """
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -385,13 +432,13 @@ class WeekSchedule(UmiSchedule):
         """
         blocks = []
         dayname = [
-            "Sunday",
             "Monday",
             "Tuesday",
             "Wednesday",
             "Thursday",
             "Friday",
             "Saturday",
+            "Sunday",
         ]
         for day in dayname:
             week_day_schedule_name = epbunch["{}_ScheduleDay_Name".format(day)]
@@ -404,16 +451,16 @@ class WeekSchedule(UmiSchedule):
         return blocks
 
     def to_dict(self):
+        """returns umi template repr"""
         return {"$ref": str(self.id)}
 
 
 class YearSchedule(UmiSchedule):
-    """
-    $id, Category, Comments, DataSource, Name, Parts, Type
-    """
+    """Superclass of UmiSchedule that handles yearly schedules."""
 
     def __init__(self, *args, **kwargs):
-        """
+        """Initialize a YearSchedule object with parameters:
+
         Args:
             *args:
             **kwargs:
@@ -428,7 +475,7 @@ class YearSchedule(UmiSchedule):
 
     @property
     def all_values(self):
-        index = pd.DatetimeIndex(start=self.startDate, freq="1H", periods=8760)
+        index = pd.date_range(start=self.startDate, freq="1H", periods=8760)
         series = pd.Series(index=index)
         for part in self.Parts:
             start = "{}-{}-{}".format(self.year, part.FromMonth, part.FromDay)
@@ -444,7 +491,6 @@ class YearSchedule(UmiSchedule):
     def from_json(cls, **kwargs):
         """
         Args:
-            *args:
             **kwargs:
         """
         schtypelimitsname = kwargs.pop("Type")
@@ -458,7 +504,12 @@ class YearSchedule(UmiSchedule):
         return UmiSchedule.from_yearschedule(ys)
 
     def to_json(self):
-        """Convert class properties to dict"""
+        """Returns a dict-like representation of the schedule.
+
+        Returns:
+            dict: The dict-like representation of the schedule
+
+        """
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -498,4 +549,5 @@ class YearSchedule(UmiSchedule):
         return parts
 
     def to_dict(self):
+        """returns umi template repr"""
         return {"$ref": str(self.id)}

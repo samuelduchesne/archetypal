@@ -5,8 +5,9 @@ from sqlite3 import OperationalError
 
 import numpy as np
 import pandas as pd
-from archetypal import log, EnergySeries
 from path import Path
+
+from archetypal import log, EnergySeries
 
 
 class ReportData(pd.DataFrame):
@@ -124,7 +125,7 @@ class ReportData(pd.DataFrame):
                 sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
                 params.update(env_name)
             df = cls.execute(conn, sql_query, params)
-            return df
+            return cls(df)
 
     @classmethod
     def multiple_conditions(cls, basename, cond_names, var_name):

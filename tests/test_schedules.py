@@ -1,13 +1,22 @@
 import os
 
 import pytest
-from archetypal import Schedule, load_idf, copy_file, run_eplus, UmiSchedule, config
+
+from archetypal import (
+    Schedule,
+    load_idf,
+    copy_file,
+    run_eplus,
+    UmiSchedule,
+    config,
+    get_eplus_dirs,
+    settings,
+)
 
 
 def test_schedules_in_necb_specific(config):
     files = [
-        "tests/input_data/regular/NECB 2011-MediumOffice-NECB HDD "
-        "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
     ]
     idfs = {os.path.basename(file): load_idf(file) for file in files}
     import matplotlib.pyplot as plt
@@ -57,7 +66,13 @@ idf_file = "tests/input_data/schedules/test_multizone_EP.idf"
 def schedules_idf():
     config(cache_folder="tests/.temp/cache")
     idf = load_idf(
-        idf_file, include=["tests/input_data/schedules/TDV_2008_kBtu_CTZ06.csv"]
+        idf_file,
+        include=[
+            get_eplus_dirs(settings.ep_version)
+            / "DataSets"
+            / "TDV"
+            / "TDV_2008_kBtu_CTZ06.csv"
+        ],
     )
     return idf
 
@@ -78,40 +93,6 @@ schedules = [
     else schedule
     for schedule in schedules
 ]
-
-
-def test_ep_versus_schedule(test_data):
-    """Main test. Will run the idf using EnergyPlus, retrieve the csv file,
-    create the schedules and compare"""
-
-    orig, new, expected = test_data
-
-    # slice_ = ('2018/01/01 00:00', '2018/01/08 00:00')  # first week
-    # slice_ = ('2018/05/20 12:00', '2018/05/22 12:00')
-    slice_ = ("2018/04/30 12:00", "2018/05/02 12:00")  # Holiday
-    # slice_ = ('2018/01/01 00:00', '2018/12/31 23:00')  # all year
-    # slice_ = ('2018/04/30 12:00', '2018/05/01 12:00')  # break
-
-    mask = expected.values != orig.all_values
-    diff = mask.sum()
-
-    # # region Plot
-    # fig, ax = plt.subplots(1, 1, figsize=(5, 4))
-    # orig.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post',
-    #           linestyle='dashed')
-    # new.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post',
-    #          linestyle='dotted')
-    # expected.loc[slice_[0]:slice_[1]].plot(label='E+', legend=True, ax=ax,
-    #                                        drawstyle='steps-post',
-    #                                        linestyle='dashdot')
-    # ax.set_title(orig.Name.capitalize())
-    # plt.show()
-    # # endregion
-
-    print(diff)
-    print(orig.series[mask])
-    assert (orig.all_values[0 : 52 * 7 * 24] == expected[0 : 52 * 7 * 24]).all()
-    assert (new.all_values[0 : 52 * 7 * 24] == expected[0 : 52 * 7 * 24]).all()
 
 
 @pytest.fixture(params=schedules, ids=ids)
@@ -158,7 +139,12 @@ def run_schedules_idf(config):
         weather_file="tests/input_data/CAN_PQ_Montreal.Intl.AP" ".716270_CWEC.epw",
         annual=True,
         readvars=True,
-        include=["tests/input_data/schedules/TDV_2008_kBtu_CTZ06.csv"],
+        include=[
+            get_eplus_dirs(settings.ep_version)
+            / "DataSets"
+            / "TDV"
+            / "TDV_2008_kBtu_CTZ06.csv"
+        ],
         return_files=True,
     )
     cache_dir = files[1][0].dirname()

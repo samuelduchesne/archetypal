@@ -12,6 +12,7 @@ import random
 import re
 
 import numpy as np
+
 from archetypal import log
 from archetypal.utils import lcm
 
@@ -47,20 +48,25 @@ class Unique(type):
 
 
 def _resolve_combined_names(predecessors):
-    """Creates a name from the list of :class:`UmiBase` objects (
-    predecessors)"""
-    from collections import Counter
+    """Creates a unique name from the list of :class:`UmiBase` objects
+    (predecessors)
 
-    all_names = [obj.Name for obj in predecessors]
+    Args:
+        predecessors:
+    """
+
+    # all_names = [obj.Name for obj in predecessors]
     class_ = list(set([obj.__class__.__name__ for obj in predecessors]))[0]
-    counter = Counter(all_names)
 
-    return "Combined_%s_%s" % (class_, str(hash(str(counter))))
+    return "Combined_%s_%s" % (class_, len(predecessors))
 
 
 def _shorten_name(long_name):
-    """Check if name is longer than 300 characters, and return truncated
-    version"""
+    """Check if name is longer than 300 characters, and return truncated version
+
+    Args:
+        long_name (str): A long name (300 char+) to shorten.
+    """
     if len(long_name) > 300:
         # shorten name if longer than 300 characters (limit set by
         # EnergyPlus)
@@ -105,7 +111,7 @@ class UmiBase(object):
         self.sql = sql
         self.Category = Category
         self.Comments = Comments
-        if DataSource is "":
+        if DataSource == "":
             try:
                 self.DataSource = self.idf.building_name(use_idfname=True)
             except:
@@ -123,28 +129,40 @@ class UmiBase(object):
     @property
     def predecessors(self):
         """Of which objects is self made of. If from nothing else then self,
-        return self."""
+        return self.
+        """
         if self._predecessors:
             return self._predecessors
         else:
             return MetaData([self])
 
     def _get_predecessors_meta(self, other):
-        """get predecessor objects to self and other"""
+        """get predecessor objects to self and other
+
+        Args:
+            other (object): The other object.
+        """
         predecessors = self.predecessors + other.predecessors
-        meta = {}
-        meta["Name"] = _resolve_combined_names(predecessors)
-        meta["Comments"] = (
-            "Object composed of a combination of these "
-            "objects:\n{}".format("\n- ".join(set(obj.Name for obj in predecessors)))
-        )
-        meta["Category"] = ", ".join(set([obj.Category for obj in predecessors]))
-        meta["DataSource"] = ", ".join(set([obj.DataSource for obj in predecessors]))
+        meta = {
+            "Name": _resolve_combined_names(predecessors),
+            "Comments": (
+                "Object composed of a combination of these "
+                "objects:\n{}".format(
+                    "\n- ".join(set(obj.Name for obj in predecessors))
+                )
+            ),
+            "Category": ", ".join(set([obj.Category for obj in predecessors])),
+            "DataSource": ", ".join(set([obj.DataSource for obj in predecessors])),
+        }
 
         return meta
 
     def rename(self, name):
-        """renames self as well as the cached object"""
+        """renames self as well as the cached object
+
+        Args:
+            name (str): the name.
+        """
         self._cache.pop(hash(self))
         CREATED_OBJECTS.pop(hash(self))
 
@@ -182,6 +200,7 @@ class UmiBase(object):
         return hash((self.__class__.mro()[0].__name__, self.Name))
 
     def to_dict(self):
+        """returns umi template repr"""
         return {"$ref": str(self.id)}
 
     def _float_mean(self, other, attr, weights=None):
@@ -284,8 +303,7 @@ class MaterialBase(UmiBase):
     """A class used to store data linked with the Life Cycle aspect of materials
 
     For more information on the Life Cycle Analysis performed in UMI, see:
-    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction
-    .html#life-cycle-impact
+    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life-cycle-impact
     """
 
     def __init__(
@@ -554,8 +572,8 @@ def load_json_objects(datastore):
 
 
 class UniqueName(str):
-    """Handles the attribution of user defined names for :class:`UmiBase`,
-    :class:`EquationCollection` and makes sure they are unique.
+    """Handles the attribution of user defined names for :class:`UmiBase`, and
+    makes sure they are unique.
     """
 
     existing = {}  # a dict to store the created names
@@ -575,10 +593,13 @@ class UniqueName(str):
         if not name:
             return None
         key = name
-        key, *_ = re.split(r"_\d+(?!\d+)", key)  # match last digit with the underscore
+        key, *_ = re.split(
+            r"_\d+(?!.*\d+)", key
+        )  # match last digit with the underscore
 
         if key not in cls.existing:
             cls.existing[key] = 0
+            return name
         cls.existing[key] += 1
         the_name = key + "_{}".format(cls.existing[key])
         return the_name

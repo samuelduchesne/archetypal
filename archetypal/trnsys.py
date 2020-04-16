@@ -13,9 +13,14 @@ import shutil
 import subprocess
 import sys
 import time
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
+from geomeppy.geom.polygons import Polygon3D
+from path import Path
+from tqdm import tqdm
+
 from archetypal import (
     log,
     settings,
@@ -26,14 +31,15 @@ from archetypal import (
     load_idf,
     load_idf_object_from_cache,
     hash_file,
+    run_eplus,
+    recursive_len,
+    ReportData,
 )
-from geomeppy.geom.polygons import Polygon3D
-from path import Path
-from tqdm import tqdm
 
 
 def convert_idf_to_trnbuild(
     idf_file,
+    weather_file,
     window_lib=None,
     return_idf=False,
     return_b18=True,
@@ -43,6 +49,7 @@ def convert_idf_to_trnbuild(
     trnsidf_exe=None,
     template=None,
     log_clear_names=False,
+    schedule_as_input=True,
     **kwargs
 ):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS)
@@ -58,16 +65,18 @@ def convert_idf_to_trnbuild(
     Example:
         >>> # Exemple of setting kwargs to be unwrapped in the function
         >>> kwargs_dict = {'u_value': 2.5, 'shgc': 0.6, 't_vis': 0.78,
-        >>>                'tolerance': 0.05, 'ordered': True}
+        >>>                'tolerance': 0.05, "fframe": 0.0, "uframe": 0.5, 'ordered': True}
         >>> # Exemple how to call the function
         >>> idf_file = "/file.idf"
         >>> window_filepath = "/W74-lib.dat"
-        >>> convert_idf_to_trnbuild(idf_file=idf_file,
+        >>> convert_idf_to_trnbuild(idf_file=idf_file, weather_file=weather_file,
         >>>                         window_lib=window_filepath,
         >>>                         **kwargs_dict)
 
     Args:
         idf_file (str): path to the idf file to convert
+        weather_file (str): To run EnergyPlus simulation and be able to get some
+            values (e.g. internal gain, infiltration, etc.)
         window_lib (str): File path of the window library (from Berkeley Lab)
         return_idf (bool, optional): If True, also return the path to the
             modified IDF with the new names, coordinates, etc. of the IDF
@@ -82,6 +91,12 @@ def convert_idf_to_trnbuild(
         template (str): Path to d18 template file.
         log_clear_names (bool): If True, DOES NOT log the equivalence between
             the old and new names in the console.
+        schedule_as_input (bool): If True, writes the schedules as INPUTS in the BUI
+            file. Then, the user would have to link in TRNSYS studio the csv file
+            with the schedules to those INPUTS. If False, the schedules are written as
+            SCHEDULES in the BUI file. Be aware that this last option (False) can make
+            crash TRNBuild because the schedules are too long are there is too many
+            schedules.
         kwargs: keyword arguments sent to
             :func:`convert_idf_to_trnbuild()` or :func:`trnbuild_idf()` or
             :func:`choose_window`. "ordered=True" to have the name of idf
@@ -96,23 +111,79 @@ def convert_idf_to_trnbuild(
               provided if *return_b18* is True.
             * return_trn (str): the path to the TRNBuild input file (.idf). Only
               provided if *return_t3d* is True.
-            * retrun_trn (str): the path to the TRNSYS dck file (.dck). Only
+            * retrun_dck (str): the path to the TRNSYS dck file (.dck). Only
               provided if *return_dck* is True.
     """
 
-    idf_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
-        idf_file, window_lib, output_folder, trnsidf_exe, template
+    # Assert all path needed exist
+    idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+        idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+    )
+
+    # Run EnergyPlus Simulation
+    ep_version = kwargs.pop("ep_version", None)
+    outputs = [
+        {
+            "ep_object": "Output:Variable".upper(),
+            "kwargs": dict(
+                Variable_Name="Zone Thermostat Heating Setpoint Temperature",
+                Reporting_Frequency="hourly",
+                save=True,
+            ),
+        },
+        {
+            "ep_object": "Output:Variable".upper(),
+            "kwargs": dict(
+                Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
+                Reporting_Frequency="hourly",
+                save=True,
+            ),
+        },
+    ]
+    _, idf = run_eplus(
+        idf_file,
+        weather_file,
+        output_directory=None,
+        ep_version=ep_version,
+        output_report=None,
+        prep_outputs=outputs,
+        design_day=False,
+        annual=True,
+        expandobjects=True,
+        return_idf=True,
     )
 
     # Check if cache exists
-    idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
+    # idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
+    # Outpout reports
+    htm = idf.htm
+    sql = idf.sql
+    sql_file = idf.sql_file
+
+    # Clean names of idf objects (e.g. 'MATERIAL')
+    idf_2 = deepcopy(idf)
+    log("Cleaning names of the IDF objects...", lg.INFO)
+    start_time = time.time()
+    clear_name_idf_objects(idf_2, log_clear_names)
+    log(
+        "Cleaned IDF object names in {:,.2f} seconds".format(time.time() - start_time),
+        lg.INFO,
+    )
+
+    # Get old:new names equivalence
+    old_new_names = pd.read_csv(
+        os.path.join(
+            settings.data_folder,
+            Path(idf_file).basename().stripext() + "_old_new_names_equivalence.csv",
+        )
+    ).to_dict()
 
     # Read IDF_T3D template and write lines in variable
     lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
     # Get objects from IDF file
-    buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones = _get_idf_objects(
-        idf
+    buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
+        idf_2
     )
 
     # Get all construction EXCEPT fenestration ones
@@ -120,7 +191,7 @@ def convert_idf_to_trnbuild(
 
     # If ordered=True, ordering idf objects
     ordered = kwargs.get("ordered", False)
-    buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones = _order_objects(
+    buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones, zonelists = _order_objects(
         buildingSurfs,
         buildings,
         constr_list,
@@ -135,17 +206,38 @@ def convert_idf_to_trnbuild(
         materials,
         peoples,
         zones,
+        zonelists,
         ordered,
     )
 
     # region Get schedules from IDF
-    schedule_names, schedules = _get_schedules(idf)
+    schedule_names, schedules = _get_schedules(idf_2)
 
+    # Adds ground temperature to schedules
+    adds_sch_ground(htm, schedule_names, schedules)
+
+    # Adds "sch_setpoint_ZONES" to schedules
+    df_heating_setpoint = ReportData.from_sqlite(
+        sql_file, table_name="Zone Thermostat Heating Setpoint Temperature"
+    )
+    df_cooling_setpoint = ReportData.from_sqlite(
+        sql_file, table_name="Zone Thermostat Cooling Setpoint Temperature"
+    )
+    # Heating
+    adds_sch_setpoint(
+        zones, df_heating_setpoint, old_new_names, schedule_names, schedules, "h"
+    )
+    # Cooling
+    adds_sch_setpoint(
+        zones, df_cooling_setpoint, old_new_names, schedule_names, schedules, "c"
+    )
+
+    # Save schedules to csv file
     _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
     # endregion
 
     # Gets and removes from IDF materials with resistance lower than 0.0007
-    mat_name = _remove_low_conductivity(constructions, idf, materials)
+    mat_name = _remove_low_conductivity(constructions, idf_2, materials)
 
     # Write data from IDF file to T3D file
     start_time = time.time()
@@ -163,11 +255,11 @@ def convert_idf_to_trnbuild(
     coordSys = _is_coordSys_world(coordSys, zones)
 
     # Change coordinates from relative to absolute for building surfaces
-    _change_relative_coords(buildingSurfs, coordSys, idf)
+    _change_relative_coords(buildingSurfs, coordSys, idf_2)
 
     # Adds or changes adjacent surface if needed
-    _add_change_adj_surf(buildingSurfs, idf)
-    buildingSurfs = idf.idfobjects["BUILDINGSURFACE:DETAILED"]
+    _add_change_adj_surf(buildingSurfs, idf_2)
+    buildingSurfs = idf_2.idfobjects["BUILDINGSURFACE:DETAILED"]
 
     # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf)
     # from IDF to lines (T3D)
@@ -178,27 +270,42 @@ def convert_idf_to_trnbuild(
 
     # Writing zones in lines
     win_slope_dict = _write_zone_buildingSurf_fenestrationSurf(
-        buildingSurfs, coordSys, fenestrationSurfs, idf, lines, n_ground, zones
+        buildingSurfs,
+        coordSys,
+        fenestrationSurfs,
+        idf_2,
+        lines,
+        n_ground,
+        zones,
+        schedule_as_input,
     )
     # endregion
 
     # region Write CONSTRUCTION from IDF to lines (T3D)
-    _write_constructions(constr_list, idf, lines, mat_name, materials)
+    _write_constructions(constr_list, idf_2, lines, mat_name, materials)
     # endregion
 
     # Write CONSTRUCTION from IDF to lines, at the end of the T3D file
-    _write_constructions_end(constr_list, idf, lines)
+    _write_constructions_end(constr_list, idf_2, lines)
 
     # region Write LAYER from IDF to lines (T3D)
     _write_materials(lines, materialAirGap, materialNoMass, materials)
     # endregion
 
     # region Write GAINS (People, Lights, Equipment) from IDF to lines (T3D)
-    _write_gains(equipments, idf, lights, lines, peoples)
+    _write_gains(equipments, lights, lines, peoples, htm, old_new_names)
+    # endregion
+
+    # region Write basic conditioning systems (HEATING and COOLING) from IDF to lines (T3D)
+    heat_dict, cool_dict = _write_conditioning(
+        htm, lines, schedules, old_new_names, schedule_as_input
+    )
     # endregion
 
     # region Write SCHEDULES from IDF to lines (T3D)
-    _write_schedules(lines, schedule_names, schedules)
+    schedules_not_written = _write_schedules(
+        lines, schedule_names, schedules, schedule_as_input, idf_file
+    )
     # endregion
 
     # region Write WINDOWS chosen by the user (from Berkeley lab library) in
@@ -212,10 +319,12 @@ def convert_idf_to_trnbuild(
     win_shgc = kwargs.get("shgc", 0.64)
     win_tvis = kwargs.get("t_vis", 0.8)
     win_tolerance = kwargs.get("tolerance", 0.05)
+    win_fframe = kwargs.get("fframe", 0.15)
+    win_uframe = kwargs.get("uframe", 8.17)
     window = choose_window(win_u_value, win_shgc, win_tvis, win_tolerance, window_lib)
 
     # Write windows in lines
-    _write_window(lines, win_slope_dict, window)
+    _write_window(lines, win_slope_dict, window, win_fframe, win_uframe)
 
     # Write window pool in lines
     _write_winPool(lines, window)
@@ -236,17 +345,17 @@ def convert_idf_to_trnbuild(
     # output_folder
     new_idf_path = os.path.join(output_folder, "MODIFIED_" + os.path.basename(idf_file))
     if return_idf:
-        idf.saveas(filename=new_idf_path)
+        idf_2.saveas(filename=new_idf_path)
 
     # Run trnsidf to convert T3D to BUI
     log("Converting t3d file to bui file. Running trnsidf.exe...")
     dck = return_dck
-    nonum = kwargs.get("nonum", False)
-    N = kwargs.get("N", False)
-    geo_floor = kwargs.get("geo_floor", 0.6)
-    refarea = kwargs.get("refarea", False)
-    volume = kwargs.get("volume", False)
-    capacitance = kwargs.get("capacitance", False)
+    nonum = kwargs.pop("nonum", False)
+    N = kwargs.pop("N", False)
+    geo_floor = kwargs.pop("geo_floor", 0.6)
+    refarea = kwargs.pop("refarea", False)
+    volume = kwargs.pop("volume", False)
+    capacitance = kwargs.pop("capacitance", False)
     trnbuild_idf(
         t3d_path,
         output_folder=output_folder,
@@ -274,7 +383,263 @@ def convert_idf_to_trnbuild(
             [return_idf, return_b18, return_t3d, return_dck],
         )
     )
+
+    # region Modify B18 file
+    with open(b18_path) as b18_file:
+        b18_lines = b18_file.readlines()
+
+    # Adds conditionning to B18 file
+    conditioning_to_b18(b18_lines, heat_dict, cool_dict, zones, old_new_names)
+
+    # Adds infiltration to b18 file
+    infilt_to_b18(b18_lines, zones, htm)
+
+    # Adds internal gain to b18 file
+    gains_to_b18(
+        b18_lines,
+        zones,
+        zonelists,
+        peoples,
+        lights,
+        equipments,
+        schedules_not_written,
+        htm,
+        old_new_names,
+        schedule_as_input,
+    )
+
+    # T initial to b18
+    t_initial_to_b18(b18_lines, zones, schedules)
+
+    # Save B18 file at output_folder
+    if output_folder is None:
+        # User did not provide an output folder path. We use the default setting
+        output_folder = os.path.relpath(settings.data_folder)
+    if not os.path.isdir(output_folder):
+        os.makedirs(output_folder)
+    with open(b18_path, "w") as converted_file:
+        for line in b18_lines:
+            converted_file.writelines(str(line))
+    # endregion
+
     return return_path
+
+
+def t_initial_to_b18(b18_lines, zones, schedules):
+    for zone in zones:
+        t_ini = schedules["sch_h_setpoint_" + zone.Name]["all values"][0]
+        # Get line number where to write TINITIAL
+        f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
+        tIniNum = checkStr(b18_lines, "TINITIAL", f_count)
+        ind_tini = b18_lines[tIniNum - 1].find("TINITIAL")
+        ind_phini = b18_lines[tIniNum - 1].find("PHINITIAL")
+        b18_lines[tIniNum - 1] = (
+            b18_lines[tIniNum - 1][: ind_tini + len("TINITIAL=")]
+            + " "
+            + str(t_ini)
+            + "      : "
+            + b18_lines[tIniNum - 1][ind_phini:]
+            + "\n"
+        )
+
+
+def adds_sch_setpoint(
+    zones, report_sqlite, old_new_names, schedule_names, schedules, string
+):
+    for zone in zones:
+        all_values = report_sqlite[
+            report_sqlite.loc[:, "KeyValue"]
+            == old_new_names[zone.Name.upper()][0].upper()
+        ].Value.values
+        schedule_name = "sch_" + string + "_setpoint_" + zone.Name
+        schedule_names.append(schedule_name)
+        schedules[schedule_name] = {"all values": all_values}
+
+
+def adds_sch_ground(htm, schedule_names, schedules):
+    # Get the monthly values from htm output file from EP simulation
+    values = np.append(
+        htm["Site:GroundTemperature:BuildingSurface"].values[0][1:],
+        htm["Site:GroundTemperature:BuildingSurface"].values[0][-1],
+    )
+    # Create array of 8760 values from monthly values
+    all_values = (
+        pd.DataFrame(
+            values, index=pd.date_range(freq="MS", start="01/01/2019", periods=13)
+        )
+        .resample("H")
+        .ffill()[:-1]
+        .T.values[0]
+    )
+    schedule_names.append("sch_ground")
+    # Adds "sch_ground" to schedules dict
+    schedules["sch_ground"] = {"all values": all_values}
+
+
+def infilt_to_b18(b18_lines, zones, htm):
+    try:
+        mean_infilt = round(
+            np.average(
+                htm["ZoneInfiltration Airflow Stats Nominal"][
+                    "ACH - Air Changes per Hour"
+                ].values,
+                weights=htm["ZoneInfiltration Airflow Stats Nominal"][
+                    "Zone Floor Area {m2}"
+                ].values,
+            ),
+            3,
+        )
+    except KeyError:
+        mean_infilt = 0
+
+    log("Writing infiltration info from idf file to b18 file...")
+    # Get line number where to write
+    infiltNum = checkStr(b18_lines, "I n f i l t r a t i o n")
+    # Write in infiltration section
+    b18_lines.insert(infiltNum + 1, "INFILTRATION Constant" + "\n")
+    b18_lines.insert(infiltNum + 2, "AIRCHANGE=" + str(mean_infilt) + "\n")
+    # Write in zone section
+    for zone in zones:
+        f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
+        regimeInfiltNum = checkStr(b18_lines, "REGIME", f_count)
+        b18_lines.insert(regimeInfiltNum, " INFILTRATION = Constant" + "\n")
+
+
+def gains_to_b18(
+    b18_lines,
+    zones,
+    zonelists,
+    peoples,
+    lights,
+    equipments,
+    schedules_not_written,
+    htm,
+    old_new_names,
+    schedule_as_input,
+):
+    peoples_in_zone = zone_where_gain_is(peoples, zones, zonelists)
+    lights_in_zone = zone_where_gain_is(lights, zones, zonelists)
+    equipments_in_zone = zone_where_gain_is(equipments, zones, zonelists)
+
+    for zone in zones:
+        # Write people gains
+        _write_gain_to_b18(
+            b18_lines,
+            zone,
+            peoples,
+            peoples_in_zone,
+            schedules_not_written,
+            htm,
+            old_new_names,
+            "People",
+            schedule_as_input,
+        )
+        # Write light gains
+        _write_gain_to_b18(
+            b18_lines,
+            zone,
+            lights,
+            lights_in_zone,
+            schedules_not_written,
+            htm,
+            old_new_names,
+            "Lights",
+            schedule_as_input,
+        )
+        # Write equipment gains
+        _write_gain_to_b18(
+            b18_lines,
+            zone,
+            equipments,
+            equipments_in_zone,
+            schedules_not_written,
+            htm,
+            old_new_names,
+            "ElectricEquipment",
+            schedule_as_input,
+        )
+
+
+def _write_gain_to_b18(
+    b18_lines,
+    zone,
+    gains,
+    gains_in_zone,
+    schedules_not_written,
+    htm,
+    old_new_names,
+    string,
+    schedule_as_input,
+):
+    for gain in gains:
+        if zone.Name in gains_in_zone[gain.Name]:
+            f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
+            regimeNum = checkStr(b18_lines, "REGIME", f_count)
+            schedule = htm[string + " Internal Gains Nominal"][
+                htm[string + " Internal Gains Nominal"]["Name"].str.contains(
+                    old_new_names[gain.Name.upper()][0]
+                )
+            ]["Schedule Name"].values[0]
+            schedule = [
+                key for (key, value) in old_new_names.items() if value[0] == schedule
+            ][0].lower()
+            if schedule in schedules_not_written:
+                continue
+            # Write
+            if schedule_as_input:
+                b18_lines.insert(
+                    regimeNum,
+                    " GAIN= "
+                    + gain.Name
+                    + " : SCALE= INPUT 1*"
+                    + schedule
+                    + " : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= 1"
+                    + "\n",
+                )
+            else:
+                b18_lines.insert(
+                    regimeNum,
+                    " GAIN= "
+                    + gain.Name
+                    + " : SCALE= SCHEDULE 1*"
+                    + schedule
+                    + " : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= 1"
+                    + "\n",
+                )
+
+
+def conditioning_to_b18(b18_lines, heat_dict, cool_dict, zones, old_new_names):
+    for zone in zones:
+        # Heating
+        _write_heat_cool_to_b18(heat_dict, old_new_names, zone, b18_lines, " HEATING")
+        # Cooling
+        _write_heat_cool_to_b18(cool_dict, old_new_names, zone, b18_lines, " COOLING")
+
+
+def _write_heat_cool_to_b18(list_dict, old_new_names, zone, b18_lines, string):
+    for key in list_dict.keys():
+        if old_new_names[zone.Name.upper()][0] in key:
+            f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
+            regimeNum = checkStr(b18_lines, "REGIME", f_count)
+            # Write
+            b18_lines.insert(regimeNum, string + " = " + list_dict[key][0] + "\n")
+
+
+def zone_where_gain_is(gains, zones, zonelists):
+    gain_in_zone = {}
+    for gain in gains:
+        list_zone = []
+        for zone in zones:
+            if zone.Name == gain.Zone_or_ZoneList_Name:
+                list_zone.append([zone.Name])
+        for zonelist in zonelists:
+            if zonelist.Name == gain.Zone_or_ZoneList_Name:
+                list_zone.append(zonelist.fieldvalues[2:])
+
+        flat_list = [item for sublist in list_zone for item in sublist]
+        gain_in_zone[gain.Name] = flat_list
+
+    return gain_in_zone
 
 
 def _change_relative_coords(buildingSurfs, coordSys, idf):
@@ -288,10 +653,12 @@ def _change_relative_coords(buildingSurfs, coordSys, idf):
 
 def _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules):
     log("Saving yearly schedules in CSV file...")
+    idf_file = Path(idf_file)
     df_sched = pd.DataFrame()
+    schedule_names.sort()
     for schedule_name in schedule_names:
         df_sched[schedule_name] = schedules[schedule_name]["all values"]
-    sched_file_name = "yearly_schedules_" + os.path.basename(idf_file) + ".csv"
+    sched_file_name = "yearly_schedules_" + idf_file.basename().stripext() + ".csv"
     output_folder = Path(output_folder)
     if not output_folder.exists():
         output_folder.mkdir_p()
@@ -383,6 +750,7 @@ def _order_objects(
     materials,
     peoples,
     zones,
+    zonelists,
     ordered=True,
 ):
     """
@@ -421,6 +789,7 @@ def _order_objects(
         fenestrationSurfs = list(reversed(fenestrationSurfs))
         buildingSurfs = list(reversed(buildingSurfs))
         zones = list(reversed(zones))
+        zonelists = list(reversed(zonelists))
         peoples = list(reversed(peoples))
         lights = list(reversed(lights))
         equipments = list(reversed(equipments))
@@ -440,10 +809,11 @@ def _order_objects(
         materials,
         peoples,
         zones,
+        zonelists,
     )
 
 
-def _get_idf_objects(idf):
+def get_idf_objects(idf):
     """Gets idf objects
 
     Args:
@@ -482,6 +852,7 @@ def _get_idf_objects(idf):
     peoples = idf.idfobjects["PEOPLE"]
     lights = idf.idfobjects["LIGHTS"]
     equipments = idf.idfobjects["ELECTRICEQUIPMENT"]
+    zonelists = idf.idfobjects["ZONELIST"]
     return (
         buildingSurfs,
         buildings,
@@ -497,10 +868,11 @@ def _get_idf_objects(idf):
         peoples,
         versions,
         zones,
+        zonelists,
     )
 
 
-def _load_idf_file_and_clean_names(idf_file, log_clear_names):
+def load_idf_file_and_clean_names(idf_file, log_clear_names):
     """Load idf file from cache if cache exist and user ask for use_cache=True.
         Moreover cleans idf object names and log in the console the equivalence
         between the old and new names if log_clear_names=False
@@ -545,7 +917,9 @@ def _load_idf_file_and_clean_names(idf_file, log_clear_names):
     return idf
 
 
-def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe, template):
+def _assert_files(
+    idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+):
     """Ensure the files and directory are here
 
     Args:
@@ -556,6 +930,9 @@ def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe, template):
         template (str): Path to d18 template file.
     """
     if not os.path.isfile(idf_file):
+        raise IOError("idf_file file not found")
+
+    if not os.path.isfile(weather_file):
         raise IOError("idf_file file not found")
 
     if window_lib:
@@ -581,7 +958,7 @@ def _assert_files(idf_file, window_lib, output_folder, trnsidf_exe, template):
     if not os.path.isfile(trnsidf_exe):
         raise IOError("trnsidf.exe not found")
 
-    return idf_file, window_lib, output_folder, trnsidf_exe, template
+    return idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
 
 
 def _add_change_adj_surf(buildingSurfs, idf):
@@ -713,8 +1090,8 @@ def _get_schedules(idf):
         year, weeks, days = s.to_year_week_day()
         schedules[schedule_name]["all values"] = s.all_values
         schedules[schedule_name]["year"] = year
-        schedules[schedule_name]["weeks"] = weeks
-        schedules[schedule_name]["days"] = days
+        # schedules[schedule_name]["weeks"] = weeks
+        # schedules[schedule_name]["days"] = days
 
     log(
         "Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
@@ -739,6 +1116,7 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
 
     uniqueList = []
     old_name_list = []
+    old_new_eq = {}
 
     # For all categories of objects in the IDF file
     for obj in tqdm(idfFile.idfobjects, desc="cleaning_names"):
@@ -785,6 +1163,7 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
 
                     uniqueList.append(new_name)
                     old_name_list.append(old_name)
+                    old_new_eq[new_name.upper()] = old_name.upper()
 
                     # Changing the name in the IDF object
                     idfFile.rename(obj, old_name, new_name)
@@ -792,6 +1171,16 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
                     pass
             else:
                 continue
+
+    # Save equivalence between old and new names
+    df = pd.DataFrame([old_new_eq])
+    if not os.path.isdir(settings.data_folder):
+        os.makedirs(settings.data_folder)
+    df.to_csv(
+        os.path.join(
+            settings.data_folder, idfFile.name[:-4] + "_old_new_names_equivalence.csv"
+        )
+    )
 
     d = {"Old names": old_name_list, "New names": uniqueList}
     from tabulate import tabulate
@@ -813,7 +1202,16 @@ def zone_origin(zone_object):
     Returns:
         Coordinates [X, Y, Z] of the zone in a list.
     """
-    return [zone_object.X_Origin, zone_object.Y_Origin, zone_object.Z_Origin]
+    x = zone_object.X_Origin
+    if x == "":
+        x = 0
+    y = zone_object.Y_Origin
+    if y == "":
+        y = 0
+    z = zone_object.Z_Origin
+    if z == "":
+        z = 0
+    return [x, y, z]
 
 
 def closest_coords(surfList, to=[0, 0, 0]):
@@ -840,34 +1238,6 @@ def closest_coords(surfList, to=[0, 0, 0]):
     dist, idx = btree.query(np.array(to).T, k=1)
     x, y, z = nbdata[idx]
     return x, y, z
-
-
-def recursive_len(item):
-    """Calculate the number of elements in nested list
-
-    Args:
-        item (list): list of lists (i.e. nested list)
-
-    Returns:
-        Total number of elements in nested list
-    """
-    if type(item) == list:
-        return sum(recursive_len(subitem) for subitem in item)
-    else:
-        return 1
-
-
-def rotate(l, n):
-    """Shift list elements to the left
-
-    Args:
-        l (list): list to rotate
-        n (int): number to shift list to the left
-
-    Returns:
-        list: shifted list.
-    """
-    return l[n:] + l[:n]
 
 
 def parse_window_lib(window_file_path):
@@ -1153,7 +1523,7 @@ def trnbuild_idf(
         >>>              r"Building\\trnsIDF\\NewFileTemplate.d18"
 
     Args:
-        idf_file (str): path/filename.idf
+        idf_file (str): path/filename.idf to the T3D file "a SketchUp idf file"
         output_folder (str, optional): location where output files will be
         template (str): path/NewFileTemplate.d18
         dck (bool): If True, create a template DCK
@@ -1251,7 +1621,14 @@ def trnbuild_idf(
 
 
 def _write_zone_buildingSurf_fenestrationSurf(
-    buildingSurfs, coordSys, fenestrationSurfs, idf, lines, n_ground, zones
+    buildingSurfs,
+    coordSys,
+    fenestrationSurfs,
+    idf,
+    lines,
+    n_ground,
+    zones,
+    schedule_as_input,
 ):
     """Does several actions on the zones, fenestration and building surfaces.
     Then, writes zone, fenestration and building surfaces information in lines.
@@ -1380,9 +1757,14 @@ def _write_zone_buildingSurf_fenestrationSurf(
                     _modify_adj_surface(buildingSurf, idf)
 
                 if "ground" in buildingSurf.Outside_Boundary_Condition.lower():
-                    buildingSurf.Outside_Boundary_Condition_Object = (
-                        "BOUNDARY=INPUT 1*TGROUND"
-                    )
+                    if schedule_as_input:
+                        buildingSurf.Outside_Boundary_Condition_Object = (
+                            "BOUNDARY=INPUT 1*sch_ground"
+                        )
+                    else:
+                        buildingSurf.Outside_Boundary_Condition_Object = (
+                            "BOUNDARY=SCHEDULE 1*sch_ground"
+                        )
 
                 if "adiabatic" in buildingSurf.Outside_Boundary_Condition.lower():
                     buildingSurf.Outside_Boundary_Condition = "OtherSideCoefficients"
@@ -1603,7 +1985,7 @@ def _write_winPool(lines, window):
     )
 
 
-def _write_window(lines, win_slope_dict, window):
+def _write_window(lines, win_slope_dict, window, fframe=0.15, uframe=8.17):
     """Write window information in lines
 
     Args:
@@ -1611,7 +1993,9 @@ def _write_window(lines, win_slope_dict, window):
             TRNBuild). To be appended (insert) here
         win_slope_dict (dict): Dictionary with window's names as key and
             window's slope as value
-        window (tuple): Information to write in the window pool extension (
+        window (tuple): Information to write in the window pool extension
+        fframe (float): fraction of the window frame (between 0 and 1)
+        uframe (float): u-value of the window frame
     """
     log("Writing windows info from idf file to t3d file...")
     # Get line number where to write
@@ -1626,8 +2010,11 @@ def _write_window(lines, win_slope_dict, window):
             "= " + str(win_slope_dict[key]) + ": "
             "SPACID = 4: WWID = 0.77: "
             "WHEIG = 1.08: "
-            "FFRAME = 0.15: UFRAME = "
-            "8.17: ABSFRAME = 0.6: "
+            "FFRAME = "
+            + str(fframe)
+            + ": UFRAME = "
+            + str(uframe)
+            + ": ABSFRAME = 0.6: "
             "RISHADE = 0: RESHADE = 0: "
             "REFLISHADE = 0.5: "
             "REFLOSHADE = 0.5: CCISHADE "
@@ -1646,7 +2033,7 @@ def _write_window(lines, win_slope_dict, window):
         )
 
 
-def _write_schedules(lines, schedule_names, schedules):
+def _write_schedules(lines, schedule_names, schedules, schedule_as_input, idf_file):
     """Write schedules information in lines
 
     Args:
@@ -1656,58 +2043,274 @@ def _write_schedules(lines, schedule_names, schedules):
         schedules (dict): Dictionary with the schedule names as key and with
     """
     log("Writing schedules info from idf file to t3d file...")
-    # Get line number where to write
-    scheduleNum = checkStr(lines, "S c h e d u l e s")
-    hour_list = list(range(25))
-    week_list = list(range(1, 8))
-    # Write schedules DAY and WEEK in lines
-    for schedule_name in schedule_names:
-        for period in ["weeks", "days"]:
-            for i in range(0, len(schedules[schedule_name][period])):
-
-                lines.insert(
-                    scheduleNum + 1,
-                    "!-SCHEDULE " + schedules[schedule_name][period][i].Name + "\n",
+    schedules_not_written = []
+    # Writes schedules as INPUTS
+    if schedule_as_input:
+        # Get line number where to write INPUTS
+        inputNum = checkStr(lines, "I n p u t s")
+        ind = lines[inputNum + 1].find("\n")
+        count = 0
+        while count * 13 < len(schedule_names):
+            begin = count * 13
+            end = begin + 13
+            if begin == 0 and len(schedule_names) == 13:
+                lines[inputNum + 1] = (
+                    lines[inputNum + 1][:ind]
+                    + " "
+                    + " ".join(str(item) for item in schedule_names[begin:end])
+                    + "\n"
                 )
+                count += 1
+                continue
+            if begin == 0 and len(schedule_names) != 13:
+                lines[inputNum + 1] = (
+                    lines[inputNum + 1][:ind]
+                    + " "
+                    + " ".join(str(item) for item in schedule_names[begin:end])
+                    + ";"
+                    + "\n"
+                )
+                count += 1
+                continue
+            if end >= len(schedule_names):
+                end = len(schedule_names)
+                lines.insert(
+                    inputNum + count + 1,
+                    " "
+                    + " ".join(str(item) for item in schedule_names[begin:end])
+                    + "\n",
+                )
+            else:
+                lines.insert(
+                    inputNum + count + 1,
+                    " "
+                    + " ".join(str(item) for item in schedule_names[begin:end])
+                    + ";"
+                    + "\n",
+                )
+            count += 1
+        # Writes INPUTS DESCRIPTION
+        idf_file = Path(idf_file)
+        inputDescrNum = checkStr(lines, "INPUTS_DESCRIPTION")
+        lines.insert(
+            inputDescrNum,
+            " sy_XXXXXX : any : yearly schedules for internal gains. "
+            "Should be found in the yearly_schedules_"
+            + idf_file.basename().stripext()
+            + ".csv file"
+            + "\n",
+        )
+    # Writes schedules as SCHEDULES
+    else:
+        # Get line number where to write
+        scheduleNum = checkStr(lines, "S c h e d u l e s")
+        # Write schedules YEAR in lines
+        for schedule_name in schedule_names:
 
-                if period == "days":
-                    lines.insert(
-                        scheduleNum + 2,
-                        "!- HOURS= " + " ".join(str(item) for item in hour_list) + "\n",
-                    )
+            first_hour_month = [
+                0,
+                744,
+                1416,
+                2160,
+                2880,
+                3624,
+                4344,
+                5088,
+                5832,
+                6552,
+                7296,
+                8016,
+                8760,
+            ]
 
-                    lines.insert(
-                        scheduleNum + 3,
-                        "!- VALUES= "
-                        + " ".join(
-                            str(item)
-                            for item in schedules[schedule_name][period][i].fieldvalues[
-                                3:
-                            ]
-                        )
-                        + "\n",
-                    )
+            # Get annual hourly values of schedules
+            arr = schedules[schedule_name]["all values"]
+            # Find the hours where hourly values change
+            hours_list, = np.where(np.roll(arr, 1) != arr)
+            # if hours_list is empty, give it hour 0
+            if hours_list.size == 0:
+                hours_list = np.array([0])
+            # Get schedule values where values change and add first schedule value
+            values = arr[hours_list]
+            # Add hour 0 and first value if not in array
+            if 0 not in hours_list:
+                hours_list = np.insert(hours_list, 0, np.array([0]))
+                values = np.insert(values, 0, arr[0])
+            # Add hour 8760 and if not in array
+            if 8760 not in hours_list:
+                hours_list = np.append(hours_list, 8760)
+                values = np.append(values, arr[len(arr) - 1])
 
-                if period == "weeks":
-                    lines.insert(
-                        scheduleNum + 2,
-                        "!- DAYS= " + " ".join(str(item) for item in week_list) + "\n",
-                    )
+            # Makes sure fisrt hour of every month in hour and value lists
+            for hour in first_hour_month:
+                if hour not in hours_list:
+                    temp = hours_list > hour
+                    count = 0
+                    for t in temp:
+                        if t:
+                            hours_list = np.insert(hours_list, count, hour)
+                            values = np.insert(values, count, values[count - 1])
+                            break
+                        count += 1
 
-                    lines.insert(
-                        scheduleNum + 3,
-                        "!- VALUES= "
-                        + " ".join(
-                            str(item)
-                            for item in rotate(
-                                schedules[schedule_name][period][i].fieldvalues[2:9], 1
-                            )
-                        )
-                        + "\n",
-                    )
+            # Round values to 1 decimal
+            values = np.round(values.astype("float64"), decimals=1)
+
+            # Writes schedule in lines
+            # Write values
+            _write_schedule_values(values, lines, scheduleNum, "VALUES")
+            # Write hours
+            _write_schedule_values(hours_list, lines, scheduleNum, "HOURS")
+
+            # Write schedule name
+            lines.insert(scheduleNum + 1, "!-SCHEDULE " + schedule_name + "\n")
+
+            # if (
+            #     len(hours_list) <= 1500
+            # ):  # Todo: Now, only writes "short" schedules. Make method that write them all
+            #     lines.insert(
+            #         scheduleNum + 1,
+            #         "!-SCHEDULE " + schedules[schedule_name]["year"].Name + "\n",
+            #     )
+            #     lines.insert(
+            #         scheduleNum + 2,
+            #         "!- HOURS= " + " ".join(str(item) for item in hours_list) + "\n",
+            #     )
+            #     lines.insert(
+            #         scheduleNum + 3,
+            #         "!- VALUES= " + " ".join(str(item) for item in values) + "\n",
+            #     )
+            # else:
+            #     schedules_not_written.append(schedule_name)
+
+    return schedules_not_written
 
 
-def _write_gains(equipments, idf, lights, lines, peoples):
+def _write_schedule_values(liste, lines, scheduleNum, string):
+    count = 0
+    while count * 13 < len(liste):
+        begin = count * 13
+        end = begin + 13
+        if begin == 0 and len(liste) == 13:
+            lines.insert(
+                scheduleNum + 1,
+                "!- "
+                + string
+                + "= "
+                + " ".join(str(item) for item in liste[begin:end])
+                + "\n",
+            )
+            count += 1
+            continue
+        if begin == 0 and len(liste) != 13:
+            lines.insert(
+                scheduleNum + 1,
+                "!- "
+                + string
+                + "= "
+                + " ".join(str(item) for item in liste[begin:end])
+                + ";"
+                + "\n",
+            )
+            count += 1
+            continue
+        if end >= len(liste):
+            end = len(liste)
+            lines.insert(
+                scheduleNum + count + 1,
+                " ".join(str(item) for item in liste[begin:end]) + "\n",
+            )
+        else:
+            lines.insert(
+                scheduleNum + count + 1,
+                " ".join(str(item) for item in liste[begin:end]) + ";" + "\n",
+            )
+        count += 1
+
+
+def _write_conditioning(htm, lines, schedules, old_new_names, schedule_as_input):
+    # Heating
+    heat_dict = {}
+    schedule = None
+    if htm["Zone Sensible Heating"].iloc[0, 0] != "None":
+        for i in range(0, len(htm["Zone Sensible Heating"])):
+            key = htm["Zone Sensible Heating"].iloc[i, 0]
+            for key_2 in schedules:
+                try:
+                    if "_h_" in key_2 and old_new_names[key_2[-8:].upper()][0] == key:
+                        schedule = key_2
+                        break
+                except:
+                    pass
+            name = "HEAT_z" + str(htm["Zone Sensible Heating"].iloc[i].name)
+            heat_dict[key] = [name, schedule]
+            size_factor = htm["Heating Sizing Factor Information"][
+                htm["Heating Sizing Factor Information"]["Sizing Factor ID"] == "Global"
+            ]["Value"].max()
+            power = size_factor * (
+                float(
+                    htm["Zone Sensible Heating"].iloc[i, :][
+                        "User Design Load per Area [W/m2]"
+                    ]
+                )
+                / 1000
+                * 3600
+            )  # kJ/h-m2
+            # Writes in lines
+            heatingNum = checkStr(lines, "H e a t i n g")
+            lines.insert(heatingNum + 1, " AREA_RELATED_POWER=1" + "\n")
+            lines.insert(heatingNum + 1, " ELPOWERFRAC=0" + "\n")
+            lines.insert(heatingNum + 1, " RRAD=0" + "\n")
+            lines.insert(heatingNum + 1, " HUMIDITY=0" + "\n")
+            lines.insert(heatingNum + 1, "POWER=" + str(power) + "\n")
+            if schedule_as_input:
+                lines.insert(heatingNum + 1, " ON= INPUT 1*" + schedule + "\n")
+            else:
+                lines.insert(heatingNum + 1, " ON= SCHEDULE 1*" + schedule + "\n")
+            lines.insert(heatingNum + 1, "HEATING " + name + "\n")
+    # Cooling
+    cool_dict = {}
+    schedule = None
+    if htm["Zone Sensible Cooling"].iloc[0, 0] != "None":
+        for i in range(0, len(htm["Zone Sensible Cooling"])):
+            key = htm["Zone Sensible Cooling"].iloc[i, 0]
+            for key_2 in schedules:
+                try:
+                    if "_c_" in key_2 and old_new_names[key_2[-8:].upper()][0] == key:
+                        schedule = key_2
+                        break
+                except:
+                    pass
+            name = "COOL_z" + str(htm["Zone Sensible Cooling"].iloc[i].name)
+            cool_dict[key] = [name, schedule]
+            size_factor = htm["Cooling Sizing Factor Information"][
+                htm["Heating Sizing Factor Information"]["Sizing Factor ID"] == "Global"
+            ]["Value"].max()
+            power = size_factor * (
+                float(
+                    htm["Zone Sensible Cooling"].iloc[i, :][
+                        "User Design Load per Area [W/m2]"
+                    ]
+                )
+                / 1000
+                * 3600
+            )  # kJ/h-m2
+            # Writes in lines
+            coolingNum = checkStr(lines, "C o o l i n g")
+            lines.insert(coolingNum + 1, " AREA_RELATED_POWER=1" + "\n")
+            lines.insert(coolingNum + 1, " ELPOWERFRAC=0" + "\n")
+            lines.insert(coolingNum + 1, " HUMIDITY=0" + "\n")
+            lines.insert(coolingNum + 1, "POWER=" + str(power) + "\n")
+            if schedule_as_input:
+                lines.insert(coolingNum + 1, " ON= INPUT 1*" + schedule + "\n")
+            else:
+                lines.insert(coolingNum + 1, " ON= SCHEDULE 1*" + schedule + "\n")
+            lines.insert(coolingNum + 1, "COOLING " + name + "\n")
+
+    return heat_dict, cool_dict
+
+
+def _write_gains(equipments, lights, lines, peoples, htm, old_new_names):
     """Write gains in lines
 
     Args:
@@ -1724,14 +2327,14 @@ def _write_gains(equipments, idf, lights, lines, peoples):
     # Get line number where to write
     gainNum = checkStr(lines, "G a i n s")
     # Writing PEOPLE gains infos to lines
-    _write_people_gain(gainNum, idf, lines, peoples)
+    _write_people_gain(gainNum, lines, peoples, htm, old_new_names)
     # Writing LIGHT gains infos to lines
-    _write_light_gain(gainNum, lights, lines)
+    _write_light_gain(gainNum, lights, lines, htm, old_new_names)
     # Writing EQUIPMENT gains infos to lines
-    _write_equipment_gain(equipments, gainNum, lines)
+    _write_equipment_gain(equipments, gainNum, lines, htm, old_new_names)
 
 
-def _write_equipment_gain(equipments, gainNum, lines):
+def _write_equipment_gain(equipments, gainNum, lines, htm, old_new_names):
     """Write equipment gains in lines
 
     Args:
@@ -1741,60 +2344,30 @@ def _write_equipment_gain(equipments, gainNum, lines):
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
     """
-    for i in range(0, len(equipments)):
-        # Determine if gain is absolute or relative and write it into lines
-        if equipments[i].Design_Level_Calculation_Method == "EquipmentLevel":
-            areaMethod = "ABSOLUTE"
-            try:
-                power = round(float(equipments[i].Design_Level), 4)
-            except Exception:
-                log(
-                    "Could not find the Light Power Density in the IDF file", lg.WARNING
-                )
-                continue
-        elif equipments[i].Design_Level_Calculation_Method == "Watts/Area":
-            areaMethod = "AREA_RELATED"
-            try:
-                power = round(float(equipments[i].Watts_per_Zone_Floor_Area), 4)
-            except Exception:
-                log(
-                    "Could not find the Light Power Density in the IDF file", lg.WARNING
-                )
-                continue
-        else:
-            log(
-                "Could not find the Equipment Power Density, cause depend on "
-                "the number of peoples (Watts/Person)",
-                lg.WARNING,
+    for equipment in equipments:
+        gain = htm["ElectricEquipment Internal Gains Nominal"][
+            htm["ElectricEquipment Internal Gains Nominal"]["Name"].str.contains(
+                old_new_names[equipment.Name.upper()][0]
             )
-            continue
-
-        # Find the radiant fractions
-        radFract = equipments[i].Fraction_Radiant
-        if len(str(radFract)) == 0:
-            # Find the radiant fractions
-            try:
-                radFract = float(1 - equipments[i].Sensible_Heat_Fraction)
-            except Exception:
-                radFract = 0.42
-        else:
-            radFract = float(radFract)
-
-        # Write gain from equipment in lines
-        lines.insert(gainNum + 1, "GAIN EQUIPMENT" + "_" + equipments[i].Name + "\n")
+        ]
+        # Write gain name in lines
+        lines.insert(gainNum + 1, "GAIN " + equipment.Name + "\n")
+        areaMethod = "AREA_RELATED"
+        power = gain["Equipment/Floor Area {W/m2}"].values[0] / 1000 * 3600  # kJ/h-m2
+        radFract = gain["Fraction Radiant"].values[0]
         lines.insert(
             gainNum + 2,
             " CONVECTIVE="
             + str(round(power * (1 - radFract), 3))
             + " : RADIATIVE="
             + str(round(power * radFract, 3))
-            + " : HUMIDITY=0 : ELPOWERFRAC=1 : "
-            + areaMethod
-            + " : CATEGORY=LIGHTS\n",
+            + " : HUMIDITY=0 : ELPOWERFRAC=1 "
+            ": " + areaMethod + " : "
+            "CATEGORY=EQUIPMENT\n",
         )
 
 
-def _write_light_gain(gainNum, lights, lines):
+def _write_light_gain(gainNum, lights, lines, htm, old_new_names):
     """Write gain from lights in lines
 
     Args:
@@ -1804,90 +2377,48 @@ def _write_light_gain(gainNum, lights, lines):
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
     """
-    for i in range(0, len(lights)):
-        # Determine if gain is absolute or relative and write it into lines
-        if lights[i].Design_Level_Calculation_Method == "LightingLevel":
-            areaMethod = "ABSOLUTE"
-            try:
-                power = round(float(lights[i].Lighting_Level), 4)
-            except Exception:
-                log(
-                    "Could not find the Light Power Density in the IDF file", lg.WARNING
-                )
-                continue
-        elif lights[i].Design_Level_Calculation_Method == "Watts/Area":
-            areaMethod = "AREA_RELATED"
-            try:
-                power = round(float(lights[i].Watts_per_Zone_Floor_Area), 4)
-            except Exception:
-                log(
-                    "Could not find the Light Power Density in the IDF file", lg.WARNING
-                )
-                continue
-        else:
-            log(
-                "Could not find the Light Power Density, cause depend on the "
-                "number of peoples (Watts/Person)",
-                lg.WARNING,
+    for light in lights:
+        gain = htm["Lights Internal Gains Nominal"][
+            htm["Lights Internal Gains Nominal"]["Name"].str.contains(
+                old_new_names[light.Name.upper()][0]
             )
-            continue
-
-        # Find the radiant fractions
-        radFract = lights[i].Fraction_Radiant
-        if len(str(radFract)) == 0:
-            # Find the radiant fractions
-            try:
-                radFract = float(1 - lights[i].Sensible_Heat_Fraction)
-            except Exception:
-                radFract = 0.42
-        else:
-            radFract = float(radFract)
-
-        # Write gain from light in lines
-        lines.insert(gainNum + 1, "GAIN LIGHT" + "_" + lights[i].Name + "\n")
+        ]
+        # Write gain name in lines
+        lines.insert(gainNum + 1, "GAIN " + light.Name + "\n")
+        areaMethod = "AREA_RELATED"
+        power = gain["Lights/Floor Area {W/m2}"].values[0] / 1000 * 3600  # kJ/h-m2
+        radFract = gain["Fraction Radiant"].values[0]
         lines.insert(
             gainNum + 2,
             " CONVECTIVE="
             + str(round(power * (1 - radFract), 3))
             + " : RADIATIVE="
             + str(round(power * radFract, 3))
-            + " : HUMIDITY=0 : ELPOWERFRAC=1 : "
-            + areaMethod
-            + " : CATEGORY=LIGHTS\n",
+            + " : HUMIDITY=0 : ELPOWERFRAC=1 "
+            ": " + areaMethod + " : "
+            "CATEGORY=LIGHTS\n",
         )
 
 
-def _write_people_gain(gainNum, idf, lines, peoples):
+def _write_people_gain(gainNum, lines, peoples, htm, old_new_names):
     """
     Args:
         gainNum (int): Line number where to write the equipment gains
-        idf (archetypal.idfclass.IDF): IDF object
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
         peoples (idf_MSequence): IDF object from idf.idfobjects()
     """
-    for i in range(0, len(peoples)):
+    for people in peoples:
+        gain = htm["People Internal Gains Nominal"][
+            htm["People Internal Gains Nominal"]["Name"].str.contains(
+                old_new_names[people.Name.upper()][0]
+            )
+        ]
         # Write gain name in lines
-        lines.insert(gainNum + 1, "GAIN PEOPLE" + "_" + peoples[i].Name + "\n")
-        # Determine if gain is absolute or relative and write it into lines
-        if peoples[i].Number_of_People_Calculation_Method == "People":
-            areaMethod = "ABSOLUTE"
-        else:
-            areaMethod = "AREA_RELATED"
-        # Find the radiant fractions
-        radFract = peoples[i].Fraction_Radiant
-        if len(str(radFract)) == 0:
-            # Find the radiant fractions
-            try:
-                radFract = float(1 - peoples[i].Sensible_Heat_Fraction)
-            except Exception:
-                radFract = 0.3
-        else:
-            radFract = float(radFract)
-
-        # Find the the total power of the people gain
-        power = Schedule(Name=peoples[i].Activity_Level_Schedule_Name, idf=idf).max
-        # Write gain characteristics into lines
+        lines.insert(gainNum + 1, "GAIN " + people.Name + "\n")
+        areaMethod = "AREA_RELATED"
+        power = gain["People/Floor Area {person/m2}"].values[0] * 270  # kJ/h-m2
+        radFract = gain["Fraction Radiant"].values[0]
         lines.insert(
             gainNum + 2,
             " CONVECTIVE="
@@ -2062,6 +2593,7 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials):
             else:
                 continue
 
+        # Writes layers and thicknesses
         lines.insert(
             constructionNum + 2,
             "!- LAYERS = " + " ".join(str(item) for item in layerList[::-1]) + "\n",
@@ -2070,16 +2602,46 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials):
             constructionNum + 3,
             "!- THICKNESS= " + " ".join(str(item) for item in thickList[::-1]) + "\n",
         )
-        lines.insert(constructionNum + 4, "!- ABS-FRONT= 0.4   : ABS-BACK= 0.5\n")
+
+        # Writes ABS-FRONT and ABS-BACK
+        sol_abs_front = get_sol_abs(idf, layerList[0])
+        sol_abs_back = get_sol_abs(idf, layerList[-1])
+        lines.insert(
+            constructionNum + 4,
+            "!- ABS-FRONT= "
+            + str(sol_abs_front)
+            + "   : ABS-BACK= "
+            + str(sol_abs_back)
+            + "\n",
+        )
         lines.insert(constructionNum + 5, "!- EPS-FRONT= 0.9   : EPS-BACK= 0.9\n")
 
-        basement = [
-            s for s in ["basement", "floor"] if s in construction.fieldvalues[1].lower()
-        ]
-        if not basement:
-            lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 64\n")
+        # Writes HBACK
+        try:
+            condition = (
+                construction.getreferingobjs()[0].Outside_Boundary_Condition.lower()
+                == "ground"
+            )
+        except:
+            condition = False
+        if condition:
+            lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 0.0005\n")
         else:
-            lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 0\n")
+            lines.insert(constructionNum + 6, "!- HFRONT   = 11 : HBACK= 64\n")
+
+
+def get_sol_abs(idf, layer):
+    mat_ = idf.getobject("MATERIAL", layer)
+    if mat_:
+        sol_abs = mat_.Solar_Absorptance
+    else:
+        mat_ = idf.getobject("MATERIAL:NOMASS", layer)
+        if mat_:
+            sol_abs = mat_.Solar_Absorptance
+        else:
+            mat_ = idf.getobject("MATERIAL:AIRGAP", layer)
+            sol_abs = mat_.Solar_Absorptance
+    return sol_abs
 
 
 def _get_ground_vertex(buildingSurfs):

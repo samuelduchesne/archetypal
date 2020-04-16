@@ -135,11 +135,9 @@ class Zone(UmiBase):
         Returns (float): zone's area in m²
         """
         if self._area is None:
-            zone_surfs = [
-                surf
-                for surf in self._epbunch.zonesurfaces
-                if surf.key.lower() != "internalmass"
-            ]
+            zone_surfs = self.zonesurfaces(
+                exclude=["INTERNALMASS", "WINDOWSHADINGCONTROL"]
+            )
             floors = [s for s in zone_surfs if s.Surface_Type.upper() == "FLOOR"]
             area = sum([floor.area for floor in floors])
             return area
@@ -153,11 +151,9 @@ class Zone(UmiBase):
         Returns (float): zone's volume in m³
         """
         if not self._volume:
-            zone_surfs = [
-                surf
-                for surf in self._epbunch.zonesurfaces
-                if surf.key.lower() != "internalmass"
-            ]
+            zone_surfs = self.zonesurfaces(
+                exclude=["INTERNALMASS", "WINDOWSHADINGCONTROL"]
+            )
 
             vol = self.get_volume_from_surfs(zone_surfs)
 
@@ -170,16 +166,30 @@ class Zone(UmiBase):
         else:
             return self._volume
 
-    @property
-    def zonesurfaces(self):
+    def zonesurfaces(self, exclude=None):
+        """Returns list of surfaces belonging to this zone. Optionally filter
+        surface types.
+
+        Args:
+            exclude (list): exclude surface types, e.g.: ["INTERNALMASS",
+                "WINDOWSHADINGCONTROL"]. Object key must be in capital letters.
+        """
+        if exclude is None:
+            exclude = []
         if self._zonesurfaces is None:
-            return self._epbunch.zonesurfaces
+            return [
+                surf
+                for surf in self._epbunch.zonesurfaces
+                if surf.key.upper() not in exclude
+            ]
         else:
-            return self._zonesurfaces
+            return [
+                surf for surf in self._zonesurfaces if surf.key.upper() not in exclude
+            ]
 
     @property
     def is_core(self):
-        return is_core(self)
+        return is_core(self._epbunch)
 
     @property
     def is_part_of_conditioned_floor_area(self):
@@ -234,7 +244,7 @@ class Zone(UmiBase):
         """Group internal walls into a ThermalMass object for this Zone"""
 
         oc = []
-        for surface in self._zonesurfaces:
+        for surface in self.zonesurfaces(exclude=["WINDOWSHADINGCONTROL"]):
             # for surf_type in self.idf.idd_index['ref2names'][
             # 'AllHeatTranSurfNames']:
             if surface.key.upper() == "INTERNALMASS":
@@ -246,23 +256,34 @@ class Zone(UmiBase):
             # Todo: Create Equivalent InternalMassConstruction from
             #  partitions. For now, creating dummy InternalMass
 
-            #   InternalMass,
-            #     PerimInternalMass,       !- Name
-            #     B_Ret_Thm_0,             !- Construction Name
-            #     Perim,                   !- Zone Name
-            #     2.05864785735637;        !- Surface Area {m2}
+            mat = self.idf.add_object(
+                ep_object="Material".upper(),
+                Name="Wood 6inch",
+                Roughness="MediumSmooth",
+                Thickness=0.15,
+                Conductivity=0.12,
+                Density=540,
+                Specific_Heat=1210,
+                Thermal_Absorptance=0.7,
+                Visible_Absorptance=0.7,
+            )
 
-            existgin_cons = self.idf.idfobjects["CONSTRUCTION"][0]
-            new = self.idf.copyidfobject(existgin_cons)
+            cons = self.idf.add_object(
+                ep_object="Construction".upper(),
+                save=False,
+                Name="InteriorFurnishings",
+                Outside_Layer="Wood 6inch",
+            )
+
             internal_mass = "{}_InternalMass".format(self.Name)
-            new.Name = internal_mass + "_construction"
+            cons.Name = internal_mass + "_construction"
             new_epbunch = self.idf.add_object(
                 ep_object="InternalMass".upper(),
                 save=False,
                 Name=internal_mass,
-                Construction_Name=new.Name,
-                Zone_Name=self.Name,
-                Surface_Area=0,
+                Construction_Name=cons.Name,
+                Zone_or_ZoneList_Name=self.Name,
+                Surface_Area=1,
             )
 
             oc.append(OpaqueConstruction.from_epbunch(new_epbunch, idf=self.idf))
@@ -346,7 +367,7 @@ class Zone(UmiBase):
         """Create a Zone object from an eppy 'ZONE' epbunch.
 
         Args:
-            zone_ep (EpBunch): The Zone EpBunch.
+            zone_ep (eppy.bunch_subclass.EpBunch): The Zone EpBunch.
             sql (dict): The sql dict for this IDF object.
         """
         cached = cls.get_cached(zone_ep.Name, zone_ep.theidf)
@@ -550,7 +571,7 @@ def surface_dispatcher(surf, zone):
         ("Ceiling", "Surface"): ZoneConstructionSet._do_slab,
         ("Ceiling", "Zone"): ZoneConstructionSet._do_slab,
     }
-    if surf.key.upper() != "INTERNALMASS":
+    if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]:
         a, b = surf["Surface_Type"].capitalize(), surf["Outside_Boundary_Condition"]
         try:
             yield dispatch[a, b](surf)
@@ -682,10 +703,18 @@ def get_from_tabulardata(sql):
     return tab_data_wstring
 
 
-def is_core(epbunch):
+def is_core(zone):
+    """
+
+    Args:
+        zone (eppy.bunch_subclass.EpBunch): The Zone object.
+
+    Returns:
+        (bool): Whether the zone is a core zone or not.
+    """
     # if all surfaces don't have boundary condition == "Outdoors"
     iscore = True
-    for s in epbunch.zonesurfaces:
+    for s in zone.zonesurfaces:
         try:
             if (abs(int(s.tilt)) < 180) & (abs(int(s.tilt)) > 0):
                 obc = s.Outside_Boundary_Condition.lower()
@@ -937,23 +966,23 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         zonesurfaces = zone._zonesurfaces
         for surf in zonesurfaces:
             for disp_surf in surface_dispatcher(surf, zone):
-
-                if disp_surf.Surface_Type == "Facade":
-                    facade.append(disp_surf)
-                elif disp_surf.Surface_Type == "Ground":
-                    ground.append(disp_surf)
-                elif disp_surf.Surface_Type == "Partition":
-                    partition.append(disp_surf)
-                elif disp_surf.Surface_Type == "Roof":
-                    roof.append(disp_surf)
-                elif disp_surf.Surface_Type == "Slab":
-                    slab.append(disp_surf)
-                else:
-                    msg = (
-                        'Surface Type "{}" is not known, this method is not'
-                        " implemented".format(disp_surf.Surface_Type)
-                    )
-                    raise NotImplementedError(msg)
+                if disp_surf:
+                    if disp_surf.Surface_Type == "Facade":
+                        facade.append(disp_surf)
+                    elif disp_surf.Surface_Type == "Ground":
+                        ground.append(disp_surf)
+                    elif disp_surf.Surface_Type == "Partition":
+                        partition.append(disp_surf)
+                    elif disp_surf.Surface_Type == "Roof":
+                        roof.append(disp_surf)
+                    elif disp_surf.Surface_Type == "Slab":
+                        slab.append(disp_surf)
+                    else:
+                        msg = (
+                            'Surface Type "{}" is not known, this method is not'
+                            " implemented".format(disp_surf.Surface_Type)
+                        )
+                        raise NotImplementedError(msg)
 
         # Returning a set() for each groups of Constructions.
 
@@ -1038,17 +1067,24 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         Args:
             surf (EpBunch):
         """
-        log(
-            'surface "%s" assigned as a Partition' % surf.Name,
-            lg.DEBUG,
-            name=surf.theidf.name,
+        the_construction = surf.theidf.getobject(
+            "Construction".upper(), surf.Construction_Name
         )
-        oc = OpaqueConstruction.from_epbunch(
-            surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
-        )
-        oc.area = surf.area
-        oc.Surface_Type = "Partition"
-        return oc
+        if the_construction:
+            oc = OpaqueConstruction.from_epbunch(the_construction)
+            oc.area = surf.area
+            oc.Surface_Type = "Partition"
+            log(
+                'surface "%s" assigned as a Partition' % surf.Name,
+                lg.DEBUG,
+                name=surf.theidf.name,
+            )
+            return oc
+        else:
+            # we might be in a situation where the construction does not exist in the
+            # file. For example, this can happen when the construction is defined as
+            # "Air Wall", which is a construction type internal to EnergyPlus.
+            return None
 
     @staticmethod
     def _do_roof(surf):

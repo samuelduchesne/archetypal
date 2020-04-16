@@ -1,5 +1,5 @@
-Convert IDF to BUI
-==================
+Converting IDF to BUI
+---------------------
 
 .. figure:: images/converter@2x.png
    :alt: converter logo
@@ -12,8 +12,9 @@ have already been developed under EnergyPlus, and it can be a tedious task to cr
 editor (e.g. TRNBuild), we assume the development of a file translator could be useful for simulationists.
 
 Objectives
-----------
-The principal ojectives of this module was to translate (from IDF to BUI) the geometry of the building, the different schedules used in
+..........
+
+The principal objectives of this module was to translate (from IDF to BUI) the geometry of the building, the different schedules used in
 the model, and the thermal gains.
 
 1. Geometry
@@ -33,8 +34,13 @@ BUI file
 
 Internal thermal gains such as “people”, “lights” and “equipment” are translated from the IDF file to the BUI file.
 
+4. Conditioning
+
+Heating and cooling demands are translated from the IDF file to the BUI file such as power per floor area (W/m²) and a temperature setpoint.
+The temperature set-point is the set-point at the peak time for heating (or cooling).
+
 Methodology
------------
+...........
 
 The module is divided in 2 major operations. The first one consist in translating the IDF file from EnergyPlus, to an
 IDF file proper to an input file for TRNBuild (T3D file), usually created by the TRNSYS plugin "Trnsys3D_" in SketchUp.
@@ -50,10 +56,11 @@ necessary and re-transcribe them in the T3D file
 2. T3D to BUI
 
 The operation to convert the T3D file to the BUI file is done by running the trnsidf.exe executable with a command
-line.
+line. After this operation, the infiltration rate, internal gains and conditioning systems are written in the "REGIME"
+section of each zone in the BUI file.
 
 How to convert an IDF file
---------------------------
+..........................
 
 Converting an IDF file to a BUI file is done using the terminal with a command line. First, open the Command Prompt on Windows
 or the Terminal on Mac. Note that if you used Anaconda to install python on your machine, you will most likely avoid some issues
@@ -63,69 +70,78 @@ Then simply run the following command:
 
 .. code-block:: python
 
-    archetypal convert [OPTIONS] IDF_FILE OUTPUT_FOLDER
+    archetypal convert [OPTIONS] IDF_FILE WEATHER_FILE OUTPUT_FOLDER
 
 1. ``IDF_FILE`` is the file path of the IDF file to convert. If there are space characters in the path, it should be
 enclosed in quotation marks.
 
-2. ``OUTPUT_FOLDER`` is the folder where we want the output folders to be written. If there are space characters in
-the path, it should enclosed in quotation marks.
+2. ``WEATHER_FILE`` is the file path of the weather file to use to run the EnergyPlus simulation. If there are space characters in the path, it should be
+enclosed in quotation marks.
+
+3. ``OUTPUT_FOLDER`` is the folder where we want the output folders to be written. If there are space characters in
+the path, it should enclosed in quotation marks. If nothing is passed, the output folder will be the current working directory.
 
 Here is an example. Make sure to replace the last two arguments with the idf file path and the output folder path
 respectively.
 
 .. code-block:: python
 
-    archetypal convert "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+    archetypal convert "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
-3. `OPTIONS`: There are different options to the `convert` command. The first 3 manage the requested output files.
+4. `OPTIONS`: There are different options to the `convert` command. The first 3 manage the requested output files.
 Users can chose to return a combination of flags
 
-    - if ``-i`` is added, the path to the modified IDF file is returned in the console, and the modified
-      IDF file is returned in the output folder. If ``-t`` is added, the path to the T3D file (converted from the IDF file) is returned.
-      If ``-d`` is added, the DCK file (TRNSYS input file) is returned in the output folder, and the path to this DCK file is returned in the console.
+    - if ``-i`` is added, the path to the modified IDF file is returned in the console, and the modified IDF file is
+      returned in the output folder. If ``-t`` is added, the path to the T3D file (converted from the IDF file) is
+      returned. If ``-d`` is added, the DCK file (TRNSYS input file) is returned in the output folder, and the path to
+      this DCK file is returned in the console.
 
     .. code-block:: python
 
-        archetypal convert -i -t -d "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+        archetypal convert -i -t -d "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
-    - ``--window-lib`` is the path of the window library (W74-lib.dat).
-
-    .. code-block:: python
-
-        archetypal convert --window-lib "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
-
-    - ``--trnsidf-exe`` is the path of the trnsidf.exe executable.
+    - ``--window_lib`` is the path of the window library (W74-lib.dat). This library must be in the same format as the
+      Berkeley Lab library used by default in TRNBuild. If nothing is passed, the "W74-lib.dat" file available in the
+      package "ressources" folder will be used.
 
     .. code-block:: python
 
-        archetypal convert --trnsidf-exe "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+        archetypal convert --window-lib "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
-    - ``--template`` is the path of the .d18 template file (usually in the same directory of the `trnsidf.exe`
-      executable)
-
-    .. code-block:: python
-
-        archetypal convert --template "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
-
-    - ``--log-clear-names`` if added, do not print log of "clear_names" (equivalence between old and new names) in the console
-      executable)
+    - ``--trnsidf_exe`` is the path of the trnsidf.exe executable. Usually located in the TRNSYS18 folder under
+      "Building/trnsIDF/trnsidf.exe".
+      If nothing is passed, the following path will be used : "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe".
 
     .. code-block:: python
 
-        archetypal convert --log-clear-names "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+        archetypal convert --trnsidf-exe "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
-    - ``--window`` specifies the window properties <u_value> <shgc> <t_vis> <tolerance>
+    - ``--template`` is the path of the .d18 template file (usually in the same directory as the `trnsidf.exe` executable).
+      If nothing is passed, the following path will be used : "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18".
 
     .. code-block:: python
 
-        archetypal convert --window 2.2 0.65 0.8 0.05 "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+        archetypal convert --template "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
+
+    - ``--log_clear_names`` if added, do not print log of "clear_names" (equivalence between old and new names) in
+      the console.
+
+    .. code-block:: python
+
+        archetypal convert --log-clear-names "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
+
+    - ``--window`` specifies the window properties <u_value (W/m²-K)> <shgc (-)> <t_vis (-)> <tolerance (-)> <fframe (-)> <uframe (kJ/m²-K-h)>.
+      If nothing is passed, the following values will be used : 2.2 0.65 0.8 0.05 0.15 8.17
+
+    .. code-block:: python
+
+        archetypal convert --window 2.2 0.65 0.8 0.05 0.15 8.17 "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - ``--ordered`` sorts the idf object names
 
     .. code-block:: python
 
-        archetypal convert --ordered "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+        archetypal convert --ordered "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - If ``--nonum`` is added, do not renumber surfaces in BUI. If ``--batchjob`` or ``-N`` is added, does BatchJob Modus when running trnsidf.exe.
       ``--geofloor`` must be followed by a float between 0 and 1, and generates GEOSURF values for distributing direct solar radiation where `geo_floor` % is directed to the floor,
@@ -134,7 +150,7 @@ Users can chose to return a combination of flags
 
     .. code-block:: python
 
-        archetypal convert --nonum -N --geofloor 0.6 --refarea --volume --capacitance "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/WIP"
+        archetypal convert --nonum -N --geofloor 0.6 --refarea --volume --capacitance "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - ``-h`` Shows the "help" message
 
@@ -143,11 +159,12 @@ Users can chose to return a combination of flags
         archetypal convert -h
 
 .. [#] Archetype: building model representing a type of building based on its geometry, thermal properties and its
-    usage. Usually used to create urban building model by assigning different archetypes to represent at best the building
-    stock we want to model.
+   usage. Usually used to create urban building model by assigning different archetypes to represent at best the
+   building stock we want to model.
 
 Equivalence between idf object names when converting a file
------------------------------------------------------------
+...........................................................
+
 .. csv-table:: Equivalences
     :file: ./_static/name_equivalence.csv
     :header-rows: 1

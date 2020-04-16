@@ -10,10 +10,15 @@ import logging as lg
 import time
 from collections import defaultdict
 
+import eppy
 import matplotlib.collections
 import matplotlib.colors
 import networkx
 import tabulate
+from eppy.bunch_subclass import EpBunch
+from path import Path
+from tqdm import tqdm
+
 from archetypal import log, save_and_show
 from archetypal.template import (
     UmiBase,
@@ -25,9 +30,6 @@ from archetypal.template import (
     is_core,
 )
 from archetypal.utils import reduce
-from eppy.bunch_subclass import EpBunch
-from path import Path
-from tqdm import tqdm
 
 
 class BuildingTemplate(UmiBase):
@@ -44,6 +46,7 @@ class BuildingTemplate(UmiBase):
         Windows=None,
         Lifespan=60,
         PartitionRatio=0.35,
+        DefaultWindowToWallRatio=0.4,
         **kwargs
     ):
         """Initialize a :class:`BuildingTemplate` object with the following
@@ -61,8 +64,11 @@ class BuildingTemplate(UmiBase):
             Lifespan (float): The projected lifespan of the building template in
                 years. Used in various calculations such as embodied energy.
             PartitionRatio (float): The number of lineal meters of partitions
-                (Floor to ceiling) present in average in the building floor
-                plan by m2.
+                (Floor to ceiling) present in average in the building floor plan
+                by m2.
+            DefaultWindowToWallRatio (float): The default Window to Wall Ratio
+                (WWR) for this template (same for all orientations). Number
+                between 0 and 1.
             **kwargs: other optional keywords passed to other constructors.
         """
         super(BuildingTemplate, self).__init__(**kwargs)
@@ -73,6 +79,7 @@ class BuildingTemplate(UmiBase):
         self.Perimeter = Perimeter
         self.Structure = Structure
         self.Windows = Windows
+        self.DefaultWindowToWallRatio = DefaultWindowToWallRatio
 
     def __hash__(self):
         return hash((self.__class__.__name__, self.Name, self.DataSource))
@@ -221,18 +228,19 @@ class BuildingTemplate(UmiBase):
             Zone.from_zone_epbunch(zone, sql=bt.sql)
             for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop")
         ]
-        cores = [
+        zone: Zone
+        bt.cores = [
             zone
             for zone in zones
             if zone.is_core and zone.is_part_of_conditioned_floor_area
         ]
-        perims = [
+        bt.perims = [
             zone
             for zone in zones
             if not zone.is_core and zone.is_part_of_conditioned_floor_area
         ]
         # do Core and Perim zone reduction
-        bt.reduce(cores, perims)
+        bt.reduce(bt.cores, bt.perims)
 
         # resolve StructureDefinition and WindowSetting
         bt.Structure = StructureDefinition(
@@ -434,7 +442,7 @@ class ZoneGraph(networkx.Graph):
             G.add_node(zone.Name, epbunch=zone, core=_is_core, zone=zone_obj)
 
             for surface in zonesurfaces:
-                if surface.key.upper() == "INTERNALMASS":
+                if surface.key.upper() in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]:
                     # Todo deal with internal mass surfaces
                     pass
                 else:
@@ -577,7 +585,7 @@ class ZoneGraph(networkx.Graph):
         import matplotlib.pyplot as plt
         import numpy as np
 
-        def avg(zone):
+        def avg(zone: eppy.bunch_subclass.EpBunch):
             """calculate the zone centroid coordinates"""
             x_, y_, z_, dem = 0, 0, 0, 0
             from geomeppy.geom.polygons import Polygon3D, Vector3D
@@ -586,7 +594,7 @@ class ZoneGraph(networkx.Graph):
             ggr = zone.theidf.idfobjects["GLOBALGEOMETRYRULES"][0]
 
             for surface in zone.zonesurfaces:
-                if surface.key.lower() == "internalmass":
+                if surface.key.upper() in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]:
                     pass
                 else:
                     dem += 1  # Counter for average calc at return
@@ -817,7 +825,7 @@ class ZoneGraph(networkx.Graph):
 
                 groups = set(networkx.get_node_attributes(G, color_nodes).values())
                 mapping = dict(zip(sorted(groups), count()))
-                colors = [mapping[G.node[n][color_nodes]] for n in tree.nodes]
+                colors = [mapping[G.nodes[n][color_nodes]] for n in tree.nodes]
                 colors = [discrete_cmap(len(groups), cmap).colors[i] for i in colors]
 
             paths_ = []

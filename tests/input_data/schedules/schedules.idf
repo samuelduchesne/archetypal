@@ -1,19 +1,14 @@
 !-Generator IDFEditor 1.50
 !-Option SortedOrder
-
 !-NOTE: All comments with '!-' are ignored by the IDFEditor and are generated automatically.
 !-      Use '!' comments if they need to be retained when using the IDFEditor.
-
-
 !-   ===========  ALL OBJECTS IN CLASS: VERSION ===========
 
-Version,
-    8.9;                     !- Version Identifier
-
+  Version,9.2;
 
 !-   ===========  ALL OBJECTS IN CLASS: SIZINGPERIOD:DESIGNDAY ===========
 
-SizingPeriod:DesignDay,
+  SizingPeriod:DesignDay,
     Montreal Int'l Ann Clg .4% Condns DB=>MWB,  !- Name
     7,                       !- Month
     21,                      !- Day of Month
@@ -40,7 +35,7 @@ SizingPeriod:DesignDay,
     0.465,                   !- ASHRAE Clear Sky Optical Depth for Beam Irradiance (taub) {dimensionless}
     1.966;                   !- ASHRAE Clear Sky Optical Depth for Diffuse Irradiance (taud) {dimensionless}
 
-SizingPeriod:DesignDay,
+  SizingPeriod:DesignDay,
     Montreal Int'l Ann Htg 99.6% Condns DB,  !- Name
     1,                       !- Month
     21,                      !- Day of Month
@@ -68,98 +63,97 @@ SizingPeriod:DesignDay,
     ,                        !- ASHRAE Clear Sky Optical Depth for Diffuse Irradiance (taud) {dimensionless}
     0.0;                     !- Sky Clearness
 
-
 !-   ===========  ALL OBJECTS IN CLASS: RUNPERIOD ===========
 
-RunPeriod,
-    ,                        !- Name
+  RunPeriod,
+    RUNPERIOD 1,             !- Name
     1,                       !- Begin Month
     1,                       !- Begin Day of Month
+    ,                        !- Begin Year
     12,                      !- End Month
     31,                      !- End Day of Month
+    ,                        !- End Year
     Tuesday,                 !- Day of Week for Start Day
     Yes,                     !- Use Weather File Holidays and Special Days
     Yes,                     !- Use Weather File Daylight Saving Period
     No,                      !- Apply Weekend Holiday Rule
     Yes,                     !- Use Weather File Rain Indicators
-    Yes;                     !- Use Weather File Snow Indicators
-
+    Yes,                     !- Use Weather File Snow Indicators
+    ;                        !- Treat Weather as Actual
 
 !-   ===========  ALL OBJECTS IN CLASS: RUNPERIODCONTROL:SPECIALDAYS ===========
 
-RunPeriodControl:SpecialDays,
+  RunPeriodControl:SpecialDays,
     President's Day,         !- Name
     3rd Monday in February,  !- Start Date
     1,                       !- Duration {days}
     Holiday;                 !- Special Day Type
 
-RunPeriodControl:SpecialDays,
+  RunPeriodControl:SpecialDays,
     Thanksgiving,            !- Name
     4th Thursday in November,!- Start Date
     1,                       !- Duration {days}
     Holiday;                 !- Special Day Type
 
-RunPeriodControl:SpecialDays,
+  RunPeriodControl:SpecialDays,
     Halloween,               !- Name
     10/31,                   !- Start Date
     1,                       !- Duration {days}
     Holiday;                 !- Special Day Type
 
-RunPeriodControl:SpecialDays,
+  RunPeriodControl:SpecialDays,
     Vacation,                !- Name
     5/1,                     !- Start Date
     14,                      !- Duration {days}
     CustomDay1;              !- Special Day Type
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULETYPELIMITS ===========
-
 ! Not limited
-ScheduleTypeLimits,
+
+  ScheduleTypeLimits,
     Any Number;              !- Name
 
-ScheduleTypeLimits,
+  ScheduleTypeLimits,
     Fraction,                !- Name
     0.0,                     !- Lower Limit Value
     1.0,                     !- Upper Limit Value
     CONTINUOUS;              !- Numeric Type
 
-ScheduleTypeLimits,
+  ScheduleTypeLimits,
     Temperature,             !- Name
     -60,                     !- Lower Limit Value
     200,                     !- Upper Limit Value
     CONTINUOUS;              !- Numeric Type
 
-ScheduleTypeLimits,
+  ScheduleTypeLimits,
     Control Type,            !- Name
     0,                       !- Lower Limit Value
     4,                       !- Upper Limit Value
     DISCRETE;                !- Numeric Type
 
-ScheduleTypeLimits,
+  ScheduleTypeLimits,
     On/Off,                  !- Name
     0,                       !- Lower Limit Value
     1,                       !- Upper Limit Value
     DISCRETE;                !- Numeric Type
 
-ScheduleTypeLimits,
+  ScheduleTypeLimits,
     On/Off,                  !- Name
     0,                       !- Lower Limit Value
     1,                       !- Upper Limit Value
     DISCRETE,                !- Numeric Type
     Availability;            !- Unit Type
 
-ScheduleTypeLimits,
+  ScheduleTypeLimits,
     Percent,                 !- Name
     0,                       !- Lower Limit Value
     ,                        !- Upper Limit Value
     Continuous,              !- Numeric Type
     Percent;                 !- Unit Type
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:DAY:HOURLY ===========
 
-Schedule:Day:Hourly,
+  Schedule:Day:Hourly,
     Day On Peak,             !- Name
     Fraction,                !- Schedule Type Limits Name
     0.,                      !- Hour 1
@@ -187,7 +181,7 @@ Schedule:Day:Hourly,
     0.,                      !- Hour 23
     0.;                      !- Hour 24
 
-Schedule:Day:Hourly,
+  Schedule:Day:Hourly,
     Day Off Peak,            !- Name
     Fraction,                !- Schedule Type Limits Name
     0.,                      !- Hour 1
@@ -215,35 +209,32 @@ Schedule:Day:Hourly,
     0.,                      !- Hour 23
     0.;                      !- Hour 24
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:DAY:INTERVAL ===========
 
-Schedule:Day:Interval,
+  Schedule:Day:Interval,
     dd winter rel humidity,  !- Name
     Percent,                 !- Schedule Type Limits Name
     No,                      !- Interpolate to Timestep
-    until: 24:00,            !- Time 1 {hh:mm}
+    until: 24:00,            !- Time 1
     74;                      !- Value Until Time 1
-
 
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:DAY:LIST ===========
 
-Schedule:Day:List,
+  Schedule:Day:List,
     Myschedule,              !- Name
     Fraction,                !- Schedule Type Limits Name
     No,                      !- Interpolate to Timestep
     30,                      !- Minutes per Item
     0.0,                     !- Value 1
-    0.5,                     !- N3
-    0,                       !- N4
-    0,                       !- N5
-    0,                       !- N6
-    0;                       !- N7
-
+    0.5,                     !- <none>
+    0,                       !- <none>
+    0,                       !- <none>
+    0,                       !- <none>
+    0;                       !- <none>
 
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:WEEK:DAILY ===========
 
-Schedule:Week:Daily,
+  Schedule:Week:Daily,
     Week on Peak Daily,      !- Name
     Day On Peak,             !- Sunday Schedule:Day Name
     Day On Peak,             !- Monday Schedule:Day Name
@@ -258,34 +249,32 @@ Schedule:Week:Daily,
     Day On Peak,             !- CustomDay1 Schedule:Day Name
     Day On Peak;             !- CustomDay2 Schedule:Day Name
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:WEEK:COMPACT ===========
 
-Schedule:Week:Compact,
+  Schedule:Week:Compact,
     Week on Peak,            !- Name
     WeekDays,                !- DayType List 1
     Day On Peak,             !- Schedule:Day Name 1
     AllOtherDays,            !- DayType List 2
     Day Off Peak;            !- Schedule:Day Name 2
 
-Schedule:Week:Compact,
+  Schedule:Week:Compact,
     FanAndCoilAllOffWeekSched,  !- Name
     WeekDays,                !- DayType List 1
     Day On Peak,             !- Schedule:Day Name 1
     AllOtherDays,            !- DayType List 2
     Day Off Peak;            !- Schedule:Day Name 2
 
-Schedule:Week:Compact,
+  Schedule:Week:Compact,
     FanAndCoilSummerWeekSched,  !- Name
     WeekDays,                !- DayType List 1
     Day On Peak,             !- Schedule:Day Name 1
     AllOtherDays,            !- DayType List 2
     Day Off Peak;            !- Schedule:Day Name 2
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:YEAR ===========
 
-Schedule:Year,
+  Schedule:Year,
     On Peak,                 !- Name
     Fraction,                !- Schedule Type Limits Name
     Week on Peak Daily,      !- Schedule:Week Name 1
@@ -294,7 +283,7 @@ Schedule:Year,
     12,                      !- End Month 1
     31;                      !- End Day 1
 
-Schedule:Year,
+  Schedule:Year,
     CoolingCoilAvailSched,   !- Name
     Fraction,                !- Schedule Type Limits Name
     FanAndCoilAllOffWeekSched,  !- Schedule:Week Name 1
@@ -313,7 +302,7 @@ Schedule:Year,
     12,                      !- End Month 3
     31;                      !- End Day 3
 
-Schedule:Year,
+  Schedule:Year,
     On Peak 2,               !- Name
     Fraction,                !- Schedule Type Limits Name
     Week on Peak Daily,      !- Schedule:Week Name 1
@@ -322,82 +311,64 @@ Schedule:Year,
     12,                      !- End Month 1
     31;                      !- End Day 1
 
-
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:COMPACT ===========
 
-Schedule:Compact,
+  Schedule:Compact,
     POFF,                    !- Name
     Fraction,                !- Schedule Type Limits Name
     Through: 4/30,           !- Field 1
     For: AllDays,            !- Field 2
-    Until: 24:00,            !- Field 3
-    1.0,                     !- Field 4
+    Until: 24:00,1.0,        !- Field 3
     Through: 12/31,          !- Field 5
     For: Weekdays,           !- Field 6
-    Until: 7:00,             !- Field 7
-    .1,                      !- Field 8
-    Until: 17:00,            !- Field 9
-    1.0,                     !- Field 10
-    Until: 24:00,            !- Field 11
-    .1,                      !- Field 12
+    Until: 7:00,.1,          !- Field 7
+    Until: 17:00,1.0,        !- Field 9
+    Until: 24:00,.1,         !- Field 11
     For: Weekends,           !- Field 13
-    Until: 24:00,            !- Field 14
-    .1,                      !- Field 15
+    Until: 24:00,.1,         !- Field 14
     For: AllOtherDays,       !- Field 16
-    Until: 24:00,            !- Field 17
-    .1;                      !- Field 18
+    Until: 24:00,.1;         !- Field 17
 
 ! Schedule Continuous
-Schedule:Compact,
+
+  Schedule:Compact,
     Continuous,              !- Name
     on/off,                  !- Schedule Type Limits Name
     Through: 12/31,          !- Field 1
     For: AllDays,            !- Field 2
-    Until: 24:00,            !- Field 3
-    1.0;                     !- Field 4
+    Until: 24:00,1.0;        !- Field 3
 
 ! Schedule Daytime Ventilation
-Schedule:Compact,
+
+  Schedule:Compact,
     Daytime Ventilation,     !- Name
     Fraction,                !- Schedule Type Limits Name
     Through: 12/31,          !- Field 1
-    For: Weekdays SummerDesignDay,  !- Field 2
-    Until: 08:00,            !- Field 3
-    0.0,                     !- Field 4
-    Until: 18:00,            !- Field 5
-    1.0,                     !- Field 6
-    Until: 24:00,            !- Field 7
-    0.0,                     !- Field 8
-    For: Weekends WinterDesignDay,  !- Field 9
-    Until: 10:00,            !- Field 10
-    0.0,                     !- Field 11
-    Until: 16:00,            !- Field 12
-    1.0,                     !- Field 13
-    Until: 24:00,            !- Field 14
-    0.0,                     !- Field 15
-    For: Holidays AllOtherDays,  !- Field 16
-    Until: 24:00,            !- Field 17
-    0.0;                     !- Field 18
-
+    For: Weekdays SummerDesignDay, !- Field 2
+    Until: 08:00,0.0,        !- Field 3
+    Until: 18:00,1.0,        !- Field 5
+    Until: 24:00,0.0,        !- Field 7
+    For: Weekends WinterDesignDay, !- Field 9
+    Until: 10:00,0.0,        !- Field 10
+    Until: 16:00,1.0,        !- Field 12
+    Until: 24:00,0.0,        !- Field 14
+    For: Holidays AllOtherDays, !- Field 16
+    Until: 24:00,0.0;        !- Field 17
 
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:CONSTANT ===========
 
-Schedule:Constant,
-    AlwaysOn,                !- Name
-    On/Off,                  !- Schedule Type Limits Name
-    1.0;                     !- Hourly Value
-
+  Schedule:Constant,AlwaysOn,On/Off,1.0;
 
 !-   ===========  ALL OBJECTS IN CLASS: SCHEDULE:FILE ===========
 
-Schedule:File,
+  Schedule:File,
     elecTDVfromCZ06res,      !- Name
     Any Number,              !- Schedule Type Limits Name
     TDV_2008_kBtu_CTZ06.csv, !- File Name
     2,                       !- Column Number
     4;                       !- Rows to Skip at Top
 
-Schedule:File,
+  Schedule:File,
     elecTDVfromCZ06com,      !- Name
     Any Number,              !- Schedule Type Limits Name
     TDV_2008_kBtu_CTZ06.csv, !- File Name

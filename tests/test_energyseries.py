@@ -6,7 +6,7 @@ import pytest
 
 from path import Path
 
-from archetypal import EnergySeries
+from archetypal import EnergySeries, get_eplus_dirs, settings
 
 import numpy as np
 
@@ -14,8 +14,11 @@ import numpy as np
 @pytest.fixture(
     scope="module",
     params=[
-        "tests/input_data/regular/5ZoneNightVent1.idf",
-        "tests/input_data/regular/AdultEducationCenter.idf",
+        get_eplus_dirs(settings.ep_version) / "ExampleFiles" / "5ZoneNightVent1.idf",
+        get_eplus_dirs(settings.ep_version)
+        / "ExampleFiles"
+        / "BasicsFiles"
+        / "AdultEducationCenter.idf",
     ],
 )
 def energy_series(config, request):
@@ -93,9 +96,9 @@ def test_plot_3d(energy_series, kind):
     )
 
 
-@pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
+@pytest.mark.skipif(
+    os.environ.get("CI", "False").lower() == "true",
+    reason="Skipping this test on CI environment.",
 )
 def test_plot_2d(energy_series):
     hl = energy_series.copy()
@@ -128,9 +131,9 @@ def from_csv(config):
     yield ep
 
 
-@pytest.mark.xfail(
-    "TRAVIS" in os.environ and os.environ["TRAVIS"] == "true",
-    reason="Skipping this test on Travis CI.",
+@pytest.mark.skipif(
+    os.environ.get("CI", "False").lower() == "true",
+    reason="Skipping this test on CI environment.",
 )
 def test_discretize(from_csv):
     epc = from_csv.copy()

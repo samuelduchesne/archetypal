@@ -1,973 +1,1459 @@
 ! ----  This file was generated with Archsim v.4.0.2.17
 
-Version,8.4;
-ProgramControl,
-4; !- Number of Threads Allowed
+  Version,9.0;
 
-RunPeriod,
-  ArchSim,                 !- Name
-  1,                       !- Begin Month
-  1,                       !- Begin Day of Month
-  12,                      !- End Month
-  31,                      !- End Day of Month
-  UseWeatherFile,          !- Day of Week for Start Day
-  No,                      !- Use Weather File Holidays and Special Days
-  No,                      !- Use Weather File Daylight Saving Period
-  Yes,                     !- Apply Weekend Holiday Rule
-  Yes,                     !- Use Weather File Rain Indicators
-  Yes,                     !- Use Weather File Snow Indicators
-  1;                       !- Number of Times Runperiod to be Repeated
+  RunPeriod,
+    ArchSim,                 !- Name
+    1,                       !- Begin Month
+    1,                       !- Begin Day of Month
+    ,                        !- Begin Year
+    12,                      !- End Month
+    31,                      !- End Day of Month
+    ,                        !- End Year
+    ,                        !- Day of Week for Start Day
+    No,                      !- Use Weather File Holidays and Special Days
+    No,                      !- Use Weather File Daylight Saving Period
+    Yes,                     !- Apply Weekend Holiday Rule
+    Yes,                     !- Use Weather File Rain Indicators
+    Yes,                     !- Use Weather File Snow Indicators
+    ;                        !- Treat Weather as Actual
 
-RunPeriodControl:DaylightSavingTime,
-  Last Sunday in March,    !- Start Date
-  Last Sunday in October;  !- End Date
+  RunPeriodControl:DaylightSavingTime,
+    Last Sunday in March,    !- Start Date
+    Last Sunday in October;  !- End Date
 
-Site:GroundTemperature:BuildingSurface,14,14,14,14,14,14,14,14,14,14,14,14;
+  Site:GroundTemperature:BuildingSurface,14,14,14,14,14,14,14,14,14,14,14,14;
 
-Site:GroundReflectance,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2;
+  Site:GroundReflectance,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2;
 
-Site:GroundReflectance:SnowModifier,
-  1.0,                     !- Ground Reflected Solar Modifier
-  1.0;                     !- Daylighting Ground Reflected Solar Modifier
+  Site:GroundReflectance:SnowModifier,
+    1.0,                     !- Ground Reflected Solar Modifier
+    1.0;                     !- Daylighting Ground Reflected Solar Modifier
 
-SimulationControl,
-  No,                      !- Do Zone Sizing Calculation
-  No,                      !- Do System Sizing Calculation
-  No,                      !- Do Plant Sizing Calculation
-  No,                      !- Run Simulation for Sizing Periods
-  Yes;                     !- Run Simulation for Weather File Run Periods
+  SimulationControl,
+    No,                      !- Do Zone Sizing Calculation
+    No,                      !- Do System Sizing Calculation
+    No,                      !- Do Plant Sizing Calculation
+    No,                      !- Run Simulation for Sizing Periods
+    Yes;                     !- Run Simulation for Weather File Run Periods
 
+  ConvergenceLimits,
+    1,                       !- Minimum System Timestep {minutes}
+    50;                      !- Maximum HVAC Iterations
 
+  ScheduleTypeLimits,
+    Any Number;              !- Name
 
-ConvergenceLimits,
-  1,                       !- Minimum System Timestep {minutes}
-  50;                      !- Maximum HVAC Iterations
+  ScheduleTypeLimits,
+    Fraction,                !- Name
+    0.0,                     !- Lower Limit Value
+    1.0,                     !- Upper Limit Value
+    CONTINUOUS;              !- Numeric Type
 
-ScheduleTypeLimits,
-  Any Number;              !- Name
+  ScheduleTypeLimits,
+    Temperature,             !- Name
+    -60,                     !- Lower Limit Value
+    200,                     !- Upper Limit Value
+    CONTINUOUS;              !- Numeric Type
 
-ScheduleTypeLimits,
-  Fraction,                !- Name
-  0.0,                     !- Lower Limit Value
-  1.0,                     !- Upper Limit Value
-  CONTINUOUS;              !- Numeric GasType
+  ScheduleTypeLimits,
+    Control GasType,         !- Name
+    0,                       !- Lower Limit Value
+    4,                       !- Upper Limit Value
+    DISCRETE;                !- Numeric Type
 
-ScheduleTypeLimits,
-  Temperature,             !- Name
-  -60,                     !- Lower Limit Value
-  200,                     !- Upper Limit Value
-  CONTINUOUS;              !- Numeric GasType
+  ScheduleTypeLimits,
+    On/Off,                  !- Name
+    0,                       !- Lower Limit Value
+    1,                       !- Upper Limit Value
+    DISCRETE;                !- Numeric Type
 
-ScheduleTypeLimits,
-  Control GasType,            !- Name
-  0,                       !- Lower Limit Value
-  4,                       !- Upper Limit Value
-  DISCRETE;                !- Numeric GasType
+  Schedule:Constant,On,On/Off,1;
 
-ScheduleTypeLimits,
-  On/Off,                  !- Name
-  0,                       !- Lower Limit Value
-  1,                       !- Upper Limit Value
-  DISCRETE;                !- Numeric GasType
+  Schedule:Constant,Off,On/Off,0;
 
-Schedule:Constant,
-  On,                      !- Name
-  On/Off,                  !- Schedule GasType Limits Name
-  1;                       !- Value
-
-Schedule:Constant,
-  Off,                     !- Name
-  On/Off,                  !- Schedule GasType Limits Name
-  0;                       !- Value
-
-
-GlobalGeometryRules,
-  LowerLeftCorner,         !- Starting Vertex Position
-  CounterClockWise,        !- Vertex Entry Direction
-  Relative;                !- Coordinate System
+  GlobalGeometryRules,
+    LowerLeftCorner,         !- Starting Vertex Position
+    CounterClockWise,        !- Vertex Entry Direction
+    Relative;                !- Coordinate System
 
 ! -------------------------ERL SENSORS--------------------------
 
-EnergyManagementSystem:Sensor,                                             
-  OutdoorTemp, !- Name                                         
-  Environment, !- Output:Variable Index Key Name               
-  Site Outdoor Air Drybulb Temperature; !- Output:Variable Name
-EnergyManagementSystem:Sensor,                                             
-  OutdoorRelHumid, !- Name                                         
-  Environment, !- Output:Variable Index Key Name               
-  Site Outdoor Air Relative Humidity; !- Output:Variable Name
+  EnergyManagementSystem:Sensor,
+    OutdoorTemp,             !- Name
+    Environment,             !- Output:Variable or Output:Meter Index Key Name
+    Site Outdoor Air Drybulb Temperature;  !- Output:Variable or Output:Meter Name
 
+  EnergyManagementSystem:Sensor,
+    OutdoorRelHumid,         !- Name
+    Environment,             !- Output:Variable or Output:Meter Index Key Name
+    Site Outdoor Air Relative Humidity;  !- Output:Variable or Output:Meter Name
 
-Output:EnergyManagementSystem,
-  Verbose,                 !- Actuator Availability Dictionary Reporting
-  Verbose,                 !- Internal Variable Availability Dictionary Reporting
-  Verbose;                 !- EMS Runtime Language Debug Output Level
+  Output:EnergyManagementSystem,
+    Verbose,                 !- Actuator Availability Dictionary Reporting
+    Verbose,                 !- Internal Variable Availability Dictionary Reporting
+    Verbose;                 !- EMS Runtime Language Debug Output Level
 
+  ShadowCalculation,
+    AverageOverDaysInFrequency,  !- Calculation Method
+    20,                      !- Calculation Frequency
+    15000,                   !- Maximum Figures in Shadow Overlap Calculations
+    SutherlandHodgman,       !- Polygon Clipping Algorithm
+    SimpleSkyDiffuseModeling;!- Sky Diffuse Modeling Algorithm
 
+  Building,
+    Building,                !- Name
+    0,                       !- North Axis {deg}
+    Suburbs,                 !- Terrain
+    .04,                     !- Loads Convergence Tolerance Value
+    .4,                      !- Temperature Convergence Tolerance Value {deltaC}
+    FullExterior,            !- Solar Distribution
+    25,                      !- Maximum Number of Warmup Days
+    ;                        !- Minimum Number of Warmup Days
 
-ShadowCalculation,
-  AverageOverDaysInFrequency,  !- Calculation Method
-  20,                      !- Calculation Frequency
-  15000,                   !- Maximum Figures in Shadow Overlap Calculations
-  SutherlandHodgman,       !- Polygon Clipping Algorithm
-  SimpleSkyDiffuseModeling;!- Sky Diffuse Modeling Algorithm
+  HeatBalanceAlgorithm,ConductionTransferFunction,200,0.1,1000;
 
-Building,
-  Building,                !- Name
-  0,                       !- North Axis [deg]
-  Suburbs,                 !- Terrain
-  .04,                     !- Loads Convergence Tolerance Value
-  .4,                      !- Temperature Convergence Tolerance Value {deltaC}
-  FullExterior,            !- Solar Distribution   should be  FullInteriorAndExterior
-  25,                      !- Maximum Number of Warmup Days
-  ;                        !- Minimum Number of Warmup Days
+  Timestep,4;
 
-HeatBalanceAlgorithm,
-    ConductionTransferFunction,  !- Algorithm
-    200,                     !- Surface Temperature Upper Limit {C}
-    0.1,                     !- Minimum Surface Convection Heat Transfer Coefficient Value {W/m2-K}
-    1000;                    !- Maximum Surface Convection Heat Transfer Coefficient Value {W/m2-K}
+  SurfaceConvectionAlgorithm:Inside,TARP;
 
-Timestep,4;
+  SurfaceConvectionAlgorithm:Outside,DOE-2;
 
-SurfaceConvectionAlgorithm:Inside,TARP;
-
-SurfaceConvectionAlgorithm:Outside,DOE-2;
-
-! ------------ CONSTRUCTIONS 
-
+! ------------ CONSTRUCTIONS
 ! B_Off_Thm_0 GasType: Facade
-Construction, B_Off_Thm_0,
-B_Gypsum_Plaster_0.02_B_Off_Thm_0,
-B_Softwood_General_0.02_B_Off_Thm_0,
-B_Gypsum_Plaster_0.02_B_Off_Thm_0;
 
-Construction, B_Off_Thm_0_FLIPPED,
-B_Gypsum_Plaster_0.02_B_Off_Thm_0,
-B_Softwood_General_0.02_B_Off_Thm_0,
-B_Gypsum_Plaster_0.02_B_Off_Thm_0;
+  Construction,
+    B_Off_Thm_0,             !- Name
+    B_Gypsum_Plaster_0.02_B_Off_Thm_0,  !- Outside Layer
+    B_Softwood_General_0.02_B_Off_Thm_0,  !- Layer 2
+    B_Gypsum_Plaster_0.02_B_Off_Thm_0;  !- Layer 3
 
-
+  Construction,
+    B_Off_Thm_0_FLIPPED,     !- Name
+    B_Gypsum_Plaster_0.02_B_Off_Thm_0,  !- Outside Layer
+    B_Softwood_General_0.02_B_Off_Thm_0,  !- Layer 2
+    B_Gypsum_Plaster_0.02_B_Off_Thm_0;  !- Layer 3
 
 ! Materials
 !- Material: B_Gypsum_Plaster GasType: No Category
-Material, B_Gypsum_Plaster_0.02_B_Off_Thm_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.02,                                         !- Thickness {m}
- 0.42,                                          !- Conductivity {w/m-K}
- 900,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.7,                                           !- Solar Absorptance
- 0.7;                                           !- Visible Absorptance
+
+  Material,
+    B_Gypsum_Plaster_0.02_B_Off_Thm_0,  !- Name
+    Rough,                   !- Roughness
+    0.02,                    !- Thickness {m}
+    0.42,                    !- Conductivity {W/m-K}
+    900,                     !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.7,                     !- Solar Absorptance
+    0.7;                     !- Visible Absorptance
 
 !- Material: B_Softwood_General GasType: No Category
-Material, B_Softwood_General_0.02_B_Off_Thm_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.02,                                         !- Thickness {m}
- 0.13,                                          !- Conductivity {w/m-K}
- 496,                                          !- Density {kg/m3}
- 1630,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.6,                                           !- Solar Absorptance
- 0.6;                                           !- Visible Absorptance
 
-
+  Material,
+    B_Softwood_General_0.02_B_Off_Thm_0,  !- Name
+    Rough,                   !- Roughness
+    0.02,                    !- Thickness {m}
+    0.13,                    !- Conductivity {W/m-K}
+    496,                     !- Density {kg/m3}
+    1630,                    !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.6,                     !- Solar Absorptance
+    0.6;                     !- Visible Absorptance
 
 ! B_Off_Fac_0 GasType: Facade
-Construction, B_Off_Fac_0,
-B_Clay_Brick_H_0.06_B_Off_Fac_0,
-B_XPS_Board_0.02_B_Off_Fac_0,
-B_Concrete_Block_H_0.15_B_Off_Fac_0,
-B_Fiberglass_Batts_0.05_B_Off_Fac_0,
-B_Gypsum_Board_0.015_B_Off_Fac_0;
 
-Construction, B_Off_Fac_0_FLIPPED,
-B_Gypsum_Board_0.015_B_Off_Fac_0,
-B_Fiberglass_Batts_0.05_B_Off_Fac_0,
-B_Concrete_Block_H_0.15_B_Off_Fac_0,
-B_XPS_Board_0.02_B_Off_Fac_0,
-B_Clay_Brick_H_0.06_B_Off_Fac_0;
+  Construction,
+    B_Off_Fac_0,             !- Name
+    B_Clay_Brick_H_0.06_B_Off_Fac_0,  !- Outside Layer
+    B_XPS_Board_0.02_B_Off_Fac_0,  !- Layer 2
+    B_Concrete_Block_H_0.15_B_Off_Fac_0,  !- Layer 3
+    B_Fiberglass_Batts_0.05_B_Off_Fac_0,  !- Layer 4
+    B_Gypsum_Board_0.015_B_Off_Fac_0;  !- Layer 5
 
-
+  Construction,
+    B_Off_Fac_0_FLIPPED,     !- Name
+    B_Gypsum_Board_0.015_B_Off_Fac_0,  !- Outside Layer
+    B_Fiberglass_Batts_0.05_B_Off_Fac_0,  !- Layer 2
+    B_Concrete_Block_H_0.15_B_Off_Fac_0,  !- Layer 3
+    B_XPS_Board_0.02_B_Off_Fac_0,  !- Layer 4
+    B_Clay_Brick_H_0.06_B_Off_Fac_0;  !- Layer 5
 
 ! Materials
 !- Material: B_Clay_Brick_H GasType: No Category
-Material, B_Clay_Brick_H_0.06_B_Off_Fac_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.06,                                         !- Thickness {m}
- 0.41,                                          !- Conductivity {w/m-K}
- 1000,                                          !- Density {kg/m3}
- 920,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.5,                                           !- Solar Absorptance
- 0.5;                                           !- Visible Absorptance
+
+  Material,
+    B_Clay_Brick_H_0.06_B_Off_Fac_0,  !- Name
+    Rough,                   !- Roughness
+    0.06,                    !- Thickness {m}
+    0.41,                    !- Conductivity {W/m-K}
+    1000,                    !- Density {kg/m3}
+    920,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.5,                     !- Solar Absorptance
+    0.5;                     !- Visible Absorptance
 
 !- Material: B_XPS_Board GasType: No Category
-Material, B_XPS_Board_0.02_B_Off_Fac_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.02,                                         !- Thickness {m}
- 0.037,                                          !- Conductivity {w/m-K}
- 40,                                          !- Density {kg/m3}
- 1200,                                          !- Specific Heat {J/kg-K}
- 0.6,                                           !- Thermal Emittance
- 0.6,                                           !- Solar Absorptance
- 0.6;                                           !- Visible Absorptance
+
+  Material,
+    B_XPS_Board_0.02_B_Off_Fac_0,  !- Name
+    Rough,                   !- Roughness
+    0.02,                    !- Thickness {m}
+    0.037,                   !- Conductivity {W/m-K}
+    40,                      !- Density {kg/m3}
+    1200,                    !- Specific Heat {J/kg-K}
+    0.6,                     !- Thermal Absorptance
+    0.6,                     !- Solar Absorptance
+    0.6;                     !- Visible Absorptance
 
 !- Material: B_Concrete_Block_H GasType: No Category
-Material, B_Concrete_Block_H_0.15_B_Off_Fac_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.15,                                         !- Thickness {m}
- 1.25,                                          !- Conductivity {w/m-K}
- 880,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.7,                                           !- Solar Absorptance
- 0.7;                                           !- Visible Absorptance
+
+  Material,
+    B_Concrete_Block_H_0.15_B_Off_Fac_0,  !- Name
+    Rough,                   !- Roughness
+    0.15,                    !- Thickness {m}
+    1.25,                    !- Conductivity {W/m-K}
+    880,                     !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.7,                     !- Solar Absorptance
+    0.7;                     !- Visible Absorptance
 
 !- Material: B_Fiberglass_Batts GasType: No Category
-Material, B_Fiberglass_Batts_0.05_B_Off_Fac_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.05,                                         !- Thickness {m}
- 0.043,                                          !- Conductivity {w/m-K}
- 12,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.6,                                           !- Solar Absorptance
- 0.6;                                           !- Visible Absorptance
+
+  Material,
+    B_Fiberglass_Batts_0.05_B_Off_Fac_0,  !- Name
+    Rough,                   !- Roughness
+    0.05,                    !- Thickness {m}
+    0.043,                   !- Conductivity {W/m-K}
+    12,                      !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.6,                     !- Solar Absorptance
+    0.6;                     !- Visible Absorptance
 
 !- Material: B_Gypsum_Board GasType: No Category
-Material, B_Gypsum_Board_0.015_B_Off_Fac_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.015,                                         !- Thickness {m}
- 0.16,                                          !- Conductivity {w/m-K}
- 950,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.6,                                           !- Solar Absorptance
- 0.6;                                           !- Visible Absorptance
 
-
+  Material,
+    B_Gypsum_Board_0.015_B_Off_Fac_0,  !- Name
+    Rough,                   !- Roughness
+    0.015,                   !- Thickness {m}
+    0.16,                    !- Conductivity {W/m-K}
+    950,                     !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.6,                     !- Solar Absorptance
+    0.6;                     !- Visible Absorptance
 
 ! B_Off_Par_0 GasType: Partition
-Construction, B_Off_Par_0,
-B_Gypsum_Plaster_0.02_B_Off_Par_0,
-B_Softwood_General_0.02_B_Off_Par_0,
-B_Gypsum_Plaster_0.02_B_Off_Par_0;
 
-Construction, B_Off_Par_0_FLIPPED,
-B_Gypsum_Plaster_0.02_B_Off_Par_0,
-B_Softwood_General_0.02_B_Off_Par_0,
-B_Gypsum_Plaster_0.02_B_Off_Par_0;
+  Construction,
+    B_Off_Par_0,             !- Name
+    B_Gypsum_Plaster_0.02_B_Off_Par_0,  !- Outside Layer
+    B_Softwood_General_0.02_B_Off_Par_0,  !- Layer 2
+    B_Gypsum_Plaster_0.02_B_Off_Par_0;  !- Layer 3
 
-
+  Construction,
+    B_Off_Par_0_FLIPPED,     !- Name
+    B_Gypsum_Plaster_0.02_B_Off_Par_0,  !- Outside Layer
+    B_Softwood_General_0.02_B_Off_Par_0,  !- Layer 2
+    B_Gypsum_Plaster_0.02_B_Off_Par_0;  !- Layer 3
 
 ! Materials
 !- Material: B_Gypsum_Plaster GasType: No Category
-Material, B_Gypsum_Plaster_0.02_B_Off_Par_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.02,                                         !- Thickness {m}
- 0.42,                                          !- Conductivity {w/m-K}
- 900,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.7,                                           !- Solar Absorptance
- 0.7;                                           !- Visible Absorptance
+
+  Material,
+    B_Gypsum_Plaster_0.02_B_Off_Par_0,  !- Name
+    Rough,                   !- Roughness
+    0.02,                    !- Thickness {m}
+    0.42,                    !- Conductivity {W/m-K}
+    900,                     !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.7,                     !- Solar Absorptance
+    0.7;                     !- Visible Absorptance
 
 !- Material: B_Softwood_General GasType: No Category
-Material, B_Softwood_General_0.02_B_Off_Par_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.02,                                         !- Thickness {m}
- 0.13,                                          !- Conductivity {w/m-K}
- 496,                                          !- Density {kg/m3}
- 1630,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.6,                                           !- Solar Absorptance
- 0.6;                                           !- Visible Absorptance
 
-
+  Material,
+    B_Softwood_General_0.02_B_Off_Par_0,  !- Name
+    Rough,                   !- Roughness
+    0.02,                    !- Thickness {m}
+    0.13,                    !- Conductivity {W/m-K}
+    496,                     !- Density {kg/m3}
+    1630,                    !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.6,                     !- Solar Absorptance
+    0.6;                     !- Visible Absorptance
 
 ! B_Off_Inf_0 GasType: InteriorFloor
-Construction, B_Off_Inf_0,
-B_Urethane_Carpet_0.02_B_Off_Inf_0,
-B_Cement_Mortar_0.02_B_Off_Inf_0,
-B_Concrete_RC_Dense_0.15_B_Off_Inf_0,
-B_Air_Floor_15cm_0.15_B_Off_Inf_0,
-B_Gypsum_Board_0.02_B_Off_Inf_0;
 
-Construction, B_Off_Inf_0_FLIPPED,
-B_Gypsum_Board_0.02_B_Off_Inf_0,
-B_Air_Floor_15cm_0.15_B_Off_Inf_0,
-B_Concrete_RC_Dense_0.15_B_Off_Inf_0,
-B_Cement_Mortar_0.02_B_Off_Inf_0,
-B_Urethane_Carpet_0.02_B_Off_Inf_0;
+  Construction,
+    B_Off_Inf_0,             !- Name
+    B_Urethane_Carpet_0.02_B_Off_Inf_0,  !- Outside Layer
+    B_Cement_Mortar_0.02_B_Off_Inf_0,  !- Layer 2
+    B_Concrete_RC_Dense_0.15_B_Off_Inf_0,  !- Layer 3
+    B_Air_Floor_15cm_0.15_B_Off_Inf_0,  !- Layer 4
+    B_Gypsum_Board_0.02_B_Off_Inf_0;  !- Layer 5
 
-
+  Construction,
+    B_Off_Inf_0_FLIPPED,     !- Name
+    B_Gypsum_Board_0.02_B_Off_Inf_0,  !- Outside Layer
+    B_Air_Floor_15cm_0.15_B_Off_Inf_0,  !- Layer 2
+    B_Concrete_RC_Dense_0.15_B_Off_Inf_0,  !- Layer 3
+    B_Cement_Mortar_0.02_B_Off_Inf_0,  !- Layer 4
+    B_Urethane_Carpet_0.02_B_Off_Inf_0;  !- Layer 5
 
 ! Materials
 !- Material: B_Urethane_Carpet GasType: No Category
-Material, B_Urethane_Carpet_0.02_B_Off_Inf_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.02,                                         !- Thickness {m}
- 0.045,                                          !- Conductivity {w/m-K}
- 110,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.7,                                           !- Solar Absorptance
- 0.7;                                           !- Visible Absorptance
+
+  Material,
+    B_Urethane_Carpet_0.02_B_Off_Inf_0,  !- Name
+    Rough,                   !- Roughness
+    0.02,                    !- Thickness {m}
+    0.045,                   !- Conductivity {W/m-K}
+    110,                     !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.7,                     !- Solar Absorptance
+    0.7;                     !- Visible Absorptance
 
 !- Material: B_Cement_Mortar GasType: No Category
-Material, B_Cement_Mortar_0.02_B_Off_Inf_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.02,                                         !- Thickness {m}
- 0.8,                                          !- Conductivity {w/m-K}
- 1900,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.8,                                           !- Solar Absorptance
- 0.8;                                           !- Visible Absorptance
+
+  Material,
+    B_Cement_Mortar_0.02_B_Off_Inf_0,  !- Name
+    Rough,                   !- Roughness
+    0.02,                    !- Thickness {m}
+    0.8,                     !- Conductivity {W/m-K}
+    1900,                    !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.8,                     !- Solar Absorptance
+    0.8;                     !- Visible Absorptance
 
 !- Material: B_Concrete_RC_Dense GasType: No Category
-Material, B_Concrete_RC_Dense_0.15_B_Off_Inf_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.15,                                         !- Thickness {m}
- 1.75,                                          !- Conductivity {w/m-K}
- 2400,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.7,                                           !- Solar Absorptance
- 0.7;                                           !- Visible Absorptance
+
+  Material,
+    B_Concrete_RC_Dense_0.15_B_Off_Inf_0,  !- Name
+    Rough,                   !- Roughness
+    0.15,                    !- Thickness {m}
+    1.75,                    !- Conductivity {W/m-K}
+    2400,                    !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.7,                     !- Solar Absorptance
+    0.7;                     !- Visible Absorptance
 
 !- Material: B_Air_Floor_15cm GasType: No Category
-Material, B_Air_Floor_15cm_0.15_B_Off_Inf_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.15,                                         !- Thickness {m}
- 0.7,                                          !- Conductivity {w/m-K}
- 1.2,                                          !- Density {kg/m3}
- 1000,                                          !- Specific Heat {J/kg-K}
- 0.01,                                           !- Thermal Emittance
- 0.7,                                           !- Solar Absorptance
- 0.7;                                           !- Visible Absorptance
+
+  Material,
+    B_Air_Floor_15cm_0.15_B_Off_Inf_0,  !- Name
+    Rough,                   !- Roughness
+    0.15,                    !- Thickness {m}
+    0.7,                     !- Conductivity {W/m-K}
+    1.2,                     !- Density {kg/m3}
+    1000,                    !- Specific Heat {J/kg-K}
+    0.01,                    !- Thermal Absorptance
+    0.7,                     !- Solar Absorptance
+    0.7;                     !- Visible Absorptance
 
 !- Material: B_Gypsum_Board GasType: No Category
-Material, B_Gypsum_Board_0.02_B_Off_Inf_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.02,                                         !- Thickness {m}
- 0.16,                                          !- Conductivity {w/m-K}
- 950,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.6,                                           !- Solar Absorptance
- 0.6;                                           !- Visible Absorptance
 
-
+  Material,
+    B_Gypsum_Board_0.02_B_Off_Inf_0,  !- Name
+    Rough,                   !- Roughness
+    0.02,                    !- Thickness {m}
+    0.16,                    !- Conductivity {W/m-K}
+    950,                     !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.6,                     !- Solar Absorptance
+    0.6;                     !- Visible Absorptance
 
 ! B_Off_Gro_0 GasType: GroundFloor
-Construction, B_Off_Gro_0,
-B_XPS_Board_0.02_B_Off_Gro_0,
-B_Concrete_RC_Dense_0.15_B_Off_Gro_0,
-B_Concrete_MC_Light_0.04_B_Off_Gro_0,
-B_Cement_Mortar_0.03_B_Off_Gro_0,
-B_Ceramic_Tile_0.02_B_Off_Gro_0;
 
-Construction, B_Off_Gro_0_FLIPPED,
-B_Ceramic_Tile_0.02_B_Off_Gro_0,
-B_Cement_Mortar_0.03_B_Off_Gro_0,
-B_Concrete_MC_Light_0.04_B_Off_Gro_0,
-B_Concrete_RC_Dense_0.15_B_Off_Gro_0,
-B_XPS_Board_0.02_B_Off_Gro_0;
+  Construction,
+    B_Off_Gro_0,             !- Name
+    B_XPS_Board_0.02_B_Off_Gro_0,  !- Outside Layer
+    B_Concrete_RC_Dense_0.15_B_Off_Gro_0,  !- Layer 2
+    B_Concrete_MC_Light_0.04_B_Off_Gro_0,  !- Layer 3
+    B_Cement_Mortar_0.03_B_Off_Gro_0,  !- Layer 4
+    B_Ceramic_Tile_0.02_B_Off_Gro_0;  !- Layer 5
 
-
+  Construction,
+    B_Off_Gro_0_FLIPPED,     !- Name
+    B_Ceramic_Tile_0.02_B_Off_Gro_0,  !- Outside Layer
+    B_Cement_Mortar_0.03_B_Off_Gro_0,  !- Layer 2
+    B_Concrete_MC_Light_0.04_B_Off_Gro_0,  !- Layer 3
+    B_Concrete_RC_Dense_0.15_B_Off_Gro_0,  !- Layer 4
+    B_XPS_Board_0.02_B_Off_Gro_0;  !- Layer 5
 
 ! Materials
 !- Material: B_XPS_Board GasType: No Category
-Material, B_XPS_Board_0.02_B_Off_Gro_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.02,                                         !- Thickness {m}
- 0.037,                                          !- Conductivity {w/m-K}
- 40,                                          !- Density {kg/m3}
- 1200,                                          !- Specific Heat {J/kg-K}
- 0.6,                                           !- Thermal Emittance
- 0.6,                                           !- Solar Absorptance
- 0.6;                                           !- Visible Absorptance
+
+  Material,
+    B_XPS_Board_0.02_B_Off_Gro_0,  !- Name
+    Rough,                   !- Roughness
+    0.02,                    !- Thickness {m}
+    0.037,                   !- Conductivity {W/m-K}
+    40,                      !- Density {kg/m3}
+    1200,                    !- Specific Heat {J/kg-K}
+    0.6,                     !- Thermal Absorptance
+    0.6,                     !- Solar Absorptance
+    0.6;                     !- Visible Absorptance
 
 !- Material: B_Concrete_RC_Dense GasType: No Category
-Material, B_Concrete_RC_Dense_0.15_B_Off_Gro_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.15,                                         !- Thickness {m}
- 1.75,                                          !- Conductivity {w/m-K}
- 2400,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.7,                                           !- Solar Absorptance
- 0.7;                                           !- Visible Absorptance
+
+  Material,
+    B_Concrete_RC_Dense_0.15_B_Off_Gro_0,  !- Name
+    Rough,                   !- Roughness
+    0.15,                    !- Thickness {m}
+    1.75,                    !- Conductivity {W/m-K}
+    2400,                    !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.7,                     !- Solar Absorptance
+    0.7;                     !- Visible Absorptance
 
 !- Material: B_Concrete_MC_Light GasType: No Category
-Material, B_Concrete_MC_Light_0.04_B_Off_Gro_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.04,                                         !- Thickness {m}
- 1.65,                                          !- Conductivity {w/m-K}
- 2100,                                          !- Density {kg/m3}
- 1040,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.7,                                           !- Solar Absorptance
- 0.7;                                           !- Visible Absorptance
+
+  Material,
+    B_Concrete_MC_Light_0.04_B_Off_Gro_0,  !- Name
+    Rough,                   !- Roughness
+    0.04,                    !- Thickness {m}
+    1.65,                    !- Conductivity {W/m-K}
+    2100,                    !- Density {kg/m3}
+    1040,                    !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.7,                     !- Solar Absorptance
+    0.7;                     !- Visible Absorptance
 
 !- Material: B_Cement_Mortar GasType: No Category
-Material, B_Cement_Mortar_0.03_B_Off_Gro_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.03,                                         !- Thickness {m}
- 0.8,                                          !- Conductivity {w/m-K}
- 1900,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.8,                                           !- Solar Absorptance
- 0.8;                                           !- Visible Absorptance
+
+  Material,
+    B_Cement_Mortar_0.03_B_Off_Gro_0,  !- Name
+    Rough,                   !- Roughness
+    0.03,                    !- Thickness {m}
+    0.8,                     !- Conductivity {W/m-K}
+    1900,                    !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.8,                     !- Solar Absorptance
+    0.8;                     !- Visible Absorptance
 
 !- Material: B_Ceramic_Tile GasType: No Category
-Material, B_Ceramic_Tile_0.02_B_Off_Gro_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.02,                                         !- Thickness {m}
- 0.8,                                          !- Conductivity {w/m-K}
- 2243,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.4,                                           !- Solar Absorptance
- 0.4;                                           !- Visible Absorptance
 
-
+  Material,
+    B_Ceramic_Tile_0.02_B_Off_Gro_0,  !- Name
+    Rough,                   !- Roughness
+    0.02,                    !- Thickness {m}
+    0.8,                     !- Conductivity {W/m-K}
+    2243,                    !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.4,                     !- Solar Absorptance
+    0.4;                     !- Visible Absorptance
 
 ! B_Off_Rof_0 GasType: Roof
-Construction, B_Off_Rof_0,
-B_XPS_Board_0.1_B_Off_Rof_0,
-B_Concrete_MC_Light_0.15_B_Off_Rof_0,
-B_Concrete_RC_Dense_0.2_B_Off_Rof_0,
-B_Air_Floor_15cm_0.15_B_Off_Rof_0,
-B_Gypsum_Board_0.02_B_Off_Rof_0;
 
-Construction, B_Off_Rof_0_FLIPPED,
-B_Gypsum_Board_0.02_B_Off_Rof_0,
-B_Air_Floor_15cm_0.15_B_Off_Rof_0,
-B_Concrete_RC_Dense_0.2_B_Off_Rof_0,
-B_Concrete_MC_Light_0.15_B_Off_Rof_0,
-B_XPS_Board_0.1_B_Off_Rof_0;
+  Construction,
+    B_Off_Rof_0,             !- Name
+    B_XPS_Board_0.1_B_Off_Rof_0,  !- Outside Layer
+    B_Concrete_MC_Light_0.15_B_Off_Rof_0,  !- Layer 2
+    B_Concrete_RC_Dense_0.2_B_Off_Rof_0,  !- Layer 3
+    B_Air_Floor_15cm_0.15_B_Off_Rof_0,  !- Layer 4
+    B_Gypsum_Board_0.02_B_Off_Rof_0;  !- Layer 5
 
-
+  Construction,
+    B_Off_Rof_0_FLIPPED,     !- Name
+    B_Gypsum_Board_0.02_B_Off_Rof_0,  !- Outside Layer
+    B_Air_Floor_15cm_0.15_B_Off_Rof_0,  !- Layer 2
+    B_Concrete_RC_Dense_0.2_B_Off_Rof_0,  !- Layer 3
+    B_Concrete_MC_Light_0.15_B_Off_Rof_0,  !- Layer 4
+    B_XPS_Board_0.1_B_Off_Rof_0;  !- Layer 5
 
 ! Materials
 !- Material: B_XPS_Board GasType: No Category
-Material, B_XPS_Board_0.1_B_Off_Rof_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.1,                                         !- Thickness {m}
- 0.037,                                          !- Conductivity {w/m-K}
- 40,                                          !- Density {kg/m3}
- 1200,                                          !- Specific Heat {J/kg-K}
- 0.6,                                           !- Thermal Emittance
- 0.6,                                           !- Solar Absorptance
- 0.6;                                           !- Visible Absorptance
+
+  Material,
+    B_XPS_Board_0.1_B_Off_Rof_0,  !- Name
+    Rough,                   !- Roughness
+    0.1,                     !- Thickness {m}
+    0.037,                   !- Conductivity {W/m-K}
+    40,                      !- Density {kg/m3}
+    1200,                    !- Specific Heat {J/kg-K}
+    0.6,                     !- Thermal Absorptance
+    0.6,                     !- Solar Absorptance
+    0.6;                     !- Visible Absorptance
 
 !- Material: B_Concrete_MC_Light GasType: No Category
-Material, B_Concrete_MC_Light_0.15_B_Off_Rof_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.15,                                         !- Thickness {m}
- 1.65,                                          !- Conductivity {w/m-K}
- 2100,                                          !- Density {kg/m3}
- 1040,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.7,                                           !- Solar Absorptance
- 0.7;                                           !- Visible Absorptance
+
+  Material,
+    B_Concrete_MC_Light_0.15_B_Off_Rof_0,  !- Name
+    Rough,                   !- Roughness
+    0.15,                    !- Thickness {m}
+    1.65,                    !- Conductivity {W/m-K}
+    2100,                    !- Density {kg/m3}
+    1040,                    !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.7,                     !- Solar Absorptance
+    0.7;                     !- Visible Absorptance
 
 !- Material: B_Concrete_RC_Dense GasType: No Category
-Material, B_Concrete_RC_Dense_0.2_B_Off_Rof_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.2,                                         !- Thickness {m}
- 1.75,                                          !- Conductivity {w/m-K}
- 2400,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.7,                                           !- Solar Absorptance
- 0.7;                                           !- Visible Absorptance
+
+  Material,
+    B_Concrete_RC_Dense_0.2_B_Off_Rof_0,  !- Name
+    Rough,                   !- Roughness
+    0.2,                     !- Thickness {m}
+    1.75,                    !- Conductivity {W/m-K}
+    2400,                    !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.7,                     !- Solar Absorptance
+    0.7;                     !- Visible Absorptance
 
 !- Material: B_Air_Floor_15cm GasType: No Category
-Material, B_Air_Floor_15cm_0.15_B_Off_Rof_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.15,                                         !- Thickness {m}
- 0.7,                                          !- Conductivity {w/m-K}
- 1.2,                                          !- Density {kg/m3}
- 1000,                                          !- Specific Heat {J/kg-K}
- 0.01,                                           !- Thermal Emittance
- 0.7,                                           !- Solar Absorptance
- 0.7;                                           !- Visible Absorptance
+
+  Material,
+    B_Air_Floor_15cm_0.15_B_Off_Rof_0,  !- Name
+    Rough,                   !- Roughness
+    0.15,                    !- Thickness {m}
+    0.7,                     !- Conductivity {W/m-K}
+    1.2,                     !- Density {kg/m3}
+    1000,                    !- Specific Heat {J/kg-K}
+    0.01,                    !- Thermal Absorptance
+    0.7,                     !- Solar Absorptance
+    0.7;                     !- Visible Absorptance
 
 !- Material: B_Gypsum_Board GasType: No Category
-Material, B_Gypsum_Board_0.02_B_Off_Rof_0 ,                !- Material name 
- Rough,                                         !- Roughness
- 0.02,                                         !- Thickness {m}
- 0.16,                                          !- Conductivity {w/m-K}
- 950,                                          !- Density {kg/m3}
- 840,                                          !- Specific Heat {J/kg-K}
- 0.9,                                           !- Thermal Emittance
- 0.6,                                           !- Solar Absorptance
- 0.6;                                           !- Visible Absorptance
 
+  Material,
+    B_Gypsum_Board_0.02_B_Off_Rof_0,  !- Name
+    Rough,                   !- Roughness
+    0.02,                    !- Thickness {m}
+    0.16,                    !- Conductivity {W/m-K}
+    950,                     !- Density {kg/m3}
+    840,                     !- Specific Heat {J/kg-K}
+    0.9,                     !- Thermal Absorptance
+    0.6,                     !- Solar Absorptance
+    0.6;                     !- Visible Absorptance
 
-
-
-! ------------ GLAZING  
-
+! ------------ GLAZING
 ! B_Dbl_Air_Cl GasType: Double
-Construction, B_Dbl_Air_Cl,
-B_Glass_Clear_3_0.003_B_Dbl_Air_Cl,
-AIR_0.006_B_Dbl_Air_Cl,
-B_Glass_Clear_3_0.003_B_Dbl_Air_Cl;
 
-Construction, B_Dbl_Air_Cl_FLIPPED,
-B_Glass_Clear_3_0.003_B_Dbl_Air_Cl,
-AIR_0.006_B_Dbl_Air_Cl,
-B_Glass_Clear_3_0.003_B_Dbl_Air_Cl;
+  Construction,
+    B_Dbl_Air_Cl,            !- Name
+    B_Glass_Clear_3_0.003_B_Dbl_Air_Cl,  !- Outside Layer
+    AIR_0.006_B_Dbl_Air_Cl,  !- Layer 2
+    B_Glass_Clear_3_0.003_B_Dbl_Air_Cl;  !- Layer 3
 
-
+  Construction,
+    B_Dbl_Air_Cl_FLIPPED,    !- Name
+    B_Glass_Clear_3_0.003_B_Dbl_Air_Cl,  !- Outside Layer
+    AIR_0.006_B_Dbl_Air_Cl,  !- Layer 2
+    B_Glass_Clear_3_0.003_B_Dbl_Air_Cl;  !- Layer 3
 
 ! Materials
-WindowMaterial:Glazing,B_Glass_Clear_3_0.003_B_Dbl_Air_Cl,                         !- Generic CLEAR 3MM
- SpectralAverage,                               !- Optical data type {SpectralAverage or Spectral}
- SpectralAverage,                                              !- Name of spectral data set when Optical Data GasType = Spectral
- 0.003,                                          !- Thickness {m}
- 0.83,                                          !- Solar transmittance at normal incidence
- 0.07,                                          !- Solar reflectance at normal incidence: front side
- 0.07,                                          !- Solar reflectance at normal incidence: back side
- 0.89,                                          !- Visible transmittance at normal incidence
- 0.08,                                          !- Visible reflectance at normal incidence: front side
- 0.08,                                          !- Visible reflectance at normal incidence: back side
- 0,                                            !- IR transmittance at normal incidence
- 0.84,                                           !- IR emissivity: front side
- 0.84,                                           !- IR emissivity: back side
- 0.9,                                            !- Conductivity {W/m-K}
- 1;                                             !- Dirt Correction Factor for Solar and Visible Transmittance
+
+  WindowMaterial:Glazing,
+    B_Glass_Clear_3_0.003_B_Dbl_Air_Cl,  !- Name
+    SpectralAverage,         !- Optical Data Type
+    SpectralAverage,         !- Window Glass Spectral Data Set Name
+    0.003,                   !- Thickness {m}
+    0.83,                    !- Solar Transmittance at Normal Incidence
+    0.07,                    !- Front Side Solar Reflectance at Normal Incidence
+    0.07,                    !- Back Side Solar Reflectance at Normal Incidence
+    0.89,                    !- Visible Transmittance at Normal Incidence
+    0.08,                    !- Front Side Visible Reflectance at Normal Incidence
+    0.08,                    !- Back Side Visible Reflectance at Normal Incidence
+    0,                       !- Infrared Transmittance at Normal Incidence
+    0.84,                    !- Front Side Infrared Hemispherical Emissivity
+    0.84,                    !- Back Side Infrared Hemispherical Emissivity
+    0.9,                     !- Conductivity {W/m-K}
+    1;                       !- Dirt Correction Factor for Solar and Visible Transmittance
 
 ! Gas: AIR GasType: AIR
-WindowMaterial:Gas,AIR_0.006_B_Dbl_Air_Cl ,                !- Material name 
- AIR,                                           !- Gas type (Air - Argon - Krypton - Xenon - SF6 - Custom)
- 0.006;                                         !- Thickness {m}
 
+  WindowMaterial:Gas,
+    AIR_0.006_B_Dbl_Air_Cl,  !- Name
+    AIR,                     !- Gas Type
+    0.006;                   !- Thickness {m}
 
+! ------------ SCHEDULES
 
+  Schedule:Year,
+    B_Off_Y_Occ,             !- Name
+    Fraction,                !- Schedule Type Limits Name
+    B_Off_W_Occ,             !- Schedule:Week Name 1
+    1,                       !- Start Month 1
+    1,                       !- Start Day 1
+    12,                      !- End Month 1
+    31;                      !- End Day 1
 
+  Schedule:Year,
+    B_Off_Y_Het,             !- Name
+    Fraction,                !- Schedule Type Limits Name
+    B_Off_W_Het,             !- Schedule:Week Name 1
+    1,                       !- Start Month 1
+    1,                       !- Start Day 1
+    4,                       !- End Month 1
+    30,                      !- End Day 1
+    B_Off_W_Off,             !- Schedule:Week Name 2
+    5,                       !- Start Month 2
+    1,                       !- Start Day 2
+    9,                       !- End Month 2
+    30,                      !- End Day 2
+    B_Off_W_Het,             !- Schedule:Week Name 3
+    10,                      !- Start Month 3
+    1,                       !- Start Day 3
+    12,                      !- End Month 3
+    31;                      !- End Day 3
 
-! ------------ SCHEDULES  
+  Schedule:Year,
+    B_Off_Y_Col,             !- Name
+    Fraction,                !- Schedule Type Limits Name
+    B_Off_W_Off,             !- Schedule:Week Name 1
+    1,                       !- Start Month 1
+    1,                       !- Start Day 1
+    3,                       !- End Month 1
+    31,                      !- End Day 1
+    B_Off_W_Col,             !- Schedule:Week Name 2
+    4,                       !- Start Month 2
+    1,                       !- Start Day 2
+    9,                       !- End Month 2
+    30,                      !- End Day 2
+    B_Off_W_Off,             !- Schedule:Week Name 3
+    10,                      !- Start Month 3
+    1,                       !- Start Day 3
+    12,                      !- End Month 3
+    31;                      !- End Day 3
 
-Schedule:Year,B_Off_Y_Occ,Fraction,B_Off_W_Occ,1,1,12,31;
+  Schedule:Year,
+    B_Off_Y_Dhw,             !- Name
+    Fraction,                !- Schedule Type Limits Name
+    B_Off_W_Dhw,             !- Schedule:Week Name 1
+    1,                       !- Start Month 1
+    1,                       !- Start Day 1
+    12,                      !- End Month 1
+    31;                      !- End Day 1
 
-Schedule:Year,B_Off_Y_Het,Fraction,B_Off_W_Het,1,1,4,30,
-B_Off_W_Off,5,1,9,30,
-B_Off_W_Het,10,1,12,31;
+  Schedule:Year,
+    B_Off_Y_Lgt,             !- Name
+    Fraction,                !- Schedule Type Limits Name
+    B_Off_W_Lgt,             !- Schedule:Week Name 1
+    1,                       !- Start Month 1
+    1,                       !- Start Day 1
+    12,                      !- End Month 1
+    31;                      !- End Day 1
 
-Schedule:Year,B_Off_Y_Col,Fraction,B_Off_W_Off,1,1,3,31,
-B_Off_W_Col,4,1,9,30,
-B_Off_W_Off,10,1,12,31;
+  Schedule:Year,
+    B_Off_Y_Plg,             !- Name
+    Fraction,                !- Schedule Type Limits Name
+    B_Off_W_Plg,             !- Schedule:Week Name 1
+    1,                       !- Start Month 1
+    1,                       !- Start Day 1
+    12,                      !- End Month 1
+    31;                      !- End Day 1
 
-Schedule:Year,B_Off_Y_Dhw,Fraction,B_Off_W_Dhw,1,1,12,31;
+  Schedule:Year,
+    B_Off_Y_Nat,             !- Name
+    Fraction,                !- Schedule Type Limits Name
+    B_Off_W_Off,             !- Schedule:Week Name 1
+    1,                       !- Start Month 1
+    1,                       !- Start Day 1
+    3,                       !- End Month 1
+    31,                      !- End Day 1
+    B_Off_W_Nat,             !- Schedule:Week Name 2
+    4,                       !- Start Month 2
+    1,                       !- Start Day 2
+    10,                      !- End Month 2
+    31,                      !- End Day 2
+    B_Off_W_Off,             !- Schedule:Week Name 3
+    11,                      !- Start Month 3
+    1,                       !- Start Day 3
+    12,                      !- End Month 3
+    31;                      !- End Day 3
 
-Schedule:Year,B_Off_Y_Lgt,Fraction,B_Off_W_Lgt,1,1,12,31;
+  Schedule:Week:Daily,
+    B_Off_W_Occ,             !- Name
+    B_Off_D_Occ_WE,          !- Sunday Schedule:Day Name
+    B_Off_D_Occ_WD,          !- Monday Schedule:Day Name
+    B_Off_D_Occ_WD,          !- Tuesday Schedule:Day Name
+    B_Off_D_Occ_WD,          !- Wednesday Schedule:Day Name
+    B_Off_D_Occ_WD,          !- Thursday Schedule:Day Name
+    B_Off_D_Occ_WD,          !- Friday Schedule:Day Name
+    B_Off_D_Occ_WE,          !- Saturday Schedule:Day Name
+    B_Off_D_Occ_WE,          !- Holiday Schedule:Day Name
+    B_Off_D_Occ_WD,          !- SummerDesignDay Schedule:Day Name
+    B_Off_D_Occ_WD,          !- WinterDesignDay Schedule:Day Name
+    B_Off_D_Occ_WD,          !- CustomDay1 Schedule:Day Name
+    B_Off_D_Occ_WD;          !- CustomDay2 Schedule:Day Name
 
-Schedule:Year,B_Off_Y_Plg,Fraction,B_Off_W_Plg,1,1,12,31;
+  Schedule:Week:Daily,
+    B_Off_W_Het,             !- Name
+    B_Off_D_Het_WE,          !- Sunday Schedule:Day Name
+    B_Off_D_Het_WD,          !- Monday Schedule:Day Name
+    B_Off_D_Het_WD,          !- Tuesday Schedule:Day Name
+    B_Off_D_Het_WD,          !- Wednesday Schedule:Day Name
+    B_Off_D_Het_WD,          !- Thursday Schedule:Day Name
+    B_Off_D_Het_WD,          !- Friday Schedule:Day Name
+    B_Off_D_Het_WE,          !- Saturday Schedule:Day Name
+    B_Off_D_Het_WE,          !- Holiday Schedule:Day Name
+    B_Off_D_Het_WD,          !- SummerDesignDay Schedule:Day Name
+    B_Off_D_Het_WD,          !- WinterDesignDay Schedule:Day Name
+    B_Off_D_Het_WD,          !- CustomDay1 Schedule:Day Name
+    B_Off_D_Het_WD;          !- CustomDay2 Schedule:Day Name
 
-Schedule:Year,B_Off_Y_Nat,Fraction,B_Off_W_Off,1,1,3,31,
-B_Off_W_Nat,4,1,10,31,
-B_Off_W_Off,11,1,12,31;
+  Schedule:Week:Daily,
+    B_Off_W_Off,             !- Name
+    B_Off_D_Off,             !- Sunday Schedule:Day Name
+    B_Off_D_Off,             !- Monday Schedule:Day Name
+    B_Off_D_Off,             !- Tuesday Schedule:Day Name
+    B_Off_D_Off,             !- Wednesday Schedule:Day Name
+    B_Off_D_Off,             !- Thursday Schedule:Day Name
+    B_Off_D_Off,             !- Friday Schedule:Day Name
+    B_Off_D_Off,             !- Saturday Schedule:Day Name
+    B_Off_D_Off,             !- Holiday Schedule:Day Name
+    B_Off_D_Off,             !- SummerDesignDay Schedule:Day Name
+    B_Off_D_Off,             !- WinterDesignDay Schedule:Day Name
+    B_Off_D_Off,             !- CustomDay1 Schedule:Day Name
+    B_Off_D_Off;             !- CustomDay2 Schedule:Day Name
 
-Schedule:Week:Daily, B_Off_W_Occ,
-  B_Off_D_Occ_WE,
-  B_Off_D_Occ_WD,
-  B_Off_D_Occ_WD,
-  B_Off_D_Occ_WD,
-  B_Off_D_Occ_WD,
-  B_Off_D_Occ_WD,
-  B_Off_D_Occ_WE,
-  B_Off_D_Occ_WE,
-  B_Off_D_Occ_WD,
-  B_Off_D_Occ_WD,
-  B_Off_D_Occ_WD,
-  B_Off_D_Occ_WD;
+  Schedule:Week:Daily,
+    B_Off_W_Col,             !- Name
+    B_Off_D_Col_WE,          !- Sunday Schedule:Day Name
+    B_Off_D_Col_WD,          !- Monday Schedule:Day Name
+    B_Off_D_Col_WD,          !- Tuesday Schedule:Day Name
+    B_Off_D_Col_WD,          !- Wednesday Schedule:Day Name
+    B_Off_D_Col_WD,          !- Thursday Schedule:Day Name
+    B_Off_D_Col_WD,          !- Friday Schedule:Day Name
+    B_Off_D_Col_WE,          !- Saturday Schedule:Day Name
+    B_Off_D_Col_WE,          !- Holiday Schedule:Day Name
+    B_Off_D_Col_WD,          !- SummerDesignDay Schedule:Day Name
+    B_Off_D_Col_WD,          !- WinterDesignDay Schedule:Day Name
+    B_Off_D_Col_WD,          !- CustomDay1 Schedule:Day Name
+    B_Off_D_Col_WD;          !- CustomDay2 Schedule:Day Name
 
-Schedule:Week:Daily, B_Off_W_Het,
-  B_Off_D_Het_WE,
-  B_Off_D_Het_WD,
-  B_Off_D_Het_WD,
-  B_Off_D_Het_WD,
-  B_Off_D_Het_WD,
-  B_Off_D_Het_WD,
-  B_Off_D_Het_WE,
-  B_Off_D_Het_WE,
-  B_Off_D_Het_WD,
-  B_Off_D_Het_WD,
-  B_Off_D_Het_WD,
-  B_Off_D_Het_WD;
+  Schedule:Week:Daily,
+    B_Off_W_Dhw,             !- Name
+    B_Off_D_Dhw_WE,          !- Sunday Schedule:Day Name
+    B_Off_D_Dhw_WD,          !- Monday Schedule:Day Name
+    B_Off_D_Dhw_WD,          !- Tuesday Schedule:Day Name
+    B_Off_D_Dhw_WD,          !- Wednesday Schedule:Day Name
+    B_Off_D_Dhw_WD,          !- Thursday Schedule:Day Name
+    B_Off_D_Dhw_WD,          !- Friday Schedule:Day Name
+    B_Off_D_Dhw_WE,          !- Saturday Schedule:Day Name
+    B_Off_D_Dhw_WE,          !- Holiday Schedule:Day Name
+    B_Off_D_Dhw_WD,          !- SummerDesignDay Schedule:Day Name
+    B_Off_D_Dhw_WD,          !- WinterDesignDay Schedule:Day Name
+    B_Off_D_Dhw_WD,          !- CustomDay1 Schedule:Day Name
+    B_Off_D_Dhw_WD;          !- CustomDay2 Schedule:Day Name
 
-Schedule:Week:Daily, B_Off_W_Off,
-  B_Off_D_Off,
-  B_Off_D_Off,
-  B_Off_D_Off,
-  B_Off_D_Off,
-  B_Off_D_Off,
-  B_Off_D_Off,
-  B_Off_D_Off,
-  B_Off_D_Off,
-  B_Off_D_Off,
-  B_Off_D_Off,
-  B_Off_D_Off,
-  B_Off_D_Off;
+  Schedule:Week:Daily,
+    B_Off_W_Lgt,             !- Name
+    B_Off_D_Lgt_WE,          !- Sunday Schedule:Day Name
+    B_Off_D_Lgt_WD,          !- Monday Schedule:Day Name
+    B_Off_D_Lgt_WD,          !- Tuesday Schedule:Day Name
+    B_Off_D_Lgt_WD,          !- Wednesday Schedule:Day Name
+    B_Off_D_Lgt_WD,          !- Thursday Schedule:Day Name
+    B_Off_D_Lgt_WD,          !- Friday Schedule:Day Name
+    B_Off_D_Lgt_WE,          !- Saturday Schedule:Day Name
+    B_Off_D_Lgt_WE,          !- Holiday Schedule:Day Name
+    B_Off_D_Lgt_WD,          !- SummerDesignDay Schedule:Day Name
+    B_Off_D_Lgt_WD,          !- WinterDesignDay Schedule:Day Name
+    B_Off_D_Lgt_WD,          !- CustomDay1 Schedule:Day Name
+    B_Off_D_Lgt_WD;          !- CustomDay2 Schedule:Day Name
 
-Schedule:Week:Daily, B_Off_W_Col,
-  B_Off_D_Col_WE,
-  B_Off_D_Col_WD,
-  B_Off_D_Col_WD,
-  B_Off_D_Col_WD,
-  B_Off_D_Col_WD,
-  B_Off_D_Col_WD,
-  B_Off_D_Col_WE,
-  B_Off_D_Col_WE,
-  B_Off_D_Col_WD,
-  B_Off_D_Col_WD,
-  B_Off_D_Col_WD,
-  B_Off_D_Col_WD;
+  Schedule:Week:Daily,
+    B_Off_W_Plg,             !- Name
+    B_Off_D_Plg_WE,          !- Sunday Schedule:Day Name
+    B_Off_D_Plg_WD,          !- Monday Schedule:Day Name
+    B_Off_D_Plg_WD,          !- Tuesday Schedule:Day Name
+    B_Off_D_Plg_WD,          !- Wednesday Schedule:Day Name
+    B_Off_D_Plg_WD,          !- Thursday Schedule:Day Name
+    B_Off_D_Plg_WD,          !- Friday Schedule:Day Name
+    B_Off_D_Plg_WE,          !- Saturday Schedule:Day Name
+    B_Off_D_Plg_WE,          !- Holiday Schedule:Day Name
+    B_Off_D_Plg_WD,          !- SummerDesignDay Schedule:Day Name
+    B_Off_D_Plg_WD,          !- WinterDesignDay Schedule:Day Name
+    B_Off_D_Plg_WD,          !- CustomDay1 Schedule:Day Name
+    B_Off_D_Plg_WD;          !- CustomDay2 Schedule:Day Name
 
-Schedule:Week:Daily, B_Off_W_Dhw,
-  B_Off_D_Dhw_WE,
-  B_Off_D_Dhw_WD,
-  B_Off_D_Dhw_WD,
-  B_Off_D_Dhw_WD,
-  B_Off_D_Dhw_WD,
-  B_Off_D_Dhw_WD,
-  B_Off_D_Dhw_WE,
-  B_Off_D_Dhw_WE,
-  B_Off_D_Dhw_WD,
-  B_Off_D_Dhw_WD,
-  B_Off_D_Dhw_WD,
-  B_Off_D_Dhw_WD;
+  Schedule:Week:Daily,
+    B_Off_W_Nat,             !- Name
+    B_Off_D_Nat_WE,          !- Sunday Schedule:Day Name
+    B_Off_D_Nat_WD,          !- Monday Schedule:Day Name
+    B_Off_D_Nat_WD,          !- Tuesday Schedule:Day Name
+    B_Off_D_Nat_WD,          !- Wednesday Schedule:Day Name
+    B_Off_D_Nat_WD,          !- Thursday Schedule:Day Name
+    B_Off_D_Nat_WD,          !- Friday Schedule:Day Name
+    B_Off_D_Nat_WE,          !- Saturday Schedule:Day Name
+    B_Off_D_Nat_WE,          !- Holiday Schedule:Day Name
+    B_Off_D_Nat_WD,          !- SummerDesignDay Schedule:Day Name
+    B_Off_D_Nat_WD,          !- WinterDesignDay Schedule:Day Name
+    B_Off_D_Nat_WD,          !- CustomDay1 Schedule:Day Name
+    B_Off_D_Nat_WD;          !- CustomDay2 Schedule:Day Name
 
-Schedule:Week:Daily, B_Off_W_Lgt,
-  B_Off_D_Lgt_WE,
-  B_Off_D_Lgt_WD,
-  B_Off_D_Lgt_WD,
-  B_Off_D_Lgt_WD,
-  B_Off_D_Lgt_WD,
-  B_Off_D_Lgt_WD,
-  B_Off_D_Lgt_WE,
-  B_Off_D_Lgt_WE,
-  B_Off_D_Lgt_WD,
-  B_Off_D_Lgt_WD,
-  B_Off_D_Lgt_WD,
-  B_Off_D_Lgt_WD;
+  Schedule:Day:Hourly,
+    B_Off_D_Occ_WD,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0,                       !- Hour 1
+    0,                       !- Hour 2
+    0,                       !- Hour 3
+    0,                       !- Hour 4
+    0,                       !- Hour 5
+    0,                       !- Hour 6
+    0.1,                     !- Hour 7
+    0.2,                     !- Hour 8
+    1,                       !- Hour 9
+    1,                       !- Hour 10
+    1,                       !- Hour 11
+    1,                       !- Hour 12
+    0.5,                     !- Hour 13
+    1,                       !- Hour 14
+    1,                       !- Hour 15
+    1,                       !- Hour 16
+    1,                       !- Hour 17
+    0.3,                     !- Hour 18
+    0.2,                     !- Hour 19
+    0.1,                     !- Hour 20
+    0,                       !- Hour 21
+    0,                       !- Hour 22
+    0,                       !- Hour 23
+    0;                       !- Hour 24
 
-Schedule:Week:Daily, B_Off_W_Plg,
-  B_Off_D_Plg_WE,
-  B_Off_D_Plg_WD,
-  B_Off_D_Plg_WD,
-  B_Off_D_Plg_WD,
-  B_Off_D_Plg_WD,
-  B_Off_D_Plg_WD,
-  B_Off_D_Plg_WE,
-  B_Off_D_Plg_WE,
-  B_Off_D_Plg_WD,
-  B_Off_D_Plg_WD,
-  B_Off_D_Plg_WD,
-  B_Off_D_Plg_WD;
+  Schedule:Day:Hourly,
+    B_Off_D_Occ_WE,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0,                       !- Hour 1
+    0,                       !- Hour 2
+    0,                       !- Hour 3
+    0,                       !- Hour 4
+    0,                       !- Hour 5
+    0,                       !- Hour 6
+    0.1,                     !- Hour 7
+    0.1,                     !- Hour 8
+    0.1,                     !- Hour 9
+    0.1,                     !- Hour 10
+    0.1,                     !- Hour 11
+    0.1,                     !- Hour 12
+    0.1,                     !- Hour 13
+    0.1,                     !- Hour 14
+    0.1,                     !- Hour 15
+    0.1,                     !- Hour 16
+    0.1,                     !- Hour 17
+    0.1,                     !- Hour 18
+    0.1,                     !- Hour 19
+    0.1,                     !- Hour 20
+    0,                       !- Hour 21
+    0,                       !- Hour 22
+    0,                       !- Hour 23
+    0;                       !- Hour 24
 
-Schedule:Week:Daily, B_Off_W_Nat,
-  B_Off_D_Nat_WE,
-  B_Off_D_Nat_WD,
-  B_Off_D_Nat_WD,
-  B_Off_D_Nat_WD,
-  B_Off_D_Nat_WD,
-  B_Off_D_Nat_WD,
-  B_Off_D_Nat_WE,
-  B_Off_D_Nat_WE,
-  B_Off_D_Nat_WD,
-  B_Off_D_Nat_WD,
-  B_Off_D_Nat_WD,
-  B_Off_D_Nat_WD;
+  Schedule:Day:Hourly,
+    B_Off_D_Het_WD,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0,                       !- Hour 1
+    0,                       !- Hour 2
+    0,                       !- Hour 3
+    0,                       !- Hour 4
+    0,                       !- Hour 5
+    0,                       !- Hour 6
+    1,                       !- Hour 7
+    1,                       !- Hour 8
+    1,                       !- Hour 9
+    1,                       !- Hour 10
+    1,                       !- Hour 11
+    1,                       !- Hour 12
+    1,                       !- Hour 13
+    1,                       !- Hour 14
+    1,                       !- Hour 15
+    1,                       !- Hour 16
+    1,                       !- Hour 17
+    1,                       !- Hour 18
+    1,                       !- Hour 19
+    1,                       !- Hour 20
+    0,                       !- Hour 21
+    0,                       !- Hour 22
+    0,                       !- Hour 23
+    0;                       !- Hour 24
 
-Schedule:Day:Hourly, B_Off_D_Occ_WD, Fraction,0,0,0,0,0,0,0.1,0.2,1,1,1,1,0.5,1,1,1,1,0.3,0.2,0.1,0,0,0,0;
+  Schedule:Day:Hourly,
+    B_Off_D_Het_WE,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0,                       !- Hour 1
+    0,                       !- Hour 2
+    0,                       !- Hour 3
+    0,                       !- Hour 4
+    0,                       !- Hour 5
+    0,                       !- Hour 6
+    0,                       !- Hour 7
+    0,                       !- Hour 8
+    0,                       !- Hour 9
+    0,                       !- Hour 10
+    0,                       !- Hour 11
+    0,                       !- Hour 12
+    0,                       !- Hour 13
+    0,                       !- Hour 14
+    0,                       !- Hour 15
+    0,                       !- Hour 16
+    0,                       !- Hour 17
+    0,                       !- Hour 18
+    0,                       !- Hour 19
+    0,                       !- Hour 20
+    0,                       !- Hour 21
+    0,                       !- Hour 22
+    0,                       !- Hour 23
+    0;                       !- Hour 24
 
-Schedule:Day:Hourly, B_Off_D_Occ_WE, Fraction,0,0,0,0,0,0,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0,0,0,0;
+  Schedule:Day:Hourly,
+    B_Off_D_Off,             !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0,                       !- Hour 1
+    0,                       !- Hour 2
+    0,                       !- Hour 3
+    0,                       !- Hour 4
+    0,                       !- Hour 5
+    0,                       !- Hour 6
+    0,                       !- Hour 7
+    0,                       !- Hour 8
+    0,                       !- Hour 9
+    0,                       !- Hour 10
+    0,                       !- Hour 11
+    0,                       !- Hour 12
+    0,                       !- Hour 13
+    0,                       !- Hour 14
+    0,                       !- Hour 15
+    0,                       !- Hour 16
+    0,                       !- Hour 17
+    0,                       !- Hour 18
+    0,                       !- Hour 19
+    0,                       !- Hour 20
+    0,                       !- Hour 21
+    0,                       !- Hour 22
+    0,                       !- Hour 23
+    0;                       !- Hour 24
 
-Schedule:Day:Hourly, B_Off_D_Het_WD, Fraction,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0;
+  Schedule:Day:Hourly,
+    B_Off_D_Col_WD,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0,                       !- Hour 1
+    0,                       !- Hour 2
+    0,                       !- Hour 3
+    0,                       !- Hour 4
+    0,                       !- Hour 5
+    0,                       !- Hour 6
+    1,                       !- Hour 7
+    1,                       !- Hour 8
+    1,                       !- Hour 9
+    1,                       !- Hour 10
+    1,                       !- Hour 11
+    1,                       !- Hour 12
+    1,                       !- Hour 13
+    1,                       !- Hour 14
+    1,                       !- Hour 15
+    1,                       !- Hour 16
+    1,                       !- Hour 17
+    1,                       !- Hour 18
+    1,                       !- Hour 19
+    1,                       !- Hour 20
+    0,                       !- Hour 21
+    0,                       !- Hour 22
+    0,                       !- Hour 23
+    0;                       !- Hour 24
 
-Schedule:Day:Hourly, B_Off_D_Het_WE, Fraction,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
+  Schedule:Day:Hourly,
+    B_Off_D_Col_WE,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0,                       !- Hour 1
+    0,                       !- Hour 2
+    0,                       !- Hour 3
+    0,                       !- Hour 4
+    0,                       !- Hour 5
+    0,                       !- Hour 6
+    0,                       !- Hour 7
+    0,                       !- Hour 8
+    0,                       !- Hour 9
+    0,                       !- Hour 10
+    0,                       !- Hour 11
+    0,                       !- Hour 12
+    0,                       !- Hour 13
+    0,                       !- Hour 14
+    0,                       !- Hour 15
+    0,                       !- Hour 16
+    0,                       !- Hour 17
+    0,                       !- Hour 18
+    0,                       !- Hour 19
+    0,                       !- Hour 20
+    0,                       !- Hour 21
+    0,                       !- Hour 22
+    0,                       !- Hour 23
+    0;                       !- Hour 24
 
-Schedule:Day:Hourly, B_Off_D_Off, Fraction,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
+  Schedule:Day:Hourly,
+    B_Off_D_Dhw_WD,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0,                       !- Hour 1
+    0,                       !- Hour 2
+    0,                       !- Hour 3
+    0,                       !- Hour 4
+    0,                       !- Hour 5
+    0,                       !- Hour 6
+    0.2,                     !- Hour 7
+    0.4,                     !- Hour 8
+    0.4,                     !- Hour 9
+    0.4,                     !- Hour 10
+    0.4,                     !- Hour 11
+    0.6,                     !- Hour 12
+    0.6,                     !- Hour 13
+    0.4,                     !- Hour 14
+    0.4,                     !- Hour 15
+    0.4,                     !- Hour 16
+    0.4,                     !- Hour 17
+    0.4,                     !- Hour 18
+    0.4,                     !- Hour 19
+    0.2,                     !- Hour 20
+    0,                       !- Hour 21
+    0,                       !- Hour 22
+    0,                       !- Hour 23
+    0;                       !- Hour 24
 
-Schedule:Day:Hourly, B_Off_D_Col_WD, Fraction,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0;
+  Schedule:Day:Hourly,
+    B_Off_D_Dhw_WE,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0,                       !- Hour 1
+    0,                       !- Hour 2
+    0,                       !- Hour 3
+    0,                       !- Hour 4
+    0,                       !- Hour 5
+    0,                       !- Hour 6
+    0.1,                     !- Hour 7
+    0.1,                     !- Hour 8
+    0.1,                     !- Hour 9
+    0.1,                     !- Hour 10
+    0.1,                     !- Hour 11
+    0.1,                     !- Hour 12
+    0.1,                     !- Hour 13
+    0.1,                     !- Hour 14
+    0.1,                     !- Hour 15
+    0.1,                     !- Hour 16
+    0.1,                     !- Hour 17
+    0.1,                     !- Hour 18
+    0.1,                     !- Hour 19
+    0.1,                     !- Hour 20
+    0,                       !- Hour 21
+    0,                       !- Hour 22
+    0,                       !- Hour 23
+    0;                       !- Hour 24
 
-Schedule:Day:Hourly, B_Off_D_Col_WE, Fraction,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
+  Schedule:Day:Hourly,
+    B_Off_D_Lgt_WD,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0.1,                     !- Hour 1
+    0.1,                     !- Hour 2
+    0.1,                     !- Hour 3
+    0.1,                     !- Hour 4
+    0.1,                     !- Hour 5
+    0.1,                     !- Hour 6
+    0.1,                     !- Hour 7
+    0.3,                     !- Hour 8
+    1,                       !- Hour 9
+    1,                       !- Hour 10
+    1,                       !- Hour 11
+    1,                       !- Hour 12
+    0.8,                     !- Hour 13
+    1,                       !- Hour 14
+    1,                       !- Hour 15
+    1,                       !- Hour 16
+    1,                       !- Hour 17
+    0.5,                     !- Hour 18
+    0.3,                     !- Hour 19
+    0.3,                     !- Hour 20
+    0.2,                     !- Hour 21
+    0.2,                     !- Hour 22
+    0.1,                     !- Hour 23
+    0.1;                     !- Hour 24
 
-Schedule:Day:Hourly, B_Off_D_Dhw_WD, Fraction,0,0,0,0,0,0,0.2,0.4,0.4,0.4,0.4,0.6,0.6,0.4,0.4,0.4,0.4,0.4,0.4,0.2,0,0,0,0;
+  Schedule:Day:Hourly,
+    B_Off_D_Lgt_WE,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0.1,                     !- Hour 1
+    0.1,                     !- Hour 2
+    0.1,                     !- Hour 3
+    0.1,                     !- Hour 4
+    0.1,                     !- Hour 5
+    0.1,                     !- Hour 6
+    0.1,                     !- Hour 7
+    0.1,                     !- Hour 8
+    0.1,                     !- Hour 9
+    0.1,                     !- Hour 10
+    0.1,                     !- Hour 11
+    0.1,                     !- Hour 12
+    0.1,                     !- Hour 13
+    0.1,                     !- Hour 14
+    0.1,                     !- Hour 15
+    0.1,                     !- Hour 16
+    0.1,                     !- Hour 17
+    0.1,                     !- Hour 18
+    0.1,                     !- Hour 19
+    0.1,                     !- Hour 20
+    0.1,                     !- Hour 21
+    0.1,                     !- Hour 22
+    0.1,                     !- Hour 23
+    0.1;                     !- Hour 24
 
-Schedule:Day:Hourly, B_Off_D_Dhw_WE, Fraction,0,0,0,0,0,0,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0,0,0,0;
+  Schedule:Day:Hourly,
+    B_Off_D_Plg_WD,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0.1,                     !- Hour 1
+    0.1,                     !- Hour 2
+    0.1,                     !- Hour 3
+    0.1,                     !- Hour 4
+    0.1,                     !- Hour 5
+    0.1,                     !- Hour 6
+    0.1,                     !- Hour 7
+    0.3,                     !- Hour 8
+    1,                       !- Hour 9
+    1,                       !- Hour 10
+    1,                       !- Hour 11
+    1,                       !- Hour 12
+    0.8,                     !- Hour 13
+    1,                       !- Hour 14
+    1,                       !- Hour 15
+    1,                       !- Hour 16
+    1,                       !- Hour 17
+    1,                       !- Hour 18
+    0.3,                     !- Hour 19
+    0.3,                     !- Hour 20
+    0.2,                     !- Hour 21
+    0.2,                     !- Hour 22
+    0.1,                     !- Hour 23
+    0.1;                     !- Hour 24
 
-Schedule:Day:Hourly, B_Off_D_Lgt_WD, Fraction,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.3,1,1,1,1,0.8,1,1,1,1,0.5,0.3,0.3,0.2,0.2,0.1,0.1;
+  Schedule:Day:Hourly,
+    B_Off_D_Plg_WE,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0.1,                     !- Hour 1
+    0.1,                     !- Hour 2
+    0.1,                     !- Hour 3
+    0.1,                     !- Hour 4
+    0.1,                     !- Hour 5
+    0.1,                     !- Hour 6
+    0.1,                     !- Hour 7
+    0.1,                     !- Hour 8
+    0.1,                     !- Hour 9
+    0.1,                     !- Hour 10
+    0.1,                     !- Hour 11
+    0.1,                     !- Hour 12
+    0.1,                     !- Hour 13
+    0.1,                     !- Hour 14
+    0.1,                     !- Hour 15
+    0.1,                     !- Hour 16
+    0.1,                     !- Hour 17
+    0.1,                     !- Hour 18
+    0.1,                     !- Hour 19
+    0.1,                     !- Hour 20
+    0.1,                     !- Hour 21
+    0.1,                     !- Hour 22
+    0.1,                     !- Hour 23
+    0.1;                     !- Hour 24
 
-Schedule:Day:Hourly, B_Off_D_Lgt_WE, Fraction,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1;
+  Schedule:Day:Hourly,
+    B_Off_D_Nat_WD,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0,                       !- Hour 1
+    0,                       !- Hour 2
+    0,                       !- Hour 3
+    0,                       !- Hour 4
+    0,                       !- Hour 5
+    0,                       !- Hour 6
+    1,                       !- Hour 7
+    1,                       !- Hour 8
+    1,                       !- Hour 9
+    1,                       !- Hour 10
+    1,                       !- Hour 11
+    1,                       !- Hour 12
+    1,                       !- Hour 13
+    1,                       !- Hour 14
+    1,                       !- Hour 15
+    1,                       !- Hour 16
+    1,                       !- Hour 17
+    1,                       !- Hour 18
+    1,                       !- Hour 19
+    1,                       !- Hour 20
+    0,                       !- Hour 21
+    0,                       !- Hour 22
+    0,                       !- Hour 23
+    0;                       !- Hour 24
 
-Schedule:Day:Hourly, B_Off_D_Plg_WD, Fraction,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.3,1,1,1,1,0.8,1,1,1,1,1,0.3,0.3,0.2,0.2,0.1,0.1;
-
-Schedule:Day:Hourly, B_Off_D_Plg_WE, Fraction,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1;
-
-Schedule:Day:Hourly, B_Off_D_Nat_WD, Fraction,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0;
-
-Schedule:Day:Hourly, B_Off_D_Nat_WE, Fraction,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
-
-
-
+  Schedule:Day:Hourly,
+    B_Off_D_Nat_WE,          !- Name
+    Fraction,                !- Schedule Type Limits Name
+    0,                       !- Hour 1
+    0,                       !- Hour 2
+    0,                       !- Hour 3
+    0,                       !- Hour 4
+    0,                       !- Hour 5
+    0,                       !- Hour 6
+    0,                       !- Hour 7
+    0,                       !- Hour 8
+    0,                       !- Hour 9
+    0,                       !- Hour 10
+    0,                       !- Hour 11
+    0,                       !- Hour 12
+    0,                       !- Hour 13
+    0,                       !- Hour 14
+    0,                       !- Hour 15
+    0,                       !- Hour 16
+    0,                       !- Hour 17
+    0,                       !- Hour 18
+    0,                       !- Hour 19
+    0,                       !- Hour 20
+    0,                       !- Hour 21
+    0,                       !- Hour 22
+    0,                       !- Hour 23
+    0;                       !- Hour 24
 
 !------------------------------------------------ ZONE ----------------------------------------------------
 
-Zone,
-  Perim,            !- Name
-  0,                       !- Rotation [deg]
-  0,                       !- X origin [m]
-  0,                       !- Y origin [m]
-  0,                       !- Z origin [m]
-  1,                       !- GasType
-  1.0,                       !- Multiplier
-  ,                        !- Ceiling Height [m]
-  21.00199975,                   !- Volume [m3]
-  6.30059992500001,                   !- Area [m2]
-  TARP,                    !- Zone Inside Convection Algorithm
-  DOE-2;                   !- Zone Outside Convection Algorithm
+  Zone,
+    Perim,                   !- Name
+    0,                       !- Direction of Relative North {deg}
+    0,                       !- X Origin {m}
+    0,                       !- Y Origin {m}
+    0,                       !- Z Origin {m}
+    1,                       !- Type
+    1.0,                     !- Multiplier
+    ,                        !- Ceiling Height {m}
+    21.00199975,             !- Volume {m3}
+    6.30059992500001,        !- Floor Area {m2}
+    TARP,                    !- Zone Inside Convection Algorithm
+    DOE-2;                   !- Zone Outside Convection Algorithm
 
 ! ------------------------ PEOPLE
-People,
-    People Perim,                 !- Name
-    Perim,            !- Zone or ZoneList Name
-    B_Off_Y_Occ,        !- Number of People Schedule Name
-    People/Area,                  !- Number of People Calculation Method
-    ,                       !- Number of People
-    0.055,                        !- People per Zone Floor Area {person/m2}
+
+  People,
+    People Perim,            !- Name
+    Perim,                   !- Zone or ZoneList Name
+    B_Off_Y_Occ,             !- Number of People Schedule Name
+    People/Area,             !- Number of People Calculation Method
+    ,                        !- Number of People
+    0.055,                   !- People per Zone Floor Area {person/m2}
     ,                        !- Zone Floor Area per Person {m2/person}
     0.3,                     !- Fraction Radiant
     AUTOCALCULATE,           !- Sensible Heat Fraction
-    PerimPeopleActivity,                    !- Activity Level Schedule Name
+    PerimPeopleActivity,     !- Activity Level Schedule Name
     0.0000000382,            !- Carbon Dioxide Generation Rate {m3/s-W}
     No,                      !- Enable ASHRAE 55 Comfort Warnings
-    ZoneAveraged,            !- Mean Radiant Temperature Calculation GasType
+    ZoneAveraged,            !- Mean Radiant Temperature Calculation Type
     ,                        !- Surface Name/Angle Factor List Name
-    PerimWorkEfficiency,  !- Work Efficiency Schedule Name
+    PerimWorkEfficiency,     !- Work Efficiency Schedule Name
     DynamicClothingModelASHRAE55,  !- Clothing Insulation Calculation Method
     ,                        !- Clothing Insulation Calculation Method Schedule Name
     ,                        !- Clothing Insulation Schedule Name
-    PerimAirVelocity,!- Air Velocity Schedule Name
-    AdaptiveASH55;           !- Thermal Comfort Model 1 GasType
+    PerimAirVelocity,        !- Air Velocity Schedule Name
+    AdaptiveASH55;           !- Thermal Comfort Model 1 Type
 
-Schedule:Constant, PerimPeopleActivity, Any Number, 125.28; ! - Watts per person, uses Metabolic Rate input (1 met = 58 W/m2) and assumes adult body surface area of 1.8 m2
-Schedule:Constant, PerimAirVelocity, Any Number, 0.2;
-Schedule:Constant, PerimWorkEfficiency, Any Number, 0;
+  Schedule:Constant,PerimPeopleActivity,Any Number,125.28;
 
+  Schedule:Constant,PerimAirVelocity,Any Number,0.2;
+
+  Schedule:Constant,PerimWorkEfficiency,Any Number,0;
 
 ! ------------------------ EQUIPMENT
-ElectricEquipment,
-  Perim Equipment 1,!- Name
-  Perim,            !- Zone or ZoneList Name
-  B_Off_Y_Plg,                    !- Schedule Name
-  Watts/Area,          !- Design Level Calculation Method
-  ,                !- Design Level [W]
-  8,                        !- Watts per Zone Floor Area [W/m2]
-  ,                        !- Watts per Person [W/person]
-  0,                       !- Fraction Latent
-  .2,                      !- Fraction Radiant
-  0,                       !- Fraction Lost
-  ;                        !- End-Use Subcategory
+
+  ElectricEquipment,
+    Perim Equipment 1,       !- Name
+    Perim,                   !- Zone or ZoneList Name
+    B_Off_Y_Plg,             !- Schedule Name
+    Watts/Area,              !- Design Level Calculation Method
+    ,                        !- Design Level {W}
+    8,                       !- Watts per Zone Floor Area {W/m2}
+    ,                        !- Watts per Person {W/person}
+    0,                       !- Fraction Latent
+    .2,                      !- Fraction Radiant
+    0,                       !- Fraction Lost
+    ;                        !- End-Use Subcategory
 
 ! ------------------------ LIGHTS
-Lights,
-  Perim General lighting,   !- Name
-  Perim,                    !- Zone or ZoneList Name
-  B_Off_Y_Lgt,          !- Schedule Name
-  Watts/Area,              !- Design Level Calculation Method
-  ,                        !- Lighting Level [W]
-  12,         !- Watts per Zone Floor Area [W/m2]
-  ,                        !- Watts per Person [W/person]
-  0,                       !- Return Air Fraction
-  .42,                     !- Fraction Radiant
-  .18,                     !- Fraction Visible
-  1,                       !- Fraction Replaceable
-  ;                        !- End-Use Subcategory
 
-
+  Lights,
+    Perim General lighting,  !- Name
+    Perim,                   !- Zone or ZoneList Name
+    B_Off_Y_Lgt,             !- Schedule Name
+    Watts/Area,              !- Design Level Calculation Method
+    ,                        !- Lighting Level {W}
+    12,                      !- Watts per Zone Floor Area {W/m2}
+    ,                        !- Watts per Person {W/person}
+    0,                       !- Return Air Fraction
+    .42,                     !- Fraction Radiant
+    .18,                     !- Fraction Visible
+    1,                       !- Fraction Replaceable
+    ;                        !- End-Use Subcategory
 
 ! ------------------------ HVAC
-Schedule:Constant,
-PerimHeating_SP_Sch, !- Name
-Temperature, !- Schedule GasType Limits Name
-20; !- Hourly Value
 
-Schedule:Constant,
-PerimCooling_SP_Sch, !- Name
-Temperature, !- Schedule GasType Limits Name
-24; !- Hourly Value
+  Schedule:Constant,PerimHeating_SP_Sch,Temperature,20;
 
-ZoneControl:Thermostat,
-  Perim Thermostat, !- Name
-  Perim,            !- Zone or ZoneList Name
-  PerimZoneControlTypeSched, !- Control GasType Schedule Name
-  ThermostatSetpoint:DualSetpoint,  !- Control 1 Object GasType
-  Dual Setpoint - Zone Perim;  !- Control 1 Name
+  Schedule:Constant,PerimCooling_SP_Sch,Temperature,24;
 
-Schedule:Constant,
-  PerimZoneControlTypeSched, !- Name
-  Any Number, !- Schedule GasType Limits Name
-  4; !- Hourly Value
+  ZoneControl:Thermostat,
+    Perim Thermostat,        !- Name
+    Perim,                   !- Zone or ZoneList Name
+    PerimZoneControlTypeSched,  !- Control Type Schedule Name
+    ThermostatSetpoint:DualSetpoint,  !- Control 1 Object Type
+    Dual Setpoint - Zone Perim;  !- Control 1 Name
 
-ThermostatSetpoint:DualSetpoint,
-  Dual Setpoint - Zone Perim,  !- Name
-  PerimHeating_SP_Sch,  !- Heating Setpoint Temperature Schedule Name
-  PerimCooling_SP_Sch;  !- Cooling Setpoint Temperature Schedule Name
+  Schedule:Constant,PerimZoneControlTypeSched,Any Number,4;
 
-ZoneHVAC:EquipmentConnections,
-  Perim,            !- Zone Name
-  Perim Equipment,  !- Zone Conditioning Equipment List Name
-  Perim Inlets,     !- Zone Air Inlet Node or NodeList Name
-  ,                        !- Zone Air Exhaust Node or NodeList Name
-  Node Perim Zone,  !- Zone Air Node Name
-  Node Perim Out;   !- Zone Return Air Node Name
+  ThermostatSetpoint:DualSetpoint,
+    Dual Setpoint - Zone Perim,  !- Name
+    PerimHeating_SP_Sch,     !- Heating Setpoint Temperature Schedule Name
+    PerimCooling_SP_Sch;     !- Cooling Setpoint Temperature Schedule Name
 
-ZoneHVAC:EquipmentList,
-  Perim Equipment,  !- Name
-  ZoneHVAC:IdealLoadsAirSystem,  !- Zone Equipment 1 Object GasType
-  Perim Ideal Loads Air,  !- Zone Equipment 1 Name
-  1,                       !- Zone Equipment 1 Cooling Sequence
-  1;                       !- Zone Equipment 1 Heating or No-Load Sequence
+  ZoneHVAC:EquipmentConnections,
+    Perim,                   !- Zone Name
+    Perim Equipment,         !- Zone Conditioning Equipment List Name
+    Perim Inlets,            !- Zone Air Inlet Node or NodeList Name
+    ,                        !- Zone Air Exhaust Node or NodeList Name
+    Node Perim Zone,         !- Zone Air Node Name
+    Node Perim Out;          !- Zone Return Air Node or NodeList Name
 
-NodeList,
-  Perim Inlets,     !- Name
-  Node Perim In;    !- Node 1 Name
+  ZoneHVAC:EquipmentList,
+    Perim Equipment,         !- Name
+    SequentialLoad,          !- Load Distribution Scheme
+    ZoneHVAC:IdealLoadsAirSystem,  !- Zone Equipment 1 Object Type
+    Perim Ideal Loads Air,   !- Zone Equipment 1 Name
+    1,                       !- Zone Equipment 1 Cooling Sequence
+    1;                       !- Zone Equipment 1 Heating or No-Load Sequence
 
-ZoneHVAC:IdealLoadsAirSystem,
-  Perim Ideal Loads Air,  !- Name
-  ,                        !- Availability Schedule Name
-  Node Perim In,    !- Zone Supply Air Node Name
-  ,                        !- Zone Exhaust Air Node Name
-  30,                      !- Maximum Heating Supply Air Temperature {C}
-  18,                      !- Minimum Cooling Supply Air Temperature {C}
-  0.01,                    !- Maximum Heating Supply Air Humidity Ratio {kgWater/kgDryAir}
-  0.008,                   !- Minimum Cooling Supply Air Humidity Ratio {kgWater/kgDryAir}
-  NoLimit,                 !- Heating Limit
-  100,                        !- Maximum Heating Air Flow Rate [m3/s]
-  ,        				   !- Maximum Sensible Heating Capacity [W]
-  LimitFlowRateAndCapacity,                 !- Cooling Limit
-  0.0005 ,                        !- Maximum Cooling Air Flow Rate [m3/s]
-  630.059992500001,                        !- Maximum Total Cooling Capacity [W]
-  B_Off_Y_Het,  !- Heating Availability Schedule Name
-  B_Off_Y_Col,  !- Cooling Availability Schedule Name
-  None,                    !- Dehumidification Control Type
-  ,                        !- Cooling Sensible Heat Ratio {dimensionless}
-  None,                    !- Humidification Control Type
-  PerimMinFreshAir,                        !- Design Specification Outdoor Air Object Name
-  Perim_OutDoorInlet,                        !- Outdoor Air Inlet Node Name
-  OccupancySchedule,                        !- Demand Controlled Ventilation GasType
-  NoEconomizer,                        !- Outdoor Air Economizer GasType
-  None,                        !- Heat Recovery GasType
-  0.7,                        !- Sensible Heat Recovery Effectiveness {dimensionless}
-  0.65;                        !- Latent Heat Recovery Effectiveness {dimensionless}
+  NodeList,
+    Perim Inlets,            !- Name
+    Node Perim In;           !- Node 1 Name
 
+  ZoneHVAC:IdealLoadsAirSystem,
+    Perim Ideal Loads Air,   !- Name
+    ,                        !- Availability Schedule Name
+    Node Perim In,           !- Zone Supply Air Node Name
+    ,                        !- Zone Exhaust Air Node Name
+    ,                        !- System Inlet Air Node Name
+    30,                      !- Maximum Heating Supply Air Temperature {C}
+    18,                      !- Minimum Cooling Supply Air Temperature {C}
+    0.01,                    !- Maximum Heating Supply Air Humidity Ratio {kgWater/kgDryAir}
+    0.008,                   !- Minimum Cooling Supply Air Humidity Ratio {kgWater/kgDryAir}
+    NoLimit,                 !- Heating Limit
+    100,                     !- Maximum Heating Air Flow Rate {m3/s}
+    ,                        !- Maximum Sensible Heating Capacity {W}
+    LimitFlowRateAndCapacity,!- Cooling Limit
+    0.0005,                  !- Maximum Cooling Air Flow Rate {m3/s}
+    630.059992500001,        !- Maximum Total Cooling Capacity {W}
+    B_Off_Y_Het,             !- Heating Availability Schedule Name
+    B_Off_Y_Col,             !- Cooling Availability Schedule Name
+    None,                    !- Dehumidification Control Type
+    ,                        !- Cooling Sensible Heat Ratio {dimensionless}
+    None,                    !- Humidification Control Type
+    PerimMinFreshAir,        !- Design Specification Outdoor Air Object Name
+    Perim_OutDoorInlet,      !- Outdoor Air Inlet Node Name
+    OccupancySchedule,       !- Demand Controlled Ventilation Type
+    NoEconomizer,            !- Outdoor Air Economizer Type
+    None,                    !- Heat Recovery Type
+    0.7,                     !- Sensible Heat Recovery Effectiveness {dimensionless}
+    0.65;                    !- Latent Heat Recovery Effectiveness {dimensionless}
 
-ZoneControl:Humidistat,
-    PerimHumidistat,                  !-Name
-    Perim,                   !-Zone Name
-    PerimHumidMin,                !-Humidifying Relative Humidity Setpoint Schedule Name
-    PerimHumidMax; !-Dehumidifying Relative Humidity Setpoint Schedule Name
+  ZoneControl:Humidistat,
+    PerimHumidistat,         !- Name
+    Perim,                   !- Zone Name
+    PerimHumidMin,           !- Humidifying Relative Humidity Setpoint Schedule Name
+    PerimHumidMax;           !- Dehumidifying Relative Humidity Setpoint Schedule Name
 
-Schedule:Constant,
-    PerimHumidMin,                !- Name
-    Any Number,              !- Schedule Type Limits Name
-    20;                      !- Hourly Value
+  Schedule:Constant,PerimHumidMin,Any Number,20;
 
-Schedule:Constant,
-    PerimHumidMax,                !- Name
-    Any Number,              !- Schedule Type Limits Name
-    80;                      !- Hourly Value
+  Schedule:Constant,PerimHumidMax,Any Number,80;
 
-DesignSpecification:OutdoorAir,
-  PerimMinFreshAir,                  !- Name
-  Sum,                     !- Outdoor Air Method
-  2.5E-06,                 !- Outdoor Air Flow per Person {m3/s-person}
-  3E-07,                   !- Outdoor Air Flow per Zone Floor Area {m3/s-m2}
+  DesignSpecification:OutdoorAir,
+    PerimMinFreshAir,        !- Name
+    Sum,                     !- Outdoor Air Method
+    2.5E-06,                 !- Outdoor Air Flow per Person {m3/s-person}
+    3E-07,                   !- Outdoor Air Flow per Zone Floor Area {m3/s-m2}
     ,                        !- Outdoor Air Flow per Zone {m3/s}
     ,                        !- Outdoor Air Flow Air Changes per Hour {1/hr}
-    B_Off_Y_Occ;!- Outdoor Air Flow Rate Fraction Schedule Name
+    B_Off_Y_Occ;             !- Outdoor Air Schedule Name
+
 ! ------------------------ NATVENT
 
-Schedule:Constant,NATVENT_AVAIL_SCHED_Perim,Fraction,1;
+  Schedule:Constant,NATVENT_AVAIL_SCHED_Perim,Fraction,1;
+
 ! Output:Variable,NATVENT_AVAIL_SCHED_Perim,Schedule Value,Hourly;
 ! Output:Variable,B_Off_Y_Nat,Schedule Value,Hourly;
 
-EnergyManagementSystem:Actuator,
-  NATVENT_AVAIL_SCHED_ACTUATOR_Perim,           !- Name
-  NATVENT_AVAIL_SCHED_Perim,             !- Actuated Component Unique Name
-    Schedule:Constant,       !- Actuated Component GasType
-  Schedule Value;          !- Actuated Component Control GasType
- 
-EnergyManagementSystem:Sensor,
-  USRNATVENT_Perim,                  !- Name
-  B_Off_Y_Nat,             !- Output:Variable or Output:Meter Index Key Name
-  Schedule Value;  !- Output:Variable or Output:Meter Name 
+  EnergyManagementSystem:Actuator,
+    NATVENT_AVAIL_SCHED_ACTUATOR_Perim,  !- Name
+    NATVENT_AVAIL_SCHED_Perim,  !- Actuated Component Unique Name
+    Schedule:Constant,       !- Actuated Component Type
+    Schedule Value;          !- Actuated Component Control Type
 
-EnergyManagementSystem:ProgramCallingManager,
-  My Perim_Setpoint_Schedule_Calculator_Example,  !- Name
-  BeginTimestepBeforePredictor,  !- EnergyPlus Model Calling Point
-  Perim_ErlEnforceBinary;  !- Program Name
+  EnergyManagementSystem:Sensor,
+    USRNATVENT_Perim,        !- Name
+    B_Off_Y_Nat,             !- Output:Variable or Output:Meter Index Key Name
+    Schedule Value;          !- Output:Variable or Output:Meter Name
 
-EnergyManagementSystem:Program,
-  Perim_ErlEnforceBinary,  !- Name
-  IF (USRNATVENT_Perim > 0),
-    Set NATVENT_AVAIL_SCHED_ACTUATOR_Perim = 1,
-  ELSE,
-    Set NATVENT_AVAIL_SCHED_ACTUATOR_Perim = 0,
-  ENDIF;
+  EnergyManagementSystem:ProgramCallingManager,
+    My Perim_Setpoint_Schedule_Calculator_Example,  !- Name
+    BeginTimestepBeforePredictor,  !- EnergyPlus Model Calling Point
+    Perim_ErlEnforceBinary;  !- Program Name 1
 
-ZoneVentilation:WindandStackOpenArea,
-PerimNatVent_Buoy,          !- Name
-Perim,                  !- Zone Name
-3.2,                       !- Opening Area {m2}
-NATVENT_AVAIL_SCHED_Perim,                !- Opening Area Fraction Schedule Name
-0,                     !- Opening Effectiveness {dimensionless}
-0,                     !- Effective Angle {deg}
-0.357142857142857,                       !- Height Difference {m}
-0.6,                       !- Discharge Coefficient for Opening
-22,                    !- Minimum Indoor Temperature {C}
-,                        !- Minimum Indoor Temperature Schedule Name
-100,                     !- Maximum Indoor Temperature {C}
-,                        !- Maximum Indoor Temperature Schedule Name
-1,                    !- Delta Temperature {deltaC}
-,                        !- Delta Temperature Schedule Name
-20,                    !- Minimum Outdoor Temperature {C}
-,                        !- Minimum Outdoor Temperature Schedule Name
-26,                     !- Maximum Outdoor Temperature {C}
-,                        !- Maximum Outdoor Temperature Schedule Name
-40;                      !- Maximum Wind Speed {m/s}
+  EnergyManagementSystem:Program,
+    Perim_ErlEnforceBinary,  !- Name
+    IF (USRNATVENT_Perim > 0),  !- Program Line 1
+    Set NATVENT_AVAIL_SCHED_ACTUATOR_Perim = 1,  !- Program Line 2
+    ELSE,                    !- <none>
+    Set NATVENT_AVAIL_SCHED_ACTUATOR_Perim = 0,  !- <none>
+    ENDIF;                   !- <none>
+
+  ZoneVentilation:WindandStackOpenArea,
+    PerimNatVent_Buoy,       !- Name
+    Perim,                   !- Zone Name
+    3.2,                     !- Opening Area {m2}
+    NATVENT_AVAIL_SCHED_Perim,  !- Opening Area Fraction Schedule Name
+    0,                       !- Opening Effectiveness {dimensionless}
+    0,                       !- Effective Angle {deg}
+    0.357142857142857,       !- Height Difference {m}
+    0.6,                     !- Discharge Coefficient for Opening
+    22,                      !- Minimum Indoor Temperature {C}
+    ,                        !- Minimum Indoor Temperature Schedule Name
+    100,                     !- Maximum Indoor Temperature {C}
+    ,                        !- Maximum Indoor Temperature Schedule Name
+    1,                       !- Delta Temperature {deltaC}
+    ,                        !- Delta Temperature Schedule Name
+    20,                      !- Minimum Outdoor Temperature {C}
+    ,                        !- Minimum Outdoor Temperature Schedule Name
+    26,                      !- Maximum Outdoor Temperature {C}
+    ,                        !- Maximum Outdoor Temperature Schedule Name
+    40;                      !- Maximum Wind Speed {m/s}
 
 ! ------------------------ INFILTRATION
-ZoneInfiltration:DesignFlowRate,
-  PerimInfiltration,  !- Name
-  Perim,            !- Zone or ZoneList Name
-  On,                      !- Schedule Name
-  AirChanges/Hour,               !- Design Flow Rate Calculation Method
-  ,                        !- Design Flow Rate [m3/s] !-- .00756
-  ,                        !- Flow per Zone Floor Area {m3/s-m2}
-  ,                        !- Flow per Exterior Surface Area {m3/s-m2}
-  0.35,                        !- Air Changes per Hour {1/hr}
-  1,                       !-Constant Term Coefficient
-  0,                       !-Temperature Term Coefficient
-  0,                       !-Velocity Term Coefficient
-  0; !-Velocity Squared Term Coefficient
+
+  ZoneInfiltration:DesignFlowRate,
+    PerimInfiltration,       !- Name
+    Perim,                   !- Zone or ZoneList Name
+    On,                      !- Schedule Name
+    AirChanges/Hour,         !- Design Flow Rate Calculation Method
+    ,                        !- Design Flow Rate {m3/s}
+    ,                        !- Flow per Zone Floor Area {m3/s-m2}
+    ,                        !- Flow per Exterior Surface Area {m3/s-m2}
+    0.35,                    !- Air Changes per Hour {1/hr}
+    1,                       !- Constant Term Coefficient
+    0,                       !- Temperature Term Coefficient
+    0,                       !- Velocity Term Coefficient
+    0;                       !- Velocity Squared Term Coefficient
 
 ! ------------------------ DHW
-WaterUse:Equipment,
-    DHW Perim,        !- Name
-    DHW Perim,        !- End-Use Subcategory
-    3.67534995625E-07,           !- Peak Flow Rate [m3/s]
-    B_Off_Y_Dhw,                    !- Flow Rate Fraction Schedule Name
+
+  WaterUse:Equipment,
+    DHW Perim,               !- Name
+    DHW Perim,               !- End-Use Subcategory
+    3.67534995625E-07,       !- Peak Flow Rate {m3/s}
+    B_Off_Y_Dhw,             !- Flow Rate Fraction Schedule Name
     DHW Supply Temperature Perim,  !- Target Temperature Schedule Name
     DHW Supply Temperature Perim,  !- Hot Water Supply Temperature Schedule Name
     DHW Mains Temperature Perim,  !- Cold Water Supply Temperature Schedule Name
@@ -975,417 +1461,397 @@ WaterUse:Equipment,
     ,                        !- Sensible Fraction Schedule Name
     ;                        !- Latent Fraction Schedule Name
 
-Schedule:Constant,
-    DHW Supply Temperature Perim, !- Name
-    Temperature, !- Schedule GasType Limits Name
-    55; !- Hourly Value
-Schedule:Constant,
-    DHW Mains Temperature Perim, !- Name
-    Temperature, !- Schedule GasType Limits Name
-    16; !- Hourly Value
+  Schedule:Constant,DHW Supply Temperature Perim,Temperature,55;
+
+  Schedule:Constant,DHW Mains Temperature Perim,Temperature,16;
 
 ! ------------------------ MASS
-InternalMass,
-      PerimInternalMass,                 !- Name of internal mass surface
-      B_Off_Thm_0,                                          !- Construction Name
-      Perim,                               !- Name of Associated Thermal Zone
-      6.61562992125001;                                        !- Total area exposed to Zone [m2]
+
+  InternalMass,
+    PerimInternalMass,       !- Name
+    B_Off_Thm_0,             !- Construction Name
+    Perim,                   !- Zone Name
+    6.61562992125001;        !- Surface Area {m2}
+
 ! ------------------------ GEOMETRY
-
-
  ! FACE NORMAL  -2.77555756156289E-17 1 0
-BuildingSurface:Detailed,!-GasType
-Perim:f0, !-Name
-Wall,                    !-Surface Type
-B_Off_Fac_0,                       !-Construction Name
-Perim,            !-Zone Name
-Outdoors,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-SunExposed,              !-Sun Exposure
-WindExposed,             !-Wind Exposure
-0.5,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
--1.7323, 4.4652, 3.3333,  !- X,Y,Z ==> Vertex
-1.2677, 4.4652, 3.3333,  !- X,Y,Z ==> Vertex
-1.2677, 4.4652, 0.0000,  !- X,Y,Z ==> Vertex
--1.7323, 4.4652, 0.0000;  !- X,Y,Z ==> Vertex
+  BuildingSurface:Detailed,
+    Perim:f0,                !- Name
+    Wall,                    !- Surface Type
+    B_Off_Fac_0,             !- Construction Name
+    Perim,                   !- Zone Name
+    Outdoors,                !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    SunExposed,              !- Sun Exposure
+    WindExposed,             !- Wind Exposure
+    0.5,                     !- View Factor to Ground
+    4,                       !- Number of Vertices
+    -1.7323,4.4652,3.3333,  !- X,Y,Z ==> Vertex 1 {m}
+    1.2677,4.4652,3.3333,  !- X,Y,Z ==> Vertex 2 {m}
+    1.2677,4.4652,0.0000,  !- X,Y,Z ==> Vertex 3 {m}
+    -1.7323,4.4652,0.0000;  !- X,Y,Z ==> Vertex 4 {m}
 
-FenestrationSurface:Detailed,
-Perim:f0:w0, !-Name
-Window,                  !- Surface GasType
-B_Dbl_Air_Cl,                    !- Construction Name
-Perim:f0, !- Building Surface Name
-,                        !- Outside Boundary Condition Object
-Autocalculate,                      !- View Factor to Ground
-,                        !- Shading Control Name
-,                       !- Frame and Divider Name
-1,                       !- Multiplier
-4,                       !-Number of Vertices
-
--1.6323, 4.4652, 0.8500,  !- X,Y,Z ==> Vertex
--1.6323, 4.4652, 2.2786,  !- X,Y,Z ==> Vertex
-1.1677, 4.4652, 2.2786,  !- X,Y,Z ==> Vertex
-1.1677, 4.4652, 0.8500;  !- X,Y,Z ==> Vertex
+  FenestrationSurface:Detailed,
+    Perim:f0:w0,             !- Name
+    Window,                  !- Surface Type
+    B_Dbl_Air_Cl,            !- Construction Name
+    Perim:f0,                !- Building Surface Name
+    ,                        !- Outside Boundary Condition Object
+    Autocalculate,           !- View Factor to Ground
+    ,                        !- Frame and Divider Name
+    1,                       !- Multiplier
+    4,                       !- Number of Vertices
+    -1.6323,4.4652,0.8500,  !- X,Y,Z ==> Vertex 1 {m}
+    -1.6323,4.4652,2.2786,  !- X,Y,Z ==> Vertex 2 {m}
+    1.1677,4.4652,2.2786,  !- X,Y,Z ==> Vertex 3 {m}
+    1.1677,4.4652,0.8500;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  5.55111512312578E-17 -1 0
-BuildingSurface:Detailed,!-GasType
-Perim:f1, !-Name
-Wall,                    !-Surface Type
-B_Off_Par_0,                       !-Construction Name
-Perim,            !-Zone Name
-Surface,                !-Outside Boundary Condition
-Core:f0,                        !-Outside Boundary Condition Object
-NoSun,              !-Sun Exposure
-NoWind,             !-Wind Exposure
-0,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
--1.7323, 2.3650, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 2.3650, 0.0000,  !- X,Y,Z ==> Vertex
-1.2677, 2.3650, 0.0000,  !- X,Y,Z ==> Vertex
-1.2677, 2.3650, 3.3333;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Perim:f1,                !- Name
+    Wall,                    !- Surface Type
+    B_Off_Par_0,             !- Construction Name
+    Perim,                   !- Zone Name
+    Surface,                 !- Outside Boundary Condition
+    Core:f0,                 !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    0,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    -1.7323,2.3650,3.3333,  !- X,Y,Z ==> Vertex 1 {m}
+    -1.7323,2.3650,0.0000,  !- X,Y,Z ==> Vertex 2 {m}
+    1.2677,2.3650,0.0000,  !- X,Y,Z ==> Vertex 3 {m}
+    1.2677,2.3650,3.3333;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  -1 -1.54074395550979E-33 -2.77555756156289E-17
-BuildingSurface:Detailed,!-GasType
-Perim:f2, !-Name
-Wall,                    !-Surface Type
-B_Off_Par_0,                       !-Construction Name
-Perim,            !-Zone Name
-Adiabatic,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-NoSun,              !-Sun Exposure
-NoWind,             !-Wind Exposure
-0,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
--1.7323, 2.3650, 0.0000,  !- X,Y,Z ==> Vertex
--1.7323, 2.3650, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 4.4652, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 4.4652, 0.0000;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Perim:f2,                !- Name
+    Wall,                    !- Surface Type
+    B_Off_Par_0,             !- Construction Name
+    Perim,                   !- Zone Name
+    Adiabatic,               !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    0,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    -1.7323,2.3650,0.0000,  !- X,Y,Z ==> Vertex 1 {m}
+    -1.7323,2.3650,3.3333,  !- X,Y,Z ==> Vertex 2 {m}
+    -1.7323,4.4652,3.3333,  !- X,Y,Z ==> Vertex 3 {m}
+    -1.7323,4.4652,0.0000;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  1 7.70371977754894E-34 1.38777878078145E-17
-BuildingSurface:Detailed,!-GasType
-Perim:f3, !-Name
-Wall,                    !-Surface Type
-B_Off_Par_0,                       !-Construction Name
-Perim,            !-Zone Name
-Adiabatic,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-NoSun,              !-Sun Exposure
-NoWind,             !-Wind Exposure
-0,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
-1.2677, 2.3650, 0.0000,  !- X,Y,Z ==> Vertex
-1.2677, 4.4652, 0.0000,  !- X,Y,Z ==> Vertex
-1.2677, 4.4652, 3.3333,  !- X,Y,Z ==> Vertex
-1.2677, 2.3650, 3.3333;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Perim:f3,                !- Name
+    Wall,                    !- Surface Type
+    B_Off_Par_0,             !- Construction Name
+    Perim,                   !- Zone Name
+    Adiabatic,               !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    0,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    1.2677,2.3650,0.0000,  !- X,Y,Z ==> Vertex 1 {m}
+    1.2677,4.4652,0.0000,  !- X,Y,Z ==> Vertex 2 {m}
+    1.2677,4.4652,3.3333,  !- X,Y,Z ==> Vertex 3 {m}
+    1.2677,2.3650,3.3333;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  0 -3.08148791101958E-33 -1
-BuildingSurface:Detailed,!-GasType
-Perim:f4, !-Name
-Floor,                    !-Surface Type
-B_Off_Inf_0,                       !-Construction Name
-Perim,            !-Zone Name
-Adiabatic,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-NoSun,              !-Sun Exposure
-NoWind,             !-Wind Exposure
-0,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
-1.2677, 4.4652, 0.0000,  !- X,Y,Z ==> Vertex
-1.2677, 3.0651, 0.0000,  !- X,Y,Z ==> Vertex
--1.7323, 3.0651, 0.0000,  !- X,Y,Z ==> Vertex
--1.7323, 4.4652, 0.0000;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Perim:f4,                !- Name
+    Floor,                   !- Surface Type
+    B_Off_Inf_0,             !- Construction Name
+    Perim,                   !- Zone Name
+    Adiabatic,               !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    0,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    1.2677,4.4652,0.0000,  !- X,Y,Z ==> Vertex 1 {m}
+    1.2677,3.0651,0.0000,  !- X,Y,Z ==> Vertex 2 {m}
+    -1.7323,3.0651,0.0000,  !- X,Y,Z ==> Vertex 3 {m}
+    -1.7323,4.4652,0.0000;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  0 -9.24446373305873E-33 -1
-BuildingSurface:Detailed,!-GasType
-Perim:f5, !-Name
-Floor,                    !-Surface Type
-B_Off_Gro_0,                       !-Construction Name
-Perim,            !-Zone Name
-Ground,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-NoSun,              !-Sun Exposure
-NoWind,             !-Wind Exposure
-1,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
-1.2677, 3.0651, 0.0000,  !- X,Y,Z ==> Vertex
-1.2677, 2.3650, 0.0000,  !- X,Y,Z ==> Vertex
--1.7323, 2.3650, 0.0000,  !- X,Y,Z ==> Vertex
--1.7323, 3.0651, 0.0000;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Perim:f5,                !- Name
+    Floor,                   !- Surface Type
+    B_Off_Gro_0,             !- Construction Name
+    Perim,                   !- Zone Name
+    Ground,                  !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    1,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    1.2677,3.0651,0.0000,  !- X,Y,Z ==> Vertex 1 {m}
+    1.2677,2.3650,0.0000,  !- X,Y,Z ==> Vertex 2 {m}
+    -1.7323,2.3650,0.0000,  !- X,Y,Z ==> Vertex 3 {m}
+    -1.7323,3.0651,0.0000;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  0 1.66533453693773E-16 1
-BuildingSurface:Detailed,!-GasType
-Perim:f6, !-Name
-Ceiling,                    !-Surface Type
-B_Off_Inf_0,                       !-Construction Name
-Perim,            !-Zone Name
-Adiabatic,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-NoSun,              !-Sun Exposure
-NoWind,             !-Wind Exposure
-0,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
-1.2677, 4.4652, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 4.4652, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 3.0651, 3.3333,  !- X,Y,Z ==> Vertex
-1.2677, 3.0651, 3.3333;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Perim:f6,                !- Name
+    Ceiling,                 !- Surface Type
+    B_Off_Inf_0,             !- Construction Name
+    Perim,                   !- Zone Name
+    Adiabatic,               !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    0,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    1.2677,4.4652,3.3333,  !- X,Y,Z ==> Vertex 1 {m}
+    -1.7323,4.4652,3.3333,  !- X,Y,Z ==> Vertex 2 {m}
+    -1.7323,3.0651,3.3333,  !- X,Y,Z ==> Vertex 3 {m}
+    1.2677,3.0651,3.3333;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  0 0 1
-BuildingSurface:Detailed,!-GasType
-Perim:f7, !-Name
-Roof,                    !-Surface Type
-B_Off_Rof_0,                       !-Construction Name
-Perim,            !-Zone Name
-Outdoors,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-SunExposed,              !-Sun Exposure
-WindExposed,             !-Wind Exposure
-0,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
-1.2677, 3.0651, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 3.0651, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 2.3650, 3.3333,  !- X,Y,Z ==> Vertex
-1.2677, 2.3650, 3.3333;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Perim:f7,                !- Name
+    Roof,                    !- Surface Type
+    B_Off_Rof_0,             !- Construction Name
+    Perim,                   !- Zone Name
+    Outdoors,                !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    SunExposed,              !- Sun Exposure
+    WindExposed,             !- Wind Exposure
+    0,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    1.2677,3.0651,3.3333,  !- X,Y,Z ==> Vertex 1 {m}
+    -1.7323,3.0651,3.3333,  !- X,Y,Z ==> Vertex 2 {m}
+    -1.7323,2.3650,3.3333,  !- X,Y,Z ==> Vertex 3 {m}
+    1.2677,2.3650,3.3333;  !- X,Y,Z ==> Vertex 4 {m}
 
 !------------------------------------------------ ZONE ----------------------------------------------------
 
-Zone,
-  Core,            !- Name
-  0,                       !- Rotation [deg]
-  0,                       !- X origin [m]
-  0,                       !- Y origin [m]
-  0,                       !- Z origin [m]
-  1,                       !- GasType
-  1.0,                       !- Multiplier
-  ,                        !- Ceiling Height [m]
-  3.99800025,                   !- Volume [m3]
-  1.199400075,                   !- Area [m2]
-  TARP,                    !- Zone Inside Convection Algorithm
-  DOE-2;                   !- Zone Outside Convection Algorithm
+  Zone,
+    Core,                    !- Name
+    0,                       !- Direction of Relative North {deg}
+    0,                       !- X Origin {m}
+    0,                       !- Y Origin {m}
+    0,                       !- Z Origin {m}
+    1,                       !- Type
+    1.0,                     !- Multiplier
+    ,                        !- Ceiling Height {m}
+    3.99800025,              !- Volume {m3}
+    1.199400075,             !- Floor Area {m2}
+    TARP,                    !- Zone Inside Convection Algorithm
+    DOE-2;                   !- Zone Outside Convection Algorithm
 
 ! ------------------------ PEOPLE
-People,
-    People Core,                 !- Name
-    Core,            !- Zone or ZoneList Name
-    B_Off_Y_Occ,        !- Number of People Schedule Name
-    People/Area,                  !- Number of People Calculation Method
-    ,                       !- Number of People
-    0.055,                        !- People per Zone Floor Area {person/m2}
+
+  People,
+    People Core,             !- Name
+    Core,                    !- Zone or ZoneList Name
+    B_Off_Y_Occ,             !- Number of People Schedule Name
+    People/Area,             !- Number of People Calculation Method
+    ,                        !- Number of People
+    0.055,                   !- People per Zone Floor Area {person/m2}
     ,                        !- Zone Floor Area per Person {m2/person}
     0.3,                     !- Fraction Radiant
     AUTOCALCULATE,           !- Sensible Heat Fraction
-    CorePeopleActivity,                    !- Activity Level Schedule Name
+    CorePeopleActivity,      !- Activity Level Schedule Name
     0.0000000382,            !- Carbon Dioxide Generation Rate {m3/s-W}
     No,                      !- Enable ASHRAE 55 Comfort Warnings
-    ZoneAveraged,            !- Mean Radiant Temperature Calculation GasType
+    ZoneAveraged,            !- Mean Radiant Temperature Calculation Type
     ,                        !- Surface Name/Angle Factor List Name
-    CoreWorkEfficiency,  !- Work Efficiency Schedule Name
+    CoreWorkEfficiency,      !- Work Efficiency Schedule Name
     DynamicClothingModelASHRAE55,  !- Clothing Insulation Calculation Method
     ,                        !- Clothing Insulation Calculation Method Schedule Name
     ,                        !- Clothing Insulation Schedule Name
-    CoreAirVelocity,!- Air Velocity Schedule Name
-    AdaptiveASH55;           !- Thermal Comfort Model 1 GasType
+    CoreAirVelocity,         !- Air Velocity Schedule Name
+    AdaptiveASH55;           !- Thermal Comfort Model 1 Type
 
-Schedule:Constant, CorePeopleActivity, Any Number, 125.28; ! - Watts per person, uses Metabolic Rate input (1 met = 58 W/m2) and assumes adult body surface area of 1.8 m2
-Schedule:Constant, CoreAirVelocity, Any Number, 0.2;
-Schedule:Constant, CoreWorkEfficiency, Any Number, 0;
+  Schedule:Constant,CorePeopleActivity,Any Number,125.28;
 
+  Schedule:Constant,CoreAirVelocity,Any Number,0.2;
+
+  Schedule:Constant,CoreWorkEfficiency,Any Number,0;
 
 ! ------------------------ EQUIPMENT
-ElectricEquipment,
-  Core Equipment 1,!- Name
-  Core,            !- Zone or ZoneList Name
-  B_Off_Y_Plg,                    !- Schedule Name
-  Watts/Area,          !- Design Level Calculation Method
-  ,                !- Design Level [W]
-  8,                        !- Watts per Zone Floor Area [W/m2]
-  ,                        !- Watts per Person [W/person]
-  0,                       !- Fraction Latent
-  .2,                      !- Fraction Radiant
-  0,                       !- Fraction Lost
-  ;                        !- End-Use Subcategory
+
+  ElectricEquipment,
+    Core Equipment 1,        !- Name
+    Core,                    !- Zone or ZoneList Name
+    B_Off_Y_Plg,             !- Schedule Name
+    Watts/Area,              !- Design Level Calculation Method
+    ,                        !- Design Level {W}
+    8,                       !- Watts per Zone Floor Area {W/m2}
+    ,                        !- Watts per Person {W/person}
+    0,                       !- Fraction Latent
+    .2,                      !- Fraction Radiant
+    0,                       !- Fraction Lost
+    ;                        !- End-Use Subcategory
 
 ! ------------------------ LIGHTS
-Lights,
-  Core General lighting,   !- Name
-  Core,                    !- Zone or ZoneList Name
-  B_Off_Y_Lgt,          !- Schedule Name
-  Watts/Area,              !- Design Level Calculation Method
-  ,                        !- Lighting Level [W]
-  12,         !- Watts per Zone Floor Area [W/m2]
-  ,                        !- Watts per Person [W/person]
-  0,                       !- Return Air Fraction
-  .42,                     !- Fraction Radiant
-  .18,                     !- Fraction Visible
-  1,                       !- Fraction Replaceable
-  ;                        !- End-Use Subcategory
 
-
+  Lights,
+    Core General lighting,   !- Name
+    Core,                    !- Zone or ZoneList Name
+    B_Off_Y_Lgt,             !- Schedule Name
+    Watts/Area,              !- Design Level Calculation Method
+    ,                        !- Lighting Level {W}
+    12,                      !- Watts per Zone Floor Area {W/m2}
+    ,                        !- Watts per Person {W/person}
+    0,                       !- Return Air Fraction
+    .42,                     !- Fraction Radiant
+    .18,                     !- Fraction Visible
+    1,                       !- Fraction Replaceable
+    ;                        !- End-Use Subcategory
 
 ! ------------------------ HVAC
-Schedule:Constant,
-CoreHeating_SP_Sch, !- Name
-Temperature, !- Schedule GasType Limits Name
-20; !- Hourly Value
 
-Schedule:Constant,
-CoreCooling_SP_Sch, !- Name
-Temperature, !- Schedule GasType Limits Name
-24; !- Hourly Value
+  Schedule:Constant,CoreHeating_SP_Sch,Temperature,20;
 
-ZoneControl:Thermostat,
-  Core Thermostat, !- Name
-  Core,            !- Zone or ZoneList Name
-  CoreZoneControlTypeSched, !- Control GasType Schedule Name
-  ThermostatSetpoint:DualSetpoint,  !- Control 1 Object GasType
-  Dual Setpoint - Zone Core;  !- Control 1 Name
+  Schedule:Constant,CoreCooling_SP_Sch,Temperature,24;
 
-Schedule:Constant,
-  CoreZoneControlTypeSched, !- Name
-  Any Number, !- Schedule GasType Limits Name
-  4; !- Hourly Value
+  ZoneControl:Thermostat,
+    Core Thermostat,         !- Name
+    Core,                    !- Zone or ZoneList Name
+    CoreZoneControlTypeSched,!- Control Type Schedule Name
+    ThermostatSetpoint:DualSetpoint,  !- Control 1 Object Type
+    Dual Setpoint - Zone Core;  !- Control 1 Name
 
-ThermostatSetpoint:DualSetpoint,
-  Dual Setpoint - Zone Core,  !- Name
-  CoreHeating_SP_Sch,  !- Heating Setpoint Temperature Schedule Name
-  CoreCooling_SP_Sch;  !- Cooling Setpoint Temperature Schedule Name
+  Schedule:Constant,CoreZoneControlTypeSched,Any Number,4;
 
-ZoneHVAC:EquipmentConnections,
-  Core,            !- Zone Name
-  Core Equipment,  !- Zone Conditioning Equipment List Name
-  Core Inlets,     !- Zone Air Inlet Node or NodeList Name
-  ,                        !- Zone Air Exhaust Node or NodeList Name
-  Node Core Zone,  !- Zone Air Node Name
-  Node Core Out;   !- Zone Return Air Node Name
+  ThermostatSetpoint:DualSetpoint,
+    Dual Setpoint - Zone Core,  !- Name
+    CoreHeating_SP_Sch,      !- Heating Setpoint Temperature Schedule Name
+    CoreCooling_SP_Sch;      !- Cooling Setpoint Temperature Schedule Name
 
-ZoneHVAC:EquipmentList,
-  Core Equipment,  !- Name
-  ZoneHVAC:IdealLoadsAirSystem,  !- Zone Equipment 1 Object GasType
-  Core Ideal Loads Air,  !- Zone Equipment 1 Name
-  1,                       !- Zone Equipment 1 Cooling Sequence
-  1;                       !- Zone Equipment 1 Heating or No-Load Sequence
+  ZoneHVAC:EquipmentConnections,
+    Core,                    !- Zone Name
+    Core Equipment,          !- Zone Conditioning Equipment List Name
+    Core Inlets,             !- Zone Air Inlet Node or NodeList Name
+    ,                        !- Zone Air Exhaust Node or NodeList Name
+    Node Core Zone,          !- Zone Air Node Name
+    Node Core Out;           !- Zone Return Air Node or NodeList Name
 
-NodeList,
-  Core Inlets,     !- Name
-  Node Core In;    !- Node 1 Name
+  ZoneHVAC:EquipmentList,
+    Core Equipment,          !- Name
+    SequentialLoad,          !- Load Distribution Scheme
+    ZoneHVAC:IdealLoadsAirSystem,  !- Zone Equipment 1 Object Type
+    Core Ideal Loads Air,    !- Zone Equipment 1 Name
+    1,                       !- Zone Equipment 1 Cooling Sequence
+    1;                       !- Zone Equipment 1 Heating or No-Load Sequence
 
-ZoneHVAC:IdealLoadsAirSystem,
-  Core Ideal Loads Air,  !- Name
-  ,                        !- Availability Schedule Name
-  Node Core In,    !- Zone Supply Air Node Name
-  ,                        !- Zone Exhaust Air Node Name
-  30,                      !- Maximum Heating Supply Air Temperature {C}
-  18,                      !- Minimum Cooling Supply Air Temperature {C}
-  0.01,                    !- Maximum Heating Supply Air Humidity Ratio {kgWater/kgDryAir}
-  0.008,                   !- Minimum Cooling Supply Air Humidity Ratio {kgWater/kgDryAir}
-  NoLimit,                 !- Heating Limit
-  100,                        !- Maximum Heating Air Flow Rate [m3/s]
-  ,        				   !- Maximum Sensible Heating Capacity [W]
-  LimitFlowRateAndCapacity,                 !- Cooling Limit
-  0.0005 ,                        !- Maximum Cooling Air Flow Rate [m3/s]
-  119.9400075,                        !- Maximum Total Cooling Capacity [W]
-  B_Off_Y_Het,  !- Heating Availability Schedule Name
-  B_Off_Y_Col,  !- Cooling Availability Schedule Name
-  None,                    !- Dehumidification Control Type
-  ,                        !- Cooling Sensible Heat Ratio {dimensionless}
-  None,                    !- Humidification Control Type
-  CoreMinFreshAir,                        !- Design Specification Outdoor Air Object Name
-  Core_OutDoorInlet,                        !- Outdoor Air Inlet Node Name
-  OccupancySchedule,                        !- Demand Controlled Ventilation GasType
-  NoEconomizer,                        !- Outdoor Air Economizer GasType
-  None,                        !- Heat Recovery GasType
-  0.7,                        !- Sensible Heat Recovery Effectiveness {dimensionless}
-  0.65;                        !- Latent Heat Recovery Effectiveness {dimensionless}
+  NodeList,
+    Core Inlets,             !- Name
+    Node Core In;            !- Node 1 Name
 
+  ZoneHVAC:IdealLoadsAirSystem,
+    Core Ideal Loads Air,    !- Name
+    ,                        !- Availability Schedule Name
+    Node Core In,            !- Zone Supply Air Node Name
+    ,                        !- Zone Exhaust Air Node Name
+    ,                        !- System Inlet Air Node Name
+    30,                      !- Maximum Heating Supply Air Temperature {C}
+    18,                      !- Minimum Cooling Supply Air Temperature {C}
+    0.01,                    !- Maximum Heating Supply Air Humidity Ratio {kgWater/kgDryAir}
+    0.008,                   !- Minimum Cooling Supply Air Humidity Ratio {kgWater/kgDryAir}
+    NoLimit,                 !- Heating Limit
+    100,                     !- Maximum Heating Air Flow Rate {m3/s}
+    ,                        !- Maximum Sensible Heating Capacity {W}
+    LimitFlowRateAndCapacity,!- Cooling Limit
+    0.0005,                  !- Maximum Cooling Air Flow Rate {m3/s}
+    119.9400075,             !- Maximum Total Cooling Capacity {W}
+    B_Off_Y_Het,             !- Heating Availability Schedule Name
+    B_Off_Y_Col,             !- Cooling Availability Schedule Name
+    None,                    !- Dehumidification Control Type
+    ,                        !- Cooling Sensible Heat Ratio {dimensionless}
+    None,                    !- Humidification Control Type
+    CoreMinFreshAir,         !- Design Specification Outdoor Air Object Name
+    Core_OutDoorInlet,       !- Outdoor Air Inlet Node Name
+    OccupancySchedule,       !- Demand Controlled Ventilation Type
+    NoEconomizer,            !- Outdoor Air Economizer Type
+    None,                    !- Heat Recovery Type
+    0.7,                     !- Sensible Heat Recovery Effectiveness {dimensionless}
+    0.65;                    !- Latent Heat Recovery Effectiveness {dimensionless}
 
-ZoneControl:Humidistat,
-    CoreHumidistat,                  !-Name
-    Core,                   !-Zone Name
-    CoreHumidMin,                !-Humidifying Relative Humidity Setpoint Schedule Name
-    CoreHumidMax; !-Dehumidifying Relative Humidity Setpoint Schedule Name
+  ZoneControl:Humidistat,
+    CoreHumidistat,          !- Name
+    Core,                    !- Zone Name
+    CoreHumidMin,            !- Humidifying Relative Humidity Setpoint Schedule Name
+    CoreHumidMax;            !- Dehumidifying Relative Humidity Setpoint Schedule Name
 
-Schedule:Constant,
-    CoreHumidMin,                !- Name
-    Any Number,              !- Schedule Type Limits Name
-    20;                      !- Hourly Value
+  Schedule:Constant,CoreHumidMin,Any Number,20;
 
-Schedule:Constant,
-    CoreHumidMax,                !- Name
-    Any Number,              !- Schedule Type Limits Name
-    80;                      !- Hourly Value
+  Schedule:Constant,CoreHumidMax,Any Number,80;
 
-DesignSpecification:OutdoorAir,
-  CoreMinFreshAir,                  !- Name
-  Sum,                     !- Outdoor Air Method
-  2.5E-06,                 !- Outdoor Air Flow per Person {m3/s-person}
-  3E-07,                   !- Outdoor Air Flow per Zone Floor Area {m3/s-m2}
+  DesignSpecification:OutdoorAir,
+    CoreMinFreshAir,         !- Name
+    Sum,                     !- Outdoor Air Method
+    2.5E-06,                 !- Outdoor Air Flow per Person {m3/s-person}
+    3E-07,                   !- Outdoor Air Flow per Zone Floor Area {m3/s-m2}
     ,                        !- Outdoor Air Flow per Zone {m3/s}
     ,                        !- Outdoor Air Flow Air Changes per Hour {1/hr}
-    B_Off_Y_Occ;!- Outdoor Air Flow Rate Fraction Schedule Name
+    B_Off_Y_Occ;             !- Outdoor Air Schedule Name
+
 ! ------------------------ NATVENT
 
-Schedule:Constant,NATVENT_AVAIL_SCHED_Core,Fraction,1;
+  Schedule:Constant,NATVENT_AVAIL_SCHED_Core,Fraction,1;
+
 ! Output:Variable,NATVENT_AVAIL_SCHED_Core,Schedule Value,Hourly;
 ! Output:Variable,B_Off_Y_Nat,Schedule Value,Hourly;
 
-EnergyManagementSystem:Actuator,
-  NATVENT_AVAIL_SCHED_ACTUATOR_Core,           !- Name
-  NATVENT_AVAIL_SCHED_Core,             !- Actuated Component Unique Name
-    Schedule:Constant,       !- Actuated Component GasType
-  Schedule Value;          !- Actuated Component Control GasType
- 
-EnergyManagementSystem:Sensor,
-  USRNATVENT_Core,                  !- Name
-  B_Off_Y_Nat,             !- Output:Variable or Output:Meter Index Key Name
-  Schedule Value;  !- Output:Variable or Output:Meter Name 
+  EnergyManagementSystem:Actuator,
+    NATVENT_AVAIL_SCHED_ACTUATOR_Core,  !- Name
+    NATVENT_AVAIL_SCHED_Core,!- Actuated Component Unique Name
+    Schedule:Constant,       !- Actuated Component Type
+    Schedule Value;          !- Actuated Component Control Type
 
-EnergyManagementSystem:ProgramCallingManager,
-  My Core_Setpoint_Schedule_Calculator_Example,  !- Name
-  BeginTimestepBeforePredictor,  !- EnergyPlus Model Calling Point
-  Core_ErlEnforceBinary;  !- Program Name
+  EnergyManagementSystem:Sensor,
+    USRNATVENT_Core,         !- Name
+    B_Off_Y_Nat,             !- Output:Variable or Output:Meter Index Key Name
+    Schedule Value;          !- Output:Variable or Output:Meter Name
 
-EnergyManagementSystem:Program,
-  Core_ErlEnforceBinary,  !- Name
-  IF (USRNATVENT_Core > 0),
-    Set NATVENT_AVAIL_SCHED_ACTUATOR_Core = 1,
-  ELSE,
-    Set NATVENT_AVAIL_SCHED_ACTUATOR_Core = 0,
-  ENDIF;
+  EnergyManagementSystem:ProgramCallingManager,
+    My Core_Setpoint_Schedule_Calculator_Example,  !- Name
+    BeginTimestepBeforePredictor,  !- EnergyPlus Model Calling Point
+    Core_ErlEnforceBinary;   !- Program Name 1
+
+  EnergyManagementSystem:Program,
+    Core_ErlEnforceBinary,   !- Name
+    IF (USRNATVENT_Core > 0),!- Program Line 1
+    Set NATVENT_AVAIL_SCHED_ACTUATOR_Core = 1,  !- Program Line 2
+    ELSE,                    !- <none>
+    Set NATVENT_AVAIL_SCHED_ACTUATOR_Core = 0,  !- <none>
+    ENDIF;                   !- <none>
+
 ! ------------------------ INFILTRATION
-ZoneInfiltration:DesignFlowRate,
-  CoreInfiltration,  !- Name
-  Core,            !- Zone or ZoneList Name
-  On,                      !- Schedule Name
-  AirChanges/Hour,               !- Design Flow Rate Calculation Method
-  ,                        !- Design Flow Rate [m3/s] !-- .00756
-  ,                        !- Flow per Zone Floor Area {m3/s-m2}
-  ,                        !- Flow per Exterior Surface Area {m3/s-m2}
-  0.35,                        !- Air Changes per Hour {1/hr}
-  1,                       !-Constant Term Coefficient
-  0,                       !-Temperature Term Coefficient
-  0,                       !-Velocity Term Coefficient
-  0; !-Velocity Squared Term Coefficient
+
+  ZoneInfiltration:DesignFlowRate,
+    CoreInfiltration,        !- Name
+    Core,                    !- Zone or ZoneList Name
+    On,                      !- Schedule Name
+    AirChanges/Hour,         !- Design Flow Rate Calculation Method
+    ,                        !- Design Flow Rate {m3/s}
+    ,                        !- Flow per Zone Floor Area {m3/s-m2}
+    ,                        !- Flow per Exterior Surface Area {m3/s-m2}
+    0.35,                    !- Air Changes per Hour {1/hr}
+    1,                       !- Constant Term Coefficient
+    0,                       !- Temperature Term Coefficient
+    0,                       !- Velocity Term Coefficient
+    0;                       !- Velocity Squared Term Coefficient
 
 ! ------------------------ DHW
-WaterUse:Equipment,
-    DHW Core,        !- Name
-    DHW Core,        !- End-Use Subcategory
-    6.99650043750001E-08,           !- Peak Flow Rate [m3/s]
-    B_Off_Y_Dhw,                    !- Flow Rate Fraction Schedule Name
+
+  WaterUse:Equipment,
+    DHW Core,                !- Name
+    DHW Core,                !- End-Use Subcategory
+    6.99650043750001E-08,    !- Peak Flow Rate {m3/s}
+    B_Off_Y_Dhw,             !- Flow Rate Fraction Schedule Name
     DHW Supply Temperature Core,  !- Target Temperature Schedule Name
     DHW Supply Temperature Core,  !- Hot Water Supply Temperature Schedule Name
     DHW Mains Temperature Core,  !- Cold Water Supply Temperature Schedule Name
@@ -1393,204 +1859,213 @@ WaterUse:Equipment,
     ,                        !- Sensible Fraction Schedule Name
     ;                        !- Latent Fraction Schedule Name
 
-Schedule:Constant,
-    DHW Supply Temperature Core, !- Name
-    Temperature, !- Schedule GasType Limits Name
-    55; !- Hourly Value
-Schedule:Constant,
-    DHW Mains Temperature Core, !- Name
-    Temperature, !- Schedule GasType Limits Name
-    16; !- Hourly Value
+  Schedule:Constant,DHW Supply Temperature Core,Temperature,55;
+
+  Schedule:Constant,DHW Mains Temperature Core,Temperature,16;
 
 ! ------------------------ MASS
-InternalMass,
-      CoreInternalMass,                 !- Name of internal mass surface
-      B_Off_Thm_0,                                          !- Construction Name
-      Core,                               !- Name of Associated Thermal Zone
-      1.25937007875;                                        !- Total area exposed to Zone [m2]
+
+  InternalMass,
+    CoreInternalMass,        !- Name
+    B_Off_Thm_0,             !- Construction Name
+    Core,                    !- Zone Name
+    1.25937007875;           !- Surface Area {m2}
+
 ! ------------------------ GEOMETRY
-
-
  ! FACE NORMAL  -5.55111512312578E-17 1 0
-BuildingSurface:Detailed,!-GasType
-Core:f0, !-Name
-Wall,                    !-Surface Type
-B_Off_Par_0,                       !-Construction Name
-Core,            !-Zone Name
-Surface,                !-Outside Boundary Condition
-Perim:f1,                        !-Outside Boundary Condition Object
-NoSun,              !-Sun Exposure
-NoWind,             !-Wind Exposure
-0,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
--1.7323, 2.3650, 3.3333,  !- X,Y,Z ==> Vertex
-1.2677, 2.3650, 3.3333,  !- X,Y,Z ==> Vertex
-1.2677, 2.3650, 0.0000,  !- X,Y,Z ==> Vertex
--1.7323, 2.3650, 0.0000;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Core:f0,                 !- Name
+    Wall,                    !- Surface Type
+    B_Off_Par_0,             !- Construction Name
+    Core,                    !- Zone Name
+    Surface,                 !- Outside Boundary Condition
+    Perim:f1,                !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    0,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    -1.7323,2.3650,3.3333,  !- X,Y,Z ==> Vertex 1 {m}
+    1.2677,2.3650,3.3333,  !- X,Y,Z ==> Vertex 2 {m}
+    1.2677,2.3650,0.0000,  !- X,Y,Z ==> Vertex 3 {m}
+    -1.7323,2.3650,0.0000;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  -1.38777878078145E-17 -1 0
-BuildingSurface:Detailed,!-GasType
-Core:f1, !-Name
-Wall,                    !-Surface Type
-B_Off_Par_0,                       !-Construction Name
-Core,            !-Zone Name
-Adiabatic,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-NoSun,              !-Sun Exposure
-NoWind,             !-Wind Exposure
-0,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
--1.7323, 1.9652, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 1.9652, 0.0000,  !- X,Y,Z ==> Vertex
-1.2677, 1.9652, 0.0000,  !- X,Y,Z ==> Vertex
-1.2677, 1.9652, 3.3333;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Core:f1,                 !- Name
+    Wall,                    !- Surface Type
+    B_Off_Par_0,             !- Construction Name
+    Core,                    !- Zone Name
+    Adiabatic,               !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    0,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    -1.7323,1.9652,3.3333,  !- X,Y,Z ==> Vertex 1 {m}
+    -1.7323,1.9652,0.0000,  !- X,Y,Z ==> Vertex 2 {m}
+    1.2677,1.9652,0.0000,  !- X,Y,Z ==> Vertex 3 {m}
+    1.2677,1.9652,3.3333;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  -1 0 0
-BuildingSurface:Detailed,!-GasType
-Core:f2, !-Name
-Wall,                    !-Surface Type
-B_Off_Par_0,                       !-Construction Name
-Core,            !-Zone Name
-Adiabatic,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-NoSun,              !-Sun Exposure
-NoWind,             !-Wind Exposure
-0,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
--1.7323, 1.9652, 0.0000,  !- X,Y,Z ==> Vertex
--1.7323, 1.9652, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 2.3650, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 2.3650, 0.0000;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Core:f2,                 !- Name
+    Wall,                    !- Surface Type
+    B_Off_Par_0,             !- Construction Name
+    Core,                    !- Zone Name
+    Adiabatic,               !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    0,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    -1.7323,1.9652,0.0000,  !- X,Y,Z ==> Vertex 1 {m}
+    -1.7323,1.9652,3.3333,  !- X,Y,Z ==> Vertex 2 {m}
+    -1.7323,2.3650,3.3333,  !- X,Y,Z ==> Vertex 3 {m}
+    -1.7323,2.3650,0.0000;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  1 0 0
-BuildingSurface:Detailed,!-GasType
-Core:f3, !-Name
-Wall,                    !-Surface Type
-B_Off_Par_0,                       !-Construction Name
-Core,            !-Zone Name
-Adiabatic,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-NoSun,              !-Sun Exposure
-NoWind,             !-Wind Exposure
-0,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
-1.2677, 1.9652, 0.0000,  !- X,Y,Z ==> Vertex
-1.2677, 2.3650, 0.0000,  !- X,Y,Z ==> Vertex
-1.2677, 2.3650, 3.3333,  !- X,Y,Z ==> Vertex
-1.2677, 1.9652, 3.3333;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Core:f3,                 !- Name
+    Wall,                    !- Surface Type
+    B_Off_Par_0,             !- Construction Name
+    Core,                    !- Zone Name
+    Adiabatic,               !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    0,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    1.2677,1.9652,0.0000,  !- X,Y,Z ==> Vertex 1 {m}
+    1.2677,2.3650,0.0000,  !- X,Y,Z ==> Vertex 2 {m}
+    1.2677,2.3650,3.3333,  !- X,Y,Z ==> Vertex 3 {m}
+    1.2677,1.9652,3.3333;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  0 1.23259516440783E-32 -1
-BuildingSurface:Detailed,!-GasType
-Core:f4, !-Name
-Floor,                    !-Surface Type
-B_Off_Inf_0,                       !-Construction Name
-Core,            !-Zone Name
-Adiabatic,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-NoSun,              !-Sun Exposure
-NoWind,             !-Wind Exposure
-0,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
-1.2677, 2.3650, 0.0000,  !- X,Y,Z ==> Vertex
-1.2677, 2.0985, 0.0000,  !- X,Y,Z ==> Vertex
--1.7323, 2.0985, 0.0000,  !- X,Y,Z ==> Vertex
--1.7323, 2.3650, 0.0000;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Core:f4,                 !- Name
+    Floor,                   !- Surface Type
+    B_Off_Inf_0,             !- Construction Name
+    Core,                    !- Zone Name
+    Adiabatic,               !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    0,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    1.2677,2.3650,0.0000,  !- X,Y,Z ==> Vertex 1 {m}
+    1.2677,2.0985,0.0000,  !- X,Y,Z ==> Vertex 2 {m}
+    -1.7323,2.0985,0.0000,  !- X,Y,Z ==> Vertex 3 {m}
+    -1.7323,2.3650,0.0000;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  0 -4.93038065763133E-32 -1
-BuildingSurface:Detailed,!-GasType
-Core:f5, !-Name
-Floor,                    !-Surface Type
-B_Off_Gro_0,                       !-Construction Name
-Core,            !-Zone Name
-Ground,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-NoSun,              !-Sun Exposure
-NoWind,             !-Wind Exposure
-1,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
-1.2677, 2.0985, 0.0000,  !- X,Y,Z ==> Vertex
-1.2677, 1.9652, 0.0000,  !- X,Y,Z ==> Vertex
--1.7323, 1.9652, 0.0000,  !- X,Y,Z ==> Vertex
--1.7323, 2.0985, 0.0000;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Core:f5,                 !- Name
+    Floor,                   !- Surface Type
+    B_Off_Gro_0,             !- Construction Name
+    Core,                    !- Zone Name
+    Ground,                  !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    1,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    1.2677,2.0985,0.0000,  !- X,Y,Z ==> Vertex 1 {m}
+    1.2677,1.9652,0.0000,  !- X,Y,Z ==> Vertex 2 {m}
+    -1.7323,1.9652,0.0000,  !- X,Y,Z ==> Vertex 3 {m}
+    -1.7323,2.0985,0.0000;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  0 8.88178419700125E-16 1
-BuildingSurface:Detailed,!-GasType
-Core:f6, !-Name
-Ceiling,                    !-Surface Type
-B_Off_Inf_0,                       !-Construction Name
-Core,            !-Zone Name
-Adiabatic,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-NoSun,              !-Sun Exposure
-NoWind,             !-Wind Exposure
-0,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
-1.2677, 2.3650, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 2.3650, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 2.0985, 3.3333,  !- X,Y,Z ==> Vertex
-1.2677, 2.0985, 3.3333;  !- X,Y,Z ==> Vertex
-
+  BuildingSurface:Detailed,
+    Core:f6,                 !- Name
+    Ceiling,                 !- Surface Type
+    B_Off_Inf_0,             !- Construction Name
+    Core,                    !- Zone Name
+    Adiabatic,               !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    NoSun,                   !- Sun Exposure
+    NoWind,                  !- Wind Exposure
+    0,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    1.2677,2.3650,3.3333,  !- X,Y,Z ==> Vertex 1 {m}
+    -1.7323,2.3650,3.3333,  !- X,Y,Z ==> Vertex 2 {m}
+    -1.7323,2.0985,3.3333,  !- X,Y,Z ==> Vertex 3 {m}
+    1.2677,2.0985,3.3333;  !- X,Y,Z ==> Vertex 4 {m}
 
  ! FACE NORMAL  0 8.88178419700126E-16 1
-BuildingSurface:Detailed,!-GasType
-Core:f7, !-Name
-Roof,                    !-Surface Type
-B_Off_Rof_0,                       !-Construction Name
-Core,            !-Zone Name
-Outdoors,                !-Outside Boundary Condition
-,                        !-Outside Boundary Condition Object
-SunExposed,              !-Sun Exposure
-WindExposed,             !-Wind Exposure
-0,                      !-View Factor to Ground
-4,                       !-Number of Vertices
 
-1.2677, 2.0985, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 2.0985, 3.3333,  !- X,Y,Z ==> Vertex
--1.7323, 1.9652, 3.3333,  !- X,Y,Z ==> Vertex
-1.2677, 1.9652, 3.3333;  !- X,Y,Z ==> Vertex
-
-
+  BuildingSurface:Detailed,
+    Core:f7,                 !- Name
+    Roof,                    !- Surface Type
+    B_Off_Rof_0,             !- Construction Name
+    Core,                    !- Zone Name
+    Outdoors,                !- Outside Boundary Condition
+    ,                        !- Outside Boundary Condition Object
+    SunExposed,              !- Sun Exposure
+    WindExposed,             !- Wind Exposure
+    0,                       !- View Factor to Ground
+    4,                       !- Number of Vertices
+    1.2677,2.0985,3.3333,  !- X,Y,Z ==> Vertex 1 {m}
+    -1.7323,2.0985,3.3333,  !- X,Y,Z ==> Vertex 2 {m}
+    -1.7323,1.9652,3.3333,  !- X,Y,Z ==> Vertex 3 {m}
+    1.2677,1.9652,3.3333;  !- X,Y,Z ==> Vertex 4 {m}
 
 ! ------------------------ OUTPUTS
 
-Output:Variable,*,Zone People Total Heating Energy,Monthly;
-Output:Variable,*,Zone Lights Electric Energy,Monthly;
-Output:Variable,*,Zone Electric Equipment Electric Energy,Monthly;
-Output:Variable,*,Zone Windows Total Transmitted Solar Radiation Energy,Monthly;
-Output:Variable,*,Zone Mean Radiant Temperature,Monthly;
-Output:Variable,*,Zone Mean Air Temperature,Monthly;
-Output:Variable,*,Zone Operative Temperature,Monthly;
-Output:Variable,*,Zone Infiltration Total Heat Loss Energy,Monthly;
-Output:Variable,*,Zone Infiltration Total Heat Gain Energy,Monthly;
-Output:Variable,*,Zone Ventilation Total Heat Loss Energy,Monthly;
-Output:Variable,*,Zone Ventilation Total Heat Gain Energy,Monthly;
-Output:Variable,*,Zone Air Temperature,Monthly;
-Output:Variable,*,Zone Air Relative Humidity,Monthly;
-Output:Variable,*,Zone Ideal Loads Supply Air Total Heating Energy,Monthly;
-Output:Variable,*,Zone Ideal Loads Supply Air Total Cooling Energy,Monthly;
-Output:Variable,*,Zone Ideal Loads Zone Total Heating Energy,Monthly;
-Output:Variable,*,Water Use Equipment Heating Energy,Monthly;
-Output:Variable,*,Zone Infiltration Air Change Rate,Monthly;
-Output:Variable,*,Zone Ventilation Air Change Rate,Monthly;
+  Output:Variable,*,Zone People Total Heating Energy,Monthly;
 
+  Output:Variable,*,Zone Lights Electric Energy,Monthly;
 
-Output:VariableDictionary, IDF;
-Output:Surfaces:Drawing,DXF,Triangulate3DFace;
-Output:Surfaces:List,Details;
+  Output:Variable,*,Zone Electric Equipment Electric Energy,Monthly;
+
+  Output:Variable,*,Zone Windows Total Transmitted Solar Radiation Energy,Monthly;
+
+  Output:Variable,*,Zone Mean Radiant Temperature,Monthly;
+
+  Output:Variable,*,Zone Mean Air Temperature,Monthly;
+
+  Output:Variable,*,Zone Operative Temperature,Monthly;
+
+  Output:Variable,*,Zone Infiltration Total Heat Loss Energy,Monthly;
+
+  Output:Variable,*,Zone Infiltration Total Heat Gain Energy,Monthly;
+
+  Output:Variable,*,Zone Ventilation Total Heat Loss Energy,Monthly;
+
+  Output:Variable,*,Zone Ventilation Total Heat Gain Energy,Monthly;
+
+  Output:Variable,*,Zone Air Temperature,Monthly;
+
+  Output:Variable,*,Zone Air Relative Humidity,Monthly;
+
+  Output:Variable,*,Zone Ideal Loads Supply Air Total Heating Energy,Monthly;
+
+  Output:Variable,*,Zone Ideal Loads Supply Air Total Cooling Energy,Monthly;
+
+  Output:Variable,*,Zone Ideal Loads Zone Total Heating Energy,Monthly;
+
+  Output:Variable,*,Water Use Equipment Heating Energy,Monthly;
+
+  Output:Variable,*,Zone Infiltration Air Change Rate,Monthly;
+
+  Output:Variable,*,Zone Ventilation Air Change Rate,Monthly;
+
+  Output:VariableDictionary,IDF;
+
+  Output:Surfaces:Drawing,DXF,Triangulate3DFace;
+
+  Output:Surfaces:List,Details;
+
 !Output:Diagnostics,DisplayExtraWarnings;
 !Output:Diagnostics,DisplayUnusedSchedules;
 !Output:Diagnostics,DisplayUnusedObjects;
-Output:Diagnostics,DisplayAdvancedReportVariables;
+
+  Output:Diagnostics,
+    DisplayAdvancedReportVariables;  !- Key 1
+

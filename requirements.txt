@@ -10,12 +10,11 @@ scikit-learn
 scipy
 pandas>=0.24
 pyomo
-numpy>=1.13
+numpy>=1.17
 tqdm
 tabulate
-path.py
+path
 tsam
 pint
 click
 outdated
-path.py

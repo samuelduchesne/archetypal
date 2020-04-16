@@ -18,6 +18,7 @@ import zipfile
 import pandas as pd
 import pycountry as pycountry
 import requests
+
 from archetypal import log, settings, make_str
 
 # scipy and sklearn are optional dependencies for faster nearest node search
@@ -27,41 +28,16 @@ except ImportError as e:
     gdal = None
 
 
-def tabula_available_buildings(code_country="France"):
+def tabula_available_buildings(country_name="France"):
     """Returns all available building types for a specific country.
 
     Args:
-        code_country:
+        country_name (str): The name of the country. pycountry is used to
+            resolve country names. Therefore, a country code (e.g. "FRA") can be
+            passed as well.
     """
     # Check code country
-    if code_country.upper() not in [
-        "AT",
-        "BA",
-        "BE",
-        "BG",
-        "CY",
-        "CZ",
-        "DE",
-        "DK",
-        "ES",
-        "FR",
-        "GB",
-        "GR",
-        "HU",
-        "IE",
-        "IT",
-        "NL",
-        "NO",
-        "PL",
-        "RS",
-        "SE",
-        "SI",
-    ]:
-        code_country = pycountry.countries.get(name=code_country)
-        if code_country is not None:
-            code_country = code_country.alpha_2
-        else:
-            raise ValueError("Country name {} is invalid".format(code_country))
+    code_country = _resolve_codecountry(country_name)
     data = {"code_country": code_country}
     json_response = tabula_api_request(data, table="all-country")
 
@@ -147,13 +123,14 @@ def tabula_building_details_sheet(
     code_num=1,
     code_variantnumber=1,
 ):
-    """
-    How to format ``code_building``:
-        Format the :attr:`code_building` string as such::
+    """How to format ``code_building``. Format the :attr:`code_building` string
+    as such:
 
     Args:
-        code_building (str) : The building code string.
+        code_building (str): The building code string.
+
             ::
+
                 Whole building code e.g.:
 
                 AT.MT.AB.02.Gen.ReEx.001.001"
@@ -194,9 +171,16 @@ def tabula_building_details_sheet(
     # Parse builsing_code
     if code_building is not None:
         try:
-            code_country, code_typologyregion, code_buildingsizeclass, code_construcionyearclass, code_additional_parameter, code_type, code_num, code_variantnumber = code_building.split(
-                "."
-            )
+            (
+                code_country,
+                code_typologyregion,
+                code_buildingsizeclass,
+                code_construcionyearclass,
+                code_additional_parameter,
+                code_type,
+                code_num,
+                code_variantnumber,
+            ) = code_building.split(".")
         except ValueError:
             msg = (
                 'the query "{}" is missing a parameter. Make sure the '
@@ -207,35 +191,7 @@ def tabula_building_details_sheet(
             raise ValueError(msg)
 
     # Check code country
-    if code_country.upper() not in [
-        "AT",
-        "BA",
-        "BE",
-        "BG",
-        "CY",
-        "CZ",
-        "DE",
-        "DK",
-        "ES",
-        "FR",
-        "GB",
-        "GR",
-        "HU",
-        "IE",
-        "IT",
-        "NL",
-        "NO",
-        "PL",
-        "RS",
-        "SE",
-        "SI",
-    ]:
-        code_country = pycountry.countries.get(name=code_country)
-        if code_country is not None:
-            # if country is valid, return ISO 3166-1-alpha-2 code
-            code_country = code_country.alpha_2
-        else:
-            raise ValueError("Country name {} is invalid".format(code_country))
+    code_country = _resolve_codecountry(code_country)
 
     # Check code_buildingsizeclass
     if code_buildingsizeclass.upper() not in ["SFH", "TH", "MFH", "AB"]:
@@ -288,42 +244,16 @@ def tabula_building_details_sheet(
 
 
 def tabula_system(code_country, code_boundarycond="SUH", code_variantnumber=1):
-    """
+    """Return system level information from TABULA archetypes.
+
     Args:
-        code_country:
-        code_boundarycond:
-        code_variantnumber:
+        code_country (str): the alpha-2 code of the country. eg. "FR"
+        code_boundarycond (str): choices are "SUH" and "MUH".
+        code_variantnumber (int):
+
     """
     # Check code country
-    if code_country.upper() not in [
-        "AT",
-        "BA",
-        "BE",
-        "BG",
-        "CY",
-        "CZ",
-        "DE",
-        "DK",
-        "ES",
-        "FR",
-        "GB",
-        "GR",
-        "HU",
-        "IE",
-        "IT",
-        "NL",
-        "NO",
-        "PL",
-        "RS",
-        "SE",
-        "SI",
-    ]:
-        code_country = pycountry.countries.get(name=code_country)
-        if code_country is not None:
-            # if country is valid, return ISO 3166-1-alpha-2 code
-            code_country = code_country.alpha_2
-        else:
-            raise ValueError("Country name {} is invalid")
+    code_country = _resolve_codecountry(code_country)
 
     # Check code_buildingsizeclass
     if code_boundarycond.upper() not in ["SUH", "MUH"]:
@@ -401,6 +331,29 @@ def tabula_system_request(data):
             return response_json
 
 
+def _resolve_codecountry(code_country):
+    """check country name against pycountry and return alpha_2 code
+
+    Args:
+        code_country:
+    """
+    if len(code_country) == 2:
+        code_country = pycountry.countries.get(alpha_2=code_country)
+    elif len(code_country) == 3:
+        code_country = pycountry.countries.get(alpha_3=code_country)
+    elif isinstance(code_country, int):
+        code_country = pycountry.countries.get(numeric=str(code_country))
+    else:
+        code_country = pycountry.countries.get(name=code_country)
+
+    if code_country is not None:
+        # if country is valid, return ISO 3166-1-alpha-2 code
+        code_country = code_country.alpha_2
+    else:
+        raise ValueError("Country name {} is invalid".format(code_country))
+    return code_country
+
+
 def get_from_cache(url):
     """
     Args:
@@ -455,21 +408,15 @@ def save_to_cache(url, response_json):
             log('Saved response to cache file "{}"'.format(cache_path_filename))
 
 
-def openei_api_request(
-    data, pause_duration=None, timeout=180, error_pause_duration=None
-):
-    """
+def openei_api_request(data,):
+    """Query the OpenEI.org API.
+
     Args:
         data (dict or OrderedDict): key-value pairs of parameters to post to the
-            API
-        pause_duration:
-        timeout (int): how long to pause in seconds before requests, if None,
-            will query API status endpoint to find when next slot is available
-        error_pause_duration (int): the timeout interval for the requests
-            library
+            API.
 
     Returns:
-        dict
+        dict: the json response
     """
     # define the Overpass API URL, then construct a GET-style URL as a string to
     # hash to look up/save to cache
@@ -484,11 +431,7 @@ def openei_api_request(
 
 
 def nrel_api_cbr_request(data):
-    """
-    Notes:
-        For a detailed description of data arguments, visit
-        https://developer.nrel.gov/docs/buildings/commercial-building
-        -resource-database-v1/resources/
+    """Query the NREL Commercial Building Resource Database
 
     Examples:
         >>> import archetypal as ar
@@ -500,6 +443,11 @@ def nrel_api_cbr_request(data):
 
     Returns:
         dict: the json response
+
+    Hint:
+        For a detailed description of data arguments, visit
+        `Commercial Building Resource API <https://developer.nrel.gov/docs/buildings
+        /commercial-building-resource-database-v1/resources/>`_
     """
     # define the Overpass API URL, then construct a GET-style URL as a string to
     # hash to look up/save to cache
@@ -558,7 +506,7 @@ def nrel_bcl_api_request(data):
             API
 
     Returns:
-        dict
+        dict: the json response
     """
     try:
         kformat = data.pop("format")  # json or xml
@@ -571,7 +519,7 @@ def nrel_bcl_api_request(data):
     print(prepared_url)
     cached_response_json = get_from_cache(prepared_url)
 
-    if cached_response_json is not None:
+    if cached_response_json:
         # found this request in the cache, just return it instead of making a
         # new HTTP call
         return cached_response_json
@@ -580,6 +528,10 @@ def nrel_bcl_api_request(data):
         start_time = time.time()
         log('Getting from {}, "{}"'.format(url, data))
         response = requests.get(prepared_url)
+
+        # check if an error has occurred
+        log(response.raise_for_status(), lg.DEBUG)
+
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
         size_kb = len(response.content) / 1000.0
@@ -589,42 +541,52 @@ def nrel_bcl_api_request(data):
             " in {:,.2f} seconds".format(size_kb, domain, time.time() - start_time)
         )
 
-        try:
-            response_json = response.json()
-            if "remark" in response_json:
-                log(
-                    'Server remark: "{}"'.format(
-                        response_json["remark"], level=lg.WARNING
-                    )
-                )
-            save_to_cache(prepared_url, response_json)
-        except Exception:
-            # deal with response satus_code here
+        # Since raise_for_status has not raised any error, we can check the response
+        # json safely
+        response_json = response.json()
+        if "remark" in response_json:
             log(
-                "Server at {} returned status code {} and no JSON data.".format(
-                    domain, response.status_code
-                ),
-                level=lg.ERROR,
+                'Server remark: "{}"'.format(
+                    response_json["remark"], level=lg.WARNING
+                )
             )
-            return response.content
-        else:
-            return response_json
+        save_to_cache(prepared_url, response_json)
+        return response_json
 
 
-def stat_can_request(data):
-    """
+def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, stat=0):
+    """Send a request to the StatCan API via HTTP GET and return the JSON
+    response.
+
     Args:
-        data:
+        type (str): "json" or "xml". json = json response format and xml = xml
+            response format.
+        lang (str): "E" or "F". E = English and F = French.
+        dguid (str): Dissemination Geography Unique Identifier - DGUID. It is an
+            alphanumeric code, composed of four components. It varies from 10 to
+            21 characters in length. The first 9 characters are fixed in
+            composition and length. Vintage (4) + Type (1) + Schema (4) +
+            Geographic Unique Identifier (1-12). To find dguid, use any GEO_UID
+            ( i.e., DGUID) returned by the 2016 Census geography web data
+            service. For more information on the DGUID definition and structure,
+            please refer to the `Dissemination Geography Unique Identifier,
+            Definition and Structure
+            <https://www150.statcan.gc.ca/n1/pub/92f0138m/92f0138m2019001-eng.htm>`_ ,
+            Statistics Canada catalogue no. 92F0138M-2019001.
+        topic (str): Integer 0-14 (default=0) where: 1. All topics 2. Aboriginal
+            peoples 3. Education 4. Ethnic origin 5. Families, households and
+            marital status 6. Housing 7. Immigration and citizenship 8. Income
+            9. Journey to work 10. Labour 11. Language 12. Language of work 13.
+            Mobility 14. Population 15. Visible minority.
+        notes (int): 0 or 1. 0 = do not include footnotes. 1 = include
+            footnotes.
+        stat (int): 0 or 1. 0 = counts. 1 = rates.
     """
     prepared_url = (
         "https://www12.statcan.gc.ca/rest/census-recensement"
         "/CPR2016.{type}?lang={lang}&dguid={dguid}&topic="
-        "{topic}&notes={notes}".format(
-            type=data.get("type", "json"),
-            lang=data.get("land", "E"),
-            dguid=data.get("dguid", "2016A000011124"),
-            topic=data.get("topic", 1),
-            notes=data.get("notes", 0),
+        "{topic}&notes={notes}&stat={stat}".format(
+            type=type, lang=lang, dguid=dguid, topic=topic, notes=notes, stat=stat
         )
     )
 
@@ -638,7 +600,7 @@ def stat_can_request(data):
     else:
         # if this URL is not already in the cache, request it
         start_time = time.time()
-        log('Getting from {}, "{}"'.format(prepared_url, data))
+        log("Getting from {}".format(prepared_url))
         response = requests.get(prepared_url)
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
@@ -663,18 +625,14 @@ def stat_can_request(data):
             # There seems to be a double backlash in the response. We try
             # removing it here.
             try:
-                response = response.content.decode("UTF-8").replace("//", "")
-                response_json = json.loads(response)
+                response_str = response.content.decode("UTF-8").replace("//", "")
+                response_json = json.loads(response_str)
             except Exception:
-                log(
-                    "Server at {} returned status code {} and no JSON "
-                    "data.".format(domain, response.status_code),
-                    level=lg.ERROR,
-                )
+                pass
             else:
                 save_to_cache(prepared_url, response_json)
                 return response_json
-            # deal with response satus_code here
+            # deal with response status_code here
             log(
                 "Server at {} returned status code {} and no JSON "
                 "data.".format(domain, response.status_code),
@@ -684,18 +642,30 @@ def stat_can_request(data):
             return response_json
 
 
-def stat_can_geo_request(data):
+def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
     """
     Args:
-        data:
+        type (str): "json" or "xml". json = json response format and xml = xml
+            response format.
+        lang (str): "E" or "F". where: E = English F = French.
+        geos (str): one geographic level code (default = PR). where: CD = Census
+            divisions CMACA = Census metropolitan areas and census
+            agglomerations CSD = Census subdivisions (municipalities) CT =
+            Census tracts DA = Dissemination areas DPL = Designated places ER =
+            Economic regions FED = Federal electoral districts (2013
+            Representation Order) FSA = Forward sortation areas HR = Health
+            regions (including LHINs and PHUs) POPCNTR = Population centres PR =
+            Canada, provinces and territories.
+        cpt (str): one province or territory code (default = 00). where: 00 =
+            All provinces and territories 10 = Newfoundland and Labrador 11 =
+            Prince Edward Island 12 = Nova Scotia 13 = New Brunswick 24 = Quebec
+            35 = Ontario 46 = Manitoba 47 = Saskatchewan 48 = Alberta 59 =
+            British Columbia 60 = Yukon 61 = Northwest Territories 62 = Nunavut.
     """
     prepared_url = (
         "https://www12.statcan.gc.ca/rest/census-recensement"
         "/CR2016Geo.{type}?lang={lang}&geos={geos}&cpt={cpt}".format(
-            type=data.get("type", "json"),
-            lang=data.get("land", "E"),
-            geos=data.get("geos", "PR"),
-            cpt=data.get("cpt", "00"),
+            type=type, lang=lang, geos=geos, cpt=cpt
         )
     )
 
@@ -709,7 +679,7 @@ def stat_can_geo_request(data):
     else:
         # if this URL is not already in the cache, request it
         start_time = time.time()
-        log('Getting from {}, "{}"'.format(prepared_url, data))
+        log("Getting from {}".format(prepared_url))
         response = requests.get(prepared_url)
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
@@ -790,7 +760,7 @@ def download_bld_window(
 
     Returns:
         (list of archetypal.IDF): a list of IDF files containing window objects
-            matching the  parameters.
+            matching the parameters.
 
     Note:
         An authentication key from NREL is required to download building
@@ -830,33 +800,36 @@ def download_bld_window(
     }
     response = nrel_bcl_api_request(data)
 
-    if response["result"]:
+    if response:
         log(
             "found {} possible window component(s) matching "
             "the range {}".format(len(response["result"]), str(data["f[]"]))
         )
 
-    # download components
-    uids = []
-    for component in response["result"]:
-        uids.append(component["component"]["uid"])
-    url = "https://bcl.nrel.gov/api/component/download?uids={}".format(
-        "," "".join(uids)
-    )
-    # actual download with get()
-    d_response = requests.get(url)
+        # download components
+        uids = []
+        for component in response["result"]:
+            uids.append(component["component"]["uid"])
+        url = "https://bcl.nrel.gov/api/component/download?uids={}".format(
+            "," "".join(uids)
+        )
+        # actual download with get()
+        d_response = requests.get(url)
 
-    if d_response.ok:
-        # loop through files and extract the ones that match the extension
-        # parameter
-        results = []
-        if output_folder is None:
-            output_folder = settings.data_folder
-        with zipfile.ZipFile(io.BytesIO(d_response.content)) as z:
-            for info in z.infolist():
-                if info.filename.endswith(extension):
-                    z.extract(info, path=output_folder)
-                    results.append(os.path.join(settings.data_folder, info.filename))
-        return results
+        if d_response.ok:
+            # loop through files and extract the ones that match the extension
+            # parameter
+            results = []
+            if output_folder is None:
+                output_folder = settings.data_folder
+            with zipfile.ZipFile(io.BytesIO(d_response.content)) as z:
+                for info in z.infolist():
+                    if info.filename.endswith(extension):
+                        z.extract(info, path=output_folder)
+                        results.append(os.path.join(settings.data_folder, info.filename))
+            return results
+        else:
+            return response["result"]
     else:
-        return response["result"]
+        raise ValueError("Could not download window from NREL Building Components "
+                         "Library. An error occurred with the nrel_api_request")

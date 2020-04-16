@@ -55,7 +55,8 @@ if [ "$TRAVIS_OS_NAME" == "linux" ]; then
   sudo rm $ATTCHNUM.zip
 fi
 if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-  curl -SLO https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs
+  # getting custom install script https://github.com/NREL/EnergyPlus/pull/7615
+  curl -SL -C - https://raw.githubusercontent.com/jmarrec/EnergyPlus/40afb275f66201db5305f54df6c070d0b0cb4fc3/cmake/qtifw/install_script.qs -o install_script.qs
   sudo hdiutil attach "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
   sudo /Volumes/"$ENERGYPLUS_DOWNLOAD_FILENAME"/"$ENERGYPLUS_DOWNLOAD_FILENAME".app/Contents/MacOS/"$ENERGYPLUS_DOWNLOAD_FILENAME" --verbose --script install_script.qs
   sudo tar zxvf $ATTCHNUM.zip -C /Applications/EnergyPlus-"$ENERGYPLUS_INSTALL_VERSION"/PreProcess
@@ -67,7 +68,8 @@ if [ "$TRAVIS_OS_NAME" == "osx" ]; then
   sudo rm $ATTCHNUM.zip
 fi
 if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-  curl -SL -C - https://raw.githubusercontent.com/NREL/EnergyPlus/3cf5e1c8e6944e8a7760b80078c6945073cc8364/cmake/qtifw/install_script.qs -o install_script.qs
+  # getting custom install script https://github.com/NREL/EnergyPlus/pull/7615
+  curl -SL -C - https://raw.githubusercontent.com/jmarrec/EnergyPlus/40afb275f66201db5305f54df6c070d0b0cb4fc3/cmake/qtifw/install_script.qs -o install_script.qs
   ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT --verbose --script install_script.qs
   DEST=C:\\EnergyPlusV"$ENERGYPLUS_INSTALL_VERSION"\\PreProcess\\IDFVersionUpdater
   echo "Extracting and Copying files to... $DEST"

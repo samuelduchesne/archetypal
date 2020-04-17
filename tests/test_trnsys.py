@@ -621,10 +621,7 @@ class TestConvertEasy:
 
 
 @pytest.fixture(
-    scope="class",
-    params=[
-        "5ZoneGeometryTransform.idf",
-    ],
+    scope="class", params=["5ZoneGeometryTransform.idf",],
 )
 def converttest(request):
     file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
@@ -745,7 +742,6 @@ class TestConvert:
         zones[0].Y_Origin = ""
         zones[0].Z_Origin = ""
         zones[0].Multiplier = ""
-
 
         # Get all construction EXCEPT fenestration ones
         constr_list = _get_constr_list(buildingSurfs)

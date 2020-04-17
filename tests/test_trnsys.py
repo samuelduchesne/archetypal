@@ -3,6 +3,8 @@ import os
 
 import pytest
 
+import archetypal as ar
+
 import pandas as pd
 
 from path import Path
@@ -410,6 +412,25 @@ class TestConvertEasy:
         ) = converttesteasy
         log_clear_names = False
         idf_2 = load_idf_file_and_clean_names(idf_file, log_clear_names)
+
+        # Makes sure material names are unique and are 8 characters long
+        name = None
+        unique = False
+        length = False
+        for liste in idf_2.idfobjects["MATERIAL"].list2:
+            if liste[1] != name:
+                unique = True
+                name = liste[1]
+            else:
+                unique = False
+            if len(liste[1]) == 8:
+                length = True
+            else:
+                length = False
+
+        assert type(idf_2) == ar.idfclass.IDF
+        assert unique
+        assert length
 
 
 @pytest.fixture(

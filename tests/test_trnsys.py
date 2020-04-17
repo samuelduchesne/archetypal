@@ -588,6 +588,36 @@ class TestConvert:
             zonelists,
         ) = get_idf_objects(idf)
 
+        # Creates low thermal resistance construction and materials to be deleted
+        # To improve coverage of test
+        idf.newidfobject(
+            "MATERIAL",
+            Name="low_res_mat",
+            Roughness="Smooth",
+            Thickness=0.0008,
+            Conductivity=45.28,
+            Density=7824,
+            Specific_Heat=500,
+            Thermal_Absorptance=0.7,
+            Solar_Absorptance=0.7,
+            Visible_Absorptance=0.7,
+        )
+        idf.newidfobject(
+            "CONSTRUCTION", Name="low_res_constr", Outside_Layer="low_res_mat"
+        )
+
+        # Changes Outside boundary of surface to adiabatic
+        # To improve coverage of test
+        buildingSurfs[0].Outside_Boundary_Condition = "Adiabatic"
+
+        # Changes coords of zone
+        # To improve coverage of test
+        zones[0].X_Origin = ""
+        zones[0].Y_Origin = ""
+        zones[0].Z_Origin = ""
+        zones[0].Multiplier = ""
+
+
         # Get all construction EXCEPT fenestration ones
         constr_list = _get_constr_list(buildingSurfs)
 
@@ -629,12 +659,29 @@ class TestConvert:
         )
 
         mat_name = _remove_low_conductivity(constructions, idf, materials)
+
+        # Determine if coordsSystem is "World" (all zones at (0,0,0))
+        coordSys = _is_coordSys_world("Relative", zones)
+
+        # Changes Geom Rule to "Relative"
+        # To improve coverage of test
+        globGeomRules[0].Coordinate_System = "Relative"
+        globGeomRules[0].Daylighting_Reference_Point_Coordinate_System = "Relative"
+        globGeomRules[0].Rectangular_Surface_Coordinate_System = "Relative"
+
+        # Change Outside boundary condition of surface to itself
+        # To improve coverage of test
+        buildingSurfs[5].Outside_Boundary_Condition_Object = "C5-1"
+
+        # Change Outside boundary condition of surface to Zone and adjacent to Outdoors
+        # To improve coverage of test
+        buildingSurfs[0].Outside_Boundary_Condition = "Zone"
+        buildingSurfs[0].Outside_Boundary_Condition_Object = buildingSurfs[6].Zone_Name
+        buildingSurfs[6].Outside_Boundary_Condition = "Outdoors"
+
         # Write LOCATION and GLOBALGEOMETRYRULES from IDF to lines (T3D) and
         # define if coordinate system is "Relative"
         coordSys = _write_location_geomrules(globGeomRules, lines, locations)
-
-        # Determine if coordsSystem is "World" (all zones at (0,0,0))
-        coordSys = _is_coordSys_world(coordSys, zones)
 
         # Change coordinates from relative to absolute for building surfaces
         _change_relative_coords(buildingSurfs, coordSys, idf)

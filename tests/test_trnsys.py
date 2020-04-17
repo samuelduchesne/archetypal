@@ -1,5 +1,6 @@
 import io
 import os
+import glob
 
 import pytest
 
@@ -129,6 +130,10 @@ class TestConvertEasy:
         schedules_not_written = _write_schedules(
             lines, schedule_names, schedules, schedule_as_input, idf_file
         )
+
+        # Asserts csv with schedules exists and schedules are written in lines
+        assert os.path.exists(glob.glob("tests/.temp/data/*.csv")[0])
+        assert "!-SCHEDULE People_year_sch\n" in lines
 
     def test_write_version_and_building(self, config, converttesteasy):
         (

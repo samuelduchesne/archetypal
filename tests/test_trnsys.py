@@ -328,8 +328,8 @@ class TestConvertEasy:
     def test_write_to_b18(self, config, converttesteasy):
         output_folder = None
         # Deletes temp
-        if os.path.exists("tests/.temp"):
-            shutil.rmtree("tests/.temp")
+        if os.path.exists(settings.cache_folder):
+            shutil.rmtree(settings.cache_folder)
         (
             idf,
             idf_file,

@@ -432,6 +432,17 @@ class TestConvertEasy:
 
         conditioning_to_b18(b18_lines, heat_name, cool_name, zones, old_new_names)
 
+        # Asserts infiltration, internal gains and conditioning are written in b18_lines
+        assert "INFILTRATION Constant" + "\n" in b18_lines
+        assert " INFILTRATION = Constant" + "\n" in b18_lines
+        assert any(peoples[0].Name in mystring for mystring in b18_lines[200:])
+        assert any(lights[0].Name in mystring for mystring in b18_lines[200:])
+        assert any(equipments[0].Name in mystring for mystring in b18_lines[200:])
+        assert any(
+            heat_name[old_new_names[zones[0].Name.upper()][0]] in mystring
+            for mystring in b18_lines[200:]
+        )
+
     def test_load_idf_file_and_clean_names(self, config, converttesteasy):
         (
             idf,

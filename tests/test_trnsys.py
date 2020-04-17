@@ -206,6 +206,11 @@ class TestConvertEasy:
         # Write LAYER from IDF to lines (T3D)
         _write_materials(lines, materialAirGap, materialNoMass, materials)
 
+        # Asserts materials (material, AirGap, NoMass, etc.) are written in lines
+        assert "!-LAYER " + materialAirGap[0].Name + "\n" in lines
+        assert "!-LAYER " + materialNoMass[0].Name + "\n" in lines
+        assert "!-LAYER " + materials[0].Name + "\n" in lines
+
     def test_relative_to_absolute(self, config, converttesteasy):
         output_folder = None
         (

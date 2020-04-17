@@ -491,9 +491,6 @@ class TestConvertEasy:
 @pytest.fixture(
     scope="class",
     params=[
-        "RefBldgWarehouseNew2004_Chicago.idf",
-        "ASHRAE9012016_Warehouse_Denver.idf",
-        "ASHRAE9012016_ApartmentMidRise_Denver.idf",
         "5ZoneGeometryTransform.idf",
     ],
 )

@@ -133,7 +133,7 @@ class TestConvertEasy:
 
         # Asserts csv with schedules exists and schedules are written in lines
         assert os.path.exists(glob.glob("tests/.temp/data/*.csv")[0])
-        assert "!-SCHEDULE People_year_sch\n" in lines
+        assert "!-SCHEDULE " + schedule_names[0] + "\n" in lines
 
     def test_write_version_and_building(self, config, converttesteasy):
         (

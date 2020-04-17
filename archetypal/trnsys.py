@@ -1813,9 +1813,9 @@ def _write_zone_buildingSurf_fenestrationSurf(
             )
 
         # Round vertex to 4 decimal digit max
-        zone.X_Origin = round(zone.X_Origin, 4)
-        zone.Y_Origin = round(zone.Y_Origin, 4)
-        zone.Z_Origin = round(zone.Z_Origin, 4)
+        zone.X_Origin = round(zone_origin(zone)[0], 4)
+        zone.Y_Origin = round(zone_origin(zone)[1], 4)
+        zone.Z_Origin = round(zone_origin(zone)[2], 4)
 
         lines.insert(variableDictNum + 2, zone)
     return win_slope_dict

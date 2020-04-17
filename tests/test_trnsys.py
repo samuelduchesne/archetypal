@@ -166,6 +166,10 @@ class TestConvertEasy:
         _write_version(lines, versions)
         _write_building(buildings, lines)
 
+        # Asserts version and building information written in lines
+        assert "Version," + settings.ep_version.replace("-", ".")[:3] + ";\n" in lines
+        assert buildings[0] in lines
+
     def test_write_material(self, config, converttesteasy):
         (
             idf,

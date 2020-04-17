@@ -60,6 +60,8 @@ from archetypal.trnsys import (
     conditioning_to_b18,
     adds_sch_ground,
     adds_sch_setpoint,
+    t_initial_to_b18,
+    closest_coords,
 )
 from tests.conftest import get_platform
 
@@ -324,6 +326,74 @@ class TestConvertEasy:
 
         # Asserts path to T3D file exists
         assert t3d_path == glob.glob(settings.data_folder + "/*.idf")[0]
+
+    def test_t_initial_to_b18(self, config, converttesteasy):
+        output_folder = None
+        # Deletes temp
+        if os.path.exists(settings.cache_folder):
+            shutil.rmtree(settings.cache_folder)
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            kwargs,
+        ) = converttesteasy
+        try:
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+            )
+        except:
+            output_folder = os.path.relpath(settings.data_folder)
+            print("Could not assert all paths exist - OK for this test")
+
+        # Check if cache exists
+        log_clear_names = False
+        idf = load_idf(idf_file)
+
+        # Clean names of idf objects (e.g. 'MATERIAL')
+        idf_2 = deepcopy(idf)
+        clear_name_idf_objects(idf_2, log_clear_names)
+
+        # Get objects from IDF file
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf_2)
+
+        b18_path = "tests/input_data/trnsys/T3D_simple_2_zone.b18"
+        with open(b18_path) as b18_file:
+            b18_lines = b18_file.readlines()
+
+        schedules = {"sch_h_setpoint_" + zones[0].Name: {"all values": [18] * 8760}}
+        zones = [zones[0]]
+
+        t_initial_to_b18(b18_lines, zones, schedules)
+
+        # Asserts initial temperature is written in b18_lines
+        assert any("TINITIAL= 18" in mystring for mystring in b18_lines[200:])
 
     def test_write_to_b18(self, config, converttesteasy):
         output_folder = None

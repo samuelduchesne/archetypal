@@ -264,7 +264,22 @@ class TestConvertEasy:
             zonelists,
         ) = get_idf_objects(idf_2)
 
+        surface_init = deepcopy(buildingSurfs[0])
         _relative_to_absolute(buildingSurfs[0], 1, 2, 3)
+
+        # Asserts relative coords converted to absolute ones
+        assert (
+            buildingSurfs[0]["Vertex_" + str(1) + "_Xcoordinate"]
+            == surface_init["Vertex_" + str(1) + "_Xcoordinate"] + 1
+        )
+        assert (
+            buildingSurfs[0]["Vertex_" + str(1) + "_Ycoordinate"]
+            == surface_init["Vertex_" + str(1) + "_Ycoordinate"] + 2
+        )
+        assert (
+            buildingSurfs[0]["Vertex_" + str(1) + "_Zcoordinate"]
+            == surface_init["Vertex_" + str(1) + "_Zcoordinate"] + 3
+        )
 
     def test_save_t3d(self, config, converttesteasy):
         output_folder = None

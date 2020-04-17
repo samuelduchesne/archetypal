@@ -380,19 +380,21 @@ class TestConvertEasy:
 
         infilt_to_b18(b18_lines, zones, res)
 
-        schedule_as_input = True
-        gains_to_b18(
-            b18_lines,
-            zones,
-            zonelists,
-            peoples,
-            lights,
-            equipments,
-            schedules_not_written,
-            res,
-            old_new_names,
-            schedule_as_input,
-        )
+        # Tests both cases
+        for cond in [True, False]:
+            schedule_as_input = cond
+            gains_to_b18(
+                b18_lines,
+                zones,
+                zonelists,
+                peoples,
+                lights,
+                equipments,
+                schedules_not_written,
+                res,
+                old_new_names,
+                schedule_as_input,
+            )
 
         conditioning_to_b18(b18_lines, heat_name, cool_name, zones, old_new_names)
 

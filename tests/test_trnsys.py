@@ -1,6 +1,7 @@
 import io
 import os
 import glob
+import shutil
 
 import pytest
 
@@ -124,7 +125,10 @@ class TestConvertEasy:
         except:
             output_folder = os.path.relpath(settings.data_folder)
             print("Could not assert all paths exist - OK for this test")
-        schedule_names, schedules = _get_schedules(idf)
+
+        idf_2 = deepcopy(idf)
+
+        schedule_names, schedules = _get_schedules(idf_2)
         _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
         schedule_as_input = False
         schedules_not_written = _write_schedules(
@@ -145,6 +149,9 @@ class TestConvertEasy:
             template,
             _,
         ) = converttesteasy
+
+        idf_2 = deepcopy(idf)
+
         (
             buildingSurfs,
             buildings,
@@ -161,7 +168,7 @@ class TestConvertEasy:
             versions,
             zones,
             zonelists,
-        ) = get_idf_objects(idf)
+        ) = get_idf_objects(idf_2)
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
         _write_version(lines, versions)
         _write_building(buildings, lines)
@@ -184,6 +191,8 @@ class TestConvertEasy:
         # Read IDF_T3D template and write lines in variable
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
+        idf_2 = deepcopy(idf)
+
         # Get objects from IDF file
         (
             buildingSurfs,
@@ -201,7 +210,7 @@ class TestConvertEasy:
             versions,
             zones,
             zonelists,
-        ) = get_idf_objects(idf)
+        ) = get_idf_objects(idf_2)
 
         # Write LAYER from IDF to lines (T3D)
         _write_materials(lines, materialAirGap, materialNoMass, materials)
@@ -318,6 +327,9 @@ class TestConvertEasy:
 
     def test_write_to_b18(self, config, converttesteasy):
         output_folder = None
+        # Deletes temp
+        if os.path.exists("tests/.temp"):
+            shutil.rmtree("tests/.temp")
         (
             idf,
             idf_file,

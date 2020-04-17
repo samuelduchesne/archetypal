@@ -395,6 +395,68 @@ class TestConvertEasy:
         # Asserts initial temperature is written in b18_lines
         assert any("TINITIAL= 18" in mystring for mystring in b18_lines[200:])
 
+    def test_closest_coords(self, config, converttesteasy):
+        output_folder = None
+        # Deletes temp
+        if os.path.exists(settings.cache_folder):
+            shutil.rmtree(settings.cache_folder)
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            kwargs,
+        ) = converttesteasy
+        try:
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+            )
+        except:
+            output_folder = os.path.relpath(settings.data_folder)
+            print("Could not assert all paths exist - OK for this test")
+
+        # Check if cache exists
+        log_clear_names = False
+        idf = load_idf(idf_file)
+
+        # Copy idf
+        idf_2 = deepcopy(idf)
+
+        # Get objects from IDF file
+        (
+            buildingSurfs,
+            buildings,
+            constructions,
+            equipments,
+            fenestrationSurfs,
+            globGeomRules,
+            lights,
+            locations,
+            materialAirGap,
+            materialNoMass,
+            materials,
+            peoples,
+            versions,
+            zones,
+            zonelists,
+        ) = get_idf_objects(idf_2)
+
+        x, y, z = closest_coords(buildingSurfs, to=[0, 0, 0])
+
+        # Asserts closest coords
+        assert x == -5
+        assert y == 215
+        assert z == 0
+
     def test_write_to_b18(self, config, converttesteasy):
         output_folder = None
         # Deletes temp

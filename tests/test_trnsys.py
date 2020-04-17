@@ -313,6 +313,9 @@ class TestConvertEasy:
         # Save T3D file at output_folder
         output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
 
+        # Asserts path to T3D file exists
+        assert t3d_path == glob.glob("tests/.temp/data/*.idf")[0]
+
     def test_write_to_b18(self, config, converttesteasy):
         output_folder = None
         (

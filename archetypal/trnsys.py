@@ -622,7 +622,11 @@ def _write_heat_cool_to_b18(list_dict, old_new_names, zone, b18_lines, string):
             f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
             regimeNum = checkStr(b18_lines, "REGIME", f_count)
             # Write
-            b18_lines.insert(regimeNum, string + " = " + list_dict[key][0] + "\n")
+            if not isinstance(list_dict[key], list):
+                value = list_dict[key]
+            else:
+                value = list_dict[key][0]
+            b18_lines.insert(regimeNum, string + " = " + value + "\n")
 
 
 def zone_where_gain_is(gains, zones, zonelists):

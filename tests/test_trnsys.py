@@ -136,7 +136,7 @@ class TestConvertEasy:
         )
 
         # Asserts csv with schedules exists and schedules are written in lines
-        assert os.path.exists(glob.glob("tests/.temp/data/*.csv")[0])
+        assert os.path.exists(glob.glob(settings.data_folder + "/*.csv")[0])
         assert "!-SCHEDULE " + schedule_names[0] + "\n" in lines
 
     def test_write_version_and_building(self, config, converttesteasy):
@@ -323,7 +323,7 @@ class TestConvertEasy:
         output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
 
         # Asserts path to T3D file exists
-        assert t3d_path == glob.glob("tests/.temp/data/*.idf")[0]
+        assert t3d_path == glob.glob(settings.data_folder + "/*.idf")[0]
 
     def test_write_to_b18(self, config, converttesteasy):
         output_folder = None

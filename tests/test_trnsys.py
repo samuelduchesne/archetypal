@@ -62,7 +62,6 @@ from archetypal.trnsys import (
     adds_sch_setpoint,
     t_initial_to_b18,
     closest_coords,
-    add_object_and_run_ep,
 )
 from tests.conftest import get_platform
 
@@ -666,7 +665,18 @@ class TestConvertEasy:
             },
         ]
 
-        idf = add_object_and_run_ep(ep_version, idf_file, weather_file, outputs)
+        _, idf = run_eplus(
+            idf_file,
+            weather_file,
+            output_directory=None,
+            ep_version=ep_version,
+            output_report=None,
+            prep_outputs=outputs,
+            design_day=False,
+            annual=True,
+            expandobjects=True,
+            return_idf=True,
+        )
 
         assert isinstance(idf, ar.idfclass.IDF)
 

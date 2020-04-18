@@ -140,18 +140,7 @@ def convert_idf_to_trnbuild(
             ),
         },
     ]
-    _, idf = run_eplus(
-        idf_file,
-        weather_file,
-        output_directory=None,
-        ep_version=ep_version,
-        output_report=None,
-        prep_outputs=outputs,
-        design_day=False,
-        annual=True,
-        expandobjects=True,
-        return_idf=True,
-    )
+    idf = add_object_and_run_ep(ep_version, idf_file, weather_file, outputs)
 
     # Check if cache exists
     # idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
@@ -423,6 +412,23 @@ def convert_idf_to_trnbuild(
     # endregion
 
     return return_path
+
+
+def add_object_and_run_ep(ep_version, idf_file, weather_file, outputs):
+
+    _, idf = run_eplus(
+        idf_file,
+        weather_file,
+        output_directory=None,
+        ep_version=ep_version,
+        output_report=None,
+        prep_outputs=outputs,
+        design_day=False,
+        annual=True,
+        expandobjects=True,
+        return_idf=True,
+    )
+    return idf
 
 
 def t_initial_to_b18(b18_lines, zones, schedules):

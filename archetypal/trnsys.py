@@ -1020,7 +1020,7 @@ def _add_change_adj_surf(buildingSurfs, idf):
                             break
             # If boundary surface does not exist, append the list of surface
             # to create
-            if not adj_surfs_to_change:
+            if not buildingSurf.Name in adj_surfs_to_change:
                 if not buildingSurf.Name in adj_surfs_to_make:
                     adj_surfs_to_make.append(buildingSurf.Name)
     # If adjacent surface found, check if Outside boundary

@@ -616,7 +616,7 @@ class TestConvertEasy:
             else:
                 length = False
 
-        assert type(idf_2) == ar.idfclass.IDF
+        assert isinstance(idf_2, ar.idfclass.IDF)
         assert unique
         assert length
 
@@ -668,7 +668,7 @@ class TestConvertEasy:
 
         idf = add_object_and_run_ep(ep_version, idf_file, weather_file, outputs)
 
-        assert type(idf) == ar.idfclass.IDF
+        assert isinstance(idf, ar.idfclass.IDF)
 
 
 @pytest.fixture(

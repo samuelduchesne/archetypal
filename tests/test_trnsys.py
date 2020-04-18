@@ -62,6 +62,7 @@ from archetypal.trnsys import (
     adds_sch_setpoint,
     t_initial_to_b18,
     closest_coords,
+    add_object_and_run_ep,
 )
 from tests.conftest import get_platform
 
@@ -618,6 +619,56 @@ class TestConvertEasy:
         assert type(idf_2) == ar.idfclass.IDF
         assert unique
         assert length
+
+    def test_add_object_and_run_ep(self, config, converttesteasy):
+        output_folder = None
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            kwargs,
+        ) = converttesteasy
+        try:
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+            )
+        except:
+            output_folder = os.path.relpath(settings.data_folder)
+            print("Could not assert all paths exist - OK for this test")
+
+        ep_version = None
+        outputs = [
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Zone Thermostat Heating Setpoint Temperature",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+            {
+                "ep_object": "Output:Variable".upper(),
+                "kwargs": dict(
+                    Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
+                    Reporting_Frequency="hourly",
+                    save=True,
+                ),
+            },
+        ]
+
+        idf = add_object_and_run_ep(ep_version, idf_file, weather_file, outputs)
+
+        assert type(idf) == ar.idfclass.IDF
 
 
 @pytest.fixture(

@@ -855,6 +855,11 @@ class TestConvert:
         buildingSurfs[0].Outside_Boundary_Condition_Object = buildingSurfs[6].Zone_Name
         buildingSurfs[6].Outside_Boundary_Condition = "Outdoors"
 
+        # Change Outside boundary condition of surface to Zone and adjacent to Zone.Name
+        # To improve coverage of test
+        buildingSurfs[1].Outside_Boundary_Condition = "Zone"
+        buildingSurfs[1].Outside_Boundary_Condition_Object = "SPACE3-1"
+
         # Write LOCATION and GLOBALGEOMETRYRULES from IDF to lines (T3D) and
         # define if coordinate system is "Relative"
         coordSys = _write_location_geomrules(globGeomRules, lines, locations)

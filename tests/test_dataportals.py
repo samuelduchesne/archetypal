@@ -30,12 +30,18 @@ def test_tabula_api_request_valueerror(config, scratch_then_cache):
     with pytest.raises(ValueError):
         cc_res = ar.dataportal.tabula_api_request(data, table="all-country")
 
+
 def test_tabula_notavailable_country(config, scratch_then_cache):
     pass
 
 
 def test_tabula_building_sheet(config, scratch_then_cache):
     sheet = ar.tabula_building_details_sheet(code_country="Austria")
+
+    # Test with code_building not None
+    sheet = ar.tabula_building_details_sheet(
+        code_building="AT.MT.AB.02.Gen.ReEx.001.001", code_country="Austria"
+    )
 
 
 def test_tabula_multiple(config, scratch_then_cache):

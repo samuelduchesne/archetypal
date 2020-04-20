@@ -43,6 +43,12 @@ def test_tabula_building_sheet(config, scratch_then_cache):
         code_building="AT.MT.AB.02.Gen.ReEx.001.001", code_country="Austria"
     )
 
+    # Test with wrong code_building
+    with pytest.raises(ValueError):
+        sheet = ar.tabula_building_details_sheet(
+            code_building="wrong_string", code_country="Austria"
+        )
+
 
 def test_tabula_multiple(config, scratch_then_cache):
     country_code = "FR"

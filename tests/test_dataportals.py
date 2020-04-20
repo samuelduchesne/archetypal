@@ -148,7 +148,7 @@ def test_statcan_error(config, scratch_then_cache):
     print(response)
 
 
-def test_statcan_geo(config):
+def test_statcan_geo(config, scratch_then_cache):
     data = dict(type="json", lang="E", geos="PR", cpt="00")
 
     response = ar.dataportal.stat_can_geo_request(**data)

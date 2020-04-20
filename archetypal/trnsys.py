@@ -1001,8 +1001,8 @@ def _assert_files(
         raise IOError("template file not found")
 
     if not trnsidf_exe:
-        trnsidf_exe = os.path.join(
-            settings.trnsys_default_folder, r"Building\trnsIDF\trnsidf.exe"
+        trnsidf_exe = settings.trnsys_default_folder / Path(
+            r"Building\trnsIDF\trnsidf.exe"
         )
 
     if not os.path.isfile(trnsidf_exe):

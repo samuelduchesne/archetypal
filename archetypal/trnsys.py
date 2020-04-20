@@ -945,8 +945,8 @@ def _assert_files(
 
     if not output_folder:
         output_folder = os.path.relpath(settings.data_folder)
-        if not os.path.exists(output_folder):
-            os.mkdir(output_folder)
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
 
     if not template:
         template = settings.path_template_d18

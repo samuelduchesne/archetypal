@@ -103,6 +103,152 @@ class TestConvertEasy:
 
     """Tests convert_idf_to_trnbuild() 1 file"""
 
+    def test_assert_files(self, config, converttesteasy):
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            output_folder,
+            _,
+        ) = converttesteasy
+
+        # Tests assertion if idf_file is None
+        with pytest.raises(IOError):
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(None, None, None, None, None, None)
+
+        # Tests assertion if weather file is None
+        with pytest.raises(IOError):
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(idf_file, None, None, None, None, None)
+
+        # Tests assertion if windiw_lib is None
+        with pytest.raises(IOError):
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(idf_file, weather_file, None, None, None, None)
+
+        # Tests assertion if output_folder is None
+        with pytest.raises(IOError):
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(idf_file, weather_file, window_lib, None, None, None)
+
+        # Tests assertion if trnsidf_exe and template_d18 is None
+        with pytest.raises(IOError):
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, None, None
+            )
+
+        # Tests assertion if idf_file is a string but not a path
+        with pytest.raises(IOError):
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files("wrong_string", None, None, None, None, None)
+
+        # Tests assertion if weather_file is a string but not a path
+        with pytest.raises(IOError):
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(idf_file, "wrong_string", None, None, None, None)
+
+        # Tests assertion if window_lib is a string but not a path
+        with pytest.raises(IOError):
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(idf_file, weather_file, "wrong_string", None, None, None)
+
+        # Tests assertion if window_lib is not a string AND not None
+        with pytest.raises(IOError):
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(idf_file, weather_file, 2, None, None, None)
+
+        # Tests assertion if trnsidf_exe is a string but not a path
+        with pytest.raises(IOError):
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file, weather_file, window_lib, output_folder, "wrong_string", None
+            )
+
+        # Tests assertion if template_d18 is a string but not a path
+        with pytest.raises(IOError):
+            (
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                template,
+            ) = _assert_files(
+                idf_file,
+                weather_file,
+                window_lib,
+                output_folder,
+                trnsidf_exe,
+                "wrong_string",
+            )
+
+        assert output_folder == os.path.relpath(settings.data_folder)
+
     def test_get_save_write_schedules_as_sched(self, config, converttesteasy):
         (
             idf,
@@ -114,16 +260,6 @@ class TestConvertEasy:
             output_folder,
             _,
         ) = converttesteasy
-        # (
-        #     idf_file,
-        #     weather_file,
-        #     window_lib,
-        #     output_folder,
-        #     trnsidf_exe,
-        #     template,
-        # ) = _assert_files(
-        #     idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
-        # )
 
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 

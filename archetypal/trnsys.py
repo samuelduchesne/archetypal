@@ -970,15 +970,24 @@ def _assert_files(
         trnsidf_exe (str): Path to *trnsidf.exe*.
         template (str): Path to d18 template file.
     """
-    if not os.path.isfile(idf_file):
-        raise IOError("idf_file file not found")
+    if isinstance(idf_file, str):
+        if not os.path.isfile(idf_file):
+            raise IOError("idf_file file not found")
+    else:
+        raise IOError("idf_file file is not a string (path)")
 
-    if not os.path.isfile(weather_file):
-        raise IOError("idf_file file not found")
+    if isinstance(weather_file, str):
+        if not os.path.isfile(weather_file):
+            raise IOError("weather file not found")
+    else:
+        raise IOError("weather file is not a string (path)")
 
     if window_lib:
-        if not os.path.isfile(window_lib):
-            raise IOError("window_lib file not found")
+        if isinstance(window_lib, str):
+            if not os.path.isfile(window_lib):
+                raise IOError("window_lib file not found")
+        else:
+            raise IOError("window_lib file is not a string (path)")
 
     if not output_folder:
         output_folder = os.path.relpath(settings.data_folder)

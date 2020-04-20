@@ -116,7 +116,14 @@ def convert_idf_to_trnbuild(
     """
 
     # Assert all path needed exist
-    idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+    (
+        idf_file,
+        weather_file,
+        window_lib,
+        output_folder,
+        trnsidf_exe,
+        template,
+    ) = _assert_files(
         idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
     )
 
@@ -182,16 +189,46 @@ def convert_idf_to_trnbuild(
     lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
     # Get objects from IDF file
-    buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
-        idf_2
-    )
+    (
+        buildingSurfs,
+        buildings,
+        constructions,
+        equipments,
+        fenestrationSurfs,
+        globGeomRules,
+        lights,
+        locations,
+        materialAirGap,
+        materialNoMass,
+        materials,
+        peoples,
+        versions,
+        zones,
+        zonelists,
+    ) = get_idf_objects(idf_2)
 
     # Get all construction EXCEPT fenestration ones
     constr_list = _get_constr_list(buildingSurfs)
 
     # If ordered=True, ordering idf objects
     ordered = kwargs.get("ordered", False)
-    buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones, zonelists = _order_objects(
+    (
+        buildingSurfs,
+        buildings,
+        constr_list,
+        constructions,
+        equipments,
+        fenestrationSurfs,
+        globGeomRules,
+        lights,
+        locations,
+        materialAirGap,
+        materialNoMass,
+        materials,
+        peoples,
+        zones,
+        zonelists,
+    ) = _order_objects(
         buildingSurfs,
         buildings,
         constr_list,
@@ -1435,7 +1472,18 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
         )
         .idxmin()
     )
-    win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win, t_vis_win, lay_win, width = df_windows.loc[
+    (
+        win_id,
+        description,
+        design,
+        u_win,
+        shgc_win,
+        t_sol_win,
+        rf_sol_win,
+        t_vis_win,
+        lay_win,
+        width,
+    ) = df_windows.loc[
         best_window_index,
         [
             "WinID",
@@ -2130,7 +2178,7 @@ def _write_schedules(lines, schedule_names, schedules, schedule_as_input, idf_fi
             # Get annual hourly values of schedules
             arr = schedules[schedule_name]["all values"]
             # Find the hours where hourly values change
-            hours_list, = np.where(np.roll(arr, 1) != arr)
+            (hours_list,) = np.where(np.roll(arr, 1) != arr)
             # if hours_list is empty, give it hour 0
             if hours_list.size == 0:
                 hours_list = np.array([0])

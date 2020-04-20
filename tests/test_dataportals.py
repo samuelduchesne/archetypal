@@ -153,6 +153,7 @@ def test_statcan_geo(config, scratch_then_cache):
     response = ar.dataportal.stat_can_geo_request(**data)
     print(response)
 
+
 def test_statcan_geo_error(config, scratch_then_cache):
     # Tests statcan_geo with error in inputs
     data = dict(type="json", lang="E", geos="wrong_string", cpt="00")

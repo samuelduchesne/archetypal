@@ -20,10 +20,15 @@ def test_tabula_available_country(config, scratch_then_cache):
 
 
 def test_tabula_api_request_valueerror(config, scratch_then_cache):
-    # First, let's try the API call
+    # Gives "wrong_string" as table
     data = {"code_country": "FR"}
     with pytest.raises(ValueError):
         cc_res = ar.dataportal.tabula_api_request(data, table="wrong_string")
+
+    # Gives "wrong_string" as country
+    data = {"code_country": "wrong_string"}
+    with pytest.raises(ValueError):
+        cc_res = ar.dataportal.tabula_api_request(data, table="all-country")
 
 def test_tabula_notavailable_country(config, scratch_then_cache):
     pass

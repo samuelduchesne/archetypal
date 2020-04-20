@@ -19,6 +19,12 @@ def test_tabula_available_country(config, scratch_then_cache):
     cc_cache = ar.dataportal.tabula_available_buildings(code_country)
 
 
+def test_tabula_api_request_valueerror(config, scratch_then_cache):
+    # First, let's try the API call
+    data = {"code_country": "FR"}
+    with pytest.raises(ValueError):
+        cc_res = ar.dataportal.tabula_api_request(data, table="wrong_string")
+
 def test_tabula_notavailable_country(config, scratch_then_cache):
     pass
 

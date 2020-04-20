@@ -137,7 +137,7 @@ class TestConvertEasy:
                 template,
             ) = _assert_files(idf_file, None, None, None, None, None)
 
-        # Tests assertion if windiw_lib is None
+        # Tests assertion if window_lib is None
         with pytest.raises(IOError):
             (
                 idf_file,

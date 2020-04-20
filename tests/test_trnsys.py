@@ -92,7 +92,9 @@ def converttesteasy(request):
         "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     )
 
-    yield idf, file, weather_file, window_filepath, trnsidf_exe, template_d18, kwargs_dict
+    output_folder = os.path.relpath(settings.data_folder)
+
+    yield idf, file, weather_file, window_filepath, trnsidf_exe, template_d18, output_folder, kwargs_dict
 
     del idf
 
@@ -102,7 +104,6 @@ class TestConvertEasy:
     """Tests convert_idf_to_trnbuild() 1 file"""
 
     def test_get_save_write_schedules_as_sched(self, config, converttesteasy):
-        output_folder = None
         (
             idf,
             idf_file,
@@ -110,23 +111,21 @@ class TestConvertEasy:
             window_lib,
             trnsidf_exe,
             template,
+            output_folder,
             _,
         ) = converttesteasy
+        # (
+        #     idf_file,
+        #     weather_file,
+        #     window_lib,
+        #     output_folder,
+        #     trnsidf_exe,
+        #     template,
+        # ) = _assert_files(
+        #     idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
+        # )
+
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
-        try:
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
-            )
-        except:
-            output_folder = os.path.relpath(settings.data_folder)
-            print("Could not assert all paths exist - OK for this test")
 
         idf_2 = deepcopy(idf)
 
@@ -149,6 +148,7 @@ class TestConvertEasy:
             window_lib,
             trnsidf_exe,
             template,
+            output_folder,
             _,
         ) = converttesteasy
 
@@ -187,6 +187,7 @@ class TestConvertEasy:
             window_lib,
             trnsidf_exe,
             template,
+            output_folder,
             _,
         ) = converttesteasy
 
@@ -223,7 +224,6 @@ class TestConvertEasy:
         assert "!-LAYER " + materials[0].Name + "\n" in lines
 
     def test_relative_to_absolute(self, config, converttesteasy):
-        output_folder = None
         (
             idf,
             idf_file,
@@ -231,22 +231,9 @@ class TestConvertEasy:
             window_lib,
             trnsidf_exe,
             template,
+            output_folder,
             _,
         ) = converttesteasy
-        try:
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
-            )
-        except:
-            output_folder = os.path.relpath(settings.data_folder)
-            print("Could not assert all paths exist - OK for this test")
 
         # Check if cache exists
         log_clear_names = False
@@ -293,7 +280,6 @@ class TestConvertEasy:
         )
 
     def test_save_t3d(self, config, converttesteasy):
-        output_folder = None
         (
             idf,
             idf_file,
@@ -301,22 +287,9 @@ class TestConvertEasy:
             window_lib,
             trnsidf_exe,
             template,
+            output_folder,
             _,
         ) = converttesteasy
-        try:
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
-            )
-        except:
-            output_folder = os.path.relpath(settings.data_folder)
-            print("Could not assert all paths exist - OK for this test")
 
         # Read IDF_T3D template and write lines in variable
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
@@ -328,7 +301,6 @@ class TestConvertEasy:
         assert t3d_path == glob.glob(settings.data_folder + "/*.idf")[0]
 
     def test_t_initial_to_b18(self, config, converttesteasy):
-        output_folder = None
         # Deletes temp
         if os.path.exists(settings.cache_folder):
             shutil.rmtree(settings.cache_folder)
@@ -339,22 +311,9 @@ class TestConvertEasy:
             window_lib,
             trnsidf_exe,
             template,
+            output_folder,
             kwargs,
         ) = converttesteasy
-        try:
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
-            )
-        except:
-            output_folder = os.path.relpath(settings.data_folder)
-            print("Could not assert all paths exist - OK for this test")
 
         # Check if cache exists
         log_clear_names = False
@@ -396,10 +355,6 @@ class TestConvertEasy:
         assert any("TINITIAL= 18" in mystring for mystring in b18_lines[200:])
 
     def test_closest_coords(self, config, converttesteasy):
-        output_folder = None
-        # Deletes temp
-        if os.path.exists(settings.cache_folder):
-            shutil.rmtree(settings.cache_folder)
         (
             idf,
             idf_file,
@@ -407,22 +362,9 @@ class TestConvertEasy:
             window_lib,
             trnsidf_exe,
             template,
+            output_folder,
             kwargs,
         ) = converttesteasy
-        try:
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
-            )
-        except:
-            output_folder = os.path.relpath(settings.data_folder)
-            print("Could not assert all paths exist - OK for this test")
 
         # Check if cache exists
         log_clear_names = False
@@ -458,10 +400,6 @@ class TestConvertEasy:
         assert z == 0
 
     def test_write_to_b18(self, config, converttesteasy):
-        output_folder = None
-        # Deletes temp
-        if os.path.exists(settings.cache_folder):
-            shutil.rmtree(settings.cache_folder)
         (
             idf,
             idf_file,
@@ -469,22 +407,9 @@ class TestConvertEasy:
             window_lib,
             trnsidf_exe,
             template,
+            output_folder,
             kwargs,
         ) = converttesteasy
-        try:
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
-            )
-        except:
-            output_folder = os.path.relpath(settings.data_folder)
-            print("Could not assert all paths exist - OK for this test")
 
         # Run EnergyPlus Simulation
         res = run_eplus(
@@ -595,8 +520,10 @@ class TestConvertEasy:
             window_lib,
             trnsidf_exe,
             template,
+            output_folder,
             _,
         ) = converttesteasy
+
         log_clear_names = False
         idf_2 = load_idf_file_and_clean_names(idf_file, log_clear_names)
 
@@ -620,7 +547,6 @@ class TestConvertEasy:
         assert length
 
     def test_add_object_and_run_ep(self, config, converttesteasy):
-        output_folder = None
         (
             idf,
             idf_file,
@@ -628,22 +554,9 @@ class TestConvertEasy:
             window_lib,
             trnsidf_exe,
             template,
+            output_folder,
             kwargs,
         ) = converttesteasy
-        try:
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
-            )
-        except:
-            output_folder = os.path.relpath(settings.data_folder)
-            print("Could not assert all paths exist - OK for this test")
 
         ep_version = None
         outputs = [

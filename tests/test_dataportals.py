@@ -137,9 +137,9 @@ def test_download_and_load_bld_window(clean_config):
 
 def test_statcan(config, scratch_then_cache):
     data = dict(type="json", lang="E", dguid="2016A000011124", topic=5, notes=0)
-
     response = ar.dataportal.stat_can_request(**data)
     print(response)
+
 
 def test_statcan_error(config, scratch_then_cache):
     # Tests statcan with error in inputs
@@ -150,6 +150,5 @@ def test_statcan_error(config, scratch_then_cache):
 
 def test_statcan_geo(config, scratch_then_cache):
     data = dict(type="json", lang="E", geos="PR", cpt="00")
-
     response = ar.dataportal.stat_can_geo_request(**data)
     print(response)

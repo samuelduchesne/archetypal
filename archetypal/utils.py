@@ -123,7 +123,7 @@ def validate_trnsys_folder(trnsys_default_folder):
                     trnsys_default_folder
                 )
             )
-        return None
+        return trnsys_default_folder
     else:
         return trnsys_default_folder
 

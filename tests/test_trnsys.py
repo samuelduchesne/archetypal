@@ -101,9 +101,10 @@ def converttesteasy(request):
 
 class TestConvertEasy:
 
-    """Tests convert_idf_to_trnbuild() 1 file"""
+    """Tests functions of trnsys.py using 1 simple/small IDF file"""
 
     def test_assert_files(self, config, converttesteasy):
+        # Gets from fixture paths to files and IDF object to be used in test
         (
             idf,
             idf_file,
@@ -250,6 +251,7 @@ class TestConvertEasy:
         assert output_folder == os.path.relpath(settings.data_folder)
 
     def test_get_save_write_schedules_as_sched(self, config, converttesteasy):
+        # Gets from fixture paths to files and IDF object to be used in test
         (
             idf,
             idf_file,
@@ -261,12 +263,17 @@ class TestConvertEasy:
             _,
         ) = converttesteasy
 
+        # Read IDF_T3D template and write lines in variable
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
+        # Copy IDF object, making sure we don't change/overwrite original IDF file
         idf_2 = deepcopy(idf)
 
+        # Gets all schedule from IDF
         schedule_names, schedules = _get_schedules(idf_2)
+        # Save schedules in a csv file
         _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
+        # Write schedules directly in T3D file (in lines)
         schedule_as_input = False
         schedules_not_written = _write_schedules(
             lines, schedule_names, schedules, schedule_as_input, idf_file
@@ -277,6 +284,7 @@ class TestConvertEasy:
         assert "!-SCHEDULE " + schedule_names[0] + "\n" in lines
 
     def test_write_version_and_building(self, config, converttesteasy):
+        # Gets from fixture paths to files and IDF object to be used in test
         (
             idf,
             idf_file,
@@ -288,8 +296,10 @@ class TestConvertEasy:
             _,
         ) = converttesteasy
 
+        # Copy IDF object, making sure we don't change/overwrite original IDF file
         idf_2 = deepcopy(idf)
 
+        # Get objects from IDF
         (
             buildingSurfs,
             buildings,
@@ -307,7 +317,11 @@ class TestConvertEasy:
             zones,
             zonelists,
         ) = get_idf_objects(idf_2)
+
+        # Read IDF_T3D template and write lines in variable
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
+
+        # Write VERSION and BUILDING info from IDF to lines (T3D)
         _write_version(lines, versions)
         _write_building(buildings, lines)
 
@@ -316,6 +330,7 @@ class TestConvertEasy:
         assert buildings[0] in lines
 
     def test_write_material(self, config, converttesteasy):
+        # Gets from fixture paths to files and IDF object to be used in test
         (
             idf,
             idf_file,
@@ -330,9 +345,10 @@ class TestConvertEasy:
         # Read IDF_T3D template and write lines in variable
         lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
+        # Copy IDF object, making sure we don't change/overwrite original IDF file
         idf_2 = deepcopy(idf)
 
-        # Get objects from IDF file
+        # Get objects from IDF
         (
             buildingSurfs,
             buildings,
@@ -360,6 +376,7 @@ class TestConvertEasy:
         assert "!-LAYER " + materials[0].Name + "\n" in lines
 
     def test_relative_to_absolute(self, config, converttesteasy):
+        # Gets from fixture paths to files and IDF object to be used in test
         (
             idf,
             idf_file,
@@ -371,15 +388,14 @@ class TestConvertEasy:
             _,
         ) = converttesteasy
 
-        # Check if cache exists
-        log_clear_names = False
-        idf = load_idf(idf_file)
+        # Copy IDF object, making sure we don't change/overwrite original IDF file
+        idf_2 = deepcopy(idf)
 
         # Clean names of idf objects (e.g. 'MATERIAL')
-        idf_2 = deepcopy(idf)
+        log_clear_names = False
         clear_name_idf_objects(idf_2, log_clear_names)
 
-        # Get objects from IDF file
+        # Get objects from IDF
         (
             buildingSurfs,
             buildings,
@@ -398,7 +414,11 @@ class TestConvertEasy:
             zonelists,
         ) = get_idf_objects(idf_2)
 
+        # Getting surface to test, by copying it (like that object stay unchanged)
+        # And can be used after for assertion
         surface_init = deepcopy(buildingSurfs[0])
+
+        # Transform relative coords of a surface to absolute coords
         _relative_to_absolute(buildingSurfs[0], 1, 2, 3)
 
         # Asserts relative coords converted to absolute ones
@@ -416,6 +436,7 @@ class TestConvertEasy:
         )
 
     def test_save_t3d(self, config, converttesteasy):
+        # Gets from fixture paths to files and IDF object to be used in test
         (
             idf,
             idf_file,
@@ -437,9 +458,11 @@ class TestConvertEasy:
         assert t3d_path == glob.glob(settings.data_folder + "/*.idf")[0]
 
     def test_t_initial_to_b18(self, config, converttesteasy):
-        # Deletes temp
+        # Deletes cache folder
         if os.path.exists(settings.cache_folder):
             shutil.rmtree(settings.cache_folder)
+
+        # Gets from fixture paths to files and IDF object to be used in test
         (
             idf,
             idf_file,
@@ -451,15 +474,14 @@ class TestConvertEasy:
             kwargs,
         ) = converttesteasy
 
-        # Check if cache exists
-        log_clear_names = False
-        idf = load_idf(idf_file)
+        # Copy IDF object, making sure we don't change/overwrite original IDF file
+        idf_2 = deepcopy(idf)
 
         # Clean names of idf objects (e.g. 'MATERIAL')
-        idf_2 = deepcopy(idf)
+        log_clear_names = False
         clear_name_idf_objects(idf_2, log_clear_names)
 
-        # Get objects from IDF file
+        # Get objects from IDF
         (
             buildingSurfs,
             buildings,
@@ -478,19 +500,23 @@ class TestConvertEasy:
             zonelists,
         ) = get_idf_objects(idf_2)
 
+        # Read a b18 file and write lines in variable (b18_lines)
         b18_path = "tests/input_data/trnsys/T3D_simple_2_zone.b18"
         with open(b18_path) as b18_file:
             b18_lines = b18_file.readlines()
 
+        # Creates a constant schedule setpoint over the year
         schedules = {"sch_h_setpoint_" + zones[0].Name: {"all values": [18] * 8760}}
         zones = [zones[0]]
 
+        # Writes initial temperature of zone in b18_lines (b18 file)
         t_initial_to_b18(b18_lines, zones, schedules)
 
         # Asserts initial temperature is written in b18_lines
         assert any("TINITIAL= 18" in mystring for mystring in b18_lines[200:])
 
     def test_closest_coords(self, config, converttesteasy):
+        # Gets from fixture paths to files and IDF object to be used in test
         (
             idf,
             idf_file,
@@ -502,14 +528,10 @@ class TestConvertEasy:
             kwargs,
         ) = converttesteasy
 
-        # Check if cache exists
-        log_clear_names = False
-        idf = load_idf(idf_file)
-
-        # Copy idf
+        # Copy IDF object, making sure we don't change/overwrite original IDF file
         idf_2 = deepcopy(idf)
 
-        # Get objects from IDF file
+        # Get objects from IDF
         (
             buildingSurfs,
             buildings,
@@ -528,6 +550,7 @@ class TestConvertEasy:
             zonelists,
         ) = get_idf_objects(idf_2)
 
+        # Find closest surface to origin (0,0,0)
         x, y, z = closest_coords(buildingSurfs, to=[0, 0, 0])
 
         # Asserts closest coords
@@ -536,6 +559,7 @@ class TestConvertEasy:
         assert z == 0
 
     def test_write_to_b18(self, config, converttesteasy):
+        # Gets from fixture paths to files and IDF object to be used in test
         (
             idf,
             idf_file,
@@ -547,7 +571,7 @@ class TestConvertEasy:
             kwargs,
         ) = converttesteasy
 
-        # Run EnergyPlus Simulation
+        # Runs EnergyPlus Simulation
         res = run_eplus(
             idf_file,
             weather_file,
@@ -558,12 +582,11 @@ class TestConvertEasy:
             design_day=True,
         )
 
-        # Check if cache exists
-        log_clear_names = False
-        idf = load_idf(idf_file)
+        # Copy IDF object, making sure we don't change/overwrite original IDF file
+        idf_2 = deepcopy(idf)
 
         # Clean names of idf objects (e.g. 'MATERIAL')
-        idf_2 = deepcopy(idf)
+        log_clear_names = False
         clear_name_idf_objects(idf_2, log_clear_names)
 
         # Get old:new names equivalence
@@ -574,7 +597,7 @@ class TestConvertEasy:
             )
         ).to_dict()
 
-        # Get objects from IDF file
+        # Get objects from IDF
         (
             buildingSurfs,
             buildings,
@@ -593,33 +616,36 @@ class TestConvertEasy:
             zonelists,
         ) = get_idf_objects(idf_2)
 
+        # Read a b18 file and write lines in variable (b18_lines)
         b18_path = "tests/input_data/trnsys/T3D_simple_2_zone.b18"
+        with open(b18_path) as b18_file:
+            b18_lines = b18_file.readlines()
 
+        # initialize variable
         schedules_not_written = []
 
+        # Gets conditioning (heating and cooling) info from simulation results
         heat_name = {}
         for i in range(0, len(res["Zone Sensible Heating"])):
             key = res["Zone Sensible Heating"].iloc[i, 0]
             name = "HEAT_z" + str(res["Zone Sensible Heating"].iloc[i].name)
             heat_name[key] = name
-
         cool_name = {}
         for i in range(0, len(res["Zone Sensible Cooling"])):
             key = res["Zone Sensible Cooling"].iloc[i, 0]
             name = "HEAT_z" + str(res["Zone Sensible Cooling"].iloc[i].name)
             cool_name[key] = name
 
-        with open(b18_path) as b18_file:
-            b18_lines = b18_file.readlines()
-
+        # Selects only 2 first zones
         zones = zones[0:2]
         peoples = peoples[0:2]
         equipments = equipments[0:2]
         lights = lights[0:2]
 
+        # Writes infiltration in b18_lines (b18 file)
         infilt_to_b18(b18_lines, zones, res)
 
-        # Tests both cases
+        # Tests both cases, whether schedules are taken as inputs or written in b18_lines
         for cond in [True, False]:
             schedule_as_input = cond
             gains_to_b18(
@@ -635,6 +661,7 @@ class TestConvertEasy:
                 schedule_as_input,
             )
 
+        # Writes conditioning (heating and cooling) in b18_lines (b18 file)
         conditioning_to_b18(b18_lines, heat_name, cool_name, zones, old_new_names)
 
         # Asserts infiltration, internal gains and conditioning are written in b18_lines
@@ -649,6 +676,7 @@ class TestConvertEasy:
         )
 
     def test_load_idf_file_and_clean_names(self, config, converttesteasy):
+        # Gets from fixture paths to files and IDF object to be used in test
         (
             idf,
             idf_file,
@@ -660,6 +688,7 @@ class TestConvertEasy:
             _,
         ) = converttesteasy
 
+        # Clean names of idf objects (e.g. 'MATERIAL')
         log_clear_names = False
         idf_2 = load_idf_file_and_clean_names(idf_file, log_clear_names)
 
@@ -683,6 +712,7 @@ class TestConvertEasy:
         assert length
 
     def test_add_object_and_run_ep(self, config, converttesteasy):
+        # Gets from fixture paths to files and IDF object to be used in test
         (
             idf,
             idf_file,
@@ -695,6 +725,7 @@ class TestConvertEasy:
         ) = converttesteasy
 
         ep_version = None
+        # Adds Output variable in IDF
         outputs = [
             {
                 "ep_object": "Output:Variable".upper(),
@@ -714,6 +745,7 @@ class TestConvertEasy:
             },
         ]
 
+        # Runs EnergyPlus Simulation
         _, idf = run_eplus(
             idf_file,
             weather_file,
@@ -727,6 +759,7 @@ class TestConvertEasy:
             return_idf=True,
         )
 
+        # Makes sure idf vriable is an IDF
         assert isinstance(idf, ar.idfclass.IDF)
 
 
@@ -757,7 +790,9 @@ def converttest(request):
         "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     )
 
-    yield idf, file, weather_file, window_filepath, trnsidf_exe, template_d18, kwargs_dict
+    output_folder = os.path.relpath(settings.data_folder)
+
+    yield idf, file, weather_file, window_filepath, trnsidf_exe, template_d18, output_folder, kwargs_dict
 
     del idf
 
@@ -767,31 +802,7 @@ class TestConvert:
     """Tests convert_idf_to_trnbuild() with several files"""
 
     def test_get_save_write_schedules_as_input(self, config, converttest):
-        output_folder = None
-        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
-        lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
-        try:
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
-            )
-        except:
-            output_folder = os.path.relpath(settings.data_folder)
-            print("Could not assert all paths exist - OK for this test")
-        schedule_names, schedules = _get_schedules(idf)
-        _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
-        schedule_as_input = True
-        schedules_not_written = _write_schedules(
-            lines, schedule_names, schedules, schedule_as_input, idf_file
-        )
-
-    def test_write_idf_objects(self, config, converttest):
+        # Gets from fixture paths to files and IDF object to be used in test
         (
             idf,
             idf_file,
@@ -799,6 +810,33 @@ class TestConvert:
             window_lib,
             trnsidf_exe,
             template,
+            output_folder,
+            _,
+        ) = converttest
+
+        # Read IDF_T3D template and write lines in variable
+        lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
+
+        # Gets all schedule from IDF
+        schedule_names, schedules = _get_schedules(idf)
+        # Save schedules in a csv file
+        _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules)
+        # Write schedules as inputs in T3D file (in lines)
+        schedule_as_input = True
+        schedules_not_written = _write_schedules(
+            lines, schedule_names, schedules, schedule_as_input, idf_file
+        )
+
+    def test_write_idf_objects(self, config, converttest):
+        # Gets from fixture paths to files and IDF object to be used in test
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            output_folder,
             kwargs,
         ) = converttest
 
@@ -893,6 +931,7 @@ class TestConvert:
             ordered,
         )
 
+        # Removes low conductivity material and constructions
         mat_name = _remove_low_conductivity(constructions, idf, materials)
 
         # Determine if coordsSystem is "World" (all zones at (0,0,0))
@@ -930,9 +969,6 @@ class TestConvert:
         _add_change_adj_surf(buildingSurfs, idf)
         buildingSurfs = idf.idfobjects["BUILDINGSURFACE:DETAILED"]
 
-        # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf)
-        # from IDF to lines (T3D)
-
         # Get all surfaces having Outside boundary condition with the ground.
         # To be used to find the window's slopes
         n_ground = _get_ground_vertex(buildingSurfs)
@@ -960,9 +996,7 @@ class TestConvert:
         # lines (T3D)
         # Get window from library
         # window = (win_id, description, design, u_win, shgc_win, t_sol_win,
-        # rf_sol,
-        #                 t_vis_win, lay_win, width, window_bunches[win_id],
-        #                 and maybe tolerance)
+        # rf_sol, t_vis_win, lay_win, width, window_bunches[win_id], and maybe tolerance)
         win_u_value = kwargs.get("u_value", 2.2)
         win_shgc = kwargs.get("shgc", 0.64)
         win_tvis = kwargs.get("t_vis", 0.8)
@@ -978,10 +1012,22 @@ class TestConvert:
         _write_winPool(lines, window)
 
     def test_write_gains_conditioning(self, config, converttest):
-        idf, idf_file, weather_file, window_lib, trnsidf_exe, template, _ = converttest
+        # Gets from fixture paths to files and IDF object to be used in test
+        (
+            idf,
+            idf_file,
+            weather_file,
+            window_lib,
+            trnsidf_exe,
+            template,
+            output_folder,
+            _,
+        ) = converttest
 
-        # Run EnergyPlus Simulation
+        # Gets EnergyPlus version
         ep_version = settings.ep_version
+
+        # Adds Output variable in IDF
         outputs = [
             {
                 "ep_object": "Output:Variable".upper(),
@@ -1000,6 +1046,8 @@ class TestConvert:
                 ),
             },
         ]
+
+        # Run EnergyPlus Simulation
         _, idf = run_eplus(
             idf_file,
             weather_file,
@@ -1013,7 +1061,7 @@ class TestConvert:
             return_idf=True,
         )
 
-        # Outpout reports
+        # Output reports
         htm = idf.htm
         sql = idf.sql
         sql_file = idf.sql_file
@@ -1080,6 +1128,7 @@ class TestConvert:
             zones, df_cooling_setpoint, old_new_names, schedule_names, schedules, "c"
         )
 
+        # Writes conditioning in lines
         schedule_as_input = True
         heat_dict, cool_dict = _write_conditioning(
             htm, lines, schedules, old_new_names, schedule_as_input
@@ -1111,8 +1160,7 @@ def trnbuild_file(config, request):
 )
 class TestTrnBuild:
     def test_trnbuild_from_idf(self, config, trnbuild_file):
-        # List files here
-
+        # Gets file paths/names
         window_file = "W74-lib.dat"
         template_dir = os.path.join("archetypal", "ressources")
         window_filepath = os.path.join(template_dir, window_file)
@@ -1120,8 +1168,7 @@ class TestTrnBuild:
             "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         )
 
-        # prepare args (key=value). Key is a unique id for the runs (here the
-        # file basename is used). Value is a dict of the function arguments
+        # prepare args (key=value)f or EnergyPlus version to use, windows parameters,etc.
         kwargs_dict = {
             "ep_version": settings.ep_version,
             "u_value": 2.5,
@@ -1133,7 +1180,10 @@ class TestTrnBuild:
             "ordered": True,
         }
 
+        # Gets IDF file path from fixture
         file = trnbuild_file
+
+        # Convert IDF to BUI file
         convert_idf_to_trnbuild(
             idf_file=file,
             weather_file=weather_file,
@@ -1145,13 +1195,10 @@ class TestTrnBuild:
 
     @pytest.mark.win32
     def test_trnbuild_from_idf_parallel(self, config, trnbuild_file):
-        # All IDF files
-        # List files here
+        # Gets IDF file path from fixture
         files = trnbuild_file
 
-        # window_file = 'W74-lib.dat'
-        # window_filepath = os.path.join(file_upper_path, window_file)
-
+        # Path to weather file
         weather_file = os.path.join(
             "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         )
@@ -1163,6 +1210,7 @@ class TestTrnBuild:
             for file in files
         }
 
+        # Convert IDF files to BUI ones usinf parallel process
         result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
 
         assert not any(isinstance(a, Exception) for a in result.values())
@@ -1170,11 +1218,12 @@ class TestTrnBuild:
     @pytest.mark.darwin
     @pytest.mark.linux
     def test_trnbuild_from_idf_parallel_darwin_or_linux(self, config):
-        # All IDF files
-        # List files here
+        # Path to EnergyPlus example files
         file_upper_path = os.path.join(
             get_eplus_dirs(settings.ep_version), "ExampleFiles"
         )
+
+        # IDF file names
         files = [
             "RefBldgWarehouseNew2004_Chicago.idf",
             "ASHRAE9012016_Warehouse_Denver.idf",
@@ -1182,6 +1231,7 @@ class TestTrnBuild:
             "5ZoneGeometryTransform.idf",
         ]
 
+        # Path to weather file
         weather_file = os.path.join(
             "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         )
@@ -1198,14 +1248,21 @@ class TestTrnBuild:
             for file in files
         }
 
+        # Convert IDF files to BUI ones usinf parallel process
         result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
+
+        # Print results
         [print(a) for a in result.values() if isinstance(a, Exception)]
+
         assert not any(isinstance(a, Exception) for a in result.values())
 
     @pytest.mark.win32
     def test_trnbuild_idf_win32(self, config):
+        # Paths to T3D and B18 template files
         idf_file = "tests/input_data/trnsys/Building.idf"
         template = "tests/input_data/trnsys/NewFileTemplate.d18"
+
+        # Convert T3D file to BUI file
         res = trnbuild_idf(idf_file, template=template, nonum=True)
 
         assert res
@@ -1218,9 +1275,12 @@ class TestTrnBuild:
         "trnsidf.exe is copied in ./docker/trnsidf",
     )
     def test_trnbuild_idf_darwin_or_linux(self, config):
+        # Paths to T3D, B18 template and trnsidf.exe files
         idf_file = "tests/input_data/trnsys/Building.idf"
         template = "tests/input_data/trnsys/NewFileTemplate.d18"
         trnsidf_exe = "docker/trnsidf/trnsidf.exe"
+
+        # Convert T3D file to BUI file
         res = trnbuild_idf(
             idf_file,
             template=template,
@@ -1235,8 +1295,7 @@ class TestTrnBuild:
         assert res
 
     def test_trnbuild_from_simple_idf(self, config):
-        # List files here
-
+        # Path to weather file, window library and T3D template
         window_file = "W74-lib.dat"
         template_dir = os.path.join("archetypal", "ressources")
         window_filepath = os.path.join(template_dir, window_file)
@@ -1244,8 +1303,7 @@ class TestTrnBuild:
             "tests", "input_data", "CAN_QC_Montreal-McTavish.716120_CWEC2016.epw"
         )
 
-        # prepare args (key=value). Key is a unique id for the runs (here the
-        # file basename is used). Value is a dict of the function arguments
+        # prepare args (key=value)f or EnergyPlus version to use, windows parameters,etc.
         # WINDOW = 2-WSV_#3_Air
         kwargs_dict = {
             "ep_version": "9-2-0",
@@ -1258,7 +1316,10 @@ class TestTrnBuild:
             "ordered": True,
         }
 
+        # Path to IDF file
         file = os.path.join("tests", "input_data", "trnsys", "simple_2_zone.idf")
+
+        # Converts IDF to BUI
         convert_idf_to_trnbuild(
             idf_file=file,
             weather_file=weather_file,

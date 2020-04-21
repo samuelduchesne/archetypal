@@ -94,6 +94,12 @@ def test_nrel_api_cbr_request(config, scratch_then_cache):
     res = ar.dataportal.nrel_api_cbr_request(data)
 
 
+def test_nrel_api_cbr_request_exception(config, scratch_then_cache):
+    # Test with wrong code_country
+    data = {"code_country": "wrong_string"}
+    res = ar.dataportal.nrel_api_cbr_request(data)
+
+
 def test_tabula_multiple(config, scratch_then_cache):
     country_code = "FR"
     ab = ar.dataportal.tabula_available_buildings(country_code)

@@ -484,6 +484,15 @@ def nrel_api_cbr_request(data):
                         response_json["remark"], level=lg.WARNING
                     )
                 )
+            elif "error" in response_json:
+                log(
+                    "Server at {} returned status code {} meaning {}.".format(
+                        domain, response.status_code, response_json["error"]["code"]
+                    ),
+                    level=lg.ERROR,
+                )
+            else:
+                pass
             save_to_cache(prepared_url, response_json)
         except Exception:
             # deal with response satus_code here

@@ -59,6 +59,12 @@ def test_tabula_building_sheet_valueerror(config, scratch_then_cache):
             code_buildingsizeclass="wrong_string", code_country="Austria"
         )
 
+    # Test with wrong code_country
+    with pytest.raises(ValueError):
+        sheet = ar.tabula_building_details_sheet(
+            code_country="wrong_string",
+        )
+
 
 def test_tabula_multiple(config, scratch_then_cache):
     country_code = "FR"

@@ -68,7 +68,12 @@ def test_tabula_system(config, scratch_then_cache):
     res = ar.dataportal.tabula_system(code_country="FR")
 
 
-
+def test_tabula_system_valueerror(config, scratch_then_cache):
+    # Test with wrong code_boundarycond
+    with pytest.raises(ValueError):
+        res = ar.dataportal.tabula_system(
+            code_country="FR", code_boundarycond="wrong_string"
+        )
 
 
 def test_tabula_multiple(config, scratch_then_cache):

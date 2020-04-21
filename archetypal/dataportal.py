@@ -337,12 +337,12 @@ def _resolve_codecountry(code_country):
     Args:
         code_country:
     """
-    if len(code_country) == 2:
+    if isinstance(code_country, int):
+        code_country = pycountry.countries.get(numeric=str(code_country))
+    elif len(code_country) == 2:
         code_country = pycountry.countries.get(alpha_2=code_country)
     elif len(code_country) == 3:
         code_country = pycountry.countries.get(alpha_3=code_country)
-    elif isinstance(code_country, int):
-        code_country = pycountry.countries.get(numeric=str(code_country))
     else:
         code_country = pycountry.countries.get(name=code_country)
 

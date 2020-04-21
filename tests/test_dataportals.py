@@ -61,9 +61,14 @@ def test_tabula_building_sheet_valueerror(config, scratch_then_cache):
 
     # Test with wrong code_country
     with pytest.raises(ValueError):
-        sheet = ar.tabula_building_details_sheet(
-            code_country="wrong_string",
-        )
+        sheet = ar.tabula_building_details_sheet(code_country="wrong_string",)
+
+
+def test_tabula_system(config, scratch_then_cache):
+    res = ar.dataportal.tabula_system(code_country="FR")
+
+
+
 
 
 def test_tabula_multiple(config, scratch_then_cache):

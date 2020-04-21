@@ -84,6 +84,11 @@ def test_resolve_codecountry(config, scratch_then_cache):
     res = ar.dataportal._resolve_codecountry(533)
 
 
+def test_openei_api_request(config, scratch_then_cache):
+    data = {"code_country": "FR"}
+    res = ar.dataportal.openei_api_request(data)
+
+
 def test_tabula_multiple(config, scratch_then_cache):
     country_code = "FR"
     ab = ar.dataportal.tabula_available_buildings(country_code)

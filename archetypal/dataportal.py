@@ -554,11 +554,7 @@ def nrel_bcl_api_request(data):
         # json safely
         response_json = response.json()
         if "remark" in response_json:
-            log(
-                'Server remark: "{}"'.format(
-                    response_json["remark"], level=lg.WARNING
-                )
-            )
+            log('Server remark: "{}"'.format(response_json["remark"], level=lg.WARNING))
         save_to_cache(prepared_url, response_json)
         return response_json
 
@@ -835,10 +831,14 @@ def download_bld_window(
                 for info in z.infolist():
                     if info.filename.endswith(extension):
                         z.extract(info, path=output_folder)
-                        results.append(os.path.join(settings.data_folder, info.filename))
+                        results.append(
+                            os.path.join(settings.data_folder, info.filename)
+                        )
             return results
         else:
             return response["result"]
     else:
-        raise ValueError("Could not download window from NREL Building Components "
-                         "Library. An error occurred with the nrel_api_request")
+        raise ValueError(
+            "Could not download window from NREL Building Components "
+            "Library. An error occurred with the nrel_api_request"
+        )

@@ -158,6 +158,9 @@ def test_tabula_multiple(config, scratch_then_cache):
         keys=ab.code_buildingtype_column1 + "." + ab.suffix_building_column1,
     )
 
+    # Makes sure result is not empty
+    assert list(archetypes["val"])
+
 
 @pytest.mark.xfail(
     condition=os.environ.get("NREL_CONSUMER_KEY") is None,

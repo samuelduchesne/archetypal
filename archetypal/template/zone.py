@@ -42,40 +42,42 @@ class Zone(UmiBase):
 
     def __init__(
         self,
-        Conditioning=None,
+        Name,
         Constructions=None,
-        DomesticHotWater=None,
         Loads=None,
+        Conditioning=None,
         Ventilation=None,
-        Windows=None,
-        InternalMassConstruction=None,
-        InternalMassExposedPerFloorArea=1.05,
+        DomesticHotWater=None,
         DaylightMeshResolution=1,
         DaylightWorkplaneHeight=0.8,
+        InternalMassConstruction=None,
+        InternalMassExposedPerFloorArea=1.05,
+        Windows=None,
         **kwargs
     ):
         """Initialize :class:`Zone` object.
 
         Args:
+            Name (str): Name of the object. Must be Unique.
+            Constructions (ZoneConstructionSet):
+            Loads (ZoneLoad): Loads of the zone defined with the lights,
+                equipment and occupancy parameters (see :class:`ZoneLoad`)
             Conditioning (ZoneConditioning): Conditioning of the zone defined
                 with heating/cooling and mechanical ventilation parameters (see
                 :class:`ZoneConditioning`)
-            Constructions (ZoneConstructionSet):
-            DomesticHotWater (archetypal.template.dhw.DomesticHotWaterSetting):
-            Loads (ZoneLoad): Loads of the zone defined with the lights,
-                equipment and occupancy parameters (see :class:`ZoneLoad`)
             Ventilation (VentilationSetting): Ventilation settings of the zone
                 defined with the infiltration rate and natural ventilation
                 parameters (see :class:`VentilationSetting`)
-            Windows (WindowSetting): The WindowSetting object associated with
-                this zone.
-            InternalMassConstruction (archetypal.OpaqueConstruction):
-            InternalMassExposedPerFloorArea:
+            DomesticHotWater (archetypal.template.dhw.DomesticHotWaterSetting):
             DaylightMeshResolution (float):
             DaylightWorkplaneHeight (float):
+            InternalMassConstruction (archetypal.OpaqueConstruction):
+            InternalMassExposedPerFloorArea:
+            Windows (WindowSetting): The WindowSetting object associated with
+                this zone.
             **kwargs:
         """
-        super(Zone, self).__init__(**kwargs)
+        super(Zone, self).__init__(Name, **kwargs)
 
         self.Ventilation = Ventilation
         self.Loads = Loads

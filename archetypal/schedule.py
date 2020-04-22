@@ -25,7 +25,7 @@ class Schedule(object):
 
     def __init__(
         self,
-        Name=None,
+        Name,
         idf=None,
         start_day_of_the_week=0,
         strict=False,
@@ -53,10 +53,10 @@ class Schedule(object):
         """
         try:
             kwargs["idf"] = idf
-            Name = kwargs.get("Name", Name)
-            super(Schedule, self).__init__(**kwargs)
-        except:
-            pass
+            Name = kwargs.pop("Name", Name)
+            super(Schedule, self).__init__(Name, **kwargs)
+        except Exception as e:
+            pass  # todo: make this more robust
         self.strict = strict
         self.idf = idf
         self.Name = Name
@@ -206,9 +206,12 @@ class Schedule(object):
             # not have a Schedule_Type_Limits_Name field
             return "", "", "", ""
         else:
-            lower_limit, upper_limit, numeric_type, unit_type = self.idf.get_schedule_type_limits_data_by_name(
-                schedule_limit_name
-            )
+            (
+                lower_limit,
+                upper_limit,
+                numeric_type,
+                unit_type,
+            ) = self.idf.get_schedule_type_limits_data_by_name(schedule_limit_name)
 
             self.unit = unit_type
             if self.unit == "unknown":
@@ -273,9 +276,12 @@ class Schedule(object):
             epbunch (EpBunch): The schedule EpBunch object.
         """
 
-        lower_limit, upper_limit, numeric_type, unit_type = self.get_schedule_type_limits_data(
-            epbunch.Name
-        )
+        (
+            lower_limit,
+            upper_limit,
+            numeric_type,
+            unit_type,
+        ) = self.get_schedule_type_limits_data(epbunch.Name)
 
         number_of_day_sch = int((len(epbunch.fieldvalues) - 3) / 2)
 
@@ -424,9 +430,12 @@ class Schedule(object):
         Args:
             epbunch (EpBunch): The schedule epbunch object.
         """
-        lower_limit, upper_limit, numeric_type, unit_type = self.get_schedule_type_limits_data(
-            epbunch.Name
-        )
+        (
+            lower_limit,
+            upper_limit,
+            numeric_type,
+            unit_type,
+        ) = self.get_schedule_type_limits_data(epbunch.Name)
 
         hourly_values = np.arange(8760)
         value = float(epbunch["Hourly_Value"])

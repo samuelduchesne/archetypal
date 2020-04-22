@@ -50,6 +50,9 @@ def test_tabula_notavailable_country(config, scratch_then_cache):
 def test_tabula_building_sheet(config, scratch_then_cache):
     sheet = ar.tabula_building_details_sheet(code_country="Austria")
 
+    # Makes sure result is not empty
+    assert list(sheet["val"])
+
 
 def test_tabula_building_sheet_code_building(config, scratch_then_cache):
     # Test with code_building not None

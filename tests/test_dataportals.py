@@ -13,10 +13,16 @@ def test_tabula_available_country(config, scratch_then_cache):
     data = {"code_country": "FR"}
     cc_res = ar.dataportal.tabula_api_request(data, table="all-country")
 
+    # Makes sure data is not empty
+    assert cc_res["data"]
+
     # Then let's use the user-friendly call. Since it is the second call to the
     # same function, the response should be read from the cache.
     code_country = "FR"
     cc_cache = ar.dataportal.tabula_available_buildings(code_country)
+
+    # Makes sure result is not empty
+    assert list(cc_cache["id"])
 
 
 def test_tabula_api_request_valueerror(config, scratch_then_cache):

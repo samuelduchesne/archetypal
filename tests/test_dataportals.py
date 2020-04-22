@@ -116,10 +116,13 @@ def test_tabula_system_valueerror(config, scratch_then_cache):
 def test_resolve_codecountry(config, scratch_then_cache):
     # Tests with country string length == 3
     res = ar.dataportal._resolve_codecountry("USA")
+    # Makes sure code_country is right
+    assert res == "US"
 
     # Tests with country number (integer)
     res = ar.dataportal._resolve_codecountry(533)
-
+    # Makes sure code_country is right
+    assert res == "AW"
 
 def test_openei_api_request(config, scratch_then_cache):
     data = {"code_country": "FR"}

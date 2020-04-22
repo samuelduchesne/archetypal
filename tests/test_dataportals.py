@@ -31,10 +31,16 @@ def test_tabula_api_request_valueerror(config, scratch_then_cache):
     with pytest.raises(ValueError):
         cc_res = ar.dataportal.tabula_api_request(data, table="wrong_string")
 
+    # Makes sure cc_res not in locals
+    assert "cc_res" not in locals()
+
     # Gives "wrong_string" as country
     data = {"code_country": "wrong_string"}
     with pytest.raises(ValueError):
         cc_res = ar.dataportal.tabula_api_request(data, table="all-country")
+
+    # Makes sure cc_res not in locals
+    assert "cc_res" not in locals()
 
 
 def test_tabula_notavailable_country(config, scratch_then_cache):

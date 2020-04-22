@@ -235,6 +235,9 @@ def test_statcan_error(config, scratch_then_cache):
     response = ar.dataportal.stat_can_request(**data)
     print(response)
 
+    # Makes sure result is None (wrong function input)
+    assert response is None
+
 
 def test_statcan_geo(config, scratch_then_cache):
     data = dict(type="json", lang="E", geos="PR", cpt="00")

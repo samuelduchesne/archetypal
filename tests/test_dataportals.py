@@ -225,6 +225,9 @@ def test_statcan(config, scratch_then_cache):
     response = ar.dataportal.stat_can_request(**data)
     print(response)
 
+    # Makes sure result is not empty
+    assert response
+
 
 def test_statcan_error(config, scratch_then_cache):
     # Tests statcan with error in inputs

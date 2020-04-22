@@ -106,7 +106,7 @@ Users can chose to return a combination of flags
 
     .. code-block:: python
 
-        archetypal convert --window-lib "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
+        archetypal convert --window_lib "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - ``--trnsidf_exe`` is the path of the trnsidf.exe executable. Usually located in the TRNSYS18 folder under
       "Building/trnsIDF/trnsidf.exe".
@@ -114,7 +114,7 @@ Users can chose to return a combination of flags
 
     .. code-block:: python
 
-        archetypal convert --trnsidf-exe "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
+        archetypal convert --trnsidf_exe "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - ``--template`` is the path of the .d18 template file (usually in the same directory as the `trnsidf.exe` executable).
       If nothing is passed, the following path will be used : "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18".
@@ -128,7 +128,7 @@ Users can chose to return a combination of flags
 
     .. code-block:: python
 
-        archetypal convert --log-clear-names "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
+        archetypal convert --log_clear_names "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - ``--window`` specifies the window properties <u_value (W/m²-K)> <shgc (-)> <t_vis (-)> <tolerance (-)> <fframe (-)> <uframe (kJ/m²-K-h)>.
       If nothing is passed, the following values will be used : 2.2 0.65 0.8 0.05 0.15 8.17

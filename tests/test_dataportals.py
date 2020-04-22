@@ -138,6 +138,9 @@ def test_nrel_api_cbr_request_exception(config, scratch_then_cache):
     data = {"code_country": "wrong_string"}
     res = ar.dataportal.nrel_api_cbr_request(data)
 
+    # Makes sure result returns an error "API_KEY_MISSING"
+    assert res["error"]["code"] == "API_KEY_MISSING"
+
 
 def test_tabula_multiple(config, scratch_then_cache):
     country_code = "FR"

@@ -121,6 +121,9 @@ def test_openei_api_request(config, scratch_then_cache):
     data = {"code_country": "FR"}
     res = ar.dataportal.openei_api_request(data)
 
+    # Makes sure result is None (no cache data found)
+    assert res is None
+
 
 def test_nrel_api_cbr_request(config, scratch_then_cache):
     data = {"code_country": "FR"}

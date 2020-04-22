@@ -96,6 +96,11 @@ def test_tabula_building_sheet_valueerror(config, scratch_then_cache):
 def test_tabula_system(config, scratch_then_cache):
     res = ar.dataportal.tabula_system(code_country="FR")
 
+    # Makes sure result is not empty
+    assert list(res["data"])
+
+    # Makes sure code_country is right
+    assert res["data"][0] == "FR"
 
 def test_tabula_system_valueerror(config, scratch_then_cache):
     # Test with wrong code_boundarycond

@@ -1375,8 +1375,12 @@ class TestZoneConditioning:
         """
         from archetypal import ZoneConditioning
 
-        cond = ZoneConditioning(Name=None)
-        assert cond.Name == None
+        cond = ZoneConditioning(Name="A Name")
+        assert cond.Name == "A Name"
+
+        with pytest.raises(TypeError):
+            # Name should be required, so it should raise a TypeError if it is missing
+            cond = ZoneConditioning()
 
     def test_zoneConditioning_from_zone(self, config, zoneConditioningtests):
         """

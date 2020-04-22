@@ -21,36 +21,39 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     def __init__(
         self,
-        CoolingCoeffOfPerf=1,
-        CoolingLimitType="NoLimit",
-        CoolingSetpoint=26,
-        CoolingSchedule=None,
-        EconomizerType="NoEconomizer",
-        HeatRecoveryEfficiencyLatent=0.65,
-        HeatRecoveryEfficiencySensible=0.7,
-        HeatRecoveryType="None",
-        HeatingCoeffOfPerf=1,
-        HeatingLimitType="NoLimit",
+        Name,
+        IsHeatingOn=True,
         HeatingSetpoint=20,
         HeatingSchedule=None,
-        IsCoolingOn=True,
-        IsHeatingOn=True,
-        IsMechVentOn=True,
-        MaxCoolFlow=100,
-        MaxCoolingCapacity=100,
-        MaxHeatFlow=100,
+        HeatingLimitType="NoLimit",
         MaxHeatingCapacity=100,
+        MaxHeatFlow=100,
+        HeatingCoeffOfPerf=1,
+        IsCoolingOn=True,
+        CoolingSetpoint=26,
+        CoolingSchedule=None,
+        CoolingLimitType="NoLimit",
+        MaxCoolingCapacity=100,
+        MaxCoolFlow=100,
+        CoolingCoeffOfPerf=1,
+        IsMechVentOn=True,
+        EconomizerType="NoEconomizer",
+        MechVentSchedule=None,
         MinFreshAirPerArea=0,
         MinFreshAirPerPerson=0.00944,
-        MechVentSchedule=None,
-        **kwargs,
+        HeatRecoveryType="None",
+        HeatRecoveryEfficiencyLatent=0.65,
+        HeatRecoveryEfficiencySensible=0.7,
+        **kwargs
     ):
         """Initialize a new :class:`ZoneConditioning` object.
 
         Args:
+            Name (str): Name of the object. Must be Unique.
             CoolingCoeffOfPerf (float): Performance factor of the cooling system.
                 This value is used to calculate the total cooling energy use by
-                dividing the cooling load by the COP. The COP of the zone shared with all zones
+                dividing the cooling load by the COP. The COP of the zone shared with
+                all zones
                 and refers to the COP of the entire building.
             CoolingLimitType (str): The input must be either LimitFlowRate,
                 LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
@@ -152,7 +155,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             **kwargs: Other arguments passed to the base class
                 :class:`archetypal.template.UmiBase`
         """
-        super(ZoneConditioning, self).__init__(**kwargs)
+        super(ZoneConditioning, self).__init__(Name, **kwargs)
         self.MechVentSchedule = MechVentSchedule
         self.HeatingSchedule = HeatingSchedule
         self.CoolingSchedule = CoolingSchedule
@@ -487,9 +490,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # Set Thermostat set points
         # Heating and Cooling set points and schedules
-        self.HeatingSetpoint, self.HeatingSchedule, self.CoolingSetpoint, self.CoolingSchedule = self._get_setpoint_and_scheds(
-            zone
-        )
+        (
+            self.HeatingSetpoint,
+            self.HeatingSchedule,
+            self.CoolingSetpoint,
+            self.CoolingSchedule,
+        ) = self._get_setpoint_and_scheds(zone)
 
         # If HeatingSetpoint == nan, means there is no heat or cold input,
         # therefore system is off.
@@ -569,9 +575,10 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             ):
                 # Do HeatExchanger:AirToAir:SensibleAndLatent
 
-                HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible = self._get_recoverty_effectiveness(
-                    object, zone
-                )
+                (
+                    HeatRecoveryEfficiencyLatent,
+                    HeatRecoveryEfficiencySensible,
+                ) = self._get_recoverty_effectiveness(object, zone)
                 HeatRecoveryType = "Enthalpy"
 
                 comment = (

@@ -109,6 +109,9 @@ def test_tabula_system_valueerror(config, scratch_then_cache):
             code_country="FR", code_boundarycond="wrong_string"
         )
 
+    # Makes sure res not in locals
+    assert "res" not in locals()
+
 
 def test_resolve_codecountry(config, scratch_then_cache):
     # Tests with country string length == 3

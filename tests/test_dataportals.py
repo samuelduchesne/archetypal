@@ -12,7 +12,6 @@ def test_tabula_available_country(config, scratch_then_cache):
     # First, let's try the API call
     data = {"code_country": "FR"}
     cc_res = ar.dataportal.tabula_api_request(data, table="all-country")
-
     # Makes sure data is not empty
     assert cc_res["data"]
 
@@ -20,7 +19,6 @@ def test_tabula_available_country(config, scratch_then_cache):
     # same function, the response should be read from the cache.
     code_country = "FR"
     cc_cache = ar.dataportal.tabula_available_buildings(code_country)
-
     # Makes sure result is not empty
     assert list(cc_cache["id"])
 
@@ -30,7 +28,6 @@ def test_tabula_api_request_valueerror(config, scratch_then_cache):
     data = {"code_country": "FR"}
     with pytest.raises(ValueError):
         cc_res = ar.dataportal.tabula_api_request(data, table="wrong_string")
-
     # Makes sure cc_res not in locals
     assert "cc_res" not in locals()
 
@@ -38,7 +35,6 @@ def test_tabula_api_request_valueerror(config, scratch_then_cache):
     data = {"code_country": "wrong_string"}
     with pytest.raises(ValueError):
         cc_res = ar.dataportal.tabula_api_request(data, table="all-country")
-
     # Makes sure cc_res not in locals
     assert "cc_res" not in locals()
 
@@ -62,9 +58,9 @@ def test_tabula_building_sheet_code_building(config, scratch_then_cache):
 
     # Makes sure result is not empty
     assert list(sheet["val"])
-
     # Make sure code_building is right
     assert sheet["val"][0] == "AT.MT.AB.02.Gen.ReEx.001.001"
+
 
 def test_tabula_building_sheet_valueerror(config, scratch_then_cache):
     # Test with wrong code_building
@@ -72,7 +68,6 @@ def test_tabula_building_sheet_valueerror(config, scratch_then_cache):
         sheet = ar.tabula_building_details_sheet(
             code_building="wrong_string", code_country="Austria"
         )
-
     # Makes sure sheet not in locals
     assert "sheet" not in locals()
 
@@ -81,14 +76,12 @@ def test_tabula_building_sheet_valueerror(config, scratch_then_cache):
         sheet = ar.tabula_building_details_sheet(
             code_buildingsizeclass="wrong_string", code_country="Austria"
         )
-
     # Makes sure sheet not in locals
     assert "sheet" not in locals()
 
     # Test with wrong code_country
     with pytest.raises(ValueError):
         sheet = ar.tabula_building_details_sheet(code_country="wrong_string",)
-
     # Makes sure sheet not in locals
     assert "sheet" not in locals()
 
@@ -98,9 +91,9 @@ def test_tabula_system(config, scratch_then_cache):
 
     # Makes sure result is not empty
     assert list(res["data"])
-
     # Makes sure code_country is right
     assert res["data"][0] == "FR"
+
 
 def test_tabula_system_valueerror(config, scratch_then_cache):
     # Test with wrong code_boundarycond
@@ -108,7 +101,6 @@ def test_tabula_system_valueerror(config, scratch_then_cache):
         res = ar.dataportal.tabula_system(
             code_country="FR", code_boundarycond="wrong_string"
         )
-
     # Makes sure res not in locals
     assert "res" not in locals()
 
@@ -123,6 +115,7 @@ def test_resolve_codecountry(config, scratch_then_cache):
     res = ar.dataportal._resolve_codecountry(533)
     # Makes sure code_country is right
     assert res == "AW"
+
 
 def test_openei_api_request(config, scratch_then_cache):
     data = {"code_country": "FR"}

@@ -60,6 +60,11 @@ def test_tabula_building_sheet_code_building(config, scratch_then_cache):
         code_building="AT.MT.AB.02.Gen.ReEx.001.001", code_country="Austria"
     )
 
+    # Makes sure result is not empty
+    assert list(sheet["val"])
+
+    # Make sure code_building is right
+    assert sheet["val"][0] == "AT.MT.AB.02.Gen.ReEx.001.001"
 
 def test_tabula_building_sheet_valueerror(config, scratch_then_cache):
     # Test with wrong code_building

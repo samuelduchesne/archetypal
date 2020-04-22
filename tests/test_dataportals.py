@@ -73,15 +73,24 @@ def test_tabula_building_sheet_valueerror(config, scratch_then_cache):
             code_building="wrong_string", code_country="Austria"
         )
 
+    # Makes sure sheet not in locals
+    assert "sheet" not in locals()
+
     # Test with wrong code_buildingsizeclass
     with pytest.raises(ValueError):
         sheet = ar.tabula_building_details_sheet(
             code_buildingsizeclass="wrong_string", code_country="Austria"
         )
 
+    # Makes sure sheet not in locals
+    assert "sheet" not in locals()
+
     # Test with wrong code_country
     with pytest.raises(ValueError):
         sheet = ar.tabula_building_details_sheet(code_country="wrong_string",)
+
+    # Makes sure sheet not in locals
+    assert "sheet" not in locals()
 
 
 def test_tabula_system(config, scratch_then_cache):

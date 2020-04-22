@@ -253,3 +253,6 @@ def test_statcan_geo_error(config, scratch_then_cache):
     data = dict(type="json", lang="E", geos="wrong_string", cpt="00")
     response = ar.dataportal.stat_can_geo_request(**data)
     print(response)
+
+    # Makes sure result is not empty
+    assert response

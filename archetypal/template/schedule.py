@@ -482,9 +482,26 @@ class YearSchedule(UmiSchedule):
         for part in self.Parts:
             start = "{}-{}-{}".format(self.year, part.FromMonth, part.FromDay)
             end = "{}-{}-{}".format(self.year, part.ToMonth, part.ToDay)
-            one_week = np.array(
-                [item for sublist in part.Schedule.Days for item in sublist.all_values]
-            )
+            try:  # Get week values from all_values of Days that are DaySchedule object
+                one_week = np.array(
+                    [
+                        item
+                        for sublist in part.Schedule.Days
+                        for item in sublist.all_values
+                    ]
+                )
+            except:  # Days are not DaySchedule object
+                try:  # Days is a list of 7 dicts (7 days in a week)
+                    # Dicts are the id of Days ({"$ref": id})
+                    day_values = [self.get_ref(day) for day in part.Schedule.Days]
+                    values = []
+                    for i in range(0, 7):  # There is 7 days a week
+                        values = values + day_values[i].all_values.tolist()
+                    one_week = np.array(values)
+                except:
+                    msg = """Days are not a DaySchedule or dictionaries in the form "{$ref: id}" """
+                    raise NotImplementedError(msg)
+
             all_weeks = np.resize(one_week, len(series.loc[start:end]))
             series.loc[start:end] = all_weeks
         return series.values

@@ -146,10 +146,36 @@ class Schedule(object):
 
     @property
     def all_values(self):
+        from archetypal.template import UmiBase
+
         """returns the values array"""
         if self.values is None:
-            epbunch = self.idf.get_schedule_epbunch(self.Name)
-            self.values = self.get_schedule_values(epbunch)
+            try:  # Search values in epbunch (from idf object)
+                epbunch = self.idf.get_schedule_epbunch(self.Name)
+                self.values = self.get_schedule_values(epbunch)
+            except:  # If no epbunch found
+                if self.Category == "Week":  # If WeekSchedule
+                    try:  # Get values from self.Days
+                        # self.Days is a list of 7 dicts (7 days in a week)
+                        # Dicts are the id of Days ({"$ref": id})
+                        day_values = [self.get_ref(day) for day in self.Days]
+                        values = []
+                        for i in range(0, 7):  # There is 7 days a week
+                            values = values + day_values[i].all_values.tolist()
+                        self.values = values
+                    except:  # self.Days is not a list of 7 simple {"$ref":id}
+                        # self.Days is a list of 7 DaySchedule objects
+                        values = []
+                        for i in range(0, 7):  # There is 7 days a week
+                            values = values + self.Days[i].all_values.tolist()
+                        self.values = values
+                else:
+                    msg = """Category of schedule {} is {}. Whereas Category should 
+                        be either "Year" or "Week" or "Day" """.format(
+                        self.Name, self.Category
+                    )
+                    raise NotImplementedError(msg)
+
         return self.values
 
     @property

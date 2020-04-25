@@ -144,8 +144,10 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             )
         elif isinstance(quantity, dict):
             new_values = np.average(
-                [self.all_values * quantity[self.Name], other.all_values * quantity[
-                    other.Name]],
+                [
+                    self.all_values * quantity[self.Name],
+                    other.all_values * quantity[other.Name],
+                ],
                 axis=0,
                 weights=weights,
             )

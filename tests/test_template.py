@@ -200,6 +200,54 @@ class TestWeekSchedule:
         ]
         weekSched_to_json = weekSched_json[0].to_json()
 
+    def test_weekSchedule(self, config):
+        """
+        Args:
+            config:
+        """
+        import json
+        from archetypal import WeekSchedule, load_json_objects
+
+        clear_cache()
+        sch_d_on = ar.DaySchedule.from_values(
+            [1] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOn"
+        )
+        sch_d_off = ar.DaySchedule.from_values(
+            [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff"
+        )
+
+        days = [
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+        ]
+        a = ar.WeekSchedule(
+            days=days, Category="Week", schTypeLimitsName="Fractional", Name="OnOff_1"
+        )
+
+        dict_w_on = {
+            "Category": "Week",
+            "Days": [
+                {"$ref": sch_d_on.id},
+                {"$ref": sch_d_off.id},
+                {"$ref": sch_d_on.id},
+                {"$ref": sch_d_off.id},
+                {"$ref": sch_d_on.id},
+                {"$ref": sch_d_off.id},
+                {"$ref": sch_d_on.id},
+            ],
+            "Type": "Fraction",
+            "Name": "OnOff_2",
+        }
+        b = ar.WeekSchedule.from_json(**dict_w_on)
+
+        assert a.all_values == b.all_values
+        assert a.id != b.id
+
 
 class TestYearSchedule:
     """Series of tests for the :class:`YearSchedule` class"""
@@ -223,6 +271,53 @@ class TestYearSchedule:
             YearSchedule.from_json(**store) for store in datastore["YearSchedules"]
         ]
         yearSched_to_json = yearSched_json[0].to_json()
+
+    def test_yearSchedule(self, config):
+        """
+        Args:
+            config:
+        """
+        import json
+        from archetypal import YearSchedule, load_json_objects
+
+        clear_cache()
+        sch_d_on = ar.DaySchedule.from_values(
+            [1] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOn"
+        )
+        sch_d_off = ar.DaySchedule.from_values(
+            [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff"
+        )
+
+        days = [
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+        ]
+        sch_w_on_off = ar.WeekSchedule(
+            days=days, Category="Week", schTypeLimitsName="Fractional", Name="OnOff"
+        )
+
+        dict_year = {
+            "Category": "Year",
+            "Parts": [
+                {
+                    "FromDay": 1,
+                    "FromMonth": 1,
+                    "ToDay": 31,
+                    "ToMonth": 12,
+                    "Schedule": {"$ref": sch_w_on_off.id},
+                }
+            ],
+            "Type": "Fraction",
+            "Name": "OnOff",
+        }
+        a = ar.YearSchedule.from_json(**dict_year)
+
+        np.testing.assert_equal(a.all_values, np.resize(sch_w_on_off.all_values, 8760))
 
 
 class TestWindowType:

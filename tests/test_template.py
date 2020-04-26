@@ -201,14 +201,13 @@ class TestWeekSchedule:
         weekSched_to_json = weekSched_json[0].to_json()
 
     def test_weekSchedule(self, config):
-        """
-        Args:
-            config:
-        """
+        """ Creates WeekSchedule from DaySchedule"""
         import json
         from archetypal import WeekSchedule, load_json_objects
 
         clear_cache()
+
+        # Creates 2 DaySchedules : 1 always ON and 1 always OFF
         sch_d_on = ar.DaySchedule.from_values(
             [1] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOn"
         )
@@ -216,6 +215,7 @@ class TestWeekSchedule:
             [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff"
         )
 
+        # List of 7 dict with id of DaySchedule, representing the 7 days of the week
         days = [
             {"$ref": sch_d_on.id},
             {"$ref": sch_d_off.id},
@@ -225,10 +225,12 @@ class TestWeekSchedule:
             {"$ref": sch_d_off.id},
             {"$ref": sch_d_on.id},
         ]
+        # Creates WeekSchedule from list of DaySchedule
         a = ar.WeekSchedule(
             days=days, Category="Week", schTypeLimitsName="Fractional", Name="OnOff_1"
         )
 
+        # Dict of a WeekSchedule (like it would be written in json file)
         dict_w_on = {
             "Category": "Week",
             "Days": [
@@ -243,8 +245,11 @@ class TestWeekSchedule:
             "Type": "Fraction",
             "Name": "OnOff_2",
         }
+        # Creates WeekSchedule from dict (from json)
         b = ar.WeekSchedule.from_json(**dict_w_on)
 
+        # Makes sure WeekSchedules created with 2 methods have the same values
+        # And different ids
         assert a.all_values == b.all_values
         assert a.id != b.id
 
@@ -273,14 +278,14 @@ class TestYearSchedule:
         yearSched_to_json = yearSched_json[0].to_json()
 
     def test_yearSchedule(self, config):
-        """
-        Args:
-            config:
-        """
+        """ Creates YearSchedule from dict (json)"""
+
         import json
         from archetypal import YearSchedule, load_json_objects
 
         clear_cache()
+
+        # Creates 2 DaySchedules : 1 always ON and 1 always OFF
         sch_d_on = ar.DaySchedule.from_values(
             [1] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOn"
         )
@@ -288,6 +293,7 @@ class TestYearSchedule:
             [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff"
         )
 
+        # List of 7 dict with id of DaySchedule, representing the 7 days of the week
         days = [
             {"$ref": sch_d_on.id},
             {"$ref": sch_d_off.id},
@@ -297,10 +303,12 @@ class TestYearSchedule:
             {"$ref": sch_d_off.id},
             {"$ref": sch_d_on.id},
         ]
+        # Creates WeekSchedule from list of DaySchedule
         sch_w_on_off = ar.WeekSchedule(
             days=days, Category="Week", schTypeLimitsName="Fractional", Name="OnOff"
         )
 
+        # Dict of a YearSchedule (like it would be written in json file)
         dict_year = {
             "Category": "Year",
             "Parts": [
@@ -315,8 +323,10 @@ class TestYearSchedule:
             "Type": "Fraction",
             "Name": "OnOff",
         }
+        # Creates YearSchedule from dict (from json)
         a = ar.YearSchedule.from_json(**dict_year)
 
+        # Makes sure YearSchedule has the same values as concatenate WeekSchedule
         np.testing.assert_equal(a.all_values, np.resize(sch_w_on_off.all_values, 8760))
 
 

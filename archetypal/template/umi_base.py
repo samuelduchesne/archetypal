@@ -10,11 +10,13 @@ import logging as lg
 import math
 import random
 import re
+import archetypal
 
 import numpy as np
 
-from archetypal import log
+from archetypal import log, settings
 from archetypal.utils import lcm
+from archetypal.idfclass import _create_idf_object
 
 
 class Unique(type):
@@ -107,6 +109,8 @@ class UmiBase(object):
         """
         super(UmiBase, self).__init__()
         self.Name = Name
+        if not isinstance(idf, archetypal.IDF):
+            idf = _create_idf_object(settings.ep_version)
         self.idf = idf
         self.sql = sql
         self.Category = Category

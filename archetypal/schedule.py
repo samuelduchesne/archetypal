@@ -18,6 +18,7 @@ from path import Path
 
 import archetypal
 from archetypal import log, settings
+from archetypal.idfclass import _create_idf_object
 
 
 class Schedule(object):
@@ -58,6 +59,8 @@ class Schedule(object):
         except:
             pass
         self.strict = strict
+        if not isinstance(idf, archetypal.IDF):
+            idf = _create_idf_object(settings.ep_version)
         self.idf = idf
         self.Name = Name
         self.startDayOfTheWeek = self.get_sdow(start_day_of_the_week)

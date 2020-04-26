@@ -2503,3 +2503,370 @@ class TestUniqueName(object):
 
         assert name1 != name2
         print([name1, name2])
+
+
+def test_create_umi_template(config):
+    """ Creates Umi template from scratch """
+
+    # region Defines materials
+
+    # Opaque materials
+    concrete = ar.OpaqueMaterial(Conductivity=0.5, SpecificHeat=800, Density=1500)
+    insulation = ar.OpaqueMaterial(Conductivity=0.04, SpecificHeat=1000, Density=30)
+    brick = ar.OpaqueMaterial(Conductivity=1, SpecificHeat=900, Density=1900)
+    plywood = ar.OpaqueMaterial(Conductivity=0.13, SpecificHeat=800, Density=540)
+    OpaqueMaterials = [concrete, insulation, brick, plywood]
+
+    # Glazing materials
+    glass = ar.GlazingMaterial(
+        Density=2500,
+        Conductivity=1,
+        SolarTransmittance=0.7,
+        SolarReflectanceFront=0.5,
+        SolarReflectanceBack=0.5,
+        VisibleTransmittance=0.7,
+        VisibleReflectanceFront=0.5,
+        VisibleReflectanceBack=0.5,
+        IRTransmittance=0.7,
+        IREmissivityFront=0.5,
+        IREmissivityBack=0.5,
+    )
+    GlazingMaterials = [glass]
+
+    # Gas materials
+    air = ar.GasMaterial(Conductivity=0.02, Density=1.24)
+    GasMaterials = [air]
+    # endregion
+
+
+    # region Defines constructions
+
+    # Opaque constructions
+    wall_int = ar.OpaqueConstruction(
+        Layers=[plywood],
+        Surface_Type="Partition",
+        Outside_Boundary_Condition="Zone",
+        IsAdiabatic=True,
+    )
+    wall_ext = ar.OpaqueConstruction(
+        Layers=[concrete, insulation, brick],
+        Surface_Type="Facade",
+        Outside_Boundary_Condition="Outdoors",
+    )
+    floor = ar.OpaqueConstruction(
+        Layers=[concrete, plywood],
+        Surface_Type="Ground",
+        Outside_Boundary_Condition="Zone",
+    )
+    roof = ar.OpaqueConstruction(
+        Layers=[plywood, insulation, brick],
+        Surface_Type="Roof",
+        Outside_Boundary_Condition="Outdoors",
+    )
+    OpaqueConstructions = [wall_int, wall_ext, floor, roof]
+
+    # Window construction
+    window = ar.WindowConstruction(Layers=[glass, air, glass])
+    WindowConstructions = [window]
+
+    # Structure definition
+    mass_ratio = ar.MassRatio(Material=plywood, NormalRatio="NormalRatio")
+    struct_definition = ar.StructureDefinition(MassRatios=[mass_ratio])
+    StructureDefinitions = [struct_definition]
+    # endregion
+
+    # region Defines schedules
+
+    # Day schedules
+    # Always on
+    sch_d_on = ar.DaySchedule.from_values(
+        [1] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOn"
+    )
+    # Always off
+    sch_d_off = ar.DaySchedule.from_values(
+        [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff"
+    )
+    # DHW
+    sch_d_dhw = ar.DaySchedule.from_values(
+        [0.3] * 24, Category="Day", schTypeLimitsName="Fractional", Name="DHW"
+    )
+    # Internal gains
+    sch_d_gains = ar.DaySchedule.from_values(
+        [0] * 6 + [0.5, 0.6, 0.7, 0.8, 0.9, 1] + [0.7] * 6 + [0.4] * 6,
+        Category="Day",
+        schTypeLimitsName="Fractional",
+        Name="Gains",
+    )
+    DaySchedules = [sch_d_on, sch_d_dhw, sch_d_gains, sch_d_off]
+
+    # Week schedules
+    # Always on
+    sch_w_on = ar.WeekSchedule(
+        days=[
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+        ],
+        Category="Week",
+        schTypeLimitsName="Fractional",
+        Name="AlwaysOn",
+    )
+    # Always off
+    sch_w_off = ar.WeekSchedule(
+        days=[
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+        ],
+        Category="Week",
+        schTypeLimitsName="Fractional",
+        Name="AlwaysOff",
+    )
+    # DHW
+    sch_w_dhw = ar.WeekSchedule(
+        days=[
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+        ],
+        Category="Week",
+        schTypeLimitsName="Fractional",
+        Name="DHW",
+    )
+    # Internal gains
+    sch_w_gains = ar.WeekSchedule(
+        days=[
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+        ],
+        Category="Week",
+        schTypeLimitsName="Fractional",
+        Name="Gains",
+    )
+    WeekSchedules = [sch_w_on, sch_w_off, sch_w_dhw, sch_w_gains]
+
+    # Year schedules
+    # Always on
+    dict_on = {
+        "Category": "Year",
+        "Parts": [
+            {
+                "FromDay": 1,
+                "FromMonth": 1,
+                "ToDay": 31,
+                "ToMonth": 12,
+                "Schedule": {"$ref": sch_w_on.id},
+            }
+        ],
+        "Type": "Fraction",
+        "Name": "AlwaysOn",
+    }
+    sch_y_on = ar.YearSchedule.from_json(**dict_on)
+    # Always off
+    dict_off = {
+        "Category": "Year",
+        "Parts": [
+            {
+                "FromDay": 1,
+                "FromMonth": 1,
+                "ToDay": 31,
+                "ToMonth": 12,
+                "Schedule": {"$ref": sch_w_off.id},
+            }
+        ],
+        "Type": "Fraction",
+        "Name": "AlwaysOff",
+    }
+    sch_y_off = ar.YearSchedule.from_json(**dict_off)
+    # DHW
+    dict_dhw = {
+        "Category": "Year",
+        "Parts": [
+            {
+                "FromDay": 1,
+                "FromMonth": 1,
+                "ToDay": 31,
+                "ToMonth": 12,
+                "Schedule": {"$ref": sch_w_dhw.id},
+            }
+        ],
+        "Type": "Fraction",
+        "Name": "DHW",
+    }
+    sch_y_dhw = ar.YearSchedule.from_json(**dict_dhw)
+    # Internal gains
+    dict_gains = {
+        "Category": "Year",
+        "Parts": [
+            {
+                "FromDay": 1,
+                "FromMonth": 1,
+                "ToDay": 31,
+                "ToMonth": 12,
+                "Schedule": {"$ref": sch_w_gains.id},
+            }
+        ],
+        "Type": "Fraction",
+        "Name": "Gains",
+    }
+    sch_y_gains = ar.YearSchedule.from_json(**dict_gains)
+    YearSchedules = [sch_y_on, sch_y_off, sch_y_dhw, sch_y_gains]
+    # endregion
+
+    # region Defines Window settings
+
+    window_setting = ar.WindowSetting(
+        Construction=window,
+        AfnWindowAvailability=sch_y_off,
+        ShadingSystemAvailabilitySchedule=sch_y_off,
+        ZoneMixingAvailabilitySchedule=sch_y_off,
+    )
+    WindowSettings = [window_setting]
+    # endregion
+
+    # region Defines DHW settings
+
+    dhw_setting = ar.DomesticHotWaterSetting(
+        IsOn=True,
+        WaterSchedule=sch_y_dhw,
+        FlowRatePerFloorArea=0.03,
+        WaterSupplyTemperature=65,
+        WaterTemperatureInlet=10,
+    )
+    DomesticHotWaterSettings = [dhw_setting]
+    # endregion
+
+    # region Defines ventilation settings
+
+    vent_setting = ar.VentilationSetting(
+        NatVentSchedule=sch_y_off, ScheduledVentilationSchedule=sch_y_off
+    )
+    VentilationSettings = [vent_setting]
+    # endregion
+
+    # region Defines zone conditioning setttings
+
+    zone_conditioning = ar.ZoneConditioning(
+        CoolingSchedule=sch_y_on, HeatingSchedule=sch_y_on, MechVentSchedule=sch_y_off
+    )
+    ZoneConditionings = [zone_conditioning]
+    # endregion
+
+    # region Defines zone construction sets
+
+    # Perimeter zone
+    zone_constr_set_perim = ar.ZoneConstructionSet(
+        Zone_Names=None,
+        Slab=floor,
+        IsSlabAdiabatic=False,
+        Roof=roof,
+        IsRoofAdiabatic=False,
+        Partition=wall_int,
+        IsPartitionAdiabatic=False,
+        Ground=floor,
+        IsGroundAdiabatic=False,
+        Facade=wall_ext,
+        IsFacadeAdiabatic=False,
+    )
+    # Core zone
+    zone_constr_set_core = ar.ZoneConstructionSet(
+        Zone_Names=None,
+        Slab=floor,
+        IsSlabAdiabatic=False,
+        Roof=roof,
+        IsRoofAdiabatic=False,
+        Partition=wall_int,
+        IsPartitionAdiabatic=True,
+        Ground=floor,
+        IsGroundAdiabatic=False,
+        Facade=wall_ext,
+        IsFacadeAdiabatic=False,
+    )
+    ZoneConstructionSets = [zone_constr_set_perim, zone_constr_set_core]
+    # endregion
+
+    # region Defines zone loads
+
+    zone_load = ar.ZoneLoad(
+        EquipmentAvailabilitySchedule=sch_y_gains,
+        LightsAvailabilitySchedule=sch_y_gains,
+        OccupancySchedule=sch_y_gains,
+    )
+    ZoneLoads = [zone_load]
+    # endregion
+
+    # region Defines zones
+
+    # Perimeter zone
+    perim = ar.Zone(
+        Conditioning=zone_conditioning,
+        Constructions=zone_constr_set_perim,
+        DomesticHotWater=dhw_setting,
+        Loads=zone_load,
+        Ventilation=vent_setting,
+        Windows=window_setting,
+        InternalMassConstruction=wall_int,
+    )
+    # Core zone
+    core = ar.Zone(
+        Conditioning=zone_conditioning,
+        Constructions=zone_constr_set_core,
+        DomesticHotWater=dhw_setting,
+        Loads=zone_load,
+        Ventilation=vent_setting,
+        Windows=window_setting,
+        InternalMassConstruction=wall_int,
+    )
+    Zones = [perim, core]
+    # endregion
+
+    # region Defines building template
+
+    building_template = ar.BuildingTemplate(
+        Core=core, Perimeter=perim, Structure=struct_definition, Windows=window_setting,
+    )
+    BuildingTemplates = [building_template]
+    # endregion
+
+    # region Creates json file (Umi template)
+
+    umi_template = ar.UmiTemplate(
+        name="unnamed",
+        BuildingTemplates=BuildingTemplates,
+        GasMaterials=GasMaterials,
+        GlazingMaterials=GlazingMaterials,
+        OpaqueConstructions=OpaqueConstructions,
+        OpaqueMaterials=OpaqueMaterials,
+        WindowConstructions=WindowConstructions,
+        StructureDefinitions=StructureDefinitions,
+        DaySchedules=DaySchedules,
+        WeekSchedules=WeekSchedules,
+        YearSchedules=YearSchedules,
+        DomesticHotWaterSettings=DomesticHotWaterSettings,
+        VentilationSettings=VentilationSettings,
+        WindowSettings=WindowSettings,
+        ZoneConditionings=ZoneConditionings,
+        ZoneConstructionSets=ZoneConstructionSets,
+        ZoneLoads=ZoneLoads,
+        Zones=Zones,
+    )
+
+    umi_template.to_json()
+    # endregion

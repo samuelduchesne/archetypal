@@ -57,7 +57,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         self.AssemblyEnergy = AssemblyEnergy
         self.AssemblyCost = AssemblyCost
         self.AssemblyCarbon = AssemblyCarbon
-        self.Layers = None
+        self.Layers = kwargs.get("Layers", None)
 
     def __hash__(self):
         return hash((self.__class__.__name__, self.Name, self.DataSource))

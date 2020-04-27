@@ -712,6 +712,55 @@ required inputs for each object.
         OccupancySchedule=sch_y_gains)
     # List of ZoneLoad objects (needed for Umi template creation)
     ZoneLoads = [zone_load]
+
+10. Defining zones
+
+  Creating Umi template objects to define zones
+
+  Here are all the parameters and their default values for an
+  Zone object (see Zone_ doc for more information)
+
+  .. code-block:: python
+
+    def __init__(
+        Conditioning=None,
+        Constructions=None,
+        DomesticHotWater=None,
+        Loads=None,
+        Ventilation=None,
+        Windows=None,
+        InternalMassConstruction=None,
+        InternalMassExposedPerFloorArea=1.05,
+        DaylightMeshResolution=1,
+        DaylightWorkplaneHeight=0.8,
+        **kwargs)
+
+  Example of Zone objects:
+
+  .. code-block:: python
+
+    # Zones using ZoneConditioning, ZoneConstructionSet, DomesticWaterSetting,
+    # ZoneLoad, VentilationSetting, WindowSetting and OpaqueConstruction objects
+    # Perimeter zone
+    perim = ar.Zone(
+        Conditioning=zone_conditioning,
+        Constructions=zone_constr_set_perim,
+        DomesticHotWater=dhw_setting,
+        Loads=zone_load,
+        Ventilation=vent_setting,
+        Windows=window_setting,
+        InternalMassConstruction=wall_int)
+    # Core zone
+    core = ar.Zone(
+        Conditioning=zone_conditioning,
+        Constructions=zone_constr_set_core,
+        DomesticHotWater=dhw_setting,
+        Loads=zone_load,
+        Ventilation=vent_setting,
+        Windows=window_setting,
+        InternalMassConstruction=wall_int)
+    # List of Zone objects (needed for Umi template creation)
+    Zones = [perim, core]
 .. _OpaqueMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueMaterial.html
 .. _GlazingMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GlazingMaterial.html
 .. _GasMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GasMaterial.html
@@ -728,3 +777,4 @@ required inputs for each object.
 .. _ZoneConditioning: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.ZoneConditioning.html
 .. _ZoneConstructionSet: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.ZoneConstructionSet.html
 .. _ZoneLoad: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.ZoneLoad.html
+.. _Zone: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.Zone.html

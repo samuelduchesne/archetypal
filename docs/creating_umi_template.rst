@@ -677,6 +677,41 @@ required inputs for each object.
         Facade=wall_ext)
     # List of ZoneConstructionSet objects (needed for Umi template creation)
     ZoneConstructionSets = [zone_constr_set_perim, zone_constr_set_core]
+
+9. Defining zone loads
+
+  Creating Umi template objects to define zone loads
+
+  Here are all the parameters and their default values for an
+  ZoneLoad object (see ZoneLoad_ doc for more information)
+
+  .. code-block:: python
+
+    def __init__(
+        DimmingType="Continuous",
+        EquipmentAvailabilitySchedule=None,
+        EquipmentPowerDensity=12,
+        IlluminanceTarget=500,
+        LightingPowerDensity=12,
+        LightsAvailabilitySchedule=None,
+        OccupancySchedule=None,
+        IsEquipmentOn=True,
+        IsLightingOn=True,
+        IsPeopleOn=True,
+        PeopleDensity=0.2,
+        **kwargs)
+
+  Example of ZoneLoad object:
+
+  .. code-block:: python
+
+    # ZoneLoad using YearSchedule objects
+    zone_load = ar.ZoneLoad(
+        EquipmentAvailabilitySchedule=sch_y_gains,
+        LightsAvailabilitySchedule=sch_y_gains,
+        OccupancySchedule=sch_y_gains)
+    # List of ZoneLoad objects (needed for Umi template creation)
+    ZoneLoads = [zone_load]
 .. _OpaqueMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueMaterial.html
 .. _GlazingMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GlazingMaterial.html
 .. _GasMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GasMaterial.html
@@ -692,3 +727,4 @@ required inputs for each object.
 .. _VentilationSetting: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.VentilationSetting.html
 .. _ZoneConditioning: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.ZoneConditioning.html
 .. _ZoneConstructionSet: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.ZoneConstructionSet.html
+.. _ZoneLoad: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.ZoneLoad.html

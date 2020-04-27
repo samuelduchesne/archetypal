@@ -761,6 +761,35 @@ required inputs for each object.
         InternalMassConstruction=wall_int)
     # List of Zone objects (needed for Umi template creation)
     Zones = [perim, core]
+
+11. Defining building template
+
+  Creating Umi template objects to define building template
+
+  Here are all the parameters and their default values for an
+  BuildingTemplate object (see BuildingTemplate_ doc for more information)
+
+  .. code-block:: python
+
+    def __init__(
+        Core=None,
+        Perimeter=None,
+        Structure=None,
+        Windows=None,
+        Lifespan=60,
+        PartitionRatio=0.35,
+        DefaultWindowToWallRatio=0.4,
+        **kwargs)
+
+  Example of BuildingTemplate object:
+
+  .. code-block:: python
+
+    # BuildingTemplate using Zone, StructureDefinition and WindowSetting objects
+    building_template = ar.BuildingTemplate(
+        Core=core, Perimeter=perim, Structure=struct_definition, Windows=window_setting)
+    # List of BuildingTemplate objects (needed for Umi template creation)
+    BuildingTemplates = [building_template]
 .. _OpaqueMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueMaterial.html
 .. _GlazingMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GlazingMaterial.html
 .. _GasMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GasMaterial.html
@@ -778,3 +807,4 @@ required inputs for each object.
 .. _ZoneConstructionSet: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.ZoneConstructionSet.html
 .. _ZoneLoad: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.ZoneLoad.html
 .. _Zone: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.Zone.html
+.. _BuildingTemplate: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.BuildingTemplate.html

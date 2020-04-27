@@ -80,17 +80,17 @@ examples will be shown for each object.
         .. code-block:: python
 
           glass = ar.GlazingMaterial(
-          Density=2500,
-          Conductivity=1,
-          SolarTransmittance=0.7,
-          SolarReflectanceFront=0.5,
-          SolarReflectanceBack=0.5,
-          VisibleTransmittance=0.7,
-          VisibleReflectanceFront=0.5,
-          VisibleReflectanceBack=0.5,
-          IRTransmittance=0.7,
-          IREmissivityFront=0.5,
-          IREmissivityBack=0.5)
+            Density=2500,
+            Conductivity=1,
+            SolarTransmittance=0.7,
+            SolarReflectanceFront=0.5,
+            SolarReflectanceBack=0.5,
+            VisibleTransmittance=0.7,
+            VisibleReflectanceFront=0.5,
+            VisibleReflectanceBack=0.5,
+            IRTransmittance=0.7,
+            IREmissivityFront=0.5,
+            IREmissivityBack=0.5)
           # List of GlazingMaterial objects (needed for Umi template creation)
           GlazingMaterials = [glass]
 
@@ -146,25 +146,25 @@ examples will be shown for each object.
 
           # OpaqueConstruction using OpaqueMaterial objects
           wall_int = ar.OpaqueConstruction(
-          Layers=[plywood],
-          Surface_Type="Partition",
-          Outside_Boundary_Condition="Zone",
-          IsAdiabatic=True)
+            Layers=[plywood],
+            Surface_Type="Partition",
+            Outside_Boundary_Condition="Zone",
+            IsAdiabatic=True)
 
           wall_ext = ar.OpaqueConstruction(
-          Layers=[concrete, insulation, brick],
-          Surface_Type="Facade",
-          Outside_Boundary_Condition="Outdoors")
+            Layers=[concrete, insulation, brick],
+            Surface_Type="Facade",
+            Outside_Boundary_Condition="Outdoors")
 
           floor = ar.OpaqueConstruction(
-          Layers=[concrete, plywood],
-          Surface_Type="Ground",
-          Outside_Boundary_Condition="Zone")
+            Layers=[concrete, plywood],
+            Surface_Type="Ground",
+            Outside_Boundary_Condition="Zone")
 
           roof = ar.OpaqueConstruction(
-          Layers=[plywood, insulation, brick],
-          Surface_Type="Roof",
-          Outside_Boundary_Condition="Outdoors")
+            Layers=[plywood, insulation, brick],
+            Surface_Type="Roof",
+            Outside_Boundary_Condition="Outdoors")
           # List of OpaqueConstruction objects (needed for Umi template creation)
           OpaqueConstructions = [wall_int, wall_ext, floor, roof]
 
@@ -256,19 +256,19 @@ examples will be shown for each object.
 
           # Always on
           sch_d_on = ar.DaySchedule.from_values(
-          [1] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOn")
+            [1] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOn")
           # Always off
           sch_d_off = ar.DaySchedule.from_values(
-          [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff")
+            [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff")
           # DHW
           sch_d_dhw = ar.DaySchedule.from_values(
-          [0.3] * 24, Category="Day", schTypeLimitsName="Fractional", Name="DHW")
+            [0.3] * 24, Category="Day", schTypeLimitsName="Fractional", Name="DHW")
           # Internal gains
           sch_d_gains = ar.DaySchedule.from_values(
-          [0] * 6 + [0.5, 0.6, 0.7, 0.8, 0.9, 1] + [0.7] * 6 + [0.4] * 6,
-          Category="Day",
-          schTypeLimitsName="Fractional",
-          Name="Gains",)
+            [0] * 6 + [0.5, 0.6, 0.7, 0.8, 0.9, 1] + [0.7] * 6 + [0.4] * 6,
+            Category="Day",
+            schTypeLimitsName="Fractional",
+            Name="Gains",)
           # List of DaySchedule objects (needed for Umi template creation)
           DaySchedules = [sch_d_on, sch_d_dhw, sch_d_gains, sch_d_off]
 
@@ -298,56 +298,56 @@ examples will be shown for each object.
           # Variable `days` needs a list of 7 dict,
           # representing the 7 days of the week
           sch_w_on = ar.WeekSchedule(
-          days=[
-            {"$ref": sch_d_on.id},
-            {"$ref": sch_d_on.id},
-            {"$ref": sch_d_on.id},
-            {"$ref": sch_d_on.id},
-            {"$ref": sch_d_on.id},
-            {"$ref": sch_d_on.id},
-            {"$ref": sch_d_on.id},],
-          Category="Week",
-          schTypeLimitsName="Fractional",
-          Name="AlwaysOn")
+            days=[
+                {"$ref": sch_d_on.id},
+                {"$ref": sch_d_on.id},
+                {"$ref": sch_d_on.id},
+                {"$ref": sch_d_on.id},
+                {"$ref": sch_d_on.id},
+                {"$ref": sch_d_on.id},
+                {"$ref": sch_d_on.id},],
+            Category="Week",
+            schTypeLimitsName="Fractional",
+            Name="AlwaysOn")
           # Always off
           sch_w_off = ar.WeekSchedule(
-          days=[
-            {"$ref": sch_d_off.id},
-            {"$ref": sch_d_off.id},
-            {"$ref": sch_d_off.id},
-            {"$ref": sch_d_off.id},
-            {"$ref": sch_d_off.id},
-            {"$ref": sch_d_off.id},
-            {"$ref": sch_d_off.id},],
-          Category="Week",
-          schTypeLimitsName="Fractional",
-          Name="AlwaysOff")
+            days=[
+                {"$ref": sch_d_off.id},
+                {"$ref": sch_d_off.id},
+                {"$ref": sch_d_off.id},
+                {"$ref": sch_d_off.id},
+                {"$ref": sch_d_off.id},
+                {"$ref": sch_d_off.id},
+                {"$ref": sch_d_off.id},],
+            Category="Week",
+            schTypeLimitsName="Fractional",
+            Name="AlwaysOff")
           # DHW
           sch_w_dhw = ar.WeekSchedule(
-          days=[
-            {"$ref": sch_d_dhw.id},
-            {"$ref": sch_d_dhw.id},
-            {"$ref": sch_d_dhw.id},
-            {"$ref": sch_d_dhw.id},
-            {"$ref": sch_d_dhw.id},
-            {"$ref": sch_d_dhw.id},
-            {"$ref": sch_d_dhw.id},],
-          Category="Week",
-          schTypeLimitsName="Fractional",
-          Name="DHW")
+            days=[
+                {"$ref": sch_d_dhw.id},
+                {"$ref": sch_d_dhw.id},
+                {"$ref": sch_d_dhw.id},
+                {"$ref": sch_d_dhw.id},
+                {"$ref": sch_d_dhw.id},
+                {"$ref": sch_d_dhw.id},
+                {"$ref": sch_d_dhw.id},],
+            Category="Week",
+            schTypeLimitsName="Fractional",
+            Name="DHW")
           # Internal gains
           sch_w_gains = ar.WeekSchedule(
-          days=[
-            {"$ref": sch_d_gains.id},
-            {"$ref": sch_d_gains.id},
-            {"$ref": sch_d_gains.id},
-            {"$ref": sch_d_gains.id},
-            {"$ref": sch_d_gains.id},
-            {"$ref": sch_d_gains.id},
-            {"$ref": sch_d_gains.id},],
-          Category="Week",
-          schTypeLimitsName="Fractional",
-          Name="Gains")
+            days=[
+                {"$ref": sch_d_gains.id},
+                {"$ref": sch_d_gains.id},
+                {"$ref": sch_d_gains.id},
+                {"$ref": sch_d_gains.id},
+                {"$ref": sch_d_gains.id},
+                {"$ref": sch_d_gains.id},
+                {"$ref": sch_d_gains.id},],
+            Category="Week",
+            schTypeLimitsName="Fractional",
+            Name="Gains")
           # List of WeekSchedule objects (needed for Umi template creation)
           WeekSchedules = [sch_w_on, sch_w_off, sch_w_dhw, sch_w_gains]
 
@@ -401,78 +401,78 @@ examples will be shown for each object.
           # YearSchedules using DaySchedule objects
           # Always on
           dict_on = {
-          "Category": "Year",
-          "Parts": [
-            {
+            "Category": "Year",
+            "Parts": [
+                {
                 "FromDay": 1,
                 "FromMonth": 1,
                 "ToDay": 31,
                 "ToMonth": 12,
                 "Schedule": {"$ref": sch_w_on.id}
-            }],
-          "Type": "Fraction",
-          "Name": "AlwaysOn"}
+                }],
+            "Type": "Fraction",
+            "Name": "AlwaysOn"}
           sch_y_on = ar.YearSchedule.from_json(**dict_on)
           # Always off
           dict_off = {
-          "Category": "Year",
-          "Parts": [
-            {
+            "Category": "Year",
+            "Parts": [
+                {
                 "FromDay": 1,
                 "FromMonth": 1,
                 "ToDay": 31,
                 "ToMonth": 12,
                 "Schedule": {"$ref": sch_w_off.id}}],
-          "Type": "Fraction",
-          "Name": "AlwaysOff"}
+            "Type": "Fraction",
+            "Name": "AlwaysOff"}
           sch_y_off = ar.YearSchedule.from_json(**dict_off)
           # Year ON/OFF
           dict_on_off = {
-          "Category": "Year",
-          "Parts": [
-            {
+            "Category": "Year",
+            "Parts": [
+                {
                 "FromDay": 1,
                 "FromMonth": 1,
                 "ToDay": 31,
                 "ToMonth": 5,
                 "Schedule": {"$ref": sch_w_on.id}
-            },
-            {
+                },
+                {
                 "FromDay": 1,
                 "FromMonth": 6,
                 "ToDay": 31,
                 "ToMonth": 12,
                 "Schedule": {"$ref": sch_w_off.id}
-            }
+                }
                 ],
-          "Type": "Fraction",
-          "Name": "ON_OFF"}
+            "Type": "Fraction",
+            "Name": "ON_OFF"}
           sch_y_on_off = ar.YearSchedule.from_json(**dict_on_off)
           # DHW
           dict_dhw = {
-          "Category": "Year",
-          "Parts": [
-            {
+            "Category": "Year",
+            "Parts": [
+                {
                 "FromDay": 1,
                 "FromMonth": 1,
                 "ToDay": 31,
                 "ToMonth": 12,
                 "Schedule": {"$ref": sch_w_dhw.id}}],
-          "Type": "Fraction",
-          "Name": "DHW"}
+            "Type": "Fraction",
+            "Name": "DHW"}
           sch_y_dhw = ar.YearSchedule.from_json(**dict_dhw)
           # Internal gains
           dict_gains = {
-          "Category": "Year",
-          "Parts": [
-            {
+            "Category": "Year",
+            "Parts": [
+                {
                 "FromDay": 1,
                 "FromMonth": 1,
                 "ToDay": 31,
                 "ToMonth": 12,
                 "Schedule": {"$ref": sch_w_gains.id}}],
-          "Type": "Fraction",
-          "Name": "Gains"}
+            "Type": "Fraction",
+            "Name": "Gains"}
           sch_y_gains = ar.YearSchedule.from_json(**dict_gains)
           # List of YearSchedule objects (needed for Umi template creation)
           YearSchedules = [sch_y_on, sch_y_off, sch_y_on_off, sch_y_dhw, sch_y_gains]
@@ -511,10 +511,10 @@ examples will be shown for each object.
 
     # WindowSetting using WindowConstruction and YearSchedule objects
     window_setting = ar.WindowSetting(
-    Construction=window,
-    AfnWindowAvailability=sch_y_off,
-    ShadingSystemAvailabilitySchedule=sch_y_off,
-    ZoneMixingAvailabilitySchedule=sch_y_off)
+        Construction=window,
+        AfnWindowAvailability=sch_y_off,
+        ShadingSystemAvailabilitySchedule=sch_y_off,
+        ZoneMixingAvailabilitySchedule=sch_y_off)
     # List of WindowSetting objects (needed for Umi template creation)
     WindowSettings = [window_setting]
 
@@ -541,11 +541,11 @@ examples will be shown for each object.
 
     # DomesticHotWaterSetting using YearSchedule objects
     dhw_setting = ar.DomesticHotWaterSetting(
-    IsOn=True,
-    WaterSchedule=sch_y_dhw,
-    FlowRatePerFloorArea=0.03,
-    WaterSupplyTemperature=65,
-    WaterTemperatureInlet=10,)
+        IsOn=True,
+        WaterSchedule=sch_y_dhw,
+        FlowRatePerFloorArea=0.03,
+        WaterSupplyTemperature=65,
+        WaterTemperatureInlet=10,)
     # List of DomesticHotWaterSetting objects (needed for Umi template creation)
     DomesticHotWaterSettings = [dhw_setting]
 
@@ -580,13 +580,9 @@ examples will be shown for each object.
 
   .. code-block:: python
 
-    # DomesticHotWaterSetting using YearSchedule objects
-    dhw_setting = ar.DomesticHotWaterSetting(
-    IsOn=True,
-    WaterSchedule=sch_y_dhw,
-    FlowRatePerFloorArea=0.03,
-    WaterSupplyTemperature=65,
-    WaterTemperatureInlet=10,)
+    # VentilationSetting using YearSchedule objects
+    vent_setting = ar.VentilationSetting(
+        NatVentSchedule=sch_y_off, ScheduledVentilationSchedule=sch_y_off)
     # List of VentilationSetting objects (needed for Umi template creation)
     DomesticHotWaterSettings = [dhw_setting]
 .. _OpaqueMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueMaterial.html

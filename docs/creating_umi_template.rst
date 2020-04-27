@@ -185,7 +185,7 @@ examples will be shown for each object.
         DisassemblyEnergy=0,
         **kwargs)
 
-      Example of WindowConstruction objects:
+      Example of WindowConstruction object:
 
         .. code-block:: python
 
@@ -218,7 +218,7 @@ examples will be shown for each object.
 
         def __init__(HighLoadRatio=None, Material=None, NormalRatio=None)
 
-      Example of StructureDefinition objects:
+      Example of StructureDefinition object:
 
         .. code-block:: python
 

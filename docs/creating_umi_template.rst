@@ -826,6 +826,7 @@ required inputs for each object.
   that can be imported into Umi as a template:
 
   .. code-block:: python
+
     umi_template.to_json()
 
 .. _OpaqueMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueMaterial.html

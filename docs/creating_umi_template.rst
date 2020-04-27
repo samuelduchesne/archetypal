@@ -6,7 +6,8 @@ modules available in `archetypal`
 The documentation will present how to create each Umi template object (e.g.
 `opaque materials`, `window settings`, `zone loads`, etc). Every inputs of
 each object will be presented with their default parameters, and simple
-examples will be shown for each object.
+examples will show how to create Umi template objects with at least the
+required inputs for each object.
 
 1. Defining materials
 
@@ -629,6 +630,53 @@ examples will be shown for each object.
         CoolingSchedule=sch_y_on, HeatingSchedule=sch_y_on, MechVentSchedule=sch_y_off)
     # List of ZoneConditioning objects (needed for Umi template creation)
     ZoneConditionings = [zone_conditioning]
+
+8. Defining zone construction sets
+
+  Creating Umi template objects to define zone construction sets
+
+  Here are all the parameters and their default values for an
+  ZoneConstructionSet object (see ZoneConstructionSet_ doc for more information)
+
+  .. code-block:: python
+
+    def __init__(
+        *args,
+        Zone_Names=None,
+        Slab=None,
+        IsSlabAdiabatic=False,
+        Roof=None,
+        IsRoofAdiabatic=False,
+        Partition=None,
+        IsPartitionAdiabatic=False,
+        Ground=None,
+        IsGroundAdiabatic=False,
+        Facade=None,
+        IsFacadeAdiabatic=False,
+        **kwargs)
+
+  Example of ZoneConstructionSet objects:
+
+  .. code-block:: python
+
+    # ZoneConstructionSet using OpaqueConstruction objects
+    # Perimeter zone
+    zone_constr_set_perim = ar.ZoneConstructionSet(
+        Slab=floor,
+        Roof=roof,
+        Partition=wall_int,
+        Ground=floor,
+        Facade=wall_ext)
+    # Core zone
+    zone_constr_set_core = ar.ZoneConstructionSet(
+        Slab=floor,
+        Roof=roof,
+        Partition=wall_int,
+        IsPartitionAdiabatic=True,
+        Ground=floor,
+        Facade=wall_ext)
+    # List of ZoneConstructionSet objects (needed for Umi template creation)
+    ZoneConstructionSets = [zone_constr_set_perim, zone_constr_set_core]
 .. _OpaqueMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueMaterial.html
 .. _GlazingMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GlazingMaterial.html
 .. _GasMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GasMaterial.html
@@ -643,3 +691,4 @@ examples will be shown for each object.
 .. _DomesticHotWaterSetting: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.DomesticHotWaterSetting.html
 .. _VentilationSetting: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.VentilationSetting.html
 .. _ZoneConditioning: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.ZoneConditioning.html
+.. _ZoneConstructionSet: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.ZoneConstructionSet.html

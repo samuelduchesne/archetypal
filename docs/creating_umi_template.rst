@@ -505,10 +505,11 @@ examples will be shown for each object.
     ZoneMixingFlowRate=0.001,
     **kwargs)
 
-  Example of WindowSetting objects:
+  Example of WindowSetting object:
 
   .. code-block:: python
 
+    # WindowSetting using WindowConstruction and YearSchedule objects
     window_setting = ar.WindowSetting(
     Construction=window,
     AfnWindowAvailability=sch_y_off,
@@ -517,6 +518,36 @@ examples will be shown for each object.
     # List of WindowSetting objects (needed for Umi template creation)
     WindowSettings = [window_setting]
 
+4. Defining DHW settings
+
+  Creating Umi template objects to define DHW settings
+
+  Here are all the parameters and their default values for an
+  DomesticHotWaterSetting object (see DomesticHotWaterSetting_ doc for more information)
+
+  .. code-block:: python
+
+    def __init__(
+    IsOn=True,
+    WaterSchedule=None,
+    FlowRatePerFloorArea=0.03,
+    WaterSupplyTemperature=65,
+    WaterTemperatureInlet=10,
+    **kwargs)
+
+  Example of DomesticHotWaterSetting object:
+
+  .. code-block:: python
+
+    # DomesticHotWaterSetting using YearSchedule objects
+    dhw_setting = ar.DomesticHotWaterSetting(
+    IsOn=True,
+    WaterSchedule=sch_y_dhw,
+    FlowRatePerFloorArea=0.03,
+    WaterSupplyTemperature=65,
+    WaterTemperatureInlet=10,)
+    # List of DomesticHotWaterSetting objects (needed for Umi template creation)
+    DomesticHotWaterSettings = [dhw_setting]
 .. _OpaqueMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueMaterial.html
 .. _GlazingMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GlazingMaterial.html
 .. _GasMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GasMaterial.html
@@ -528,3 +559,4 @@ examples will be shown for each object.
 .. _WeekSchedule: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.WeekSchedule.html
 .. _YearSchedule: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.YearSchedule.html
 .. _WindowSetting: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.WindowSetting.html
+.. _DomesticHotWaterSetting: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.DomesticHotWaterSetting.html

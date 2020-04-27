@@ -477,6 +477,46 @@ examples will be shown for each object.
           # List of YearSchedule objects (needed for Umi template creation)
           YearSchedules = [sch_y_on, sch_y_off, sch_y_on_off, sch_y_dhw, sch_y_gains]
 
+4. Defining window settings
+
+  Creating Umi template objects to define window settings
+
+  Here are all the parameters and their default values for an
+  WindowSetting object (see WindowSetting_ doc for more information)
+
+  .. code-block:: python
+
+    def __init__(
+    Construction=None,
+    OperableArea=0.8,
+    AfnWindowAvailability=None,
+    AfnDischargeC=0.65,
+    AfnTempSetpoint=20,
+    IsVirtualPartition=False,
+    IsShadingSystemOn=False,
+    ShadingSystemAvailabilitySchedule=None,
+    ShadingSystemSetpoint=180,
+    ShadingSystemTransmittance=0.5,
+    ShadingSystemType=0,
+    Type=WindowType.External,
+    IsZoneMixingOn=False,
+    ZoneMixingAvailabilitySchedule=None,
+    ZoneMixingDeltaTemperature=2,
+    ZoneMixingFlowRate=0.001,
+    **kwargs)
+
+  Example of WindowSetting objects:
+
+  .. code-block:: python
+
+    window_setting = ar.WindowSetting(
+    Construction=window,
+    AfnWindowAvailability=sch_y_off,
+    ShadingSystemAvailabilitySchedule=sch_y_off,
+    ZoneMixingAvailabilitySchedule=sch_y_off)
+    # List of WindowSetting objects (needed for Umi template creation)
+    WindowSettings = [window_setting]
+
 .. _OpaqueMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueMaterial.html
 .. _GlazingMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GlazingMaterial.html
 .. _GasMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GasMaterial.html
@@ -487,3 +527,4 @@ examples will be shown for each object.
 .. _DaySchedule: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.DaySchedule.html
 .. _WeekSchedule: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.WeekSchedule.html
 .. _YearSchedule: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.YearSchedule.html
+.. _WindowSetting: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.WindowSetting.html

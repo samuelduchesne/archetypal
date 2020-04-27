@@ -21,23 +21,23 @@ examples will be shown for each object.
       .. code-block:: python
 
         def __init__(
-        Conductivity,
-        SpecificHeat,
-        SolarAbsorptance=0.7,
-        ThermalEmittance=0.9,
-        VisibleAbsorptance=0.7,
-        Roughness="Rough",
-        Cost=0,
-        Density=1,
-        MoistureDiffusionResistance=50,
-        EmbodiedCarbon=0.45,
-        EmbodiedEnergy=0,
-        TransportCarbon=0,
-        TransportDistance=0,
-        TransportEnergy=0,
-        SubstitutionRatePattern=None,
-        SubstitutionTimestep=20,
-        **kwargs)
+            Conductivity,
+            SpecificHeat,
+            SolarAbsorptance=0.7,
+            ThermalEmittance=0.9,
+            VisibleAbsorptance=0.7,
+            Roughness="Rough",
+            Cost=0,
+            Density=1,
+            MoistureDiffusionResistance=50,
+            EmbodiedCarbon=0.45,
+            EmbodiedEnergy=0,
+            TransportCarbon=0,
+            TransportDistance=0,
+            TransportEnergy=0,
+            SubstitutionRatePattern=None,
+            SubstitutionTimestep=20,
+            **kwargs)
 
       Example of OpaqueMaterial objects:
 
@@ -58,22 +58,22 @@ examples will be shown for each object.
       .. code-block:: python
 
         def __init__(
-        Density=2500,
-        Conductivity=0,
-        SolarTransmittance=0,
-        SolarReflectanceFront=0,
-        SolarReflectanceBack=0,
-        VisibleTransmittance=0,
-        VisibleReflectanceFront=0,
-        VisibleReflectanceBack=0,
-        IRTransmittance=0,
-        IREmissivityFront=0,
-        IREmissivityBack=0,
-        DirtFactor=1.0,
-        Type=None,
-        Cost=0.0,
-        Life=1,
-        **kwargs)
+            Density=2500,
+            Conductivity=0,
+            SolarTransmittance=0,
+            SolarReflectanceFront=0,
+            SolarReflectanceBack=0,
+            VisibleTransmittance=0,
+            VisibleReflectanceFront=0,
+            VisibleReflectanceBack=0,
+            IRTransmittance=0,
+            IREmissivityFront=0,
+            IREmissivityBack=0,
+            DirtFactor=1.0,
+            Type=None,
+            Cost=0.0,
+            Life=1,
+            **kwargs)
 
       Example of GlazingMaterial object:
 
@@ -102,17 +102,17 @@ examples will be shown for each object.
       .. code-block:: python
 
         def __init__(
-        Cost=0,
-        EmbodiedCarbon=0,
-        EmbodiedEnergy=0,
-        SubstitutionTimestep=100,
-        TransportCarbon=0,
-        TransportDistance=0,
-        TransportEnergy=0,
-        SubstitutionRatePattern=None,
-        Conductivity=2.4,
-        Density=2400,
-        **kwargs)
+            Cost=0,
+            EmbodiedCarbon=0,
+            EmbodiedEnergy=0,
+            SubstitutionTimestep=100,
+            TransportCarbon=0,
+            TransportDistance=0,
+            TransportEnergy=0,
+            SubstitutionRatePattern=None,
+            Conductivity=2.4,
+            Density=2400,
+            **kwargs)
 
       Example of GasMaterial object:
 
@@ -134,11 +134,11 @@ examples will be shown for each object.
       .. code-block:: python
 
         def __init__(
-        Layers,
-        Surface_Type=None,
-        Outside_Boundary_Condition=None,
-        IsAdiabatic=False,
-        **kwargs)
+            Layers,
+            Surface_Type=None,
+            Outside_Boundary_Condition=None,
+            IsAdiabatic=False,
+            **kwargs)
 
       Example of OpaqueConstruction objects:
 
@@ -176,14 +176,14 @@ examples will be shown for each object.
       .. code-block:: python
 
         def __init__(
-        Layers,
-        Category="Double",
-        AssemblyCarbon=0,
-        AssemblyCost=0,
-        AssemblyEnergy=0,
-        DisassemblyCarbon=0,
-        DisassemblyEnergy=0,
-        **kwargs)
+            Layers,
+            Category="Double",
+            AssemblyCarbon=0,
+            AssemblyCost=0,
+            AssemblyEnergy=0,
+            DisassemblyCarbon=0,
+            DisassemblyEnergy=0,
+            **kwargs)
 
       Example of WindowConstruction object:
 
@@ -202,14 +202,14 @@ examples will be shown for each object.
       .. code-block:: python
 
         def __init__(
-        *args,
-        AssemblyCarbon=0,
-        AssemblyCost=0,
-        AssemblyEnergy=0,
-        DisassemblyCarbon=0,
-        DisassemblyEnergy=0,
-        MassRatios=None,
-        **kwargs)
+            *args,
+            AssemblyCarbon=0,
+            AssemblyCost=0,
+            AssemblyEnergy=0,
+            DisassemblyCarbon=0,
+            DisassemblyEnergy=0,
+            MassRatios=None,
+            **kwargs)
 
       We observe that StructureDefinition uses MassRatio objects. Here are the
       parameters of MassRatio object (see MassRatio_ doc for more information)
@@ -240,15 +240,15 @@ examples will be shown for each object.
       .. code-block:: python
 
         def __init__(
-        Name=None,
-        idf=None,
-        start_day_of_the_week=0,
-        strict=False,
-        base_year=2018,
-        schType=None,
-        schTypeLimitsName=None,
-        values=None,
-        **kwargs)
+            Name=None,
+            idf=None,
+            start_day_of_the_week=0,
+            strict=False,
+            base_year=2018,
+            schType=None,
+            schTypeLimitsName=None,
+            values=None,
+            **kwargs)
 
       Example of DaySchedule objects:
 
@@ -280,15 +280,15 @@ examples will be shown for each object.
       .. code-block:: python
 
         def __init__(
-        Name=None,
-        idf=None,
-        start_day_of_the_week=0,
-        strict=False,
-        base_year=2018,
-        schType=None,
-        schTypeLimitsName=None,
-        values=None,
-        **kwargs)
+            Name=None,
+            idf=None,
+            start_day_of_the_week=0,
+            strict=False,
+            base_year=2018,
+            schType=None,
+            schTypeLimitsName=None,
+            values=None,
+            **kwargs)
 
       Example of WeekSchedule objects:
 
@@ -382,15 +382,15 @@ examples will be shown for each object.
       .. code-block:: python
 
         def __init__(
-        Name=None,
-        idf=None,
-        start_day_of_the_week=0,
-        strict=False,
-        base_year=2018,
-        schType=None,
-        schTypeLimitsName=None,
-        values=None,
-        **kwargs)
+            Name=None,
+            idf=None,
+            start_day_of_the_week=0,
+            strict=False,
+            base_year=2018,
+            schType=None,
+            schTypeLimitsName=None,
+            values=None,
+            **kwargs)
 
       YearSchedule are created from dictionaries.
       For example, we create YearSchedules from dictionaries and
@@ -487,23 +487,23 @@ examples will be shown for each object.
   .. code-block:: python
 
     def __init__(
-    Construction=None,
-    OperableArea=0.8,
-    AfnWindowAvailability=None,
-    AfnDischargeC=0.65,
-    AfnTempSetpoint=20,
-    IsVirtualPartition=False,
-    IsShadingSystemOn=False,
-    ShadingSystemAvailabilitySchedule=None,
-    ShadingSystemSetpoint=180,
-    ShadingSystemTransmittance=0.5,
-    ShadingSystemType=0,
-    Type=WindowType.External,
-    IsZoneMixingOn=False,
-    ZoneMixingAvailabilitySchedule=None,
-    ZoneMixingDeltaTemperature=2,
-    ZoneMixingFlowRate=0.001,
-    **kwargs)
+        Construction=None,
+        OperableArea=0.8,
+        AfnWindowAvailability=None,
+        AfnDischargeC=0.65,
+        AfnTempSetpoint=20,
+        IsVirtualPartition=False,
+        IsShadingSystemOn=False,
+        ShadingSystemAvailabilitySchedule=None,
+        ShadingSystemSetpoint=180,
+        ShadingSystemTransmittance=0.5,
+        ShadingSystemType=0,
+        Type=WindowType.External,
+        IsZoneMixingOn=False,
+        ZoneMixingAvailabilitySchedule=None,
+        ZoneMixingDeltaTemperature=2,
+        ZoneMixingFlowRate=0.001,
+        **kwargs)
 
   Example of WindowSetting object:
 
@@ -518,7 +518,7 @@ examples will be shown for each object.
     # List of WindowSetting objects (needed for Umi template creation)
     WindowSettings = [window_setting]
 
-4. Defining DHW settings
+5. Defining DHW settings
 
   Creating Umi template objects to define DHW settings
 
@@ -528,12 +528,12 @@ examples will be shown for each object.
   .. code-block:: python
 
     def __init__(
-    IsOn=True,
-    WaterSchedule=None,
-    FlowRatePerFloorArea=0.03,
-    WaterSupplyTemperature=65,
-    WaterTemperatureInlet=10,
-    **kwargs)
+        IsOn=True,
+        WaterSchedule=None,
+        FlowRatePerFloorArea=0.03,
+        WaterSupplyTemperature=65,
+        WaterTemperatureInlet=10,
+        **kwargs)
 
   Example of DomesticHotWaterSetting object:
 
@@ -548,6 +548,47 @@ examples will be shown for each object.
     WaterTemperatureInlet=10,)
     # List of DomesticHotWaterSetting objects (needed for Umi template creation)
     DomesticHotWaterSettings = [dhw_setting]
+
+6. Defining ventilation settings
+
+  Creating Umi template objects to define ventilation settings
+
+  Here are all the parameters and their default values for an
+  VentilationSetting object (see VentilationSetting_ doc for more information)
+
+  .. code-block:: python
+
+    def __init__(
+        NatVentSchedule=None,
+        ScheduledVentilationSchedule=None,
+        Afn=False,
+        Infiltration=0.1,
+        IsBuoyancyOn=True,
+        IsInfiltrationOn=True,
+        IsNatVentOn=False,
+        IsScheduledVentilationOn=False,
+        IsWindOn=False,
+        NatVentMaxOutdoorAirTemp=30,
+        NatVentMaxRelHumidity=90,
+        NatVentMinOutdoorAirTemp=0,
+        NatVentZoneTempSetpoint=18,
+        ScheduledVentilationAch=0.6,
+        ScheduledVentilationSetpoint=18,
+        **kwargs)
+
+  Example of VentilationSetting object:
+
+  .. code-block:: python
+
+    # DomesticHotWaterSetting using YearSchedule objects
+    dhw_setting = ar.DomesticHotWaterSetting(
+    IsOn=True,
+    WaterSchedule=sch_y_dhw,
+    FlowRatePerFloorArea=0.03,
+    WaterSupplyTemperature=65,
+    WaterTemperatureInlet=10,)
+    # List of VentilationSetting objects (needed for Umi template creation)
+    DomesticHotWaterSettings = [dhw_setting]
 .. _OpaqueMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueMaterial.html
 .. _GlazingMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GlazingMaterial.html
 .. _GasMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GasMaterial.html
@@ -560,3 +601,4 @@ examples will be shown for each object.
 .. _YearSchedule: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.YearSchedule.html
 .. _WindowSetting: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.WindowSetting.html
 .. _DomesticHotWaterSetting: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.DomesticHotWaterSetting.html
+.. _VentilationSetting: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.VentilationSetting.html

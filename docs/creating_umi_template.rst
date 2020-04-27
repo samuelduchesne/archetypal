@@ -584,7 +584,51 @@ examples will be shown for each object.
     vent_setting = ar.VentilationSetting(
         NatVentSchedule=sch_y_off, ScheduledVentilationSchedule=sch_y_off)
     # List of VentilationSetting objects (needed for Umi template creation)
-    DomesticHotWaterSettings = [dhw_setting]
+    VentilationSettings = [vent_setting]
+
+7. Defining zone conditioning settings
+
+  Creating Umi template objects to define zone conditioning settings
+
+  Here are all the parameters and their default values for an
+  ZoneConditioning object (see ZoneConditioning_ doc for more information)
+
+  .. code-block:: python
+
+    def __init__(
+        CoolingCoeffOfPerf=1,
+        CoolingLimitType="NoLimit",
+        CoolingSetpoint=26,
+        CoolingSchedule=None,
+        EconomizerType="NoEconomizer",
+        HeatRecoveryEfficiencyLatent=0.65,
+        HeatRecoveryEfficiencySensible=0.7,
+        HeatRecoveryType="None",
+        HeatingCoeffOfPerf=1,
+        HeatingLimitType="NoLimit",
+        HeatingSetpoint=20,
+        HeatingSchedule=None,
+        IsCoolingOn=True,
+        IsHeatingOn=True,
+        IsMechVentOn=True,
+        MaxCoolFlow=100,
+        MaxCoolingCapacity=100,
+        MaxHeatFlow=100,
+        MaxHeatingCapacity=100,
+        MinFreshAirPerArea=0,
+        MinFreshAirPerPerson=0.00944,
+        MechVentSchedule=None,
+        **kwargs)
+
+  Example of ZoneConditioning object:
+
+  .. code-block:: python
+
+    # ZoneConditioning using YearSchedule objects
+    zone_conditioning = ar.ZoneConditioning(
+        CoolingSchedule=sch_y_on, HeatingSchedule=sch_y_on, MechVentSchedule=sch_y_off)
+    # List of ZoneConditioning objects (needed for Umi template creation)
+    ZoneConditionings = [zone_conditioning]
 .. _OpaqueMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueMaterial.html
 .. _GlazingMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GlazingMaterial.html
 .. _GasMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GasMaterial.html
@@ -598,3 +642,4 @@ examples will be shown for each object.
 .. _WindowSetting: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.WindowSetting.html
 .. _DomesticHotWaterSetting: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.DomesticHotWaterSetting.html
 .. _VentilationSetting: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.VentilationSetting.html
+.. _ZoneConditioning: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.ZoneConditioning.html

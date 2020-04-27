@@ -790,6 +790,44 @@ required inputs for each object.
         Core=core, Perimeter=perim, Structure=struct_definition, Windows=window_setting)
     # List of BuildingTemplate objects (needed for Umi template creation)
     BuildingTemplates = [building_template]
+
+12. Creating Umi template
+
+  Creating Umi template from all objects defined before
+  (see UmiTemplate_ doc for more information)
+
+  Example of BuildingTemplate object:
+
+  .. code-block:: python
+
+    # UmiTemplate using all lists of objects created before
+    umi_template = ar.UmiTemplate(
+        name="unnamed",
+        BuildingTemplates=BuildingTemplates,
+        GasMaterials=GasMaterials,
+        GlazingMaterials=GlazingMaterials,
+        OpaqueConstructions=OpaqueConstructions,
+        OpaqueMaterials=OpaqueMaterials,
+        WindowConstructions=WindowConstructions,
+        StructureDefinitions=StructureDefinitions,
+        DaySchedules=DaySchedules,
+        WeekSchedules=WeekSchedules,
+        YearSchedules=YearSchedules,
+        DomesticHotWaterSettings=DomesticHotWaterSettings,
+        VentilationSettings=VentilationSettings,
+        WindowSettings=WindowSettings,
+        ZoneConditionings=ZoneConditionings,
+        ZoneConstructionSets=ZoneConstructionSets,
+        ZoneLoads=ZoneLoads,
+        Zones=Zones,
+    )
+
+  And finally we use this following line of code to create the json file
+  that can be imported into Umi as a template:
+
+  .. code-block:: python
+    umi_template.to_json()
+
 .. _OpaqueMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueMaterial.html
 .. _GlazingMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GlazingMaterial.html
 .. _GasMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GasMaterial.html
@@ -808,3 +846,4 @@ required inputs for each object.
 .. _ZoneLoad: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.ZoneLoad.html
 .. _Zone: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.Zone.html
 .. _BuildingTemplate: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.BuildingTemplate.html
+.. _UmiTemplate: https://archetypal.readthedocs.io/en/develop/reference/archetypal.umi_template.UmiTemplate.html

@@ -144,6 +144,24 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
         return zl
 
+    @classmethod
+    def from_dict(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
+        zl = cls(*args, **kwargs)
+
+        cool_schd = kwargs.get("EquipmentAvailabilitySchedule", None)
+        zl.EquipmentAvailabilitySchedule = zl.get_ref(cool_schd)
+        heat_schd = kwargs.get("LightsAvailabilitySchedule", None)
+        zl.LightsAvailabilitySchedule = zl.get_ref(heat_schd)
+        mech_schd = kwargs.get("OccupancySchedule", None)
+        zl.OccupancySchedule = zl.get_ref(mech_schd)
+
+        return zl
+
     def to_json(self):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()

@@ -79,15 +79,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                             current_version=archetypal.__version__,
                             details="Use from_dict function instead")
     def from_json(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        dhws = cls(*args, **kwargs)
-        wat_sch = kwargs.get("WaterSchedule", None)
-        dhws.WaterSchedule = dhws.get_ref(wat_sch)
-        return dhws
+
+        return cls.from_dict(*args, **kwargs)
 
     @classmethod
     def from_dict(cls, *args, **kwargs):

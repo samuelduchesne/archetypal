@@ -84,20 +84,8 @@ class WindowConstruction(UmiBase, metaclass=Unique):
                             current_version=archetypal.__version__,
                             details="Use from_dict function instead")
     def from_json(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        wc = cls(*args, **kwargs)
-        layers = kwargs.get("Layers", None)
 
-        # resolve Material objects from ref
-        wc.Layers = [
-            MaterialLayer(wc.get_ref(layer["Material"]), layer["Thickness"])
-            for layer in layers
-        ]
-        return wc
+        return cls.from_dict(*args, **kwargs)
 
     @classmethod
     def from_dict(cls, *args, **kwargs):
@@ -771,22 +759,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
                             current_version=archetypal.__version__,
                             details="Use from_dict function instead")
     def from_json(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        w = cls(*args, **kwargs)
 
-        ref = kwargs.get("AfnWindowAvailability", None)
-        w.AfnWindowAvailability = w.get_ref(ref)
-        ref = kwargs.get("Construction", None)
-        w.Construction = w.get_ref(ref)
-        ref = kwargs.get("ShadingSystemAvailabilitySchedule", None)
-        w.ShadingSystemAvailabilitySchedule = w.get_ref(ref)
-        ref = kwargs.get("ZoneMixingAvailabilitySchedule", None)
-        w.ZoneMixingAvailabilitySchedule = w.get_ref(ref)
-        return w
+        return cls.from_dict(*args, **kwargs)
 
     @classmethod
     def from_dict(cls, *args, **kwargs):

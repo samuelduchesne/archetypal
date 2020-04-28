@@ -228,20 +228,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                             current_version=archetypal.__version__,
                             details="Use from_dict function instead")
     def from_json(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        zc = cls(*args, **kwargs)
 
-        cool_schd = kwargs.get("CoolingSchedule", None)
-        zc.CoolingSchedule = zc.get_ref(cool_schd)
-        heat_schd = kwargs.get("HeatingSchedule", None)
-        zc.HeatingSchedule = zc.get_ref(heat_schd)
-        mech_schd = kwargs.get("MechVentSchedule", None)
-        zc.MechVentSchedule = zc.get_ref(mech_schd)
-        return zc
+        return cls.from_dict(*args, **kwargs)
 
     @classmethod
     def from_dict(cls, *args, **kwargs):

@@ -169,17 +169,8 @@ class VentilationSetting(UmiBase, metaclass=Unique):
                             current_version=archetypal.__version__,
                             details="Use from_dict function instead")
     def from_json(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        vs = cls(*args, **kwargs)
-        vent_sch = kwargs.get("ScheduledVentilationSchedule", None)
-        vs.ScheduledVentilationSchedule = vs.get_ref(vent_sch)
-        nat_sch = kwargs.get("NatVentSchedule", None)
-        vs.NatVentSchedule = vs.get_ref(nat_sch)
-        return vs
+
+        return cls.from_dict(*args, **kwargs)
 
     @classmethod
     def from_dict(cls, *args, **kwargs):

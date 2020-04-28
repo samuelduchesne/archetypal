@@ -197,26 +197,8 @@ class BuildingTemplate(UmiBase):
                             current_version=archetypal.__version__,
                             details="Use from_dict function instead")
     def from_json(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        bt = cls(*args, **kwargs)
 
-        ref = kwargs.get("Core", None)
-        bt.Core = bt.get_ref(ref)
-        ref = kwargs.get("Perimeter", None)
-        bt.Perimeter = bt.get_ref(ref)
-        ref = kwargs.get("Structure", None)
-        bt.Structure = bt.get_ref(ref)
-        ref = kwargs.get("Windows", None)
-        try:
-            bt.Windows = WindowSetting.from_json(Name=ref.pop("Name"), **ref)
-        except:
-            bt.Windows = bt.get_ref(ref)
-
-        return bt
+        return cls.from_dict(*args, **kwargs)
 
     @classmethod
     def from_dict(cls, *args, **kwargs):

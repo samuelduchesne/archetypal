@@ -59,16 +59,8 @@ class GasMaterial(MaterialBase, metaclass=Unique):
                             current_version=archetypal.__version__,
                             details="Use from_dict function instead")
     def from_json(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        gm = cls(*args, **kwargs)
-        gas_type = kwargs.get("Name", None)
-        gm.Type = gas_type
 
-        return gm
+        return cls.from_dict(*args, **kwargs)
 
     @classmethod
     def from_dict(cls, *args, **kwargs):

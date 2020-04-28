@@ -115,22 +115,8 @@ class StructureDefinition(UmiBase, metaclass=Unique):
                             current_version=archetypal.__version__,
                             details="Use from_dict function instead")
     def from_json(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        sd = cls(*args, **kwargs)
-        massratios = kwargs.get("MassRatios", None)
-        sd.MassRatios = [
-            MassRatio(
-                HighLoadRatio=massratio["HighLoadRatio"],
-                Material=sd.get_ref(massratio["Material"]),
-                NormalRatio=massratio["NormalRatio"],
-            )
-            for massratio in massratios
-        ]
-        return sd
+
+        return cls.from_dict(*args, **kwargs)
 
     @classmethod
     def from_dict(cls, *args, **kwargs):

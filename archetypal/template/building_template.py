@@ -217,7 +217,7 @@ class BuildingTemplate(UmiBase):
         bt.Structure = bt.get_ref(ref)
         ref = kwargs.get("Windows", None)
         try:
-            bt.Windows = WindowSetting.from_json(Name=ref.pop("Name"), **ref)
+            bt.Windows = WindowSetting.from_dict(Name=ref.pop("Name"), **ref)
         except:
             bt.Windows = bt.get_ref(ref)
 

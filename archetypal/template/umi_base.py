@@ -503,7 +503,7 @@ def load_json_objects(datastore):
 
     loading_json_list = []
     loading_json_list.append(
-        [GasMaterial.from_json(**store) for store in datastore["GasMaterials"]]
+        [GasMaterial.from_dict(**store) for store in datastore["GasMaterials"]]
     )
     loading_json_list.append(
         [GlazingMaterial(**store) for store in datastore["GlazingMaterials"]]
@@ -513,62 +513,62 @@ def load_json_objects(datastore):
     )
     loading_json_list.append(
         [
-            OpaqueConstruction.from_json(**store)
+            OpaqueConstruction.from_dict(**store)
             for store in datastore["OpaqueConstructions"]
         ]
     )
     loading_json_list.append(
         [
-            WindowConstruction.from_json(**store)
+            WindowConstruction.from_dict(**store)
             for store in datastore["WindowConstructions"]
         ]
     )
     loading_json_list.append(
         [
-            StructureDefinition.from_json(**store)
+            StructureDefinition.from_dict(**store)
             for store in datastore["StructureDefinitions"]
         ]
     )
     loading_json_list.append(
-        [DaySchedule.from_json(**store) for store in datastore["DaySchedules"]]
+        [DaySchedule.from_dict(**store) for store in datastore["DaySchedules"]]
     )
     loading_json_list.append(
-        [WeekSchedule.from_json(**store) for store in datastore["WeekSchedules"]]
+        [WeekSchedule.from_dict(**store) for store in datastore["WeekSchedules"]]
     )
     loading_json_list.append(
-        [YearSchedule.from_json(**store) for store in datastore["YearSchedules"]]
+        [YearSchedule.from_dict(**store) for store in datastore["YearSchedules"]]
     )
     loading_json_list.append(
         [
-            DomesticHotWaterSetting.from_json(**store)
+            DomesticHotWaterSetting.from_dict(**store)
             for store in datastore["DomesticHotWaterSettings"]
         ]
     )
     loading_json_list.append(
         [
-            VentilationSetting.from_json(**store)
+            VentilationSetting.from_dict(**store)
             for store in datastore["VentilationSettings"]
         ]
     )
     loading_json_list.append(
         [
-            ZoneConditioning.from_json(**store)
+            ZoneConditioning.from_dict(**store)
             for store in datastore["ZoneConditionings"]
         ]
     )
     loading_json_list.append(
         [
-            ZoneConstructionSet.from_json(**store)
+            ZoneConstructionSet.from_dict(**store)
             for store in datastore["ZoneConstructionSets"]
         ]
     )
     loading_json_list.append(
-        [ZoneLoad.from_json(**store) for store in datastore["ZoneLoads"]]
+        [ZoneLoad.from_dict(**store) for store in datastore["ZoneLoads"]]
     )
-    loading_json_list.append([Zone.from_json(**store) for store in datastore["Zones"]])
+    loading_json_list.append([Zone.from_dict(**store) for store in datastore["Zones"]])
     loading_json_list.append(
         [
-            BuildingTemplate.from_json(**store)
+            BuildingTemplate.from_dict(**store)
             for store in datastore["BuildingTemplates"]
         ]
     )

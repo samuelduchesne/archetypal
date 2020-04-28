@@ -551,7 +551,7 @@ class YearSchedule(UmiSchedule):
         parts = kwargs.get("Parts", None)
 
         ys.Parts = [
-            YearScheduleParts.from_json(all_objects=ys, **part) for part in parts
+            YearScheduleParts.from_dict(all_objects=ys, **part) for part in parts
         ]
         ys.schType = "Schedule:Year"
         return UmiSchedule.from_yearschedule(ys)

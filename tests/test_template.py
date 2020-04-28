@@ -196,7 +196,7 @@ class TestWeekSchedule:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         weekSched_json = [
-            WeekSchedule.from_json(**store) for store in datastore["WeekSchedules"]
+            WeekSchedule.from_dict(**store) for store in datastore["WeekSchedules"]
         ]
         weekSched_to_json = weekSched_json[0].to_json()
 
@@ -246,7 +246,7 @@ class TestWeekSchedule:
             "Name": "OnOff_2",
         }
         # Creates WeekSchedule from dict (from json)
-        b = ar.WeekSchedule.from_json(**dict_w_on)
+        b = ar.WeekSchedule.from_dict(**dict_w_on)
 
         # Makes sure WeekSchedules created with 2 methods have the same values
         # And different ids
@@ -273,7 +273,7 @@ class TestYearSchedule:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         yearSched_json = [
-            YearSchedule.from_json(**store) for store in datastore["YearSchedules"]
+            YearSchedule.from_dict(**store) for store in datastore["YearSchedules"]
         ]
         yearSched_to_json = yearSched_json[0].to_json()
 
@@ -324,7 +324,7 @@ class TestYearSchedule:
             "Name": "OnOff",
         }
         # Creates YearSchedule from dict (from json)
-        a = ar.YearSchedule.from_json(**dict_year)
+        a = ar.YearSchedule.from_dict(**dict_year)
 
         # Makes sure YearSchedule has the same values as concatenate WeekSchedule
         np.testing.assert_equal(a.all_values, np.resize(sch_w_on_off.all_values, 8760))
@@ -567,7 +567,7 @@ class TestGasMaterial:
         with open(filename, "r") as f:
             datastore = json.load(f)
         gasMat_json = [
-            GasMaterial.from_json(**store) for store in datastore["GasMaterials"]
+            GasMaterial.from_dict(**store) for store in datastore["GasMaterials"]
         ]
         gasMat_to_json = gasMat_json[0].to_json()
         assert gasMat_json[0].Name == gasMat_to_json["Name"]
@@ -587,7 +587,7 @@ class TestGasMaterial:
         with open(filename, "r") as f:
             datastore = json.load(f)
         gasMat_json = [
-            GasMaterial.from_json(**store) for store in datastore["GasMaterials"]
+            GasMaterial.from_dict(**store) for store in datastore["GasMaterials"]
         ]
         gm = gasMat_json[0]
         gm_2 = copy(gm)
@@ -826,7 +826,7 @@ class TestOpaqueConstruction:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         opaqConstr_json = [
-            OpaqueConstruction.from_json(**store)
+            OpaqueConstruction.from_dict(**store)
             for store in datastore["OpaqueConstructions"]
         ]
         opaqConstr_to_json = opaqConstr_json[0].to_json()
@@ -952,7 +952,7 @@ class TestWindowConstruction:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         winConstr_json = [
-            WindowConstruction.from_json(**store)
+            WindowConstruction.from_dict(**store)
             for store in datastore["WindowConstructions"]
         ]
         winConstr_to_json = winConstr_json[0].to_json()
@@ -973,7 +973,7 @@ class TestStructureDefinition:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         struct_json = [
-            StructureDefinition.from_json(**store)
+            StructureDefinition.from_dict(**store)
             for store in datastore["StructureDefinitions"]
         ]
         struct_to_json = struct_json[0].to_json()
@@ -994,7 +994,7 @@ class TestStructureDefinition:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         struct_json = [
-            StructureDefinition.from_json(**store)
+            StructureDefinition.from_dict(**store)
             for store in datastore["StructureDefinitions"]
         ]
         sd = struct_json[0]
@@ -1250,7 +1250,7 @@ class TestZoneConstructionSet:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         constr_json = [
-            ZoneConstructionSet.from_json(**store)
+            ZoneConstructionSet.from_dict(**store)
             for store in datastore["ZoneConstructionSets"]
         ]
         constr_to_json = constr_json[0].to_json()
@@ -1367,7 +1367,7 @@ class TestZoneLoad:
         with open(filename, "r") as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
-        load_json = [ZoneLoad.from_json(**store) for store in datastore["ZoneLoads"]]
+        load_json = [ZoneLoad.from_dict(**store) for store in datastore["ZoneLoads"]]
         load_to_json = load_json[0].to_json()
 
     def test_hash_eq_zone_load(self, small_idf):
@@ -1523,7 +1523,7 @@ class TestZoneConditioning:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         cond_json = [
-            ZoneConditioning.from_json(**store)
+            ZoneConditioning.from_dict(**store)
             for store in datastore["ZoneConditionings"]
         ]
         cond_to_json = cond_json[0].to_json()
@@ -1674,7 +1674,7 @@ class TestVentilationSetting:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         vent_json = [
-            VentilationSetting.from_json(**store)
+            VentilationSetting.from_dict(**store)
             for store in datastore["VentilationSettings"]
         ]
         vent_to_json = vent_json[0].to_json()
@@ -2692,7 +2692,7 @@ def test_create_umi_template(config):
         "Type": "Fraction",
         "Name": "AlwaysOn",
     }
-    sch_y_on = ar.YearSchedule.from_json(**dict_on)
+    sch_y_on = ar.YearSchedule.from_dict(**dict_on)
     # Always off
     dict_off = {
         "Category": "Year",
@@ -2708,7 +2708,7 @@ def test_create_umi_template(config):
         "Type": "Fraction",
         "Name": "AlwaysOff",
     }
-    sch_y_off = ar.YearSchedule.from_json(**dict_off)
+    sch_y_off = ar.YearSchedule.from_dict(**dict_off)
     # DHW
     dict_dhw = {
         "Category": "Year",
@@ -2724,7 +2724,7 @@ def test_create_umi_template(config):
         "Type": "Fraction",
         "Name": "DHW",
     }
-    sch_y_dhw = ar.YearSchedule.from_json(**dict_dhw)
+    sch_y_dhw = ar.YearSchedule.from_dict(**dict_dhw)
     # Internal gains
     dict_gains = {
         "Category": "Year",
@@ -2740,7 +2740,7 @@ def test_create_umi_template(config):
         "Type": "Fraction",
         "Name": "Gains",
     }
-    sch_y_gains = ar.YearSchedule.from_json(**dict_gains)
+    sch_y_gains = ar.YearSchedule.from_dict(**dict_gains)
     YearSchedules = [sch_y_on, sch_y_off, sch_y_dhw, sch_y_gains]
     # endregion
 

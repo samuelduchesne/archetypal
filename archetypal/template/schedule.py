@@ -272,6 +272,20 @@ class YearScheduleParts:
 
         return ysp
 
+    @classmethod
+    def from_dict(cls, all_objects, *args, **kwargs):
+        """
+        Args:
+            all_objects:
+            *args:
+            **kwargs:
+        """
+        ysp = cls(*args, **kwargs)
+        ref = kwargs.get("Schedule", None)
+        ysp.Schedule = all_objects.get_ref(ref)
+
+        return ysp
+
     def to_dict(self):
         return collections.OrderedDict(
             FromDay=self.FromDay,
@@ -348,6 +362,19 @@ class DaySchedule(UmiSchedule):
 
         return sched
 
+    @classmethod
+    def from_dict(cls, Type, **kwargs):
+        """Create a DaySchedule from a Umi Template json file.
+
+        Args:
+            Type (str): The schedule type limits name.
+            **kwargs:
+        """
+        values = kwargs.pop("Values")
+        sched = cls.from_values(values, schTypeLimitsName=Type, **kwargs)
+
+        return sched
+
     def to_json(self):
         """Returns a dict-like representation of the schedule.
 
@@ -409,6 +436,18 @@ class WeekSchedule(UmiSchedule):
                             current_version=archetypal.__version__,
                             details="Use from_dict function instead")
     def from_json(cls, **kwargs):
+        """
+        Args:
+            **kwargs:
+        """
+        sch_type_limits_name = kwargs.pop("Type")
+        wc = cls(schTypeLimitsName=sch_type_limits_name, **kwargs)
+        days = kwargs.get("Days", None)
+        wc.Days = [wc.get_ref(day) for day in days]
+        return wc
+
+    @classmethod
+    def from_dict(cls, **kwargs):
         """
         Args:
             **kwargs:
@@ -522,6 +561,22 @@ class YearSchedule(UmiSchedule):
                             current_version=archetypal.__version__,
                             details="Use from_dict function instead")
     def from_json(cls, **kwargs):
+        """
+        Args:
+            **kwargs:
+        """
+        schtypelimitsname = kwargs.pop("Type")
+        ys = cls(schTypeLimitsName=schtypelimitsname, **kwargs)
+        parts = kwargs.get("Parts", None)
+
+        ys.Parts = [
+            YearScheduleParts.from_json(all_objects=ys, **part) for part in parts
+        ]
+        ys.schType = "Schedule:Year"
+        return UmiSchedule.from_yearschedule(ys)
+
+    @classmethod
+    def from_dict(cls, **kwargs):
         """
         Args:
             **kwargs:

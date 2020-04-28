@@ -7,6 +7,8 @@
 
 import collections
 import uuid
+import deprecation
+import archetypal
 
 import numpy as np
 from archetypal.template import (
@@ -408,6 +410,9 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return np.array(materials), res.x
 
     @classmethod
+    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
+                            current_version=archetypal.__version__,
+                            details="Use from_dict function instead")
     def from_json(cls, *args, **kwargs):
         """
         Args:

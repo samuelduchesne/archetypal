@@ -6,11 +6,13 @@
 ################################################################################
 
 import collections
+import deprecation
 import logging as lg
 from enum import IntEnum
 from functools import reduce
 
 import tabulate
+import archetypal
 from archetypal import log, IDF, calc_simple_glazing, timeit
 from archetypal.template import MaterialLayer, UmiSchedule, UniqueName
 from archetypal.template.gas_material import GasMaterial
@@ -78,6 +80,9 @@ class WindowConstruction(UmiBase, metaclass=Unique):
             )
 
     @classmethod
+    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
+                            current_version=archetypal.__version__,
+                            details="Use from_dict function instead")
     def from_json(cls, *args, **kwargs):
         """
         Args:

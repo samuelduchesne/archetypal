@@ -181,6 +181,20 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         vs.NatVentSchedule = vs.get_ref(nat_sch)
         return vs
 
+    @classmethod
+    def from_dict(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
+        vs = cls(*args, **kwargs)
+        vent_sch = kwargs.get("ScheduledVentilationSchedule", None)
+        vs.ScheduledVentilationSchedule = vs.get_ref(vent_sch)
+        nat_sch = kwargs.get("NatVentSchedule", None)
+        vs.NatVentSchedule = vs.get_ref(nat_sch)
+        return vs
+
     def to_json(self):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()

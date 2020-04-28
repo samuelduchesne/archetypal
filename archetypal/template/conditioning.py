@@ -243,6 +243,23 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         zc.MechVentSchedule = zc.get_ref(mech_schd)
         return zc
 
+    @classmethod
+    def from_dict(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
+        zc = cls(*args, **kwargs)
+
+        cool_schd = kwargs.get("CoolingSchedule", None)
+        zc.CoolingSchedule = zc.get_ref(cool_schd)
+        heat_schd = kwargs.get("HeatingSchedule", None)
+        zc.HeatingSchedule = zc.get_ref(heat_schd)
+        mech_schd = kwargs.get("MechVentSchedule", None)
+        zc.MechVentSchedule = zc.get_ref(mech_schd)
+        return zc
+
     def to_json(self):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()

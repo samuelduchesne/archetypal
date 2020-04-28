@@ -18,4 +18,4 @@ tsam
 pint
 click
 outdated
-deprecation>=2.1.0
+deprecation

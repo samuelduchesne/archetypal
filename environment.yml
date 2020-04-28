@@ -25,4 +25,4 @@ dependencies:
     - tsam
     - eppy
     - geomeppy
-    - depracation>=2.1.0
+    - deprecation

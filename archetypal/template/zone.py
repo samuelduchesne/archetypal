@@ -10,6 +10,8 @@ import functools
 import math
 import random
 import time
+import deprecation
+import archetypal
 
 import numpy as np
 from eppy.bunch_subclass import BadEPFieldError
@@ -340,6 +342,9 @@ class Zone(UmiBase):
         return data_dict
 
     @classmethod
+    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
+                            current_version=archetypal.__version__,
+                            details="Use from_dict function instead")
     def from_json(cls, *args, **kwargs):
         """
         Args:

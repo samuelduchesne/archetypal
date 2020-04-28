@@ -369,6 +369,30 @@ class Zone(UmiBase):
         return zone
 
     @classmethod
+    def from_dict(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
+        zone = cls(*args, **kwargs)
+
+        ref = kwargs.get("Conditioning", None)
+        zone.Conditioning = zone.get_ref(ref)
+        ref = kwargs.get("Constructions", None)
+        zone.Constructions = zone.get_ref(ref)
+        ref = kwargs.get("DomesticHotWater", None)
+        zone.DomesticHotWater = zone.get_ref(ref)
+        ref = kwargs.get("InternalMassConstruction", None)
+        zone.InternalMassConstruction = zone.get_ref(ref)
+        ref = kwargs.get("Loads", None)
+        zone.Loads = zone.get_ref(ref)
+        ref = kwargs.get("Ventilation", None)
+        zone.Ventilation = zone.get_ref(ref)
+
+        return zone
+
+    @classmethod
     def from_zone_epbunch(cls, zone_ep, sql):
         """Create a Zone object from an eppy 'ZONE' epbunch.
 

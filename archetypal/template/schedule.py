@@ -7,6 +7,8 @@
 
 import collections
 import uuid
+import deprecation
+import archetypal
 
 import numpy as np
 import pandas as pd
@@ -254,6 +256,9 @@ class YearScheduleParts:
         self.Schedule = Schedule
 
     @classmethod
+    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
+                            current_version=archetypal.__version__,
+                            details="Use from_dict function instead")
     def from_json(cls, all_objects, *args, **kwargs):
         """
         Args:
@@ -328,6 +333,9 @@ class DaySchedule(UmiSchedule):
         return sched
 
     @classmethod
+    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
+                            current_version=archetypal.__version__,
+                            details="Use from_dict function instead")
     def from_json(cls, Type, **kwargs):
         """Create a DaySchedule from a Umi Template json file.
 
@@ -397,6 +405,9 @@ class WeekSchedule(UmiSchedule):
         return sched
 
     @classmethod
+    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
+                            current_version=archetypal.__version__,
+                            details="Use from_dict function instead")
     def from_json(cls, **kwargs):
         """
         Args:
@@ -507,6 +518,9 @@ class YearSchedule(UmiSchedule):
         return series.values
 
     @classmethod
+    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
+                            current_version=archetypal.__version__,
+                            details="Use from_dict function instead")
     def from_json(cls, **kwargs):
         """
         Args:

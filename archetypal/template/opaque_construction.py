@@ -431,6 +431,24 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return oc
 
     @classmethod
+    def from_dict(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
+        # resolve Material objects from ref
+        layers = kwargs.pop("Layers")
+        oc = cls(Layers=None, **kwargs)
+        lys = [
+            MaterialLayer(oc.get_ref(layer["Material"]), layer["Thickness"])
+            for layer in layers
+        ]
+        oc.Layers = lys
+
+        return oc
+
+    @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
         # from the construction or internalmass object
         """

@@ -438,8 +438,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             **kwargs:
         """
         # resolve Material objects from ref
-        layers = kwargs.pop("Layers")
-        oc = cls(Layers=None, **kwargs)
+        layers = kwargs.pop("Layers", None)
+        oc = cls(Layers=layers, **kwargs)
         lys = [
             MaterialLayer(oc.get_ref(layer["Material"]), layer["Thickness"])
             for layer in layers

@@ -89,6 +89,18 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         dhws.WaterSchedule = dhws.get_ref(wat_sch)
         return dhws
 
+    @classmethod
+    def from_dict(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
+        dhws = cls(*args, **kwargs)
+        wat_sch = kwargs.get("WaterSchedule", None)
+        dhws.WaterSchedule = dhws.get_ref(wat_sch)
+        return dhws
+
     def to_json(self):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()

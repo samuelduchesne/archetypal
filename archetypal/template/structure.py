@@ -132,6 +132,25 @@ class StructureDefinition(UmiBase, metaclass=Unique):
         ]
         return sd
 
+    @classmethod
+    def from_dict(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
+        sd = cls(*args, **kwargs)
+        massratios = kwargs.get("MassRatios", None)
+        sd.MassRatios = [
+            MassRatio(
+                HighLoadRatio=massratio["HighLoadRatio"],
+                Material=sd.get_ref(massratio["Material"]),
+                NormalRatio=massratio["NormalRatio"],
+            )
+            for massratio in massratios
+        ]
+        return sd
+
     def to_json(self):
         data_dict = collections.OrderedDict()
 

@@ -70,6 +70,19 @@ class GasMaterial(MaterialBase, metaclass=Unique):
 
         return gm
 
+    @classmethod
+    def from_dict(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
+        gm = cls(*args, **kwargs)
+        gas_type = kwargs.get("Name", None)
+        gm.Type = gas_type
+
+        return gm
+
     def to_json(self):
         """Convert class properties to dict"""
         data_dict = collections.OrderedDict()

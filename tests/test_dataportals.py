@@ -235,7 +235,7 @@ def test_statcan_error(config, scratch_then_cache):
     response = ar.dataportal.stat_can_request(**data)
     print(response)
 
-    # Makes sure result is None (wrong function input)
+    # Makes sure result is None (wrong function input "dguid")
     assert response is None
 
 

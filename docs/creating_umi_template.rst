@@ -373,7 +373,7 @@ required inputs for each object.
             "Type": "Fraction",
             "Name": "OnOff_2"}
           # Creates WeekSchedule from dict (from json)
-          sch_w_on = ar.WeekSchedule.from_json(**dict_w_on)
+          sch_w_on = ar.WeekSchedule.from_dict(**dict_w_on)
 
     - Year schedules
 
@@ -413,7 +413,7 @@ required inputs for each object.
                 }],
             "Type": "Fraction",
             "Name": "AlwaysOn"}
-          sch_y_on = ar.YearSchedule.from_json(**dict_on)
+          sch_y_on = ar.YearSchedule.from_dict(**dict_on)
           # Always off
           dict_off = {
             "Category": "Year",
@@ -426,7 +426,7 @@ required inputs for each object.
                 "Schedule": {"$ref": sch_w_off.id}}],
             "Type": "Fraction",
             "Name": "AlwaysOff"}
-          sch_y_off = ar.YearSchedule.from_json(**dict_off)
+          sch_y_off = ar.YearSchedule.from_dict(**dict_off)
           # Year ON/OFF
           dict_on_off = {
             "Category": "Year",
@@ -448,7 +448,7 @@ required inputs for each object.
                 ],
             "Type": "Fraction",
             "Name": "ON_OFF"}
-          sch_y_on_off = ar.YearSchedule.from_json(**dict_on_off)
+          sch_y_on_off = ar.YearSchedule.from_dict(**dict_on_off)
           # DHW
           dict_dhw = {
             "Category": "Year",
@@ -461,7 +461,7 @@ required inputs for each object.
                 "Schedule": {"$ref": sch_w_dhw.id}}],
             "Type": "Fraction",
             "Name": "DHW"}
-          sch_y_dhw = ar.YearSchedule.from_json(**dict_dhw)
+          sch_y_dhw = ar.YearSchedule.from_dict(**dict_dhw)
           # Internal gains
           dict_gains = {
             "Category": "Year",
@@ -474,7 +474,7 @@ required inputs for each object.
                 "Schedule": {"$ref": sch_w_gains.id}}],
             "Type": "Fraction",
             "Name": "Gains"}
-          sch_y_gains = ar.YearSchedule.from_json(**dict_gains)
+          sch_y_gains = ar.YearSchedule.from_dict(**dict_gains)
           # List of YearSchedule objects (needed for Umi template creation)
           YearSchedules = [sch_y_on, sch_y_off, sch_y_on_off, sch_y_dhw, sch_y_gains]
 

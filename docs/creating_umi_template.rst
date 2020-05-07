@@ -63,10 +63,10 @@ parameters:
 
 .. code-block:: python
 
-    concrete = ar.OpaqueMaterial(Name="Concrete", Conductivity=0.5, SpecificHeat=800, Density=1500, Name="Concrete")
-    insulation = ar.OpaqueMaterial(Name="Insulation", Conductivity=0.04, SpecificHeat=1000, Density=30, Name="Insulation")
-    brick = ar.OpaqueMaterial(Name="Brick", Conductivity=1, SpecificHeat=900, Density=1900, Name="Brick")
-    plywood = ar.OpaqueMaterial(Name="Plywood", Conductivity=0.13, SpecificHeat=800, Density=540, Name="Plywood")
+    concrete = ar.OpaqueMaterial(Name="Concrete", Conductivity=0.5, SpecificHeat=800, Density=1500)
+    insulation = ar.OpaqueMaterial(Name="Insulation", Conductivity=0.04, SpecificHeat=1000, Density=30)
+    brick = ar.OpaqueMaterial(Name="Brick", Conductivity=1, SpecificHeat=900, Density=1900)
+    plywood = ar.OpaqueMaterial(Name="Plywood", Conductivity=0.13, SpecificHeat=800, Density=540)
 
 Add these 4 materials to a variable named `OpaqueMaterials`. This variable will be referenced at the end when the
 :class:`UmiTemplate` object will be created.

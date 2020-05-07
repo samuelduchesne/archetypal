@@ -1,17 +1,26 @@
 Creating an Umi template
 ========================
 
-The following sections explain how to create an Umi template using different
-modules available in `archetypal`
-The documentation will present how to create each Umi template object (e.g.
-`opaque materials`, `window settings`, `zone loads`, etc). Every inputs of
-each object will be presented with their default parameters, and simple
-examples will show how to create Umi template objects with at least the
-required inputs for each object.
+.. py:currentmodule:: archetypal.template
+
+This tutorial explains how to create an Umi Template Library from scratch using `archetypal`. This section presents each
+required steps to create a valid Umi Template Library object. Every object will be presented with their
+default parameters, and simple examples will show how to create objects with the minimum required parameters. Before
+we start, here is a description of the overall structure of an Umi Template Library and the Building Templates it
+contains.
+
 Umi Template Structure
 ----------------------
 
 An Umi Template is a collection of various other objects that are referenced between each other. At the top of the
+hierarchy, there is the :class:`UmiTemplate` object which holds all the other bits and pieces making up the template
+library. The second level is therefore the :class:`BuildingTemplate` object. There is one BuildingTemplate for each
+building models (or archetypes). Each BuildingTemplate is made of a series of children objects, and multiple
+BuildingTemplates can share the same children. For example, two buildings can share the same lighting schedule or the
+same opaque material.
+
+For simplicity, this tutorial begins with the lowest level in the hierarchy (or the leaf in a graph structure): The
+materials.
 
 Defining materials
 ------------------
@@ -20,8 +29,6 @@ The first step is to create the library of materials from which the construction
 (used as :class:`Layers` in constructions). There are :class:`OpaqueMaterial`, :class:`GlazingMaterial` and
 :class:`GasMaterial` to define.
 
-      Here are all the parameters and their default values for an
-      OpaqueMaterial object (see OpaqueMaterial_ doc for more information)
 Opaque materials
 ________________
 

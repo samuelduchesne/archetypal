@@ -1,5 +1,5 @@
 Creating an Umi template
-------------------------
+========================
 
 The following sections explain how to create an Umi template using different
 modules available in `archetypal`
@@ -8,16 +8,22 @@ The documentation will present how to create each Umi template object (e.g.
 each object will be presented with their default parameters, and simple
 examples will show how to create Umi template objects with at least the
 required inputs for each object.
+Umi Template Structure
+----------------------
 
-1. Defining materials
+An Umi Template is a collection of various other objects that are referenced between each other. At the top of the
 
-  Creating Umi template objects to define materials (used as `Layers`
-  in constructions).
+Defining materials
+------------------
 
-    - Opaque materials
+The first step is to create the library of materials from which the constructions will be made.
+(used as :class:`Layers` in constructions). There are :class:`OpaqueMaterial`, :class:`GlazingMaterial` and
+:class:`GasMaterial` to define.
 
       Here are all the parameters and their default values for an
       OpaqueMaterial object (see OpaqueMaterial_ doc for more information)
+Opaque materials
+________________
 
       .. code-block:: python
 
@@ -51,7 +57,8 @@ required inputs for each object.
           # List of OpaqueMaterial objects (needed for Umi template creation)
           OpaqueMaterials = [concrete, insulation, brick, plywood]
 
-    - Glazing materials
+Glazing materials
+_________________
 
       Here are all the parameters and their default values for a
       GlazingMaterial object (see GlazingMaterial_ doc for more information)
@@ -95,7 +102,8 @@ required inputs for each object.
           # List of GlazingMaterial objects (needed for Umi template creation)
           GlazingMaterials = [glass]
 
-    - Gas materials
+Gas materials
+_____________
 
       Here are all the parameters and their default values for a
       GasMaterial object (see GasMaterial_ doc for more information)
@@ -123,7 +131,8 @@ required inputs for each object.
           # List of GasMaterial objects (needed for Umi template creation)
           GasMaterials = [air]
 
-2. Defining constructions
+Defining constructions
+----------------------
 
   Creating Umi template objects to define constructions (e.g. `OpaqueConstruction`).
 
@@ -229,7 +238,8 @@ required inputs for each object.
           # List of StructureDefinition objects (needed for Umi template creation)
           StructureDefinitions = [struct_definition]
 
-3. Defining schedules
+Defining schedules
+------------------
 
   Creating Umi template objects to define schedules (e.g. `DaySchedule`).
 
@@ -478,7 +488,8 @@ required inputs for each object.
           # List of YearSchedule objects (needed for Umi template creation)
           YearSchedules = [sch_y_on, sch_y_off, sch_y_on_off, sch_y_dhw, sch_y_gains]
 
-4. Defining window settings
+Defining window settings
+------------------------
 
   Creating Umi template objects to define window settings
 
@@ -519,7 +530,8 @@ required inputs for each object.
     # List of WindowSetting objects (needed for Umi template creation)
     WindowSettings = [window_setting]
 
-5. Defining DHW settings
+Defining DHW settings
+---------------------
 
   Creating Umi template objects to define DHW settings
 
@@ -550,7 +562,8 @@ required inputs for each object.
     # List of DomesticHotWaterSetting objects (needed for Umi template creation)
     DomesticHotWaterSettings = [dhw_setting]
 
-6. Defining ventilation settings
+Defining ventilation settings
+-----------------------------
 
   Creating Umi template objects to define ventilation settings
 
@@ -587,7 +600,8 @@ required inputs for each object.
     # List of VentilationSetting objects (needed for Umi template creation)
     VentilationSettings = [vent_setting]
 
-7. Defining zone conditioning settings
+Defining zone conditioning settings
+-----------------------------------
 
   Creating Umi template objects to define zone conditioning settings
 
@@ -631,7 +645,8 @@ required inputs for each object.
     # List of ZoneConditioning objects (needed for Umi template creation)
     ZoneConditionings = [zone_conditioning]
 
-8. Defining zone construction sets
+Defining zone construction sets
+-------------------------------
 
   Creating Umi template objects to define zone construction sets
 
@@ -678,7 +693,8 @@ required inputs for each object.
     # List of ZoneConstructionSet objects (needed for Umi template creation)
     ZoneConstructionSets = [zone_constr_set_perim, zone_constr_set_core]
 
-9. Defining zone loads
+Defining zone loads
+-------------------
 
   Creating Umi template objects to define zone loads
 
@@ -713,7 +729,8 @@ required inputs for each object.
     # List of ZoneLoad objects (needed for Umi template creation)
     ZoneLoads = [zone_load]
 
-10. Defining zones
+Defining zones
+--------------
 
   Creating Umi template objects to define zones
 
@@ -762,7 +779,8 @@ required inputs for each object.
     # List of Zone objects (needed for Umi template creation)
     Zones = [perim, core]
 
-11. Defining building template
+Defining building template
+--------------------------
 
   Creating Umi template objects to define building template
 
@@ -791,7 +809,8 @@ required inputs for each object.
     # List of BuildingTemplate objects (needed for Umi template creation)
     BuildingTemplates = [building_template]
 
-12. Creating Umi template
+Creating Umi template
+---------------------
 
   Creating Umi template from all objects defined before
   (see UmiTemplate_ doc for more information)

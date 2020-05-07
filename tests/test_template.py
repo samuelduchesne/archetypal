@@ -6,37 +6,34 @@ from path import Path
 
 import archetypal as ar
 import archetypal.settings
-from archetypal import get_eplus_dirs, clear_cache, settings
+from archetypal import get_eplus_dirs, clear_cache, settings, GlazingMaterial
 from archetypal.settings import ep_version
 
 
 @pytest.fixture(scope="session")
-def small_idf(config):
-    """
-    Args:
-        config:
-    """
-    file = "tests/input_data/umi_samples/B_Off_0.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    idf = ar.load_idf(file)
-    sql: dict = ar.run_eplus(
-        file,
-        weather_file=w,
+def small_idf(config, small_idf_obj):
+    """An IDF model. Yields both the idf and the sql"""
+    sql = small_idf_obj.run_eplus(
         output_report="sql",
         prep_outputs=True,
         annual=False,
         design_day=False,  # This idf model cannot do DesignDay
         verbose="v",
     )
-    yield idf, sql
+    yield small_idf_obj, sql
+
+
+@pytest.fixture(scope="session")
+def small_idf_obj(config):
+    """An IDF model. Yields just the idf object"""
+    file = "tests/input_data/umi_samples/B_Off_0.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    yield ar.load_idf(file, weather_file=w)
 
 
 @pytest.fixture(scope="session")
 def other_idf(config):
-    """
-    Args:
-        config:
-    """
+    """Another IDF object with a different signature. Yields both the idf and the sql"""
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = ar.load_idf(file)
@@ -50,6 +47,14 @@ def other_idf(config):
         verbose="v",
     )
     yield idf, sql
+
+
+@pytest.fixture(scope="session")
+def other_idf_object(config):
+    """Another IDF object (same as other_idf).Yields just the idf object"""
+    file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    yield ar.load_idf(file, weather_file=w)
 
 
 @pytest.fixture(scope="session")
@@ -341,10 +346,16 @@ class TestWindowType:
 class TestOpaqueMaterial:
     """Series of tests for the :class:`OpaqueMaterial` class"""
 
-    def test_add_materials(self):
+    @pytest.fixture()
+    def mat_a(self):
+        yield ar.OpaqueMaterial(Conductivity=100, SpecificHeat=4.18, Name="mat_a")
+
+    @pytest.fixture()
+    def mat_b(self):
+        yield ar.OpaqueMaterial(Conductivity=200, SpecificHeat=4.18, Name="mat_b")
+
+    def test_add_materials(self, mat_a, mat_b):
         """test __add__() for OpaqueMaterial"""
-        mat_a = ar.OpaqueMaterial(Conductivity=100, SpecificHeat=4.18, Name="mat_a")
-        mat_b = ar.OpaqueMaterial(Conductivity=200, SpecificHeat=4.18, Name="mat_b")
         mat_c = mat_a + mat_b
         assert mat_c
         assert mat_c.Conductivity == 150
@@ -366,14 +377,14 @@ class TestOpaqueMaterial:
         assert mat_a.id == id_  # id should not change
         assert mat_a.id != mat_b.id
 
-    def test_opaqueMaterial_from_to_json(config, small_idf):
+    def test_opaqueMaterial_from_to_json(config, small_idf_obj):
         """
         Args:
             small_idf:
         """
         from archetypal import OpaqueMaterial
 
-        idf, sql = small_idf
+        idf = small_idf_obj
         if idf.idfobjects["MATERIAL"]:
             opaqMat_epBunch = OpaqueMaterial.from_epbunch(idf.idfobjects["MATERIAL"][0])
             opaqMat_epBunch.to_json()
@@ -388,7 +399,7 @@ class TestOpaqueMaterial:
             )
             opaqMat_epBunch.to_json()
 
-    def test_hash_eq_opaq_mat(self, small_idf, other_idf):
+    def test_hash_eq_opaq_mat(self, small_idf_obj, other_idf_object):
         """Test equality and hashing of :class:`TestOpaqueMaterial`
 
         Args:
@@ -398,7 +409,7 @@ class TestOpaqueMaterial:
         from archetypal.template import OpaqueMaterial
         from copy import copy
 
-        idf, sql = small_idf
+        idf = small_idf_obj
         opaq_mat = idf.getobject("MATERIAL", "B_Gypsum_Plaster_0.02_B_Off_Thm_0")
         om = OpaqueMaterial.from_epbunch(opaq_mat)
         om_2 = copy(om)
@@ -444,7 +455,7 @@ class TestOpaqueMaterial:
         # 2 OpaqueMaterial from different idf should not have the same hash if they
         # have different names, not be the same object, yet be equal if they have the
         # same characteristics (Thickness, Roughness, etc.)
-        idf_2, sql_2 = other_idf
+        idf_2 = other_idf_object
         assert idf is not idf_2
         opaq_mat_3 = idf_2.getobject("MATERIAL", "B_Gypsum_Plaster_0.02_B_Res_Thm_0")
         assert opaq_mat is not opaq_mat_3
@@ -458,6 +469,24 @@ class TestOpaqueMaterial:
 
 class TestGlazingMaterial:
     """Series of tests for the :class:`GlazingMaterial` class"""
+
+    def test_simple_glazing_material(self, config):
+        name = "A Glass Material"
+        glass = GlazingMaterial(
+            Name=name,
+            Density=2500,
+            Conductivity=1,
+            SolarTransmittance=0.7,
+            SolarReflectanceFront=0.5,
+            SolarReflectanceBack=0.5,
+            VisibleTransmittance=0.7,
+            VisibleReflectanceFront=0.5,
+            VisibleReflectanceBack=0.5,
+            IRTransmittance=0.7,
+            IREmissivityFront=0.5,
+            IREmissivityBack=0.5,
+        )
+        assert glass.Name == name
 
     def test_add_glazing_material(self):
         """test __add__() for OpaqueMaterial"""
@@ -552,7 +581,12 @@ class TestGlazingMaterial:
 class TestGasMaterial:
     """Series of tests for the GasMaterial class"""
 
-    # todo: Implement tests for GasMaterial class
+    def test_gas_material(self, config):
+        from archetypal import GasMaterial
+
+        air = GasMaterial(Name="Air", Conductivity=0.02, Density=1.24)
+
+        assert air.Conductivity == 0.02
 
     def test_GasMaterial_from_to_json(self, config):
         """
@@ -2551,7 +2585,6 @@ def test_create_umi_template(config):
     air = ar.GasMaterial(Conductivity=0.02, Density=1.24)
     GasMaterials = [air]
     # endregion
-
 
     # region Defines constructions
 

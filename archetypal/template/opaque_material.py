@@ -19,6 +19,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
 
     def __init__(
         self,
+        Name,
         Conductivity,
         SpecificHeat,
         SolarAbsorptance=0.7,
@@ -40,6 +41,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         """A custom opaque material.
 
         Args:
+            Name (str): The name of the material.
             Conductivity (float): A number representing the conductivity of the
                 material in W/m-K. This is essentially the heat flow in Watts
                 across one meter thick of the material when the temperature
@@ -80,7 +82,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             SubstitutionTimestep: # todo: define parameter
             **kwargs:
         """
-        super(OpaqueMaterial, self).__init__(**kwargs)
+        super(OpaqueMaterial, self).__init__(Name, **kwargs)
 
         if SubstitutionRatePattern is None:
             SubstitutionRatePattern = [0.5, 1]

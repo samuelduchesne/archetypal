@@ -312,6 +312,7 @@ class MaterialBase(UmiBase):
 
     def __init__(
         self,
+        Name,
         Cost=0,
         EmbodiedCarbon=0,
         EmbodiedEnergy=0,
@@ -327,6 +328,7 @@ class MaterialBase(UmiBase):
         """Initialize a MaterialBase object with parameters:
 
         Args:
+            Name (str): Name of the Material.
             Cost (float): The purchase cost of the material by volume ($/m3).
             EmbodiedCarbon (float): Represents the GHG emissions through the
                 lifetime of the product (kgCO2/kg).
@@ -359,7 +361,7 @@ class MaterialBase(UmiBase):
             **kwargs: Keywords passed to the :class:`UmiBase` class. See
                 :class:`UmiBase` for more details.
         """
-        super(MaterialBase, self).__init__(**kwargs)
+        super(MaterialBase, self).__init__(Name, **kwargs)
         if SubstitutionRatePattern is None:
             SubstitutionRatePattern = [1.0]
         self.Conductivity = Conductivity

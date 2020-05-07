@@ -25,17 +25,18 @@ class ConstructionBase(UmiBase):
     constructions (eg.: wall assemblies).
 
     For more information on the Life Cycle Analysis performed in UMI, see:
-    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life-cycle-impact
+    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life
+    -cycle-impact
     """
 
     def __init__(
-        self,
-        AssemblyCarbon=0,
-        AssemblyCost=0,
-        AssemblyEnergy=0,
-        DisassemblyCarbon=0,
-        DisassemblyEnergy=0,
-        **kwargs
+            self,
+            AssemblyCarbon=0,
+            AssemblyCost=0,
+            AssemblyEnergy=0,
+            DisassemblyCarbon=0,
+            DisassemblyEnergy=0,
+            **kwargs,
     ):
         """Initialize a ConstructionBase object with parameters:
 
@@ -80,33 +81,21 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     .. image:: ../images/template/constructions-opaque.png
     """
 
-    def __init__(
-        self,
-        Layers,
-        Surface_Type=None,
-        Outside_Boundary_Condition=None,
-        IsAdiabatic=False,
-        **kwargs
-    ):
+    def __init__(self, Layers, **kwargs):
         """
         Args:
             Layers (list of MaterialLayer):
-            Surface_Type:
-            Outside_Boundary_Condition:
-            IsAdiabatic:
-            **kwargs:
+            **kwargs: Other attributes passed to parent constructors such as
+            :class:`ConstructionBase`
         """
         super(OpaqueConstruction, self).__init__(Layers, **kwargs)
         self.area = 1
-        self.Surface_Type = Surface_Type
-        self.Outside_Boundary_Condition = Outside_Boundary_Condition
-        self.IsAdiabatic = IsAdiabatic
 
     def __add__(self, other):
         """Overload + to implement self.combine.
 
         Args:
-            other:
+            other (OpaqueConstruction): The other OpaqueConstruction.
         """
         return self.combine(other)
 
@@ -120,9 +109,6 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             return all(
                 [
                     self.Layers == other.Layers,
-                    self.Surface_Type == other.Surface_Type,
-                    self.Outside_Boundary_Condition == other.Outside_Boundary_Condition,
-                    self.IsAdiabatic == other.IsAdiabatic,
                 ]
             )
 
@@ -262,7 +248,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             return oc
         else:
             raise ValueError(
-                'Possible choices are ["equivalent_volume", "constant_ufactor", "dominant_wall"]'
+                'Possible choices are ["equivalent_volume", "constant_ufactor", '
+                '"dominant_wall"]'
             )
         # layers for the new OpaqueConstruction
         layers = [MaterialLayer(mat, t) for mat, t in zip(new_m, new_t)]
@@ -331,11 +318,11 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         from scipy.optimize import minimize
 
         def obj_func(
-            thicknesses,
-            materials,
-            expected_u_value,
-            expected_specific_heat,
-            expected_total_thickness,
+                thicknesses,
+                materials,
+                expected_u_value,
+                expected_specific_heat,
+                expected_total_thickness,
         ):
             """Objective function for thickness evaluation"""
 
@@ -358,9 +345,9 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             ]
             specific_heat = np.average(h_calc, weights=mass_per_unit_area)
             return (
-                (u_value - expected_u_value) ** 2
-                + (specific_heat - expected_specific_heat) ** 2
-                + (sum(thicknesses) - expected_total_thickness) ** 2
+                    (u_value - expected_u_value) ** 2
+                    + (specific_heat - expected_specific_heat) ** 2
+                    + (sum(thicknesses) - expected_total_thickness) ** 2
             )
 
         # U_eq is the weighted average of the wall u_values by their respected total
@@ -410,11 +397,18 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return np.array(materials), res.x
 
     @classmethod
-    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
-                            current_version=archetypal.__version__,
-                            details="Use from_dict function instead")
+    @deprecation.deprecated(
+        deprecated_in="1.3.1",
+        removed_in="1.4",
+        current_version=archetypal.__version__,
+        details="Use from_dict function instead",
+    )
     def from_json(cls, *args, **kwargs):
-
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         return cls.from_dict(*args, **kwargs)
 
     @classmethod

@@ -159,115 +159,114 @@ Example of GasMaterial object:
 Defining constructions
 ----------------------
 
-  Creating Umi template objects to define constructions (e.g. `OpaqueConstruction`).
+Once the materials are created, wall assemblies (or :class:`OpaqueConstruction` objects) can be created.
 
-    - Opaque constructions
+Opaque constructions
+____________________
 
-      Here are all the parameters and their default values for an
-      OpaqueConstruction object (see OpaqueConstruction_ doc for more information)
+Here are all the parameters and default values for an
+OpaqueConstruction object (see :class:`OpaqueConstruction` for more information)
 
-      .. code-block:: python
+.. code-block:: python
 
-        def __init__(
             Name,
-            Layers,
-            Surface_Type=None,
-            Outside_Boundary_Condition=None,
-            IsAdiabatic=False,
-            **kwargs)
+    def __init__(
+        Layers,
+        Surface_Type,
+        Outside_Boundary_Condition,
+        IsAdiabatic,
+        **kwargs)
 
-      Example of OpaqueConstruction objects:
+An OpaqueConstruction requires a few parameters such as the :attr:`Layers` (a list of :class:`OpapqueMaterial`
+objects), the :attr:`Surface_Type` (choice of "Partition", ""
 
-        .. code-block:: python
+.. code-block:: python
 
-          # OpaqueConstruction using OpaqueMaterial objects
-          wall_int = ar.OpaqueConstruction(
-            Name="wall_int",
-            Layers=[plywood],
-            Surface_Type="Partition",
-            Outside_Boundary_Condition="Zone",
-            IsAdiabatic=True)
+    # OpaqueConstruction using OpaqueMaterial objects
+    wall_int = ar.OpaqueConstruction(
+    Layers=[plywood],
+    Surface_Type="Partition",
+    Outside_Boundary_Condition="Zone",
+    IsAdiabatic=True)
 
-          wall_ext = ar.OpaqueConstruction(
-            Name="wall_ext",
-            Layers=[concrete, insulation, brick],
-            Surface_Type="Facade",
-            Outside_Boundary_Condition="Outdoors")
+    wall_ext = ar.OpaqueConstruction(
+    Layers=[concrete, insulation, brick],
+    Surface_Type="Facade",
+    Outside_Boundary_Condition="Outdoors")
 
-          floor = ar.OpaqueConstruction(
-            Name="floor",
-            Layers=[concrete, plywood],
-            Surface_Type="Ground",
-            Outside_Boundary_Condition="Zone")
+    floor = ar.OpaqueConstruction(
+    Layers=[concrete, plywood],
+    Surface_Type="Ground",
+    Outside_Boundary_Condition="Zone")
 
-          roof = ar.OpaqueConstruction(
-            Name="roof",
-            Layers=[plywood, insulation, brick],
-            Surface_Type="Roof",
-            Outside_Boundary_Condition="Outdoors")
-          # List of OpaqueConstruction objects (needed for Umi template creation)
-          OpaqueConstructions = [wall_int, wall_ext, floor, roof]
+    roof = ar.OpaqueConstruction(
+    Layers=[plywood, insulation, brick],
+    Surface_Type="Roof",
+    Outside_Boundary_Condition="Outdoors")
+    # List of OpaqueConstruction objects (needed for Umi template creation)
+    OpaqueConstructions = [wall_int, wall_ext, floor, roof]
 
-    - Window constructions
+Window constructions
+____________________
 
-      Here are all the parameters and their default values for an
-      WindowConstruction object (see WindowConstruction_ doc for more information)
+Here are all the parameters and their default values for an
+WindowConstruction object (see WindowConstruction_ doc for more information)
 
-      .. code-block:: python
+.. code-block:: python
 
-        def __init__(
-            Name,
-            Layers,
-            Category="Double",
-            AssemblyCarbon=0,
-            AssemblyCost=0,
-            AssemblyEnergy=0,
-            DisassemblyCarbon=0,
-            DisassemblyEnergy=0,
-            **kwargs)
+    def __init__(
+        Layers,
+        Category="Double",
+        AssemblyCarbon=0,
+        AssemblyCost=0,
+        AssemblyEnergy=0,
+        DisassemblyCarbon=0,
+        DisassemblyEnergy=0,
+        **kwargs)
 
-      Example of WindowConstruction object:
+Example of WindowConstruction object:
 
-        .. code-block:: python
+.. code-block:: python
 
-          # WindowConstruction using GlazingMaterial and GasMaterial objects
-          window = ar.WindowConstruction(Name="window_1", Layers=[glass, air, glass])
-          # List of WindowConstruction objects (needed for Umi template creation)
-          WindowConstructions = [window]
+    # WindowConstruction using GlazingMaterial and GasMaterial objects
+    window = ar.WindowConstruction(Layers=[glass, air, glass])
+    # List of WindowConstruction objects (needed for Umi template creation)
+    WindowConstructions = [window]
 
-    - Structure definition
+Structure definition
+____________________
 
-      Here are all the parameters and their default values for an
-      StructureDefinition object (see StructureDefinition_ doc for more information)
+Here are all the parameters and their default values for an
+StructureDefinition object (see StructureDefinition_ doc for more information)
 
-      .. code-block:: python
+.. code-block:: python
 
-        def __init__(
-            *args,
-            AssemblyCarbon=0,
-            AssemblyCost=0,
-            AssemblyEnergy=0,
-            DisassemblyCarbon=0,
-            DisassemblyEnergy=0,
-            MassRatios=None,
-            **kwargs)
+    def __init__(
+        *args,
+        AssemblyCarbon=0,
+        AssemblyCost=0,
+        AssemblyEnergy=0,
+        DisassemblyCarbon=0,
+        DisassemblyEnergy=0,
+        MassRatios=None,
+        **kwargs)
 
-      We observe that StructureDefinition uses MassRatio objects. Here are the
-      parameters of MassRatio object (see MassRatio_ doc for more information)
+We observe that StructureDefinition uses MassRatio objects. Here are the
+parameters of MassRatio object (see MassRatio_ doc for more information)
 
-      .. code-block:: python
+.. code-block:: python
 
-        def __init__(HighLoadRatio=None, Material=None, NormalRatio=None)
+    def __init__(HighLoadRatio=None, Material=None, NormalRatio=None)
 
-      Example of StructureDefinition object:
+Example of StructureDefinition object:
 
-        .. code-block:: python
+.. code-block:: python
 
-          # StructureDefinition using OpaqueMaterial objects
-          mass_ratio = ar.MassRatio(Material=plywood, NormalRatio="NormalRatio")
-          struct_definition = ar.StructureDefinition(Name="Structure", MassRatios=[mass_ratio])
-          # List of StructureDefinition objects (needed for Umi template creation)
-          StructureDefinitions = [struct_definition]
+    # StructureDefinition using OpaqueMaterial objects
+    mass_ratio = ar.MassRatio(Material=plywood, NormalRatio="NormalRatio")
+    struct_definition = ar.StructureDefinition(MassRatios=[mass_ratio])
+    # List of StructureDefinition objects (needed for Umi template creation)
+    StructureDefinitions = [struct_definition]
 
 Defining schedules
 ------------------

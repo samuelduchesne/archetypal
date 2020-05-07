@@ -912,7 +912,7 @@ class TestOpaqueConstruction:
         assert len(oc_dict) == 2
 
         # if an attribute changed, equality is lost
-        oc_2.IsAdiabatic = True
+        oc_2.Layers = None
         assert oc != oc_2
 
         # length of set() should be 2 since both objects are not equal anymore and

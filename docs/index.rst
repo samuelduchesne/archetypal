@@ -40,6 +40,7 @@ independently.
 .. toctree::
    :maxdepth: 2
    :caption: User Guide
+   :numbered:
 
    Converting IDF models <converting.rst>
    Reading and Running IDF files <reading_idf.rst>

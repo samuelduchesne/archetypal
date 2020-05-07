@@ -1,7 +1,9 @@
 import collections
 import logging as lg
 
-from archetypal import log, timeit, reduce
+import deprecation
+
+from archetypal import log, timeit, reduce, __version__
 from archetypal.template import (
     UmiBase,
     Unique,
@@ -10,24 +12,23 @@ from archetypal.template import (
 )
 
 
-
-
 class ZoneConstructionSet(UmiBase, metaclass=Unique):
     """Zone-specific :class:`Construction` ids"""
+
     def __init__(
-            self,
-            Name,
-            Facade=None,
-            Ground=None,
-            Partition=None,
-            Roof=None,
-            Slab=None,
-            IsFacadeAdiabatic=False,
-            IsGroundAdiabatic=False,
-            IsPartitionAdiabatic=False,
-            IsRoofAdiabatic=False,
-            IsSlabAdiabatic=False,
-            **kwargs
+        self,
+        Name,
+        Facade=None,
+        Ground=None,
+        Partition=None,
+        Roof=None,
+        Slab=None,
+        IsFacadeAdiabatic=False,
+        IsGroundAdiabatic=False,
+        IsPartitionAdiabatic=False,
+        IsRoofAdiabatic=False,
+        IsSlabAdiabatic=False,
+        **kwargs
     ):
         """
         Args:
@@ -89,7 +90,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
                     self.IsGroundAdiabatic == other.IsGroundAdiabatic,
                     self.Facade == other.Facade,
                     self.IsFacadeAdiabatic == other.IsFacadeAdiabatic,
-                    ]
+                ]
             )
 
     @classmethod
@@ -165,7 +166,17 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         return z_set
 
     @classmethod
+    @deprecation.deprecated(
+        deprecated_in="1.3.1",
+        removed_in="1.4",
+        current_version=__version__,
+        details="Use from_dict function instead",
+    )
     def from_json(cls, *args, **kwargs):
+        return cls.from_dict(*args, **kwargs)
+
+    @classmethod
+    def from_dict(cls, *args, **kwargs):
         """
         Args:
             *args:
@@ -279,7 +290,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             'surface "%s" assigned as a Facade' % surf.Name,
             lg.DEBUG,
             name=surf.theidf.name,
-            )
+        )
         oc = OpaqueConstruction.from_epbunch(
             surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
         )
@@ -297,7 +308,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             'surface "%s" assigned as a Ground' % surf.Name,
             lg.DEBUG,
             name=surf.theidf.name,
-            )
+        )
         oc = OpaqueConstruction.from_epbunch(
             surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
         )
@@ -322,7 +333,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
                 'surface "%s" assigned as a Partition' % surf.Name,
                 lg.DEBUG,
                 name=surf.theidf.name,
-                )
+            )
             return oc
         else:
             # we might be in a situation where the construction does not exist in the
@@ -340,7 +351,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             'surface "%s" assigned as a Roof' % surf.Name,
             lg.DEBUG,
             name=surf.theidf.name,
-            )
+        )
         oc = OpaqueConstruction.from_epbunch(
             surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
         )
@@ -358,7 +369,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             'surface "%s" assigned as a Slab' % surf.Name,
             lg.DEBUG,
             name=surf.theidf.name,
-            )
+        )
         oc = OpaqueConstruction.from_epbunch(
             surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
         )
@@ -377,13 +388,14 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             % surf.Name,
             lg.WARNING,
             name=surf.theidf.name,
-            )
+        )
         oc = OpaqueConstruction.from_epbunch(
             surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
         )
         oc.area = surf.area
         oc.Surface_Type = "Facade"
         return oc
+
 
 def surface_dispatcher(surf, zone):
     """

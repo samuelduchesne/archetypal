@@ -63,10 +63,10 @@ parameters:
 
 .. code-block:: python
 
-    concrete = ar.OpaqueMaterial(Conductivity=0.5, SpecificHeat=800, Density=1500, Name="Concrete")
-    insulation = ar.OpaqueMaterial(Conductivity=0.04, SpecificHeat=1000, Density=30, Name="Insulation")
-    brick = ar.OpaqueMaterial(Conductivity=1, SpecificHeat=900, Density=1900, Name="Brick")
-    plywood = ar.OpaqueMaterial(Conductivity=0.13, SpecificHeat=800, Density=540, Name="Plywood")
+    concrete = ar.OpaqueMaterial(Name="Concrete", Conductivity=0.5, SpecificHeat=800, Density=1500, Name="Concrete")
+    insulation = ar.OpaqueMaterial(Name="Insulation", Conductivity=0.04, SpecificHeat=1000, Density=30, Name="Insulation")
+    brick = ar.OpaqueMaterial(Name="Brick", Conductivity=1, SpecificHeat=900, Density=1900, Name="Brick")
+    plywood = ar.OpaqueMaterial(Name="Plywood", Conductivity=0.13, SpecificHeat=800, Density=540, Name="Plywood")
 
 Add these 4 materials to a variable named `OpaqueMaterials`. This variable will be referenced at the end when the
 :class:`UmiTemplate` object will be created.
@@ -169,6 +169,7 @@ Defining constructions
       .. code-block:: python
 
         def __init__(
+            Name,
             Layers,
             Surface_Type=None,
             Outside_Boundary_Condition=None,
@@ -181,22 +182,26 @@ Defining constructions
 
           # OpaqueConstruction using OpaqueMaterial objects
           wall_int = ar.OpaqueConstruction(
+            Name="wall_int",
             Layers=[plywood],
             Surface_Type="Partition",
             Outside_Boundary_Condition="Zone",
             IsAdiabatic=True)
 
           wall_ext = ar.OpaqueConstruction(
+            Name="wall_ext",
             Layers=[concrete, insulation, brick],
             Surface_Type="Facade",
             Outside_Boundary_Condition="Outdoors")
 
           floor = ar.OpaqueConstruction(
+            Name="floor",
             Layers=[concrete, plywood],
             Surface_Type="Ground",
             Outside_Boundary_Condition="Zone")
 
           roof = ar.OpaqueConstruction(
+            Name="roof",
             Layers=[plywood, insulation, brick],
             Surface_Type="Roof",
             Outside_Boundary_Condition="Outdoors")
@@ -211,6 +216,7 @@ Defining constructions
       .. code-block:: python
 
         def __init__(
+            Name,
             Layers,
             Category="Double",
             AssemblyCarbon=0,
@@ -225,7 +231,7 @@ Defining constructions
         .. code-block:: python
 
           # WindowConstruction using GlazingMaterial and GasMaterial objects
-          window = ar.WindowConstruction(Layers=[glass, air, glass])
+          window = ar.WindowConstruction(Name="window_1", Layers=[glass, air, glass])
           # List of WindowConstruction objects (needed for Umi template creation)
           WindowConstructions = [window]
 
@@ -259,7 +265,7 @@ Defining constructions
 
           # StructureDefinition using OpaqueMaterial objects
           mass_ratio = ar.MassRatio(Material=plywood, NormalRatio="NormalRatio")
-          struct_definition = ar.StructureDefinition(MassRatios=[mass_ratio])
+          struct_definition = ar.StructureDefinition(Name="Structure", MassRatios=[mass_ratio])
           # List of StructureDefinition objects (needed for Umi template creation)
           StructureDefinitions = [struct_definition]
 
@@ -524,6 +530,7 @@ Defining window settings
   .. code-block:: python
 
     def __init__(
+        Name,
         Construction=None,
         OperableArea=0.8,
         AfnWindowAvailability=None,
@@ -548,6 +555,7 @@ Defining window settings
 
     # WindowSetting using WindowConstruction and YearSchedule objects
     window_setting = ar.WindowSetting(
+        Name="window_setting_1",
         Construction=window,
         AfnWindowAvailability=sch_y_off,
         ShadingSystemAvailabilitySchedule=sch_y_off,
@@ -566,6 +574,7 @@ Defining DHW settings
   .. code-block:: python
 
     def __init__(
+        Name,
         IsOn=True,
         WaterSchedule=None,
         FlowRatePerFloorArea=0.03,
@@ -579,6 +588,7 @@ Defining DHW settings
 
     # DomesticHotWaterSetting using YearSchedule objects
     dhw_setting = ar.DomesticHotWaterSetting(
+        Name="dwh_setting_1",
         IsOn=True,
         WaterSchedule=sch_y_dhw,
         FlowRatePerFloorArea=0.03,
@@ -598,6 +608,7 @@ Defining ventilation settings
   .. code-block:: python
 
     def __init__(
+        Name,
         NatVentSchedule=None,
         ScheduledVentilationSchedule=None,
         Afn=False,
@@ -621,7 +632,9 @@ Defining ventilation settings
 
     # VentilationSetting using YearSchedule objects
     vent_setting = ar.VentilationSetting(
-        NatVentSchedule=sch_y_off, ScheduledVentilationSchedule=sch_y_off)
+        Name="vent_setting_1",
+        NatVentSchedule=sch_y_off,
+        ScheduledVentilationSchedule=sch_y_off,)
     # List of VentilationSetting objects (needed for Umi template creation)
     VentilationSettings = [vent_setting]
 
@@ -636,6 +649,7 @@ Defining zone conditioning settings
   .. code-block:: python
 
     def __init__(
+        Name,
         CoolingCoeffOfPerf=1,
         CoolingLimitType="NoLimit",
         CoolingSetpoint=26,
@@ -666,7 +680,10 @@ Defining zone conditioning settings
 
     # ZoneConditioning using YearSchedule objects
     zone_conditioning = ar.ZoneConditioning(
-        CoolingSchedule=sch_y_on, HeatingSchedule=sch_y_on, MechVentSchedule=sch_y_off)
+        Name="conditioning_setting_1",
+        CoolingSchedule=sch_y_on,
+        HeatingSchedule=sch_y_on,
+        MechVentSchedule=sch_y_off,)
     # List of ZoneConditioning objects (needed for Umi template creation)
     ZoneConditionings = [zone_conditioning]
 
@@ -702,6 +719,7 @@ Defining zone construction sets
     # ZoneConstructionSet using OpaqueConstruction objects
     # Perimeter zone
     zone_constr_set_perim = ar.ZoneConstructionSet(
+        Name="constr_set_perim",
         Slab=floor,
         Roof=roof,
         Partition=wall_int,
@@ -709,6 +727,7 @@ Defining zone construction sets
         Facade=wall_ext)
     # Core zone
     zone_constr_set_core = ar.ZoneConstructionSet(
+        Name="constr_set_core",
         Slab=floor,
         Roof=roof,
         Partition=wall_int,
@@ -729,6 +748,7 @@ Defining zone loads
   .. code-block:: python
 
     def __init__(
+        Name,
         DimmingType="Continuous",
         EquipmentAvailabilitySchedule=None,
         EquipmentPowerDensity=12,
@@ -748,6 +768,7 @@ Defining zone loads
 
     # ZoneLoad using YearSchedule objects
     zone_load = ar.ZoneLoad(
+        Name="zone_load_1",
         EquipmentAvailabilitySchedule=sch_y_gains,
         LightsAvailabilitySchedule=sch_y_gains,
         OccupancySchedule=sch_y_gains)
@@ -765,6 +786,7 @@ Defining zones
   .. code-block:: python
 
     def __init__(
+        Name,
         Conditioning=None,
         Constructions=None,
         DomesticHotWater=None,
@@ -785,6 +807,7 @@ Defining zones
     # ZoneLoad, VentilationSetting, WindowSetting and OpaqueConstruction objects
     # Perimeter zone
     perim = ar.Zone(
+        Name="Perim_zone",
         Conditioning=zone_conditioning,
         Constructions=zone_constr_set_perim,
         DomesticHotWater=dhw_setting,
@@ -794,6 +817,7 @@ Defining zones
         InternalMassConstruction=wall_int)
     # Core zone
     core = ar.Zone(
+        Name="Core_zone",
         Conditioning=zone_conditioning,
         Constructions=zone_constr_set_core,
         DomesticHotWater=dhw_setting,
@@ -815,6 +839,7 @@ Defining building template
   .. code-block:: python
 
     def __init__(
+        Name,
         Core=None,
         Perimeter=None,
         Structure=None,
@@ -830,7 +855,11 @@ Defining building template
 
     # BuildingTemplate using Zone, StructureDefinition and WindowSetting objects
     building_template = ar.BuildingTemplate(
-        Core=core, Perimeter=perim, Structure=struct_definition, Windows=window_setting)
+        Name="Building_template_1",
+        Core=core,
+        Perimeter=perim,
+        Structure=struct_definition,
+        Windows=window_setting,)
     # List of BuildingTemplate objects (needed for Umi template creation)
     BuildingTemplates = [building_template]
 

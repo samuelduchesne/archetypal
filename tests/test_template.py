@@ -2559,10 +2559,18 @@ def test_create_umi_template(config):
     # region Defines materials
 
     # Opaque materials
-    concrete = ar.OpaqueMaterial(Name="Concrete", Conductivity=0.5, SpecificHeat=800, Density=1500)
-    insulation = ar.OpaqueMaterial(Name="Insulation", Conductivity=0.04, SpecificHeat=1000, Density=30)
-    brick = ar.OpaqueMaterial(Name="Brick", Conductivity=1, SpecificHeat=900, Density=1900)
-    plywood = ar.OpaqueMaterial(Name="Plywood", Conductivity=0.13, SpecificHeat=800, Density=540)
+    concrete = ar.OpaqueMaterial(
+        Name="Concrete", Conductivity=0.5, SpecificHeat=800, Density=1500
+    )
+    insulation = ar.OpaqueMaterial(
+        Name="Insulation", Conductivity=0.04, SpecificHeat=1000, Density=30
+    )
+    brick = ar.OpaqueMaterial(
+        Name="Brick", Conductivity=1, SpecificHeat=900, Density=1900
+    )
+    plywood = ar.OpaqueMaterial(
+        Name="Plywood", Conductivity=0.13, SpecificHeat=800, Density=540
+    )
     OpaqueMaterials = [concrete, insulation, brick, plywood]
 
     # Glazing materials
@@ -2618,12 +2626,16 @@ def test_create_umi_template(config):
     OpaqueConstructions = [wall_int, wall_ext, floor, roof]
 
     # Window construction
-    window = ar.WindowConstruction(Name="window_double_glass_air", Layers=[glass, air, glass])
+    window = ar.WindowConstruction(
+        Name="window_double_glass_air", Layers=[glass, air, glass]
+    )
     WindowConstructions = [window]
 
     # Structure definition
     mass_ratio = ar.MassRatio(Material=plywood, NormalRatio="NormalRatio")
-    struct_definition = ar.StructureDefinition(Name="Structure", MassRatios=[mass_ratio])
+    struct_definition = ar.StructureDefinition(
+        Name="Structure", MassRatios=[mass_ratio]
+    )
     StructureDefinitions = [struct_definition]
     # endregion
 
@@ -2810,7 +2822,9 @@ def test_create_umi_template(config):
     # region Defines ventilation settings
 
     vent_setting = ar.VentilationSetting(
-        Name="vent_setting_1", NatVentSchedule=sch_y_off, ScheduledVentilationSchedule=sch_y_off
+        Name="vent_setting_1",
+        NatVentSchedule=sch_y_off,
+        ScheduledVentilationSchedule=sch_y_off,
     )
     VentilationSettings = [vent_setting]
     # endregion
@@ -2818,7 +2832,10 @@ def test_create_umi_template(config):
     # region Defines zone conditioning setttings
 
     zone_conditioning = ar.ZoneConditioning(
-        Name="conditioning_setting_1", CoolingSchedule=sch_y_on, HeatingSchedule=sch_y_on, MechVentSchedule=sch_y_off
+        Name="conditioning_setting_1",
+        CoolingSchedule=sch_y_on,
+        HeatingSchedule=sch_y_on,
+        MechVentSchedule=sch_y_off,
     )
     ZoneConditionings = [zone_conditioning]
     # endregion
@@ -2899,7 +2916,11 @@ def test_create_umi_template(config):
     # region Defines building template
 
     building_template = ar.BuildingTemplate(
-        Name="Building_template_1", Core=core, Perimeter=perim, Structure=struct_definition, Windows=window_setting,
+        Name="Building_template_1",
+        Core=core,
+        Perimeter=perim,
+        Structure=struct_definition,
+        Windows=window_setting,
     )
     BuildingTemplates = [building_template]
     # endregion

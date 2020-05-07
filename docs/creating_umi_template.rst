@@ -32,111 +32,129 @@ The first step is to create the library of materials from which the construction
 Opaque materials
 ________________
 
-      .. code-block:: python
+Here are the parameters and their default values for an OpaqueMaterial object (see :class:`OpaqueMaterial` for more
+information)
 
-        def __init__(
-            Conductivity,
-            SpecificHeat,
-            SolarAbsorptance=0.7,
-            ThermalEmittance=0.9,
-            VisibleAbsorptance=0.7,
-            Roughness="Rough",
-            Cost=0,
-            Density=1,
-            MoistureDiffusionResistance=50,
-            EmbodiedCarbon=0.45,
-            EmbodiedEnergy=0,
-            TransportCarbon=0,
-            TransportDistance=0,
-            TransportEnergy=0,
-            SubstitutionRatePattern=None,
-            SubstitutionTimestep=20,
-            **kwargs)
+.. code-block:: python
 
-      Example of OpaqueMaterial objects:
+    def __init__(
+        Name,
+        Conductivity,
+        SpecificHeat,
+        SolarAbsorptance=0.7,
+        ThermalEmittance=0.9,
+        VisibleAbsorptance=0.7,
+        Roughness="Rough",
+        Cost=0,
+        Density=1,
+        MoistureDiffusionResistance=50,
+        EmbodiedCarbon=0.45,
+        EmbodiedEnergy=0,
+        TransportCarbon=0,
+        TransportDistance=0,
+        TransportEnergy=0,
+        SubstitutionRatePattern=None,
+        SubstitutionTimestep=20,
+        **kwargs)
 
-        .. code-block:: python
+Users can keep the default values by simply omitting them in the constructor For example, one can create a simple list
+of 4 OpaqueMaterial objects with default values. Note that the Name, Conductivity and SpecificHeat are required
+parameters:
 
-          concrete = ar.OpaqueMaterial(Conductivity=0.5, SpecificHeat=800, Density=1500)
-          insulation = ar.OpaqueMaterial(Conductivity=0.04, SpecificHeat=1000, Density=30)
-          brick = ar.OpaqueMaterial(Conductivity=1, SpecificHeat=900, Density=1900)
-          plywood = ar.OpaqueMaterial(Conductivity=0.13, SpecificHeat=800, Density=540)
-          # List of OpaqueMaterial objects (needed for Umi template creation)
-          OpaqueMaterials = [concrete, insulation, brick, plywood]
+.. code-block:: python
+
+    concrete = ar.OpaqueMaterial(Conductivity=0.5, SpecificHeat=800, Density=1500, Name="Concrete")
+    insulation = ar.OpaqueMaterial(Conductivity=0.04, SpecificHeat=1000, Density=30, Name="Insulation")
+    brick = ar.OpaqueMaterial(Conductivity=1, SpecificHeat=900, Density=1900, Name="Brick")
+    plywood = ar.OpaqueMaterial(Conductivity=0.13, SpecificHeat=800, Density=540, Name="Plywood")
+
+Add these 4 materials to a variable named `OpaqueMaterials`. This variable will be referenced at the end when the
+:class:`UmiTemplate` object will be created.
+
+.. code-block:: python
+
+    # List of OpaqueMaterial objects (needed for Umi template creation)
+    OpaqueMaterials = [concrete, insulation, brick, plywood]
 
 Glazing materials
 _________________
 
-      Here are all the parameters and their default values for a
-      GlazingMaterial object (see GlazingMaterial_ doc for more information)
+The same goes for the GlazingMaterial objects (see :class:`GlazingMaterial` for more information)
 
-      .. code-block:: python
+.. code-block:: python
 
-        def __init__(
-            Density=2500,
-            Conductivity=0,
-            SolarTransmittance=0,
-            SolarReflectanceFront=0,
-            SolarReflectanceBack=0,
-            VisibleTransmittance=0,
-            VisibleReflectanceFront=0,
-            VisibleReflectanceBack=0,
-            IRTransmittance=0,
-            IREmissivityFront=0,
-            IREmissivityBack=0,
-            DirtFactor=1.0,
-            Type=None,
-            Cost=0.0,
-            Life=1,
-            **kwargs)
+    def __init__(
+        Name,
+        Density=2500,
+        Conductivity=0,
+        SolarTransmittance=0,
+        SolarReflectanceFront=0,
+        SolarReflectanceBack=0,
+        VisibleTransmittance=0,
+        VisibleReflectanceFront=0,
+        VisibleReflectanceBack=0,
+        IRTransmittance=0,
+        IREmissivityFront=0,
+        IREmissivityBack=0,
+        DirtFactor=1.0,
+        Type=None,
+        Cost=0.0,
+        Life=1,
+        **kwargs)
 
-      Example of GlazingMaterial object:
+A "Transparent Glass" object is created with the following optical and thermal properties:
 
-        .. code-block:: python
+.. code-block:: python
 
-          glass = ar.GlazingMaterial(
-            Density=2500,
-            Conductivity=1,
-            SolarTransmittance=0.7,
-            SolarReflectanceFront=0.5,
-            SolarReflectanceBack=0.5,
-            VisibleTransmittance=0.7,
-            VisibleReflectanceFront=0.5,
-            VisibleReflectanceBack=0.5,
-            IRTransmittance=0.7,
-            IREmissivityFront=0.5,
-            IREmissivityBack=0.5)
-          # List of GlazingMaterial objects (needed for Umi template creation)
-          GlazingMaterials = [glass]
+    glass = ar.GlazingMaterial(
+        Name="Glass",
+        Density=2500,
+        Conductivity=1,
+        SolarTransmittance=0.7,
+        SolarReflectanceFront=0.5,
+        SolarReflectanceBack=0.5,
+        VisibleTransmittance=0.7,
+        VisibleReflectanceFront=0.5,
+        VisibleReflectanceBack=0.5,
+        IRTransmittance=0.7,
+        IREmissivityFront=0.5,
+        IREmissivityBack=0.5)
+
+The object is referenced in the following variable:
+.. code-block:: python
+
+    # List of GlazingMaterial objects (needed for Umi template creation)
+    GlazingMaterials = [glass]
 
 Gas materials
 _____________
 
-      Here are all the parameters and their default values for a
-      GasMaterial object (see GasMaterial_ doc for more information)
+Here are all the parameters and their default values for a GasMaterial object (see :class:`GasMaterial` for more
+information)
 
-      .. code-block:: python
+.. code-block:: python
 
-        def __init__(
-            Cost=0,
-            EmbodiedCarbon=0,
-            EmbodiedEnergy=0,
-            SubstitutionTimestep=100,
-            TransportCarbon=0,
-            TransportDistance=0,
-            TransportEnergy=0,
-            SubstitutionRatePattern=None,
-            Conductivity=2.4,
-            Density=2400,
-            **kwargs)
+    def __init__(
+        Name,
+        Cost=0,
+        EmbodiedCarbon=0,
+        EmbodiedEnergy=0,
+        SubstitutionTimestep=100,
+        TransportCarbon=0,
+        TransportDistance=0,
+        TransportEnergy=0,
+        SubstitutionRatePattern=None,
+        Conductivity=2.4,
+        Density=2400,
+        **kwargs)
 
-      Example of GasMaterial object:
+Example of GasMaterial object:
 
-        .. code-block:: python
+.. code-block:: python
 
-          air = ar.GasMaterial(Conductivity=0.02, Density=1.24)
-          # List of GasMaterial objects (needed for Umi template creation)
-          GasMaterials = [air]
+  air = ar.GasMaterial(Name="Air", Conductivity=0.02, Density=1.24)
+  # List of GasMaterial objects (needed for Umi template creation)
+  GasMaterials = [air]
 
 Defining constructions
 ----------------------

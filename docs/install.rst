@@ -62,7 +62,10 @@ See https://git-scm.com/downloads to download git.
 
 EnergyPlus is a prerequisite of archetypal. It must be installed beforehand. Moreover, archetypal contains routines that
 may download IDF components that are coded in earlier versions of EnergyPlus (e.g., 7.1). For this reason, users should
-also download the `supplementary conversion programs`_.
+also download the `supplementary conversion programs`_, and install the content in the EnergyPlus installation folder:
+
+- On Windows: `C:\\EnergyPlusV9-2-0\\PreProcess\\IDFVersionUpdater` (For Windows, see automated procedure below).
+- On MacOS: `/Applications/EnergyPlus-9-2-0/PreProcess/IDFVersionUpdater`
 
 On Windows, this installation procedure can be automated with the following `script`_ which will download and installEnergyPlus as
 well as the supplementary conversion programs.

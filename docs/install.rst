@@ -15,8 +15,70 @@ MacOS that would be in `/Applications/EnergyPlus-9-2-0`.
 
 It is also recommended that the older transition programs be installed as well. These programs allow older IDF files
 (versions 7.2 and below) to be upgraded to version 9-2-0. Since these, don't come by default with EnergyPlus, they
-need to be installed by hand. A script has been created for windows (see `Installation from scratch (Windows)`_). For
+need to be installed by hand. A script has been created for windows (see `Installation from scratch`_). For
 macOS, refer to the `supplementary conversion programs`_.
+
+Installation from scratch
+-------------------------
+
+This first step should be helpful for users that are not familiar with python environments. If you already have python
+installed and think that you can manage the installation a new package using `pip`, then you can skip to the next
+section.
+
+Download & Install MiniConda (or the full Anaconda)
+...................................................
+
+found at the following URL: https://docs.conda.io/en/latest/miniconda.html
+
+Launch the executable and select the following settings:
+
+- InstallationType=JustMe
+- AddToPath=Yes
+- RegisterPython=Yes
+- Installation path=%UserProfile%\Miniconda3
+
+Check if everything is ok by running `conda list` in the command line (make sure to open a new command line window just
+in case). You should see something like this:
+
+.. code-block:: doscon
+
+    C:\Users\archetypal>conda list
+    # packages in environment at C:\ProgramData\Miniconda3:
+    #
+    # Name                    Version                   Build  Channel
+    asn1crypto                1.2.0                    py37_0
+    ca-certificates           2019.10.16                    0
+    certifi                   2019.9.11                py37_0
+    ...
+    win_inet_pton             1.1.0                    py37_0
+    wincertstore              0.2                      py37_0
+    yaml                      0.1.7                hc54c509_2
+
+Install EnergyPlus & Conversion Programs
+........................................
+
+Note: To follow this procedure on Windows, git must be installed beforehand with default installation parameters.
+See https://git-scm.com/downloads to download git.
+
+EnergyPlus is a prerequisite of archetypal. It must be installed beforehand. Moreover, archetypal contains routines that
+may download IDF components that are coded in earlier versions of EnergyPlus (e.g., 7.1). For this reason, users should
+also download the `supplementary conversion programs`_.
+
+On Windows, this installation procedure can be automated with the following `script`_ which will download and installEnergyPlus as
+well as the supplementary conversion programs.
+
+To use the script, follow the next steps. Theses commands will change the current directory to the user's Downloads
+folder. Then the script will be downloaded using the `git clone` command. Finally the script will be executed. Copy the
+whole code block below in Command Prompt and Hit :guilabel:`&Enter:⏎`.
+
+.. code-block:: doscon
+
+    cd %USERPROFILE%\Downloads
+    git clone https://gist.github.com/aef233396167e0f961df3d62a193573e.git
+    cd aef233396167e0f961df3d62a193573e
+    install_eplus_script.cmd
+
+To install *archetypal*, follow the steps detailed below in `Installing using pip`_
 
 Installing using ``pip``
 ------------------------
@@ -109,70 +171,6 @@ will work well to create a new environment using a specific dependency file in o
    conda env update -n archetypal -f environment.yml
    conda activate archetypal
    pip install archetypal
-
-
-Installation from scratch (Windows)
------------------------------------
-
-This first step should be helpful for users that are not familiar with python environments. If you already have python
-installed and think that you can manage the installation a new package using `pip`, then you can skip to the next
-section.
-
-Download & Install MiniConda (or the full Anaconda)
-...................................................
-
-found at the following URL: https://docs.conda.io/en/latest/miniconda.html
-
-Launch the executable and select the following settings:
-
-- InstallationType=JustMe
-- AddToPath=Yes
-- RegisterPython=Yes
-- Installation path=%UserProfile%\Miniconda3
-
-Check if everything is ok by running `conda list` in the command line (make sure to open a new command line window just
-in case). You should see something like this:
-
-.. code-block:: doscon
-
-    C:\Users\archetypal>conda list
-    # packages in environment at C:\ProgramData\Miniconda3:
-    #
-    # Name                    Version                   Build  Channel
-    asn1crypto                1.2.0                    py37_0
-    ca-certificates           2019.10.16                    0
-    certifi                   2019.9.11                py37_0
-    ...
-    win_inet_pton             1.1.0                    py37_0
-    wincertstore              0.2                      py37_0
-    yaml                      0.1.7                hc54c509_2
-
-Install EnergyPlus & Conversion Programs
-........................................
-
-Note: To follow this procedure, git must be installed beforehand with default installation parameters.
-See https://git-scm.com/downloads to download git.
-
-EnergyPlus is a prerequisite of archetypal. It must be installed beforehand. Moreover, archetypal contains routines that
-may download IDF components that are coded in earlier versions of EnergyPlus (e.g., 7.1). For this reason, users should
-also download the `supplementary conversion programs`_.
-
-This installation procedure can be automated with the following `script`_ which will download and installEnergyPlus as
-well as the supplementary conversion programs.
-
-To use the script, follow the next steps. Theses commands will change the current directory to the user's Downloads
-folder. Then the script will be downloaded using the `git clone` command. Finally the script will be executed. Copy the
-whole code block below in Command Prompt and Hit :guilabel:`&Enter:⏎`.
-
-.. code-block:: doscon
-
-    cd %USERPROFILE%\Downloads
-    git clone https://gist.github.com/aef233396167e0f961df3d62a193573e.git
-    cd aef233396167e0f961df3d62a193573e
-    install_eplus_script.cmd
-
-To install *archetypal*, follow the steps detailed above in `Installing using pip`_
-
 
 .. _start a jupyter notebook: https://jupyter.readthedocs.io/en/latest/running.html#starting-the-notebook-server
 .. _jupyter notebook: https://jupyter-notebook.readthedocs.io/en/stable/#

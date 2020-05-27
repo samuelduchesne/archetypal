@@ -57,9 +57,6 @@ in case). You should see something like this:
 Install EnergyPlus & Conversion Programs
 ........................................
 
-Note: To follow this procedure on Windows, git must be installed beforehand with default installation parameters.
-See https://git-scm.com/downloads to download git.
-
 EnergyPlus is a prerequisite of archetypal. It must be installed beforehand. Moreover, archetypal contains routines that
 may download IDF components that are coded in earlier versions of EnergyPlus (e.g., 7.1). For this reason, users should
 also download the `supplementary conversion programs`_, and install the content in the EnergyPlus installation folder:
@@ -70,9 +67,10 @@ also download the `supplementary conversion programs`_, and install the content 
 On Windows, this installation procedure can be automated with the following `script`_ which will download and installEnergyPlus as
 well as the supplementary conversion programs.
 
-To use the script, follow the next steps. Theses commands will change the current directory to the user's Downloads
-folder. Then the script will be downloaded using the `git clone` command. Finally the script will be executed. Copy the
-whole code block below in Command Prompt and Hit :guilabel:`&Enter:⏎`.
+To use the script, follow the next steps. First git must be installed beforehand with default installation parameters.
+See https://git-scm.com/downloads to download git. Then the following commands will change the current directory to the
+user's Downloads folder. Then the script will be downloaded using the `git clone` command. Finally the script will be executed.
+Copy the whole code block below in Command Prompt and Hit :guilabel:`&Enter:⏎`.
 
 .. code-block:: doscon
 

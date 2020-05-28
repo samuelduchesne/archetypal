@@ -53,12 +53,12 @@ results as time-series DataFrames and typical building energy profiles such as t
 heating, space cooling and domestic hot water profiles are accessible by default. Other
 output names can be specified by the user.
 
-Furthermore, for a drastic workflow speed gain, especially when larger IDF files can take
-several minutes to complete, `archetypal` features a caching method that handles
-simulation results. This is particularly useful for reproducible workflows such as the
-Jupyter Notebook programming environment. Reopening a closed notebook and running a cell
-containing the `run_eplus` command will use the cached simulation results instead of
-executing EnergyPlus again.
+Furthermore, for a drastic workflow speed gain, especially with multiple and/or larger IDF
+files (which can take several minutes to transition and simulate), `archetypal` features a
+caching api. This is particularly useful for reproducible workflows such as the Jupyter
+Notebook programming environment. Rerunning cells (even after a kernel restart) will use
+the cached IDF models and their simulation results instead of executing EnergyPlus again.
+Speedups of up to 8x have been measured.
 
 ## EnergyPlus to UMI Template File Conversion
 

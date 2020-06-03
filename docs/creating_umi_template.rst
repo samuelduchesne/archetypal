@@ -156,10 +156,32 @@ Example of GasMaterial object:
   # List of GasMaterial objects (needed for Umi template creation)
   GasMaterials = [air]
 
+Defining material layers
+------------------
+
+Once the materials are created, layers (or :class:`MaterialLayer` objects) can be created.
+Here are the parameters and their default values for an MaterialLayer object
+
+.. code-block:: python
+
+    def __init__(Material, Thickness)
+
+The Material (from :class:`OpaqueMaterial` or :class:`GlazingMaterial` or
+:class:`GasMaterial`) and Thickness are required parameters:
+
+.. code-block:: python
+
+    concreteLayer = ar.MaterialLayer(concrete, Thickness=0.2)
+    insulationLayer = ar.MaterialLayer(insulation, Thickness=0.5)
+    brickLayer = ar.MaterialLayer(brick, Thickness=0.1)
+    plywoodLayer = ar.MaterialLayer(plywood, Thickness=0.016)
+    glassLayer = ar.MaterialLayer(glass, Thickness=0.16)
+    airLayer = ar.MaterialLayer(air, Thickness=0.04)
+
 Defining constructions
 ----------------------
 
-Once the materials are created, wall assemblies (or :class:`OpaqueConstruction` objects) can be created.
+Once the material layers are created, wall assemblies (or :class:`OpaqueConstruction` objects) can be created.
 
 Opaque constructions
 ____________________
@@ -169,8 +191,8 @@ OpaqueConstruction object (see :class:`OpaqueConstruction` for more information)
 
 .. code-block:: python
 
-            Name,
     def __init__(
+        Name,
         Layers,
         Surface_Type,
         Outside_Boundary_Condition,
@@ -184,23 +206,23 @@ objects), the :attr:`Surface_Type` (choice of "Partition", ""
 
     # OpaqueConstruction using OpaqueMaterial objects
     wall_int = ar.OpaqueConstruction(
-    Layers=[plywood],
+    Layers=[plywoodLayer],
     Surface_Type="Partition",
     Outside_Boundary_Condition="Zone",
     IsAdiabatic=True)
 
     wall_ext = ar.OpaqueConstruction(
-    Layers=[concrete, insulation, brick],
+    Layers=[concreteLayer, insulationLayer, brickLayer],
     Surface_Type="Facade",
     Outside_Boundary_Condition="Outdoors")
 
     floor = ar.OpaqueConstruction(
-    Layers=[concrete, plywood],
+    Layers=[concreteLayer, plywoodLayer],
     Surface_Type="Ground",
     Outside_Boundary_Condition="Zone")
 
     roof = ar.OpaqueConstruction(
-    Layers=[plywood, insulation, brick],
+    Layers=[plywoodLayer, insulationLayer, brickLayer],
     Surface_Type="Roof",
     Outside_Boundary_Condition="Outdoors")
     # List of OpaqueConstruction objects (needed for Umi template creation)
@@ -229,7 +251,7 @@ Example of WindowConstruction object:
 .. code-block:: python
 
     # WindowConstruction using GlazingMaterial and GasMaterial objects
-    window = ar.WindowConstruction(Layers=[glass, air, glass])
+    window = ar.WindowConstruction(Layers=[glassLayer, airLayer, glassLayer])
     # List of WindowConstruction objects (needed for Umi template creation)
     WindowConstructions = [window]
 
@@ -263,7 +285,7 @@ Example of StructureDefinition object:
 .. code-block:: python
 
     # StructureDefinition using OpaqueMaterial objects
-    mass_ratio = ar.MassRatio(Material=plywood, NormalRatio="NormalRatio")
+    mass_ratio = ar.MassRatio(Material=plywood, HighLoadRatio=1, NormalRatio=1)
     struct_definition = ar.StructureDefinition(MassRatios=[mass_ratio])
     # List of StructureDefinition objects (needed for Umi template creation)
     StructureDefinitions = [struct_definition]

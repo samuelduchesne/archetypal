@@ -2595,31 +2595,55 @@ def test_create_umi_template(config):
     GasMaterials = [air]
     # endregion
 
+    # region Defines MaterialLayers
+
+    # Opaque MaterialLayers
+    concreteLayer = ar.MaterialLayer(concrete, Thickness=0.2)
+    insulationLayer = ar.MaterialLayer(insulation, Thickness=0.5)
+    brickLayer = ar.MaterialLayer(brick, Thickness=0.1)
+    plywoodLayer = ar.MaterialLayer(plywood, Thickness=0.016)
+
+    # Glazing MaterialLayers
+    glassLayer = ar.MaterialLayer(glass, Thickness=0.16)
+
+    # Gas MaterialLayers
+    airLayer = ar.MaterialLayer(air, Thickness=0.04)
+
+    MaterialLayers = [
+        concreteLayer,
+        insulationLayer,
+        brickLayer,
+        plywoodLayer,
+        glassLayer,
+        airLayer,
+    ]
+    # endregion
+
     # region Defines constructions
 
     # Opaque constructions
     wall_int = ar.OpaqueConstruction(
         Name="wall_int",
-        Layers=[plywood],
+        Layers=[plywoodLayer],
         Surface_Type="Partition",
         Outside_Boundary_Condition="Zone",
         IsAdiabatic=True,
     )
     wall_ext = ar.OpaqueConstruction(
         Name="wall_ext",
-        Layers=[concrete, insulation, brick],
+        Layers=[concreteLayer, insulationLayer, brickLayer],
         Surface_Type="Facade",
         Outside_Boundary_Condition="Outdoors",
     )
     floor = ar.OpaqueConstruction(
         Name="floor",
-        Layers=[concrete, plywood],
+        Layers=[concreteLayer, plywoodLayer],
         Surface_Type="Ground",
         Outside_Boundary_Condition="Zone",
     )
     roof = ar.OpaqueConstruction(
         Name="roof",
-        Layers=[plywood, insulation, brick],
+        Layers=[plywoodLayer, insulationLayer, brickLayer],
         Surface_Type="Roof",
         Outside_Boundary_Condition="Outdoors",
     )
@@ -2627,7 +2651,7 @@ def test_create_umi_template(config):
 
     # Window construction
     window = ar.WindowConstruction(
-        Name="window_double_glass_air", Layers=[glass, air, glass]
+        Name="Window", Layers=[glassLayer, airLayer, glassLayer]
     )
     WindowConstructions = [window]
 

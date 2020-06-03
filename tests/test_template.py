@@ -2656,7 +2656,7 @@ def test_create_umi_template(config):
     WindowConstructions = [window]
 
     # Structure definition
-    mass_ratio = ar.MassRatio(Material=plywood, NormalRatio="NormalRatio")
+    mass_ratio = ar.MassRatio(Material=plywood, NormalRatio=1, HighLoadRatio=1)
     struct_definition = ar.StructureDefinition(
         Name="Structure", MassRatios=[mass_ratio]
     )

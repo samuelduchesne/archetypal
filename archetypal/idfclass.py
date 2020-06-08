@@ -29,7 +29,7 @@ import pandas as pd
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.bunch_subclass import EpBunch
 from eppy.easyopen import getiddfile
-from path import Path, tempdir
+from path import Path, TempDir
 
 import archetypal
 import archetypal.settings
@@ -1752,7 +1752,7 @@ def run_eplus(
         elif include is not None:
             include = [Path(file) for file in include]
         # run the EnergyPlus Simulation
-        with tempdir(
+        with TempDir(
             prefix="eplus_run_", suffix=output_prefix, dir=output_directory
         ) as tmp:
             log(

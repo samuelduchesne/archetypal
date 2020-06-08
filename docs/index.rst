@@ -35,6 +35,7 @@ independently.
 
    Installation <install.rst>
    For MacOS/Linux users <unix_users.rst>
+   Caching <caching.rst>
 
 
 .. toctree::

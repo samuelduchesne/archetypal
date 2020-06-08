@@ -52,7 +52,7 @@ def config():
         use_cache=True,
         log_file=True,
         log_console=True,
-        umitemplate="tests/input_data/umi_samples" "/BostonTemplateLibrary_2.json",
+        umitemplate="tests/input_data/umi_samples/BostonTemplateLibrary_2.json",
     )
 
 

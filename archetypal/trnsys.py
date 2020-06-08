@@ -116,7 +116,14 @@ def convert_idf_to_trnbuild(
     """
 
     # Assert all path needed exist
-    idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template = _assert_files(
+    (
+        idf_file,
+        weather_file,
+        window_lib,
+        output_folder,
+        trnsidf_exe,
+        template,
+    ) = _assert_files(
         idf_file, weather_file, window_lib, output_folder, trnsidf_exe, template
     )
 
@@ -182,16 +189,46 @@ def convert_idf_to_trnbuild(
     lines = io.TextIOWrapper(io.BytesIO(settings.template_BUI)).readlines()
 
     # Get objects from IDF file
-    buildingSurfs, buildings, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, versions, zones, zonelists = get_idf_objects(
-        idf_2
-    )
+    (
+        buildingSurfs,
+        buildings,
+        constructions,
+        equipments,
+        fenestrationSurfs,
+        globGeomRules,
+        lights,
+        locations,
+        materialAirGap,
+        materialNoMass,
+        materials,
+        peoples,
+        versions,
+        zones,
+        zonelists,
+    ) = get_idf_objects(idf_2)
 
     # Get all construction EXCEPT fenestration ones
     constr_list = _get_constr_list(buildingSurfs)
 
     # If ordered=True, ordering idf objects
     ordered = kwargs.get("ordered", False)
-    buildingSurfs, buildings, constr_list, constructions, equipments, fenestrationSurfs, globGeomRules, lights, locations, materialAirGap, materialNoMass, materials, peoples, zones, zonelists = _order_objects(
+    (
+        buildingSurfs,
+        buildings,
+        constr_list,
+        constructions,
+        equipments,
+        fenestrationSurfs,
+        globGeomRules,
+        lights,
+        locations,
+        materialAirGap,
+        materialNoMass,
+        materials,
+        peoples,
+        zones,
+        zonelists,
+    ) = _order_objects(
         buildingSurfs,
         buildings,
         constr_list,
@@ -622,7 +659,11 @@ def _write_heat_cool_to_b18(list_dict, old_new_names, zone, b18_lines, string):
             f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
             regimeNum = checkStr(b18_lines, "REGIME", f_count)
             # Write
-            b18_lines.insert(regimeNum, string + " = " + list_dict[key][0] + "\n")
+            if not isinstance(list_dict[key], list):
+                value = list_dict[key]
+            else:
+                value = list_dict[key][0]
+            b18_lines.insert(regimeNum, string + " = " + value + "\n")
 
 
 def zone_where_gain_is(gains, zones, zonelists):
@@ -929,20 +970,29 @@ def _assert_files(
         trnsidf_exe (str): Path to *trnsidf.exe*.
         template (str): Path to d18 template file.
     """
-    if not os.path.isfile(idf_file):
-        raise IOError("idf_file file not found")
+    if isinstance(idf_file, str):
+        if not os.path.isfile(idf_file):
+            raise IOError("idf_file file not found")
+    else:
+        raise IOError("idf_file file is not a string (path)")
 
-    if not os.path.isfile(weather_file):
-        raise IOError("idf_file file not found")
+    if isinstance(weather_file, str):
+        if not os.path.isfile(weather_file):
+            raise IOError("weather file not found")
+    else:
+        raise IOError("weather file is not a string (path)")
 
     if window_lib:
-        if not os.path.isfile(window_lib):
-            raise IOError("window_lib file not found")
+        if isinstance(window_lib, str):
+            if not os.path.isfile(window_lib):
+                raise IOError("window_lib file not found")
+        else:
+            raise IOError("window_lib file is not a string (path)")
 
     if not output_folder:
         output_folder = os.path.relpath(settings.data_folder)
-        if not os.path.exists(output_folder):
-            os.mkdir(output_folder)
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
 
     if not template:
         template = settings.path_template_d18
@@ -951,8 +1001,8 @@ def _assert_files(
         raise IOError("template file not found")
 
     if not trnsidf_exe:
-        trnsidf_exe = os.path.join(
-            settings.trnsys_default_folder, r"Building\trnsIDF\trnsidf.exe"
+        trnsidf_exe = settings.trnsys_default_folder / Path(
+            r"Building\trnsIDF\trnsidf.exe"
         )
 
     if not os.path.isfile(trnsidf_exe):
@@ -1010,7 +1060,7 @@ def _add_change_adj_surf(buildingSurfs, idf):
                             break
             # If boundary surface does not exist, append the list of surface
             # to create
-            if not adj_surfs_to_change:
+            if not buildingSurf.Name in adj_surfs_to_change:
                 if not buildingSurf.Name in adj_surfs_to_make:
                     adj_surfs_to_make.append(buildingSurf.Name)
     # If adjacent surface found, check if Outside boundary
@@ -1431,7 +1481,18 @@ def choose_window(u_value, shgc, t_vis, tolerance, window_lib_path):
         )
         .idxmin()
     )
-    win_id, description, design, u_win, shgc_win, t_sol_win, rf_sol_win, t_vis_win, lay_win, width = df_windows.loc[
+    (
+        win_id,
+        description,
+        design,
+        u_win,
+        shgc_win,
+        t_sol_win,
+        rf_sol_win,
+        t_vis_win,
+        lay_win,
+        width,
+    ) = df_windows.loc[
         best_window_index,
         [
             "WinID",
@@ -1809,9 +1870,9 @@ def _write_zone_buildingSurf_fenestrationSurf(
             )
 
         # Round vertex to 4 decimal digit max
-        zone.X_Origin = round(zone.X_Origin, 4)
-        zone.Y_Origin = round(zone.Y_Origin, 4)
-        zone.Z_Origin = round(zone.Z_Origin, 4)
+        zone.X_Origin = round(zone_origin(zone)[0], 4)
+        zone.Y_Origin = round(zone_origin(zone)[1], 4)
+        zone.Z_Origin = round(zone_origin(zone)[2], 4)
 
         lines.insert(variableDictNum + 2, zone)
     return win_slope_dict
@@ -2126,7 +2187,7 @@ def _write_schedules(lines, schedule_names, schedules, schedule_as_input, idf_fi
             # Get annual hourly values of schedules
             arr = schedules[schedule_name]["all values"]
             # Find the hours where hourly values change
-            hours_list, = np.where(np.roll(arr, 1) != arr)
+            (hours_list,) = np.where(np.roll(arr, 1) != arr)
             # if hours_list is empty, give it hour 0
             if hours_list.size == 0:
                 hours_list = np.array([0])

@@ -182,8 +182,6 @@ GAIN p_000000
 *-----------------------------------------------------------------------------------------------------------------------
 *  I n f i l t r a t i o n
 *-----------------------------------------------------------------------------------------------------------------------
-INFILTRATION Constant
-AIRCHANGE=0.5
 *-----------------------------------------------------------------------------------------------------------------------
 *  V e n t i l a t i o n
 *-----------------------------------------------------------------------------------------------------------------------
@@ -239,11 +237,6 @@ FLOOR =c_000006             : SURF=    4 : AREA=      50.000 : BOUNDARY=SCHEDULE
 ROOF  =c_000001             : SURF=    5 : AREA=      50.000 : EXTERNAL : ORI=H_0_0        : FSKY=1.00
 WALL  =c_000003             : SURF=    6 : AREA=      12.192 : EXTERNAL : ORI=E_270_90     : FSKY=0.50 : GEOSURF=0.066667
  REGIME
- GAIN= ee_000001 : SCALE= SCHEDULE 1*sy_000004 : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= 1
- GAIN= l_000001 : SCALE= SCHEDULE 1*sy_000004 : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= 1
- GAIN= p_000001 : SCALE= SCHEDULE 1*sy_000006 : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= 1
- INFILTRATION = Constant
- HEATING = HEAT_z2
  CAPACITANCE=      146.304    : VOLUME=      121.920    : REFAREA=       50.000: TINITIAL= 20.0      : PHINITIAL= 50      : WCAPR= 1
 
 *-----------------------------------------------------------------------------------------------------------------------
@@ -263,11 +256,6 @@ WINDOW=EXT_WINDOW1          : SURF=   13 : AREA=       2.250 : EXTERNAL : ORI=N_
 WALL  =c_000012             : SURF=   11 : AREA=      24.384 : ADJACENT=z_000001 : ADJ_SURF=3 : BACK : GEOSURF=0.133333
 WALL  =c_000003             : SURF=   12 : AREA=      12.192 : EXTERNAL : ORI=W_90_90      : FSKY=0.50 : GEOSURF=0.066667
  REGIME
- GAIN= ee_000000 : SCALE= SCHEDULE 1*sy_000004 : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= 1
- GAIN= l_000000 : SCALE= SCHEDULE 1*sy_000003 : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= 1
- GAIN= p_000000 : SCALE= SCHEDULE 1*sy_000006 : GEOPOS=0 : SCALE2= 1 : FRAC_REFAREA= 1
- INFILTRATION = Constant
- HEATING = HEAT_z1
  CAPACITANCE=      146.304    : VOLUME=      121.920    : REFAREA=       50.000: TINITIAL= 20.0      : PHINITIAL= 50      : WCAPR= 1
 
 *-----------------------------------------------------------------------------------------------------------------------

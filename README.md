@@ -1,6 +1,7 @@
 [![Build Status](https://travis-ci.com/samuelduchesne/archetypal.svg?branch=develop)](https://travis-ci.com/samuelduchesne/archetypal)
 [![Coverage Status](https://coveralls.io/repos/github/samuelduchesne/archetypal/badge.svg)](https://coveralls.io/github/samuelduchesne/archetypal)
 [![Documentation Status](https://readthedocs.org/projects/archetypal/badge/?version=latest)](https://archetypal.readthedocs.io/en/latest/?badge=latest)
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.01833/status.svg)](https://doi.org/10.21105/joss.01833)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # Archetypal

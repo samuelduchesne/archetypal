@@ -1294,7 +1294,14 @@ class TestTrnBuild:
 
         assert res
 
-
+@pytest.mark.skipif(
+    get_platform() > (10, 15, 0),
+    reason="Skipping since wine 32bit can't run on MacOs >10.15 (Catalina)",
+)
+@pytest.mark.skipif(
+    os.environ.get("CI", "False").lower() == "true",
+    reason="Skipping this test on CI environment.",
+)
 def test_trnbuild_from_simple_idf(config):
     # Path to weather file, window library and T3D template
     window_file = "W74-lib.dat"

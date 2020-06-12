@@ -1294,38 +1294,39 @@ class TestTrnBuild:
 
         assert res
 
-    def test_trnbuild_from_simple_idf(self, config):
-        # Path to weather file, window library and T3D template
-        window_file = "W74-lib.dat"
-        template_dir = os.path.join("archetypal", "ressources")
-        window_filepath = os.path.join(template_dir, window_file)
-        weather_file = os.path.join(
-            "tests", "input_data", "CAN_QC_Montreal-McTavish.716120_CWEC2016.epw"
-        )
 
-        # prepare args (key=value)f or EnergyPlus version to use, windows parameters,etc.
-        # WINDOW = 2-WSV_#3_Air
-        kwargs_dict = {
-            "ep_version": "9-2-0",
-            "u_value": 1.62,
-            "shgc": 0.64,
-            "t_vis": 0.8,
-            "tolerance": 0.05,
-            "fframe": 0.0,
-            "uframe": 0.5,
-            "ordered": True,
-        }
+def test_trnbuild_from_simple_idf(config):
+    # Path to weather file, window library and T3D template
+    window_file = "W74-lib.dat"
+    template_dir = os.path.join("archetypal", "ressources")
+    window_filepath = os.path.join(template_dir, window_file)
+    weather_file = os.path.join(
+        "tests", "input_data", "CAN_QC_Montreal-McTavish.716120_CWEC2016.epw"
+    )
 
-        # Path to IDF file
-        file = os.path.join("tests", "input_data", "trnsys", "simple_2_zone.idf")
+    # prepare args (key=value)f or EnergyPlus version to use, windows parameters,etc.
+    # WINDOW = 2-WSV_#3_Air
+    kwargs_dict = {
+        "ep_version": "9-2-0",
+        "u_value": 1.62,
+        "shgc": 0.64,
+        "t_vis": 0.8,
+        "tolerance": 0.05,
+        "fframe": 0.0,
+        "uframe": 0.5,
+        "ordered": True,
+    }
 
-        # Converts IDF to BUI
-        convert_idf_to_trnbuild(
-            idf_file=file,
-            weather_file=weather_file,
-            window_lib=window_filepath,
-            template="tests/input_data/trnsys/NewFileTemplate.d18",
-            trnsidf_exe="docker/trnsidf/trnsidf.exe",
-            schedule_as_input=False,
-            **kwargs_dict
-        )
+    # Path to IDF file
+    file = os.path.join("tests", "input_data", "trnsys", "simple_2_zone.idf")
+
+    # Converts IDF to BUI
+    convert_idf_to_trnbuild(
+        idf_file=file,
+        weather_file=weather_file,
+        window_lib=window_filepath,
+        template="tests/input_data/trnsys/NewFileTemplate.d18",
+        trnsidf_exe="docker/trnsidf/trnsidf.exe",
+        schedule_as_input=False,
+        **kwargs_dict
+    )

@@ -455,7 +455,7 @@ class TestConvertEasy:
         output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
 
         # Asserts path to T3D file exists
-        assert t3d_path == glob.glob(settings.data_folder + "/*.idf")[0]
+        assert t3d_path in glob.glob(settings.data_folder + "/*.idf")
 
     def test_t_initial_to_b18(self, config, converttesteasy):
         # Deletes cache folder

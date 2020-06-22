@@ -2345,7 +2345,7 @@ def _write_conditioning(htm, lines, schedules, old_new_names, schedule_as_input)
             name = "COOL_z" + str(htm["Zone Sensible Cooling"].iloc[i].name)
             cool_dict[key] = [name, schedule]
             size_factor = htm["Cooling Sizing Factor Information"][
-                htm["Heating Sizing Factor Information"]["Sizing Factor ID"] == "Global"
+                htm["Cooling Sizing Factor Information"]["Sizing Factor ID"] == "Global"
             ]["Value"].max()
             power = size_factor * (
                 float(

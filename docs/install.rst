@@ -33,7 +33,7 @@ found at the following URL: https://docs.conda.io/en/latest/miniconda.html
 Launch the executable and select the following settings:
 
 - InstallationType=JustMe
-- AddToPath=Yes
+- AddToPath=Yes (there might be a warning, but ignore it)
 - RegisterPython=Yes
 - Installation path=%UserProfile%\Miniconda3
 

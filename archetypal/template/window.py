@@ -762,3 +762,28 @@ class WindowSetting(UmiBase, metaclass=Unique):
         ref = kwargs.get("ZoneMixingAvailabilitySchedule", None)
         w.ZoneMixingAvailabilitySchedule = w.get_ref(ref)
         return w
+
+    @classmethod
+    def from_ref(cls, ref, building_templates):
+        """In some cases, the WindowSetting is referenced in the DataStore to the
+        Windows property of a BuildingTemplate (instead of being listed in the
+        WindowSettings list. This is the case in the original
+        BostonTemplateLibrary.json.
+
+        Args:
+            ref (str): The referenced number
+            building_templates (list): List of BuildingTemplates from the datastore.
+
+        Returns:
+            WindowSetting: The parsed WindowSetting.
+        """
+        store = next(
+            iter(
+                filter(
+                    lambda x: x.get("$id") == ref,
+                    [bldg.get("Windows") for bldg in building_templates],
+                )
+            )
+        )
+        w = cls.from_json(**store)
+        return w

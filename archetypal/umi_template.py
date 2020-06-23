@@ -284,7 +284,9 @@ class UmiTemplate:
             ]
             t.Zones = [Zone.from_json(**store) for store in datastore["Zones"]]
             t.WindowSettings = [
-                WindowSetting.from_json(**store)
+                WindowSetting.from_ref(store["$ref"], datastore["BuildingTemplates"])
+                if "$ref" in store
+                else WindowSetting.from_json(**store)
                 for store in datastore["WindowSettings"]
             ]
             t.BuildingTemplates = [

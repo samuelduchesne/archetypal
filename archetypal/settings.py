@@ -120,7 +120,7 @@ default_crs = {"init": "epsg:4326"}
 unique_schedules = []
 
 # TRNSYS default location
-trnsys_default_folder = r"C:\TRNSYS18"
+trnsys_default_folder = Path(r"C:\TRNSYS18")
 
 # region read template - use io.BytesIO(settings.template) in code
 import pkg_resources

@@ -60,10 +60,10 @@ def config(
         data_folder (str): where to save and load data files.
         logs_folder (str): where to write the log files.
         imgs_folder (str): where to save figures.
-        cache_folder (str): where to save the simluation results.
+        cache_folder (str): where to save the simulation results.
         use_cache (bool): if True, use a local cache to save/retrieve many of
             archetypal outputs such as EnergyPlus simulation results. This can
-            save a lot of time by not calling the simulation and dataportal APIs
+            save a lot of time by not calling the simulation and DataPortal APIs
             repetitively for the same requests.
         log_file (bool): if true, save log output to a log file in logs_folder.
         log_console (bool): if true, print log output to the console.
@@ -123,7 +123,7 @@ def validate_trnsys_folder(trnsys_default_folder):
                     trnsys_default_folder
                 )
             )
-        return None
+        return trnsys_default_folder
     else:
         return trnsys_default_folder
 

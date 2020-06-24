@@ -79,7 +79,8 @@ enclosed in quotation marks.
 enclosed in quotation marks.
 
 3. ``OUTPUT_FOLDER`` is the folder where we want the output folders to be written. If there are space characters in
-the path, it should enclosed in quotation marks. If nothing is passed, the output folder will be the current working directory.
+the path, it should enclosed in quotation marks. If output folder path is passed, it must exist.
+If nothing is passed, the output folder will be the current working directory.
 
 Here is an example. Make sure to replace the last two arguments with the idf file path and the output folder path
 respectively.
@@ -106,7 +107,7 @@ Users can chose to return a combination of flags
 
     .. code-block:: python
 
-        archetypal convert --window-lib "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
+        archetypal convert --window_lib "/Users/Documents/W74-lib.dat" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - ``--trnsidf_exe`` is the path of the trnsidf.exe executable. Usually located in the TRNSYS18 folder under
       "Building/trnsIDF/trnsidf.exe".
@@ -114,7 +115,7 @@ Users can chose to return a combination of flags
 
     .. code-block:: python
 
-        archetypal convert --trnsidf-exe "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
+        archetypal convert --trnsidf_exe "C:TRNSYS18\\Building\\trnsIDF\\trnsidf.exe" "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - ``--template`` is the path of the .d18 template file (usually in the same directory as the `trnsidf.exe` executable).
       If nothing is passed, the following path will be used : "C:TRNSYS18\\Building\\trnsIDF\\NewFileTemplate.d18".
@@ -128,7 +129,7 @@ Users can chose to return a combination of flags
 
     .. code-block:: python
 
-        archetypal convert --log-clear-names "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
+        archetypal convert --log_clear_names "/Users/Documents/NECB 2011 - Warehouse.idf" "/Users/Documents/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw" "/Users/Documents/WIP"
 
     - ``--window`` specifies the window properties <u_value (W/m²-K)> <shgc (-)> <t_vis (-)> <tolerance (-)> <fframe (-)> <uframe (kJ/m²-K-h)>.
       If nothing is passed, the following values will be used : 2.2 0.65 0.8 0.05 0.15 8.17

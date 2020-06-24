@@ -29,7 +29,7 @@ import pandas as pd
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.bunch_subclass import EpBunch
 from eppy.easyopen import getiddfile
-from path import Path, tempdir
+from path import Path, TempDir
 
 import archetypal
 import archetypal.settings
@@ -889,7 +889,7 @@ def save_idf_object_to_cache(idf_object, idf_file, output_folder=None, how=None)
         output_folder (Path): temporary output directory (default:
             settings.cache_folder)
         how (str, optional): How the pickling is done. Choices are 'json' or
-            'pickle'. json dump doen't quite work yet. 'pickle' will save to a
+            'pickle'. json dump does not quite work yet. 'pickle' will save to a
             gzip'ed file instead of a regular binary file (.dat).
 
     Returns:
@@ -1752,7 +1752,7 @@ def run_eplus(
         elif include is not None:
             include = [Path(file) for file in include]
         # run the EnergyPlus Simulation
-        with tempdir(
+        with TempDir(
             prefix="eplus_run_", suffix=output_prefix, dir=output_directory
         ) as tmp:
             log(
@@ -1867,7 +1867,8 @@ def upgraded_file(eplus_file, output_directory):
         eplus_file:
         output_directory:
     """
-    eplus_file = next(iter(output_directory.glob("*.idf")), eplus_file)
+    if settings.use_cache:
+        eplus_file = next(iter(output_directory.glob("*.idf")), eplus_file)
     return eplus_file
 
 

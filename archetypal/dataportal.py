@@ -337,12 +337,12 @@ def _resolve_codecountry(code_country):
     Args:
         code_country:
     """
-    if len(code_country) == 2:
+    if isinstance(code_country, int):
+        code_country = pycountry.countries.get(numeric=str(code_country))
+    elif len(code_country) == 2:
         code_country = pycountry.countries.get(alpha_2=code_country)
     elif len(code_country) == 3:
         code_country = pycountry.countries.get(alpha_3=code_country)
-    elif isinstance(code_country, int):
-        code_country = pycountry.countries.get(numeric=str(code_country))
     else:
         code_country = pycountry.countries.get(name=code_country)
 
@@ -484,6 +484,15 @@ def nrel_api_cbr_request(data):
                         response_json["remark"], level=lg.WARNING
                     )
                 )
+            elif "error" in response_json:
+                log(
+                    "Server at {} returned status code {} meaning {}.".format(
+                        domain, response.status_code, response_json["error"]["code"]
+                    ),
+                    level=lg.ERROR,
+                )
+            else:
+                pass
             save_to_cache(prepared_url, response_json)
         except Exception:
             # deal with response satus_code here
@@ -545,11 +554,7 @@ def nrel_bcl_api_request(data):
         # json safely
         response_json = response.json()
         if "remark" in response_json:
-            log(
-                'Server remark: "{}"'.format(
-                    response_json["remark"], level=lg.WARNING
-                )
-            )
+            log('Server remark: "{}"'.format(response_json["remark"], level=lg.WARNING))
         save_to_cache(prepared_url, response_json)
         return response_json
 
@@ -826,10 +831,14 @@ def download_bld_window(
                 for info in z.infolist():
                     if info.filename.endswith(extension):
                         z.extract(info, path=output_folder)
-                        results.append(os.path.join(settings.data_folder, info.filename))
+                        results.append(
+                            os.path.join(settings.data_folder, info.filename)
+                        )
             return results
         else:
             return response["result"]
     else:
-        raise ValueError("Could not download window from NREL Building Components "
-                         "Library. An error occurred with the nrel_api_request")
+        raise ValueError(
+            "Could not download window from NREL Building Components "
+            "Library. An error occurred with the nrel_api_request"
+        )

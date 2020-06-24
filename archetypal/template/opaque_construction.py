@@ -427,8 +427,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
-        # from the construction or internalmass object
-        """
+        """Construct an OpaqueMaterial object given an epbunch with keys
+        "BuildingSurface:Detailed" or "InternalMass"
         Args:
             epbunch (EpBunch):
             **kwargs:
@@ -445,49 +445,30 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @classmethod
     def _internalmass_layer(cls, epbunch):
-        """
+        """Returns layers of an internal mass object.
+
         Args:
-            epbunch:
+            epbunch (EpBunch): The InternalMass epobject.
         """
-
-        layers = []
         constr_obj = epbunch.theidf.getobject("CONSTRUCTION", epbunch.Construction_Name)
-        field_idd = constr_obj.getfieldidd("Outside_Layer")
-        validobjects = field_idd["validobjects"]  # plausible layer types
-        for layer in constr_obj.fieldvalues[2:]:
-            # Iterate over the constructions layers
-            found = False
-            for key in validobjects:
-                try:
-                    material = constr_obj.theidf.getobject(key, layer)
-                    o = OpaqueMaterial.from_epbunch(material)
-                    found = True
-                except AttributeError:
-                    pass
-                else:
-                    layers.append(
-                        MaterialLayer(**dict(Material=o, Thickness=o._thickness))
-                    )
-            if not found:
-                raise AttributeError("%s material not found in IDF" % layer)
-        return layers
+        return cls._surface_layers(constr_obj)
 
-    @staticmethod
-    def _surface_layers(c):
+    @classmethod
+    def _surface_layers(cls, epbunch):
         """Retrieve layers for the OpaqueConstruction
 
         Args:
-            c (EpBunch): EP-Construction object
+            epbunch (EpBunch): EP-Construction object
         """
         layers = []
-        field_idd = c.getfieldidd("Outside_Layer")
+        field_idd = epbunch.getfieldidd("Outside_Layer")
         validobjects = field_idd["validobjects"]  # plausible layer types
-        for layer in c.fieldvalues[2:]:
+        for layer in epbunch.fieldvalues[2:]:
             # Iterate over the constructions layers
             found = False
             for key in validobjects:
                 try:
-                    material = c.theidf.getobject(key, layer)
+                    material = epbunch.theidf.getobject(key, layer)
                     o = OpaqueMaterial.from_epbunch(material)
                     found = True
                 except AttributeError:

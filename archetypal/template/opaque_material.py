@@ -338,3 +338,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                 "supported. Please contact package "
                 "authors".format(epbunch.Name, epbunch.key)
             )
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self

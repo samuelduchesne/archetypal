@@ -496,6 +496,13 @@ class Zone(UmiBase):
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        if not self.InternalMassConstruction:
+            self.set_generic_internalmass()
+
+        return self
+
 
 def resolve_obco(this):
     """Resolve the outside boundary condition of a surface and return the other
@@ -1140,3 +1147,14 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         oc.area = surf.area
         oc.Surface_Type = "Facade"
         return oc
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        for constr in ["Facade", "Ground", "Partition", "Roof", "Slab"]:
+            if not getattr(self, constr):
+                generic = OpaqueConstruction.generic(idf=self.idf)
+                setattr(self, constr, generic)
+                log(
+                    f"While validating {self}, the required attribute '{constr}' was filled with {generic}"
+                )
+        return self

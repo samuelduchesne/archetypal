@@ -143,3 +143,7 @@ class StructureDefinition(UmiBase, metaclass=Unique):
         data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self

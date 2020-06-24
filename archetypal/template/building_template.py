@@ -360,6 +360,10 @@ class BuildingTemplate(UmiBase):
 
         return data_dict
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
+
 
 def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):
     """

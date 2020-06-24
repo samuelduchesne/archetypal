@@ -298,6 +298,9 @@ class UmiBase(object):
         self.all_objects[self.__hash__()] = self
         return self
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
 
 class MaterialBase(UmiBase):
     """A class used to store data linked with the Life Cycle aspect of materials
@@ -390,6 +393,10 @@ class MaterialBase(UmiBase):
                     self.Density == other.Density,
                 ]
             )
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
 
 
 CREATED_OBJECTS = {}

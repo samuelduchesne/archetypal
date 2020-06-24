@@ -354,6 +354,10 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
+
 
 def _resolve_dimming_type(zone):
     """Resolves the dimming type for the Zone object"""

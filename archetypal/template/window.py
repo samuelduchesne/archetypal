@@ -205,6 +205,10 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         """
         return self
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
+
 
 class WindowType(IntEnum):
     External = 0
@@ -762,3 +766,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         ref = kwargs.get("ZoneMixingAvailabilitySchedule", None)
         w.ZoneMixingAvailabilitySchedule = w.get_ref(ref)
         return w
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self

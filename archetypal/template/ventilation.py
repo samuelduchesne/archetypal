@@ -340,6 +340,10 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
+
 
 def do_infiltration(index, inf_df, zone):
     """Gets infiltration information of the zone

@@ -52,6 +52,10 @@ class ConstructionBase(UmiBase):
         self.DisassemblyCarbon = DisassemblyCarbon
         self.DisassemblyEnergy = DisassemblyEnergy
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
+
 
 class LayeredConstruction(ConstructionBase):
     """Defines the layers of an :class:`OpaqueConstruction`. This class has one

@@ -196,7 +196,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """
         return sum(
             [
-                layer.Material.Density * layer.Material.SpecificHeat * layer.Thickness
+                layer.heat_capacity
                 for layer in self.Layers
             ]
         )

@@ -449,6 +449,11 @@ class MaterialLayer(object):
         return 1 / self.r_value
 
     @property
+    def heat_capacity(self):
+        """float: The Material Layer's heat capacity J/m2-k"""
+        return self.Material.Density * self.Material.SpecificHeat * self.Thickness
+
+    @property
     def specific_heat(self):
         """float: The Material's specific heat J/kg-K"""
         return self.Material.SpecificHeat

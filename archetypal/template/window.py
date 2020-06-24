@@ -259,7 +259,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
             Construction (WindowConstruction): The window construction.
             OperableArea (float): The operable window area as a ratio of total
                 window area. eg. 0.8 := 80% of the windows area is operable.
-            AfnWindowAvailability:
+            AfnWindowAvailability (UmiSchedule): The Airflow Network availability
+                schedule.
             AfnDischargeC (float): Airflow Network Discharge Coefficient.
                 Default = 0.65.
             AfnTempSetpoint (float): Airflow Network Temperature Setpoint.

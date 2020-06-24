@@ -482,8 +482,8 @@ class Zone(UmiBase):
             DomesticHotWater=self.DomesticHotWater.combine(
                 other.DomesticHotWater, weights
             ),
-            InternalMassConstruction=self.InternalMassConstruction.combine(
-                other.InternalMassConstruction, weights
+            InternalMassConstruction=OpaqueConstruction.combine(
+                self.InternalMassConstruction, other.InternalMassConstruction
             ),
             InternalMassExposedPerFloorArea=self._float_mean(
                 other, "InternalMassExposedPerFloorArea", weights

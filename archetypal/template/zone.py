@@ -253,41 +253,10 @@ class Zone(UmiBase):
                     float(surface.Surface_Area) / self.area
                 )
         if not oc:
+            self.InternalMassExposedPerFloorArea = 0
+            return None
             # Todo: Create Equivalent InternalMassConstruction from
             #  partitions. For now, creating dummy InternalMass
-
-            mat = self.idf.add_object(
-                ep_object="Material".upper(),
-                Name="Wood 6inch",
-                Roughness="MediumSmooth",
-                Thickness=0.15,
-                Conductivity=0.12,
-                Density=540,
-                Specific_Heat=1210,
-                Thermal_Absorptance=0.7,
-                Visible_Absorptance=0.7,
-            )
-
-            cons = self.idf.add_object(
-                ep_object="Construction".upper(),
-                save=False,
-                Name="InteriorFurnishings",
-                Outside_Layer="Wood 6inch",
-            )
-
-            internal_mass = "{}_InternalMass".format(self.Name)
-            cons.Name = internal_mass + "_construction"
-            new_epbunch = self.idf.add_object(
-                ep_object="InternalMass".upper(),
-                save=False,
-                Name=internal_mass,
-                Construction_Name=cons.Name,
-                Zone_or_ZoneList_Name=self.Name,
-                Surface_Area=1,
-            )
-
-            oc.append(OpaqueConstruction.from_epbunch(new_epbunch, idf=self.idf))
-            self.InternalMassExposedPerFloorArea = 0
 
         if self.InternalMassExposedPerFloorArea is None:
             self.InternalMassExposedPerFloorArea = 0
@@ -295,6 +264,43 @@ class Zone(UmiBase):
         from operator import add
 
         return functools.reduce(add, oc)
+
+    def set_generic_internalmass(self):
+        """Creates a valid internal mass object with
+        InternalMassExposedPerFloorArea = 0 and sets it to the
+        self.InternalMassConstruction attribute.
+        """
+        mat = self.idf.add_object(
+            ep_object="Material".upper(),
+            Name="Wood 6inch",
+            Roughness="MediumSmooth",
+            Thickness=0.15,
+            Conductivity=0.12,
+            Density=540,
+            Specific_Heat=1210,
+            Thermal_Absorptance=0.7,
+            Visible_Absorptance=0.7,
+        )
+        cons = self.idf.add_object(
+            ep_object="Construction".upper(),
+            save=False,
+            Name="InteriorFurnishings",
+            Outside_Layer="Wood 6inch",
+        )
+        internal_mass = "{}_InternalMass".format(self.Name)
+        cons.Name = internal_mass + "_construction"
+        new_epbunch = self.idf.add_object(
+            ep_object="InternalMass".upper(),
+            save=False,
+            Name=internal_mass,
+            Construction_Name=cons.Name,
+            Zone_or_ZoneList_Name=self.Name,
+            Surface_Area=1,
+        )
+        self.InternalMassConstruction = OpaqueConstruction.from_epbunch(
+            new_epbunch, idf=self.idf
+        )
+        self.InternalMassExposedPerFloorArea = 0
 
     def _loads(self):
         """run loads and return id"""

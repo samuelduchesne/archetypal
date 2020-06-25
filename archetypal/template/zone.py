@@ -489,6 +489,8 @@ class Zone(UmiBase):
                 other, "InternalMassExposedPerFloorArea", weights
             ),
             Loads=self.Loads.combine(other.Loads, weights),
+            idf=self.idf,
+            sql=self.sql,
         )
         new_obj = self.__class__(**meta, **attr)
         new_obj._volume = self.volume + other.volume

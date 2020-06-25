@@ -52,7 +52,7 @@ class Zone(UmiBase):
         InternalMassExposedPerFloorArea=1.05,
         DaylightMeshResolution=1,
         DaylightWorkplaneHeight=0.8,
-        **kwargs
+        **kwargs,
     ):
         """Initialize :class:`Zone` object.
 
@@ -251,11 +251,6 @@ class Zone(UmiBase):
         if not oc:
             self.InternalMassExposedPerFloorArea = 0
             return None
-            # Todo: Create Equivalent InternalMassConstruction from
-            #  partitions. For now, creating dummy InternalMass
-
-        if self.InternalMassExposedPerFloorArea is None:
-            self.InternalMassExposedPerFloorArea = 0
 
         from operator import add
 
@@ -426,6 +421,10 @@ class Zone(UmiBase):
             weights (list-like, optional): A list-like object of len 2. If None,
                 the volume of the zones for which self and other belongs is
                 used.
+
+        Todo:
+            Create Equivalent InternalMassConstruction from partitions when combining
+            zones.
 
         Returns:
             (Zone): the combined Zone object.
@@ -799,7 +798,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         IsGroundAdiabatic=False,
         Facade=None,
         IsFacadeAdiabatic=False,
-        **kwargs
+        **kwargs,
     ):
         """
         Args:

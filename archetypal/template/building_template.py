@@ -267,6 +267,7 @@ class BuildingTemplate(UmiBase):
         Args:
             **zone_graph_kwargs:
         """
+        log("Initiating complexity reduction...")
         start_time = time.time()
 
         if cores:

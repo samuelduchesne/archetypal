@@ -223,6 +223,10 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         year_sched = self.develop()
         return year_sched.to_dict()
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
+
 
 class YearScheduleParts:
     """Helper Class for YearSchedules that are defined using FromDay FromMonth

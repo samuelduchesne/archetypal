@@ -913,3 +913,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         )
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self

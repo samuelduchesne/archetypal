@@ -13,7 +13,7 @@ import pandas as pd
 
 import archetypal
 from archetypal import log, timeit, settings, top, weighted_mean
-from archetypal.template import UmiBase, Unique, UniqueName
+from archetypal.template import UmiBase, Unique, UniqueName, UmiSchedule
 
 
 def resolve_temp(temp, idf):
@@ -59,13 +59,13 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         """Initialize a new VentilationSetting (for zone) object
 
         Args:
-            NatVentSchedule (UmiSchedule, optional): The name of the schedule
+            NatVentSchedule (UmiSchedule): The name of the schedule
                 (Day | Week | Year) which ultimately modifies the Opening Area
                 value (see previous field). In its current implementation, any
                 value greater than 0 will consider, value above The schedule
                 values must be any positive number between 0 and 1 as a
                 fraction.
-            ScheduledVentilationSchedule (UmiSchedule, optional): The name of
+            ScheduledVentilationSchedule (UmiSchedule): The name of
                 the schedule (Schedules Tab) that modifies the maximum design
                 volume flow rate. This fraction is between 0.0 and 1.0.
             Afn (bool):
@@ -339,6 +339,10 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         new_obj = self.__class__(**meta, **attr)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
 
 
 def do_infiltration(index, inf_df, zone):

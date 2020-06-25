@@ -205,6 +205,10 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         """
         return self
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
+
 
 class WindowType(IntEnum):
     External = 0
@@ -255,7 +259,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
             Construction (WindowConstruction): The window construction.
             OperableArea (float): The operable window area as a ratio of total
                 window area. eg. 0.8 := 80% of the windows area is operable.
-            AfnWindowAvailability:
+            AfnWindowAvailability (UmiSchedule): The Airflow Network availability
+                schedule.
             AfnDischargeC (float): Airflow Network Discharge Coefficient.
                 Default = 0.65.
             AfnTempSetpoint (float): Airflow Network Temperature Setpoint.
@@ -762,3 +767,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         ref = kwargs.get("ZoneMixingAvailabilitySchedule", None)
         w.ZoneMixingAvailabilitySchedule = w.get_ref(ref)
         return w
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self

@@ -52,6 +52,10 @@ class ConstructionBase(UmiBase):
         self.DisassemblyCarbon = DisassemblyCarbon
         self.DisassemblyEnergy = DisassemblyEnergy
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
+
 
 class LayeredConstruction(ConstructionBase):
     """Defines the layers of an :class:`OpaqueConstruction`. This class has one
@@ -216,14 +220,12 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     def timeconstant_per_unit_area(self):
         return self.mass_per_unit_area * self.specific_heat / self.u_value()
 
-    def combine(self, other, weights=None, method="dominant_wall"):
+    def combine(self, other, method="dominant_wall"):
         """Combine two OpaqueConstruction together.
 
         Args:
             other (OpaqueConstruction): The other OpaqueConstruction object to
                 combine with.
-            weights (list-like, optional): A list-like object of len 2. If None,
-                the weight is the same for both self and other.
             method (str): Equivalent wall assembly method. Only 'dominant_wall'
                 is safe to use. 'constant_ufactor' is still weird in terms of
                 respecting the thermal response of the walls and may cause
@@ -233,6 +235,13 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         Returns:
             (OpaqueConstruction): the combined ZoneLoad object.
         """
+        # Check if other is None. Simply return self
+        if not other:
+            return self
+
+        if not self:
+            return other
+
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
             msg = "Cannot combine %s with %s" % (
@@ -245,8 +254,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         if self == other:
             return self
 
-        if not weights:
-            weights = [self.area, other.area]
+        weights = [self.area, other.area]
 
         meta = self._get_predecessors_meta(other)
         # thicknesses & materials for self

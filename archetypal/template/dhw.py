@@ -389,6 +389,10 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
+
 
 def water_main_correlation(t_out_avg, max_diff):
     """Based on the coorelation by correlation was developed by Craig

@@ -235,10 +235,6 @@ class Zone(UmiBase):
                 )
         return vol / 6.0
 
-    def _conditioning(self):
-        """run _conditioning and return id"""
-        self.Conditioning = ZoneConditioning.from_idf(Name=random.randint(1, 999999))
-
     @timeit
     def _internalmassconstruction(self):
         """Group internal walls into a ThermalMass object for this Zone"""

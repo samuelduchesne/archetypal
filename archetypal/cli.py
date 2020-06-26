@@ -372,6 +372,7 @@ def reduce(idf, output, weather, parallel, all_zones):
     OUTPUT is the output file name (or path) to write to. Optional.
     """
     if parallel:
+        log("Running in parallel...")
         # if parallel is True, run eplus in parallel
         rundict = {
             file: dict(

@@ -11,6 +11,7 @@ import logging as lg
 import math
 import random
 import time
+from operator import add
 
 import numpy as np
 from archetypal import log, timeit, settings, is_referenced
@@ -241,27 +242,31 @@ class Zone(UmiBase):
         referenced to the zone. Group internal walls into a ThermalMass
         object for this Zone"""
 
-        # Check for internal mass objects
-        oc = []
+        # Check for internal mass objects in all zones.
+        mass_opaque_constructions = []  # placeholder for possible InternalMass
+        area = 0  # placeholder for possible InternalMass area.
         internal_mass_objs = self.idf.idfobjects["INTERNALMASS"]
+
+        # then loop to find referenced InternalMass to zone self
         if internal_mass_objs:
             # There are InternalMass objects, but is there one assigned to this zone?
-            area = 0  # placeholder for possible InternalMass area.
             for int_obj in internal_mass_objs:
                 # Looping over possible InternalMass objects
                 if is_referenced(self.Name, int_obj):
                     # This InternalMass object (int_obj) is assigned to self,
                     # then create object and append to list. There could be more then
                     # one.
-                    oc.append(OpaqueConstruction.from_epbunch(int_obj))
+                    mass_opaque_constructions.append(
+                        OpaqueConstruction.from_epbunch(int_obj)
+                    )
                     area += float(int_obj.Surface_Area)
 
+        # If one or more constructions, combine them into one.
+        if mass_opaque_constructions:
             # Combine elements and assign the aggregated Surface Area
             self.InternalMassExposedPerFloorArea = float(area) / self.area
-            from operator import add
-
-            return functools.reduce(add, oc)
-        if not oc:
+            return functools.reduce(add, mass_opaque_constructions)
+        else:
             # No InternalMass object assigned to this Zone, then return Zone and set
             # floor area to 0
             self.InternalMassExposedPerFloorArea = 0

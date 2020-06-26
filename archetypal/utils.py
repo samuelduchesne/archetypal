@@ -32,7 +32,7 @@ import pandas as pd
 from pandas.io.json import json_normalize
 from path import Path
 
-from archetypal import settings
+from archetypal import settings, __version__
 from archetypal.settings import ep_version
 
 
@@ -1111,3 +1111,22 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
             log(str(e), lg.ERROR)
             out[futures[key]] = e
     return out
+
+
+def is_referenced(name, epbunch, fieldname="Zone_or_ZoneList_Name"):
+    """bool: Returns True if name is in referenced object fieldname"""
+    refobj = epbunch.get_referenced_object(fieldname)
+    if refobj.key.upper() == "ZONE":
+        return name in refobj.Name
+    elif refobj.key.upper() == "ZONELIST":
+        raise NotImplementedError(
+            f"Checking against a ZoneList is "
+            f"not yet supported in archetypal "
+            f"v{__version__}"
+        )
+    else:
+        raise ValueError(
+            f"Invalid referring object returned while "
+            f"referencing object name: Looking for '{name}' in "
+            f"object {refobj}"
+        )

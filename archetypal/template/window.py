@@ -684,7 +684,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
             AfnDischargeC=self._float_mean(other, "AfnDischargeC", weights),
             AfnTempSetpoint=self._float_mean(other, "AfnTempSetpoint", weights),
             AfnWindowAvailability=self.AfnWindowAvailability.combine(
-                other.AfnWindowAvailability, weights),
+                other.AfnWindowAvailability, weights
+            ),
             IsShadingSystemOn=any([self.IsShadingSystemOn, other.IsShadingSystemOn]),
             IsVirtualPartition=any([self.IsVirtualPartition, other.IsVirtualPartition]),
             IsZoneMixingOn=any([self.IsZoneMixingOn, other.IsZoneMixingOn]),
@@ -703,10 +704,11 @@ class WindowSetting(UmiBase, metaclass=Unique):
             ),
             ZoneMixingFlowRate=self._float_mean(other, "ZoneMixingFlowRate", weights),
             ZoneMixingAvailabilitySchedule=self.ZoneMixingAvailabilitySchedule.combine(
-                other.ZoneMixingAvailabilitySchedule, weights),
-            ShadingSystemAvailabilitySchedule=self.ShadingSystemAvailabilitySchedule
-                .combine(
-                other.ShadingSystemAvailabilitySchedule, weights),
+                other.ZoneMixingAvailabilitySchedule, weights
+            ),
+            ShadingSystemAvailabilitySchedule=self.ShadingSystemAvailabilitySchedule.combine(
+                other.ShadingSystemAvailabilitySchedule, weights
+            ),
         )
         new_obj = self.__class__(**meta, **new_attr)
         new_obj._predecessors.extend(self._predecessors + other._predecessors)
@@ -761,4 +763,29 @@ class WindowSetting(UmiBase, metaclass=Unique):
         w.ShadingSystemAvailabilitySchedule = w.get_ref(ref)
         ref = kwargs.get("ZoneMixingAvailabilitySchedule", None)
         w.ZoneMixingAvailabilitySchedule = w.get_ref(ref)
+        return w
+
+    @classmethod
+    def from_ref(cls, ref, building_templates):
+        """In some cases, the WindowSetting is referenced in the DataStore to the
+        Windows property of a BuildingTemplate (instead of being listed in the
+        WindowSettings list. This is the case in the original
+        BostonTemplateLibrary.json.
+
+        Args:
+            ref (str): The referenced number
+            building_templates (list): List of BuildingTemplates from the datastore.
+
+        Returns:
+            WindowSetting: The parsed WindowSetting.
+        """
+        store = next(
+            iter(
+                filter(
+                    lambda x: x.get("$id") == ref,
+                    [bldg.get("Windows") for bldg in building_templates],
+                )
+            )
+        )
+        w = cls.from_json(**store)
         return w

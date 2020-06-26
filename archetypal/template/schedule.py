@@ -217,6 +217,8 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         used when generating the json file. Only Year-Week- and DaySchedule
         classes are used
         """
+        self.validate()  # Validate object before trying to get json format
+
         pass
 
     def to_dict(self):

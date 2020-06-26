@@ -1307,8 +1307,11 @@ def test_trnbuild_from_simple_idf(config):
     window_file = "W74-lib.dat"
     template_dir = os.path.join("archetypal", "ressources")
     window_filepath = os.path.join(template_dir, window_file)
+    # weather_file = os.path.join(
+    #     "tests", "input_data", "CAN_QC_Montreal-McTavish.716120_CWEC2016.epw"
+    # )
     weather_file = os.path.join(
-        "tests", "input_data", "CAN_QC_Montreal-McTavish.716120_CWEC2016.epw"
+        "tests", "input_data", "USA_NY_Buffalo.Niagara.Intl.AP.725280_TMY3.epw"
     )
 
     # prepare args (key=value)f or EnergyPlus version to use, windows parameters,etc.
@@ -1325,7 +1328,8 @@ def test_trnbuild_from_simple_idf(config):
     }
 
     # Path to IDF file
-    file = os.path.join("tests", "input_data", "trnsys", "simple_2_zone.idf")
+    # file = os.path.join("tests", "input_data", "trnsys", "simple_2_zone.idf")
+    file = os.path.join("tests", "input_data", "ASHRAE90.1_OfficeLarge_STD2016_Buffalo.idf")
 
     # Converts IDF to BUI
     convert_idf_to_trnbuild(

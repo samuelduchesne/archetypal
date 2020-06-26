@@ -267,6 +267,7 @@ class BuildingTemplate(UmiBase):
         Args:
             **zone_graph_kwargs:
         """
+        log("Initiating complexity reduction...")
         start_time = time.time()
 
         if cores:
@@ -345,6 +346,8 @@ class BuildingTemplate(UmiBase):
 
     def to_json(self):
         """Convert class properties to dict"""
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["Core"] = self.Core.to_dict()
@@ -359,6 +362,10 @@ class BuildingTemplate(UmiBase):
         data_dict["Name"] = self.Name
 
         return data_dict
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
 
 
 def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):

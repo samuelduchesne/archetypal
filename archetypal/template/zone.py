@@ -11,9 +11,10 @@ import logging as lg
 import math
 import random
 import time
+from operator import add
 
 import numpy as np
-from archetypal import log, timeit, settings
+from archetypal import log, timeit, settings, is_referenced
 from archetypal.template import (
     Unique,
     UmiBase,
@@ -52,7 +53,7 @@ class Zone(UmiBase):
         InternalMassExposedPerFloorArea=1.05,
         DaylightMeshResolution=1,
         DaylightWorkplaneHeight=0.8,
-        **kwargs
+        **kwargs,
     ):
         """Initialize :class:`Zone` object.
 
@@ -70,7 +71,7 @@ class Zone(UmiBase):
             Windows (WindowSetting): The WindowSetting object associated with
                 this zone.
             InternalMassConstruction (archetypal.OpaqueConstruction):
-            InternalMassExposedPerFloorArea:
+            InternalMassExposedPerFloorArea (float): Exposed surface area [m2/zone area]
             DaylightMeshResolution (float):
             DaylightWorkplaneHeight (float):
             **kwargs:
@@ -235,66 +236,78 @@ class Zone(UmiBase):
                 )
         return vol / 6.0
 
-    def _conditioning(self):
-        """run _conditioning and return id"""
-        self.Conditioning = ZoneConditioning.from_idf(Name=random.randint(1, 999999))
-
     @timeit
     def _internalmassconstruction(self):
-        """Group internal walls into a ThermalMass object for this Zone"""
+        """Specifies the internal mass construction based on InternaMass objects
+        referenced to the zone. Group internal walls into a ThermalMass
+        object for this Zone"""
 
-        oc = []
-        for surface in self.zonesurfaces(exclude=["WINDOWSHADINGCONTROL"]):
-            # for surf_type in self.idf.idd_index['ref2names'][
-            # 'AllHeatTranSurfNames']:
-            if surface.key.upper() == "INTERNALMASS":
-                oc.append(OpaqueConstruction.from_epbunch(surface))
-                self.InternalMassExposedPerFloorArea = (
-                    float(surface.Surface_Area) / self.area
-                )
-        if not oc:
-            # Todo: Create Equivalent InternalMassConstruction from
-            #  partitions. For now, creating dummy InternalMass
+        # Check for internal mass objects in all zones.
+        mass_opaque_constructions = []  # placeholder for possible InternalMass
+        area = 0  # placeholder for possible InternalMass area.
+        internal_mass_objs = self.idf.idfobjects["INTERNALMASS"]
 
-            mat = self.idf.add_object(
-                ep_object="Material".upper(),
-                Name="Wood 6inch",
-                Roughness="MediumSmooth",
-                Thickness=0.15,
-                Conductivity=0.12,
-                Density=540,
-                Specific_Heat=1210,
-                Thermal_Absorptance=0.7,
-                Visible_Absorptance=0.7,
-            )
+        # then loop to find referenced InternalMass to zone self
+        if internal_mass_objs:
+            # There are InternalMass objects, but is there one assigned to this zone?
+            for int_obj in internal_mass_objs:
+                # Looping over possible InternalMass objects
+                if is_referenced(self.Name, int_obj):
+                    # This InternalMass object (int_obj) is assigned to self,
+                    # then create object and append to list. There could be more then
+                    # one.
+                    mass_opaque_constructions.append(
+                        OpaqueConstruction.from_epbunch(int_obj)
+                    )
+                    area += float(int_obj.Surface_Area)
 
-            cons = self.idf.add_object(
-                ep_object="Construction".upper(),
-                save=False,
-                Name="InteriorFurnishings",
-                Outside_Layer="Wood 6inch",
-            )
-
-            internal_mass = "{}_InternalMass".format(self.Name)
-            cons.Name = internal_mass + "_construction"
-            new_epbunch = self.idf.add_object(
-                ep_object="InternalMass".upper(),
-                save=False,
-                Name=internal_mass,
-                Construction_Name=cons.Name,
-                Zone_or_ZoneList_Name=self.Name,
-                Surface_Area=1,
-            )
-
-            oc.append(OpaqueConstruction.from_epbunch(new_epbunch, idf=self.idf))
+        # If one or more constructions, combine them into one.
+        if mass_opaque_constructions:
+            # Combine elements and assign the aggregated Surface Area
+            self.InternalMassExposedPerFloorArea = float(area) / self.area
+            return functools.reduce(add, mass_opaque_constructions)
+        else:
+            # No InternalMass object assigned to this Zone, then return Zone and set
+            # floor area to 0
             self.InternalMassExposedPerFloorArea = 0
+            return None
 
-        if self.InternalMassExposedPerFloorArea is None:
-            self.InternalMassExposedPerFloorArea = 0
-
-        from operator import add
-
-        return functools.reduce(add, oc)
+    def set_generic_internalmass(self):
+        """Creates a valid internal mass object with
+        InternalMassExposedPerFloorArea = 0 and sets it to the
+        self.InternalMassConstruction attribute.
+        """
+        mat = self.idf.add_object(
+            ep_object="Material".upper(),
+            Name="Wood 6inch",
+            Roughness="MediumSmooth",
+            Thickness=0.15,
+            Conductivity=0.12,
+            Density=540,
+            Specific_Heat=1210,
+            Thermal_Absorptance=0.7,
+            Visible_Absorptance=0.7,
+        )
+        cons = self.idf.add_object(
+            ep_object="Construction".upper(),
+            save=False,
+            Name="InteriorFurnishings",
+            Outside_Layer="Wood 6inch",
+        )
+        internal_mass = "{}_InternalMass".format(self.Name)
+        cons.Name = internal_mass + "_construction"
+        new_epbunch = self.idf.add_object(
+            ep_object="InternalMass".upper(),
+            save=False,
+            Name=internal_mass,
+            Construction_Name=cons.Name,
+            Zone_or_ZoneList_Name=self.Name,
+            Surface_Area=1,
+        )
+        self.InternalMassConstruction = OpaqueConstruction.from_epbunch(
+            new_epbunch, idf=self.idf
+        )
+        self.InternalMassExposedPerFloorArea = 0
 
     def _loads(self):
         """run loads and return id"""
@@ -317,6 +330,8 @@ class Zone(UmiBase):
         )
 
     def to_json(self):
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -425,6 +440,10 @@ class Zone(UmiBase):
                 the volume of the zones for which self and other belongs is
                 used.
 
+        Todo:
+            Create Equivalent InternalMassConstruction from partitions when combining
+            zones.
+
         Returns:
             (Zone): the combined Zone object.
         """
@@ -476,13 +495,15 @@ class Zone(UmiBase):
             DomesticHotWater=self.DomesticHotWater.combine(
                 other.DomesticHotWater, weights
             ),
-            InternalMassConstruction=self.InternalMassConstruction.combine(
-                other.InternalMassConstruction, weights
+            InternalMassConstruction=OpaqueConstruction.combine(
+                self.InternalMassConstruction, other.InternalMassConstruction
             ),
             InternalMassExposedPerFloorArea=self._float_mean(
                 other, "InternalMassExposedPerFloorArea", weights
             ),
             Loads=self.Loads.combine(other.Loads, weights),
+            idf=self.idf,
+            sql=self.sql,
         )
         new_obj = self.__class__(**meta, **attr)
         new_obj._volume = self.volume + other.volume
@@ -495,6 +516,17 @@ class Zone(UmiBase):
             attr["Windows"]._belongs_to_zone = new_obj
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        if not self.InternalMassConstruction:
+            self.set_generic_internalmass()
+        log(
+            f"While validating {self}, the required attribute 'InternalMassConstruction' was filled "
+            f"with {self.InternalMassConstruction} and the 'InternalMassExposedPerFloorArea' set to"
+            f" {self.InternalMassExposedPerFloorArea}"
+        )
+        return self
 
 
 def resolve_obco(this):
@@ -784,7 +816,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         IsGroundAdiabatic=False,
         Facade=None,
         IsFacadeAdiabatic=False,
-        **kwargs
+        **kwargs,
     ):
         """
         Args:
@@ -882,23 +914,17 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         meta = self._get_predecessors_meta(other)
         new_attr = dict(
-            Slab=self.Slab.combine(other.Slab, [self.Slab.area, other.Slab.area]),
+            Slab=OpaqueConstruction.combine(self.Slab, other.Slab),
             IsSlabAdiabatic=any([self.IsSlabAdiabatic, other.IsSlabAdiabatic]),
-            Roof=self.Roof.combine(other.Roof, [self.Roof.area, other.Roof.area]),
+            Roof=OpaqueConstruction.combine(self.Roof, other.Roof),
             IsRoofAdiabatic=any([self.IsRoofAdiabatic, other.IsRoofAdiabatic]),
-            Partition=self.Partition.combine(
-                other.Partition, [self.Partition.area, other.Partition.area]
-            ),
+            Partition=OpaqueConstruction.combine(self.Partition, other.Partition),
             IsPartitionAdiabatic=any(
                 [self.IsPartitionAdiabatic, other.IsPartitionAdiabatic]
             ),
-            Ground=self.Ground.combine(
-                other.Ground, [self.Ground.area, other.Ground.area]
-            ),
+            Ground=OpaqueConstruction.combine(self.Ground, other.Ground),
             IsGroundAdiabatic=any([self.IsGroundAdiabatic, other.IsGroundAdiabatic]),
-            Facade=self.Facade.combine(
-                other.Facade, [self.Facade.area, other.Facade.area]
-            ),
+            Facade=OpaqueConstruction.combine(self.Facade, other.Facade),
             IsFacadeAdiabatic=any([self.IsFacadeAdiabatic, other.IsFacadeAdiabatic]),
         )
         new_obj = self.__class__(**meta, **new_attr)
@@ -933,6 +959,8 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     def to_json(self):
         """Convert class properties to dict"""
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -987,30 +1015,30 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         # Returning a set() for each groups of Constructions.
 
         facades = set(facade)
-        if facades:
+        if set(facade):
             facade = reduce(OpaqueConstruction.combine, facades)
         else:
-            facade = OpaqueConstruction.generic(idf=zone.idf)
+            facade = None
         grounds = set(ground)
         if grounds:
             ground = reduce(OpaqueConstruction.combine, grounds)
         else:
-            ground = OpaqueConstruction.generic(idf=zone.idf)
+            ground = None
         partitions = set(partition)
         if partitions:
             partition = reduce(OpaqueConstruction.combine, partitions)
         else:
-            partition = OpaqueConstruction.generic(idf=zone.idf)
+            partition = None
         roofs = set(roof)
         if roofs:
             roof = reduce(OpaqueConstruction.combine, roofs)
         else:
-            roof = OpaqueConstruction.generic(idf=zone.idf)
+            roof = None
         slabs = set(slab)
         if slabs:
             slab = reduce(OpaqueConstruction.combine, slabs)
         else:
-            slab = OpaqueConstruction.generic(idf=zone.idf)
+            slab = None
 
         z_set = cls(
             Facade=facade,
@@ -1140,3 +1168,14 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         oc.area = surf.area
         oc.Surface_Type = "Facade"
         return oc
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        for constr in ["Facade", "Ground", "Partition", "Roof", "Slab"]:
+            if not getattr(self, constr):
+                generic = OpaqueConstruction.generic(idf=self.idf)
+                setattr(self, constr, generic)
+                log(
+                    f"While validating {self}, the required attribute '{constr}' was filled with {generic}"
+                )
+        return self

@@ -298,6 +298,9 @@ class UmiBase(object):
         self.all_objects[self.__hash__()] = self
         return self
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
 
 class MaterialBase(UmiBase):
     """A class used to store data linked with the Life Cycle aspect of materials
@@ -391,6 +394,10 @@ class MaterialBase(UmiBase):
                 ]
             )
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
+
 
 CREATED_OBJECTS = {}
 
@@ -447,6 +454,11 @@ class MaterialLayer(object):
         :class:`MaterialLayer`. Expressed in W/(m2⋅K)
         """
         return 1 / self.r_value
+
+    @property
+    def heat_capacity(self):
+        """float: The Material Layer's heat capacity J/m2-k"""
+        return self.Material.Density * self.Material.SpecificHeat * self.Thickness
 
     @property
     def specific_heat(self):

@@ -52,6 +52,10 @@ class ConstructionBase(UmiBase):
         self.DisassemblyCarbon = DisassemblyCarbon
         self.DisassemblyEnergy = DisassemblyEnergy
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
+
 
 class LayeredConstruction(ConstructionBase):
     """Defines the layers of an :class:`OpaqueConstruction`. This class has one
@@ -196,7 +200,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """
         return sum(
             [
-                layer.Material.Density * layer.Material.SpecificHeat * layer.Thickness
+                layer.heat_capacity
                 for layer in self.Layers
             ]
         )
@@ -216,14 +220,12 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     def timeconstant_per_unit_area(self):
         return self.mass_per_unit_area * self.specific_heat / self.u_value()
 
-    def combine(self, other, weights=None, method="dominant_wall"):
+    def combine(self, other, method="dominant_wall"):
         """Combine two OpaqueConstruction together.
 
         Args:
             other (OpaqueConstruction): The other OpaqueConstruction object to
                 combine with.
-            weights (list-like, optional): A list-like object of len 2. If None,
-                the weight is the same for both self and other.
             method (str): Equivalent wall assembly method. Only 'dominant_wall'
                 is safe to use. 'constant_ufactor' is still weird in terms of
                 respecting the thermal response of the walls and may cause
@@ -233,6 +235,13 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         Returns:
             (OpaqueConstruction): the combined ZoneLoad object.
         """
+        # Check if other is None. Simply return self
+        if not other:
+            return self
+
+        if not self:
+            return other
+
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
             msg = "Cannot combine %s with %s" % (
@@ -245,8 +254,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         if self == other:
             return self
 
-        if not weights:
-            weights = [self.area, other.area]
+        weights = [self.area, other.area]
 
         meta = self._get_predecessors_meta(other)
         # thicknesses & materials for self
@@ -427,8 +435,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
-        # from the construction or internalmass object
-        """
+        """Construct an OpaqueMaterial object given an epbunch with keys
+        "BuildingSurface:Detailed" or "InternalMass"
         Args:
             epbunch (EpBunch):
             **kwargs:
@@ -445,49 +453,30 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @classmethod
     def _internalmass_layer(cls, epbunch):
-        """
+        """Returns layers of an internal mass object.
+
         Args:
-            epbunch:
+            epbunch (EpBunch): The InternalMass epobject.
         """
-
-        layers = []
         constr_obj = epbunch.theidf.getobject("CONSTRUCTION", epbunch.Construction_Name)
-        field_idd = constr_obj.getfieldidd("Outside_Layer")
-        validobjects = field_idd["validobjects"]  # plausible layer types
-        for layer in constr_obj.fieldvalues[2:]:
-            # Iterate over the constructions layers
-            found = False
-            for key in validobjects:
-                try:
-                    material = constr_obj.theidf.getobject(key, layer)
-                    o = OpaqueMaterial.from_epbunch(material)
-                    found = True
-                except AttributeError:
-                    pass
-                else:
-                    layers.append(
-                        MaterialLayer(**dict(Material=o, Thickness=o._thickness))
-                    )
-            if not found:
-                raise AttributeError("%s material not found in IDF" % layer)
-        return layers
+        return cls._surface_layers(constr_obj)
 
-    @staticmethod
-    def _surface_layers(c):
+    @classmethod
+    def _surface_layers(cls, epbunch):
         """Retrieve layers for the OpaqueConstruction
 
         Args:
-            c (EpBunch): EP-Construction object
+            epbunch (EpBunch): EP-Construction object
         """
         layers = []
-        field_idd = c.getfieldidd("Outside_Layer")
+        field_idd = epbunch.getfieldidd("Outside_Layer")
         validobjects = field_idd["validobjects"]  # plausible layer types
-        for layer in c.fieldvalues[2:]:
+        for layer in epbunch.fieldvalues[2:]:
             # Iterate over the constructions layers
             found = False
             for key in validobjects:
                 try:
-                    material = c.theidf.getobject(key, layer)
+                    material = epbunch.theidf.getobject(key, layer)
                     o = OpaqueMaterial.from_epbunch(material)
                     found = True
                 except AttributeError:
@@ -502,6 +491,8 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     def to_json(self):
         """Convert class properties to dict"""
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)

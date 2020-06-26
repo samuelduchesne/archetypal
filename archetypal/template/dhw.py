@@ -86,6 +86,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
 
     def to_json(self):
         """Convert class properties to dict"""
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -388,6 +390,10 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         )
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
 
 
 def water_main_correlation(t_out_avg, max_diff):

@@ -121,6 +121,8 @@ class WindowConstruction(UmiBase, metaclass=Unique):
 
     def to_json(self):
         """Convert class properties to dict"""
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -205,6 +207,10 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         """
         return self
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
+
 
 class WindowType(IntEnum):
     External = 0
@@ -255,7 +261,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
             Construction (WindowConstruction): The window construction.
             OperableArea (float): The operable window area as a ratio of total
                 window area. eg. 0.8 := 80% of the windows area is operable.
-            AfnWindowAvailability:
+            AfnWindowAvailability (UmiSchedule): The Airflow Network availability
+                schedule.
             AfnDischargeC (float): Airflow Network Discharge Coefficient.
                 Default = 0.65.
             AfnTempSetpoint (float): Airflow Network Temperature Setpoint.
@@ -789,3 +796,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         )
         w = cls.from_json(**store)
         return w
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self

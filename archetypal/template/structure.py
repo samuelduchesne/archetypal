@@ -128,6 +128,8 @@ class StructureDefinition(UmiBase, metaclass=Unique):
         return sd
 
     def to_json(self):
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)

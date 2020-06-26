@@ -254,7 +254,7 @@ class Zone(UmiBase):
                     # then create object and append to list. There could be more then
                     # one.
                     oc.append(OpaqueConstruction.from_epbunch(int_obj))
-                    area += int_obj.Surface_Area
+                    area += float(int_obj.Surface_Area)
 
             # Combine elements and assign the aggregated Surface Area
             self.InternalMassExposedPerFloorArea = float(area) / self.area

@@ -1064,7 +1064,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         [function(array[0]), function(array[1]), ...]
     """
     from tqdm import tqdm
-    from concurrent.futures import ProcessPoolExecutor, as_completed
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())
@@ -1082,7 +1082,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         else:
             futures = {a: function(in_dict[a]) for a in tqdm(in_dict, **kwargs)}
     else:
-        with ProcessPoolExecutor(max_workers=processors) as pool:
+        with ThreadPoolExecutor(max_workers=processors) as pool:
             if use_kwargs:
                 futures = {pool.submit(function, **in_dict[a]): a for a in in_dict}
             else:

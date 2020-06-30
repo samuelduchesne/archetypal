@@ -358,14 +358,14 @@ def convert(
 )
 @click.option(
     "-p",
-    "parallel",
+    "--parallel",
     is_flag=True,
-    default=True,
+    default=False,
     help="Parallel process; each idf file on different cores",
 )
 @click.option(
     "-z",
-    "all_zones",
+    "--all_zones",
     is_flag=True,
     default=False,
     help="Include all zones in the " "output template",

@@ -290,7 +290,7 @@ class UmiTemplate:
                 for store in datastore["WindowSettings"]
             ]
             t.BuildingTemplates = [
-                BuildingTemplate.from_json(**store)
+                BuildingTemplate.from_dict(**store)
                 for store in datastore["BuildingTemplates"]
             ]
 

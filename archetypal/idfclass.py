@@ -15,6 +15,7 @@ import os
 import platform
 import subprocess
 import time
+import tempfile
 from collections import defaultdict, OrderedDict
 from itertools import compress
 from math import isclose
@@ -2550,6 +2551,42 @@ def getoldiddfile(versionid):
     eplusfolder = os.path.dirname(eplus_exe)
     iddfile = "{}/bin/Energy+.idd".format(eplusfolder)
     return iddfile
+
+
+def _create_idf_object(version):
+    """ Creates an IDF object with only the VERSION of the IDF
+
+    Args:
+        version (str): Version of the IDF to use in the form "9-2-0"
+            (with hyphen, no point)
+
+    Returns:
+        An archetypal.IDF object
+
+    """
+    # Create a new idf object and add the schedule to it.
+    idftxt = "VERSION, {};".format(
+        version.replace("-", ".")[0:3]
+    )  # Not an empty string. has just the
+    # version number
+    # we can make a file handle of a string
+    if not Path(settings.cache_folder).exists():
+        Path(settings.cache_folder).mkdir_p()
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        suffix="_" + version + ".idf",
+        prefix="temp_",
+        dir=settings.cache_folder,
+        delete=False,
+    ) as file:
+        file.write(idftxt)
+    # initialize the IDF object with the file handle
+    from eppy.easyopen import easyopen
+
+    idf_scratch = easyopen(file.name)
+    idf_scratch.__class__ = archetypal.IDF
+
+    return idf_scratch
 
 
 if __name__ == "__main__":

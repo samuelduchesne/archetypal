@@ -6,37 +6,34 @@ from path import Path
 
 import archetypal as ar
 import archetypal.settings
-from archetypal import get_eplus_dirs, clear_cache, settings
+from archetypal import get_eplus_dirs, clear_cache, settings, GlazingMaterial
 from archetypal.settings import ep_version
 
 
 @pytest.fixture(scope="session")
-def small_idf(config):
-    """
-    Args:
-        config:
-    """
-    file = "tests/input_data/umi_samples/B_Off_0.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    idf = ar.load_idf(file)
-    sql: dict = ar.run_eplus(
-        file,
-        weather_file=w,
+def small_idf(config, small_idf_obj):
+    """An IDF model. Yields both the idf and the sql"""
+    sql = small_idf_obj.run_eplus(
         output_report="sql",
         prep_outputs=True,
         annual=False,
         design_day=False,  # This idf model cannot do DesignDay
         verbose="v",
     )
-    yield idf, sql
+    yield small_idf_obj, sql
+
+
+@pytest.fixture(scope="session")
+def small_idf_obj(config):
+    """An IDF model. Yields just the idf object"""
+    file = "tests/input_data/umi_samples/B_Off_0.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    yield ar.load_idf(file, weather_file=w)
 
 
 @pytest.fixture(scope="session")
 def other_idf(config):
-    """
-    Args:
-        config:
-    """
+    """Another IDF object with a different signature. Yields both the idf and the sql"""
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = ar.load_idf(file)
@@ -50,6 +47,14 @@ def other_idf(config):
         verbose="v",
     )
     yield idf, sql
+
+
+@pytest.fixture(scope="session")
+def other_idf_object(config):
+    """Another IDF object (same as other_idf).Yields just the idf object"""
+    file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    yield ar.load_idf(file, weather_file=w)
 
 
 @pytest.fixture(scope="session")
@@ -203,9 +208,62 @@ class TestWeekSchedule:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         weekSched_json = [
-            WeekSchedule.from_json(**store) for store in datastore["WeekSchedules"]
+            WeekSchedule.from_dict(**store) for store in datastore["WeekSchedules"]
         ]
         weekSched_to_json = weekSched_json[0].to_json()
+
+    def test_weekSchedule(self, config):
+        """ Creates WeekSchedule from DaySchedule"""
+        import json
+        from archetypal import WeekSchedule, load_json_objects
+
+        clear_cache()
+
+        # Creates 2 DaySchedules : 1 always ON and 1 always OFF
+        sch_d_on = ar.DaySchedule.from_values(
+            [1] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOn"
+        )
+        sch_d_off = ar.DaySchedule.from_values(
+            [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff"
+        )
+
+        # List of 7 dict with id of DaySchedule, representing the 7 days of the week
+        days = [
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+        ]
+        # Creates WeekSchedule from list of DaySchedule
+        a = ar.WeekSchedule(
+            days=days, Category="Week", schTypeLimitsName="Fractional", Name="OnOff_1"
+        )
+
+        # Dict of a WeekSchedule (like it would be written in json file)
+        dict_w_on = {
+            "Category": "Week",
+            "Days": [
+                {"$ref": sch_d_on.id},
+                {"$ref": sch_d_off.id},
+                {"$ref": sch_d_on.id},
+                {"$ref": sch_d_off.id},
+                {"$ref": sch_d_on.id},
+                {"$ref": sch_d_off.id},
+                {"$ref": sch_d_on.id},
+            ],
+            "Type": "Fraction",
+            "Name": "OnOff_2",
+        }
+        # Creates WeekSchedule from dict (from json)
+        b = ar.WeekSchedule.from_dict(**dict_w_on)
+
+        # Makes sure WeekSchedules created with 2 methods have the same values
+        # And different ids
+        assert a.all_values == b.all_values
+        assert a.id != b.id
 
 
 class TestYearSchedule:
@@ -227,9 +285,61 @@ class TestYearSchedule:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         yearSched_json = [
-            YearSchedule.from_json(**store) for store in datastore["YearSchedules"]
+            YearSchedule.from_dict(**store) for store in datastore["YearSchedules"]
         ]
         yearSched_to_json = yearSched_json[0].to_json()
+
+    def test_yearSchedule(self, config):
+        """ Creates YearSchedule from dict (json)"""
+
+        import json
+        from archetypal import YearSchedule, load_json_objects
+
+        clear_cache()
+
+        # Creates 2 DaySchedules : 1 always ON and 1 always OFF
+        sch_d_on = ar.DaySchedule.from_values(
+            [1] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOn"
+        )
+        sch_d_off = ar.DaySchedule.from_values(
+            [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff"
+        )
+
+        # List of 7 dict with id of DaySchedule, representing the 7 days of the week
+        days = [
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+        ]
+        # Creates WeekSchedule from list of DaySchedule
+        sch_w_on_off = ar.WeekSchedule(
+            days=days, Category="Week", schTypeLimitsName="Fractional", Name="OnOff"
+        )
+
+        # Dict of a YearSchedule (like it would be written in json file)
+        dict_year = {
+            "Category": "Year",
+            "Parts": [
+                {
+                    "FromDay": 1,
+                    "FromMonth": 1,
+                    "ToDay": 31,
+                    "ToMonth": 12,
+                    "Schedule": {"$ref": sch_w_on_off.id},
+                }
+            ],
+            "Type": "Fraction",
+            "Name": "OnOff",
+        }
+        # Creates YearSchedule from dict (from json)
+        a = ar.YearSchedule.from_dict(**dict_year)
+
+        # Makes sure YearSchedule has the same values as concatenate WeekSchedule
+        np.testing.assert_equal(a.all_values, np.resize(sch_w_on_off.all_values, 8760))
 
 
 class TestWindowType:
@@ -243,10 +353,16 @@ class TestWindowType:
 class TestOpaqueMaterial:
     """Series of tests for the :class:`OpaqueMaterial` class"""
 
-    def test_add_materials(self):
+    @pytest.fixture()
+    def mat_a(self):
+        yield ar.OpaqueMaterial(Conductivity=100, SpecificHeat=4.18, Name="mat_a")
+
+    @pytest.fixture()
+    def mat_b(self):
+        yield ar.OpaqueMaterial(Conductivity=200, SpecificHeat=4.18, Name="mat_b")
+
+    def test_add_materials(self, mat_a, mat_b):
         """test __add__() for OpaqueMaterial"""
-        mat_a = ar.OpaqueMaterial(Conductivity=100, SpecificHeat=4.18, Name="mat_a")
-        mat_b = ar.OpaqueMaterial(Conductivity=200, SpecificHeat=4.18, Name="mat_b")
         mat_c = mat_a + mat_b
         assert mat_c
         assert mat_c.Conductivity == 150
@@ -268,14 +384,14 @@ class TestOpaqueMaterial:
         assert mat_a.id == id_  # id should not change
         assert mat_a.id != mat_b.id
 
-    def test_opaqueMaterial_from_to_json(config, small_idf):
+    def test_opaqueMaterial_from_to_json(config, small_idf_obj):
         """
         Args:
             small_idf:
         """
         from archetypal import OpaqueMaterial
 
-        idf, sql = small_idf
+        idf = small_idf_obj
         if idf.idfobjects["MATERIAL"]:
             opaqMat_epBunch = OpaqueMaterial.from_epbunch(idf.idfobjects["MATERIAL"][0])
             opaqMat_epBunch.to_json()
@@ -290,7 +406,7 @@ class TestOpaqueMaterial:
             )
             opaqMat_epBunch.to_json()
 
-    def test_hash_eq_opaq_mat(self, small_idf, other_idf):
+    def test_hash_eq_opaq_mat(self, small_idf_obj, other_idf_object):
         """Test equality and hashing of :class:`TestOpaqueMaterial`
 
         Args:
@@ -300,7 +416,7 @@ class TestOpaqueMaterial:
         from archetypal.template import OpaqueMaterial
         from copy import copy
 
-        idf, sql = small_idf
+        idf = small_idf_obj
         opaq_mat = idf.getobject("MATERIAL", "B_Gypsum_Plaster_0.02_B_Off_Thm_0")
         om = OpaqueMaterial.from_epbunch(opaq_mat)
         om_2 = copy(om)
@@ -346,7 +462,7 @@ class TestOpaqueMaterial:
         # 2 OpaqueMaterial from different idf should not have the same hash if they
         # have different names, not be the same object, yet be equal if they have the
         # same characteristics (Thickness, Roughness, etc.)
-        idf_2, sql_2 = other_idf
+        idf_2 = other_idf_object
         assert idf is not idf_2
         opaq_mat_3 = idf_2.getobject("MATERIAL", "B_Gypsum_Plaster_0.02_B_Res_Thm_0")
         assert opaq_mat is not opaq_mat_3
@@ -360,6 +476,24 @@ class TestOpaqueMaterial:
 
 class TestGlazingMaterial:
     """Series of tests for the :class:`GlazingMaterial` class"""
+
+    def test_simple_glazing_material(self, config):
+        name = "A Glass Material"
+        glass = GlazingMaterial(
+            Name=name,
+            Density=2500,
+            Conductivity=1,
+            SolarTransmittance=0.7,
+            SolarReflectanceFront=0.5,
+            SolarReflectanceBack=0.5,
+            VisibleTransmittance=0.7,
+            VisibleReflectanceFront=0.5,
+            VisibleReflectanceBack=0.5,
+            IRTransmittance=0.7,
+            IREmissivityFront=0.5,
+            IREmissivityBack=0.5,
+        )
+        assert glass.Name == name
 
     def test_add_glazing_material(self):
         """test __add__() for OpaqueMaterial"""
@@ -454,7 +588,12 @@ class TestGlazingMaterial:
 class TestGasMaterial:
     """Series of tests for the GasMaterial class"""
 
-    # todo: Implement tests for GasMaterial class
+    def test_gas_material(self, config):
+        from archetypal import GasMaterial
+
+        air = GasMaterial(Name="Air", Conductivity=0.02, Density=1.24)
+
+        assert air.Conductivity == 0.02
 
     def test_GasMaterial_from_to_json(self, config):
         """
@@ -469,7 +608,7 @@ class TestGasMaterial:
         with open(filename, "r") as f:
             datastore = json.load(f)
         gasMat_json = [
-            GasMaterial.from_json(**store) for store in datastore["GasMaterials"]
+            GasMaterial.from_dict(**store) for store in datastore["GasMaterials"]
         ]
         gasMat_to_json = gasMat_json[0].to_json()
         assert gasMat_json[0].Name == gasMat_to_json["Name"]
@@ -489,7 +628,7 @@ class TestGasMaterial:
         with open(filename, "r") as f:
             datastore = json.load(f)
         gasMat_json = [
-            GasMaterial.from_json(**store) for store in datastore["GasMaterials"]
+            GasMaterial.from_dict(**store) for store in datastore["GasMaterials"]
         ]
         gm = gasMat_json[0]
         gm_2 = copy(gm)
@@ -728,7 +867,7 @@ class TestOpaqueConstruction:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         opaqConstr_json = [
-            OpaqueConstruction.from_json(**store)
+            OpaqueConstruction.from_dict(**store)
             for store in datastore["OpaqueConstructions"]
         ]
         opaqConstr_to_json = opaqConstr_json[0].to_json()
@@ -780,7 +919,7 @@ class TestOpaqueConstruction:
         assert len(oc_dict) == 2
 
         # if an attribute changed, equality is lost
-        oc_2.IsAdiabatic = True
+        oc_2.Layers = None
         assert oc != oc_2
 
         # length of set() should be 2 since both objects are not equal anymore and
@@ -854,7 +993,7 @@ class TestWindowConstruction:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         winConstr_json = [
-            WindowConstruction.from_json(**store)
+            WindowConstruction.from_dict(**store)
             for store in datastore["WindowConstructions"]
         ]
         winConstr_to_json = winConstr_json[0].to_json()
@@ -875,7 +1014,7 @@ class TestStructureDefinition:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         struct_json = [
-            StructureDefinition.from_json(**store)
+            StructureDefinition.from_dict(**store)
             for store in datastore["StructureDefinitions"]
         ]
         struct_to_json = struct_json[0].to_json()
@@ -896,7 +1035,7 @@ class TestStructureDefinition:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         struct_json = [
-            StructureDefinition.from_json(**store)
+            StructureDefinition.from_dict(**store)
             for store in datastore["StructureDefinitions"]
         ]
         sd = struct_json[0]
@@ -1152,7 +1291,7 @@ class TestZoneConstructionSet:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         constr_json = [
-            ZoneConstructionSet.from_json(**store)
+            ZoneConstructionSet.from_dict(**store)
             for store in datastore["ZoneConstructionSets"]
         ]
         constr_to_json = constr_json[0].to_json()
@@ -1269,7 +1408,7 @@ class TestZoneLoad:
         with open(filename, "r") as f:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
-        load_json = [ZoneLoad.from_json(**store) for store in datastore["ZoneLoads"]]
+        load_json = [ZoneLoad.from_dict(**store) for store in datastore["ZoneLoads"]]
         load_to_json = load_json[0].to_json()
 
     def test_hash_eq_zone_load(self, small_idf):
@@ -1382,8 +1521,12 @@ class TestZoneConditioning:
         """
         from archetypal import ZoneConditioning
 
-        cond = ZoneConditioning(Name=None)
-        assert cond.Name == None
+        cond = ZoneConditioning(Name="A Name")
+        assert cond.Name == "A Name"
+
+        with pytest.raises(TypeError):
+            # Name should be required, so it should raise a TypeError if it is missing
+            cond = ZoneConditioning()
 
     def test_zoneConditioning_from_zone(self, config, zoneConditioningtests):
         """
@@ -1421,7 +1564,7 @@ class TestZoneConditioning:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         cond_json = [
-            ZoneConditioning.from_json(**store)
+            ZoneConditioning.from_dict(**store)
             for store in datastore["ZoneConditionings"]
         ]
         cond_to_json = cond_json[0].to_json()
@@ -1572,7 +1715,7 @@ class TestVentilationSetting:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore)
         vent_json = [
-            VentilationSetting.from_json(**store)
+            VentilationSetting.from_dict(**store)
             for store in datastore["VentilationSettings"]
         ]
         vent_to_json = vent_json[0].to_json()
@@ -2415,3 +2558,426 @@ class TestUniqueName(object):
 
         assert name1 != name2
         print([name1, name2])
+
+
+def test_create_umi_template(config):
+    """ Creates Umi template from scratch """
+
+    # region Defines materials
+
+    # Opaque materials
+    concrete = ar.OpaqueMaterial(
+        Name="Concrete", Conductivity=0.5, SpecificHeat=800, Density=1500
+    )
+    insulation = ar.OpaqueMaterial(
+        Name="Insulation", Conductivity=0.04, SpecificHeat=1000, Density=30
+    )
+    brick = ar.OpaqueMaterial(
+        Name="Brick", Conductivity=1, SpecificHeat=900, Density=1900
+    )
+    plywood = ar.OpaqueMaterial(
+        Name="Plywood", Conductivity=0.13, SpecificHeat=800, Density=540
+    )
+    OpaqueMaterials = [concrete, insulation, brick, plywood]
+
+    # Glazing materials
+    glass = ar.GlazingMaterial(
+        Name="Glass",
+        Density=2500,
+        Conductivity=1,
+        SolarTransmittance=0.7,
+        SolarReflectanceFront=0.5,
+        SolarReflectanceBack=0.5,
+        VisibleTransmittance=0.7,
+        VisibleReflectanceFront=0.5,
+        VisibleReflectanceBack=0.5,
+        IRTransmittance=0.7,
+        IREmissivityFront=0.5,
+        IREmissivityBack=0.5,
+    )
+    GlazingMaterials = [glass]
+
+    # Gas materials
+    air = ar.GasMaterial(Name="Air", Conductivity=0.02, Density=1.24)
+    GasMaterials = [air]
+    # endregion
+
+    # region Defines MaterialLayers
+
+    # Opaque MaterialLayers
+    concreteLayer = ar.MaterialLayer(concrete, Thickness=0.2)
+    insulationLayer = ar.MaterialLayer(insulation, Thickness=0.5)
+    brickLayer = ar.MaterialLayer(brick, Thickness=0.1)
+    plywoodLayer = ar.MaterialLayer(plywood, Thickness=0.016)
+
+    # Glazing MaterialLayers
+    glassLayer = ar.MaterialLayer(glass, Thickness=0.16)
+
+    # Gas MaterialLayers
+    airLayer = ar.MaterialLayer(air, Thickness=0.04)
+
+    MaterialLayers = [
+        concreteLayer,
+        insulationLayer,
+        brickLayer,
+        plywoodLayer,
+        glassLayer,
+        airLayer,
+    ]
+    # endregion
+
+    # region Defines constructions
+
+    # Opaque constructions
+    wall_int = ar.OpaqueConstruction(
+        Name="wall_int",
+        Layers=[plywoodLayer],
+        Surface_Type="Partition",
+        Outside_Boundary_Condition="Zone",
+        IsAdiabatic=True,
+    )
+    wall_ext = ar.OpaqueConstruction(
+        Name="wall_ext",
+        Layers=[concreteLayer, insulationLayer, brickLayer],
+        Surface_Type="Facade",
+        Outside_Boundary_Condition="Outdoors",
+    )
+    floor = ar.OpaqueConstruction(
+        Name="floor",
+        Layers=[concreteLayer, plywoodLayer],
+        Surface_Type="Ground",
+        Outside_Boundary_Condition="Zone",
+    )
+    roof = ar.OpaqueConstruction(
+        Name="roof",
+        Layers=[plywoodLayer, insulationLayer, brickLayer],
+        Surface_Type="Roof",
+        Outside_Boundary_Condition="Outdoors",
+    )
+    OpaqueConstructions = [wall_int, wall_ext, floor, roof]
+
+    # Window construction
+    window = ar.WindowConstruction(
+        Name="Window", Layers=[glassLayer, airLayer, glassLayer]
+    )
+    WindowConstructions = [window]
+
+    # Structure definition
+    mass_ratio = ar.MassRatio(Material=plywood, NormalRatio=1, HighLoadRatio=1)
+    struct_definition = ar.StructureDefinition(
+        Name="Structure", MassRatios=[mass_ratio]
+    )
+    StructureDefinitions = [struct_definition]
+    # endregion
+
+    # region Defines schedules
+
+    # Day schedules
+    # Always on
+    sch_d_on = ar.DaySchedule.from_values(
+        [1] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOn"
+    )
+    # Always off
+    sch_d_off = ar.DaySchedule.from_values(
+        [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff"
+    )
+    # DHW
+    sch_d_dhw = ar.DaySchedule.from_values(
+        [0.3] * 24, Category="Day", schTypeLimitsName="Fractional", Name="DHW"
+    )
+    # Internal gains
+    sch_d_gains = ar.DaySchedule.from_values(
+        [0] * 6 + [0.5, 0.6, 0.7, 0.8, 0.9, 1] + [0.7] * 6 + [0.4] * 6,
+        Category="Day",
+        schTypeLimitsName="Fractional",
+        Name="Gains",
+    )
+    DaySchedules = [sch_d_on, sch_d_dhw, sch_d_gains, sch_d_off]
+
+    # Week schedules
+    # Always on
+    sch_w_on = ar.WeekSchedule(
+        days=[
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+        ],
+        Category="Week",
+        schTypeLimitsName="Fractional",
+        Name="AlwaysOn",
+    )
+    # Always off
+    sch_w_off = ar.WeekSchedule(
+        days=[
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+        ],
+        Category="Week",
+        schTypeLimitsName="Fractional",
+        Name="AlwaysOff",
+    )
+    # DHW
+    sch_w_dhw = ar.WeekSchedule(
+        days=[
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+        ],
+        Category="Week",
+        schTypeLimitsName="Fractional",
+        Name="DHW",
+    )
+    # Internal gains
+    sch_w_gains = ar.WeekSchedule(
+        days=[
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+        ],
+        Category="Week",
+        schTypeLimitsName="Fractional",
+        Name="Gains",
+    )
+    WeekSchedules = [sch_w_on, sch_w_off, sch_w_dhw, sch_w_gains]
+
+    # Year schedules
+    # Always on
+    dict_on = {
+        "Category": "Year",
+        "Parts": [
+            {
+                "FromDay": 1,
+                "FromMonth": 1,
+                "ToDay": 31,
+                "ToMonth": 12,
+                "Schedule": {"$ref": sch_w_on.id},
+            }
+        ],
+        "Type": "Fraction",
+        "Name": "AlwaysOn",
+    }
+    sch_y_on = ar.YearSchedule.from_dict(**dict_on)
+    # Always off
+    dict_off = {
+        "Category": "Year",
+        "Parts": [
+            {
+                "FromDay": 1,
+                "FromMonth": 1,
+                "ToDay": 31,
+                "ToMonth": 12,
+                "Schedule": {"$ref": sch_w_off.id},
+            }
+        ],
+        "Type": "Fraction",
+        "Name": "AlwaysOff",
+    }
+    sch_y_off = ar.YearSchedule.from_dict(**dict_off)
+    # DHW
+    dict_dhw = {
+        "Category": "Year",
+        "Parts": [
+            {
+                "FromDay": 1,
+                "FromMonth": 1,
+                "ToDay": 31,
+                "ToMonth": 12,
+                "Schedule": {"$ref": sch_w_dhw.id},
+            }
+        ],
+        "Type": "Fraction",
+        "Name": "DHW",
+    }
+    sch_y_dhw = ar.YearSchedule.from_dict(**dict_dhw)
+    # Internal gains
+    dict_gains = {
+        "Category": "Year",
+        "Parts": [
+            {
+                "FromDay": 1,
+                "FromMonth": 1,
+                "ToDay": 31,
+                "ToMonth": 12,
+                "Schedule": {"$ref": sch_w_gains.id},
+            }
+        ],
+        "Type": "Fraction",
+        "Name": "Gains",
+    }
+    sch_y_gains = ar.YearSchedule.from_dict(**dict_gains)
+    YearSchedules = [sch_y_on, sch_y_off, sch_y_dhw, sch_y_gains]
+    # endregion
+
+    # region Defines Window settings
+
+    window_setting = ar.WindowSetting(
+        Name="window_setting_1",
+        Construction=window,
+        AfnWindowAvailability=sch_y_off,
+        ShadingSystemAvailabilitySchedule=sch_y_off,
+        ZoneMixingAvailabilitySchedule=sch_y_off,
+    )
+    WindowSettings = [window_setting]
+    # endregion
+
+    # region Defines DHW settings
+
+    dhw_setting = ar.DomesticHotWaterSetting(
+        Name="dhw_setting_1",
+        IsOn=True,
+        WaterSchedule=sch_y_dhw,
+        FlowRatePerFloorArea=0.03,
+        WaterSupplyTemperature=65,
+        WaterTemperatureInlet=10,
+    )
+    DomesticHotWaterSettings = [dhw_setting]
+    # endregion
+
+    # region Defines ventilation settings
+
+    vent_setting = ar.VentilationSetting(
+        Name="vent_setting_1",
+        NatVentSchedule=sch_y_off,
+        ScheduledVentilationSchedule=sch_y_off,
+    )
+    VentilationSettings = [vent_setting]
+    # endregion
+
+    # region Defines zone conditioning setttings
+
+    zone_conditioning = ar.ZoneConditioning(
+        Name="conditioning_setting_1",
+        CoolingSchedule=sch_y_on,
+        HeatingSchedule=sch_y_on,
+        MechVentSchedule=sch_y_off,
+    )
+    ZoneConditionings = [zone_conditioning]
+    # endregion
+
+    # region Defines zone construction sets
+
+    # Perimeter zone
+    zone_constr_set_perim = ar.ZoneConstructionSet(
+        Name="constr_set_perim",
+        Zone_Names=None,
+        Slab=floor,
+        IsSlabAdiabatic=False,
+        Roof=roof,
+        IsRoofAdiabatic=False,
+        Partition=wall_int,
+        IsPartitionAdiabatic=False,
+        Ground=floor,
+        IsGroundAdiabatic=False,
+        Facade=wall_ext,
+        IsFacadeAdiabatic=False,
+    )
+    # Core zone
+    zone_constr_set_core = ar.ZoneConstructionSet(
+        Name="constr_set_core",
+        Zone_Names=None,
+        Slab=floor,
+        IsSlabAdiabatic=False,
+        Roof=roof,
+        IsRoofAdiabatic=False,
+        Partition=wall_int,
+        IsPartitionAdiabatic=True,
+        Ground=floor,
+        IsGroundAdiabatic=False,
+        Facade=wall_ext,
+        IsFacadeAdiabatic=False,
+    )
+    ZoneConstructionSets = [zone_constr_set_perim, zone_constr_set_core]
+    # endregion
+
+    # region Defines zone loads
+
+    zone_load = ar.ZoneLoad(
+        Name="zone_load_1",
+        EquipmentAvailabilitySchedule=sch_y_gains,
+        LightsAvailabilitySchedule=sch_y_gains,
+        OccupancySchedule=sch_y_gains,
+    )
+    ZoneLoads = [zone_load]
+    # endregion
+
+    # region Defines zones
+
+    # Perimeter zone
+    perim = ar.Zone(
+        Name="Perim_zone",
+        Conditioning=zone_conditioning,
+        Constructions=zone_constr_set_perim,
+        DomesticHotWater=dhw_setting,
+        Loads=zone_load,
+        Ventilation=vent_setting,
+        Windows=window_setting,
+        InternalMassConstruction=wall_int,
+    )
+    # Core zone
+    core = ar.Zone(
+        Name="Core_zone",
+        Conditioning=zone_conditioning,
+        Constructions=zone_constr_set_core,
+        DomesticHotWater=dhw_setting,
+        Loads=zone_load,
+        Ventilation=vent_setting,
+        Windows=window_setting,
+        InternalMassConstruction=wall_int,
+    )
+    Zones = [perim, core]
+    # endregion
+
+    # region Defines building template
+
+    building_template = ar.BuildingTemplate(
+        Name="Building_template_1",
+        Core=core,
+        Perimeter=perim,
+        Structure=struct_definition,
+        Windows=window_setting,
+    )
+    BuildingTemplates = [building_template]
+    # endregion
+
+    # region Creates json file (Umi template)
+
+    umi_template = ar.UmiTemplate(
+        name="unnamed",
+        BuildingTemplates=BuildingTemplates,
+        GasMaterials=GasMaterials,
+        GlazingMaterials=GlazingMaterials,
+        OpaqueConstructions=OpaqueConstructions,
+        OpaqueMaterials=OpaqueMaterials,
+        WindowConstructions=WindowConstructions,
+        StructureDefinitions=StructureDefinitions,
+        DaySchedules=DaySchedules,
+        WeekSchedules=WeekSchedules,
+        YearSchedules=YearSchedules,
+        DomesticHotWaterSettings=DomesticHotWaterSettings,
+        VentilationSettings=VentilationSettings,
+        WindowSettings=WindowSettings,
+        ZoneConditionings=ZoneConditionings,
+        ZoneConstructionSets=ZoneConstructionSets,
+        ZoneLoads=ZoneLoads,
+        Zones=Zones,
+    )
+
+    umi_template.to_json()
+    # endregion

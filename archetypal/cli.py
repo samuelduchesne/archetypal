@@ -374,89 +374,18 @@ def reduce(idf, output, weather, parallel, all_zones):
     IDF is one or multiple idf files to process.
     OUTPUT is the output file name (or path) to write to. Optional.
     """
-    if parallel:
-        # if parallel is True, run eplus in parallel
-        rundict = {
-            file: dict(
-                eplus_file=file,
-                weather_file=weather,
-                annual=True,
-                prep_outputs=True,
-                expandobjects=True,
-                verbose="v",
-                output_report="sql",
-                return_idf=False,
-                ep_version=settings.ep_version,
-            )
-            for file in idf
-        }
-        res = parallel_process(rundict, run_eplus)
-        res = _write_invalid(res)
-
-        loaded_idf = {}
-        for key, sql in res.items():
-            loaded_idf[key] = {}
-            loaded_idf[key][0] = sql
-            loaded_idf[key][1] = load_idf(key)
-        res = loaded_idf
-    else:
-        # else, run sequentially
-        res = defaultdict(dict)
-        invalid = []
-        for i, fn in enumerate(idf):
-            try:
-                res[fn][0], res[fn][1] = run_eplus(
-                    fn,
-                    weather,
-                    ep_version=settings.ep_version,
-                    output_report="sql",
-                    prep_outputs=True,
-                    annual=True,
-                    design_day=False,
-                    verbose="v",
-                    return_idf=True,
-                )
-            except EnergyPlusProcessError as e:
-                invalid.append({"#": i, "Filename": fn.basename(), "Error": e})
-        if invalid:
-            filename = Path("failed_reduce.txt")
-            with open(filename, "w") as failures:
-                failures.writelines(tabulate(invalid, headers="keys"))
-                log('Invalid run listed in "%s"' % filename)
-
-    from archetypal import BuildingTemplate
-
-    bts = []
-    for fn in res.values():
-        sql = next(
-            iter([value for key, value in fn.items() if isinstance(value, dict)])
-        )
-        idf = next(iter([value for key, value in fn.items() if isinstance(value, IDF)]))
-        bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
-
     output = Path(output)
-    name = output.namebase
+    name = output.stem
     ext = output.ext if output.ext == ".json" else ".json"
     dir_ = output.dirname()
-    template = UmiTemplate(name=name, BuildingTemplates=bts)
+
+    # Call UmiTemplate constructor with list of IDFs
+    template = UmiTemplate.read_idf(idf, weather=weather, name=name, parallel=parallel)
+
+    # Save json file
     final_path: Path = dir_ / name + ext
     template.to_json(path_or_buf=final_path, all_zones=all_zones)
     log("Successfully created template file at {}".format(final_path.abspath()))
-
-
-def _write_invalid(res):
-    res = {k: v for k, v in res.items() if ~isinstance(res[k], Exception)}
-    invalid_runs = {k: v for k, v in res.items() if isinstance(res[k], Exception)}
-
-    if invalid_runs:
-        invalid = []
-        for i, (k, v) in enumerate(invalid_runs.items()):
-            invalid.append({"#": i, "Filename": k, "Error": invalid_runs[k]})
-        filename = Path("failed_reduce.txt")
-        with open(filename, "w") as failures:
-            failures.writelines(tabulate(invalid, headers="keys"))
-            log("Invalid runs listed in %s" % "failed_transition.txt")
-    return res
 
 
 @cli.command()

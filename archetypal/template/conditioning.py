@@ -7,6 +7,8 @@
 
 import collections
 import math
+import deprecation
+import archetypal
 
 import numpy as np
 from archetypal import float_round, ReportData, log, timeit, settings
@@ -22,50 +24,79 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     def __init__(
         self,
-        CoolingCoeffOfPerf=1,
-        CoolingLimitType="NoLimit",
-        CoolingSetpoint=26,
-        CoolingSchedule=None,
-        EconomizerType="NoEconomizer",
-        HeatRecoveryEfficiencyLatent=0.65,
-        HeatRecoveryEfficiencySensible=0.7,
-        HeatRecoveryType="None",
-        HeatingCoeffOfPerf=1,
-        HeatingLimitType="NoLimit",
+        Name,
+        IsHeatingOn=True,
         HeatingSetpoint=20,
         HeatingSchedule=None,
-        IsCoolingOn=True,
-        IsHeatingOn=True,
-        IsMechVentOn=True,
-        MaxCoolFlow=100,
-        MaxCoolingCapacity=100,
-        MaxHeatFlow=100,
+        HeatingLimitType="NoLimit",
         MaxHeatingCapacity=100,
+        MaxHeatFlow=100,
+        HeatingCoeffOfPerf=1,
+        IsCoolingOn=True,
+        CoolingSetpoint=26,
+        CoolingSchedule=None,
+        CoolingLimitType="NoLimit",
+        MaxCoolingCapacity=100,
+        MaxCoolFlow=100,
+        CoolingCoeffOfPerf=1,
+        IsMechVentOn=True,
+        EconomizerType="NoEconomizer",
+        MechVentSchedule=None,
         MinFreshAirPerArea=0,
         MinFreshAirPerPerson=0.00944,
-        MechVentSchedule=None,
-        **kwargs,
+        HeatRecoveryType="None",
+        HeatRecoveryEfficiencyLatent=0.65,
+        HeatRecoveryEfficiencySensible=0.7,
+        **kwargs
     ):
         """Initialize a new :class:`ZoneConditioning` object.
 
         Args:
-            CoolingCoeffOfPerf (float): Performance factor of the cooling system.
-                This value is used to calculate the total cooling energy use by
-                dividing the cooling load by the COP. The COP of the zone shared with all zones
-                and refers to the COP of the entire building.
+            Name (str): Name of the object. Must be Unique.
+            IsHeatingOn (bool): Whether or not heating is available.
+            HeatingSetpoint (float): The temperature below which zone heating is
+                turned on. Here, we take the mean value over the year.
+            HeatingSchedule (UmiSchedule): The availability schedule for space
+                heating in this zone. If the value is 0, heating is not
+                available, and heating is not supplied to the zone.
+            HeatingLimitType (str): The input must be either LimitFlowRate,
+                LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
+            MaxHeatingCapacity (float): The maximum allowed sensible heating
+                capacity in Watts if Heating Limit is set to LimitCapacity or
+                LimitFlowRateAndCapacity
+            MaxHeatFlow (float): The maximum heating supply air flow rate in
+                cubic meters per second if heating limit is set to LimitFlowRate
+                or LimitFlowRateAndCapacity
+            HeatingCoeffOfPerf (float): Efficiency of heating system. The COP is
+                of each zone is equal, and refer to the COP of the entire
+                building.
+            IsCoolingOn (bool): Whether or not cooling is available.
+            CoolingSetpoint (float): The temperature above which the zone
+                heating is turned on. Here, we take the mean value over the
+                year.
+            CoolingSchedule (UmiSchedule): The availability schedule for space
+                cooling in this zone. If the value is 0, cooling is not
+                available, and cooling is not supplied to the zone.
             CoolingLimitType (str): The input must be either LimitFlowRate,
                 LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
-            CoolingSetpoint (float): The temperature above which the zone heating is
-                turned on. Here, we take the mean value over the year.
-            CoolingSchedule (UmiSchedule): The availability schedule for space
-                cooling in this zone. If the value is 0, cooling is not available,
-                and cooling is not supplied to the zone.
+            MaxCoolingCapacity (float): The maximum allowed total (sensible plus
+                latent) cooling capacity in Watts per square meter.
+            MaxCoolFlow (float): The maximum cooling supply air flow rate in
+                cubic meters per second if Cooling Limit is set to LimitFlowRate
+                or LimitFlowRateAndCapacity
+            CoolingCoeffOfPerf (float): Performance factor of the cooling
+                system. This value is used to calculate the total cooling energy
+                use by dividing the cooling load by the COP. The COP of the zone
+                shared with all zones and refers to the COP of the entire
+                building.
+            IsMechVentOn (bool): If True, an outdoor air quantity for use by the
+                model is calculated.
             EconomizerType (str): Specifies if there is an outdoor air
                 economizer. The choices are: NoEconomizer, DifferentialDryBulb,
                 or DifferentialEnthalpy. For the moment, the EconomizerType is
                 applied for the entire building (every zone with the same
-                EconomizerType). Moreover, since UMI does not support all Economizer
-                Types, some assumptions are made:
+                EconomizerType). Moreover, since UMI does not support all
+                Economizer Types, some assumptions are made:
 
                 - If 'NoEconomizer' in EnergyPlus, EconomizerType='NoEconomizer'
                 - If 'DifferentialEnthalpy' in EnergyPlus,EconomizerType =
@@ -82,6 +113,22 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                   'DifferentialDryBulb'
                 - If 'DifferentialDryBulbAndEnthalpy' in EnergyPlus,
                   EconomizerType = 'DifferentialEnthalpy'
+            MechVentSchedule (UmiSchedule): The availability schedule of the
+                mechanical ventilation. If the value is 0, the mechanical
+                ventilation is not available and air flow is not requested.
+            MinFreshAirPerArea (flaot): The design outdoor air volume flow rate
+                per square meter of floor area (units are m3/s-m2). This input
+                is used if Outdoor Air Method is Flow/Area, Sum or Maximum
+            MinFreshAirPerPerson (float): The design outdoor air volume flow
+                rate per person for this zone in cubic meters per second per
+                person. The default is 0.00944 (20 cfm per person).
+            HeatRecoveryType (str): Select from *None*, *Sensible*, or
+                *Enthalpy*. None means that there is no heat recovery. Sensible
+                means that there is sensible heat recovery whenever the zone
+                exhaust air temperature is more favorable than the outdoor air
+                temperature. Enthalpy means that there is latent and sensible
+                heat recovery whenever the zone exhaust air enthalpy is more
+                favorable than the outdoor air enthalpy. The default is None
             HeatRecoveryEfficiencyLatent (float): The latent heat recovery
                 effectiveness, where effectiveness is defined as the change in
                 supply humidity ratio divided by the difference in entering
@@ -101,59 +148,18 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 and relief air temperatures. The default is 0.70.
 
                 - If the HeatExchanger is an AirToAir FlatPlate,
-                  HeatRecoveryEfficiencySensible = (Supply Air Outlet T°C -
-                  Supply Air Inlet T°C)/(Secondary Air Inlet T°C - Supply Air
-                  Inlet T°C)
+                  HeatRecoveryEfficiencySensible = (Supply Air Outlet TÂ°C -
+                  Supply Air Inlet TÂ°C)/(Secondary Air Inlet TÂ°C - Supply Air
+                  Inlet TÂ°C)
                 - If the HeatExchanger is an AirToAir SensibleAndLatent, we
                   suppose that HeatRecoveryEfficiencySensible = Sensible
                   Effectiveness at 100% Heating Air Flow
                 - If the HeatExchanger is a Desiccant BalancedFlow, we use the
                   default value for the efficiency (=0.70)
-            HeatRecoveryType (str): Select from *None*, *Sensible*, or
-                *Enthalpy*. None means that there is no heat recovery. Sensible
-                means that there is sensible heat recovery whenever the zone
-                exhaust air temperature is more favorable than the outdoor air
-                temperature. Enthalpy means that there is latent and sensible
-                heat recovery whenever the zone exhaust air enthalpy is more
-                favorable than the outdoor air enthalpy. The default is None
-            HeatingCoeffOfPerf (float): Efficiency of heating system. The COP is
-                of each zone is equal, and refer to the COP of the entire
-                building.
-            HeatingLimitType (str): The input must be either LimitFlowRate,
-                LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
-            HeatingSetpoint (float): The temperature below which zone heating is
-                turned on. Here, we take the mean value over the year.
-            HeatingSchedule (UmiSchedule): The availability schedule for space
-                heating in this zone. If the value is 0, heating is not available,
-                and heating is not supplied to the zone.
-            IsCoolingOn (bool): Whether or not cooling is available.
-            IsHeatingOn (bool): Whether or not heating is available.
-            IsMechVentOn (bool): If True, an outdoor air quantity for use by the
-                model is calculated.
-            MaxCoolFlow (float): The maximum cooling supply air flow rate in
-                cubic meters per second if Cooling Limit is set to LimitFlowRate
-                or LimitFlowRateAndCapacity
-            MaxCoolingCapacity (float): The maximum allowed total (sensible plus
-                latent) cooling capacity in Watts per square meter.
-            MaxHeatFlow (float): The maximum heating supply air flow rate in
-                cubic meters per second if heating limit is set to LimitFlowRate
-                or LimitFlowRateAndCapacity
-            MaxHeatingCapacity (float): The maximum allowed sensible heating
-                capacity in Watts if Heating Limit is set to LimitCapacity or
-                LimitFlowRateAndCapacity
-            MinFreshAirPerArea (flaot): The design outdoor air volume flow rate
-                per square meter of floor area (units are m3/s-m2). This input
-                is used if Outdoor Air Method is Flow/Area, Sum or Maximum
-            MinFreshAirPerPerson (float): The design outdoor air volume flow
-                rate per person for this zone in cubic meters per second per
-                person. The default is 0.00944 (20 cfm per person).
-            MechVentSchedule (UmiSchedule): The availability schedule of the
-                mechanical ventilation. If the value is 0, the mechanical ventilation is
-                not available and air flow is not requested.
             **kwargs: Other arguments passed to the base class
                 :class:`archetypal.template.UmiBase`
         """
-        super(ZoneConditioning, self).__init__(**kwargs)
+        super(ZoneConditioning, self).__init__(Name, **kwargs)
         self.MechVentSchedule = MechVentSchedule
         self.HeatingSchedule = HeatingSchedule
         self.CoolingSchedule = CoolingSchedule
@@ -219,7 +225,15 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             )
 
     @classmethod
+    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
+                            current_version=archetypal.__version__,
+                            details="Use from_dict function instead")
     def from_json(cls, *args, **kwargs):
+
+        return cls.from_dict(*args, **kwargs)
+
+    @classmethod
+    def from_dict(cls, *args, **kwargs):
         """
         Args:
             *args:
@@ -832,6 +846,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             weights (list-like, optional): A list-like object of len 2. If None,
                 the volume of the zones for which self and other belongs is
                 used.
+
         Returns:
             (ZoneConditioning): the combined ZoneConditioning object.
         """

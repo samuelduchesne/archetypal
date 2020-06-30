@@ -216,25 +216,14 @@ class UmiTemplate:
         res = _write_invalid(res)
 
         loaded_idf = {}
-        for key, sql in res.items():
-            loaded_idf[key] = {}
-            loaded_idf[key][0] = sql
-            loaded_idf[key][1] = load_idf(key)
-        res = loaded_idf
-
-        # For each idf load
         bts = []
-        for fn in res.values():
-            sql = next(
-                iter([value for key, value in fn.items() if isinstance(value, dict)])
-            )
-            idf = next(
-                iter([value for key, value in fn.items() if isinstance(value, IDF)])
-            )
-            bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
-
+        for key, sql in res.items():
+            if not isinstance(sql, Exception):
+                idf = load_idf(key)
+                bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
+            else:
+                raise sql
         umi_template.BuildingTemplates = bts
-
         return umi_template
 
     @classmethod

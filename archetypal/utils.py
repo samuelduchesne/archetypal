@@ -1078,9 +1078,11 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
             "leave": True,
         }
         if use_kwargs:
-            futures = {a: function(**in_dict[a]) for a in tqdm(in_dict, **kwargs)}
+            futures = {
+                a: submit(function, **in_dict[a]) for a in tqdm(in_dict, **kwargs)
+            }
         else:
-            futures = {a: function(in_dict[a]) for a in tqdm(in_dict, **kwargs)}
+            futures = {a: submit(function, in_dict[a]) for a in tqdm(in_dict, **kwargs)}
     else:
         with ThreadPoolExecutor(max_workers=processors) as pool:
             if use_kwargs:
@@ -1111,6 +1113,14 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
             log(str(e), lg.ERROR)
             out[futures[key]] = e
     return out
+
+
+def submit(fn, *args, **kwargs):
+    """return fn or Exception"""
+    try:
+        return fn(*args, **kwargs)
+    except Exception as e:
+        return e
 
 
 def is_referenced(name, epbunch, fieldname="Zone_or_ZoneList_Name"):

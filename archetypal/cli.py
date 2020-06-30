@@ -4,6 +4,7 @@
 # License: MIT, see full license in LICENSE.txt
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
+import logging
 import os
 import time
 from collections import defaultdict
@@ -322,7 +323,7 @@ def convert(
         geo_floor=geofloor,
         refarea=refarea,
         volume=volume,
-        capacitance=capacitance
+        capacitance=capacitance,
     )
     # Print path of output files in console
     click.echo("Here are the paths to the different output files: ")
@@ -391,14 +392,19 @@ def reduce(idf, output, weather, parallel, all_zones):
     file_paths = set_filepaths(idf)
 
     # Call UmiTemplate constructor with list of IDFs
-    template = UmiTemplate.read_idf(
-        file_paths, weather=weather, name=name, parallel=parallel
-    )
-
-    # Save json file
-    final_path: Path = dir_ / name + ext
-    template.to_json(path_or_buf=final_path, all_zones=all_zones)
-    log("Successfully created template file at {}".format(final_path.abspath()))
+    try:
+        template = UmiTemplate.read_idf(
+            file_paths, weather=weather, name=name, parallel=parallel
+        )
+    except EnergyPlusProcessError:
+        pass  # This exception is already logged in _write_invalid
+    except Exception as e:
+        log(f"An Unkown exception occured: {e}", logging.ERROR)
+    else:
+        # Save json file
+        final_path: Path = dir_ / name + ext
+        template.to_json(path_or_buf=final_path, all_zones=all_zones)
+        log("Successfully created template file at {}".format(final_path.abspath()))
 
 
 @cli.command()

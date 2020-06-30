@@ -1,10 +1,11 @@
 import io
 import json
 import os
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 import numpy as np
 from path import Path
+from tabulate import tabulate
 
 from archetypal import (
     load_idf,
@@ -31,7 +32,27 @@ from archetypal import (
     YearScheduleParts,
     UmiSchedule,
     MassRatio,
+    parallel_process,
+    run_eplus,
+    EnergyPlusProcessError,
+    log,
+    IDF,
 )
+
+
+def _write_invalid(res):
+    res = {k: v for k, v in res.items() if ~isinstance(res[k], Exception)}
+    invalid_runs = {k: v for k, v in res.items() if isinstance(res[k], Exception)}
+
+    if invalid_runs:
+        invalid = []
+        for i, (k, v) in enumerate(invalid_runs.items()):
+            invalid.append({"#": i, "Filename": k, "Error": invalid_runs[k]})
+        filename = Path("failed_reduce.txt")
+        with open(filename, "w") as failures:
+            failures.writelines(tabulate(invalid, headers="keys"))
+            log("Invalid runs listed in %s" % "failed_transition.txt")
+    return res
 
 
 class UmiTemplate:
@@ -151,7 +172,7 @@ class UmiTemplate:
 
     @classmethod
     def read_idf(
-        cls, idf_files, weather, sql=None, name="unnamed", load_idf_kwargs=None
+        cls, idf_files, weather, name="unnamed", parallel=True,
     ):
         """Initializes an UmiTemplate object from one or more idf_files.
 
@@ -159,58 +180,85 @@ class UmiTemplate:
         To save to file, call the :meth:`to_json` method.
 
         Args:
-            idf_files (str or list): One or more IDF file paths.
+            idf_files (Path-like or list of Path-like): One or more IDF file paths.
             weather (str): Path to the weather file.
             sql:
-            name:
+            name (str): The name of the Template File
             load_idf_kwargs (dict): kwargs passed to the
                 :meth:`archetypal.idfclass.load_idf` method.
         """
-        if load_idf_kwargs is None:
-            load_idf_kwargs = {}
         # instantiate class
-        t = cls(name)
+        umi_template = cls(name)
 
         # fill in arguments
-        t.idf_files = idf_files
-        t.weather = weather
-        t.sql = sql
+        umi_template.idf_files = idf_files
+        umi_template.weather = weather
 
-        # Load IDF objects
-        t.idfs = [
-            load_idf(idf_file, weather_file=weather, **load_idf_kwargs)
-            for idf_file in idf_files
-        ]
+        # Run/Load IDF objects
+        if parallel:
+            # if parallel is True, run eplus in parallel
+            rundict = {
+                file: dict(
+                    eplus_file=file,
+                    weather_file=weather,
+                    annual=True,
+                    prep_outputs=True,
+                    expandobjects=True,
+                    verbose="v",
+                    output_report="sql",
+                    return_idf=False,
+                    ep_version=settings.ep_version,
+                )
+                for file in umi_template.idf_files
+            }
+            res = parallel_process(rundict, run_eplus, processors=parallel)
+            res = _write_invalid(res)
+
+            loaded_idf = {}
+            for key, sql in res.items():
+                loaded_idf[key] = {}
+                loaded_idf[key][0] = sql
+                loaded_idf[key][1] = load_idf(key)
+            res = loaded_idf
+        else:
+            # else, run sequentially
+            res = defaultdict(dict)
+            invalid = []
+            for i, fn in enumerate(umi_template.idf_files):
+                try:
+                    res[fn][0], res[fn][1] = run_eplus(
+                        fn,
+                        weather,
+                        ep_version=settings.ep_version,
+                        output_report="sql",
+                        prep_outputs=True,
+                        annual=True,
+                        design_day=False,
+                        verbose="v",
+                        return_idf=True,
+                    )
+                except EnergyPlusProcessError as e:
+                    invalid.append({"#": i, "Filename": fn.basename(), "Error": e})
+            if invalid:
+                filename = Path("failed_reduce.txt")
+                with open(filename, "w") as failures:
+                    failures.writelines(tabulate(invalid, headers="keys"))
+                    log('Invalid run listed in "%s"' % filename)
 
         # For each idf load
-        template_obj = []
-        for idf in t.idfs:
-            bldg = BuildingTemplate.from_idf(idf, sql=idf.sql, DataSource=idf.name)
-            template_obj.append(bldg)
-            for name in [
-                DaySchedule,
-                DomesticHotWaterSetting,
-                GasMaterial,
-                GlazingMaterial,
-                OpaqueConstruction,
-                OpaqueMaterial,
-                StructureDefinition,
-                VentilationSetting,
-                WeekSchedule,
-                WindowConstruction,
-                YearSchedule,
-                ZoneConditioning,
-                ZoneConstructionSet,
-                ZoneLoad,
-                Zone,
-            ]:
-                t.__dict__[name.__name__ + "s"].extend(
-                    [obj for obj in bldg.all_objects.values() if isinstance(obj, name)]
-                )
+        bts = []
+        for fn in res.values():
+            sql = next(
+                iter([value for key, value in fn.items() if isinstance(value, dict)])
+            )
+            idf = next(
+                iter([value for key, value in fn.items() if isinstance(value, IDF)])
+            )
+            bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
 
-        t.BuildingTemplates = template_obj
+        umi_template.BuildingTemplates = bts
 
-        return t
+        return umi_template
 
     @classmethod
     def read_file(cls, filename):

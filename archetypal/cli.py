@@ -146,6 +146,7 @@ def cli(
     simulation templates
 
     Visit archetypal.readthedocs.io for the online documentation.
+
     """
     cli_config.data_folder = data_folder
     cli_config.logs_folder = logs_folder
@@ -289,6 +290,7 @@ def convert(
 ):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS) The
     output folder path defaults to the working directory. Equivalent to '.'
+
     """
     u_value, shgc, t_vis, tolerance, fframe, uframe = window
     window_kwds = {
@@ -338,7 +340,7 @@ def convert(
 
 @timeit
 @cli.command()
-@click.argument("idf", nargs=-1, type=click.Path(exists=True), required=True)
+@click.argument("idf", nargs=-1, required=True)
 @click.argument(
     "output",
     type=click.Path(dir_okay=True, writable=True),
@@ -369,18 +371,29 @@ def convert(
     help="Include all zones in the " "output template",
 )
 def reduce(idf, output, weather, parallel, all_zones):
-    """Perform the model reduction and translate to an UMI template file.
+    """Convert EnergyPlus models to an Umi Template Library by using the model
+    complexity reduction algorithm.
 
-    IDF is one or multiple idf files to process.
-    OUTPUT is the output file name (or path) to write to. Optional.
+    IDF can be a file path or a directory. In case of a directory, all *.idf
+    files will be matched in the directory and subdirectories (recursively). Mix &
+    match is ok (see example below).
+    OUTPUT is the output file
+    name (or path) to write to. Optional.
+
+    Example: % archetypal -v reduce "." "elsewhere/model1.idf" -w "weather.epw"
+
     """
     output = Path(output)
     name = output.stem
     ext = output.ext if output.ext == ".json" else ".json"
     dir_ = output.dirname()
 
+    file_paths = set_filepaths(idf)
+
     # Call UmiTemplate constructor with list of IDFs
-    template = UmiTemplate.read_idf(idf, weather=weather, name=name, parallel=parallel)
+    template = UmiTemplate.read_idf(
+        file_paths, weather=weather, name=name, parallel=parallel
+    )
 
     # Save json file
     final_path: Path = dir_ / name + ext
@@ -414,16 +427,39 @@ def transition(idf, to_version, cores):
 
     Example: % archetypal -v transition "." "elsewhere/model1.idf"
 
-    archetypal will look in the current working directory (".") and find any *.idf
-    files and also run the model located at "elsewhere/model1.idf".
+    archetypal will look in the current working directory (".") and find any
+    *.idf files and also run the model located at "elsewhere/model1.idf".
 
     Note: The latest version archetypal v{arversion} can upgrade to is
     {ep_version}.
+
     """
     start_time = time.time()
 
-    idf = (Path(file_or_path).expand() for file_or_path in idf)  # make Paths
+    file_paths = set_filepaths(idf)
+    rundict = {file: dict(idf_file=file, to_version=to_version) for file in file_paths}
+    parallel_process(rundict, idf_version_updater, processors=cores)
+    log(
+        "Successfully transitioned files to version '{}' in {:,.2f} seconds".format(
+            to_version, time.time() - start_time
+        )
+    )
 
+
+def set_filepaths(idf):
+    """Simplifies file-like paths, dir-like paths and Paths with wildcards. A
+    list of unique paths is returned. For directories, Path.walkfiles("*.idfs")
+    returns IDF files. For Paths with wildcards, glob(Path) is used to return
+    whatever the pattern defines.
+
+    Args:
+        idf (list of (str or Path)): A list of path-like objects. Can contain
+            wildcards.
+
+    Returns:
+        list of Path: The set of a list of paths
+    """
+    idf = (Path(file_or_path).expand() for file_or_path in idf)  # make Paths
     file_paths = ()  # Placeholder for tuple of paths
     for file_or_path in idf:
         if file_or_path.isfile():  # if a file, concatenate into file_paths
@@ -434,10 +470,4 @@ def transition(idf, to_version, cores):
             file_paths += tuple([Path(a).expand() for a in glob(file_or_path)])  # has
             # wildcard
     file_paths = set(file_paths)  # Only keep unique values
-    rundict = {file: dict(idf_file=file, to_version=to_version) for file in file_paths}
-    parallel_process(rundict, idf_version_updater, processors=cores)
-    log(
-        "Successfully transitioned files to version '{}' in {:,.2f} seconds".format(
-            to_version, time.time() - start_time
-        )
-    )
+    return list(file_paths)

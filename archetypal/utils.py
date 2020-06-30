@@ -1130,3 +1130,15 @@ def is_referenced(name, epbunch, fieldname="Zone_or_ZoneList_Name"):
             f"referencing object name: Looking for '{name}' in "
             f"object {refobj}"
         )
+
+
+def docstring_parameter(*args, **kwargs):
+    """Replaces variables in foo.__doc__ by calling obj.__doc__ =
+    obj.__doc__.format(* args, ** kwargs)
+    """
+
+    def dec(obj):
+        obj.__doc__ = obj.__doc__.format(*args, **kwargs)
+        return obj
+
+    return dec

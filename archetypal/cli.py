@@ -7,7 +7,7 @@
 import os
 import time
 from collections import defaultdict
-from typing import Any, Union
+from glob import glob
 
 from path import Path
 
@@ -29,6 +29,9 @@ from archetypal import (
     idf_version_updater,
     timeit,
     EnergyPlusProcessError,
+    __version__,
+    ep_version,
+    docstring_parameter,
 )
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -457,7 +460,7 @@ def _write_invalid(res):
 
 
 @cli.command()
-@click.argument("idf", nargs=-1, type=click.Path(exists=True), required=True)
+@click.argument("idf", nargs=-1, required=True)
 @click.option(
     "-v",
     "--version",
@@ -472,10 +475,37 @@ def _write_invalid(res):
     default=-1,
     help="Specify number of cores to run in parallel",
 )
+@docstring_parameter(arversion=__version__, ep_version=ep_version)
 def transition(idf, to_version, cores):
-    """Upgrade an IDF file to a newer version"""
+    """Upgrade an IDF file to a newer version.
+
+    IDF can be a file path or a directory. In case of a directory, all *.idf
+    files will be found in the directory and subdirectories (recursively). Mix &
+    match is ok (see example below).
+
+    Example: % archetypal -v transition "." "elsewhere/model1.idf"
+
+    archetypal will look in the current working directory (".") and find any *.idf
+    files and also run the model located at "elsewhere/model1.idf".
+
+    Note: The latest version archetypal v{arversion} can upgrade to is
+    {ep_version}.
+    """
     start_time = time.time()
-    rundict = {file: dict(idf_file=file, to_version=to_version) for file in idf}
+
+    idf = (Path(file_or_path).expand() for file_or_path in idf)  # make Paths
+
+    file_paths = ()  # Placeholder for tuple of paths
+    for file_or_path in idf:
+        if file_or_path.isfile():  # if a file, concatenate into file_paths
+            file_paths += tuple([file_or_path])
+        elif file_or_path.isdir():  # if a directory, walkdir (recursive) and get *.idf
+            file_paths += tuple(file_or_path.walkfiles("*.idf"))
+        else:
+            file_paths += tuple([Path(a).expand() for a in glob(file_or_path)])  # has
+            # wildcard
+    file_paths = set(file_paths)  # Only keep unique values
+    rundict = {file: dict(idf_file=file, to_version=to_version) for file in file_paths}
     parallel_process(rundict, idf_version_updater, processors=cores)
     log(
         "Successfully transitioned files to version '{}' in {:,.2f} seconds".format(

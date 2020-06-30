@@ -235,22 +235,22 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         meta = self._get_predecessors_meta(other)
         new_attr = dict(
-            Slab=self.Slab.combine(other.Slab, [self.Slab.area, other.Slab.area]),
+            Slab=self.Slab.combine(other.Slab),
             IsSlabAdiabatic=any([self.IsSlabAdiabatic, other.IsSlabAdiabatic]),
-            Roof=self.Roof.combine(other.Roof, [self.Roof.area, other.Roof.area]),
+            Roof=self.Roof.combine(other.Roof),
             IsRoofAdiabatic=any([self.IsRoofAdiabatic, other.IsRoofAdiabatic]),
             Partition=self.Partition.combine(
-                other.Partition, [self.Partition.area, other.Partition.area]
+                other.Partition,
             ),
             IsPartitionAdiabatic=any(
                 [self.IsPartitionAdiabatic, other.IsPartitionAdiabatic]
             ),
             Ground=self.Ground.combine(
-                other.Ground, [self.Ground.area, other.Ground.area]
+                other.Ground,
             ),
             IsGroundAdiabatic=any([self.IsGroundAdiabatic, other.IsGroundAdiabatic]),
             Facade=self.Facade.combine(
-                other.Facade, [self.Facade.area, other.Facade.area]
+                other.Facade,
             ),
             IsFacadeAdiabatic=any([self.IsFacadeAdiabatic, other.IsFacadeAdiabatic]),
         )

@@ -10,13 +10,14 @@ import functools
 import math
 import random
 import time
-import deprecation
+from operator import add
 
+import deprecation
 import numpy as np
 from eppy.bunch_subclass import BadEPFieldError
 from geomeppy.geom.polygons import Polygon3D
 
-from archetypal import log, timeit, settings, is_referenced
+from archetypal import log, timeit, settings, is_referenced, __version__
 from archetypal.template import (
     UmiBase,
     ZoneConstructionSet,
@@ -53,7 +54,7 @@ class Zone(UmiBase):
         InternalMassConstruction=None,
         InternalMassExposedPerFloorArea=1.05,
         Windows=None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize :class:`Zone` object.
 
@@ -355,9 +356,12 @@ class Zone(UmiBase):
         return data_dict
 
     @classmethod
-    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
-                            current_version=archetypal.__version__,
-                            details="Use from_dict function instead")
+    @deprecation.deprecated(
+        deprecated_in="1.3.1",
+        removed_in="1.4",
+        current_version=__version__,
+        details="Use from_dict function instead",
+    )
     def from_json(cls, *args, **kwargs):
 
         return cls.from_dict(*args, **kwargs)

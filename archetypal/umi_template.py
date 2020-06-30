@@ -330,75 +330,7 @@ class UmiTemplate:
             if not os.path.exists(settings.data_folder):
                 os.makedirs(settings.data_folder)
         with io.open(path_or_buf, "w+", encoding="utf-8") as path_or_buf:
-            data_dict = OrderedDict(
-                {
-                    "GasMaterials": [],
-                    "GlazingMaterials": [],
-                    "OpaqueMaterials": [],
-                    "OpaqueConstructions": [],
-                    "WindowConstructions": [],
-                    "StructureDefinitions": [],
-                    "DaySchedules": [],
-                    "WeekSchedules": [],
-                    "YearSchedules": [],
-                    "DomesticHotWaterSettings": [],
-                    "VentilationSettings": [],
-                    "ZoneConditionings": [],
-                    "ZoneConstructionSets": [],
-                    "ZoneLoads": [],
-                    "Zones": [],
-                    "WindowSettings": [],
-                    "BuildingTemplates": [],
-                }
-            )
-
-            jsonized = {}
-
-            def recursive_json(obj):
-                if obj.__class__.mro()[0] == UmiSchedule:
-                    obj = obj.develop()
-                catname = obj.__class__.__name__ + "s"
-                if catname in data_dict:
-                    key = obj.id
-                    if key not in jsonized.keys():
-                        app_dict = obj.validate().to_json()
-                        data_dict[catname].append(app_dict)
-                        jsonized[key] = obj
-                for key, value in obj.__dict__.items():
-
-                    if isinstance(
-                        value, (UmiBase, MaterialLayer, YearScheduleParts)
-                    ) and not key.startswith("_"):
-                        recursive_json(value)
-                    elif isinstance(value, list):
-                        [
-                            recursive_json(value)
-                            for value in value
-                            if isinstance(
-                                value,
-                                (UmiBase, MaterialLayer, YearScheduleParts, MassRatio),
-                            )
-                        ]
-
-            for bld in self.BuildingTemplates:
-                if all_zones:
-                    recursive_json(bld)
-                else:
-                    # First, remove cores and perims lists
-                    cores = bld.__dict__.pop("cores", None)
-                    perims = bld.__dict__.pop("perims", None)
-
-                    # apply the recursion
-                    recursive_json(bld)
-
-                    # put back objects
-                    bld.cores = cores
-                    bld.perims = perims
-
-            for key in data_dict:
-                data_dict[key] = sorted(
-                    data_dict[key], key=lambda x: x["Name"] if "Name" in x else "A"
-                )
+            data_dict = self.to_dict(all_zones)
 
             class CustomJSONEncoder(json.JSONEncoder):
                 def default(self, obj):
@@ -407,13 +339,94 @@ class UmiTemplate:
 
                     return obj
 
-            if not data_dict["GasMaterials"]:
-                # Umi needs at least one gas material even if it is not necessary.
-                data_dict["GasMaterials"].append(GasMaterial(Name="AIR").to_json())
-            # Write the dict to json using json.dumps
             response = json.dumps(
                 data_dict, indent=indent, sort_keys=sort_keys, cls=CustomJSONEncoder
             )
             path_or_buf.write(response)
 
         return response
+
+    def to_dict(self, all_zones=False):
+        """
+
+        Args:
+            all_zones (bool): If True, all zones that have participated in the
+                creation of the core and perimeter zones will be outputed to the
+                json file.
+
+        Returns:
+
+        """
+        data_dict = OrderedDict(
+            {
+                "GasMaterials": [],
+                "GlazingMaterials": [],
+                "OpaqueMaterials": [],
+                "OpaqueConstructions": [],
+                "WindowConstructions": [],
+                "StructureDefinitions": [],
+                "DaySchedules": [],
+                "WeekSchedules": [],
+                "YearSchedules": [],
+                "DomesticHotWaterSettings": [],
+                "VentilationSettings": [],
+                "ZoneConditionings": [],
+                "ZoneConstructionSets": [],
+                "ZoneLoads": [],
+                "Zones": [],
+                "WindowSettings": [],
+                "BuildingTemplates": [],
+            }
+        )
+        jsonized = {}
+
+        def recursive_json(obj):
+            if obj.__class__.mro()[0] == UmiSchedule:
+                obj = obj.develop()
+            catname = obj.__class__.__name__ + "s"
+            if catname in data_dict:
+                key = obj.id
+                if key not in jsonized.keys():
+                    app_dict = obj.to_json()
+                    data_dict[catname].append(app_dict)
+                    jsonized[key] = obj
+            for key, value in obj.__dict__.items():
+
+                if isinstance(
+                    value, (UmiBase, MaterialLayer, YearScheduleParts)
+                ) and not key.startswith("_"):
+                    recursive_json(value)
+                elif isinstance(value, list):
+                    [
+                        recursive_json(value)
+                        for value in value
+                        if isinstance(
+                            value,
+                            (UmiBase, MaterialLayer, YearScheduleParts, MassRatio),
+                        )
+                    ]
+
+        for bld in self.BuildingTemplates:
+            if all_zones:
+                recursive_json(bld)
+            else:
+                # First, remove cores and perims lists
+                cores = bld.__dict__.pop("cores", None)
+                perims = bld.__dict__.pop("perims", None)
+
+                # apply the recursion
+                recursive_json(bld)
+
+                # put back objects
+                bld.cores = cores
+                bld.perims = perims
+        for key in data_dict:
+            data_dict[key] = sorted(
+                data_dict[key], key=lambda x: x["Name"] if "Name" in x else "A"
+            )
+
+        if not data_dict["GasMaterials"]:
+            # Umi needs at least one gas material even if it is not necessary.
+            data_dict["GasMaterials"].append(GasMaterial(Name="AIR").to_json())
+        # Write the dict to json using json.dumps
+        return data_dict

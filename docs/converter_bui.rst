@@ -79,7 +79,8 @@ enclosed in quotation marks.
 enclosed in quotation marks.
 
 3. ``OUTPUT_FOLDER`` is the folder where we want the output folders to be written. If there are space characters in
-the path, it should enclosed in quotation marks. If nothing is passed, the output folder will be the current working directory.
+the path, it should enclosed in quotation marks. If output folder path is passed, it must exist.
+If nothing is passed, the output folder will be the current working directory.
 
 Here is an example. Make sure to replace the last two arguments with the idf file path and the output folder path
 respectively.

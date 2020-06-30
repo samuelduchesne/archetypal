@@ -11,13 +11,12 @@ import math
 import random
 import time
 import deprecation
-import archetypal
 
 import numpy as np
 from eppy.bunch_subclass import BadEPFieldError
 from geomeppy.geom.polygons import Polygon3D
 
-from archetypal import log, timeit, settings
+from archetypal import log, timeit, settings, is_referenced
 from archetypal.template import (
     UmiBase,
     ZoneConstructionSet,
@@ -238,66 +237,78 @@ class Zone(UmiBase):
                 )
         return vol / 6.0
 
-    def _conditioning(self):
-        """run _conditioning and return id"""
-        self.Conditioning = ZoneConditioning.from_idf(Name=random.randint(1, 999999))
-
     @timeit
     def _internalmassconstruction(self):
-        """Group internal walls into a ThermalMass object for this Zone"""
+        """Specifies the internal mass construction based on InternaMass objects
+        referenced to the zone. Group internal walls into a ThermalMass
+        object for this Zone"""
 
-        oc = []
-        for surface in self.zonesurfaces(exclude=["WINDOWSHADINGCONTROL"]):
-            # for surf_type in self.idf.idd_index['ref2names'][
-            # 'AllHeatTranSurfNames']:
-            if surface.key.upper() == "INTERNALMASS":
-                oc.append(OpaqueConstruction.from_epbunch(surface))
-                self.InternalMassExposedPerFloorArea = (
-                    float(surface.Surface_Area) / self.area
-                )
-        if not oc:
-            # Todo: Create Equivalent InternalMassConstruction from
-            #  partitions. For now, creating dummy InternalMass
+        # Check for internal mass objects in all zones.
+        mass_opaque_constructions = []  # placeholder for possible InternalMass
+        area = 0  # placeholder for possible InternalMass area.
+        internal_mass_objs = self.idf.idfobjects["INTERNALMASS"]
 
-            mat = self.idf.add_object(
-                ep_object="Material".upper(),
-                Name="Wood 6inch",
-                Roughness="MediumSmooth",
-                Thickness=0.15,
-                Conductivity=0.12,
-                Density=540,
-                Specific_Heat=1210,
-                Thermal_Absorptance=0.7,
-                Visible_Absorptance=0.7,
-            )
+        # then loop to find referenced InternalMass to zone self
+        if internal_mass_objs:
+            # There are InternalMass objects, but is there one assigned to this zone?
+            for int_obj in internal_mass_objs:
+                # Looping over possible InternalMass objects
+                if is_referenced(self.Name, int_obj):
+                    # This InternalMass object (int_obj) is assigned to self,
+                    # then create object and append to list. There could be more then
+                    # one.
+                    mass_opaque_constructions.append(
+                        OpaqueConstruction.from_epbunch(int_obj)
+                    )
+                    area += float(int_obj.Surface_Area)
 
-            cons = self.idf.add_object(
-                ep_object="Construction".upper(),
-                save=False,
-                Name="InteriorFurnishings",
-                Outside_Layer="Wood 6inch",
-            )
-
-            internal_mass = "{}_InternalMass".format(self.Name)
-            cons.Name = internal_mass + "_construction"
-            new_epbunch = self.idf.add_object(
-                ep_object="InternalMass".upper(),
-                save=False,
-                Name=internal_mass,
-                Construction_Name=cons.Name,
-                Zone_or_ZoneList_Name=self.Name,
-                Surface_Area=1,
-            )
-
-            oc.append(OpaqueConstruction.from_epbunch(new_epbunch, idf=self.idf))
+        # If one or more constructions, combine them into one.
+        if mass_opaque_constructions:
+            # Combine elements and assign the aggregated Surface Area
+            self.InternalMassExposedPerFloorArea = float(area) / self.area
+            return functools.reduce(add, mass_opaque_constructions)
+        else:
+            # No InternalMass object assigned to this Zone, then return Zone and set
+            # floor area to 0
             self.InternalMassExposedPerFloorArea = 0
+            return None
 
-        if self.InternalMassExposedPerFloorArea is None:
-            self.InternalMassExposedPerFloorArea = 0
-
-        from operator import add
-
-        return functools.reduce(add, oc)
+    def set_generic_internalmass(self):
+        """Creates a valid internal mass object with
+        InternalMassExposedPerFloorArea = 0 and sets it to the
+        self.InternalMassConstruction attribute.
+        """
+        mat = self.idf.add_object(
+            ep_object="Material".upper(),
+            Name="Wood 6inch",
+            Roughness="MediumSmooth",
+            Thickness=0.15,
+            Conductivity=0.12,
+            Density=540,
+            Specific_Heat=1210,
+            Thermal_Absorptance=0.7,
+            Visible_Absorptance=0.7,
+        )
+        cons = self.idf.add_object(
+            ep_object="Construction".upper(),
+            save=False,
+            Name="InteriorFurnishings",
+            Outside_Layer="Wood 6inch",
+        )
+        internal_mass = "{}_InternalMass".format(self.Name)
+        cons.Name = internal_mass + "_construction"
+        new_epbunch = self.idf.add_object(
+            ep_object="InternalMass".upper(),
+            save=False,
+            Name=internal_mass,
+            Construction_Name=cons.Name,
+            Zone_or_ZoneList_Name=self.Name,
+            Surface_Area=1,
+        )
+        self.InternalMassConstruction = OpaqueConstruction.from_epbunch(
+            new_epbunch, idf=self.idf
+        )
+        self.InternalMassExposedPerFloorArea = 0
 
     def _loads(self):
         """run loads and return id"""
@@ -320,6 +331,8 @@ class Zone(UmiBase):
         )
 
     def to_json(self):
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -436,6 +449,10 @@ class Zone(UmiBase):
                 the volume of the zones for which self and other belongs is
                 used.
 
+        Todo:
+            Create Equivalent InternalMassConstruction from partitions when combining
+            zones.
+
         Returns:
             (Zone): the combined Zone object.
         """
@@ -487,13 +504,15 @@ class Zone(UmiBase):
             DomesticHotWater=self.DomesticHotWater.combine(
                 other.DomesticHotWater, weights
             ),
-            InternalMassConstruction=self.InternalMassConstruction.combine(
-                other.InternalMassConstruction, weights
+            InternalMassConstruction=OpaqueConstruction.combine(
+                self.InternalMassConstruction, other.InternalMassConstruction
             ),
             InternalMassExposedPerFloorArea=self._float_mean(
                 other, "InternalMassExposedPerFloorArea", weights
             ),
             Loads=self.Loads.combine(other.Loads, weights),
+            idf=self.idf,
+            sql=self.sql,
         )
         new_obj = self.__class__(**meta, **attr)
         new_obj._volume = self.volume + other.volume
@@ -506,6 +525,17 @@ class Zone(UmiBase):
             attr["Windows"]._belongs_to_zone = new_obj
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        if not self.InternalMassConstruction:
+            self.set_generic_internalmass()
+        log(
+            f"While validating {self}, the required attribute 'InternalMassConstruction' was filled "
+            f"with {self.InternalMassConstruction} and the 'InternalMassExposedPerFloorArea' set to"
+            f" {self.InternalMassExposedPerFloorArea}"
+        )
+        return self
 
 
 def resolve_obco(this):

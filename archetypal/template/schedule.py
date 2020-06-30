@@ -221,11 +221,17 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         used when generating the json file. Only Year-Week- and DaySchedule
         classes are used
         """
-        pass
+        self.validate()  # Validate object before trying to get json format
+
+        return self.to_dict()
 
     def to_dict(self):
         year_sched = self.develop()
         return year_sched.to_dict()
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
 
 
 class YearScheduleParts:

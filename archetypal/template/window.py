@@ -131,6 +131,8 @@ class WindowConstruction(UmiBase, metaclass=Unique):
 
     def to_json(self):
         """Convert class properties to dict"""
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -215,6 +217,10 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         """
         return self
 
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self
+
 
 class WindowType(IntEnum):
     External = 0
@@ -265,7 +271,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
             Construction (WindowConstruction): The window construction.
             OperableArea (float): The operable window area as a ratio of total
                 window area. eg. 0.8 := 80% of the windows area is operable.
-            AfnWindowAvailability:
+            AfnWindowAvailability (UmiSchedule): The Airflow Network availability
+                schedule.
             AfnDischargeC (float): Airflow Network Discharge Coefficient.
                 Default = 0.65.
             AfnTempSetpoint (float): Airflow Network Temperature Setpoint.
@@ -694,7 +701,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
             AfnDischargeC=self._float_mean(other, "AfnDischargeC", weights),
             AfnTempSetpoint=self._float_mean(other, "AfnTempSetpoint", weights),
             AfnWindowAvailability=self.AfnWindowAvailability.combine(
-                other.AfnWindowAvailability, weights),
+                other.AfnWindowAvailability, weights
+            ),
             IsShadingSystemOn=any([self.IsShadingSystemOn, other.IsShadingSystemOn]),
             IsVirtualPartition=any([self.IsVirtualPartition, other.IsVirtualPartition]),
             IsZoneMixingOn=any([self.IsZoneMixingOn, other.IsZoneMixingOn]),
@@ -713,10 +721,11 @@ class WindowSetting(UmiBase, metaclass=Unique):
             ),
             ZoneMixingFlowRate=self._float_mean(other, "ZoneMixingFlowRate", weights),
             ZoneMixingAvailabilitySchedule=self.ZoneMixingAvailabilitySchedule.combine(
-                other.ZoneMixingAvailabilitySchedule, weights),
-            ShadingSystemAvailabilitySchedule=self.ShadingSystemAvailabilitySchedule
-                .combine(
-                other.ShadingSystemAvailabilitySchedule, weights),
+                other.ZoneMixingAvailabilitySchedule, weights
+            ),
+            ShadingSystemAvailabilitySchedule=self.ShadingSystemAvailabilitySchedule.combine(
+                other.ShadingSystemAvailabilitySchedule, weights
+            ),
         )
         new_obj = self.__class__(**meta, **new_attr)
         new_obj._predecessors.extend(self._predecessors + other._predecessors)
@@ -780,3 +789,32 @@ class WindowSetting(UmiBase, metaclass=Unique):
         ref = kwargs.get("ZoneMixingAvailabilitySchedule", None)
         w.ZoneMixingAvailabilitySchedule = w.get_ref(ref)
         return w
+
+    @classmethod
+    def from_ref(cls, ref, building_templates):
+        """In some cases, the WindowSetting is referenced in the DataStore to the
+        Windows property of a BuildingTemplate (instead of being listed in the
+        WindowSettings list. This is the case in the original
+        BostonTemplateLibrary.json.
+
+        Args:
+            ref (str): The referenced number
+            building_templates (list): List of BuildingTemplates from the datastore.
+
+        Returns:
+            WindowSetting: The parsed WindowSetting.
+        """
+        store = next(
+            iter(
+                filter(
+                    lambda x: x.get("$id") == ref,
+                    [bldg.get("Windows") for bldg in building_templates],
+                )
+            )
+        )
+        w = cls.from_json(**store)
+        return w
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self

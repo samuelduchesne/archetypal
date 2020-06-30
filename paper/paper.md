@@ -35,7 +35,7 @@ EnergyPlus to enable building energy modeling at the urban scale. The three tool
 many advantages in their respective fields, but all suffer from the same flaw: creating
 building archetypes for any platform is a time-consuming, tedious and error-prone process.
 `archetypal` is a Python package that helps handling collections of such archetypes and to
-enabling the interoperability between these energy simulation platforms to accelerate the
+enable the interoperability between these energy simulation platforms to accelerate the
 creation of reliable urban building energy models. This package offers three major
 capabilities for researchers and practitioners:
 
@@ -55,7 +55,7 @@ output names can be specified by the user.
 
 Furthermore, for a drastic workflow speed gain, especially with multiple and/or larger IDF
 files (which can take several minutes to transition and simulate), `archetypal` features a
-caching api. This is particularly useful for reproducible workflows such as the Jupyter
+caching API. This is particularly useful for reproducible workflows such as the Jupyter
 Notebook programming environment. Rerunning cells (even after a kernel restart) will use
 the cached IDF models and their simulation results instead of executing EnergyPlus again.
 Speedups of up to 8x have been measured.

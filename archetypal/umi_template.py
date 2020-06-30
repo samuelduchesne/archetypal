@@ -24,6 +24,7 @@ from archetypal import (
     ZoneConstructionSet,
     ZoneLoad,
     Zone,
+    WindowSetting,
     settings,
     UmiBase,
     MaterialLayer,
@@ -37,6 +38,7 @@ class UmiTemplate:
     """Main class supporting the definition of a multiple building templates and
     corresponding template objects.
     """
+
     def __init__(
         self,
         name="unnamed",
@@ -281,12 +283,21 @@ class UmiTemplate:
                 ZoneLoad.from_json(**store) for store in datastore["ZoneLoads"]
             ]
             t.Zones = [Zone.from_json(**store) for store in datastore["Zones"]]
+            t.WindowSettings = [
+                WindowSetting.from_ref(store["$ref"], datastore["BuildingTemplates"])
+                if "$ref" in store
+                else WindowSetting.from_json(**store)
+                for store in datastore["WindowSettings"]
+            ]
             t.BuildingTemplates = [
                 BuildingTemplate.from_json(**store)
                 for store in datastore["BuildingTemplates"]
             ]
 
         return t
+
+    def validate(self, defaults=True):
+        pass
 
     def to_json(self, path_or_buf=None, indent=2, all_zones=False, sort_keys=False):
         """Writes the umi template to json format
@@ -350,7 +361,7 @@ class UmiTemplate:
                 if catname in data_dict:
                     key = obj.id
                     if key not in jsonized.keys():
-                        app_dict = obj.to_json()
+                        app_dict = obj.validate().to_json()
                         data_dict[catname].append(app_dict)
                         jsonized[key] = obj
                 for key, value in obj.__dict__.items():

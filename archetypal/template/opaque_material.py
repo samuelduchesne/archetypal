@@ -215,6 +215,8 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
 
     def to_json(self):
         """Convert class properties to dict"""
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -340,3 +342,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                 "supported. Please contact package "
                 "authors".format(epbunch.Name, epbunch.key)
             )
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self

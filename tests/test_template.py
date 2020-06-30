@@ -123,6 +123,13 @@ class TestMassRatio:
     pass
 
 
+class TestInternalMass:
+    """Series of tests for the parsing of internal mass"""
+
+    def test_with_thermalmassobject(self):
+        pass
+
+
 class TestYearScheduleParts:
     """Series of tests for the :class:`YearScheduleParts` class"""
 

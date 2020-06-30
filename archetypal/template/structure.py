@@ -138,6 +138,8 @@ class StructureDefinition(UmiBase, metaclass=Unique):
         return sd
 
     def to_json(self):
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -153,3 +155,7 @@ class StructureDefinition(UmiBase, metaclass=Unique):
         data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
+
+    def validate(self):
+        """Validates UmiObjects and fills in missing values"""
+        return self

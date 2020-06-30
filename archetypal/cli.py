@@ -384,6 +384,7 @@ def reduce(idf, output, weather, parallel, all_zones):
     template.to_json(path_or_buf=final_path, all_zones=all_zones)
     log("Successfully created template file at {}".format(final_path.abspath()))
 
+
 @cli.command()
 @click.argument("idf", nargs=-1, type=click.Path(exists=True), required=True)
 @click.option(

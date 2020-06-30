@@ -180,70 +180,47 @@ class UmiTemplate:
         To save to file, call the :meth:`to_json` method.
 
         Args:
-            idf_files (Path-like or list of Path-like): One or more IDF file paths.
-            weather (str): Path to the weather file.
-            sql:
+            idf_files (list of (str or Path)): list of IDF file paths.
+            weather (str or Path): Path to the weather file.
             name (str): The name of the Template File
-            load_idf_kwargs (dict): kwargs passed to the
-                :meth:`archetypal.idfclass.load_idf` method.
+            parallel (bool): If True, uses all available logical cores.
         """
         # instantiate class
         umi_template = cls(name)
 
         # fill in arguments
-        umi_template.idf_files = idf_files
+        umi_template.idf_files = [Path(idf) for idf in idf_files]
         umi_template.weather = weather
 
         # Run/Load IDF objects
-        if parallel:
-            # if parallel is True, run eplus in parallel
-            rundict = {
-                file: dict(
-                    eplus_file=file,
-                    weather_file=weather,
-                    annual=True,
-                    prep_outputs=True,
-                    expandobjects=True,
-                    verbose="v",
-                    output_report="sql",
-                    return_idf=False,
-                    ep_version=settings.ep_version,
-                )
-                for file in umi_template.idf_files
-            }
-            res = parallel_process(rundict, run_eplus, processors=parallel)
-            res = _write_invalid(res)
-
-            loaded_idf = {}
-            for key, sql in res.items():
-                loaded_idf[key] = {}
-                loaded_idf[key][0] = sql
-                loaded_idf[key][1] = load_idf(key)
-            res = loaded_idf
+        if not parallel:
+            processors = 1
         else:
-            # else, run sequentially
-            res = defaultdict(dict)
-            invalid = []
-            for i, fn in enumerate(umi_template.idf_files):
-                try:
-                    res[fn][0], res[fn][1] = run_eplus(
-                        fn,
-                        weather,
-                        ep_version=settings.ep_version,
-                        output_report="sql",
-                        prep_outputs=True,
-                        annual=True,
-                        design_day=False,
-                        verbose="v",
-                        return_idf=True,
-                    )
-                except EnergyPlusProcessError as e:
-                    invalid.append({"#": i, "Filename": fn.basename(), "Error": e})
-            if invalid:
-                filename = Path("failed_reduce.txt")
-                with open(filename, "w") as failures:
-                    failures.writelines(tabulate(invalid, headers="keys"))
-                    log('Invalid run listed in "%s"' % filename)
+            processors = -1
+        # if parallel is True, run eplus in parallel
+        rundict = {
+            file: dict(
+                eplus_file=file,
+                weather_file=weather,
+                annual=True,
+                prep_outputs=True,
+                expandobjects=True,
+                verbose="v",
+                output_report="sql",
+                return_idf=False,
+                ep_version=settings.ep_version,
+            )
+            for file in umi_template.idf_files
+        }
+        res = parallel_process(rundict, run_eplus, processors=processors)
+        res = _write_invalid(res)
+
+        loaded_idf = {}
+        for key, sql in res.items():
+            loaded_idf[key] = {}
+            loaded_idf[key][0] = sql
+            loaded_idf[key][1] = load_idf(key)
+        res = loaded_idf
 
         # For each idf load
         bts = []
@@ -265,7 +242,7 @@ class UmiTemplate:
         """Initializes an UmiTemplate object from an UMI Template File.
 
         Args:
-            filename (path-like): Path-like object giving the pathname (absolute
+            filename (str or Path): PathLike object giving the pathname (absolute
                 or relative to the current working directory) of the UMI
                 Template File.
 
@@ -396,14 +373,10 @@ class UmiTemplate:
 
     def to_dict(self, all_zones=False):
         """
-
         Args:
             all_zones (bool): If True, all zones that have participated in the
                 creation of the core and perimeter zones will be outputed to the
                 json file.
-
-        Returns:
-
         """
         data_dict = OrderedDict(
             {

@@ -342,15 +342,15 @@ def convert(
 @timeit
 @cli.command()
 @click.argument("idf", nargs=-1, required=True)
-@click.argument(
-    "output",
+@click.option(
+    "-o",
+    "--output",
     type=click.Path(dir_okay=True, writable=True),
     default="myumitemplate.json",
 )
 @click.option(
     "--weather",
     "-w",
-    type=click.Path(exists=True),
     help="EPW weather file path",
     default=get_eplus_dirs(settings.ep_version)
     / "WeatherData"
@@ -389,7 +389,10 @@ def reduce(idf, output, weather, parallel, all_zones):
     ext = output.ext if output.ext == ".json" else ".json"
     dir_ = output.dirname()
 
-    file_paths = set_filepaths(idf)
+    file_paths = list(set_filepaths(idf))
+    log(f"executing {len(file_paths)} file(s): {[file.stem for file in file_paths]}")
+    weather = next(iter(set_filepaths([weather])))
+    log(f"using the '{weather.basename()}' weather file\n")
 
     # Call UmiTemplate constructor with list of IDFs
     try:
@@ -459,12 +462,14 @@ def set_filepaths(idf):
     whatever the pattern defines.
 
     Args:
-        idf (list of (str or Path)): A list of path-like objects. Can contain
-            wildcards.
+        idf (list of (str or Path) or tuple of (str or Path)): A list of path-like
+            objects. Can contain wildcards.
 
     Returns:
-        list of Path: The set of a list of paths
+        set of Path: The set of a list of paths
     """
+    if not isinstance(idf, (list, tuple)):
+        raise ValueError("A list must be passed")
     idf = (Path(file_or_path).expand() for file_or_path in idf)  # make Paths
     file_paths = ()  # Placeholder for tuple of paths
     for file_or_path in idf:
@@ -476,4 +481,4 @@ def set_filepaths(idf):
             file_paths += tuple([Path(a).expand() for a in glob(file_or_path)])  # has
             # wildcard
     file_paths = set(file_paths)  # Only keep unique values
-    return list(file_paths)
+    return file_paths

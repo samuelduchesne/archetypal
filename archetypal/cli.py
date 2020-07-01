@@ -384,6 +384,8 @@ def reduce(idf, output, weather, parallel, all_zones):
     Example: % archetypal -v reduce "." "elsewhere/model1.idf" -w "weather.epw"
 
     """
+    settings.use_cache = True
+
     output = Path(output)
     name = output.stem
     ext = output.ext if output.ext == ".json" else ".json"

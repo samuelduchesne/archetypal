@@ -110,7 +110,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
 
         Example:
             >>> import archetypal as ar
-            >>> idf = ar.load_idf("myidf")
+            >>> idf = ar.IDF("myidf.idf")
             >>> construction_name = "Some construction name"
             >>> ar.WindowConstruction.from_epbunch(Name=construction_name,
             >>> idf=idf)
@@ -371,14 +371,12 @@ class WindowSetting(UmiBase, metaclass=Unique):
             UFactor=2.703,
             Solar_Heat_Gain_Coefficient=0.704,
             Visible_Transmittance=0.786,
-            save=False,
         )
 
         constr = idf.add_object(
             "CONSTRUCTION",
             Name="SINGLE PANE HW WINDOW",
             Outside_Layer="SimpleWindow:SINGLE PANE HW WINDOW",
-            save=False,
         )
         return cls.from_construction(Construction=constr)
 

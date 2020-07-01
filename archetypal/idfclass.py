@@ -53,23 +53,144 @@ class IDF(geomeppy.IDF):
     eppy.modeleditor.IDF class
     """
 
-    def __init__(self, *args, **kwargs):
+    cache = []
+
+    def __new__(cls, *args, **kwargs):
+        existing = cls.__getCache(*args, **kwargs)
+        if existing:
+            return existing
+        idf = super(IDF, cls).__new__(cls)
+        return idf
+
+    def __init__(
+        self,
+        idfname,
+        epw=None,
+        output_directory=None,
+        ep_version=None,
+        prep_outputs=True,
+        include=None,
+    ):
         """
         Args:
-            *args:
-            **kwargs:
+            idfname (Path-like):
+            epw (Path-like): The weather-file
         """
-        super(IDF, self).__init__(*args, **kwargs)
-        self._sql_file = None
-        self.schedules_dict = self.get_all_schedules()
-        self._sql = None
-        self._htm = None
-        self.eplus_run_options = EnergyPlusOptions(
-            eplus_file=self.idfname,
-            weather_file=getattr(self, "epw", None),
-            ep_version="-".join(map(str, self.idd_version)),
+        if self.simulation_dir.exists():
+            return
+        self.cache.append(self)
+        self.include = include
+        self.original_idfname = Path(idfname).expand()
+        idfname = Path(idfname)
+        if not output_directory:
+            output_directory = self.get_output_directory(idfname)
+        if idfname.basename() not in [
+            file.basename() for file in output_directory.glob("*.idf")
+        ]:
+            # The file does not exist; copy it to the output_directory & override
+            # path name
+            idfname = Path(idfname.copy(output_directory))
+
+        # Determine version of idf file by reading the text file
+        idd_filename = getiddfile(get_idf_version(idfname))
+
+        # Initiate an eppy.modeleditor.IDF object
+        IDF.setiddname(idd_filename, testing=True)
+
+        try:
+            # load the idf object
+            super(IDF, self).__init__(idfname, epw)
+        except FileNotFoundError:
+            # Loading the idf object will raise a FileNotFoundError if the
+            # version of EnergyPlus is not installed
+            ep_version = ep_version if ep_version else find_eplus_installs(self.iddname)
+            log(
+                f"The version number of '{self.idfname.basename()}' "
+                f"does not match any EnergyPlus installation on this computer. "
+                f"Transitioning idf file to version {ep_version}..."
+            )
+
+            self.upgrade(
+                self.idfname, to_version=ep_version, output_folder=output_directory
+            )
+        else:
+            # the versions fit, great!
+            log(
+                'The version of the IDF file "{}", version "{}", matched the '
+                'version of EnergyPlus {}, version "{}", used to parse it.'.format(
+                    self.idfname.basename(),
+                    self.idd_version,
+                    self.getiddname(),
+                    self.idd_version,
+                ),
+                level=lg.DEBUG,
+            )
+        finally:
+            self.idfname = Path(
+                self.idfname
+            ).expand()  # Force idfname to be a Path object.
+
+            # Set the EnergyPlusOptions object
+            self.eplus_run_options = EnergyPlusOptions(
+                idf=self,
+                weather_file=getattr(self, "epw", None),
+                output_directory=output_directory,
+                ep_version=ep_version
+                if ep_version
+                else find_eplus_installs(self.iddname),
+                prep_outputs=prep_outputs,
+            )
+
+            self.schedules_dict = self.get_all_schedules()
+
+            if prep_outputs:
+                self.OutputPrep = (
+                    OutputPrep(idf=self)
+                    .add_basics()
+                    .add_template_outputs()
+                    .add_custom(outputs=prep_outputs)
+                    .add_profile_gas_elect_ouputs()
+                    .apply()
+                    .save()
+                )
+            else:
+                self.OutputPrep = None
+
+            self.__setCache()
+
+    @staticmethod
+    def get_output_directory(idfname):
+        """
+
+        Args:
+            idfname (Path-like):
+
+        Returns:
+
+        """
+        cache_filename = hash_file(idfname)
+        output_directory = settings.cache_folder / cache_filename
+        output_directory.makedirs_p()
+        return output_directory
+
+    @property
+    def output_directory(self):
+        """Returns the output directory based on the sahing of the original file (
+        before transitions or modifications)"""
+        return self.get_output_directory(self.original_idfname).expand()
+
+    @classmethod
+    def upgrade(cls, idf_file, to_version=None, output_folder=None, epw=None):
+        file = idf_version_updater(
+            idf_file, out_dir=output_folder, to_version=to_version
         )
-        self.OutputPrep = None
+        idd_filename = getiddfile(get_idf_version(file))
+        # Initiate an eppy.modeleditor.IDF object
+        cls.setiddname(idd_filename, testing=True)
+        # load the idf object
+        idf = cls(file, epw=epw)
+        idf.original_idfname = idf_file
+        return idf
 
     @classmethod
     def setiddname(cls, iddname, testing=False):

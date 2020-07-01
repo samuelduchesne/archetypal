@@ -211,35 +211,38 @@ class IDF(geomeppy.IDF):
 
     @property
     def sql(self):
-        if self._sql is None:
-            log("No sql object for {}. Running EnergyPlus...".format(self.name))
-            self._sql = self.run_eplus(
-                annual=True, prep_outputs=True, output_report="sql", verbose="q"
+        try:
+            sql_dict = get_report(
+                self.idfname,
+                self.simulation_dir,
+                output_report="sql",
+                output_prefix=self.eplus_run_options.output_prefix,
             )
-            return self._sql
+        except FileNotFoundError:
+            self.simulate()
+            return self.sql
         else:
-            return self._sql
+            return sql_dict
 
     @property
     def htm(self):
-        if self._htm is None:
-            self._htm = self.run_eplus(
-                annual=True, prep_outputs=True, output_report="htm"
-            )
-            return self._htm
-        else:
-            return self._htm
+        return get_report(
+            self.idfname,
+            self.eplus_run_options.output_directory,
+            output_report="htm",
+            output_prefix=self.eplus_run_options.output_prefix,
+        )
 
     @property
     def sql_file(self):
-        if self._sql_file is None:
-            log("No sql file for {}. Running EnergyPlus...".format(self.name))
-            self._sql_file = self.run_eplus(
-                annual=True, prep_outputs=True, output_report="sql_file", verbose="q"
-            )
-            return self._sql_file
+        # Get the sql report
+        try:
+            files = self.simulation_dir.files("*out.sql")
+        except FileNotFoundError:
+            self.simulate()
+            return self.sql_file
         else:
-            return self._sql_file
+            return files[0]
 
     @property
     def area_conditioned(self):

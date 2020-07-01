@@ -31,6 +31,7 @@ from deprecation import deprecated
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.bunch_subclass import EpBunch
 from eppy.easyopen import getiddfile
+from pandas.errors import ParserError
 from path import Path, TempDir
 
 import archetypal
@@ -1008,7 +1009,6 @@ class EnergyPlusOptions:
         epmacro=False,
         expandobjects=True,
         readvars=False,
-        output_prefix=False,
         output_suffix="L",
         version=None,
         verbose="v",
@@ -1021,9 +1021,10 @@ class EnergyPlusOptions:
     ):
         """
         Args:
-            eplus_file:
+            idf:
             weather_file:
-            output_directory:
+            output_directory (Path-like): The directory in which subdirectories will
+                be created for the simulation runs.
             ep_version:
             output_report:
             prep_outputs:
@@ -1034,7 +1035,6 @@ class EnergyPlusOptions:
             epmacro:
             expandobjects:
             readvars:
-            output_prefix:
             output_suffix:
             version:
             verbose:
@@ -1045,6 +1045,7 @@ class EnergyPlusOptions:
             return_idf:
             return_files:
         """
+        self.idf = idf
         self.return_files = return_files
         self.custom_processes = custom_processes
         self.process_files = process_files
@@ -1055,7 +1056,6 @@ class EnergyPlusOptions:
         self.simulname = simulname
         self.output_suffix = output_suffix
         self.verbose = verbose
-        self.output_prefix = output_prefix
         self.readvars = readvars
         self.expandobjects = expandobjects
         self.epmacro = epmacro
@@ -1067,7 +1067,27 @@ class EnergyPlusOptions:
         self.ep_version = ep_version
         self.output_directory = output_directory
         self.weather_file = weather_file
-        self.eplus_file = eplus_file
+        self.eplus_file = idf.idfname
+
+    @property
+    def simulation_parameters(self):
+        a = [
+            "idf",
+            "return_files",
+            "process_files",
+            "keep_data",
+            "simulname",
+            "return_idf",
+            "prep_outputs",
+            "weather_file",
+        ]
+        params = self.__dict__.copy()
+        [params.pop(key) for key in a]
+        return params
+
+    @property
+    def output_prefix(self):
+        return hash_file(self.idf.idfname, self.simulation_parameters)
 
     def __repr__(self):
         return str(self)
@@ -1075,6 +1095,8 @@ class EnergyPlusOptions:
     def __str__(self):
         return json.dumps(self.__dict__, indent=2)
 
+    def update(self, kwargs):
+        self.__dict__.update(kwargs)
 
 
 @deprecated(
@@ -2230,21 +2252,20 @@ def _process_csv(file, working_dir, simulname):
         working_dir:
         simulname:
     """
+    log("looking for csv output, return the csv files in DataFrames if any")
+    if "table" in file.basename():
+        tables_out = working_dir.abspath() / "tables"
+        tables_out.makedirs_p()
+        file.copy(tables_out / "%s_%s.csv" % (file.basename().stripext(), simulname))
+        return
+    log("try to store file %s in DataFrame" % (file))
     try:
-        log("looking for csv output, return the csv files in DataFrames if any")
-        if "table" in file.basename():
-            tables_out = working_dir.abspath() / "tables"
-            tables_out.makedirs_p()
-            file.copy(
-                tables_out / "%s_%s.csv" % (file.basename().stripext(), simulname)
-            )
-            return
-        log("try to store file %s in DataFrame" % (file))
         df = pd.read_csv(file, sep=",", encoding="us-ascii")
+    except ParserError:
+        pass
+    else:
         log("file %s stored" % file)
         return df
-    except Exception:
-        pass
 
 
 def _run_exec(
@@ -2434,13 +2455,15 @@ def get_report(
         eplus_file (str): path of the idf file
         output_directory (str, optional): path to the output folder. Will
             default to the settings.cache_folder.
-        output_report: 'html' or 'sql'
-        output_prefix:
+        output_report: 'htm' or 'sql'
+        output_prefix (str): Prefix name given to results files.
         **kwargs: keyword arguments to pass to hasher.
 
     Returns:
         dict: a dict of DataFrames
     """
+    if not output_directory:
+        output_directory = settings.cache_folder
     # Hash the idf file with any kwargs used in the function
     if output_prefix is None:
         output_prefix = hash_file(eplus_file, kwargs)
@@ -2461,15 +2484,6 @@ def get_report(
         fullpath_filename = output_directory / output_prefix + "out.sql"
         if fullpath_filename.exists():
             return get_sqlite_report(fullpath_filename)
-        else:
-            raise FileNotFoundError(
-                'File "{}" does not exist'.format(fullpath_filename)
-            )
-    elif output_report.lower() == "sql_file":
-        # Get the sql report
-        fullpath_filename = output_directory / output_prefix + "out.sql"
-        if fullpath_filename.exists():
-            return fullpath_filename
         else:
             raise FileNotFoundError(
                 'File "{}" does not exist'.format(fullpath_filename)

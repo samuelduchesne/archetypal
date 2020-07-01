@@ -1,7 +1,7 @@
 import io
 import json
 import os
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 
 import numpy as np
 from path import Path
@@ -215,11 +215,10 @@ class UmiTemplate:
         res = parallel_process(rundict, run_eplus, processors=processors)
         res = _write_invalid(res)
 
-        loaded_idf = {}
         bts = []
-        for key, sql in res.items():
+        for idf_file, sql in res.items():
             if not isinstance(sql, Exception):
-                idf = load_idf(key)
+                idf = IDF(idf_file)
                 bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
             else:
                 raise sql

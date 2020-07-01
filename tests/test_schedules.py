@@ -10,7 +10,7 @@ from archetypal import (
     UmiSchedule,
     config,
     get_eplus_dirs,
-    settings,
+    settings, IDF,
 )
 
 
@@ -18,7 +18,7 @@ def test_schedules_in_necb_specific(config):
     files = [
         "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
     ]
-    idfs = {os.path.basename(file): load_idf(file) for file in files}
+    idfs = {os.path.basename(file): IDF(file) for file in files}
     import matplotlib.pyplot as plt
 
     for key in idfs:
@@ -36,7 +36,7 @@ def test_make_umi_schedule(config):
 
     idf_file = "tests/input_data/schedules/schedules.idf"
     idf_file = copy_file(idf_file)
-    idf = load_idf(idf_file)
+    idf = IDF(idf_file)
 
     s = UmiSchedule(Name="POFF", idf=idf, start_day_of_the_week=0)
     ep_year, ep_weeks, ep_days = s.to_year_week_day()
@@ -65,7 +65,7 @@ idf_file = "tests/input_data/schedules/test_multizone_EP.idf"
 
 def schedules_idf():
     config(cache_folder="tests/.temp/cache")
-    idf = load_idf(
+    idf = IDF(
         idf_file,
         include=[
             get_eplus_dirs(settings.ep_version)

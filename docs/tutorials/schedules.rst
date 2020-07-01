@@ -12,7 +12,7 @@ Reading Schedules
 .. code-block:: python
 
     >>> import archetypal as ar
-    >>> idf = ar.load_idf(<idf-file-path>)
+    >>> idf = ar.IDF(<idf-file-path>)
     >>> this_schedule = Schedule(Name='name', idf=idf)
 
 

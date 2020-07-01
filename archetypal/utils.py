@@ -17,6 +17,7 @@ import datetime as dt
 import json
 import logging as lg
 import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import os
 import platform
 import re
@@ -1037,7 +1038,9 @@ def rotate(l, n):
     return l[n:] + l[:n]
 
 
-def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
+def parallel_process(
+    in_dict, function, processors=-1, use_kwargs=True, executor=ProcessPoolExecutor
+):
     """A parallel version of the map function with a progress bar.
 
     Examples:
@@ -1064,7 +1067,6 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         [function(array[0]), function(array[1]), ...]
     """
     from tqdm import tqdm
-    from concurrent.futures import ThreadPoolExecutor
 
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())
@@ -1084,7 +1086,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         else:
             futures = {a: submit(function, in_dict[a]) for a in tqdm(in_dict, **kwargs)}
     else:
-        with ThreadPoolExecutor(max_workers=processors) as pool:
+        with executor(max_workers=processors) as pool:
             with tqdm(
                 desc=function.__name__,
                 total=len(in_dict),

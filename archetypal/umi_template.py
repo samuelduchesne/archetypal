@@ -2,6 +2,7 @@ import io
 import json
 import os
 from collections import OrderedDict, defaultdict
+from concurrent.futures.thread import ThreadPoolExecutor
 
 import numpy as np
 from path import Path
@@ -212,7 +213,9 @@ class UmiTemplate:
             )
             for file in umi_template.idf_files
         }
-        res = parallel_process(rundict, run_eplus, processors=processors)
+        res = parallel_process(
+            rundict, run_eplus, processors=processors, executor=ThreadPoolExecutor
+        )
         res = _write_invalid(res)
 
         loaded_idf = {}

@@ -27,6 +27,7 @@ import eppy
 import eppy.modeleditor
 import geomeppy
 import pandas as pd
+from deprecation import deprecated
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.bunch_subclass import EpBunch
 from eppy.easyopen import getiddfile
@@ -542,11 +543,173 @@ class IDF(geomeppy.IDF):
         elif self.eplus_run_options.output_report == "sql_file":
             self._sql_file = results
             return results
+
+    def simulate(
+        self, **kwargs,
+    ):
+        """Execute EnergyPlus. Does not return anything. See
+        :meth:`simulation_files`, :meth:`processed_results` for simulation outputs.
+
+        Keyword Args:
+            eplus_file (str): path to the idf file.
+            weather_file (str): path to the EPW weather file.
+            output_directory (str, optional): path to the output folder. Will
+                default to the settings.cache_folder.
+            ep_version (str, optional): EnergyPlus version to use, eg: 9-2-0
+            output_report: 'sql' or 'htm'.
+            prep_outputs (bool or list, optional): if True, meters and variable
+                outputs will be appended to the idf files. Can also specify custom
+                outputs as list of ep-object outputs.
+            simulname (str): The name of the simulation. (Todo: Currently not implemented).
+            keep_data (bool): If True, files created by EnergyPlus are saved to the
+                output_directory.
+            annual (bool): If True then force annual simulation (default: False)
+            design_day (bool): Force design-day-only simulation (default: False)
+            epmacro (bool): Run EPMacro prior to simulation (default: False)
+            expandobjects (bool): Run ExpandObjects prior to simulation (default:
+                True)
+            readvars (bool): Run ReadVarsESO after simulation (default: False)
+            output_prefix (str, optional): Prefix for output file names.
+            output_suffix (str, optional): Suffix style for output file names
+                (default: L) Choices are:
+                    - L: Legacy (e.g., eplustbl.csv)
+                    - C: Capital (e.g., eplusTable.csv)
+                    - D: Dash (e.g., eplus-table.csv)
+            version (bool, optional): Display version information (default: False)
+            verbose (str): Set verbosity of runtime messages (default: v) v: verbose
+                q: quiet
+            keep_data_err (bool): If True, errored directory where simulation occurred is
+                kept.
+            include (str, optional): List input files that need to be copied to the
+                simulation directory. If a string is provided, it should be in a glob
+                form (see :meth:`pathlib.Path.glob`).
+            process_files (bool): If True, process the output files and load to a
+                :class:`~pandas.DataFrame`. Custom processes can be passed using the
+                :attr:`custom_processes` attribute.
+            custom_processes (dict(Callback)): if provided, it has to be a
+                dictionary with the keys being a glob (see :meth:`pathlib.Path.glob`), and
+                the value a Callback taking as signature `callback(file: str,
+                working_dir, simulname) -> Any` All the file matching this glob will
+                be processed by this callback. Note: they will still be processed by
+                pandas.read_csv (if they are csv files), resulting in duplicate. The
+                only way to bypass this behavior is to add the key "*.csv" to that
+                dictionary.
+            return_idf (bool): If True, returns the :class:`IDF` object part of the
+                return tuple.
+            return_files (bool): It True, all files paths created by the EnergyPlus
+                run are returned.
+
+        """
+        self.eplus_run_options.update(
+            {
+                your_key: kwargs[your_key]
+                for your_key in kwargs.keys()
+                if your_key in self.eplus_run_options.simulation_parameters.keys()
+            }
+        )
+
+        start_time = time.time()
+        include = self.eplus_run_options.include
+        if isinstance(include, str):
+            include = Path().abspath().glob(include)
+        elif include is not None:
+            include = [Path(file) for file in include]
+        # run the EnergyPlus Simulation
+        with TempDir(
+            prefix="eplus_run_",
+            suffix=self.eplus_run_options.output_prefix,
+            dir=self.eplus_run_options.output_directory,
+        ) as tmp:
+            log(f"temporary dir ({self.name}) created")
+            if include:
+                [file.copy(tmp) for file in include]
+            tmp_file = Path(self.idfname.copy(tmp))
+            runargs = self.eplus_run_options.simulation_parameters
+
+            runargs["eplus_file"] = tmp_file
+            runargs["tmp"] = tmp
+            runargs["weather"] = Path(self.eplus_run_options.weather_file).copy(tmp)
+            runargs["idd"] = Path(self.iddname).copy(tmp)
+            runargs["output_prefix"] = self.eplus_run_options.output_prefix
+
+            _run_exec(**runargs)
+
+            log(
+                "EnergyPlus Completed in {:,.2f} seconds".format(
+                    time.time() - start_time
+                ),
+                name=self.name,
+            )
+
+            self.__set_cached_results(runargs, tmp, tmp_file)
+
+    def save(self, filename=None, lineendings="default", encoding="latin-1"):
+        super(IDF, self).save(filename=None, lineendings="default", encoding="latin-1")
+        log(
+            f"saved '{self.name}' at '{filename if filename else self.idfname.expand()}'"
+        )
+
+    @property
+    def simulation_files(self):
+        return self.simulation_dir.files()
+
+    @property
+    def simulation_dir(self):
+        """The path where simulation results are stored"""
+        try:
+            return (
+                self.eplus_run_options.output_directory
+                / self.eplus_run_options.output_prefix
+            ).expand()
+        except AttributeError:
+            return Path()
+
+    @property
+    def processed_results(self):
+        processes = {"*.csv": _process_csv}
+        custom_processes = self.eplus_run_options.custom_processes
+        if custom_processes:
+            processes.update(custom_processes)
+
+        try:
+            results = []
+            for glob, process in processes.items():
+                results.extend(
+                    [
+                        (
+                            file.basename(),
+                            process(
+                                file,
+                                working_dir=os.getcwd(),
+                                simulname=self.eplus_run_options.output_prefix,
+                            ),
+                        )
+                        for file in self.simulation_dir.files(glob)
+                    ]
+                )
+        except FileNotFoundError:
+            self.simulate()
+            return self.processed_results
         else:
-            # user wants something more than the sql
             return results
 
-    def add_object(self, ep_object, save=True, **kwargs):
+    def __set_cached_results(self, runargs, tmp, tmp_file):
+        save_dir = self.simulation_dir
+        if self.eplus_run_options.keep_data:
+            save_dir.rmtree_p()  # purge target dir
+            tmp.copytree(save_dir)  # copy files
+
+            log(
+                "Files generated at the end of the simulation: %s"
+                % "\n".join((save_dir).files()),
+                lg.DEBUG,
+                name=self.name,
+            )
+
+            # save runargs
+            cache_runargs(tmp_file, runargs.copy())
+
+    def add_object(self, ep_object, **kwargs):
         """Add a new object to an idf file. The function will test if the object
         exists to prevent duplicates. By default, the idf with the new object is
         saved to disk (save=True)
@@ -778,11 +941,61 @@ class IDF(geomeppy.IDF):
         theobject[fieldname] = newname
         return theobject
 
+    @classmethod
+    def __getCache(cls, *args, **kwargs):
+        if not args:
+            return None
+        else:
+            try:
+                (idfname,) = args
+            except ValueError:
+                raise AttributeError("One argument must be provided")
+        cache_filename = hash_file(idfname)
+        cache_fullpath_filename = os.path.join(
+            settings.cache_folder,
+            cache_filename,
+            os.extsep.join([cache_filename + "idfs", "dat"]),
+        )
+        try:
+            import cPickle as pickle
+        except ImportError:
+            import pickle
+        start_time = time.time()
+        if os.path.isfile(cache_fullpath_filename):
+            if os.path.getsize(cache_fullpath_filename) > 0:
+                with open(cache_fullpath_filename, "rb") as file_handle:
+                    try:
+                        idf = pickle.load(file_handle)
+                    except EOFError:
+                        return None
+                if idf.iddname is None:
+                    idf.setiddname(getiddfile(idf.model.dt["VERSION"][0][1]))
+                    idf.read()
+                log(
+                    'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
+                        idf.name, time.time() - start_time
+                    )
+                )
+                return idf
+
+    def __setCache(self):
+        cache_fullpath_filename = (
+            self.output_directory / hash_file(self.original_idfname) + "idfs.dat"
+        )
+        try:
+            import cPickle as pickle
+        except ImportError:
+            import pickle
+        start_time = time.time()
+        with open(cache_fullpath_filename, "wb") as file_handle:
+            pickle.dump(self, file_handle, protocol=-1)
+        log("Saved pickle to file in {:,.2f} seconds".format(time.time() - start_time))
+
 
 class EnergyPlusOptions:
     def __init__(
         self,
-        eplus_file,
+        idf,
         weather_file,
         output_directory=None,
         ep_version=None,
@@ -863,6 +1076,13 @@ class EnergyPlusOptions:
         return json.dumps(self.__dict__, indent=2)
 
 
+
+@deprecated(
+    deprecated_in="1.3.5",
+    removed_in="1.4",
+    current_version=archetypal.__version__,
+    details="Use :class:`IDF` instead",
+)
 def load_idf(
     eplus_file,
     idd_filename=None,
@@ -1663,6 +1883,12 @@ def cache_runargs(eplus_file, runargs):
         json.dump(runargs, fp, sort_keys=True, indent=4)
 
 
+@deprecated(
+    deprecated_in="1.3.5",
+    removed_in="1.4",
+    current_version=archetypal.__version__,
+    details="Use IDF.simulate() instead",
+)
 def run_eplus(
     eplus_file,
     weather_file,

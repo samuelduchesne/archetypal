@@ -52,7 +52,7 @@ def _write_invalid(res):
         filename = Path("failed_reduce.txt")
         with open(filename, "w") as failures:
             failures.writelines(tabulate(invalid, headers="keys"))
-            log("Invalid runs listed in %s" % "failed_transition.txt")
+            log("Invalid runs listed in %s" % filename)
     return res
 
 

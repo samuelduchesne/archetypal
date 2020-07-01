@@ -292,7 +292,6 @@ class Zone(UmiBase):
         )
         cons = self.idf.add_object(
             ep_object="Construction".upper(),
-            save=False,
             Name="InteriorFurnishings",
             Outside_Layer="Wood 6inch",
         )
@@ -300,7 +299,6 @@ class Zone(UmiBase):
         cons.Name = internal_mass + "_construction"
         new_epbunch = self.idf.add_object(
             ep_object="InternalMass".upper(),
-            save=False,
             Name=internal_mass,
             Construction_Name=cons.Name,
             Zone_or_ZoneList_Name=self.Name,

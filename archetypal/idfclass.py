@@ -55,8 +55,6 @@ class IDF(geomeppy.IDF):
     eppy.modeleditor.IDF class
     """
 
-    cache = []
-
     def __new__(cls, *args, **kwargs):
         existing = cls.__getCache(*args, **kwargs)
         if existing:
@@ -75,15 +73,14 @@ class IDF(geomeppy.IDF):
     ):
         """
         Args:
-            idfname (Path-like):
-            epw (Path-like): The weather-file
+            idfname (str or Path): The idf model filename.
+            epw (str or Path): The weather-file
         """
         if self.simulation_dir.exists():
             return
-        self.cache.append(self)
         self.include = include
         self.original_idfname = Path(idfname).expand()
-        idfname = Path(idfname)
+        idfname = Path(idfname).expand()
         if not output_directory:
             output_directory = self.get_output_directory(idfname)
         if idfname.basename() not in [
@@ -943,14 +940,9 @@ class IDF(geomeppy.IDF):
         return theobject
 
     @classmethod
-    def __getCache(cls, *args, **kwargs):
-        if not args:
+    def __getCache(cls, idfname, *args, **kwargs):
+        if not idfname:
             return None
-        else:
-            try:
-                (idfname,) = args
-            except ValueError:
-                raise AttributeError("One argument must be provided")
         cache_filename = hash_file(idfname)
         cache_fullpath_filename = os.path.join(
             settings.cache_folder,

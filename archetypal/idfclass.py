@@ -14,8 +14,8 @@ import logging as lg
 import os
 import platform
 import subprocess
-import time
 import tempfile
+import time
 from collections import defaultdict, OrderedDict
 from itertools import compress
 from math import isclose
@@ -40,7 +40,6 @@ from archetypal import (
     log,
     settings,
     EnergyPlusProcessError,
-    cd,
     ReportData,
     EnergySeries,
     close_logger,
@@ -51,12 +50,15 @@ from archetypal.utils import _unpack_tuple
 
 
 class IDF(geomeppy.IDF):
-    """Wrapper over the geomeppy.IDF class and subsequently the
+    """Class for loading and parsing idf models and running simulations and
+    retrieving results.
+
+    Wrapper over the geomeppy.IDF class and subsequently the
     eppy.modeleditor.IDF class
     """
 
-    def __new__(cls, *args, **kwargs):
-        existing = cls.__getCache(*args, **kwargs)
+    def __new__(cls, idfname=None, **kwargs):
+        existing = cls.__getCache(idfname)
         if existing:
             return existing
         idf = super(IDF, cls).__new__(cls)
@@ -70,24 +72,24 @@ class IDF(geomeppy.IDF):
         ep_version=None,
         prep_outputs=True,
         include=None,
+        keep_original=True,
     ):
         """
         Args:
             idfname (str or Path): The idf model filename.
             epw (str or Path): The weather-file
         """
-        if self.simulation_dir.exists():
-            return
+        if settings.use_cache:
+            if self.cached_file(idfname).exists():
+                return
         self.include = include
         self.original_idfname = Path(idfname).expand()
         idfname = Path(idfname).expand()
         if not output_directory:
-            output_directory = self.get_output_directory(idfname)
-        if idfname.basename() not in [
-            file.basename() for file in output_directory.glob("*.idf")
-        ]:
-            # The file does not exist; copy it to the output_directory & override
-            # path name
+            output_directory = self.get_output_directory(self.original_idfname)
+        # The file does not exist; copy it to the output_directory & override
+        # path name
+        if keep_original:
             idfname = Path(idfname.copy(output_directory))
 
         # Determine version of idf file by reading the text file
@@ -109,9 +111,7 @@ class IDF(geomeppy.IDF):
                 f"Transitioning idf file to version {ep_version}..."
             )
 
-            self.upgrade(
-                self.idfname, to_version=ep_version, output_folder=output_directory
-            )
+            self.upgrade(to_version=ep_version, output_folder=output_directory)
         else:
             # the versions fit, great!
             log(
@@ -153,7 +153,7 @@ class IDF(geomeppy.IDF):
                     .save()
                 )
             else:
-                self.OutputPrep = None
+                self.OutputPrep = OutputPrep(idf=self)
 
             self.__setCache()
 
@@ -178,18 +178,15 @@ class IDF(geomeppy.IDF):
         before transitions or modifications)"""
         return self.get_output_directory(self.original_idfname).expand()
 
-    @classmethod
-    def upgrade(cls, idf_file, to_version=None, output_folder=None, epw=None):
+    def upgrade(self, to_version=None, output_folder=None, epw=None):
         file = idf_version_updater(
-            idf_file, out_dir=output_folder, to_version=to_version
+            self.idfname, out_dir=output_folder, to_version=to_version
         )
         idd_filename = getiddfile(get_idf_version(file))
         # Initiate an eppy.modeleditor.IDF object
-        cls.setiddname(idd_filename, testing=True)
+        self.setiddname(idd_filename, testing=True)
         # load the idf object
-        idf = cls(file, epw=epw)
-        idf.original_idfname = idf_file
-        return idf
+        super(IDF, self).__init__(file, epw=epw)
 
     @classmethod
     def setiddname(cls, iddname, testing=False):
@@ -544,9 +541,7 @@ class IDF(geomeppy.IDF):
             self._sql_file = results
             return results
 
-    def simulate(
-        self, **kwargs,
-    ):
+    def simulate(self, **kwargs):
         """Execute EnergyPlus. Does not return anything. See
         :meth:`simulation_files`, :meth:`processed_results` for simulation outputs.
 
@@ -620,7 +615,7 @@ class IDF(geomeppy.IDF):
             suffix=self.eplus_run_options.output_prefix,
             dir=self.eplus_run_options.output_directory,
         ) as tmp:
-            log(f"temporary dir ({self.name}) created")
+            log(f"temporary dir ({Path(tmp).expand()}) created")
             if include:
                 [file.copy(tmp) for file in include]
             tmp_file = Path(self.idfname.copy(tmp))
@@ -935,15 +930,10 @@ class IDF(geomeppy.IDF):
         return theobject
 
     @classmethod
-    def __getCache(cls, idfname, *args, **kwargs):
+    def __getCache(cls, idfname):
         if not idfname:
             return None
-        cache_filename = hash_file(idfname)
-        cache_fullpath_filename = os.path.join(
-            settings.cache_folder,
-            cache_filename,
-            os.extsep.join([cache_filename + "idfs", "dat"]),
-        )
+        cache_fullpath_filename = cls.cached_file(idfname)
         try:
             import cPickle as pickle
         except ImportError:
@@ -965,6 +955,16 @@ class IDF(geomeppy.IDF):
                     )
                 )
                 return idf
+
+    @classmethod
+    def cached_file(cls, idfname):
+        cache_filename = hash_file(idfname)
+        cache_fullpath_filename = (
+            settings.cache_folder
+            / cache_filename
+            / os.extsep.join([cache_filename + "idfs", "dat"])
+        )
+        return cache_fullpath_filename
 
     def __setCache(self):
         cache_fullpath_filename = (
@@ -2036,7 +2036,9 @@ def run_eplus(
             prefix="eplus_run_", suffix=output_prefix, dir=output_directory
         ) as tmp:
             log(
-                "temporary dir (%s) created" % tmp, lg.DEBUG, name=eplus_file.basename()
+                f"temporary dir ({Path(tmp).expand()}) created",
+                lg.DEBUG,
+                name=eplus_file.basename(),
             )
             if include:
                 include = [file.copy(tmp) for file in include]
@@ -2632,7 +2634,7 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
             prefix="transition_run_", suffix=simulname, dir=out_dir
         ) as tmp:
             # Move to temporary transition_run folder
-            log("temporary dir (%s) created" % tmp, lg.DEBUG)
+            log(f"temporary dir ({Path(tmp).expand()}) created", lg.DEBUG)
             idf_file = Path(idf_file.copy(tmp)).abspath()  # copy and return abspath
             try:
                 _execute_transitions(idf_file, to_version, versionid)

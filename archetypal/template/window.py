@@ -391,7 +391,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Examples:
             >>> import archetypal as ar
             >>> # Given an IDF object
-            >>> idf = ar.load_idf("idfname")
+            >>> idf = ar.IDF("idfname.idf")
             >>> construction = idf.getobject('CONSTRUCTION',
             >>>                              'AEDG-SmOffice 1A Window Fixed')
             >>> ar.WindowSetting.from_construction(Name='test_window',

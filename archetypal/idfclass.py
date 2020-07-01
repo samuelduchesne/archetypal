@@ -508,18 +508,20 @@ class IDF(geomeppy.IDF):
             EnergySeries_kwds:
         """
         if prep_outputs:
-            self._sql = self.run_eplus(
-                annual=True,
-                prep_outputs=prep_outputs,
-                output_report="sql_file",
-                verbose="q",
-            )
+            OutputPrep(self).add_custom(prep_outputs)
+            self.simulate()
         rd = ReportData.from_sqlite(self.sql_file, table_name=energy_out_variable_name)
         profile = EnergySeries.from_sqlite(
             rd, to_units=units, name=name, **EnergySeries_kwds
         )
         return profile
 
+    @deprecated(
+        deprecated_in="1.4",
+        removed_in="1.5",
+        current_version=archetypal.__version__,
+        details="Use IDF.simulate() method instead",
+    )
     def run_eplus(self, **kwargs):
         """wrapper around the :meth:`archetypal.idfclass.run_eplus` method.
 
@@ -739,22 +741,15 @@ class IDF(geomeppy.IDF):
             # Remove the newly created object since the function
             # `idf.newidfobject()` automatically adds it
             self.removeidfobject(new_object)
-            if not save:
-                return self.getobject(
-                    ep_object,
-                    kwargs.get(
-                        "Variable_Name",
-                        kwargs.get("Key_Name", kwargs.get("Name", None)),
-                    ),
-                )
+            return self.getobject(
+                ep_object,
+                kwargs.get(
+                    "Variable_Name",
+                    kwargs.get("Key_Name", kwargs.get("Name", kwargs.get("Key_Field"))),
+                ),
+            )
         else:
-            if save:
-                log('object "{}" added to the idf file'.format(ep_object))
-                self.save()
-            # invalidate the sql statements
-            self._sql = None
-            self._sql_file = None
-            # return the ep_object
+            log('object "{}" added to the idf file'.format(ep_object))
             return new_object
 
     def get_schedule_type_limits_data_by_name(self, schedule_limit_name):
@@ -1439,7 +1434,7 @@ class OutputPrep:
         >>> OutputPrep(idf=idf_obj).add_output_control().add_umi_ouputs().add_profile_gas_elect_ouputs()
     """
 
-    def __init__(self, idf, save=True):
+    def __init__(self, idf):
         """Initialize an OutputPrep object.
 
         Args:
@@ -1448,7 +1443,6 @@ class OutputPrep:
                 IDF file.
         """
         self.idf = idf
-        self.save = save
         self.outputs = []
 
     def add_custom(self, outputs):
@@ -1468,11 +1462,10 @@ class OutputPrep:
             >>> OutputPrep().add_custom(outputs)
 
         Args:
-            outputs (list): Pass a list of ep-objects defined as dictionary. See
-                examples.
+            outputs (list, bool): Pass a list of ep-objects defined as dictionary. See
+                examples. If a bool, ignored.
         """
         if isinstance(outputs, list):
-            prepare_outputs(self.idf, outputs=outputs, save=self.save)
             self.outputs.extend(outputs)
         return self
 
@@ -1485,10 +1478,10 @@ class OutputPrep:
         outputs = [
             {
                 "ep_object": "Output:Schedules".upper(),
-                "kwargs": dict(Key_Field="Hourly", save=self.save),
+                "kwargs": dict(Key_Field="Hourly"),
             }
         ]
-        prepare_outputs(self.idf, outputs=outputs, save=self.save)
+
         self.outputs.extend(outputs)
         return self
 
@@ -1514,10 +1507,10 @@ class OutputPrep:
         outputs = [
             {
                 "ep_object": "Output:Table:SummaryReports".upper(),
-                "kwargs": dict(Report_1_Name=summary, save=self.save),
+                "kwargs": dict(Report_1_Name=summary),
             }
         ]
-        prepare_outputs(self.idf, outputs=outputs, save=self.save)
+
         self.outputs.extend(outputs)
         return self
 
@@ -1538,10 +1531,10 @@ class OutputPrep:
         outputs = [
             {
                 "ep_object": "Output:SQLite".upper(),
-                "kwargs": dict(Option_Type=sql_output_style, save=self.save),
+                "kwargs": dict(Option_Type=sql_output_style),
             }
         ]
-        prepare_outputs(self.idf, outputs=outputs, save=self.save)
+
         self.outputs.extend(outputs)
         return self
 
@@ -1555,12 +1548,10 @@ class OutputPrep:
         outputs = [
             {
                 "ep_object": "OutputControl:Table:Style".upper(),
-                "kwargs": dict(
-                    Column_Separator=output_control_table_style, save=self.save
-                ),
+                "kwargs": dict(Column_Separator=output_control_table_style),
             }
         ]
-        prepare_outputs(self.idf, outputs=outputs, save=self.save)
+
         self.outputs.extend(outputs)
         return self
 
@@ -1573,7 +1564,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Air System Total Heating Energy",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1581,7 +1571,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Air System Total Cooling Energy",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1589,7 +1578,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1597,7 +1585,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1605,7 +1592,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Zone Thermostat Heating Setpoint Temperature",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1613,7 +1599,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1621,7 +1606,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Heat Exchanger Total Heating Rate",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1629,7 +1613,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Heat Exchanger Sensible Effectiveness",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1637,7 +1620,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Heat Exchanger Latent Effectiveness",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1645,7 +1627,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Water Heater Heating Energy",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1653,94 +1634,71 @@ class OutputPrep:
                 "kwargs": dict(
                     Key_Name="HeatRejection:EnergyTransfer",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Heating:EnergyTransfer",
-                    Reporting_Frequency="hourly",
-                    save=self.save,
+                    Key_Name="Heating:EnergyTransfer", Reporting_Frequency="hourly",
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Cooling:EnergyTransfer",
-                    Reporting_Frequency="hourly",
-                    save=self.save,
+                    Key_Name="Cooling:EnergyTransfer", Reporting_Frequency="hourly",
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Heating:DistrictHeating",
-                    Reporting_Frequency="hourly",
-                    save=self.save,
+                    Key_Name="Heating:DistrictHeating", Reporting_Frequency="hourly",
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Heating:Electricity",
-                    Reporting_Frequency="hourly",
-                    save=self.save,
+                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(Key_Name="Heating:Gas", Reporting_Frequency="hourly"),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="Cooling:DistrictCooling", Reporting_Frequency="hourly",
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Heating:Gas", Reporting_Frequency="hourly", save=self.save
+                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly",
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Cooling:DistrictCooling",
-                    Reporting_Frequency="hourly",
-                    save=self.save,
+                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly",
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Cooling:Electricity",
-                    Reporting_Frequency="hourly",
-                    save=self.save,
-                ),
-            },
-            {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Cooling:Electricity",
-                    Reporting_Frequency="hourly",
-                    save=self.save,
-                ),
-            },
-            {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Cooling:Gas", Reporting_Frequency="hourly", save=self.save
-                ),
+                "kwargs": dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
                     Key_Name="WaterSystems:EnergyTransfer",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Cooling:Gas", Reporting_Frequency="hourly", save=self.save
-                ),
+                "kwargs": dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
             },
         ]
 
-        prepare_outputs(self.idf, outputs=outputs, save=self.save)
         self.outputs.extend(outputs)
         return self
 
@@ -1755,7 +1713,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Air System Total Heating Energy",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1763,7 +1720,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Air System Total Cooling Energy",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1771,7 +1727,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1779,7 +1734,6 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
             {
@@ -1787,12 +1741,10 @@ class OutputPrep:
                 "kwargs": dict(
                     Variable_Name="Water Heater Heating Energy",
                     Reporting_Frequency="hourly",
-                    save=self.save,
                 ),
             },
         ]
 
-        prepare_outputs(self.idf, outputs=outputs, save=self.save)
         self.outputs.extend(outputs)
         return self
 
@@ -1805,80 +1757,45 @@ class OutputPrep:
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Electricity:Facility",
-                    Reporting_Frequency="hourly",
-                    save=True,
+                    Key_Name="Electricity:Facility", Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(Key_Name="Gas:Facility", Reporting_Frequency="hourly"),
+            },
+            {
+                "ep_object": "OUTPUT:METER",
+                "kwargs": dict(
+                    Key_Name="WaterSystems:Electricity", Reporting_Frequency="hourly",
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Gas:Facility", Reporting_Frequency="hourly", save=True
+                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly",
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="WaterSystems:Electricity",
-                    Reporting_Frequency="hourly",
-                    save=True,
-                ),
-            },
-            {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Heating:Electricity",
-                    Reporting_Frequency="hourly",
-                    save=True,
-                ),
-            },
-            {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Cooling:Electricity",
-                    Reporting_Frequency="hourly",
-                    save=True,
+                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly",
                 ),
             },
         ]
-
-        prepare_outputs(self.idf, outputs=outputs, save=self.save)
         self.outputs.extend(outputs)
         return self
 
+    def apply(self):
+        """Applies the outputs to the idf model"""
+        for output in self.outputs:
+            self.idf.add_object(output["ep_object"], **output["kwargs"])
+        return self
 
-def prepare_outputs(
-    idf, outputs=None, idd_filename=None, output_directory=None, save=True, epw=None
-):
-    """Add additional epobjects to the idf file. Users can pass in an outputs
-
-    Examples:
-        >>> objects = [{'ep_object':'OUTPUT:DIAGNOSTICS',
-        >>>             'kwargs':{'Key_1':'DisplayUnusedSchedules'}}]
-        >>> prepare_outputs(idf, outputs=objects)
-
-    Args:
-        idf (IDF or Path): The IDF object or the path to the file describing the
-            model (.idf).
-        outputs (bool or list):
-        idd_filename:
-        output_directory:
-        save (bool): if True, saves the idf inplace to disk with added objects
-        epw:
-    """
-    if isinstance(idf, (Path, str)):
-        log("first, loading the idf file")
-        idf = load_idf(
-            idf,
-            idd_filename=idd_filename,
-            output_folder=output_directory,
-            weather_file=epw,
-        )
-
-    if isinstance(outputs, list):
-        for output in outputs:
-            save = output["kwargs"].pop("save", save)
-            idf.add_object(output["ep_object"], **output["kwargs"], save=save)
+    def save(self):
+        """calls IDF.save() to write to disk"""
+        self.idf.save()
+        return self
 
 
 def cache_runargs(eplus_file, runargs):
@@ -2096,9 +2013,7 @@ def run_eplus(
         )
         # Call the OutputPrep class with chained instance methods to add all
         # necessary outputs + custom ones defined in the parameters of this function.
-        OutputPrep(
-            idf=idf_obj, save=True
-        ).add_basics().add_template_outputs().add_custom(
+        OutputPrep(idf=idf_obj).add_basics().add_template_outputs().add_custom(
             outputs=prep_outputs
         ).add_profile_gas_elect_ouputs()
 

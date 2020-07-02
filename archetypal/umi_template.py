@@ -198,30 +198,11 @@ class UmiTemplate:
         else:
             processors = -1
         # if parallel is True, run eplus in parallel
-        rundict = {
-            file: dict(
-                eplus_file=file,
-                weather_file=weather,
-                annual=True,
-                prep_outputs=True,
-                expandobjects=True,
-                verbose="v",
-                output_report="sql",
-                return_idf=False,
-                ep_version=settings.ep_version,
-            )
-            for file in umi_template.idf_files
-        }
-        res = parallel_process(rundict, run_eplus, processors=processors)
-        res = _write_invalid(res)
 
         bts = []
-        for idf_file, sql in res.items():
-            if not isinstance(sql, Exception):
-                idf = IDF(idf_file)
-                bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
-            else:
-                raise sql
+        for idf_file in umi_template.idf_files:
+            idf = IDF(idf_file, epw=umi_template.weather)
+            bts.append(BuildingTemplate.from_idf(idf, sql=idf.sql, DataSource=idf.name))
         umi_template.BuildingTemplates = bts
         return umi_template
 

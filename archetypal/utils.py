@@ -1051,7 +1051,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         >>>                      prep_outputs=True, expandobjects=True,
         >>>                      verbose='q', output_report='sql')
         >>>           for file in files}
-        >>> result = parallel_process(rundict, ar.run_eplus, use_kwargs=True)
+        >>> result = parallel_process(rundict, IDF, use_kwargs=True)
 
     Args:
         in_dict (dict): A dictionary to iterate over.

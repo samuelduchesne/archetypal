@@ -84,7 +84,7 @@ class IDF(geomeppy.IDF):
         if not ep_version:
             ep_version = latest_energyplus_version()
         else:
-            ep_version = parse(ep_version.replace("-", "."))
+            ep_version = parse(ep_version)
         if ep_version not in self.valid_idds():
             raise ValueError(
                 f"Invalid ep_version '{ep_version}'. Choices are {self.valid_idds()}"
@@ -171,7 +171,7 @@ class IDF(geomeppy.IDF):
         """Returns all valid idd version numbers found in IDFVersionUpdater folder"""
         iddnames = self.idfversionupdater_dir.files("*.idd")
         return [
-            parse((re.match("V(.*)-Energy\+", idd.stem).groups()[0]).replace("-", "."))
+            parse((re.match("V(.*)-Energy\+", idd.stem).groups()[0]))
             for idd in iddnames
         ]
 
@@ -278,9 +278,7 @@ class IDF(geomeppy.IDF):
     @property
     def idf_version(self):
         return parse(
-            (re.search(r"([\d-]+)", Path(self.iddname).dirname()).group(1)).replace(
-                "-", "."
-            )
+            re.search(r"([\d-]+)", Path(self.iddname).dirname()).group(1)
         )
 
     @classmethod

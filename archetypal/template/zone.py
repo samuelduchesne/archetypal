@@ -532,6 +532,7 @@ class Zone(UmiBase):
         """Validates UmiObjects and fills in missing values"""
         if not self.InternalMassConstruction:
             self.set_generic_internalmass()
+        self.InternalMassExposedPerFloorArea = 0
         log(
             f"While validating {self}, the required attribute 'InternalMassConstruction' was filled "
             f"with {self.InternalMassConstruction} and the 'InternalMassExposedPerFloorArea' set to"

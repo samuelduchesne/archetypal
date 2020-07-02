@@ -625,7 +625,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 Name=name,
                 Construction=construction,
                 idf=surface.theidf,
-                Category=surface.theidf.building_name(use_idfname=True),
+                Category=surface.theidf.name,
                 **attr
             )
             return w

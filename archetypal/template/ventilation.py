@@ -265,7 +265,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
             ScheduledVentilationAch=ScheduledVentilationAch,
             ScheduledVentilationSetpoint=ScheduledVentilationSetpoint,
             idf=zone.idf,
-            Category=zone.idf.building_name(use_idfname=True),
+            Category=zone.idf.name,
         )
         return z_vent
 

@@ -145,7 +145,7 @@ class IDF(geomeppy.IDF):
                 output_directory=output_directory,
                 ep_version=ep_version if ep_version else latest_energyplus_version(),
                 prep_outputs=prep_outputs,
-                **kwargs
+                **kwargs,
             )
 
             self.schedules_dict = self.get_all_schedules()
@@ -245,9 +245,7 @@ class IDF(geomeppy.IDF):
 
     @property
     def idf_version(self):
-        return parse(
-            re.search(r"([\d-]+)", Path(self.iddname).dirname()).group(1)
-        )
+        return parse(re.search(r"([\d-]+)", Path(self.iddname).dirname()).group(1))
 
     @property
     def name(self):
@@ -348,8 +346,7 @@ class IDF(geomeppy.IDF):
         """The path where simulation results are stored"""
         try:
             return (
-                self.output_directory
-                / self.eplus_run_options.output_prefix
+                self.output_directory / self.eplus_run_options.output_prefix
             ).expand()
         except AttributeError:
             return Path()
@@ -1017,6 +1014,12 @@ class IDF(geomeppy.IDF):
                             pass
         return used_schedules
 
+    @deprecated(
+        deprecated_in="1.3.5",
+        removed_in="1.4",
+        current_version=archetypal.__version__,
+        details="Use IDF.name instead",
+    )
     def building_name(self, use_idfname=False):
         """
         Args:

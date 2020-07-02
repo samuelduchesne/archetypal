@@ -406,7 +406,7 @@ class Zone(UmiBase):
             Name=name,
             idf=zone_ep.theidf,
             sql=sql,
-            Category=zone_ep.theidf.building_name(use_idfname=True),
+            Category=zone_ep.theidf.name,
         )
 
         zone._epbunch = zone_ep

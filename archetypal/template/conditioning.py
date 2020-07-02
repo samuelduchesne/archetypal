@@ -304,7 +304,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             Name=name,
             zone=zone,
             idf=zone.idf,
-            Category=zone.idf.building_name(use_idfname=True),
+            Category=zone.idf.name,
         )
 
         z_cond._set_thermostat_setpoints(zone)

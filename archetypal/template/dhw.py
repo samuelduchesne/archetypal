@@ -145,7 +145,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                     WaterSupplyTemperature=supply_temp,
                     WaterTemperatureInlet=inlet_temp,
                     idf=zone.idf,
-                    Category=zone.idf.building_name(use_idfname=True),
+                    Category=zone.idf.name,
                 )
                 z_dhw_list.append(z_dhw)
 
@@ -168,7 +168,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                 WaterSupplyTemperature=supply_temp,
                 WaterTemperatureInlet=inlet_temp,
                 idf=zone.idf,
-                Category=zone.idf.building_name(use_idfname=True),
+                Category=zone.idf.name,
             )
         else:
             # Assume water systems for whole building
@@ -189,7 +189,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                     WaterSupplyTemperature=supply_temp,
                     WaterTemperatureInlet=inlet_temp,
                     idf=zone.idf,
-                    Category=zone.idf.building_name(use_idfname=True),
+                    Category=zone.idf.name,
                 )
             else:
                 # defaults with 0 flow rate.
@@ -208,7 +208,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                     WaterSupplyTemperature=supply_temp,
                     WaterTemperatureInlet=inlet_temp,
                     idf=zone.idf,
-                    Category=zone.idf.building_name(use_idfname=True),
+                    Category=zone.idf.name,
                 )
 
         return z_dhw

@@ -283,7 +283,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             IsPeopleOn=PeopleDensity > 0,
             PeopleDensity=PeopleDensity,
             idf=zone.idf,
-            Category=zone.idf.building_name(use_idfname=True),
+            Category=zone.idf.name,
         )
         return z_load
 

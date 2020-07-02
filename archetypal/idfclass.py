@@ -80,7 +80,7 @@ class IDF(geomeppy.IDF):
         # validate ep_version is a valid version number
         self.load_kwargs = dict(epw=epw, **kwargs)
 
-        ep_version = kwargs.get("ep_version")
+        ep_version = kwargs.pop("ep_version", None)
         if not ep_version:
             ep_version = latest_energyplus_version()
         else:
@@ -95,7 +95,7 @@ class IDF(geomeppy.IDF):
         self.include = kwargs.get("include")
         self.original_idfname = Path(idfname).expand()
         idfname = Path(idfname).expand()
-        output_directory = kwargs.get("output_directory")
+        output_directory = kwargs.pop("output_directory", None)
         if not output_directory:
             output_directory = self.get_output_directory(
                 self.original_idfname, **self.load_kwargs
@@ -137,7 +137,7 @@ class IDF(geomeppy.IDF):
                 self.idfname
             ).expand()  # Force idfname to be a Path object.
 
-            prep_outputs = kwargs.get("prep_outputs", True)
+            prep_outputs = kwargs.pop("prep_outputs", True)
             # Set the EnergyPlusOptions object
             self.eplus_run_options = EnergyPlusOptions(
                 idf=self,
@@ -145,6 +145,7 @@ class IDF(geomeppy.IDF):
                 output_directory=output_directory,
                 ep_version=ep_version if ep_version else latest_energyplus_version(),
                 prep_outputs=prep_outputs,
+                **kwargs
             )
 
             self.schedules_dict = self.get_all_schedules()

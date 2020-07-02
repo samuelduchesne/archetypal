@@ -10,7 +10,8 @@ from archetypal import (
     UmiSchedule,
     config,
     get_eplus_dirs,
-    settings, IDF,
+    settings,
+    IDF,
 )
 
 
@@ -67,6 +68,8 @@ def schedules_idf():
     config(cache_folder="tests/.temp/cache")
     idf = IDF(
         idf_file,
+        epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+        readvars=True,
         include=[
             get_eplus_dirs(settings.ep_version)
             / "DataSets"
@@ -134,9 +137,9 @@ def test_schedules(request, run_schedules_idf):
 
 @pytest.fixture(scope="module")
 def run_schedules_idf(config):
-    files = run_eplus(
+    idf = IDF(
         idf_file,
-        weather_file="tests/input_data/CAN_PQ_Montreal.Intl.AP" ".716270_CWEC.epw",
+        epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
         annual=True,
         readvars=True,
         include=[
@@ -145,10 +148,8 @@ def run_schedules_idf(config):
             / "TDV"
             / "TDV_2008_kBtu_CTZ06.csv"
         ],
-        return_files=True,
-    )
-    cache_dir = files[1][0].dirname()
-    csv = next(iter(cache_dir.glob("*out.csv")))
+    ).simulate()
+    csv = idf.simulation_dir.files("*out.csv")[0]
     yield csv
 
 

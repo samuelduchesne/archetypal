@@ -12,52 +12,19 @@ from archetypal import (
 
 
 class TestIDF:
-    @pytest.fixture()
+    @pytest.fixture(scope="session")
     def idf_model(self, config):
-        """An IDF model. Yields both the idf and the sql"""
+        """An IDF model. Yields both the idf"""
         file = r"tests\input_data\necb\NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(file, epw=w)
 
     @pytest.fixture()
     def shoebox_model(self, config):
-        """An IDF model. Yields both the idf and the sql"""
+        """An IDF model. Yields both the idf"""
         file = r"tests\input_data\umi_samples\B_Off_0.idf"
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(file, epw=w)
-
-    def test_parallel_process(self, config):
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        files = {
-            i: {"idfname": file.expand(), "epw": w}
-            for i, file in enumerate(Path("tests/input_data/necb").files("*.idf")[0:3])
-        }
-        idfs = parallel_process(files, IDF, use_kwargs=True)
-
-        assert not any(isinstance(a, Exception) for a in idfs.values())
-
-    def test_processed_results(self, idf_model):
-        assert idf_model.process_results()
-
-    def test_processed_results_fail(self, shoebox_model):
-        """processed results should return only one entry because the
-        readvars option was not used"""
-        assert len(shoebox_model.simulate().process_results()) == 1
-
-    def test_partition_ratio(self, idf_model):
-        assert idf_model.partition_ratio
-
-    def test_space_cooling_profile(self, idf_model):
-        assert not idf_model.space_cooling_profile().empty
-
-    def test_space_heating_profile(self, idf_model):
-        assert not idf_model.space_heating_profile().empty
-
-    def test_dhw_profile(self, idf_model):
-        assert not idf_model.service_water_heating_profile().empty
-
-    def test_wwr(self, idf_model):
-        assert not idf_model.wwr(round_to=10).empty
 
     @pytest.fixture()
     def natvent(self):
@@ -97,6 +64,42 @@ class TestIDF:
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(file, epw=wf, ep_version="8.9.0")
 
+    def test_parallel_process(self, config):
+        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        files = {
+            i: {"idfname": file.expand(), "epw": w}
+            for i, file in enumerate(Path("tests/input_data/necb").files("*.idf")[0:3])
+        }
+        idfs = parallel_process(files, IDF, use_kwargs=True)
+
+        assert not any(isinstance(a, Exception) for a in idfs.values())
+
+    def test_sql(self, idf_model):
+        assert idf_model.sql_file.exists()
+
+    def test_processed_results(self, idf_model):
+        assert idf_model.process_results()
+
+    def test_processed_results_fail(self, shoebox_model):
+        """processed results should return only one entry because the
+        readvars option was not used"""
+        assert len(shoebox_model.simulate().process_results()) == 1
+
+    def test_partition_ratio(self, idf_model):
+        assert idf_model.partition_ratio
+
+    def test_space_cooling_profile(self, idf_model):
+        assert not idf_model.space_cooling_profile().empty
+
+    def test_space_heating_profile(self, idf_model):
+        assert not idf_model.space_heating_profile().empty
+
+    def test_dhw_profile(self, idf_model):
+        assert not idf_model.service_water_heating_profile().empty
+
+    def test_wwr(self, idf_model):
+        assert not idf_model.wwr(round_to=10).empty
+
     def test_wrong_epversion(self, config):
         file = (
             "tests/input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7"
@@ -120,12 +123,6 @@ class TestIDF:
     def test_load_old(self, config, natvent, FiveZoneNightVent1):
         assert natvent.idd_version == (9, 2, 0)
         assert FiveZoneNightVent1.idd_version == (9, 2, 0)
-
-    def test_five(self, config, FiveZoneNightVent1):
-        assert FiveZoneNightVent1
-
-    def test_natvent(self, config, natvent):
-        assert natvent
 
     @pytest.mark.parametrize(
         "archetype, area",

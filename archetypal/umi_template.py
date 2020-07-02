@@ -175,7 +175,7 @@ class UmiTemplate:
 
         # fill in arguments
         umi_template.idf_files = [Path(idf) for idf in idf_files]
-        umi_template.weather = weather
+        umi_template.weather = Path(weather).expand()
 
         # Run/Load IDF objects
         if not parallel:

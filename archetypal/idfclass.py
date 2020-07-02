@@ -741,6 +741,7 @@ class IDF(geomeppy.IDF):
             )
 
             self.__set_cached_results(runargs, tmp, tmp_file)
+        return self
 
     def save(self, filename=None, lineendings="default", encoding="latin-1"):
         super(IDF, self).save(filename=None, lineendings="default", encoding="latin-1")

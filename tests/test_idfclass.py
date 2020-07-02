@@ -6,7 +6,8 @@ from archetypal import (
     parallel_process,
     get_eplus_dirs,
     settings,
-    EnergyPlusVersionError, EnergyPlusProcessError,
+    EnergyPlusVersionError,
+    EnergyPlusProcessError,
 )
 
 
@@ -55,7 +56,6 @@ class TestIDF:
 
     def test_wwr(self, idf_model):
         assert not idf_model.wwr(round_to=10).empty
-
 
     @pytest.fixture()
     def natvent(self):

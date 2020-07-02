@@ -777,8 +777,20 @@ class IDF(geomeppy.IDF):
         except AttributeError:
             return Path()
 
-    @property
-    def processed_results(self):
+    def process_results(self):
+        """Returns the list of processed results as defined by self.custom_processes
+        as a list of tuple(file, result). A default process looks for csv files
+        and tries to parse them into :class:`~pandas.DataFrame` objects.
+
+        Returns:
+            list: List of two-tuples.
+
+        Info:
+            For processed_results to work more consistently, it may be necessary to
+            add the "readvars=True" parameter to :func:`IDF.simulate` as this one is
+            set to false by default.
+
+        """
         processes = {"*.csv": _process_csv}
         custom_processes = self.eplus_run_options.custom_processes
         if custom_processes:
@@ -802,7 +814,7 @@ class IDF(geomeppy.IDF):
                 )
         except FileNotFoundError:
             self.simulate()
-            return self.processed_results
+            return self.process_results()
         else:
             return results
 

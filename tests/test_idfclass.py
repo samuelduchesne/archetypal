@@ -37,10 +37,12 @@ class TestIDF:
         assert not any(isinstance(a, Exception) for a in idfs.values())
 
     def test_processed_results(self, idf_model):
-        assert idf_model.processed_results
+        assert idf_model.process_results()
 
     def test_processed_results_fail(self, shoebox_model):
-        assert len(shoebox_model.processed_results) == 1
+        """processed results should return only one entry because the
+        readvars option was not used"""
+        assert len(shoebox_model.simulate().process_results()) == 1
 
     def test_partition_ratio(self, idf_model):
         assert idf_model.partition_ratio

@@ -27,7 +27,7 @@ class TestIDF:
         yield IDF(file, epw=w)
 
     @pytest.fixture()
-    def natvent(self):
+    def natvent(self, config):
         """An old file that needs upgrade"""
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(
@@ -46,7 +46,7 @@ class TestIDF:
         yield IDF(idfname, epw=w)
 
     @pytest.fixture()
-    def natvent_v9_1_0(self):
+    def natvent_v9_1_0(self, config):
         """An old file that needs upgrade"""
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(
@@ -56,7 +56,7 @@ class TestIDF:
         )
 
     @pytest.fixture()
-    def wont_transition_correctly(self):
+    def wont_transition_correctly(self, config):
         file = (
             "tests/input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7"
             ".2_5A_USA_IL_CHICAGO-OHARE.idf"

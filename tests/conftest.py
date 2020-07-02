@@ -62,8 +62,7 @@ def clean_config(config):
 
     dirs = [ar.settings.data_folder, ar.settings.cache_folder, ar.settings.imgs_folder]
     for dir in dirs:
-        dir.rmdir_p()
-        assert not dir.exists()
+        dir.rmtree_p()
 
 
 # List fixtures that are located outiside of conftest.py so that they can be

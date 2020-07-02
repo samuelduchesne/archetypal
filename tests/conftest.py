@@ -62,9 +62,9 @@ def clean_config(config):
 
     dirs = [ar.settings.data_folder, ar.settings.cache_folder, ar.settings.imgs_folder]
     for dir in dirs:
-        if os.path.exists(dir):
+        if dir.exists():
             try:
-                shutil.rmtree(dir)
+                dir.rmtree_p()
             finally:
                 assert not os.path.exists(dir)
 

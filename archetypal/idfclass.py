@@ -300,6 +300,7 @@ class IDF(geomeppy.IDF):
 
     @property
     def sql(self):
+        """Get the sql table report"""
         try:
             sql_dict = get_report(
                 self.idfname,
@@ -308,13 +309,13 @@ class IDF(geomeppy.IDF):
                 output_prefix=self.eplus_run_options.output_prefix,
             )
         except FileNotFoundError:
-            self.simulate()
-            return self.sql
+            return self.simulate().sql
         else:
             return sql_dict
 
     @property
     def htm(self):
+        """Get the htm table report"""
         try:
             htm_dict = get_report(
                 self.idfname,
@@ -323,21 +324,19 @@ class IDF(geomeppy.IDF):
                 output_prefix=self.eplus_run_options.output_prefix,
             )
         except FileNotFoundError:
-            self.simulate()
-            return self.htm
+            return self.simulate().htm
         else:
             return htm_dict
 
     @property
     def sql_file(self):
-        # Get the sql report
+        """Get the sql file path"""
         try:
             files = self.simulation_dir.files("*out.sql")
         except FileNotFoundError:
-            self.simulate()
-            return self.sql_file
+            return self.simulate().sql_file
         else:
-            return files[0]
+            return files[0].expand()
 
     @property
     def area_conditioned(self):

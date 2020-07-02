@@ -695,15 +695,21 @@ class EnergyPlusVersionError(Exception):
         """Override that only returns the stderr"""
         if self.idf_version > self.ep_version:
             compares_ = "higher"
+            msg = (
+                f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
+                f"is {compares_} than the specified EnergyPlus version "
+                f"(v{self.ep_version}). This file looks like it has already been "
+                f"transitioned to a newer version"
+            )
         else:
             compares_ = "lower"
-        msg = (
-            f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
-            f"is {compares_} than the specified EnergyPlus version "
-            f"(v{self.ep_version}). The specified version number in IDF() as well as in"
-            f"IDF.simulate() must match an available EnergyPlus installation on this "
-            f"machine"
-        )
+            msg = (
+                f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
+                f"is {compares_} than the specified EnergyPlus version "
+                f"(v{self.ep_version}) and does not match an available EnergyPlus "
+                f"installation on this machine"
+            )
+
         return msg
 
 

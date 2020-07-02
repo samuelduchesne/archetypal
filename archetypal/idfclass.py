@@ -106,8 +106,12 @@ class IDF(geomeppy.IDF):
         if keep_original:
             idfname = Path(idfname.copy(output_directory))
 
-        # Determine version of idf file by reading the text file
-        idd_filename = getiddfile(get_idf_version(idfname))
+        # Determine version of idf file by reading the text file & compare with
+        # user-defined choice
+        file_version = parse(get_idf_version(idfname))
+        if file_version > ep_version:
+            raise EnergyPlusVersionError(idfname, file_version, ep_version)
+        idd_filename = getiddfile(str(file_version))
 
         # Initiate an eppy.modeleditor.IDF object
         IDF.setiddname(idd_filename, testing=True)

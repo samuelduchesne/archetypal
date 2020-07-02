@@ -759,7 +759,7 @@ class IDF(geomeppy.IDF):
         """The path where simulation results are stored"""
         try:
             return (
-                self.eplus_run_options.output_directory
+                self.output_directory
                 / self.eplus_run_options.output_prefix
             ).expand()
         except AttributeError:

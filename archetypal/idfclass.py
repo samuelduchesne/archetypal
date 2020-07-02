@@ -163,123 +163,7 @@ class IDF(geomeppy.IDF):
             else:
                 self.OutputPrep = OutputPrep(idf=self)
 
-            self.__setCache()
-
-    """Methods to do with reading an IDF."""
-
-    def valid_idds(self):
-        """Returns all valid idd version numbers found in IDFVersionUpdater folder"""
-        iddnames = self.idfversionupdater_dir.files("*.idd")
-        return [
-            parse((re.match("V(.*)-Energy\+", idd.stem).groups()[0]))
-            for idd in iddnames
-        ]
-
-    @property
-    def idfversionupdater_dir(self):
-        return (
-            get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
-        ).expand()
-
-    @staticmethod
-    def get_output_directory(idfname, **kwargs):
-        """
-
-        Args:
-            idfname (Path-like):
-
-        Returns:
-
-        """
-        cache_filename = hash_file(idfname, **kwargs)
-        output_directory = settings.cache_folder / cache_filename
-        output_directory.makedirs_p()
-        return output_directory
-
-    @property
-    def output_directory(self):
-        """Returns the output directory based on the sahing of the original file (
-        before transitions or modifications)"""
-        return self.get_output_directory(
-            self.original_idfname, **self.load_kwargs
-        ).expand()
-
-    def upgrade(self, to_version, epw):
-        """EnergyPlus idf version updater using local transition program.
-
-        Update the EnergyPlus simulation file (.idf) to the latest available
-        EnergyPlus version installed on this machine. Optionally specify a version
-        (eg.: "9-2-0") to aim for a specific version. The output will be the path of
-        the updated file. The run is multiprocessing_safe.
-
-        Hint:
-            If attempting to upgrade an earlier version of EnergyPlus ( pre-v7.2.0),
-            specific binaries need to be downloaded and copied to the
-            EnergyPlus*/PreProcess/IDFVersionUpdater folder. More info at
-            `Converting older version files
-            <http://energyplus.helpserve.com/Knowledgebase/List/Index/46
-            /converting-older-version-files>`_ .
-
-        Args:
-            idf_file (Path): path of idf file
-            to_version (str, optional): EnergyPlus version in the form "X-X-X".
-            out_dir (Path): path of the output_dir
-            simulname (str or None, optional): this name will be used for temp dir
-                id and saved outputs. If not provided, uuid.uuid1() is used. Be
-                careful to avoid naming collision : the run will always be done in
-                separated folders, but the output files can overwrite each other if
-                the simulname is the same. (default: None)
-
-        Raises:
-            EnergyPlusProcessError: If version updater fails.
-            EnergyPlusVersionError:
-            CalledProcessError:
-        """
-        if self.idf_version == to_version:
-            return
-        elif self.idf_version > to_version:
-            raise EnergyPlusVersionError(self.name, self.idf_version, to_version)
-        else:
-            # execute transitions
-            with TemporaryDirectory(
-                prefix="transition_run_", suffix=None, dir=self.output_directory,
-            ) as tmp:
-                # Move to temporary transition_run folder
-                log(f"temporary dir ({Path(tmp).expand()}) created", lg.DEBUG)
-                idf_file = Path(
-                    self.idfname.copy(tmp)
-                ).abspath()  # copy and return abspath
-                try:
-                    self._execute_transitions(idf_file, to_version)
-                except (CalledProcessError, EnergyPlusProcessError) as e:
-                    raise e
-
-                # retrieve transitioned file
-                for f in Path(tmp).files("*.idfnew"):
-                    f.copy(self.output_directory / idf_file.basename())
-            file = Path(self.output_directory / idf_file.basename())
-
-            idd_filename = Path(getiddfile(get_idf_version(file)))
-            if not idd_filename.exists():
-                # Try finding the one in IDFVersionsUpdater
-                idd_filename = (
-                    self.idfversionupdater_dir / f"V{to_version.dash}-Energy+.idd"
-                ).expand()
-                log(
-                    "loaded using an idd that is different than the EnergyPlus install. "
-                    "Cannot use .simulate()",
-                    lg.WARNING,
-                )
-            # Initiate an eppy.modeleditor.IDF object
-            self.setiddname(idd_filename, testing=True)
-            # load the idf object
-            super(IDF, self).__init__(file, epw=epw)
-
-    @property
-    def idf_version(self):
-        return parse(
-            re.search(r"([\d-]+)", Path(self.iddname).dirname()).group(1)
-        )
+            self._setCache()
 
     @classmethod
     def setiddname(cls, iddname, testing=False):
@@ -293,6 +177,77 @@ class IDF(geomeppy.IDF):
         cls.iddname = iddname
         cls.idd_info = None
         cls.block = None
+
+    def valid_idds(self):
+        """Returns all valid idd version numbers found in IDFVersionUpdater folder"""
+        iddnames = self.idfversionupdater_dir.files("*.idd")
+        return [
+            parse((re.match("V(.*)-Energy\+", idd.stem).groups()[0]))
+            for idd in iddnames
+        ]
+
+    @classmethod
+    def __getCache(cls, idfname, **kwargs):
+        if not idfname:
+            return None
+        cache_fullpath_filename = cls.cached_file(idfname, **kwargs)
+
+        if os.path.isfile(cache_fullpath_filename):
+            try:
+                import cPickle as pickle
+            except ImportError:
+                import pickle
+            start_time = time.time()
+            if os.path.getsize(cache_fullpath_filename) > 0:
+                with open(cache_fullpath_filename, "rb") as file_handle:
+                    try:
+                        idf = pickle.load(file_handle)
+                    except EOFError:
+                        return None
+
+                ep_version = parse(kwargs.get("ep_version"))
+                if not ep_version:
+                    ep_version = parse(idf.model.dt["VERSION"][0][1])
+                idf.setiddname(
+                    idf.idfversionupdater_dir / f"V{ep_version.dash}-Energy+.idd"
+                )
+                idf.read()
+                log(
+                    'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
+                        idf.name, time.time() - start_time
+                    )
+                )
+                return idf
+
+    @classmethod
+    def cached_file(cls, idfname, **kwargs):
+        cache_filename = hash_file(idfname, **kwargs)
+        cache_fullpath_filename = (
+            settings.cache_folder
+            / cache_filename
+            / os.extsep.join([cache_filename + "idfs", "dat"])
+        )
+        return cache_fullpath_filename
+
+    @property
+    def idfversionupdater_dir(self):
+        return (
+            get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
+        ).expand()
+
+    @property
+    def output_directory(self):
+        """Returns the output directory based on the sahing of the original file (
+        before transitions or modifications)"""
+        return self.get_output_directory(
+            self.original_idfname, **self.load_kwargs
+        ).expand()
+
+    @property
+    def idf_version(self):
+        return parse(
+            re.search(r"([\d-]+)", Path(self.iddname).dirname()).group(1)
+        )
 
     @property
     def name(self):
@@ -384,260 +339,44 @@ class IDF(geomeppy.IDF):
 
         return partition_lineal / self.area_conditioned
 
-    def wwr(self, azimuth_threshold=10, round_to=None):
-        """Returns the Window-to-Wall Ratio by major orientation for the IDF
-        model. Optionally round up the WWR value to nearest value (eg.: nearest
-        10).
+    @property
+    def simulation_files(self):
+        return self.simulation_dir.files()
 
-        Args:
-            azimuth_threshold (int): Defines the incremental major orientation
-                azimuth angle. Due to possible rounding errors, some surface
-                azimuth can be rounded to values different than the main
-                directions (eg.: 89 degrees instead of 90 degrees). Defaults to
-                increments of 10 degrees.
-            round_to (float): Optionally round the WWR value to nearest value
-                (eg.: nearest 10). If None, this is ignored and the float is
-                returned.
+    @property
+    def simulation_dir(self):
+        """The path where simulation results are stored"""
+        try:
+            return (
+                self.output_directory
+                / self.eplus_run_options.output_prefix
+            ).expand()
+        except AttributeError:
+            return Path()
 
-        Returns:
-            (pd.DataFrame): A DataFrame with the total wall area, total window
-            area and WWR for each main orientation of the building.
-        """
-        import math
+    @property
+    def day_of_week_for_start_day(self):
+        """Get day of week for start day for the first found RUNPERIOD"""
+        import calendar
 
-        def roundto(x, to=10.0):
-            """Rounds up to closest `to` number"""
-            if to and not math.isnan(x):
-                return int(round(x / to)) * to
-            else:
-                return x
+        day = self.idfobjects["RUNPERIOD"][0]["Day_of_Week_for_Start_Day"]
 
-        total_wall_area = defaultdict(int)
-        total_window_area = defaultdict(int)
-
-        zones = self.idfobjects["ZONE"]
-        zone: EpBunch
-        for zone in zones:
-            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
-            for surface in [
-                surf
-                for surf in zone.zonesurfaces
-                if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
-            ]:
-                if isclose(surface.tilt, 90, abs_tol=10):
-                    if surface.Outside_Boundary_Condition == "Outdoors":
-                        surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
-                        total_wall_area[surf_azim] += surface.area * multiplier
-                for subsurface in surface.subsurfaces:
-                    if isclose(subsurface.tilt, 90, abs_tol=10):
-                        if subsurface.Surface_Type.lower() == "window":
-                            surf_azim = roundto(
-                                subsurface.azimuth, to=azimuth_threshold
-                            )
-                            total_window_area[surf_azim] += subsurface.area * multiplier
-        # Fix azimuth = 360 which is the same as azimuth 0
-        total_wall_area[0] += total_wall_area.pop(360, 0)
-        total_window_area[0] += total_window_area.pop(360, 0)
-
-        # Create dataframe with wall_area, window_area and wwr as columns and azimuth
-        # as indexes
-        df = pd.DataFrame(
-            {"wall_area": total_wall_area, "window_area": total_window_area}
-        ).rename_axis("Azimuth")
-        df["wwr"] = df.window_area / df.wall_area
-        df["wwr_rounded_%"] = (df.window_area / df.wall_area * 100).apply(
-            lambda x: roundto(x, to=round_to)
-        )
-        return df
-
-    def space_heating_profile(
-        self,
-        units="kWh",
-        energy_out_variable_name=None,
-        name="Space Heating",
-        EnergySeries_kwds={},
-    ):
-        """
-        Args:
-            units (str): Units to convert the energy profile to. Will detect the
-                units of the EnergyPlus results.
-            energy_out_variable_name (list-like): a list of EnergyPlus Variable
-                names.
-            name (str): Name given to the EnergySeries.
-            EnergySeries_kwds (dict, optional): keywords passed to
-                :func:`EnergySeries.from_sqlite`
-
-        Returns:
-            EnergySeries
-        """
-        start_time = time.time()
-        if energy_out_variable_name is None:
-            energy_out_variable_name = (
-                "Air System Total Heating Energy",
-                "Zone Ideal Loads Zone Total Heating Energy",
-            )
-        series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
-        )
-        log(
-            "Retrieved Space Heating Profile in {:,.2f} seconds".format(
-                time.time() - start_time
-            )
-        )
-        return series
-
-    def service_water_heating_profile(
-        self,
-        units="kWh",
-        energy_out_variable_name=None,
-        name="Space Heating",
-        EnergySeries_kwds={},
-    ):
-        """
-        Args:
-            units (str): Units to convert the energy profile to. Will detect the
-                units of the EnergyPlus results.
-            energy_out_variable_name (list-like): a list of EnergyPlus Variable
-                names.
-            name (str): Name given to the EnergySeries.
-            EnergySeries_kwds (dict, optional): keywords passed to
-                :func:`EnergySeries.from_sqlite`
-
-        Returns:
-            EnergySeries
-        """
-        start_time = time.time()
-        if energy_out_variable_name is None:
-            energy_out_variable_name = ("WaterSystems:EnergyTransfer",)
-        series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
-        )
-        log(
-            "Retrieved Service Water Heating Profile in {:,.2f} seconds".format(
-                time.time() - start_time
-            )
-        )
-        return series
-
-    def space_cooling_profile(
-        self,
-        units="kWh",
-        energy_out_variable_name=None,
-        name="Space Cooling",
-        EnergySeries_kwds={},
-    ):
-        """
-        Args:
-            units (str): Units to convert the energy profile to. Will detect the
-                units of the EnergyPlus results.
-            energy_out_variable_name (list-like): a list of EnergyPlus
-            name (str): Name given to the EnergySeries.
-            EnergySeries_kwds (dict, optional): keywords passed to
-                :func:`EnergySeries.from_sqlite`
-
-        Returns:
-            EnergySeries
-        """
-        start_time = time.time()
-        if energy_out_variable_name is None:
-            energy_out_variable_name = (
-                "Air System Total Cooling Energy",
-                "Zone Ideal Loads Zone Total Cooling Energy",
-            )
-        series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
-        )
-        log(
-            "Retrieved Space Cooling Profile in {:,.2f} seconds".format(
-                time.time() - start_time
-            )
-        )
-        return series
-
-    def custom_profile(
-        self,
-        energy_out_variable_name,
-        name,
-        units="kWh",
-        prep_outputs=None,
-        EnergySeries_kwds={},
-    ):
-        """
-        Args:
-            energy_out_variable_name (list-like): a list of EnergyPlus
-            name (str): Name given to the EnergySeries.
-            units (str): Units to convert the energy profile to. Will detect the
-                units of the EnergyPlus results.
-            prep_outputs:
-            EnergySeries_kwds (dict, optional): keywords passed to
-                :func:`EnergySeries.from_sqlite`
-
-        Returns:
-            EnergySeries
-        """
-        start_time = time.time()
-        series = self._energy_series(
-            energy_out_variable_name,
-            units,
-            name,
-            prep_outputs,
-            EnergySeries_kwds=EnergySeries_kwds,
-        )
-        log("Retrieved {} in {:,.2f} seconds".format(name, time.time() - start_time))
-        return series
-
-    def _energy_series(
-        self,
-        energy_out_variable_name,
-        units,
-        name,
-        prep_outputs=None,
-        EnergySeries_kwds=None,
-    ):
-        """
-        Args:
-            energy_out_variable_name:
-            units:
-            name:
-            prep_outputs (list):
-            EnergySeries_kwds:
-        """
-        if prep_outputs:
-            OutputPrep(self).add_custom(prep_outputs)
-            self.simulate()
-        rd = ReportData.from_sqlite(self.sql_file, table_name=energy_out_variable_name)
-        profile = EnergySeries.from_sqlite(
-            rd, to_units=units, name=name, **EnergySeries_kwds
-        )
-        return profile
-
-    @deprecated(
-        deprecated_in="1.4",
-        removed_in="1.5",
-        current_version=archetypal.__version__,
-        details="Use IDF.simulate() method instead",
-    )
-    def run_eplus(self, **kwargs):
-        """wrapper around the :meth:`archetypal.idfclass.run_eplus` method.
-
-        If weather file is defined in the IDF object, then this field is
-        optional. By default, will load the sql in self.sql.
-
-        Args:
-            kwargs:
-
-        Returns:
-            The output report or the sql file loaded as a dict of DataFrames.
-        """
-        self.eplus_run_options.__dict__.update(kwargs)
-        results = run_eplus(**self.eplus_run_options.__dict__)
-        if self.eplus_run_options.output_report == "sql":
-            # user simply wants the sql
-            self._sql = results
-            return results
-        elif self.eplus_run_options.output_report == "sql_file":
-            self._sql_file = results
-            return results
+        if day.lower() == "sunday":
+            return calendar.SUNDAY
+        elif day.lower() == "monday":
+            return calendar.MONDAY
+        elif day.lower() == "tuesday":
+            return calendar.TUESDAY
+        elif day.lower() == "wednesday":
+            return calendar.WEDNESDAY
+        elif day.lower() == "thursday":
+            return calendar.THURSDAY
+        elif day.lower() == "friday":
+            return calendar.FRIDAY
+        elif day.lower() == "saturday":
+            return calendar.SATURDAY
+        else:
+            return 0
 
     def simulate(self, **kwargs):
         """Execute EnergyPlus. Does not return anything. See
@@ -752,29 +491,8 @@ class IDF(geomeppy.IDF):
                     name=self.name,
                 )
 
-                self.__set_cached_results(runargs, tmp, tmp_file)
+                self._set_cached_results(runargs, tmp, tmp_file)
         return self
-
-    def save(self, filename=None, lineendings="default", encoding="latin-1"):
-        super(IDF, self).save(filename=None, lineendings="default", encoding="latin-1")
-        log(
-            f"saved '{self.name}' at '{filename if filename else self.idfname.expand()}'"
-        )
-
-    @property
-    def simulation_files(self):
-        return self.simulation_dir.files()
-
-    @property
-    def simulation_dir(self):
-        """The path where simulation results are stored"""
-        try:
-            return (
-                self.output_directory
-                / self.eplus_run_options.output_prefix
-            ).expand()
-        except AttributeError:
-            return Path()
 
     def process_results(self):
         """Returns the list of processed results as defined by self.custom_processes
@@ -817,21 +535,327 @@ class IDF(geomeppy.IDF):
         else:
             return results
 
-    def __set_cached_results(self, runargs, tmp, tmp_file):
-        save_dir = self.simulation_dir
-        if self.eplus_run_options.keep_data:
-            save_dir.rmtree_p()  # purge target dir
-            tmp.copytree(save_dir)  # copy files
+    @staticmethod
+    def get_output_directory(idfname, **kwargs):
+        """
 
-            log(
-                "Files generated at the end of the simulation: %s"
-                % "\n".join((save_dir).files()),
-                lg.DEBUG,
-                name=self.name,
+        Args:
+            idfname (Path-like):
+
+        Returns:
+
+        """
+        cache_filename = hash_file(idfname, **kwargs)
+        output_directory = settings.cache_folder / cache_filename
+        output_directory.makedirs_p()
+        return output_directory
+
+    def upgrade(self, to_version, epw):
+        """EnergyPlus idf version updater using local transition program.
+
+        Update the EnergyPlus simulation file (.idf) to the latest available
+        EnergyPlus version installed on this machine. Optionally specify a version
+        (eg.: "9-2-0") to aim for a specific version. The output will be the path of
+        the updated file. The run is multiprocessing_safe.
+
+        Hint:
+            If attempting to upgrade an earlier version of EnergyPlus ( pre-v7.2.0),
+            specific binaries need to be downloaded and copied to the
+            EnergyPlus*/PreProcess/IDFVersionUpdater folder. More info at
+            `Converting older version files
+            <http://energyplus.helpserve.com/Knowledgebase/List/Index/46
+            /converting-older-version-files>`_ .
+
+        Args:
+            idf_file (Path): path of idf file
+            to_version (str, optional): EnergyPlus version in the form "X-X-X".
+            out_dir (Path): path of the output_dir
+            simulname (str or None, optional): this name will be used for temp dir
+                id and saved outputs. If not provided, uuid.uuid1() is used. Be
+                careful to avoid naming collision : the run will always be done in
+                separated folders, but the output files can overwrite each other if
+                the simulname is the same. (default: None)
+
+        Raises:
+            EnergyPlusProcessError: If version updater fails.
+            EnergyPlusVersionError:
+            CalledProcessError:
+        """
+        if self.idf_version == to_version:
+            return
+        elif self.idf_version > to_version:
+            raise EnergyPlusVersionError(self.name, self.idf_version, to_version)
+        else:
+            # execute transitions
+            with TemporaryDirectory(
+                prefix="transition_run_", suffix=None, dir=self.output_directory,
+            ) as tmp:
+                # Move to temporary transition_run folder
+                log(f"temporary dir ({Path(tmp).expand()}) created", lg.DEBUG)
+                idf_file = Path(
+                    self.idfname.copy(tmp)
+                ).abspath()  # copy and return abspath
+                try:
+                    self._execute_transitions(idf_file, to_version)
+                except (CalledProcessError, EnergyPlusProcessError) as e:
+                    raise e
+
+                # retrieve transitioned file
+                for f in Path(tmp).files("*.idfnew"):
+                    f.copy(self.output_directory / idf_file.basename())
+            file = Path(self.output_directory / idf_file.basename())
+
+            idd_filename = Path(getiddfile(get_idf_version(file)))
+            if not idd_filename.exists():
+                # Try finding the one in IDFVersionsUpdater
+                idd_filename = (
+                    self.idfversionupdater_dir / f"V{to_version.dash}-Energy+.idd"
+                ).expand()
+                log(
+                    "loaded using an idd that is different than the EnergyPlus install. "
+                    "Cannot use .simulate()",
+                    lg.WARNING,
+                )
+            # Initiate an eppy.modeleditor.IDF object
+            self.setiddname(idd_filename, testing=True)
+            # load the idf object
+            super(IDF, self).__init__(file, epw=epw)
+
+    @deprecated(
+        deprecated_in="1.4",
+        removed_in="1.5",
+        current_version=archetypal.__version__,
+        details="Use IDF.simulate() method instead",
+    )
+    def run_eplus(self, **kwargs):
+        """wrapper around the :meth:`archetypal.idfclass.run_eplus` method.
+
+        If weather file is defined in the IDF object, then this field is
+        optional. By default, will load the sql in self.sql.
+
+        Args:
+            kwargs:
+
+        Returns:
+            The output report or the sql file loaded as a dict of DataFrames.
+        """
+        self.eplus_run_options.__dict__.update(kwargs)
+        results = run_eplus(**self.eplus_run_options.__dict__)
+        if self.eplus_run_options.output_report == "sql":
+            # user simply wants the sql
+            self._sql = results
+            return results
+        elif self.eplus_run_options.output_report == "sql_file":
+            self._sql_file = results
+            return results
+
+    def wwr(self, azimuth_threshold=10, round_to=None):
+        """Returns the Window-to-Wall Ratio by major orientation for the IDF
+        model. Optionally round up the WWR value to nearest value (eg.: nearest
+        10).
+
+        Args:
+            azimuth_threshold (int): Defines the incremental major orientation
+                azimuth angle. Due to possible rounding errors, some surface
+                azimuth can be rounded to values different than the main
+                directions (eg.: 89 degrees instead of 90 degrees). Defaults to
+                increments of 10 degrees.
+            round_to (float): Optionally round the WWR value to nearest value
+                (eg.: nearest 10). If None, this is ignored and the float is
+                returned.
+
+        Returns:
+            (pd.DataFrame): A DataFrame with the total wall area, total window
+            area and WWR for each main orientation of the building.
+        """
+        import math
+
+        def roundto(x, to=10.0):
+            """Rounds up to closest `to` number"""
+            if to and not math.isnan(x):
+                return int(round(x / to)) * to
+            else:
+                return x
+
+        total_wall_area = defaultdict(int)
+        total_window_area = defaultdict(int)
+
+        zones = self.idfobjects["ZONE"]
+        zone: EpBunch
+        for zone in zones:
+            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
+            for surface in [
+                surf
+                for surf in zone.zonesurfaces
+                if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
+            ]:
+                if isclose(surface.tilt, 90, abs_tol=10):
+                    if surface.Outside_Boundary_Condition == "Outdoors":
+                        surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
+                        total_wall_area[surf_azim] += surface.area * multiplier
+                for subsurface in surface.subsurfaces:
+                    if isclose(subsurface.tilt, 90, abs_tol=10):
+                        if subsurface.Surface_Type.lower() == "window":
+                            surf_azim = roundto(
+                                subsurface.azimuth, to=azimuth_threshold
+                            )
+                            total_window_area[surf_azim] += subsurface.area * multiplier
+        # Fix azimuth = 360 which is the same as azimuth 0
+        total_wall_area[0] += total_wall_area.pop(360, 0)
+        total_window_area[0] += total_window_area.pop(360, 0)
+
+        # Create dataframe with wall_area, window_area and wwr as columns and azimuth
+        # as indexes
+        df = pd.DataFrame(
+            {"wall_area": total_wall_area, "window_area": total_window_area}
+        ).rename_axis("Azimuth")
+        df["wwr"] = df.window_area / df.wall_area
+        df["wwr_rounded_%"] = (df.window_area / df.wall_area * 100).apply(
+            lambda x: roundto(x, to=round_to)
+        )
+        return df
+
+    def space_heating_profile(
+        self,
+        units="kWh",
+        energy_out_variable_name=None,
+        name="Space Heating",
+        EnergySeries_kwds={},
+    ):
+        """
+        Args:
+            units (str): Units to convert the energy profile to. Will detect the
+                units of the EnergyPlus results.
+            energy_out_variable_name (list-like): a list of EnergyPlus Variable
+                names.
+            name (str): Name given to the EnergySeries.
+            EnergySeries_kwds (dict, optional): keywords passed to
+                :func:`EnergySeries.from_sqlite`
+
+        Returns:
+            EnergySeries
+        """
+        start_time = time.time()
+        if energy_out_variable_name is None:
+            energy_out_variable_name = (
+                "Air System Total Heating Energy",
+                "Zone Ideal Loads Zone Total Heating Energy",
             )
+        series = self._energy_series(
+            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
+        )
+        log(
+            "Retrieved Space Heating Profile in {:,.2f} seconds".format(
+                time.time() - start_time
+            )
+        )
+        return series
 
-            # save runargs
-            cache_runargs(tmp_file, runargs.copy())
+    def space_cooling_profile(
+        self,
+        units="kWh",
+        energy_out_variable_name=None,
+        name="Space Cooling",
+        EnergySeries_kwds={},
+    ):
+        """
+        Args:
+            units (str): Units to convert the energy profile to. Will detect the
+                units of the EnergyPlus results.
+            energy_out_variable_name (list-like): a list of EnergyPlus
+            name (str): Name given to the EnergySeries.
+            EnergySeries_kwds (dict, optional): keywords passed to
+                :func:`EnergySeries.from_sqlite`
+
+        Returns:
+            EnergySeries
+        """
+        start_time = time.time()
+        if energy_out_variable_name is None:
+            energy_out_variable_name = (
+                "Air System Total Cooling Energy",
+                "Zone Ideal Loads Zone Total Cooling Energy",
+            )
+        series = self._energy_series(
+            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
+        )
+        log(
+            "Retrieved Space Cooling Profile in {:,.2f} seconds".format(
+                time.time() - start_time
+            )
+        )
+        return series
+
+    def service_water_heating_profile(
+        self,
+        units="kWh",
+        energy_out_variable_name=None,
+        name="Space Heating",
+        EnergySeries_kwds={},
+    ):
+        """
+        Args:
+            units (str): Units to convert the energy profile to. Will detect the
+                units of the EnergyPlus results.
+            energy_out_variable_name (list-like): a list of EnergyPlus Variable
+                names.
+            name (str): Name given to the EnergySeries.
+            EnergySeries_kwds (dict, optional): keywords passed to
+                :func:`EnergySeries.from_sqlite`
+
+        Returns:
+            EnergySeries
+        """
+        start_time = time.time()
+        if energy_out_variable_name is None:
+            energy_out_variable_name = ("WaterSystems:EnergyTransfer",)
+        series = self._energy_series(
+            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
+        )
+        log(
+            "Retrieved Service Water Heating Profile in {:,.2f} seconds".format(
+                time.time() - start_time
+            )
+        )
+        return series
+
+    def custom_profile(
+        self,
+        energy_out_variable_name,
+        name,
+        units="kWh",
+        prep_outputs=None,
+        EnergySeries_kwds={},
+    ):
+        """
+        Args:
+            energy_out_variable_name (list-like): a list of EnergyPlus
+            name (str): Name given to the EnergySeries.
+            units (str): Units to convert the energy profile to. Will detect the
+                units of the EnergyPlus results.
+            prep_outputs:
+            EnergySeries_kwds (dict, optional): keywords passed to
+                :func:`EnergySeries.from_sqlite`
+
+        Returns:
+            EnergySeries
+        """
+        start_time = time.time()
+        series = self._energy_series(
+            energy_out_variable_name,
+            units,
+            name,
+            prep_outputs,
+            EnergySeries_kwds=EnergySeries_kwds,
+        )
+        log("Retrieved {} in {:,.2f} seconds".format(name, time.time() - start_time))
+        return series
+
+    def save(self, filename=None, lineendings="default", encoding="latin-1"):
+        super(IDF, self).save(filename=None, lineendings="default", encoding="latin-1")
+        log(
+            f"saved '{self.name}' at '{filename if filename else self.idfname.expand()}'"
+        )
 
     def add_object(self, ep_object, **kwargs):
         """Add a new object to an idf file. The function will test if the object
@@ -993,30 +1017,6 @@ class IDF(geomeppy.IDF):
                             pass
         return used_schedules
 
-    @property
-    def day_of_week_for_start_day(self):
-        """Get day of week for start day for the first found RUNPERIOD"""
-        import calendar
-
-        day = self.idfobjects["RUNPERIOD"][0]["Day_of_Week_for_Start_Day"]
-
-        if day.lower() == "sunday":
-            return calendar.SUNDAY
-        elif day.lower() == "monday":
-            return calendar.MONDAY
-        elif day.lower() == "tuesday":
-            return calendar.TUESDAY
-        elif day.lower() == "wednesday":
-            return calendar.WEDNESDAY
-        elif day.lower() == "thursday":
-            return calendar.THURSDAY
-        elif day.lower() == "friday":
-            return calendar.FRIDAY
-        elif day.lower() == "saturday":
-            return calendar.SATURDAY
-        else:
-            return 0
-
     def building_name(self, use_idfname=False):
         """
         Args:
@@ -1032,20 +1032,20 @@ class IDF(geomeppy.IDF):
                 return os.path.basename(self.idfname)
 
     def rename(self, objkey, objname, newname):
-        """rename all the references to this objname
+        """rename all the references to this objname.
 
-        Function comes from eppy.modeleditor and was modify to compare the
-        name to rename as a lower string (see
+        Function comes from eppy.modeleditor and was modified to compare the
+        name to rename with a lower string (see
         idfobject[idfobject.objls[findex]].lower() == objname.lower())
 
         Args:
-            objkey (EpBunch): EpBunch we want to rename and rename all the
+            objkey (str): EpBunch we want to rename and rename all the
                 occurrences where this object is in the IDF file
             objname (str): The name of the EpBunch to rename
             newname (str): New name used to rename the EpBunch
 
         Returns:
-            theobject (EpBunch): The IDF objects renameds
+            theobject (EpBunch): The renamed idf object
         """
 
         refnames = eppy.modeleditor.getrefnames(self, objkey)
@@ -1066,50 +1066,48 @@ class IDF(geomeppy.IDF):
         theobject[fieldname] = newname
         return theobject
 
-    @classmethod
-    def __getCache(cls, idfname, **kwargs):
-        if not idfname:
-            return None
-        cache_fullpath_filename = cls.cached_file(idfname, **kwargs)
+    def _set_cached_results(self, runargs, tmp, tmp_file):
+        save_dir = self.simulation_dir
+        if self.eplus_run_options.keep_data:
+            save_dir.rmtree_p()  # purge target dir
+            tmp.copytree(save_dir)  # copy files
 
-        if os.path.isfile(cache_fullpath_filename):
-            try:
-                import cPickle as pickle
-            except ImportError:
-                import pickle
-            start_time = time.time()
-            if os.path.getsize(cache_fullpath_filename) > 0:
-                with open(cache_fullpath_filename, "rb") as file_handle:
-                    try:
-                        idf = pickle.load(file_handle)
-                    except EOFError:
-                        return None
+            log(
+                "Files generated at the end of the simulation: %s"
+                % "\n".join((save_dir).files()),
+                lg.DEBUG,
+                name=self.name,
+            )
 
-                ep_version = parse(kwargs.get("ep_version"))
-                if not ep_version:
-                    ep_version = parse(idf.model.dt["VERSION"][0][1])
-                idf.setiddname(
-                    idf.idfversionupdater_dir / f"V{ep_version.dash}-Energy+.idd"
-                )
-                idf.read()
-                log(
-                    'Loaded "{}" from pickled file in {:,.2f} seconds'.format(
-                        idf.name, time.time() - start_time
-                    )
-                )
-                return idf
+            # save runargs
+            cache_runargs(tmp_file, runargs.copy())
 
-    @classmethod
-    def cached_file(cls, idfname, **kwargs):
-        cache_filename = hash_file(idfname, **kwargs)
-        cache_fullpath_filename = (
-            settings.cache_folder
-            / cache_filename
-            / os.extsep.join([cache_filename + "idfs", "dat"])
+    def _energy_series(
+        self,
+        energy_out_variable_name,
+        units,
+        name,
+        prep_outputs=None,
+        EnergySeries_kwds=None,
+    ):
+        """
+        Args:
+            energy_out_variable_name:
+            units:
+            name:
+            prep_outputs (list):
+            EnergySeries_kwds:
+        """
+        if prep_outputs:
+            OutputPrep(self).add_custom(prep_outputs)
+            self.simulate()
+        rd = ReportData.from_sqlite(self.sql_file, table_name=energy_out_variable_name)
+        profile = EnergySeries.from_sqlite(
+            rd, to_units=units, name=name, **EnergySeries_kwds
         )
-        return cache_fullpath_filename
+        return profile
 
-    def __setCache(self):
+    def _setCache(self):
         cache_fullpath_filename = (
             self.output_directory / hash_file(self.original_idfname, **self.load_kwargs)
             + "idfs.dat"

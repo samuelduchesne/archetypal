@@ -33,7 +33,7 @@ def energy_series(config, request):
         },
     }
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    sql = IDF(request.param, epw=wf, prep_outputs=[outputs],).sql_file
+    sql = IDF(request.param, epw=wf, prep_outputs=[outputs]).sql_file
     report = ReportData.from_sqlite(
         sql,
         table_name=("Heating:Electricity", "Heating:Gas", "Heating:DistrictHeating"),

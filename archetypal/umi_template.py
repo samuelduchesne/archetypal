@@ -40,21 +40,6 @@ from archetypal import (
 )
 
 
-def _write_invalid(res):
-    res = {k: v for k, v in res.items() if ~isinstance(res[k], Exception)}
-    invalid_runs = {k: v for k, v in res.items() if isinstance(res[k], Exception)}
-
-    if invalid_runs:
-        invalid = []
-        for i, (k, v) in enumerate(invalid_runs.items()):
-            invalid.append({"#": i, "Filename": k, "Error": invalid_runs[k]})
-        filename = Path("failed_reduce.txt")
-        with open(filename, "w") as failures:
-            failures.writelines(tabulate(invalid, headers="keys"))
-            log("Invalid runs listed in %s" % filename)
-    return res
-
-
 class UmiTemplate:
     """Main class supporting the definition of a multiple building templates and
     corresponding template objects.

@@ -693,6 +693,10 @@ class IDF(geomeppy.IDF):
             return_files (bool): It True, all files paths created by the EnergyPlus
                 run are returned.
 
+        Raises:
+            EnergyPlusProcessError: If an issue occurs with the execution of the
+                energyplus command.
+
         """
         # First, check if allowed to run simulation (versions must match)
         ep_version = parse(kwargs.get("ep_version"))
@@ -736,16 +740,20 @@ class IDF(geomeppy.IDF):
             runargs["output_prefix"] = self.eplus_run_options.output_prefix
             runargs["ep_version"] = ep_version.dash
 
-            _run_exec(**runargs)
+            try:
+                _run_exec(**runargs)
+            except EnergyPlusProcessError as e:
+                log(e, lg.ERROR)
+                raise e
+            else:
+                log(
+                    "EnergyPlus Completed in {:,.2f} seconds".format(
+                        time.time() - start_time
+                    ),
+                    name=self.name,
+                )
 
-            log(
-                "EnergyPlus Completed in {:,.2f} seconds".format(
-                    time.time() - start_time
-                ),
-                name=self.name,
-            )
-
-            self.__set_cached_results(runargs, tmp, tmp_file)
+                self.__set_cached_results(runargs, tmp, tmp_file)
         return self
 
     def save(self, filename=None, lineendings="default", encoding="latin-1"):

@@ -401,8 +401,12 @@ def reduce(idf, output, weather, parallel, all_zones):
         template = UmiTemplate.read_idf(
             file_paths, weather=weather, name=name, parallel=parallel
         )
-    except EnergyPlusProcessError:
-        pass  # This exception is already logged in _write_invalid
+    except EnergyPlusProcessError as e:
+        log(e.write())
+        filename = (settings.logs_folder / "failed_reduce.txt").expand()
+        with open(filename, "a") as file:
+            file.writelines(e.write())
+            log(f"EnergyPlusProcess errors listed in {filename}")
     except Exception as e:
         log(f"An Unkown exception occured: {e}", logging.ERROR)
     else:

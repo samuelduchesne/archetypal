@@ -93,7 +93,7 @@ class TestIDF:
             ".2_5A_USA_IL_CHICAGO-OHARE.idf"
         )
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        yield IDF(file, epw=wf, ep_version="8-9-0")
+        yield IDF(file, epw=wf, ep_version="8.9.0")
 
     def test_wrong_epversion(self, config):
         file = (
@@ -105,8 +105,8 @@ class TestIDF:
             IDF(file, epw=wf, ep_version="7-3-0")
 
     def test_transition_error(self, config, wont_transition_correctly):
-        with pytest.raises(EnergyPlusProcessError, EnergyPlusVersionError):
-            assert wont_transition_correctly.simulate(ep_version="8-9-0")
+        with pytest.raises(EnergyPlusProcessError):
+            assert wont_transition_correctly.simulate(ep_version="8.9.0")
 
     def test_specific_version(self, config, natvent_v9_1_0):
         assert natvent_v9_1_0.idd_version == (9, 1, 0)

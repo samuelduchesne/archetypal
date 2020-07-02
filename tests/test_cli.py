@@ -358,7 +358,7 @@ class TestCli:
         )
         print(result.stdout)
         # check an error file has been created
-        assert Path("failed_reduce.txt").exists()
+        assert (settings.logs_folder / "failed_reduce.txt").expand().exists()
         assert result.exit_code == 0
 
     def test_transition_dir_file_mixed(self, config):

@@ -35,6 +35,7 @@ import pandas as pd
 from packaging.version import Version, InvalidVersion
 from pandas.io.json import json_normalize
 from path import Path
+from tabulate import tabulate
 
 from archetypal import settings, __version__
 from archetypal.settings import ep_version
@@ -675,6 +676,11 @@ class EnergyPlusProcessError(Exception):
         msg = ":\n".join([self.idf, self.stderr])
         return msg
 
+    def write(self):
+        # create and add headers
+        invalid = [{"Filename": self.idf, "Error": self.stderr}]
+        return tabulate(invalid, headers="keys")
+
 
 class EnergyPlusVersionError(Exception):
     """EnergyPlus Version call error"""
@@ -691,10 +697,13 @@ class EnergyPlusVersionError(Exception):
             compares_ = "higher"
         else:
             compares_ = "lower"
-        msg = f"The version of {self.idf_file.basename()} (v{self.idf_version}) " \
-              f"is {compares_} than the available EnergyPlus version " \
-              f"(v{self.ep_version}). Specify in IDF(ep_version) a version number " \
-              f"that corresponds with one installed on your machine."
+        msg = (
+            f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
+            f"is {compares_} than the specified EnergyPlus version "
+            f"(v{self.ep_version}). The specified version number in IDF() as well as in"
+            f"IDF.simulate() must match an available EnergyPlus installation on this "
+            f"machine"
+        )
         return msg
 
 

@@ -201,7 +201,7 @@ class UmiTemplate:
 
         bts = []
         for idf_file in umi_template.idf_files:
-            idf = IDF(idf_file, epw=umi_template.weather)
+            idf = IDF(idf_file, epw=umi_template.weather, annual=True)
             bts.append(BuildingTemplate.from_idf(idf, sql=idf.sql, DataSource=idf.name))
         umi_template.BuildingTemplates = bts
         return umi_template

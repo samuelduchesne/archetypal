@@ -105,7 +105,7 @@ class TestIDF:
             IDF(file, epw=wf, ep_version="7-3-0")
 
     def test_transition_error(self, config, wont_transition_correctly):
-        with pytest.raises(EnergyPlusProcessError):
+        with pytest.raises(EnergyPlusProcessError, EnergyPlusVersionError):
             assert wont_transition_correctly.simulate(ep_version="8-9-0")
 
     def test_specific_version(self, config, natvent_v9_1_0):

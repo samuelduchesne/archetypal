@@ -317,12 +317,18 @@ class IDF(geomeppy.IDF):
 
     @property
     def htm(self):
-        return get_report(
-            self.idfname,
-            self.eplus_run_options.output_directory,
-            output_report="htm",
-            output_prefix=self.eplus_run_options.output_prefix,
-        )
+        try:
+            htm_dict = get_report(
+                self.idfname,
+                self.eplus_run_options.output_directory,
+                output_report="htm",
+                output_prefix=self.eplus_run_options.output_prefix,
+            )
+        except FileNotFoundError:
+            self.simulate()
+            return self.htm
+        else:
+            return htm_dict
 
     @property
     def sql_file(self):
@@ -727,7 +733,7 @@ class IDF(geomeppy.IDF):
 
             runargs["eplus_file"] = tmp_file
             runargs["tmp"] = tmp
-            runargs["weather"] = Path(self.eplus_run_options.weather_file).copy(tmp)
+            runargs["weather"] = Path(self.epw).copy(tmp)
             runargs["idd"] = Path(self.iddname).copy(tmp)
             runargs["output_prefix"] = self.eplus_run_options.output_prefix
             runargs["ep_version"] = ep_version.dash

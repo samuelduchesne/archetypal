@@ -1615,7 +1615,7 @@ class TestVentilationSetting:
         eplusdir = get_eplus_dirs(settings.ep_version)
         file = eplusdir / "ExampleFiles" / request.param
         w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
-        idf = IDF(file)
+        idf = IDF(file, epw=w)
         sql = idf.sql
         yield idf, sql, request.param
 
@@ -1829,7 +1829,7 @@ class TestWindowSetting:
         eplusdir = get_eplus_dirs(archetypal.settings.ep_version)
         file = eplusdir / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file)
+        idf = IDF(file, epw=w)
         sql = idf.sql
         yield idf, sql
 
@@ -1882,12 +1882,18 @@ class TestWindowSetting:
         f_surfs = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"]
         for f in f_surfs:
             constr = f.Construction_Name
-            idf.add_object("WindowMaterial:Shade".upper(), Visible_Transmittance=0.5,
-                           Name="Roll Shade")
-            idf.add_object("WindowShadingControl".upper(),
-                           Construction_with_Shading_Name=constr, Setpoint=14,
-                           Shading_Device_Material_Name="Roll Shade",
-                           Fenestration_Surface_1_Name="test_control")
+            idf.add_object(
+                "WindowMaterial:Shade".upper(),
+                Visible_Transmittance=0.5,
+                Name="Roll Shade",
+            )
+            idf.add_object(
+                "WindowShadingControl".upper(),
+                Construction_with_Shading_Name=constr,
+                Setpoint=14,
+                Shading_Device_Material_Name="Roll Shade",
+                Fenestration_Surface_1_Name="test_control",
+            )
             f.Name = "test_control"
             w = WindowSetting.from_surface(f)
             assert w
@@ -2054,7 +2060,7 @@ class TestZone:
 
         file = "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file)
+        idf = IDF(file, epw=w)
         sql = idf.sql
         zone = idf.getobject(
             "ZONE", "Sp-attic Sys-0 Flr-2 Sch-- undefined - " "HPlcmt-core ZN"
@@ -2200,18 +2206,10 @@ def bt():
 def climatestudio():
     """A building template fixture from a climate studio idf file used in subsequent
     tests"""
-    eplus_dir = get_eplus_dirs(archetypal.settings.ep_version)
     file = "tests/input_data/umi_samples/climatestudio_test.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    _, idf, res = ar.run_eplus(
-        file,
-        w,
-        ep_version="9-2-0",
-        return_idf=True,
-        return_files=True,
-        prep_outputs=True,
-        output_report="sql",
-    )
+    idf = IDF(file, epw=w, annual=True)
+
     from archetypal import BuildingTemplate
 
     bt = BuildingTemplate.from_idf(idf, sql=idf.sql)

@@ -320,7 +320,7 @@ class IDF(geomeppy.IDF):
         try:
             htm_dict = get_report(
                 self.idfname,
-                self.eplus_run_options.output_directory,
+                self.simulation_dir,
                 output_report="htm",
                 output_prefix=self.eplus_run_options.output_prefix,
             )

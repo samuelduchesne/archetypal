@@ -59,7 +59,7 @@ class IDF(geomeppy.IDF):
     """
 
     def __new__(cls, idfname=None, **kwargs):
-        existing = cls.__getCache(idfname)
+        existing = cls.__getCache(idfname, **kwargs)
         if existing:
             return existing
         idf = super(IDF, cls).__new__(cls)
@@ -98,16 +98,14 @@ class IDF(geomeppy.IDF):
         idfname = Path(idfname).expand()
         output_directory = Path(kwargs.pop("output_directory", ""))
         if not output_directory:
-            output_directory = self.get_output_directory(self.original_idfname)
-
-        # Check if the file already exists in the output_directory; might have been
-        # transitioned already
+            output_directory = self.get_output_directory(
+                self.original_idfname, **self.load_kwargs
+            )
+        # The file does not exist; copy it to the output_directory & override
+        # path name
         keep_original = kwargs.get("keep_original", True)
         if keep_original:
-            if Path(output_directory / idfname.name).exists():
-                idfname = Path(output_directory / idfname.name)
-            else:
-                idfname = Path(idfname.copy(output_directory))
+            idfname = Path(idfname.copy(output_directory))
 
         # Determine version of idf file by reading the text file & compare with
         # user-defined choice
@@ -247,9 +245,11 @@ class IDF(geomeppy.IDF):
 
     @property
     def output_directory(self):
-        """Returns the output directory based on the hashing of the original file (
+        """Returns the output directory based on the sahing of the original file (
         before transitions or modifications)"""
-        return self.get_output_directory(self.original_idfname).expand()
+        return self.get_output_directory(
+            self.original_idfname, **self.load_kwargs
+        ).expand()
 
     @property
     def idf_version(self):
@@ -472,10 +472,6 @@ class IDF(geomeppy.IDF):
                 f"filename, epw='weather.epw').simulate() or in IDF.simulate("
                 f"epw='weather.epw')"
             )
-        elif getattr(self, "epw", None) and not self.eplus_run_options.weather_file:
-            self.eplus_run_options.weather_file = Path(getattr(self, "epw", ""))
-        elif not getattr(self, "epw", None) and self.eplus_run_options.weather_file:
-            setattr(self, "epw", str(self.eplus_run_options.weather_file))
 
         # run the EnergyPlus Simulation
         with TempDir(
@@ -1263,19 +1259,8 @@ class EnergyPlusOptions:
         self.output_report = output_report
         self.ep_version = parse(str(ep_version)) if ep_version else None
         self.output_directory = output_directory
-        self._weather_file = weather_file
+        self.weather_file = weather_file
         self.eplus_file = idf.idfname
-
-    @property
-    def weather_file(self):
-        if self._weather_file:
-            return Path(self._weather_file).expand()
-        else:
-            return None
-
-    @weather_file.setter
-    def weather_file(self, epw):
-        self._weather_file = Path(epw).expand()
 
     @property
     def simulation_parameters(self):
@@ -1294,9 +1279,7 @@ class EnergyPlusOptions:
 
     @property
     def output_prefix(self):
-        """hashed id used for the folder into which simulation results are stored as
-        well as for the simulation files prefix name"""
-        return hash_file(self.idf.idfname, **self.simulation_parameters)
+        return hash_file(self.idf.idfname)
 
     def __repr__(self):
         return str(self)

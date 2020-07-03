@@ -83,11 +83,20 @@ def schedules_idf():
 idf = schedules_idf()
 schedules = list(idf.get_all_schedules(yearly_only=True).keys())
 ids = [i.replace(" ", "_") for i in schedules]
+
+
+@pytest.fixture(scope="module")
+def run_schedules_idf(config):
+    idf = schedules_idf().simulate()
+    csv = idf.simulation_dir.files("*out.csv")[0]
+    yield csv
+
+
 schedules = [
     pytest.param(
         schedule,
         marks=pytest.mark.xfail(
-            reason="Can't quite capture all possibilities " "with special days"
+            reason="Can't quite capture all possibilities with special days"
         ),
     )
     if schedule == "POFF"
@@ -98,8 +107,8 @@ schedules = [
 ]
 
 
-@pytest.fixture(params=schedules, ids=ids)
-def test_schedules(request, run_schedules_idf):
+@pytest.fixture(params=schedules, ids=ids, scope="module")
+def schedule_parametrized(request, run_schedules_idf):
     """Create the test_data"""
     import pandas as pd
 
@@ -135,29 +144,11 @@ def test_schedules(request, run_schedules_idf):
     yield orig, new, expected
 
 
-@pytest.fixture(scope="module")
-def run_schedules_idf(config):
-    idf = IDF(
-        idf_file,
-        epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-        annual=True,
-        readvars=True,
-        include=[
-            get_eplus_dirs(settings.ep_version)
-            / "DataSets"
-            / "TDV"
-            / "TDV_2008_kBtu_CTZ06.csv"
-        ],
-    ).simulate()
-    csv = idf.simulation_dir.files("*out.csv")[0]
-    yield csv
-
-
-def test_ep_versus_schedule(test_schedules):
+def test_ep_versus_schedule(schedule_parametrized):
     """Main test. Will run the idf using EnergyPlus, retrieve the csv file,
     create the schedules and compare"""
 
-    orig, new, expected = test_schedules
+    orig, new, expected = schedule_parametrized
 
     # slice_ = ('2018/01/01 00:00', '2018/01/08 00:00')  # first week
     # slice_ = ('2018/05/20 12:00', '2018/05/22 12:00')

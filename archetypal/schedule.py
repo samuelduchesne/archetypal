@@ -132,23 +132,28 @@ class Schedule(object):
             idf_scratch = easyopen(file.name)
             idf_scratch.__class__ = archetypal.IDF
 
-            idf_scratch.add_object(ep_object="Schedule:Constant".upper(), **dict(
-                Name=Name, Schedule_Type_Limits_Name="", Hourly_Value=hourly_value
-            ))
+            idf_scratch.add_object(
+                ep_object="Schedule:Constant".upper(),
+                **dict(
+                    Name=Name, Schedule_Type_Limits_Name="", Hourly_Value=hourly_value
+                )
+            )
 
             sched = cls(Name=Name, idf=idf_scratch, **kwargs)
             return sched
 
     @property
     def all_values(self):
-        from archetypal.template import UmiBase
 
         """returns the values array"""
         if self.values is None:
             try:  # Search values in epbunch (from idf object)
                 epbunch = self.idf.get_schedule_epbunch(self.Name)
                 self.values = self.get_schedule_values(epbunch)
-            except:  # If no epbunch found
+            except FileNotFoundError as e:
+                raise e  # This is an actual issue, must raise
+            except:
+                # If no epbunch found
                 if self.Category == "Week":  # If WeekSchedule
                     try:  # Get values from self.Days
                         # self.Days is a list of 7 dicts (7 days in a week)

@@ -165,9 +165,12 @@ class VentilationSetting(UmiBase, metaclass=Unique):
             )
 
     @classmethod
-    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
-                            current_version=archetypal.__version__,
-                            details="Use from_dict function instead")
+    @deprecation.deprecated(
+        deprecated_in="1.3.1",
+        removed_in="1.4",
+        current_version=archetypal.__version__,
+        details="Use from_dict function instead",
+    )
     def from_json(cls, *args, **kwargs):
 
         return cls.from_dict(*args, **kwargs)
@@ -238,14 +241,24 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         Infiltration, IsInfiltrationOn = do_infiltration(index, ni_df, zone)
 
         # Do natural ventilation
-        IsNatVentOn, IsWindOn, IsBuoyancyOn, NatVentMaxOutdoorAirTemp, NatVentMaxRelHumidity, NatVentMinOutdoorAirTemp, NatVentSchedule, NatVentZoneTempSetpoint = do_natural_ventilation(
-            index, nat_df, zone
-        )
+        (
+            IsNatVentOn,
+            IsWindOn,
+            IsBuoyancyOn,
+            NatVentMaxOutdoorAirTemp,
+            NatVentMaxRelHumidity,
+            NatVentMinOutdoorAirTemp,
+            NatVentSchedule,
+            NatVentZoneTempSetpoint,
+        ) = do_natural_ventilation(index, nat_df, zone)
 
         # Do scheduled ventilation
-        ScheduledVentilationSchedule, IsScheduledVentilationOn, ScheduledVentilationAch, ScheduledVentilationSetpoint = do_scheduled_ventilation(
-            index, sched_df, zone
-        )
+        (
+            ScheduledVentilationSchedule,
+            IsScheduledVentilationOn,
+            ScheduledVentilationAch,
+            ScheduledVentilationSetpoint,
+        ) = do_scheduled_ventilation(index, sched_df, zone)
 
         z_vent = cls(
             Name=name,

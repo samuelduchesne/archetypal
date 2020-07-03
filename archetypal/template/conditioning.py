@@ -47,7 +47,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         HeatRecoveryType="None",
         HeatRecoveryEfficiencyLatent=0.65,
         HeatRecoveryEfficiencySensible=0.7,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a new :class:`ZoneConditioning` object.
 
@@ -225,9 +225,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             )
 
     @classmethod
-    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
-                            current_version=archetypal.__version__,
-                            details="Use from_dict function instead")
+    @deprecation.deprecated(
+        deprecated_in="1.3.1",
+        removed_in="1.4",
+        current_version=archetypal.__version__,
+        details="Use from_dict function instead",
+    )
     def from_json(cls, *args, **kwargs):
 
         return cls.from_dict(*args, **kwargs)
@@ -300,12 +303,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # First create placeholder object.
         name = zone.Name + "_ZoneConditioning"
-        z_cond = cls(
-            Name=name,
-            zone=zone,
-            idf=zone.idf,
-            Category=zone.idf.name,
-        )
+        z_cond = cls(Name=name, zone=zone, idf=zone.idf, Category=zone.idf.name,)
 
         z_cond._set_thermostat_setpoints(zone)
 

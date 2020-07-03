@@ -306,6 +306,7 @@ class UmiBase(object):
         """Validates UmiObjects and fills in missing values"""
         return self
 
+
 class MaterialBase(UmiBase):
     """A class used to store data linked with the Life Cycle aspect of materials
 

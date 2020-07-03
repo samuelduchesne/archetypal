@@ -30,13 +30,13 @@ class ConstructionBase(UmiBase):
     """
 
     def __init__(
-            self,
-            AssemblyCarbon=0,
-            AssemblyCost=0,
-            AssemblyEnergy=0,
-            DisassemblyCarbon=0,
-            DisassemblyEnergy=0,
-            **kwargs,
+        self,
+        AssemblyCarbon=0,
+        AssemblyCost=0,
+        AssemblyEnergy=0,
+        DisassemblyCarbon=0,
+        DisassemblyEnergy=0,
+        **kwargs,
     ):
         """Initialize a ConstructionBase object with parameters:
 
@@ -110,11 +110,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         if not isinstance(other, OpaqueConstruction):
             return False
         else:
-            return all(
-                [
-                    self.Layers == other.Layers,
-                ]
-            )
+            return all([self.Layers == other.Layers,])
 
     @property
     def r_value(self):
@@ -186,12 +182,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """The per unit wall area of the heat capacity is :math:`(HC/A)=ρ·c·δ`,
         where :math:`δ` is the wall thickness. Expressed in J/(m2 K)
         """
-        return sum(
-            [
-                layer.heat_capacity
-                for layer in self.Layers
-            ]
-        )
+        return sum([layer.heat_capacity for layer in self.Layers])
 
     @property
     def total_thickness(self):
@@ -326,11 +317,11 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         from scipy.optimize import minimize
 
         def obj_func(
-                thicknesses,
-                materials,
-                expected_u_value,
-                expected_specific_heat,
-                expected_total_thickness,
+            thicknesses,
+            materials,
+            expected_u_value,
+            expected_specific_heat,
+            expected_total_thickness,
         ):
             """Objective function for thickness evaluation"""
 
@@ -353,9 +344,9 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             ]
             specific_heat = np.average(h_calc, weights=mass_per_unit_area)
             return (
-                    (u_value - expected_u_value) ** 2
-                    + (specific_heat - expected_specific_heat) ** 2
-                    + (sum(thicknesses) - expected_total_thickness) ** 2
+                (u_value - expected_u_value) ** 2
+                + (specific_heat - expected_specific_heat) ** 2
+                + (sum(thicknesses) - expected_total_thickness) ** 2
             )
 
         # U_eq is the weighted average of the wall u_values by their respected total

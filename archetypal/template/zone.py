@@ -403,10 +403,7 @@ class Zone(UmiBase):
         log('\nConstructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
         name = zone_ep.Name
         zone = cls(
-            Name=name,
-            idf=zone_ep.theidf,
-            sql=sql,
-            Category=zone_ep.theidf.name,
+            Name=name, idf=zone_ep.theidf, sql=sql, Category=zone_ep.theidf.name,
         )
 
         zone._epbunch = zone_ep

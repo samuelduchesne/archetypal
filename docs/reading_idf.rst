@@ -10,25 +10,24 @@ To read an IDF file, simply call :meth:`~archetypal.idfclass.load_idf` with the 
 
 .. code-block:: python
 
-    >>> from archetypal import get_eplus_dirs, load_idf
+    >>> from archetypal import get_eplus_dirs, IDF
     >>> eplus_dir = get_eplus_dirs("9-2-0")  # Getting EnergyPlus install path
     >>> eplus_file = eplus_dir / "ExampleFiles" / "BasicsFiles" / "AdultEducationCenter.idf"  # Model path
-    >>> idf = load_idf(eplus_file)  # IDF load
+    >>> idf = IDF(eplus_file)  # IDF load
 
 You can optionally pass the weather file path as well:
 
 .. code-block:: python
 
     >>> weather = eplus_dir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"  # Weather file path
-    >>> idf = load_idf(eplus_file, weather_file=weather)  # IDF load
+    >>> idf = IDF(eplus_file, epw=weather)  # IDF load
 
 Editing
 -------
 
-Editing IDF files is based on the :ref:`eppy` package. The :class:`~archetypal.idfclass.IDF` object returned by
-:meth:`~archetypal.idfclass.load_idf` exposes the EnergyPlus objects that make up the IDF file. These objects can be
-edited and new objects can be created. See the `eppy documentation <https://eppy.readthedocs.io/en/latest/>`_ for
-more information on how to edit IDF files.
+Editing IDF files is based on the :ref:`eppy` package. The :class:`~archetypal.idfclass.IDF` object exposes the
+EnergyPlus objects that make up the IDF file. These objects can be edited and new objects can be created. See the `eppy
+documentation <https://eppy.readthedocs.io/en/latest/>`_ for more information on how to edit IDF files.
 
 .. hint:: Pre-sets
 

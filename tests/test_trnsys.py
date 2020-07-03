@@ -23,7 +23,7 @@ from archetypal import (
     choose_window,
     run_eplus,
     ReportData,
-    get_eplus_dirs,
+    get_eplus_dirs, IDF,
 )
 
 # Function round to hundreds
@@ -86,7 +86,7 @@ def converttesteasy(request):
         "tolerance": 0.05,
         "ordered": True,
     }
-    idf = load_idf(file)
+    idf = IDF(file)
 
     weather_file = os.path.join(
         "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
@@ -732,7 +732,6 @@ class TestConvertEasy:
                 "kwargs": dict(
                     Variable_Name="Zone Thermostat Heating Setpoint Temperature",
                     Reporting_Frequency="hourly",
-                    save=True,
                 ),
             },
             {
@@ -740,7 +739,6 @@ class TestConvertEasy:
                 "kwargs": dict(
                     Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
                     Reporting_Frequency="hourly",
-                    save=True,
                 ),
             },
         ]
@@ -784,7 +782,7 @@ def converttest(request):
         "tolerance": 0.05,
         "ordered": True,
     }
-    idf = load_idf(file)
+    idf = IDF(file)
 
     weather_file = os.path.join(
         "tests", "input_data", "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
@@ -1034,7 +1032,6 @@ class TestConvert:
                 "kwargs": dict(
                     Variable_Name="Zone Thermostat Heating Setpoint Temperature",
                     Reporting_Frequency="hourly",
-                    save=True,
                 ),
             },
             {
@@ -1042,7 +1039,6 @@ class TestConvert:
                 "kwargs": dict(
                     Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
                     Reporting_Frequency="hourly",
-                    save=True,
                 ),
             },
         ]

@@ -11,6 +11,7 @@ from archetypal import (
     config,
     get_eplus_dirs,
     settings,
+    IDF,
 )
 
 
@@ -18,7 +19,7 @@ def test_schedules_in_necb_specific(config):
     files = [
         "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
     ]
-    idfs = {os.path.basename(file): load_idf(file) for file in files}
+    idfs = {os.path.basename(file): IDF(file) for file in files}
     import matplotlib.pyplot as plt
 
     for key in idfs:
@@ -36,7 +37,7 @@ def test_make_umi_schedule(config):
 
     idf_file = "tests/input_data/schedules/schedules.idf"
     idf_file = copy_file(idf_file)
-    idf = load_idf(idf_file)
+    idf = IDF(idf_file)
 
     s = UmiSchedule(Name="POFF", idf=idf, start_day_of_the_week=0)
     ep_year, ep_weeks, ep_days = s.to_year_week_day()
@@ -65,8 +66,10 @@ idf_file = "tests/input_data/schedules/test_multizone_EP.idf"
 
 def schedules_idf():
     config(cache_folder="tests/.temp/cache")
-    idf = load_idf(
+    idf = IDF(
         idf_file,
+        epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+        readvars=True,
         include=[
             get_eplus_dirs(settings.ep_version)
             / "DataSets"
@@ -80,11 +83,20 @@ def schedules_idf():
 idf = schedules_idf()
 schedules = list(idf.get_all_schedules(yearly_only=True).keys())
 ids = [i.replace(" ", "_") for i in schedules]
+
+
+@pytest.fixture(scope="module")
+def run_schedules_idf(config):
+    idf = schedules_idf().simulate()
+    csv = idf.simulation_dir.files("*out.csv")[0]
+    yield csv
+
+
 schedules = [
     pytest.param(
         schedule,
         marks=pytest.mark.xfail(
-            reason="Can't quite capture all possibilities " "with special days"
+            reason="Can't quite capture all possibilities with special days"
         ),
     )
     if schedule == "POFF"
@@ -95,8 +107,8 @@ schedules = [
 ]
 
 
-@pytest.fixture(params=schedules, ids=ids)
-def test_schedules(request, run_schedules_idf):
+@pytest.fixture(params=schedules, ids=ids, scope="module")
+def schedule_parametrized(request, run_schedules_idf):
     """Create the test_data"""
     import pandas as pd
 
@@ -132,31 +144,11 @@ def test_schedules(request, run_schedules_idf):
     yield orig, new, expected
 
 
-@pytest.fixture(scope="module")
-def run_schedules_idf(config):
-    files = run_eplus(
-        idf_file,
-        weather_file="tests/input_data/CAN_PQ_Montreal.Intl.AP" ".716270_CWEC.epw",
-        annual=True,
-        readvars=True,
-        include=[
-            get_eplus_dirs(settings.ep_version)
-            / "DataSets"
-            / "TDV"
-            / "TDV_2008_kBtu_CTZ06.csv"
-        ],
-        return_files=True,
-    )
-    cache_dir = files[1][0].dirname()
-    csv = next(iter(cache_dir.glob("*out.csv")))
-    yield csv
-
-
-def test_ep_versus_schedule(test_schedules):
+def test_ep_versus_schedule(schedule_parametrized):
     """Main test. Will run the idf using EnergyPlus, retrieve the csv file,
     create the schedules and compare"""
 
-    orig, new, expected = test_schedules
+    orig, new, expected = schedule_parametrized
 
     # slice_ = ('2018/01/01 00:00', '2018/01/08 00:00')  # first week
     # slice_ = ('2018/05/20 12:00', '2018/05/22 12:00')

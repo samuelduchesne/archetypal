@@ -80,9 +80,12 @@ class WindowConstruction(UmiBase, metaclass=Unique):
             )
 
     @classmethod
-    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
-                            current_version=archetypal.__version__,
-                            details="Use from_dict function instead")
+    @deprecation.deprecated(
+        deprecated_in="1.3.1",
+        removed_in="1.4",
+        current_version=archetypal.__version__,
+        details="Use from_dict function instead",
+    )
     def from_json(cls, *args, **kwargs):
 
         return cls.from_dict(*args, **kwargs)
@@ -110,7 +113,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
 
         Example:
             >>> import archetypal as ar
-            >>> idf = ar.load_idf("myidf")
+            >>> idf = ar.IDF("myidf.idf")
             >>> construction_name = "Some construction name"
             >>> ar.WindowConstruction.from_epbunch(Name=construction_name,
             >>> idf=idf)
@@ -371,14 +374,12 @@ class WindowSetting(UmiBase, metaclass=Unique):
             UFactor=2.703,
             Solar_Heat_Gain_Coefficient=0.704,
             Visible_Transmittance=0.786,
-            save=False,
         )
 
         constr = idf.add_object(
             "CONSTRUCTION",
             Name="SINGLE PANE HW WINDOW",
             Outside_Layer="SimpleWindow:SINGLE PANE HW WINDOW",
-            save=False,
         )
         return cls.from_construction(Construction=constr)
 
@@ -393,7 +394,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Examples:
             >>> import archetypal as ar
             >>> # Given an IDF object
-            >>> idf = ar.load_idf("idfname")
+            >>> idf = ar.IDF("idfname.idf")
             >>> construction = idf.getobject('CONSTRUCTION',
             >>>                              'AEDG-SmOffice 1A Window Fixed')
             >>> ar.WindowSetting.from_construction(Name='test_window',
@@ -624,7 +625,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 Name=name,
                 Construction=construction,
                 idf=surface.theidf,
-                Category=surface.theidf.building_name(use_idfname=True),
+                Category=surface.theidf.name,
                 **attr
             )
             return w
@@ -764,9 +765,12 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return data_dict
 
     @classmethod
-    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
-                            current_version=archetypal.__version__,
-                            details="Use from_dict function instead")
+    @deprecation.deprecated(
+        deprecated_in="1.3.1",
+        removed_in="1.4",
+        current_version=archetypal.__version__,
+        details="Use from_dict function instead",
+    )
     def from_json(cls, *args, **kwargs):
 
         return cls.from_dict(*args, **kwargs)

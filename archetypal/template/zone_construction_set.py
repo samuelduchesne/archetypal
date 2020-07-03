@@ -161,7 +161,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             Name=name,
             zone=zone,
             idf=zone.idf,
-            Category=zone.idf.building_name(use_idfname=True),
+            Category=zone.idf.name,
         )
         return z_set
 
@@ -239,19 +239,13 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             IsSlabAdiabatic=any([self.IsSlabAdiabatic, other.IsSlabAdiabatic]),
             Roof=self.Roof.combine(other.Roof),
             IsRoofAdiabatic=any([self.IsRoofAdiabatic, other.IsRoofAdiabatic]),
-            Partition=self.Partition.combine(
-                other.Partition,
-            ),
+            Partition=self.Partition.combine(other.Partition,),
             IsPartitionAdiabatic=any(
                 [self.IsPartitionAdiabatic, other.IsPartitionAdiabatic]
             ),
-            Ground=self.Ground.combine(
-                other.Ground,
-            ),
+            Ground=self.Ground.combine(other.Ground,),
             IsGroundAdiabatic=any([self.IsGroundAdiabatic, other.IsGroundAdiabatic]),
-            Facade=self.Facade.combine(
-                other.Facade,
-            ),
+            Facade=self.Facade.combine(other.Facade,),
             IsFacadeAdiabatic=any([self.IsFacadeAdiabatic, other.IsFacadeAdiabatic]),
         )
         new_obj = self.__class__(**meta, **new_attr)

@@ -117,7 +117,7 @@ class UmiBase(object):
         self.Comments = Comments
         if DataSource == "":
             try:
-                self.DataSource = self.idf.building_name(use_idfname=True)
+                self.DataSource = self.idf.name
             except:
                 self.DataSource = DataSource
         else:
@@ -305,6 +305,7 @@ class UmiBase(object):
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
         return self
+
 
 class MaterialBase(UmiBase):
     """A class used to store data linked with the Life Cycle aspect of materials

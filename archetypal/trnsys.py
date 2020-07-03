@@ -34,6 +34,7 @@ from archetypal import (
     run_eplus,
     recursive_len,
     ReportData,
+    IDF,
 )
 
 
@@ -135,7 +136,6 @@ def convert_idf_to_trnbuild(
             "kwargs": dict(
                 Variable_Name="Zone Thermostat Heating Setpoint Temperature",
                 Reporting_Frequency="hourly",
-                save=True,
             ),
         },
         {
@@ -143,28 +143,16 @@ def convert_idf_to_trnbuild(
             "kwargs": dict(
                 Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
                 Reporting_Frequency="hourly",
-                save=True,
             ),
         },
     ]
-    _, idf = run_eplus(
-        idf_file,
-        weather_file,
-        output_directory=None,
-        ep_version=ep_version,
-        output_report=None,
-        prep_outputs=outputs,
-        design_day=False,
-        annual=True,
-        expandobjects=True,
-        return_idf=True,
-    )
+    idf = IDF(idf_file, epw=weather_file)
 
     # Check if cache exists
     # idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
     # Outpout reports
     htm = idf.htm
-    sql = idf.sql
+    sql = idf.sql  # todo: Is this needed?
     sql_file = idf.sql_file
 
     # Clean names of idf objects (e.g. 'MATERIAL')

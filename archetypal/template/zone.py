@@ -292,7 +292,6 @@ class Zone(UmiBase):
         )
         cons = self.idf.add_object(
             ep_object="Construction".upper(),
-            save=False,
             Name="InteriorFurnishings",
             Outside_Layer="Wood 6inch",
         )
@@ -300,7 +299,6 @@ class Zone(UmiBase):
         cons.Name = internal_mass + "_construction"
         new_epbunch = self.idf.add_object(
             ep_object="InternalMass".upper(),
-            save=False,
             Name=internal_mass,
             Construction_Name=cons.Name,
             Zone_or_ZoneList_Name=self.Name,
@@ -405,10 +403,7 @@ class Zone(UmiBase):
         log('\nConstructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
         name = zone_ep.Name
         zone = cls(
-            Name=name,
-            idf=zone_ep.theidf,
-            sql=sql,
-            Category=zone_ep.theidf.building_name(use_idfname=True),
+            Name=name, idf=zone_ep.theidf, sql=sql, Category=zone_ep.theidf.name,
         )
 
         zone._epbunch = zone_ep
@@ -534,6 +529,7 @@ class Zone(UmiBase):
         """Validates UmiObjects and fills in missing values"""
         if not self.InternalMassConstruction:
             self.set_generic_internalmass()
+        self.InternalMassExposedPerFloorArea = 0
         log(
             f"While validating {self}, the required attribute 'InternalMassConstruction' was filled "
             f"with {self.InternalMassConstruction} and the 'InternalMassExposedPerFloorArea' set to"

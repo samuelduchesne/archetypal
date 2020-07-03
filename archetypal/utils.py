@@ -22,6 +22,9 @@ import platform
 import re
 import sys
 import time
+from typing import Union
+
+import packaging
 import unicodedata
 import warnings
 from collections import OrderedDict
@@ -29,8 +32,10 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
+from packaging.version import Version, InvalidVersion
 from pandas.io.json import json_normalize
 from path import Path
+from tabulate import tabulate
 
 from archetypal import settings, __version__
 from archetypal.settings import ep_version
@@ -671,6 +676,11 @@ class EnergyPlusProcessError(Exception):
         msg = ":\n".join([self.idf, self.stderr])
         return msg
 
+    def write(self):
+        # create and add headers
+        invalid = [{"Filename": self.idf, "Error": self.stderr}]
+        return tabulate(invalid, headers="keys")
+
 
 class EnergyPlusVersionError(Exception):
     """EnergyPlus Version call error"""
@@ -683,18 +693,23 @@ class EnergyPlusVersionError(Exception):
 
     def __str__(self):
         """Override that only returns the stderr"""
-        if tuple(self.idf_version.split("-")) > tuple(self.ep_version.split("-")):
+        if self.idf_version > self.ep_version:
             compares_ = "higher"
+            msg = (
+                f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
+                f"is {compares_} than the specified EnergyPlus version "
+                f"(v{self.ep_version}). This file looks like it has already been "
+                f"transitioned to a newer version"
+            )
         else:
             compares_ = "lower"
-        msg = (
-            "The version of the idf file {} (v{}) is {} than the specified "
-            "EnergyPlus version (v{}). Specify the default EnergyPlus version "
-            "with :func:`config` that corresponds with the one installed on your machine"
-            " or specify the version in related module functions, e.g. :func:`run_eplus`.".format(
-                self.idf_file.basename(), self.idf_version, compares_, self.ep_version
+            msg = (
+                f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
+                f"is {compares_} than the specified EnergyPlus version "
+                f"(v{self.ep_version}) and does not match an available EnergyPlus "
+                f"installation on this machine"
             )
-        )
+
         return msg
 
 
@@ -1051,10 +1066,10 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         >>>                      prep_outputs=True, expandobjects=True,
         >>>                      verbose='q', output_report='sql')
         >>>           for file in files}
-        >>> result = parallel_process(rundict, ar.run_eplus, use_kwargs=True)
+        >>> result = parallel_process(rundict, IDF, use_kwargs=True)
 
     Args:
-        in_dict (dict-like): A dictionary to iterate over.
+        in_dict (dict): A dictionary to iterate over.
         function (function): A python function to apply to the elements of
             in_dict
         processors (int): The number of cores to use
@@ -1064,7 +1079,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         [function(array[0]), function(array[1]), ...]
     """
     from tqdm import tqdm
-    from concurrent.futures import ProcessPoolExecutor, as_completed
+    from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())
@@ -1078,27 +1093,29 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
             "leave": True,
         }
         if use_kwargs:
-            futures = {a: function(**in_dict[a]) for a in tqdm(in_dict, **kwargs)}
-        else:
-            futures = {a: function(in_dict[a]) for a in tqdm(in_dict, **kwargs)}
-    else:
-        with ProcessPoolExecutor(max_workers=processors) as pool:
-            if use_kwargs:
-                futures = {pool.submit(function, **in_dict[a]): a for a in in_dict}
-            else:
-                futures = {pool.submit(function, in_dict[a]): a for a in in_dict}
-
-            kwargs = {
-                "desc": function.__name__,
-                "total": len(futures),
-                "unit": "runs",
-                "unit_scale": True,
-                "leave": True,
+            futures = {
+                a: submit(function, **in_dict[a]) for a in tqdm(in_dict, **kwargs)
             }
+        else:
+            futures = {a: submit(function, in_dict[a]) for a in tqdm(in_dict, **kwargs)}
+    else:
+        with ThreadPoolExecutor(max_workers=processors) as pool:
+            with tqdm(
+                desc=function.__name__,
+                total=len(in_dict),
+                unit="runs",
+                unit_scale=True,
+                leave=True,
+            ) as progress:
+                futures = {}
 
-            # Print out the progress as tasks complete
-            for f in tqdm(as_completed(futures), **kwargs):
-                pass
+                if use_kwargs:
+                    for a in in_dict:
+                        future = pool.submit(function, **in_dict[a])
+                        future.add_done_callback(lambda p: progress.update())
+                        futures[future] = a
+                else:
+                    futures = {pool.submit(function, in_dict[a]): a for a in in_dict}
     out = {}
     # Get the results from the futures.
     for key in futures:
@@ -1111,6 +1128,14 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
             log(str(e), lg.ERROR)
             out[futures[key]] = e
     return out
+
+
+def submit(fn, *args, **kwargs):
+    """return fn or Exception"""
+    try:
+        return fn(*args, **kwargs)
+    except Exception as e:
+        return e
 
 
 def is_referenced(name, epbunch, fieldname="Zone_or_ZoneList_Name"):
@@ -1130,3 +1155,43 @@ def is_referenced(name, epbunch, fieldname="Zone_or_ZoneList_Name"):
             f"referencing object name: Looking for '{name}' in "
             f"object {refobj}"
         )
+
+
+def docstring_parameter(*args, **kwargs):
+    """Replaces variables in foo.__doc__ by calling obj.__doc__ =
+    obj.__doc__.format(* args, ** kwargs)
+    """
+
+    def dec(obj):
+        obj.__doc__ = obj.__doc__.format(*args, **kwargs)
+        return obj
+
+    return dec
+
+
+class EnergyPlusVersion(Version):
+    @property
+    def dash(self):
+        # type: () -> str
+        return "-".join(map(str, (self.major, self.minor, self.micro)))
+
+
+def parse(version):
+    # type: (Union[str, tuple, Version]) -> Union[None, EnergyPlusVersion]
+    """
+    Parse the given version string and return either a :class:`Version` object
+    or a :class:`LegacyVersion` object depending on if the given version is
+    a valid PEP 440 version or a legacy version.
+    """
+    if not version:
+        return None
+    if isinstance(version, tuple):
+        version = ".".join(map(str, version[0:3]))
+    if isinstance(version, Version):
+        return EnergyPlusVersion(
+            ".".join(map(str, (version.major, version.minor, version.micro)))
+        )
+    try:
+        return EnergyPlusVersion(version)
+    except InvalidVersion:
+        return EnergyPlusVersion(version.replace("-", "."))

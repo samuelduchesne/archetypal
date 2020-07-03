@@ -4,7 +4,7 @@ import pytest
 from click.testing import CliRunner
 from path import Path
 
-from archetypal import settings, copy_file, log, load_idf
+from archetypal import settings, copy_file, log, load_idf, IDF
 from archetypal.cli import cli
 from tests.test_trnsys import get_platform
 
@@ -310,9 +310,10 @@ class TestCli:
                 settings.ep_version,
                 "reduce",
                 "-w",
-                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_*.epw",
                 "-p",
                 *test_file_list,
+                "-o",
                 "tests/.temp/retail.json",
             ],
             catch_exceptions=False,
@@ -326,7 +327,7 @@ class TestCli:
         test_file = "tests/input_data/necb/NECB 2011-Warehouse-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
 
         # First, modify file so that it breaks. We will removing the building object.
-        idf = load_idf(test_file)
+        idf = IDF(test_file)
         bldg = idf.idfobjects["BUILDING"][0]
         idf.removeidfobject(bldg)
         idf.save()
@@ -347,24 +348,33 @@ class TestCli:
                 settings.ep_version,
                 "reduce",
                 "-w",
-                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270*.epw",
                 "-p",
                 *[idf.idfname, idf.idfname],
+                "-o",
                 "tests/.temp/retail.json",
             ],
             catch_exceptions=False,
         )
         print(result.stdout)
         # check an error file has been created
-        assert Path("failed_reduce.txt").exists()
+        assert (settings.logs_folder / "failed_reduce.txt").expand().exists()
         assert result.exit_code == 0
 
-    def test_transition(self, config):
-        """Tests the transition method for the CLI"""
-        file = copy_file(
-            "tests/input_data/problematic/ASHRAE90.1_ApartmentHighRise_STD2016_Buffalo.idf"
-        )
+    def test_transition_dir_file_mixed(self, config):
+        """Tests the transition method for the CLI using a mixture of a directory
+        (Path.isdir()) and a file Path.isfile()"""
         runner = CliRunner()
-        result = runner.invoke(cli, ["transition", file], catch_exceptions=False)
+        result = runner.invoke(
+            cli,
+            [
+                "-v",
+                "transition",
+                "tests/input_data/problematic/ASHRAE90.1_ApartmentHighRise_STD2016_Buffalo.idf",
+                "tests/input_data/problematic/*.idf",  # Path with wildcard
+                "tests/input_data/problematic",  # Just a path
+            ],
+            catch_exceptions=False,
+        )
         log(result.stdout)
         assert result.exit_code == 0

@@ -109,8 +109,7 @@ class Schedule(object):
                 ep_object="Schedule:Constant".upper(),
                 **dict(
                     Name=Name, Schedule_Type_Limits_Name="", Hourly_Value=hourly_value
-                ),
-                save=False
+                )
             )
             return cls(Name=Name, idf=idf, **kwargs)
         else:
@@ -140,8 +139,7 @@ class Schedule(object):
                 ep_object="Schedule:Constant".upper(),
                 **dict(
                     Name=Name, Schedule_Type_Limits_Name="", Hourly_Value=hourly_value
-                ),
-                save=False
+                )
             )
 
             sched = cls(Name=Name, idf=idf_scratch, **kwargs)
@@ -149,14 +147,16 @@ class Schedule(object):
 
     @property
     def all_values(self):
-        from archetypal.template import UmiBase
 
         """returns the values array"""
         if self.values is None:
             try:  # Search values in epbunch (from idf object)
                 epbunch = self.idf.get_schedule_epbunch(self.Name)
                 self.values = self.get_schedule_values(epbunch)
-            except:  # If no epbunch found
+            except FileNotFoundError as e:
+                raise e  # This is an actual issue, must raise
+            except:
+                # If no epbunch found
                 if self.Category == "Week":  # If WeekSchedule
                     try:  # Get values from self.Days
                         # self.Days is a list of 7 dicts (7 days in a week)
@@ -489,11 +489,8 @@ class Schedule(object):
         sep = epbunch["Column_Separator"]
         interp = epbunch["Interpolate_to_Timestep"]
 
-        import pandas as pd
-        import os
+        file = self.idf.simulation_dir.files(filename)[0]
 
-        idfdir = os.path.dirname(self.idf.idfname)
-        file = os.path.join(idfdir, filename)
         delimeter = _separator(sep)
         skip_rows = int(rows) - 1  # We want to keep the column
         col = [int(column) - 1]  # zero-based
@@ -919,7 +916,6 @@ class Schedule(object):
             # Create idf_objects for schedule:day:hourly
             ep_day = self.idf.add_object(
                 ep_object="Schedule:Day:Hourly".upper(),
-                save=False,
                 **dict(
                     Name=name,
                     Schedule_Type_Limits_Name=self.schTypeLimitsName,
@@ -972,7 +968,6 @@ class Schedule(object):
         for week_id in dict_week:
             ep_week = self.idf.add_object(
                 ep_object="Schedule:Week:Daily".upper(),
-                save=False,
                 **dict(
                     Name=week_id,
                     **{
@@ -1029,9 +1024,7 @@ class Schedule(object):
                 }
             )
 
-        ep_year = self.idf.add_object(
-            ep_object="Schedule:Year".upper(), save=False, **new_dict
-        )
+        ep_year = self.idf.add_object(ep_object="Schedule:Year".upper(), **new_dict)
         return ep_year, ep_weeks, ep_days
 
     def _date_field_interpretation(self, field):

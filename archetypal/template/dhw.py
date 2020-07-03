@@ -75,9 +75,12 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             )
 
     @classmethod
-    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
-                            current_version=archetypal.__version__,
-                            details="Use from_dict function instead")
+    @deprecation.deprecated(
+        deprecated_in="1.3.1",
+        removed_in="1.4",
+        current_version=archetypal.__version__,
+        details="Use from_dict function instead",
+    )
     def from_json(cls, *args, **kwargs):
 
         return cls.from_dict(*args, **kwargs)
@@ -145,7 +148,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                     WaterSupplyTemperature=supply_temp,
                     WaterTemperatureInlet=inlet_temp,
                     idf=zone.idf,
-                    Category=zone.idf.building_name(use_idfname=True),
+                    Category=zone.idf.name,
                 )
                 z_dhw_list.append(z_dhw)
 
@@ -168,7 +171,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                 WaterSupplyTemperature=supply_temp,
                 WaterTemperatureInlet=inlet_temp,
                 idf=zone.idf,
-                Category=zone.idf.building_name(use_idfname=True),
+                Category=zone.idf.name,
             )
         else:
             # Assume water systems for whole building
@@ -189,7 +192,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                     WaterSupplyTemperature=supply_temp,
                     WaterTemperatureInlet=inlet_temp,
                     idf=zone.idf,
-                    Category=zone.idf.building_name(use_idfname=True),
+                    Category=zone.idf.name,
                 )
             else:
                 # defaults with 0 flow rate.
@@ -208,7 +211,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                     WaterSupplyTemperature=supply_temp,
                     WaterTemperatureInlet=inlet_temp,
                     idf=zone.idf,
-                    Category=zone.idf.building_name(use_idfname=True),
+                    Category=zone.idf.name,
                 )
 
         return z_dhw

@@ -1279,7 +1279,7 @@ class EnergyPlusOptions:
 
     @property
     def output_prefix(self):
-        return hash_file(self.idf.idfname)
+        return hash_file(self.idf.idfname, **self.simulation_parameters)
 
     def __repr__(self):
         return str(self)

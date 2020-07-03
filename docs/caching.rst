@@ -5,7 +5,7 @@ Archetypal features a caching api aimed at accelerating reproducible workflows u
 unnecessary calls to the EnergyPlus executable or transitioning programs. Concretely, caching an IDF model means that,
 for instance, if an older version model (less than 9.2) is ran, archetypal will transition a copy of that file to
 version 9.2 (making a copy beforehand) and run the simulation with the matching EnergyPlus executable. The next time the
-:func:`archetypal.idfclass.run_eplus` or the :func:`archetypal.idfclass.load_idf` method is called, the cached
+:func:`~archetypal.idfclass.IDF.simulate` method is called, the cached
 (transitioned) file will be readily available and used; This helps to save time especially with reproducible workflows
 since transitioning files can take a while to complete.
 

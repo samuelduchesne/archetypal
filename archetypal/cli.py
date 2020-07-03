@@ -7,23 +7,16 @@
 import logging
 import os
 import time
-from collections import defaultdict
 from glob import glob
 
-from path import Path
-
 import click
-from tabulate import tabulate
+from path import Path
 
 from archetypal import (
     settings,
-    cd,
-    load_idf,
     convert_idf_to_trnbuild,
     get_eplus_dirs,
     parallel_process,
-    run_eplus,
-    IDF,
     UmiTemplate,
     config,
     log,

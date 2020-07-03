@@ -713,6 +713,40 @@ class EnergyPlusVersionError(Exception):
         return msg
 
 
+class EnergyPlusWeatherError(Exception):
+    """Error for when weather file is not defined"""
+
+    pass
+
+
+class EnergyPlusVersion(Version):
+    @property
+    def dash(self):
+        # type: () -> str
+        return "-".join(map(str, (self.major, self.minor, self.micro)))
+
+
+def parse(version):
+    # type: (Union[str, tuple, Version]) -> Union[None, EnergyPlusVersion]
+    """
+    Parse the given version string and return either a :class:`Version` object
+    or a :class:`LegacyVersion` object depending on if the given version is
+    a valid PEP 440 version or a legacy version.
+    """
+    if not version:
+        return None
+    if isinstance(version, tuple):
+        version = ".".join(map(str, version[0:3]))
+    if isinstance(version, Version):
+        return EnergyPlusVersion(
+            ".".join(map(str, (version.major, version.minor, version.micro)))
+        )
+    try:
+        return EnergyPlusVersion(version)
+    except InvalidVersion:
+        return EnergyPlusVersion(version.replace("-", "."))
+
+
 @contextlib.contextmanager
 def cd(path):
     """
@@ -1167,31 +1201,3 @@ def docstring_parameter(*args, **kwargs):
         return obj
 
     return dec
-
-
-class EnergyPlusVersion(Version):
-    @property
-    def dash(self):
-        # type: () -> str
-        return "-".join(map(str, (self.major, self.minor, self.micro)))
-
-
-def parse(version):
-    # type: (Union[str, tuple, Version]) -> Union[None, EnergyPlusVersion]
-    """
-    Parse the given version string and return either a :class:`Version` object
-    or a :class:`LegacyVersion` object depending on if the given version is
-    a valid PEP 440 version or a legacy version.
-    """
-    if not version:
-        return None
-    if isinstance(version, tuple):
-        version = ".".join(map(str, version[0:3]))
-    if isinstance(version, Version):
-        return EnergyPlusVersion(
-            ".".join(map(str, (version.major, version.minor, version.micro)))
-        )
-    try:
-        return EnergyPlusVersion(version)
-    except InvalidVersion:
-        return EnergyPlusVersion(version.replace("-", "."))

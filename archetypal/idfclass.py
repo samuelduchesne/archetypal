@@ -45,8 +45,9 @@ from archetypal import (
     close_logger,
     EnergyPlusVersionError,
     get_eplus_dirs,
+    EnergyPlusWeatherError,
 )
-from archetypal.utils import _unpack_tuple, parse, EnergyPlusVersion
+from archetypal.utils import _unpack_tuple, parse
 
 
 class IDF(geomeppy.IDF):
@@ -168,6 +169,9 @@ class IDF(geomeppy.IDF):
                 self.OutputPrep = OutputPrep(idf=self)
 
             self._setCache()
+
+    def __str__(self):
+        return self.name
 
     @classmethod
     def setiddname(cls, iddname, testing=False):
@@ -460,6 +464,16 @@ class IDF(geomeppy.IDF):
             include = Path().abspath().glob(include)
         elif include is not None:
             include = [Path(file) for file in include]
+
+        # check if a weather file is defined
+        try:
+            self.epw
+        except AttributeError:
+            raise EnergyPlusWeatherError(
+                f"No weather file specified with {self}. Set 'epw' in IDF("
+                f"filename, epw=weather.epw) to use IDF.simulate()"
+            )
+
         # run the EnergyPlus Simulation
         with TempDir(
             prefix="eplus_run_",
@@ -1272,7 +1286,9 @@ class EnergyPlusOptions:
         return str(self)
 
     def __str__(self):
-        return json.dumps(self.__dict__, indent=2)
+        return json.dumps(
+            {key: str(value) for key, value in self.__dict__.items()}, indent=2
+        )
 
     def update(self, kwargs):
         self.__dict__.update(kwargs)

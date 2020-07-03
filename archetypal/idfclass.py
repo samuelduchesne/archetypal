@@ -96,7 +96,7 @@ class IDF(geomeppy.IDF):
         self.include = kwargs.get("include")
         self.original_idfname = Path(idfname).expand()
         idfname = Path(idfname).expand()
-        output_directory = kwargs.pop("output_directory", None)
+        output_directory = Path(kwargs.pop("output_directory", ""))
         if not output_directory:
             output_directory = self.get_output_directory(
                 self.original_idfname, **self.load_kwargs
@@ -146,7 +146,7 @@ class IDF(geomeppy.IDF):
             # Set the EnergyPlusOptions object
             self.eplus_run_options = EnergyPlusOptions(
                 idf=self,
-                weather_file=getattr(self, "epw", None),
+                weather_file=Path(getattr(self, "epw", "")),
                 output_directory=output_directory,
                 ep_version=ep_version if ep_version else latest_energyplus_version(),
                 prep_outputs=prep_outputs,
@@ -466,12 +466,11 @@ class IDF(geomeppy.IDF):
             include = [Path(file) for file in include]
 
         # check if a weather file is defined
-        try:
-            self.epw
-        except AttributeError:
+        if not getattr(self, "epw", None) and not self.eplus_run_options.weather_file:
             raise EnergyPlusWeatherError(
                 f"No weather file specified with {self}. Set 'epw' in IDF("
-                f"filename, epw=weather.epw) to use IDF.simulate()"
+                f"filename, epw='weather.epw').simulate() or in IDF.simulate("
+                f"epw='weather.epw')"
             )
 
         # run the EnergyPlus Simulation
@@ -485,10 +484,11 @@ class IDF(geomeppy.IDF):
                 [file.copy(tmp) for file in include]
             tmp_file = Path(self.idfname.copy(tmp))
             runargs = self.eplus_run_options.simulation_parameters
+            runargs.pop("weather_file")  # weather_file is defined as 'weather' bellow
 
             runargs["eplus_file"] = tmp_file
             runargs["tmp"] = tmp
-            runargs["weather"] = Path(self.epw).copy(tmp)
+            runargs["weather"] = Path(self.eplus_run_options.weather_file).copy(tmp)
             runargs["idd"] = Path(self.iddname).copy(tmp)
             runargs["output_prefix"] = self.eplus_run_options.output_prefix
             runargs["ep_version"] = ep_version.dash
@@ -1272,7 +1272,6 @@ class EnergyPlusOptions:
             "simulname",
             "return_idf",
             "prep_outputs",
-            "weather_file",
         ]
         params = self.__dict__.copy()
         [params.pop(key) for key in a]

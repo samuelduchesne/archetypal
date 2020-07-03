@@ -100,7 +100,7 @@ class UmiBase(object):
             idf (IDF): The idf object associated to this object.
             Category (str): Group objects by assigning the same category
                 identifier. Thies can be any string.
-            Comments (str): A comment displayed in the UmiTemplate.
+            Comments (str): A comment displayed in the UmiTemplateLibrary.
             DataSource (str): A description of the datasource of the object.
                 This helps identify from which data is the current object
                 created.

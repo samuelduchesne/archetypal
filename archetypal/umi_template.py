@@ -40,7 +40,7 @@ from archetypal import (
 )
 
 
-class UmiTemplate:
+class UmiTemplateLibrary:
     """Main class supporting the definition of a multiple building templates and
     corresponding template objects.
     """
@@ -66,7 +66,7 @@ class UmiTemplate:
         ZoneLoads=None,
         Zones=None,
     ):
-        """Initialize a new UmiTemplate with empty attributes.
+        """Initialize a new UmiTemplateLibrary with empty attributes.
 
         Args:
             name (str): The name of the UMI Template.
@@ -159,7 +159,7 @@ class UmiTemplate:
     def read_idf(
         cls, idf_files, weather, name="unnamed", parallel=True,
     ):
-        """Initializes an UmiTemplate object from one or more idf_files.
+        """Initializes an UmiTemplateLibrary object from one or more idf_files.
 
         The resulting object contains the reduced version of the IDF files.
         To save to file, call the :meth:`to_json` method.
@@ -201,7 +201,7 @@ class UmiTemplate:
                 Template File.
 
         Returns:
-            UmiTemplate: The template object.
+            UmiTemplateLibrary: The template object.
         """
         name = Path(filename)
         t = cls(name)

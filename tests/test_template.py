@@ -2220,7 +2220,7 @@ class TestBuildingTemplate:
     """Various tests with the :class:`BuildingTemplate` class"""
 
     def test_climatestudio(self, config, climatestudio):
-        template_json = ar.UmiTemplate(
+        template_json = ar.UmiTemplateLibrary(
             name="my_umi_template", BuildingTemplates=[climatestudio]
         ).to_json(all_zones=True)
         print(template_json)
@@ -2239,11 +2239,11 @@ class TestBuildingTemplate:
         Args:
             config:
         """
-        from archetypal import UmiTemplate
+        from archetypal import UmiTemplateLibrary
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
-        b = UmiTemplate.read_file(filename)
+        b = UmiTemplateLibrary.read_file(filename)
         bt = b.BuildingTemplates
         bt_to_json = bt[0].to_json()
         w_to_json = bt[0].Windows.to_json()
@@ -2873,7 +2873,7 @@ def test_create_umi_template(config):
 
     # region Creates json file (Umi template)
 
-    umi_template = ar.UmiTemplate(
+    umi_template = ar.UmiTemplateLibrary(
         name="unnamed",
         BuildingTemplates=BuildingTemplates,
         GasMaterials=GasMaterials,

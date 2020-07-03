@@ -227,7 +227,7 @@ UMI Template
     :nosignatures:
     :toctree: reference/
 
-    UmiTemplate
+    UmiTemplateLibrary
 
 
 

@@ -63,12 +63,12 @@ the AdultEducationCenter.idf model is used.
     >>>     idf, sql=idf.sql, DataSource=idf.name
     >>> )
 
-3. Create an UmiTemplate Object and Save
+3. Create an UmiTemplateLibrary Object and Save
 
 .. code-block:: python
 
-    >>> from archetypal import UmiTemplate
-    >>> template_json = UmiTemplate(
+    >>> from archetypal import UmiTemplateLibrary
+    >>> template_json = UmiTemplateLibrary(
     >>>     name="my_umi_template",
     >>>     BuildingTemplates=[template_obj]
     >>> ).to_json()

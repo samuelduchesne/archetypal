@@ -78,8 +78,8 @@ method).
     Path('cache\\b0b749f1c11f28b3d24d1d8978d1140e\\b07dbcb49b54298c5f64fe5ee730431b\\sqlite.err'),
     Path('cache\\b0b749f1c11f28b3d24d1d8978d1140e\\b07dbcb49b54298c5f64fe5ee730431b\\USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw')]]
 
-Now, if the command above is modified with `annual=True` and set `design_day=False`, then run_eplus should return the
-annual simulation results (which do not exist yet).
+Now, if the command above is modified with `annual=True` and set `design_day=False`, then `idf.simulate().simulation_files`
+should return the annual simulation results (which do not exist yet).
 
 .. code-block:: python
 
@@ -87,7 +87,7 @@ annual simulation results (which do not exist yet).
 
 Now, since the original IDF file (the version 8.9 one) has not changed, archetypal is going to look for the transitioned
 file that resides in the cache folder and use that one instead of retransitioning the original file a second time. On
-the other hand, since the parameters of run_eplus have changed (annual instead of design_day), it is going to execute
+the other hand, since the parameters of `simulate()` have changed (annual instead of design_day), it is going to execute
 EnergyPlus using the annual method and return the annual results (see that the second-level folder id has changed from
 b07dbcb49b54298c5f64fe5ee730431b to 1cc202748b6c3c2431d203ce90e4d081; *these ids may be different on your computer*):
 

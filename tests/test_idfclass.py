@@ -106,7 +106,7 @@ class TestIDF:
             ".2_5A_USA_IL_CHICAGO-OHARE.idf"
         )
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        with pytest.raises(ValueError):
+        with pytest.raises(EnergyPlusVersionError):
             IDF(file, epw=wf, ep_version="7-3-0")
 
     def test_transition_error(self, config, wont_transition_correctly):

@@ -685,32 +685,34 @@ class EnergyPlusProcessError(Exception):
 class EnergyPlusVersionError(Exception):
     """EnergyPlus Version call error"""
 
-    def __init__(self, idf_file, idf_version, ep_version):
+    def __init__(self, idf_file=None, idf_version=None, ep_version=None, msg=None):
         super(EnergyPlusVersionError, self).__init__(None)
+        self.msg = msg
         self.idf_file = idf_file
         self.idf_version = idf_version
         self.ep_version = ep_version
 
     def __str__(self):
         """Override that only returns the stderr"""
-        if self.idf_version > self.ep_version:
-            compares_ = "higher"
-            msg = (
-                f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
-                f"is {compares_} than the specified EnergyPlus version "
-                f"(v{self.ep_version}). This file looks like it has already been "
-                f"transitioned to a newer version"
-            )
-        else:
-            compares_ = "lower"
-            msg = (
-                f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
-                f"is {compares_} than the specified EnergyPlus version "
-                f"(v{self.ep_version}) and does not match an available EnergyPlus "
-                f"installation on this machine"
-            )
+        if not self.msg:
+            if self.idf_version > self.ep_version:
+                compares_ = "higher"
+                self.msg = (
+                    f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
+                    f"is {compares_} than the specified EnergyPlus version "
+                    f"(v{self.ep_version}). This file looks like it has already been "
+                    f"transitioned to a newer version"
+                )
+            else:
+                compares_ = "lower"
+                self.msg = (
+                    f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
+                    f"is {compares_} than the specified EnergyPlus version "
+                    f"(v{self.ep_version}) and does not match an available EnergyPlus "
+                    f"installation on this machine"
+                )
 
-        return msg
+        return self.msg
 
 
 class EnergyPlusWeatherError(Exception):

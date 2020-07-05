@@ -87,8 +87,9 @@ class IDF(geomeppy.IDF):
         else:
             ep_version = parse(ep_version)
         if ep_version not in self.valid_idds():
-            raise ValueError(
-                f"Invalid ep_version '{ep_version}'. Choices are {self.valid_idds()}"
+            raise EnergyPlusVersionError(
+                msg=f"V{ep_version} is not a valid "
+                f"EnergyPlus version number. Choices are {self.valid_idds()}"
             )
         if settings.use_cache:
             if self.cached_file(idfname, **self.load_kwargs).exists():
@@ -447,7 +448,7 @@ class IDF(geomeppy.IDF):
             ep_version = latest_energyplus_version()
         if ep_version != parse(self.idd_version):
             raise EnergyPlusVersionError(
-                self.idfname, parse(self.idd_version), ep_version,
+                self.idfname, parse(self.idd_version), ep_version
             )
 
         self.eplus_run_options.update(

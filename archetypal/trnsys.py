@@ -993,7 +993,7 @@ def _assert_files(
 
     if not trnsidf_exe:
         trnsidf_exe = settings.trnsys_default_folder / Path(
-            r"Building\trnsIDF\trnsidf.exe"
+            "Building/trnsIDF/trnsidf.exe"
         )
 
     if not os.path.isfile(trnsidf_exe):

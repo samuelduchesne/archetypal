@@ -95,7 +95,7 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     "--verbose/--noverbose",
     "-v/-nv",
     "log_console",
-    default=True,
+    default=False,
     help="print log output to the console",
 )
 @click.option(
@@ -457,10 +457,14 @@ def transition(idf, to_version, cores, yes):
 
     file_paths = set_filepaths(idf)
     rundict = {
-        file: dict(idf_file=file, to_version=to_version, overwrite=overwrite)
-        for file in file_paths
+        file: dict(
+            idf_file=file, to_version=to_version, overwrite=overwrite, position=i + 1
+        )
+        for i, file in enumerate(file_paths)
     }
-    parallel_process(rundict, idf_version_updater, processors=cores)
+    parallel_process(
+        rundict, idf_version_updater, processors=cores, show_progress=True, position=0
+    )
     log(
         "Successfully transitioned files to version '{}' in {:,.2f} seconds".format(
             to_version, time.time() - start_time

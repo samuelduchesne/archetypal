@@ -33,6 +33,7 @@ from eppy.bunch_subclass import EpBunch, BadEPFieldError
 from eppy.easyopen import getiddfile
 from pandas.errors import ParserError
 from path import Path, TempDir
+from tqdm import tqdm
 
 import archetypal
 import archetypal.settings
@@ -254,7 +255,9 @@ class IDF(geomeppy.IDF):
 
     @property
     def idf_version(self):
-        return parse(re.search(r"([\d])-([\d])-([\d])", Path(self.iddname).dirname()).group())
+        return parse(
+            re.search(r"([\d])-([\d])-([\d])", Path(self.iddname).dirname()).group()
+        )
 
     @property
     def name(self):
@@ -606,7 +609,7 @@ class IDF(geomeppy.IDF):
         else:
             # execute transitions
             with TemporaryDirectory(
-                prefix="transition_run_", suffix=None, dir=self.output_directory,
+                prefix="transition_run_", suffix=None, dir=self.output_directory
             ) as tmp:
                 # Move to temporary transition_run folder
                 log(f"temporary dir ({Path(tmp).expand()}) created", lg.DEBUG)
@@ -1851,25 +1854,25 @@ class OutputPrep:
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Heating:EnergyTransfer", Reporting_Frequency="hourly",
+                    Key_Name="Heating:EnergyTransfer", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Cooling:EnergyTransfer", Reporting_Frequency="hourly",
+                    Key_Name="Cooling:EnergyTransfer", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Heating:DistrictHeating", Reporting_Frequency="hourly",
+                    Key_Name="Heating:DistrictHeating", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly",
+                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly"
                 ),
             },
             {
@@ -1879,19 +1882,19 @@ class OutputPrep:
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Cooling:DistrictCooling", Reporting_Frequency="hourly",
+                    Key_Name="Cooling:DistrictCooling", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly",
+                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly",
+                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"
                 ),
             },
             {
@@ -1901,8 +1904,7 @@ class OutputPrep:
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="WaterSystems:EnergyTransfer",
-                    Reporting_Frequency="hourly",
+                    Key_Name="WaterSystems:EnergyTransfer", Reporting_Frequency="hourly"
                 ),
             },
             {
@@ -1969,7 +1971,7 @@ class OutputPrep:
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Electricity:Facility", Reporting_Frequency="hourly",
+                    Key_Name="Electricity:Facility", Reporting_Frequency="hourly"
                 ),
             },
             {
@@ -1979,19 +1981,19 @@ class OutputPrep:
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="WaterSystems:Electricity", Reporting_Frequency="hourly",
+                    Key_Name="WaterSystems:Electricity", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly",
+                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly",
+                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"
                 ),
             },
         ]
@@ -2786,7 +2788,7 @@ def get_sqlite_report(report_file, report_tables=None):
 
 
 def idf_version_updater(
-    idf_file, to_version=None, out_dir=None, simulname=None, overwrite=True
+    idf_file, to_version=None, out_dir=None, simulname=None, overwrite=True, position=0
 ):
     """EnergyPlus idf version updater using local transition program.
 
@@ -2851,7 +2853,7 @@ def idf_version_updater(
             log(f"temporary dir ({Path(tmp).expand()}) created", lg.DEBUG)
             idf_file = Path(idf_file.copy(tmp)).abspath()  # copy and return abspath
             try:
-                _execute_transitions(idf_file, to_version, versionid)
+                _execute_transitions(idf_file, to_version, versionid, position=position)
             except (CalledProcessError, EnergyPlusProcessError) as e:
                 raise e
 
@@ -2897,7 +2899,7 @@ def _check_version(idf_file, to_version, out_dir):
     current_version=archetypal.__version__,
     details="Use :func:`IDF._execute_transitions` instead",
 )
-def _execute_transitions(idf_file, to_version, versionid):
+def _execute_transitions(idf_file, to_version, versionid, position=0):
     """build a list of command line arguments"""
     vupdater_path = (
         get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
@@ -2948,7 +2950,7 @@ def _execute_transitions(idf_file, to_version, versionid):
         and tuple(map(int, key.split("-"))) >= tuple(map(int, versionid.split("-")))
     ]
 
-    for trans in transitions:
+    for trans in tqdm(transitions, position=position, desc=f"file #{position}"):
         if not trans_exec[trans].exists():
             raise EnergyPlusProcessError(
                 cmd=trans_exec[trans],
@@ -3012,7 +3014,10 @@ def latest_energyplus_version():
     # number (at the end of the folder name)
 
     return sorted(
-        (parse(re.search(r"([\d])-([\d])-([\d])", home.stem).group()) for home in eplus_homes),
+        (
+            parse(re.search(r"([\d])-([\d])-([\d])", home.stem).group())
+            for home in eplus_homes
+        ),
         reverse=True,
     )[0]
 

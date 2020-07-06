@@ -14,8 +14,8 @@ import re
 import numpy as np
 
 import archetypal
-from archetypal import log, settings
-from archetypal.idfclass import _create_idf_object
+from archetypal import log
+from archetypal.idfclass import IDF
 from archetypal.utils import lcm
 
 
@@ -110,7 +110,7 @@ class UmiBase(object):
         super(UmiBase, self).__init__()
         self.Name = Name
         if not isinstance(idf, archetypal.IDF):
-            idf = _create_idf_object(settings.ep_version)
+            idf = IDF()
         self.idf = idf
         self.sql = sql
         self.Category = Category

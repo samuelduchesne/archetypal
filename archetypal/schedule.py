@@ -7,19 +7,16 @@
 
 import functools
 import logging as lg
-import tempfile
 from datetime import datetime, timedelta
 from itertools import groupby
-from os import unlink
 
 import numpy as np
 import pandas as pd
 from eppy.bunch_subclass import EpBunch
-from path import Path
 
 import archetypal
-from archetypal import log, settings
-from archetypal.idfclass import _create_idf_object
+from archetypal import log
+from archetypal.idfclass import IDF
 
 
 class Schedule(object):
@@ -61,7 +58,7 @@ class Schedule(object):
             pass  # todo: make this more robust
         self.strict = strict
         if not isinstance(idf, archetypal.IDF):
-            idf = _create_idf_object(settings.ep_version)
+            idf = IDF()
         self.idf = idf
         self.Name = Name
         self.startDayOfTheWeek = self.get_sdow(start_day_of_the_week)
@@ -115,40 +112,20 @@ class Schedule(object):
             return cls(Name=Name, idf=idf, **kwargs)
         else:
             # Create a new idf object and add the schedule to it.
-            idftxt = "VERSION, {};".format(
-                settings.ep_version.replace("-", ".")[0:3]
-            )  # Not an empty string. has just the
-            # version number
-            # we can make a file handle of a string
-            if not Path(settings.cache_folder).exists():
-                Path(settings.cache_folder).mkdir_p()
-            with tempfile.NamedTemporaryFile(
-                mode="w",
-                suffix="_schedule.idf",
-                prefix="temp_",
-                dir=settings.cache_folder,
-                delete=False,
-            ) as file:
-                file.write(idftxt)
-                file.seek(0)
-                # initialize the IDF object with the file handle
-                from eppy.easyopen import easyopen
-
-                idf_scratch = easyopen(file.name)
-                idf_scratch.__class__ = archetypal.IDF
-
-                idf_scratch.add_object(
-                    ep_object="Schedule:Constant".upper(),
-                    **dict(
-                        Name=Name,
-                        Schedule_Type_Limits_Name="",
-                        Hourly_Value=hourly_value,
+            idf_scratch = IDF(
+                prep_outputs=[
+                    dict(
+                        ep_object="Schedule:Constant".upper(),
+                        kwargs=dict(
+                            Name=Name,
+                            Schedule_Type_Limits_Name="",
+                            Hourly_Value=hourly_value,
+                        ),
                     )
-                )
+                ]
+            )
 
-                sched = cls(Name=Name, idf=idf_scratch, **kwargs)
-                file.close()  # close file
-                unlink(file.name)  # delete file
+            sched = cls(Name=Name, idf=idf_scratch, **kwargs)
             return sched
 
     @property

@@ -10,8 +10,8 @@ import logging as lg
 from enum import IntEnum
 from functools import reduce
 
-import deprecation
 import tabulate
+from deprecation import deprecated
 from eppy.bunch_subclass import EpBunch
 
 import archetypal
@@ -81,9 +81,9 @@ class WindowConstruction(UmiBase, metaclass=Unique):
             )
 
     @classmethod
-    @deprecation.deprecated(
+    @deprecated(
         deprecated_in="1.3.1",
-        removed_in="1.4",
+        removed_in="1.5",
         current_version=archetypal.__version__,
         details="Use from_dict function instead",
     )
@@ -766,9 +766,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return data_dict
 
     @classmethod
-    @deprecation.deprecated(
+    @deprecated(
         deprecated_in="1.3.1",
-        removed_in="1.4",
+        removed_in="1.5",
         current_version=archetypal.__version__,
         details="Use from_dict function instead",
     )

@@ -7,7 +7,7 @@
 
 import collections
 
-import deprecation
+from deprecation import deprecated
 
 import archetypal
 from archetypal.template import MaterialBase, Unique
@@ -55,9 +55,9 @@ class GasMaterial(MaterialBase, metaclass=Unique):
             )
 
     @classmethod
-    @deprecation.deprecated(
+    @deprecated(
         deprecated_in="1.3.1",
-        removed_in="1.4",
+        removed_in="1.5",
         current_version=archetypal.__version__,
         details="Use from_dict function instead",
     )

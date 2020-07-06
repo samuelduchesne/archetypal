@@ -12,7 +12,7 @@ import random
 import time
 from operator import add
 
-import deprecation
+from deprecation import deprecated
 import numpy as np
 from eppy.bunch_subclass import BadEPFieldError
 from geomeppy.geom.polygons import Polygon3D
@@ -354,9 +354,9 @@ class Zone(UmiBase):
         return data_dict
 
     @classmethod
-    @deprecation.deprecated(
+    @deprecated(
         deprecated_in="1.3.1",
-        removed_in="1.4",
+        removed_in="1.5",
         current_version=__version__,
         details="Use from_dict function instead",
     )

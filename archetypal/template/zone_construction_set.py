@@ -1,7 +1,7 @@
 import collections
 import logging as lg
 
-import deprecation
+from deprecation import deprecated
 
 from archetypal import log, timeit, reduce, __version__
 from archetypal.template import (
@@ -166,9 +166,9 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         return z_set
 
     @classmethod
-    @deprecation.deprecated(
+    @deprecated(
         deprecated_in="1.3.1",
-        removed_in="1.4",
+        removed_in="1.5",
         current_version=__version__,
         details="Use from_dict function instead",
     )

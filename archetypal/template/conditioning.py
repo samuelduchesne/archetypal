@@ -9,8 +9,8 @@ import collections
 import logging as lg
 import math
 
-import deprecation
 import numpy as np
+from deprecation import deprecated
 
 import archetypal
 from archetypal import float_round, ReportData, log, timeit, settings
@@ -226,9 +226,9 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             )
 
     @classmethod
-    @deprecation.deprecated(
+    @deprecated(
         deprecated_in="1.3.1",
-        removed_in="1.4",
+        removed_in="1.5",
         current_version=archetypal.__version__,
         details="Use from_dict function instead",
     )

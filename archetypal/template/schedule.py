@@ -8,9 +8,9 @@
 import collections
 import uuid
 
-import deprecation
 import numpy as np
 import pandas as pd
+from deprecation import deprecated
 from eppy.bunch_subclass import EpBunch
 
 import archetypal
@@ -263,9 +263,9 @@ class YearScheduleParts:
         self.Schedule = Schedule
 
     @classmethod
-    @deprecation.deprecated(
+    @deprecated(
         deprecated_in="1.3.1",
-        removed_in="1.4",
+        removed_in="1.5",
         current_version=archetypal.__version__,
         details="Use from_dict function instead",
     )
@@ -348,9 +348,9 @@ class DaySchedule(UmiSchedule):
         return sched
 
     @classmethod
-    @deprecation.deprecated(
+    @deprecated(
         deprecated_in="1.3.1",
-        removed_in="1.4",
+        removed_in="1.5",
         current_version=archetypal.__version__,
         details="Use from_dict function instead",
     )
@@ -428,9 +428,9 @@ class WeekSchedule(UmiSchedule):
         return sched
 
     @classmethod
-    @deprecation.deprecated(
+    @deprecated(
         deprecated_in="1.3.1",
-        removed_in="1.4",
+        removed_in="1.5",
         current_version=archetypal.__version__,
         details="Use from_dict function instead",
     )
@@ -549,9 +549,9 @@ class YearSchedule(UmiSchedule):
         return series.values
 
     @classmethod
-    @deprecation.deprecated(
+    @deprecated(
         deprecated_in="1.3.1",
-        removed_in="1.4",
+        removed_in="1.5",
         current_version=archetypal.__version__,
         details="Use from_dict function instead",
     )

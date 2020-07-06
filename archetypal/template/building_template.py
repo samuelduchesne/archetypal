@@ -10,12 +10,12 @@ import logging as lg
 import time
 from collections import defaultdict
 
-import deprecation
 import eppy
 import matplotlib.collections
 import matplotlib.colors
 import networkx
 import tabulate
+from deprecation import deprecated
 from eppy.bunch_subclass import EpBunch
 from path import Path
 from tqdm import tqdm
@@ -193,9 +193,9 @@ class BuildingTemplate(UmiBase):
         return fig, ax
 
     @classmethod
-    @deprecation.deprecated(
+    @deprecated(
         deprecated_in="1.3.1",
-        removed_in="1.4",
+        removed_in="1.5",
         current_version=archetypal.__version__,
         details="Use from_dict function instead",
     )

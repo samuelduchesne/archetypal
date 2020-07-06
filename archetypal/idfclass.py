@@ -254,7 +254,7 @@ class IDF(geomeppy.IDF):
 
     @property
     def idf_version(self):
-        return parse(re.search(r"([\d-]+)", Path(self.iddname).dirname()).group(1))
+        return parse(re.search(r"([\d])-([\d])-([\d])", Path(self.iddname).dirname()).group())
 
     @property
     def name(self):
@@ -3012,7 +3012,7 @@ def latest_energyplus_version():
     # number (at the end of the folder name)
 
     return sorted(
-        (parse(re.search(r"([\d-]+)", home.stem).group(1)) for home in eplus_homes),
+        (parse(re.search(r"([\d])-([\d])-([\d])", home.stem).group()) for home in eplus_homes),
         reverse=True,
     )[0]
 

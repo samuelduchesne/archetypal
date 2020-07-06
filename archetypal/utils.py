@@ -22,6 +22,9 @@ import platform
 import re
 import sys
 import time
+from typing import Union
+
+import packaging
 import unicodedata
 import warnings
 from collections import OrderedDict
@@ -29,8 +32,10 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
+from packaging.version import Version, InvalidVersion
 from pandas.io.json import json_normalize
 from path import Path
+from tabulate import tabulate
 
 from archetypal import settings, __version__
 from archetypal.settings import ep_version
@@ -671,6 +676,11 @@ class EnergyPlusProcessError(Exception):
         msg = ":\n".join([self.idf, self.stderr])
         return msg
 
+    def write(self):
+        # create and add headers
+        invalid = [{"Filename": self.idf, "Error": self.stderr}]
+        return tabulate(invalid, headers="keys")
+
 
 class EnergyPlusVersionError(Exception):
     """EnergyPlus Version call error"""
@@ -683,18 +693,23 @@ class EnergyPlusVersionError(Exception):
 
     def __str__(self):
         """Override that only returns the stderr"""
-        if tuple(self.idf_version.split("-")) > tuple(self.ep_version.split("-")):
+        if self.idf_version > self.ep_version:
             compares_ = "higher"
+            msg = (
+                f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
+                f"is {compares_} than the specified EnergyPlus version "
+                f"(v{self.ep_version}). This file looks like it has already been "
+                f"transitioned to a newer version"
+            )
         else:
             compares_ = "lower"
-        msg = (
-            "The version of the idf file {} (v{}) is {} than the specified "
-            "EnergyPlus version (v{}). Specify the default EnergyPlus version "
-            "with :func:`config` that corresponds with the one installed on your machine"
-            " or specify the version in related module functions, e.g. :func:`run_eplus`.".format(
-                self.idf_file.basename(), self.idf_version, compares_, self.ep_version
+            msg = (
+                f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
+                f"is {compares_} than the specified EnergyPlus version "
+                f"(v{self.ep_version}) and does not match an available EnergyPlus "
+                f"installation on this machine"
             )
-        )
+
         return msg
 
 
@@ -1051,10 +1066,10 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         >>>                      prep_outputs=True, expandobjects=True,
         >>>                      verbose='q', output_report='sql')
         >>>           for file in files}
-        >>> result = parallel_process(rundict, ar.run_eplus, use_kwargs=True)
+        >>> result = parallel_process(rundict, IDF, use_kwargs=True)
 
     Args:
-        in_dict (dict-like): A dictionary to iterate over.
+        in_dict (dict): A dictionary to iterate over.
         function (function): A python function to apply to the elements of
             in_dict
         processors (int): The number of cores to use
@@ -1064,7 +1079,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         [function(array[0]), function(array[1]), ...]
     """
     from tqdm import tqdm
-    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())
@@ -1152,3 +1167,31 @@ def docstring_parameter(*args, **kwargs):
         return obj
 
     return dec
+
+
+class EnergyPlusVersion(Version):
+    @property
+    def dash(self):
+        # type: () -> str
+        return "-".join(map(str, (self.major, self.minor, self.micro)))
+
+
+def parse(version):
+    # type: (Union[str, tuple, Version]) -> Union[None, EnergyPlusVersion]
+    """
+    Parse the given version string and return either a :class:`Version` object
+    or a :class:`LegacyVersion` object depending on if the given version is
+    a valid PEP 440 version or a legacy version.
+    """
+    if not version:
+        return None
+    if isinstance(version, tuple):
+        version = ".".join(map(str, version[0:3]))
+    if isinstance(version, Version):
+        return EnergyPlusVersion(
+            ".".join(map(str, (version.major, version.minor, version.micro)))
+        )
+    try:
+        return EnergyPlusVersion(version)
+    except InvalidVersion:
+        return EnergyPlusVersion(version.replace("-", "."))

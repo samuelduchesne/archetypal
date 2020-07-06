@@ -13,7 +13,7 @@ Umi Template Structure
 ----------------------
 
 An Umi Template is a collection of various other objects that are referenced between each other. At the top of the
-hierarchy, there is the :class:`UmiTemplate` object which holds all the other bits and pieces making up the template
+hierarchy, there is the :class:`UmiTemplateLibrary` object which holds all the other bits and pieces making up the template
 library. The second level is therefore the :class:`BuildingTemplate` object. There is one BuildingTemplate for each
 building models (or archetypes). Each BuildingTemplate is made of a series of children objects, and multiple
 BuildingTemplates can share the same children. For example, two buildings can share the same lighting schedule or the
@@ -69,7 +69,7 @@ parameters:
     plywood = ar.OpaqueMaterial(Name="Plywood", Conductivity=0.13, SpecificHeat=800, Density=540)
 
 Add these 4 materials to a variable named `OpaqueMaterials`. This variable will be referenced at the end when the
-:class:`UmiTemplate` object will be created.
+:class:`UmiTemplateLibrary` object will be created.
 
 .. code-block:: python
 
@@ -894,8 +894,8 @@ Creating Umi template
 
   .. code-block:: python
 
-    # UmiTemplate using all lists of objects created before
-    umi_template = ar.UmiTemplate(
+    # UmiTemplateLibrary using all lists of objects created before
+    umi_template = ar.UmiTemplateLibrary(
         name="unnamed",
         BuildingTemplates=BuildingTemplates,
         GasMaterials=GasMaterials,
@@ -941,4 +941,4 @@ Creating Umi template
 .. _ZoneLoad: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.ZoneLoad.html
 .. _Zone: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.Zone.html
 .. _BuildingTemplate: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.BuildingTemplate.html
-.. _UmiTemplate: https://archetypal.readthedocs.io/en/develop/reference/archetypal.umi_template.UmiTemplate.html
+.. _UmiTemplate: https://archetypal.readthedocs.io/en/develop/reference/archetypal.umi_template.UmiTemplateLibrary.html

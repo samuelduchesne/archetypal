@@ -1,7 +1,7 @@
 import io
 import json
 import os
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 
 import numpy as np
 from path import Path
@@ -40,22 +40,7 @@ from archetypal import (
 )
 
 
-def _write_invalid(res):
-    res = {k: v for k, v in res.items() if ~isinstance(res[k], Exception)}
-    invalid_runs = {k: v for k, v in res.items() if isinstance(res[k], Exception)}
-
-    if invalid_runs:
-        invalid = []
-        for i, (k, v) in enumerate(invalid_runs.items()):
-            invalid.append({"#": i, "Filename": k, "Error": invalid_runs[k]})
-        filename = Path("failed_reduce.txt")
-        with open(filename, "w") as failures:
-            failures.writelines(tabulate(invalid, headers="keys"))
-            log("Invalid runs listed in %s" % filename)
-    return res
-
-
-class UmiTemplate:
+class UmiTemplateLibrary:
     """Main class supporting the definition of a multiple building templates and
     corresponding template objects.
     """
@@ -81,7 +66,7 @@ class UmiTemplate:
         ZoneLoads=None,
         Zones=None,
     ):
-        """Initialize a new UmiTemplate with empty attributes.
+        """Initialize a new UmiTemplateLibrary with empty attributes.
 
         Args:
             name (str): The name of the UMI Template.
@@ -174,7 +159,7 @@ class UmiTemplate:
     def read_idf(
         cls, idf_files, weather, name="unnamed", parallel=True,
     ):
-        """Initializes an UmiTemplate object from one or more idf_files.
+        """Initializes an UmiTemplateLibrary object from one or more idf_files.
 
         The resulting object contains the reduced version of the IDF files.
         To save to file, call the :meth:`to_json` method.
@@ -190,7 +175,7 @@ class UmiTemplate:
 
         # fill in arguments
         umi_template.idf_files = [Path(idf) for idf in idf_files]
-        umi_template.weather = weather
+        umi_template.weather = Path(weather).expand()
 
         # Run/Load IDF objects
         if not parallel:
@@ -198,31 +183,11 @@ class UmiTemplate:
         else:
             processors = -1
         # if parallel is True, run eplus in parallel
-        rundict = {
-            file: dict(
-                eplus_file=file,
-                weather_file=weather,
-                annual=True,
-                prep_outputs=True,
-                expandobjects=True,
-                verbose="v",
-                output_report="sql",
-                return_idf=False,
-                ep_version=settings.ep_version,
-            )
-            for file in umi_template.idf_files
-        }
-        res = parallel_process(rundict, run_eplus, processors=processors)
-        res = _write_invalid(res)
 
-        loaded_idf = {}
         bts = []
-        for key, sql in res.items():
-            if not isinstance(sql, Exception):
-                idf = load_idf(key)
-                bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
-            else:
-                raise sql
+        for idf_file in umi_template.idf_files:
+            idf = IDF(idf_file, epw=umi_template.weather, annual=True)
+            bts.append(BuildingTemplate.from_idf(idf, sql=idf.sql, DataSource=idf.name))
         umi_template.BuildingTemplates = bts
         return umi_template
 
@@ -236,7 +201,7 @@ class UmiTemplate:
                 Template File.
 
         Returns:
-            UmiTemplate: The template object.
+            UmiTemplateLibrary: The template object.
         """
         name = Path(filename)
         t = cls(name)

@@ -6,20 +6,14 @@ from path import Path
 
 import archetypal as ar
 import archetypal.settings
-from archetypal import get_eplus_dirs, clear_cache, settings, GlazingMaterial
+from archetypal import get_eplus_dirs, clear_cache, settings, GlazingMaterial, IDF
 from archetypal.settings import ep_version
 
 
 @pytest.fixture(scope="session")
 def small_idf(config, small_idf_obj):
     """An IDF model. Yields both the idf and the sql"""
-    sql = small_idf_obj.run_eplus(
-        output_report="sql",
-        prep_outputs=True,
-        annual=False,
-        design_day=False,  # This idf model cannot do DesignDay
-        verbose="v",
-    )
+    sql = small_idf_obj.sql
     yield small_idf_obj, sql
 
 
@@ -28,7 +22,7 @@ def small_idf_obj(config):
     """An IDF model. Yields just the idf object"""
     file = "tests/input_data/umi_samples/B_Off_0.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    yield ar.load_idf(file, weather_file=w)
+    yield IDF(file, epw=w)
 
 
 @pytest.fixture(scope="session")
@@ -36,16 +30,8 @@ def other_idf(config):
     """Another IDF object with a different signature. Yields both the idf and the sql"""
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    idf = ar.load_idf(file)
-    sql = ar.run_eplus(
-        file,
-        weather_file=w,
-        output_report="sql",
-        prep_outputs=True,
-        annual=False,
-        design_day=False,  # This idf model cannot do DesignDay
-        verbose="v",
-    )
+    idf = IDF(file, epw=w)
+    sql = idf.sql
     yield idf, sql
 
 
@@ -54,7 +40,7 @@ def other_idf_object(config):
     """Another IDF object (same as other_idf).Yields just the idf object"""
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    yield ar.load_idf(file, weather_file=w)
+    yield IDF(file, epw=w)
 
 
 @pytest.fixture(scope="session")
@@ -65,15 +51,8 @@ def small_office(config):
     """
     file = "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    idf = ar.load_idf(file)
-    sql = ar.run_eplus(
-        file,
-        weather_file=w,
-        output_report="sql",
-        prep_outputs=True,
-        expandobjects=True,
-        verbose="v",
-    )
+    idf = IDF(file, epw=w)
+    sql = idf.sql
     yield idf, sql
 
 
@@ -1312,14 +1291,8 @@ class TestZoneLoad:
             / "WeatherData"
             / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         )
-        idf = ar.load_idf(file, weather_file=w)
-        sql = idf.run_eplus(
-            output_report="sql",
-            prep_outputs=True,
-            annual=False,
-            design_day=True,
-            verbose="v",
-        )
+        idf = IDF(file, epw=w)
+        sql = idf.sql
         yield idf, sql
 
     @pytest.fixture(scope="class", params=["RefBldgWarehouseNew2004_Chicago.idf"])
@@ -1333,16 +1306,8 @@ class TestZoneLoad:
 
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = ar.load_idf(file)
-        sql = ar.run_eplus(
-            file,
-            weather_file=w,
-            output_report="sql",
-            prep_outputs=True,
-            annual=False,
-            design_day=True,
-            verbose="v",
-        )
+        idf = IDF(file, epw=w)
+        sql = idf.sql
         yield idf, sql
 
     def test_zoneLoad_init(self, config):
@@ -1502,16 +1467,8 @@ class TestZoneConditioning:
 
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = ar.load_idf(file)
-        sql = ar.run_eplus(
-            file,
-            weather_file=w,
-            output_report="sql",
-            prep_outputs=True,
-            annual=False,
-            design_day=True,
-            verbose="v",
-        )
+        idf = IDF(file, epw=w)
+        sql = idf.sql
         yield idf, sql, request.param
 
     def test_zoneConditioning_init(self, config):
@@ -1658,16 +1615,8 @@ class TestVentilationSetting:
         eplusdir = get_eplus_dirs(settings.ep_version)
         file = eplusdir / "ExampleFiles" / request.param
         w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
-        idf = ar.load_idf(file)
-        sql = ar.run_eplus(
-            file,
-            weather_file=w,
-            output_report="sql",
-            prep_outputs=True,
-            annual=False,
-            design_day=False,
-            verbose="v",
-        )
+        idf = IDF(file, epw=w)
+        sql = idf.sql
         yield idf, sql, request.param
 
     def test_ventilation_init(self, config):
@@ -1880,16 +1829,8 @@ class TestWindowSetting:
         eplusdir = get_eplus_dirs(archetypal.settings.ep_version)
         file = eplusdir / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = ar.load_idf(file)
-        sql = ar.run_eplus(
-            file,
-            weather_file=w,
-            output_report="sql",
-            prep_outputs=True,
-            annual=False,
-            design_day=False,
-            verbose="v",
-        )
+        idf = IDF(file, epw=w)
+        sql = idf.sql
         yield idf, sql
 
     def test_window_from_construction_name(self, small_idf):
@@ -1945,14 +1886,12 @@ class TestWindowSetting:
                 "WindowMaterial:Shade".upper(),
                 Visible_Transmittance=0.5,
                 Name="Roll Shade",
-                save=False,
             )
             idf.add_object(
                 "WindowShadingControl".upper(),
                 Construction_with_Shading_Name=constr,
                 Setpoint=14,
                 Shading_Device_Material_Name="Roll Shade",
-                save=False,
                 Fenestration_Surface_1_Name="test_control",
             )
             f.Name = "test_control"
@@ -2121,16 +2060,8 @@ class TestZone:
 
         file = "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = ar.load_idf(file)
-        sql = ar.run_eplus(
-            file,
-            weather_file=w,
-            output_report="sql",
-            prep_outputs=True,
-            annual=False,
-            design_day=False,
-            verbose="v",
-        )
+        idf = IDF(file, epw=w)
+        sql = idf.sql
         zone = idf.getobject(
             "ZONE", "Sp-attic Sys-0 Flr-2 Sch-- undefined - " "HPlcmt-core ZN"
         )
@@ -2263,16 +2194,8 @@ def bt():
     file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
     w = next(iter((eplus_dir / "WeatherData").glob("*.epw")), None)
     file = ar.copy_file(file)
-    idf = ar.load_idf(file)
-    sql = ar.run_eplus(
-        file,
-        weather_file=w,
-        output_report="sql",
-        prep_outputs=True,
-        annual=True,
-        expandobjects=True,
-        verbose="v",
-    )
+    idf = IDF(file, epw=w)
+    sql = idf.sql
     from archetypal import BuildingTemplate
 
     bt = BuildingTemplate.from_idf(idf, sql=sql)
@@ -2283,18 +2206,10 @@ def bt():
 def climatestudio():
     """A building template fixture from a climate studio idf file used in subsequent
     tests"""
-    eplus_dir = get_eplus_dirs(archetypal.settings.ep_version)
     file = "tests/input_data/umi_samples/climatestudio_test.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    _, idf, res = ar.run_eplus(
-        file,
-        w,
-        ep_version="9-2-0",
-        return_idf=True,
-        return_files=True,
-        prep_outputs=True,
-        output_report="sql",
-    )
+    idf = IDF(file, epw=w, annual=True)
+
     from archetypal import BuildingTemplate
 
     bt = BuildingTemplate.from_idf(idf, sql=idf.sql)
@@ -2305,7 +2220,7 @@ class TestBuildingTemplate:
     """Various tests with the :class:`BuildingTemplate` class"""
 
     def test_climatestudio(self, config, climatestudio):
-        template_json = ar.UmiTemplate(
+        template_json = ar.UmiTemplateLibrary(
             name="my_umi_template", BuildingTemplates=[climatestudio]
         ).to_json(all_zones=True)
         print(template_json)
@@ -2324,11 +2239,11 @@ class TestBuildingTemplate:
         Args:
             config:
         """
-        from archetypal import UmiTemplate
+        from archetypal import UmiTemplateLibrary
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
-        b = UmiTemplate.read_file(filename)
+        b = UmiTemplateLibrary.read_file(filename)
         bt = b.BuildingTemplates
         bt_to_json = bt[0].to_json()
         w_to_json = bt[0].Windows.to_json()
@@ -2958,7 +2873,7 @@ def test_create_umi_template(config):
 
     # region Creates json file (Umi template)
 
-    umi_template = ar.UmiTemplate(
+    umi_template = ar.UmiTemplateLibrary(
         name="unnamed",
         BuildingTemplates=BuildingTemplates,
         GasMaterials=GasMaterials,

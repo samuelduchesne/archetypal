@@ -8,13 +8,13 @@ Running multiple IDF files is easily achieved by using the :meth:`~archetypal.ut
     The :meth:`~archetypal.utils.parallel_process` method works with any method. You can use it to parallelize
     other functions in your script.
 
-To create a parallel run, first import the usual pacakge methods and configure `archetypal` to use caching and to
+To create a parallel run, first import the usual package methods and configure `archetypal` to use caching and to
 show logs in the console.
 
 .. code-block:: python
 
     >>> from path import Path
-    >>> from archetypal import load_idf, config, run_eplus, settings, parallel_process
+    >>> from archetypal import IDF, config, run_eplus, settings, parallel_process
     >>> import pandas as pd
     >>> config(use_cache=True, log_console=True)
 
@@ -22,7 +22,7 @@ Then, use
 
 .. code-block:: python
 
-    >>> from archetypal import load_idf, config, run_eplus, settings
+    >>> from archetypal import IDF, config, settings
     >>> from archetypal import parallel_process
     >>> import pandas as pd
     >>> config(use_cache=True, log_console=True)

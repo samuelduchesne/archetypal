@@ -80,9 +80,12 @@ class WindowConstruction(UmiBase, metaclass=Unique):
             )
 
     @classmethod
-    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
-                            current_version=archetypal.__version__,
-                            details="Use from_dict function instead")
+    @deprecation.deprecated(
+        deprecated_in="1.3.1",
+        removed_in="1.4",
+        current_version=archetypal.__version__,
+        details="Use from_dict function instead",
+    )
     def from_json(cls, *args, **kwargs):
 
         return cls.from_dict(*args, **kwargs)
@@ -183,7 +186,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
                     material_layer = MaterialLayer(material_obj, material.Thickness)
 
                 elif material.key.upper() == "WindowMaterial:Gas".upper():
-                    # Todo: Make gas name generic, like in UmiTemplate Editor
+                    # Todo: Make gas name generic, like in UmiTemplateLibrary Editor
                     material_obj = GasMaterial(
                         Name=material.Gas_Type.upper(), idf=self.idf
                     )
@@ -391,7 +394,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Examples:
             >>> import archetypal as ar
             >>> # Given an IDF object
-            >>> idf = ar.load_idf("idfname")
+            >>> idf = ar.IDF("idfname.idf")
             >>> construction = idf.getobject('CONSTRUCTION',
             >>>                              'AEDG-SmOffice 1A Window Fixed')
             >>> ar.WindowSetting.from_construction(Name='test_window',
@@ -622,7 +625,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 Name=name,
                 Construction=construction,
                 idf=surface.theidf,
-                Category=surface.theidf.building_name(use_idfname=True),
+                Category=surface.theidf.name,
                 **attr
             )
             return w
@@ -762,9 +765,12 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return data_dict
 
     @classmethod
-    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
-                            current_version=archetypal.__version__,
-                            details="Use from_dict function instead")
+    @deprecation.deprecated(
+        deprecated_in="1.3.1",
+        removed_in="1.4",
+        current_version=archetypal.__version__,
+        details="Use from_dict function instead",
+    )
     def from_json(cls, *args, **kwargs):
 
         return cls.from_dict(*args, **kwargs)

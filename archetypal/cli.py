@@ -24,7 +24,7 @@ from archetypal import (
     parallel_process,
     run_eplus,
     IDF,
-    UmiTemplate,
+    UmiTemplateLibrary,
     config,
     log,
     idf_version_updater,
@@ -396,13 +396,17 @@ def reduce(idf, output, weather, parallel, all_zones):
     weather = next(iter(set_filepaths([weather])))
     log(f"using the '{weather.basename()}' weather file\n")
 
-    # Call UmiTemplate constructor with list of IDFs
+    # Call UmiTemplateLibrary constructor with list of IDFs
     try:
-        template = UmiTemplate.read_idf(
+        template = UmiTemplateLibrary.read_idf(
             file_paths, weather=weather, name=name, parallel=parallel
         )
-    except EnergyPlusProcessError:
-        pass  # This exception is already logged in _write_invalid
+    except EnergyPlusProcessError as e:
+        log(e.write())
+        filename = (settings.logs_folder / "failed_reduce.txt").expand()
+        with open(filename, "a") as file:
+            file.writelines(e.write())
+            log(f"EnergyPlusProcess errors listed in {filename}")
     except Exception as e:
         log(f"An Unkown exception occured: {e}", logging.ERROR)
     else:

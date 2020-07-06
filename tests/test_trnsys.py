@@ -20,6 +20,7 @@ from archetypal import (
     get_eplus_dirs,
     IDF,
 )
+
 # Function round to hundreds
 from archetypal.trnsys import (
     _assert_files,
@@ -1053,7 +1054,6 @@ class TestConvert:
 
         # Output reports
         htm = idf.htm
-        sql = idf.sql
         sql_file = idf.sql_file
 
         # Check if cache exists

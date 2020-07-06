@@ -152,7 +152,6 @@ def convert_idf_to_trnbuild(
     # idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
     # Outpout reports
     htm = idf.htm
-    sql = idf.sql  # todo: Is this needed?
     sql_file = idf.sql_file
 
     # Clean names of idf objects (e.g. 'MATERIAL')
@@ -1128,8 +1127,6 @@ def _get_schedules(idf):
         year, weeks, days = s.to_year_week_day()
         schedules[schedule_name]["all values"] = s.all_values
         schedules[schedule_name]["year"] = year
-        # schedules[schedule_name]["weeks"] = weeks
-        # schedules[schedule_name]["days"] = days
 
     log(
         "Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
@@ -2213,24 +2210,6 @@ def _write_schedules(lines, schedule_names, schedules, schedule_as_input, idf_fi
 
             # Write schedule name
             lines.insert(scheduleNum + 1, "!-SCHEDULE " + schedule_name + "\n")
-
-            # if (
-            #     len(hours_list) <= 1500
-            # ):  # Todo: Now, only writes "short" schedules. Make method that write them all
-            #     lines.insert(
-            #         scheduleNum + 1,
-            #         "!-SCHEDULE " + schedules[schedule_name]["year"].Name + "\n",
-            #     )
-            #     lines.insert(
-            #         scheduleNum + 2,
-            #         "!- HOURS= " + " ".join(str(item) for item in hours_list) + "\n",
-            #     )
-            #     lines.insert(
-            #         scheduleNum + 3,
-            #         "!- VALUES= " + " ".join(str(item) for item in values) + "\n",
-            #     )
-            # else:
-            #     schedules_not_written.append(schedule_name)
 
     return schedules_not_written
 

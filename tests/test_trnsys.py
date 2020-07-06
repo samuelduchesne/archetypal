@@ -1135,7 +1135,6 @@ class TestConvert:
 )
 def trnbuild_file(config, request):
     idf_file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
-    idf_file = copy_file(idf_file, where=settings.cache_folder)
 
     yield idf_file
 

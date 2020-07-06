@@ -952,26 +952,26 @@ def _assert_files(
     """Ensure the files and directory are here
 
     Args:
-        idf_file (str): path to the idf file to convert
-        window_lib (str): File path of the window library (from Berkeley Lab)
-        output_folder (str): path to the output folder (can be None)
-        trnsidf_exe (str): Path to *trnsidf.exe*.
-        template (str): Path to d18 template file.
+        idf_file (str or Path): path to the idf file to convert
+        window_lib (str or Path): File path of the window library (from Berkeley Lab)
+        output_folder (str or Path): path to the output folder (can be None)
+        trnsidf_exe (str or Path): Path to *trnsidf.exe*.
+        template (str or Path): Path to d18 template file.
     """
-    if isinstance(idf_file, str):
+    if isinstance(idf_file, (str, Path)):
         if not os.path.isfile(idf_file):
             raise IOError("idf_file file not found")
     else:
         raise IOError("idf_file file is not a string (path)")
 
-    if isinstance(weather_file, str):
+    if isinstance(weather_file, (str, Path)):
         if not os.path.isfile(weather_file):
             raise IOError("weather file not found")
     else:
         raise IOError("weather file is not a string (path)")
 
     if window_lib:
-        if isinstance(window_lib, str):
+        if isinstance(window_lib, (str, Path)):
             if not os.path.isfile(window_lib):
                 raise IOError("window_lib file not found")
         else:

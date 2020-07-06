@@ -706,8 +706,7 @@ class EnergyPlusVersionError(Exception):
                 self.msg = (
                     f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
                     f"is {compares_} than the specified EnergyPlus version "
-                    f"(v{self.ep_version}) and does not match an available EnergyPlus "
-                    f"installation on this machine"
+                    f"(v{self.ep_version})"
                 )
 
         return self.msg

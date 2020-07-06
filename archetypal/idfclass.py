@@ -133,15 +133,11 @@ class IDF(geomeppy.IDF):
             if isinstance(idfname, StringIO):
                 idfname.seek(0)
             super(IDF, self).__init__(idfname, epw)
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             # Loading the idf object will raise a FileNotFoundError if the
             # version of EnergyPlus is not installed
             to_version = ep_version
-            log(
-                f"The version number of '{self.idfname.basename()}' "
-                f"does not match any EnergyPlus installation on this computer. "
-                f"Transitioning idf file to version {to_version}..."
-            )
+            log(f"{e}\nTransitioning idf file to version {to_version}...")
             self.upgrade(to_version, epw)
         else:
             # the versions fit, great!
@@ -154,8 +150,11 @@ class IDF(geomeppy.IDF):
             self.idfname = (
                 Path(self.idfname).expand()
                 if not isinstance(idfname, StringIO)
-                else idfname
+                else StringIO(self.idfstr())
             )  # Force idfname to be a Path object if not a StringIO.
+
+            if self.idf_version < ep_version:
+                self.upgrade(ep_version, epw)
 
             prep_outputs = kwargs.pop("prep_outputs", True)
             # Set the EnergyPlusOptions object
@@ -269,9 +268,7 @@ class IDF(geomeppy.IDF):
 
     @property
     def idf_version(self):
-        return parse(
-            re.search(r"([\d])-([\d])-([\d])", Path(self.iddname).dirname()).group()
-        )
+        return parse(get_idf_version(self.idfname))
 
     @property
     def name(self):
@@ -625,7 +622,7 @@ class IDF(geomeppy.IDF):
         else:
             # execute transitions
             with TemporaryDirectory(
-                prefix="transition_run_", suffix=None, dir=self.output_directory,
+                prefix="transition_run_", suffix=None, dir=self.output_directory
             ) as tmp:
                 # Move to temporary transition_run folder
                 log(f"temporary dir ({Path(tmp).expand()}) created", lg.DEBUG)
@@ -891,9 +888,9 @@ class IDF(geomeppy.IDF):
         return series
 
     def save(self, filename=None, lineendings="default", encoding="latin-1"):
-        if isinstance(self.idfname, StringIO):
-            self.idfname = StringIO(self.idfstr())
-        super(IDF, self).save(filename=None, lineendings="default", encoding="latin-1")
+        super(IDF, self).save(
+            filename=filename, lineendings=lineendings, encoding=encoding
+        )
         log(f"saved '{self.name}' at '{filename if filename else self.idfname}'")
 
     def add_object(self, ep_object, **kwargs):
@@ -1870,25 +1867,25 @@ class OutputPrep:
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Heating:EnergyTransfer", Reporting_Frequency="hourly",
+                    Key_Name="Heating:EnergyTransfer", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Cooling:EnergyTransfer", Reporting_Frequency="hourly",
+                    Key_Name="Cooling:EnergyTransfer", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Heating:DistrictHeating", Reporting_Frequency="hourly",
+                    Key_Name="Heating:DistrictHeating", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly",
+                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly"
                 ),
             },
             {
@@ -1898,19 +1895,19 @@ class OutputPrep:
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Cooling:DistrictCooling", Reporting_Frequency="hourly",
+                    Key_Name="Cooling:DistrictCooling", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly",
+                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly",
+                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"
                 ),
             },
             {
@@ -1920,8 +1917,7 @@ class OutputPrep:
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="WaterSystems:EnergyTransfer",
-                    Reporting_Frequency="hourly",
+                    Key_Name="WaterSystems:EnergyTransfer", Reporting_Frequency="hourly"
                 ),
             },
             {
@@ -1988,7 +1984,7 @@ class OutputPrep:
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Electricity:Facility", Reporting_Frequency="hourly",
+                    Key_Name="Electricity:Facility", Reporting_Frequency="hourly"
                 ),
             },
             {
@@ -1998,19 +1994,19 @@ class OutputPrep:
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="WaterSystems:Electricity", Reporting_Frequency="hourly",
+                    Key_Name="WaterSystems:Electricity", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly",
+                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly"
                 ),
             },
             {
                 "ep_object": "OUTPUT:METER",
                 "kwargs": dict(
-                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly",
+                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"
                 ),
             },
         ]

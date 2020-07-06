@@ -45,8 +45,9 @@ from archetypal import (
     close_logger,
     EnergyPlusVersionError,
     get_eplus_dirs,
+    EnergyPlusWeatherError,
 )
-from archetypal.utils import _unpack_tuple, parse, EnergyPlusVersion
+from archetypal.utils import _unpack_tuple, parse
 
 
 class IDF(geomeppy.IDF):
@@ -86,8 +87,9 @@ class IDF(geomeppy.IDF):
         else:
             ep_version = parse(ep_version)
         if ep_version not in self.valid_idds():
-            raise ValueError(
-                f"Invalid ep_version '{ep_version}'. Choices are {self.valid_idds()}"
+            raise EnergyPlusVersionError(
+                msg=f"V{ep_version} is not a valid "
+                f"EnergyPlus version number. Choices are {self.valid_idds()}"
             )
         if settings.use_cache:
             if self.cached_file(idfname, **self.load_kwargs).exists():
@@ -95,7 +97,7 @@ class IDF(geomeppy.IDF):
         self.include = kwargs.get("include")
         self.original_idfname = Path(idfname).expand()
         idfname = Path(idfname).expand()
-        output_directory = kwargs.pop("output_directory", None)
+        output_directory = Path(kwargs.pop("output_directory", ""))
         if not output_directory:
             output_directory = self.get_output_directory(
                 self.original_idfname, **self.load_kwargs
@@ -145,7 +147,7 @@ class IDF(geomeppy.IDF):
             # Set the EnergyPlusOptions object
             self.eplus_run_options = EnergyPlusOptions(
                 idf=self,
-                weather_file=getattr(self, "epw", None),
+                weather_file=Path(getattr(self, "epw", "")),
                 output_directory=output_directory,
                 ep_version=ep_version if ep_version else latest_energyplus_version(),
                 prep_outputs=prep_outputs,
@@ -168,6 +170,9 @@ class IDF(geomeppy.IDF):
                 self.OutputPrep = OutputPrep(idf=self)
 
             self._setCache()
+
+    def __str__(self):
+        return self.name
 
     @classmethod
     def setiddname(cls, iddname, testing=False):
@@ -443,7 +448,7 @@ class IDF(geomeppy.IDF):
             ep_version = latest_energyplus_version()
         if ep_version != parse(self.idd_version):
             raise EnergyPlusVersionError(
-                self.idfname, parse(self.idd_version), ep_version,
+                self.idfname, parse(self.idd_version), ep_version
             )
 
         self.eplus_run_options.update(
@@ -460,6 +465,15 @@ class IDF(geomeppy.IDF):
             include = Path().abspath().glob(include)
         elif include is not None:
             include = [Path(file) for file in include]
+
+        # check if a weather file is defined
+        if not getattr(self, "epw", None) and not self.eplus_run_options.weather_file:
+            raise EnergyPlusWeatherError(
+                f"No weather file specified with {self}. Set 'epw' in IDF("
+                f"filename, epw='weather.epw').simulate() or in IDF.simulate("
+                f"epw='weather.epw')"
+            )
+
         # run the EnergyPlus Simulation
         with TempDir(
             prefix="eplus_run_",
@@ -471,10 +485,11 @@ class IDF(geomeppy.IDF):
                 [file.copy(tmp) for file in include]
             tmp_file = Path(self.idfname.copy(tmp))
             runargs = self.eplus_run_options.simulation_parameters
+            runargs.pop("weather_file")  # weather_file is defined as 'weather' bellow
 
             runargs["eplus_file"] = tmp_file
             runargs["tmp"] = tmp
-            runargs["weather"] = Path(self.epw).copy(tmp)
+            runargs["weather"] = Path(self.eplus_run_options.weather_file).copy(tmp)
             runargs["idd"] = Path(self.iddname).copy(tmp)
             runargs["output_prefix"] = self.eplus_run_options.output_prefix
             runargs["ep_version"] = ep_version.dash
@@ -551,7 +566,7 @@ class IDF(geomeppy.IDF):
         output_directory.makedirs_p()
         return output_directory
 
-    def upgrade(self, to_version, epw):
+    def upgrade(self, to_version, epw, overwrite=True):
         """EnergyPlus idf version updater using local transition program.
 
         Update the EnergyPlus simulation file (.idf) to the latest available
@@ -576,6 +591,8 @@ class IDF(geomeppy.IDF):
                 careful to avoid naming collision : the run will always be done in
                 separated folders, but the output files can overwrite each other if
                 the simulname is the same. (default: None)
+            overwrite (bool): If True, original idf file is overwritten with new
+                transitioned file.
 
         Raises:
             EnergyPlusProcessError: If version updater fails.
@@ -603,8 +620,10 @@ class IDF(geomeppy.IDF):
 
                 # retrieve transitioned file
                 for f in Path(tmp).files("*.idfnew"):
-                    f.copy(self.output_directory / idf_file.basename())
-            file = Path(self.output_directory / idf_file.basename())
+                    if overwrite:
+                        file = f.copy(self.output_directory / idf_file.basename())
+                    else:
+                        file = f.copy(self.output_directory)
 
             idd_filename = Path(getiddfile(get_idf_version(file)))
             if not idd_filename.exists():
@@ -1258,7 +1277,6 @@ class EnergyPlusOptions:
             "simulname",
             "return_idf",
             "prep_outputs",
-            "weather_file",
         ]
         params = self.__dict__.copy()
         [params.pop(key) for key in a]
@@ -1266,13 +1284,15 @@ class EnergyPlusOptions:
 
     @property
     def output_prefix(self):
-        return hash_file(self.idf.idfname)
+        return hash_file(self.idf.idfname, **self.simulation_parameters)
 
     def __repr__(self):
         return str(self)
 
     def __str__(self):
-        return json.dumps(self.__dict__, indent=2)
+        return json.dumps(
+            {key: str(value) for key, value in self.__dict__.items()}, indent=2
+        )
 
     def update(self, kwargs):
         self.__dict__.update(kwargs)
@@ -2765,13 +2785,9 @@ def get_sqlite_report(report_file, report_tables=None):
             return all_tables
 
 
-@deprecated(
-    deprecated_in="1.3.5",
-    removed_in="1.4",
-    current_version=archetypal.__version__,
-    details="Use :func:`IDF.upgrade` instead",
-)
-def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None):
+def idf_version_updater(
+    idf_file, to_version=None, out_dir=None, simulname=None, overwrite=True
+):
     """EnergyPlus idf version updater using local transition program.
 
     Update the EnergyPlus simulation file (.idf) to the latest available
@@ -2841,8 +2857,11 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
 
             # retrieve transitioned file
             for f in Path(tmp).files("*.idfnew"):
-                f.copy(out_dir / idf_file.basename())
-        return Path(out_dir / idf_file.basename())
+                if overwrite:
+                    file = f.copy(out_dir / idf_file.basename())
+                else:
+                    file = f.copy(out_dir)
+        return file
 
 
 def _check_version(idf_file, to_version, out_dir):

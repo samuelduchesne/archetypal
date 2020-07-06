@@ -1,29 +1,24 @@
+import glob
 import io
 import os
-import glob
 import shutil
-
-import pytest
-
-import archetypal as ar
-
-import pandas as pd
-
-from path import Path
-
 from copy import deepcopy
 
+import pandas as pd
+import pytest
+from path import Path
+
+import archetypal as ar
 from archetypal import (
     convert_idf_to_trnbuild,
     parallel_process,
     trnbuild_idf,
-    copy_file,
-    load_idf,
     settings,
     choose_window,
     run_eplus,
     ReportData,
-    get_eplus_dirs, IDF,
+    get_eplus_dirs,
+    IDF,
 )
 
 # Function round to hundreds
@@ -1059,7 +1054,6 @@ class TestConvert:
 
         # Output reports
         htm = idf.htm
-        sql = idf.sql
         sql_file = idf.sql_file
 
         # Check if cache exists
@@ -1141,7 +1135,6 @@ class TestConvert:
 )
 def trnbuild_file(config, request):
     idf_file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
-    idf_file = copy_file(idf_file, where=settings.cache_folder)
 
     yield idf_file
 
@@ -1190,9 +1183,17 @@ class TestTrnBuild:
         )
 
     @pytest.mark.win32
-    def test_trnbuild_from_idf_parallel(self, config, trnbuild_file):
+    def test_trnbuild_from_idf_parallel(self, config):
         # Gets IDF file path from fixture
-        files = trnbuild_file
+        files = [
+            (get_eplus_dirs(settings.ep_version) / "ExampleFiles") / name
+            for name in [
+                "RefBldgWarehouseNew2004_Chicago.idf",
+                "ASHRAE9012016_Warehouse_Denver.idf",
+                "ASHRAE9012016_ApartmentMidRise_Denver.idf",
+                "5ZoneGeometryTransform.idf",
+            ]
+        ]
 
         # Path to weather file
         weather_file = os.path.join(
@@ -1207,7 +1208,7 @@ class TestTrnBuild:
         }
 
         # Convert IDF files to BUI ones usinf parallel process
-        result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
+        result = parallel_process(in_dict, convert_idf_to_trnbuild, use_kwargs=True)
 
         assert not any(isinstance(a, Exception) for a in result.values())
 
@@ -1289,6 +1290,7 @@ class TestTrnBuild:
         )
 
         assert res
+
 
 @pytest.mark.skipif(
     get_platform() > (10, 15, 0),

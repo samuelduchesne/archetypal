@@ -685,32 +685,68 @@ class EnergyPlusProcessError(Exception):
 class EnergyPlusVersionError(Exception):
     """EnergyPlus Version call error"""
 
-    def __init__(self, idf_file, idf_version, ep_version):
+    def __init__(self, idf_file=None, idf_version=None, ep_version=None, msg=None):
         super(EnergyPlusVersionError, self).__init__(None)
+        self.msg = msg
         self.idf_file = idf_file
         self.idf_version = idf_version
         self.ep_version = ep_version
 
     def __str__(self):
         """Override that only returns the stderr"""
-        if self.idf_version > self.ep_version:
-            compares_ = "higher"
-            msg = (
-                f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
-                f"is {compares_} than the specified EnergyPlus version "
-                f"(v{self.ep_version}). This file looks like it has already been "
-                f"transitioned to a newer version"
-            )
-        else:
-            compares_ = "lower"
-            msg = (
-                f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
-                f"is {compares_} than the specified EnergyPlus version "
-                f"(v{self.ep_version}) and does not match an available EnergyPlus "
-                f"installation on this machine"
-            )
+        if not self.msg:
+            if self.idf_version > self.ep_version:
+                compares_ = "higher"
+                self.msg = (
+                    f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
+                    f"is {compares_} than the specified EnergyPlus version "
+                    f"(v{self.ep_version}). This file looks like it has already been "
+                    f"transitioned to a newer version"
+                )
+            else:
+                compares_ = "lower"
+                self.msg = (
+                    f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
+                    f"is {compares_} than the specified EnergyPlus version "
+                    f"(v{self.ep_version}) and does not match an available EnergyPlus "
+                    f"installation on this machine"
+                )
 
-        return msg
+        return self.msg
+
+
+class EnergyPlusWeatherError(Exception):
+    """Error for when weather file is not defined"""
+
+    pass
+
+
+class EnergyPlusVersion(Version):
+    @property
+    def dash(self):
+        # type: () -> str
+        return "-".join(map(str, (self.major, self.minor, self.micro)))
+
+
+def parse(version):
+    # type: (Union[str, tuple, Version]) -> Union[None, EnergyPlusVersion]
+    """
+    Parse the given version string and return either a :class:`Version` object
+    or a :class:`LegacyVersion` object depending on if the given version is
+    a valid PEP 440 version or a legacy version.
+    """
+    if not version:
+        return None
+    if isinstance(version, tuple):
+        version = ".".join(map(str, version[0:3]))
+    if isinstance(version, Version):
+        return EnergyPlusVersion(
+            ".".join(map(str, (version.major, version.minor, version.micro)))
+        )
+    try:
+        return EnergyPlusVersion(version)
+    except InvalidVersion:
+        return EnergyPlusVersion(version.replace("-", "."))
 
 
 @contextlib.contextmanager
@@ -1064,12 +1100,13 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         >>> rundict = {file: dict(eplus_file=file, weather_file=wf,
         >>>                      ep_version=ep_version, annual=True,
         >>>                      prep_outputs=True, expandobjects=True,
-        >>>                      verbose='q', output_report='sql')
+        >>>                      verbose='q')
         >>>           for file in files}
         >>> result = parallel_process(rundict, IDF, use_kwargs=True)
 
     Args:
-        in_dict (dict): A dictionary to iterate over.
+        in_dict (dict): A dictionary to iterate over. `function` is applied to value
+            and key is used as an identifier.
         function (function): A python function to apply to the elements of
             in_dict
         processors (int): The number of cores to use
@@ -1099,7 +1136,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         else:
             futures = {a: submit(function, in_dict[a]) for a in tqdm(in_dict, **kwargs)}
     else:
-        with ThreadPoolExecutor(max_workers=processors) as pool:
+        with ProcessPoolExecutor(max_workers=processors) as pool:
             with tqdm(
                 desc=function.__name__,
                 total=len(in_dict),
@@ -1167,31 +1204,3 @@ def docstring_parameter(*args, **kwargs):
         return obj
 
     return dec
-
-
-class EnergyPlusVersion(Version):
-    @property
-    def dash(self):
-        # type: () -> str
-        return "-".join(map(str, (self.major, self.minor, self.micro)))
-
-
-def parse(version):
-    # type: (Union[str, tuple, Version]) -> Union[None, EnergyPlusVersion]
-    """
-    Parse the given version string and return either a :class:`Version` object
-    or a :class:`LegacyVersion` object depending on if the given version is
-    a valid PEP 440 version or a legacy version.
-    """
-    if not version:
-        return None
-    if isinstance(version, tuple):
-        version = ".".join(map(str, version[0:3]))
-    if isinstance(version, Version):
-        return EnergyPlusVersion(
-            ".".join(map(str, (version.major, version.minor, version.micro)))
-        )
-    try:
-        return EnergyPlusVersion(version)
-    except InvalidVersion:
-        return EnergyPlusVersion(version.replace("-", "."))

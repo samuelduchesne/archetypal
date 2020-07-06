@@ -146,13 +146,12 @@ def convert_idf_to_trnbuild(
             ),
         },
     ]
-    idf = IDF(idf_file, epw=weather_file)
+    idf = IDF(idf_file, epw=weather_file, ep_version=ep_version, prep_outputs=outputs)
 
     # Check if cache exists
     # idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
     # Outpout reports
     htm = idf.htm
-    sql = idf.sql  # todo: Is this needed?
     sql_file = idf.sql_file
 
     # Clean names of idf objects (e.g. 'MATERIAL')
@@ -957,26 +956,26 @@ def _assert_files(
     """Ensure the files and directory are here
 
     Args:
-        idf_file (str): path to the idf file to convert
-        window_lib (str): File path of the window library (from Berkeley Lab)
-        output_folder (str): path to the output folder (can be None)
-        trnsidf_exe (str): Path to *trnsidf.exe*.
-        template (str): Path to d18 template file.
+        idf_file (str or Path): path to the idf file to convert
+        window_lib (str or Path): File path of the window library (from Berkeley Lab)
+        output_folder (str or Path): path to the output folder (can be None)
+        trnsidf_exe (str or Path): Path to *trnsidf.exe*.
+        template (str or Path): Path to d18 template file.
     """
-    if isinstance(idf_file, str):
+    if isinstance(idf_file, (str, Path)):
         if not os.path.isfile(idf_file):
             raise IOError("idf_file file not found")
     else:
         raise IOError("idf_file file is not a string (path)")
 
-    if isinstance(weather_file, str):
+    if isinstance(weather_file, (str, Path)):
         if not os.path.isfile(weather_file):
             raise IOError("weather file not found")
     else:
         raise IOError("weather file is not a string (path)")
 
     if window_lib:
-        if isinstance(window_lib, str):
+        if isinstance(window_lib, (str, Path)):
             if not os.path.isfile(window_lib):
                 raise IOError("window_lib file not found")
         else:
@@ -1133,8 +1132,6 @@ def _get_schedules(idf):
         year, weeks, days = s.to_year_week_day()
         schedules[schedule_name]["all values"] = s.all_values
         schedules[schedule_name]["year"] = year
-        # schedules[schedule_name]["weeks"] = weeks
-        # schedules[schedule_name]["days"] = days
 
     log(
         "Got yearly, weekly and daily schedules in {:,.2f} seconds".format(
@@ -2218,24 +2215,6 @@ def _write_schedules(lines, schedule_names, schedules, schedule_as_input, idf_fi
 
             # Write schedule name
             lines.insert(scheduleNum + 1, "!-SCHEDULE " + schedule_name + "\n")
-
-            # if (
-            #     len(hours_list) <= 1500
-            # ):  # Todo: Now, only writes "short" schedules. Make method that write them all
-            #     lines.insert(
-            #         scheduleNum + 1,
-            #         "!-SCHEDULE " + schedules[schedule_name]["year"].Name + "\n",
-            #     )
-            #     lines.insert(
-            #         scheduleNum + 2,
-            #         "!- HOURS= " + " ".join(str(item) for item in hours_list) + "\n",
-            #     )
-            #     lines.insert(
-            #         scheduleNum + 3,
-            #         "!- VALUES= " + " ".join(str(item) for item in values) + "\n",
-            #     )
-            # else:
-            #     schedules_not_written.append(schedule_name)
 
     return schedules_not_written
 

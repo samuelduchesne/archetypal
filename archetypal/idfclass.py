@@ -14,9 +14,9 @@ import os
 import platform
 import re
 import subprocess
-import tempfile
 import time
 from collections import defaultdict, OrderedDict
+from io import StringIO
 from itertools import compress
 from math import isclose
 from sqlite3 import OperationalError
@@ -65,10 +65,10 @@ class IDF(geomeppy.IDF):
         idf = super(IDF, cls).__new__(cls)
         return idf
 
-    def __init__(self, idfname, epw=None, **kwargs):
+    def __init__(self, idfname=None, epw=None, **kwargs):
         """
         Args:
-            idfname (str or Path): The idf model filename.
+            idfname (str _TemporaryFileWrapper): The idf model filename.
             epw (str or Path): The weather-file
 
         Keyword args:
@@ -91,12 +91,19 @@ class IDF(geomeppy.IDF):
                 msg=f"V{ep_version} is not a valid "
                 f"EnergyPlus version number. Choices are {self.valid_idds()}"
             )
+        if not idfname:
+            idfname = StringIO(f"VERSION, {ep_version};")
+            idfname.seek(0)
         if settings.use_cache:
             if self.cached_file(idfname, **self.load_kwargs).exists():
                 return
         self.include = kwargs.get("include")
-        self.original_idfname = Path(idfname).expand()
-        idfname = Path(idfname).expand()
+        self.original_idfname = (
+            Path(idfname).expand() if not isinstance(idfname, StringIO) else idfname
+        )
+        idfname = (
+            Path(idfname).expand() if not isinstance(idfname, StringIO) else idfname
+        )
         output_directory = Path(kwargs.pop("output_directory", ""))
         if not output_directory:
             output_directory = self.get_output_directory(
@@ -106,7 +113,10 @@ class IDF(geomeppy.IDF):
         # path name
         keep_original = kwargs.get("keep_original", True)
         if keep_original:
-            idfname = Path(idfname.copy(output_directory))
+            if isinstance(idfname, StringIO):
+                pass
+            else:
+                idfname = Path(idfname.copy(output_directory))
 
         # Determine version of idf file by reading the text file & compare with
         # user-defined choice
@@ -120,6 +130,8 @@ class IDF(geomeppy.IDF):
 
         try:
             # load the idf object
+            if isinstance(idfname, StringIO):
+                idfname.seek(0)
             super(IDF, self).__init__(idfname, epw)
         except FileNotFoundError:
             # Loading the idf object will raise a FileNotFoundError if the
@@ -139,9 +151,11 @@ class IDF(geomeppy.IDF):
                 level=lg.DEBUG,
             )
         finally:
-            self.idfname = Path(
-                self.idfname
-            ).expand()  # Force idfname to be a Path object.
+            self.idfname = (
+                Path(self.idfname).expand()
+                if not isinstance(idfname, StringIO)
+                else idfname
+            )  # Force idfname to be a Path object if not a StringIO.
 
             prep_outputs = kwargs.pop("prep_outputs", True)
             # Set the EnergyPlusOptions object
@@ -169,7 +183,8 @@ class IDF(geomeppy.IDF):
             else:
                 self.OutputPrep = OutputPrep(idf=self)
 
-            self._setCache()
+            if not isinstance(idfname, StringIO):
+                self._setCache()
 
     def __str__(self):
         return self.name
@@ -254,10 +269,14 @@ class IDF(geomeppy.IDF):
 
     @property
     def idf_version(self):
-        return parse(re.search(r"([\d])-([\d])-([\d])", Path(self.iddname).dirname()).group())
+        return parse(
+            re.search(r"([\d])-([\d])-([\d])", Path(self.iddname).dirname()).group()
+        )
 
     @property
     def name(self):
+        if isinstance(self.idfname, StringIO):
+            return str(self.idfname)
         return os.path.basename(self.idfname)
 
     @property
@@ -872,10 +891,10 @@ class IDF(geomeppy.IDF):
         return series
 
     def save(self, filename=None, lineendings="default", encoding="latin-1"):
+        if isinstance(self.idfname, StringIO):
+            self.idfname = StringIO(self.idfstr())
         super(IDF, self).save(filename=None, lineendings="default", encoding="latin-1")
-        log(
-            f"saved '{self.name}' at '{filename if filename else self.idfname.expand()}'"
-        )
+        log(f"saved '{self.name}' at '{filename if filename else self.idfname}'")
 
     def add_object(self, ep_object, **kwargs):
         """Add a new object to an idf file. The function will test if the object
@@ -2560,10 +2579,14 @@ def hash_file(idfname, **kwargs):
 
     # create hasher
     hasher = hashlib.md5()
-    with open(idfname, "rb") as afile:
-        buf = afile.read()
-        hasher.update(buf)
-        hasher.update(kwargs.__str__().encode("utf-8"))  # Hashing the kwargs as well
+    if isinstance(idfname, StringIO):
+        idfname.seek(0)
+        buf = idfname.read().encode("utf-8")
+    else:
+        with open(idfname, "rb") as afile:
+            buf = afile.read()
+    hasher.update(buf)
+    hasher.update(kwargs.__str__().encode("utf-8"))  # Hashing the kwargs as well
     return hasher.hexdigest()
 
 
@@ -3012,7 +3035,10 @@ def latest_energyplus_version():
     # number (at the end of the folder name)
 
     return sorted(
-        (parse(re.search(r"([\d])-([\d])-([\d])", home.stem).group()) for home in eplus_homes),
+        (
+            parse(re.search(r"([\d])-([\d])-([\d])", home.stem).group())
+            for home in eplus_homes
+        ),
         reverse=True,
     )[0]
 
@@ -3022,32 +3048,36 @@ def get_idf_version(file, doted=True):
     the 'VERSION' identifier
 
     Args:
-        file (str): Absolute or relative Path to the idf file
+        file (str or StringIO): Absolute or relative Path to the idf file
         doted (bool, optional): Wheter or not to return the version number
 
     Returns:
         str: the version id
     """
-    with open(os.path.abspath(file), "r", encoding="latin-1") as fhandle:
-        try:
+    if isinstance(file, StringIO):
+        txt = file.seek(0)
+        txt = file.read()
+    else:
+        with open(os.path.abspath(file), "r", encoding="latin-1") as fhandle:
             txt = fhandle.read()
-            ntxt = parse_idd.nocomment(txt, "!")
-            blocks = ntxt.split(";")
-            blocks = [block.strip() for block in blocks]
-            bblocks = [block.split(",") for block in blocks]
-            bblocks1 = [[item.strip() for item in block] for block in bblocks]
-            ver_blocks = [block for block in bblocks1 if block[0].upper() == "VERSION"]
-            ver_block = ver_blocks[0]
-            if doted:
-                versionid = ver_block[1]
-            else:
-                versionid = ver_block[1].replace(".", "-") + "-0"
-        except Exception as e:
-            log('Version id for file "{}" cannot be found'.format(file))
-            log("{}".format(e))
-            raise
+    try:
+        ntxt = parse_idd.nocomment(txt, "!")
+        blocks = ntxt.split(";")
+        blocks = [block.strip() for block in blocks]
+        bblocks = [block.split(",") for block in blocks]
+        bblocks1 = [[item.strip() for item in block] for block in bblocks]
+        ver_blocks = [block for block in bblocks1 if block[0].upper() == "VERSION"]
+        ver_block = ver_blocks[0]
+        if doted:
+            versionid = ver_block[1]
         else:
-            return versionid
+            versionid = ver_block[1].replace(".", "-") + "-0"
+    except Exception as e:
+        log('Version id for file "{}" cannot be found'.format(file))
+        log("{}".format(e))
+        raise
+    else:
+        return versionid
 
 
 def getoldiddfile(versionid):
@@ -3067,42 +3097,6 @@ def getoldiddfile(versionid):
     eplusfolder = os.path.dirname(eplus_exe)
     iddfile = "{}/bin/Energy+.idd".format(eplusfolder)
     return iddfile
-
-
-def _create_idf_object(version):
-    """ Creates an IDF object with only the VERSION of the IDF
-
-    Args:
-        version (str): Version of the IDF to use in the form "9-2-0"
-            (with hyphen, no point)
-
-    Returns:
-        An archetypal.IDF object
-
-    """
-    # Create a new idf object and add the schedule to it.
-    idftxt = "VERSION, {};".format(
-        version.replace("-", ".")[0:3]
-    )  # Not an empty string. has just the
-    # version number
-    # we can make a file handle of a string
-    if not Path(settings.cache_folder).exists():
-        Path(settings.cache_folder).mkdir_p()
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        suffix="_" + version + ".idf",
-        prefix="temp_",
-        dir=settings.cache_folder,
-        delete=False,
-    ) as file:
-        file.write(idftxt)
-    # initialize the IDF object with the file handle
-    from eppy.easyopen import easyopen
-
-    idf_scratch = easyopen(file.name)
-    idf_scratch.__class__ = archetypal.IDF
-
-    return idf_scratch
 
 
 if __name__ == "__main__":

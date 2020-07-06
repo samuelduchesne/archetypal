@@ -10,6 +10,7 @@ import logging as lg
 import tempfile
 from datetime import datetime, timedelta
 from itertools import groupby
+from os import unlink
 
 import numpy as np
 import pandas as pd
@@ -129,20 +130,25 @@ class Schedule(object):
                 delete=False,
             ) as file:
                 file.write(idftxt)
+                file.seek(0)
                 # initialize the IDF object with the file handle
-            from eppy.easyopen import easyopen
+                from eppy.easyopen import easyopen
 
-            idf_scratch = easyopen(file.name)
-            idf_scratch.__class__ = archetypal.IDF
+                idf_scratch = easyopen(file.name)
+                idf_scratch.__class__ = archetypal.IDF
 
-            idf_scratch.add_object(
-                ep_object="Schedule:Constant".upper(),
-                **dict(
-                    Name=Name, Schedule_Type_Limits_Name="", Hourly_Value=hourly_value
+                idf_scratch.add_object(
+                    ep_object="Schedule:Constant".upper(),
+                    **dict(
+                        Name=Name,
+                        Schedule_Type_Limits_Name="",
+                        Hourly_Value=hourly_value,
+                    )
                 )
-            )
 
-            sched = cls(Name=Name, idf=idf_scratch, **kwargs)
+                sched = cls(Name=Name, idf=idf_scratch, **kwargs)
+                file.close()  # close file
+                unlink(file.name)  # delete file
             return sched
 
     @property

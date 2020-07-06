@@ -62,7 +62,7 @@ from tests.conftest import get_platform
 
 
 @pytest.fixture(
-    scope="class", params=["tests/input_data/trnsys/simple_2_zone_sched.idf",],
+    scope="class", params=["tests/input_data/trnsys/simple_2_zone_sched.idf"]
 )
 def converttesteasy(request):
     file = request.param
@@ -567,15 +567,8 @@ class TestConvertEasy:
         ) = converttesteasy
 
         # Runs EnergyPlus Simulation
-        res = run_eplus(
-            idf_file,
-            weather_file,
-            output_directory=None,
-            ep_version=None,
-            output_report="htm",
-            prep_outputs=True,
-            design_day=True,
-        )
+        idf = IDF(idf_file, epw=weather_file, prep_outputs=True, design_day=True)
+        res = idf.htm
 
         # Copy IDF object, making sure we don't change/overwrite original IDF file
         idf_2 = deepcopy(idf)
@@ -719,7 +712,6 @@ class TestConvertEasy:
             kwargs,
         ) = converttesteasy
 
-        ep_version = None
         # Adds Output variable in IDF
         outputs = [
             {
@@ -739,26 +731,20 @@ class TestConvertEasy:
         ]
 
         # Runs EnergyPlus Simulation
-        _, idf = run_eplus(
+        idf = IDF(
             idf_file,
-            weather_file,
-            output_directory=None,
-            ep_version=ep_version,
-            output_report=None,
+            epw=weather_file,
             prep_outputs=outputs,
             design_day=False,
             annual=True,
             expandobjects=True,
-            return_idf=True,
-        )
+        ).simulate()
 
-        # Makes sure idf vriable is an IDF
+        # Makes sure idf variable is an IDF
         assert isinstance(idf, ar.idfclass.IDF)
 
 
-@pytest.fixture(
-    scope="class", params=["5ZoneGeometryTransform.idf",],
-)
+@pytest.fixture(scope="class", params=["5ZoneGeometryTransform.idf"])
 def converttest(request):
     file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
     # file = request.param
@@ -1017,9 +1003,6 @@ class TestConvert:
             _,
         ) = converttest
 
-        # Gets EnergyPlus version
-        ep_version = settings.ep_version
-
         # Adds Output variable in IDF
         outputs = [
             {
@@ -1038,18 +1021,14 @@ class TestConvert:
             },
         ]
 
-        # Run EnergyPlus Simulation
-        _, idf = run_eplus(
+        # Instantiate IDF model
+        idf = IDF(
             idf_file,
-            weather_file,
-            output_directory=None,
-            ep_version=ep_version,
-            output_report=None,
+            epw=weather_file,
             prep_outputs=outputs,
             design_day=False,
             annual=True,
             expandobjects=True,
-            return_idf=True,
         )
 
         # Output reports

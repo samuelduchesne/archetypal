@@ -1177,17 +1177,8 @@ class TestZoneConstructionSet:
 
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        sql, idf = ar.run_eplus(
-            file,
-            weather_file=w,
-            output_report="sql",
-            prep_outputs=True,
-            annual=False,
-            design_day=False,
-            verbose="v",
-            return_idf=True,
-        )
-        yield idf, sql
+        idf = IDF(file, epw=w)
+        yield idf, idf.sql
 
     def test_add_zoneconstructionset(self, small_idf):
         """Test __add__() for ZoneConstructionSet

@@ -1100,12 +1100,13 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         >>> rundict = {file: dict(eplus_file=file, weather_file=wf,
         >>>                      ep_version=ep_version, annual=True,
         >>>                      prep_outputs=True, expandobjects=True,
-        >>>                      verbose='q', output_report='sql')
+        >>>                      verbose='q')
         >>>           for file in files}
         >>> result = parallel_process(rundict, IDF, use_kwargs=True)
 
     Args:
-        in_dict (dict): A dictionary to iterate over.
+        in_dict (dict): A dictionary to iterate over. `function` is applied to value
+            and key is used as an identifier.
         function (function): A python function to apply to the elements of
             in_dict
         processors (int): The number of cores to use

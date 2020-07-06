@@ -15,14 +15,14 @@ class TestIDF:
     @pytest.fixture(scope="session")
     def idf_model(self, config):
         """An IDF model. Yields both the idf"""
-        file = r"tests\input_data\necb\NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        file = "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(file, epw=w)
 
     @pytest.fixture()
     def shoebox_model(self, config):
         """An IDF model. Yields both the idf"""
-        file = r"tests\input_data\umi_samples\B_Off_0.idf"
+        file = "tests/input_data/umi_samples/B_Off_0.idf"
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(file, epw=w)
 

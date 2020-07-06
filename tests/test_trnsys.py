@@ -732,7 +732,6 @@ class TestConvertEasy:
                 "kwargs": dict(
                     Variable_Name="Zone Thermostat Heating Setpoint Temperature",
                     Reporting_Frequency="hourly",
-                    save=True,
                 ),
             },
             {
@@ -740,7 +739,6 @@ class TestConvertEasy:
                 "kwargs": dict(
                     Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
                     Reporting_Frequency="hourly",
-                    save=True,
                 ),
             },
         ]
@@ -1034,7 +1032,6 @@ class TestConvert:
                 "kwargs": dict(
                     Variable_Name="Zone Thermostat Heating Setpoint Temperature",
                     Reporting_Frequency="hourly",
-                    save=True,
                 ),
             },
             {
@@ -1042,7 +1039,6 @@ class TestConvert:
                 "kwargs": dict(
                     Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
                     Reporting_Frequency="hourly",
-                    save=True,
                 ),
             },
         ]

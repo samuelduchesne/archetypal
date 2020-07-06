@@ -135,7 +135,6 @@ def convert_idf_to_trnbuild(
             "kwargs": dict(
                 Variable_Name="Zone Thermostat Heating Setpoint Temperature",
                 Reporting_Frequency="hourly",
-                save=True,
             ),
         },
         {
@@ -143,7 +142,6 @@ def convert_idf_to_trnbuild(
             "kwargs": dict(
                 Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
                 Reporting_Frequency="hourly",
-                save=True,
             ),
         },
     ]

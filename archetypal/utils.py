@@ -22,16 +22,14 @@ import platform
 import re
 import sys
 import time
-from typing import Union
-
-import packaging
-import unicodedata
 import warnings
 from collections import OrderedDict
 from datetime import datetime, timedelta
+from typing import Union
 
 import numpy as np
 import pandas as pd
+import unicodedata
 from packaging.version import Version, InvalidVersion
 from pandas.io.json import json_normalize
 from path import Path
@@ -1116,7 +1114,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         [function(array[0]), function(array[1]), ...]
     """
     from tqdm import tqdm
-    from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+    from concurrent.futures import ProcessPoolExecutor
 
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())

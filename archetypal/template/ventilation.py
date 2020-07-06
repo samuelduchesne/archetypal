@@ -6,9 +6,9 @@
 ################################################################################
 
 import collections
-import deprecation
 import logging as lg
 
+import deprecation
 import numpy as np
 import pandas as pd
 

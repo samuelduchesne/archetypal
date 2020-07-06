@@ -10,13 +10,13 @@ import logging as lg
 import math
 import random
 import re
-import archetypal
 
 import numpy as np
 
+import archetypal
 from archetypal import log, settings
-from archetypal.utils import lcm
 from archetypal.idfclass import _create_idf_object
+from archetypal.utils import lcm
 
 
 class Unique(type):

@@ -10,12 +10,12 @@ import logging as lg
 import time
 from collections import defaultdict
 
+import deprecation
 import eppy
 import matplotlib.collections
 import matplotlib.colors
 import networkx
 import tabulate
-import deprecation
 from eppy.bunch_subclass import EpBunch
 from path import Path
 from tqdm import tqdm

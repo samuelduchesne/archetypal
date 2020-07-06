@@ -6,13 +6,14 @@
 ################################################################################
 
 import collections
-import deprecation
-import archetypal
+import logging as lg
 
+import deprecation
+
+import archetypal
 from archetypal import log, timeit, settings
 from archetypal.template import UmiBase, Unique, UmiSchedule, UniqueName
 from archetypal.utils import reduce
-import logging as lg
 
 
 class ZoneLoad(UmiBase, metaclass=Unique):

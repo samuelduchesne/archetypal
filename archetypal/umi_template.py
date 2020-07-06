@@ -5,10 +5,8 @@ from collections import OrderedDict
 
 import numpy as np
 from path import Path
-from tabulate import tabulate
 
 from archetypal import (
-    load_idf,
     BuildingTemplate,
     GasMaterial,
     GlazingMaterial,
@@ -32,10 +30,6 @@ from archetypal import (
     YearScheduleParts,
     UmiSchedule,
     MassRatio,
-    parallel_process,
-    run_eplus,
-    EnergyPlusProcessError,
-    log,
     IDF,
 )
 

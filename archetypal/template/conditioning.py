@@ -6,14 +6,15 @@
 ################################################################################
 
 import collections
+import logging as lg
 import math
-import deprecation
-import archetypal
 
+import deprecation
 import numpy as np
+
+import archetypal
 from archetypal import float_round, ReportData, log, timeit, settings
 from archetypal.template import UmiBase, Unique, UmiSchedule, UniqueName
-import logging as lg
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):

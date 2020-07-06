@@ -6,9 +6,10 @@
 ################################################################################
 
 import collections
-import deprecation
-import archetypal
 
+import deprecation
+
+import archetypal
 from archetypal.template import UmiBase, Unique, OpaqueMaterial, UniqueName
 
 

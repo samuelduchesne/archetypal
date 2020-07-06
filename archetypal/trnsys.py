@@ -31,7 +31,6 @@ from archetypal import (
     load_idf,
     load_idf_object_from_cache,
     hash_file,
-    run_eplus,
     recursive_len,
     ReportData,
     IDF,

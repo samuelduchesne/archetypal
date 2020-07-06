@@ -7,10 +7,11 @@
 
 import collections
 import uuid
-import deprecation
-import archetypal
 
+import deprecation
 import numpy as np
+
+import archetypal
 from archetypal.template import (
     Unique,
     MaterialLayer,

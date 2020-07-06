@@ -6,12 +6,13 @@
 ################################################################################
 
 import collections
-import deprecation
-import archetypal
 from operator import add
 from statistics import mean
 
+import deprecation
 import numpy as np
+
+import archetypal
 from archetypal import settings, log, timeit, reduce
 from archetypal.template import Unique, UmiBase, UmiSchedule, UniqueName
 

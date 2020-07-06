@@ -7,14 +7,15 @@
 
 import collections
 import uuid
-import deprecation
-import archetypal
 
+import deprecation
 import numpy as np
 import pandas as pd
+from eppy.bunch_subclass import EpBunch
+
+import archetypal
 from archetypal import Schedule, log
 from archetypal.template import UmiBase, Unique, UniqueName
-from eppy.bunch_subclass import EpBunch
 
 
 class UmiSchedule(Schedule, UmiBase, metaclass=Unique):

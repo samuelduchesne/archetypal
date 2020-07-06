@@ -1,31 +1,25 @@
+import glob
 import io
 import os
-import glob
 import shutil
-
-import pytest
-
-import archetypal as ar
-
-import pandas as pd
-
-from path import Path
-
 from copy import deepcopy
 
+import pandas as pd
+import pytest
+from path import Path
+
+import archetypal as ar
 from archetypal import (
     convert_idf_to_trnbuild,
     parallel_process,
     trnbuild_idf,
-    copy_file,
-    load_idf,
     settings,
     choose_window,
     run_eplus,
     ReportData,
-    get_eplus_dirs, IDF,
+    get_eplus_dirs,
+    IDF,
 )
-
 # Function round to hundreds
 from archetypal.trnsys import (
     _assert_files,

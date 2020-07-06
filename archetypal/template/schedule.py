@@ -219,7 +219,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         """
         self.validate()  # Validate object before trying to get json format
 
-        pass
+        return self.to_dict()
 
     def to_dict(self):
         year_sched = self.develop()

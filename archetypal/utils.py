@@ -1064,7 +1064,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         [function(array[0]), function(array[1]), ...]
     """
     from tqdm import tqdm
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from concurrent.futures import ThreadPoolExecutor
 
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())
@@ -1078,27 +1078,29 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
             "leave": True,
         }
         if use_kwargs:
-            futures = {a: function(**in_dict[a]) for a in tqdm(in_dict, **kwargs)}
+            futures = {
+                a: submit(function, **in_dict[a]) for a in tqdm(in_dict, **kwargs)
+            }
         else:
-            futures = {a: function(in_dict[a]) for a in tqdm(in_dict, **kwargs)}
+            futures = {a: submit(function, in_dict[a]) for a in tqdm(in_dict, **kwargs)}
     else:
         with ThreadPoolExecutor(max_workers=processors) as pool:
-            if use_kwargs:
-                futures = {pool.submit(function, **in_dict[a]): a for a in in_dict}
-            else:
-                futures = {pool.submit(function, in_dict[a]): a for a in in_dict}
+            with tqdm(
+                desc=function.__name__,
+                total=len(in_dict),
+                unit="runs",
+                unit_scale=True,
+                leave=True,
+            ) as progress:
+                futures = {}
 
-            kwargs = {
-                "desc": function.__name__,
-                "total": len(futures),
-                "unit": "runs",
-                "unit_scale": True,
-                "leave": True,
-            }
-
-            # Print out the progress as tasks complete
-            for f in tqdm(as_completed(futures), **kwargs):
-                pass
+                if use_kwargs:
+                    for a in in_dict:
+                        future = pool.submit(function, **in_dict[a])
+                        future.add_done_callback(lambda p: progress.update())
+                        futures[future] = a
+                else:
+                    futures = {pool.submit(function, in_dict[a]): a for a in in_dict}
     out = {}
     # Get the results from the futures.
     for key in futures:
@@ -1111,6 +1113,14 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
             log(str(e), lg.ERROR)
             out[futures[key]] = e
     return out
+
+
+def submit(fn, *args, **kwargs):
+    """return fn or Exception"""
+    try:
+        return fn(*args, **kwargs)
+    except Exception as e:
+        return e
 
 
 def is_referenced(name, epbunch, fieldname="Zone_or_ZoneList_Name"):
@@ -1130,3 +1140,15 @@ def is_referenced(name, epbunch, fieldname="Zone_or_ZoneList_Name"):
             f"referencing object name: Looking for '{name}' in "
             f"object {refobj}"
         )
+
+
+def docstring_parameter(*args, **kwargs):
+    """Replaces variables in foo.__doc__ by calling obj.__doc__ =
+    obj.__doc__.format(* args, ** kwargs)
+    """
+
+    def dec(obj):
+        obj.__doc__ = obj.__doc__.format(*args, **kwargs)
+        return obj
+
+    return dec

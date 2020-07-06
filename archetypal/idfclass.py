@@ -15,6 +15,7 @@ import os
 import platform
 import subprocess
 import time
+import tempfile
 from collections import defaultdict, OrderedDict
 from itertools import compress
 from math import isclose
@@ -2321,9 +2322,14 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
         out_dir (Path): path of the output_dir
         simulname (str or None, optional): this name will be used for temp dir
             id and saved outputs. If not provided, uuid.uuid1() is used. Be
-            careful to avoid naming collision : the run will alway be done in
+            careful to avoid naming collision : the run will always be done in
             separated folders, but the output files can overwrite each other if
             the simulname is the same. (default: None)
+
+    Raises:
+        EnergyPlusProcessError: If version updater fails.
+        EnergyPlusVersionError:
+        CalledProcessError:
 
     Returns:
         Path: The path of the new transitioned idf file.
@@ -2335,133 +2341,146 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
     if not out_dir.isdir() and out_dir != "":
         # check if dir exists
         out_dir.makedirs_p()
-    with TemporaryDirectory(
-        prefix="transition_run_", suffix=simulname, dir=out_dir
-    ) as tmp:
-        log("temporary dir (%s) created" % tmp, lg.DEBUG)
-        idf_file = Path(idf_file.copy(tmp)).abspath()  # copy and return abspath
 
-        versionid = get_idf_version(idf_file, doted=False)[0:5]
-        doted_version = get_idf_version(idf_file, doted=True)
-        iddfile = getiddfile(doted_version)
-        if os.path.exists(iddfile):
-            # if a E+ exists, means there is an E+ install that can be used
-            if versionid == to_version:
-                # if version of idf file is equal to intended version, copy file from
-                # temp transition folder into cache folder and return path
-                return idf_file.copy(out_dir / idf_file.basename())
-            # might be an old version of E+
-        elif tuple(map(int, doted_version.split("."))) < (8, 0):
-            # the version is an old E+ version (< 8.0)
-            iddfile = getoldiddfile(doted_version)
-            if versionid == to_version:
-                # if version of idf file is equal to intended version, copy file from
-                # temp transition folder into cache folder and return path
-                return idf_file.copy(out_dir / idf_file.basename())
-        # use to_version
-        if to_version is None:
-            # What is the latest E+ installed version
-            to_version = find_eplus_installs(iddfile)
-        if tuple(versionid.split("-")) > tuple(to_version.split("-")):
-            raise EnergyPlusVersionError(idf_file, versionid, to_version)
-        vupdater_path = (
-            get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
-        )
-        exe = ".exe" if platform.system() == "Windows" else ""
-        trans_exec = {
-            "1-0-0": vupdater_path / "Transition-V1-0-0-to-V1-0-1" + exe,
-            "1-0-1": vupdater_path / "Transition-V1-0-1-to-V1-0-2" + exe,
-            "1-0-2": vupdater_path / "Transition-V1-0-2-to-V1-0-3" + exe,
-            "1-0-3": vupdater_path / "Transition-V1-0-3-to-V1-1-0" + exe,
-            "1-1-0": vupdater_path / "Transition-V1-1-0-to-V1-1-1" + exe,
-            "1-1-1": vupdater_path / "Transition-V1-1-1-to-V1-2-0" + exe,
-            "1-2-0": vupdater_path / "Transition-V1-2-0-to-V1-2-1" + exe,
-            "1-2-1": vupdater_path / "Transition-V1-2-1-to-V1-2-2" + exe,
-            "1-2-2": vupdater_path / "Transition-V1-2-2-to-V1-2-3" + exe,
-            "1-2-3": vupdater_path / "Transition-V1-2-3-to-V1-3-0" + exe,
-            "1-3-0": vupdater_path / "Transition-V1-3-0-to-V1-4-0" + exe,
-            "1-4-0": vupdater_path / "Transition-V1-4-0-to-V2-0-0" + exe,
-            "2-0-0": vupdater_path / "Transition-V2-0-0-to-V2-1-0" + exe,
-            "2-1-0": vupdater_path / "Transition-V2-1-0-to-V2-2-0" + exe,
-            "2-2-0": vupdater_path / "Transition-V2-2-0-to-V3-0-0" + exe,
-            "3-0-0": vupdater_path / "Transition-V3-0-0-to-V3-1-0" + exe,
-            "3-1-0": vupdater_path / "Transition-V3-1-0-to-V4-0-0" + exe,
-            "4-0-0": vupdater_path / "Transition-V4-0-0-to-V5-0-0" + exe,
-            "5-0-0": vupdater_path / "Transition-V5-0-0-to-V6-0-0" + exe,
-            "6-0-0": vupdater_path / "Transition-V6-0-0-to-V7-0-0" + exe,
-            "7-0-0": vupdater_path / "Transition-V7-0-0-to-V7-1-0" + exe,
-            "7-1-0": vupdater_path / "Transition-V7-1-0-to-V7-2-0" + exe,
-            "7-2-0": vupdater_path / "Transition-V7-2-0-to-V8-0-0" + exe,
-            "8-0-0": vupdater_path / "Transition-V8-0-0-to-V8-1-0" + exe,
-            "8-1-0": vupdater_path / "Transition-V8-1-0-to-V8-2-0" + exe,
-            "8-2-0": vupdater_path / "Transition-V8-2-0-to-V8-3-0" + exe,
-            "8-3-0": vupdater_path / "Transition-V8-3-0-to-V8-4-0" + exe,
-            "8-4-0": vupdater_path / "Transition-V8-4-0-to-V8-5-0" + exe,
-            "8-5-0": vupdater_path / "Transition-V8-5-0-to-V8-6-0" + exe,
-            "8-6-0": vupdater_path / "Transition-V8-6-0-to-V8-7-0" + exe,
-            "8-7-0": vupdater_path / "Transition-V8-7-0-to-V8-8-0" + exe,
-            "8-8-0": vupdater_path / "Transition-V8-8-0-to-V8-9-0" + exe,
-            "8-9-0": vupdater_path / "Transition-V8-9-0-to-V9-0-0" + exe,
-            "9-0-0": vupdater_path / "Transition-V9-0-0-to-V9-1-0" + exe,
-            "9-1-0": vupdater_path / "Transition-V9-1-0-to-V9-2-0" + exe,
-        }
+    to_version, versionid = _check_version(idf_file, to_version, out_dir)
 
+    if versionid == to_version:
         # check the file version, if it corresponds to the latest version found on
-        # the machine, means its already upgraded to the correct version. Return it.
-        if versionid == to_version:
-            # if file version and to_version are the same, we don't need to
-            # perform transition
-            log(
-                'file {} already upgraded to latest version "{}"'.format(
-                    idf_file, versionid
-                )
+        # the machine, means its already upgraded to the correct version.
+        # if file version and to_version are the same, we don't need to
+        # perform transition.
+        log(
+            'file {} already upgraded to latest version "{}"'.format(
+                idf_file, versionid
             )
-            idf_file = Path(idf_file.copy(out_dir))
-            return idf_file
+        )
+        return idf_file
+    else:
+        # execute transitions
+        with TemporaryDirectory(
+            prefix="transition_run_", suffix=simulname, dir=out_dir
+        ) as tmp:
+            # Move to temporary transition_run folder
+            log("temporary dir (%s) created" % tmp, lg.DEBUG)
+            idf_file = Path(idf_file.copy(tmp)).abspath()  # copy and return abspath
+            try:
+                _execute_transitions(idf_file, to_version, versionid)
+            except (CalledProcessError, EnergyPlusProcessError) as e:
+                raise e
 
-        # Otherwise,
-        # build a list of command line arguments
-        try:
-            with cd(vupdater_path):
-                transitions = [
-                    key
-                    for key in trans_exec
-                    if tuple(map(int, key.split("-")))
-                    < tuple(map(int, to_version.split("-")))
-                    and tuple(map(int, key.split("-")))
-                    >= tuple(map(int, versionid.split("-")))
-                ]
-                for trans in transitions:
-                    if not trans_exec[trans].exists():
-                        raise EnergyPlusProcessError(
-                            cmd=trans_exec[trans],
-                            stderr="The specified EnergyPlus version (v{}) does not have"
-                            " the required transition program '{}' in the "
-                            "PreProcess folder. See the documentation "
-                            "(archetypal.readthedocs.io/troubleshooting.html#missing-transition-programs) "
-                            "to solve this issue".format(to_version, trans_exec[trans]),
-                            idf=idf_file.basename(),
-                        )
-                    else:
-                        cmd = [trans_exec[trans], idf_file]
-                        try:
-                            process = subprocess.Popen(
-                                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-                            )
-                            process_output, error_output = process.communicate()
-                            log(process_output.decode("utf-8"), lg.DEBUG)
-                        except CalledProcessError as exception:
-                            log(
-                                "{} failed with error\n".format(
-                                    idf_version_updater.__name__, str(exception)
-                                ),
-                                lg.ERROR,
-                            )
-        except EnergyPlusProcessError as e:
-            raise e
-        for f in Path(tmp).files("*.idfnew"):
-            f.copy(out_dir / idf_file.basename())
+            # retrieve transitioned file
+            for f in Path(tmp).files("*.idfnew"):
+                f.copy(out_dir / idf_file.basename())
         return Path(out_dir / idf_file.basename())
+
+
+def _check_version(idf_file, to_version, out_dir):
+    versionid = get_idf_version(idf_file, doted=False)[0:5]
+    doted_version = get_idf_version(idf_file, doted=True)
+    iddfile = getiddfile(doted_version)
+    if os.path.exists(iddfile):
+        # if a E+ exists, means there is an E+ install that can be used
+        if versionid == to_version:
+            # if version of idf file is equal to intended version, copy file from
+            # temp transition folder into cache folder and return path
+            return to_version, versionid
+    # might be an old version of E+
+    elif tuple(map(int, doted_version.split("."))) < (8, 0):
+        # the version is an old E+ version (< 8.0)
+        iddfile = getoldiddfile(doted_version)
+        if versionid == to_version:
+            # if version of idf file is equal to intended version, copy file from
+            # temp transition folder into cache folder and return path
+            return idf_file.copy(out_dir / idf_file.basename())
+    # use to_version
+    if to_version is None:
+        # What is the latest E+ installed version
+        to_version = find_eplus_installs(iddfile)
+    if tuple(versionid.split("-")) > tuple(to_version.split("-")):
+        raise EnergyPlusVersionError(idf_file, versionid, to_version)
+    return to_version, versionid
+
+
+def _execute_transitions(idf_file, to_version, versionid):
+    """build a list of command line arguments"""
+    vupdater_path = (
+        get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
+    )
+    exe = ".exe" if platform.system() == "Windows" else ""
+    trans_exec = {
+        "1-0-0": vupdater_path / "Transition-V1-0-0-to-V1-0-1" + exe,
+        "1-0-1": vupdater_path / "Transition-V1-0-1-to-V1-0-2" + exe,
+        "1-0-2": vupdater_path / "Transition-V1-0-2-to-V1-0-3" + exe,
+        "1-0-3": vupdater_path / "Transition-V1-0-3-to-V1-1-0" + exe,
+        "1-1-0": vupdater_path / "Transition-V1-1-0-to-V1-1-1" + exe,
+        "1-1-1": vupdater_path / "Transition-V1-1-1-to-V1-2-0" + exe,
+        "1-2-0": vupdater_path / "Transition-V1-2-0-to-V1-2-1" + exe,
+        "1-2-1": vupdater_path / "Transition-V1-2-1-to-V1-2-2" + exe,
+        "1-2-2": vupdater_path / "Transition-V1-2-2-to-V1-2-3" + exe,
+        "1-2-3": vupdater_path / "Transition-V1-2-3-to-V1-3-0" + exe,
+        "1-3-0": vupdater_path / "Transition-V1-3-0-to-V1-4-0" + exe,
+        "1-4-0": vupdater_path / "Transition-V1-4-0-to-V2-0-0" + exe,
+        "2-0-0": vupdater_path / "Transition-V2-0-0-to-V2-1-0" + exe,
+        "2-1-0": vupdater_path / "Transition-V2-1-0-to-V2-2-0" + exe,
+        "2-2-0": vupdater_path / "Transition-V2-2-0-to-V3-0-0" + exe,
+        "3-0-0": vupdater_path / "Transition-V3-0-0-to-V3-1-0" + exe,
+        "3-1-0": vupdater_path / "Transition-V3-1-0-to-V4-0-0" + exe,
+        "4-0-0": vupdater_path / "Transition-V4-0-0-to-V5-0-0" + exe,
+        "5-0-0": vupdater_path / "Transition-V5-0-0-to-V6-0-0" + exe,
+        "6-0-0": vupdater_path / "Transition-V6-0-0-to-V7-0-0" + exe,
+        "7-0-0": vupdater_path / "Transition-V7-0-0-to-V7-1-0" + exe,
+        "7-1-0": vupdater_path / "Transition-V7-1-0-to-V7-2-0" + exe,
+        "7-2-0": vupdater_path / "Transition-V7-2-0-to-V8-0-0" + exe,
+        "8-0-0": vupdater_path / "Transition-V8-0-0-to-V8-1-0" + exe,
+        "8-1-0": vupdater_path / "Transition-V8-1-0-to-V8-2-0" + exe,
+        "8-2-0": vupdater_path / "Transition-V8-2-0-to-V8-3-0" + exe,
+        "8-3-0": vupdater_path / "Transition-V8-3-0-to-V8-4-0" + exe,
+        "8-4-0": vupdater_path / "Transition-V8-4-0-to-V8-5-0" + exe,
+        "8-5-0": vupdater_path / "Transition-V8-5-0-to-V8-6-0" + exe,
+        "8-6-0": vupdater_path / "Transition-V8-6-0-to-V8-7-0" + exe,
+        "8-7-0": vupdater_path / "Transition-V8-7-0-to-V8-8-0" + exe,
+        "8-8-0": vupdater_path / "Transition-V8-8-0-to-V8-9-0" + exe,
+        "8-9-0": vupdater_path / "Transition-V8-9-0-to-V9-0-0" + exe,
+        "9-0-0": vupdater_path / "Transition-V9-0-0-to-V9-1-0" + exe,
+        "9-1-0": vupdater_path / "Transition-V9-1-0-to-V9-2-0" + exe,
+    }
+
+    transitions = [
+        key
+        for key in trans_exec
+        if tuple(map(int, key.split("-"))) < tuple(map(int, to_version.split("-")))
+        and tuple(map(int, key.split("-"))) >= tuple(map(int, versionid.split("-")))
+    ]
+
+    for trans in transitions:
+        if not trans_exec[trans].exists():
+            raise EnergyPlusProcessError(
+                cmd=trans_exec[trans],
+                stderr="The specified EnergyPlus version (v{}) does not have"
+                " the required transition program '{}' in the "
+                "PreProcess folder. See the documentation "
+                "(archetypal.readthedocs.io/troubleshooting.html#missing-transition-programs) "
+                "to solve this issue".format(to_version, trans_exec[trans]),
+                idf=idf_file.basename(),
+            )
+        else:
+            cmd = [trans_exec[trans], idf_file]
+            try:
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    cwd=vupdater_path,
+                )
+                process_output, error_output = process.communicate()
+                log(process_output.decode("utf-8"), lg.DEBUG)
+            except CalledProcessError as exception:
+                log(
+                    "{} failed with error\n".format(
+                        idf_version_updater.__name__, str(exception)
+                    ),
+                    lg.ERROR,
+                )
 
 
 def find_eplus_installs(iddfile):
@@ -2550,6 +2569,42 @@ def getoldiddfile(versionid):
     eplusfolder = os.path.dirname(eplus_exe)
     iddfile = "{}/bin/Energy+.idd".format(eplusfolder)
     return iddfile
+
+
+def _create_idf_object(version):
+    """ Creates an IDF object with only the VERSION of the IDF
+
+    Args:
+        version (str): Version of the IDF to use in the form "9-2-0"
+            (with hyphen, no point)
+
+    Returns:
+        An archetypal.IDF object
+
+    """
+    # Create a new idf object and add the schedule to it.
+    idftxt = "VERSION, {};".format(
+        version.replace("-", ".")[0:3]
+    )  # Not an empty string. has just the
+    # version number
+    # we can make a file handle of a string
+    if not Path(settings.cache_folder).exists():
+        Path(settings.cache_folder).mkdir_p()
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        suffix="_" + version + ".idf",
+        prefix="temp_",
+        dir=settings.cache_folder,
+        delete=False,
+    ) as file:
+        file.write(idftxt)
+    # initialize the IDF object with the file handle
+    from eppy.easyopen import easyopen
+
+    idf_scratch = easyopen(file.name)
+    idf_scratch.__class__ = archetypal.IDF
+
+    return idf_scratch
 
 
 if __name__ == "__main__":

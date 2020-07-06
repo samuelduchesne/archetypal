@@ -7,6 +7,8 @@
 
 import collections
 import uuid
+import deprecation
+import archetypal
 
 import numpy as np
 import pandas as pd
@@ -144,8 +146,10 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             )
         elif isinstance(quantity, dict):
             new_values = np.average(
-                [self.all_values * quantity[self.Name], other.all_values * quantity[
-                    other.Name]],
+                [
+                    self.all_values * quantity[self.Name],
+                    other.all_values * quantity[other.Name],
+                ],
                 axis=0,
                 weights=weights,
             )
@@ -258,7 +262,15 @@ class YearScheduleParts:
         self.Schedule = Schedule
 
     @classmethod
+    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
+                            current_version=archetypal.__version__,
+                            details="Use from_dict function instead")
     def from_json(cls, all_objects, *args, **kwargs):
+
+        return cls.from_dict(all_objects, *args, **kwargs)
+
+    @classmethod
+    def from_dict(cls, all_objects, *args, **kwargs):
         """
         Args:
             all_objects:
@@ -332,7 +344,15 @@ class DaySchedule(UmiSchedule):
         return sched
 
     @classmethod
+    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
+                            current_version=archetypal.__version__,
+                            details="Use from_dict function instead")
     def from_json(cls, Type, **kwargs):
+
+        return cls.from_dict(Type, **kwargs)
+
+    @classmethod
+    def from_dict(cls, Type, **kwargs):
         """Create a DaySchedule from a Umi Template json file.
 
         Args:
@@ -401,7 +421,15 @@ class WeekSchedule(UmiSchedule):
         return sched
 
     @classmethod
+    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
+                            current_version=archetypal.__version__,
+                            details="Use from_dict function instead")
     def from_json(cls, **kwargs):
+
+        return cls.from_dict(**kwargs)
+
+    @classmethod
+    def from_dict(cls, **kwargs):
         """
         Args:
             **kwargs:
@@ -486,15 +514,40 @@ class YearSchedule(UmiSchedule):
         for part in self.Parts:
             start = "{}-{}-{}".format(self.year, part.FromMonth, part.FromDay)
             end = "{}-{}-{}".format(self.year, part.ToMonth, part.ToDay)
-            one_week = np.array(
-                [item for sublist in part.Schedule.Days for item in sublist.all_values]
-            )
+            try:  # Get week values from all_values of Days that are DaySchedule object
+                one_week = np.array(
+                    [
+                        item
+                        for sublist in part.Schedule.Days
+                        for item in sublist.all_values
+                    ]
+                )
+            except:  # Days are not DaySchedule object
+                try:  # Days is a list of 7 dicts (7 days in a week)
+                    # Dicts are the id of Days ({"$ref": id})
+                    day_values = [self.get_ref(day) for day in part.Schedule.Days]
+                    values = []
+                    for i in range(0, 7):  # There is 7 days a week
+                        values = values + day_values[i].all_values.tolist()
+                    one_week = np.array(values)
+                except:
+                    msg = """Days are not a DaySchedule or dictionaries in the form "{$ref: id}" """
+                    raise NotImplementedError(msg)
+
             all_weeks = np.resize(one_week, len(series.loc[start:end]))
             series.loc[start:end] = all_weeks
         return series.values
 
     @classmethod
+    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
+                            current_version=archetypal.__version__,
+                            details="Use from_dict function instead")
     def from_json(cls, **kwargs):
+
+        return cls.from_dict(**kwargs)
+
+    @classmethod
+    def from_dict(cls, **kwargs):
         """
         Args:
             **kwargs:
@@ -504,7 +557,7 @@ class YearSchedule(UmiSchedule):
         parts = kwargs.get("Parts", None)
 
         ys.Parts = [
-            YearScheduleParts.from_json(all_objects=ys, **part) for part in parts
+            YearScheduleParts.from_dict(all_objects=ys, **part) for part in parts
         ]
         ys.schType = "Schedule:Year"
         return UmiSchedule.from_yearschedule(ys)

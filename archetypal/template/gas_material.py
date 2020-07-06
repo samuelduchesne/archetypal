@@ -6,7 +6,9 @@
 ################################################################################
 
 import collections
+import deprecation
 
+import archetypal
 from archetypal.template import MaterialBase, Unique
 
 
@@ -14,18 +16,17 @@ class GasMaterial(MaterialBase, metaclass=Unique):
     """Gas Materials
 
     .. image:: ../images/template/materials-gas.png
-
     """
 
-    def __init__(self, *args, Category="Gases", Type="Gas", **kwargs):
+    def __init__(self, Name, Category="Gases", Type="Gas", **kwargs):
         """
         Args:
-            *args:
+            Name:
             Category:
             Type:
             **kwargs:
         """
-        super(GasMaterial, self).__init__(*args, Category=Category, **kwargs)
+        super(GasMaterial, self).__init__(Name, Category=Category, **kwargs)
         self.Type = Type
 
     def __hash__(self):
@@ -53,7 +54,20 @@ class GasMaterial(MaterialBase, metaclass=Unique):
             )
 
     @classmethod
+    @deprecation.deprecated(deprecated_in="1.3.1", removed_in="1.4",
+                            current_version=archetypal.__version__,
+                            details="Use from_dict function instead")
     def from_json(cls, *args, **kwargs):
+
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
+        return cls.from_dict(*args, **kwargs)
+
+    @classmethod
+    def from_dict(cls, *args, **kwargs):
         """
         Args:
             *args:

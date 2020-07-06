@@ -18,6 +18,7 @@ from path import Path
 
 import archetypal
 from archetypal import log, settings
+from archetypal.idfclass import _create_idf_object
 
 
 class Schedule(object):
@@ -25,7 +26,7 @@ class Schedule(object):
 
     def __init__(
         self,
-        Name=None,
+        Name,
         idf=None,
         start_day_of_the_week=0,
         strict=False,
@@ -53,11 +54,13 @@ class Schedule(object):
         """
         try:
             kwargs["idf"] = idf
-            Name = kwargs.get("Name", Name)
-            super(Schedule, self).__init__(**kwargs)
-        except:
-            pass
+            Name = kwargs.pop("Name", Name)
+            super(Schedule, self).__init__(Name, **kwargs)
+        except Exception as e:
+            pass  # todo: make this more robust
         self.strict = strict
+        if not isinstance(idf, archetypal.IDF):
+            idf = _create_idf_object(settings.ep_version)
         self.idf = idf
         self.Name = Name
         self.startDayOfTheWeek = self.get_sdow(start_day_of_the_week)
@@ -146,10 +149,36 @@ class Schedule(object):
 
     @property
     def all_values(self):
+        from archetypal.template import UmiBase
+
         """returns the values array"""
         if self.values is None:
-            epbunch = self.idf.get_schedule_epbunch(self.Name)
-            self.values = self.get_schedule_values(epbunch)
+            try:  # Search values in epbunch (from idf object)
+                epbunch = self.idf.get_schedule_epbunch(self.Name)
+                self.values = self.get_schedule_values(epbunch)
+            except:  # If no epbunch found
+                if self.Category == "Week":  # If WeekSchedule
+                    try:  # Get values from self.Days
+                        # self.Days is a list of 7 dicts (7 days in a week)
+                        # Dicts are the id of Days ({"$ref": id})
+                        day_values = [self.get_ref(day) for day in self.Days]
+                        values = []
+                        for i in range(0, 7):  # There is 7 days a week
+                            values = values + day_values[i].all_values.tolist()
+                        self.values = values
+                    except:  # self.Days is not a list of 7 simple {"$ref":id}
+                        # self.Days is a list of 7 DaySchedule objects
+                        values = []
+                        for i in range(0, 7):  # There is 7 days a week
+                            values = values + self.Days[i].all_values.tolist()
+                        self.values = values
+                else:
+                    msg = """Category of schedule {} is {}. Whereas Category should 
+                        be either "Year" or "Week" or "Day" """.format(
+                        self.Name, self.Category
+                    )
+                    raise NotImplementedError(msg)
+
         return self.values
 
     @property
@@ -206,9 +235,12 @@ class Schedule(object):
             # not have a Schedule_Type_Limits_Name field
             return "", "", "", ""
         else:
-            lower_limit, upper_limit, numeric_type, unit_type = self.idf.get_schedule_type_limits_data_by_name(
-                schedule_limit_name
-            )
+            (
+                lower_limit,
+                upper_limit,
+                numeric_type,
+                unit_type,
+            ) = self.idf.get_schedule_type_limits_data_by_name(schedule_limit_name)
 
             self.unit = unit_type
             if self.unit == "unknown":
@@ -273,9 +305,12 @@ class Schedule(object):
             epbunch (EpBunch): The schedule EpBunch object.
         """
 
-        lower_limit, upper_limit, numeric_type, unit_type = self.get_schedule_type_limits_data(
-            epbunch.Name
-        )
+        (
+            lower_limit,
+            upper_limit,
+            numeric_type,
+            unit_type,
+        ) = self.get_schedule_type_limits_data(epbunch.Name)
 
         number_of_day_sch = int((len(epbunch.fieldvalues) - 3) / 2)
 
@@ -424,9 +459,12 @@ class Schedule(object):
         Args:
             epbunch (EpBunch): The schedule epbunch object.
         """
-        lower_limit, upper_limit, numeric_type, unit_type = self.get_schedule_type_limits_data(
-            epbunch.Name
-        )
+        (
+            lower_limit,
+            upper_limit,
+            numeric_type,
+            unit_type,
+        ) = self.get_schedule_type_limits_data(epbunch.Name)
 
         hourly_values = np.arange(8760)
         value = float(epbunch["Hourly_Value"])

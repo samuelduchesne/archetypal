@@ -4,10 +4,11 @@
 # License: MIT, see full license in LICENSE.txt
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
+import logging
 import os
 import time
 from collections import defaultdict
-from typing import Any, Union
+from glob import glob
 
 from path import Path
 
@@ -29,6 +30,9 @@ from archetypal import (
     idf_version_updater,
     timeit,
     EnergyPlusProcessError,
+    __version__,
+    ep_version,
+    docstring_parameter,
 )
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -143,6 +147,7 @@ def cli(
     simulation templates
 
     Visit archetypal.readthedocs.io for the online documentation.
+
     """
     cli_config.data_folder = data_folder
     cli_config.logs_folder = logs_folder
@@ -286,6 +291,7 @@ def convert(
 ):
     """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS) The
     output folder path defaults to the working directory. Equivalent to '.'
+
     """
     u_value, shgc, t_vis, tolerance, fframe, uframe = window
     window_kwds = {
@@ -317,7 +323,7 @@ def convert(
         geo_floor=geofloor,
         refarea=refarea,
         volume=volume,
-        capacitance=capacitance
+        capacitance=capacitance,
     )
     # Print path of output files in console
     click.echo("Here are the paths to the different output files: ")
@@ -335,16 +341,16 @@ def convert(
 
 @timeit
 @cli.command()
-@click.argument("idf", nargs=-1, type=click.Path(exists=True), required=True)
-@click.argument(
-    "output",
+@click.argument("idf", nargs=-1, required=True)
+@click.option(
+    "-o",
+    "--output",
     type=click.Path(dir_okay=True, writable=True),
     default="myumitemplate.json",
 )
 @click.option(
     "--weather",
     "-w",
-    type=click.Path(exists=True),
     help="EPW weather file path",
     default=get_eplus_dirs(settings.ep_version)
     / "WeatherData"
@@ -366,99 +372,48 @@ def convert(
     help="Include all zones in the " "output template",
 )
 def reduce(idf, output, weather, parallel, all_zones):
-    """Perform the model reduction and translate to an UMI template file.
+    """Convert EnergyPlus models to an Umi Template Library by using the model
+    complexity reduction algorithm.
 
-    IDF is one or multiple idf files to process.
-    OUTPUT is the output file name (or path) to write to. Optional.
+    IDF can be a file path or a directory. In case of a directory, all *.idf
+    files will be matched in the directory and subdirectories (recursively). Mix &
+    match is ok (see example below).
+    OUTPUT is the output file
+    name (or path) to write to. Optional.
+
+    Example: % archetypal -v reduce "." "elsewhere/model1.idf" -w "weather.epw"
+
     """
-    if parallel:
-        log("Running in parallel...")
-        # if parallel is True, run eplus in parallel
-        rundict = {
-            file: dict(
-                eplus_file=file,
-                weather_file=weather,
-                annual=True,
-                prep_outputs=True,
-                expandobjects=True,
-                verbose="v",
-                output_report="sql",
-                return_idf=False,
-                ep_version=settings.ep_version,
-            )
-            for file in idf
-        }
-        res = parallel_process(rundict, run_eplus)
-        res = _write_invalid(res)
-
-        loaded_idf = {}
-        for key, sql in res.items():
-            loaded_idf[key] = {}
-            loaded_idf[key][0] = sql
-            loaded_idf[key][1] = load_idf(key)
-        res = loaded_idf
-    else:
-        # else, run sequentially
-        res = defaultdict(dict)
-        invalid = []
-        for i, fn in enumerate(idf):
-            try:
-                res[fn][0], res[fn][1] = run_eplus(
-                    fn,
-                    weather,
-                    ep_version=settings.ep_version,
-                    output_report="sql",
-                    prep_outputs=True,
-                    annual=True,
-                    design_day=False,
-                    verbose="v",
-                    return_idf=True,
-                )
-            except EnergyPlusProcessError as e:
-                invalid.append({"#": i, "Filename": fn.basename(), "Error": e})
-        if invalid:
-            filename = Path("failed_reduce.txt")
-            with open(filename, "w") as failures:
-                failures.writelines(tabulate(invalid, headers="keys"))
-                log('Invalid run listed in "%s"' % filename)
-
-    from archetypal import BuildingTemplate
-
-    bts = []
-    for fn in res.values():
-        sql = next(
-            iter([value for key, value in fn.items() if isinstance(value, dict)])
-        )
-        idf = next(iter([value for key, value in fn.items() if isinstance(value, IDF)]))
-        bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
+    settings.use_cache = True
 
     output = Path(output)
-    name = output.namebase
+    name = output.stem
     ext = output.ext if output.ext == ".json" else ".json"
     dir_ = output.dirname()
-    template = UmiTemplate(name=name, BuildingTemplates=bts)
-    final_path: Path = dir_ / name + ext
-    template.to_json(path_or_buf=final_path, all_zones=all_zones)
-    log("Successfully created template file at {}".format(final_path.abspath()))
 
+    file_paths = list(set_filepaths(idf))
+    log(f"executing {len(file_paths)} file(s): {[file.stem for file in file_paths]}")
+    weather = next(iter(set_filepaths([weather])))
+    log(f"using the '{weather.basename()}' weather file\n")
 
-def _write_invalid(res):
-    res = {k: v for k, v in res.items() if ~isinstance(res[k], Exception)}
-    invalid_runs = {k: v for k, v in res.items() if isinstance(res[k], Exception)}
-
-    if invalid_runs:
-        invalid = []
-        for i, (k, v) in enumerate(invalid_runs.items()):
-            invalid.append({"#": i, "Filename": k, "Error": invalid_runs[k]})
-        filename = Path("failed_reduce.txt")
-        with open(filename, "w") as failures:
-            failures.writelines(tabulate(invalid, headers="keys"))
-            log("Invalid runs listed in %s" % filename.abspath())
-    return res
+    # Call UmiTemplate constructor with list of IDFs
+    try:
+        template = UmiTemplate.read_idf(
+            file_paths, weather=weather, name=name, parallel=parallel
+        )
+    except EnergyPlusProcessError:
+        pass  # This exception is already logged in _write_invalid
+    except Exception as e:
+        log(f"An Unkown exception occured: {e}", logging.ERROR)
+    else:
+        # Save json file
+        final_path: Path = dir_ / name + ext
+        template.to_json(path_or_buf=final_path, all_zones=all_zones)
+        log("Successfully created template file at {}".format(final_path.abspath()))
 
 
 @cli.command()
-@click.argument("idf", nargs=-1, type=click.Path(exists=True), required=True)
+@click.argument("idf", nargs=-1, required=True)
 @click.option(
     "-v",
     "--version",
@@ -473,13 +428,59 @@ def _write_invalid(res):
     default=-1,
     help="Specify number of cores to run in parallel",
 )
+@docstring_parameter(arversion=__version__, ep_version=ep_version)
 def transition(idf, to_version, cores):
-    """Upgrade an IDF file to a newer version"""
+    """Upgrade an IDF file to a newer version.
+
+    IDF can be a file path or a directory. In case of a directory, all *.idf
+    files will be found in the directory and subdirectories (recursively). Mix &
+    match is ok (see example below).
+
+    Example: % archetypal -v transition "." "elsewhere/model1.idf"
+
+    archetypal will look in the current working directory (".") and find any
+    *.idf files and also run the model located at "elsewhere/model1.idf".
+
+    Note: The latest version archetypal v{arversion} can upgrade to is
+    {ep_version}.
+
+    """
     start_time = time.time()
-    rundict = {file: dict(idf_file=file, to_version=to_version) for file in idf}
+
+    file_paths = set_filepaths(idf)
+    rundict = {file: dict(idf_file=file, to_version=to_version) for file in file_paths}
     parallel_process(rundict, idf_version_updater, processors=cores)
     log(
         "Successfully transitioned files to version '{}' in {:,.2f} seconds".format(
             to_version, time.time() - start_time
         )
     )
+
+
+def set_filepaths(idf):
+    """Simplifies file-like paths, dir-like paths and Paths with wildcards. A
+    list of unique paths is returned. For directories, Path.walkfiles("*.idfs")
+    returns IDF files. For Paths with wildcards, glob(Path) is used to return
+    whatever the pattern defines.
+
+    Args:
+        idf (list of (str or Path) or tuple of (str or Path)): A list of path-like
+            objects. Can contain wildcards.
+
+    Returns:
+        set of Path: The set of a list of paths
+    """
+    if not isinstance(idf, (list, tuple)):
+        raise ValueError("A list must be passed")
+    idf = (Path(file_or_path).expand() for file_or_path in idf)  # make Paths
+    file_paths = ()  # Placeholder for tuple of paths
+    for file_or_path in idf:
+        if file_or_path.isfile():  # if a file, concatenate into file_paths
+            file_paths += tuple([file_or_path])
+        elif file_or_path.isdir():  # if a directory, walkdir (recursive) and get *.idf
+            file_paths += tuple(file_or_path.walkfiles("*.idf"))
+        else:
+            file_paths += tuple([Path(a).expand() for a in glob(file_or_path)])  # has
+            # wildcard
+    file_paths = set(file_paths)  # Only keep unique values
+    return file_paths

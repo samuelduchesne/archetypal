@@ -20,6 +20,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
 
     def __init__(
         self,
+        Name,
         Density=2500,
         Conductivity=0,
         SolarTransmittance=0,
@@ -40,6 +41,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         """Initialize a GlazingMaterial object with parameters:
 
         Args:
+            Name (str): The name of the GlazingMaterial.
             Density (float): A number representing the density of the material
                 in kg/m3. This is essentially the mass of one cubic meter of the
                 material.
@@ -72,7 +74,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
             **kwargs: keywords passed to the :class:`MaterialBase`
                 constructor. For more info, see :class:`MaterialBase`.
         """
-        super(GlazingMaterial, self).__init__(**kwargs)
+        super(GlazingMaterial, self).__init__(Name, **kwargs)
         self.Life = Life
         self.Cost = Cost
         self.Type = Type

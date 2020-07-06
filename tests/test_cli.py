@@ -310,9 +310,10 @@ class TestCli:
                 settings.ep_version,
                 "reduce",
                 "-w",
-                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_*.epw",
                 "-p",
                 *test_file_list,
+                "-o",
                 "tests/.temp/retail.json",
             ],
             catch_exceptions=False,
@@ -347,9 +348,10 @@ class TestCli:
                 settings.ep_version,
                 "reduce",
                 "-w",
-                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270*.epw",
                 "-p",
                 *[idf.idfname, idf.idfname],
+                "-o",
                 "tests/.temp/retail.json",
             ],
             catch_exceptions=False,
@@ -359,12 +361,20 @@ class TestCli:
         assert Path("failed_reduce.txt").exists()
         assert result.exit_code == 0
 
-    def test_transition(self, config):
-        """Tests the transition method for the CLI"""
-        file = copy_file(
-            "tests/input_data/problematic/ASHRAE90.1_ApartmentHighRise_STD2016_Buffalo.idf"
-        )
+    def test_transition_dir_file_mixed(self, config):
+        """Tests the transition method for the CLI using a mixture of a directory
+        (Path.isdir()) and a file Path.isfile()"""
         runner = CliRunner()
-        result = runner.invoke(cli, ["transition", file], catch_exceptions=False)
+        result = runner.invoke(
+            cli,
+            [
+                "-v",
+                "transition",
+                "tests/input_data/problematic/ASHRAE90.1_ApartmentHighRise_STD2016_Buffalo.idf",
+                "tests/input_data/problematic/*.idf",  # Path with wildcard
+                "tests/input_data/problematic",  # Just a path
+            ],
+            catch_exceptions=False,
+        )
         log(result.stdout)
         assert result.exit_code == 0

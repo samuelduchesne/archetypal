@@ -41,11 +41,13 @@ independently.
 .. toctree::
    :maxdepth: 2
    :caption: User Guide
+   :numbered:
 
    Converting IDF models <converting.rst>
    Reading and Running IDF files <reading_idf.rst>
    Parallel Processing <tutorials/parallel_process.rst>
    Managing Schedules <tutorials/schedules.rst>
+   Creating Umi template <creating_umi_template.rst>
    Reading and Editing UMI Template Files <tutorials/edit_umitemplate.rst>
    Troubleshooting <troubleshooting.rst>
 

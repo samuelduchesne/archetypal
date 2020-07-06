@@ -1,10 +1,11 @@
 import io
 import json
 import os
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 import numpy as np
 from path import Path
+from tabulate import tabulate
 
 from archetypal import (
     load_idf,
@@ -31,7 +32,27 @@ from archetypal import (
     YearScheduleParts,
     UmiSchedule,
     MassRatio,
+    parallel_process,
+    run_eplus,
+    EnergyPlusProcessError,
+    log,
+    IDF,
 )
+
+
+def _write_invalid(res):
+    res = {k: v for k, v in res.items() if ~isinstance(res[k], Exception)}
+    invalid_runs = {k: v for k, v in res.items() if isinstance(res[k], Exception)}
+
+    if invalid_runs:
+        invalid = []
+        for i, (k, v) in enumerate(invalid_runs.items()):
+            invalid.append({"#": i, "Filename": k, "Error": invalid_runs[k]})
+        filename = Path("failed_reduce.txt")
+        with open(filename, "w") as failures:
+            failures.writelines(tabulate(invalid, headers="keys"))
+            log("Invalid runs listed in %s" % filename)
+    return res
 
 
 class UmiTemplate:
@@ -151,7 +172,7 @@ class UmiTemplate:
 
     @classmethod
     def read_idf(
-        cls, idf_files, weather, sql=None, name="unnamed", load_idf_kwargs=None
+        cls, idf_files, weather, name="unnamed", parallel=True,
     ):
         """Initializes an UmiTemplate object from one or more idf_files.
 
@@ -159,65 +180,58 @@ class UmiTemplate:
         To save to file, call the :meth:`to_json` method.
 
         Args:
-            idf_files (str or list): One or more IDF file paths.
-            weather (str): Path to the weather file.
-            sql:
-            name:
-            load_idf_kwargs (dict): kwargs passed to the
-                :meth:`archetypal.idfclass.load_idf` method.
+            idf_files (list of (str or Path)): list of IDF file paths.
+            weather (str or Path): Path to the weather file.
+            name (str): The name of the Template File
+            parallel (bool): If True, uses all available logical cores.
         """
-        if load_idf_kwargs is None:
-            load_idf_kwargs = {}
         # instantiate class
-        t = cls(name)
+        umi_template = cls(name)
 
         # fill in arguments
-        t.idf_files = idf_files
-        t.weather = weather
-        t.sql = sql
+        umi_template.idf_files = [Path(idf) for idf in idf_files]
+        umi_template.weather = weather
 
-        # Load IDF objects
-        t.idfs = [
-            load_idf(idf_file, weather_file=weather, **load_idf_kwargs)
-            for idf_file in idf_files
-        ]
+        # Run/Load IDF objects
+        if not parallel:
+            processors = 1
+        else:
+            processors = -1
+        # if parallel is True, run eplus in parallel
+        rundict = {
+            file: dict(
+                eplus_file=file,
+                weather_file=weather,
+                annual=True,
+                prep_outputs=True,
+                expandobjects=True,
+                verbose="v",
+                output_report="sql",
+                return_idf=False,
+                ep_version=settings.ep_version,
+            )
+            for file in umi_template.idf_files
+        }
+        res = parallel_process(rundict, run_eplus, processors=processors)
+        res = _write_invalid(res)
 
-        # For each idf load
-        template_obj = []
-        for idf in t.idfs:
-            bldg = BuildingTemplate.from_idf(idf, sql=idf.sql, DataSource=idf.name)
-            template_obj.append(bldg)
-            for name in [
-                DaySchedule,
-                DomesticHotWaterSetting,
-                GasMaterial,
-                GlazingMaterial,
-                OpaqueConstruction,
-                OpaqueMaterial,
-                StructureDefinition,
-                VentilationSetting,
-                WeekSchedule,
-                WindowConstruction,
-                YearSchedule,
-                ZoneConditioning,
-                ZoneConstructionSet,
-                ZoneLoad,
-                Zone,
-            ]:
-                t.__dict__[name.__name__ + "s"].extend(
-                    [obj for obj in bldg.all_objects.values() if isinstance(obj, name)]
-                )
-
-        t.BuildingTemplates = template_obj
-
-        return t
+        loaded_idf = {}
+        bts = []
+        for key, sql in res.items():
+            if not isinstance(sql, Exception):
+                idf = load_idf(key)
+                bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
+            else:
+                raise sql
+        umi_template.BuildingTemplates = bts
+        return umi_template
 
     @classmethod
     def read_file(cls, filename):
         """Initializes an UmiTemplate object from an UMI Template File.
 
         Args:
-            filename (path-like): Path-like object giving the pathname (absolute
+            filename (str or Path): PathLike object giving the pathname (absolute
                 or relative to the current working directory) of the UMI
                 Template File.
 
@@ -290,7 +304,7 @@ class UmiTemplate:
                 for store in datastore["WindowSettings"]
             ]
             t.BuildingTemplates = [
-                BuildingTemplate.from_json(**store)
+                BuildingTemplate.from_dict(**store)
                 for store in datastore["BuildingTemplates"]
             ]
 
@@ -330,75 +344,7 @@ class UmiTemplate:
             if not os.path.exists(settings.data_folder):
                 os.makedirs(settings.data_folder)
         with io.open(path_or_buf, "w+", encoding="utf-8") as path_or_buf:
-            data_dict = OrderedDict(
-                {
-                    "GasMaterials": [],
-                    "GlazingMaterials": [],
-                    "OpaqueMaterials": [],
-                    "OpaqueConstructions": [],
-                    "WindowConstructions": [],
-                    "StructureDefinitions": [],
-                    "DaySchedules": [],
-                    "WeekSchedules": [],
-                    "YearSchedules": [],
-                    "DomesticHotWaterSettings": [],
-                    "VentilationSettings": [],
-                    "ZoneConditionings": [],
-                    "ZoneConstructionSets": [],
-                    "ZoneLoads": [],
-                    "Zones": [],
-                    "WindowSettings": [],
-                    "BuildingTemplates": [],
-                }
-            )
-
-            jsonized = {}
-
-            def recursive_json(obj):
-                if obj.__class__.mro()[0] == UmiSchedule:
-                    obj = obj.develop()
-                catname = obj.__class__.__name__ + "s"
-                if catname in data_dict:
-                    key = obj.id
-                    if key not in jsonized.keys():
-                        app_dict = obj.validate().to_json()
-                        data_dict[catname].append(app_dict)
-                        jsonized[key] = obj
-                for key, value in obj.__dict__.items():
-
-                    if isinstance(
-                        value, (UmiBase, MaterialLayer, YearScheduleParts)
-                    ) and not key.startswith("_"):
-                        recursive_json(value)
-                    elif isinstance(value, list):
-                        [
-                            recursive_json(value)
-                            for value in value
-                            if isinstance(
-                                value,
-                                (UmiBase, MaterialLayer, YearScheduleParts, MassRatio),
-                            )
-                        ]
-
-            for bld in self.BuildingTemplates:
-                if all_zones:
-                    recursive_json(bld)
-                else:
-                    # First, remove cores and perims lists
-                    cores = bld.__dict__.pop("cores", None)
-                    perims = bld.__dict__.pop("perims", None)
-
-                    # apply the recursion
-                    recursive_json(bld)
-
-                    # put back objects
-                    bld.cores = cores
-                    bld.perims = perims
-
-            for key in data_dict:
-                data_dict[key] = sorted(
-                    data_dict[key], key=lambda x: x["Name"] if "Name" in x else "A"
-                )
+            data_dict = self.to_dict(all_zones)
 
             class CustomJSONEncoder(json.JSONEncoder):
                 def default(self, obj):
@@ -407,13 +353,90 @@ class UmiTemplate:
 
                     return obj
 
-            if not data_dict["GasMaterials"]:
-                # Umi needs at least one gas material even if it is not necessary.
-                data_dict["GasMaterials"].append(GasMaterial(Name="AIR").to_json())
-            # Write the dict to json using json.dumps
             response = json.dumps(
                 data_dict, indent=indent, sort_keys=sort_keys, cls=CustomJSONEncoder
             )
             path_or_buf.write(response)
 
         return response
+
+    def to_dict(self, all_zones=False):
+        """
+        Args:
+            all_zones (bool): If True, all zones that have participated in the
+                creation of the core and perimeter zones will be outputed to the
+                json file.
+        """
+        data_dict = OrderedDict(
+            {
+                "GasMaterials": [],
+                "GlazingMaterials": [],
+                "OpaqueMaterials": [],
+                "OpaqueConstructions": [],
+                "WindowConstructions": [],
+                "StructureDefinitions": [],
+                "DaySchedules": [],
+                "WeekSchedules": [],
+                "YearSchedules": [],
+                "DomesticHotWaterSettings": [],
+                "VentilationSettings": [],
+                "ZoneConditionings": [],
+                "ZoneConstructionSets": [],
+                "ZoneLoads": [],
+                "Zones": [],
+                "WindowSettings": [],
+                "BuildingTemplates": [],
+            }
+        )
+        jsonized = {}
+
+        def recursive_json(obj):
+            if obj.__class__.mro()[0] == UmiSchedule:
+                obj = obj.develop()
+            catname = obj.__class__.__name__ + "s"
+            if catname in data_dict:
+                key = obj.id
+                if key not in jsonized.keys():
+                    app_dict = obj.to_json()
+                    data_dict[catname].append(app_dict)
+                    jsonized[key] = obj
+            for key, value in obj.__dict__.items():
+
+                if isinstance(
+                    value, (UmiBase, MaterialLayer, YearScheduleParts)
+                ) and not key.startswith("_"):
+                    recursive_json(value)
+                elif isinstance(value, list):
+                    [
+                        recursive_json(value)
+                        for value in value
+                        if isinstance(
+                            value,
+                            (UmiBase, MaterialLayer, YearScheduleParts, MassRatio),
+                        )
+                    ]
+
+        for bld in self.BuildingTemplates:
+            if all_zones:
+                recursive_json(bld)
+            else:
+                # First, remove cores and perims lists
+                cores = bld.__dict__.pop("cores", None)
+                perims = bld.__dict__.pop("perims", None)
+
+                # apply the recursion
+                recursive_json(bld)
+
+                # put back objects
+                bld.cores = cores
+                bld.perims = perims
+        for key in data_dict:
+            data_dict[key] = sorted(
+                data_dict[key], key=lambda x: x["Name"] if "Name" in x else "A"
+            )
+
+        if not data_dict["GasMaterials"]:
+            # Umi needs at least one gas material even if it is not necessary.
+            data_dict["GasMaterials"].append(GasMaterial(Name="AIR").to_json())
+        # Write the dict to json using json.dumps
+        return data_dict

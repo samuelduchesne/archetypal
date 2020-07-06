@@ -425,8 +425,14 @@ def reduce(idf, output, weather, parallel, all_zones):
     default=-1,
     help="Specify number of cores to run in parallel",
 )
+@click.option(
+    "-y",
+    "yes",
+    is_flag=True,
+    help="Suppress confirmation prompt, when overwriting files.",
+)
 @docstring_parameter(arversion=__version__, ep_version=ep_version)
-def transition(idf, to_version, cores):
+def transition(idf, to_version, cores, yes):
     """Upgrade an IDF file to a newer version.
 
     IDF can be a file path or a directory. In case of a directory, all *.idf
@@ -444,8 +450,16 @@ def transition(idf, to_version, cores):
     """
     start_time = time.time()
 
+    if not yes:
+        overwrite = click.confirm("Would you like to overwrite the file(s)?")
+    else:
+        overwrite = False
+
     file_paths = set_filepaths(idf)
-    rundict = {file: dict(idf_file=file, to_version=to_version) for file in file_paths}
+    rundict = {
+        file: dict(idf_file=file, to_version=to_version, overwrite=overwrite)
+        for file in file_paths
+    }
     parallel_process(rundict, idf_version_updater, processors=cores)
     log(
         "Successfully transitioned files to version '{}' in {:,.2f} seconds".format(

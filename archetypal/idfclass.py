@@ -566,7 +566,7 @@ class IDF(geomeppy.IDF):
         output_directory.makedirs_p()
         return output_directory
 
-    def upgrade(self, to_version, epw):
+    def upgrade(self, to_version, epw, overwrite=True):
         """EnergyPlus idf version updater using local transition program.
 
         Update the EnergyPlus simulation file (.idf) to the latest available
@@ -591,6 +591,8 @@ class IDF(geomeppy.IDF):
                 careful to avoid naming collision : the run will always be done in
                 separated folders, but the output files can overwrite each other if
                 the simulname is the same. (default: None)
+            overwrite (bool): If True, original idf file is overwritten with new
+                transitioned file.
 
         Raises:
             EnergyPlusProcessError: If version updater fails.
@@ -618,8 +620,10 @@ class IDF(geomeppy.IDF):
 
                 # retrieve transitioned file
                 for f in Path(tmp).files("*.idfnew"):
-                    f.copy(self.output_directory / idf_file.basename())
-            file = Path(self.output_directory / idf_file.basename())
+                    if overwrite:
+                        file = f.copy(self.output_directory / idf_file.basename())
+                    else:
+                        file = f.copy(self.output_directory)
 
             idd_filename = Path(getiddfile(get_idf_version(file)))
             if not idd_filename.exists():
@@ -2781,13 +2785,9 @@ def get_sqlite_report(report_file, report_tables=None):
             return all_tables
 
 
-@deprecated(
-    deprecated_in="1.3.5",
-    removed_in="1.4",
-    current_version=archetypal.__version__,
-    details="Use :func:`IDF.upgrade` instead",
-)
-def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None):
+def idf_version_updater(
+    idf_file, to_version=None, out_dir=None, simulname=None, overwrite=True
+):
     """EnergyPlus idf version updater using local transition program.
 
     Update the EnergyPlus simulation file (.idf) to the latest available
@@ -2857,8 +2857,11 @@ def idf_version_updater(idf_file, to_version=None, out_dir=None, simulname=None)
 
             # retrieve transitioned file
             for f in Path(tmp).files("*.idfnew"):
-                f.copy(out_dir / idf_file.basename())
-        return Path(out_dir / idf_file.basename())
+                if overwrite:
+                    file = f.copy(out_dir / idf_file.basename())
+                else:
+                    file = f.copy(out_dir)
+        return file
 
 
 def _check_version(idf_file, to_version, out_dir):

@@ -483,7 +483,12 @@ def t_initial_to_b18(b18_lines, zones, schedules):
 def adds_sch_setpoint(
     zones, report_sqlite, old_new_names, schedule_names, schedules, string
 ):
-    for zone in zones:
+    if string == "h":
+        description = "Getting heating setpoints"
+    if string == "c":
+        description = "Getting cooling setpoints"
+
+    for zone in tqdm(zones, desc=description):
         all_values = report_sqlite[
             report_sqlite.loc[:, "KeyValue"]
             == old_new_names[zone.Name.upper()][0].upper()
@@ -536,7 +541,7 @@ def infilt_to_b18(b18_lines, zones, htm):
     b18_lines.insert(infiltNum + 1, "INFILTRATION Constant" + "\n")
     b18_lines.insert(infiltNum + 2, "AIRCHANGE=" + str(mean_infilt) + "\n")
     # Write in zone section
-    for zone in zones:
+    for zone in tqdm(zones, desc="Writing infiltration in BUI"):
         f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
         regimeInfiltNum = checkStr(b18_lines, "REGIME", f_count)
         b18_lines.insert(regimeInfiltNum, " INFILTRATION = Constant" + "\n")
@@ -558,7 +563,7 @@ def gains_to_b18(
     lights_in_zone = zone_where_gain_is(lights, zones, zonelists)
     equipments_in_zone = zone_where_gain_is(equipments, zones, zonelists)
 
-    for zone in zones:
+    for zone in tqdm(zones, desc="Writing internal gains in BUI"):
         # Write people gains
         _write_gain_to_b18(
             b18_lines,
@@ -646,7 +651,7 @@ def _write_gain_to_b18(
 
 
 def conditioning_to_b18(b18_lines, heat_dict, cool_dict, zones, old_new_names):
-    for zone in zones:
+    for zone in tqdm(zones, desc="Writing conditioning in BUI"):
         # Heating
         _write_heat_cool_to_b18(heat_dict, old_new_names, zone, b18_lines, " HEATING")
         # Cooling
@@ -697,7 +702,7 @@ def _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules):
     idf_file = Path(idf_file)
     df_sched = pd.DataFrame()
     schedule_names.sort()
-    for schedule_name in schedule_names:
+    for schedule_name in tqdm(schedule_names, desc="Writing schedules in csv"):
         df_sched[schedule_name] = schedules[schedule_name]["all values"]
     sched_file_name = "yearly_schedules_" + idf_file.basename().stripext() + ".csv"
     output_folder = Path(output_folder)
@@ -1130,7 +1135,7 @@ def _get_schedules(idf):
     schedule_names = []
     used_schedules = idf.get_used_schedules(yearly_only=True)
     schedules = {}
-    for schedule_name in used_schedules:
+    for schedule_name in tqdm(used_schedules, desc="Getting schedules"):
         s = Schedule(
             schedule_name, idf, start_day_of_the_week=idf.day_of_week_for_start_day
         )
@@ -1169,7 +1174,7 @@ def clear_name_idf_objects(idfFile, log_clear_names=False):
     old_new_eq = {}
 
     # For all categories of objects in the IDF file
-    for obj in tqdm(idfFile.idfobjects, desc="cleaning_names"):
+    for obj in tqdm(idfFile.idfobjects, desc="Cleaning names"):
         epObjects = idfFile.idfobjects[obj]
 
         # For all objects in Category
@@ -1747,7 +1752,7 @@ def _write_zone_buildingSurf_fenestrationSurf(
         "idf file to t3d file..."
     )
     count_fs = 0
-    for zone in zones:
+    for zone in tqdm(zones, desc="Writing building zone/surface coordinates "):
         zone.Direction_of_Relative_North = 0.0
         if zone.Multiplier == "":
             zone.Multiplier = 1
@@ -2294,7 +2299,10 @@ def _write_conditioning(htm, lines, schedules, old_new_names, schedule_as_input)
     heat_dict = {}
     schedule = None
     if htm["Zone Sensible Heating"].iloc[0, 0] != "None":
-        for i in range(0, len(htm["Zone Sensible Heating"])):
+        for i in tqdm(
+            range(0, len(htm["Zone Sensible Heating"])),
+            desc="Writing conditioning (heating)",
+        ):
             key = htm["Zone Sensible Heating"].iloc[i, 0]
             for key_2 in schedules:
                 try:
@@ -2333,7 +2341,10 @@ def _write_conditioning(htm, lines, schedules, old_new_names, schedule_as_input)
     cool_dict = {}
     schedule = None
     if htm["Zone Sensible Cooling"].iloc[0, 0] != "None":
-        for i in range(0, len(htm["Zone Sensible Cooling"])):
+        for i in tqdm(
+            range(0, len(htm["Zone Sensible Cooling"])),
+            desc="Writing conditioning (cooling)",
+        ):
             key = htm["Zone Sensible Cooling"].iloc[i, 0]
             for key_2 in schedules:
                 try:
@@ -2405,7 +2416,9 @@ def _write_equipment_gain(equipments, gainNum, lines, htm, old_new_names):
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
     """
-    for equipment in equipments:
+    for equipment in tqdm(
+        equipments, desc="Writing electric equipment power density (internal gains)"
+    ):
         gain = htm["ElectricEquipment Internal Gains Nominal"][
             htm["ElectricEquipment Internal Gains Nominal"]["Name"].str.contains(
                 old_new_names[equipment.Name.upper()][0]
@@ -2438,7 +2451,7 @@ def _write_light_gain(gainNum, lights, lines, htm, old_new_names):
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
     """
-    for light in lights:
+    for light in tqdm(lights, desc="Writing light power density (internal gains)"):
         gain = htm["Lights Internal Gains Nominal"][
             htm["Lights Internal Gains Nominal"]["Name"].str.contains(
                 old_new_names[light.Name.upper()][0]
@@ -2469,7 +2482,7 @@ def _write_people_gain(gainNum, lines, peoples, htm, old_new_names):
             TRNBuild). To be appended (insert) here
         peoples (idf_MSequence): IDF object from idf.idfobjects()
     """
-    for people in peoples:
+    for people in tqdm(peoples, desc="Writing people density (internal gains)"):
         gain = htm["People Internal Gains Nominal"][
             htm["People Internal Gains Nominal"]["Name"].str.contains(
                 old_new_names[people.Name.upper()][0]
@@ -2524,7 +2537,7 @@ def _write_material_airgap(layerNum, lines, listLayerName, materialAirGap):
         listLayerName (list): list of material's names. To be appended when
         materialAirGap (materialAirGap): IDF object from
     """
-    for i in range(0, len(materialAirGap)):
+    for i in tqdm(range(0, len(materialAirGap)), desc="Writing airgap materials"):
 
         duplicate = [s for s in listLayerName if s == materialAirGap[i].Name]
         if not duplicate:
@@ -2550,7 +2563,7 @@ def _write_material_nomass(layerNum, lines, listLayerName, materialNoMass):
         listLayerName (list): list of material's names. To be appended when
         materialNoMass (idf_MSequence): IDF object from idf.idfobjects().
     """
-    for i in range(0, len(materialNoMass)):
+    for i in tqdm(range(0, len(materialNoMass)), desc="Writing nomass materials"):
 
         duplicate = [s for s in listLayerName if s == materialNoMass[i].Name]
         if not duplicate:
@@ -2577,7 +2590,7 @@ def _write_material(layerNum, lines, listLayerName, materials):
         materials (idf_MSequence): IDF object from idf.idfobjects(). List of
             materials ("MATERIAL" in the IDF)
     """
-    for i in range(0, len(materials)):
+    for i in tqdm(range(0, len(materials)), desc="Writing materials"):
         lines.insert(layerNum + 1, "!-LAYER " + materials[i].Name + "\n")
         listLayerName.append(materials[i].Name)
 
@@ -2605,7 +2618,9 @@ def _write_constructions_end(constr_list, idf, lines):
     # Get line number where to write
     constructionEndNum = checkStr(lines, "ALL OBJECTS IN CLASS: CONSTRUCTION")
     # Writing CONSTRUCTION infos to lines
-    for constr in constr_list:
+    for constr in tqdm(
+        constr_list, desc="Writing constructions at the end section of T3D file"
+    ):
         construction = idf.getobject("CONSTRUCTION", constr)
         lines.insert(constructionEndNum, construction)
 
@@ -2626,7 +2641,7 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials):
     # Get line number where to write
     constructionNum = checkStr(lines, "C O N S T R U C T I O N")
     # Writing CONSTRUCTION in lines
-    for constr in constr_list:
+    for constr in tqdm(constr_list, desc="Writing constructions"):
         construction = idf.getobject("CONSTRUCTION", constr)
         lines.insert(constructionNum + 1, "!-CONSTRUCTION " + construction.Name + "\n")
 

@@ -1136,7 +1136,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         else:
             futures = {a: submit(function, in_dict[a]) for a in tqdm(in_dict, **kwargs)}
     else:
-        with ThreadPoolExecutor(max_workers=processors) as pool:
+        with ProcessPoolExecutor(max_workers=processors) as pool:
             with tqdm(
                 desc=function.__name__,
                 total=len(in_dict),

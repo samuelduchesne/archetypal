@@ -146,7 +146,7 @@ def convert_idf_to_trnbuild(
             ),
         },
     ]
-    idf = IDF(idf_file, epw=weather_file)
+    idf = IDF(idf_file, epw=weather_file, ep_version=ep_version, prep_outputs=outputs)
 
     # Check if cache exists
     # idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)

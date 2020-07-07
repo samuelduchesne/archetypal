@@ -1165,15 +1165,14 @@ class IDF(geomeppy.IDF):
 
     def _execute_transitions(self, idf_file, to_version):
         trans_exec = {
-            idd_version: exec
-            for idd_version, exec in zip(
-                self.valid_idds(), self.idfversionupdater_dir.files("Transition-V*")
-            )
+            parse(re.search(r"V([\d])-([\d])-([\d])", exec).group()): exec
+            for exec in self.idfversionupdater_dir.files("Transition-V*")
         }
 
-        transitions = [
-            key for key in trans_exec if key < to_version and key >= self.idf_version
-        ]
+        transitions = (
+            [key for key in trans_exec if key < to_version and key >= self.idf_version]
+        )
+        transitions.sort()
 
         for trans in transitions:
             if not trans_exec[trans].exists():

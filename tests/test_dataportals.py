@@ -1,11 +1,10 @@
 import os
 
+import pandas as pd
 import pytest
 
 import archetypal as ar
-import pandas as pd
-
-from archetypal import download_bld_window, settings, IDF
+from archetypal import download_bld_window, IDF
 
 
 def test_tabula_available_country(config, scratch_then_cache):
@@ -81,7 +80,7 @@ def test_tabula_building_sheet_valueerror(config, scratch_then_cache):
 
     # Test with wrong code_country
     with pytest.raises(ValueError):
-        sheet = ar.tabula_building_details_sheet(code_country="wrong_string",)
+        sheet = ar.tabula_building_details_sheet(code_country="wrong_string")
     # Makes sure sheet not in locals
     assert "sheet" not in locals()
 
@@ -213,7 +212,7 @@ def test_download_and_load_bld_window(clean_config):
         oauth_key=oauth_consumer_key,
         tolerance=0.05,
     )
-    idf = IDF(response[0], ep_version=settings.ep_version)
+    idf = IDF(response[0])
     construct = idf.getobject("CONSTRUCTION", "AEDG-SmOffice 1A Window Fixed")
     ws = ar.WindowSetting.from_construction(Name="test_window", Construction=construct)
 

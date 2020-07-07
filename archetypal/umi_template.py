@@ -184,7 +184,7 @@ class UmiTemplateLibrary:
         return umi_template
 
     @classmethod
-    def read_file(cls, filename):
+    def read_file(cls, filename, idf=None):
         """Initializes an UmiTemplate object from an UMI Template File.
 
         Args:
@@ -197,7 +197,8 @@ class UmiTemplateLibrary:
         """
         name = Path(filename)
         t = cls(name)
-
+        if not idf:
+            idf = IDF(prep_outputs=False)
         with open(filename, "r") as f:
             import json
 
@@ -205,63 +206,71 @@ class UmiTemplateLibrary:
 
             # with datastore, create each objects
             t.GasMaterials = [
-                GasMaterial.from_json(**store) for store in datastore["GasMaterials"]
+                GasMaterial.from_dict(**store, idf=idf)
+                for store in datastore["GasMaterials"]
             ]
             t.GlazingMaterials = [
-                GlazingMaterial(**store) for store in datastore["GlazingMaterials"]
+                GlazingMaterial(**store, idf=idf)
+                for store in datastore["GlazingMaterials"]
             ]
             t.OpaqueMaterials = [
-                OpaqueMaterial(**store) for store in datastore["OpaqueMaterials"]
+                OpaqueMaterial(**store, idf=idf)
+                for store in datastore["OpaqueMaterials"]
             ]
             t.OpaqueConstructions = [
-                OpaqueConstruction.from_json(**store)
+                OpaqueConstruction.from_dict(**store, idf=idf)
                 for store in datastore["OpaqueConstructions"]
             ]
             t.WindowConstructions = [
-                WindowConstruction.from_json(**store)
+                WindowConstruction.from_dict(**store, idf=idf)
                 for store in datastore["WindowConstructions"]
             ]
             t.StructureDefinitions = [
-                StructureDefinition.from_json(**store)
+                StructureDefinition.from_dict(**store, idf=idf)
                 for store in datastore["StructureDefinitions"]
             ]
             t.DaySchedules = [
-                DaySchedule.from_json(**store) for store in datastore["DaySchedules"]
+                DaySchedule.from_dict(**store, idf=idf)
+                for store in datastore["DaySchedules"]
             ]
             t.WeekSchedules = [
-                WeekSchedule.from_json(**store) for store in datastore["WeekSchedules"]
+                WeekSchedule.from_dict(**store, idf=idf)
+                for store in datastore["WeekSchedules"]
             ]
             t.YearSchedules = [
-                YearSchedule.from_json(**store) for store in datastore["YearSchedules"]
+                YearSchedule.from_dict(**store, idf=idf)
+                for store in datastore["YearSchedules"]
             ]
             t.DomesticHotWaterSettings = [
-                DomesticHotWaterSetting.from_json(**store)
+                DomesticHotWaterSetting.from_dict(**store, idf=idf)
                 for store in datastore["DomesticHotWaterSettings"]
             ]
             t.VentilationSettings = [
-                VentilationSetting.from_json(**store)
+                VentilationSetting.from_dict(**store, idf=idf)
                 for store in datastore["VentilationSettings"]
             ]
             t.ZoneConditionings = [
-                ZoneConditioning.from_json(**store)
+                ZoneConditioning.from_dict(**store, idf=idf)
                 for store in datastore["ZoneConditionings"]
             ]
             t.ZoneConstructionSets = [
-                ZoneConstructionSet.from_json(**store)
+                ZoneConstructionSet.from_dict(**store, idf=idf)
                 for store in datastore["ZoneConstructionSets"]
             ]
             t.ZoneLoads = [
-                ZoneLoad.from_json(**store) for store in datastore["ZoneLoads"]
+                ZoneLoad.from_dict(**store, idf=idf) for store in datastore["ZoneLoads"]
             ]
-            t.Zones = [Zone.from_json(**store) for store in datastore["Zones"]]
+            t.Zones = [Zone.from_dict(**store, idf=idf) for store in datastore["Zones"]]
             t.WindowSettings = [
-                WindowSetting.from_ref(store["$ref"], datastore["BuildingTemplates"])
+                WindowSetting.from_ref(
+                    store["$ref"], datastore["BuildingTemplates"], idf=idf
+                )
                 if "$ref" in store
-                else WindowSetting.from_json(**store)
+                else WindowSetting.from_dict(**store, idf=idf)
                 for store in datastore["WindowSettings"]
             ]
             t.BuildingTemplates = [
-                BuildingTemplate.from_dict(**store)
+                BuildingTemplate.from_dict(**store, idf=idf)
                 for store in datastore["BuildingTemplates"]
             ]
 

@@ -106,9 +106,7 @@ class Schedule(object):
         # Add the schedule to the existing idf
         idf.add_object(
             ep_object="Schedule:Constant".upper(),
-            **dict(
-                Name=Name, Schedule_Type_Limits_Name="", Hourly_Value=hourly_value
-            )
+            **dict(Name=Name, Schedule_Type_Limits_Name="", Hourly_Value=hourly_value)
         )
         return cls(Name=Name, idf=idf, **kwargs)
 

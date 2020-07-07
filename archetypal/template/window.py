@@ -796,7 +796,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return w
 
     @classmethod
-    def from_ref(cls, ref, building_templates):
+    def from_ref(cls, ref, building_templates, idf=None):
         """In some cases, the WindowSetting is referenced in the DataStore to the
         Windows property of a BuildingTemplate (instead of being listed in the
         WindowSettings list. This is the case in the original
@@ -817,7 +817,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 )
             )
         )
-        w = cls.from_json(**store)
+        w = cls.from_json(**store, idf=idf)
         return w
 
     def validate(self):

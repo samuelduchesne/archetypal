@@ -111,7 +111,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         if not isinstance(other, OpaqueConstruction):
             return False
         else:
-            return all([self.Layers == other.Layers,])
+            return all([self.Layers == other.Layers])
 
     @property
     def r_value(self):
@@ -253,7 +253,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             )
         # layers for the new OpaqueConstruction
         layers = [MaterialLayer(mat, t) for mat, t in zip(new_m, new_t)]
-        new_obj = self.__class__(**meta, Layers=layers)
+        new_obj = self.__class__(**meta, Layers=layers, idf=self.idf, sql=self.sql)
         new_name = (
             "Combined Opaque Construction {{{}}} with u_value "
             "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value())
@@ -512,7 +512,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         Args:
             idf:
         """
-        om = OpaqueMaterial.generic()
+        om = OpaqueMaterial.generic(idf=idf)
 
         layers = [MaterialLayer(om, 0.0127)]  # half inch
         return cls(Name="generic plaster board half inch", Layers=layers, idf=idf)

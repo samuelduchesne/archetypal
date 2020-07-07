@@ -169,7 +169,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         attr = self.__dict__.copy()
         attr.update(dict(values=new_values))
         attr["Name"] = meta["Name"]
-        new_obj = super().from_values(**attr)
+        new_obj = super().from_values(**attr, idf=self.idf)
         new_name = (
             "Combined Schedule {{{}}} with mean daily min:{:.2f} "
             "mean:{:.2f} max:{:.2f}".format(

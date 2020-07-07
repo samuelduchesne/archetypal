@@ -729,7 +729,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 other.ShadingSystemAvailabilitySchedule, weights
             ),
         )
-        new_obj = self.__class__(**meta, **new_attr)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
         new_obj._predecessors.extend(self._predecessors + other._predecessors)
         return new_obj
 

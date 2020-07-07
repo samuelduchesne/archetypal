@@ -341,7 +341,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         n = self._float_mean(other, "ScheduledVentilationAch", weights)
         o = self._float_mean(other, "ScheduledVentilationSetpoint", weights)
 
-        attr = dict(
+        new_attr = dict(
             NatVentSchedule=a,
             ScheduledVentilationSchedule=b,
             Afn=c,
@@ -360,7 +360,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         )
 
         # create a new object with the previous attributes
-        new_obj = self.__class__(**meta, **attr)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 

@@ -110,7 +110,7 @@ class UmiBase(object):
         super(UmiBase, self).__init__()
         self.Name = Name
         if not isinstance(idf, archetypal.IDF):
-            idf = IDF()
+            idf = IDF(prep_outputs=False)
         self.idf = idf
         self.sql = sql
         self.Category = Category
@@ -160,6 +160,9 @@ class UmiBase(object):
         }
 
         return meta
+
+    def combine(self):
+        pass
 
     def rename(self, name):
         """renames self as well as the cached object

@@ -400,7 +400,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             ),
             WaterTemperatureInlet=self._float_mean(
                 other, "WaterTemperatureInlet", weights
-            )
+            ),
+            idf=self.idf
         )
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj

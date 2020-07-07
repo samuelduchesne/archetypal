@@ -150,9 +150,7 @@ class UmiTemplateLibrary:
         self.GlazingMaterials = GlazingMaterials
 
     @classmethod
-    def read_idf(
-        cls, idf_files, weather, name="unnamed", parallel=True,
-    ):
+    def read_idf(cls, idf_files, weather, name="unnamed", parallel=True):
         """Initializes an UmiTemplateLibrary object from one or more idf_files.
 
         The resulting object contains the reduced version of the IDF files.

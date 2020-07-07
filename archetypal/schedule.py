@@ -1342,9 +1342,7 @@ class Schedule(object):
         # the new object's name
         name = "+".join([self.Name, other.Name])
 
-        attr = dict(value=new_values)
-        idf = attr.pop("idf", None)
-        new_obj = self.__class__(name, idf, **attr)
+        new_obj = self.__class__(name, value=new_values, idf=self.idf)
 
         return new_obj
 

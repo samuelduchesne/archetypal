@@ -24,6 +24,7 @@ import sys
 import time
 import warnings
 from collections import OrderedDict
+from concurrent.futures._base import as_completed
 from datetime import datetime, timedelta
 from typing import Union
 
@@ -1085,7 +1086,8 @@ def rotate(l, n):
     return l[n:] + l[:n]
 
 
-def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
+def parallel_process(in_dict, function, processors=-1, use_kwargs=True,
+                     show_progress=True, position=0):
     """A parallel version of the map function with a progress bar.
 
     Examples:
@@ -1099,9 +1101,10 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
         >>>                      prep_outputs=True, expandobjects=True,
         >>>                      verbose='q')
         >>>           for file in files}
-        >>> result = parallel_process(rundict, IDF, use_kwargs=True)
+        >>> result = parallel_process(rundict,IDF,use_kwargs=True)
 
     Args:
+        position:
         in_dict (dict): A dictionary to iterate over. `function` is applied to value
             and key is used as an identifier.
         function (function): A python function to apply to the elements of
@@ -1118,14 +1121,16 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())
 
+    kwargs = {
+        "desc": function.__name__,
+        "total": len(in_dict),
+        "unit": "runs",
+        "unit_scale": True,
+        "leave": True,
+        "position": position,
+    }
+
     if processors == 1:
-        kwargs = {
-            "desc": function.__name__,
-            "total": len(in_dict),
-            "unit": "runs",
-            "unit_scale": True,
-            "leave": True,
-        }
         if use_kwargs:
             futures = {
                 a: submit(function, **in_dict[a]) for a in tqdm(in_dict, **kwargs)
@@ -1134,22 +1139,20 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True):
             futures = {a: submit(function, in_dict[a]) for a in tqdm(in_dict, **kwargs)}
     else:
         with ProcessPoolExecutor(max_workers=processors) as pool:
-            with tqdm(
-                desc=function.__name__,
-                total=len(in_dict),
-                unit="runs",
-                unit_scale=True,
-                leave=True,
-            ) as progress:
                 futures = {}
 
                 if use_kwargs:
                     for a in in_dict:
                         future = pool.submit(function, **in_dict[a])
-                        future.add_done_callback(lambda p: progress.update())
                         futures[future] = a
                 else:
-                    futures = {pool.submit(function, in_dict[a]): a for a in in_dict}
+                    for a in in_dict:
+                        future = pool.submit(function, in_dict[a])
+                        futures[future] = a
+
+                # Print out the progress as tasks complete
+                for f in tqdm(as_completed(futures), **kwargs):
+                    pass
     out = {}
     # Get the results from the futures.
     for key in futures:

@@ -29,7 +29,7 @@ def main():
         for k, file in idfs.file.to_dict().items()
     }
 
-    sql_files = parallel_process(rundict, run_eplus, use_kwargs=True, processors=-1)
+    sql_files = parallel_process(rundict, run_eplus, processors=-1, use_kwargs=True)
     return sql_files
 
 

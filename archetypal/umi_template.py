@@ -31,6 +31,7 @@ from archetypal import (
     UmiSchedule,
     MassRatio,
     IDF,
+    parallel_process,
 )
 
 
@@ -175,13 +176,23 @@ class UmiTemplateLibrary:
         else:
             processors = -1
         # if parallel is True, run eplus in parallel
-
-        bts = []
+        in_dict = {}
         for idf_file in umi_template.idf_files:
-            idf = IDF(idf_file, epw=umi_template.weather, annual=True)
-            bts.append(BuildingTemplate.from_idf(idf, sql=idf.sql, DataSource=idf.name))
-        umi_template.BuildingTemplates = bts
+            in_dict[idf_file] = dict(
+                idf_file=idf_file, epw=umi_template.weather, annual=True
+            )
+        umi_template.BuildingTemplates = list(
+            parallel_process(
+                in_dict, cls.prep_func, processors=processors, use_kwargs=True
+            ).values()
+        )
         return umi_template
+
+    @staticmethod
+    def prep_func(idf_file, epw, **kwargs):
+        annual = kwargs.pop("annual", False)
+        idf = IDF(idf_file, epw=epw, annual=annual, **kwargs)
+        return BuildingTemplate.from_idf(idf, sql=idf.sql, DataSource=idf.name)
 
     @classmethod
     def read_file(cls, filename, idf=None):

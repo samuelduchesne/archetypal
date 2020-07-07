@@ -641,6 +641,15 @@ class IDF(geomeppy.IDF):
                     else:
                         file = f.copy(self.output_directory)
 
+            try:
+                file
+            except NameError:
+                raise EnergyPlusProcessError(
+                    cmd="IDF.upgrade",
+                    stderr=f"An error occurred during transitioning",
+                    idf=self.name,
+                )
+
             idd_filename = Path(getiddfile(get_idf_version(file)))
             if not idd_filename.exists():
                 # Try finding the one in IDFVersionsUpdater
@@ -1165,13 +1174,13 @@ class IDF(geomeppy.IDF):
 
     def _execute_transitions(self, idf_file, to_version):
         trans_exec = {
-            parse(re.search(r"V([\d])-([\d])-([\d])", exec).group()): exec
+            parse(re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)): exec
             for exec in self.idfversionupdater_dir.files("Transition-V*")
         }
 
-        transitions = (
-            [key for key in trans_exec if key < to_version and key >= self.idf_version]
-        )
+        transitions = [
+            key for key in trans_exec if key <= to_version and key > self.idf_version
+        ]
         transitions.sort()
 
         for trans in transitions:

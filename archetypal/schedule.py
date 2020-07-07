@@ -101,32 +101,16 @@ class Schedule(object):
             idf:
             **kwargs:
         """
-        if idf:
-            # Add the schedule to the existing idf
-            idf.add_object(
-                ep_object="Schedule:Constant".upper(),
-                **dict(
-                    Name=Name, Schedule_Type_Limits_Name="", Hourly_Value=hourly_value
-                )
+        if not idf:
+            idf = IDF(prep_outputs=False)
+        # Add the schedule to the existing idf
+        idf.add_object(
+            ep_object="Schedule:Constant".upper(),
+            **dict(
+                Name=Name, Schedule_Type_Limits_Name="", Hourly_Value=hourly_value
             )
-            return cls(Name=Name, idf=idf, **kwargs)
-        else:
-            # Create a new idf object and add the schedule to it.
-            idf_scratch = IDF(
-                prep_outputs=[
-                    dict(
-                        ep_object="Schedule:Constant".upper(),
-                        kwargs=dict(
-                            Name=Name,
-                            Schedule_Type_Limits_Name="",
-                            Hourly_Value=hourly_value,
-                        ),
-                    )
-                ]
-            )
-
-            sched = cls(Name=Name, idf=idf_scratch, **kwargs)
-            return sched
+        )
+        return cls(Name=Name, idf=idf, **kwargs)
 
     @property
     def all_values(self):

@@ -369,19 +369,12 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Args:
             idf (IDF):
         """
-        idf.add_object(
-            "WindowMaterial:SimpleGlazingSystem".upper(),
-            Name="SimpleWindow:SINGLE PANE HW WINDOW",
-            UFactor=2.703,
-            Solar_Heat_Gain_Coefficient=0.704,
-            Visible_Transmittance=0.786,
-        )
+        idf.newidfobject("WindowMaterial:SimpleGlazingSystem".upper(),
+                         Name="SimpleWindow:SINGLE PANE HW WINDOW", UFactor=2.703,
+                         Solar_Heat_Gain_Coefficient=0.704, Visible_Transmittance=0.786)
 
-        constr = idf.add_object(
-            "CONSTRUCTION",
-            Name="SINGLE PANE HW WINDOW",
-            Outside_Layer="SimpleWindow:SINGLE PANE HW WINDOW",
-        )
+        constr = idf.newidfobject("CONSTRUCTION", Name="SINGLE PANE HW WINDOW",
+                                  Outside_Layer="SimpleWindow:SINGLE PANE HW WINDOW")
         return cls.from_construction(Construction=constr)
 
     @classmethod

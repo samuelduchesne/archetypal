@@ -15,6 +15,7 @@ import platform
 import re
 import subprocess
 import time
+import warnings
 from collections import defaultdict, OrderedDict
 from io import StringIO
 from itertools import compress
@@ -23,20 +24,12 @@ from sqlite3 import OperationalError
 from subprocess import CalledProcessError
 from tempfile import TemporaryDirectory
 
+import archetypal
+import archetypal.settings
 import eppy
 import eppy.modeleditor
 import geomeppy
 import pandas as pd
-from deprecation import deprecated
-from eppy.EPlusInterfaceFunctions import parse_idd
-from eppy.bunch_subclass import EpBunch, BadEPFieldError
-from eppy.easyopen import getiddfile
-from pandas.errors import ParserError
-from path import Path, TempDir
-from tqdm import tqdm
-
-import archetypal
-import archetypal.settings
 from archetypal import (
     log,
     settings,
@@ -48,7 +41,16 @@ from archetypal import (
     get_eplus_dirs,
     EnergyPlusWeatherError,
 )
-from archetypal.utils import _unpack_tuple, parse
+from archetypal.utils import _unpack_tuple, parse, extend_class
+from deprecation import deprecated
+from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.bunch_subclass import BadEPFieldError
+from eppy.easyopen import getiddfile
+from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
+from geomeppy.patches import EpBunch, idfreader1, obj2bunch
+from pandas.errors import ParserError
+from path import Path, TempDir
+from tqdm import tqdm
 
 
 class IDF(geomeppy.IDF):
@@ -905,56 +907,100 @@ class IDF(geomeppy.IDF):
         )
         log(f"saved '{self.name}' at '{filename if filename else self.idfname}'")
 
-    def add_object(self, ep_object, **kwargs):
+    def newidfobject(self, key, **kwargs):
         """Add a new object to an idf file. The function will test if the object
-        exists to prevent duplicates. By default, the idf with the new object is
-        saved to disk (save=True)
+        exists to prevent duplicates.
 
         Args:
-            ep_object (str): the object name to add, eg. 'OUTPUT:METER' (Must be
-                in all_caps).
-            save (bool): Save the IDF as a text file with the current idfname of
-                the IDF.
-            **kwargs: keyword arguments to pass to other functions.
+            key (str): The type of IDF object. This must be in ALL_CAPS.
+            **kwargs: Keyword arguments in the format `field=value` used to set
+                fields in the EnergyPlus object.
+
+        Example:
+            >>> add_object(
+            >>>     key="Schedule:Constant".upper(),
+            >>>     Name=Name,
+            >>>     Schedule_Type_Limits_Name="",
+            >>>     Hourly_Value=hourly_value,
+            >>> )
 
         Returns:
             EpBunch: the object
         """
         # get list of objects
-        objs = self.idfobjects[ep_object]  # a list
-        # If object is supposed to be 'unique-object', deletes all objects to be
-        # sure there is only one of them when creating new object
-        # (see following line)
-        for obj in objs:
-            if "unique-object" in obj.objidd[0].keys():
-                self.removeidfobject(obj)
+        existing_objs = self.idfobjects[key]  # a list
+
         # create new object
         try:
-            new_object = self.newidfobject(ep_object, **kwargs)
+            new_object = self.anidfobject(key, **kwargs)
         except BadEPFieldError as e:
-            log(f"Could not add object {ep_object} because of : {e}", lg.WARNING)
+            log(f"Could not add object {key} because of : {e}", lg.WARNING)
         else:
-            # Check if new object exists in previous list
-            # If True, delete the object
-            if sum([str(obj).upper() == str(new_object).upper() for obj in objs]) > 1:
-                log(
-                    'object "{}" already exists in idf file'.format(ep_object), lg.DEBUG
-                )
-                # Remove the newly created object since the function
-                # `idf.newidfobject()` automatically adds it
-                self.removeidfobject(new_object)
-                return self.getobject(
-                    ep_object,
-                    kwargs.get(
-                        "Variable_Name",
-                        kwargs.get(
-                            "Key_Name", kwargs.get("Name", kwargs.get("Key_Field"))
-                        ),
-                    ),
-                )
-            else:
-                log('object "{}" added to the idf file'.format(ep_object))
+            # If object is supposed to be 'unique-object', deletes all objects to be
+            # sure there is only one of them when creating new object
+            # (see following line)
+            if "unique-object" in set().union(
+                *(d.objidd[0].keys() for d in existing_objs)
+            ):
+                for obj in existing_objs:
+                    self.removeidfobject(obj)
+                    self.idfobjects[key].append(new_object)
+                    log(
+                        f"{obj} is a 'unique-object'; Removed and replaced with"
+                        f" {new_object}",
+                        lg.DEBUG,
+                    )
                 return new_object
+            if new_object in existing_objs:
+                # If obj already exists, simply return
+                log(
+                    f"object '{new_object}' already exists in {self.name}. "
+                    f"Skipping.",
+                    lg.DEBUG,
+                )
+                return new_object
+            else:
+                # add to model and return
+                self.idfobjects[key].append(new_object)
+                log(f"object '{new_object}' added to '{self.name}'", lg.DEBUG)
+                return new_object
+
+    def anidfobject(self, key, aname="", **kwargs):
+        # type: (str, str, **Any) -> EpBunch
+        """Create an object, but don't add to the model (See
+        :func:`~archetypal.idfclass.IDF.newidfobject`). If you don't specify a value
+        for a field, the default value will be set.
+
+        Example:
+            >>> anidfobject("CONSTRUCTION")
+            >>> anidfobject(
+            >>>     key="CONSTRUCTION",
+            >>>     Name='Interior Ceiling_class',
+            >>>     Outside_Layer='LW Concrete',
+            >>>     Layer_2='soundmat'
+            >>> )
+
+        Args:
+            key (str): The type of IDF object. This must be in ALL_CAPS.
+            aname (str): This parameter is not used. It is left there for backward
+                compatibility.
+            kwargs: Keyword arguments in the format `field=value` used to set
+                fields in the EnergyPlus object.
+
+        Returns:
+            EpBunch: object.
+        """
+        obj = newrawobject(self.model, self.idd_info, key)
+        abunch = obj2bunch(self.model, self.idd_info, obj)
+        if aname:
+            warnings.warn(
+                "The aname parameter should no longer be used (%s)." % aname,
+                UserWarning,
+            )
+            namebunch(abunch, aname)
+        for k, v in kwargs.items():
+            abunch[k] = v
+        return abunch
 
     def get_schedule_type_limits_data_by_name(self, schedule_limit_name):
         """Returns the data for a particular 'ScheduleTypeLimits' object
@@ -1690,8 +1736,8 @@ class OutputPrep:
         Examples:
             >>> outputs = [
             >>>         {
-            >>>             "ep_object": "OUTPUT:METER",
-            >>>             "kwargs": dict(
+            >>>             "key": "OUTPUT:METER",
+            >>>             **dict(
             >>>                 Key_Name="Electricity:Facility",
             >>>                 Reporting_Frequency="hourly",
             >>>                 save=True,
@@ -1714,12 +1760,7 @@ class OutputPrep:
 
     def add_schedules(self):
         """Adds Schedules object"""
-        outputs = [
-            {
-                "ep_object": "Output:Schedules".upper(),
-                "kwargs": dict(Key_Field="Hourly"),
-            }
-        ]
+        outputs = [{"key": "Output:Schedules".upper(), **dict(Key_Field="Hourly"),}]
 
         self.outputs.extend(outputs)
         return self
@@ -1745,8 +1786,8 @@ class OutputPrep:
         """
         outputs = [
             {
-                "ep_object": "Output:Table:SummaryReports".upper(),
-                "kwargs": dict(Report_1_Name=summary),
+                "key": "Output:Table:SummaryReports".upper(),
+                **dict(Report_1_Name=summary),
             }
         ]
 
@@ -1786,8 +1827,8 @@ class OutputPrep:
         """
         outputs = [
             {
-                "ep_object": "OutputControl:Table:Style".upper(),
-                "kwargs": dict(Column_Separator=output_control_table_style),
+                "key": "OutputControl:Table:Style".upper(),
+                **dict(Column_Separator=output_control_table_style),
             }
         ]
 
@@ -1799,141 +1840,131 @@ class OutputPrep:
         # list the outputs here
         outputs = [
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Air System Total Heating Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Air System Total Cooling Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Thermostat Heating Setpoint Temperature",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Heat Exchanger Total Heating Rate",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Heat Exchanger Sensible Effectiveness",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Heat Exchanger Latent Effectiveness",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Water Heater Heating Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
+                "key": "OUTPUT:METER",
+                **dict(
                     Key_Name="HeatRejection:EnergyTransfer",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Heating:EnergyTransfer", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Heating:EnergyTransfer", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Cooling:EnergyTransfer", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:EnergyTransfer", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
+                "key": "OUTPUT:METER",
+                **dict(
                     Key_Name="Heating:DistrictHeating", Reporting_Frequency="hourly"
                 ),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Heating:Electricity", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(Key_Name="Heating:Gas", Reporting_Frequency="hourly"),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Heating:Gas", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
+                "key": "OUTPUT:METER",
+                **dict(
                     Key_Name="Cooling:DistrictCooling", Reporting_Frequency="hourly"
                 ),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
+                "key": "OUTPUT:METER",
+                **dict(
                     Key_Name="WaterSystems:EnergyTransfer", Reporting_Frequency="hourly"
                 ),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
             },
         ]
 
@@ -1947,36 +1978,36 @@ class OutputPrep:
         # list the outputs here
         outputs = [
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Air System Total Heating Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Air System Total Cooling Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Water Heater Heating Energy",
                     Reporting_Frequency="hourly",
                 ),
@@ -1993,32 +2024,26 @@ class OutputPrep:
         # list the outputs here
         outputs = [
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Electricity:Facility", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Electricity:Facility", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(Key_Name="Gas:Facility", Reporting_Frequency="hourly"),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Gas:Facility", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
+                "key": "OUTPUT:METER",
+                **dict(
                     Key_Name="WaterSystems:Electricity", Reporting_Frequency="hourly"
                 ),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Heating:Electricity", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"),
             },
         ]
         self.outputs.extend(outputs)
@@ -2027,7 +2052,7 @@ class OutputPrep:
     def apply(self):
         """Applies the outputs to the idf model"""
         for output in self.outputs:
-            self.idf.add_object(output["ep_object"], **output["kwargs"])
+            self.idf.newidfobject(**output)
         return self
 
     def save(self):

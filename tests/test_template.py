@@ -1935,18 +1935,12 @@ class TestWindowSetting:
         f_surfs = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"]
         for f in f_surfs:
             constr = f.Construction_Name
-            idf.add_object(
-                "WindowMaterial:Shade".upper(),
-                Visible_Transmittance=0.5,
-                Name="Roll Shade",
-            )
-            idf.add_object(
-                "WindowShadingControl".upper(),
-                Construction_with_Shading_Name=constr,
-                Setpoint=14,
-                Shading_Device_Material_Name="Roll Shade",
-                Fenestration_Surface_1_Name="test_control",
-            )
+            idf.newidfobject("WindowMaterial:Shade".upper(), Visible_Transmittance=0.5,
+                             Name="Roll Shade")
+            idf.newidfobject("WindowShadingControl".upper(),
+                             Construction_with_Shading_Name=constr, Setpoint=14,
+                             Shading_Device_Material_Name="Roll Shade",
+                             Fenestration_Surface_1_Name="test_control")
             f.Name = "test_control"
             w = WindowSetting.from_surface(f)
             assert w

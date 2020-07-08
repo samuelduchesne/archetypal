@@ -658,17 +658,17 @@ def copy_file(files, where=None):
 class EnergyPlusProcessError(Exception):
     """EnergyPlus Process call error"""
 
-    def __init__(self, cmd, stderr, idf):
+    def __init__(self, cmd=None, stderr=None, idf=None):
         """
         Args:
             cmd:
             stderr:
             idf:
         """
-        super().__init__(stderr)
         self.cmd = cmd
         self.idf = idf
         self.stderr = stderr
+        super().__init__(self.stderr)
 
     def __str__(self):
         """Override that only returns the stderr"""

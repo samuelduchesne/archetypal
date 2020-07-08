@@ -81,6 +81,9 @@ class IDF(geomeppy.IDF):
             include=None,
             keep_original=True,
         """
+        self.iddname = None
+        self.idd_info = None
+        self.block = None
         # validate ep_version is a valid version number
         self.load_kwargs = dict(epw=epw, **kwargs)
 
@@ -129,7 +132,7 @@ class IDF(geomeppy.IDF):
         idd_filename = getiddfile(str(file_version))
 
         # Initiate an eppy.modeleditor.IDF object
-        IDF.setiddname(idd_filename, testing=True)
+        self.setiddname(idd_filename, testing=True)
 
         try:
             # load the idf object
@@ -142,6 +145,11 @@ class IDF(geomeppy.IDF):
             to_version = ep_version
             log(f"{e}\nTransitioning idf file to version {to_version}...")
             self.upgrade(to_version, epw)
+        except IDDNotSetError:
+            IDF.iddname = idd_filename
+            super(IDF, self).__init__(idfname, epw)
+        except Exception as e:
+            raise e
         else:
             # the versions fit, great!
             log(
@@ -155,6 +163,7 @@ class IDF(geomeppy.IDF):
                 if not isinstance(idfname, StringIO)
                 else StringIO(self.idfstr())
             )  # Force idfname to be a Path object if not a StringIO.
+            # Initiate an eppy.modeleditor.IDF object
 
             if self.idf_version < ep_version:
                 self.upgrade(ep_version, epw)
@@ -191,8 +200,7 @@ class IDF(geomeppy.IDF):
     def __str__(self):
         return self.name
 
-    @classmethod
-    def setiddname(cls, iddname, testing=False):
+    def setiddname(self, iddname, testing=False):
         """Set the path to the EnergyPlus IDD for the version of EnergyPlus
         which is to be used by eppy.
 
@@ -200,9 +208,9 @@ class IDF(geomeppy.IDF):
             iddname (str): Path to the IDD file.
             testing:
         """
-        cls.iddname = iddname
-        cls.idd_info = None
-        cls.block = None
+        self.iddname = iddname
+        self.idd_info = None
+        self.block = None
 
     def valid_idds(self):
         """Returns all valid idd version numbers found in IDFVersionUpdater folder"""
@@ -211,6 +219,57 @@ class IDF(geomeppy.IDF):
             parse((re.match("V(.*)-Energy\+", idd.stem).groups()[0]))
             for idd in iddnames
         ]
+
+    def read(self):
+        """
+        Read the IDF file and the IDD file. If the IDD file had already been
+        read, it will not be read again.
+
+        Read populates the following data structures:
+
+        - idfobjects : list
+        - model : list
+        - idd_info : list
+        - idd_index : dict
+
+        """
+        if self.getiddname() == None:
+            errortxt = (
+                "IDD file needed to read the idf file. "
+                "Set it using IDF.setiddname(iddfile)"
+            )
+            raise IDDNotSetError(errortxt)
+        readout = idfreader1(
+            self.idfname, self.iddname, self, commdct=self.idd_info, block=self.block
+        )
+        (self.idfobjects, block, self.model, idd_info, idd_index, idd_version) = readout
+        self.setidd(idd_info, idd_index, block, idd_version)
+
+    def getiddname(self):
+        """Get the name of the current IDD used by eppy.
+
+        Returns
+        -------
+        str
+
+        """
+        return self.iddname
+
+    def setidd(self, iddinfo, iddindex, block, idd_version):
+        """Set the IDD to be used by eppy.
+
+        Parameters
+        ----------
+        iddinfo : list
+            Comments and metadata about fields in the IDD.
+        block : list
+            Field names in the IDD.
+
+        """
+        self.idd_info = iddinfo
+        self.block = block
+        self.idd_index = iddindex
+        self.idd_version = idd_version
 
     @classmethod
     def __getCache(cls, idfname, **kwargs):

@@ -31,13 +31,12 @@ from typing import Union
 import numpy as np
 import pandas as pd
 import unicodedata
+from archetypal import settings, __version__
+from archetypal.settings import ep_version
 from packaging.version import Version, InvalidVersion
 from pandas.io.json import json_normalize
 from path import Path
 from tabulate import tabulate
-
-from archetypal import settings, __version__
-from archetypal.settings import ep_version
 
 
 def config(
@@ -944,24 +943,18 @@ def warn_if_not_compatible():
             "No installation of EnergyPlus could be detected on this "
             "machine. Please install EnergyPlus from https://energyplus.net before using archetypal"
         )
-    if len(eplus_homes) > 1:
-        # more than one installs
-        warnings.warn(
-            "There are more than one versions of EnergyPlus on this machine. Make "
-            "sure you provide the appropriate version number when possible. "
-        )
 
 
 def get_eplus_basedirs():
     """Returns a list of possible E+ install paths"""
     if platform.system() == "Windows":
-        eplus_homes = Path("C:\\").glob("EnergyPlusV*")
+        eplus_homes = Path("C:\\").dirs("EnergyPlus*")
         return eplus_homes
     elif platform.system() == "Linux":
-        eplus_homes = Path("/usr/local/").glob("EnergyPlus-*")
+        eplus_homes = Path("/usr/local/").dirs("EnergyPlus*")
         return eplus_homes
     elif platform.system() == "Darwin":
-        eplus_homes = Path("/Applications").glob("EnergyPlus-*")
+        eplus_homes = Path("/Applications").dirs("EnergyPlus*")
         return eplus_homes
     else:
         warnings.warn(
@@ -1086,8 +1079,15 @@ def rotate(l, n):
     return l[n:] + l[:n]
 
 
-def parallel_process(in_dict, function, processors=-1, use_kwargs=True,
-                     show_progress=True, position=0):
+def parallel_process(
+    in_dict,
+    function,
+    processors=-1,
+    use_kwargs=True,
+    show_progress=True,
+    position=0,
+    debug=False,
+):
     """A parallel version of the map function with a progress bar.
 
     Examples:
@@ -1101,7 +1101,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True,
         >>>                      prep_outputs=True, expandobjects=True,
         >>>                      verbose='q')
         >>>           for file in files}
-        >>> result = parallel_process(rundict,IDF,use_kwargs=True)
+        >>> result = parallel_process(rundict, IDF, use_kwargs=True)
 
     Args:
         position:
@@ -1111,6 +1111,7 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True,
             in_dict
         processors (int): The number of cores to use
         use_kwargs (bool): If True, pass the kwargs as arguments to `function` .
+        debug (bool): If True, will raise any error on any process.
 
     Returns:
         [function(array[0]), function(array[1]), ...]
@@ -1126,8 +1127,8 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True,
         "total": len(in_dict),
         "unit": "runs",
         "unit_scale": True,
-        "leave": True,
         "position": position,
+        "disable": not show_progress,
     }
 
     if processors == 1:
@@ -1139,20 +1140,20 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True,
             futures = {a: submit(function, in_dict[a]) for a in tqdm(in_dict, **kwargs)}
     else:
         with ProcessPoolExecutor(max_workers=processors) as pool:
-                futures = {}
+            futures = {}
 
-                if use_kwargs:
-                    for a in in_dict:
-                        future = pool.submit(function, **in_dict[a])
-                        futures[future] = a
-                else:
-                    for a in in_dict:
-                        future = pool.submit(function, in_dict[a])
-                        futures[future] = a
+            if use_kwargs:
+                for a in in_dict:
+                    future = pool.submit(function, **in_dict[a])
+                    futures[future] = a
+            else:
+                for a in in_dict:
+                    future = pool.submit(function, in_dict[a])
+                    futures[future] = a
 
-                # Print out the progress as tasks complete
-                for f in tqdm(as_completed(futures), **kwargs):
-                    pass
+            # Print out the progress as tasks complete
+            for f in tqdm(as_completed(futures), **kwargs):
+                pass
     out = {}
     # Get the results from the futures.
     for key in futures:
@@ -1162,6 +1163,8 @@ def parallel_process(in_dict, function, processors=-1, use_kwargs=True,
             else:
                 out[key] = futures[key]
         except Exception as e:
+            if debug:
+                raise e
             log(str(e), lg.ERROR)
             out[futures[key]] = e
     return out
@@ -1204,3 +1207,53 @@ def docstring_parameter(*args, **kwargs):
         return obj
 
     return dec
+
+
+def extend_class(cls):
+    """Given class cls, apply decorator @extend_class to function f so
+    that f becomes a regular method of cls:
+
+    Example:
+        >>> class cls: pass
+        >>> @extend_class(cls)
+        ... def f(self):
+        ...   pass
+
+    Extending class has several usages:
+        1. There are classes A, B, ... Z, all defining methods foo and bar.
+           Though the usual approach is to group the code around class
+           definitions in files A.py, B.py, ..., Z.py, it is sometimes more
+           convenient to group all definitions of A.foo(), B.foo(), ... up
+           to Z.foo(), in one file "foo.py", and all definitions of bar in
+           file "bar.py".
+        2. Another usage of @extend_class is building a class step-by-step
+           --- first creating an empty class, and later populating it with
+           methods.
+        3. Finally, it is possible to @extend several classes
+           simultaneously with the same method, as in the example below,
+           where classes A and B share method foo.
+
+    Example:
+        >>> class A: pass  # empty class
+        ...
+        >>> class B: pass  # empty class
+        ...
+        >>> @extend_class(A)
+        ... @extend_class(B)
+        ... def foo(self,s):
+        ...     print s
+        ...
+        >>> a = A()
+        >>> a.foo('hello')
+        hello
+        >>> b = B()
+        >>> b.foo('world')
+        world
+
+    Limitations:
+        1. @extend_class won't work on builtin classes, such as int.
+        2. Not tested on python 3.
+    Author:
+        victorlei@gmail.com
+    """
+    return lambda f: (setattr(cls, f.__name__, f) or f)

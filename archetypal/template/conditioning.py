@@ -390,7 +390,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             self.IsMechVentOn = False
             self.MinFreshAirPerPerson = 0
             self.MinFreshAirPerArea = 0
-            self.MechVentSchedule = UmiSchedule.constant_schedule(idf=zone.idf)
+            self.MechVentSchedule = UmiSchedule.constant_schedule()
 
     @staticmethod
     def get_equipment_list(zone):
@@ -486,7 +486,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 f"No Mechanical Ventilation Schedule specified for zone "
                 f"{zone.Name}. Reverting to always on."
             )
-            return UmiSchedule.constant_schedule(idf=zone.idf)
+            return UmiSchedule.constant_schedule()
 
     def _set_zone_cops(self, zone):
         """
@@ -528,8 +528,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         )
 
         # Capacity limits (heating and cooling)
-        zone_size = zone.sql["ZoneSizes"][
-            zone.sql["ZoneSizes"]["ZoneName"] == zone.Name.upper()
+        zone_size = zone.idf.sql["ZoneSizes"][
+            zone.idf.sql["ZoneSizes"]["ZoneName"] == zone.Name.upper()
         ]
         # Heating
         HeatingLimitType, heating_cap, heating_flow = self._get_design_limits(
@@ -696,7 +696,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             object:
             zone:
         """
-        rd = ReportData.from_sql_dict(zone.sql)
+        rd = ReportData.from_sql_dict(zone.idf.sql)
         effectiveness = (
             rd.filter_report_data(
                 name=(
@@ -760,7 +760,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         from archetypal import ReportData
 
-        rd = ReportData.from_sql_dict(zone.sql)
+        rd = ReportData.from_sql_dict(zone.idf.sql)
         energy_out = rd.filter_report_data(name=tuple(energy_out_variable_name))
         energy_in = rd.filter_report_data(name=tuple(energy_in_list))
 
@@ -798,7 +798,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         # zone name (*KeyValue*). Return annual average.
         variable_output_name = "Zone Thermostat Heating Setpoint Temperature"
         h_array = (
-            ReportData.from_sql_dict(zone.sql)
+            ReportData.from_sql_dict(zone.idf.sql)
             .filter_report_data(name=variable_output_name, keyvalue=zone.Name.upper())
             .loc[:, ["TimeIndex", "Value"]]
             .set_index("TimeIndex")
@@ -809,12 +809,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             Name=zone.Name + "_Heating_Schedule",
             values=(h_array > 0).astype(int),
             schTypeLimitsName="Fraction",
-            idf=zone.idf,
         )
 
         variable_output_name = "Zone Thermostat Cooling Setpoint Temperature"
         c_array = (
-            ReportData.from_sql_dict(zone.sql)
+            ReportData.from_sql_dict(zone.idf.sql)
             .filter_report_data(name=variable_output_name, keyvalue=zone.Name.upper())
             .loc[:, ["TimeIndex", "Value"]]
             .set_index("TimeIndex")
@@ -824,7 +823,6 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             Name=zone.Name + "_Cooling_Schedule",
             values=(c_array > 0).astype(int),
             schTypeLimitsName="Fraction",
-            idf=zone.idf,
         )
         if np.all(c_array == 0):
             c_mean = np.NaN
@@ -926,7 +924,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             MechVentSchedule=v,
         )
         # create a new object with the previous attributes
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.idf.sql)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 

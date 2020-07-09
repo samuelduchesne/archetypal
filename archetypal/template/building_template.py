@@ -238,9 +238,11 @@ class BuildingTemplate(UmiBase):
         # initialize empty BuildingTemplate
         name = kwargs.pop("Name", Path(idf.idfname).basename().splitext()[0])
         bt = cls(Name=name, idf=idf, **kwargs)
+        position = kwargs.pop("position", None)
         zones = [
             Zone.from_zone_epbunch(zone, sql=bt.sql)
-            for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop")
+            for zone in tqdm(idf.idfobjects["ZONE"], desc=f"Zone Loop {position}",
+                             position=position)
         ]
         zone: Zone
         bt.cores = [
@@ -425,7 +427,7 @@ class ZoneGraph(networkx.Graph):
     """
 
     @classmethod
-    def from_idf(cls, idf, sql, log_adj_report=True, skeleton=False, force=False):
+    def from_idf(cls, idf, sql, log_adj_report=True, skeleton=False, force=False, **kwargs):
         """Create a graph representation of all the building zones. An edge
         between two zones represents the adjacency of the two zones.
 
@@ -448,7 +450,7 @@ class ZoneGraph(networkx.Graph):
         G = cls(name=idf.name)
 
         counter = 0
-        for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop"):
+        for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop", **kwargs):
             # initialize the adjacency report dictionary. default list.
             adj_report = defaultdict(list)
             zone_obj = None

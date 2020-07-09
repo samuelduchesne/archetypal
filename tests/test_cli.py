@@ -293,7 +293,7 @@ class TestCli:
         runner = CliRunner()
         test_file_list = [
             "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
         ]
         result = runner.invoke(
             cli,
@@ -313,6 +313,7 @@ class TestCli:
                 "-w",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_*.epw",
                 "-p",
+                30,
                 *test_file_list,
                 "-o",
                 "tests/.temp/retail.json",

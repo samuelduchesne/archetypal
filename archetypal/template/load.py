@@ -192,17 +192,17 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
         # Get schedule index for different loads and create ZoneLoad arguments
         # Verify if Equipment in zone
-        zone_index = zone.sql["Zones"][
-            zone.sql["Zones"]["ZoneName"].str.contains(zone.Name.upper())
+        zone_index = zone.idf.sql["Zones"][
+            zone.idf.sql["Zones"]["ZoneName"].str.contains(zone.Name.upper())
         ].index[0]
-        nominal_elec = zone.sql["NominalElectricEquipment"][
-            zone.sql["NominalElectricEquipment"]["ZoneIndex"] == zone_index
+        nominal_elec = zone.idf.sql["NominalElectricEquipment"][
+            zone.idf.sql["NominalElectricEquipment"]["ZoneIndex"] == zone_index
         ]
-        nominal_gas = zone.sql["NominalGasEquipment"][
-            zone.sql["NominalGasEquipment"]["ZoneIndex"] == zone_index
+        nominal_gas = zone.idf.sql["NominalGasEquipment"][
+            zone.idf.sql["NominalGasEquipment"]["ZoneIndex"] == zone_index
         ]
         if nominal_elec.empty and nominal_gas.empty:
-            EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule(idf=zone.idf)
+            EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule()
             EquipmentPowerDensity = 0.0
         else:
             if nominal_gas.empty:
@@ -218,7 +218,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             design_index = nominal_elec["DesignLevel"].index
             list_sched = []
             for sched, design in zip(sched_indexes, design_index):
-                sched_name = zone.sql["Schedules"]["ScheduleName"][sched]
+                sched_name = zone.idf.sql["Schedules"]["ScheduleName"][sched]
                 schedule = UmiSchedule(Name=sched_name, idf=zone.idf)
                 schedule.combine_weight = nominal_elec["DesignLevel"][design]
                 list_sched.append(schedule)
@@ -227,46 +227,46 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 UmiSchedule.combine, list_sched, weights="combine_weight"
             )
         # Verifies if Lights in zone
-        if zone.sql["NominalLighting"][
-            zone.sql["NominalLighting"]["ZoneIndex"] == zone_index
+        if zone.idf.sql["NominalLighting"][
+            zone.idf.sql["NominalLighting"]["ZoneIndex"] == zone_index
         ].empty:
-            LightsAvailabilitySchedule = UmiSchedule.constant_schedule(idf=zone.idf)
+            LightsAvailabilitySchedule = UmiSchedule.constant_schedule()
             LightingPowerDensity = 0.0
         else:
-            schedule_light_index = zone.sql["NominalLighting"][
-                zone.sql["NominalLighting"]["ZoneIndex"] == zone_index
+            schedule_light_index = zone.idf.sql["NominalLighting"][
+                zone.idf.sql["NominalLighting"]["ZoneIndex"] == zone_index
             ]["ScheduleIndex"].iloc[0]
             LightsAvailabilitySchedule = UmiSchedule(
-                Name=zone.sql["Schedules"]["ScheduleName"].iloc[
+                Name=zone.idf.sql["Schedules"]["ScheduleName"].iloc[
                     schedule_light_index - 1
                 ],
                 idf=zone.idf,
             )
             LightingPowerDensity = (
-                zone.sql["NominalLighting"][
-                    zone.sql["NominalLighting"]["ZoneIndex"] == zone_index
+                zone.idf.sql["NominalLighting"][
+                    zone.idf.sql["NominalLighting"]["ZoneIndex"] == zone_index
                 ]["DesignLevel"].iloc[0]
                 / zone.area
             )
         # Verifies if People in zone
-        if zone.sql["NominalPeople"][
-            zone.sql["NominalPeople"]["ZoneIndex"] == zone_index
+        if zone.idf.sql["NominalPeople"][
+            zone.idf.sql["NominalPeople"]["ZoneIndex"] == zone_index
         ].empty:
-            OccupancySchedule = UmiSchedule.constant_schedule(idf=zone.idf)
+            OccupancySchedule = UmiSchedule.constant_schedule()
             PeopleDensity = 0.0
         else:
-            schedule_people_index = zone.sql["NominalPeople"][
-                zone.sql["NominalPeople"]["ZoneIndex"] == zone_index
+            schedule_people_index = zone.idf.sql["NominalPeople"][
+                zone.idf.sql["NominalPeople"]["ZoneIndex"] == zone_index
             ]["NumberOfPeopleScheduleIndex"].iloc[0]
             OccupancySchedule = UmiSchedule(
-                Name=zone.sql["Schedules"]["ScheduleName"].iloc[
+                Name=zone.idf.sql["Schedules"]["ScheduleName"].iloc[
                     schedule_people_index - 1
                 ],
                 idf=zone.idf,
             )
             PeopleDensity = (
-                zone.sql["NominalPeople"][
-                    zone.sql["NominalPeople"]["ZoneIndex"] == zone_index
+                zone.idf.sql["NominalPeople"][
+                    zone.idf.sql["NominalPeople"]["ZoneIndex"] == zone_index
                 ]["NumberOfPeople"].iloc[0]
                 / zone.area
             )
@@ -365,7 +365,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             PeopleDensity=self._float_mean(other, "PeopleDensity", weights),
         )
 
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.idf.sql)
         new_obj._belongs_to_zone = self._belongs_to_zone
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj

@@ -243,7 +243,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             Facade=self.Facade.combine(other.Facade),
             IsFacadeAdiabatic=any([self.IsFacadeAdiabatic, other.IsFacadeAdiabatic]),
         )
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.idf.sql)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 

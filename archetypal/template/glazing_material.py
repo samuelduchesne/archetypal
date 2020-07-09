@@ -173,7 +173,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         [new_attr.pop(key, None) for key in meta.keys()]  # meta handles these
         # keywords.
         # create a new object from combined attributes
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.idf.sql)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 

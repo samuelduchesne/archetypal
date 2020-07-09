@@ -231,7 +231,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
 
         name = zone.Name + "_VentilationSetting"
 
-        df = {"a": zone.sql}
+        df = {"a": zone.idf.sql}
         ni_df = nominal_infiltration(df)
         sched_df = nominal_mech_ventilation(df)
         nat_df = nominal_nat_ventilation(df)
@@ -360,7 +360,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         )
 
         # create a new object with the previous attributes
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.idf.sql)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
@@ -410,10 +410,10 @@ def do_natural_ventilation(index, nat_df, zone):
             #  in the nat_df. For the mean time, a zone containing such an
             #  object will be turned on with an AlwaysOn schedule.
             IsNatVentOn = True
-            NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
+            NatVentSchedule = archetypal.UmiSchedule.constant_schedule()
         except Exception:
             IsNatVentOn = False
-            NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
+            NatVentSchedule = archetypal.UmiSchedule.constant_schedule()
         finally:
             try:
                 NatVentMaxRelHumidity = 90  # todo: not sure if it is being used
@@ -438,7 +438,7 @@ def do_natural_ventilation(index, nat_df, zone):
 
     else:
         IsNatVentOn = False
-        NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
+        NatVentSchedule = archetypal.UmiSchedule.constant_schedule()
         NatVentMaxRelHumidity = 90
         NatVentMaxOutdoorAirTemp = 30
         NatVentMinOutdoorAirTemp = 0

@@ -102,7 +102,7 @@ class Schedule(object):
         if not idf:
             idf = IDF(prep_outputs=False)
         # Add the schedule to the existing idf
-        idf.add_object(
+        idf.newidfobject(
             key="Schedule:Constant".upper(),
             Name=Name,
             Schedule_Type_Limits_Name="",
@@ -879,11 +879,14 @@ class Schedule(object):
             archetypal.settings.unique_schedules.append(name)
 
             # Create idf_objects for schedule:day:hourly
-            ep_day = self.idf.newidfobject(key="Schedule:Day:Hourly".upper(), **dict(
-                Name=name,
-                Schedule_Type_Limits_Name=self.schTypeLimitsName,
-                **{"Hour_{}".format(i + 1): unique_day[i] for i in range(24)}
-            ))
+            ep_day = self.idf.newidfobject(
+                key="Schedule:Day:Hourly".upper(),
+                **dict(
+                    Name=name,
+                    Schedule_Type_Limits_Name=self.schTypeLimitsName,
+                    **{"Hour_{}".format(i + 1): unique_day[i] for i in range(24)}
+                )
+            )
             ep_days.append(ep_day)
 
         # create unique weeks from unique days
@@ -928,20 +931,23 @@ class Schedule(object):
         # Create ep_weeks list and iterate over dict_week
         ep_weeks = []
         for week_id in dict_week:
-            ep_week = self.idf.newidfobject(key="Schedule:Week:Daily".upper(), **dict(
-                Name=week_id,
-                **{
-                    "{}_ScheduleDay_Name".format(
-                        calendar.day_name[day_num]
-                    ): dict_week[week_id]["day_{}".format(day_num)]
-                    for day_num in c.iterweekdays()
-                },
-                Holiday_ScheduleDay_Name=dict_week[week_id]["day_6"],
-                SummerDesignDay_ScheduleDay_Name=dict_week[week_id]["day_1"],
-                WinterDesignDay_ScheduleDay_Name=dict_week[week_id]["day_1"],
-                CustomDay1_ScheduleDay_Name=dict_week[week_id]["day_2"],
-                CustomDay2_ScheduleDay_Name=dict_week[week_id]["day_5"]
-            ))
+            ep_week = self.idf.newidfobject(
+                key="Schedule:Week:Daily".upper(),
+                **dict(
+                    Name=week_id,
+                    **{
+                        "{}_ScheduleDay_Name".format(
+                            calendar.day_name[day_num]
+                        ): dict_week[week_id]["day_{}".format(day_num)]
+                        for day_num in c.iterweekdays()
+                    },
+                    Holiday_ScheduleDay_Name=dict_week[week_id]["day_6"],
+                    SummerDesignDay_ScheduleDay_Name=dict_week[week_id]["day_1"],
+                    WinterDesignDay_ScheduleDay_Name=dict_week[week_id]["day_1"],
+                    CustomDay1_ScheduleDay_Name=dict_week[week_id]["day_2"],
+                    CustomDay2_ScheduleDay_Name=dict_week[week_id]["day_5"]
+                )
+            )
             ep_weeks.append(ep_week)
 
         blocks = {}

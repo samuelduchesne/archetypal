@@ -30,11 +30,8 @@ class TestIDF:
     def natvent(self, config):
         """An old file that needs upgrade"""
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        yield IDF(
-            "tests/input_data/problematic/nat_ventilation_SAMPLE0.idf",
-            epw=w,
-            ep_version="9-2-0",
-        )
+        yield IDF("tests/input_data/problematic/nat_ventilation_SAMPLE0.idf", epw=w,
+                  ep_version="9-2-0")
 
     @pytest.fixture()
     def FiveZoneNightVent1(self):
@@ -49,11 +46,8 @@ class TestIDF:
     def natvent_v9_1_0(self, config):
         """An old file that needs upgrade"""
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        yield IDF(
-            "tests/input_data/problematic/nat_ventilation_SAMPLE0.idf",
-            epw=w,
-            ep_version="9-1-0",
-        )
+        yield IDF("tests/input_data/problematic/nat_ventilation_SAMPLE0.idf", epw=w,
+                  ep_version="9-1-0")
 
     @pytest.fixture()
     def wont_transition_correctly(self, config):

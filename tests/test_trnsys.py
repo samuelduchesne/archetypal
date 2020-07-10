@@ -567,7 +567,7 @@ class TestConvertEasy:
         ) = converttesteasy
 
         # Runs EnergyPlus Simulation
-        idf = IDF(idf_file, epw=weather_file, prep_outputs=True, design_day=True)
+        idf = IDF(idf_file, epw=weather_file, design_day=True, prep_outputs=True)
         res = idf.htm
 
         # Copy IDF object, making sure we don't change/overwrite original IDF file
@@ -731,14 +731,8 @@ class TestConvertEasy:
         ]
 
         # Runs EnergyPlus Simulation
-        idf = IDF(
-            idf_file,
-            epw=weather_file,
-            prep_outputs=outputs,
-            design_day=False,
-            annual=True,
-            expandobjects=True,
-        ).simulate()
+        idf = IDF(idf_file, epw=weather_file, annual=True, design_day=False,
+                  expandobjects=True, prep_outputs=outputs).simulate()
 
         # Makes sure idf variable is an IDF
         assert isinstance(idf, ar.idfclass.IDF)
@@ -1022,14 +1016,8 @@ class TestConvert:
         ]
 
         # Instantiate IDF model
-        idf = IDF(
-            idf_file,
-            epw=weather_file,
-            prep_outputs=outputs,
-            design_day=False,
-            annual=True,
-            expandobjects=True,
-        )
+        idf = IDF(idf_file, epw=weather_file, annual=True, design_day=False,
+                  expandobjects=True, prep_outputs=outputs)
 
         # Output reports
         htm = idf.htm

@@ -84,7 +84,7 @@ class IDF(geomeppy.IDF):
     _initial_postition = itertools.count(start=1)
 
     def __new__(cls, idfname=None, **kwargs):
-        existing = None  # cls.__getCache(idfname, **kwargs)
+        existing = None
         if existing:
             return existing
         idf = super(IDF, cls).__new__(cls)
@@ -97,8 +97,6 @@ class IDF(geomeppy.IDF):
                 _reverse_dependencies.setdefault(x, []).append(k)
         for var in _reverse_dependencies[name]:
             super().__setattr__(f"_{var}", None)
-            # if var in self._dependant_vars:
-            #     self._reset_dependant_vars(var)
 
     def __setattr__(self, key, value):
         propobj = getattr(self.__class__, key, None)

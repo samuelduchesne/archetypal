@@ -101,3 +101,7 @@ tests/input_data/schedules/eprun/
 trnsidf.exe
 
 docs/reference/
+
+tests/input_data/problematic/transition_run_hmgi0ckp/
+
+tests/input_data/problematic/transition_run_wak_egip/

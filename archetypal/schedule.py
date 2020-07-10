@@ -892,13 +892,18 @@ class Schedule(object):
             ep_days.append(ep_day)
 
         # create unique weeks from unique days
-        unique_weeks, nwsi, nws, count = np.unique(
-            full_year[: 364 * 24, ...].reshape(-1, 168),
-            return_index=True,
-            axis=0,
-            return_inverse=True,
-            return_counts=True,
-        )
+        try:
+            unique_weeks, nwsi, nws, count = np.unique(
+                full_year[: 364 * 24, ...].reshape(-1, 168),
+                return_index=True,
+                axis=0,
+                return_inverse=True,
+                return_counts=True,
+            )
+        except ValueError:
+            raise ValueError(
+                "Looks like the idf model needs to be rerun with " "'annual=True'"
+            )
 
         # Appending unique weeks in dictionary with name and values of weeks as
         # keys

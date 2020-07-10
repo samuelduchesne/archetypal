@@ -49,7 +49,7 @@ class BuildingTemplate(UmiBase):
         Lifespan=60,
         PartitionRatio=0.35,
         DefaultWindowToWallRatio=0.4,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a :class:`BuildingTemplate` object with the following
         attributes:
@@ -119,7 +119,7 @@ class BuildingTemplate(UmiBase):
         filename=None,
         opacity=0.5,
         proj_type="persp",
-        **kwargs
+        **kwargs,
     ):
         """
         Args:
@@ -241,8 +241,9 @@ class BuildingTemplate(UmiBase):
         position = kwargs.pop("position", None)
         zones = [
             Zone.from_zone_epbunch(zone, sql=bt.sql)
-            for zone in tqdm(idf.idfobjects["ZONE"], desc=f"Zone Loop {position}",
-                             position=position)
+            for zone in tqdm(
+                idf.idfobjects["ZONE"], desc=f"Zone Loop {position}", position=position
+            )
         ]
         zone: Zone
         bt.cores = [
@@ -427,7 +428,9 @@ class ZoneGraph(networkx.Graph):
     """
 
     @classmethod
-    def from_idf(cls, idf, sql, log_adj_report=True, skeleton=False, force=False, **kwargs):
+    def from_idf(
+        cls, idf, sql, log_adj_report=True, skeleton=False, force=False, **kwargs
+    ):
         """Create a graph representation of all the building zones. An edge
         between two zones represents the adjacency of the two zones.
 
@@ -764,7 +767,7 @@ class ZoneGraph(networkx.Graph):
         filename="unnamed",
         plt_style="ggplot",
         extent="tight",
-        **kwargs
+        **kwargs,
     ):
         """Plot the adjacency of the zones as a graph. Choose a layout from the
         :mod:`networkx.drawing.layout` module, the
@@ -868,7 +871,7 @@ class ZoneGraph(networkx.Graph):
                     ax=ax,
                     node_color=node_color,
                     label=label,
-                    **kwargs
+                    **kwargs,
                 )
                 paths_.extend(sc.get_paths())
             scatter = matplotlib.collections.PathCollection(paths_)

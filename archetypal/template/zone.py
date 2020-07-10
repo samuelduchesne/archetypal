@@ -279,20 +279,31 @@ class Zone(UmiBase):
         InternalMassExposedPerFloorArea = 0 and sets it to the
         self.InternalMassConstruction attribute.
         """
-        mat = self.idf.newidfobject(key="Material".upper(), Name="Wood 6inch",
-                                    Roughness="MediumSmooth", Thickness=0.15,
-                                    Conductivity=0.12, Density=540, Specific_Heat=1210,
-                                    Thermal_Absorptance=0.7, Visible_Absorptance=0.7)
-        cons = self.idf.newidfobject(key="Construction".upper(),
-                                     Name="InteriorFurnishings",
-                                     Outside_Layer="Wood 6inch")
+        mat = self.idf.newidfobject(
+            key="Material".upper(),
+            Name="Wood 6inch",
+            Roughness="MediumSmooth",
+            Thickness=0.15,
+            Conductivity=0.12,
+            Density=540,
+            Specific_Heat=1210,
+            Thermal_Absorptance=0.7,
+            Visible_Absorptance=0.7,
+        )
+        cons = self.idf.newidfobject(
+            key="Construction".upper(),
+            Name="InteriorFurnishings",
+            Outside_Layer="Wood 6inch",
+        )
         internal_mass = "{}_InternalMass".format(self.Name)
         cons.Name = internal_mass + "_construction"
-        new_epbunch = self.idf.newidfobject(key="InternalMass".upper(),
-                                            Name=internal_mass,
-                                            Construction_Name=cons.Name,
-                                            Zone_or_ZoneList_Name=self.Name,
-                                            Surface_Area=1)
+        new_epbunch = self.idf.newidfobject(
+            key="InternalMass".upper(),
+            Name=internal_mass,
+            Construction_Name=cons.Name,
+            Zone_or_ZoneList_Name=self.Name,
+            Surface_Area=1,
+        )
         self.InternalMassConstruction = OpaqueConstruction.from_epbunch(
             new_epbunch, idf=self.idf
         )

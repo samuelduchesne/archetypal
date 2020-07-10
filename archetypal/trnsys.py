@@ -542,7 +542,8 @@ def gains_to_b18(
     schedules_not_written,
     htm,
     old_new_names,
-    schedule_as_input, **kwargs
+    schedule_as_input,
+    **kwargs
 ):
     peoples_in_zone = zone_where_gain_is(peoples, zones, zonelists)
     lights_in_zone = zone_where_gain_is(lights, zones, zonelists)
@@ -635,7 +636,9 @@ def _write_gain_to_b18(
                 )
 
 
-def conditioning_to_b18(b18_lines, heat_dict, cool_dict, zones, old_new_names, **kwargs):
+def conditioning_to_b18(
+    b18_lines, heat_dict, cool_dict, zones, old_new_names, **kwargs
+):
     for zone in tqdm(zones, desc="Writing conditioning in BUI", **kwargs):
         # Heating
         _write_heat_cool_to_b18(heat_dict, old_new_names, zone, b18_lines, " HEATING")
@@ -687,7 +690,9 @@ def _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules, **kw
     idf_file = Path(idf_file)
     df_sched = pd.DataFrame()
     schedule_names.sort()
-    for schedule_name in tqdm(schedule_names, desc="Writing schedules in csv", **kwargs):
+    for schedule_name in tqdm(
+        schedule_names, desc="Writing schedules in csv", **kwargs
+    ):
         df_sched[schedule_name] = schedules[schedule_name]["all values"]
     sched_file_name = "yearly_schedules_" + idf_file.basename().stripext() + ".csv"
     output_folder = Path(output_folder)
@@ -1677,7 +1682,8 @@ def _write_zone_buildingSurf_fenestrationSurf(
     lines,
     n_ground,
     zones,
-    schedule_as_input, **kwargs
+    schedule_as_input,
+    **kwargs
 ):
     """Does several actions on the zones, fenestration and building surfaces.
     Then, writes zone, fenestration and building surfaces information in lines.
@@ -1735,7 +1741,9 @@ def _write_zone_buildingSurf_fenestrationSurf(
         "idf file to t3d file..."
     )
     count_fs = 0
-    for zone in tqdm(zones, desc="Writing building zone/surface coordinates ", **kwargs):
+    for zone in tqdm(
+        zones, desc="Writing building zone/surface coordinates ", **kwargs
+    ):
         zone.Direction_of_Relative_North = 0.0
         if zone.Multiplier == "":
             zone.Multiplier = 1
@@ -2259,14 +2267,17 @@ def _write_schedule_values(liste, lines, scheduleNum, string):
         count += 1
 
 
-def _write_conditioning(htm, lines, schedules, old_new_names, schedule_as_input, **kwargs):
+def _write_conditioning(
+    htm, lines, schedules, old_new_names, schedule_as_input, **kwargs
+):
     # Heating
     heat_dict = {}
     schedule = None
     if htm["Zone Sensible Heating"].iloc[0, 0] != "None":
         for i in tqdm(
             range(0, len(htm["Zone Sensible Heating"])),
-            desc="Writing conditioning (heating)", **kwargs
+            desc="Writing conditioning (heating)",
+            **kwargs
         ):
             key = htm["Zone Sensible Heating"].iloc[i, 0]
             for key_2 in schedules:
@@ -2308,7 +2319,8 @@ def _write_conditioning(htm, lines, schedules, old_new_names, schedule_as_input,
     if htm["Zone Sensible Cooling"].iloc[0, 0] != "None":
         for i in tqdm(
             range(0, len(htm["Zone Sensible Cooling"])),
-            desc="Writing conditioning (cooling)", **kwargs
+            desc="Writing conditioning (cooling)",
+            **kwargs
         ):
             key = htm["Zone Sensible Cooling"].iloc[i, 0]
             for key_2 in schedules:
@@ -2382,7 +2394,9 @@ def _write_equipment_gain(equipments, gainNum, lines, htm, old_new_names, **kwar
             TRNBuild). To be appended (insert) here
     """
     for equipment in tqdm(
-        equipments, desc="Writing electric equipment power density (internal gains)", **kwargs
+        equipments,
+        desc="Writing electric equipment power density (internal gains)",
+        **kwargs
     ):
         gain = htm["ElectricEquipment Internal Gains Nominal"][
             htm["ElectricEquipment Internal Gains Nominal"]["Name"].str.contains(
@@ -2416,7 +2430,9 @@ def _write_light_gain(gainNum, lights, lines, htm, old_new_names, **kwargs):
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
     """
-    for light in tqdm(lights, desc="Writing light power density (internal gains)", **kwargs):
+    for light in tqdm(
+        lights, desc="Writing light power density (internal gains)", **kwargs
+    ):
         gain = htm["Lights Internal Gains Nominal"][
             htm["Lights Internal Gains Nominal"]["Name"].str.contains(
                 old_new_names[light.Name.upper()][0]
@@ -2447,7 +2463,9 @@ def _write_people_gain(gainNum, lines, peoples, htm, old_new_names, **kwargs):
             TRNBuild). To be appended (insert) here
         peoples (idf_MSequence): IDF object from idf.idfobjects()
     """
-    for people in tqdm(peoples, desc="Writing people density (internal gains)", **kwargs):
+    for people in tqdm(
+        peoples, desc="Writing people density (internal gains)", **kwargs
+    ):
         gain = htm["People Internal Gains Nominal"][
             htm["People Internal Gains Nominal"]["Name"].str.contains(
                 old_new_names[people.Name.upper()][0]
@@ -2502,7 +2520,9 @@ def _write_material_airgap(layerNum, lines, listLayerName, materialAirGap, **kwa
         listLayerName (list): list of material's names. To be appended when
         materialAirGap (materialAirGap): IDF object from
     """
-    for i in tqdm(range(0, len(materialAirGap)), desc="Writing airgap materials", **kwargs):
+    for i in tqdm(
+        range(0, len(materialAirGap)), desc="Writing airgap materials", **kwargs
+    ):
 
         duplicate = [s for s in listLayerName if s == materialAirGap[i].Name]
         if not duplicate:
@@ -2528,7 +2548,9 @@ def _write_material_nomass(layerNum, lines, listLayerName, materialNoMass, **kwa
         listLayerName (list): list of material's names. To be appended when
         materialNoMass (idf_MSequence): IDF object from idf.idfobjects().
     """
-    for i in tqdm(range(0, len(materialNoMass)), desc="Writing nomass materials", **kwargs):
+    for i in tqdm(
+        range(0, len(materialNoMass)), desc="Writing nomass materials", **kwargs
+    ):
 
         duplicate = [s for s in listLayerName if s == materialNoMass[i].Name]
         if not duplicate:
@@ -2584,7 +2606,9 @@ def _write_constructions_end(constr_list, idf, lines, **kwargs):
     constructionEndNum = checkStr(lines, "ALL OBJECTS IN CLASS: CONSTRUCTION")
     # Writing CONSTRUCTION infos to lines
     for constr in tqdm(
-        constr_list, desc="Writing constructions at the end section of T3D file", **kwargs
+        constr_list,
+        desc="Writing constructions at the end section of T3D file",
+        **kwargs
     ):
         construction = idf.getobject("CONSTRUCTION", constr)
         lines.insert(constructionEndNum, construction)

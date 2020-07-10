@@ -6,7 +6,7 @@ Reading and running IDF files
 Reading
 -------
 
-To read an IDF file, simply call :meth:`~archetypal.idfclass.load_idf` with the path name. For example:
+To read an IDF file, simply call :class:`~archetypal.idfclass.IDF` with the path name. For example:
 
 .. code-block:: python
 

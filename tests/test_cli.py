@@ -312,7 +312,6 @@ class TestCli:
                 "-w",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_*.epw",
                 "-p",
-                30,
                 *test_file_list,
                 "-o",
                 "tests/.temp/retail.json",

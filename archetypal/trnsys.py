@@ -17,6 +17,10 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
+from geomeppy.geom.polygons import Polygon3D
+from path import Path
+from tqdm import tqdm
+
 from archetypal import (
     log,
     settings,
@@ -24,16 +28,11 @@ from archetypal import (
     checkStr,
     check_unique_name,
     angle,
-    load_idf,
-    load_idf_object_from_cache,
     hash_model,
     recursive_len,
     ReportData,
     IDF,
 )
-from geomeppy.geom.polygons import Polygon3D
-from path import Path
-from tqdm import tqdm
 
 
 def convert_idf_to_trnbuild(
@@ -925,31 +924,29 @@ def load_idf_file_and_clean_names(idf_file, log_clear_names):
     log("Loading IDF file...", lg.INFO)
     start_time = time.time()
     cache_filename = hash_model(idf_file)
-    idf = load_idf_object_from_cache(idf_file, how="idf")
-    if not idf:
-        # Load IDF file(s)
-        idf = load_idf(idf_file)
-        log(
-            "IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
-            lg.INFO,
-        )
-        # Clean names of idf objects (e.g. 'MATERIAL')
-        log("Cleaning names of the IDF objects...", lg.INFO)
-        start_time = time.time()
-        clear_name_idf_objects(idf, log_clear_names)
-        path = os.path.join(
-            settings.cache_folder, cache_filename, cache_filename + ".idf"
-        )
-        if not os.path.exists(os.path.dirname(path)):
-            os.makedirs(os.path.dirname(path))
-        idf.saveas(filename=path)
-        # save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
-        log(
-            "Cleaned IDF object names in {:,.2f} seconds".format(
-                time.time() - start_time
-            ),
-            lg.INFO,
-        )
+    # Load IDF file(s)
+    idf = IDF(idf_file, prep_outputs=False)
+    log(
+        "IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
+        lg.INFO,
+    )
+    # Clean names of idf objects (e.g. 'MATERIAL')
+    log("Cleaning names of the IDF objects...", lg.INFO)
+    start_time = time.time()
+    clear_name_idf_objects(idf, log_clear_names)
+    path = os.path.join(
+        settings.cache_folder, cache_filename, cache_filename + ".idf"
+    )
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
+    idf.saveas(filename=path)
+    # save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
+    log(
+        "Cleaned IDF object names in {:,.2f} seconds".format(
+            time.time() - start_time
+        ),
+        lg.INFO,
+    )
     return idf
 
 

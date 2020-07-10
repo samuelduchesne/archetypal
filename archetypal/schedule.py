@@ -20,6 +20,8 @@ from archetypal.idfclass import IDF
 class Schedule(object):
     """An object designed to handle any EnergyPlus schedule object"""
 
+    class_idf = IDF(prep_outputs=False)
+
     def __init__(
         self,
         Name,
@@ -56,7 +58,7 @@ class Schedule(object):
             pass  # todo: make this more robust
         self.strict = strict
         if not isinstance(idf, archetypal.IDF):
-            idf = IDF()
+            idf = Schedule.class_idf
         self.idf = idf
         self.Name = Name
         self.startDayOfTheWeek = self.get_sdow(start_day_of_the_week)
@@ -100,7 +102,7 @@ class Schedule(object):
             **kwargs:
         """
         if not idf:
-            idf = IDF(prep_outputs=False)
+            idf = Schedule.class_idf
         # Add the schedule to the existing idf
         idf.newidfobject(
             key="Schedule:Constant".upper(),

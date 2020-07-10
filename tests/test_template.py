@@ -222,7 +222,6 @@ class TestWeekSchedule:
             Category="Day",
             schTypeLimitsName="Fractional",
             Name="AlwaysOff",
-            idf=idf,
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
@@ -310,7 +309,6 @@ class TestYearSchedule:
             Category="Day",
             schTypeLimitsName="Fractional",
             Name="AlwaysOff",
-            idf=idf,
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
@@ -1146,7 +1144,7 @@ class TestUmiSchedule:
         """
         from archetypal import UmiSchedule
 
-        const = UmiSchedule.constant_schedule(idf=idf)
+        const = UmiSchedule.constant_schedule()
         assert const.__class__.__name__ == "UmiSchedule"
         assert const.Name == "AlwaysOn"
 
@@ -2654,7 +2652,6 @@ def test_create_umi_template(config, idf):
         Category="Day",
         schTypeLimitsName="Fractional",
         Name="AlwaysOff",
-        idf=idf,
     )
     # DHW
     sch_d_dhw = ar.DaySchedule.from_values(
@@ -2693,7 +2690,6 @@ def test_create_umi_template(config, idf):
         Category="Week",
         schTypeLimitsName="Fractional",
         Name="AlwaysOff",
-        idf=idf,
     )
     # DHW
     sch_w_dhw = ar.WeekSchedule(

@@ -66,17 +66,13 @@ idf_file = "tests/input_data/schedules/test_multizone_EP.idf"
 
 def schedules_idf():
     config(cache_folder="tests/.temp/cache")
-    idf = IDF(
-        idf_file,
-        epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-        readvars=True,
-        include=[
+    idf = IDF(idf_file, epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+              readvars=True, include=[
             get_eplus_dirs(settings.ep_version)
             / "DataSets"
             / "TDV"
             / "TDV_2008_kBtu_CTZ06.csv"
-        ],
-    )
+        ])
     return idf
 
 

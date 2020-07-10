@@ -486,14 +486,14 @@ def do_scheduled_ventilation(index, scd_df, zone):
             )
         except:
             ScheduledVentilationSchedule = archetypal.UmiSchedule.constant_schedule(
-                hourly_value=0, idf=zone.idf, Name="AlwaysOff"
+                hourly_value=0, Name="AlwaysOff"
             )
             IsScheduledVentilationOn = False
             ScheduledVentilationAch = 0
             ScheduledVentilationSetpoint = 18
     else:
         ScheduledVentilationSchedule = archetypal.UmiSchedule.constant_schedule(
-            hourly_value=0, idf=zone.idf, Name="AlwaysOff"
+            hourly_value=0, Name="AlwaysOff"
         )
         IsScheduledVentilationOn = False
         ScheduledVentilationAch = 0

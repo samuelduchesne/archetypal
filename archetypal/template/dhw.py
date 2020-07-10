@@ -258,8 +258,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                 # If a cold water supply schedule is provided, create the
                 # schedule
                 cold_schd_names = UmiSchedule(
-                    Name=obj.Cold_Water_Supply_Temperature_Schedule_Name,
-                    idf=zone.idf,
+                    Name=obj.Cold_Water_Supply_Temperature_Schedule_Name, idf=zone.idf,
                 )
                 WaterTemperatureInlet.append(cold_schd_names.mean)
             else:
@@ -275,8 +274,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                     if water_mains_temp.Calculation_Method.lower() == "schedule":
                         # From Schedule method
                         mains_scd = UmiSchedule(
-                            Name=water_mains_temp.Schedule_Name,
-                            idf=zone.idf,
+                            Name=water_mains_temp.Schedule_Name, idf=zone.idf,
                         )
                         WaterTemperatureInlet.append(mains_scd.mean())
                     elif water_mains_temp.Calculation_Method.lower() == "correlation":

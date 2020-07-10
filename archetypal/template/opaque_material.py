@@ -8,7 +8,7 @@
 import collections
 
 from archetypal import log
-from archetypal.template import UmiBase, Unique
+from archetypal.template import UmiBase, Unique, UniqueName
 
 
 class OpaqueMaterial(UmiBase, metaclass=Unique):
@@ -241,7 +241,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = self.Name
+        data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
 

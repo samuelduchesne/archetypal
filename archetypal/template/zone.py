@@ -39,8 +39,6 @@ class Zone(UmiBase):
     .. image:: ../images/template/zoneinfo-zone.png
     """
 
-    _cache = {}
-
     def __init__(
         self,
         Name,
@@ -97,7 +95,6 @@ class Zone(UmiBase):
         self._area = kwargs.get("area", None)
         self._volume = kwargs.get("volume", None)
 
-        self._cache[hash(self)] = self
         CREATED_OBJECTS[hash(self)] = self
 
     def __add__(self, other):
@@ -396,9 +393,6 @@ class Zone(UmiBase):
             zone_ep (eppy.bunch_subclass.EpBunch): The Zone EpBunch.
             sql (dict): The sql dict for this IDF object.
         """
-        cached = cls.get_cached(zone_ep.Name, zone_ep.theidf)
-        if cached:
-            return cached
         start_time = time.time()
         log('\nConstructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
         name = zone_ep.Name
@@ -421,22 +415,6 @@ class Zone(UmiBase):
             )
         )
         return zone
-
-    @classmethod
-    def get_cached(cls, name, idf):
-        """Retrieve the cached object by Name and idf name. If not, returns
-        None.
-
-        Args:
-            name (str): The name of the object in the cache.
-            idf (IDF): The :class:`IDF` object.
-        """
-        try:
-            cached = cls._cache[hash((name, id(idf)))]
-        except KeyError:
-            return None
-        else:
-            return cached
 
     def combine(self, other, weights=None):
         """

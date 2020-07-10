@@ -1181,7 +1181,11 @@ def submit(fn, *args, **kwargs):
 def is_referenced(name, epbunch, fieldname="Zone_or_ZoneList_Name"):
     """bool: Returns True if name is in referenced object fieldname"""
     refobj = epbunch.get_referenced_object(fieldname)
-    if refobj.key.upper() == "ZONE":
+    if not refobj:
+        refobj = epbunch.get_referenced_object("Zone_Name")  # Backwards Compatibility
+    if not refobj:
+        pass
+    elif refobj.key.upper() == "ZONE":
         return name in refobj.Name
     elif refobj.key.upper() == "ZONELIST":
         raise NotImplementedError(
@@ -1189,12 +1193,11 @@ def is_referenced(name, epbunch, fieldname="Zone_or_ZoneList_Name"):
             f"not yet supported in archetypal "
             f"v{__version__}"
         )
-    else:
-        raise ValueError(
-            f"Invalid referring object returned while "
-            f"referencing object name: Looking for '{name}' in "
-            f"object {refobj}"
-        )
+    raise ValueError(
+        f"Invalid referring object returned while "
+        f"referencing object name: Looking for '{name}' in "
+        f"object {refobj}"
+    )
 
 
 def docstring_parameter(*args, **kwargs):

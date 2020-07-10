@@ -2,9 +2,8 @@ import os
 
 import pytest
 from click.testing import CliRunner
-from path import Path
 
-from archetypal import settings, copy_file, log, load_idf, IDF
+from archetypal import settings, log, IDF
 from archetypal.cli import cli
 from tests.test_trnsys import get_platform
 

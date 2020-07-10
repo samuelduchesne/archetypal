@@ -4,9 +4,7 @@ import pytest
 
 from archetypal import (
     Schedule,
-    load_idf,
     copy_file,
-    run_eplus,
     UmiSchedule,
     config,
     get_eplus_dirs,

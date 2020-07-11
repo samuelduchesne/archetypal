@@ -71,14 +71,14 @@ class IDF(geomeppy.IDF):
     _dependencies = {
         "iddname": ["idfname", "as_version"],
         "file_version": ["idfname"],
-        "idd_info": ["iddname", "idfname"],
-        "idd_index": ["iddname", "idfname"],
-        "idd_version": ["iddname", "idfname"],
-        "idfobjects": ["iddname", "idfname"],
-        "block": ["iddname", "idfname"],
-        "model": ["iddname", "idfname"],
-        "sql": ["as_version", "annual", "design_day", "epw", "idfname", "iddname"],
-        "htm": ["as_version", "annual", "design_day", "epw", "idfname", "iddname"],
+        "idd_info": ["iddname"],
+        "idd_index": ["iddname"],
+        "idd_version": ["iddname"],
+        "idfobjects": ["iddname"],
+        "block": ["iddname"],
+        "model": ["iddname"],
+        "sql": ["as_version", "annual", "design_day", "epw", "idfname"],
+        "htm": ["as_version", "annual", "design_day", "epw", "idfname"],
         "schedules_dict": ["idfobjects"],
     }
     _independant_vars = set(chain(*list(_dependencies.values())))

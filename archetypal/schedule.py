@@ -20,7 +20,6 @@ from archetypal.idfclass import IDF
 class Schedule(object):
     """An object designed to handle any EnergyPlus schedule object"""
 
-
     def __init__(
         self,
         Name,
@@ -31,6 +30,7 @@ class Schedule(object):
         schType=None,
         schTypeLimitsName=None,
         values=None,
+        epbunch=None,
         **kwargs
     ):
         """
@@ -69,6 +69,12 @@ class Schedule(object):
         self.values = values
         self.schType = schType
         self.schTypeLimitsName = schTypeLimitsName
+
+        try:
+            self.epbunch = epbunch or self.idf.get_schedule_epbunch(self.Name)
+        except KeyError:
+            self.epbunch = None
+
         if self.schTypeLimitsName is None:
             self.schTypeLimitsName = self.get_schedule_type_limits_name(
                 sch_type=self.schType
@@ -100,13 +106,13 @@ class Schedule(object):
         if not idf:
             idf = IDF(prep_outputs=False)
         # Add the schedule to the existing idf
-        idf.newidfobject(
+        epbunch = idf.anidfobject(
             key="Schedule:Constant".upper(),
             Name=Name,
             Schedule_Type_Limits_Name="",
             Hourly_Value=hourly_value,
         )
-        return cls(Name=Name, idf=idf, **kwargs)
+        return cls(Name=Name, idf=idf, epbunch=epbunch, **kwargs)
 
     @property
     def all_values(self):
@@ -114,11 +120,10 @@ class Schedule(object):
         """returns the values array"""
         if self.values is None:
             try:  # Search values in epbunch (from idf object)
-                epbunch = self.idf.get_schedule_epbunch(self.Name)
-                self.values = self.get_schedule_values(epbunch)
+                self.values = self.get_schedule_values(self.epbunch)
             except FileNotFoundError as e:
                 raise e  # This is an actual issue, must raise
-            except:
+            except Exception as e:
                 # If no epbunch found
                 if self.Category == "Week":  # If WeekSchedule
                     try:  # Get values from self.Days
@@ -172,7 +177,12 @@ class Schedule(object):
         Args:
             sch_type:
         """
-        schedule_values = self.idf.get_schedule_epbunch(self.Name, sch_type=sch_type)
+        if self.epbunch is None:
+            schedule_values = self.idf.get_schedule_epbunch(
+                self.Name, sch_type=sch_type
+            )
+        else:
+            schedule_values = self.epbunch
         try:
             schedule_limit_name = schedule_values.Schedule_Type_Limits_Name
         except:
@@ -190,7 +200,7 @@ class Schedule(object):
         if name is None:
             name = self.Name
 
-        schedule_values = self.idf.get_schedule_epbunch(name)
+        schedule_values = self.epbunch
         try:
             schedule_limit_name = schedule_values.Schedule_Type_Limits_Name
         except:
@@ -220,7 +230,7 @@ class Schedule(object):
         if name is None:
             name = self.Name
 
-        schedule_values = self.idf.get_schedule_epbunch(name)
+        schedule_values = self.epbunch
         sch_type = schedule_values.key
 
         return sch_type

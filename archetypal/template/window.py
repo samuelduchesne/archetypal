@@ -412,9 +412,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
         kwargs["Name"] = name
         w = cls(idf=Construction.theidf, **kwargs)
         w.Construction = WindowConstruction.from_epbunch(Construction)
-        w.AfnWindowAvailability = UmiSchedule.constant_schedule()
-        w.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule()
-        w.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule()
+        w.AfnWindowAvailability = UmiSchedule.constant_schedule(idf=w.idf)
+        w.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(idf=w.idf)
+        w.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(idf=w.idf)
         return w
 
     @classmethod
@@ -486,12 +486,12 @@ class WindowSetting(UmiBase, metaclass=Unique):
                         attr[
                             "ShadingSystemAvailabilitySchedule"
                         ] = UmiSchedule.constant_schedule(
-                            name="AlwaysOff", hourly_value=0
+                            name="AlwaysOff", hourly_value=0, idf=surface.theidf
                         )
                     elif shade_ctrl_type.lower() == "alwayson":
                         attr[
                             "ShadingSystemAvailabilitySchedule"
-                        ] = UmiSchedule.constant_schedule()
+                        ] = UmiSchedule.constant_schedule(idf=surface.theidf)
                     else:
                         log(
                             'Window "{}" uses a  window control type that '
@@ -501,7 +501,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                         )
                         attr[
                             "ShadingSystemAvailabilitySchedule"
-                        ] = UmiSchedule.constant_schedule()
+                        ] = UmiSchedule.constant_schedule(idf=surface.theidf)
                 # get shading type
                 if shading_control["Shading_Type"] != "":
                     mapping = {
@@ -519,7 +519,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 # Set default schedules
                 attr[
                     "ShadingSystemAvailabilitySchedule"
-                ] = UmiSchedule.constant_schedule()
+                ] = UmiSchedule.constant_schedule(idf=surface.theidf)
 
             # get airflow network
             afn = next(
@@ -540,7 +540,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
                         Name=name, idf=surface.theidf
                     )
                 else:
-                    attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule()
+                    attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule(
+                        idf=surface.theidf
+                    )
                 name = afn[
                     "Ventilation_Control_Zone_Temperature_Setpoint_Schedule_Name"
                 ]
@@ -609,9 +611,13 @@ class WindowSetting(UmiBase, metaclass=Unique):
                         lg.WARNING,
                     )
             else:
-                attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule()
+                attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule(
+                    idf=surface.theidf
+                )
             # Zone Mixing
-            attr["ZoneMixingAvailabilitySchedule"] = UmiSchedule.constant_schedule()
+            attr["ZoneMixingAvailabilitySchedule"] = UmiSchedule.constant_schedule(
+                idf=surface.theidf
+            )
             w = cls(
                 Name=name,
                 Construction=construction,

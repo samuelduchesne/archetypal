@@ -390,7 +390,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             self.IsMechVentOn = False
             self.MinFreshAirPerPerson = 0
             self.MinFreshAirPerArea = 0
-            self.MechVentSchedule = UmiSchedule.constant_schedule()
+            self.MechVentSchedule = UmiSchedule.constant_schedule(idf=zone.idf)
 
     @staticmethod
     def get_equipment_list(zone):
@@ -486,7 +486,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 f"No Mechanical Ventilation Schedule specified for zone "
                 f"{zone.Name}. Reverting to always on."
             )
-            return UmiSchedule.constant_schedule()
+            return UmiSchedule.constant_schedule(idf=zone.idf)
 
     def _set_zone_cops(self, zone):
         """
@@ -809,6 +809,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             Name=zone.Name + "_Heating_Schedule",
             values=(h_array > 0).astype(int),
             schTypeLimitsName="Fraction",
+            idf=zone.idf,
         )
 
         variable_output_name = "Zone Thermostat Cooling Setpoint Temperature"
@@ -823,6 +824,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             Name=zone.Name + "_Cooling_Schedule",
             values=(c_array > 0).astype(int),
             schTypeLimitsName="Fraction",
+            idf=zone.idf,
         )
         if np.all(c_array == 0):
             c_mean = np.NaN

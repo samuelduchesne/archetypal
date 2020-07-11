@@ -198,7 +198,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             else:
                 # defaults with 0 flow rate.
                 total_flow_rate = 0
-                water_schedule = UmiSchedule.constant_schedule()
+                water_schedule = UmiSchedule.constant_schedule(idf=zone.idf)
                 supply_temp = 60
                 inlet_temp = 10
 

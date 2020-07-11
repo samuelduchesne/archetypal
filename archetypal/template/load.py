@@ -202,7 +202,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             zone.idf.sql["NominalGasEquipment"]["ZoneIndex"] == zone_index
         ]
         if nominal_elec.empty and nominal_gas.empty:
-            EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule()
+            EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule(idf=zone.idf)
             EquipmentPowerDensity = 0.0
         else:
             if nominal_gas.empty:
@@ -230,7 +230,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         if zone.idf.sql["NominalLighting"][
             zone.idf.sql["NominalLighting"]["ZoneIndex"] == zone_index
         ].empty:
-            LightsAvailabilitySchedule = UmiSchedule.constant_schedule()
+            LightsAvailabilitySchedule = UmiSchedule.constant_schedule(idf=zone.idf)
             LightingPowerDensity = 0.0
         else:
             schedule_light_index = zone.idf.sql["NominalLighting"][
@@ -252,7 +252,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         if zone.idf.sql["NominalPeople"][
             zone.idf.sql["NominalPeople"]["ZoneIndex"] == zone_index
         ].empty:
-            OccupancySchedule = UmiSchedule.constant_schedule()
+            OccupancySchedule = UmiSchedule.constant_schedule(idf=zone.idf)
             PeopleDensity = 0.0
         else:
             schedule_people_index = zone.idf.sql["NominalPeople"][

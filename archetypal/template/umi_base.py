@@ -32,7 +32,7 @@ class Unique(type):
         """
         self = cls.__new__(cls, *args, **kwargs)
         cls.__init__(self, *args, **kwargs)
-        key = hash(self)
+        key = self.__hash__()
         if key not in CREATED_OBJECTS:
             cls._cache[key] = self
             CREATED_OBJECTS[key] = self

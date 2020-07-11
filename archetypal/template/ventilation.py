@@ -410,10 +410,10 @@ def do_natural_ventilation(index, nat_df, zone):
             #  in the nat_df. For the mean time, a zone containing such an
             #  object will be turned on with an AlwaysOn schedule.
             IsNatVentOn = True
-            NatVentSchedule = archetypal.UmiSchedule.constant_schedule()
+            NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
         except Exception:
             IsNatVentOn = False
-            NatVentSchedule = archetypal.UmiSchedule.constant_schedule()
+            NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
         finally:
             try:
                 NatVentMaxRelHumidity = 90  # todo: not sure if it is being used
@@ -438,7 +438,7 @@ def do_natural_ventilation(index, nat_df, zone):
 
     else:
         IsNatVentOn = False
-        NatVentSchedule = archetypal.UmiSchedule.constant_schedule()
+        NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
         NatVentMaxRelHumidity = 90
         NatVentMaxOutdoorAirTemp = 30
         NatVentMinOutdoorAirTemp = 0
@@ -486,14 +486,14 @@ def do_scheduled_ventilation(index, scd_df, zone):
             )
         except:
             ScheduledVentilationSchedule = archetypal.UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff"
+                hourly_value=0, Name="AlwaysOff", idf=zone.idf
             )
             IsScheduledVentilationOn = False
             ScheduledVentilationAch = 0
             ScheduledVentilationSetpoint = 18
     else:
         ScheduledVentilationSchedule = archetypal.UmiSchedule.constant_schedule(
-            hourly_value=0, Name="AlwaysOff"
+            hourly_value=0, Name="AlwaysOff", idf=zone.idf
         )
         IsScheduledVentilationOn = False
         ScheduledVentilationAch = 0

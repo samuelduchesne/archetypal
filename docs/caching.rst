@@ -39,8 +39,8 @@ In a Jupyter Notebook, one would typically do the following:
 .. code-block:: python
 
     idf = IDF(
-        get_eplus_dirs(settings.ep_version) / "ExampleFiles" / "BasicsFiles/AdultEducationCenter.idf",
-        epw=get_eplus_dirs(settings.ep_version) / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+        get_eplus_dirs(settings.as_version) / "ExampleFiles" / "BasicsFiles/AdultEducationCenter.idf",
+        epw=get_eplus_dirs(settings.as_version) / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
         design_day=True,
         annual=False,
         expandobjects=True,
@@ -48,7 +48,7 @@ In a Jupyter Notebook, one would typically do the following:
     )
 
 If the file would be an older version, archetypal is going to transition the file to EnergyPlus 9.2 (or any other
-version specified with the ep_version parameter) and execute EnergyPlus for the `design_day` only.
+version specified with the as_version parameter) and execute EnergyPlus for the `design_day` only.
 
 The command bellow yields a list of output files. These will be located
 inside a cache folder specified by the settings.cache_folder variable (this folder path can be changed using the config

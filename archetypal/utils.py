@@ -1095,23 +1095,24 @@ def parallel_process(
         >>> files = ['tests/input_data/problematic/nat_ventilation_SAMPLE0.idf',
         >>>          'tests/input_data/regular/5ZoneNightVent1.idf']
         >>> wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
-        >>> files = ar.copy_file(files)
-        >>> rundict = {file: dict(eplus_file=file, weather_file=wf,
-        >>>                      ep_version=ep_version, annual=True,
+        >>> rundict = {file: dict(idfname=file, epw=wf,
+        >>>                      as_version="9-2-0", annual=True,
         >>>                      prep_outputs=True, expandobjects=True,
         >>>                      verbose='q')
         >>>           for file in files}
         >>> result = parallel_process(rundict, IDF, use_kwargs=True)
 
     Args:
-        position:
         in_dict (dict): A dictionary to iterate over. `function` is applied to value
             and key is used as an identifier.
         function (function): A python function to apply to the elements of
             in_dict
-        processors (int): The number of cores to use
-        use_kwargs (bool): If True, pass the kwargs as arguments to `function` .
+        processors (int): The number of cores to use.
+        use_kwargs (bool): If True, pass the kwargs as arguments to `function`.
         debug (bool): If True, will raise any error on any process.
+        position: Specify the line offset to print the tqdm bar (starting from 0)
+            Automatic if unspecified. Useful to manage multiple bars at once
+            (eg, from threads).
 
     Returns:
         [function(array[0]), function(array[1]), ...]

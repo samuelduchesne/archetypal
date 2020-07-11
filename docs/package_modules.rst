@@ -13,7 +13,7 @@ IDF Class
 
     IDF
     run_eplus
-    OutputPrep
+    Outputs
 
 .. _templates_label:
 

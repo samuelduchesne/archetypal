@@ -33,9 +33,7 @@ def test_make_umi_schedule(config):
     """Tests only a single schedule name"""
     import matplotlib.pyplot as plt
 
-    idf_file = "tests/input_data/schedules/schedules.idf"
-    idf_file = copy_file(idf_file)
-    idf = IDF(idf_file)
+    idf = IDF("tests/input_data/schedules/schedules.idf")
 
     s = UmiSchedule(Name="POFF", idf=idf, start_day_of_the_week=0)
     ep_year, ep_weeks, ep_days = s.to_year_week_day()

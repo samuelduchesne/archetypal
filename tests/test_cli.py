@@ -321,7 +321,7 @@ class TestCli:
         print(result.stdout)
         assert result.exit_code == 0
 
-    def test_reduce_failed(self, clean_config):
+    def test_reduce_failed(self, config):
         """Tests the 'reduce' method on a failed file"""
         runner = CliRunner()
         test_file = "tests/input_data/necb/NECB 2011-Warehouse-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"

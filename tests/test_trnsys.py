@@ -1126,7 +1126,7 @@ class TestTrnBuild:
 
         # prepare args (key=value)f or EnergyPlus version to use, windows parameters,etc.
         kwargs_dict = {
-            "ep_version": settings.ep_version,
+            "as_version": settings.ep_version,
             "u_value": 2.5,
             "shgc": 0.6,
             "t_vis": 0.78,
@@ -1282,7 +1282,7 @@ def test_trnbuild_from_simple_idf(config):
     # prepare args (key=value)f or EnergyPlus version to use, windows parameters,etc.
     # WINDOW = 2-WSV_#3_Air
     kwargs_dict = {
-        "ep_version": "9-2-0",
+        "as_version": "9-2-0",
         "u_value": 1.62,
         "shgc": 0.64,
         "t_vis": 0.8,

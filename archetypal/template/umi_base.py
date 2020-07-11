@@ -84,7 +84,6 @@ def clear_cache():
 
 class UmiBase(object):
 
-    class_idf = IDF(prep_outputs=False)
 
     def __init__(
         self,
@@ -112,8 +111,6 @@ class UmiBase(object):
         """
         super(UmiBase, self).__init__()
         self.Name = Name
-        if not isinstance(idf, archetypal.IDF):
-            idf = UmiBase.class_idf
         self.idf = idf
         self.sql = sql
         self.Category = Category

@@ -126,7 +126,7 @@ def convert_idf_to_trnbuild(
     )
 
     # Run EnergyPlus Simulation
-    ep_version = kwargs.pop("ep_version", None)
+    ep_version = kwargs.pop("as_version", None)
     outputs = [
         {
             "key": "Output:Variable".upper(),

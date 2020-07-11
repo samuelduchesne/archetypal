@@ -401,7 +401,7 @@ def reduce(idf, output, weather, parallel, all_zones):
             file.writelines(e.write())
             log(f"EnergyPlusProcess errors listed in {filename}")
     except Exception as e:
-        log(f"An Unkown exception occured: {e}", logging.ERROR)
+        log(f"An Unknown exception occurred: {e}", logging.ERROR)
     else:
         # Save json file
         final_path: Path = dir_ / name + ext

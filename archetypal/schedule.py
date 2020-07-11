@@ -20,7 +20,6 @@ from archetypal.idfclass import IDF
 class Schedule(object):
     """An object designed to handle any EnergyPlus schedule object"""
 
-    class_idf = IDF(prep_outputs=False)
 
     def __init__(
         self,
@@ -57,13 +56,10 @@ class Schedule(object):
         except Exception as e:
             pass  # todo: make this more robust
         self.strict = strict
-        if not isinstance(idf, archetypal.IDF):
-            idf = Schedule.class_idf
         self.idf = idf
         self.Name = Name
         self.startDayOfTheWeek = self.get_sdow(start_day_of_the_week)
         self.year = base_year
-        self.startDate = self.start_date()
 
         self.count = 0
         self.startHOY = 1
@@ -102,7 +98,7 @@ class Schedule(object):
             **kwargs:
         """
         if not idf:
-            idf = Schedule.class_idf
+            idf = IDF(prep_outputs=False)
         # Add the schedule to the existing idf
         idf.newidfobject(
             key="Schedule:Constant".upper(),
@@ -229,7 +225,8 @@ class Schedule(object):
 
         return sch_type
 
-    def start_date(self):
+    @property
+    def startDate(self):
         """The start date of the schedule. Satisfies `startDayOfTheWeek`"""
         import calendar
 
@@ -507,7 +504,7 @@ class Schedule(object):
 
                     # Calculate Timedelta in days
                     days = (ep_to_day - ep_from_day).days
-                    # Add timedelta to start_date
+                    # Add timedelta to startDate
                     to_day = from_day + timedelta(days=days) + timedelta(hours=-1)
 
                     # slice the conditions with the range and apply True

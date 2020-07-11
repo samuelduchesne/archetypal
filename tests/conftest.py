@@ -98,3 +98,37 @@ def safe_int_cast(val, default=0):
         return int(val)
     except (ValueError, TypeError):
         return default
+
+
+def no_duplicates(file, attribute="Name"):
+    """
+
+    Args:
+        file (str): Path of the json file
+        attribute (str): Attribute to search for duplicates in json UMI structure.
+        eg. : "$id", "Name"
+
+    Returns:
+
+    """
+    import json
+    from collections import defaultdict
+
+    if isinstance(file, str):
+        data = json.loads(open(file).read())
+    else:
+        data = file
+    ids = defaultdict(int)
+    for key, value in data.items():
+        for component in value:
+            try:
+                _id = component[attribute]
+            except KeyError:
+                pass  # BuildingTemplate does not have an id
+            else:
+                ids[_id] += 1
+    dups = dict(filter(lambda x: x[1] > 1, ids.items()))
+    if dups:
+        raise Exception(f"Duplicate {attribute} found: {dups}")
+    else:
+        return True

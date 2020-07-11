@@ -685,7 +685,7 @@ class EnergyPlusProcessError(Exception):
 class EnergyPlusVersionError(Exception):
     """EnergyPlus Version call error"""
 
-    def __init__(self, idf_file=None, idf_version=None, ep_version=None, msg=None):
+    def __init__(self, msg=None, idf_file=None, idf_version=None, ep_version=None):
         super(EnergyPlusVersionError, self).__init__(None)
         self.msg = msg
         self.idf_file = idf_file

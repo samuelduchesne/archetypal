@@ -1249,7 +1249,7 @@ class IDF(geomeppy.IDF):
                 new_object = self.anidfobject(key, **kwargs)
             else:
                 log(f"Could not add object {key} because of: {e}", lg.WARNING)
-        else:
+        finally:
             # If object is supposed to be 'unique-object', deletes all objects to be
             # sure there is only one of them when creating new object
             # (see following line)

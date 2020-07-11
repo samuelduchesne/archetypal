@@ -1348,6 +1348,7 @@ class IDF(geomeppy.IDF):
                     abunch["Name"] = v
                 else:
                     raise e
+        abunch.theidf = self
         return abunch
 
     def get_schedule_type_limits_data_by_name(self, schedule_limit_name):

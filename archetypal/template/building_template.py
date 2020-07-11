@@ -243,7 +243,7 @@ class BuildingTemplate(UmiBase):
         zones = [
             Zone.from_zone_epbunch(zone, sql=bt.sql)
             for zone in tqdm(
-                idf.idfobjects["ZONE"], desc=f"Zone Loop {position}", position=position
+                idf.idfobjects["ZONE"], desc=f"Zone Loop {name}", position=idf.position
             )
         ]
         zone: Zone

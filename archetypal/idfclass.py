@@ -793,7 +793,11 @@ class IDF(geomeppy.IDF):
 
             try:
                 _run_exec(**runargs)
-            except (EnergyPlusProcessError, CalledProcessError) as e:
+            except (
+                EnergyPlusProcessError,
+                CalledProcessError,
+                EnergyPlusVersionError,
+            ) as e:
                 log(str(e), lg.ERROR)
                 raise e
             except Exception as e:
@@ -2824,6 +2828,10 @@ def _run_exec(
     eplus_exe_path, eplus_weather_path = eppy.runner.run_functions.install_paths(
         ep_version, iddname
     )
+    if not Path(eplus_exe_path).exists():
+        raise EnergyPlusVersionError(
+            msg=f"No EnergyPlus Executable found for version {parse(ep_version)}"
+        )
     if version:
         # just get EnergyPlus version number and return
         cmd = [eplus_exe_path, "--version"]

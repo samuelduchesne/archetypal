@@ -878,14 +878,14 @@ class Schedule(object):
         ep_days = []
         dict_day = {}
         count_day = 0
-        for unique_day in unique_days:
+        for count_day, unique_day in enumerate(unique_days):
             name = "d_" + self.Name + "_" + "%03d" % count_day
-            name, count_day = archetypal.check_unique_name(
-                "d", count_day, name, archetypal.settings.unique_schedules, suffix=True
-            )
+            # name, count_day = archetypal.check_unique_name(
+            #     "d", count_day, name, archetypal.settings.unique_schedules, suffix=True
+            # )
             dict_day[name] = unique_day
 
-            archetypal.settings.unique_schedules.append(name)
+            # archetypal.settings.unique_schedules.append(name)
 
             # Create idf_objects for schedule:day:hourly
             ep_day = self.idf.newidfobject(
@@ -917,16 +917,16 @@ class Schedule(object):
         # {'name_week': {'dayName':[]}}
         dict_week = {}
         count_week = 0
-        for unique_week in unique_weeks:
+        for count_week, unique_week in enumerate(unique_weeks):
             week_id = "w_" + self.Name + "_" + "%03d" % count_week
-            week_id, count_week = archetypal.check_unique_name(
-                "w",
-                count_week,
-                week_id,
-                archetypal.settings.unique_schedules,
-                suffix=True,
-            )
-            archetypal.settings.unique_schedules.append(week_id)
+            # week_id, count_week = archetypal.check_unique_name(
+            #     "w",
+            #     count_week,
+            #     week_id,
+            #     archetypal.settings.unique_schedules,
+            #     suffix=True,
+            # )
+            # archetypal.settings.unique_schedules.append(week_id)
 
             dict_week[week_id] = {}
             for i in list(range(0, 7)):

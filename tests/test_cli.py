@@ -308,6 +308,7 @@ class TestCli:
                 "tests/.temp/logs",
                 "--ep_version",
                 settings.ep_version,
+                "--verbose",
                 "reduce",
                 "-w",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_*.epw",

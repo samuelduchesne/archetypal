@@ -2902,7 +2902,6 @@ def _log_subprocess_output(pipe, name, verbose, progress):
     for line in pipe:
         linetxt = line.strip("\n")
         if verbose == "v":
-            progress.write(linetxt)
             logger = log(
                 linetxt,
                 level=lg.DEBUG,

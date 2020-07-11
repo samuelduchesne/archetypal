@@ -31,6 +31,8 @@ from typing import Union
 import numpy as np
 import pandas as pd
 import unicodedata
+from tqdm import tqdm
+
 from archetypal import settings, __version__
 from archetypal.settings import ep_version
 from packaging.version import Version, InvalidVersion
@@ -183,7 +185,7 @@ def log(
             .encode("ascii", errors="replace")
             .decode()
         )
-        print(message)
+        tqdm.write(message)
         sys.stdout = standard_out
 
         if level == lg.WARNING:

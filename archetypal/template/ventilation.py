@@ -710,7 +710,7 @@ def nominal_ventilation_aggregation(x):
         df = pd.DataFrame(how_dict, index=range(0, 1))  # range should always be
         # one since we are trying to merge zones
     except Exception as e:
-        print("{}".format(e))
+        log("{}".format(e))
     else:
         return df
 

@@ -171,7 +171,7 @@ class IDF(geomeppy.IDF):
         self._annual = annual
         self._prep_outputs = prep_outputs
         self._as_version = parse(as_version)
-        self._position = position
+        self._position = position or next(IDF._initial_postition)
 
         # Set dependants to None
         self._file_version = None

@@ -126,7 +126,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         Name = Construction.Name
         idf = Construction.theidf
         wc = cls(Name=Name, idf=idf, **kwargs)
-        wc.Layers = wc.layers()
+        wc.Layers = wc.layers(Construction, **kwargs)
         catdict = {1: "Single", 2: "Double", 3: "Triple", 4: "Quadruple"}
         wc.Category = catdict[
             len([lyr for lyr in wc.Layers if isinstance(lyr.Material, GlazingMaterial)])
@@ -153,14 +153,15 @@ class WindowConstruction(UmiBase, metaclass=Unique):
 
         return data_dict
 
-    def layers(self):
+    def layers(self, Construction, **kwargs):
         """Retrieve layers for the WindowConstruction"""
-        c = self.idf.getobject("CONSTRUCTION", self.Name)
         layers = []
-        for field in c.fieldnames:
+        for field in Construction.fieldnames:
             # Loop through the layers from the outside layer towards the
             # indoor layers and get the material they are made of.
-            material = c.get_referenced_object(field)
+            material = Construction.get_referenced_object(field) or kwargs.get(
+                "material", None
+            )
             if material:
                 # Create the WindowMaterial:Glazing or the WindowMaterial:Gas
                 # and append to the list of layers
@@ -205,6 +206,8 @@ class WindowConstruction(UmiBase, metaclass=Unique):
                     material_layer = MaterialLayer(
                         material_obj, glass_properties["Thickness"]
                     )
+                    layers.append(material_layer)
+                    break
                 else:
                     continue
 
@@ -369,7 +372,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Args:
             idf (IDF):
         """
-        idf.newidfobject(
+        material = idf.anidfobject(
             "WindowMaterial:SimpleGlazingSystem".upper(),
             Name="SimpleWindow:SINGLE PANE HW WINDOW",
             UFactor=2.703,
@@ -377,12 +380,12 @@ class WindowSetting(UmiBase, metaclass=Unique):
             Visible_Transmittance=0.786,
         )
 
-        constr = idf.newidfobject(
+        constr = idf.anidfobject(
             "CONSTRUCTION",
             Name="SINGLE PANE HW WINDOW",
             Outside_Layer="SimpleWindow:SINGLE PANE HW WINDOW",
         )
-        return cls.from_construction(Construction=constr)
+        return cls.from_construction(Construction=constr, material=material)
 
     @classmethod
     def from_construction(cls, Construction, **kwargs):
@@ -409,9 +412,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
             (windowSetting): The window setting object.
         """
         name = kwargs.pop("Name", Construction.Name + "_Window")
-        kwargs["Name"] = name
-        w = cls(idf=Construction.theidf, **kwargs)
-        w.Construction = WindowConstruction.from_epbunch(Construction)
+        w = cls(Name=name, idf=Construction.theidf, **kwargs)
+        w.Construction = WindowConstruction.from_epbunch(Construction, **kwargs)
         w.AfnWindowAvailability = UmiSchedule.constant_schedule(idf=w.idf)
         w.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(idf=w.idf)
         w.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(idf=w.idf)

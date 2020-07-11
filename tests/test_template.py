@@ -218,10 +218,7 @@ class TestWeekSchedule:
             idf=idf,
         )
         sch_d_off = ar.DaySchedule.from_values(
-            [0] * 24,
-            Category="Day",
-            schTypeLimitsName="Fractional",
-            Name="AlwaysOff",
+            [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff",
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
@@ -305,10 +302,7 @@ class TestYearSchedule:
             idf=idf,
         )
         sch_d_off = ar.DaySchedule.from_values(
-            [0] * 24,
-            Category="Day",
-            schTypeLimitsName="Fractional",
-            Name="AlwaysOff",
+            [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff",
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
@@ -1144,7 +1138,7 @@ class TestUmiSchedule:
         """
         from archetypal import UmiSchedule
 
-        const = UmiSchedule.constant_schedule()
+        const = UmiSchedule.constant_schedule(idf=idf)
         assert const.__class__.__name__ == "UmiSchedule"
         assert const.Name == "AlwaysOn"
 
@@ -1933,12 +1927,18 @@ class TestWindowSetting:
         f_surfs = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"]
         for f in f_surfs:
             constr = f.Construction_Name
-            idf.newidfobject("WindowMaterial:Shade".upper(), Visible_Transmittance=0.5,
-                             Name="Roll Shade")
-            idf.newidfobject("WindowShadingControl".upper(),
-                             Construction_with_Shading_Name=constr, Setpoint=14,
-                             Shading_Device_Material_Name="Roll Shade",
-                             Fenestration_Surface_1_Name="test_control")
+            idf.newidfobject(
+                "WindowMaterial:Shade".upper(),
+                Visible_Transmittance=0.5,
+                Name="Roll Shade",
+            )
+            idf.newidfobject(
+                "WindowShadingControl".upper(),
+                Construction_with_Shading_Name=constr,
+                Setpoint=14,
+                Shading_Device_Material_Name="Roll Shade",
+                Fenestration_Surface_1_Name="test_control",
+            )
             f.Name = "test_control"
             w = WindowSetting.from_surface(f)
             assert w
@@ -2648,10 +2648,7 @@ def test_create_umi_template(config, idf):
     )
     # Always off
     sch_d_off = ar.DaySchedule.from_values(
-        [0] * 24,
-        Category="Day",
-        schTypeLimitsName="Fractional",
-        Name="AlwaysOff",
+        [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff",
     )
     # DHW
     sch_d_dhw = ar.DaySchedule.from_values(

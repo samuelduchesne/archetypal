@@ -1649,7 +1649,7 @@ def makedict(self, dictfile, fnamefobject):
             # scream
             if node == "":
                 continue
-            print("this node -%s-is not present in base dictionary" % node)
+            log("this node -%s-is not present in base dictionary" % node)
 
     self.dt, self.dtls = dt, dtls
     return dt, dtls

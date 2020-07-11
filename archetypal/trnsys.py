@@ -926,25 +926,18 @@ def load_idf_file_and_clean_names(idf_file, log_clear_names):
     cache_filename = hash_model(idf_file)
     # Load IDF file(s)
     idf = IDF(idf_file, prep_outputs=False)
-    log(
-        "IDF files loaded in {:,.2f} seconds".format(time.time() - start_time),
-        lg.INFO,
-    )
+    log("IDF files loaded in {:,.2f} seconds".format(time.time() - start_time), lg.INFO)
     # Clean names of idf objects (e.g. 'MATERIAL')
     log("Cleaning names of the IDF objects...", lg.INFO)
     start_time = time.time()
     clear_name_idf_objects(idf, log_clear_names)
-    path = os.path.join(
-        settings.cache_folder, cache_filename, cache_filename + ".idf"
-    )
+    path = os.path.join(settings.cache_folder, cache_filename, cache_filename + ".idf")
     if not os.path.exists(os.path.dirname(path)):
         os.makedirs(os.path.dirname(path))
     idf.saveas(filename=path)
     # save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
     log(
-        "Cleaned IDF object names in {:,.2f} seconds".format(
-            time.time() - start_time
-        ),
+        "Cleaned IDF object names in {:,.2f} seconds".format(time.time() - start_time),
         lg.INFO,
     )
     return idf
@@ -1230,7 +1223,7 @@ def clear_name_idf_objects(idfFile, log_clear_names=False, **kwargs):
         "Here is the equivalence between the old names and the new "
         "ones." + "\n\n" + tabulate(d, headers="keys")
     )
-    log(log_msg, name=log_name, level=lg.INFO, avoid_console=log_clear_names)
+    log(log_msg, level=lg.INFO, name=log_name, avoid_console=log_clear_names)
 
 
 def zone_origin(zone_object):

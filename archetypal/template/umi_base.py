@@ -83,8 +83,6 @@ def clear_cache():
 
 
 class UmiBase(object):
-
-
     def __init__(
         self,
         Name,

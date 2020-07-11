@@ -505,8 +505,10 @@ class Zone(UmiBase):
             self.set_generic_internalmass()
         self.InternalMassExposedPerFloorArea = 0
         log(
-            f"While validating {self}, the required attribute 'InternalMassConstruction' was filled "
-            f"with {self.InternalMassConstruction} and the 'InternalMassExposedPerFloorArea' set to"
+            f"While validating {self}, the required attribute "
+            f"'InternalMassConstruction' was filled "
+            f"with {self.InternalMassConstruction} and the "
+            f"'InternalMassExposedPerFloorArea' set to"
             f" {self.InternalMassExposedPerFloorArea}"
         )
         return self

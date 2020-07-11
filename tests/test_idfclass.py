@@ -7,7 +7,8 @@ from archetypal import (
     get_eplus_dirs,
     settings,
     EnergyPlusVersionError,
-    EnergyPlusProcessError, parse,
+    EnergyPlusProcessError,
+    parse,
 )
 
 
@@ -30,8 +31,11 @@ class TestIDF:
     def natvent(self, config):
         """An old file that needs upgrade"""
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        yield IDF("tests/input_data/problematic/nat_ventilation_SAMPLE0.idf", epw=w,
-                  as_version="9-2-0")
+        yield IDF(
+            "tests/input_data/problematic/nat_ventilation_SAMPLE0.idf",
+            epw=w,
+            as_version="9-2-0",
+        )
 
     @pytest.fixture()
     def FiveZoneNightVent1(self):
@@ -46,8 +50,11 @@ class TestIDF:
     def natvent_v9_1_0(self, config):
         """An old file that needs upgrade"""
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        yield IDF("tests/input_data/problematic/nat_ventilation_SAMPLE0.idf", epw=w,
-                  as_version="9-1-0")
+        yield IDF(
+            "tests/input_data/problematic/nat_ventilation_SAMPLE0.idf",
+            epw=w,
+            as_version="9-1-0",
+        )
 
     @pytest.fixture()
     def wont_transition_correctly(self, config):
@@ -75,7 +82,7 @@ class TestIDF:
             "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         )
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf =  IDF(file, epw=wf, as_version="9.2.0")
+        idf = IDF(file, epw=wf, as_version="9.2.0")
         assert idf.idf_version == parse("9-2-0")
         assert idf.idd_version == (9, 2, 0)
         assert idf.file_version == parse("9-2-0")
@@ -86,7 +93,7 @@ class TestIDF:
             "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         )
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf =  IDF(file, epw=wf, as_version="9-2-0")
+        idf = IDF(file, epw=wf, as_version="9-2-0")
         assert idf.idf_version == parse("9-2-0")
         assert idf.idd_version == (9, 2, 0)
         assert idf.file_version == parse("9-2-0")
@@ -95,7 +102,6 @@ class TestIDF:
         assert natvent_v9_1_0.idf_version == parse("9-1-0")
         assert natvent_v9_1_0.idd_version == (9, 1, 0)
         assert natvent_v9_1_0.file_version == parse("9-1-0")
-
 
     def test_specific_version_error_simulate(self, config, natvent_v9_1_0):
         with pytest.raises(EnergyPlusVersionError):

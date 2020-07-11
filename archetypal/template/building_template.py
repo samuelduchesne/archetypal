@@ -239,6 +239,7 @@ class BuildingTemplate(UmiBase):
         name = kwargs.pop("Name", Path(idf.idfname).basename().splitext()[0])
         bt = cls(Name=name, idf=idf, **kwargs)
         position = kwargs.pop("position", None)
+        zone: EpBunch
         zones = [
             Zone.from_zone_epbunch(zone, sql=bt.sql)
             for zone in tqdm(
@@ -313,9 +314,8 @@ class BuildingTemplate(UmiBase):
             level=lg.DEBUG,
         )
         log(
-            'Completed model complexity reduction for BuildingTemplate "{}" in {:,.2f} seconds'.format(
-                self.Name, time.time() - start_time
-            )
+            'Completed model complexity reduction for BuildingTemplate "{}" in {:,'
+            ".2f} seconds".format(self.Name, time.time() - start_time)
         )
 
     def _graph_reduce(self, G):
@@ -355,7 +355,8 @@ class BuildingTemplate(UmiBase):
             )
 
             log(
-                'completed zone reduction for zone "{}" in building "{}" in {:,.2f} seconds'.format(
+                'completed zone reduction for zone "{}" in building "{}" in {:,'
+                ".2f} seconds".format(
                     bundle_zone.Name, self.Name, time.time() - start_time
                 )
             )
@@ -829,7 +830,7 @@ class ZoneGraph(networkx.Graph):
         except ImportError:
             raise ImportError("Matplotlib required for draw()")
         except RuntimeError:
-            print("Matplotlib unable to open display")
+            log("Matplotlib unable to open display", lg.WARNING)
             raise
         # fill kwargs
         kwargs["cmap"] = cmap

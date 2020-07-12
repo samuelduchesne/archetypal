@@ -1452,7 +1452,7 @@ class IDF(geomeppy.IDF):
                                 and fieldvalue not in used_schedules
                             ):
                                 used_schedules.append(fieldvalue)
-                        except KeyError:
+                        except (KeyError, AttributeError):
                             pass
         return used_schedules
 

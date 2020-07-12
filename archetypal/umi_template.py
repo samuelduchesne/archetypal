@@ -181,7 +181,8 @@ class UmiTemplateLibrary:
             )
         umi_template.BuildingTemplates = list(
             parallel_process(
-                in_dict, cls.prep_func, processors=processors, use_kwargs=True
+                in_dict, cls.prep_func, processors=processors, use_kwargs=True,
+                debug=True
             ).values()
         )
         return umi_template

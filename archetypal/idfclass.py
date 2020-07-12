@@ -1581,22 +1581,28 @@ class IDF(geomeppy.IDF):
                 )
             else:
                 cmd = [trans_exec[trans], idf_file]
-                try:
-                    process = subprocess.Popen(
-                        cmd,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        cwd=self.idfversionupdater_dir,
-                    )
+                with subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=self.idfversionupdater_dir,
+                ) as process:
                     process_output, error_output = process.communicate()
-                    log(process_output.decode("utf-8"), lg.DEBUG)
-                except CalledProcessError as exception:
                     log(
-                        "{} failed with error\n".format(
-                            idf_version_updater.__name__, str(exception)
-                        ),
-                        lg.ERROR,
+                        process_output.decode("utf-8"),
+                        level=lg.DEBUG,
+                        name="transition_" + self.name,
+                        filename="transition_" + self.name,
+                        log_dir=self.idfversionupdater_dir,
                     )
+                    if error_output:
+                        log(
+                            error_output.decode("utf-8"),
+                            level=lg.DEBUG,
+                            name="transition_" + self.name,
+                            filename="transition_" + self.name,
+                            log_dir=self.idfversionupdater_dir,
+                        )
 
 
 @extend_class(EpBunch)
@@ -2919,7 +2925,7 @@ def _log_subprocess_output(pipe, name, verbose, progress):
                 log_dir=os.getcwd(),
             )
 
-        if linetxt != "":
+        if linetxt != "" and progress is not None:
             progress.update()
     if logger:
         close_logger(logger)

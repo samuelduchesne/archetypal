@@ -335,15 +335,16 @@ class DaySchedule(UmiSchedule):
         return sched
 
     @classmethod
-    def from_values(cls, Values, **kwargs):
+    def from_values(cls, Values, idf, **kwargs):
         """Create a DaySchedule from an array of size (24,)
 
         Args:
             Values (array-like): A list of values of length 24.
+            idf (IDF): The idf model.
             **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
                 See :class:`UmiSchedule` for more details.
         """
-        sched = cls(**kwargs)
+        sched = cls(idf=idf, **kwargs)
         sched.values = Values
 
         return sched

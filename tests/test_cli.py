@@ -329,9 +329,14 @@ class TestCli:
 
         # First, modify file so that it breaks. We will removing the building object.
         idf = IDF(test_file)
-        bldg = idf.idfobjects["BUILDING"][0]
-        idf.removeidfobject(bldg)
-        idf.save()
+        try:
+            bldg = idf.idfobjects["BUILDING"][0]
+        except IndexError:
+            # Building object already removed if test is ran a second time
+            pass
+        else:
+            idf.removeidfobject(bldg)
+            idf.save()
 
         result = runner.invoke(
             cli,
@@ -355,7 +360,7 @@ class TestCli:
                 "-o",
                 "tests/.temp/retail.json",
             ],
-            catch_exceptions=False,
+            catch_exceptions=True,
         )
         print(result.stdout)
         # check an error file has been created

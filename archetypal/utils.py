@@ -1160,16 +1160,18 @@ def parallel_process(
     out = {}
     # Get the results from the futures.
     for key in futures:
-        try:
-            if processors > 1:
+        if processors > 1:
+            try:
                 out[futures[key]] = key.result()
-            else:
-                out[key] = futures[key]
-        except Exception as e:
-            if debug:
-                raise e
-            log(str(e), lg.ERROR)
-            out[futures[key]] = e
+            except Exception as e:
+                if debug:
+                    raise e
+                out[futures[key]] = e
+        else:
+            if isinstance(futures[key], Exception) and debug:
+                raise futures[key]
+            out[key] = futures[key]
+
     return out
 
 

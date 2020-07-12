@@ -108,7 +108,7 @@ class TestIDF:
             natvent_v9_1_0.simulate()
 
     def test_transition_error(self, config, wont_transition_correctly):
-        with pytest.raises(EnergyPlusProcessError):
+        with pytest.raises(EnergyPlusProcessError, EnergyPlusVersionError):
             assert wont_transition_correctly.simulate(ep_version="8.9.0")
 
     def test_sql(self, idf_model):

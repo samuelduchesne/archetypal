@@ -152,14 +152,13 @@ class TestDaySchedule:
 
         values = np.array(range(0, 24))
         kwargs = {
-            "$id": "66",
             "Category": "Day",
             "schTypeLimitsName": "Fraction",
-            "Comments": "default",
-            "DataSource": "default",
             "Name": "hourlyAllOn",
+            "Values": values,
+            "idf": idf
         }
-        sched = DaySchedule.from_values(values, idf, **kwargs)
+        sched = DaySchedule.from_values(**kwargs)
         assert len(sched.all_values) == 24.0
         assert repr(sched)
 
@@ -212,14 +211,14 @@ class TestWeekSchedule:
 
         # Creates 2 DaySchedules : 1 always ON and 1 always OFF
         sch_d_on = ar.DaySchedule.from_values(
-            [1] * 24,
+            Values=[1] * 24,
             Category="Day",
             schTypeLimitsName="Fractional",
             Name="AlwaysOn",
             idf=idf,
         )
         sch_d_off = ar.DaySchedule.from_values(
-            [0] * 24,
+            Values=[0] * 24,
             Category="Day",
             schTypeLimitsName="Fractional",
             Name="AlwaysOff",
@@ -300,14 +299,14 @@ class TestYearSchedule:
 
         # Creates 2 DaySchedules : 1 always ON and 1 always OFF
         sch_d_on = ar.DaySchedule.from_values(
-            [1] * 24,
+            Values=[1] * 24,
             Category="Day",
             schTypeLimitsName="Fractional",
             Name="AlwaysOn",
             idf=idf,
         )
         sch_d_off = ar.DaySchedule.from_values(
-            [0] * 24,
+            Values=[0] * 24,
             Category="Day",
             schTypeLimitsName="Fractional",
             Name="AlwaysOff",
@@ -2651,7 +2650,7 @@ class TestUmiTemplateLibrary:
         # Day schedules
         # Always on
         sch_d_on = ar.DaySchedule.from_values(
-            [1] * 24,
+            Values=[1] * 24,
             Category="Day",
             schTypeLimitsName="Fractional",
             Name="AlwaysOn",
@@ -2659,7 +2658,7 @@ class TestUmiTemplateLibrary:
         )
         # Always off
         sch_d_off = ar.DaySchedule.from_values(
-            [0] * 24,
+            Values=[0] * 24,
             Category="Day",
             schTypeLimitsName="Fractional",
             Name="AlwaysOff",
@@ -2667,7 +2666,7 @@ class TestUmiTemplateLibrary:
         )
         # DHW
         sch_d_dhw = ar.DaySchedule.from_values(
-            [0.3] * 24,
+            Values=[0.3] * 24,
             Category="Day",
             schTypeLimitsName="Fractional",
             Name="DHW",
@@ -2675,7 +2674,7 @@ class TestUmiTemplateLibrary:
         )
         # Internal gains
         sch_d_gains = ar.DaySchedule.from_values(
-            [0] * 6 + [0.5, 0.6, 0.7, 0.8, 0.9, 1] + [0.7] * 6 + [0.4] * 6,
+            Values=[0] * 6 + [0.5, 0.6, 0.7, 0.8, 0.9, 1] + [0.7] * 6 + [0.4] * 6,
             Category="Day",
             schTypeLimitsName="Fractional",
             Name="Gains",

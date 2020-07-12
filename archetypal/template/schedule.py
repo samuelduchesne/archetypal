@@ -386,15 +386,14 @@ class DaySchedule(UmiSchedule):
         return cls.from_dict(Type, **kwargs)
 
     @classmethod
-    def from_dict(cls, Type, **kwargs):
+    def from_dict(cls, Name, Values, Type, **kwargs):
         """Create a DaySchedule from a Umi Template json file.
 
         Args:
             Type (str): The schedule type limits name.
             **kwargs:
         """
-        values = kwargs.pop("Values")
-        sched = cls.from_values(values, schTypeLimitsName=Type, **kwargs)
+        sched = cls.from_values(Name=Name, Values=Values, Type=Type, **kwargs)
 
         return sched
 

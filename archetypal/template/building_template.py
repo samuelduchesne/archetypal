@@ -243,7 +243,9 @@ class BuildingTemplate(UmiBase):
         zones = [
             Zone.from_zone_epbunch(zone, sql=bt.sql)
             for zone in tqdm(
-                idf.idfobjects["ZONE"], desc=f"Zone Loop {name}", position=idf.position
+                idf.idfobjects["ZONE"],
+                desc=f"Zone Loop {name}",
+                position=idf.position
             )
         ]
         zone: Zone
@@ -454,7 +456,7 @@ class ZoneGraph(networkx.Graph):
         G = cls(name=idf.name)
 
         counter = 0
-        for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop", **kwargs):
+        for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop", position=idf.position, **kwargs):
             # initialize the adjacency report dictionary. default list.
             adj_report = defaultdict(list)
             zone_obj = None

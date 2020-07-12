@@ -139,7 +139,7 @@ class IDF(geomeppy.IDF):
         epmacro=True,
         keep_data=True,
         keep_data_err=False,
-        position=0,
+        position=None,
         **kwargs,
     ):
         """
@@ -171,7 +171,7 @@ class IDF(geomeppy.IDF):
         self._annual = annual
         self._prep_outputs = prep_outputs
         self._as_version = parse(as_version)
-        self._position = position or next(IDF._initial_postition)
+        self._position = position
 
         # Set dependants to None
         self._file_version = None
@@ -2865,7 +2865,7 @@ def _run_exec(
         cmd.extend([idf_path])
         position = kwargs.get("position", None)
         with tqdm(
-            unit_scale=True, miniters=1, desc=f"run_eplus={position}", position=position
+            unit_scale=True, miniters=1, desc=f"simulate #{position}-{Path(idf_path).basename()}", position=position
         ) as progress:
             with subprocess.Popen(
                 cmd,

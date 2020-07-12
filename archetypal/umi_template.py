@@ -149,7 +149,9 @@ class UmiTemplateLibrary:
         self.GlazingMaterials = GlazingMaterials
 
     @classmethod
-    def read_idf(cls, idf_files, weather, name="unnamed", parallel=True):
+    def read_idf(
+        cls, idf_files, weather, name="unnamed", processors=-1, as_version=None
+    ):
         """Initializes an UmiTemplateLibrary object from one or more idf_files.
 
         The resulting object contains the reduced version of the IDF files.
@@ -168,16 +170,16 @@ class UmiTemplateLibrary:
         umi_template.idf_files = [Path(idf) for idf in idf_files]
         umi_template.weather = Path(weather).expand()
 
-        # Run/Load IDF objects
-        if not parallel:
-            processors = 1
-        else:
-            processors = -1
         # if parallel is True, run eplus in parallel
         in_dict = {}
-        for idf_file in umi_template.idf_files:
+        for i, idf_file in enumerate(umi_template.idf_files):
             in_dict[idf_file] = dict(
-                idf_file=idf_file, epw=umi_template.weather, annual=True
+                idfname=idf_file,
+                epw=umi_template.weather,
+                annual=True,
+                as_version=as_version or settings.ep_version,
+                verbose="q",
+                position=i + 1,
             )
         umi_template.BuildingTemplates = list(
             parallel_process(
@@ -191,9 +193,9 @@ class UmiTemplateLibrary:
         return umi_template
 
     @staticmethod
-    def prep_func(idf_file, epw, **kwargs):
+    def prep_func(idfname, epw, **kwargs):
         annual = kwargs.pop("annual", False)
-        idf = IDF(idf_file, epw=epw, annual=annual, **kwargs)
+        idf = IDF(idfname, epw=epw, annual=annual, **kwargs)
         return BuildingTemplate.from_idf(idf, DataSource=idf.name)
 
     @classmethod

@@ -353,9 +353,9 @@ def convert(
 @click.option(
     "-p",
     "--parallel",
-    is_flag=True,
-    default=False,
-    help="Parallel process; each idf file on different cores",
+    "cores",
+    default=-1,
+    help="Specify number of cores to run in parallel",
 )
 @click.option(
     "-z",
@@ -364,7 +364,7 @@ def convert(
     default=False,
     help="Include all zones in the " "output template",
 )
-def reduce(idf, output, weather, parallel, all_zones):
+def reduce(idf, output, weather, cores, all_zones):
     """Convert EnergyPlus models to an Umi Template Library by using the model
     complexity reduction algorithm.
 
@@ -392,7 +392,7 @@ def reduce(idf, output, weather, parallel, all_zones):
     # Call UmiTemplateLibrary constructor with list of IDFs
     try:
         template = UmiTemplateLibrary.read_idf(
-            file_paths, weather=weather, name=name, parallel=parallel
+            file_paths, weather=weather, name=name, processors=cores
         )
     except EnergyPlusProcessError as e:
         log(e.write())

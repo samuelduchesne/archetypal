@@ -6,24 +6,21 @@ import pytest
 
 from archetypal import settings, get_eplus_dirs
 from archetypal.umi_template import UmiTemplateLibrary
+from tests.conftest import no_duplicates
 
 
 class TestUmiTemplate:
     """Test suite for the UmiTemplateLibrary class"""
 
-    @pytest.mark.xfail(reason="There is still an issue with the order of the keys")
     def test_template_to_template(self, config):
         """load the json into UmiTemplateLibrary object, then convert back to json and
         compare"""
-        import json
 
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
 
-        a = UmiTemplateLibrary.read_file(file).to_json(
-            settings.data_folder / "b.json", sort_keys=True, indent=False
-        )
+        a = UmiTemplateLibrary.read_file(file).to_dict()
         b = TestUmiTemplate.read_json(file)
-        assert a == json.dumps(b, sort_keys=True, indent=False)
+        assert a == b
 
     def test_umitemplate(self, config):
         """Test creating UmiTemplateLibrary from 2 IDF files"""
@@ -36,7 +33,8 @@ class TestUmiTemplate:
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         a = UmiTemplateLibrary.read_idf(idf_source, wf, name="Mixed_Files")
 
-        print(a.to_json())
+        data_dict = a.to_dict()
+        assert no_duplicates(data_dict)
 
     @pytest.mark.skipif(
         os.environ.get("CI", "False").lower() == "true",
@@ -52,7 +50,8 @@ class TestUmiTemplate:
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         a = UmiTemplateLibrary.read_idf(idf_source, wf, name="Mixed_Files")
 
-        print(a.to_json())
+        data_dict = a.to_dict()
+        assert no_duplicates(data_dict)
 
     @staticmethod
     def read_json(file):

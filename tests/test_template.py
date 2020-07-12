@@ -2266,7 +2266,7 @@ def climatestudio(config):
 
     from archetypal import BuildingTemplate
 
-    bt = BuildingTemplate.from_idf(idf, sql=idf.sql)
+    bt = BuildingTemplate.from_idf(idf)
     yield bt
 
 
@@ -2926,6 +2926,7 @@ class TestUmiTemplateLibrary:
         # Perimeter zone
         perim = ar.Zone(
             Name="Perim_zone",
+            idf=idf,
             Conditioning=zone_conditioning,
             Constructions=zone_constr_set_perim,
             DomesticHotWater=dhw_setting,
@@ -2933,11 +2934,11 @@ class TestUmiTemplateLibrary:
             Ventilation=vent_setting,
             Windows=window_setting,
             InternalMassConstruction=wall_int,
-            idf=idf,
         )
         # Core zone
         core = ar.Zone(
             Name="Core_zone",
+            idf=idf,
             Conditioning=zone_conditioning,
             Constructions=zone_constr_set_core,
             DomesticHotWater=dhw_setting,
@@ -2945,7 +2946,6 @@ class TestUmiTemplateLibrary:
             Ventilation=vent_setting,
             Windows=window_setting,
             InternalMassConstruction=wall_int,
-            idf=idf,
         )
         Zones = [perim, core]
         # endregion
@@ -2954,11 +2954,11 @@ class TestUmiTemplateLibrary:
 
         building_template = ar.BuildingTemplate(
             Name="Building_template_1",
+            idf=idf,
             Core=core,
             Perimeter=perim,
             Structure=struct_definition,
             Windows=window_setting,
-            idf=idf,
         )
         BuildingTemplates = [building_template]
         # endregion

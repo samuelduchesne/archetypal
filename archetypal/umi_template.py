@@ -181,8 +181,11 @@ class UmiTemplateLibrary:
             )
         umi_template.BuildingTemplates = list(
             parallel_process(
-                in_dict, cls.prep_func, processors=processors, use_kwargs=True,
-                debug=True
+                in_dict,
+                cls.prep_func,
+                processors=processors,
+                use_kwargs=True,
+                debug=True,
             ).values()
         )
         return umi_template
@@ -191,7 +194,7 @@ class UmiTemplateLibrary:
     def prep_func(idf_file, epw, **kwargs):
         annual = kwargs.pop("annual", False)
         idf = IDF(idf_file, epw=epw, annual=annual, **kwargs)
-        return BuildingTemplate.from_idf(idf, sql=idf.sql, DataSource=idf.name)
+        return BuildingTemplate.from_idf(idf, DataSource=idf.name)
 
     @classmethod
     def read_file(cls, filename, idf=None):

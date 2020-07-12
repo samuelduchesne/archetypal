@@ -317,7 +317,7 @@ class Zone(UmiBase):
         """run construction sets and return id"""
         set_name = "_".join([self.Name, "constructions"])
         self.Constructions = ZoneConstructionSet.from_idf(
-            Zone_Names=self.Zone_Names, sql=self.idf.sql, Name=set_name, idf=self.idf
+            Zone_Names=self.Zone_Names, Name=set_name, idf=self.idf
         )
 
     def _domestichotwater(self):
@@ -487,7 +487,7 @@ class Zone(UmiBase):
             ),
             Loads=self.Loads.combine(other.Loads, weights),
         )
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.idf.sql)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
         new_obj._volume = self.volume + other.volume
         new_obj._area = self.area + other.area
         new_attr["Conditioning"]._belongs_to_zone = new_obj

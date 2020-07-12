@@ -10,6 +10,7 @@ import logging as lg
 import math
 import random
 import re
+from itertools import chain
 
 import numpy as np
 
@@ -83,6 +84,40 @@ def clear_cache():
 
 
 class UmiBase(object):
+    # dependencies: dict of <dependant value: independant value>
+    _dependencies = {
+        "sql": ["idf"],
+    }
+    _independant_vars = set(chain(*list(_dependencies.values())))
+    _dependant_vars = set(_dependencies.keys())
+
+    def _reset_dependant_vars(self, name):
+        _reverse_dependencies = {}
+        for k, v in self._dependencies.items():
+            for x in v:
+                _reverse_dependencies.setdefault(x, []).append(k)
+        for var in _reverse_dependencies[name]:
+            super().__setattr__(f"_{var}", None)
+
+    def __setattr__(self, key, value):
+        propobj = getattr(self.__class__, key, None)
+        if isinstance(propobj, property):
+            if propobj.fset is None:
+                self.__set_on_dependencies(key.strip("_"), value)
+            else:
+                propobj.fset(self, value)
+                self.__set_on_dependencies(key, value)
+        else:
+            self.__set_on_dependencies(key, value)
+
+    def __set_on_dependencies(self, key, value):
+        if key in self._dependant_vars:
+            raise AttributeError("Cannot set this value.")
+        if key in self._independant_vars:
+            self._reset_dependant_vars(key)
+            key = f"_{key}"
+        super(UmiBase, self).__setattr__(key, value)
+
     def __init__(
         self,
         Name,
@@ -90,8 +125,7 @@ class UmiBase(object):
         Category="Uncategorized",
         Comments="",
         DataSource="",
-        sql=None,
-        **kwargs
+        **kwargs,
     ):
         """The UmiBase class handles common properties to all Template objects.
 
@@ -104,13 +138,12 @@ class UmiBase(object):
             DataSource (str): A description of the datasource of the object.
                 This helps identify from which data is the current object
                 created.
-            sql (dict of pandas.DataFrame):
             **kwargs:
         """
         super(UmiBase, self).__init__()
         self.Name = Name
-        self.idf = idf
-        self.sql = sql
+        self._idf = idf
+        self._sql = None
         self.Category = Category
         self.Comments = Comments
         if DataSource == "":
@@ -127,6 +160,16 @@ class UmiBase(object):
     def __str__(self):
         """string representation of the object as id:Name"""
         return ":".join([str(self.id), str(self.Name)])
+
+    @property
+    def idf(self):
+        return self._idf
+
+    @property
+    def sql(self):
+        if self._sql is None:
+            self._sql = self.idf.sql
+        return self._sql
 
     @property
     def predecessors(self):
@@ -328,7 +371,7 @@ class MaterialBase(UmiBase):
         SubstitutionRatePattern=None,
         Conductivity=2.4,
         Density=2400,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a MaterialBase object with parameters:
 

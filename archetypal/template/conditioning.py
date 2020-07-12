@@ -926,7 +926,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             MechVentSchedule=v,
         )
         # create a new object with the previous attributes
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.idf.sql)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 

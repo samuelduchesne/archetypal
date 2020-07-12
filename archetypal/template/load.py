@@ -365,7 +365,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             PeopleDensity=self._float_mean(other, "PeopleDensity", weights),
         )
 
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.idf.sql)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
         new_obj._belongs_to_zone = self._belongs_to_zone
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj

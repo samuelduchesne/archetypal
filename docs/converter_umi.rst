@@ -60,7 +60,7 @@ the AdultEducationCenter.idf model is used.
 
     >>> from archetypal import BuildingTemplate
     >>> template_obj = BuildingTemplate.from_idf(
-    >>>     idf, sql=idf.sql, DataSource=idf.name
+    >>>     idf, DataSource=idf.name
     >>> )
 
 3. Create an UmiTemplateLibrary Object and Save

@@ -10,9 +10,11 @@ import logging as lg
 from datetime import datetime, timedelta
 from itertools import groupby
 
-import archetypal
 import numpy as np
 import pandas as pd
+from eppy.bunch_subclass import EpBunch
+from numpy import ndarray
+
 from archetypal import log
 from archetypal.idfclass import IDF
 
@@ -24,7 +26,7 @@ class Schedule(object):
         self,
         Name,
         idf=None,
-        start_day_of_the_week=0,
+        start_day_of_the_week=None,
         strict=False,
         base_year=2018,
         schType=None,
@@ -35,9 +37,10 @@ class Schedule(object):
     ):
         """
         Args:
-            Name (str): The schedule name in the idf file
-            idf (IDF): IDF object
-            start_day_of_the_week (int): 0-based day of week (Monday=0)
+            Name (str): The schedule name in the idf model.
+            idf (IDF): The IDF model.
+            start_day_of_the_week (int): 0-based day of week (Monday=0). Default is
+                None which looks for the start day in the IDF model.
             strict (bool): if True, schedules that have the Field-Sets such as
                 Holidays and CustomDay will raise an error if they are absent
                 from the IDF file. If False, any missing qualifiers will be
@@ -45,8 +48,13 @@ class Schedule(object):
             base_year (int): The base year of the schedule. Defaults to 2018
                 since the first day of that year is a Monday.
             schType (str): The EnergyPlus schedule type. eg.: "Schedule:Year"
-            schTypeLimitsName:
-            values:
+            schTypeLimitsName (str): This field contains a reference to the
+                Schedule Type Limits object. If found in a list of Schedule Type
+                Limits (see above), then the restrictions from the referenced
+                object will be used to validate the current field values.
+            values (ndarray): A 24 or 8760 list of schedule values.
+            epbunch (EpBunch): An EpBunch object from which this schedule can
+                be created.
             **kwargs:
         """
         try:
@@ -81,14 +89,22 @@ class Schedule(object):
             )
 
     @classmethod
-    def from_values(cls, Name, values, **kwargs):
+    def from_values(cls, Name, values, idf, schTypeLimitsName="Fraction", **kwargs):
         """
         Args:
             Name:
             values:
+            idf:
+            schTypeLimitsName:
             **kwargs:
         """
-        return cls(Name=Name, values=values, **kwargs)
+        return cls(
+            Name=Name,
+            values=values,
+            schTypeLimitsName=schTypeLimitsName,
+            idf=idf,
+            **kwargs,
+        )
 
     @classmethod
     def constant_schedule(cls, hourly_value=1, Name="AlwaysOn", idf=None, **kwargs):
@@ -877,15 +893,9 @@ class Schedule(object):
 
         ep_days = []
         dict_day = {}
-        count_day = 0
         for count_day, unique_day in enumerate(unique_days):
             name = "d_" + self.Name + "_" + "%03d" % count_day
-            # name, count_day = archetypal.check_unique_name(
-            #     "d", count_day, name, archetypal.settings.unique_schedules, suffix=True
-            # )
             dict_day[name] = unique_day
-
-            # archetypal.settings.unique_schedules.append(name)
 
             # Create idf_objects for schedule:day:hourly
             ep_day = self.idf.newidfobject(
@@ -893,8 +903,8 @@ class Schedule(object):
                 **dict(
                     Name=name,
                     Schedule_Type_Limits_Name=self.schTypeLimitsName,
-                    **{"Hour_{}".format(i + 1): unique_day[i] for i in range(24)}
-                )
+                    **{"Hour_{}".format(i + 1): unique_day[i] for i in range(24)},
+                ),
             )
             ep_days.append(ep_day)
 
@@ -919,15 +929,6 @@ class Schedule(object):
         count_week = 0
         for count_week, unique_week in enumerate(unique_weeks):
             week_id = "w_" + self.Name + "_" + "%03d" % count_week
-            # week_id, count_week = archetypal.check_unique_name(
-            #     "w",
-            #     count_week,
-            #     week_id,
-            #     archetypal.settings.unique_schedules,
-            #     suffix=True,
-            # )
-            # archetypal.settings.unique_schedules.append(week_id)
-
             dict_week[week_id] = {}
             for i in list(range(0, 7)):
                 day_of_week = unique_week[..., i * 24 : (i + 1) * 24]
@@ -959,8 +960,8 @@ class Schedule(object):
                     SummerDesignDay_ScheduleDay_Name=dict_week[week_id]["day_1"],
                     WinterDesignDay_ScheduleDay_Name=dict_week[week_id]["day_1"],
                     CustomDay1_ScheduleDay_Name=dict_week[week_id]["day_2"],
-                    CustomDay2_ScheduleDay_Name=dict_week[week_id]["day_5"]
-                )
+                    CustomDay2_ScheduleDay_Name=dict_week[week_id]["day_5"],
+                ),
             )
             ep_weeks.append(ep_week)
 
@@ -1213,7 +1214,10 @@ class Schedule(object):
             start_day_of_week:
         """
         if start_day_of_week is None:
-            return self.idf.day_of_week_for_start_day
+            try:
+                return self.idf.day_of_week_for_start_day
+            except:
+                return 0
         else:
             return start_day_of_week
 

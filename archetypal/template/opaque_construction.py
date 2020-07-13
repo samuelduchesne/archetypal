@@ -105,7 +105,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash((self.__class__.__name__, self.Name))
 
     def __eq__(self, other):
         if not isinstance(other, OpaqueConstruction):

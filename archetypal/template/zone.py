@@ -106,7 +106,7 @@ class Zone(UmiBase):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.Name, id(self.idf)))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, Zone):

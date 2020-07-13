@@ -25,6 +25,7 @@ from math import isclose
 from sqlite3 import OperationalError
 from subprocess import CalledProcessError
 from tempfile import TemporaryDirectory
+from threading import Thread
 from typing import Any
 
 import eppy
@@ -78,6 +79,7 @@ class IDF(geomeppy.IDF):
         "block": ["iddname"],
         "model": ["iddname"],
         "sql": ["as_version", "annual", "design_day", "epw", "idfname"],
+        "sql_file": ["as_version", "annual", "design_day", "epw", "idfname"],
         "htm": ["as_version", "annual", "design_day", "epw", "idfname"],
         "schedules_dict": ["idfobjects"],
     }
@@ -155,6 +157,7 @@ class IDF(geomeppy.IDF):
             keep_original=True,
         """
         # Set independents to there original values
+        self._convert = False
         self._idfname = idfname
         self._epw = epw
         self._custom_processes = custom_processes
@@ -183,6 +186,7 @@ class IDF(geomeppy.IDF):
         self._block = None
         self._model = None
         self._sql = None
+        self._sql_file = None
         self._htm = None
         self._original_ep_version = None
         self._schedules_dict = None
@@ -380,11 +384,15 @@ class IDF(geomeppy.IDF):
 
     @property
     def epw(self):
-        return self._epw
+        return Path(self._epw).expand()
 
     @epw.setter
     def epw(self, value):
         self._epw = Path(value).expand()
+
+    @property
+    def convert(self):
+        return self._convert
 
     @property
     def iddname(self):
@@ -569,12 +577,13 @@ class IDF(geomeppy.IDF):
     @property
     def sql_file(self):
         """Get the sql file path"""
-        try:
-            files = self.simulation_dir.files("*out.sql")
-        except FileNotFoundError:
-            return self.simulate().sql_file
-        else:
-            return files[0].expand()
+        if self._sql_file is None:
+            try:
+                files = self.simulation_dir.files("*out.sql")
+            except FileNotFoundError:
+                files = self.simulate().simulation_dir.files("*out.sql")
+            self._sql_file = files[0].expand()
+        return self._sql_file
 
     @property
     def area_conditioned(self):
@@ -753,65 +762,15 @@ class IDF(geomeppy.IDF):
                 f"epw='weather.epw')"
             )
 
-        # run the EnergyPlus Simulation
-        with TempDir(
-            prefix="eplus_run_", suffix=self.output_prefix, dir=self.output_directory,
-        ) as tmp:
-            log(f"temporary dir ({Path(tmp).expand()}) created")
-            if include:
-                [file.copy(tmp) for file in include]
-            try:
-                tmp_file = Path(self.savecopy(tmp / self.name))
-            except FileNotFoundError as e:
-                log(
-                    f"Something wrong with the file name. Replaced '"
-                    f"{self.idfname}'with 'idf_model.idf'"
-                )
-                tmp_file = Path(self.savecopy(tmp / "idf_model.idf"))
-
-            runargs = {
-                "tmp": tmp,
-                "eplus_file": tmp_file,
-                "weather": Path(self.epw).copy(tmp),
-                "output_directory": self.output_directory,
-                "annual": self.annual,
-                "design_day": self.design_day,
-                "idd": Path(self.iddname).copy(tmp),
-                "epmacro": self.epmacro,
-                "expandobjects": self.expandobjects,
-                "readvars": self.readvars,
-                "output_prefix": self.output_prefix,
-                "output_suffix": self.output_suffix,
-                "version": False,
-                "verbose": self.verbose,
-                "ep_version": self.as_version.dash,  # must be "ep_version"
-                "keep_data_err": self.keep_data_err,
-                "include": self.include,
-                "custom_processes": self.custom_processes,
-                "position": self.position,
-            }
-
-            try:
-                _run_exec(**runargs)
-            except (
-                EnergyPlusProcessError,
-                CalledProcessError,
-                EnergyPlusVersionError,
-            ) as e:
-                log(str(e), lg.ERROR)
-                raise e
-            except Exception as e:
-                log(str(e), lg.ERROR)
-                raise e
-            else:
-                log(
-                    "EnergyPlus Completed in {:,.2f} seconds".format(
-                        time.time() - start_time
-                    ),
-                    name=self.name,
-                )
-
-                self._set_cached_results(runargs, tmp, tmp_file)
+        self.running_simulation_thread = EnergyPlusThread(self)
+        try:
+            self.running_simulation_thread.start()
+        except Exception as e:
+            # Catch any exception and stop the Thread.
+            self.running_simulation_thread.stop()
+        else:
+            # Wait for process to complete
+            self.running_simulation_thread.join()
         return self
 
     def savecopy(self, filename, lineendings="default", encoding="latin-1"):
@@ -1510,22 +1469,6 @@ class IDF(geomeppy.IDF):
         fieldname = [item for item in theobject.objls if item.endswith("Name")][0]
         theobject[fieldname] = newname
         return theobject
-
-    def _set_cached_results(self, runargs, tmp, tmp_file):
-        save_dir = self.simulation_dir
-        if self.keep_data:
-            save_dir.rmtree_p()  # purge target dir
-            tmp.copytree(save_dir)  # copy files
-
-            log(
-                "Files generated at the end of the simulation: %s"
-                % "\n".join(save_dir.files()),
-                lg.DEBUG,
-                name=self.name,
-            )
-
-            # save runargs
-            # cache_runargs(tmp_file, runargs.copy())
 
     def _energy_series(
         self,
@@ -2760,6 +2703,240 @@ def _process_csv(file, working_dir, simulname):
         return df
 
 
+class Slab(Thread):
+    pass
+
+
+class EnergyPlusExe:
+    """Usage: energyplus [options] [input-file]"""
+
+    def __init__(
+        self,
+        idfname,
+        epw,
+        output_directory,
+        ep_version,
+        annual=False,
+        convert=False,
+        design_day=False,
+        help=False,
+        idd=None,
+        epmacro=True,
+        output_prefix="eplus",
+        readvars=True,
+        output_sufix="L",
+        version=False,
+        expandobjects=True,
+    ):
+        """
+        Args:
+            annual (bool): Force annual simulation. (default: False)
+            convert (bool): Output IDF->epJSON or epJSON->IDF, dependent on  input
+                file type. (default: False)
+            output-directory (str): Output directory path (default: current directory)
+            ep_version (EnergyPlusVersion): The version of energyplus executable.
+            design-day (bool): Force design-day-only simulation. (default: False)
+            help (bool): Display help information
+            idd (str) :Input data dictionary path (default: Energy+.idd in executable directory)
+            epmacro (bool): Run EPMacro prior to simulation. (default: True)
+            output-prefix (str): Prefix for output file names (default: eplus)
+            readvars (bool): Run ReadVarsESO after simulation. (default: True)
+            output-suffix (str): Suffix style for output file names (default: L)
+                -L: Legacy (e.g., eplustbl.csv)
+                -C: Capital (e.g., eplusTable.csv)
+                -D: Dash (e.g., eplus-table.csv)
+            version (bool): Display version information (default: False)
+            epw (str): Weather file path (default: in.epw in current directory))
+            expandobjects (bool): Run ExpandObjects prior to simulation. (default:
+                True)
+        """
+        self.a = annual
+        self.c = convert
+        self.d = output_directory
+        self.D = design_day
+        self.h = help
+        self.i = idd
+        self.m = epmacro
+        self.p = output_prefix
+        self.r = readvars
+        self.s = output_sufix
+        self.v = version
+        self.w = epw
+        self.x = expandobjects
+
+        self.idfname = idfname
+        self.ep_version = ep_version
+
+        self.get_exe_path()
+
+    def get_exe_path(self):
+        (eplus_exe_path, eplus_weather_path,) = eppy.runner.run_functions.install_paths(
+            self.ep_version.dash, self.i
+        )
+        if not Path(eplus_exe_path).exists():
+            raise EnergyPlusVersionError(
+                msg=f"No EnergyPlus Executable found for version "
+                f"{parse(self.ep_version)}"
+            )
+        self.eplus_exe_path = Path(eplus_exe_path).expand()
+        self.eplus_weather_path = Path(eplus_weather_path).expand()
+
+    def __str__(self):
+        return " ".join(self.__repr__())
+
+    def __repr__(self):
+        cmd = [self.eplus_exe_path]
+        for key, value in self.__dict__.items():
+            if key not in [
+                "idfname",
+                "ep_version",
+                "eplus_exe_path",
+                "eplus_weather_path",
+            ]:
+                if isinstance(value, bool):
+                    cmd.append(f"-{key}") if value else None
+                else:
+                    cmd.extend([f"-{key}", value])
+        cmd.append(self.idfname)
+        return cmd
+
+    def cmd(self):
+        return self.__repr__()
+
+
+class EnergyPlusThread(Thread):
+    def __init__(self, idf):
+        """
+
+        Args:
+            idf (IDF):
+        """
+        self.p = None
+        self.std_out = None
+        self.std_err = None
+        self.idf = idf
+        self.cancelled = False
+        self.run_dir = Path("")
+        Thread.__init__(self)
+
+    def stop(self):
+        if self.p.poll() is None:
+            self.msg_callback("Attempting to cancel simulation ...")
+            self.cancelled = True
+            self.p.kill()
+
+    def run(self):
+        """Wrapper around the EnergyPlus command line interface.
+
+        Adapted from :func:`eppy.runner.runfunctions.run`.
+        """
+        self.cancelled = False
+        # get version from IDF object or by parsing the IDF file for it
+
+        with TempDir(
+            prefix="eplus_run_",
+            suffix=self.idf.output_prefix,
+            dir=self.idf.output_directory,
+        ) as tmp:
+            self.epw = self.idf.epw.copy(tmp).expand()
+            self.idfname = Path(self.idf.savecopy(tmp / self.idf.name)).expand()
+            self.idd = self.idf.iddname.copy(tmp).expand()
+            self.run_dir = Path(tmp).expand()
+            # build a list of command line arguments
+            self.cmd = EnergyPlusExe(
+                idfname=self.idfname,
+                epw=self.epw,
+                output_directory=self.run_dir,
+                ep_version=self.idf.as_version,
+                annual=self.idf.annual,
+                convert=self.idf.convert,
+                design_day=self.idf.design_day,
+                help=False,
+                idd=self.idd,
+                epmacro=self.idf.epmacro,
+                output_prefix=self.idf.output_prefix,
+                readvars=self.idf.readvars,
+                output_sufix=self.idf.output_suffix,
+                version=False,
+                expandobjects=self.idf.expandobjects,
+            ).cmd()
+            position = self.idf.position
+            with tqdm(
+                unit_scale=True,
+                miniters=1,
+                desc=f"simulate #{position}-{self.idf.name}",
+                position=position,
+            ) as progress:
+                self.p = subprocess.Popen(
+                    self.cmd,
+                    shell=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                start_time = time.time()
+                self.msg_callback("Simulation started")
+                for line in self.p.stdout:
+                    self.msg_callback(line.decode("utf-8"))
+                    progress.update()
+
+                # We explicitly close stdout
+                self.p.stdout.close()
+
+                self.p.wait()
+
+                # self.std_out, self.std_err = self.p.communicate()
+                if self.cancelled:
+                    self.msg_callback("Simulation cancelled")
+                    self.cancelled_callback(self.std_out, self.std_err)
+                else:
+                    if self.p.returncode == 0:
+                        self.msg_callback(
+                            "EnergyPlus Completed in {:,.2f} seconds".format(
+                                time.time() - start_time
+                            )
+                        )
+                        self.success_callback()
+                    else:
+                        self.msg_callback("Simulation failed")
+                        self.failure_callback()
+
+    def msg_callback(self, *args, **kwargs):
+        log(*args, **kwargs)
+
+    def success_callback(self):
+        save_dir = self.idf.simulation_dir
+        if self.idf.keep_data:
+            save_dir.rmtree_p()  # purge target dir
+            self.run_dir.copytree(save_dir)  # copy files
+
+            log(
+                "Files generated at the end of the simulation: %s"
+                % "\n".join(save_dir.files()),
+                lg.DEBUG,
+                name=self.name,
+            )
+
+    def failure_callback(self):
+        error_filename = self.idf.output_prefix + "out.err"
+        try:
+            with open(error_filename, "r") as stderr:
+                stderr_r = stderr.read()
+            if self.idf.keep_data_err:
+                failed_dir = self.idf.output_directory / "failed"
+                failed_dir.mkdir_p()
+                self.run_dir.copytree(failed_dir / self.idf.output_prefix)
+            raise EnergyPlusProcessError(
+                cmd=self.cmd, stderr=stderr_r, idf=self.idf.name,
+            )
+        except FileNotFoundError:
+            raise CalledProcessError(
+                self.p.returncode, cmd=self.cmd, stderr=self.p.stderr
+            )
+
+    def cancelled_callback(self, stdin, stdout):
+        pass
+
+
 def _run_exec(
     tmp,
     eplus_file,
@@ -2865,7 +3042,10 @@ def _run_exec(
         cmd.extend([idf_path])
         position = kwargs.get("position", None)
         with tqdm(
-            unit_scale=True, miniters=1, desc=f"simulate #{position}-{Path(idf_path).basename()}", position=position
+            unit_scale=True,
+            miniters=1,
+            desc=f"simulate #{position}-{Path(idf_path).basename()}",
+            position=position,
         ) as progress:
             with subprocess.Popen(
                 cmd,

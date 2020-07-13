@@ -156,7 +156,7 @@ class TestDaySchedule:
             "schTypeLimitsName": "Fraction",
             "Name": "hourlyAllOn",
             "Values": values,
-            "idf": idf
+            "idf": idf,
         }
         sched = DaySchedule.from_values(**kwargs)
         assert len(sched.all_values) == 24.0
@@ -2269,14 +2269,22 @@ def climatestudio(config):
     yield bt
 
 
+@pytest.fixture(scope="session")
+def sf_cz5a(config):
+    """A building template fixture from a climate studio idf file used in subsequent
+    tests"""
+    file = "tests/input_data/problematic/SF+CZ5A+USA_IL_Chicago-OHare.Intl.AP.725300+oilfurnace+slab+IECC_2012.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    idf = IDF(file, epw=w, annual=True)
+
+    from archetypal import BuildingTemplate
+
+    bt = BuildingTemplate.from_idf(idf)
+    yield bt
+
+
 class TestBuildingTemplate:
     """Various tests with the :class:`BuildingTemplate` class"""
-
-    def test_climatestudio(self, climatestudio):
-        template_json = ar.UmiTemplateLibrary(
-            name="my_umi_template", BuildingTemplates=[climatestudio]
-        ).to_json(all_zones=True)
-        print(template_json)
 
     def test_viewbuilding(self, bt):
         """test the visualization of a building
@@ -2990,3 +2998,19 @@ class TestUmiTemplateLibrary:
     def test_manual_template_library(self, manual_umitemplate_library):
         assert no_duplicates(manual_umitemplate_library, attribute="Name")
         assert no_duplicates(manual_umitemplate_library, attribute="$id")
+
+    def test_climatestudio(self, climatestudio):
+        template_json = ar.UmiTemplateLibrary(
+            name="my_umi_template", BuildingTemplates=[climatestudio]
+        ).to_json(all_zones=True)
+        print(template_json)
+
+    def test_sf_cz5a(self, config):
+        file = "tests/input_data/problematic/SF+CZ5A+USA_IL_Chicago-OHare.Intl.AP" \
+               ".725300+oilfurnace+slab+IECC_2012.idf"
+        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        template = ar.UmiTemplateLibrary.read_idf(
+            name="my_umi_template", idf_files=[file], as_version="8-7-0", weather=w
+        ).to_dict()
+        assert no_duplicates(template, attribute="Name")
+        assert no_duplicates(template, attribute="$id")

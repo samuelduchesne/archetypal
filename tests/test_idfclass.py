@@ -1,3 +1,5 @@
+from subprocess import CalledProcessError
+
 import pytest
 from path import Path
 
@@ -108,7 +110,9 @@ class TestIDF:
             natvent_v9_1_0.simulate()
 
     def test_transition_error(self, config, wont_transition_correctly):
-        with pytest.raises(EnergyPlusProcessError, EnergyPlusVersionError):
+        with pytest.raises(
+            (EnergyPlusProcessError, EnergyPlusVersionError, CalledProcessError)
+        ):
             assert wont_transition_correctly.simulate(ep_version="8.9.0")
 
     def test_sql(self, idf_model):

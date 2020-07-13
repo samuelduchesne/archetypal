@@ -762,15 +762,12 @@ class IDF(geomeppy.IDF):
                 f"epw='weather.epw')"
             )
 
-        self.running_simulation_thread = EnergyPlusThread(self)
-        try:
-            self.running_simulation_thread.start()
-        except Exception as e:
-            # Catch any exception and stop the Thread.
-            self.running_simulation_thread.stop()
-        else:
-            # Wait for process to complete
-            self.running_simulation_thread.join()
+        self._running_simulation_thread = EnergyPlusThread(self)
+        self._running_simulation_thread.start()
+        self._running_simulation_thread.join()
+        e = self._running_simulation_thread.exception
+        if e:
+            raise e
         return self
 
     def savecopy(self, filename, lineendings="default", encoding="latin-1"):
@@ -2811,13 +2808,14 @@ class EnergyPlusThread(Thread):
         Args:
             idf (IDF):
         """
+        super(EnergyPlusThread, self).__init__()
         self.p = None
         self.std_out = None
         self.std_err = None
         self.idf = idf
         self.cancelled = False
         self.run_dir = Path("")
-        Thread.__init__(self)
+        self.exception = None
 
     def stop(self):
         if self.p.poll() is None:
@@ -2843,29 +2841,34 @@ class EnergyPlusThread(Thread):
             self.idd = self.idf.iddname.copy(tmp).expand()
             self.run_dir = Path(tmp).expand()
             # build a list of command line arguments
-            self.cmd = EnergyPlusExe(
-                idfname=self.idfname,
-                epw=self.epw,
-                output_directory=self.run_dir,
-                ep_version=self.idf.as_version,
-                annual=self.idf.annual,
-                convert=self.idf.convert,
-                design_day=self.idf.design_day,
-                help=False,
-                idd=self.idd,
-                epmacro=self.idf.epmacro,
-                output_prefix=self.idf.output_prefix,
-                readvars=self.idf.readvars,
-                output_sufix=self.idf.output_suffix,
-                version=False,
-                expandobjects=self.idf.expandobjects,
-            ).cmd()
-            position = self.idf.position
+            try:
+                self.cmd = EnergyPlusExe(
+                    idfname=self.idfname,
+                    epw=self.epw,
+                    output_directory=self.run_dir,
+                    ep_version=self.idf.as_version,
+                    annual=self.idf.annual,
+                    convert=self.idf.convert,
+                    design_day=self.idf.design_day,
+                    help=False,
+                    idd=self.idd,
+                    epmacro=self.idf.epmacro,
+                    output_prefix=self.idf.output_prefix,
+                    readvars=self.idf.readvars,
+                    output_sufix=self.idf.output_suffix,
+                    version=False,
+                    expandobjects=self.idf.expandobjects,
+                ).cmd()
+            except EnergyPlusVersionError as e:
+                self.exception = e
+                return
+
+            # Start process with tqdm bar
             with tqdm(
                 unit_scale=True,
                 miniters=1,
-                desc=f"simulate #{position}-{self.idf.name}",
-                position=position,
+                desc=f"simulate #{self.idf.position}-{self.idf.name}",
+                position=self.idf.position,
             ) as progress:
                 self.p = subprocess.Popen(
                     self.cmd,
@@ -2882,9 +2885,10 @@ class EnergyPlusThread(Thread):
                 # We explicitly close stdout
                 self.p.stdout.close()
 
+                # Wait for process to complete
                 self.p.wait()
 
-                # self.std_out, self.std_err = self.p.communicate()
+                # Communicate callbacks
                 if self.cancelled:
                     self.msg_callback("Simulation cancelled")
                     self.cancelled_callback(self.std_out, self.std_err)
@@ -2925,11 +2929,11 @@ class EnergyPlusThread(Thread):
                 failed_dir = self.idf.output_directory / "failed"
                 failed_dir.mkdir_p()
                 self.run_dir.copytree(failed_dir / self.idf.output_prefix)
-            raise EnergyPlusProcessError(
+            self.exception = EnergyPlusProcessError(
                 cmd=self.cmd, stderr=stderr_r, idf=self.idf.name,
             )
         except FileNotFoundError:
-            raise CalledProcessError(
+            self.exception = CalledProcessError(
                 self.p.returncode, cmd=self.cmd, stderr=self.p.stderr
             )
 

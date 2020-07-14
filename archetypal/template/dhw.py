@@ -308,16 +308,16 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         """
         water_schds = collections.defaultdict(dict)
         for obj in dhw_objs:
-            water_schd_name = UmiSchedule(
+            water_schd = UmiSchedule(
                 Name=obj.Flow_Rate_Fraction_Schedule_Name, idf=zone.idf
             )
-            water_schds[water_schd_name.Name]["schedule"] = water_schd_name
-            water_schds[water_schd_name.Name]["quantity"] = obj.Peak_Flow_Rate
+            water_schds[water_schd.Name]["schedule"] = water_schd
+            water_schd.quantity = obj.Peak_Flow_Rate
         return reduce(
             UmiSchedule.combine,
             [v["schedule"] for k, v in water_schds.items()],
             weights=None,
-            quantity={k: v["quantity"] for k, v in water_schds.items()},
+            quantity=lambda x: sum(obj.quantity for obj in x),
         )
 
     @classmethod

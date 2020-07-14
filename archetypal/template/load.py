@@ -220,11 +220,13 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             for sched, design in zip(sched_indexes, design_index):
                 sched_name = zone.idf.sql["Schedules"]["ScheduleName"][sched]
                 schedule = UmiSchedule(Name=sched_name, idf=zone.idf)
-                schedule.combine_weight = nominal_elec["DesignLevel"][design]
+                schedule.quantity = nominal_elec["DesignLevel"][design]
                 list_sched.append(schedule)
 
             EquipmentAvailabilitySchedule = reduce(
-                UmiSchedule.combine, list_sched, weights="combine_weight"
+                UmiSchedule.combine,
+                list_sched,
+                quantity=lambda x: sum(obj.quantity for obj in x),
             )
         # Verifies if Lights in zone
         if zone.idf.sql["NominalLighting"][

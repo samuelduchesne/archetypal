@@ -116,7 +116,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             other (UmiSchedule): The other Schedule object to combine with.
             weights (list): Attribute of self and other containing the weight
                 factor.
-            quantity (list or dict): Scalar value that will be multiplied by
+            quantity (list, dict or callable): Scalar value that will be multiplied by
                 self before the averaging occurs. This ensures that the
                 resulting schedule returns the correct integrated value. If a
                 dict is passed, keys are schedules Names and values are
@@ -161,6 +161,16 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                 [
                     self.all_values * quantity[self.Name],
                     other.all_values * quantity[other.Name],
+                ],
+                axis=0,
+                weights=weights,
+            )
+            new_values /= new_values.max()
+        elif callable(quantity):
+            new_values = np.average(
+                [
+                    self.all_values * quantity(self.predecessors.data),
+                    other.all_values * quantity(other.predecessors.data),
                 ],
                 axis=0,
                 weights=weights,
@@ -516,7 +526,7 @@ class WeekSchedule(UmiSchedule):
             week_day_schedule_name = epbunch["{}_ScheduleDay_Name".format(day)]
             blocks.append(
                 self.all_objects[
-                    hash(("DaySchedule", week_day_schedule_name, self.DataSource))
+                    hash(("DaySchedule", week_day_schedule_name))
                 ]
             )
 
@@ -662,7 +672,7 @@ class YearSchedule(UmiSchedule):
                     ToDay,
                     ToMonth,
                     self.all_objects[
-                        hash(("WeekSchedule", week_day_schedule_name, self.DataSource))
+                        hash(("WeekSchedule", week_day_schedule_name))
                     ],
                 )
             )

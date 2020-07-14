@@ -39,6 +39,7 @@ from eppy.bunch_subclass import BadEPFieldError
 from eppy.easyopen import getiddfile
 from eppy.idfreader import iddversiontuple
 from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
+from eppy.runner.run_functions import paths_from_version
 from geomeppy.patches import EpBunch, idfreader1, obj2bunch
 from pandas.errors import ParserError
 from path import Path, TempDir
@@ -157,6 +158,8 @@ class IDF(geomeppy.IDF):
             keep_original=True,
         """
         # Set independents to there original values
+        if include is None:
+            include = []
         self._convert = False
         self._idfname = idfname
         self._epw = epw
@@ -384,7 +387,8 @@ class IDF(geomeppy.IDF):
 
     @property
     def epw(self):
-        return Path(self._epw).expand()
+        if self._epw is not None:
+            return Path(self._epw).expand()
 
     @epw.setter
     def epw(self, value):
@@ -762,6 +766,20 @@ class IDF(geomeppy.IDF):
                 f"epw='weather.epw')"
             )
 
+        self._expandobjects_thread = ExpandObjectsThread(self)
+        self._expandobjects_thread.start()
+        self._expandobjects_thread.join()
+        e = self._expandobjects_thread.exception
+        if e:
+            raise e
+
+        self._slab_thread = SlabThread(self)
+        self._slab_thread.start()
+        self._slab_thread.join()
+        e = self._slab_thread.exception
+        if e:
+            raise e
+
         self._running_simulation_thread = EnergyPlusThread(self)
         self._running_simulation_thread.start()
         self._running_simulation_thread.join()
@@ -1005,12 +1023,15 @@ class IDF(geomeppy.IDF):
                         surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
                         total_wall_area[surf_azim] += surface.area * multiplier
                 for subsurface in surface.subsurfaces:
-                    if isclose(subsurface.tilt, 90, abs_tol=10):
-                        if subsurface.Surface_Type.lower() == "window":
-                            surf_azim = roundto(
-                                subsurface.azimuth, to=azimuth_threshold
-                            )
-                            total_window_area[surf_azim] += subsurface.area * multiplier
+                    if hasattr(subsurface, "tilt"):
+                        if isclose(subsurface.tilt, 90, abs_tol=10):
+                            if subsurface.Surface_Type.lower() == "window":
+                                surf_azim = roundto(
+                                    subsurface.azimuth, to=azimuth_threshold
+                                )
+                                total_window_area[surf_azim] += (
+                                    subsurface.area * multiplier
+                                )
         # Fix azimuth = 360 which is the same as azimuth 0
         total_wall_area[0] += total_wall_area.pop(360, 0)
         total_window_area[0] += total_window_area.pop(360, 0)
@@ -2700,8 +2721,49 @@ def _process_csv(file, working_dir, simulname):
         return df
 
 
-class Slab(Thread):
-    pass
+class EnergyPlusProgram:
+    def __init__(self, idf):
+        self.idf = None
+
+    @property
+    def eplus_home(self):
+        eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
+        if not Path(eplus_home).exists():
+            raise EnergyPlusVersionError(
+                msg=f"No EnergyPlus Executable found for version "
+                f"{parse(self.idf.as_version)}"
+            )
+        else:
+            return Path(eplus_home)
+
+
+class ExpandObjectsExe(EnergyPlusProgram):
+    def __init__(self, idf):
+        super().__init__(idf)
+
+    @property
+    def expandobjs_dir(self):
+        return self.eplus_home
+
+    @property
+    def cmd(self):
+        return ["ExpandObjects"]
+
+
+class SlabExe(EnergyPlusProgram):
+    def __init__(self, idf):
+        super().__init__(idf)
+
+        self.slab_idf = Path(self.idf.savecopy(self.slabdir / "GHTIn.idf")).expand()
+        self.slabepw = self.idf.epw.copy(self.slabdir / "in.epw").expand()
+
+    @property
+    def cmd(self):
+        return ["Slab"]
+
+    @property
+    def slabdir(self):
+        return self.eplus_home / "PreProcess" / "GrndTempCalc"
 
 
 class EnergyPlusExe:
@@ -2801,6 +2863,245 @@ class EnergyPlusExe:
         return self.__repr__()
 
 
+class ExpandObjectsThread(Thread):
+    def __init__(self, idf):
+        """
+
+        Args:
+            idf (IDF):
+        """
+        super(ExpandObjectsThread, self).__init__()
+        self.p = None
+        self.std_out = None
+        self.std_err = None
+        self.idf = idf
+        self.cancelled = False
+        self.run_dir = Path("")
+        self.exception = None
+
+    def run(self):
+        """Wrapper around the EnergyPlus command line interface.
+
+        Adapted from :func:`eppy.runner.runfunctions.run`.
+        """
+        self.cancelled = False
+        # get version from IDF object or by parsing the IDF file for it
+
+        with TempDir(
+            prefix="expandobjects_run_",
+            suffix=self.idf.output_prefix,
+            dir=self.idf.output_directory,
+        ) as tmp:
+            self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
+            self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
+            self.idd = self.idf.iddname.copy(tmp / "Energy+.idd").expand()
+            self.expandobjectsexe = (self.eplus_home / "ExpandObjects.exe").copy(tmp)
+            self.run_dir = Path(tmp).expand()
+
+            # Run ExpandObjects Program
+            self.cmd = [self.expandobjectsexe.stem]
+            with tqdm(
+                unit_scale=True,
+                miniters=1,
+                desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
+                position=self.idf.position,
+            ) as progress:
+                self.p = subprocess.Popen(
+                    self.cmd,
+                    cwd=self.run_dir,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+
+                start_time = time.time()
+                self.msg_callback("RunSlab started")
+                for line in self.p.stdout:
+                    self.msg_callback(line.decode("utf-8"))
+                    progress.update()
+
+                # We explicitly close stdout
+                self.p.stdout.close()
+
+                # Wait for process to complete
+                self.p.wait()
+
+                # Communicate callbacks
+                if self.cancelled:
+                    self.msg_callback("Simulation cancelled")
+                    # self.cancelled_callback(self.std_out, self.std_err)
+                else:
+                    if self.p.returncode == 0:
+                        self.msg_callback(
+                            "ExpandObjects completed in {:,.2f} seconds".format(
+                                time.time() - start_time
+                            )
+                        )
+                        self.success_callback()
+                    else:
+                        self.msg_callback("Simulation failed")
+                        self.failure_callback()
+        return 0
+
+    def msg_callback(self, *args, **kwargs):
+        log(*args, **kwargs)
+
+    def success_callback(self):
+        if (self.run_dir / "expanded.idf").exists():
+            self.idf.idfname = (self.run_dir / "expanded.idf").copy(
+                self.idf.output_directory / self.idf.name
+            )
+            self.idf.include.append(
+                (Path(self.run_dir) / "GHTIn.idf").copy(
+                    self.idf.output_directory / "GHTIn.idf"
+                )
+            )
+
+    def failure_callback(self):
+        pass
+
+    def cancelled_callback(self, stdin, stdout):
+        pass
+
+    @property
+    def eplus_home(self):
+        eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
+        if not Path(eplus_home).exists():
+            raise EnergyPlusVersionError(
+                msg=f"No EnergyPlus Executable found for version "
+                f"{parse(self.idf.as_version)}"
+            )
+        else:
+            return Path(eplus_home)
+
+
+class SlabThread(Thread):
+    def __init__(self, idf):
+        """
+
+        Args:
+            idf (IDF):
+        """
+        super(SlabThread, self).__init__()
+        self.p = None
+        self.std_out = None
+        self.std_err = None
+        self.idf = idf
+        self.cancelled = False
+        self.run_dir = Path("")
+        self.exception = None
+
+    def run(self):
+        """Wrapper around the EnergyPlus command line interface.
+
+        Adapted from :func:`eppy.runner.runfunctions.run`.
+        """
+        self.cancelled = False
+        # get version from IDF object or by parsing the IDF file for it
+
+        with TempDir(
+            prefix="RunSlab_run_",
+            suffix=self.idf.output_prefix,
+            dir=self.idf.output_directory,
+        ) as tmp:
+            self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
+            self.idfname = Path(self.idf.idfname.copy(tmp / "in.idf")).expand()
+            self.idd = self.idf.iddname.copy(tmp).expand()
+            self.slabexe = (
+                self.eplus_home / "PreProcess" / "GrndTempCalc" / "Slab.exe"
+            ).copy(tmp)
+            self.slabidd = (
+                self.eplus_home / "PreProcess" / "GrndTempCalc" / "SlabGHT.idd"
+            ).copy(tmp)
+            self.run_dir = Path(tmp).expand()
+            self.include = [Path(file).copy(tmp) for file in self.idf.include]
+
+            # Run Slab Program
+            self.cmd = [self.slabexe.stem]
+            with tqdm(
+                unit_scale=True,
+                miniters=1,
+                desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
+                position=self.idf.position,
+            ) as progress:
+                self.p = subprocess.Popen(
+                    self.cmd,
+                    cwd=self.run_dir,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+
+                start_time = time.time()
+                self.msg_callback("RunSlab started")
+                for line in self.p.stdout:
+                    self.msg_callback(line)
+                    progress.update()
+
+                # We explicitly close stdout
+                self.p.stdout.close()
+
+                # Wait for process to complete
+                self.p.wait()
+
+                # Communicate callbacks
+                if self.cancelled:
+                    self.msg_callback("Simulation cancelled")
+                    # self.cancelled_callback(self.std_out, self.std_err)
+                else:
+                    if self.p.returncode == 0:
+                        self.msg_callback(
+                            "RunSlab completed in {:,.2f} seconds".format(
+                                time.time() - start_time
+                            )
+                        )
+                        self.success_callback()
+                        for line in self.p.stderr:
+                            self.msg_callback(line)
+                    else:
+                        self.msg_callback("Simulation failed")
+                        self.failure_callback()
+        return 0
+
+    def msg_callback(self, *args, **kwargs):
+        log(*args, **kwargs)
+
+    def success_callback(self):
+        temp_schedule = self.run_dir / "SLABSurfaceTemps.txt"
+        if temp_schedule.exists():
+            with open(self.idf.idfname, "a") as outfile:
+                with open(temp_schedule) as infile:
+                    next(infile)  # Skipping first line
+                    next(infile)  # Skipping second line
+                    for line in infile:
+                        outfile.write(line)
+
+    def failure_callback(self):
+        error_filename = self.run_dir / "eplusout.err"
+        if error_filename.exists():
+            with open(error_filename, "r") as stderr:
+                stderr_r = stderr.read()
+                self.exception = EnergyPlusProcessError(
+                    cmd=self.cmd, stderr=stderr_r, idf=self.idf.name,
+                )
+        self.idf._reset_dependant_vars("idfobjects")
+
+    def cancelled_callback(self, stdin, stdout):
+        pass
+
+    @property
+    def eplus_home(self):
+        eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
+        if not Path(eplus_home).exists():
+            raise EnergyPlusVersionError(
+                msg=f"No EnergyPlus Executable found for version "
+                f"{parse(self.idf.as_version)}"
+            )
+        else:
+            return Path(eplus_home)
+
+
 class EnergyPlusThread(Thread):
     def __init__(self, idf):
         """
@@ -2840,6 +3141,8 @@ class EnergyPlusThread(Thread):
             self.idfname = Path(self.idf.savecopy(tmp / self.idf.name)).expand()
             self.idd = self.idf.iddname.copy(tmp).expand()
             self.run_dir = Path(tmp).expand()
+            self.include = [Path(file).copy(tmp) for file in self.idf.include]
+
             # build a list of command line arguments
             try:
                 self.cmd = EnergyPlusExe(
@@ -2921,7 +3224,7 @@ class EnergyPlusThread(Thread):
             )
 
     def failure_callback(self):
-        error_filename = self.idf.output_prefix + "out.err"
+        error_filename = self.run_dir / self.idf.output_prefix + "out.err"
         try:
             with open(error_filename, "r") as stderr:
                 stderr_r = stderr.read()
@@ -2939,6 +3242,17 @@ class EnergyPlusThread(Thread):
 
     def cancelled_callback(self, stdin, stdout):
         pass
+
+    @property
+    def eplus_home(self):
+        eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
+        if not Path(eplus_home).exists():
+            raise EnergyPlusVersionError(
+                msg=f"No EnergyPlus Executable found for version "
+                f"{parse(self.idf.as_version)}"
+            )
+        else:
+            return Path(eplus_home)
 
 
 def _run_exec(

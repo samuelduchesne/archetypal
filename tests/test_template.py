@@ -3011,6 +3011,7 @@ class TestUmiTemplateLibrary:
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         template = ar.UmiTemplateLibrary.read_idf(
             name="my_umi_template", idf_files=[file], as_version="8-7-0", weather=w
-        ).to_dict()
-        assert no_duplicates(template, attribute="Name")
-        assert no_duplicates(template, attribute="$id")
+        )
+        template.to_json()
+        assert no_duplicates(template.to_dict(), attribute="Name")
+        assert no_duplicates(template.to_dict(), attribute="$id")

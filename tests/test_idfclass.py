@@ -109,6 +109,10 @@ class TestIDF:
         with pytest.raises(EnergyPlusVersionError):
             natvent_v9_1_0.simulate()
 
+    def test_version(self, natvent_v9_1_0):
+        natvent_v9_1_0.as_version = "9-2-0"
+        assert natvent_v9_1_0.iddname
+
     def test_transition_error(self, config, wont_transition_correctly):
         with pytest.raises(
             (EnergyPlusProcessError, EnergyPlusVersionError, CalledProcessError)

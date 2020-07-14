@@ -364,7 +364,8 @@ class Schedule(object):
 
         for i in range(num_of_daily_schedules):
             day_type = epbunch["DayType_List_{}".format(i + 1)].lower()
-            how = self.field_set(day_type, slicer_)
+            # This field can optionally contain the prefix “For”
+            how = self.field_set(day_type.strip("for: "), slicer_)
             if not weekly_schedules.loc[how].empty:
                 # Loop through days and replace with day:schedule values
                 days = []
@@ -1173,10 +1174,10 @@ class Schedule(object):
             return self.special_day(field, slicer_)
         elif not self.strict:
             # If not strict, ignore missing field-sets such as CustomDay1
-            return None
+            return slice(None)
         else:
             raise NotImplementedError(
-                "Archetypal does not yet support The " 'Field_set "{}"'.format(field)
+                f"Archetypal does not yet support The Field_set '{field}'"
             )
 
     def __len__(self):

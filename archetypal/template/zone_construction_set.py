@@ -23,7 +23,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         IsPartitionAdiabatic=False,
         IsRoofAdiabatic=False,
         IsSlabAdiabatic=False,
-        **kwargs
+        **kwargs,
     ):
         """
         Args:
@@ -125,27 +125,27 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         if facades:
             facade = reduce(OpaqueConstruction.combine, facades)
         else:
-            facade = OpaqueConstruction.generic(idf=zone.idf)
+            facade = None
         grounds = set(ground)
         if grounds:
             ground = reduce(OpaqueConstruction.combine, grounds)
         else:
-            ground = OpaqueConstruction.generic(idf=zone.idf)
+            ground = None
         partitions = set(partition)
         if partitions:
             partition = reduce(OpaqueConstruction.combine, partitions)
         else:
-            partition = OpaqueConstruction.generic(idf=zone.idf)
+            partition = None
         roofs = set(roof)
         if roofs:
             roof = reduce(OpaqueConstruction.combine, roofs)
         else:
-            roof = OpaqueConstruction.generic(idf=zone.idf)
+            roof = None
         slabs = set(slab)
         if slabs:
             slab = reduce(OpaqueConstruction.combine, slabs)
         else:
-            slab = OpaqueConstruction.generic(idf=zone.idf)
+            slab = None
 
         z_set = cls(
             Facade=facade,
@@ -230,17 +230,17 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         meta = self._get_predecessors_meta(other)
         new_attr = dict(
-            Slab=self.Slab.combine(other.Slab),
+            Slab=OpaqueConstruction.combine(self.Slab, other.Slab),
             IsSlabAdiabatic=any([self.IsSlabAdiabatic, other.IsSlabAdiabatic]),
-            Roof=self.Roof.combine(other.Roof),
+            Roof=OpaqueConstruction.combine(self.Roof, other.Roof),
             IsRoofAdiabatic=any([self.IsRoofAdiabatic, other.IsRoofAdiabatic]),
-            Partition=self.Partition.combine(other.Partition),
+            Partition=OpaqueConstruction.combine(self.Partition, other.Partition),
             IsPartitionAdiabatic=any(
                 [self.IsPartitionAdiabatic, other.IsPartitionAdiabatic]
             ),
-            Ground=self.Ground.combine(other.Ground),
+            Ground=OpaqueConstruction.combine(self.Ground, other.Ground),
             IsGroundAdiabatic=any([self.IsGroundAdiabatic, other.IsGroundAdiabatic]),
-            Facade=self.Facade.combine(other.Facade),
+            Facade=OpaqueConstruction.combine(self.Facade, other.Facade),
             IsFacadeAdiabatic=any([self.IsFacadeAdiabatic, other.IsFacadeAdiabatic]),
         )
         new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
@@ -249,6 +249,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     def to_json(self):
         """Convert class properties to dict"""
+        self.validate()
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -268,6 +269,18 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
+
+    def validate(self):
+        for attr in ["Slab", "Roof", "Partition", "Ground", "Facade"]:
+            if getattr(self, attr) is None:
+                setattr(self, attr, OpaqueConstruction.generic(idf=self.idf))
+                log(
+                    f"While validating {self}, the required attribute "
+                    f"'{attr}' was filled "
+                    f"with {getattr(self, attr)}",
+                    lg.DEBUG
+                )
+        return self
 
     @staticmethod
     def _do_facade(surf):

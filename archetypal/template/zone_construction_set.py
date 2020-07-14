@@ -410,6 +410,7 @@ def surface_dispatcher(surf, zone):
         ("Floor", "Ground"): ZoneConstructionSet._do_ground,
         ("Floor", "Outdoors"): ZoneConstructionSet._do_ground,
         ("Floor", "Foundation"): ZoneConstructionSet._do_ground,
+        ("Floor", "OtherSideCoefficients"): ZoneConstructionSet._do_ground,
         ("Floor", "Surface"): ZoneConstructionSet._do_slab,
         ("Floor", "Adiabatic"): ZoneConstructionSet._do_slab,
         ("Floor", "Zone"): ZoneConstructionSet._do_slab,

@@ -726,6 +726,10 @@ class EnergyPlusVersion(Version):
         # type: () -> str
         return "-".join(map(str, (self.major, self.minor, self.micro)))
 
+    def __repr__(self):
+        # type: () -> str
+        return "<EnergyPlusVersion({0})>".format(repr(str(self)))
+
 
 def parse(version):
     # type: (Union[str, tuple, Version]) -> Union[None, EnergyPlusVersion]

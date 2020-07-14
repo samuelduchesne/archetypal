@@ -89,13 +89,6 @@ class IDF(geomeppy.IDF):
 
     _initial_postition = itertools.count(start=1)
 
-    def __new__(cls, idfname=None, **kwargs):
-        existing = None
-        if existing:
-            return existing
-        idf = super(IDF, cls).__new__(cls)
-        return idf
-
     def _reset_dependant_vars(self, name):
         _reverse_dependencies = {}
         for k, v in self._dependencies.items():
@@ -476,18 +469,11 @@ class IDF(geomeppy.IDF):
         """Bool or set list of custom outputs"""
         return self._prep_outputs
 
-    # @property
-    # def original_ep_version(self):
-    #     if self._original_ep_version is None:
-    #         ep_version = parse(get_idf_version(self.original_idfname))
-    #         self._original_ep_version = ep_version
-    #     return self._original_ep_version
-
     @property
     def as_version(self):
         if self._as_version is None:
             self._as_version = latest_energyplus_version()
-        return self._as_version
+        return parse(self._as_version)
 
     @as_version.setter
     def as_version(self, value):
@@ -2752,6 +2738,11 @@ class ExpandObjectsExe(EnergyPlusProgram):
 
 class SlabExe(EnergyPlusProgram):
     def __init__(self, idf):
+        """
+
+        Args:
+            idf (IDF): The IDF model.
+        """
         super().__init__(idf)
 
         self.slab_idf = Path(self.idf.savecopy(self.slabdir / "GHTIn.idf")).expand()
@@ -2951,6 +2942,7 @@ class ExpandObjectsThread(Thread):
             self.idf.idfname = (self.run_dir / "expanded.idf").copy(
                 self.idf.output_directory / self.idf.name
             )
+        if (Path(self.run_dir) / "GHTIn.idf").exists():
             self.idf.include.append(
                 (Path(self.run_dir) / "GHTIn.idf").copy(
                     self.idf.output_directory / "GHTIn.idf"

@@ -238,13 +238,12 @@ class BuildingTemplate(UmiBase):
         # initialize empty BuildingTemplate
         name = kwargs.pop("Name", Path(idf.idfname).basename().splitext()[0])
         bt = cls(Name=name, idf=idf, **kwargs)
-        position = kwargs.pop("position", None)
         zone: EpBunch
         zones = [
             Zone.from_zone_epbunch(zone, sql=bt.sql)
             for zone in tqdm(
                 idf.idfobjects["ZONE"],
-                desc=f"Zone Loop {name}",
+                desc=f"zone_loop {idf.position}-{name}",
                 position=idf.position
             )
         ]

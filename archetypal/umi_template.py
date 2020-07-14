@@ -194,8 +194,7 @@ class UmiTemplateLibrary:
 
     @staticmethod
     def prep_func(idfname, epw, **kwargs):
-        annual = kwargs.pop("annual", False)
-        idf = IDF(idfname, epw=epw, annual=annual, **kwargs)
+        idf = IDF(idfname, epw=epw, **kwargs)
         return BuildingTemplate.from_idf(idf, DataSource=idf.name)
 
     @classmethod

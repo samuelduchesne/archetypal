@@ -14,6 +14,7 @@ import logging as lg
 import os
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -76,9 +77,9 @@ class IDF(geomeppy.IDF):
         "idd_info": ["iddname"],
         "idd_index": ["iddname"],
         "idd_version": ["iddname"],
-        "idfobjects": ["iddname"],
-        "block": ["iddname"],
-        "model": ["iddname"],
+        "idfobjects": ["iddname", "idfname"],
+        "block": ["iddname", "idfname"],
+        "model": ["iddname", "idfname"],
         "sql": ["as_version", "annual", "design_day", "epw", "idfname"],
         "sql_file": ["as_version", "annual", "design_day", "epw", "idfname"],
         "htm": ["as_version", "annual", "design_day", "epw", "idfname"],
@@ -135,7 +136,7 @@ class IDF(geomeppy.IDF):
         epmacro=True,
         keep_data=True,
         keep_data_err=False,
-        position=None,
+        position=0,
         **kwargs,
     ):
         """
@@ -2886,7 +2887,10 @@ class ExpandObjectsThread(Thread):
             self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
             self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
             self.idd = self.idf.iddname.copy(tmp / "Energy+.idd").expand()
-            self.expandobjectsexe = (self.eplus_home / "ExpandObjects.exe").copy(tmp)
+            shutil.which("ExpandObjects", path=self.eplus_home)
+            self.expandobjectsexe = Path(
+                shutil.which("ExpandObjects", path=self.eplus_home)
+            ).copy(tmp)
             self.run_dir = Path(tmp).expand()
 
             # Run ExpandObjects Program
@@ -2894,7 +2898,7 @@ class ExpandObjectsThread(Thread):
             with tqdm(
                 unit_scale=True,
                 miniters=1,
-                desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
+                desc=f"ExpandObjects #{self.idf.position}-{self.idf.name}",
                 position=self.idf.position,
             ) as progress:
                 self.p = subprocess.Popen(
@@ -2906,7 +2910,7 @@ class ExpandObjectsThread(Thread):
                 )
 
                 start_time = time.time()
-                self.msg_callback("RunSlab started")
+                self.msg_callback("ExpandObjects started")
                 for line in self.p.stdout:
                     self.msg_callback(line.decode("utf-8"))
                     progress.update()
@@ -2919,7 +2923,7 @@ class ExpandObjectsThread(Thread):
 
                 # Communicate callbacks
                 if self.cancelled:
-                    self.msg_callback("Simulation cancelled")
+                    self.msg_callback("ExpandObjects cancelled")
                     # self.cancelled_callback(self.std_out, self.std_err)
                 else:
                     if self.p.returncode == 0:
@@ -2930,7 +2934,7 @@ class ExpandObjectsThread(Thread):
                         )
                         self.success_callback()
                     else:
-                        self.msg_callback("Simulation failed")
+                        self.msg_callback("ExpandObjects failed")
                         self.failure_callback()
         return 0
 
@@ -2999,8 +3003,13 @@ class SlabThread(Thread):
             self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
             self.idfname = Path(self.idf.idfname.copy(tmp / "in.idf")).expand()
             self.idd = self.idf.iddname.copy(tmp).expand()
-            self.slabexe = (
-                self.eplus_home / "PreProcess" / "GrndTempCalc" / "Slab.exe"
+
+            # Get executable using shutil.which (determines the extension based on
+            # the platform, eg: .exe. And copy the executable to tmp
+            self.slabexe = Path(
+                shutil.which(
+                    "Slab", path=self.eplus_home / "PreProcess" / "GrndTempCalc"
+                )
             ).copy(tmp)
             self.slabidd = (
                 self.eplus_home / "PreProcess" / "GrndTempCalc" / "SlabGHT.idd"
@@ -3028,7 +3037,7 @@ class SlabThread(Thread):
                 start_time = time.time()
                 self.msg_callback("RunSlab started")
                 for line in self.p.stdout:
-                    self.msg_callback(line)
+                    self.msg_callback(line.strip("\n"))
                     progress.update()
 
                 # We explicitly close stdout
@@ -3039,7 +3048,7 @@ class SlabThread(Thread):
 
                 # Communicate callbacks
                 if self.cancelled:
-                    self.msg_callback("Simulation cancelled")
+                    self.msg_callback("RunSlab cancelled")
                     # self.cancelled_callback(self.std_out, self.std_err)
                 else:
                     if self.p.returncode == 0:
@@ -3052,7 +3061,7 @@ class SlabThread(Thread):
                         for line in self.p.stderr:
                             self.msg_callback(line)
                     else:
-                        self.msg_callback("Simulation failed")
+                        self.msg_callback("RunSlab failed")
                         self.failure_callback()
         return 0
 
@@ -3068,6 +3077,8 @@ class SlabThread(Thread):
                     next(infile)  # Skipping second line
                     for line in infile:
                         outfile.write(line)
+            # invalidate attributes dependant on idfname, since it has changed
+            self.idf._reset_dependant_vars("idfname")
 
     def failure_callback(self):
         error_filename = self.run_dir / "eplusout.err"
@@ -3077,7 +3088,6 @@ class SlabThread(Thread):
                 self.exception = EnergyPlusProcessError(
                     cmd=self.cmd, stderr=stderr_r, idf=self.idf.name,
                 )
-        self.idf._reset_dependant_vars("idfobjects")
 
     def cancelled_callback(self, stdin, stdout):
         pass
@@ -3170,11 +3180,12 @@ class EnergyPlusThread(Thread):
                     shell=False,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
+                    text=True,
                 )
                 start_time = time.time()
                 self.msg_callback("Simulation started")
                 for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8"))
+                    self.msg_callback(line.strip("\n"))
                     progress.update()
 
                 # We explicitly close stdout

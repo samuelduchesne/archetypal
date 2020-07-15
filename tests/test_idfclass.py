@@ -223,3 +223,14 @@ class TestIDF:
         np.testing.assert_almost_equal(
             actual=idf.area_conditioned, desired=area, decimal=0
         )
+
+
+class TestThreads:
+
+    def test_runslab(self, config):
+        file = get_eplus_dirs() / "ExampleFiles" / "5ZoneAirCooledWithSlab.idf"
+        epw = get_eplus_dirs() / "WeatherData" / \
+              "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
+        idf = IDF(file, epw, annual=True)
+
+        assert idf.simulate()

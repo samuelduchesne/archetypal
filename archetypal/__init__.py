@@ -21,11 +21,11 @@ from .energyseries import EnergySeries
 from .energydataframe import EnergyDataFrame
 from .reportdata import ReportData
 from .tabulardata import TabularData
-from .idfclass import *
 from .schedule import Schedule
-from .dataportal import *
 from .plot import *
-from .trnsys import *
 from .template import *
+from .idfclass import *
+from .dataportal import *
+from .trnsys import *
 from .umi_template import *
 from .cli import *

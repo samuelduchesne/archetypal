@@ -15,7 +15,7 @@ from deprecation import deprecated
 from eppy.bunch_subclass import EpBunch
 
 import archetypal
-from archetypal import log, IDF, calc_simple_glazing, timeit
+from archetypal import log, calc_simple_glazing, timeit
 from archetypal.template import MaterialLayer, UmiSchedule, UniqueName
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
@@ -326,6 +326,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __repr__(self):
+        from archetypal import IDF
         v_ = [
             (k, v) for k, v in self.__dict__.items() if not isinstance(v, (dict, IDF))
         ]

@@ -31,14 +31,14 @@ from typing import Union
 import numpy as np
 import pandas as pd
 import unicodedata
-from tqdm import tqdm
-
-from archetypal import settings, __version__
-from archetypal.settings import ep_version
 from packaging.version import Version, InvalidVersion
 from pandas.io.json import json_normalize
 from path import Path
 from tabulate import tabulate
+from tqdm import tqdm
+
+from archetypal import settings, __version__
+from archetypal.settings import ep_version
 
 
 def config(

@@ -4,6 +4,8 @@ import os
 from collections import OrderedDict
 
 import numpy as np
+from path import Path
+
 from archetypal import (
     BuildingTemplate,
     GasMaterial,
@@ -31,7 +33,6 @@ from archetypal import (
     IDF,
     parallel_process,
 )
-from path import Path
 
 
 class UmiTemplateLibrary:

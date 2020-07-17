@@ -1049,13 +1049,13 @@ class TestWindowConstruction:
 
 
 class TestStructureDefinition:
-    """Series of tests for the :class:`StructureDefinition` class"""
+    """Series of tests for the :class:`StructureInformation` class"""
 
-    # todo: Implement from_to_json for StructureDefinition class
+    # todo: Implement from_to_json for StructureInformation class
 
     def test_structure_from_to_json(self, config, idf):
         import json
-        from archetypal import StructureDefinition, load_json_objects
+        from archetypal import StructureInformation, load_json_objects
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
@@ -1063,7 +1063,7 @@ class TestStructureDefinition:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore, idf)
         struct_json = [
-            StructureDefinition.from_dict(**store, idf=idf)
+            StructureInformation.from_dict(**store, idf=idf)
             for store in datastore["StructureDefinitions"]
         ]
         struct_to_json = struct_json[0].to_json()
@@ -1074,7 +1074,7 @@ class TestStructureDefinition:
         Args:
             config:
         """
-        from archetypal import StructureDefinition, load_json_objects
+        from archetypal import StructureInformation, load_json_objects
         from copy import copy
         import json
 
@@ -1084,7 +1084,7 @@ class TestStructureDefinition:
             datastore = json.load(f)
         loading_json_list = load_json_objects(datastore, idf)
         struct_json = [
-            StructureDefinition.from_dict(**store, idf=idf)
+            StructureInformation.from_dict(**store, idf=idf)
             for store in datastore["StructureDefinitions"]
         ]
         sd = struct_json[0]
@@ -1260,10 +1260,10 @@ class TestZoneConstructionSet:
         zone_perim = idf.getobject("ZONE", perim_name)
 
         z_core = ar.ZoneConstructionSet.from_zone(
-            ar.Zone.from_zone_epbunch(zone_core, sql=sql)
+            ar.ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
         )
         z_perim = ar.ZoneConstructionSet.from_zone(
-            ar.Zone.from_zone_epbunch(zone_perim, sql=sql)
+            ar.ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
         )
         z_new = z_core + z_perim
         assert z_new
@@ -1279,10 +1279,10 @@ class TestZoneConstructionSet:
         zone_perim = idf.getobject("ZONE", perim_name)
 
         z_core = ar.ZoneConstructionSet.from_zone(
-            ar.Zone.from_zone_epbunch(zone_core, sql=sql)
+            ar.ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
         )
         z_perim = ar.ZoneConstructionSet.from_zone(
-            ar.Zone.from_zone_epbunch(zone_perim, sql=sql)
+            ar.ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
         )
         id_ = z_core.id
         z_core += z_perim
@@ -1306,12 +1306,12 @@ class TestZoneConstructionSet:
             config:
             zoneConstructionSet_tests:
         """
-        from archetypal import ZoneConstructionSet, Zone
+        from archetypal import ZoneConstructionSet, ZoneDefinition
 
         sql = next(iter([i for i in zoneConstructionSet_tests if isinstance(i, dict)]))
         idf = next(iter([i for i in zoneConstructionSet_tests if isinstance(i, IDF)]))
         zone = idf.getobject("ZONE", "Office")
-        z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
         constrSet_ = ZoneConstructionSet.from_zone(z)
 
     def test_zoneConstructionSet_from_to_json(self, config, idf):
@@ -1382,11 +1382,11 @@ class TestZoneLoad:
             config:
             zoneLoadtests:
         """
-        from archetypal import ZoneLoad, Zone
+        from archetypal import ZoneLoad, ZoneDefinition
 
         idf, sql = zoneLoadtests
         zone = idf.getobject("ZONE", "Office")
-        z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
         zone_loads = ZoneLoad.from_zone(z)
 
         assert zone_loads.DimmingType == "Off"
@@ -1398,11 +1398,11 @@ class TestZoneLoad:
         np.testing.assert_almost_equal(zone_loads.PeopleDensity, 0.021107919980354082)
 
     def test_zoneLoad_from_zone_mixedparams(self, config, fiveZoneEndUses):
-        from archetypal import ZoneLoad, Zone
+        from archetypal import ZoneLoad, ZoneDefinition
 
         idf, sql = fiveZoneEndUses
         zone = idf.getobject("ZONE", "SPACE1-1")
-        z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
         zone_loads = ZoneLoad.from_zone(z)
 
         assert zone_loads.DimmingType == "Stepped"
@@ -1441,13 +1441,13 @@ class TestZoneLoad:
         Args:
             small_idf:
         """
-        from archetypal.template import ZoneLoad, Zone
+        from archetypal.template import ZoneLoad, ZoneDefinition
         from copy import copy
 
         idf, sql = small_idf
         clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
-        zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
+        zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
         zl = ZoneLoad.from_zone(zone)
         zl_2 = copy(zl)
 
@@ -1495,7 +1495,7 @@ class TestZoneLoad:
         idf_2 = deepcopy(idf)
         clear_cache()
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = Zone.from_zone_epbunch(zone_ep_3, sql=sql)
+        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, sql=sql)
         assert idf is not idf_2
         zl_3 = ZoneLoad.from_zone(zone_3)
         assert zone_ep is not zone_ep_3
@@ -1550,20 +1550,20 @@ class TestZoneConditioning:
             config:
             zoneConditioningtests:
         """
-        from archetypal import ZoneConditioning, Zone
+        from archetypal import ZoneConditioning, ZoneDefinition
 
         idf, sql, idf_name = zoneConditioningtests
         if idf_name == "RefMedOffVAVAllDefVRP.idf":
             zone = idf.getobject("ZONE", "Core_mid")
-            z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_ = ZoneConditioning.from_zone(z)
         if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf":
             zone = idf.getobject("ZONE", "West Zone")
-            z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_HX = ZoneConditioning.from_zone(z)
         if idf_name == "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf":
             zone = idf.getobject("ZONE", "East Zone")
-            z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
             cond_HX_eco = ZoneConditioning.from_zone(z)
 
     def test_zoneConditioning_from_to_json(self, config, idf):
@@ -1591,13 +1591,13 @@ class TestZoneConditioning:
         Args:
             small_idf:
         """
-        from archetypal.template import ZoneConditioning, Zone
+        from archetypal.template import ZoneConditioning, ZoneDefinition
         from copy import copy
 
         idf, sql, idf_name = zoneConditioningtests
         clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
-        zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
+        zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
         zc = ZoneConditioning.from_zone(zone)
         zc_2 = copy(zc)
 
@@ -1645,7 +1645,7 @@ class TestZoneConditioning:
         idf_2 = deepcopy(idf)
         clear_cache()
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = Zone.from_zone_epbunch(zone_ep_3, sql=sql)
+        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, sql=sql)
         assert idf is not idf_2
         zc_3 = ZoneConditioning.from_zone(zone_3)
         assert zone_ep is not zone_ep_3
@@ -1692,20 +1692,20 @@ class TestVentilationSetting:
             config:
             ventilatontests:
         """
-        from archetypal import VentilationSetting, Zone
+        from archetypal import VentilationSetting, ZoneDefinition
 
         idf, sql, idf_name = ventilatontests
         if idf_name == "VentilationSimpleTest.idf":
             zone = idf.getobject("ZONE", "ZONE 1")
-            z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
             natVent = VentilationSetting.from_zone(z)
         if idf_name == "VentilationSimpleTest.idf":
             zone = idf.getobject("ZONE", "ZONE 2")
-            z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
             schedVent = VentilationSetting.from_zone(z)
         if idf_name == "RefBldgWarehouseNew2004_Chicago.idf":
             zone = idf.getobject("ZONE", "Office")
-            z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
             infiltVent = VentilationSetting.from_zone(z)
 
     def test_ventilationSetting_from_to_json(self, config, idf):
@@ -1733,13 +1733,13 @@ class TestVentilationSetting:
         Args:
             small_idf:
         """
-        from archetypal.template import VentilationSetting, Zone
+        from archetypal.template import VentilationSetting, ZoneDefinition
         from copy import copy
 
         idf, sql = small_idf
         clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
-        zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
+        zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
         vent = VentilationSetting.from_zone(zone)
         vent_2 = copy(vent)
 
@@ -1787,7 +1787,7 @@ class TestVentilationSetting:
         idf_2 = deepcopy(idf)
         clear_cache()
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = Zone.from_zone_epbunch(zone_ep_3, sql=sql)
+        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, sql=sql)
         assert idf is not idf_2
         vent_3 = VentilationSetting.from_zone(zone_3)
         assert zone_ep is not zone_ep_3
@@ -1807,13 +1807,13 @@ class TestDomesticHotWaterSetting:
         Args:
             small_idf:
         """
-        from archetypal.template import DomesticHotWaterSetting, Zone
+        from archetypal.template import DomesticHotWaterSetting, ZoneDefinition
         from copy import copy
 
         idf, sql = small_idf
         clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
-        zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
+        zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
         dhw = DomesticHotWaterSetting.from_zone(zone)
         dhw_2 = copy(dhw)
 
@@ -1861,7 +1861,7 @@ class TestDomesticHotWaterSetting:
         idf_2 = deepcopy(idf)
         clear_cache()
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = Zone.from_zone_epbunch(zone_ep_3, sql=sql)
+        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, sql=sql)
         assert idf is not idf_2
         dhw_3 = DomesticHotWaterSetting.from_zone(zone_3)
         assert zone_ep is not zone_ep_3
@@ -2114,7 +2114,7 @@ class TestZone:
         Args:
             config:
         """
-        from archetypal import Zone
+        from archetypal import ZoneDefinition
 
         file = "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
@@ -2123,7 +2123,7 @@ class TestZone:
         zone = idf.getobject(
             "ZONE", "Sp-attic Sys-0 Flr-2 Sch-- undefined - " "HPlcmt-core ZN"
         )
-        z = Zone.from_zone_epbunch(zone_ep=zone, sql=sql)
+        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
         np.testing.assert_almost_equal(desired=z.volume, actual=856.3, decimal=1)
         z.to_json()
 
@@ -2137,8 +2137,8 @@ class TestZone:
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ar.Zone.from_zone_epbunch(zone_core, sql=sql)
-        z_perim = ar.Zone.from_zone_epbunch(zone_perim, sql=sql)
+        z_core = ar.ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
+        z_perim = ar.ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
 
         z_new = z_core + z_perim
 
@@ -2160,8 +2160,8 @@ class TestZone:
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ar.Zone.from_zone_epbunch(zone_core, sql=sql)
-        z_perim = ar.Zone.from_zone_epbunch(zone_perim, sql=sql)
+        z_core = ar.ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
+        z_perim = ar.ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
         volume = z_core.volume + z_perim.volume  # save volume before changing
         area = z_core.area + z_perim.area  # save area before changing
 
@@ -2182,13 +2182,13 @@ class TestZone:
         Args:
             small_idf:
         """
-        from archetypal.template import Zone
+        from archetypal.template import ZoneDefinition
         from copy import copy
 
         idf, sql = map(deepcopy, small_idf)
         clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
-        zone = Zone.from_zone_epbunch(zone_ep, sql=sql)
+        zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
         zone_2 = copy(zone)
 
         # a copy of dhw should be equal and have the same hash, but still not be the
@@ -2235,7 +2235,7 @@ class TestZone:
         idf_2 = deepcopy(idf)
         clear_cache()
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = Zone.from_zone_epbunch(zone_ep_3, sql=sql)
+        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, sql=sql)
         assert idf is not idf_2
         assert zone_ep is not zone_ep_3
         assert zone_ep != zone_ep_3
@@ -2947,7 +2947,7 @@ class TestUmiTemplateLibrary:
         # region Defines zones
 
         # Perimeter zone
-        perim = ar.Zone(
+        perim = ar.ZoneDefinition(
             Name="Perim_zone",
             idf=idf,
             Conditioning=zone_conditioning,
@@ -2959,7 +2959,7 @@ class TestUmiTemplateLibrary:
             InternalMassConstruction=wall_int,
         )
         # Core zone
-        core = ar.Zone(
+        core = ar.ZoneDefinition(
             Name="Core_zone",
             idf=idf,
             Conditioning=zone_conditioning,

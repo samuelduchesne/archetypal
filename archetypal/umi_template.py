@@ -14,7 +14,7 @@ from archetypal import (
     OpaqueMaterial,
     OpaqueConstruction,
     WindowConstruction,
-    StructureDefinition,
+    StructureInformation,
     DaySchedule,
     WeekSchedule,
     YearSchedule,
@@ -23,7 +23,7 @@ from archetypal import (
     ZoneConditioning,
     ZoneConstructionSet,
     ZoneLoad,
-    Zone,
+    ZoneDefinition,
     WindowSetting,
     settings,
     UmiBase,
@@ -78,8 +78,8 @@ class UmiTemplateLibrary:
                 objects.
             WindowConstructions (list of WindowConstruction): list of
                 WindowConstruction objects.
-            StructureDefinitions (list of StructureDefinition): list of
-                StructureDefinition objects.
+            StructureDefinitions (list of StructureInformation): list of
+                StructureInformation objects.
             DaySchedules (list of DaySchedule): list of DaySchedule objects.
             WeekSchedules (list of WeekSchedule): list of WeekSchedule objects.
             YearSchedules (list of YearSchedule): list of YearSchedule objects.
@@ -94,7 +94,7 @@ class UmiTemplateLibrary:
             ZoneConstructionSets (list of ZoneConstructionSet): list of
                 ZoneConstructionSet objects.
             ZoneLoads (list of ZoneLoad): list of ZoneLoad objects.
-            Zones (list of Zone): list of Zone objects
+            Zones (list of ZoneDefinition): list of Zone objects
         """
         if Zones is None:
             Zones = []
@@ -261,7 +261,7 @@ class UmiTemplateLibrary:
                 for store in datastore["WindowConstructions"]
             ]
             t.StructureDefinitions = [
-                StructureDefinition.from_dict(**store, idf=idf)
+                StructureInformation.from_dict(**store, idf=idf)
                 for store in datastore["StructureDefinitions"]
             ]
             t.DaySchedules = [
@@ -295,7 +295,7 @@ class UmiTemplateLibrary:
             t.ZoneLoads = [
                 ZoneLoad.from_dict(**store, idf=idf) for store in datastore["ZoneLoads"]
             ]
-            t.Zones = [Zone.from_dict(**store, idf=idf) for store in datastore["Zones"]]
+            t.Zones = [ZoneDefinition.from_dict(**store, idf=idf) for store in datastore["Zones"]]
             t.WindowSettings = [
                 WindowSetting.from_ref(
                     store["$ref"], datastore["BuildingTemplates"], idf=idf

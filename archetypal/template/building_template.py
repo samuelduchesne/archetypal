@@ -26,10 +26,10 @@ import archetypal
 from archetypal import log, save_and_show
 from archetypal.template import (
     UmiBase,
-    Zone,
+    ZoneDefinition,
     resolve_obco,
     WindowSetting,
-    StructureDefinition,
+    StructureInformation,
     MassRatio,
     is_core,
 )
@@ -57,11 +57,11 @@ class BuildingTemplate(UmiBase):
         attributes:
 
         Args:
-            Core (Zone): The Zone object defining the core zone. see
+            Core (ZoneDefinition): The Zone object defining the core zone. see
                 :class:`Zone` for more details.
-            Perimeter (Zone): The Zone object defining the perimeter zone. see
+            Perimeter (ZoneDefinition): The Zone object defining the perimeter zone. see
                 :class:`Zone` for more details.
-            Structure (StructureDefinition): The StructureDefinition object
+            Structure (StructureInformation): The StructureInformation object
                 defining the structural properties of the template.
             Windows (WindowSetting): The WindowSetting object defining the
                 window properties of the object.
@@ -84,6 +84,8 @@ class BuildingTemplate(UmiBase):
         self.Structure = Structure
         self.Windows = Windows
         self.DefaultWindowToWallRatio = DefaultWindowToWallRatio
+
+        self._allzones = []
 
     @property
     def PartitionRatio(self):
@@ -251,7 +253,7 @@ class BuildingTemplate(UmiBase):
         zones = []
         with concurrent.futures.thread.ThreadPoolExecutor() as executor:
             futures = {
-                executor.submit(Zone.from_zone_epbunch, (zone), sql=idf.sql): zone
+                executor.submit(ZoneDefinition.from_zone_epbunch, (zone), sql=idf.sql): zone
                 for zone in epbunch_zones
             }
             for future in tqdm(
@@ -269,13 +271,13 @@ class BuildingTemplate(UmiBase):
                 else:
                     log("%r created" % (result.Name))
 
-        zone: Zone
+        zone: ZoneDefinition
         bt.cores = [zone for zone in zones if zone.is_core]
         bt.perims = [zone for zone in zones if not zone.is_core]
         # do Core and Perim zone reduction
         bt.reduce(bt.cores, bt.perims)
 
-        # resolve StructureDefinition and WindowSetting
+        # resolve StructureInformation and WindowSetting
         bt.Structure = StructureDefinition(
             Name=bt.Name + "_StructureDefinition",
             MassRatios=[MassRatio.generic()],
@@ -303,13 +305,13 @@ class BuildingTemplate(UmiBase):
         start_time = time.time()
 
         if cores:
-            self.Core = reduce(Zone.combine, cores)
+            self.Core = reduce(ZoneDefinition.combine, cores)
         if not perims:
             raise ValueError(
                 "Building complexity reduction must have at least one perimeter zone"
             )
         else:
-            self.Perimeter = reduce(Zone.combine, perims)
+            self.Perimeter = reduce(ZoneDefinition.combine, perims)
 
         if self.Perimeter.Windows is None:
             # create generic window
@@ -345,7 +347,7 @@ class BuildingTemplate(UmiBase):
             G (ZoneGraph):
 
         Returns:
-            Zone: The reduced zone
+            ZoneDefinition: The reduced zone
         """
         if len(G) < 1:
             log("No zones for building graph %s" % G.name)
@@ -418,12 +420,15 @@ def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):
 
 
 class ZoneThread(threading.Thread):
-    def __init__(self, zone):
+    def __init__(self, building_template, zone):
         super().__init__()
         self.zone = zone
+        self.building_template = building_template
 
     def run(self):
-        return Zone.from_zone_epbunch(self.zone, sql=self.zone.sql)
+        self.building_template._allzones.append(
+            ZoneDefinition.from_zone_epbunch(self.zone, sql=self.building_template.idf.sql)
+        )
 
 
 class ZoneGraph(networkx.Graph):
@@ -484,7 +489,7 @@ class ZoneGraph(networkx.Graph):
             adj_report = defaultdict(list)
             zone_obj = None
             if not skeleton:
-                zone_obj = Zone.from_zone_epbunch(zone, sql=sql)
+                zone_obj = ZoneDefinition.from_zone_epbunch(zone, sql=sql)
                 zonesurfaces = zone.zonesurfaces
                 zone_obj._zonesurfaces = zonesurfaces
                 _is_core = zone_obj.is_core
@@ -509,7 +514,7 @@ class ZoneGraph(networkx.Graph):
                             zone_obj = None
                             _is_core = is_core(zone)
                         else:
-                            zone_obj = Zone.from_zone_epbunch(adj_zone, sql=sql)
+                            zone_obj = ZoneDefinition.from_zone_epbunch(adj_zone, sql=sql)
                             _is_core = zone_obj.is_core
 
                         # create node for adjacent zone

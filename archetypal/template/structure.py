@@ -76,7 +76,7 @@ class MassRatio(object):
         return cls(HighLoadRatio=305, Material=mat, NormalRatio=305)
 
 
-class StructureDefinition(UmiBase, metaclass=Unique):
+class StructureInformation(UmiBase, metaclass=Unique):
     """Building Structure settings.
 
     .. image:: ../images/template/constructions-structure.png
@@ -104,7 +104,7 @@ class StructureDefinition(UmiBase, metaclass=Unique):
             MassRatios:
             **kwargs:
         """
-        super(StructureDefinition, self).__init__(*args, **kwargs)
+        super(StructureInformation, self).__init__(*args, **kwargs)
         self.AssemblyCarbon = AssemblyCarbon
         self.AssemblyCost = AssemblyCost
         self.AssemblyEnergy = AssemblyEnergy
@@ -116,7 +116,7 @@ class StructureDefinition(UmiBase, metaclass=Unique):
         return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
-        if not isinstance(other, StructureDefinition):
+        if not isinstance(other, StructureInformation):
             return False
         else:
             return all(

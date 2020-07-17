@@ -370,7 +370,7 @@ class DaySchedule(UmiSchedule):
             schType=epbunch.key,
             **kwargs,
         )
-        sched._values = sched.get_schedule_values(epbunch)
+
         return sched
 
     @classmethod
@@ -553,7 +553,9 @@ class WeekSchedule(UmiSchedule):
 
     @property
     def all_values(self):
-        return np.concatenate([day.all_values for day in self.Days])
+        if self._values is None:
+            self._values = np.concatenate([day.all_values for day in self.Days])
+        return self._values
 
 
     def to_dict(self):
@@ -658,8 +660,7 @@ class YearSchedule(UmiSchedule):
         ]
         ys = cls(schTypeLimitsName=schtypelimitsname, Parts=Parts, **kwargs)
         ys.schType = "Schedule:Year"
-        idf = kwargs.get("idf", None)
-        return UmiSchedule.from_yearschedule(ys, idf=idf)
+        return ys
 
     def to_json(self):
         """Returns a dict-like representation of the schedule.

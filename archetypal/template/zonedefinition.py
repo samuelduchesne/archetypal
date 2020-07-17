@@ -32,7 +32,7 @@ from archetypal.template import (
 )
 
 
-class Zone(UmiBase):
+class ZoneDefinition(UmiBase):
     """Class containing HVAC settings: Conditioning, Domestic Hot Water, Loads,
     Ventilation, adn Constructions
 
@@ -76,7 +76,7 @@ class Zone(UmiBase):
                 this zone.
             **kwargs:
         """
-        super(Zone, self).__init__(Name, **kwargs)
+        super(ZoneDefinition, self).__init__(Name, **kwargs)
 
         self.Ventilation = Ventilation
         self.Loads = Loads
@@ -101,16 +101,16 @@ class Zone(UmiBase):
     def __add__(self, other):
         """
         Args:
-            other (Zone):
+            other (ZoneDefinition):
         """
         # create the new merged zone from self
-        return Zone.combine(self, other)
+        return ZoneDefinition.combine(self, other)
 
     def __hash__(self):
         return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
-        if not isinstance(other, Zone):
+        if not isinstance(other, ZoneDefinition):
             return False
         else:
             return all(
@@ -396,7 +396,7 @@ class Zone(UmiBase):
     def combine(self, other, weights=None):
         """
         Args:
-            other (Zone):
+            other (ZoneDefinition):
             weights (list-like, optional): A list-like object of len 2. If None,
                 the volume of the zones for which self and other belongs is
                 used.
@@ -406,7 +406,7 @@ class Zone(UmiBase):
             zones.
 
         Returns:
-            (Zone): the combined Zone object.
+            (ZoneDefinition): the combined Zone object.
         """
         # Check if other is None. Simply return self
         if not other:
@@ -705,7 +705,7 @@ def is_part_of_conditioned_floor_area(zone):
     """Returns True if Zone epbunch has :attr:`Part_of_Total_Floor_Area` == "YES"
 
     Args:
-        zone (Zone): The Zone object.
+        zone (ZoneDefinition): The Zone object.
     """
     return zone._epbunch.Part_of_Total_Floor_Area.upper() != "NO"
 

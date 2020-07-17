@@ -548,7 +548,7 @@ def load_json_objects(datastore, idf=None):
         OpaqueMaterial,
         OpaqueConstruction,
         WindowConstruction,
-        StructureDefinition,
+        StructureInformation,
         DaySchedule,
         WeekSchedule,
         YearSchedule,
@@ -557,7 +557,7 @@ def load_json_objects(datastore, idf=None):
         ZoneConditioning,
         ZoneConstructionSet,
         ZoneLoad,
-        Zone,
+        ZoneDefinition,
         BuildingTemplate,
     )
 
@@ -587,7 +587,7 @@ def load_json_objects(datastore, idf=None):
     )
     loading_json_list.append(
         [
-            StructureDefinition.from_dict(**store, idf=idf)
+            StructureInformation.from_dict(**store, idf=idf)
             for store in datastore["StructureDefinitions"]
         ]
     )
@@ -634,7 +634,7 @@ def load_json_objects(datastore, idf=None):
         [ZoneLoad.from_dict(**store, idf=idf) for store in datastore["ZoneLoads"]]
     )
     loading_json_list.append(
-        [Zone.from_dict(**store, idf=idf) for store in datastore["Zones"]]
+        [ZoneDefinition.from_dict(**store, idf=idf) for store in datastore["Zones"]]
     )
     loading_json_list.append(
         [

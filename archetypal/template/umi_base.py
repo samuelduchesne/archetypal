@@ -337,7 +337,7 @@ class UmiBase(object):
             return other
         if other is None:
             return self
-        self.all_objects.pop(self.__hash__(), None)
+        self.all_objects.pop(self.__hash__())
         id = self.id
         new_obj = self.combine(other)
         new_obj.__dict__.pop("id")

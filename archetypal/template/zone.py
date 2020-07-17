@@ -371,7 +371,7 @@ class Zone(UmiBase):
             sql (dict): The sql dict for this IDF object.
         """
         start_time = time.time()
-        log('\nConstructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
+        log('Constructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
         name = zone_ep.Name
         zone = cls(Name=name, idf=zone_ep.theidf, sql=sql, Category=zone_ep.theidf.name)
 

@@ -15,7 +15,7 @@ from eppy.bunch_subclass import EpBunch
 
 import archetypal
 from archetypal import Schedule, log
-from archetypal.template import UmiBase, Unique, UniqueName
+from archetypal.template import UmiBase, Unique, UniqueName, CREATED_OBJECTS
 
 
 class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
@@ -100,10 +100,11 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
     def __eq__(self, other):
         if not isinstance(other, UmiSchedule):
-            return None
+            return False
         else:
             return all(
                 [
+                    self.Name == other.Name,
                     self.strict == other.strict,
                     self.schType == other.schType,
                     self.schTypeLimitsName == other.schTypeLimitsName,
@@ -302,7 +303,7 @@ class YearScheduleParts:
         current_version=archetypal.__version__,
         details="Use from_dict function instead",
     )
-    def from_json(cls, all_objects, *args, **kwargs):
+    def from_json(cls, *args, **kwargs):
 
         """
         Args:
@@ -310,10 +311,10 @@ class YearScheduleParts:
             *args:
             **kwargs:
         """
-        return cls.from_dict(all_objects, *args, **kwargs)
+        return cls.from_dict(*args, **kwargs)
 
     @classmethod
-    def from_dict(cls, all_objects, *args, **kwargs):
+    def from_dict(cls, *args, **kwargs):
         """
         Args:
             all_objects:
@@ -322,7 +323,7 @@ class YearScheduleParts:
         """
         ysp = cls(*args, **kwargs)
         ref = kwargs.get("Schedule", None)
-        ysp.Schedule = all_objects.get_ref(ref)
+        ysp.Schedule = UmiBase.get_classref(ref)
 
         return ysp
 
@@ -497,9 +498,8 @@ class WeekSchedule(UmiSchedule):
             **kwargs:
         """
         sch_type_limits_name = kwargs.pop("Type")
-        wc = cls(schTypeLimitsName=sch_type_limits_name, **kwargs)
-        days = kwargs.get("Days", None)
-        wc.Days = [wc.get_ref(day) for day in days]
+        Days = [UmiBase.get_classref(ref) for ref in kwargs.pop("Days")]
+        wc = cls(schTypeLimitsName=sch_type_limits_name, days=Days, **kwargs)
         return wc
 
     def to_json(self):
@@ -550,6 +550,11 @@ class WeekSchedule(UmiSchedule):
             )
 
         return blocks
+
+    @property
+    def all_values(self):
+        return np.concatenate([day.all_values for day in self.Days])
+
 
     def to_dict(self):
         """returns umi template repr"""
@@ -648,12 +653,10 @@ class YearSchedule(UmiSchedule):
             **kwargs:
         """
         schtypelimitsname = kwargs.pop("Type")
-        ys = cls(schTypeLimitsName=schtypelimitsname, **kwargs)
-        parts = kwargs.get("Parts", None)
-
-        ys.Parts = [
-            YearScheduleParts.from_dict(all_objects=ys, **part) for part in parts
+        Parts = [
+            YearScheduleParts.from_dict(**part) for part in kwargs.pop("Parts", None)
         ]
+        ys = cls(schTypeLimitsName=schtypelimitsname, Parts=Parts, **kwargs)
         ys.schType = "Schedule:Year"
         idf = kwargs.get("idf", None)
         return UmiSchedule.from_yearschedule(ys, idf=idf)

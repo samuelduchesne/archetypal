@@ -218,6 +218,12 @@ class UmiBase(object):
         """Convert class properties to dict"""
         return {"$id": "{}".format(self.id), "Name": "{}".format(UniqueName(self.Name))}
 
+    @classmethod
+    def get_classref(cls, ref):
+        return next(
+            iter([value for value in CREATED_OBJECTS if value.id == ref["$ref"]]), None
+        )
+
     def get_ref(self, ref):
         """Gets item matching ref id
 
@@ -225,7 +231,7 @@ class UmiBase(object):
             ref:
         """
         return next(
-            iter([value for value in self.all_objects if value.id == ref["$ref"]])
+            iter([value for value in self.all_objects if value.id == ref["$ref"]]), None
         )
 
     def __hash__(self):

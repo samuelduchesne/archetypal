@@ -230,13 +230,13 @@ class TestWeekSchedule:
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
         days = [
-            {"$ref": sch_d_on.id},
-            {"$ref": sch_d_off.id},
-            {"$ref": sch_d_on.id},
-            {"$ref": sch_d_off.id},
-            {"$ref": sch_d_on.id},
-            {"$ref": sch_d_off.id},
-            {"$ref": sch_d_on.id},
+            sch_d_on,
+            sch_d_off,
+            sch_d_on,
+            sch_d_off,
+            sch_d_on,
+            sch_d_off,
+            sch_d_on,
         ]
         # Creates WeekSchedule from list of DaySchedule
         a = ar.WeekSchedule(
@@ -267,7 +267,7 @@ class TestWeekSchedule:
 
         # Makes sure WeekSchedules created with 2 methods have the same values
         # And different ids
-        assert a.all_values == b.all_values
+        assert np.array_equal(a.all_values, b.all_values)
         assert a.id != b.id
 
 
@@ -3063,7 +3063,7 @@ class TestUmiTemplateLibrary:
         assert no_duplicates(template.to_dict(), attribute="$id")
 
     def test_necb_parallel(self, config):
-        settings.log_console = False
+        settings.log_console = True
         office = [
             r"tests\input_data\necb\NECB 2011-SmallOffice-NECB HDD "
             r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",

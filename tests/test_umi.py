@@ -31,9 +31,11 @@ class TestUmiTemplate:
             / "VentilationSimpleTest.idf",
         ]
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        a = UmiTemplateLibrary.read_idf(idf_source, wf, name="Mixed_Files")
+        a = UmiTemplateLibrary.read_idf(idf_source, wf, name="Mixed_Files",
+                                        processors=-1)
 
         data_dict = a.to_dict()
+        a.to_json()
         assert no_duplicates(data_dict)
 
     @pytest.mark.skipif(

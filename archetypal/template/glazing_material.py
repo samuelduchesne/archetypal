@@ -8,7 +8,7 @@
 import collections
 
 from archetypal import log
-from archetypal.template import MaterialBase, Unique, UniqueName
+from archetypal.template import MaterialBase, Unique, UniqueName, UmiBase
 
 
 class GlazingMaterial(MaterialBase, metaclass=Unique):
@@ -153,7 +153,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
             weights = [self.Density, other.Density]
         # iterate over attributes and apply either float_mean or str_mean.
         new_attr = {}
-        for attr in self.__dict__:
+        for attr, value in self.__dict__.items():
             if attr not in [
                 "Comments",
                 "idf",
@@ -163,18 +163,19 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
                 "_idf",
                 "_sql",
             ]:
-                if isinstance(self.__dict__[attr], (int, float)):
-                    new_attr[attr] = self._float_mean(other, attr=attr, weights=weights)
-                elif isinstance(self.__dict__[attr], str):
-                    new_attr[attr] = self._str_mean(other, attr=attr, append=False)
-                elif isinstance(self.__dict__[attr], list):
+                if isinstance(value, (int, float)) or isinstance(other, (int, float)):
+                    new_attr[attr] = UmiBase._float_mean(
+                        self, other, attr=attr, weights=weights
+                    )
+                elif isinstance(value, str) or isinstance(other, str):
+                    new_attr[attr] = UmiBase._str_mean(
+                        self, other, attr=attr, append=False
+                    )
+                elif isinstance(value, list) or isinstance(other, list):
                     new_attr[attr] = getattr(self, attr) + getattr(other, attr)
-                elif not getattr(self, attr):
-                    if getattr(self, attr):
-                        new_attr[attr] = getattr(self, attr)
-                    else:
-                        new_attr[attr] = None
-                elif isinstance(getattr(self, attr), collections.UserList):
+                elif isinstance(value, collections.UserList) or isinstance(
+                    other, collections.UserList
+                ):
                     pass
                 else:
                     raise NotImplementedError

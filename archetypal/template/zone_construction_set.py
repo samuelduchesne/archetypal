@@ -206,6 +206,12 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         Returns:
             (ZoneConstructionSet): the combined ZoneConstructionSet object.
         """
+        # Check if other is None. Simply return self
+        if not other:
+            return self
+
+        if not self:
+            return other
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
             msg = "Cannot combine %s with %s" % (
@@ -273,12 +279,26 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     def validate(self):
         for attr in ["Slab", "Roof", "Partition", "Ground", "Facade"]:
             if getattr(self, attr) is None:
-                setattr(self, attr, OpaqueConstruction.generic(idf=self.idf))
+                # First try to get one from another zone that has the attr
+                zone = next(
+                    iter(
+                        filter(
+                            lambda x: getattr(x, attr, None) is not None,
+                            self.all_objects,
+                        )
+                    ),
+                    None,
+                )
+                if zone:
+                    setattr(self, attr, getattr(zone, attr))
+                else:
+                    # If not, default to a generic construction for last resort.
+                    setattr(self, attr, OpaqueConstruction.generic(idf=self.idf))
                 log(
                     f"While validating {self}, the required attribute "
                     f"'{attr}' was filled "
                     f"with {getattr(self, attr)}",
-                    lg.DEBUG
+                    lg.DEBUG,
                 )
         return self
 

@@ -228,7 +228,10 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         Args:
             zone (archetypal.template.zone.Zone): zone to gets information from
         """
-
+        # If Zone is not part of Conditioned Area, it should not have a
+        # VentilationSetting object.
+        if not zone.is_part_of_conditioned_floor_area:
+            return None
         name = zone.Name + "_VentilationSetting"
 
         df = {"a": zone.idf.sql}
@@ -294,6 +297,13 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         Returns:
             (VentilationSetting): the combined VentilationSetting object.
         """
+        # Check if other is None. Simply return self
+        if not other:
+            return self
+
+        if not self:
+            return other
+
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
             msg = "Cannot combine %s with %s" % (
@@ -323,9 +333,11 @@ class VentilationSetting(UmiBase, metaclass=Unique):
                 )
             )
 
-        a = self.NatVentSchedule.combine(other.NatVentSchedule, weights)
-        b = self.ScheduledVentilationSchedule.combine(
-            other.ScheduledVentilationSchedule, weights
+        a = UmiSchedule.combine(self.NatVentSchedule, other.NatVentSchedule, weights)
+        b = UmiSchedule.combine(
+            self.ScheduledVentilationSchedule,
+            other.ScheduledVentilationSchedule,
+            weights,
         )
         c = any((self.Afn, other.Afn))
         d = self._float_mean(other, "Infiltration", weights)

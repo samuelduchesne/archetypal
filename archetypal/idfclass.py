@@ -58,6 +58,7 @@ from archetypal import (
     EnergyPlusVersionError,
     get_eplus_dirs,
     EnergyPlusWeatherError,
+    Schedule,
 )
 from archetypal.utils import _unpack_tuple, parse, extend_class, get_eplus_basedirs
 
@@ -70,13 +71,13 @@ class IDF(geomeppy.IDF):
     eppy.modeleditor.IDF class
     """
 
-    # dependencies: dict of <dependant value: independant value>
+    # dependencies: dict of <dependant value: independent value>
     _dependencies = {
         "iddname": ["idfname", "as_version"],
         "file_version": ["idfname"],
-        "idd_info": ["iddname"],
-        "idd_index": ["iddname"],
-        "idd_version": ["iddname"],
+        "idd_info": ["iddname", "idfname"],
+        "idd_index": ["iddname", "idfname"],
+        "idd_version": ["iddname", "idfname"],
         "idfobjects": ["iddname", "idfname"],
         "block": ["iddname", "idfname"],
         "model": ["iddname", "idfname"],
@@ -84,6 +85,8 @@ class IDF(geomeppy.IDF):
         "sql_file": ["as_version", "annual", "design_day", "epw", "idfname"],
         "htm": ["as_version", "annual", "design_day", "epw", "idfname"],
         "schedules_dict": ["idfobjects"],
+        "partition_ratio": ["idfobjects"],
+        "area_conditioned": ["idfobjects"],
     }
     _independant_vars = set(chain(*list(_dependencies.values())))
     _dependant_vars = set(_dependencies.keys())
@@ -188,6 +191,9 @@ class IDF(geomeppy.IDF):
         self._original_ep_version = None
         self._schedules_dict = None
         self._outputs = None
+        self._partition_ratio = None
+        self._area_conditioned = None
+        self._schedules = None
 
         self.load_kwargs = dict(epw=epw, **kwargs)
 
@@ -211,6 +217,9 @@ class IDF(geomeppy.IDF):
             self.outputtype = "standard"
         except Exception as e:
             raise e
+        else:
+            if self.file_version < self.as_version:
+                self.upgrade(to_version=self.as_version)
         finally:
             # Set model outputs
             self._outputs = Outputs(idf=self)
@@ -400,8 +409,6 @@ class IDF(geomeppy.IDF):
                     f"{self.as_version} cannot be lower then "
                     f"the version number set in the model"
                 )
-            elif self.file_version < self.as_version:
-                self.upgrade(to_version=self.as_version)
             idd_filename = Path(getiddfile(str(self.file_version))).expand()
             if not idd_filename.exists():
                 # Try finding the one in IDFVersionsUpdater
@@ -570,10 +577,10 @@ class IDF(geomeppy.IDF):
         """Get the sql file path"""
         if self._sql_file is None:
             try:
-                files = self.simulation_dir.files("*out.sql")
+                (file,) = self.simulation_dir.files("*out.sql")
             except FileNotFoundError:
-                files = self.simulate().simulation_dir.files("*out.sql")
-            self._sql_file = files[0].expand()
+                (file,) = self.simulate().simulation_dir.files("*out.sql")
+            self._sql_file = file.expand()
         return self._sql_file
 
     @property
@@ -581,46 +588,49 @@ class IDF(geomeppy.IDF):
         """Returns the total conditioned area of a building (taking into account
         zone multipliers
         """
-        area = 0
-        zones = self.idfobjects["ZONE"]
-        zone: EpBunch
-        for zone in zones:
-            for surface in zone.zonesurfaces:
-                if hasattr(surface, "tilt"):
-                    if surface.tilt == 180.0:
-                        part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
-                        multiplier = float(
-                            zone.Multiplier if zone.Multiplier != "" else 1
-                        )
+        if self._partition_ratio is None:
+            area = 0
+            zones = self.idfobjects["ZONE"]
+            zone: EpBunch
+            for zone in zones:
+                for surface in zone.zonesurfaces:
+                    if hasattr(surface, "tilt"):
+                        if surface.tilt == 180.0:
+                            part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
+                            multiplier = float(
+                                zone.Multiplier if zone.Multiplier != "" else 1
+                            )
 
-                        area += surface.area * multiplier * part_of
-        return area
+                            area += surface.area * multiplier * part_of
+            self._partition_ratio = area
+        return self._partition_ratio
 
     @property
     def partition_ratio(self):
         """The number of lineal meters of partitions (Floor to ceiling) present
         in average in the building floor plan by m2.
         """
-        partition_lineal = 0
-        zones = self.idfobjects["ZONE"]
-        zone: EpBunch
-        for zone in zones:
-            for surface in [
-                surf
-                for surf in zone.zonesurfaces
-                if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
-            ]:
-                if hasattr(surface, "tilt"):
-                    if (
-                        surface.tilt == 90.0
-                        and surface.Outside_Boundary_Condition != "Outdoors"
-                    ):
-                        multiplier = float(
-                            zone.Multiplier if zone.Multiplier != "" else 1
-                        )
-                        partition_lineal += surface.width * multiplier
-
-        return partition_lineal / self.area_conditioned
+        if self._partition_ratio is None:
+            partition_lineal = 0
+            zones = self.idfobjects["ZONE"]
+            zone: EpBunch
+            for zone in zones:
+                for surface in [
+                    surf
+                    for surf in zone.zonesurfaces
+                    if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
+                ]:
+                    if hasattr(surface, "tilt"):
+                        if (
+                            surface.tilt == 90.0
+                            and surface.Outside_Boundary_Condition != "Outdoors"
+                        ):
+                            multiplier = float(
+                                zone.Multiplier if zone.Multiplier != "" else 1
+                            )
+                            partition_lineal += surface.width * multiplier
+            self._partition_ratio = partition_lineal / self.area_conditioned
+        return self._partition_ratio
 
     @property
     def simulation_files(self):
@@ -639,6 +649,15 @@ class IDF(geomeppy.IDF):
         if self._schedules_dict is None:
             self._schedules_dict = self.get_all_schedules()
         return self._schedules_dict
+
+    @property
+    def schedules(self):
+        if self._schedules is None:
+            schedules = {}
+            for schd in self.schedules_dict:
+                schedules[schd] = Schedule(Name=schd, idf=self)
+            self._umischedules = schedules
+        return self._umischedules
 
     @property
     def outputs(self):
@@ -908,34 +927,14 @@ class IDF(geomeppy.IDF):
             raise EnergyPlusVersionError(self.name, self.idf_version, to_version)
         else:
             # execute transitions
-            with TemporaryDirectory(
-                prefix="transition_run_", suffix=None, dir=self.output_directory
-            ) as tmp:
-                # Move to temporary transition_run folder
-                log(f"temporary dir ({Path(tmp).expand()}) created", lg.DEBUG)
-                idf_file = Path(
-                    self.idfname.copy(tmp)
-                ).abspath()  # copy and return abspath
-                try:
-                    self._execute_transitions(idf_file, to_version, **kwargs)
-                except (CalledProcessError, EnergyPlusProcessError) as e:
-                    raise e
-
-                # retrieve transitioned file
-                for f in Path(tmp).files("*.idfnew"):
-                    if overwrite:
-                        file = f.copy(self.output_directory / idf_file.basename())
-                    else:
-                        file = f.copy(self.output_directory)
-
-            try:
-                self.idfname = file
-            except (NameError, UnboundLocalError):
-                raise EnergyPlusProcessError(
-                    cmd="IDF.upgrade",
-                    stderr=f"An error occurred during transitioning",
-                    idf=self.name,
-                )
+            self._running_transition_thread = TransitionThread(
+                idf=self, overwrite=overwrite
+            )
+            self._running_transition_thread.start()
+            self._running_transition_thread.join()
+            e = self._running_transition_thread.exception
+            if e:
+                raise e
 
     @deprecated(
         deprecated_in="1.4",
@@ -1210,10 +1209,11 @@ class IDF(geomeppy.IDF):
                 # Try backwards compatibility with EnergyPlus < 9.0.0
                 name = kwargs.pop("Key_Name")
                 kwargs["Name"] = name
-                new_object = self.anidfobject(key, **kwargs)
             else:
                 log(f"Could not add object {key} because of: {e}", lg.WARNING)
-        finally:
+                return None
+        else:
+            new_object = self.anidfobject(key, **kwargs)
             # If object is supposed to be 'unique-object', deletes all objects to be
             # sure there is only one of them when creating new object
             # (see following line)
@@ -2855,6 +2855,85 @@ class EnergyPlusExe:
         return self.__repr__()
 
 
+class TransitionExe:
+    """Transition Program Generator.
+
+    Examples:
+        >>> for transition in TransitionExe(IDF(), output_directory=os.getcwd()):
+        >>>     print(transition.cmd())
+    """
+
+    def __init__(self, idf, output_directory):
+        """
+        Args:
+            idf (IDF): The idf filename
+            to_version (EnergyPlusVersion): The version
+        """
+        self.idf = idf
+        self.trans = None  # Set by __next__()
+        self.output_directory = output_directory
+
+        self._trans_exec = None
+
+    def __next__(self):
+        self.trans = next(self.transitions)
+        return self
+
+    def __iter__(self):
+        return self
+
+    def get_exe_path(self):
+        if not self.trans_exec[self.trans].exists():
+            raise EnergyPlusProcessError(
+                cmd=self.trans_exec[self.trans],
+                stderr="The specified EnergyPlus version (v{}) does not have"
+                " the required transition program '{}' in the "
+                "PreProcess folder. See the documentation "
+                "(archetypal.readthedocs.io/troubleshooting.html#missing"
+                "-transition-programs) "
+                "to solve this issue".format(
+                    self.idf.as_version, self.trans_exec[self.trans]
+                ),
+                idf=self.idf.name,
+            )
+        return self.trans_exec[self.trans]
+
+    @property
+    def idfname(self):
+        """Copies self.idf to the output directory"""
+        return Path(self.idf.idfname.copy(self.output_directory)).abspath()
+
+    @property
+    def trans_exec(self):
+        if self._trans_exec is None:
+            self._trans_exec = {
+                parse(re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)): exec
+                for exec in self.idf.idfversionupdater_dir.files("Transition-V*")
+            }
+        return self._trans_exec
+
+    @property
+    def transitions(self):
+        transitions = [
+            key
+            for key in self.trans_exec
+            if self.idf.as_version >= key > self.idf.idf_version
+        ]
+        transitions.sort()
+        for transition in transitions:
+            yield transition
+
+    def __str__(self):
+        return " ".join(self.__repr__())
+
+    def __repr__(self):
+        cmd = [self.get_exe_path(), self.idfname]
+        return cmd
+
+    def cmd(self):
+        return self.__repr__()
+
+
 class ExpandObjectsThread(Thread):
     def __init__(self, idf):
         """
@@ -3088,6 +3167,151 @@ class SlabThread(Thread):
                 self.exception = EnergyPlusProcessError(
                     cmd=self.cmd, stderr=stderr_r, idf=self.idf.name,
                 )
+
+    def cancelled_callback(self, stdin, stdout):
+        pass
+
+    @property
+    def eplus_home(self):
+        eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
+        if not Path(eplus_home).exists():
+            raise EnergyPlusVersionError(
+                msg=f"No EnergyPlus Executable found for version "
+                f"{parse(self.idf.as_version)}"
+            )
+        else:
+            return Path(eplus_home)
+
+
+class TransitionThread(Thread):
+    def __init__(self, idf, overwrite=False):
+        """
+
+        Args:
+            idf (IDF):
+        """
+        super(TransitionThread, self).__init__()
+        self.overwrite = overwrite
+        self.p = None
+        self.std_out = None
+        self.std_err = None
+        self.idf = idf
+        self.cancelled = False
+        self.run_dir = Path("")
+        self.exception = None
+
+    def run(self):
+        """Wrapper around the EnergyPlus command line interface.
+
+        Adapted from :func:`eppy.runner.runfunctions.run`.
+        """
+        self.cancelled = False
+        # get version from IDF object or by parsing the IDF file for it
+
+        with TempDir(
+            prefix="Transition_run_",
+            suffix=self.idf.output_prefix,
+            dir=self.idf.output_directory,
+        ) as tmp:
+            self.epw = self.idf.epw.copy(tmp).expand()
+            self.idfname = Path(self.idf.idfname.copy(tmp)).expand()
+            self.idd = self.idf.iddname.copy(tmp).expand()
+
+            for trans in tqdm(
+                TransitionExe(self.idf, output_directory=tmp),
+                position=self.idf.position,
+                desc=f"Transition #{self.idf.position}-{self.idf.name}",
+            ):
+                # Get executable using shutil.which (determines the extension based on
+                # the platform, eg: .exe. And copy the executable to tmp
+                self.run_dir = Path(tmp).expand()
+                self.transitionexe = trans
+
+                # Run Transition Program
+                self.cmd = self.transitionexe.cmd()
+                self.p = subprocess.Popen(
+                    self.cmd,
+                    cwd=self.idf.idfversionupdater_dir,  # process runs in dir
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+
+                start_time = time.time()
+                self.msg_callback("Transition started")
+                for line in self.p.stdout:
+                    self.msg_callback(line.strip("\n"))
+
+                # We explicitly close stdout
+                self.p.stdout.close()
+
+                # Wait for process to complete
+                self.p.wait()
+
+                # Communicate callbacks
+                if self.cancelled:
+                    self.msg_callback("Transition cancelled")
+                    # self.cancelled_callback(self.std_out, self.std_err)
+                else:
+                    if self.p.returncode == 0:
+                        self.msg_callback(
+                            "Transition completed in {:,.2f} seconds".format(
+                                time.time() - start_time
+                            )
+                        )
+                        self.success_callback()
+                        for line in self.p.stderr:
+                            self.msg_callback(line)
+                    else:
+                        for line in self.p.stderr:
+                            self.msg_callback(line)
+                        self.msg_callback("Transition failed")
+                        self.failure_callback()
+        return 0
+
+    @property
+    def trans_exec(self):
+        return {
+            parse(re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)): exec
+            for exec in self.idf.idfversionupdater_dir.files("Transition-V*")
+        }
+
+    @property
+    def transitions(self):
+        transitions = [
+            key
+            for key in self.trans_exec
+            if self.idf.as_version >= key > self.idf.idf_version
+        ]
+        transitions.sort()
+        return transitions
+
+    def msg_callback(self, *args, **kwargs):
+        log(*args, **kwargs)
+
+    def success_callback(self):
+        # retrieve transitioned file
+        for f in Path(self.run_dir).files("*.idfnew"):
+            if self.overwrite:
+                file = f.copy(self.idf.output_directory / self.idf.name)
+            else:
+                file = f.copy(self.idf.output_directory)
+            try:
+                self.idf.idfname = file
+            except (NameError, UnboundLocalError):
+                raise EnergyPlusProcessError(
+                    cmd="IDF.upgrade",
+                    stderr=f"An error occurred during transitioning",
+                    idf=self.name,
+                )
+            else:
+                self.idf._reset_dependant_vars("idfname")
+
+    def failure_callback(self):
+        for line in self.p.stderr:
+            self.msg_callback(line)
+        raise CalledProcessError(self.p.returncode, cmd=self.cmd, stderr=self.p.stderr)
 
     def cancelled_callback(self, stdin, stdout):
         pass

@@ -302,6 +302,9 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         Args:
             zone (archetypal.template.zone.Zone): zone to gets information from
         """
+        # If Zone is not part of Conditioned Area, it should not have a ZoneLoad object.
+        if not zone.is_part_of_conditioned_floor_area:
+            return None
         # First create placeholder object.
         name = zone.Name + "_ZoneConditioning"
         z_cond = cls(Name=name, zone=zone, idf=zone.idf, Category=zone.idf.name)
@@ -387,10 +390,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                     self.MechVentSchedule,
                 ) = self.fresh_air_from_ideal_loads(zone)
         except:
-            self.IsMechVentOn = False
-            self.MinFreshAirPerPerson = 0
-            self.MinFreshAirPerArea = 0
-            self.MechVentSchedule = UmiSchedule.constant_schedule(idf=zone.idf)
+            # Set elements to None so that .combine works correctly
+            self.IsMechVentOn = None
+            self.MinFreshAirPerPerson = None
+            self.MinFreshAirPerArea = None
+            self.MechVentSchedule = None
 
     @staticmethod
     def get_equipment_list(zone):
@@ -483,10 +487,9 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         except KeyError:
             # Schedule is not specified so return a constant schedule
             log(
-                f"No Mechanical Ventilation Schedule specified for zone "
-                f"{zone.Name}. Reverting to always on."
+                f"No Mechanical Ventilation Schedule specified for zone " f"{zone.Name}"
             )
-            return UmiSchedule.constant_schedule(idf=zone.idf)
+            return None
 
     def _set_zone_cops(self, zone):
         """
@@ -710,7 +713,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             .unstack(level=-1)
         )
         HeatRecoveryEfficiencySensible = effectiveness.loc[
-            object.Name.upper(), "Heat Exchanger Sensible " "Effectiveness"
+            object.Name.upper(), "Heat Exchanger Sensible Effectiveness"
         ]
         HeatRecoveryEfficiencyLatent = effectiveness.loc[
             object.Name.upper(), "Heat Exchanger Latent Effectiveness"
@@ -849,6 +852,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         Returns:
             (ZoneConditioning): the combined ZoneConditioning object.
         """
+        # Check if other is None. Simply return self
+        if not other:
+            return self
+
+        if not self:
+            return other
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
             msg = "Cannot combine %s with %s" % (
@@ -878,28 +887,28 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 )
             )
 
-        a = self._float_mean(other, "CoolingCoeffOfPerf", weights)
-        b = self._str_mean(other, "CoolingLimitType")
-        c = self._float_mean(other, "CoolingSetpoint", weights)
-        d = self._str_mean(other, "EconomizerType")
-        e = self._float_mean(other, "HeatRecoveryEfficiencyLatent", weights)
-        f = self._float_mean(other, "HeatRecoveryEfficiencySensible", weights)
-        g = self._str_mean(other, "HeatRecoveryType")
-        h = self._float_mean(other, "HeatingCoeffOfPerf", weights)
-        i = self._str_mean(other, "HeatingLimitType")
-        j = self._float_mean(other, "HeatingSetpoint", weights)
+        a = UmiBase._float_mean(self, other, "CoolingCoeffOfPerf", weights)
+        b = UmiBase._str_mean(self, other, "CoolingLimitType")
+        c = UmiBase._float_mean(self, other, "CoolingSetpoint", weights)
+        d = UmiBase._str_mean(self, other, "EconomizerType")
+        e = UmiBase._float_mean(self, other, "HeatRecoveryEfficiencyLatent", weights)
+        f = UmiBase._float_mean(self, other, "HeatRecoveryEfficiencySensible", weights)
+        g = UmiBase._str_mean(self, other, "HeatRecoveryType")
+        h = UmiBase._float_mean(self, other, "HeatingCoeffOfPerf", weights)
+        i = UmiBase._str_mean(self, other, "HeatingLimitType")
+        j = UmiBase._float_mean(self, other, "HeatingSetpoint", weights)
         k = any((self.IsCoolingOn, other.IsCoolingOn))
         l = any((self.IsHeatingOn, other.IsHeatingOn))
         m = any((self.IsMechVentOn, other.IsMechVentOn))
-        n = self._float_mean(other, "MaxCoolFlow", weights)
-        o = self._float_mean(other, "MaxCoolingCapacity", weights)
-        p = self._float_mean(other, "MaxHeatFlow", weights)
-        q = self._float_mean(other, "MaxHeatingCapacity", weights)
-        r = self._float_mean(other, "MinFreshAirPerArea", weights)
-        s = self._float_mean(other, "MinFreshAirPerPerson", weights)
-        t = self.HeatingSchedule.combine(other.HeatingSchedule, weights)
-        u = self.CoolingSchedule.combine(other.CoolingSchedule, weights)
-        v = self.MechVentSchedule.combine(other.MechVentSchedule, weights)
+        n = UmiBase._float_mean(self, other, "MaxCoolFlow", weights)
+        o = UmiBase._float_mean(self, other, "MaxCoolingCapacity", weights)
+        p = UmiBase._float_mean(self, other, "MaxHeatFlow", weights)
+        q = UmiBase._float_mean(self, other, "MaxHeatingCapacity", weights)
+        r = UmiBase._float_mean(self, other, "MinFreshAirPerArea", weights)
+        s = UmiBase._float_mean(self, other, "MinFreshAirPerPerson", weights)
+        t = UmiSchedule.combine(self.HeatingSchedule, other.HeatingSchedule, weights)
+        u = UmiSchedule.combine(self.CoolingSchedule, other.CoolingSchedule, weights)
+        v = UmiSchedule.combine(self.MechVentSchedule, other.MechVentSchedule, weights)
 
         new_attr = dict(
             CoolingCoeffOfPerf=a,
@@ -932,4 +941,9 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
+        if self.MechVentSchedule is None:
+            self.MechVentSchedule = UmiSchedule.constant_schedule(idf=self.idf)
+            self.IsMechVentOn = False
+            self.MinFreshAirPerPerson = 0
+            self.MinFreshAirPerArea = 0
         return self

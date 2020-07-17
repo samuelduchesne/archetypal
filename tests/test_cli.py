@@ -279,7 +279,7 @@ class TestCli:
         get_platform() > (10, 15, 0),
         reason="Skipping since wine 32bit can't run on MacOs >10.15 (Catalina)",
     )
-    def test_convert(self, config, cli_args):
+    def test_convert(self, cli_args):
         """Tests the 'reduce' method"""
         runner = CliRunner()
         args = cli_args
@@ -287,7 +287,7 @@ class TestCli:
         print(result.stdout)
         assert result.exit_code == 0
 
-    def test_reduce(self, config):
+    def test_reduce(self):
         """Tests the 'reduce' method"""
         runner = CliRunner()
         test_file_list = [
@@ -321,7 +321,7 @@ class TestCli:
         print(result.stdout)
         assert result.exit_code == 0
 
-    def test_reduce_failed(self, config):
+    def test_reduce_failed(self):
         """Tests the 'reduce' method on a failed file"""
         runner = CliRunner()
         test_file = "tests/input_data/necb/NECB 2011-Warehouse-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
@@ -365,13 +365,23 @@ class TestCli:
         assert (settings.logs_folder / "failed_reduce.txt").expand().exists()
         assert result.exit_code == 0
 
-    def test_transition_dir_file_mixed(self, config):
+    def test_transition_dir_file_mixed(self):
         """Tests the transition method for the CLI using a mixture of a directory
         (Path.isdir()) and a file Path.isfile()"""
         runner = CliRunner()
         result = runner.invoke(
             cli,
             [
+                "--cache-folder",
+                "tests/.temp/cache",
+                "--data-folder",
+                "tests/.temp/data",
+                "--imgs-folder",
+                "tests/.temp/images",
+                "--logs-folder",
+                "tests/.temp/logs",
+                "--ep_version",
+                settings.ep_version,
                 "-v",
                 "transition",
                 "tests/input_data/problematic/ASHRAE90.1_ApartmentHighRise_STD2016_Buffalo.idf",

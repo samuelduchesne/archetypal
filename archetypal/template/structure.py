@@ -53,8 +53,27 @@ class MassRatio(object):
 
     @classmethod
     def generic(cls):
-        mat = OpaqueMaterial.generic()
-        return cls(HighLoadRatio=1, Material=mat, NormalRatio=1)
+        mat = OpaqueMaterial(
+            Name="Steel General",
+            Conductivity=45.3,
+            SpecificHeat=500,
+            SolarAbsorptance=0.4,
+            ThermalEmittance=0.9,
+            VisibleAbsorptance=0.4,
+            Roughness="Rough",
+            Cost=0,
+            Density=7830,
+            MoistureDiffusionResistance=50,
+            EmbodiedCarbon=1.37,
+            EmbodiedEnergy=20.1,
+            TransportCarbon=0.067,
+            TransportDistance=500,
+            TransportEnergy=0.94,
+            SubstitutionRatePattern=[1],
+            SubstitutionTimestep=100,
+            DataSource="BostonTemplateLibrary.json",
+        )
+        return cls(HighLoadRatio=305, Material=mat, NormalRatio=305)
 
 
 class StructureDefinition(UmiBase, metaclass=Unique):

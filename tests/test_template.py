@@ -1,7 +1,9 @@
+import os
 from copy import deepcopy
 
 import numpy as np
 import pytest
+from path import Path
 
 import archetypal as ar
 import archetypal.settings
@@ -12,6 +14,7 @@ from archetypal import (
     GlazingMaterial,
     IDF,
     YearScheduleParts,
+    OpaqueConstruction,
 )
 from tests.conftest import no_duplicates
 
@@ -868,7 +871,9 @@ class TestOpaqueConstruction:
             construction_a:
             construction_b:
         """
-        oc_c = construction_a.combine(construction_b, method="constant_ufactor")
+        oc_c = OpaqueConstruction.combine(
+            construction_a, construction_b, method="constant_ufactor"
+        )
         assert oc_c
         desired = 3.237
         actual = oc_c.u_value()
@@ -2361,6 +2366,17 @@ class TestBuildingTemplate:
         # don't have the same hash.
         assert len(set(bt_list)) == 2
 
+    def test_building_template(self):
+        from archetypal import BuildingTemplate
+
+        idf = IDF(
+            r"tests\input_data\necb\NECB 2011-SmallOffice-NECB HDD "
+            r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            epw=r"tests\input_data\CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+        )
+        template = BuildingTemplate.from_idf(idf)
+        assert template
+
 
 class TestZoneGraph:
     """Series of tests for the :class:`ZoneGraph` class"""
@@ -3005,12 +3021,90 @@ class TestUmiTemplateLibrary:
         ).to_json(all_zones=True)
         print(template_json)
 
+    @pytest.mark.skipif(
+        os.environ.get("CI", "False").lower() == "true",
+        reason="Skipping this test on CI environment because it needs EnergyPlys 8-7-0",
+    )
     def test_sf_cz5a(self, config):
-        file = "tests/input_data/problematic/SF+CZ5A+USA_IL_Chicago-OHare.Intl.AP" \
-               ".725300+oilfurnace+slab+IECC_2012.idf"
+        from path import Path
+
+        settings.log_console = False
+        files = Path("tests/input_data/problematic").files("*CZ5A*.idf")
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         template = ar.UmiTemplateLibrary.read_idf(
-            name="my_umi_template", idf_files=[file], as_version="8-7-0", weather=w
+            name="my_umi_template", idf_files=files, as_version="9-2-0", weather=w
+        )
+        template.to_json()
+        assert no_duplicates(template.to_dict(), attribute="Name")
+        assert no_duplicates(template.to_dict(), attribute="$id")
+
+    office = [
+        r"tests\input_data\necb\NECB 2011-SmallOffice-NECB HDD "
+        r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        r"tests\input_data\necb\NECB 2011-MediumOffice-NECB HDD "
+        r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        r"tests\input_data\necb\NECB 2011-LargeOffice-NECB HDD "
+        r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+    ]
+
+    @pytest.mark.parametrize("file", office, ids=["small", "medium", "large"])
+    def test_necb_serial(self, file, config):
+        settings.log_console = True
+        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        template = ar.UmiTemplateLibrary.read_idf(
+            name="my_umi_template",
+            idf_files=[file],
+            as_version="9-2-0",
+            weather=w,
+            processors=1,
+        )
+        template.to_json()
+        assert no_duplicates(template.to_dict(), attribute="Name")
+        assert no_duplicates(template.to_dict(), attribute="$id")
+
+    def test_necb_parallel(self, config):
+        settings.log_console = False
+        office = [
+            r"tests\input_data\necb\NECB 2011-SmallOffice-NECB HDD "
+            r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            r"tests\input_data\necb\NECB 2011-MediumOffice-NECB HDD "
+            r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            r"tests\input_data\necb\NECB 2011-LargeOffice-NECB HDD "
+            r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        ]
+        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        template = ar.UmiTemplateLibrary.read_idf(
+            name="my_umi_template",
+            idf_files=office,
+            as_version="9-2-0",
+            weather=w,
+            processors=-1,
+        )
+        template.to_json()
+        assert no_duplicates(template.to_dict(), attribute="Name")
+        assert no_duplicates(template.to_dict(), attribute="$id")
+
+    office = [
+        r"tests\input_data\necb\NECB 2011-SmallOffice-NECB HDD "
+        r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        r"tests\input_data\necb\NECB 2011-MediumOffice-NECB HDD "
+        r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        r"tests\input_data\necb\NECB 2011-LargeOffice-NECB HDD "
+        r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+    ]
+
+    @pytest.mark.parametrize(
+        "file", Path("tests/input_data/problematic").files("*CZ5A*.idf")
+    )
+    def test_cz5a_serial(self, file, config):
+        settings.log_console = True
+        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        template = ar.UmiTemplateLibrary.read_idf(
+            name=file.stem,
+            idf_files=[file],
+            as_version="9-2-0",
+            weather=w,
+            processors=1,
         )
         template.to_json()
         assert no_duplicates(template.to_dict(), attribute="Name")

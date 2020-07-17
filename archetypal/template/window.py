@@ -222,7 +222,12 @@ class WindowConstruction(UmiBase, metaclass=Unique):
             - Implement equivalent window layers for constant u-factor.
 
         """
-        return self
+        # Check if other is None. Simply return self
+        if not other:
+            return self
+
+        if not self:
+            return other
 
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
@@ -327,6 +332,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
 
     def __repr__(self):
         from archetypal import IDF
+
         v_ = [
             (k, v) for k, v in self.__dict__.items() if not isinstance(v, (dict, IDF))
         ]
@@ -657,9 +663,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
         if window_sets:
             # if one or more window has been created, reduce. Using reduce on
             # a len==1 list, will simply return the object.
-            from operator import add
 
-            return reduce(add, window_sets)
+            return reduce(WindowSetting.combine, window_sets)
         else:
             # no window found, probably a core zone, return None.
             return None
@@ -675,10 +680,13 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Returns:
             WindowSetting: A new combined object made of self + other.
         """
-        if self is None:
-            return other
-        if other is None:
+        # Check if other is None. Simply return self
+        if not other:
             return self
+
+        if not self:
+            return other
+
         if not isinstance(other, self.__class__):
             msg = "Cannot combine %s with %s" % (
                 self.__class__.__name__,
@@ -701,8 +709,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
             Construction=self.Construction.combine(other.Construction, weights),
             AfnDischargeC=self._float_mean(other, "AfnDischargeC", weights),
             AfnTempSetpoint=self._float_mean(other, "AfnTempSetpoint", weights),
-            AfnWindowAvailability=self.AfnWindowAvailability.combine(
-                other.AfnWindowAvailability, weights
+            AfnWindowAvailability=UmiSchedule.combine(
+                self.AfnWindowAvailability, other.AfnWindowAvailability, weights
             ),
             IsShadingSystemOn=any([self.IsShadingSystemOn, other.IsShadingSystemOn]),
             IsVirtualPartition=any([self.IsVirtualPartition, other.IsVirtualPartition]),
@@ -721,11 +729,15 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 other, "ZoneMixingDeltaTemperature", weights
             ),
             ZoneMixingFlowRate=self._float_mean(other, "ZoneMixingFlowRate", weights),
-            ZoneMixingAvailabilitySchedule=self.ZoneMixingAvailabilitySchedule.combine(
-                other.ZoneMixingAvailabilitySchedule, weights
+            ZoneMixingAvailabilitySchedule=UmiSchedule.combine(
+                self.ZoneMixingAvailabilitySchedule,
+                other.ZoneMixingAvailabilitySchedule,
+                weights,
             ),
-            ShadingSystemAvailabilitySchedule=self.ShadingSystemAvailabilitySchedule.combine(
-                other.ShadingSystemAvailabilitySchedule, weights
+            ShadingSystemAvailabilitySchedule=UmiSchedule.combine(
+                self.ShadingSystemAvailabilitySchedule,
+                other.ShadingSystemAvailabilitySchedule,
+                weights,
             ),
         )
         new_obj = self.__class__(**meta, **new_attr, idf=self.idf)

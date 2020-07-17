@@ -12,8 +12,8 @@ import random
 import time
 from operator import add
 
-from deprecation import deprecated
 import numpy as np
+from deprecation import deprecated
 from eppy.bunch_subclass import BadEPFieldError
 from geomeppy.geom.polygons import Polygon3D
 
@@ -34,7 +34,7 @@ from archetypal.template import (
 
 class Zone(UmiBase):
     """Class containing HVAC settings: Conditioning, Domestic Hot Water, Loads,
-    Ventilation, adn Consructions
+    Ventilation, adn Constructions
 
     .. image:: ../images/template/zoneinfo-zone.png
     """
@@ -95,7 +95,8 @@ class Zone(UmiBase):
         self._area = kwargs.get("area", None)
         self._volume = kwargs.get("volume", None)
 
-        CREATED_OBJECTS[hash(self)] = self
+        if self not in CREATED_OBJECTS:
+            CREATED_OBJECTS.append(self)
 
     def __add__(self, other):
         """
@@ -103,7 +104,7 @@ class Zone(UmiBase):
             other (Zone):
         """
         # create the new merged zone from self
-        return self.combine(other)
+        return Zone.combine(self, other)
 
     def __hash__(self):
         return hash((self.__class__.__name__, self.Name, self.DataSource))
@@ -276,33 +277,9 @@ class Zone(UmiBase):
         InternalMassExposedPerFloorArea = 0 and sets it to the
         self.InternalMassConstruction attribute.
         """
-        mat = self.idf.newidfobject(
-            key="Material".upper(),
-            Name="Wood 6inch",
-            Roughness="MediumSmooth",
-            Thickness=0.15,
-            Conductivity=0.12,
-            Density=540,
-            Specific_Heat=1210,
-            Thermal_Absorptance=0.7,
-            Visible_Absorptance=0.7,
-        )
-        cons = self.idf.newidfobject(
-            key="Construction".upper(),
-            Name="InteriorFurnishings",
-            Outside_Layer="Wood 6inch",
-        )
-        internal_mass = "{}_InternalMass".format(self.Name)
-        cons.Name = internal_mass + "_construction"
-        new_epbunch = self.idf.newidfobject(
-            key="InternalMass".upper(),
-            Name=internal_mass,
-            Construction_Name=cons.Name,
-            Zone_or_ZoneList_Name=self.Name,
-            Surface_Area=1,
-        )
-        self.InternalMassConstruction = OpaqueConstruction.from_epbunch(
-            new_epbunch, idf=self.idf
+
+        self.InternalMassConstruction = OpaqueConstruction.generic_internalmass(
+            idf=self.idf, for_zone=self
         )
         self.InternalMassExposedPerFloorArea = 0
 
@@ -431,6 +408,13 @@ class Zone(UmiBase):
         Returns:
             (Zone): the combined Zone object.
         """
+        # Check if other is None. Simply return self
+        if not other:
+            return self
+
+        if not self:
+            return other
+
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
             msg = "Cannot combine %s with %s" % (
@@ -442,9 +426,6 @@ class Zone(UmiBase):
         # Check if other is not the same as self
         if self == other:
             return self
-
-        incoming_zone_data = self.__dict__.copy()
-        incoming_zone_data.pop("Name")
 
         meta = self._get_predecessors_meta(other)
 
@@ -464,20 +445,24 @@ class Zone(UmiBase):
             )
 
         new_attr = dict(
-            Conditioning=self.Conditioning.combine(other.Conditioning, weights),
-            Constructions=self.Constructions.combine(other.Constructions, weights),
-            Ventilation=self.Ventilation.combine(other.Ventilation, weights),
-            Windows=None
-            if self.Windows is None or other.Windows is None
-            else self.Windows.combine(other.Windows, weights),
+            Conditioning=ZoneConditioning.combine(
+                self.Conditioning, other.Conditioning, weights
+            ),
+            Constructions=ZoneConstructionSet.combine(
+                self.Constructions, other.Constructions, weights
+            ),
+            Ventilation=VentilationSetting.combine(
+                self.Ventilation, other.Ventilation, weights
+            ),
+            Windows=WindowSetting.combine(self.Windows, other.Windows, weights),
             DaylightMeshResolution=self._float_mean(
                 other, "DaylightMeshResolution", weights=weights
             ),
             DaylightWorkplaneHeight=self._float_mean(
                 other, "DaylightWorkplaneHeight", weights
             ),
-            DomesticHotWater=self.DomesticHotWater.combine(
-                other.DomesticHotWater, weights
+            DomesticHotWater=DomesticHotWaterSetting.combine(
+                self.DomesticHotWater, other.DomesticHotWater, weights
             ),
             InternalMassConstruction=OpaqueConstruction.combine(
                 self.InternalMassConstruction, other.InternalMassConstruction
@@ -485,17 +470,23 @@ class Zone(UmiBase):
             InternalMassExposedPerFloorArea=self._float_mean(
                 other, "InternalMassExposedPerFloorArea", weights
             ),
-            Loads=self.Loads.combine(other.Loads, weights),
+            Loads=ZoneLoad.combine(self.Loads, other.Loads, weights),
         )
         new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
         new_obj._volume = self.volume + other.volume
         new_obj._area = self.area + other.area
-        new_attr["Conditioning"]._belongs_to_zone = new_obj
-        new_attr["Constructions"]._belongs_to_zone = new_obj
-        new_attr["Ventilation"]._belongs_to_zone = new_obj
-        new_attr["DomesticHotWater"]._belongs_to_zone = new_obj
-        if new_attr["Windows"]:
+
+        if new_attr["Conditioning"]:  # Could be None
+            new_attr["Conditioning"]._belongs_to_zone = new_obj
+        if new_attr["Constructions"]:  # Could be None
+            new_attr["Constructions"]._belongs_to_zone = new_obj
+        if new_attr["Ventilation"]:  # Could be None
+            new_attr["Ventilation"]._belongs_to_zone = new_obj
+        if new_attr["DomesticHotWater"]:  # Could be None
+            new_attr["DomesticHotWater"]._belongs_to_zone = new_obj
+        if new_attr["Windows"]:  # Could be None
             new_attr["Windows"]._belongs_to_zone = new_obj
+
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
@@ -511,6 +502,8 @@ class Zone(UmiBase):
             f"'InternalMassExposedPerFloorArea' set to"
             f" {self.InternalMassExposedPerFloorArea}"
         )
+        if not self.DomesticHotWater:
+            self.DomesticHotWater = DomesticHotWaterSetting.whole_building(self.idf)
         return self
 
 

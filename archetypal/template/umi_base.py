@@ -8,13 +8,11 @@
 import collections
 import logging as lg
 import math
-import random
 import re
 from itertools import chain
 
 import numpy as np
 
-import archetypal
 from archetypal import log
 from archetypal.idfclass import IDF
 from archetypal.utils import lcm
@@ -34,10 +32,11 @@ class Unique(type):
         self = cls.__new__(cls, *args, **kwargs)
         cls.__init__(self, *args, **kwargs)
         key = self.__hash__()
-        if key not in CREATED_OBJECTS:
-            cls._cache[key] = self
-            CREATED_OBJECTS[key] = self
-        return CREATED_OBJECTS[key]
+        if self not in CREATED_OBJECTS:
+            CREATED_OBJECTS.append(self)
+            return self
+        else:
+            return next((x for x in CREATED_OBJECTS if x == self), None)
 
     def __init__(cls, name, bases, attributes):
         """
@@ -47,7 +46,6 @@ class Unique(type):
             attributes:
         """
         super().__init__(name, bases, attributes)
-        cls._cache = {}
 
 
 def _resolve_combined_names(predecessors):
@@ -55,13 +53,16 @@ def _resolve_combined_names(predecessors):
     (predecessors)
 
     Args:
-        predecessors:
+        predecessors (MetaData):
     """
 
     # all_names = [obj.Name for obj in predecessors]
     class_ = list(set([obj.__class__.__name__ for obj in predecessors]))[0]
 
-    return "Combined_%s_%s" % (class_, len(predecessors))
+    return "Combined_%s_%s" % (
+        class_,
+        str(hash((pre.Name for pre in predecessors))).strip("-"),
+    )
 
 
 def _shorten_name(long_name):
@@ -185,7 +186,7 @@ class UmiBase(object):
         """get predecessor objects to self and other
 
         Args:
-            other (object): The other object.
+            other (UmiBase): The other object.
         """
         predecessors = self.predecessors + other.predecessors
         meta = {
@@ -211,12 +212,7 @@ class UmiBase(object):
         Args:
             name (str): the name.
         """
-        self._cache.pop(hash(self))
-        CREATED_OBJECTS.pop(hash(self))
-
         self.Name = name
-        self._cache[hash(self)] = self
-        CREATED_OBJECTS[hash(self)] = self
 
     def to_json(self):
         """Convert class properties to dict"""
@@ -229,19 +225,7 @@ class UmiBase(object):
             ref:
         """
         return next(
-            iter(
-                [
-                    value
-                    for key, value in self.all_objects.items()
-                    if value.id == ref["$ref"]
-                ]
-            )
-        )
-
-    def get_random_schedule(self):
-        """Return a random YearSchedule from cache"""
-        return random.choice(
-            [self.all_objects[obj] for obj in self.all_objects if "YearSchedule" in obj]
+            iter([value for value in self.all_objects if value.id == ref["$ref"]])
         )
 
     def __hash__(self):
@@ -262,7 +246,10 @@ class UmiBase(object):
             weights (iterable, optional): Weights of [self, other] to calculate
                 weighted average.
         """
-
+        if getattr(self, attr) is None:
+            return getattr(other, attr)
+        if getattr(other, attr) is None:
+            return getattr(self, attr)
         # If weights is a list of zeros
         if not np.array(weights).any():
             weights = [1, 1]
@@ -303,6 +290,10 @@ class UmiBase(object):
                 together. If False, the attribute of self will is used (other is
                 ignored).
         """
+        if self is None:
+            return other
+        if other is None:
+            return self
         # if self has info, but other is none, use self
         if self.__dict__[attr] is not None and other.__dict__[attr] is None:
             return self.__dict__[attr]
@@ -325,7 +316,7 @@ class UmiBase(object):
         Args:
             other:
         """
-        return self.extend(other)
+        return UmiBase.extend(self, other)
 
     def extend(self, other):
         """Append other to self. Modify and return self.
@@ -336,6 +327,10 @@ class UmiBase(object):
         Returns:
             UmiBase: self
         """
+        if self is None:
+            return other
+        if other is None:
+            return self
         self.all_objects.pop(self.__hash__(), None)
         id = self.id
         new_obj = self.combine(other)
@@ -450,7 +445,7 @@ class MaterialBase(UmiBase):
         return self
 
 
-CREATED_OBJECTS = {}
+CREATED_OBJECTS = []
 
 
 class MaterialLayer(object):
@@ -665,14 +660,18 @@ class UniqueName(str):
         """
         if not name:
             return None
-        key = name
-        key, *_ = re.split(
-            r"_\d+(?!.*\d+)", key
-        )  # match last digit with the underscore
+        match = re.match(r"^(.*?)(\D*)(\d+)$", name)
+        if match:
+            groups = list(match.groups())
+            groups[-1] = int(groups[-1])
+            groups[-1] += 1
+            key = "".join(map(str, groups))
+        else:
+            key = name
 
         if key not in cls.existing:
             cls.existing[key] = 0
-            return name
-        cls.existing[key] += 1
-        the_name = key + "_{}".format(cls.existing[key])
-        return the_name
+        else:
+            cls.existing[key] += 1
+            key = key + str(cls.existing[key])
+        return key

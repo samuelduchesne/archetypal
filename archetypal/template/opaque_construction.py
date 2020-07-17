@@ -430,6 +430,38 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return oc
 
     @classmethod
+    def generic_internalmass(cls, idf, for_zone):
+        mat = idf.newidfobject(
+            key="Material".upper(),
+            Name="Wood 6inch",
+            Roughness="MediumSmooth",
+            Thickness=0.15,
+            Conductivity=0.12,
+            Density=540,
+            Specific_Heat=1210,
+            Thermal_Absorptance=0.7,
+            Visible_Absorptance=0.7,
+        )
+        cons = idf.newidfobject(
+            key="Construction".upper(),
+            Name="InteriorFurnishings",
+            Outside_Layer="Wood 6inch",
+        )
+        internal_mass = "InternalMass"
+        cons.Name = internal_mass + "_construction"
+
+        new_epbunch = idf.newidfobject(
+            key="InternalMass".upper(),
+            Name=internal_mass,
+            Construction_Name=cons.Name,
+            Zone_or_ZoneList_Name=for_zone.Name,
+            Surface_Area=1,
+        )
+        return OpaqueConstruction(
+            Name=internal_mass, idf=idf, Layers=cls._internalmass_layer(new_epbunch)
+        )
+
+    @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
         """Construct an OpaqueMaterial object given an epbunch with keys
         "BuildingSurface:Detailed" or "InternalMass"

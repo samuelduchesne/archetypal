@@ -6,7 +6,9 @@
 ################################################################################
 
 import collections
+import concurrent.futures.thread
 import logging as lg
+import threading
 import time
 from collections import defaultdict
 
@@ -31,7 +33,7 @@ from archetypal.template import (
     MassRatio,
     is_core,
 )
-from archetypal.utils import reduce
+from archetypal.utils import reduce, parallel_process
 
 
 class BuildingTemplate(UmiBase):
@@ -75,13 +77,19 @@ class BuildingTemplate(UmiBase):
         """
         super(BuildingTemplate, self).__init__(**kwargs)
         self._zone_graph = None
-        self.PartitionRatio = PartitionRatio
+        self._partition_ratio = PartitionRatio
         self.Lifespan = Lifespan
         self.Core = Core
         self.Perimeter = Perimeter
         self.Structure = Structure
         self.Windows = Windows
         self.DefaultWindowToWallRatio = DefaultWindowToWallRatio
+
+    @property
+    def PartitionRatio(self):
+        if self._partition_ratio is None:
+            self._partition_ratio = self.idf.partition_ratio
+        return self._partition_ratio
 
     def __hash__(self):
         return hash((self.__class__.__name__, self.Name, self.DataSource))
@@ -238,24 +246,32 @@ class BuildingTemplate(UmiBase):
         # initialize empty BuildingTemplate
         name = kwargs.pop("Name", Path(idf.idfname).basename().splitext()[0])
         bt = cls(Name=name, idf=idf, **kwargs)
-        zone: EpBunch
-        zones = [
-            Zone.from_zone_epbunch(zone, sql=bt.sql)
-            for zone in tqdm(
-                idf.idfobjects["ZONE"],
+
+        epbunch_zones = idf.idfobjects["ZONE"]
+        zones = []
+        with concurrent.futures.thread.ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(Zone.from_zone_epbunch, (zone), sql=idf.sql): zone
+                for zone in epbunch_zones
+            }
+            for future in tqdm(
+                concurrent.futures.as_completed(futures),
                 desc=f"zone_loop {idf.position}-{name}",
-                position=idf.position
-            )
-        ]
+                total=len(futures),
+                position=idf.position,
+            ):
+                zone = futures[future]
+                try:
+                    result = future.result()
+                    zones.append(result)
+                except Exception as exc:
+                    log("%r generated an exception: %s" % (zone.Name, exc))
+                else:
+                    log("%r created" % (result.Name))
+
         zone: Zone
-        bt.cores = [
-            zone
-            for zone in zones
-        ]
-        bt.perims = [
-            zone
-            for zone in zones
-        ]
+        bt.cores = [zone for zone in zones if zone.is_core]
+        bt.perims = [zone for zone in zones if not zone.is_core]
         # do Core and Perim zone reduction
         bt.reduce(bt.cores, bt.perims)
 
@@ -266,7 +282,6 @@ class BuildingTemplate(UmiBase):
             idf=idf,
         )
         bt.Windows = bt.Perimeter.Windows
-        bt.PartitionRatio = idf.partition_ratio
 
         bt.Comments += "\n".join(
             [
@@ -402,6 +417,15 @@ def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):
     adj_report["Surface Type_"].append(adj_surf["Surface_Type"])
 
 
+class ZoneThread(threading.Thread):
+    def __init__(self, zone):
+        super().__init__()
+        self.zone = zone
+
+    def run(self):
+        return Zone.from_zone_epbunch(self.zone, sql=self.zone.sql)
+
+
 class ZoneGraph(networkx.Graph):
     """A subclass of :class:`networkx.Graph`. This class implements useful
     methods to visualize and navigate a template along the thermal adjacency of
@@ -453,7 +477,9 @@ class ZoneGraph(networkx.Graph):
         G = cls(name=idf.name)
 
         counter = 0
-        for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop", position=idf.position, **kwargs):
+        for zone in tqdm(
+            idf.idfobjects["ZONE"], desc="zone_loop", position=idf.position, **kwargs
+        ):
             # initialize the adjacency report dictionary. default list.
             adj_report = defaultdict(list)
             zone_obj = None

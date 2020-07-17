@@ -41,7 +41,7 @@ class TestIDF:
 
     @pytest.fixture()
     def FiveZoneNightVent1(self):
-        """An old file that needs upgrade"""
+        """"""
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idfname = (
             get_eplus_dirs(settings.ep_version) / "ExampleFiles" / "5ZoneNightVent1.idf"
@@ -168,9 +168,9 @@ class TestIDF:
             i: {"idfname": file.expand(), "epw": w}
             for i, file in enumerate(Path("tests/input_data/necb").files("*.idf")[0:3])
         }
-        idfs = parallel_process(files, IDF, use_kwargs=True)
+        idfs = parallel_process(files, IDF, use_kwargs=True, processors=-1)
 
-        assert not any(isinstance(a, Exception) for a in idfs.values())
+        assert not any(isinstance(a, Exception) for a in idfs)
 
     def test_load_old(self, config, natvent, FiveZoneNightVent1):
         assert natvent.idd_version == (9, 2, 0)

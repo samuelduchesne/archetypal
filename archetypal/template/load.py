@@ -7,7 +7,9 @@
 
 import collections
 import logging as lg
+import sqlite3
 
+import pandas as pd
 from deprecation import deprecated
 
 import archetypal
@@ -189,89 +191,117 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         Args:
             zone (archetypal.template.zone.Zone): zone to gets information from
         """
+        # If Zone is not part of Conditioned Area, it should not have a ZoneLoad object.
+        if not zone.is_part_of_conditioned_floor_area:
+            return None
 
         # Get schedule index for different loads and create ZoneLoad arguments
         # Verify if Equipment in zone
-        zone_index = zone.idf.sql["Zones"][
-            zone.idf.sql["Zones"]["ZoneName"].str.contains(zone.Name.upper())
-        ].index[0]
-        nominal_elec = zone.idf.sql["NominalElectricEquipment"][
-            zone.idf.sql["NominalElectricEquipment"]["ZoneIndex"] == zone_index
-        ]
-        nominal_gas = zone.idf.sql["NominalGasEquipment"][
-            zone.idf.sql["NominalGasEquipment"]["ZoneIndex"] == zone_index
-        ]
-        if nominal_elec.empty and nominal_gas.empty:
-            EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule(idf=zone.idf)
-            EquipmentPowerDensity = 0.0
-        else:
-            if nominal_gas.empty:
-                EquipmentPowerDensity = nominal_elec["DesignLevel"].sum() / zone.area
-            elif nominal_elec.empty:
-                EquipmentPowerDensity = nominal_gas["DesignLevel"].sum() / zone.area
+
+        # create database connection with sqlite3
+        with sqlite3.connect(str(zone.idf.sql_file)) as conn:
+            sql_query = "select ifnull(ZoneIndex, null) from Zones where ZoneName=?"
+            t = (zone.Name.upper(),)
+            c = conn.cursor()
+            c.execute(sql_query, t)
+            (zone_index,) = c.fetchone()
+
+            sql_query = "select t.* from NominalElectricEquipment t where ZoneIndex=?"
+            nominal_elec = pd.read_sql(sql_query, conn, params=(zone_index,))
+
+            sql_query = "select t.* from NominalGasEquipment t where ZoneIndex=?"
+            nominal_gas = pd.read_sql(sql_query, conn, params=(zone_index,))
+
+            if nominal_elec.empty and nominal_gas.empty:
+                EquipmentPowerDensity = 0.0
+                EquipmentAvailabilitySchedule = None  # UmiSchedule.constant_schedule(
+                # idf=zone.idf, quantity=EquipmentPowerDensity
+                # )
             else:
-                EquipmentPowerDensity = (
-                    nominal_elec["DesignLevel"].sum() + nominal_gas["DesignLevel"].sum()
-                ) / zone.area  # todo: Should nominal gas really be added to elec?
+                if nominal_gas.empty:
+                    EquipmentPowerDensity = (
+                        nominal_elec["DesignLevel"].sum() / zone.area
+                    )
+                elif nominal_elec.empty:
+                    EquipmentPowerDensity = nominal_gas["DesignLevel"].sum() / zone.area
+                else:
+                    EquipmentPowerDensity = (
+                        nominal_elec["DesignLevel"].sum()
+                        + nominal_gas["DesignLevel"].sum()
+                    ) / zone.area  # todo: Should nominal gas really be added to elec?
 
-            sched_indexes = nominal_elec["ScheduleIndex"].values
-            design_index = nominal_elec["DesignLevel"].index
-            list_sched = []
-            for sched, design in zip(sched_indexes, design_index):
-                sched_name = zone.idf.sql["Schedules"]["ScheduleName"][sched]
-                schedule = UmiSchedule(Name=sched_name, idf=zone.idf)
-                schedule.quantity = nominal_elec["DesignLevel"][design]
-                list_sched.append(schedule)
+                sched_indexes = nominal_elec["ScheduleIndex"].values
+                design_index = nominal_elec["DesignLevel"].index
+                list_sched = []
+                for sched, design in zip(sched_indexes, design_index):
+                    sql_query = (
+                        "select t.ScheduleName, t.ScheduleType as M from "
+                        "Schedules t where ScheduleIndex=?"
+                    )
+                    sched_name, sched_type = c.execute(
+                        sql_query, (int(sched),)
+                    ).fetchone()
+                    schedule = UmiSchedule(
+                        Name=sched_name,
+                        idf=zone.idf,
+                        schTypeLimitsName=sched_type,
+                        quantity=nominal_elec["DesignLevel"][design],
+                    )
+                    list_sched.append(schedule)
 
-            EquipmentAvailabilitySchedule = reduce(
-                UmiSchedule.combine,
-                list_sched,
-                quantity=lambda x: sum(obj.quantity for obj in x),
+                EquipmentAvailabilitySchedule = reduce(
+                    UmiSchedule.combine,
+                    list_sched,
+                    quantity=lambda x: sum(obj.quantity for obj in x),
+                )
+
+            # Verifies if Lights in zone
+            sql_query = (
+                "select ifnull(t.ScheduleIndex, null), ifnull(t.DesignLevel, 0) "
+                "from NominalLighting t where t.ZoneIndex=?"
             )
-        # Verifies if Lights in zone
-        if zone.idf.sql["NominalLighting"][
-            zone.idf.sql["NominalLighting"]["ZoneIndex"] == zone_index
-        ].empty:
-            LightsAvailabilitySchedule = UmiSchedule.constant_schedule(idf=zone.idf)
-            LightingPowerDensity = 0.0
-        else:
-            schedule_light_index = zone.idf.sql["NominalLighting"][
-                zone.idf.sql["NominalLighting"]["ZoneIndex"] == zone_index
-            ]["ScheduleIndex"].iloc[0]
-            LightsAvailabilitySchedule = UmiSchedule(
-                Name=zone.idf.sql["Schedules"]["ScheduleName"].iloc[
-                    schedule_light_index - 1
-                ],
-                idf=zone.idf,
+            row = c.execute(sql_query, (int(zone_index),)).fetchone()
+            if not row:
+                LightsAvailabilitySchedule = None  # UmiSchedule.constant_schedule(
+                # idf=zone.idf)
+                LightingPowerDensity = 0
+            else:
+                schedule_index, LightingPowerDensity = row
+                sql_query = (
+                    "select t.ScheduleName, t.ScheduleType from "
+                    "Schedules t where ScheduleIndex=?"
+                )
+                sched_name, sched_type = c.execute(
+                    sql_query, (int(schedule_index),)
+                ).fetchone()
+                LightsAvailabilitySchedule = UmiSchedule(
+                    Name=sched_name,
+                    idf=zone.idf,
+                    schTypeLimitsName=sched_type,
+                    quantity=LightingPowerDensity,
+                )
+
+            # Verifies if People in zone
+            sql_query = (
+                "SELECT ifnull(t.NumberOfPeopleScheduleIndex, null), "
+                "ifnull(t.NumberOfPeople, 0) from NominalPeople t where ZoneIndex=?"
             )
-            LightingPowerDensity = (
-                zone.idf.sql["NominalLighting"][
-                    zone.idf.sql["NominalLighting"]["ZoneIndex"] == zone_index
-                ]["DesignLevel"].iloc[0]
-                / zone.area
-            )
-        # Verifies if People in zone
-        if zone.idf.sql["NominalPeople"][
-            zone.idf.sql["NominalPeople"]["ZoneIndex"] == zone_index
-        ].empty:
-            OccupancySchedule = UmiSchedule.constant_schedule(idf=zone.idf)
-            PeopleDensity = 0.0
-        else:
-            schedule_people_index = zone.idf.sql["NominalPeople"][
-                zone.idf.sql["NominalPeople"]["ZoneIndex"] == zone_index
-            ]["NumberOfPeopleScheduleIndex"].iloc[0]
-            OccupancySchedule = UmiSchedule(
-                Name=zone.idf.sql["Schedules"]["ScheduleName"].iloc[
-                    schedule_people_index - 1
-                ],
-                idf=zone.idf,
-            )
-            PeopleDensity = (
-                zone.idf.sql["NominalPeople"][
-                    zone.idf.sql["NominalPeople"]["ZoneIndex"] == zone_index
-                ]["NumberOfPeople"].iloc[0]
-                / zone.area
-            )
+            row = c.execute(sql_query, (int(zone_index),)).fetchone()
+            if not row:
+                OccupancySchedule = None
+                PeopleDensity = 0
+            else:
+                schedule_index, PeopleDensity = row
+                sql_query = (
+                    "select t.ScheduleName, t.ScheduleType from "
+                    "Schedules t where ScheduleIndex=?"
+                )
+                sched_name, sched_type = c.execute(
+                    sql_query, (int(schedule_index),)
+                ).fetchone()
+                OccupancySchedule = UmiSchedule(
+                    Name=sched_name, idf=zone.idf, schTypeLimitsName=sched_type
+                )
 
         name = zone.Name + "_ZoneLoad"
         z_load = cls(
@@ -305,6 +335,13 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         Returns:
             (ZoneLoad): the combined ZoneLoad object.
         """
+        # Check if other is None. Simply return self
+        if not other:
+            return self
+
+        if not self:
+            return other
+
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
             msg = "Cannot combine %s with %s" % (
@@ -339,7 +376,8 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
         new_attr = dict(
             DimmingType=self._str_mean(other, "DimmingType"),
-            EquipmentAvailabilitySchedule=self.EquipmentAvailabilitySchedule.combine(
+            EquipmentAvailabilitySchedule=UmiSchedule.combine(
+                self.EquipmentAvailabilitySchedule,
                 other.EquipmentAvailabilitySchedule,
                 weights=weights,
                 quantity=[self.EquipmentPowerDensity, other.EquipmentPowerDensity],
@@ -351,12 +389,14 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             LightingPowerDensity=self._float_mean(
                 other, "LightingPowerDensity", weights
             ),
-            LightsAvailabilitySchedule=self.LightsAvailabilitySchedule.combine(
+            LightsAvailabilitySchedule=UmiSchedule.combine(
+                self.LightsAvailabilitySchedule,
                 other.LightsAvailabilitySchedule,
                 weights=weights,
                 quantity=[self.LightingPowerDensity, other.LightingPowerDensity],
             ),
-            OccupancySchedule=self.OccupancySchedule.combine(
+            OccupancySchedule=UmiSchedule.combine(
+                self.OccupancySchedule,
                 other.OccupancySchedule,
                 weights=weights,
                 quantity=[self.PeopleDensity, other.PeopleDensity],
@@ -374,6 +414,28 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
+        if not self.DimmingType:
+            self.DimmingType = "Continuous"
+        if not self.EquipmentAvailabilitySchedule:
+            self.EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule()
+        if not self.EquipmentPowerDensity:
+            self.EquipmentPowerDensity = 0
+        if not self.IlluminanceTarget:
+            self.IlluminanceTarget = 500
+        if not self.LightingPowerDensity:
+            self.LightingPowerDensity = 0
+        if not self.LightsAvailabilitySchedule:
+            self.LightsAvailabilitySchedule = UmiSchedule.constant_schedule()
+        if not self.OccupancySchedule:
+            self.OccupancySchedule = UmiSchedule.constant_schedule()
+        if not self.IsEquipmentOn:
+            self.IsEquipmentOn = False
+        if not self.IsLightingOn:
+            self.IsLightingOn = False
+        if not self.IsPeopleOn:
+            self.IsPeopleOn = False
+        if not self.PeopleDensity:
+            self.PeopleDensity = 0
         return self
 
 

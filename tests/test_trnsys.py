@@ -1189,7 +1189,7 @@ class TestTrnBuild:
         # Convert IDF files to BUI ones usinf parallel process
         result = parallel_process(in_dict, convert_idf_to_trnbuild, use_kwargs=True)
 
-        assert not any(isinstance(a, Exception) for a in result.values())
+        assert not any(isinstance(a, Exception) for a in result)
 
     @pytest.mark.darwin
     @pytest.mark.linux
@@ -1228,9 +1228,9 @@ class TestTrnBuild:
         result = parallel_process(in_dict, convert_idf_to_trnbuild, 4, use_kwargs=True)
 
         # Print results
-        [print(a) for a in result.values() if isinstance(a, Exception)]
+        [print(a) for a in result if isinstance(a, Exception)]
 
-        assert not any(isinstance(a, Exception) for a in result.values())
+        assert not any(isinstance(a, Exception) for a in result)
 
     @pytest.mark.win32
     def test_trnbuild_idf_win32(self, config):

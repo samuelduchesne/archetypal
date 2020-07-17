@@ -16,7 +16,6 @@ from eppy.bunch_subclass import EpBunch
 from numpy import ndarray
 
 from archetypal import log
-from archetypal.idfclass import IDF
 
 
 class Schedule(object):
@@ -33,7 +32,7 @@ class Schedule(object):
         schTypeLimitsName=None,
         values=None,
         epbunch=None,
-        **kwargs
+        **kwargs,
     ):
         """
         Args:
@@ -74,7 +73,7 @@ class Schedule(object):
         self.endHOY = 24
         self.unit = "unknown"
         self.index_ = None
-        self.values = values
+        self._values = values
         self.schType = schType
         self.schTypeLimitsName = schTypeLimitsName
 
@@ -120,6 +119,8 @@ class Schedule(object):
             **kwargs:
         """
         if not idf:
+            from archetypal import IDF
+
             idf = IDF(prep_outputs=False)
         # Add the schedule to the existing idf
         epbunch = idf.anidfobject(
@@ -132,38 +133,10 @@ class Schedule(object):
 
     @property
     def all_values(self):
-
         """returns the values array"""
-        if self.values is None:
-            try:  # Search values in epbunch (from idf object)
-                self.values = self.get_schedule_values(self.epbunch)
-            except FileNotFoundError as e:
-                raise e  # This is an actual issue, must raise
-            except Exception as e:
-                # If no epbunch found
-                if self.Category == "Week":  # If WeekSchedule
-                    try:  # Get values from self.Days
-                        # self.Days is a list of 7 dicts (7 days in a week)
-                        # Dicts are the id of Days ({"$ref": id})
-                        day_values = [self.get_ref(day) for day in self.Days]
-                        values = []
-                        for i in range(0, 7):  # There is 7 days a week
-                            values = values + day_values[i].all_values.tolist()
-                        self.values = values
-                    except:  # self.Days is not a list of 7 simple {"$ref":id}
-                        # self.Days is a list of 7 DaySchedule objects
-                        values = []
-                        for i in range(0, 7):  # There is 7 days a week
-                            values = values + self.Days[i].all_values.tolist()
-                        self.values = values
-                else:
-                    msg = """Category of schedule {} is {}. Whereas Category should 
-                        be either "Year" or "Week" or "Day" """.format(
-                        self.Name, self.Category
-                    )
-                    raise NotImplementedError(msg)
-
-        return self.values
+        if self._values is None:
+            self._values = self.get_schedule_values(self.epbunch)
+        return self._values
 
     @property
     def max(self):
@@ -288,7 +261,7 @@ class Schedule(object):
         ax = series.loc[slice].plot(**kwargs, label=label)
         return ax
 
-    def get_interval_day_ep_schedule_values(self, epbunch):
+    def get_interval_day_ep_schedule_values(self, epbunch: EpBunch) -> np.ndarray:
         """Schedule:Day:Interval
 
         Args:
@@ -337,7 +310,7 @@ class Schedule(object):
 
     def get_compact_weekly_ep_schedule_values(
         self, epbunch, start_date=None, index=None
-    ):
+    ) -> np.ndarray:
         """schedule:week:compact
 
         Args:
@@ -387,7 +360,7 @@ class Schedule(object):
 
         return weekly_schedules.values
 
-    def get_daily_weekly_ep_schedule_values(self, epbunch):
+    def get_daily_weekly_ep_schedule_values(self, epbunch) -> np.ndarray:
         """schedule:week:daily
 
         Args:
@@ -413,7 +386,7 @@ class Schedule(object):
 
         return hourly_values.ravel()
 
-    def get_list_day_ep_schedule_values(self, epbunch):
+    def get_list_day_ep_schedule_values(self, epbunch) -> np.ndarray:
         """schedule:day:list
 
         Args:
@@ -444,7 +417,7 @@ class Schedule(object):
 
         return series.values
 
-    def get_constant_ep_schedule_values(self, epbunch):
+    def get_constant_ep_schedule_values(self, epbunch) -> np.ndarray:
         """schedule:constant
 
         Args:
@@ -467,7 +440,7 @@ class Schedule(object):
 
         return hourly_values
 
-    def get_file_ep_schedule_values(self, epbunch):
+    def get_file_ep_schedule_values(self, epbunch) -> np.ndarray:
         """schedule:file
 
         Args:
@@ -491,7 +464,7 @@ class Schedule(object):
 
         return epbunch.iloc[:, 0].values
 
-    def get_compact_ep_schedule_values(self, epbunch):
+    def get_compact_ep_schedule_values(self, epbunch) -> np.ndarray:
         """schedule:compact
 
         Args:
@@ -763,7 +736,7 @@ class Schedule(object):
         periods = len(series)
         return pd.Series([False] * periods, index=index)
 
-    def get_yearly_ep_schedule_values(self, epbunch):
+    def get_yearly_ep_schedule_values(self, epbunch) -> np.ndarray:
         """schedule:year
 
         Args:
@@ -821,7 +794,9 @@ class Schedule(object):
 
         return hourly_values.values
 
-    def get_schedule_values(self, sched_epbunch, start_date=None, index=None):
+    def get_schedule_values(
+        self, sched_epbunch, start_date=None, index=None
+    ) -> np.ndarray:
         """Main function that returns the schedule values
 
         Args:
@@ -992,7 +967,7 @@ class Schedule(object):
                 blocks[i]["end_month"] = 12
 
         new_dict = dict(
-            Name=self.Name + "_", Schedule_Type_Limits_Name=self.schTypeLimitsName
+            Name=self.Name, Schedule_Type_Limits_Name=self.schTypeLimitsName
         )
         for i in blocks:
             new_dict.update(
@@ -1129,7 +1104,7 @@ class Schedule(object):
                 'by the "AllOtherDays" field-set'.format(self.Name),
                 lg.WARNING,
             )
-            # return all days := equivalenet to .loc[:]
+            # return all days := equivalent to .loc[:]
             return pd.IndexSlice[:]
         elif field.lower() == "allotherdays":
             # return unused days (including special days). Uses the global
@@ -1174,7 +1149,7 @@ class Schedule(object):
             return self.special_day(field, slicer_)
         elif not self.strict:
             # If not strict, ignore missing field-sets such as CustomDay1
-            return slice(None)
+            return lambda x: x < 0
         else:
             raise NotImplementedError(
                 f"Archetypal does not yet support The Field_set '{field}'"
@@ -1322,6 +1297,13 @@ class Schedule(object):
         Returns:
             (Schedule): the combined Schedule object.
         """
+        # Check if other is None. Simply return self
+        if not other:
+            return self
+
+        if not self:
+            return other
+
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
             msg = "Cannot combine %s with %s" % (

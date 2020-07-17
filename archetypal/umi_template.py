@@ -1,5 +1,6 @@
 import io
 import json
+import logging as lg
 import os
 from collections import OrderedDict
 
@@ -32,6 +33,7 @@ from archetypal import (
     MassRatio,
     IDF,
     parallel_process,
+    log,
 )
 
 
@@ -180,21 +182,39 @@ class UmiTemplateLibrary:
                 annual=True,
                 as_version=as_version or settings.ep_version,
                 verbose="q",
-                position=i + 1,
+                position=None,
             )
-        umi_template.BuildingTemplates = list(
-            parallel_process(
-                in_dict,
-                cls.prep_func,
-                processors=processors,
-                use_kwargs=True,
-                debug=True,
-            ).values()
+        results = parallel_process(
+            in_dict,
+            cls.template_complexity_reduction,
+            processors=processors,
+            use_kwargs=True,
+            debug=True,
+            position=None,
         )
+
+        if all(isinstance(x, Exception) for x in results):
+            for res in results:
+                log(str(res))
+            raise Exception("Complexity reduction failed for all buildings.")
+
+        umi_template.BuildingTemplates = [
+            res for res in results if not isinstance(res, Exception)
+        ]
+
+        # Inform user if Exceptions thrown for certain models
+        for res in results:
+            if isinstance(res, Exception):
+                log(
+                    f"Unable to create Building Template. Exception raised: "
+                    f"{str(res)}",
+                    lg.WARNING,
+                )
+
         return umi_template
 
     @staticmethod
-    def prep_func(idfname, epw, **kwargs):
+    def template_complexity_reduction(idfname, epw, **kwargs):
         idf = IDF(idfname, epw=epw, **kwargs)
         return BuildingTemplate.from_idf(idf, DataSource=idf.name)
 
@@ -387,7 +407,7 @@ class UmiTemplateLibrary:
                     value, (UmiBase, MaterialLayer, YearScheduleParts)
                 ) and not key.startswith("_"):
                     recursive_json(value)
-                elif isinstance(value, list):
+                elif isinstance(value, list) and key != "all_objects":
                     [
                         recursive_json(value)
                         for value in value

@@ -28,7 +28,7 @@ from archetypal import (
     settings,
     UmiBase,
     MaterialLayer,
-    YearScheduleParts,
+    YearSchedulePart,
     UmiSchedule,
     MassRatio,
     IDF,
@@ -404,7 +404,7 @@ class UmiTemplateLibrary:
             for key, value in obj.__dict__.items():
 
                 if isinstance(
-                    value, (UmiBase, MaterialLayer, YearScheduleParts)
+                    value, (UmiBase, MaterialLayer, YearSchedulePart)
                 ) and not key.startswith("_"):
                     recursive_json(value)
                 elif isinstance(value, list) and key != "all_objects":
@@ -413,7 +413,7 @@ class UmiTemplateLibrary:
                         for value in value
                         if isinstance(
                             value,
-                            (UmiBase, MaterialLayer, YearScheduleParts, MassRatio),
+                            (UmiBase, MaterialLayer, YearSchedulePart, MassRatio),
                         )
                     ]
 

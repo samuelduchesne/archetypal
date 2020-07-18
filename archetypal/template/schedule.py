@@ -230,7 +230,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         for i, week in zip(range(int(len(year.fieldvalues[3:]) / 5)), weeks):
 
             Parts.append(
-                YearScheduleParts(
+                YearSchedulePart(
                     FromMonth=year["Start_Month_{}".format(i + 1)],
                     ToMonth=year["End_Month_{}".format(i + 1)],
                     FromDay=year["Start_Day_{}".format(i + 1)],
@@ -282,7 +282,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         )
 
 
-class YearScheduleParts:
+class YearSchedulePart:
     """Helper Class for YearSchedules that are defined using FromDay FromMonth
     ToDay ToMonth attributes.
     """
@@ -584,7 +584,7 @@ class YearSchedule(UmiSchedule):
         Args:
             Name:
             schTypeLimitsName:
-            Parts (list of YearScheduleParts): The YearScheduleParts.
+            Parts (list of YearSchedulePart): The YearScheduleParts.
             **kwargs:
         """
         super(YearSchedule, self).__init__(
@@ -601,7 +601,7 @@ class YearSchedule(UmiSchedule):
         """
         Args:
             *args:
-            Parts (list of YearScheduleParts):
+            Parts (list of YearSchedulePart):
             **kwargs:
         """
         ysp = cls(*args, Parts=Parts, **kwargs)
@@ -668,7 +668,7 @@ class YearSchedule(UmiSchedule):
         """
         schtypelimitsname = kwargs.pop("Type")
         Parts = [
-            YearScheduleParts.from_dict(**part) for part in kwargs.pop("Parts", None)
+            YearSchedulePart.from_dict(**part) for part in kwargs.pop("Parts", None)
         ]
         ys = cls(schTypeLimitsName=schtypelimitsname, Parts=Parts, **kwargs)
         ys.schType = "Schedule:Year"
@@ -706,7 +706,7 @@ class YearSchedule(UmiSchedule):
             FromDay = epbunch["Start_Day_{}".format(i + 1)]
             ToDay = epbunch["End_Day_{}".format(i + 1)]
             parts.append(
-                YearScheduleParts(
+                YearSchedulePart(
                     FromDay,
                     FromMonth,
                     ToDay,

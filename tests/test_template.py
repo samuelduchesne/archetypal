@@ -13,7 +13,7 @@ from archetypal import (
     settings,
     GlazingMaterial,
     IDF,
-    YearScheduleParts,
+    YearSchedulePart,
     OpaqueConstruction,
 )
 from tests.conftest import no_duplicates
@@ -124,9 +124,9 @@ class TestInternalMass:
 
 
 class TestYearScheduleParts:
-    """Series of tests for the :class:`YearScheduleParts` class"""
+    """Series of tests for the :class:`YearSchedulePart` class"""
 
-    # todo: Implement tests for YearScheduleParts class
+    # todo: Implement tests for YearSchedulePart class
     pass
 
 
@@ -358,7 +358,7 @@ class TestYearSchedule:
 
 
 class TestWindowType:
-    """Series of tests for the :class:`YearScheduleParts` class"""
+    """Series of tests for the :class:`YearSchedulePart` class"""
 
     # todo: Implement tests for WindowType class
 
@@ -2770,7 +2770,7 @@ class TestUmiTemplateLibrary:
         dict_on = {
             "Category": "Year",
             "Parts": [
-                YearScheduleParts(
+                YearSchedulePart(
                     **{
                         "FromDay": 1,
                         "FromMonth": 1,
@@ -2789,7 +2789,7 @@ class TestUmiTemplateLibrary:
         dict_off = {
             "Category": "Year",
             "Parts": [
-                YearScheduleParts(
+                YearSchedulePart(
                     **{
                         "FromDay": 1,
                         "FromMonth": 1,
@@ -2808,7 +2808,7 @@ class TestUmiTemplateLibrary:
         dict_dhw = {
             "Category": "Year",
             "Parts": [
-                YearScheduleParts(
+                YearSchedulePart(
                     **{
                         "FromDay": 1,
                         "FromMonth": 1,
@@ -2827,7 +2827,7 @@ class TestUmiTemplateLibrary:
         dict_gains = {
             "Category": "Year",
             "Parts": [
-                YearScheduleParts(
+                YearSchedulePart(
                     **{
                         "FromDay": 1,
                         "FromMonth": 1,

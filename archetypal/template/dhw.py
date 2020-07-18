@@ -211,7 +211,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                 # If a cold water supply schedule is provided, create the
                 # schedule
                 cold_schd_names = UmiSchedule(
-                    Name=obj.Cold_Water_Supply_Temperature_Schedule_Name, idf=idf,
+                    Name=obj.Cold_Water_Supply_Temperature_Schedule_Name, idf=idf
                 )
                 WaterTemperatureInlet.append(cold_schd_names.mean)
             else:
@@ -225,7 +225,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                     if water_mains_temp.Calculation_Method.lower() == "schedule":
                         # From Schedule method
                         mains_scd = UmiSchedule(
-                            Name=water_mains_temp.Schedule_Name, idf=idf,
+                            Name=water_mains_temp.Schedule_Name, idf=idf
                         )
                         WaterTemperatureInlet.append(mains_scd.mean())
                     elif water_mains_temp.Calculation_Method.lower() == "correlation":
@@ -409,6 +409,22 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             z_dhw_list.append(z_dhw)
 
         return reduce(DomesticHotWaterSetting.combine, z_dhw_list, weights=[1, 1])
+
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            id=self.id,
+            FlowRatePerFloorArea=self.FlowRatePerFloorArea,
+            IsOn=self.IsOn,
+            WaterSchedule=self.WaterSchedule,
+            WaterSupplyTemperature=self.WaterSupplyTemperature,
+            WaterTemperatureInlet=self.WaterTemperatureInlet,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
 
 
 def water_main_correlation(t_out_avg, max_diff):

@@ -253,7 +253,9 @@ class BuildingTemplate(UmiBase):
         zones = []
         with concurrent.futures.thread.ThreadPoolExecutor() as executor:
             futures = {
-                executor.submit(ZoneDefinition.from_zone_epbunch, (zone), sql=idf.sql): zone
+                executor.submit(
+                    ZoneDefinition.from_zone_epbunch, (zone), sql=idf.sql
+                ): zone
                 for zone in epbunch_zones
             }
             for future in tqdm(
@@ -401,6 +403,22 @@ class BuildingTemplate(UmiBase):
         """Validates UmiObjects and fills in missing values"""
         return self
 
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            Core=self.Core,
+            Lifespan=self.Lifespan,
+            PartitionRatio=self.PartitionRatio,
+            Perimeter=self.Perimeter,
+            Structure=self.Structure,
+            Windows=self.Windows,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
+
 
 def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):
     """
@@ -427,7 +445,9 @@ class ZoneThread(threading.Thread):
 
     def run(self):
         self.building_template._allzones.append(
-            ZoneDefinition.from_zone_epbunch(self.zone, sql=self.building_template.idf.sql)
+            ZoneDefinition.from_zone_epbunch(
+                self.zone, sql=self.building_template.idf.sql
+            )
         )
 
 
@@ -514,7 +534,9 @@ class ZoneGraph(networkx.Graph):
                             zone_obj = None
                             _is_core = is_core(zone)
                         else:
-                            zone_obj = ZoneDefinition.from_zone_epbunch(adj_zone, sql=sql)
+                            zone_obj = ZoneDefinition.from_zone_epbunch(
+                                adj_zone, sql=sql
+                            )
                             _is_core = zone_obj.is_core
 
                         # create node for adjacent zone

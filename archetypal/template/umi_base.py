@@ -86,9 +86,7 @@ def clear_cache():
 
 class UmiBase(object):
     # dependencies: dict of <dependant value: independant value>
-    _dependencies = {
-        "sql": ["idf"],
-    }
+    _dependencies = {"sql": ["idf"]}
     _independant_vars = set(chain(*list(_dependencies.values())))
     _dependant_vars = set(_dependencies.keys())
 
@@ -351,6 +349,9 @@ class UmiBase(object):
         """Validates UmiObjects and fills in missing values"""
         return self
 
+    def mapping(self):
+        pass
+
 
 class MaterialBase(UmiBase):
     """A class used to store data linked with the Life Cycle aspect of materials
@@ -521,6 +522,9 @@ class MaterialLayer(object):
         return collections.OrderedDict(
             Material={"$ref": str(self.Material.id)}, Thickness=self.Thickness
         )
+
+    def mapping(self):
+        return dict(Material=self.Material, Thickness=self.Thickness)
 
 
 class MetaData(collections.UserList):

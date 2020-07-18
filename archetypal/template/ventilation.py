@@ -380,6 +380,32 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         """Validates UmiObjects and fills in missing values"""
         return self
 
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            id=self.id,
+            Afn=self.Afn,
+            IsBuoyancyOn=self.IsBuoyancyOn,
+            Infiltration=self.Infiltration,
+            IsInfiltrationOn=self.IsInfiltrationOn,
+            IsNatVentOn=self.IsNatVentOn,
+            IsScheduledVentilationOn=self.IsScheduledVentilationOn,
+            NatVentMaxRelHumidity=self.NatVentMaxRelHumidity,
+            NatVentMaxOutdoorAirTemp=self.NatVentMaxOutdoorAirTemp,
+            NatVentMinOutdoorAirTemp=self.NatVentMinOutdoorAirTemp,
+            NatVentSchedule=self.NatVentSchedule,
+            NatVentZoneTempSetpoint=self.NatVentZoneTempSetpoint,
+            ScheduledVentilationAch=self.ScheduledVentilationAch,
+            ScheduledVentilationSchedule=self.ScheduledVentilationSchedule,
+            ScheduledVentilationSetpoint=self.ScheduledVentilationSetpoint,
+            IsWindOn=self.IsWindOn,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
+
 
 def do_infiltration(index, inf_df, zone):
     """Gets infiltration information of the zone

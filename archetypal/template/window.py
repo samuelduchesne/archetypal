@@ -233,6 +233,9 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         """Validates UmiObjects and fills in missing values"""
         return self
 
+    def mapping(self):
+        pass
+
 
 class WindowType(IntEnum):
     External = 0
@@ -834,3 +837,30 @@ class WindowSetting(UmiBase, metaclass=Unique):
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
         return self
+
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            id=self.id,
+            AfnDischargeC=self.AfnDischargeC,
+            AfnTempSetpoint=self.AfnTempSetpoint,
+            AfnWindowAvailability=self.AfnWindowAvailability,
+            Construction=self.Construction,
+            IsShadingSystemOn=self.IsShadingSystemOn,
+            IsVirtualPartition=self.IsVirtualPartition,
+            IsZoneMixingOn=self.IsZoneMixingOn,
+            OperableArea=self.OperableArea,
+            ShadingSystemAvailabilitySchedule=self.ShadingSystemAvailabilitySchedule,
+            ShadingSystemSetpoint=self.ShadingSystemSetpoint,
+            ShadingSystemTransmittance=self.ShadingSystemTransmittance,
+            ShadingSystemType=self.ShadingSystemType,
+            Type=self.Type,
+            ZoneMixingAvailabilitySchedule=self.ZoneMixingAvailabilitySchedule,
+            ZoneMixingDeltaTemperature=self.ZoneMixingDeltaTemperature,
+            ZoneMixingFlowRate=self.ZoneMixingFlowRate,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )

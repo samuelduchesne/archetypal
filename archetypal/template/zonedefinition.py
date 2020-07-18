@@ -506,6 +506,26 @@ class ZoneDefinition(UmiBase):
             self.DomesticHotWater = DomesticHotWaterSetting.whole_building(self.idf)
         return self
 
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            id=self.id,
+            Conditioning=self.Conditioning,
+            Constructions=self.Constructions,
+            DaylightMeshResolution=self.DaylightMeshResolution,
+            DaylightWorkplaneHeight=self.DaylightWorkplaneHeight,
+            DomesticHotWater=self.DomesticHotWater,
+            InternalMassConstruction=self.InternalMassConstruction,
+            InternalMassExposedPerFloorArea=self.InternalMassExposedPerFloorArea,
+            Loads=self.Loads,
+            Ventilation=self.Ventilation,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
+
 
 def resolve_obco(this):
     """Resolve the outside boundary condition of a surface and return the other

@@ -182,3 +182,19 @@ class StructureInformation(UmiBase, metaclass=Unique):
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
         return self
+
+    def mapping(self):
+        self.validate()
+        return dict(
+            id=self.id,
+            MassRatios=self.MassRatios,
+            AssemblyCarbon=self.AssemblyCarbon,
+            AssemblyCost=self.AssemblyCost,
+            AssemblyEnergy=self.AssemblyEnergy,
+            DisassemblyCarbon=self.DisassemblyCarbon,
+            DisassemblyEnergy=self.DisassemblyEnergy,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )

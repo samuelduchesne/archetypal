@@ -947,3 +947,36 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             self.MinFreshAirPerPerson = 0
             self.MinFreshAirPerArea = 0
         return self
+
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            id=self.id,
+            CoolingSchedule=self.CoolingSchedule,
+            CoolingCoeffOfPerf=self.CoolingCoeffOfPerf,
+            CoolingSetpoint=self.CoolingSetpoint,
+            CoolingLimitType=self.CoolingLimitType,
+            EconomizerType=self.EconomizerType,
+            HeatingCoeffOfPerf=self.HeatingCoeffOfPerf,
+            HeatingLimitType=self.HeatingLimitType,
+            HeatingSchedule=self.HeatingSchedule,
+            HeatingSetpoint=self.HeatingSetpoint,
+            HeatRecoveryEfficiencyLatent=self.HeatRecoveryEfficiencyLatent,
+            HeatRecoveryEfficiencySensible=self.HeatRecoveryEfficiencySensible,
+            HeatRecoveryType=self.HeatRecoveryType,
+            IsCoolingOn=self.IsCoolingOn,
+            IsHeatingOn=self.IsHeatingOn,
+            IsMechVentOn=self.IsMechVentOn,
+            MaxCoolFlow=self.MaxCoolFlow,
+            MaxCoolingCapacity=self.MaxCoolingCapacity,
+            MaxHeatFlow=self.MaxHeatFlow,
+            MaxHeatingCapacity=self.MaxHeatingCapacity,
+            MechVentSchedule=self.MechVentSchedule,
+            MinFreshAirPerArea=self.MinFreshAirPerArea,
+            MinFreshAirPerPerson=self.MinFreshAirPerPerson,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )

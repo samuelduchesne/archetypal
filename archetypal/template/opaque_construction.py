@@ -537,6 +537,23 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
         return data_dict
 
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            id=self.id,
+            Layers=self.Layers,
+            AssemblyCarbon=self.AssemblyCarbon,
+            AssemblyCost=self.AssemblyCost,
+            AssemblyEnergy=self.AssemblyEnergy,
+            DisassemblyCarbon=self.DisassemblyCarbon,
+            DisassemblyEnergy=self.DisassemblyEnergy,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
+
     @classmethod
     def generic(cls, idf=None):
         # Generic Plaster Board

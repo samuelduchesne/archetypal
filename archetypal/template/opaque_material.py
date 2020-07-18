@@ -348,3 +348,30 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
         return self
+
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            id=self.id,
+            MoistureDiffusionResistance=self.MoistureDiffusionResistance,
+            Roughness=self.Roughness,
+            SolarAbsorptance=self.SolarAbsorptance,
+            SpecificHeat=self.SpecificHeat,
+            ThermalEmittance=self.ThermalEmittance,
+            VisibleAbsorptance=self.VisibleAbsorptance,
+            Conductivity=self.Conductivity,
+            Cost=self.Cost,
+            Density=self.Density,
+            EmbodiedCarbon=self.EmbodiedCarbon,
+            EmbodiedEnergy=self.EmbodiedEnergy,
+            SubstitutionRatePattern=self.SubstitutionRatePattern,
+            SubstitutionTimestep=self.SubstitutionTimestep,
+            TransportCarbon=self.TransportCarbon,
+            TransportDistance=self.TransportDistance,
+            TransportEnergy=self.TransportEnergy,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )

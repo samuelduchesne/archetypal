@@ -438,6 +438,28 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             self.PeopleDensity = 0
         return self
 
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            id=self.id,
+            DimmingType=self.DimmingType,
+            EquipmentAvailabilitySchedule=self.EquipmentAvailabilitySchedule,
+            EquipmentPowerDensity=self.EquipmentPowerDensity,
+            IlluminanceTarget=self.IlluminanceTarget,
+            LightingPowerDensity=self.LightingPowerDensity,
+            LightsAvailabilitySchedule=self.LightsAvailabilitySchedule,
+            OccupancySchedule=self.OccupancySchedule,
+            IsEquipmentOn=self.IsEquipmentOn,
+            IsLightingOn=self.IsLightingOn,
+            IsPeopleOn=self.IsPeopleOn,
+            PeopleDensity=self.PeopleDensity,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
+
 
 def _resolve_dimming_type(zone):
     """Resolves the dimming type for the Zone object"""

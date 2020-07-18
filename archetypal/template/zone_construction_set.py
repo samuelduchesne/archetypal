@@ -418,6 +418,27 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         oc.Surface_Type = "Facade"
         return oc
 
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            id=self.id,
+            Facade=self.Facade,
+            Ground=self.Ground,
+            Partition=self.Partition,
+            Roof=self.Roof,
+            Slab=self.Slab,
+            IsFacadeAdiabatic=self.IsFacadeAdiabatic,
+            IsGroundAdiabatic=self.IsGroundAdiabatic,
+            IsPartitionAdiabatic=self.IsPartitionAdiabatic,
+            IsRoofAdiabatic=self.IsRoofAdiabatic,
+            IsSlabAdiabatic=self.IsSlabAdiabatic,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
+
 
 def surface_dispatcher(surf, zone):
     """

@@ -268,6 +268,19 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         """Validates UmiObjects and fills in missing values"""
         return self
 
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            id=self.id,
+            Category=self.schType,
+            Parts=self.Parts,
+            Type=self.schTypeLimitsName,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
+
 
 class YearScheduleParts:
     """Helper Class for YearSchedules that are defined using FromDay FromMonth
@@ -557,7 +570,6 @@ class WeekSchedule(UmiSchedule):
             self._values = np.concatenate([day.all_values for day in self.Days])
         return self._values
 
-
     def to_dict(self):
         """returns umi template repr"""
         return {"$ref": str(self.id)}
@@ -705,7 +717,7 @@ class YearSchedule(UmiSchedule):
                             for x in self.all_objects
                             if x.Name == week_day_schedule_name
                             and type(x).__name__ == "WeekSchedule"
-                        ),
+                        )
                     ),
                 )
             )

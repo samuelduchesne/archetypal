@@ -157,7 +157,6 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         self.validate()
 
         return dict(
-            id=self.id,
             Layers=self.Layers,
             AssemblyCarbon=self.AssemblyCarbon,
             AssemblyCost=self.AssemblyCost,
@@ -856,7 +855,6 @@ class WindowSetting(UmiBase, metaclass=Unique):
         self.validate()
 
         return dict(
-            id=self.id,
             AfnDischargeC=self.AfnDischargeC,
             AfnTempSetpoint=self.AfnTempSetpoint,
             AfnWindowAvailability=self.AfnWindowAvailability,

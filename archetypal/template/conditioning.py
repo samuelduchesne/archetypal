@@ -952,7 +952,6 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         self.validate()
 
         return dict(
-            id=self.id,
             CoolingSchedule=self.CoolingSchedule,
             CoolingCoeffOfPerf=self.CoolingCoeffOfPerf,
             CoolingSetpoint=self.CoolingSetpoint,

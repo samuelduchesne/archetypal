@@ -422,7 +422,6 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         self.validate()
 
         return dict(
-            id=self.id,
             Facade=self.Facade,
             Ground=self.Ground,
             Partition=self.Partition,

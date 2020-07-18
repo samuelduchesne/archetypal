@@ -541,7 +541,6 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         self.validate()
 
         return dict(
-            id=self.id,
             Layers=self.Layers,
             AssemblyCarbon=self.AssemblyCarbon,
             AssemblyCost=self.AssemblyCost,

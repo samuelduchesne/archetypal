@@ -414,7 +414,6 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         self.validate()
 
         return dict(
-            id=self.id,
             FlowRatePerFloorArea=self.FlowRatePerFloorArea,
             IsOn=self.IsOn,
             WaterSchedule=self.WaterSchedule,

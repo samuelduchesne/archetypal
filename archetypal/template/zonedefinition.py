@@ -510,7 +510,6 @@ class ZoneDefinition(UmiBase):
         self.validate()
 
         return dict(
-            id=self.id,
             Conditioning=self.Conditioning,
             Constructions=self.Constructions,
             DaylightMeshResolution=self.DaylightMeshResolution,

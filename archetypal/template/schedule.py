@@ -272,7 +272,6 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         self.validate()
 
         return dict(
-            id=self.id,
             Category=self.schType,
             Parts=self.Parts,
             Type=self.schTypeLimitsName,
@@ -308,7 +307,6 @@ class YearSchedulePart:
         self.ToDay = ToDay
         self.ToMonth = ToMonth
         self.Schedule = Schedule
-        self.id = id(self)
 
     @classmethod
     @deprecated(
@@ -465,7 +463,6 @@ class DaySchedule(UmiSchedule):
 
     def mapping(self):
         return dict(
-            id=self.id,
             Category=self.schType,
             Type=self.schTypeLimitsName,
             Values=self.all_values.round(3).tolist(),
@@ -556,7 +553,6 @@ class WeekSchedule(UmiSchedule):
 
     def mapping(self):
         return dict(
-            id=self.id,
             Category=self.schType,
             Days=self.Days,
             Type=self.schTypeLimitsName,

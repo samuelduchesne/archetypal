@@ -223,7 +223,6 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         self.validate()
 
         return dict(
-            id=self.id,
             DirtFactor=self.DirtFactor,
             IREmissivityBack=self.IREmissivityBack,
             IREmissivityFront=self.IREmissivityFront,

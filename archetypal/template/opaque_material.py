@@ -353,7 +353,6 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.validate()
 
         return dict(
-            id=self.id,
             MoistureDiffusionResistance=self.MoistureDiffusionResistance,
             Roughness=self.Roughness,
             SolarAbsorptance=self.SolarAbsorptance,

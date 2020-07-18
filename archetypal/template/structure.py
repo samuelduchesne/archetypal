@@ -27,7 +27,6 @@ class MassRatio(object):
         self.HighLoadRatio = HighLoadRatio
         self.Material = Material
         self.NormalRatio = NormalRatio
-        self.id = id(self)
 
     def __hash__(self):
         return hash(id(self))
@@ -194,7 +193,6 @@ class StructureInformation(UmiBase, metaclass=Unique):
     def mapping(self):
         self.validate()
         return dict(
-            id=self.id,
             MassRatios=self.MassRatios,
             AssemblyCarbon=self.AssemblyCarbon,
             AssemblyCost=self.AssemblyCost,

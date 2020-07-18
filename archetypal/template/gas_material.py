@@ -112,7 +112,6 @@ class GasMaterial(MaterialBase, metaclass=Unique):
         self.validate()
 
         return dict(
-            id=self.id,
             Category=self.Category,
             Type=self.Type,
             Conductivity=self.Conductivity,

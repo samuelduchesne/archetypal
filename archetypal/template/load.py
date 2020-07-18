@@ -442,7 +442,6 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         self.validate()
 
         return dict(
-            id=self.id,
             DimmingType=self.DimmingType,
             EquipmentAvailabilitySchedule=self.EquipmentAvailabilitySchedule,
             EquipmentPowerDensity=self.EquipmentPowerDensity,

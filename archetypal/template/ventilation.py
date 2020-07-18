@@ -384,7 +384,6 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         self.validate()
 
         return dict(
-            id=self.id,
             Afn=self.Afn,
             IsBuoyancyOn=self.IsBuoyancyOn,
             Infiltration=self.Infiltration,

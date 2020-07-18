@@ -308,6 +308,7 @@ class YearSchedulePart:
         self.ToDay = ToDay
         self.ToMonth = ToMonth
         self.Schedule = Schedule
+        self.id = id(self)
 
     @classmethod
     @deprecated(
@@ -351,6 +352,15 @@ class YearSchedulePart:
 
     def __str__(self):
         return str(self.to_dict())
+
+    def mapping(self):
+        return dict(
+            FromDay=self.FromDay,
+            FromMonth=self.FromMonth,
+            ToDay=self.ToDay,
+            ToMonth=self.ToMonth,
+            Schedule=self.Schedule,
+        )
 
 
 class DaySchedule(UmiSchedule):
@@ -453,6 +463,17 @@ class DaySchedule(UmiSchedule):
 
         return data_dict
 
+    def mapping(self):
+        return dict(
+            id=self.id,
+            Category=self.schType,
+            Type=self.schTypeLimitsName,
+            Values=self.all_values.round(3).tolist(),
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
+
     @property
     def all_values(self):
         return np.array(self._values)
@@ -532,6 +553,17 @@ class WeekSchedule(UmiSchedule):
         data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
+
+    def mapping(self):
+        return dict(
+            id=self.id,
+            Category=self.schType,
+            Days=self.Days,
+            Type=self.schTypeLimitsName,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
 
     def get_days(self, epbunch):
         """

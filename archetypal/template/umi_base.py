@@ -481,6 +481,7 @@ class MaterialLayer(object):
             )
         self.Thickness = Thickness
         self.Material = Material
+        self.id = id(self)
 
     def __hash__(self):
         return id(self)

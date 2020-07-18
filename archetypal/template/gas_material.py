@@ -107,3 +107,25 @@ class GasMaterial(MaterialBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
+
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            id=self.id,
+            Category=self.Category,
+            Type=self.Type,
+            Conductivity=self.Conductivity,
+            Cost=self.Cost,
+            Density=self.Density,
+            EmbodiedCarbon=self.EmbodiedCarbon,
+            EmbodiedEnergy=self.EmbodiedEnergy,
+            SubstitutionRatePattern=self.SubstitutionRatePattern,
+            SubstitutionTimestep=self.SubstitutionTimestep,
+            TransportCarbon=self.TransportCarbon,
+            TransportDistance=self.TransportDistance,
+            TransportEnergy=self.TransportEnergy,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )

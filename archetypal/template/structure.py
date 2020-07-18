@@ -27,6 +27,7 @@ class MassRatio(object):
         self.HighLoadRatio = HighLoadRatio
         self.Material = Material
         self.NormalRatio = NormalRatio
+        self.id = id(self)
 
     def __hash__(self):
         return hash(id(self))
@@ -48,6 +49,13 @@ class MassRatio(object):
         return collections.OrderedDict(
             HighLoadRatio=self.HighLoadRatio,
             Material={"$ref": str(self.Material.id)},
+            NormalRatio=self.NormalRatio,
+        )
+
+    def mapping(self):
+        return dict(
+            HighLoadRatio=self.HighLoadRatio,
+            Material=self.Material,
             NormalRatio=self.NormalRatio,
         )
 

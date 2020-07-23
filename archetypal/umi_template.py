@@ -241,71 +241,71 @@ class UmiTemplateLibrary:
 
             # with datastore, create each objects
             t.GasMaterials = [
-                GasMaterial.from_dict(**store, idf=idf)
+                GasMaterial.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["GasMaterials"]
             ]
             t.GlazingMaterials = [
-                GlazingMaterial(**store, idf=idf)
+                GlazingMaterial(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["GlazingMaterials"]
             ]
             t.OpaqueMaterials = [
-                OpaqueMaterial(**store, idf=idf)
+                OpaqueMaterial(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["OpaqueMaterials"]
             ]
             t.OpaqueConstructions = [
-                OpaqueConstruction.from_dict(**store, idf=idf)
+                OpaqueConstruction.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["OpaqueConstructions"]
             ]
             t.WindowConstructions = [
-                WindowConstruction.from_dict(**store, idf=idf)
+                WindowConstruction.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["WindowConstructions"]
             ]
             t.StructureDefinitions = [
-                StructureInformation.from_dict(**store, idf=idf)
+                StructureInformation.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["StructureDefinitions"]
             ]
             t.DaySchedules = [
-                DaySchedule.from_dict(**store, idf=idf)
+                DaySchedule.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["DaySchedules"]
             ]
             t.WeekSchedules = [
-                WeekSchedule.from_dict(**store, idf=idf)
+                WeekSchedule.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["WeekSchedules"]
             ]
             t.YearSchedules = [
-                YearSchedule.from_dict(**store, idf=idf)
+                YearSchedule.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["YearSchedules"]
             ]
             t.DomesticHotWaterSettings = [
-                DomesticHotWaterSetting.from_dict(**store, idf=idf)
+                DomesticHotWaterSetting.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["DomesticHotWaterSettings"]
             ]
             t.VentilationSettings = [
-                VentilationSetting.from_dict(**store, idf=idf)
+                VentilationSetting.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["VentilationSettings"]
             ]
             t.ZoneConditionings = [
-                ZoneConditioning.from_dict(**store, idf=idf)
+                ZoneConditioning.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["ZoneConditionings"]
             ]
             t.ZoneConstructionSets = [
-                ZoneConstructionSet.from_dict(**store, idf=idf)
+                ZoneConstructionSet.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["ZoneConstructionSets"]
             ]
             t.ZoneLoads = [
-                ZoneLoad.from_dict(**store, idf=idf) for store in datastore["ZoneLoads"]
+                ZoneLoad.from_dict(**store, idf=idf, allow_duplicates=True) for store in datastore["ZoneLoads"]
             ]
-            t.Zones = [ZoneDefinition.from_dict(**store, idf=idf) for store in datastore["Zones"]]
+            t.Zones = [ZoneDefinition.from_dict(**store, idf=idf, allow_duplicates=True) for store in datastore["Zones"]]
             t.WindowSettings = [
                 WindowSetting.from_ref(
                     store["$ref"], datastore["BuildingTemplates"], idf=idf
                 )
                 if "$ref" in store
-                else WindowSetting.from_dict(**store, idf=idf)
+                else WindowSetting.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["WindowSettings"]
             ]
             t.BuildingTemplates = [
-                BuildingTemplate.from_dict(**store, idf=idf)
+                BuildingTemplate.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["BuildingTemplates"]
             ]
 

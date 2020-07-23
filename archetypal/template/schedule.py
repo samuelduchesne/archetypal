@@ -473,7 +473,9 @@ class DaySchedule(UmiSchedule):
 
     @property
     def all_values(self):
-        return np.array(self._values)
+        if self._values is None:
+            self._values = self.get_schedule_values(self.epbunch)
+        return self._values
 
     def to_dict(self):
         """returns umi template repr"""
@@ -500,10 +502,14 @@ class WeekSchedule(UmiSchedule):
             epbunch:
             **kwargs:
         """
+        Days = WeekSchedule.get_days(epbunch)
         sched = cls(
-            idf=epbunch.theidf, Name=epbunch.Name, schType=epbunch.key, **kwargs
+            idf=epbunch.theidf,
+            Name=epbunch.Name,
+            schType=epbunch.key,
+            days=Days,
+            **kwargs,
         )
-        sched.Days = sched.get_days(epbunch)
 
         return sched
 
@@ -561,7 +567,8 @@ class WeekSchedule(UmiSchedule):
             Name=self.Name,
         )
 
-    def get_days(self, epbunch):
+    @classmethod
+    def get_days(cls, epbunch):
         """
         Args:
             epbunch (EpBunch):
@@ -582,7 +589,7 @@ class WeekSchedule(UmiSchedule):
                 next(
                     (
                         x
-                        for x in self.all_objects
+                        for x in CREATED_OBJECTS
                         if x.Name == week_day_schedule_name
                         and type(x).__name__ == "DaySchedule"
                     ),

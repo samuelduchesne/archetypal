@@ -22,6 +22,11 @@ class TestUmiTemplate:
         b = TestUmiTemplate.read_json(file)
         assert a == b
 
+    def test_template_to_tempalte_json(self, config):
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+
+        UmiTemplateLibrary.read_file(file).to_json("BostonTemplateLibrary_ar.json")
+
     def test_umitemplate(self, config):
         """Test creating UmiTemplateLibrary from 2 IDF files"""
         idf_source = [

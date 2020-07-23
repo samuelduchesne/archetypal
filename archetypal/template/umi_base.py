@@ -31,7 +31,6 @@ class Unique(type):
         """
         self = cls.__new__(cls, *args, **kwargs)
         cls.__init__(self, *args, **kwargs)
-        key = self.__hash__()
         if self not in CREATED_OBJECTS or kwargs.get("allow_duplicates", "False"):
             CREATED_OBJECTS.append(self)
             return self

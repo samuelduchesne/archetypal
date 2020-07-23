@@ -2,6 +2,7 @@ import os
 
 import pytest
 from click.testing import CliRunner
+from path import Path
 
 from archetypal import settings, log, IDF
 from archetypal.cli import cli
@@ -320,6 +321,7 @@ class TestCli:
         )
         print(result.stdout)
         assert result.exit_code == 0
+        assert Path("tests/.temp/retail.json").exists()
 
     def test_reduce_failed(self):
         """Tests the 'reduce' method on a failed file"""

@@ -3110,13 +3110,12 @@ class SlabThread(Thread):
                     shell=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True,
                 )
 
                 start_time = time.time()
                 self.msg_callback("RunSlab started")
                 for line in self.p.stdout:
-                    self.msg_callback(line.strip("\n"))
+                    self.msg_callback(line.decode("utf-8").strip("\n"))
                     progress.update()
 
                 # We explicitly close stdout
@@ -3138,7 +3137,7 @@ class SlabThread(Thread):
                         )
                         self.success_callback()
                         for line in self.p.stderr:
-                            self.msg_callback(line)
+                            self.msg_callback(line.decode("utf-8"))
                     else:
                         self.msg_callback("RunSlab failed")
                         self.failure_callback()
@@ -3235,13 +3234,12 @@ class TransitionThread(Thread):
                     shell=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True,
                 )
 
                 start_time = time.time()
                 self.msg_callback("Transition started")
                 for line in self.p.stdout:
-                    self.msg_callback(line.strip("\n"))
+                    self.msg_callback(line.decode("utf-8").strip("\n"))
 
                 # We explicitly close stdout
                 self.p.stdout.close()
@@ -3262,10 +3260,10 @@ class TransitionThread(Thread):
                         )
                         self.success_callback()
                         for line in self.p.stderr:
-                            self.msg_callback(line)
+                            self.msg_callback(line.decode("utf-8"))
                     else:
                         for line in self.p.stderr:
-                            self.msg_callback(line)
+                            self.msg_callback(line.decode("utf-8"))
                         self.msg_callback("Transition failed")
                         self.failure_callback()
         return 0
@@ -3310,7 +3308,7 @@ class TransitionThread(Thread):
 
     def failure_callback(self):
         for line in self.p.stderr:
-            self.msg_callback(line)
+            self.msg_callback(line.decode("utf-8"))
         raise CalledProcessError(self.p.returncode, cmd=self.cmd, stderr=self.p.stderr)
 
     def cancelled_callback(self, stdin, stdout):
@@ -3404,12 +3402,11 @@ class EnergyPlusThread(Thread):
                     shell=False,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True,
                 )
                 start_time = time.time()
                 self.msg_callback("Simulation started")
                 for line in self.p.stdout:
-                    self.msg_callback(line.strip("\n"))
+                    self.msg_callback(line.decode("utf-8").strip("\n"))
                     progress.update()
 
                 # We explicitly close stdout
@@ -3640,7 +3637,7 @@ def _log_subprocess_output(pipe, name, verbose, progress):
     """
     logger = None
     for line in pipe:
-        linetxt = line.strip("\n")
+        linetxt = line.decode("utf-8").strip("\n")
         if verbose == "v":
             logger = log(
                 linetxt,

@@ -2663,7 +2663,7 @@ class TestUmiTemplateLibrary:
 
         # Structure definition
         mass_ratio = ar.MassRatio(Material=plywood, NormalRatio=1, HighLoadRatio=1)
-        struct_definition = ar.StructureDefinition(
+        struct_definition = ar.StructureInformation(
             Name="Structure", MassRatios=[mass_ratio], idf=idf
         )
         StructureDefinitions = [struct_definition]

@@ -280,7 +280,7 @@ class BuildingTemplate(UmiBase):
         bt.reduce(bt.cores, bt.perims)
 
         # resolve StructureInformation and WindowSetting
-        bt.Structure = StructureDefinition(
+        bt.Structure = StructureInformation(
             Name=bt.Name + "_StructureDefinition",
             MassRatios=[MassRatio.generic()],
             idf=idf,

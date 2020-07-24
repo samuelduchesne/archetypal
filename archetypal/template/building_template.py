@@ -442,6 +442,7 @@ class ZoneThread(threading.Thread):
         super().__init__()
         self.zone = zone
         self.building_template = building_template
+        self.name = "Zone_" + self.zone.Name
 
     def run(self):
         self.building_template._allzones.append(

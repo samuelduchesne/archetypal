@@ -229,15 +229,7 @@ class TestWeekSchedule:
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
-        days = [
-            sch_d_on,
-            sch_d_off,
-            sch_d_on,
-            sch_d_off,
-            sch_d_on,
-            sch_d_off,
-            sch_d_on,
-        ]
+        days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
         # Creates WeekSchedule from list of DaySchedule
         a = ar.WeekSchedule(
             days=days,
@@ -317,15 +309,7 @@ class TestYearSchedule:
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
-        days = [
-            {"$ref": sch_d_on.id},
-            {"$ref": sch_d_off.id},
-            {"$ref": sch_d_on.id},
-            {"$ref": sch_d_off.id},
-            {"$ref": sch_d_on.id},
-            {"$ref": sch_d_off.id},
-            {"$ref": sch_d_on.id},
-        ]
+        days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
         # Creates WeekSchedule from list of DaySchedule
         sch_w_on_off = ar.WeekSchedule(
             days=days,
@@ -1221,7 +1205,7 @@ class TestUmiSchedule:
         # don't have the same hash.
         assert len(set(sched_list)) == 2
 
-        # 2 UmiSchedule from different idf should not have the same hash,
+        # 2 UmiSchedule from different idf should have the same hash,
         # not be the same object, yet be equal if they have the same values
         idf_2, sql_2 = other_idf
         clear_cache()
@@ -1229,7 +1213,7 @@ class TestUmiSchedule:
         sched_3 = UmiSchedule(Name="On", idf=idf_2)
         assert sched is not sched_3
         assert sched == sched_3
-        assert hash(sched) != hash(sched_3)
+        assert hash(sched) == hash(sched_3)
         assert id(sched) != id(sched_3)
 
 
@@ -1807,14 +1791,17 @@ class TestDomesticHotWaterSetting:
         Args:
             small_idf:
         """
-        from archetypal.template import DomesticHotWaterSetting, ZoneDefinition
+        from archetypal.template import DomesticHotWaterSetting, UmiSchedule
         from copy import copy
 
-        idf, sql = small_idf
-        clear_cache()
-        zone_ep = idf.idfobjects["ZONE"][0]
-        zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
-        dhw = DomesticHotWaterSetting.from_zone(zone)
+        dhw = DomesticHotWaterSetting(
+            Name="",
+            IsOn=True,
+            WaterSchedule=UmiSchedule.constant_schedule(),
+            FlowRatePerFloorArea=0.03,
+            WaterSupplyTemperature=65,
+            WaterTemperatureInlet=10,
+        )
         dhw_2 = copy(dhw)
 
         # a copy of dhw should be equal and have the same hash, but still not be the
@@ -1854,22 +1841,6 @@ class TestDomesticHotWaterSetting:
         # length of set() should be 2 since both objects are not equal anymore and
         # don't have the same hash.
         assert len(set(dhw_list)) == 2
-
-        # 2 DomesticHotWaterSettings from different idf should not have the same hash
-        # if they have different names, not be the same object, yet be equal if they
-        # have the same values (Infiltration, IsWindOn, etc.)
-        idf_2 = deepcopy(idf)
-        clear_cache()
-        zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, sql=sql)
-        assert idf is not idf_2
-        dhw_3 = DomesticHotWaterSetting.from_zone(zone_3)
-        assert zone_ep is not zone_ep_3
-        assert zone_ep != zone_ep_3
-        assert hash(dhw) == hash(dhw_3)
-        assert id(dhw) != id(dhw_3)
-        assert dhw is not dhw_3
-        assert dhw == dhw_3
 
 
 class TestWindowSetting:
@@ -2121,11 +2092,10 @@ class TestZone:
         idf = IDF(file, epw=w)
         sql = idf.sql
         zone = idf.getobject(
-            "ZONE", "Sp-attic Sys-0 Flr-2 Sch-- undefined - " "HPlcmt-core ZN"
+            "ZONE", "Sp-attic Sys-0 Flr-2 Sch-- undefined - HPlcmt-core ZN"
         )
         z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
         np.testing.assert_almost_equal(desired=z.volume, actual=856.3, decimal=1)
-        z.to_json()
 
     def test_add_zone(self, small_idf):
         """Test __add__() for Zone
@@ -3065,12 +3035,12 @@ class TestUmiTemplateLibrary:
     def test_necb_parallel(self, config):
         settings.log_console = True
         office = [
-            r"tests\input_data\necb\NECB 2011-SmallOffice-NECB HDD "
-            r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            r"tests\input_data\necb\NECB 2011-MediumOffice-NECB HDD "
-            r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            r"tests\input_data\necb\NECB 2011-LargeOffice-NECB HDD "
-            r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD "
+            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD "
+            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD "
+            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
         ]
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         template = ar.UmiTemplateLibrary.read_idf(
@@ -3085,12 +3055,12 @@ class TestUmiTemplateLibrary:
         assert no_duplicates(template.to_dict(), attribute="$id")
 
     office = [
-        r"tests\input_data\necb\NECB 2011-SmallOffice-NECB HDD "
-        r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        r"tests\input_data\necb\NECB 2011-MediumOffice-NECB HDD "
-        r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        r"tests\input_data\necb\NECB 2011-LargeOffice-NECB HDD "
-        r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD "
+        "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD "
+        "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD "
+        "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
     ]
 
     @pytest.mark.parametrize(

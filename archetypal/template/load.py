@@ -214,9 +214,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
             if nominal_elec.empty and nominal_gas.empty:
                 EquipmentPowerDensity = 0.0
-                EquipmentAvailabilitySchedule = None  # UmiSchedule.constant_schedule(
-                # idf=zone.idf, quantity=EquipmentPowerDensity
-                # )
+                EquipmentAvailabilitySchedule = None
             else:
                 if nominal_gas.empty:
                     EquipmentPowerDensity = (
@@ -266,7 +264,8 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 # idf=zone.idf)
                 LightingPowerDensity = 0
             else:
-                schedule_index, LightingPowerDensity = row
+                schedule_index, LightingPower = row
+                LightingPowerDensity =  LightingPower / zone.area
                 sql_query = (
                     "select t.ScheduleName, t.ScheduleType from "
                     "Schedules t where ScheduleIndex=?"
@@ -291,7 +290,8 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 OccupancySchedule = None
                 PeopleDensity = 0
             else:
-                schedule_index, PeopleDensity = row
+                schedule_index, People = row
+                PeopleDensity = People / zone.area
                 sql_query = (
                     "select t.ScheduleName, t.ScheduleType from "
                     "Schedules t where ScheduleIndex=?"

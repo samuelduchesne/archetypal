@@ -33,7 +33,7 @@ from archetypal import (
     MassRatio,
     IDF,
     parallel_process,
-    log,
+    log, EnergyPlusProcessError,
 )
 
 
@@ -192,24 +192,25 @@ class UmiTemplateLibrary:
             debug=True,
             position=None,
         )
-
-        if all(isinstance(x, Exception) for x in results):
-            for res in results:
-                log(str(res))
-            raise Exception("Complexity reduction failed for all buildings.")
-
-        umi_template.BuildingTemplates = [
-            res for res in results if not isinstance(res, Exception)
-        ]
-
-        # Inform user if Exceptions thrown for certain models
         for res in results:
-            if isinstance(res, Exception):
+            if isinstance(res, EnergyPlusProcessError):
+                filename = (settings.logs_folder / "failed_reduce.txt").expand()
+                with open(filename, "a") as file:
+                    file.writelines(res.write())
+                    log(f"EnergyPlusProcess errors listed in {filename}")
+            elif isinstance(res, Exception):
                 log(
                     f"Unable to create Building Template. Exception raised: "
                     f"{str(res)}",
                     lg.WARNING,
                 )
+
+        if all(isinstance(x, Exception) for x in results):
+            raise Exception("Complexity reduction failed for all buildings.")
+
+        umi_template.BuildingTemplates = [
+            res for res in results if not isinstance(res, Exception)
+        ]
 
         return umi_template
 
@@ -375,7 +376,7 @@ class UmiTemplateLibrary:
                 "OpaqueMaterials": [],
                 "OpaqueConstructions": [],
                 "WindowConstructions": [],
-                "StructureDefinitions": [],
+                "StructureInformations": [],
                 "DaySchedules": [],
                 "WeekSchedules": [],
                 "YearSchedules": [],
@@ -384,7 +385,7 @@ class UmiTemplateLibrary:
                 "ZoneConditionings": [],
                 "ZoneConstructionSets": [],
                 "ZoneLoads": [],
-                "Zones": [],
+                "ZoneDefinitions": [],
                 "WindowSettings": [],
                 "BuildingTemplates": [],
             }
@@ -401,13 +402,12 @@ class UmiTemplateLibrary:
                     app_dict = obj.to_json()
                     data_dict[catname].append(app_dict)
                     jsonized[key] = obj
-            for key, value in obj.__dict__.items():
-
+            for key, value in obj.mapping().items():
                 if isinstance(
-                    value, (UmiBase, MaterialLayer, YearSchedulePart)
-                ) and not key.startswith("_"):
+                    value, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
+                ):
                     recursive_json(value)
-                elif isinstance(value, list) and key != "all_objects":
+                elif isinstance(value, list):
                     [
                         recursive_json(value)
                         for value in value
@@ -435,7 +435,8 @@ class UmiTemplateLibrary:
             data_dict[key] = sorted(
                 data_dict[key], key=lambda x: x["Name"] if "Name" in x else "A"
             )
-
+        data_dict["Zones"] = data_dict.pop("ZoneDefinitions")
+        data_dict["StructureDefinitions"] = data_dict.pop("StructureInformations")
         if not data_dict["GasMaterials"]:
             # Umi needs at least one gas material even if it is not necessary.
             data_dict["GasMaterials"].append(GasMaterial(Name="AIR").to_json())

@@ -323,7 +323,7 @@ class TestCli:
         assert result.exit_code == 0
         assert Path("tests/.temp/retail.json").exists()
 
-    def test_reduce_failed(self):
+    def test_reduce_failed(self, config):
         """Tests the 'reduce' method on a failed file"""
         runner = CliRunner()
         test_file = "tests/input_data/necb/NECB 2011-Warehouse-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
@@ -337,7 +337,7 @@ class TestCli:
             pass
         else:
             idf.removeidfobject(bldg)
-            idf.save()
+            idf.save("tests/.temp/brokenidf.idf")
 
         result = runner.invoke(
             cli,
@@ -360,7 +360,7 @@ class TestCli:
                 "-o",
                 "tests/.temp/retail.json",
             ],
-            catch_exceptions=True,
+            catch_exceptions=False,
         )
         print(result.stdout)
         # check an error file has been created

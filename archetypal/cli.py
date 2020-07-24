@@ -394,14 +394,8 @@ def reduce(idf, output, weather, cores, all_zones):
         template = UmiTemplateLibrary.read_idf(
             file_paths, weather=weather, name=name, processors=cores
         )
-    except EnergyPlusProcessError as e:
-        log(e.write())
-        filename = (settings.logs_folder / "failed_reduce.txt").expand()
-        with open(filename, "a") as file:
-            file.writelines(e.write())
-            log(f"EnergyPlusProcess errors listed in {filename}")
-    except Exception as e:
-        log(f"An Unknown exception occurred: {e}", logging.ERROR)
+    except Exception:
+        pass
     else:
         # Save json file
         final_path: Path = dir_ / name + ext

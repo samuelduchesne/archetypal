@@ -168,6 +168,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             )
             return z_dhw
         else:
+            log(f"No 'Water Systems' found in zone '{zone.Name}'")
             return None
 
     @classmethod

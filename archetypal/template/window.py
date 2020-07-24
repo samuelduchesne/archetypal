@@ -722,7 +722,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
             weights = [1.0, 1.0]
         meta = self._get_predecessors_meta(other)
         new_attr = dict(
-            Construction=self.Construction.combine(other.Construction, weights),
+            Construction=WindowConstruction.combine(self.Construction,
+                                                    other.Construction,
+                                                    weights),
             AfnDischargeC=self._float_mean(other, "AfnDischargeC", weights),
             AfnTempSetpoint=self._float_mean(other, "AfnTempSetpoint", weights),
             AfnWindowAvailability=UmiSchedule.combine(

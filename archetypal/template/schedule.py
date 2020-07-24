@@ -104,7 +104,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         else:
             return all(
                 [
-                    self.Name == other.Name,
+                    # self.Name == other.Name,
                     self.strict == other.strict,
                     self.schType == other.schType,
                     self.schTypeLimitsName == other.schTypeLimitsName,
@@ -408,7 +408,7 @@ class DaySchedule(UmiSchedule):
         """
         return cls(
             Name=Name,
-            values=Values,
+            values=np.array(Values),
             schTypeLimitsName=schTypeLimitsName,
             idf=idf,
             **kwargs,

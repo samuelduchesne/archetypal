@@ -136,7 +136,7 @@ class IDF(geomeppy.IDF):
         custom_processes=None,
         simulname=None,
         output_suffix="L",
-        epmacro=True,
+        epmacro=False,
         keep_data=True,
         keep_data_err=False,
         position=0,
@@ -173,7 +173,7 @@ class IDF(geomeppy.IDF):
         self._design_day = design_day
         self._annual = annual
         self._prep_outputs = prep_outputs
-        self._as_version = parse(as_version)
+        self._as_version = None
         self._position = position
 
         # Set dependants to None
@@ -194,6 +194,9 @@ class IDF(geomeppy.IDF):
         self._partition_ratio = None
         self._area_conditioned = None
         self._schedules = None
+
+        if parse(as_version):
+            self.as_version = parse(as_version)
 
         self.load_kwargs = dict(epw=epw, **kwargs)
 
@@ -772,6 +775,9 @@ class IDF(geomeppy.IDF):
                 f"epw='weather.epw')"
             )
 
+        # Todo: Add EpMacro Thread -> if exist in.imf "%program_path%EPMacro"
+
+        # Run the ExpandObjects preprocessor program
         self._expandobjects_thread = ExpandObjectsThread(self)
         self._expandobjects_thread.start()
         self._expandobjects_thread.join()
@@ -779,6 +785,11 @@ class IDF(geomeppy.IDF):
         if e:
             raise e
 
+        # Run the Basement preprocessor program if necessary
+
+        # Todo: Add Basement.exe Thread -> https://github.com/NREL/EnergyPlus/blob/4836252ecffbaf63e98b62a8e6613510de0046a9/scripts/Epl-run.bat#L271
+
+        # Run the Slab preprocessor program if necessary
         self._slab_thread = SlabThread(self)
         self._slab_thread.start()
         self._slab_thread.join()
@@ -833,6 +844,8 @@ class IDF(geomeppy.IDF):
         save_path = super(IDF, self).save(
             filename=filename, lineendings=lineendings, encoding=encoding
         )
+        if filename:
+            self.idfname = filename
         log(f"saved '{self.name}' at '{filename if filename else self.idfname}'")
         return save_path
 
@@ -2072,10 +2085,7 @@ class Outputs:
                 to the tabular reports that are already output by EnergyPlus in
                 other formats.
         """
-        output = {
-            "key": "Output:SQLite".upper(),
-            **dict(Option_Type=sql_output_style),
-        }
+        output = {"key": "Output:SQLite".upper(), **dict(Option_Type=sql_output_style)}
 
         self._outputs.extend([output])
         return self
@@ -2710,7 +2720,7 @@ def _process_csv(file, working_dir, simulname):
 
 class EnergyPlusProgram:
     def __init__(self, idf):
-        self.idf = None
+        self.idf = idf
 
     @property
     def eplus_home(self):
@@ -2772,7 +2782,7 @@ class EnergyPlusExe:
         design_day=False,
         help=False,
         idd=None,
-        epmacro=True,
+        epmacro=False,
         output_prefix="eplus",
         readvars=True,
         output_sufix="L",
@@ -2821,7 +2831,7 @@ class EnergyPlusExe:
         self.get_exe_path()
 
     def get_exe_path(self):
-        (eplus_exe_path, eplus_weather_path,) = eppy.runner.run_functions.install_paths(
+        (eplus_exe_path, eplus_weather_path) = eppy.runner.run_functions.install_paths(
             self.ep_version.dash, self.i
         )
         if not Path(eplus_exe_path).exists():
@@ -2949,6 +2959,7 @@ class ExpandObjectsThread(Thread):
         self.cancelled = False
         self.run_dir = Path("")
         self.exception = None
+        self.name = "expandobject_" + self.idf.name
 
     def run(self):
         """Wrapper around the EnergyPlus command line interface.
@@ -2983,13 +2994,13 @@ class ExpandObjectsThread(Thread):
                 self.p = subprocess.Popen(
                     self.cmd,
                     cwd=self.run_dir,
-                    shell=True,
+                    shell=False,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
 
                 start_time = time.time()
-                self.msg_callback("ExpandObjects started")
+                # self.msg_callback("ExpandObjects started")
                 for line in self.p.stdout:
                     self.msg_callback(line.decode("utf-8"))
                     progress.update()
@@ -3015,7 +3026,7 @@ class ExpandObjectsThread(Thread):
                     else:
                         self.msg_callback("ExpandObjects failed")
                         self.failure_callback()
-        return 0
+        return self.p.returncode
 
     def msg_callback(self, *args, **kwargs):
         log(*args, **kwargs)
@@ -3065,6 +3076,7 @@ class SlabThread(Thread):
         self.cancelled = False
         self.run_dir = Path("")
         self.exception = None
+        self.name = "RunSlab_" + self.idf.name
 
     def run(self):
         """Wrapper around the EnergyPlus command line interface.
@@ -3107,13 +3119,13 @@ class SlabThread(Thread):
                 self.p = subprocess.Popen(
                     self.cmd,
                     cwd=self.run_dir,
-                    shell=True,
+                    shell=False,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
 
                 start_time = time.time()
-                self.msg_callback("RunSlab started")
+                self.msg_callback("Begin Slab Temperature Calculation processing . . .")
                 for line in self.p.stdout:
                     self.msg_callback(line.decode("utf-8").strip("\n"))
                     progress.update()
@@ -3141,7 +3153,7 @@ class SlabThread(Thread):
                     else:
                         self.msg_callback("RunSlab failed")
                         self.failure_callback()
-        return 0
+        return self.p.returncode
 
     def msg_callback(self, *args, **kwargs):
         log(*args, **kwargs)
@@ -3164,7 +3176,7 @@ class SlabThread(Thread):
             with open(error_filename, "r") as stderr:
                 stderr_r = stderr.read()
                 self.exception = EnergyPlusProcessError(
-                    cmd=self.cmd, stderr=stderr_r, idf=self.idf.name,
+                    cmd=self.cmd, stderr=stderr_r, idf=self.idf.name
                 )
 
     def cancelled_callback(self, stdin, stdout):
@@ -3198,6 +3210,7 @@ class TransitionThread(Thread):
         self.cancelled = False
         self.run_dir = Path("")
         self.exception = None
+        self.name = "Transition_" + self.idf.name
 
     def run(self):
         """Wrapper around the EnergyPlus command line interface.
@@ -3231,7 +3244,7 @@ class TransitionThread(Thread):
                 self.p = subprocess.Popen(
                     self.cmd,
                     cwd=self.idf.idfversionupdater_dir,  # process runs in dir
-                    shell=True,
+                    shell=False,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
@@ -3266,7 +3279,7 @@ class TransitionThread(Thread):
                             self.msg_callback(line.decode("utf-8"))
                         self.msg_callback("Transition failed")
                         self.failure_callback()
-        return 0
+        return self.p.returncode
 
     @property
     def trans_exec(self):
@@ -3341,6 +3354,7 @@ class EnergyPlusThread(Thread):
         self.cancelled = False
         self.run_dir = Path("")
         self.exception = None
+        self.name = "EnergyPlus_" + self.idf.name
 
     def stop(self):
         if self.p.poll() is None:
@@ -3430,6 +3444,7 @@ class EnergyPlusThread(Thread):
                     else:
                         self.msg_callback("Simulation failed")
                         self.failure_callback()
+        return self.p.returncode
 
     def msg_callback(self, *args, **kwargs):
         log(*args, **kwargs)
@@ -3457,7 +3472,7 @@ class EnergyPlusThread(Thread):
                 failed_dir.mkdir_p()
                 self.run_dir.copytree(failed_dir / self.idf.output_prefix)
             self.exception = EnergyPlusProcessError(
-                cmd=self.cmd, stderr=stderr_r, idf=self.idf.name,
+                cmd=self.cmd, stderr=stderr_r, idf=self.idf.name
             )
         except FileNotFoundError:
             self.exception = CalledProcessError(
@@ -3619,7 +3634,7 @@ def _run_exec(
                             failed_dir.mkdir_p()
                             tmp.copytree(failed_dir / output_prefix)
                         raise EnergyPlusProcessError(
-                            cmd=cmd, stderr=stderr_r, idf=eplus_file.basename(),
+                            cmd=cmd, stderr=stderr_r, idf=eplus_file.basename()
                         )
                     except FileNotFoundError:
                         raise CalledProcessError(

@@ -200,7 +200,7 @@ class UmiBase(object):
 
         return meta
 
-    def combine(self):
+    def combine(self, other):
         pass
 
     def rename(self, name):
@@ -334,14 +334,14 @@ class UmiBase(object):
             return other
         if other is None:
             return self
-        self.all_objects.pop(self.__hash__())
+        self.all_objects.remove(self)
         id = self.id
         new_obj = self.combine(other)
         new_obj.__dict__.pop("id")
         new_obj.id = id
         name = new_obj.__dict__.pop("Name")
         self.__dict__.update(Name=name, **new_obj.__dict__)
-        self.all_objects[self.__hash__()] = self
+        self.all_objects.append(self)
         return self
 
     def validate(self):

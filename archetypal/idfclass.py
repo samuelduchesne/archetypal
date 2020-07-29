@@ -1250,6 +1250,18 @@ class IDF(geomeppy.IDF):
                     lg.DEBUG,
                 )
                 return new_object
+            elif new_object not in existing_objs and new_object.nameexists():
+                obj = self.getobject(
+                    key=new_object.key.upper(), name=new_object.Name.upper()
+                )
+                self.removeidfobject(obj)
+                self.addidfobject(new_object)
+                log(
+                    f"{obj} exists but has different attributes; Removed and replaced "
+                    f"with {new_object}",
+                    lg.DEBUG,
+                )
+                return new_object
             else:
                 # add to model and return
                 self.addidfobject(new_object)
@@ -1568,7 +1580,18 @@ class IDF(geomeppy.IDF):
 
 @extend_class(EpBunch)
 def __eq__(self, other):
+    """Tests the equality of two EpBunch objects using all attribute values"""
     return all(str(a).upper() == str(b).upper() for a, b in zip(self.obj, other.obj))
+
+
+@extend_class(EpBunch)
+def nameexists(self):
+    """True if EpBunch Name already exists in idf.idfobjects[KEY]"""
+    existing_objs = self.theidf.idfobjects[self.key.upper()]
+    try:
+        return self.Name.upper() in [obj.Name.upper() for obj in existing_objs]
+    except BadEPFieldError:
+        return False
 
 
 @extend_class(EpBunch)

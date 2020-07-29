@@ -363,7 +363,7 @@ class ZoneDefinition(UmiBase):
         return zone
 
     @classmethod
-    def from_zone_epbunch(cls, zone_ep, sql):
+    def from_zone_epbunch(cls, zone_ep, sql, **kwargs):
         """Create a Zone object from an eppy 'ZONE' epbunch.
 
         Args:
@@ -373,7 +373,13 @@ class ZoneDefinition(UmiBase):
         start_time = time.time()
         log('Constructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
         name = zone_ep.Name
-        zone = cls(Name=name, idf=zone_ep.theidf, sql=sql, Category=zone_ep.theidf.name)
+        zone = cls(
+            Name=name,
+            idf=zone_ep.theidf,
+            sql=sql,
+            Category=zone_ep.theidf.name,
+            **kwargs,
+        )
 
         zone._epbunch = zone_ep
         zone._zonesurfaces = zone_ep.zonesurfaces

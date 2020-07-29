@@ -7,6 +7,8 @@
 
 import collections
 
+import numpy as np
+
 from archetypal import log
 from archetypal.template import UmiBase, Unique, UniqueName
 
@@ -137,7 +139,9 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                     self.TransportCarbon == other.TransportCarbon,
                     self.TransportDistance == other.TransportDistance,
                     self.TransportEnergy == other.TransportEnergy,
-                    self.SubstitutionRatePattern == other.SubstitutionRatePattern,
+                    np.array_equal(
+                        self.SubstitutionRatePattern, other.SubstitutionRatePattern
+                    ),
                     self.SubstitutionTimestep == other.SubstitutionTimestep,
                 ]
             )

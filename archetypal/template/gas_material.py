@@ -7,6 +7,7 @@
 
 import collections
 
+import numpy as np
 from deprecation import deprecated
 
 import archetypal
@@ -46,7 +47,9 @@ class GasMaterial(MaterialBase, metaclass=Unique):
                     self.Density == other.Density,
                     self.EmbodiedCarbon == other.EmbodiedCarbon,
                     self.EmbodiedEnergy == other.EmbodiedEnergy,
-                    self.SubstitutionRatePattern == other.SubstitutionRatePattern,
+                    np.array_equal(
+                        self.SubstitutionRatePattern, other.SubstitutionRatePattern
+                    ),
                     self.SubstitutionTimestep == other.SubstitutionTimestep,
                     self.TransportCarbon == other.TransportCarbon,
                     self.TransportDistance == other.TransportDistance,

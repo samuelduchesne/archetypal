@@ -144,13 +144,7 @@ class UmiBase(object):
         self._sql = None
         self.Category = Category
         self.Comments = Comments
-        if DataSource == "":
-            try:
-                self.DataSource = self.idf.name
-            except:
-                self.DataSource = DataSource
-        else:
-            self.DataSource = DataSource
+        self.DataSource = DataSource
         self.all_objects = CREATED_OBJECTS
         self.id = kwargs.get("$id", id(self))
         self._predecessors = MetaData()
@@ -158,6 +152,16 @@ class UmiBase(object):
     def __str__(self):
         """string representation of the object as id:Name"""
         return ":".join([str(self.id), str(self.Name)])
+
+    @property
+    def DataSource(self):
+        if self._datasource == "":
+            self._datasource = self.idf.name
+        return self._datasource
+
+    @DataSource.setter
+    def DataSource(self, value):
+        self._datasource = value
 
     @property
     def idf(self):

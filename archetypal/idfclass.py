@@ -3408,7 +3408,7 @@ class EnergyPlusThread(Thread):
             with tqdm(
                 unit_scale=True,
                 miniters=1,
-                desc=f"simulate #{self.idf.position}-{self.idf.name}",
+                desc=f"EnergyPlus #{self.idf.position}-{self.idf.name}",
                 position=self.idf.position,
             ) as progress:
                 self.p = subprocess.Popen(

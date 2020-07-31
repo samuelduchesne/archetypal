@@ -422,7 +422,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         layers = kwargs.pop("Layers", None)
         oc = cls(Layers=layers, **kwargs)
         lys = [
-            MaterialLayer(oc.get_ref(layer["Material"]), layer["Thickness"])
+            MaterialLayer(oc.get_ref(layer["Material"]), layer["Thickness"], )
             for layer in layers
         ]
         oc.Layers = lys
@@ -511,7 +511,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                     pass
                 else:
                     layers.append(
-                        MaterialLayer(**dict(Material=o, Thickness=o._thickness))
+                        MaterialLayer(Material=o, Thickness=o._thickness)
                     )
             if not found:
                 raise AttributeError("%s material not found in IDF" % layer)

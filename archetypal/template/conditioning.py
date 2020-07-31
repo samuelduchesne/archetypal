@@ -810,8 +810,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
         heating_sched = UmiSchedule.from_values(
             Name=zone.Name + "_Heating_Schedule",
-            values=(h_array > 0).astype(int),
-            schTypeLimitsName="Fraction",
+            Values=(h_array > 0).astype(int),
+            Type="Fraction",
             idf=zone.idf,
         )
 
@@ -825,8 +825,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         )
         cooling_sched = UmiSchedule.from_values(
             Name=zone.Name + "_Cooling_Schedule",
-            values=(c_array > 0).astype(int),
-            schTypeLimitsName="Fraction",
+            Values=(c_array > 0).astype(int),
+            Type="Fraction",
             idf=zone.idf,
         )
         if np.all(c_array == 0):

@@ -29,10 +29,11 @@ from archetypal.template import (
     WindowSetting,
     CREATED_OBJECTS,
     UniqueName,
+    Unique
 )
 
 
-class ZoneDefinition(UmiBase):
+class ZoneDefinition(UmiBase, metaclass=Unique):
     """Class containing HVAC settings: Conditioning, Domestic Hot Water, Loads,
     Ventilation, adn Constructions
 

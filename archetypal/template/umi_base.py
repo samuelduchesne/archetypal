@@ -31,7 +31,7 @@ class Unique(type):
         """
         self = cls.__new__(cls, *args, **kwargs)
         cls.__init__(self, *args, **kwargs)
-        if self not in CREATED_OBJECTS or kwargs.get("allow_duplicates", "False"):
+        if self not in CREATED_OBJECTS or kwargs.get("allow_duplicates", False):
             CREATED_OBJECTS.append(self)
             return self
         else:
@@ -463,7 +463,7 @@ class MaterialLayer(object):
     2. Thickness (float): The thickness of the material in the layer.
     """
 
-    def __init__(self, Material, Thickness):
+    def __init__(self, Material, Thickness, **kwargs):
         """Initialize a MaterialLayer object with parameters:
 
         Args:

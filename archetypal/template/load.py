@@ -242,7 +242,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                     schedule = UmiSchedule(
                         Name=sched_name,
                         idf=zone.idf,
-                        schTypeLimitsName=sched_type,
+                        Type=sched_type,
                         quantity=nominal_elec["DesignLevel"][design],
                     )
                     list_sched.append(schedule)
@@ -276,7 +276,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 LightsAvailabilitySchedule = UmiSchedule(
                     Name=sched_name,
                     idf=zone.idf,
-                    schTypeLimitsName=sched_type,
+                    Type=sched_type,
                     quantity=LightingPowerDensity,
                 )
 
@@ -300,7 +300,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                     sql_query, (int(schedule_index),)
                 ).fetchone()
                 OccupancySchedule = UmiSchedule(
-                    Name=sched_name, idf=zone.idf, schTypeLimitsName=sched_type
+                    Name=sched_name, idf=zone.idf, Type=sched_type
                 )
 
         name = zone.Name + "_ZoneLoad"

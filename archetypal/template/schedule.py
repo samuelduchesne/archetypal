@@ -409,7 +409,7 @@ class DaySchedule(UmiSchedule):
             **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
                 See :class:`UmiSchedule` for more details.
         """
-        return cls(Name=Name, values=np.array(Values), Type=Type, idf=idf, **kwargs)
+        return cls(Name=Name, Values=np.array(Values), Type=Type, idf=idf, **kwargs)
 
     @classmethod
     @deprecated(

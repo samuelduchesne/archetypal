@@ -254,7 +254,10 @@ class BuildingTemplate(UmiBase):
         with concurrent.futures.thread.ThreadPoolExecutor() as executor:
             futures = {
                 executor.submit(
-                    ZoneDefinition.from_zone_epbunch, (zone), sql=idf.sql
+                    ZoneDefinition.from_zone_epbunch,
+                    (zone),
+                    sql=idf.sql,
+                    allow_duplicates=True,
                 ): zone
                 for zone in epbunch_zones
             }
@@ -267,10 +270,10 @@ class BuildingTemplate(UmiBase):
                 zone = futures[future]
                 try:
                     result = future.result()
-                    zones.append(result)
                 except Exception as exc:
                     log("%r generated an exception: %s" % (zone.Name, exc))
                 else:
+                    zones.append(result)
                     log("%r created" % (result.Name))
 
         zone: ZoneDefinition
@@ -447,7 +450,7 @@ class ZoneThread(threading.Thread):
     def run(self):
         self.building_template._allzones.append(
             ZoneDefinition.from_zone_epbunch(
-                self.zone, sql=self.building_template.idf.sql
+                self.zone, sql=self.building_template.idf.sql, allow_duplicates=True
             )
         )
 

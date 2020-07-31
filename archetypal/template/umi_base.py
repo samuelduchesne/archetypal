@@ -165,6 +165,8 @@ class UmiBase(object):
 
     @property
     def idf(self):
+        if self._idf is None:
+            self._idf = IDF()
         return self._idf
 
     @property

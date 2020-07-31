@@ -440,5 +440,7 @@ class UmiTemplateLibrary:
         if not data_dict["GasMaterials"]:
             # Umi needs at least one gas material even if it is not necessary.
             data_dict["GasMaterials"].append(GasMaterial(Name="AIR").to_json())
+            data_dict.move_to_end("GasMaterials", last=False)
+        data_dict.move_to_end("BuildingTemplates")
         # Write the dict to json using json.dumps
         return data_dict

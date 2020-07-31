@@ -156,7 +156,7 @@ class TestDaySchedule:
         values = np.array(range(0, 24))
         kwargs = {
             "Category": "Day",
-            "schTypeLimitsName": "Fraction",
+            "Type": "Fraction",
             "Name": "hourlyAllOn",
             "Values": values,
             "idf": idf,
@@ -216,14 +216,14 @@ class TestWeekSchedule:
         sch_d_on = ar.DaySchedule.from_values(
             Values=[1] * 24,
             Category="Day",
-            schTypeLimitsName="Fractional",
+            Type="Fraction",
             Name="AlwaysOn",
             idf=idf,
         )
         sch_d_off = ar.DaySchedule.from_values(
             Values=[0] * 24,
             Category="Day",
-            schTypeLimitsName="Fractional",
+            Type="Fraction",
             Name="AlwaysOff",
             idf=idf,
         )
@@ -232,9 +232,9 @@ class TestWeekSchedule:
         days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
         # Creates WeekSchedule from list of DaySchedule
         a = ar.WeekSchedule(
-            days=days,
+            Days=days,
             Category="Week",
-            schTypeLimitsName="Fractional",
+            Type="Fraction",
             Name="OnOff_1",
             idf=idf,
         )
@@ -296,14 +296,14 @@ class TestYearSchedule:
         sch_d_on = ar.DaySchedule.from_values(
             Values=[1] * 24,
             Category="Day",
-            schTypeLimitsName="Fractional",
+            Type="Fraction",
             Name="AlwaysOn",
             idf=idf,
         )
         sch_d_off = ar.DaySchedule.from_values(
             Values=[0] * 24,
             Category="Day",
-            schTypeLimitsName="Fractional",
+            Type="Fraction",
             Name="AlwaysOff",
             idf=idf,
         )
@@ -312,9 +312,9 @@ class TestYearSchedule:
         days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
         # Creates WeekSchedule from list of DaySchedule
         sch_w_on_off = ar.WeekSchedule(
-            days=days,
+            Days=days,
             Category="Week",
-            schTypeLimitsName="Fractional",
+            Type="Fraction",
             Name="OnOff",
             idf=idf,
         )
@@ -2646,7 +2646,7 @@ class TestUmiTemplateLibrary:
         sch_d_on = ar.DaySchedule.from_values(
             Values=[1] * 24,
             Category="Day",
-            schTypeLimitsName="Fractional",
+            Type="Fraction",
             Name="AlwaysOn",
             idf=idf,
         )
@@ -2654,7 +2654,7 @@ class TestUmiTemplateLibrary:
         sch_d_off = ar.DaySchedule.from_values(
             Values=[0] * 24,
             Category="Day",
-            schTypeLimitsName="Fractional",
+            Type="Fraction",
             Name="AlwaysOff",
             idf=idf,
         )
@@ -2662,7 +2662,7 @@ class TestUmiTemplateLibrary:
         sch_d_dhw = ar.DaySchedule.from_values(
             Values=[0.3] * 24,
             Category="Day",
-            schTypeLimitsName="Fractional",
+            Type="Fraction",
             Name="DHW",
             idf=idf,
         )
@@ -2670,7 +2670,7 @@ class TestUmiTemplateLibrary:
         sch_d_gains = ar.DaySchedule.from_values(
             Values=[0] * 6 + [0.5, 0.6, 0.7, 0.8, 0.9, 1] + [0.7] * 6 + [0.4] * 6,
             Category="Day",
-            schTypeLimitsName="Fractional",
+            Type="Fraction",
             Name="Gains",
             idf=idf,
         )
@@ -2679,15 +2679,15 @@ class TestUmiTemplateLibrary:
         # Week schedules
         # Always on
         sch_w_on = ar.WeekSchedule(
-            days=[sch_d_on, sch_d_on, sch_d_on, sch_d_on, sch_d_on, sch_d_on, sch_d_on],
+            Days=[sch_d_on, sch_d_on, sch_d_on, sch_d_on, sch_d_on, sch_d_on, sch_d_on],
             Category="Week",
-            schTypeLimitsName="Fractional",
+            Type="Fraction",
             Name="AlwaysOn",
             idf=idf,
         )
         # Always off
         sch_w_off = ar.WeekSchedule(
-            days=[
+            Days=[
                 sch_d_off,
                 sch_d_off,
                 sch_d_off,
@@ -2697,13 +2697,13 @@ class TestUmiTemplateLibrary:
                 sch_d_off,
             ],
             Category="Week",
-            schTypeLimitsName="Fractional",
+            Type="Fraction",
             Name="AlwaysOff",
             idf=idf,
         )
         # DHW
         sch_w_dhw = ar.WeekSchedule(
-            days=[
+            Days=[
                 sch_d_dhw,
                 sch_d_dhw,
                 sch_d_dhw,
@@ -2713,13 +2713,13 @@ class TestUmiTemplateLibrary:
                 sch_d_dhw,
             ],
             Category="Week",
-            schTypeLimitsName="Fractional",
+            Type="Fraction",
             Name="DHW",
             idf=idf,
         )
         # Internal gains
         sch_w_gains = ar.WeekSchedule(
-            days=[
+            Days=[
                 sch_d_gains,
                 sch_d_gains,
                 sch_d_gains,
@@ -2729,7 +2729,7 @@ class TestUmiTemplateLibrary:
                 sch_d_gains,
             ],
             Category="Week",
-            schTypeLimitsName="Fractional",
+            Type="Fractio",
             Name="Gains",
             idf=idf,
         )
@@ -2750,7 +2750,7 @@ class TestUmiTemplateLibrary:
                     }
                 )
             ],
-            "schTypeLimitsName": "Fraction",
+            "Type": "Fraction",
             "Name": "AlwaysOn",
             "idf": idf,
         }

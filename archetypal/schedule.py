@@ -29,8 +29,8 @@ class Schedule(object):
         strict=False,
         base_year=2018,
         schType=None,
-        schTypeLimitsName=None,
-        values=None,
+        Type=None,
+        Values=None,
         epbunch=None,
         **kwargs,
     ):
@@ -47,11 +47,11 @@ class Schedule(object):
             base_year (int): The base year of the schedule. Defaults to 2018
                 since the first day of that year is a Monday.
             schType (str): The EnergyPlus schedule type. eg.: "Schedule:Year"
-            schTypeLimitsName (str): This field contains a reference to the
+            Type (str): This field contains a reference to the
                 Schedule Type Limits object. If found in a list of Schedule Type
                 Limits (see above), then the restrictions from the referenced
                 object will be used to validate the current field values.
-            values (ndarray): A 24 or 8760 list of schedule values.
+            Values (ndarray): A 24 or 8760 list of schedule values.
             epbunch (EpBunch): An EpBunch object from which this schedule can
                 be created.
             **kwargs:
@@ -63,7 +63,7 @@ class Schedule(object):
         except Exception as e:
             pass  # todo: make this more robust
         self.strict = strict
-        self.idf = idf
+        self._idf = idf
         self.Name = Name
         self.startDayOfTheWeek = self.get_sdow(start_day_of_the_week)
         self.year = base_year
@@ -73,34 +73,41 @@ class Schedule(object):
         self.endHOY = 24
         self.unit = "unknown"
         self.index_ = None
-        self._values = values
+        self._values = Values
         self.schType = schType
-        self.schTypeLimitsName = schTypeLimitsName
+        self.Type = Type
 
         try:
             self.epbunch = epbunch or self.idf.get_schedule_epbunch(self.Name)
         except KeyError:
             self.epbunch = None
 
-        if self.schTypeLimitsName is None:
-            self.schTypeLimitsName = self.get_schedule_type_limits_name(
+        if self.Type is None:
+            self.Type = self.get_schedule_type_limits_name(
                 sch_type=self.schType
             )
 
+    @property
+    def idf(self):
+        if self._idf is None:
+            from archetypal.idfclass import IDF
+            self._idf = IDF()
+        return self._idf
+
     @classmethod
-    def from_values(cls, Name, values, idf, schTypeLimitsName="Fraction", **kwargs):
+    def from_values(cls, Name, Values, idf, Type="Fraction", **kwargs):
         """
         Args:
             Name:
-            values:
+            Values:
             idf:
-            schTypeLimitsName:
+            Type:
             **kwargs:
         """
         return cls(
             Name=Name,
-            values=values,
-            schTypeLimitsName=schTypeLimitsName,
+            Values=Values,
+            Type=Type,
             idf=idf,
             **kwargs,
         )
@@ -806,8 +813,8 @@ class Schedule(object):
         """
         if self.count == 0:
             # This is the first time, get the schedule type and the type limits.
-            if self.schTypeLimitsName is None:
-                self.schTypeLimitsName = self.get_schedule_type_limits_name()
+            if self.Type is None:
+                self.Type = self.get_schedule_type_limits_name()
         self.count += 1
 
         sch_type = sched_epbunch.key.upper()
@@ -842,12 +849,12 @@ class Schedule(object):
 
         return hourly_values
 
-    def to_year_week_day(self, values=None, idf=None):
+    def to_year_week_day(self, Values=None, idf=None):
         """convert a Schedule Class to the 'Schedule:Year',
         'Schedule:Week:Daily' and 'Schedule:Day:Hourly' representation
 
         Args:
-            values:
+            Values:
             idf:
 
         Returns:
@@ -858,14 +865,14 @@ class Schedule(object):
               objects
             - **daily** (*list of Schedule*):The list of daily schedule objects
         """
-        if values:
-            full_year = values
+        if Values:
+            full_year = Values
         else:
             full_year = np.array(self.all_values)  # array of shape (8760,)
-        values = full_year.reshape(-1, 24)  # shape (365, 24)
+        Values = full_year.reshape(-1, 24)  # shape (365, 24)
 
         # create unique days
-        unique_days, nds = np.unique(values, axis=0, return_inverse=True)
+        unique_days, nds = np.unique(Values, axis=0, return_inverse=True)
 
         ep_days = []
         dict_day = {}
@@ -878,7 +885,7 @@ class Schedule(object):
                 key="Schedule:Day:Hourly".upper(),
                 **dict(
                     Name=name,
-                    Schedule_Type_Limits_Name=self.schTypeLimitsName,
+                    Schedule_Type_Limits_Name=self.Type,
                     **{"Hour_{}".format(i + 1): unique_day[i] for i in range(24)},
                 ),
             )
@@ -967,7 +974,7 @@ class Schedule(object):
                 blocks[i]["end_month"] = 12
 
         new_dict = dict(
-            Name=self.Name, Schedule_Type_Limits_Name=self.schTypeLimitsName
+            Name=self.Name, Schedule_Type_Limits_Name=self.Type
         )
         for i in blocks:
             new_dict.update(

@@ -64,8 +64,8 @@ def test_from_values(mew_idf):
 
     heating_sched = UmiSchedule.from_values(
         Name="Zone_Heating_Schedule",
-        values=np.ones(8760),
-        schTypeLimitsName="Fraction",
+        Values=np.ones(8760),
+        Type="Fraction",
         idf=idf,
     )
     assert len(heating_sched.all_values) == 8760

@@ -2670,7 +2670,9 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials, **kwargs)
         # Writes HBACK
         try:
             condition = (
-                construction.getreferingobjs()[0].Outside_Boundary_Condition.lower()
+                construction.getreferingobjs(iddgroups=["Thermal Zones and Surfaces"])[
+                    0
+                ].Outside_Boundary_Condition.lower()
                 == "ground"
             )
         except:

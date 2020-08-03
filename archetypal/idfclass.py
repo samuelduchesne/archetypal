@@ -81,9 +81,30 @@ class IDF(geomeppy.IDF):
         "idfobjects": ["iddname", "idfname"],
         "block": ["iddname", "idfname"],
         "model": ["iddname", "idfname"],
-        "sql": ["as_version", "annual", "design_day", "epw", "idfname"],
-        "sql_file": ["as_version", "annual", "design_day", "epw", "idfname"],
-        "htm": ["as_version", "annual", "design_day", "epw", "idfname"],
+        "sql": [
+            "as_version",
+            "annual",
+            "design_day",
+            "epw",
+            "idfname",
+            "output_directory",
+        ],
+        "sql_file": [
+            "as_version",
+            "annual",
+            "design_day",
+            "epw",
+            "idfname",
+            "output_directory",
+        ],
+        "htm": [
+            "as_version",
+            "annual",
+            "design_day",
+            "epw",
+            "idfname",
+            "output_directory",
+        ],
         "schedules_dict": ["idfobjects"],
         "partition_ratio": ["idfobjects"],
         "area_conditioned": ["idfobjects"],
@@ -129,7 +150,7 @@ class IDF(geomeppy.IDF):
         annual=False,
         design_day=False,
         expandobjects=True,
-        verbose="v",
+        verbose=settings.log_console,
         readvars=True,
         prep_outputs=True,
         include=None,
@@ -157,24 +178,26 @@ class IDF(geomeppy.IDF):
         # Set independents to there original values
         if include is None:
             include = []
-        self._convert = False
-        self._idfname = idfname
-        self._epw = epw
+        self.convert = False
+        self.idfname = idfname
+        self.epw = epw
         self._custom_processes = custom_processes
         self._include = include
         self._keep_data_err = keep_data_err
         self._keep_data = keep_data
         self._simulname = simulname
-        self._output_suffix = output_suffix
-        self._verbose = verbose
-        self._readvars = readvars
-        self._expandobjects = expandobjects
-        self._epmacro = epmacro
-        self._design_day = design_day
-        self._annual = annual
-        self._prep_outputs = prep_outputs
-        self._as_version = None
+        self.output_suffix = output_suffix
+        self.verbose = verbose
+        self.readvars = readvars
+        self.expandobjects = expandobjects
+        self.epmacro = epmacro
+        self.design_day = design_day
+        self.annual = annual
+        self.prep_outputs = prep_outputs
+        self.as_version = None
         self._position = position
+        self.output_prefix = None
+        self.output_directory = None
 
         # Set dependants to None
         self._file_version = None
@@ -320,26 +343,6 @@ class IDF(geomeppy.IDF):
         return self._original_idfname
 
     @property
-    def idfname(self):
-        """The path of the active (parsed) idf model. If `settings.use_cache ==
-        True`, then this path will point to `settings.cache_folder`. See
-        :meth:`~archetypal.utils.config`"""
-        if self._idfname is None:
-            idfname = StringIO(f"VERSION, {latest_energyplus_version()};")
-            idfname.seek(0)
-            self._idfname = idfname
-        else:
-            if isinstance(self._idfname, StringIO):
-                self._idfname.seek(0)
-            else:
-                self._idfname = Path(self._idfname).expand()
-        return self._idfname
-
-    @idfname.setter
-    def idfname(self, value):
-        self._idfname = Path(value).expand()
-
-    @property
     def block(self):
         if self._block is None:
             _, block, _, _, _, _ = idfreader1(
@@ -392,19 +395,6 @@ class IDF(geomeppy.IDF):
         return self._model
 
     @property
-    def epw(self):
-        if self._epw is not None:
-            return Path(self._epw).expand()
-
-    @epw.setter
-    def epw(self, value):
-        self._epw = Path(value).expand()
-
-    @property
-    def convert(self):
-        return self._convert
-
-    @property
     def iddname(self):
         if self._iddname is None:
             if self.file_version > self.as_version:
@@ -451,34 +441,122 @@ class IDF(geomeppy.IDF):
     def output_suffix(self):
         return self._output_suffix
 
+    @output_suffix.setter
+    def output_suffix(self, value):
+        choices = ["L", "C", "D"]
+        if value not in choices:
+            raise ValueError(f"Choices of 'output_suffix' are {choices}")
+        self._output_suffix = value
+
+    # region User-Defined Properties (have setter)
+    @property
+    def idfname(self):
+        """The path of the active (parsed) idf model. If `settings.use_cache ==
+        True`, then this path will point to `settings.cache_folder`. See
+        :meth:`~archetypal.utils.config`"""
+        if self._idfname is None:
+            idfname = StringIO(f"VERSION, {latest_energyplus_version()};")
+            idfname.seek(0)
+            self._idfname = idfname
+        else:
+            if isinstance(self._idfname, StringIO):
+                self._idfname.seek(0)
+            else:
+                self._idfname = Path(self._idfname).expand()
+        return self._idfname
+
+    @idfname.setter
+    def idfname(self, value):
+        self._idfname = Path(value).expand()
+
+    @property
+    def epw(self):
+        if self._epw is not None:
+            return Path(self._epw).expand()
+
+    @epw.setter
+    def epw(self, value):
+        self._epw = Path(value).expand()
+
     @property
     def verbose(self):
         return self._verbose
+
+    @verbose.setter
+    def verbose(self, value):
+
+        if not isinstance(value, bool):
+            raise TypeError("'verbose' needs to be a bool")
+        self._verbose = value
 
     @property
     def expandobjects(self):
         return self._expandobjects
 
+    @expandobjects.setter
+    def expandobjects(self, value):
+        if not isinstance(value, bool):
+            raise TypeError("'expandobjects' needs to be a bool")
+        self._expandobjects = value
+
     @property
     def readvars(self):
         return self._readvars
+
+    @readvars.setter
+    def readvars(self, value):
+        if not isinstance(value, bool):
+            raise TypeError("'readvars' needs to be a bool")
+        self._readvars = value
 
     @property
     def epmacro(self):
         return self._epmacro
 
+    @epmacro.setter
+    def epmacro(self, value):
+        if not isinstance(value, bool):
+            raise TypeError("'epmacro' needs to be a bool")
+        self._epmacro = value
+
     @property
     def design_day(self):
         return self._design_day
+
+    @design_day.setter
+    def design_day(self, value):
+        if not isinstance(value, bool):
+            raise TypeError("'design_day' needs to be a bool")
+        self._design_day = value
 
     @property
     def annual(self):
         return self._annual
 
+    @annual.setter
+    def annual(self, value):
+        if not isinstance(value, bool):
+            raise TypeError("'annual' needs to be a bool")
+        self._annual = value
+
+    @property
+    def convert(self):
+        return self._convert
+
+    @convert.setter
+    def convert(self, value):
+        if not isinstance(value, bool):
+            raise TypeError("'convert' needs to be a bool")
+        self._convert = value
+
     @property
     def prep_outputs(self):
         """Bool or set list of custom outputs"""
         return self._prep_outputs
+
+    @prep_outputs.setter
+    def prep_outputs(self, value):
+        self._prep_outputs = value
 
     @property
     def as_version(self):
@@ -490,11 +568,52 @@ class IDF(geomeppy.IDF):
     def as_version(self, value):
         # Parse value and check if above or bellow
         parsed_version = parse(value)
-        if parsed_version not in self.valid_idds():
+        if parsed_version and parsed_version not in self.valid_idds():
             raise EnergyPlusVersionError(
                 f"{parsed_version} is not valid. Choices are {self.valid_idds()}"
             )
         self._as_version = parsed_version
+
+    @property
+    def output_directory(self):
+        """Returns the output directory based on the hashing of the original file (
+        before transitions or modifications)."""
+        if self._output_directory is None:
+            self._output_directory = self.get_output_directory(
+                self.original_idfname
+            ).expand()
+        return Path(self._output_directory)
+
+    @output_directory.setter
+    def output_directory(self, value):
+        if value and not Path(value).exists():
+            raise ValueError(
+                f"The output_directory '{value}' must be created before being assigned"
+            )
+        elif value:
+            value = Path(value)
+        self._output_directory = value
+
+    @property
+    def output_prefix(self):
+        if self._output_prefix is None:
+            self._output_prefix = hash_model(
+                self,
+                epw=self.epw,
+                annual=self.annual,
+                design_day=self.design_day,
+                readvars=self.readvars,
+                ep_version=self.as_version,
+            )
+        return self._output_prefix
+
+    @output_prefix.setter
+    def output_prefix(self, value):
+        if value and not isinstance(value, str):
+            raise TypeError("'output_prefix' needs to be a string")
+        self._output_prefix = value
+
+    # endregion
 
     @property
     def position(self):
@@ -505,23 +624,6 @@ class IDF(geomeppy.IDF):
         return (
             get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
         ).expand()
-
-    @property
-    def output_directory(self):
-        """Returns the output directory based on the hashing of the original file (
-        before transitions or modifications)."""
-        return self.get_output_directory(self.original_idfname).expand()
-
-    @property
-    def output_prefix(self):
-        return hash_model(
-            self,
-            epw=self.epw,
-            annual=self.annual,
-            design_day=self.design_day,
-            readvars=self.readvars,
-            ep_version=self.as_version,
-        )
 
     @property
     def idf_version(self):
@@ -1581,6 +1683,8 @@ class IDF(geomeppy.IDF):
 @extend_class(EpBunch)
 def __eq__(self, other):
     """Tests the equality of two EpBunch objects using all attribute values"""
+    if not isinstance(other, EpBunch):
+        return False
     return all(str(a).upper() == str(b).upper() for a, b in zip(self.obj, other.obj))
 
 
@@ -3000,14 +3104,13 @@ class ExpandObjectsThread(Thread):
             self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
             self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
             self.idd = self.idf.iddname.copy(tmp / "Energy+.idd").expand()
-            shutil.which("ExpandObjects", path=self.eplus_home)
             self.expandobjectsexe = Path(
-                shutil.which("ExpandObjects", path=self.eplus_home)
+                shutil.which("ExpandObjects", path=self.eplus_home.expand())
             ).copy(tmp)
             self.run_dir = Path(tmp).expand()
 
             # Run ExpandObjects Program
-            self.cmd = [self.expandobjectsexe.stem]
+            self.cmd = [str(self.expandobjectsexe.basename())]
             with tqdm(
                 unit_scale=True,
                 miniters=1,
@@ -3676,7 +3779,7 @@ def _log_subprocess_output(pipe, name, verbose, progress):
     logger = None
     for line in pipe:
         linetxt = line.decode("utf-8").strip("\n")
-        if verbose == "v":
+        if verbose:
             logger = log(
                 linetxt,
                 level=lg.DEBUG,

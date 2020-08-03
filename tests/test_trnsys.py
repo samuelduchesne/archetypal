@@ -15,7 +15,6 @@ from archetypal import (
     trnbuild_idf,
     settings,
     choose_window,
-    run_eplus,
     ReportData,
     get_eplus_dirs,
     IDF,
@@ -97,153 +96,6 @@ def converttesteasy(request):
 class TestConvertEasy:
 
     """Tests functions of trnsys.py using 1 simple/small IDF file"""
-
-    def test_assert_files(self, config, converttesteasy):
-        # Gets from fixture paths to files and IDF object to be used in test
-        (
-            idf,
-            idf_file,
-            weather_file,
-            window_lib,
-            trnsidf_exe,
-            template,
-            output_folder,
-            _,
-        ) = converttesteasy
-
-        # Tests assertion if idf_file is None
-        with pytest.raises(IOError):
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(None, None, None, None, None, None)
-
-        # Tests assertion if weather file is None
-        with pytest.raises(IOError):
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(idf_file, None, None, None, None, None)
-
-        # Tests assertion if window_lib is None
-        with pytest.raises(IOError):
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(idf_file, weather_file, None, None, None, None)
-
-        # Tests assertion if output_folder is None
-        with pytest.raises(IOError):
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(idf_file, weather_file, window_lib, None, None, None)
-
-        # Tests assertion if trnsidf_exe and template_d18 is None
-        with pytest.raises(IOError):
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, None, None
-            )
-
-        # Tests assertion if idf_file is a string but not a path
-        with pytest.raises(IOError):
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files("wrong_string", None, None, None, None, None)
-
-        # Tests assertion if weather_file is a string but not a path
-        with pytest.raises(IOError):
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(idf_file, "wrong_string", None, None, None, None)
-
-        # Tests assertion if window_lib is a string but not a path
-        with pytest.raises(IOError):
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(idf_file, weather_file, "wrong_string", None, None, None)
-
-        # Tests assertion if window_lib is not a string AND not None
-        with pytest.raises(IOError):
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(idf_file, weather_file, 2, None, None, None)
-
-        # Tests assertion if trnsidf_exe is a string but not a path
-        with pytest.raises(IOError):
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file, weather_file, window_lib, output_folder, "wrong_string", None
-            )
-
-        # Tests assertion if template_d18 is a string but not a path
-        with pytest.raises(IOError):
-            (
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                template,
-            ) = _assert_files(
-                idf_file,
-                weather_file,
-                window_lib,
-                output_folder,
-                trnsidf_exe,
-                "wrong_string",
-            )
-
-        assert output_folder == os.path.relpath(settings.data_folder)
 
     def test_get_save_write_schedules_as_sched(self, config, converttesteasy):
         # Gets from fixture paths to files and IDF object to be used in test
@@ -450,7 +302,7 @@ class TestConvertEasy:
         output_folder, t3d_path = _save_t3d(idf_file, lines, output_folder)
 
         # Asserts path to T3D file exists
-        assert t3d_path in glob.glob(settings.data_folder + "/*.idf")
+        assert Path(t3d_path).exists()
 
     def test_t_initial_to_b18(self, config, converttesteasy):
         # Deletes cache folder
@@ -571,7 +423,7 @@ class TestConvertEasy:
         res = idf.htm
 
         # Copy IDF object, making sure we don't change/overwrite original IDF file
-        idf_2 = deepcopy(idf)
+        idf_2 = idf
 
         # Clean names of idf objects (e.g. 'MATERIAL')
         log_clear_names = False
@@ -1039,7 +891,7 @@ class TestConvert:
         log_clear_names = False
 
         # Clean names of idf objects (e.g. 'MATERIAL')
-        idf_2 = deepcopy(idf)
+        idf_2 = idf
         clear_name_idf_objects(idf_2, log_clear_names)
 
         # Get old:new names equivalence

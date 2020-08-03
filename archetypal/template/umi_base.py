@@ -35,7 +35,7 @@ class Unique(type):
             CREATED_OBJECTS.append(self)
             return self
         else:
-            return next((x for x in CREATED_OBJECTS if x == self), None)
+            return next((x for x in CREATED_OBJECTS if x == self), self)
 
     def __init__(cls, name, bases, attributes):
         """
@@ -342,7 +342,7 @@ class UmiBase(object):
             return self
         self.all_objects.remove(self)
         id = self.id
-        new_obj = self.combine(other)
+        new_obj = self.combine(other, allow_duplicates=True)
         new_obj.__dict__.pop("id")
         new_obj.id = id
         name = new_obj.__dict__.pop("Name")
@@ -569,91 +569,88 @@ def load_json_objects(datastore, idf=None):
         ZoneConstructionSet,
         ZoneLoad,
         ZoneDefinition,
+        WindowSetting,
         BuildingTemplate,
     )
 
     if not idf:
         idf = IDF(prep_outputs=False)
-    loading_json_list = []
-    loading_json_list.append(
-        [GasMaterial.from_dict(**store, idf=idf) for store in datastore["GasMaterials"]]
-    )
-    loading_json_list.append(
-        [GlazingMaterial(**store, idf=idf) for store in datastore["GlazingMaterials"]]
-    )
-    loading_json_list.append(
-        [OpaqueMaterial(**store, idf=idf) for store in datastore["OpaqueMaterials"]]
-    )
-    loading_json_list.append(
-        [
-            OpaqueConstruction.from_dict(**store, idf=idf)
+    t = dict(
+        # with datastore, create each objects
+        GasMaterials=[
+            GasMaterial.from_dict(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["GasMaterials"]
+        ],
+        GlazingMaterials=[
+            GlazingMaterial(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["GlazingMaterials"]
+        ],
+        OpaqueMaterials=[
+            OpaqueMaterial(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["OpaqueMaterials"]
+        ],
+        OpaqueConstructions=[
+            OpaqueConstruction.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["OpaqueConstructions"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            WindowConstruction.from_dict(**store, idf=idf)
+        ],
+        WindowConstructions=[
+            WindowConstruction.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["WindowConstructions"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            StructureInformation.from_dict(**store, idf=idf)
+        ],
+        StructureDefinitions=[
+            StructureInformation.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["StructureDefinitions"]
-        ]
-    )
-    loading_json_list.append(
-        [DaySchedule.from_dict(**store, idf=idf) for store in datastore["DaySchedules"]]
-    )
-    loading_json_list.append(
-        [
-            WeekSchedule.from_dict(**store, idf=idf)
+        ],
+        DaySchedules=[
+            DaySchedule.from_dict(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["DaySchedules"]
+        ],
+        WeekSchedules=[
+            WeekSchedule.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["WeekSchedules"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            YearSchedule.from_dict(**store, idf=idf)
+        ],
+        YearSchedules=[
+            YearSchedule.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["YearSchedules"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            DomesticHotWaterSetting.from_dict(**store, idf=idf)
+        ],
+        DomesticHotWaterSettings=[
+            DomesticHotWaterSetting.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["DomesticHotWaterSettings"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            VentilationSetting.from_dict(**store, idf=idf)
+        ],
+        VentilationSettings=[
+            VentilationSetting.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["VentilationSettings"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            ZoneConditioning.from_dict(**store, idf=idf)
+        ],
+        ZoneConditionings=[
+            ZoneConditioning.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["ZoneConditionings"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            ZoneConstructionSet.from_dict(**store, idf=idf)
+        ],
+        ZoneConstructionSets=[
+            ZoneConstructionSet.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["ZoneConstructionSets"]
-        ]
-    )
-    loading_json_list.append(
-        [ZoneLoad.from_dict(**store, idf=idf) for store in datastore["ZoneLoads"]]
-    )
-    loading_json_list.append(
-        [ZoneDefinition.from_dict(**store, idf=idf) for store in datastore["Zones"]]
-    )
-    loading_json_list.append(
-        [
-            BuildingTemplate.from_dict(**store, idf=idf)
+        ],
+        ZoneLoads=[
+            ZoneLoad.from_dict(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["ZoneLoads"]
+        ],
+        Zones=[
+            ZoneDefinition.from_dict(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["Zones"]
+        ],
+        WindowSettings=[
+            WindowSetting.from_ref(
+                store["$ref"], datastore["BuildingTemplates"], idf=idf
+            )
+            if "$ref" in store
+            else WindowSetting.from_dict(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["WindowSettings"]
+        ],
+        BuildingTemplates=[
+            BuildingTemplate.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["BuildingTemplates"]
-        ]
+        ],
     )
-    return loading_json_list
+    return t
 
 
 class UniqueName(str):

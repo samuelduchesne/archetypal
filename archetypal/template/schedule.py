@@ -132,7 +132,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         if not self:
             return other
 
-        if not isinstance(other, self.__class__):
+        if not isinstance(other, UmiSchedule):
             msg = "Cannot combine %s with %s" % (
                 self.__class__.__name__,
                 other.__class__.__name__,
@@ -220,6 +220,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                     Comments="Year Week Day schedules created from: \n{}".format(
                         "\n".join(lines)
                     ),
+                    allow_duplicates=True,
                 )
             )
         Parts = []
@@ -236,6 +237,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                         Comments="Year Week Day schedules created from:\n{}".format(
                             "\n".join(lines)
                         ),
+                        allow_duplicates=True,
                     ),
                 )
             )
@@ -329,16 +331,15 @@ class YearSchedulePart:
         return cls.from_dict(*args, **kwargs)
 
     @classmethod
-    def from_dict(cls, *args, **kwargs):
+    def from_dict(cls, Schedule, **kwargs):
         """
         Args:
             all_objects:
             *args:
             **kwargs:
         """
-        ysp = cls(*args, **kwargs)
-        ref = kwargs.get("Schedule", None)
-        ysp.Schedule = UmiBase.get_classref(ref)
+        ref = UmiBase.get_classref(Schedule)
+        ysp = cls(Schedule=ref, **kwargs)
 
         return ysp
 

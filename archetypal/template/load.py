@@ -186,7 +186,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone):
+    def from_zone(cls, zone, **kwargs):
         """
         Args:
             zone (archetypal.template.zone.Zone): zone to gets information from
@@ -320,6 +320,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             PeopleDensity=PeopleDensity,
             idf=zone.idf,
             Category=zone.idf.name,
+            **kwargs
         )
         return z_load
 

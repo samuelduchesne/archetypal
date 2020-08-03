@@ -21,14 +21,14 @@ def scratch_then_cache(request):
     start fresh with tests"""
     # request is a special parameter known to pytest. It passes whatever is in
     # params=do. Ids are there to give the test a human readable name.
-    dirs = [ar.settings.data_folder, ar.settings.cache_folder, ar.settings.imgs_folder]
     if request.param:
+        dirs = [
+            ar.settings.data_folder,
+            ar.settings.cache_folder,
+            ar.settings.imgs_folder,
+        ]
         for dir in dirs:
-            if os.path.exists(dir):
-                try:
-                    shutil.rmtree(dir)
-                finally:
-                    assert not os.path.exists(dir)
+            dir.rmtree_p()
 
 
 samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular',

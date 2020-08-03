@@ -123,8 +123,7 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
                     self.Ventilation == other.Ventilation,
                     self.Windows == other.Windows,
                     self.InternalMassConstruction == other.InternalMassConstruction,
-                    self.InternalMassExposedPerFloorArea
-                    == other.InternalMassExposedPerFloorArea,
+                    self.InternalMassExposedPerFloorArea == other.InternalMassExposedPerFloorArea,
                     self.DaylightMeshResolution == other.DaylightMeshResolution,
                     self.DaylightWorkplaneHeight == other.DaylightWorkplaneHeight,
                 ]
@@ -479,7 +478,7 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
             ),
             Loads=ZoneLoad.combine(self.Loads, other.Loads, weights),
         )
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
+        new_obj = ZoneDefinition(**meta, **new_attr, idf=self.idf)
         new_obj._volume = self.volume + other.volume
         new_obj._area = self.area + other.area
 

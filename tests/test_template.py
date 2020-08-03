@@ -15,6 +15,7 @@ from archetypal import (
     IDF,
     YearSchedulePart,
     OpaqueConstruction,
+    load_json_objects,
 )
 from tests.conftest import no_duplicates
 
@@ -24,6 +25,15 @@ def small_idf(config, small_idf_obj):
     """An IDF model. Yields both the idf and the sql"""
     sql = small_idf_obj.sql
     yield small_idf_obj, sql
+
+
+@pytest.fixture(scope="module")
+def small_idf_copy(config):
+    """An IDF model. Yields both the idf and the sql"""
+    file = "tests/input_data/umi_samples/B_Off_0.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    idf = IDF(file, epw=w)
+    yield idf, idf.sql
 
 
 @pytest.fixture(scope="module")
@@ -177,8 +187,8 @@ class TestDaySchedule:
         clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
-        loading_json_list = load_json_objects(datastore, idf)
-        daySched_to_json = loading_json_list[6][0].to_json()
+        loaded_dict = load_json_objects(datastore, idf)
+        assert loaded_dict["DaySchedules"][0].to_json()
 
 
 class TestWeekSchedule:
@@ -196,47 +206,31 @@ class TestWeekSchedule:
             config:
         """
         import json
-        from archetypal import WeekSchedule, load_json_objects
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
-        loading_json_list = load_json_objects(datastore, idf)
-        weekSched_json = [
-            WeekSchedule.from_dict(**store, idf=idf)
-            for store in datastore["WeekSchedules"]
-        ]
-        weekSched_to_json = weekSched_json[0].to_json()
+        loaded_dict = load_json_objects(datastore, idf)
+        assert (
+            loaded_dict["WeekSchedules"][0].to_json() == datastore["WeekSchedules"][0]
+        )
 
     def test_weekSchedule(self, config, idf):
         """ Creates WeekSchedule from DaySchedule"""
 
         # Creates 2 DaySchedules : 1 always ON and 1 always OFF
         sch_d_on = ar.DaySchedule.from_values(
-            Values=[1] * 24,
-            Category="Day",
-            Type="Fraction",
-            Name="AlwaysOn",
-            idf=idf,
+            Values=[1] * 24, Category="Day", Type="Fraction", Name="AlwaysOn", idf=idf,
         )
         sch_d_off = ar.DaySchedule.from_values(
-            Values=[0] * 24,
-            Category="Day",
-            Type="Fraction",
-            Name="AlwaysOff",
-            idf=idf,
+            Values=[0] * 24, Category="Day", Type="Fraction", Name="AlwaysOff", idf=idf,
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
         days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
         # Creates WeekSchedule from list of DaySchedule
         a = ar.WeekSchedule(
-            Days=days,
-            Category="Week",
-            Type="Fraction",
-            Name="OnOff_1",
-            idf=idf,
+            Days=days, Category="Week", Type="Fraction", Name="OnOff_1", idf=idf,
         )
 
         # Dict of a WeekSchedule (like it would be written in json file)
@@ -255,7 +249,7 @@ class TestWeekSchedule:
             "Name": "OnOff_2",
         }
         # Creates WeekSchedule from dict (from json)
-        b = ar.WeekSchedule.from_dict(**dict_w_on, idf=idf)
+        b = ar.WeekSchedule.from_dict(**dict_w_on, idf=idf, allow_duplicates=True)
 
         # Makes sure WeekSchedules created with 2 methods have the same values
         # And different ids
@@ -274,18 +268,14 @@ class TestYearSchedule:
             config:
         """
         import json
-        from archetypal import YearSchedule, load_json_objects
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
-        loading_json_list = load_json_objects(datastore, idf)
-        yearSched_json = [
-            YearSchedule.from_dict(**store, idf=idf)
-            for store in datastore["YearSchedules"]
-        ]
-        yearSched_to_json = yearSched_json[0].to_json()
+        loaded_dict = load_json_objects(datastore, idf)
+        assert (
+            loaded_dict["YearSchedules"][0].to_json() == datastore["YearSchedules"][0]
+        )
 
     def test_yearSchedule(self, config, idf):
         """ Creates YearSchedule from dict (json)"""
@@ -294,29 +284,17 @@ class TestYearSchedule:
 
         # Creates 2 DaySchedules : 1 always ON and 1 always OFF
         sch_d_on = ar.DaySchedule.from_values(
-            Values=[1] * 24,
-            Category="Day",
-            Type="Fraction",
-            Name="AlwaysOn",
-            idf=idf,
+            Values=[1] * 24, Category="Day", Type="Fraction", Name="AlwaysOn", idf=idf,
         )
         sch_d_off = ar.DaySchedule.from_values(
-            Values=[0] * 24,
-            Category="Day",
-            Type="Fraction",
-            Name="AlwaysOff",
-            idf=idf,
+            Values=[0] * 24, Category="Day", Type="Fraction", Name="AlwaysOff", idf=idf,
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
         days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
         # Creates WeekSchedule from list of DaySchedule
         sch_w_on_off = ar.WeekSchedule(
-            Days=days,
-            Category="Week",
-            Type="Fraction",
-            Name="OnOff",
-            idf=idf,
+            Days=days, Category="Week", Type="Fraction", Name="OnOff", idf=idf,
         )
 
         # Dict of a YearSchedule (like it would be written in json file)
@@ -335,7 +313,7 @@ class TestYearSchedule:
             "Name": "OnOff",
         }
         # Creates YearSchedule from dict (from json)
-        a = ar.YearSchedule.from_dict(**dict_year, idf=idf)
+        a = ar.YearSchedule.from_dict(**dict_year, idf=idf, allow_duplicates=True)
 
         # Makes sure YearSchedule has the same values as concatenate WeekSchedule
         np.testing.assert_equal(a.all_values, np.resize(sch_w_on_off.all_values, 8760))
@@ -466,7 +444,7 @@ class TestOpaqueMaterial:
         # don't have the same hash.
         assert len(set(om_list)) == 2
 
-        # 2 OpaqueMaterial from different idf should not have the same hash if they
+        # 2 OpaqueMaterial from different idf should have the same hash if they
         # have different names, not be the same object, yet be equal if they have the
         # same characteristics (Thickness, Roughness, etc.)
         idf_2 = other_idf_object
@@ -474,7 +452,7 @@ class TestOpaqueMaterial:
         opaq_mat_3 = idf_2.getobject("MATERIAL", "B_Gypsum_Plaster_0.02_B_Res_Thm_0")
         assert opaq_mat is not opaq_mat_3
         assert opaq_mat != opaq_mat_3
-        om_3 = OpaqueMaterial.from_epbunch(opaq_mat_3)
+        om_3 = OpaqueMaterial.from_epbunch(opaq_mat_3, allow_duplicates=True)
         assert hash(om) != hash(om_3)
         assert id(om) != id(om_3)
         assert om is not om_3
@@ -616,7 +594,7 @@ class TestGasMaterial:
         with open(filename, "r") as f:
             datastore = json.load(f)
         gasMat_json = [
-            GasMaterial.from_dict(**store, idf=idf)
+            GasMaterial.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["GasMaterials"]
         ]
         gasMat_to_json = gasMat_json[0].to_json()
@@ -637,7 +615,7 @@ class TestGasMaterial:
         with open(filename, "r") as f:
             datastore = json.load(f)
         gasMat_json = [
-            GasMaterial.from_dict(**store, idf=idf)
+            GasMaterial.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["GasMaterials"]
         ]
         gm = gasMat_json[0]
@@ -883,7 +861,6 @@ class TestOpaqueConstruction:
             OpaqueConstruction,
             OpaqueMaterial,
             MaterialLayer,
-            load_json_objects,
         )
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -898,12 +875,12 @@ class TestOpaqueConstruction:
 
         with open(filename, "r") as f:
             datastore = json.load(f)
-        loading_json_list = load_json_objects(datastore, idf)
+        load_json_objects(datastore, idf)
         opaqConstr_json = [
-            OpaqueConstruction.from_dict(**store, idf=idf)
+            OpaqueConstruction.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["OpaqueConstructions"]
         ]
-        opaqConstr_to_json = opaqConstr_json[0].to_json()
+        assert opaqConstr_json[0].to_json()
 
     def test_hash_eq_opaq_constr(self, small_idf, other_idf):
         """Test equality and hashing of :class:`OpaqueConstruction`
@@ -967,7 +944,7 @@ class TestOpaqueConstruction:
         opaq_constr_3 = idf_2.getobject("CONSTRUCTION", "B_Res_Thm_0")
         assert opaq_constr is not opaq_constr_3
         assert opaq_constr != opaq_constr_3
-        oc_3 = OpaqueConstruction.from_epbunch(opaq_constr_3)
+        oc_3 = OpaqueConstruction.from_epbunch(opaq_constr_3, allow_duplicates=True)
         assert hash(oc) != hash(oc_3)
         assert id(oc) != id(oc_3)
         assert oc is not oc_3
@@ -1018,18 +995,18 @@ class TestWindowConstruction:
 
     def test_windowConstr_from_to_json(self, config, idf):
         import json
-        from archetypal import WindowConstruction, load_json_objects
+        from archetypal import WindowConstruction
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
-        loading_json_list = load_json_objects(datastore, idf)
+        load_json_objects(datastore, idf)
         winConstr_json = [
-            WindowConstruction.from_dict(**store, idf=idf)
+            WindowConstruction.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["WindowConstructions"]
         ]
-        winConstr_to_json = winConstr_json[0].to_json()
+        assert winConstr_json[0].to_json()
 
 
 class TestStructureDefinition:
@@ -1039,18 +1016,18 @@ class TestStructureDefinition:
 
     def test_structure_from_to_json(self, config, idf):
         import json
-        from archetypal import StructureInformation, load_json_objects
+        from archetypal import StructureInformation
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
-        loading_json_list = load_json_objects(datastore, idf)
+        load_json_objects(datastore, idf)
         struct_json = [
-            StructureInformation.from_dict(**store, idf=idf)
+            StructureInformation.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["StructureDefinitions"]
         ]
-        struct_to_json = struct_json[0].to_json()
+        assert struct_json[0].to_json()
 
     def test_hash_eq_struc_def(self, config, idf):
         """Test equality and hashing of :class:`OpaqueConstruction`
@@ -1058,7 +1035,7 @@ class TestStructureDefinition:
         Args:
             config:
         """
-        from archetypal import StructureInformation, load_json_objects
+        from archetypal import StructureInformation
         from copy import copy
         import json
 
@@ -1066,9 +1043,9 @@ class TestStructureDefinition:
         clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
-        loading_json_list = load_json_objects(datastore, idf)
+
         struct_json = [
-            StructureInformation.from_dict(**store, idf=idf)
+            StructureInformation.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["StructureDefinitions"]
         ]
         sd = struct_json[0]
@@ -1148,7 +1125,7 @@ class TestUmiSchedule:
         from archetypal import UmiSchedule
 
         idf, sql = small_idf
-        clear_cache()
+        # clear_cache()
         sched = UmiSchedule(Name="B_Off_Y_Occ", idf=idf)
         assert sched.to_dict()
 
@@ -1304,18 +1281,18 @@ class TestZoneConstructionSet:
             config:
         """
         import json
-        from archetypal import ZoneConstructionSet, load_json_objects
+        from archetypal import ZoneConstructionSet
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
-        loading_json_list = load_json_objects(datastore, idf)
+
         constr_json = [
-            ZoneConstructionSet.from_dict(**store, idf=idf)
+            ZoneConstructionSet.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["ZoneConstructionSets"]
         ]
-        constr_to_json = constr_json[0].to_json()
+        assert constr_json[0].to_json()
 
 
 class TestZoneLoad:
@@ -1407,19 +1384,20 @@ class TestZoneLoad:
             config:
         """
         import json
-        from archetypal import ZoneLoad, load_json_objects
+        from archetypal import ZoneLoad
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
-        loading_json_list = load_json_objects(datastore, idf)
-        load_json = [
-            ZoneLoad.from_dict(**store, idf=idf) for store in datastore["ZoneLoads"]
-        ]
-        load_to_json = load_json[0].to_json()
 
-    def test_hash_eq_zone_load(self, small_idf):
+        load_json = [
+            ZoneLoad.from_dict(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["ZoneLoads"]
+        ]
+        assert load_json[0].to_json()
+
+    def test_hash_eq_zone_load(self, small_idf, small_idf_copy):
         """Test equality and hashing of :class:`ZoneLoad`
 
         Args:
@@ -1476,12 +1454,11 @@ class TestZoneLoad:
         # 2 ZoneLoad from different idf should not have the same hash if they
         # have different names, not be the same object, yet be equal if they have the
         # same values (EquipmentPowerDensity, LightingPowerDensity, etc.)
-        idf_2 = deepcopy(idf)
-        clear_cache()
+        idf_2, sql = small_idf_copy
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
         zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, sql=sql)
         assert idf is not idf_2
-        zl_3 = ZoneLoad.from_zone(zone_3)
+        zl_3 = ZoneLoad.from_zone(zone_3, allow_duplicates=True)
         assert zone_ep is not zone_ep_3
         assert zone_ep != zone_ep_3
         assert hash(zl) == hash(zl_3)
@@ -1512,7 +1489,7 @@ class TestZoneConditioning:
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=w)
         sql = idf.sql
-        yield idf, sql, request.param
+        yield idf, sql, request.param, IDF(file, epw=w)  # pass an idfcopy
 
     def test_zoneConditioning_init(self, config, idf):
         """
@@ -1536,7 +1513,7 @@ class TestZoneConditioning:
         """
         from archetypal import ZoneConditioning, ZoneDefinition
 
-        idf, sql, idf_name = zoneConditioningtests
+        idf, sql, idf_name, _ = zoneConditioningtests
         if idf_name == "RefMedOffVAVAllDefVRP.idf":
             zone = idf.getobject("ZONE", "Core_mid")
             z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
@@ -1556,18 +1533,18 @@ class TestZoneConditioning:
             config:
         """
         import json
-        from archetypal import ZoneConditioning, load_json_objects
+        from archetypal import ZoneConditioning
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
-        loading_json_list = load_json_objects(datastore, idf)
+        load_json_objects(datastore, idf)
         cond_json = [
-            ZoneConditioning.from_dict(**store, idf=idf)
+            ZoneConditioning.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["ZoneConditionings"]
         ]
-        cond_to_json = cond_json[0].to_json()
+        assert cond_json[0].to_json()
 
     def test_hash_eq_zone_cond(self, zoneConditioningtests):
         """Test equality and hashing of :class:`ZoneConditioning`
@@ -1578,8 +1555,8 @@ class TestZoneConditioning:
         from archetypal.template import ZoneConditioning, ZoneDefinition
         from copy import copy
 
-        idf, sql, idf_name = zoneConditioningtests
-        clear_cache()
+        idf, sql, idf_name, idf_2 = zoneConditioningtests
+        # clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
         zc = ZoneConditioning.from_zone(zone)
@@ -1626,8 +1603,6 @@ class TestZoneConditioning:
         # 2 ZoneConditioning from different idf should not have the same hash if they
         # have different names, not be the same object, yet be equal if they have the
         # same values (CoolingSetpoint, HeatingSetpoint, etc.)
-        idf_2 = deepcopy(idf)
-        clear_cache()
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
         zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, sql=sql)
         assert idf is not idf_2
@@ -1659,7 +1634,7 @@ class TestVentilationSetting:
         w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         idf = IDF(file, epw=w)
         sql = idf.sql
-        yield idf, sql, request.param
+        yield idf, sql, request.param, IDF(file, epw=w)  # passes a copy as well
 
     def test_ventilation_init(self, config, idf):
         """
@@ -1678,7 +1653,7 @@ class TestVentilationSetting:
         """
         from archetypal import VentilationSetting, ZoneDefinition
 
-        idf, sql, idf_name = ventilatontests
+        idf, sql, idf_name, _ = ventilatontests
         if idf_name == "VentilationSimpleTest.idf":
             zone = idf.getobject("ZONE", "ZONE 1")
             z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
@@ -1698,20 +1673,19 @@ class TestVentilationSetting:
             config:
         """
         import json
-        from archetypal import VentilationSetting, load_json_objects
+        from archetypal import VentilationSetting
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
-        loading_json_list = load_json_objects(datastore, idf)
+        load_json_objects(datastore, idf)
         vent_json = [
-            VentilationSetting.from_dict(**store, idf=idf)
+            VentilationSetting.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["VentilationSettings"]
         ]
-        vent_to_json = vent_json[0].to_json()
+        assert vent_json[0].to_json()
 
-    def test_hash_eq_vent_settings(self, small_idf):
+    def test_hash_eq_vent_settings(self, ventilatontests):
         """Test equality and hashing of :class:`DomesticHotWaterSetting`
 
         Args:
@@ -1720,8 +1694,8 @@ class TestVentilationSetting:
         from archetypal.template import VentilationSetting, ZoneDefinition
         from copy import copy
 
-        idf, sql = small_idf
-        clear_cache()
+        idf, sql, idf_name, idf_2 = ventilatontests
+
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
         vent = VentilationSetting.from_zone(zone)
@@ -1768,12 +1742,14 @@ class TestVentilationSetting:
         # 2 VentilationSettings from different idf should not have the same hash if they
         # have different names, not be the same object, yet be equal if they have the
         # same values (Infiltration, IsWindOn, etc.)
-        idf_2 = deepcopy(idf)
-        clear_cache()
+
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, sql=sql)
+        zone_3 = ZoneDefinition.from_zone_epbunch(
+            zone_ep_3, sql=sql, allow_duplicates=True
+        )
+        vent_3 = VentilationSetting.from_zone(zone)
         assert idf is not idf_2
-        vent_3 = VentilationSetting.from_zone(zone_3)
+        vent_3 = VentilationSetting.from_zone(zone_3, allow_duplicates=True)
         assert zone_ep is not zone_ep_3
         assert zone_ep != zone_ep_3
         assert hash(vent) == hash(vent_3)
@@ -1871,7 +1847,7 @@ class TestWindowSetting:
 
         idf, sql = small_idf
         construction = idf.getobject("CONSTRUCTION", "B_Dbl_Air_Cl")
-        clear_cache()
+        # clear_cache()
         w = WindowSetting.from_construction(construction)
 
         assert w.to_json()
@@ -1926,7 +1902,6 @@ class TestWindowSetting:
             f.Name = "test_control"
             w = WindowSetting.from_surface(f)
             assert w
-            print(w)
 
     def test_winow_add2(self, allwindowtypes):
         """
@@ -1955,7 +1930,7 @@ class TestWindowSetting:
         zone = idf2.idfobjects["ZONE"][0]
         iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator)
-        window_2 = WindowSetting.from_surface(surface)
+        window_2 = WindowSetting.from_surface(surface, allow_duplicates=True)
 
         new_w = window_1 + window_2
         assert new_w
@@ -1978,7 +1953,7 @@ class TestWindowSetting:
         zone = idf2.idfobjects["ZONE"][0]
         iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
-        window_2 = WindowSetting.from_surface(surface)
+        window_2 = WindowSetting.from_surface(surface, allow_duplicates=True)
 
         window_1 += window_2
         assert window_1
@@ -2008,7 +1983,7 @@ class TestWindowSetting:
 
         assert w.to_json()
 
-    def test_hash_eq_window_settings(self, small_idf):
+    def test_hash_eq_window_settings(self, small_idf, small_idf_copy):
         """Test equality and hashing of :class:`DomesticHotWaterSetting`
 
         Args:
@@ -2063,14 +2038,13 @@ class TestWindowSetting:
         # 2 WindowSettings from different idf should not have the same hash
         # if they have different names, not be the same object, yet be equal if they
         # have the same values (Construction, Type, etc.)
-        idf_2 = deepcopy(idf)
-        clear_cache()
+        idf_2, sql = small_idf_copy
         f_surf_3 = idf_2.idfobjects["FENESTRATIONSURFACE:DETAILED"][0]
-        wind_3 = WindowSetting.from_surface(f_surf_3)
+        wind_3 = WindowSetting.from_surface(f_surf_3, allow_duplicates=True)
         assert idf is not idf_2
         assert f_surf is not f_surf_3
         assert f_surf != f_surf_3
-        assert hash(wind) == hash(wind_3)
+        assert hash(wind) != hash(wind_3)
         assert id(wind) != id(wind_3)
         assert wind is not wind_3
         assert wind == wind_3
@@ -2146,7 +2120,7 @@ class TestZone:
 
         np.testing.assert_almost_equal(actual=area, desired=z_core.area, decimal=3)
 
-    def test_hash_eq_zone(self, small_idf):
+    def test_hash_eq_zone(self, small_idf, small_idf_copy):
         """Test equality and hashing of :class:`ZoneLoad`
 
         Args:
@@ -2155,8 +2129,7 @@ class TestZone:
         from archetypal.template import ZoneDefinition
         from copy import copy
 
-        idf, sql = map(deepcopy, small_idf)
-        clear_cache()
+        idf, sql = small_idf
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
         zone_2 = copy(zone)
@@ -2202,10 +2175,11 @@ class TestZone:
         # 2 Zones from different idf should not have the same hash, not be the same
         # object, yet be equal if they have the same values (Conditioning, Loads, etc.).
         # 2 Zones with different names should not have the same hash.
-        idf_2 = deepcopy(idf)
-        clear_cache()
+        idf_2, sql = small_idf_copy
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, sql=sql)
+        zone_3 = ZoneDefinition.from_zone_epbunch(
+            zone_ep_3, sql=sql, DataSource="OtherIDF"
+        )
         assert idf is not idf_2
         assert zone_ep is not zone_ep_3
         assert zone_ep != zone_ep_3
@@ -2360,9 +2334,7 @@ class TestZoneGraph:
 
         idf, sql = small_office
 
-        G = ZoneGraph.from_idf(
-            idf, sql=sql, log_adj_report=False, skeleton=False, force=True
-        )
+        G = ZoneGraph.from_idf(idf, log_adj_report=False)
 
         assert G
 
@@ -2375,10 +2347,10 @@ class TestZoneGraph:
         from archetypal import ZoneGraph
 
         idf, sql = small_office
-        yield ZoneGraph.from_idf(idf, sql, skeleton=True, force=True)
+        yield ZoneGraph.from_idf(idf)
 
     @pytest.mark.parametrize("adj_report", [True, False])
-    def test_graph1(self, small_office, adj_report):
+    def test_graph(self, small_office, adj_report):
         """Test the creation of a BuildingTemplate zone graph. Parametrize the
         creation of the adjacency report
 
@@ -2390,62 +2362,13 @@ class TestZoneGraph:
         from archetypal import ZoneGraph
 
         idf, sql = small_office
-        clear_cache()
-        G1 = ZoneGraph.from_idf(
-            idf, sql, log_adj_report=adj_report, skeleton=True, force=False
-        )
+
+        G1 = ZoneGraph.from_idf(idf, log_adj_report=adj_report)
         assert not nx.is_empty(G1)
-
-    def test_graph2(self, small_office):
-        """Test the creation of a BuildingTemplate zone graph. Parametrize the
-        creation of the adjacency report
-
-        Args:
-            small_office:
-        """
-        # calling from_idf a second time should not recalculate it.
-        from archetypal import ZoneGraph
-
-        idf, sql = small_office
-        G2 = ZoneGraph.from_idf(
-            idf, sql, log_adj_report=False, skeleton=True, force=False
-        )
-
-    def test_graph3(self, small_office):
-        """Test the creation of a BuildingTemplate zone graph. Parametrize the
-        creation of the adjacency report
-
-        Args:
-            small_office:
-        """
-        # calling from_idf a second time with force=True should
-        # recalculate it and produce a new id.
-        from archetypal import ZoneGraph
-
-        idf, sql = small_office
-        G3 = ZoneGraph.from_idf(
-            idf, sql, log_adj_report=False, skeleton=True, force=True
-        )
-
-    def test_graph4(self, small_office):
-        """Test the creation of a BuildingTemplate zone graph. Parametrize the
-        creation of the adjacency report
-
-        Args:
-            small_office:
-        """
-        # skeleton False should build the zone elements.
-        from archetypal import ZoneGraph
-
-        idf, sql = small_office
-        G4 = ZoneGraph.from_idf(
-            idf, sql, log_adj_report=False, skeleton=False, force=True
-        )
-
         from eppy.bunch_subclass import EpBunch
 
         assert isinstance(
-            G4.nodes["Sp-Attic Sys-0 Flr-2 Sch-- undefined - HPlcmt-core ZN"][
+            G1.nodes["Sp-Attic Sys-0 Flr-2 Sch-- undefined - HPlcmt-core ZN"][
                 "epbunch"
             ],
             EpBunch,
@@ -2644,27 +2567,15 @@ class TestUmiTemplateLibrary:
         # Day schedules
         # Always on
         sch_d_on = ar.DaySchedule.from_values(
-            Values=[1] * 24,
-            Category="Day",
-            Type="Fraction",
-            Name="AlwaysOn",
-            idf=idf,
+            Values=[1] * 24, Category="Day", Type="Fraction", Name="AlwaysOn", idf=idf,
         )
         # Always off
         sch_d_off = ar.DaySchedule.from_values(
-            Values=[0] * 24,
-            Category="Day",
-            Type="Fraction",
-            Name="AlwaysOff",
-            idf=idf,
+            Values=[0] * 24, Category="Day", Type="Fraction", Name="AlwaysOff", idf=idf,
         )
         # DHW
         sch_d_dhw = ar.DaySchedule.from_values(
-            Values=[0.3] * 24,
-            Category="Day",
-            Type="Fraction",
-            Name="DHW",
-            idf=idf,
+            Values=[0.3] * 24, Category="Day", Type="Fraction", Name="DHW", idf=idf,
         )
         # Internal gains
         sch_d_gains = ar.DaySchedule.from_values(
@@ -3017,6 +2928,10 @@ class TestUmiTemplateLibrary:
         r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
     ]
 
+    @pytest.mark.skipif(
+        os.environ.get("CI", "False").lower() == "true",
+        reason="Skipping this test on CI environment",
+    )
     @pytest.mark.parametrize("file", office, ids=["small", "medium", "large"])
     def test_necb_serial(self, file, config):
         settings.log_console = True
@@ -3028,10 +2943,13 @@ class TestUmiTemplateLibrary:
             weather=w,
             processors=1,
         )
-        template.to_json()
         assert no_duplicates(template.to_dict(), attribute="Name")
         assert no_duplicates(template.to_dict(), attribute="$id")
 
+    @pytest.mark.skipif(
+        os.environ.get("CI", "False").lower() == "true",
+        reason="Skipping this test on CI environment",
+    )
     def test_necb_parallel(self, config):
         settings.log_console = True
         office = [
@@ -3050,7 +2968,6 @@ class TestUmiTemplateLibrary:
             weather=w,
             processors=-1,
         )
-        template.to_json()
         assert no_duplicates(template.to_dict(), attribute="Name")
         assert no_duplicates(template.to_dict(), attribute="$id")
 
@@ -3063,6 +2980,10 @@ class TestUmiTemplateLibrary:
         "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
     ]
 
+    @pytest.mark.skipif(
+        os.environ.get("CI", "False").lower() == "true",
+        reason="Skipping this test on CI environment",
+    )
     @pytest.mark.parametrize(
         "file", Path("tests/input_data/problematic").files("*CZ5A*.idf")
     )

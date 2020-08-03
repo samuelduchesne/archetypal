@@ -196,7 +196,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         return zc
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, **kwargs):
         """Append other to self. Return self + other as a new object.
 
         Args:
@@ -249,7 +249,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             Facade=OpaqueConstruction.combine(self.Facade, other.Facade),
             IsFacadeAdiabatic=any([self.IsFacadeAdiabatic, other.IsFacadeAdiabatic]),
         )
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, **kwargs)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 

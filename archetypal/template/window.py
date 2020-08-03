@@ -443,7 +443,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return w
 
     @classmethod
-    def from_surface(cls, surface):
+    def from_surface(cls, surface, **kwargs):
         """Build a WindowSetting object from a FenestrationSurface:Detailed_
         object. This constructor will detect common window constructions and
         shading devices. Supported Shading and Natural Air flow EnergyPlus
@@ -648,7 +648,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 Construction=construction,
                 idf=surface.theidf,
                 Category=surface.theidf.name,
-                **attr
+                **attr,
+                **kwargs
             )
             return w
 
@@ -685,7 +686,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
             # no window found, probably a core zone, return None.
             return None
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, allow_duplicates=True):
         """Append other to self. Return self + other as a new object.
 
         Args:

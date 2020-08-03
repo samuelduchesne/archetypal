@@ -66,7 +66,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash((self.__class__.__name__, self.Name))
 
     def __eq__(self, other):
         if not isinstance(other, DomesticHotWaterSetting):
@@ -85,7 +85,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
     def __str__(self):
         return (
             f"{str(self.id)}: {str(self.Name)} "
-            f"PeakFlow {self.FlowRatePerFloorArea:.3f} m3/hr/m2"
+            f"PeakFlow {self.FlowRatePerFloorArea:.5f} m3/hr/m2"
         )
 
     @classmethod

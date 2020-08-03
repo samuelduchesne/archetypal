@@ -222,7 +222,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone):
+    def from_zone(cls, zone, **kwargs):
         """
 
         Args:
@@ -282,6 +282,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
             ScheduledVentilationSetpoint=ScheduledVentilationSetpoint,
             idf=zone.idf,
             Category=zone.idf.name,
+            **kwargs
         )
         return z_vent
 

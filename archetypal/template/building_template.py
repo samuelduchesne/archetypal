@@ -482,7 +482,7 @@ class ZoneGraph(networkx.Graph):
 
     @classmethod
     def from_idf(
-        cls, idf, sql, log_adj_report=True, skeleton=False, force=False, **kwargs
+        cls, idf, log_adj_report=True, **kwargs
     ):
         """Create a graph representation of all the building zones. An edge
         between two zones represents the adjacency of the two zones.
@@ -512,14 +512,8 @@ class ZoneGraph(networkx.Graph):
             # initialize the adjacency report dictionary. default list.
             adj_report = defaultdict(list)
             zone_obj = None
-            if not skeleton:
-                zone_obj = ZoneDefinition.from_zone_epbunch(zone, sql=sql)
-                zonesurfaces = zone.zonesurfaces
-                zone_obj._zonesurfaces = zonesurfaces
-                _is_core = zone_obj.is_core
-            else:
-                zonesurfaces = zone.zonesurfaces
-                _is_core = is_core(zone)
+            zonesurfaces = zone.zonesurfaces
+            _is_core = is_core(zone)
             G.add_node(zone.Name, epbunch=zone, core=_is_core, zone=zone_obj)
 
             for surface in zonesurfaces:
@@ -534,14 +528,8 @@ class ZoneGraph(networkx.Graph):
                     if adj_zone and adj_surf:
                         counter += 1
 
-                        if skeleton:
-                            zone_obj = None
-                            _is_core = is_core(zone)
-                        else:
-                            zone_obj = ZoneDefinition.from_zone_epbunch(
-                                adj_zone, sql=sql
-                            )
-                            _is_core = zone_obj.is_core
+                        zone_obj = None
+                        _is_core = is_core(zone)
 
                         # create node for adjacent zone
                         G.add_node(

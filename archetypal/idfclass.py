@@ -467,7 +467,10 @@ class IDF(geomeppy.IDF):
 
     @idfname.setter
     def idfname(self, value):
-        self._idfname = Path(value).expand()
+        if value:
+            self._idfname = Path(value).expand()
+        else:
+            self._idfname = None
 
     @property
     def epw(self):
@@ -476,7 +479,10 @@ class IDF(geomeppy.IDF):
 
     @epw.setter
     def epw(self, value):
-        self._epw = Path(value).expand()
+        if value:
+            self._epw = Path(value).expand()
+        else:
+            self._epw = None
 
     @property
     def verbose(self):
@@ -3110,7 +3116,7 @@ class ExpandObjectsThread(Thread):
             self.run_dir = Path(tmp).expand()
 
             # Run ExpandObjects Program
-            self.cmd = [str(self.expandobjectsexe.basename())]
+            self.cmd = str(self.expandobjectsexe.basename())
             with tqdm(
                 unit_scale=True,
                 miniters=1,
@@ -3118,9 +3124,9 @@ class ExpandObjectsThread(Thread):
                 position=self.idf.position,
             ) as progress:
                 self.p = subprocess.Popen(
-                    self.cmd,
+                    ["ExpandObjects"],
                     cwd=self.run_dir,
-                    shell=False,
+                    shell=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )

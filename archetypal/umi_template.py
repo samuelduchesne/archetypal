@@ -181,7 +181,7 @@ class UmiTemplateLibrary:
                 epw=umi_template.weather,
                 annual=True,
                 as_version=as_version or settings.ep_version,
-                verbose="q",
+                verbose=False,
                 position=None,
             )
         results = parallel_process(

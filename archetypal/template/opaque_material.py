@@ -216,7 +216,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             ),
             idf=self.idf
         )
-        new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj._predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def to_json(self):

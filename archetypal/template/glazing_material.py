@@ -183,7 +183,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         # keywords.
         # create a new object from combined attributes
         new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
-        new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj._predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def to_json(self):

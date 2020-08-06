@@ -493,7 +493,7 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         if new_attr["Windows"]:  # Could be None
             new_attr["Windows"]._belongs_to_zone = new_obj
 
-        new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj._predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def validate(self):

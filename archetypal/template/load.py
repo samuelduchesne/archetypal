@@ -410,7 +410,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
         new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
         new_obj._belongs_to_zone = self._belongs_to_zone
-        new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj._predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def validate(self):

@@ -192,7 +192,12 @@ class UmiBase(object):
             other (UmiBase): The other object.
         """
         predecessors = self.predecessors + other.predecessors
-        meta = {
+        meta = self.combine_meta(predecessors)
+
+        return meta
+
+    def combine_meta(self, predecessors):
+        return {
             "Name": _resolve_combined_names(predecessors),
             "Comments": (
                 "Object composed of a combination of these "
@@ -204,9 +209,7 @@ class UmiBase(object):
             "DataSource": ", ".join(set([obj.DataSource for obj in predecessors])),
         }
 
-        return meta
-
-    def combine(self, other):
+    def combine(self, other, allow_duplicates=True):
         pass
 
     def rename(self, name):
@@ -534,7 +537,43 @@ class MaterialLayer(object):
         return dict(Material=self.Material, Thickness=self.Thickness)
 
 
-class MetaData(collections.UserList):
+from collections.abc import Hashable, MutableSet
+
+
+class UserSet(Hashable, MutableSet):
+    __hash__ = MutableSet._hash
+
+    def __init__(self, iterable=()):
+        self.data = set(iterable)
+
+    def __contains__(self, value):
+        return value in self.data
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __repr__(self):
+        return repr(self.data)
+
+    def __add__(self, other):
+        self.data.update(other.data)
+        return self
+
+    def update(self, other):
+        self.data.update(other.data)
+        return self
+
+    def add(self, item):
+        self.data.add(item)
+
+    def discard(self, item):
+        self.data.discard(item)
+
+
+class MetaData(UserSet):
     """Handles data of combined objects such as Name, Comments and other."""
 
     @property

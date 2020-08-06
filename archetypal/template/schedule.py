@@ -204,7 +204,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             )
         )
         new_obj.rename(new_name)
-        new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj._predecessors.update(self.predecessors + other.predecessors)
         new_obj.weights = sum(weights)
         return new_obj
 

@@ -36,6 +36,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         AssemblyEnergy=0,
         DisassemblyCarbon=0,
         DisassemblyEnergy=0,
+        Layers=None,
         **kwargs
     ):
         """Initialize a WindowConstruction.
@@ -51,6 +52,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
                 construction.
             DisassemblyEnergy (float): Disassembly embodied energy by m2 of
                 construction.
+            Layers (list of MaterialLayer):
             **kwargs: Other keywords passed to the constructor.
         """
         super(WindowConstruction, self).__init__(**kwargs)
@@ -60,10 +62,10 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         self.AssemblyEnergy = AssemblyEnergy
         self.AssemblyCost = AssemblyCost
         self.AssemblyCarbon = AssemblyCarbon
-        self.Layers = kwargs.get("Layers", None)
+        self.Layers = Layers
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, WindowConstruction):
@@ -77,6 +79,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
                     self.AssemblyEnergy == other.AssemblyEnergy,
                     self.DisassemblyCarbon == other.DisassemblyCarbon,
                     self.DisassemblyEnergy == other.DisassemblyEnergy,
+                    self.Layers == other.Layers,
                 ]
             )
 
@@ -723,9 +726,9 @@ class WindowSetting(UmiBase, metaclass=Unique):
             weights = [1.0, 1.0]
         meta = self._get_predecessors_meta(other)
         new_attr = dict(
-            Construction=WindowConstruction.combine(self.Construction,
-                                                    other.Construction,
-                                                    weights),
+            Construction=WindowConstruction.combine(
+                self.Construction, other.Construction, weights
+            ),
             AfnDischargeC=self._float_mean(other, "AfnDischargeC", weights),
             AfnTempSetpoint=self._float_mean(other, "AfnTempSetpoint", weights),
             AfnWindowAvailability=UmiSchedule.combine(

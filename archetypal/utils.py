@@ -1124,7 +1124,7 @@ def parallel_process(
         [function(array[0]), function(array[1]), ...]
     """
     from tqdm import tqdm
-    from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+    from concurrent.futures import ThreadPoolExecutor
 
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())

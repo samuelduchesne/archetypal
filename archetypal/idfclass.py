@@ -38,7 +38,6 @@ from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata, Idd, removecomment
 from eppy.bunch_subclass import BadEPFieldError
 from eppy.easyopen import getiddfile
-from eppy.idfreader import iddversiontuple
 from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from eppy.runner.run_functions import paths_from_version
 from geomeppy.patches import EpBunch, idfreader1, obj2bunch
@@ -345,54 +344,86 @@ class IDF(geomeppy.IDF):
     @property
     def block(self):
         if self._block is None:
-            _, block, _, _, _, _ = idfreader1(
+            bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
                 self.idfname, self.iddname, self, commdct=None, block=None
             )
             self._block = block
+            self._idd_info = commdct
+            self._idd_index = idd_index
+            self._idfobjects = bunchdt
+            self._model = data
+            self._idd_version = versiontuple
         return self._block
 
     @property
     def idd_info(self):
         if self._idd_info is None:
-            _, _, _, idd_info, _, _ = idfreader1(
+            bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
                 self.idfname, self.iddname, self, commdct=None, block=None
             )
-            self._idd_info = idd_info
+            self._block = block
+            self._idd_info = commdct
+            self._idd_index = idd_index
+            self._idfobjects = bunchdt
+            self._model = data
+            self._idd_version = versiontuple
         return self._idd_info
 
     @property
     def idd_index(self):
         if self._idd_index is None:
-            _, _, _, _, idd_index, _ = idfreader1(
+            bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
                 self.idfname, self.iddname, self, commdct=None, block=None
             )
+            self._block = block
+            self._idd_info = commdct
             self._idd_index = idd_index
-        return self._idd_index
-
-    @property
-    def idd_version(self):
-        if self._idd_version is None:
-            versiontuple = iddversiontuple(self.iddname)
+            self._idfobjects = bunchdt
+            self._model = data
             self._idd_version = versiontuple
-        return self._idd_version
+        return self._idd_index
 
     @property
     def idfobjects(self):
         if self._idfobjects is None:
-            idfobjects, _, _, _, _, idd_version = idfreader1(
+            bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
                 self.idfname, self.iddname, self, commdct=None, block=None
             )
-            self._idfobjects = idfobjects
+            self._block = block
+            self._idd_info = commdct
+            self._idd_index = idd_index
+            self._idfobjects = bunchdt
+            self._model = data
+            self._idd_version = versiontuple
         return self._idfobjects
 
     @property
     def model(self):
         if self._model is None:
-            _, _, model, _, _, idd_version = idfreader1(
+            bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
                 self.idfname, self.iddname, self, commdct=None, block=None
             )
-            self._model = model
+            self._block = block
+            self._idd_info = commdct
+            self._idd_index = idd_index
+            self._idfobjects = bunchdt
+            self._model = data
+            self._idd_version = versiontuple
         return self._model
+
+    @property
+    def idd_version(self):
+        if self._idd_version is None:
+            bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
+                self.idfname, self.iddname, self, commdct=None, block=None
+            )
+            self._block = block
+            self._idd_info = commdct
+            self._idd_index = idd_index
+            self._idfobjects = bunchdt
+            self._model = data
+            self._idd_version = versiontuple
+        return self._idd_version
 
     @property
     def iddname(self):

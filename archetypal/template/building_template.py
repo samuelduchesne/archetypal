@@ -11,6 +11,7 @@ import logging as lg
 import threading
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 
 import eppy
 import matplotlib.collections
@@ -33,7 +34,7 @@ from archetypal.template import (
     MassRatio,
     is_core,
 )
-from archetypal.utils import reduce, parallel_process
+from archetypal.utils import reduce
 
 
 class BuildingTemplate(UmiBase):
@@ -255,7 +256,7 @@ class BuildingTemplate(UmiBase):
             futures = {
                 executor.submit(
                     ZoneDefinition.from_zone_epbunch,
-                    (zone),
+                    zone,
                     sql=idf.sql,
                     allow_duplicates=True,
                 ): zone
@@ -310,33 +311,37 @@ class BuildingTemplate(UmiBase):
         start_time = time.time()
 
         if cores:
-            self.Core = reduce(ZoneDefinition.combine, cores)
+            self.Core = reduce(
+                ZoneDefinition.combine, tqdm(cores, desc="Reducing core zones")
+            )
         if not perims:
             raise ValueError(
                 "Building complexity reduction must have at least one perimeter zone"
             )
         else:
-            self.Perimeter = reduce(ZoneDefinition.combine, perims)
-
+            self.Perimeter = reduce(
+                ZoneDefinition.combine, tqdm(perims, desc="Reducing perimeter zones")
+            )
+            self.Perimeter.Name = "Perimeter_" + self.Perimeter.Name.strip("Perimeter_")
         if self.Perimeter.Windows is None:
             # create generic window
             self.Perimeter.Windows = WindowSetting.generic(idf=self.idf)
 
         if not self.Core:
             self.Core = self.Perimeter
+        else:
+            self.Core.Name = "Core_" + self.Core.Name.strip("Core_")
         log(
-            "Equivalent core zone has an area of {:,.0f} m2".format(self.Core.area),
+            f"Equivalent core zone has an area of {self.Core.area:,.0f} m2",
             level=lg.DEBUG,
         )
         log(
-            "Equivalent perimeter zone has an area of {:,.0f} m2".format(
-                self.Perimeter.area
-            ),
+            f"Equivalent perimeter zone has an area of {self.Perimeter.area:,.0f} m2",
             level=lg.DEBUG,
         )
         log(
-            'Completed model complexity reduction for BuildingTemplate "{}" in {:,'
-            ".2f} seconds".format(self.Name, time.time() - start_time)
+            f"Completed model complexity reduction for BuildingTemplate '{self.Name}' "
+            f"in {time.time() - start_time:,.2f}"
         )
 
     def _graph_reduce(self, G):
@@ -481,9 +486,7 @@ class ZoneGraph(networkx.Graph):
     """
 
     @classmethod
-    def from_idf(
-        cls, idf, log_adj_report=True, **kwargs
-    ):
+    def from_idf(cls, idf, log_adj_report=True, **kwargs):
         """Create a graph representation of all the building zones. An edge
         between two zones represents the adjacency of the two zones.
 

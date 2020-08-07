@@ -272,7 +272,7 @@ class BuildingTemplate(UmiBase):
                 try:
                     result = future.result()
                 except Exception as exc:
-                    log("%r generated an exception: %s" % (zone.Name, exc))
+                    raise exc
                 else:
                     zones.append(result)
                     log("%r created" % (result.Name))

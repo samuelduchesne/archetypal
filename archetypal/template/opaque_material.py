@@ -150,10 +150,15 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
     def generic(cls, idf=None):
         """generic plaster board"""
         return cls(
-            Conductivity=1.39,
-            SpecificHeat=1085,
-            Density=2000,
-            Name="generic_plaster_board",
+            Conductivity=0.16,
+            SpecificHeat=1090,
+            Density=800,
+            Name="GP01 GYPSUM",
+            Roughness="Smooth",
+            SolarAbsorptance=0.7,
+            ThermalEmittance=0.9,
+            VisibleAbsorptance=0.5,
+            DataSource="ASHRAE 90.1-2007",
             idf=idf,
         )
 

@@ -422,7 +422,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         layers = kwargs.pop("Layers", None)
         oc = cls(Layers=layers, **kwargs)
         lys = [
-            MaterialLayer(oc.get_ref(layer["Material"]), layer["Thickness"], )
+            MaterialLayer(oc.get_ref(layer["Material"]), layer["Thickness"],)
             for layer in layers
         ]
         oc.Layers = lys
@@ -510,9 +510,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 except AttributeError:
                     pass
                 else:
-                    layers.append(
-                        MaterialLayer(Material=o, Thickness=o._thickness)
-                    )
+                    layers.append(MaterialLayer(Material=o, Thickness=o._thickness))
             if not found:
                 raise AttributeError("%s material not found in IDF" % layer)
         return layers
@@ -555,12 +553,17 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @classmethod
     def generic(cls, idf=None):
-        # Generic Plaster Board
+        # 90.1-2007 Nonres 4B Int Wall
         """
         Args:
             idf:
         """
         om = OpaqueMaterial.generic(idf=idf)
 
-        layers = [MaterialLayer(om, 0.0127)]  # half inch
-        return cls(Name="generic plaster board half inch", Layers=layers, idf=idf)
+        layers = [MaterialLayer(om, 0.0127), MaterialLayer(om, 0.0127)]  # half inch
+        return cls(
+            Name="90.1-2007 Nonres 6A Int Wall",
+            Layers=layers,
+            DataSource="ASHRAE 90.1-2007",
+            idf=idf,
+        )

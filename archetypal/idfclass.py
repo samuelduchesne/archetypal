@@ -3123,7 +3123,7 @@ class ExpandObjectsThread(Thread):
         self.cancelled = False
         self.run_dir = Path("")
         self.exception = None
-        self.name = "expandobject_" + self.idf.name
+        self.name = "ExpandObjects_" + self.idf.name
 
     def run(self):
         """Wrapper around the EnergyPlus command line interface.
@@ -3143,7 +3143,7 @@ class ExpandObjectsThread(Thread):
             self.idd = self.idf.iddname.copy(tmp / "Energy+.idd").expand()
             self.expandobjectsexe = Path(
                 shutil.which("ExpandObjects", path=self.eplus_home.expand())
-            ).copy(tmp)
+            ).copy2(tmp)
             self.run_dir = Path(tmp).expand()
 
             # Run ExpandObjects Program
@@ -3154,14 +3154,14 @@ class ExpandObjectsThread(Thread):
                 desc=f"ExpandObjects #{self.idf.position}-{self.idf.name}",
                 position=self.idf.position,
             ) as progress:
-                self.p = subprocess.Popen(
-                    ["ExpandObjects"],
-                    cwd=self.run_dir,
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
 
+                # change the current working directory
+                original_location = os.getcwd()
+                os.chdir(self.run_dir)
+
+                self.p = subprocess.Popen(
+                    ["ExpandObjects"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                )
                 start_time = time.time()
                 # self.msg_callback("ExpandObjects started")
                 for line in self.p.stdout:
@@ -3174,6 +3174,9 @@ class ExpandObjectsThread(Thread):
                 # Wait for process to complete
                 self.p.wait()
 
+                # change current directory back to original location before callbacks
+                # are called
+                os.chdir(original_location)
                 # Communicate callbacks
                 if self.cancelled:
                     self.msg_callback("ExpandObjects cancelled")
@@ -3279,14 +3282,13 @@ class SlabThread(Thread):
                 desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
                 position=self.idf.position,
             ) as progress:
-                self.p = subprocess.Popen(
-                    self.cmd,
-                    cwd=self.run_dir,
-                    shell=False,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
+                # change the current working directory
+                original_location = os.getcwd()
+                os.chdir(self.run_dir)
 
+                self.p = subprocess.Popen(
+                    self.cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                )
                 start_time = time.time()
                 self.msg_callback("Begin Slab Temperature Calculation processing . . .")
                 for line in self.p.stdout:
@@ -3299,6 +3301,9 @@ class SlabThread(Thread):
                 # Wait for process to complete
                 self.p.wait()
 
+                # change current directory back to original location before callbacks
+                # are called
+                os.chdir(original_location)
                 # Communicate callbacks
                 if self.cancelled:
                     self.msg_callback("RunSlab cancelled")

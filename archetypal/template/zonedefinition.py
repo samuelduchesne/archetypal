@@ -9,6 +9,7 @@ import collections
 import functools
 import math
 import random
+import sqlite3
 import time
 from operator import add
 
@@ -727,11 +728,25 @@ def is_core(zone):
 
 
 def is_part_of_conditioned_floor_area(zone):
-    """Returns True if Zone epbunch has :attr:`Part_of_Total_Floor_Area` == "YES"
+    """Returns True if Zone epbunch has a LoadType in the ZoneSizes table"
 
     Args:
         zone (ZoneDefinition): The Zone object.
     """
+    with sqlite3.connect(zone.idf.sql_file) as conn:
+        sql_query = f"""
+                    select LoadType
+                    from ZoneSizes
+                    where ZoneName = "{zone.Name.upper()}";"""
+        res = conn.execute(sql_query).fetchone()
+    return res is not None
+
+def is_part_of_total_floor_area(zone):
+    """Returns True if Zone epbunch has :attr:`Part_of_Total_Floor_Area` == "YES"
+
+        Args:
+            zone (ZoneDefinition): The Zone object.
+        """
     return zone._epbunch.Part_of_Total_Floor_Area.upper() != "NO"
 
 

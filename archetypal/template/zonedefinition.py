@@ -399,7 +399,7 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         )
         return zone
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, allow_duplicates=False):
         """
         Args:
             other (ZoneDefinition):

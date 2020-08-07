@@ -162,7 +162,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             idf=idf,
         )
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, allow_duplicates=False):
         """Combine two OpaqueMaterial objects.
 
         Args:

@@ -200,7 +200,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     def timeconstant_per_unit_area(self):
         return self.mass_per_unit_area * self.specific_heat / self.u_value()
 
-    def combine(self, other, method="dominant_wall"):
+    def combine(self, other, method="dominant_wall", allow_duplicates=False):
         """Combine two OpaqueConstruction together.
 
         Args:

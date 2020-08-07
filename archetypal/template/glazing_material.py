@@ -122,7 +122,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
                 ]
             )
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, allow_duplicates=False):
         """Combine two GlazingMaterial objects together.
 
         Args:

@@ -209,7 +209,7 @@ class UmiBase(object):
             "DataSource": ", ".join(set([obj.DataSource for obj in predecessors])),
         }
 
-    def combine(self, other, allow_duplicates=True):
+    def combine(self, other, allow_duplicates=False):
         pass
 
     def rename(self, name):
@@ -328,9 +328,9 @@ class UmiBase(object):
         Args:
             other:
         """
-        return UmiBase.extend(self, other)
+        return UmiBase.extend(self, other, allow_duplicates=True)
 
-    def extend(self, other):
+    def extend(self, other, allow_duplicates):
         """Append other to self. Modify and return self.
 
         Args:
@@ -345,7 +345,7 @@ class UmiBase(object):
             return self
         self.all_objects.remove(self)
         id = self.id
-        new_obj = self.combine(other, allow_duplicates=True)
+        new_obj = self.combine(other, allow_duplicates=allow_duplicates)
         new_obj.__dict__.pop("id")
         new_obj.id = id
         name = new_obj.__dict__.pop("Name")

@@ -374,7 +374,6 @@ class TestCli:
                 "tests/.temp/logs",
                 "--ep_version",
                 settings.ep_version,
-                "-v",
                 "transition",
                 "tests/input_data/problematic/ASHRAE90.1_ApartmentHighRise_STD2016_Buffalo.idf",
                 "tests/input_data/problematic/*.idf",  # Path with wildcard

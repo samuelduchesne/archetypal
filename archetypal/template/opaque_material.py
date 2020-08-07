@@ -351,6 +351,17 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
 
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
+
+        # Some OpaqueMaterial don't have a default value, therefore an empty string is
+        # parsed. This breaks the UmiTemplate Editor, therefore we set a value on these
+        # attributes (if necessary) in this validation step.
+
+        if getattr(self, "SolarAbsorptance") == "":
+            setattr(self, "SolarAbsorptance", 0.7)
+        if getattr(self, "ThermalEmittance") == "":
+            setattr(self, "ThermalEmittance", 0.9)
+        if getattr(self, "VisibleAbsorptance") == "":
+            setattr(self, "VisibleAbsorptance", 0.7)
         return self
 
     def mapping(self):

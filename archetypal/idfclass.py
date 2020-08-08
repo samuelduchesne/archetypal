@@ -148,7 +148,7 @@ class IDF(geomeppy.IDF):
         as_version=None,
         annual=False,
         design_day=False,
-        expandobjects=True,
+        expandobjects=False,
         verbose=settings.log_console,
         readvars=True,
         prep_outputs=True,
@@ -3226,7 +3226,10 @@ class ExpandObjectsThread(Thread):
 
 class SlabThread(Thread):
     def __init__(self, idf):
-        """
+        """The slab program used to calculate the results is included with the
+        EnergyPlus distribution. It requires an input file named GHTin.idf in input
+        data file format. The needed corresponding idd file is SlabGHT.idd. An
+        EnergyPlus weather file for the location is also needed.
 
         Args:
             idf (IDF):
@@ -3269,6 +3272,9 @@ class SlabThread(Thread):
                 self.eplus_home / "PreProcess" / "GrndTempCalc" / "SlabGHT.idd"
             ).copy(tmp)
             self.run_dir = Path(tmp).expand()
+
+            # The GHTin.idf file is copied from the self.include list (added by
+            # ExpandObjects.
             self.include = [Path(file).copy(tmp) for file in self.idf.include]
 
             # Run Slab Program
@@ -3332,8 +3338,10 @@ class SlabThread(Thread):
                         outfile.write(line)
             # invalidate attributes dependant on idfname, since it has changed
             self.idf._reset_dependant_vars("idfname")
-        if (Path(self.run_dir) / "GHTIn.idf").exists():
-            (Path(self.run_dir) / "GHTIn.idf").remove()
+        ghtin = self.idf.output_directory / "GHTIn.idf"
+        if ghtin.exists():
+            self.idf.include.remove(ghtin)
+            ghtin.remove()
 
     def failure_callback(self):
         error_filename = self.run_dir / "eplusout.err"

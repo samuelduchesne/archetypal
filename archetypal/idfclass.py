@@ -3133,10 +3133,11 @@ class ExpandObjectsThread(Thread):
         self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
+        dir = self.idf.output_directory
         with TempDir(
             prefix="expandobjects_run_",
             suffix=self.idf.output_prefix,
-            dir=self.idf.output_directory,
+            dir=dir,
         ) as tmp:
             self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
             self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
@@ -3337,6 +3338,8 @@ class SlabThread(Thread):
                         outfile.write(line)
             # invalidate attributes dependant on idfname, since it has changed
             self.idf._reset_dependant_vars("idfname")
+        if (Path(self.run_dir) / "GHTIn.idf").exists():
+            (Path(self.run_dir) / "GHTIn.idf").remove()
 
     def failure_callback(self):
         error_filename = self.run_dir / "eplusout.err"

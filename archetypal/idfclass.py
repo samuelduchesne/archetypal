@@ -3133,11 +3133,10 @@ class ExpandObjectsThread(Thread):
         self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
-        dir = self.idf.output_directory
         with TempDir(
             prefix="expandobjects_run_",
             suffix=self.idf.output_prefix,
-            dir=dir,
+            dir=self.idf.output_directory,
         ) as tmp:
             self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
             self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
@@ -3156,12 +3155,12 @@ class ExpandObjectsThread(Thread):
                 position=self.idf.position,
             ) as progress:
 
-                # change the current working directory
-                original_location = os.getcwd()
-                os.chdir(self.run_dir)
-
                 self.p = subprocess.Popen(
-                    ["ExpandObjects"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    ["ExpandObjects"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=True,
+                    cwd=self.run_dir.abspath(),
                 )
                 start_time = time.time()
                 # self.msg_callback("ExpandObjects started")
@@ -3175,9 +3174,6 @@ class ExpandObjectsThread(Thread):
                 # Wait for process to complete
                 self.p.wait()
 
-                # change current directory back to original location before callbacks
-                # are called
-                os.chdir(original_location)
                 # Communicate callbacks
                 if self.cancelled:
                     self.msg_callback("ExpandObjects cancelled")
@@ -3283,12 +3279,13 @@ class SlabThread(Thread):
                 desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
                 position=self.idf.position,
             ) as progress:
-                # change the current working directory
-                original_location = os.getcwd()
-                os.chdir(self.run_dir)
 
                 self.p = subprocess.Popen(
-                    self.cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    ["Slab"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=True,
+                    cwd=self.run_dir.abspath(),
                 )
                 start_time = time.time()
                 self.msg_callback("Begin Slab Temperature Calculation processing . . .")
@@ -3302,9 +3299,6 @@ class SlabThread(Thread):
                 # Wait for process to complete
                 self.p.wait()
 
-                # change current directory back to original location before callbacks
-                # are called
-                os.chdir(original_location)
                 # Communicate callbacks
                 if self.cancelled:
                     self.msg_callback("RunSlab cancelled")

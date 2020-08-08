@@ -32,15 +32,15 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         self,
         DimmingType="Continuous",
         EquipmentAvailabilitySchedule=None,
-        EquipmentPowerDensity=12,
+        EquipmentPowerDensity=0,
         IlluminanceTarget=500,
-        LightingPowerDensity=12,
+        LightingPowerDensity=0,
         LightsAvailabilitySchedule=None,
         OccupancySchedule=None,
         IsEquipmentOn=True,
         IsLightingOn=True,
         IsPeopleOn=True,
-        PeopleDensity=0.2,
+        PeopleDensity=0,
         **kwargs,
     ):
         """Initialize a new ZoneLoad object
@@ -258,14 +258,14 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 "select ifnull(t.ScheduleIndex, null), ifnull(t.DesignLevel, 0) "
                 "from NominalLighting t where t.ZoneIndex=?"
             )
-            row = c.execute(sql_query, (int(zone_index),)).fetchone()
-            if not row:
-                LightsAvailabilitySchedule = None  # UmiSchedule.constant_schedule(
-                # idf=zone.idf)
-                LightingPowerDensity = 0
-            else:
+            row = c.execute(sql_query, (int(zone_index),)).fetchall()
+
+            lighting_schds = []
+            lighting_densities = []
+            for row in row:
                 schedule_index, LightingPower = row
-                LightingPowerDensity =  LightingPower / zone.area
+                LightingPowerDensity = LightingPower / zone.area
+                lighting_densities.append(LightingPowerDensity)
                 sql_query = (
                     "select t.ScheduleName, t.ScheduleType from "
                     "Schedules t where ScheduleIndex=?"
@@ -273,25 +273,35 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 sched_name, sched_type = c.execute(
                     sql_query, (int(schedule_index),)
                 ).fetchone()
-                LightsAvailabilitySchedule = UmiSchedule(
-                    Name=sched_name,
-                    idf=zone.idf,
-                    Type=sched_type,
-                    quantity=LightingPowerDensity,
+                lighting_schds.append(
+                    UmiSchedule(
+                        Name=sched_name,
+                        idf=zone.idf,
+                        Type=sched_type,
+                        quantity=LightingPowerDensity,
+                    )
                 )
+
+            LightsAvailabilitySchedule = reduce(
+                UmiSchedule.combine,
+                lighting_schds,
+                weights=None,
+                quantity=lambda x: sum(obj.quantity for obj in x),
+            )
+            LightingPowerDensity = sum(lighting_densities)
 
             # Verifies if People in zone
             sql_query = (
                 "SELECT ifnull(t.NumberOfPeopleScheduleIndex, null), "
                 "ifnull(t.NumberOfPeople, 0) from NominalPeople t where ZoneIndex=?"
             )
-            row = c.execute(sql_query, (int(zone_index),)).fetchone()
-            if not row:
-                OccupancySchedule = None
-                PeopleDensity = 0
-            else:
+            row = c.execute(sql_query, (int(zone_index),)).fetchall()
+            people_schedules = []
+            people_densities = []
+            for row in row:
                 schedule_index, People = row
                 PeopleDensity = People / zone.area
+                people_densities.append(PeopleDensity)
                 sql_query = (
                     "select t.ScheduleName, t.ScheduleType from "
                     "Schedules t where ScheduleIndex=?"
@@ -299,9 +309,20 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 sched_name, sched_type = c.execute(
                     sql_query, (int(schedule_index),)
                 ).fetchone()
-                OccupancySchedule = UmiSchedule(
-                    Name=sched_name, idf=zone.idf, Type=sched_type
+                people_schedules.append(
+                    UmiSchedule(
+                        Name=sched_name,
+                        idf=zone.idf,
+                        Type=sched_type,
+                        quantity=PeopleDensity,
+                    )
                 )
+            OccupancySchedule = reduce(
+                UmiSchedule.combine,
+                people_schedules,
+                weights=None,
+                quantity=lambda x: sum(obj.quantity for obj in x),
+            )
 
         name = zone.Name + "_ZoneLoad"
         z_load = cls(
@@ -320,7 +341,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             PeopleDensity=PeopleDensity,
             idf=zone.idf,
             Category=zone.idf.name,
-            **kwargs
+            **kwargs,
         )
         return z_load
 

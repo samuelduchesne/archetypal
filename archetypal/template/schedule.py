@@ -140,7 +140,9 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             raise NotImplementedError(msg)
 
         # check if the schedule is the same
-        if all(self.all_values == other.all_values):
+        if self == other:
+            if self.quantity and other.quantity:
+                self.quantity += other.quantity
             return self
 
         # check if self is only zeros. Should not affect other.

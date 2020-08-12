@@ -3274,8 +3274,11 @@ class SlabThread(Thread):
             self.run_dir = Path(tmp).expand()
 
             # The GHTin.idf file is copied from the self.include list (added by
-            # ExpandObjects.
+            # ExpandObjects. If self.include is empty, no need to run Slab.
             self.include = [Path(file).copy(tmp) for file in self.idf.include]
+            if not self.include:
+                self.cleanup_callback()
+                return
 
             # Run Slab Program
             self.cmd = [self.slabexe.stem]
@@ -3338,6 +3341,12 @@ class SlabThread(Thread):
                         outfile.write(line)
             # invalidate attributes dependant on idfname, since it has changed
             self.idf._reset_dependant_vars("idfname")
+        self.cleanup_callback()
+
+    def cleanup_callback(self):
+        """cleans up temp files, directories and variables that need cleanup"""
+
+        # Remove from include
         ghtin = self.idf.output_directory / "GHTIn.idf"
         if ghtin.exists():
             self.idf.include.remove(ghtin)
@@ -3351,9 +3360,10 @@ class SlabThread(Thread):
                 self.exception = EnergyPlusProcessError(
                     cmd=self.cmd, stderr=stderr_r, idf=self.idf.name
                 )
+        self.cleanup_callback()
 
     def cancelled_callback(self, stdin, stdout):
-        pass
+        self.cleanup_callback()
 
     @property
     def eplus_home(self):

@@ -33,7 +33,8 @@ from archetypal import (
     MassRatio,
     IDF,
     parallel_process,
-    log, EnergyPlusProcessError,
+    log,
+    EnergyPlusProcessError,
 )
 
 
@@ -152,9 +153,7 @@ class UmiTemplateLibrary:
         self.GlazingMaterials = GlazingMaterials
 
     @classmethod
-    def read_idf(
-        cls, idf_files, weather, name="unnamed", processors=-1, as_version=None
-    ):
+    def read_idf(cls, idf_files, weather, name="unnamed", processors=-1, **kwargs):
         """Initializes an UmiTemplateLibrary object from one or more idf_files.
 
         The resulting object contains the reduced version of the IDF files.
@@ -165,6 +164,7 @@ class UmiTemplateLibrary:
             weather (str or Path): Path to the weather file.
             name (str): The name of the Template File
             parallel (bool): If True, uses all available logical cores.
+            kwargs: keyword arguments passed to IDF().
         """
         # instantiate class
         umi_template = cls(name)
@@ -179,10 +179,9 @@ class UmiTemplateLibrary:
             in_dict[idf_file] = dict(
                 idfname=idf_file,
                 epw=umi_template.weather,
-                annual=True,
-                as_version=as_version or settings.ep_version,
                 verbose=False,
                 position=None,
+                **kwargs,
             )
         results = parallel_process(
             in_dict,
@@ -199,11 +198,14 @@ class UmiTemplateLibrary:
                     file.writelines(res.write())
                     log(f"EnergyPlusProcess errors listed in {filename}")
             elif isinstance(res, Exception):
-                log(
-                    f"Unable to create Building Template. Exception raised: "
-                    f"{str(res)}",
-                    lg.WARNING,
-                )
+                if settings.debug:
+                    raise res
+                else:
+                    log(
+                        f"Unable to create Building Template. Exception raised: "
+                        f"{str(res)}",
+                        lg.WARNING,
+                    )
 
         if all(isinstance(x, Exception) for x in results):
             raise Exception("Complexity reduction failed for all buildings.")
@@ -278,7 +280,9 @@ class UmiTemplateLibrary:
                 for store in datastore["YearSchedules"]
             ]
             t.DomesticHotWaterSettings = [
-                DomesticHotWaterSetting.from_dict(**store, idf=idf, allow_duplicates=True)
+                DomesticHotWaterSetting.from_dict(
+                    **store, idf=idf, allow_duplicates=True
+                )
                 for store in datastore["DomesticHotWaterSettings"]
             ]
             t.VentilationSettings = [
@@ -294,9 +298,13 @@ class UmiTemplateLibrary:
                 for store in datastore["ZoneConstructionSets"]
             ]
             t.ZoneLoads = [
-                ZoneLoad.from_dict(**store, idf=idf, allow_duplicates=True) for store in datastore["ZoneLoads"]
+                ZoneLoad.from_dict(**store, idf=idf, allow_duplicates=True)
+                for store in datastore["ZoneLoads"]
             ]
-            t.Zones = [ZoneDefinition.from_dict(**store, idf=idf, allow_duplicates=True) for store in datastore["Zones"]]
+            t.Zones = [
+                ZoneDefinition.from_dict(**store, idf=idf, allow_duplicates=True)
+                for store in datastore["Zones"]
+            ]
             t.WindowSettings = [
                 WindowSetting.from_ref(
                     store["$ref"], datastore["BuildingTemplates"], idf=idf

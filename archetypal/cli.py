@@ -123,6 +123,13 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     default=settings.ep_version,
     help='the EnergyPlus version to use. eg. "{}"'.format(settings.ep_version),
 )
+@click.option(
+    "-d",
+    "--debug",
+    is_flag=True,
+    default=False,
+    help="Will break on any exception. Useful when debugging",
+)
 @pass_config
 def cli(
     cli_config,
@@ -138,6 +145,7 @@ def cli(
     log_filename,
     trnsys_default_folder,
     ep_version,
+    debug,
 ):
     """archetypal: Retrieve, construct, simulate, convert and analyse building
     simulation templates
@@ -157,6 +165,7 @@ def cli(
     cli_config.log_filename = log_filename
     cli_config.trnsys_default_folder = trnsys_default_folder
     cli_config.ep_version = ep_version
+    cli_config.debug = debug
     # apply new config params
     config(**cli_config.__dict__)
 
@@ -374,7 +383,8 @@ def convert(
     default=settings.ep_version,
     help="EnergyPlus version to upgrade to - e.g., '9-2-0'",
 )
-def reduce(idf, output, weather, cores, all_zones, as_version):
+@click.pass_context
+def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     """Convert EnergyPlus models to an Umi Template Library by using the model
     complexity reduction algorithm.
 
@@ -402,11 +412,18 @@ def reduce(idf, output, weather, cores, all_zones, as_version):
     # Call UmiTemplateLibrary constructor with list of IDFs
     try:
         template = UmiTemplateLibrary.read_idf(
-            file_paths, weather=weather, name=name, processors=cores,
-            as_version=as_version
+            file_paths,
+            weather=weather,
+            name=name,
+            processors=cores,
+            as_version=as_version,
+            annual=True,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        if not ctx.obj.debug:
+            pass
+        else:
+            raise e
     else:
         # Save json file
         final_path: Path = dir_ / name + ext

@@ -10,7 +10,7 @@ import collections
 import numpy as np
 
 from archetypal import log
-from archetypal.template import UmiBase, Unique, UniqueName
+from archetypal.template import UmiBase, Unique, UniqueName, GasMaterial
 
 
 class OpaqueMaterial(UmiBase, metaclass=Unique):
@@ -38,7 +38,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         TransportEnergy=0,
         SubstitutionRatePattern=None,
         SubstitutionTimestep=20,
-        **kwargs
+        **kwargs,
     ):
         """A custom opaque material.
 
@@ -58,7 +58,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                 the absorptance of solar radiation by the material. The default
                 is set to 0.7, which is common for most non-metallic materials.
             ThermalEmittance (float): An number between 0 and 1 that represents
-                the thermal abstorptance of the material. The default is set to
+                the thermal absorptance of the material. The default is set to
                 0.9, which is common for most non-metallic materials. For long
                 wavelength radiant exchange, thermal emissivity and thermal
                 emittance are equal to thermal absorptance.
@@ -219,7 +219,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             MoistureDiffusionResistance=self._float_mean(
                 other, "MoistureDiffusionResistance", weights
             ),
-            idf=self.idf
+            idf=self.idf,
         )
         new_obj._predecessors.update(self.predecessors + other.predecessors)
         return new_obj
@@ -300,7 +300,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                 Thickness=Thickness,
                 Name=Name,
                 idf=epbunch.theidf,
-                **kwargs
+                **kwargs,
             )
         elif epbunch.key.upper() == "MATERIAL:NOMASS":
             # do MATERIAL:NOMASS. Assume properties of air.
@@ -324,29 +324,49 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                 Thickness=Thickness,
                 Name=Name,
                 idf=epbunch.theidf,
-                **kwargs
+                **kwargs,
             )
         elif epbunch.key.upper() == "MATERIAL:AIRGAP":
-
-            Name = epbunch.Name
-            Conductivity = 0.02436  # W/mK, dry air at 0 °C and 100 kPa.
-            Density = 1.2754  # dry air at 0 °C and 100 kPa.
-            SpecificHeat = 100.5  # J/kg-K, dry air at 0 °C and 100 kPa.
-            Thickness = Conductivity * epbunch.Thermal_Resistance
-            Roughness = "Smooth"
-            return cls(
-                Conductivity=Conductivity,
-                Roughness=Roughness,
-                SpecificHeat=SpecificHeat,
-                Thickness=Thickness,
-                Density=Density,
-                Name=Name,
-                SolarAbsorptance=0,
-                ThermalEmittance=0,
-                VisibleAbsorptance=0,
-                idf=epbunch.theidf,
-                **kwargs
-            )
+            for gasname, properties in {
+                "AIR": dict(
+                    Conductivity=0.02436,
+                    Density=1.754,
+                    SpecificHeat=1000,
+                    ThermalEmittance=0.001,
+                ),
+                "ARGON": dict(
+                    Conductivity=0.016,
+                    Density=1.784,
+                    SpecificHeat=1000,
+                    ThermalEmittance=0.001,
+                ),
+                "KRYPTON": dict(
+                    Conductivity=0.0088,
+                    Density=3.749,
+                    SpecificHeat=1000,
+                    ThermalEmittance=0.001,
+                ),
+                "XENON": dict(
+                    Conductivity=0.0051,
+                    Density=5.761,
+                    SpecificHeat=1000,
+                    ThermalEmittance=0.001,
+                ),
+                "SF6": dict(
+                    Conductivity=0.001345,
+                    Density=6.17,
+                    SpecificHeat=1000,
+                    ThermalEmittance=0.001,
+                ),
+            }.items():
+                if gasname.lower() in epbunch.Name.lower():
+                    thickness = properties["Conductivity"] * epbunch.Thermal_Resistance
+                    return cls(
+                        Name=epbunch.Name,
+                        Thickness=thickness,
+                        **properties,
+                        idf=epbunch.theidf,
+                    )
         else:
             raise NotImplementedError(
                 "Material '{}' of type '{}' is not yet "

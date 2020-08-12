@@ -379,8 +379,8 @@ class MaterialBase(UmiBase):
         TransportDistance=0,
         TransportEnergy=0,
         SubstitutionRatePattern=None,
-        Conductivity=2.4,
-        Density=2400,
+        Conductivity=0,
+        Density=0,
         **kwargs,
     ):
         """Initialize a MaterialBase object with parameters:

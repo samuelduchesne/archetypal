@@ -525,7 +525,7 @@ def nrel_bcl_api_request(data):
     else:
         url = "https://bcl.nrel.gov/api/search/{}.{}".format(keyword, kformat)
     prepared_url = requests.Request("GET", url, params=data).prepare().url
-    print(prepared_url)
+    log(prepared_url)
     cached_response_json = get_from_cache(prepared_url)
 
     if cached_response_json:

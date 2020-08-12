@@ -105,7 +105,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash((self.__class__.__name__, self.Name))
 
     def __eq__(self, other):
         if not isinstance(other, OpaqueConstruction):
@@ -253,7 +253,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             )
         # layers for the new OpaqueConstruction
         layers = [MaterialLayer(mat, t) for mat, t in zip(new_m, new_t)]
-        new_obj = self.__class__(**meta, Layers=layers, idf=self.idf, sql=self.sql)
+        new_obj = self.__class__(**meta, Layers=layers, idf=self.idf)
         new_name = (
             "Combined Opaque Construction {{{}}} with u_value "
             "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value())

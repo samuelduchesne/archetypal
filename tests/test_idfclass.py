@@ -1,3 +1,5 @@
+from subprocess import CalledProcessError
+
 import pytest
 from path import Path
 
@@ -8,6 +10,7 @@ from archetypal import (
     settings,
     EnergyPlusVersionError,
     EnergyPlusProcessError,
+    parse,
 )
 
 
@@ -33,7 +36,7 @@ class TestIDF:
         yield IDF(
             "tests/input_data/problematic/nat_ventilation_SAMPLE0.idf",
             epw=w,
-            ep_version="9-2-0",
+            as_version="9-2-0",
         )
 
     @pytest.fixture()
@@ -52,7 +55,7 @@ class TestIDF:
         yield IDF(
             "tests/input_data/problematic/nat_ventilation_SAMPLE0.idf",
             epw=w,
-            ep_version="9-1-0",
+            as_version="9-1-0",
         )
 
     @pytest.fixture()
@@ -62,28 +65,65 @@ class TestIDF:
             ".2_5A_USA_IL_CHICAGO-OHARE.idf"
         )
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        yield IDF(file, epw=wf, ep_version="8.9.0")
+        yield IDF(file, epw=wf, as_version="8.9.0")
 
-    def test_parallel_process(self, config):
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        files = {
-            i: {"idfname": file.expand(), "epw": w}
-            for i, file in enumerate(Path("tests/input_data/necb").files("*.idf")[0:3])
-        }
-        idfs = parallel_process(files, IDF, use_kwargs=True)
+    def test_default_version_none(self):
+        file = (
+            "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD "
+            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        )
+        wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        idf = IDF(file, epw=wf, as_version=None)
+        assert idf.idf_version == parse("9-2-0")
+        assert idf.idd_version == (9, 2, 0)
+        assert idf.file_version == parse("9-2-0")
 
-        assert not any(isinstance(a, Exception) for a in idfs.values())
+    def test_default_version_specified_period(self):
+        file = (
+            "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD "
+            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        )
+        wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        idf = IDF(file, epw=wf, as_version="9.2.0")
+        assert idf.idf_version == parse("9-2-0")
+        assert idf.idd_version == (9, 2, 0)
+        assert idf.file_version == parse("9-2-0")
+
+    def test_default_version_specified_dash(self):
+        file = (
+            "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD "
+            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        )
+        wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        idf = IDF(file, epw=wf, as_version="9-2-0")
+        assert idf.idf_version == parse("9-2-0")
+        assert idf.idd_version == (9, 2, 0)
+        assert idf.file_version == parse("9-2-0")
+
+    def test_specific_version(self, config, natvent_v9_1_0):
+        assert natvent_v9_1_0.idf_version == parse("9-1-0")
+        assert natvent_v9_1_0.idd_version == (9, 1, 0)
+        assert natvent_v9_1_0.file_version == parse("9-1-0")
+
+    def test_specific_version_error_simulate(self, config, natvent_v9_1_0):
+        with pytest.raises(EnergyPlusVersionError):
+            natvent_v9_1_0.simulate()
+
+    def test_version(self, natvent_v9_1_0):
+        natvent_v9_1_0.as_version = "9-2-0"
+        assert natvent_v9_1_0.iddname
+
+    def test_transition_error(self, config, wont_transition_correctly):
+        with pytest.raises(
+            (EnergyPlusProcessError, EnergyPlusVersionError, CalledProcessError)
+        ):
+            assert wont_transition_correctly.simulate(ep_version="8.9.0")
 
     def test_sql(self, idf_model):
         assert idf_model.sql_file.exists()
 
     def test_processed_results(self, idf_model):
         assert idf_model.process_results()
-
-    def test_processed_results_fail(self, shoebox_model):
-        """processed results should return only one entry because the
-        readvars option was not used"""
-        assert len(shoebox_model.simulate().process_results()) == 1
 
     def test_partition_ratio(self, idf_model):
         assert idf_model.partition_ratio
@@ -107,18 +147,17 @@ class TestIDF:
         )
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         with pytest.raises(EnergyPlusVersionError):
-            IDF(file, epw=wf, ep_version="7-3-0")
+            IDF(file, epw=wf, as_version="7-3-0")
 
-    def test_transition_error(self, config, wont_transition_correctly):
-        with pytest.raises(EnergyPlusProcessError):
-            assert wont_transition_correctly.simulate(ep_version="8.9.0")
+    def test_parallel_process(self, config):
+        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        files = {
+            i: {"idfname": file.expand(), "epw": w}
+            for i, file in enumerate(Path("tests/input_data/necb").files("*.idf")[0:3])
+        }
+        idfs = parallel_process(files, IDF, use_kwargs=True)
 
-    def test_specific_version(self, config, natvent_v9_1_0):
-        assert natvent_v9_1_0.idd_version == (9, 1, 0)
-
-    def test_specific_version_error_simulate(self, config, natvent_v9_1_0):
-        with pytest.raises(EnergyPlusVersionError):
-            natvent_v9_1_0.simulate()
+        assert not any(isinstance(a, Exception) for a in idfs.values())
 
     def test_load_old(self, config, natvent, FiveZoneNightVent1):
         assert natvent.idd_version == (9, 2, 0)

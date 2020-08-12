@@ -2,9 +2,8 @@ import os
 
 import pytest
 from click.testing import CliRunner
-from path import Path
 
-from archetypal import settings, copy_file, log, load_idf, IDF
+from archetypal import settings, log, IDF
 from archetypal.cli import cli
 from tests.test_trnsys import get_platform
 
@@ -293,7 +292,7 @@ class TestCli:
         runner = CliRunner()
         test_file_list = [
             "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
         ]
         result = runner.invoke(
             cli,
@@ -309,10 +308,10 @@ class TestCli:
                 "tests/.temp/logs",
                 "--ep_version",
                 settings.ep_version,
+                "--verbose",
                 "reduce",
                 "-w",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_*.epw",
-                "-p",
                 *test_file_list,
                 "-o",
                 "tests/.temp/retail.json",
@@ -322,16 +321,21 @@ class TestCli:
         print(result.stdout)
         assert result.exit_code == 0
 
-    def test_reduce_failed(self, clean_config):
+    def test_reduce_failed(self, config):
         """Tests the 'reduce' method on a failed file"""
         runner = CliRunner()
         test_file = "tests/input_data/necb/NECB 2011-Warehouse-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
 
         # First, modify file so that it breaks. We will removing the building object.
         idf = IDF(test_file)
-        bldg = idf.idfobjects["BUILDING"][0]
-        idf.removeidfobject(bldg)
-        idf.save()
+        try:
+            bldg = idf.idfobjects["BUILDING"][0]
+        except IndexError:
+            # Building object already removed if test is ran a second time
+            pass
+        else:
+            idf.removeidfobject(bldg)
+            idf.save()
 
         result = runner.invoke(
             cli,
@@ -350,12 +354,11 @@ class TestCli:
                 "reduce",
                 "-w",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270*.epw",
-                "-p",
                 *[idf.idfname, idf.idfname],
                 "-o",
                 "tests/.temp/retail.json",
             ],
-            catch_exceptions=False,
+            catch_exceptions=True,
         )
         print(result.stdout)
         # check an error file has been created

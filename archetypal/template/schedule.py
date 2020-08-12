@@ -43,20 +43,29 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         )
 
     @classmethod
-    def from_values(cls, Name, values, **kwargs):
+    def from_values(cls, Name, values, idf, schTypeLimitsName="Fraction", **kwargs):
         """
         Args:
             Name:
             values:
+            idf:
+            schTypeLimitsName:
             **kwargs:
         """
-        return super(UmiSchedule, cls).from_values(Name=Name, values=values, **kwargs)
+        return super(UmiSchedule, cls).from_values(
+            Name=Name,
+            values=values,
+            schTypeLimitsName=schTypeLimitsName,
+            idf=idf,
+            **kwargs
+        )
 
     @classmethod
     def from_yearschedule(cls, year_sched, idf=None):
         """
         Args:
             year_sched:
+            idf:
         """
         if isinstance(year_sched, YearSchedule):
             return cls.from_values(
@@ -85,7 +94,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         return repr(self)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash((self.__class__.__name__, self.Name))
 
     def __eq__(self, other):
         if not isinstance(other, UmiSchedule):
@@ -107,10 +116,11 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             other (UmiSchedule): The other Schedule object to combine with.
             weights (list): Attribute of self and other containing the weight
                 factor.
-            quantity (list or dict): Scalar value that will be multiplied by self before
-                the averaging occurs. This ensures that the resulting schedule
-                returns the correct integrated value. If a dict is passed, keys are
-                schedules Names and values are quantities.
+            quantity (list, dict or callable): Scalar value that will be multiplied by
+                self before the averaging occurs. This ensures that the
+                resulting schedule returns the correct integrated value. If a
+                dict is passed, keys are schedules Names and values are
+                quantities.
 
         Returns:
             (UmiSchedule): the combined UmiSchedule object.
@@ -156,6 +166,16 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                 weights=weights,
             )
             new_values /= new_values.max()
+        elif callable(quantity):
+            new_values = np.average(
+                [
+                    self.all_values * quantity(self.predecessors.data),
+                    other.all_values * quantity(other.predecessors.data),
+                ],
+                axis=0,
+                weights=weights,
+            )
+            new_values /= new_values.max()
         else:
             new_values = np.average(
                 [self.all_values * quantity[0], other.all_values * quantity[1]],
@@ -167,10 +187,9 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         # the new object's name
         meta = self._get_predecessors_meta(other)
 
-        attr = self.__dict__.copy()
-        attr.update(dict(values=new_values))
-        attr["Name"] = meta["Name"]
-        new_obj = super().from_values(**attr)
+        new_obj = UmiSchedule.from_values(
+            values=new_values, schTypeLimitsName="Fraction", idf=self.idf, **meta
+        )
         new_name = (
             "Combined Schedule {{{}}} with mean daily min:{:.2f} "
             "mean:{:.2f} max:{:.2f}".format(
@@ -272,6 +291,12 @@ class YearScheduleParts:
     )
     def from_json(cls, all_objects, *args, **kwargs):
 
+        """
+        Args:
+            all_objects:
+            *args:
+            **kwargs:
+        """
         return cls.from_dict(all_objects, *args, **kwargs)
 
     @classmethod
@@ -335,18 +360,24 @@ class DaySchedule(UmiSchedule):
         return sched
 
     @classmethod
-    def from_values(cls, Values, **kwargs):
+    def from_values(cls, Name, Values, idf, schTypeLimitsName="Fraction", **kwargs):
         """Create a DaySchedule from an array of size (24,)
 
         Args:
+            Name:
             Values (array-like): A list of values of length 24.
+            idf (IDF): The idf model.
+            schTypeLimitsName:
             **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
                 See :class:`UmiSchedule` for more details.
         """
-        sched = cls(**kwargs)
-        sched.values = Values
-
-        return sched
+        return cls(
+            Name=Name,
+            values=Values,
+            schTypeLimitsName=schTypeLimitsName,
+            idf=idf,
+            **kwargs
+        )
 
     @classmethod
     @deprecated(
@@ -357,18 +388,22 @@ class DaySchedule(UmiSchedule):
     )
     def from_json(cls, Type, **kwargs):
 
+        """
+        Args:
+            Type:
+            **kwargs:
+        """
         return cls.from_dict(Type, **kwargs)
 
     @classmethod
-    def from_dict(cls, Type, **kwargs):
+    def from_dict(cls, Name, Values, Type, **kwargs):
         """Create a DaySchedule from a Umi Template json file.
 
         Args:
             Type (str): The schedule type limits name.
             **kwargs:
         """
-        values = kwargs.pop("Values")
-        sched = cls.from_values(values, schTypeLimitsName=Type, **kwargs)
+        sched = cls.from_values(Name=Name, Values=Values, Type=Type, **kwargs)
 
         return sched
 
@@ -377,7 +412,6 @@ class DaySchedule(UmiSchedule):
 
         Returns:
             dict: The dict-like representation of the schedule
-
         """
 
         data_dict = collections.OrderedDict()
@@ -437,6 +471,10 @@ class WeekSchedule(UmiSchedule):
     )
     def from_json(cls, **kwargs):
 
+        """
+        Args:
+            **kwargs:
+        """
         return cls.from_dict(**kwargs)
 
     @classmethod
@@ -456,7 +494,6 @@ class WeekSchedule(UmiSchedule):
 
         Returns:
             dict: The dict-like representation of the schedule
-
         """
         data_dict = collections.OrderedDict()
 
@@ -489,7 +526,7 @@ class WeekSchedule(UmiSchedule):
             week_day_schedule_name = epbunch["{}_ScheduleDay_Name".format(day)]
             blocks.append(
                 self.all_objects[
-                    hash(("DaySchedule", week_day_schedule_name, self.DataSource))
+                    hash(("DaySchedule", week_day_schedule_name))
                 ]
             )
 
@@ -507,6 +544,8 @@ class YearSchedule(UmiSchedule):
         """Initialize a YearSchedule object with parameters:
 
         Args:
+            Name:
+            schTypeLimitsName:
             Parts (list of YearScheduleParts): The YearScheduleParts.
             **kwargs:
         """
@@ -523,8 +562,8 @@ class YearSchedule(UmiSchedule):
     def from_parts(cls, *args, Parts, **kwargs):
         """
         Args:
-            Parts (list of YearScheduleParts):
             *args:
+            Parts (list of YearScheduleParts):
             **kwargs:
         """
         ysp = cls(*args, Parts=Parts, **kwargs)
@@ -572,6 +611,10 @@ class YearSchedule(UmiSchedule):
     )
     def from_json(cls, **kwargs):
 
+        """
+        Args:
+            **kwargs:
+        """
         return cls.from_dict(**kwargs)
 
     @classmethod
@@ -596,7 +639,6 @@ class YearSchedule(UmiSchedule):
 
         Returns:
             dict: The dict-like representation of the schedule
-
         """
         data_dict = collections.OrderedDict()
 
@@ -630,7 +672,7 @@ class YearSchedule(UmiSchedule):
                     ToDay,
                     ToMonth,
                     self.all_objects[
-                        hash(("WeekSchedule", week_day_schedule_name, self.DataSource))
+                        hash(("WeekSchedule", week_day_schedule_name))
                     ],
                 )
             )

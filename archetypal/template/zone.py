@@ -39,8 +39,6 @@ class Zone(UmiBase):
     .. image:: ../images/template/zoneinfo-zone.png
     """
 
-    _cache = {}
-
     def __init__(
         self,
         Name,
@@ -97,7 +95,6 @@ class Zone(UmiBase):
         self._area = kwargs.get("area", None)
         self._volume = kwargs.get("volume", None)
 
-        self._cache[hash(self)] = self
         CREATED_OBJECTS[hash(self)] = self
 
     def __add__(self, other):
@@ -109,7 +106,7 @@ class Zone(UmiBase):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.Name, id(self.idf)))
+        return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
         if not isinstance(other, Zone):
@@ -279,20 +276,31 @@ class Zone(UmiBase):
         InternalMassExposedPerFloorArea = 0 and sets it to the
         self.InternalMassConstruction attribute.
         """
-        mat = self.idf.newidfobject(key="Material".upper(), Name="Wood 6inch",
-                                    Roughness="MediumSmooth", Thickness=0.15,
-                                    Conductivity=0.12, Density=540, Specific_Heat=1210,
-                                    Thermal_Absorptance=0.7, Visible_Absorptance=0.7)
-        cons = self.idf.newidfobject(key="Construction".upper(),
-                                     Name="InteriorFurnishings",
-                                     Outside_Layer="Wood 6inch")
+        mat = self.idf.newidfobject(
+            key="Material".upper(),
+            Name="Wood 6inch",
+            Roughness="MediumSmooth",
+            Thickness=0.15,
+            Conductivity=0.12,
+            Density=540,
+            Specific_Heat=1210,
+            Thermal_Absorptance=0.7,
+            Visible_Absorptance=0.7,
+        )
+        cons = self.idf.newidfobject(
+            key="Construction".upper(),
+            Name="InteriorFurnishings",
+            Outside_Layer="Wood 6inch",
+        )
         internal_mass = "{}_InternalMass".format(self.Name)
         cons.Name = internal_mass + "_construction"
-        new_epbunch = self.idf.newidfobject(key="InternalMass".upper(),
-                                            Name=internal_mass,
-                                            Construction_Name=cons.Name,
-                                            Zone_or_ZoneList_Name=self.Name,
-                                            Surface_Area=1)
+        new_epbunch = self.idf.newidfobject(
+            key="InternalMass".upper(),
+            Name=internal_mass,
+            Construction_Name=cons.Name,
+            Zone_or_ZoneList_Name=self.Name,
+            Surface_Area=1,
+        )
         self.InternalMassConstruction = OpaqueConstruction.from_epbunch(
             new_epbunch, idf=self.idf
         )
@@ -309,7 +317,7 @@ class Zone(UmiBase):
         """run construction sets and return id"""
         set_name = "_".join([self.Name, "constructions"])
         self.Constructions = ZoneConstructionSet.from_idf(
-            Zone_Names=self.Zone_Names, sql=self.sql, Name=set_name, idf=self.idf
+            Zone_Names=self.Zone_Names, Name=set_name, idf=self.idf
         )
 
     def _domestichotwater(self):
@@ -385,9 +393,6 @@ class Zone(UmiBase):
             zone_ep (eppy.bunch_subclass.EpBunch): The Zone EpBunch.
             sql (dict): The sql dict for this IDF object.
         """
-        cached = cls.get_cached(zone_ep.Name, zone_ep.theidf)
-        if cached:
-            return cached
         start_time = time.time()
         log('\nConstructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
         name = zone_ep.Name
@@ -410,22 +415,6 @@ class Zone(UmiBase):
             )
         )
         return zone
-
-    @classmethod
-    def get_cached(cls, name, idf):
-        """Retrieve the cached object by Name and idf name. If not, returns
-        None.
-
-        Args:
-            name (str): The name of the object in the cache.
-            idf (IDF): The :class:`IDF` object.
-        """
-        try:
-            cached = cls._cache[hash((name, id(idf)))]
-        except KeyError:
-            return None
-        else:
-            return cached
 
     def combine(self, other, weights=None):
         """
@@ -498,7 +487,7 @@ class Zone(UmiBase):
             ),
             Loads=self.Loads.combine(other.Loads, weights),
         )
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
         new_obj._volume = self.volume + other.volume
         new_obj._area = self.area + other.area
         new_attr["Conditioning"]._belongs_to_zone = new_obj
@@ -516,8 +505,10 @@ class Zone(UmiBase):
             self.set_generic_internalmass()
         self.InternalMassExposedPerFloorArea = 0
         log(
-            f"While validating {self}, the required attribute 'InternalMassConstruction' was filled "
-            f"with {self.InternalMassConstruction} and the 'InternalMassExposedPerFloorArea' set to"
+            f"While validating {self}, the required attribute "
+            f"'InternalMassConstruction' was filled "
+            f"with {self.InternalMassConstruction} and the "
+            f"'InternalMassExposedPerFloorArea' set to"
             f" {self.InternalMassExposedPerFloorArea}"
         )
         return self

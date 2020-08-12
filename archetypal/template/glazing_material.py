@@ -96,7 +96,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash((self.__class__.__name__, self.Name))
 
     def __eq__(self, other):
         if not isinstance(other, GlazingMaterial):
@@ -154,7 +154,15 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         # iterate over attributes and apply either float_mean or str_mean.
         new_attr = {}
         for attr in self.__dict__:
-            if attr not in ["Comments", "idf", "sql", "all_objects", "id"]:
+            if attr not in [
+                "Comments",
+                "idf",
+                "sql",
+                "all_objects",
+                "id",
+                "_idf",
+                "_sql",
+            ]:
                 if isinstance(self.__dict__[attr], (int, float)):
                     new_attr[attr] = self._float_mean(other, attr=attr, weights=weights)
                 elif isinstance(self.__dict__[attr], str):
@@ -173,7 +181,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         [new_attr.pop(key, None) for key in meta.keys()]  # meta handles these
         # keywords.
         # create a new object from combined attributes
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 

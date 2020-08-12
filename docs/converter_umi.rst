@@ -43,16 +43,16 @@ Using the Python Console
 
 1. Load the file
 
-First, load the EnergyPlus idf file using the :func:`archetypal.idfclass.load_idf` method. In the following example,
+First, load the EnergyPlus idf file using the :class:`archetypal.idfclass.IDF` class. In the following example,
 the AdultEducationCenter.idf model is used.
 
 .. code-block:: python
 
-    >>> from archetypal import get_eplus_dirs, load_idf
+    >>> from archetypal import get_eplus_dirs, IDF
     >>> eplus_dir = get_eplus_dirs("9-2-0")  # Getting EnergyPlus install path
     >>> eplus_file = eplus_dir / "ExampleFiles" / "BasicsFiles" / "AdultEducationCenter.idf"  # Model path
     >>> weather = eplus_dir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"  # Weather file path
-    >>> idf = load_idf(eplus_file=eplus_file, weather_file=weather)  # IDF load
+    >>> idf = IDF(idfname=eplus_file, epw=weather)  # IDF load
 
 2. Create a BuildingTemplate Object
 
@@ -60,7 +60,7 @@ the AdultEducationCenter.idf model is used.
 
     >>> from archetypal import BuildingTemplate
     >>> template_obj = BuildingTemplate.from_idf(
-    >>>     idf, sql=idf.sql, DataSource=idf.name
+    >>>     idf, DataSource=idf.name
     >>> )
 
 3. Create an UmiTemplateLibrary Object and Save

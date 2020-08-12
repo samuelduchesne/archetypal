@@ -11,10 +11,9 @@ IDF Class
     :nosignatures:
     :toctree: reference/
 
-    load_idf
     IDF
     run_eplus
-    OutputPrep
+    Outputs
 
 .. _templates_label:
 

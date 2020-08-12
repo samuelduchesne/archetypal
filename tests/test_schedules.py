@@ -4,9 +4,7 @@ import pytest
 
 from archetypal import (
     Schedule,
-    load_idf,
     copy_file,
-    run_eplus,
     UmiSchedule,
     config,
     get_eplus_dirs,
@@ -35,9 +33,7 @@ def test_make_umi_schedule(config):
     """Tests only a single schedule name"""
     import matplotlib.pyplot as plt
 
-    idf_file = "tests/input_data/schedules/schedules.idf"
-    idf_file = copy_file(idf_file)
-    idf = IDF(idf_file)
+    idf = IDF("tests/input_data/schedules/schedules.idf")
 
     s = UmiSchedule(Name="POFF", idf=idf, start_day_of_the_week=0)
     ep_year, ep_weeks, ep_days = s.to_year_week_day()
@@ -56,9 +52,26 @@ def test_make_umi_schedule(config):
     assert (new.all_values == s.all_values).all()
 
 
-def test_constant_schedule():
+def test_constant_schedule(config):
     const = Schedule.constant_schedule()
     assert const.__class__.__name__ == "Schedule"
+
+
+@pytest.fixture()
+def mew_idf(config):
+    yield IDF(prep_outputs=False)
+
+
+def test_from_values(mew_idf):
+    import numpy as np
+
+    heating_sched = UmiSchedule.from_values(
+        Name="Zone_Heating_Schedule",
+        values=np.ones(8760),
+        schTypeLimitsName="Fraction",
+        idf=idf,
+    )
+    assert len(heating_sched.all_values) == 8760
 
 
 idf_file = "tests/input_data/schedules/test_multizone_EP.idf"

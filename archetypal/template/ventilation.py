@@ -231,7 +231,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
 
         name = zone.Name + "_VentilationSetting"
 
-        df = {"a": zone.sql}
+        df = {"a": zone.idf.sql}
         ni_df = nominal_infiltration(df)
         sched_df = nominal_mech_ventilation(df)
         nat_df = nominal_nat_ventilation(df)
@@ -360,7 +360,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         )
 
         # create a new object with the previous attributes
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 
@@ -486,14 +486,14 @@ def do_scheduled_ventilation(index, scd_df, zone):
             )
         except:
             ScheduledVentilationSchedule = archetypal.UmiSchedule.constant_schedule(
-                hourly_value=0, idf=zone.idf, Name="AlwaysOff"
+                hourly_value=0, Name="AlwaysOff", idf=zone.idf
             )
             IsScheduledVentilationOn = False
             ScheduledVentilationAch = 0
             ScheduledVentilationSetpoint = 18
     else:
         ScheduledVentilationSchedule = archetypal.UmiSchedule.constant_schedule(
-            hourly_value=0, idf=zone.idf, Name="AlwaysOff"
+            hourly_value=0, Name="AlwaysOff", idf=zone.idf
         )
         IsScheduledVentilationOn = False
         ScheduledVentilationAch = 0
@@ -710,7 +710,7 @@ def nominal_ventilation_aggregation(x):
         df = pd.DataFrame(how_dict, index=range(0, 1))  # range should always be
         # one since we are trying to merge zones
     except Exception as e:
-        print("{}".format(e))
+        log("{}".format(e))
     else:
         return df
 

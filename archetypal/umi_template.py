@@ -4,8 +4,6 @@ import os
 from collections import OrderedDict
 
 import numpy as np
-from path import Path
-
 from archetypal import (
     BuildingTemplate,
     GasMaterial,
@@ -33,6 +31,7 @@ from archetypal import (
     IDF,
     parallel_process,
 )
+from path import Path
 
 
 class UmiTemplateLibrary:
@@ -129,7 +128,6 @@ class UmiTemplateLibrary:
         if BuildingTemplates is None:
             BuildingTemplates = []
 
-        self.idfs = None
         self.idf_files = None
         self.name = name
         self.Zones = Zones
@@ -151,7 +149,9 @@ class UmiTemplateLibrary:
         self.GlazingMaterials = GlazingMaterials
 
     @classmethod
-    def read_idf(cls, idf_files, weather, name="unnamed", parallel=True):
+    def read_idf(
+        cls, idf_files, weather, name="unnamed", processors=-1, as_version=None
+    ):
         """Initializes an UmiTemplateLibrary object from one or more idf_files.
 
         The resulting object contains the reduced version of the IDF files.
@@ -170,29 +170,32 @@ class UmiTemplateLibrary:
         umi_template.idf_files = [Path(idf) for idf in idf_files]
         umi_template.weather = Path(weather).expand()
 
-        # Run/Load IDF objects
-        if not parallel:
-            processors = 1
-        else:
-            processors = -1
         # if parallel is True, run eplus in parallel
         in_dict = {}
-        for idf_file in umi_template.idf_files:
+        for i, idf_file in enumerate(umi_template.idf_files):
             in_dict[idf_file] = dict(
-                idf_file=idf_file, epw=umi_template.weather, annual=True
+                idfname=idf_file,
+                epw=umi_template.weather,
+                annual=True,
+                as_version=as_version or settings.ep_version,
+                verbose="q",
+                position=i + 1,
             )
         umi_template.BuildingTemplates = list(
             parallel_process(
-                in_dict, cls.prep_func, processors=processors, use_kwargs=True
+                in_dict,
+                cls.prep_func,
+                processors=processors,
+                use_kwargs=True,
+                debug=True,
             ).values()
         )
         return umi_template
 
     @staticmethod
-    def prep_func(idf_file, epw, **kwargs):
-        annual = kwargs.pop("annual", False)
-        idf = IDF(idf_file, epw=epw, annual=annual, **kwargs)
-        return BuildingTemplate.from_idf(idf, sql=idf.sql, DataSource=idf.name)
+    def prep_func(idfname, epw, **kwargs):
+        idf = IDF(idfname, epw=epw, **kwargs)
+        return BuildingTemplate.from_idf(idf, DataSource=idf.name)
 
     @classmethod
     def read_file(cls, filename, idf=None):

@@ -198,7 +198,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             else:
                 # defaults with 0 flow rate.
                 total_flow_rate = 0
-                water_schedule = UmiSchedule.constant_schedule(idf=zone._epbunch.theidf)
+                water_schedule = UmiSchedule.constant_schedule(idf=zone.idf)
                 supply_temp = 60
                 inlet_temp = 10
 
@@ -236,7 +236,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                 else obj.Hot_Water_Supply_Temperature_Schedule_Name
             )
 
-            hot_schd = UmiSchedule(Name=schedule_name, idf=zone._epbunch.theidf)
+            hot_schd = UmiSchedule(Name=schedule_name, idf=zone.idf)
             hot_schds.append(hot_schd)
 
         return np.array([sched.all_values.mean() for sched in hot_schds]).mean()
@@ -258,14 +258,13 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                 # If a cold water supply schedule is provided, create the
                 # schedule
                 cold_schd_names = UmiSchedule(
-                    Name=obj.Cold_Water_Supply_Temperature_Schedule_Name,
-                    idf=zone._epbunch.theidf,
+                    Name=obj.Cold_Water_Supply_Temperature_Schedule_Name, idf=zone.idf,
                 )
                 WaterTemperatureInlet.append(cold_schd_names.mean)
             else:
                 # If blank, water temperatures are calculated by the
                 # Site:WaterMainsTemperature object.
-                water_mains_temps = zone._epbunch.theidf.idfobjects[
+                water_mains_temps = zone.idf.idfobjects[
                     "Site:WaterMainsTemperature".upper()
                 ]
                 if water_mains_temps:
@@ -275,8 +274,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                     if water_mains_temp.Calculation_Method.lower() == "schedule":
                         # From Schedule method
                         mains_scd = UmiSchedule(
-                            Name=water_mains_temp.Schedule_Name,
-                            idf=zone._epbunch.theidf,
+                            Name=water_mains_temp.Schedule_Name, idf=zone.idf,
                         )
                         WaterTemperatureInlet.append(mains_scd.mean())
                     elif water_mains_temp.Calculation_Method.lower() == "correlation":
@@ -310,16 +308,16 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         """
         water_schds = collections.defaultdict(dict)
         for obj in dhw_objs:
-            water_schd_name = UmiSchedule(
-                Name=obj.Flow_Rate_Fraction_Schedule_Name, idf=zone._epbunch.theidf
+            water_schd = UmiSchedule(
+                Name=obj.Flow_Rate_Fraction_Schedule_Name, idf=zone.idf
             )
-            water_schds[water_schd_name.Name]["schedule"] = water_schd_name
-            water_schds[water_schd_name.Name]["quantity"] = obj.Peak_Flow_Rate
+            water_schds[water_schd.Name]["schedule"] = water_schd
+            water_schd.quantity = obj.Peak_Flow_Rate
         return reduce(
             UmiSchedule.combine,
             [v["schedule"] for k, v in water_schds.items()],
             weights=None,
-            quantity={k: v["quantity"] for k, v in water_schds.items()},
+            quantity=lambda x: sum(obj.quantity for obj in x),
         )
 
     @classmethod

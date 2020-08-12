@@ -567,7 +567,7 @@ class TestConvertEasy:
         ) = converttesteasy
 
         # Runs EnergyPlus Simulation
-        idf = IDF(idf_file, epw=weather_file, prep_outputs=True, design_day=True)
+        idf = IDF(idf_file, epw=weather_file, design_day=True, prep_outputs=True)
         res = idf.htm
 
         # Copy IDF object, making sure we don't change/overwrite original IDF file
@@ -734,10 +734,10 @@ class TestConvertEasy:
         idf = IDF(
             idf_file,
             epw=weather_file,
-            prep_outputs=outputs,
-            design_day=False,
             annual=True,
+            design_day=False,
             expandobjects=True,
+            prep_outputs=outputs,
         ).simulate()
 
         # Makes sure idf variable is an IDF
@@ -1025,10 +1025,10 @@ class TestConvert:
         idf = IDF(
             idf_file,
             epw=weather_file,
-            prep_outputs=outputs,
-            design_day=False,
             annual=True,
+            design_day=False,
             expandobjects=True,
+            prep_outputs=outputs,
         )
 
         # Output reports
@@ -1138,7 +1138,7 @@ class TestTrnBuild:
 
         # prepare args (key=value)f or EnergyPlus version to use, windows parameters,etc.
         kwargs_dict = {
-            "ep_version": settings.ep_version,
+            "as_version": settings.ep_version,
             "u_value": 2.5,
             "shgc": 0.6,
             "t_vis": 0.78,
@@ -1294,7 +1294,7 @@ def test_trnbuild_from_simple_idf(config):
     # prepare args (key=value)f or EnergyPlus version to use, windows parameters,etc.
     # WINDOW = 2-WSV_#3_Air
     kwargs_dict = {
-        "ep_version": "9-2-0",
+        "as_version": "9-2-0",
         "u_value": 1.62,
         "shgc": 0.64,
         "t_vis": 0.8,

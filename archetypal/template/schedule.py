@@ -242,16 +242,23 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                 )
             )
         Parts = []
-        for i, week in zip(range(int(len(year.fieldvalues[3:]) / 5)), weeks):
+        weeks = {schd.Name: schd for schd in weeks}
 
+        def chunks(lst, n):
+            """Yield successive n-sized chunks from lst."""
+            for i in range(0, len(lst), n):
+                yield lst[i : i + n]
+
+        for fields in chunks(year.fieldvalues[3:], 5):
+            weekname, from_month, from_day, to_month, to_day = fields
             Parts.append(
                 YearSchedulePart(
-                    FromMonth=year["Start_Month_{}".format(i + 1)],
-                    ToMonth=year["End_Month_{}".format(i + 1)],
-                    FromDay=year["Start_Day_{}".format(i + 1)],
-                    ToDay=year["End_Day_{}".format(i + 1)],
+                    FromMonth=from_month,
+                    ToMonth=to_month,
+                    FromDay=from_day,
+                    ToDay=to_day,
                     Schedule=WeekSchedule.from_epbunch(
-                        week,
+                        weeks[weekname],
                         Comments="Year Week Day schedules created from:\n{}".format(
                             "\n".join(lines)
                         ),

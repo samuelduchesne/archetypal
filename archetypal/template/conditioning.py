@@ -8,6 +8,7 @@
 import collections
 import logging as lg
 import math
+import sqlite3
 
 import numpy as np
 from deprecation import deprecated
@@ -303,23 +304,19 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             zone (archetypal.template.zone.Zone): zone to gets information from
         """
         # If Zone is not part of Conditioned Area, it should not have a ZoneLoad object.
-        if not zone.is_part_of_conditioned_floor_area:
+        if zone.is_part_of_conditioned_floor_area and zone.is_part_of_total_floor_area:
+            # First create placeholder object.
+            name = zone.Name + "_ZoneConditioning"
+            z_cond = cls(Name=name, zone=zone, idf=zone.idf, Category=zone.idf.name)
+            z_cond._set_thermostat_setpoints(zone)
+            z_cond._set_zone_cops(zone)
+            z_cond._set_heat_recovery(zone)
+            z_cond._set_mechanical_ventilation(zone)
+            z_cond._set_economizer(zone)
+
+            return z_cond
+        else:
             return None
-        # First create placeholder object.
-        name = zone.Name + "_ZoneConditioning"
-        z_cond = cls(Name=name, zone=zone, idf=zone.idf, Category=zone.idf.name)
-
-        z_cond._set_thermostat_setpoints(zone)
-
-        z_cond._set_zone_cops(zone)
-
-        z_cond._set_heat_recovery(zone)
-
-        z_cond._set_mechanical_ventilation(zone)
-
-        z_cond._set_economizer(zone)
-
-        return z_cond
 
     def _set_economizer(self, zone):
         """Set economizer parameters
@@ -573,20 +570,62 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # Set Thermostat set points
         # Heating and Cooling set points and schedules
-        (
-            self.HeatingSetpoint,
-            self.HeatingSchedule,
-            self.CoolingSetpoint,
-            self.CoolingSchedule,
-        ) = self._get_setpoint_and_scheds(zone)
+        with sqlite3.connect(zone.idf.sql_file) as conn:
+            sql_query = f"""
+                    SELECT t.ReportVariableDataDictionaryIndex
+                    FROM ReportVariableDataDictionary t
+                    WHERE VariableName == 'Zone Thermostat Heating Setpoint Temperature' and KeyValue == '{zone.Name.upper()}';"""
+            index = conn.execute(sql_query).fetchone()
+            if index:
+                sql_query = f"""
+                        SELECT t.VariableValue
+                        FROM ReportVariableData t
+                        WHERE ReportVariableDataDictionaryIndex == {index[0]};"""
+                h_array = conn.execute(sql_query).fetchall()
+                if h_array:
+                    heating_setpoints = np.array(h_array).flatten()
+                    heating_sched = UmiSchedule.from_values(
+                        Name=zone.Name + "_Heating_Schedule",
+                        Values=(heating_setpoints > 0).astype(int),
+                        Type="Fraction",
+                        idf=zone.idf,
+                    )
+                else:
+                    heating_sched = None
+
+            sql_query = f"""
+                    SELECT t.ReportVariableDataDictionaryIndex
+                    FROM ReportVariableDataDictionary t
+                    WHERE VariableName == 'Zone Thermostat Cooling Setpoint Temperature' and KeyValue == '{zone.Name.upper()}';"""
+            index = conn.execute(sql_query).fetchone()
+            if index:
+                sql_query = f"""
+                        SELECT t.VariableValue
+                        FROM ReportVariableData t
+                        WHERE ReportVariableDataDictionaryIndex == {index[0]};"""
+                c_array = conn.execute(sql_query).fetchall()
+                if c_array:
+                    cooling_setpoints = np.array(h_array).flatten()
+                    cooling_sched = UmiSchedule.from_values(
+                        Name=zone.Name + "_Cooling_Schedule",
+                        Values=(cooling_setpoints > 0).astype(int),
+                        Type="Fraction",
+                        idf=zone.idf,
+                    )
+                else:
+                    heating_sched = None
+        self.HeatingSetpoint = heating_setpoints.mean()
+        self.HeatingSchedule = heating_sched
+        self.CoolingSetpoint = cooling_setpoints.mean()
+        self.CoolingSchedule = cooling_sched
 
         # If HeatingSetpoint == nan, means there is no heat or cold input,
         # therefore system is off.
-        if math.isnan(self.HeatingSetpoint):
+        if self.HeatingSetpoint == 0:
             self.IsHeatingOn = False
         else:
             self.IsHeatingOn = True
-        if math.isnan(self.CoolingSetpoint):
+        if self.CoolingSetpoint == 0:
             self.IsCoolingOn = False
         else:
             self.IsCoolingOn = True
@@ -799,36 +838,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # Load the ReportData and filter *variable_output_name* and group by
         # zone name (*KeyValue*). Return annual average.
-        variable_output_name = "Zone Thermostat Heating Setpoint Temperature"
-        h_array = (
-            ReportData.from_sql_dict(zone.idf.sql)
-            .filter_report_data(name=variable_output_name, keyvalue=zone.Name.upper())
-            .loc[:, ["TimeIndex", "Value"]]
-            .set_index("TimeIndex")
-            .Value.values
-        )
 
-        heating_sched = UmiSchedule.from_values(
-            Name=zone.Name + "_Heating_Schedule",
-            Values=(h_array > 0).astype(int),
-            Type="Fraction",
-            idf=zone.idf,
-        )
-
-        variable_output_name = "Zone Thermostat Cooling Setpoint Temperature"
-        c_array = (
-            ReportData.from_sql_dict(zone.idf.sql)
-            .filter_report_data(name=variable_output_name, keyvalue=zone.Name.upper())
-            .loc[:, ["TimeIndex", "Value"]]
-            .set_index("TimeIndex")
-            .Value.values
-        )
-        cooling_sched = UmiSchedule.from_values(
-            Name=zone.Name + "_Cooling_Schedule",
-            Values=(c_array > 0).astype(int),
-            Type="Fraction",
-            idf=zone.idf,
-        )
         if np.all(c_array == 0):
             c_mean = np.NaN
         else:

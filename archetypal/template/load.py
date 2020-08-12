@@ -335,7 +335,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 )
             )
 
-        attr = dict(
+        new_attr = dict(
             DimmingType=self._str_mean(other, "DimmingType"),
             EquipmentAvailabilitySchedule=self.EquipmentAvailabilitySchedule.combine(
                 other.EquipmentAvailabilitySchedule,
@@ -365,7 +365,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             PeopleDensity=self._float_mean(other, "PeopleDensity", weights),
         )
 
-        new_obj = self.__class__(**meta, **attr)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
         new_obj._belongs_to_zone = self._belongs_to_zone
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj

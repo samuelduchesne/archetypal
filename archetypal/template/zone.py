@@ -279,31 +279,20 @@ class Zone(UmiBase):
         InternalMassExposedPerFloorArea = 0 and sets it to the
         self.InternalMassConstruction attribute.
         """
-        mat = self.idf.add_object(
-            ep_object="Material".upper(),
-            Name="Wood 6inch",
-            Roughness="MediumSmooth",
-            Thickness=0.15,
-            Conductivity=0.12,
-            Density=540,
-            Specific_Heat=1210,
-            Thermal_Absorptance=0.7,
-            Visible_Absorptance=0.7,
-        )
-        cons = self.idf.add_object(
-            ep_object="Construction".upper(),
-            Name="InteriorFurnishings",
-            Outside_Layer="Wood 6inch",
-        )
+        mat = self.idf.newidfobject(key="Material".upper(), Name="Wood 6inch",
+                                    Roughness="MediumSmooth", Thickness=0.15,
+                                    Conductivity=0.12, Density=540, Specific_Heat=1210,
+                                    Thermal_Absorptance=0.7, Visible_Absorptance=0.7)
+        cons = self.idf.newidfobject(key="Construction".upper(),
+                                     Name="InteriorFurnishings",
+                                     Outside_Layer="Wood 6inch")
         internal_mass = "{}_InternalMass".format(self.Name)
         cons.Name = internal_mass + "_construction"
-        new_epbunch = self.idf.add_object(
-            ep_object="InternalMass".upper(),
-            Name=internal_mass,
-            Construction_Name=cons.Name,
-            Zone_or_ZoneList_Name=self.Name,
-            Surface_Area=1,
-        )
+        new_epbunch = self.idf.newidfobject(key="InternalMass".upper(),
+                                            Name=internal_mass,
+                                            Construction_Name=cons.Name,
+                                            Zone_or_ZoneList_Name=self.Name,
+                                            Surface_Area=1)
         self.InternalMassConstruction = OpaqueConstruction.from_epbunch(
             new_epbunch, idf=self.idf
         )
@@ -402,9 +391,7 @@ class Zone(UmiBase):
         start_time = time.time()
         log('\nConstructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
         name = zone_ep.Name
-        zone = cls(
-            Name=name, idf=zone_ep.theidf, sql=sql, Category=zone_ep.theidf.name,
-        )
+        zone = cls(Name=name, idf=zone_ep.theidf, sql=sql, Category=zone_ep.theidf.name)
 
         zone._epbunch = zone_ep
         zone._zonesurfaces = zone_ep.zonesurfaces
@@ -487,7 +474,7 @@ class Zone(UmiBase):
                 )
             )
 
-        attr = dict(
+        new_attr = dict(
             Conditioning=self.Conditioning.combine(other.Conditioning, weights),
             Constructions=self.Constructions.combine(other.Constructions, weights),
             Ventilation=self.Ventilation.combine(other.Ventilation, weights),
@@ -510,18 +497,16 @@ class Zone(UmiBase):
                 other, "InternalMassExposedPerFloorArea", weights
             ),
             Loads=self.Loads.combine(other.Loads, weights),
-            idf=self.idf,
-            sql=self.sql,
         )
-        new_obj = self.__class__(**meta, **attr)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
         new_obj._volume = self.volume + other.volume
         new_obj._area = self.area + other.area
-        attr["Conditioning"]._belongs_to_zone = new_obj
-        attr["Constructions"]._belongs_to_zone = new_obj
-        attr["Ventilation"]._belongs_to_zone = new_obj
-        attr["DomesticHotWater"]._belongs_to_zone = new_obj
-        if attr["Windows"]:
-            attr["Windows"]._belongs_to_zone = new_obj
+        new_attr["Conditioning"]._belongs_to_zone = new_obj
+        new_attr["Constructions"]._belongs_to_zone = new_obj
+        new_attr["Ventilation"]._belongs_to_zone = new_obj
+        new_attr["DomesticHotWater"]._belongs_to_zone = new_obj
+        if new_attr["Windows"]:
+            new_attr["Windows"]._belongs_to_zone = new_obj
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 

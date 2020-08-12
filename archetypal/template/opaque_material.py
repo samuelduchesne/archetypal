@@ -143,13 +143,14 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             )
 
     @classmethod
-    def generic(cls):
+    def generic(cls, idf=None):
         """generic plaster board"""
         return cls(
             Conductivity=1.39,
             SpecificHeat=1085,
             Density=2000,
             Name="generic_plaster_board",
+            idf=idf,
         )
 
     def combine(self, other, weights=None):
@@ -208,7 +209,8 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             EmbodiedEnergy=self._float_mean(other, "EmbodiedEnergy", weights),
             MoistureDiffusionResistance=self._float_mean(
                 other, "MoistureDiffusionResistance", weights
-            )
+            ),
+            idf=self.idf
         )
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj

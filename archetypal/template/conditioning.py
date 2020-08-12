@@ -304,7 +304,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # First create placeholder object.
         name = zone.Name + "_ZoneConditioning"
-        z_cond = cls(Name=name, zone=zone, idf=zone.idf, Category=zone.idf.name,)
+        z_cond = cls(Name=name, zone=zone, idf=zone.idf, Category=zone.idf.name)
 
         z_cond._set_thermostat_setpoints(zone)
 
@@ -901,9 +901,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         u = self.CoolingSchedule.combine(other.CoolingSchedule, weights)
         v = self.MechVentSchedule.combine(other.MechVentSchedule, weights)
 
-        # create a new object with the previous attributes
-        new_obj = self.__class__(
-            **meta,
+        new_attr = dict(
             CoolingCoeffOfPerf=a,
             CoolingLimitType=b,
             CoolingSetpoint=c,
@@ -927,6 +925,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             CoolingSchedule=u,
             MechVentSchedule=v,
         )
+        # create a new object with the previous attributes
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 

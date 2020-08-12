@@ -14,29 +14,22 @@ import os
 import platform
 import re
 import subprocess
-import tempfile
 import time
+import warnings
 from collections import defaultdict, OrderedDict
+from io import StringIO
 from itertools import compress
 from math import isclose
 from sqlite3 import OperationalError
 from subprocess import CalledProcessError
 from tempfile import TemporaryDirectory
 
+import archetypal
+import archetypal.settings
 import eppy
 import eppy.modeleditor
 import geomeppy
 import pandas as pd
-from deprecation import deprecated
-from eppy.EPlusInterfaceFunctions import parse_idd
-from eppy.bunch_subclass import EpBunch, BadEPFieldError
-from eppy.easyopen import getiddfile
-from pandas.errors import ParserError
-from path import Path, TempDir
-from tqdm import tqdm
-
-import archetypal
-import archetypal.settings
 from archetypal import (
     log,
     settings,
@@ -48,7 +41,16 @@ from archetypal import (
     get_eplus_dirs,
     EnergyPlusWeatherError,
 )
-from archetypal.utils import _unpack_tuple, parse
+from archetypal.utils import _unpack_tuple, parse, extend_class
+from deprecation import deprecated
+from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.bunch_subclass import BadEPFieldError
+from eppy.easyopen import getiddfile
+from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
+from geomeppy.patches import EpBunch, idfreader1, obj2bunch
+from pandas.errors import ParserError
+from path import Path, TempDir
+from tqdm import tqdm
 
 
 class IDF(geomeppy.IDF):
@@ -66,10 +68,10 @@ class IDF(geomeppy.IDF):
         idf = super(IDF, cls).__new__(cls)
         return idf
 
-    def __init__(self, idfname, epw=None, **kwargs):
+    def __init__(self, idfname=None, epw=None, **kwargs):
         """
         Args:
-            idfname (str or Path): The idf model filename.
+            idfname (str _TemporaryFileWrapper): The idf model filename.
             epw (str or Path): The weather-file
 
         Keyword args:
@@ -79,6 +81,9 @@ class IDF(geomeppy.IDF):
             include=None,
             keep_original=True,
         """
+        self.iddname = None
+        self.idd_info = None
+        self.block = None
         # validate ep_version is a valid version number
         self.load_kwargs = dict(epw=epw, **kwargs)
 
@@ -92,12 +97,19 @@ class IDF(geomeppy.IDF):
                 msg=f"V{ep_version} is not a valid "
                 f"EnergyPlus version number. Choices are {self.valid_idds()}"
             )
+        if not idfname:
+            idfname = StringIO(f"VERSION, {ep_version};")
+            idfname.seek(0)
         if settings.use_cache:
             if self.cached_file(idfname, **self.load_kwargs).exists():
                 return
         self.include = kwargs.get("include")
-        self.original_idfname = Path(idfname).expand()
-        idfname = Path(idfname).expand()
+        self.original_idfname = (
+            Path(idfname).expand() if not isinstance(idfname, StringIO) else idfname
+        )
+        idfname = (
+            Path(idfname).expand() if not isinstance(idfname, StringIO) else idfname
+        )
         output_directory = Path(kwargs.pop("output_directory", ""))
         if not output_directory:
             output_directory = self.get_output_directory(
@@ -107,7 +119,10 @@ class IDF(geomeppy.IDF):
         # path name
         keep_original = kwargs.get("keep_original", True)
         if keep_original:
-            idfname = Path(idfname.copy(output_directory))
+            if isinstance(idfname, StringIO):
+                pass
+            else:
+                idfname = Path(idfname.copy(output_directory))
 
         # Determine version of idf file by reading the text file & compare with
         # user-defined choice
@@ -117,21 +132,24 @@ class IDF(geomeppy.IDF):
         idd_filename = getiddfile(str(file_version))
 
         # Initiate an eppy.modeleditor.IDF object
-        IDF.setiddname(idd_filename, testing=True)
+        self.setiddname(idd_filename, testing=True)
 
         try:
             # load the idf object
+            if isinstance(idfname, StringIO):
+                idfname.seek(0)
             super(IDF, self).__init__(idfname, epw)
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             # Loading the idf object will raise a FileNotFoundError if the
             # version of EnergyPlus is not installed
             to_version = ep_version
-            log(
-                f"The version number of '{self.idfname.basename()}' "
-                f"does not match any EnergyPlus installation on this computer. "
-                f"Transitioning idf file to version {to_version}..."
-            )
+            log(f"{e}\nTransitioning idf file to version {to_version}...")
             self.upgrade(to_version, epw)
+        except IDDNotSetError:
+            IDF.iddname = idd_filename
+            super(IDF, self).__init__(idfname, epw)
+        except Exception as e:
+            raise e
         else:
             # the versions fit, great!
             log(
@@ -140,9 +158,15 @@ class IDF(geomeppy.IDF):
                 level=lg.DEBUG,
             )
         finally:
-            self.idfname = Path(
-                self.idfname
-            ).expand()  # Force idfname to be a Path object.
+            self.idfname = (
+                Path(self.idfname).expand()
+                if not isinstance(idfname, StringIO)
+                else StringIO(self.idfstr())
+            )  # Force idfname to be a Path object if not a StringIO.
+            # Initiate an eppy.modeleditor.IDF object
+
+            if self.idf_version < ep_version:
+                self.upgrade(ep_version, epw)
 
             prep_outputs = kwargs.pop("prep_outputs", True)
             # Set the EnergyPlusOptions object
@@ -170,13 +194,13 @@ class IDF(geomeppy.IDF):
             else:
                 self.OutputPrep = OutputPrep(idf=self)
 
-            self._setCache()
+            if not isinstance(idfname, StringIO):
+                self._setCache()
 
     def __str__(self):
         return self.name
 
-    @classmethod
-    def setiddname(cls, iddname, testing=False):
+    def setiddname(self, iddname, testing=False):
         """Set the path to the EnergyPlus IDD for the version of EnergyPlus
         which is to be used by eppy.
 
@@ -184,9 +208,9 @@ class IDF(geomeppy.IDF):
             iddname (str): Path to the IDD file.
             testing:
         """
-        cls.iddname = iddname
-        cls.idd_info = None
-        cls.block = None
+        self.iddname = iddname
+        self.idd_info = None
+        self.block = None
 
     def valid_idds(self):
         """Returns all valid idd version numbers found in IDFVersionUpdater folder"""
@@ -195,6 +219,57 @@ class IDF(geomeppy.IDF):
             parse((re.match("V(.*)-Energy\+", idd.stem).groups()[0]))
             for idd in iddnames
         ]
+
+    def read(self):
+        """
+        Read the IDF file and the IDD file. If the IDD file had already been
+        read, it will not be read again.
+
+        Read populates the following data structures:
+
+        - idfobjects : list
+        - model : list
+        - idd_info : list
+        - idd_index : dict
+
+        """
+        if self.getiddname() == None:
+            errortxt = (
+                "IDD file needed to read the idf file. "
+                "Set it using IDF.setiddname(iddfile)"
+            )
+            raise IDDNotSetError(errortxt)
+        readout = idfreader1(
+            self.idfname, self.iddname, self, commdct=self.idd_info, block=self.block
+        )
+        (self.idfobjects, block, self.model, idd_info, idd_index, idd_version) = readout
+        self.setidd(idd_info, idd_index, block, idd_version)
+
+    def getiddname(self):
+        """Get the name of the current IDD used by eppy.
+
+        Returns
+        -------
+        str
+
+        """
+        return self.iddname
+
+    def setidd(self, iddinfo, iddindex, block, idd_version):
+        """Set the IDD to be used by eppy.
+
+        Parameters
+        ----------
+        iddinfo : list
+            Comments and metadata about fields in the IDD.
+        block : list
+            Field names in the IDD.
+
+        """
+        self.idd_info = iddinfo
+        self.block = block
+        self.idd_index = iddindex
+        self.idd_version = idd_version
 
     @classmethod
     def __getCache(cls, idfname, **kwargs):
@@ -261,6 +336,8 @@ class IDF(geomeppy.IDF):
 
     @property
     def name(self):
+        if isinstance(self.idfname, StringIO):
+            return str(self.idfname)
         return os.path.basename(self.idfname)
 
     @property
@@ -628,6 +705,15 @@ class IDF(geomeppy.IDF):
                     else:
                         file = f.copy(self.output_directory)
 
+            try:
+                file
+            except NameError:
+                raise EnergyPlusProcessError(
+                    cmd="IDF.upgrade",
+                    stderr=f"An error occurred during transitioning",
+                    idf=self.name,
+                )
+
             idd_filename = Path(getiddfile(get_idf_version(file)))
             if not idd_filename.exists():
                 # Try finding the one in IDFVersionsUpdater
@@ -875,61 +961,105 @@ class IDF(geomeppy.IDF):
         return series
 
     def save(self, filename=None, lineendings="default", encoding="latin-1"):
-        super(IDF, self).save(filename=None, lineendings="default", encoding="latin-1")
-        log(
-            f"saved '{self.name}' at '{filename if filename else self.idfname.expand()}'"
+        super(IDF, self).save(
+            filename=filename, lineendings=lineendings, encoding=encoding
         )
+        log(f"saved '{self.name}' at '{filename if filename else self.idfname}'")
 
-    def add_object(self, ep_object, **kwargs):
+    def newidfobject(self, key, **kwargs):
         """Add a new object to an idf file. The function will test if the object
-        exists to prevent duplicates. By default, the idf with the new object is
-        saved to disk (save=True)
+        exists to prevent duplicates.
 
         Args:
-            ep_object (str): the object name to add, eg. 'OUTPUT:METER' (Must be
-                in all_caps).
-            save (bool): Save the IDF as a text file with the current idfname of
-                the IDF.
-            **kwargs: keyword arguments to pass to other functions.
+            key (str): The type of IDF object. This must be in ALL_CAPS.
+            **kwargs: Keyword arguments in the format `field=value` used to set
+                fields in the EnergyPlus object.
+
+        Example:
+            >>> add_object(
+            >>>     key="Schedule:Constant".upper(),
+            >>>     Name=Name,
+            >>>     Schedule_Type_Limits_Name="",
+            >>>     Hourly_Value=hourly_value,
+            >>> )
 
         Returns:
             EpBunch: the object
         """
         # get list of objects
-        objs = self.idfobjects[ep_object]  # a list
-        # If object is supposed to be 'unique-object', deletes all objects to be
-        # sure there is only one of them when creating new object
-        # (see following line)
-        for obj in objs:
-            if "unique-object" in obj.objidd[0].keys():
-                self.removeidfobject(obj)
+        existing_objs = self.idfobjects[key]  # a list
+
         # create new object
         try:
-            new_object = self.newidfobject(ep_object, **kwargs)
+            new_object = self.anidfobject(key, **kwargs)
         except BadEPFieldError as e:
-            log(f"Could not add object {ep_object} because of : {e}", lg.WARNING)
+            log(f"Could not add object {key} because of : {e}", lg.WARNING)
         else:
-            # Check if new object exists in previous list
-            # If True, delete the object
-            if sum([str(obj).upper() == str(new_object).upper() for obj in objs]) > 1:
-                log(
-                    'object "{}" already exists in idf file'.format(ep_object), lg.DEBUG
-                )
-                # Remove the newly created object since the function
-                # `idf.newidfobject()` automatically adds it
-                self.removeidfobject(new_object)
-                return self.getobject(
-                    ep_object,
-                    kwargs.get(
-                        "Variable_Name",
-                        kwargs.get(
-                            "Key_Name", kwargs.get("Name", kwargs.get("Key_Field"))
-                        ),
-                    ),
-                )
-            else:
-                log('object "{}" added to the idf file'.format(ep_object))
+            # If object is supposed to be 'unique-object', deletes all objects to be
+            # sure there is only one of them when creating new object
+            # (see following line)
+            if "unique-object" in set().union(
+                *(d.objidd[0].keys() for d in existing_objs)
+            ):
+                for obj in existing_objs:
+                    self.removeidfobject(obj)
+                    self.idfobjects[key].append(new_object)
+                    log(
+                        f"{obj} is a 'unique-object'; Removed and replaced with"
+                        f" {new_object}",
+                        lg.DEBUG,
+                    )
                 return new_object
+            if new_object in existing_objs:
+                # If obj already exists, simply return
+                log(
+                    f"object '{new_object}' already exists in {self.name}. "
+                    f"Skipping.",
+                    lg.DEBUG,
+                )
+                return new_object
+            else:
+                # add to model and return
+                self.idfobjects[key].append(new_object)
+                log(f"object '{new_object}' added to '{self.name}'", lg.DEBUG)
+                return new_object
+
+    def anidfobject(self, key, aname="", **kwargs):
+        # type: (str, str, **Any) -> EpBunch
+        """Create an object, but don't add to the model (See
+        :func:`~archetypal.idfclass.IDF.newidfobject`). If you don't specify a value
+        for a field, the default value will be set.
+
+        Example:
+            >>> anidfobject("CONSTRUCTION")
+            >>> anidfobject(
+            >>>     key="CONSTRUCTION",
+            >>>     Name='Interior Ceiling_class',
+            >>>     Outside_Layer='LW Concrete',
+            >>>     Layer_2='soundmat'
+            >>> )
+
+        Args:
+            key (str): The type of IDF object. This must be in ALL_CAPS.
+            aname (str): This parameter is not used. It is left there for backward
+                compatibility.
+            kwargs: Keyword arguments in the format `field=value` used to set
+                fields in the EnergyPlus object.
+
+        Returns:
+            EpBunch: object.
+        """
+        obj = newrawobject(self.model, self.idd_info, key)
+        abunch = obj2bunch(self.model, self.idd_info, obj)
+        if aname:
+            warnings.warn(
+                "The aname parameter should no longer be used (%s)." % aname,
+                UserWarning,
+            )
+            namebunch(abunch, aname)
+        for k, v in kwargs.items():
+            abunch[k] = v
+        return abunch
 
     def get_schedule_type_limits_data_by_name(self, schedule_limit_name):
         """Returns the data for a particular 'ScheduleTypeLimits' object
@@ -1152,15 +1282,14 @@ class IDF(geomeppy.IDF):
 
     def _execute_transitions(self, idf_file, to_version):
         trans_exec = {
-            idd_version: exec
-            for idd_version, exec in zip(
-                self.valid_idds(), self.idfversionupdater_dir.files("Transition-V*")
-            )
+            parse(re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)): exec
+            for exec in self.idfversionupdater_dir.files("Transition-V*")
         }
 
         transitions = [
-            key for key in trans_exec if key < to_version and key >= self.idf_version
+            key for key in trans_exec if key <= to_version and key > self.idf_version
         ]
+        transitions.sort()
 
         for trans in transitions:
             if not trans_exec[trans].exists():
@@ -1666,8 +1795,8 @@ class OutputPrep:
         Examples:
             >>> outputs = [
             >>>         {
-            >>>             "ep_object": "OUTPUT:METER",
-            >>>             "kwargs": dict(
+            >>>             "key": "OUTPUT:METER",
+            >>>             **dict(
             >>>                 Key_Name="Electricity:Facility",
             >>>                 Reporting_Frequency="hourly",
             >>>                 save=True,
@@ -1690,12 +1819,7 @@ class OutputPrep:
 
     def add_schedules(self):
         """Adds Schedules object"""
-        outputs = [
-            {
-                "ep_object": "Output:Schedules".upper(),
-                "kwargs": dict(Key_Field="Hourly"),
-            }
-        ]
+        outputs = [{"key": "Output:Schedules".upper(), **dict(Key_Field="Hourly"),}]
 
         self.outputs.extend(outputs)
         return self
@@ -1721,8 +1845,8 @@ class OutputPrep:
         """
         outputs = [
             {
-                "ep_object": "Output:Table:SummaryReports".upper(),
-                "kwargs": dict(Report_1_Name=summary),
+                "key": "Output:Table:SummaryReports".upper(),
+                **dict(Report_1_Name=summary),
             }
         ]
 
@@ -1762,8 +1886,8 @@ class OutputPrep:
         """
         outputs = [
             {
-                "ep_object": "OutputControl:Table:Style".upper(),
-                "kwargs": dict(Column_Separator=output_control_table_style),
+                "key": "OutputControl:Table:Style".upper(),
+                **dict(Column_Separator=output_control_table_style),
             }
         ]
 
@@ -1775,141 +1899,131 @@ class OutputPrep:
         # list the outputs here
         outputs = [
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Air System Total Heating Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Air System Total Cooling Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Thermostat Heating Setpoint Temperature",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Heat Exchanger Total Heating Rate",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Heat Exchanger Sensible Effectiveness",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Heat Exchanger Latent Effectiveness",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Water Heater Heating Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
+                "key": "OUTPUT:METER",
+                **dict(
                     Key_Name="HeatRejection:EnergyTransfer",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Heating:EnergyTransfer", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Heating:EnergyTransfer", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Cooling:EnergyTransfer", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:EnergyTransfer", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
+                "key": "OUTPUT:METER",
+                **dict(
                     Key_Name="Heating:DistrictHeating", Reporting_Frequency="hourly"
                 ),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Heating:Electricity", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(Key_Name="Heating:Gas", Reporting_Frequency="hourly"),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Heating:Gas", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
+                "key": "OUTPUT:METER",
+                **dict(
                     Key_Name="Cooling:DistrictCooling", Reporting_Frequency="hourly"
                 ),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
+                "key": "OUTPUT:METER",
+                **dict(
                     Key_Name="WaterSystems:EnergyTransfer", Reporting_Frequency="hourly"
                 ),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
             },
         ]
 
@@ -1923,36 +2037,36 @@ class OutputPrep:
         # list the outputs here
         outputs = [
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Air System Total Heating Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Air System Total Cooling Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Water Heater Heating Energy",
                     Reporting_Frequency="hourly",
                 ),
@@ -1969,32 +2083,26 @@ class OutputPrep:
         # list the outputs here
         outputs = [
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Electricity:Facility", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Electricity:Facility", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(Key_Name="Gas:Facility", Reporting_Frequency="hourly"),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Gas:Facility", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
+                "key": "OUTPUT:METER",
+                **dict(
                     Key_Name="WaterSystems:Electricity", Reporting_Frequency="hourly"
                 ),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Heating:Electricity", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Heating:Electricity", Reporting_Frequency="hourly"),
             },
             {
-                "ep_object": "OUTPUT:METER",
-                "kwargs": dict(
-                    Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"
-                ),
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"),
             },
         ]
         self.outputs.extend(outputs)
@@ -2003,7 +2111,7 @@ class OutputPrep:
     def apply(self):
         """Applies the outputs to the idf model"""
         for output in self.outputs:
-            self.idf.add_object(output["ep_object"], **output["kwargs"])
+            self.idf.newidfobject(**output)
         return self
 
     def save(self):
@@ -2562,10 +2670,14 @@ def hash_file(idfname, **kwargs):
 
     # create hasher
     hasher = hashlib.md5()
-    with open(idfname, "rb") as afile:
-        buf = afile.read()
-        hasher.update(buf)
-        hasher.update(kwargs.__str__().encode("utf-8"))  # Hashing the kwargs as well
+    if isinstance(idfname, StringIO):
+        idfname.seek(0)
+        buf = idfname.read().encode("utf-8")
+    else:
+        with open(idfname, "rb") as afile:
+            buf = afile.read()
+    hasher.update(buf)
+    hasher.update(kwargs.__str__().encode("utf-8"))  # Hashing the kwargs as well
     return hasher.hexdigest()
 
 
@@ -3027,32 +3139,36 @@ def get_idf_version(file, doted=True):
     the 'VERSION' identifier
 
     Args:
-        file (str): Absolute or relative Path to the idf file
+        file (str or StringIO): Absolute or relative Path to the idf file
         doted (bool, optional): Wheter or not to return the version number
 
     Returns:
         str: the version id
     """
-    with open(os.path.abspath(file), "r", encoding="latin-1") as fhandle:
-        try:
+    if isinstance(file, StringIO):
+        txt = file.seek(0)
+        txt = file.read()
+    else:
+        with open(os.path.abspath(file), "r", encoding="latin-1") as fhandle:
             txt = fhandle.read()
-            ntxt = parse_idd.nocomment(txt, "!")
-            blocks = ntxt.split(";")
-            blocks = [block.strip() for block in blocks]
-            bblocks = [block.split(",") for block in blocks]
-            bblocks1 = [[item.strip() for item in block] for block in bblocks]
-            ver_blocks = [block for block in bblocks1 if block[0].upper() == "VERSION"]
-            ver_block = ver_blocks[0]
-            if doted:
-                versionid = ver_block[1]
-            else:
-                versionid = ver_block[1].replace(".", "-") + "-0"
-        except Exception as e:
-            log('Version id for file "{}" cannot be found'.format(file))
-            log("{}".format(e))
-            raise
+    try:
+        ntxt = parse_idd.nocomment(txt, "!")
+        blocks = ntxt.split(";")
+        blocks = [block.strip() for block in blocks]
+        bblocks = [block.split(",") for block in blocks]
+        bblocks1 = [[item.strip() for item in block] for block in bblocks]
+        ver_blocks = [block for block in bblocks1 if block[0].upper() == "VERSION"]
+        ver_block = ver_blocks[0]
+        if doted:
+            versionid = ver_block[1]
         else:
-            return versionid
+            versionid = ver_block[1].replace(".", "-") + "-0"
+    except Exception as e:
+        log('Version id for file "{}" cannot be found'.format(file))
+        log("{}".format(e))
+        raise
+    else:
+        return versionid
 
 
 def getoldiddfile(versionid):
@@ -3072,42 +3188,6 @@ def getoldiddfile(versionid):
     eplusfolder = os.path.dirname(eplus_exe)
     iddfile = "{}/bin/Energy+.idd".format(eplusfolder)
     return iddfile
-
-
-def _create_idf_object(version):
-    """ Creates an IDF object with only the VERSION of the IDF
-
-    Args:
-        version (str): Version of the IDF to use in the form "9-2-0"
-            (with hyphen, no point)
-
-    Returns:
-        An archetypal.IDF object
-
-    """
-    # Create a new idf object and add the schedule to it.
-    idftxt = "VERSION, {};".format(
-        version.replace("-", ".")[0:3]
-    )  # Not an empty string. has just the
-    # version number
-    # we can make a file handle of a string
-    if not Path(settings.cache_folder).exists():
-        Path(settings.cache_folder).mkdir_p()
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        suffix="_" + version + ".idf",
-        prefix="temp_",
-        dir=settings.cache_folder,
-        delete=False,
-    ) as file:
-        file.write(idftxt)
-    # initialize the IDF object with the file handle
-    from eppy.easyopen import easyopen
-
-    idf_scratch = easyopen(file.name)
-    idf_scratch.__class__ = archetypal.IDF
-
-    return idf_scratch
 
 
 if __name__ == "__main__":

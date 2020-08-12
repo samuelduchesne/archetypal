@@ -4,12 +4,7 @@ import logging as lg
 from deprecation import deprecated
 
 from archetypal import log, timeit, reduce, __version__
-from archetypal.template import (
-    UmiBase,
-    Unique,
-    UniqueName,
-    OpaqueConstruction,
-)
+from archetypal.template import UmiBase, Unique, UniqueName, OpaqueConstruction
 
 
 class ZoneConstructionSet(UmiBase, metaclass=Unique):
@@ -239,16 +234,16 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             IsSlabAdiabatic=any([self.IsSlabAdiabatic, other.IsSlabAdiabatic]),
             Roof=self.Roof.combine(other.Roof),
             IsRoofAdiabatic=any([self.IsRoofAdiabatic, other.IsRoofAdiabatic]),
-            Partition=self.Partition.combine(other.Partition,),
+            Partition=self.Partition.combine(other.Partition),
             IsPartitionAdiabatic=any(
                 [self.IsPartitionAdiabatic, other.IsPartitionAdiabatic]
             ),
-            Ground=self.Ground.combine(other.Ground,),
+            Ground=self.Ground.combine(other.Ground),
             IsGroundAdiabatic=any([self.IsGroundAdiabatic, other.IsGroundAdiabatic]),
-            Facade=self.Facade.combine(other.Facade,),
+            Facade=self.Facade.combine(other.Facade),
             IsFacadeAdiabatic=any([self.IsFacadeAdiabatic, other.IsFacadeAdiabatic]),
         )
-        new_obj = self.__class__(**meta, **new_attr)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 

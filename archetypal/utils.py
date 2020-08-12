@@ -658,17 +658,17 @@ def copy_file(files, where=None):
 class EnergyPlusProcessError(Exception):
     """EnergyPlus Process call error"""
 
-    def __init__(self, cmd, stderr, idf):
+    def __init__(self, cmd=None, stderr=None, idf=None):
         """
         Args:
             cmd:
             stderr:
             idf:
         """
-        super().__init__(stderr)
         self.cmd = cmd
         self.idf = idf
         self.stderr = stderr
+        super().__init__(self.stderr)
 
     def __str__(self):
         """Override that only returns the stderr"""
@@ -707,8 +707,7 @@ class EnergyPlusVersionError(Exception):
                 self.msg = (
                     f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
                     f"is {compares_} than the specified EnergyPlus version "
-                    f"(v{self.ep_version}) and does not match an available EnergyPlus "
-                    f"installation on this machine"
+                    f"(v{self.ep_version})"
                 )
 
         return self.msg

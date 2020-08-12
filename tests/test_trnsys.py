@@ -715,15 +715,15 @@ class TestConvertEasy:
         # Adds Output variable in IDF
         outputs = [
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Thermostat Heating Setpoint Temperature",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
                     Reporting_Frequency="hourly",
                 ),
@@ -1006,15 +1006,15 @@ class TestConvert:
         # Adds Output variable in IDF
         outputs = [
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Thermostat Heating Setpoint Temperature",
                     Reporting_Frequency="hourly",
                 ),
             },
             {
-                "ep_object": "Output:Variable".upper(),
-                "kwargs": dict(
+                "key": "Output:Variable".upper(),
+                **dict(
                     Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
                     Reporting_Frequency="hourly",
                 ),

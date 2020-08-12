@@ -369,19 +369,12 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Args:
             idf (IDF):
         """
-        idf.add_object(
-            "WindowMaterial:SimpleGlazingSystem".upper(),
-            Name="SimpleWindow:SINGLE PANE HW WINDOW",
-            UFactor=2.703,
-            Solar_Heat_Gain_Coefficient=0.704,
-            Visible_Transmittance=0.786,
-        )
+        idf.newidfobject("WindowMaterial:SimpleGlazingSystem".upper(),
+                         Name="SimpleWindow:SINGLE PANE HW WINDOW", UFactor=2.703,
+                         Solar_Heat_Gain_Coefficient=0.704, Visible_Transmittance=0.786)
 
-        constr = idf.add_object(
-            "CONSTRUCTION",
-            Name="SINGLE PANE HW WINDOW",
-            Outside_Layer="SimpleWindow:SINGLE PANE HW WINDOW",
-        )
+        constr = idf.newidfobject("CONSTRUCTION", Name="SINGLE PANE HW WINDOW",
+                                  Outside_Layer="SimpleWindow:SINGLE PANE HW WINDOW")
         return cls.from_construction(Construction=constr)
 
     @classmethod
@@ -729,7 +722,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 other.ShadingSystemAvailabilitySchedule, weights
             ),
         )
-        new_obj = self.__class__(**meta, **new_attr)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
         new_obj._predecessors.extend(self._predecessors + other._predecessors)
         return new_obj
 
@@ -796,7 +789,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return w
 
     @classmethod
-    def from_ref(cls, ref, building_templates):
+    def from_ref(cls, ref, building_templates, idf=None):
         """In some cases, the WindowSetting is referenced in the DataStore to the
         Windows property of a BuildingTemplate (instead of being listed in the
         WindowSettings list. This is the case in the original
@@ -817,7 +810,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 )
             )
         )
-        w = cls.from_json(**store)
+        w = cls.from_json(**store, idf=idf)
         return w
 
     def validate(self):

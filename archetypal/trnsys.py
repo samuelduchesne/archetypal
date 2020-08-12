@@ -17,10 +17,6 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
-from geomeppy.geom.polygons import Polygon3D
-from path import Path
-from tqdm import tqdm
-
 from archetypal import (
     log,
     settings,
@@ -35,6 +31,9 @@ from archetypal import (
     ReportData,
     IDF,
 )
+from geomeppy.geom.polygons import Polygon3D
+from path import Path
+from tqdm import tqdm
 
 
 def convert_idf_to_trnbuild(
@@ -131,15 +130,15 @@ def convert_idf_to_trnbuild(
     ep_version = kwargs.pop("ep_version", None)
     outputs = [
         {
-            "ep_object": "Output:Variable".upper(),
-            "kwargs": dict(
+            "key": "Output:Variable".upper(),
+            **dict(
                 Variable_Name="Zone Thermostat Heating Setpoint Temperature",
                 Reporting_Frequency="hourly",
             ),
         },
         {
-            "ep_object": "Output:Variable".upper(),
-            "kwargs": dict(
+            "key": "Output:Variable".upper(),
+            **dict(
                 Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
                 Reporting_Frequency="hourly",
             ),

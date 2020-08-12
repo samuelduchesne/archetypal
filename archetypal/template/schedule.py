@@ -53,7 +53,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         return super(UmiSchedule, cls).from_values(Name=Name, values=values, **kwargs)
 
     @classmethod
-    def from_yearschedule(cls, year_sched):
+    def from_yearschedule(cls, year_sched, idf=None):
         """
         Args:
             year_sched:
@@ -63,6 +63,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                 Name=year_sched.Name,
                 values=year_sched.all_values,
                 schTypeLimitsName=year_sched.schTypeLimitsName,
+                idf=idf,
             )
 
     def __add__(self, other):
@@ -502,20 +503,34 @@ class WeekSchedule(UmiSchedule):
 class YearSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles yearly schedules."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, Name, schTypeLimitsName="Fraction", Parts=None, **kwargs):
         """Initialize a YearSchedule object with parameters:
 
         Args:
+            Parts (list of YearScheduleParts): The YearScheduleParts.
+            **kwargs:
+        """
+        super(YearSchedule, self).__init__(
+            Name=Name, schTypeLimitsName=schTypeLimitsName, **kwargs
+        )
+        self.epbunch = kwargs.get("epbunch", None)
+        if Parts is None:
+            self.Parts = self.get_parts(self.epbunch)
+        else:
+            self.Parts = Parts
+
+    @classmethod
+    def from_parts(cls, *args, Parts, **kwargs):
+        """
+        Args:
+            Parts (list of YearScheduleParts):
             *args:
             **kwargs:
         """
-        super(YearSchedule, self).__init__(*args, **kwargs)
-        self.epbunch = kwargs.get("epbunch", None)
-        parts = kwargs.get("Parts", None)
-        if parts is None:
-            self.Parts = self.get_parts(self.epbunch)
-        else:
-            self.Parts = parts
+        ysp = cls(*args, Parts=Parts, **kwargs)
+        ysp.values = ysp.all_values
+
+        return ysp
 
     @property
     def all_values(self):
@@ -573,7 +588,8 @@ class YearSchedule(UmiSchedule):
             YearScheduleParts.from_dict(all_objects=ys, **part) for part in parts
         ]
         ys.schType = "Schedule:Year"
-        return UmiSchedule.from_yearschedule(ys)
+        idf = kwargs.get("idf", None)
+        return UmiSchedule.from_yearschedule(ys, idf=idf)
 
     def to_json(self):
         """Returns a dict-like representation of the schedule.

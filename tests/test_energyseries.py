@@ -25,12 +25,10 @@ def energy_series(config, request):
     from archetypal import ReportData
 
     outputs = {
-        "ep_object": "Output:Variable".upper(),
-        "kwargs": {
-            "Key_Value": "OCCUPY-1",
-            "Variable_Name": "Schedule Value",
-            "Reporting_Frequency": "Hourly",
-        },
+        "key": "Output:Variable".upper(),
+        "Key_Value": "OCCUPY-1",
+        "Variable_Name": "Schedule Value",
+        "Reporting_Frequency": "Hourly",
     }
     wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     sql = IDF(request.param, epw=wf, prep_outputs=[outputs]).sql_file

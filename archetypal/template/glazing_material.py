@@ -144,8 +144,6 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
             return self
 
         meta = self._get_predecessors_meta(other)
-        idf = self.__dict__.get("idf")
-        sql = self.__dict__.get("sql")
 
         if not weights:
             log(
@@ -175,7 +173,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         [new_attr.pop(key, None) for key in meta.keys()]  # meta handles these
         # keywords.
         # create a new object from combined attributes
-        new_obj = self.__class__(**meta, idf=idf, sql=sql, **new_attr)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, sql=self.sql)
         new_obj._predecessors.extend(self.predecessors + other.predecessors)
         return new_obj
 

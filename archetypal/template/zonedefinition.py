@@ -30,7 +30,7 @@ from archetypal.template import (
     WindowSetting,
     CREATED_OBJECTS,
     UniqueName,
-    Unique
+    Unique,
 )
 
 
@@ -124,7 +124,8 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
                     self.Ventilation == other.Ventilation,
                     self.Windows == other.Windows,
                     self.InternalMassConstruction == other.InternalMassConstruction,
-                    self.InternalMassExposedPerFloorArea == other.InternalMassExposedPerFloorArea,
+                    self.InternalMassExposedPerFloorArea
+                    == other.InternalMassExposedPerFloorArea,
                     self.DaylightMeshResolution == other.DaylightMeshResolution,
                     self.DaylightWorkplaneHeight == other.DaylightWorkplaneHeight,
                 ]

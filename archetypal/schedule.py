@@ -83,14 +83,13 @@ class Schedule(object):
             self.epbunch = None
 
         if self.Type is None:
-            self.Type = self.get_schedule_type_limits_name(
-                sch_type=self.schType
-            )
+            self.Type = self.get_schedule_type_limits_name(sch_type=self.schType)
 
     @property
     def idf(self):
         if self._idf is None:
             from archetypal.idfclass import IDF
+
             self._idf = IDF()
         return self._idf
 
@@ -104,13 +103,7 @@ class Schedule(object):
             Type:
             **kwargs:
         """
-        return cls(
-            Name=Name,
-            Values=Values,
-            Type=Type,
-            idf=idf,
-            **kwargs,
-        )
+        return cls(Name=Name, Values=Values, Type=Type, idf=idf, **kwargs,)
 
     @classmethod
     def constant_schedule(cls, hourly_value=1, Name="AlwaysOn", idf=None, **kwargs):
@@ -973,9 +966,7 @@ class Schedule(object):
                 blocks[i]["end_day"] = 31
                 blocks[i]["end_month"] = 12
 
-        new_dict = dict(
-            Name=self.Name, Schedule_Type_Limits_Name=self.Type
-        )
+        new_dict = dict(Name=self.Name, Schedule_Type_Limits_Name=self.Type)
         for i in blocks:
             new_dict.update(
                 {

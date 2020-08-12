@@ -1041,11 +1041,14 @@ def reduce(function, iterable, **attr):
         iterable:
         **attr:
     """
-    it = iter(iterable)
-    value = next(it)
-    for element in it:
-        value = function(value, element, **attr)
-    return value
+    if iterable:
+        it = iter(iterable)
+        value = next(it)
+        for element in it:
+            value = function(value, element, **attr)
+        return value
+    else:
+        return None
 
 
 def _unpack_tuple(x):

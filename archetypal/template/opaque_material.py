@@ -106,6 +106,20 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
 
     @property
+    def ThermalEmittance(self):
+        return self._thermal_emittance
+
+    @ThermalEmittance.setter
+    def ThermalEmittance(self, value):
+        if 9.9999e-6 < value <= 1:
+            self._thermal_emittance = value
+        else:
+            raise ValueError(
+                f"Out of range value Numeric Field (ThermalEmittance), "
+                f"value={value}, "
+                "range={>9.9999E-6 and <=1}, "
+                f"in MATERIAL={self.Name}"
+            )
 
     def __add__(self, other):
         """Overload + to implement self.combine.

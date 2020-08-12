@@ -96,6 +96,8 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         self._zonesurfaces = kwargs.get("zonesurfaces", None)
         self._area = None
         self._volume = None
+        self._is_part_of_conditioned_floor_area = None
+        self._is_part_of_total_floor_area = None
 
         if self not in CREATED_OBJECTS:
             CREATED_OBJECTS.append(self)
@@ -197,7 +199,29 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
 
     @property
     def is_part_of_conditioned_floor_area(self):
-        return is_part_of_conditioned_floor_area(self)
+        """Returns True if zone is conditioned"""
+        if self._is_part_of_conditioned_floor_area is None:
+            with sqlite3.connect(self.idf.sql_file) as conn:
+                sql_query = f"""
+                        SELECT t.Value
+                        FROM TabularDataWithStrings t
+                        WHERE TableName == 'Zone Summary' and ColumnName == 'Conditioned (Y/N)' and RowName == '{self.Name.upper()}';"""
+                res = conn.execute(sql_query).fetchone()
+            self._is_part_of_conditioned_floor_area = "Yes" in res
+        return self._is_part_of_conditioned_floor_area
+
+    @property
+    def is_part_of_total_floor_area(self):
+        """Returns True if zone is part of the total floor area"""
+        if self._is_part_of_total_floor_area is None:
+            with sqlite3.connect(self.idf.sql_file) as conn:
+                sql_query = f"""
+                            SELECT t.Value
+                            FROM TabularDataWithStrings t
+                            WHERE TableName == 'Zone Summary' and ColumnName =='Part of Total Floor Area (Y/N)' and RowName == '{self.Name.upper()}';"""
+                res = conn.execute(sql_query).fetchone()
+            self._is_part_of_total_floor_area = "Yes" in res
+        return self._is_part_of_total_floor_area
 
     @staticmethod
     def get_volume_from_surfs(zone_surfs):
@@ -727,30 +751,6 @@ def is_core(zone):
             pass  # pass surfaces that don't have an OBC,
             # eg. InternalMass
     return iscore
-
-
-def is_part_of_conditioned_floor_area(zone):
-    """Returns True if Zone epbunch has a LoadType in the ZoneSizes table"
-
-    Args:
-        zone (ZoneDefinition): The Zone object.
-    """
-    with sqlite3.connect(zone.idf.sql_file) as conn:
-        sql_query = f"""
-                SELECT t.Value
-                FROM TabularDataWithStrings t
-                WHERE TableName == 'Zone Summary' and ColumnName == 'Conditioned (Y/N)' and RowName == '{zone.Name.upper()}';"""
-        res = conn.execute(sql_query).fetchone()
-    return "Yes" in res
-
-
-def is_part_of_total_floor_area(zone):
-    """Returns True if Zone epbunch has :attr:`Part_of_Total_Floor_Area` == "YES"
-
-        Args:
-            zone (ZoneDefinition): The Zone object.
-        """
-    return zone._epbunch.Part_of_Total_Floor_Area.upper() != "NO"
 
 
 def iscore(row):

@@ -105,7 +105,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         self.EmbodiedEnergy = EmbodiedEnergy
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
 
-        self._thickness = kwargs.get("Thickness", None)
+    @property
 
     def __add__(self, other):
         """Overload + to implement self.combine.

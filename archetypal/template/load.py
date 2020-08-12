@@ -297,7 +297,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             )
             row = c.execute(sql_query, (int(zone_index),)).fetchall()
             people_schedules = []
-            people_densities = []
+            people_densities = [0]
             for row in row:
                 schedule_index, People = row
                 PeopleDensity = People / zone.area
@@ -323,6 +323,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
                 weights=None,
                 quantity=lambda x: sum(obj.quantity for obj in x),
             )
+            PeopleDensity = sum(people_densities)
 
         name = zone.Name + "_ZoneLoad"
         z_load = cls(

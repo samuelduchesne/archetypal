@@ -10,6 +10,7 @@ import uuid
 
 import numpy as np
 from deprecation import deprecated
+from eppy.bunch_subclass import BadEPFieldError
 
 import archetypal
 from archetypal.template import (
@@ -497,22 +498,16 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             epbunch (EpBunch): EP-Construction object
         """
         layers = []
-        field_idd = epbunch.getfieldidd("Outside_Layer")
-        validobjects = field_idd["validobjects"]  # plausible layer types
-        for layer in epbunch.fieldvalues[2:]:
+        for layer in epbunch.fieldnames[2:]:
             # Iterate over the constructions layers
-            found = False
-            for key in validobjects:
+            material = epbunch.get_referenced_object(layer)
+            if material:
+                o = OpaqueMaterial.from_epbunch(material)
                 try:
-                    material = epbunch.theidf.getobject(key, layer)
-                    o = OpaqueMaterial.from_epbunch(material)
-                    found = True
-                except AttributeError:
-                    pass
-                else:
-                    layers.append(MaterialLayer(Material=o, Thickness=o._thickness))
-            if not found:
-                raise AttributeError("%s material not found in IDF" % layer)
+                    thickness = material.Thickness
+                except BadEPFieldError:
+                    thickness = o.Conductivity * material.Thermal_Resistance
+                layers.append(MaterialLayer(Material=o, Thickness=thickness))
         return layers
 
     def to_json(self):

@@ -3192,7 +3192,7 @@ class ExpandObjectsThread(Thread):
         return self.p.returncode
 
     def msg_callback(self, *args, **kwargs):
-        log(*args, **kwargs)
+        log(*args, name=self.idf.name, **kwargs)
 
     def success_callback(self):
         if (self.run_dir / "expanded.idf").exists():
@@ -3325,7 +3325,7 @@ class SlabThread(Thread):
         return self.p.returncode
 
     def msg_callback(self, *args, **kwargs):
-        log(*args, **kwargs)
+        log(*args, name=self.idf.name, **kwargs)
 
     def success_callback(self):
         temp_schedule = self.run_dir / "SLABSurfaceTemps.txt"
@@ -3472,7 +3472,7 @@ class TransitionThread(Thread):
         return transitions
 
     def msg_callback(self, *args, **kwargs):
-        log(*args, **kwargs)
+        log(*args, name=self.idf.name, **kwargs)
 
     def success_callback(self):
         # retrieve transitioned file
@@ -3620,7 +3620,7 @@ class EnergyPlusThread(Thread):
         return self.p.returncode
 
     def msg_callback(self, *args, **kwargs):
-        log(*args, **kwargs)
+        log(*args, name=self.idf.name, **kwargs)
 
     def success_callback(self):
         save_dir = self.idf.simulation_dir

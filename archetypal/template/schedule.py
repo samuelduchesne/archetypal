@@ -114,13 +114,15 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
         Args:
             other (UmiSchedule): The other Schedule object to combine with.
-            weights (list): Attribute of self and other containing the weight
-                factor.
-            quantity (list, dict or callable): Scalar value that will be multiplied by
-                self before the averaging occurs. This ensures that the
-                resulting schedule returns the correct integrated value. If a
-                dict is passed, keys are schedules Names and values are
-                quantities.
+            weights (list, dict or string): Attribute of self and other containing the
+                weight factor. If a list is passed, it must have len = 2; the first
+                element is applied to self and the second element is applied to other.
+                If a dict is passed, the self.Name and other.Name are the keys. If a
+                str is passed, the
+            quantity (list or dict): Scalar value that will be multiplied by self before
+                the averaging occurs. This ensures that the resulting schedule
+                returns the correct integrated value. If a dict is passed, keys are
+                schedules Names and values are quantities.
 
         Returns:
             (UmiSchedule): the combined UmiSchedule object.
@@ -144,12 +146,11 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             if self.quantity and other.quantity:
                 self.quantity += other.quantity
             return self
-
         # check if self is only zeros. Should not affect other.
-        if all(self.all_values == 0):
+        if not np.any(self.all_values):
             return other
         # check if other is only zeros. Should not affect self.
-        if all(other.all_values == 0):
+        if not np.any(other.all_values):
             return self
 
         if not weights:
@@ -159,13 +160,26 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             )
             weights = [1, 1]
         elif isinstance(weights, str):
+            # get the attribute from self and other
             weights = [getattr(self, weights), getattr(other, weights)]
+        elif isinstance(weights, (list, tuple)):
+            # check if length is 2.
+            l = len(weights)
+            if l != 2:
+                raise ValueError(
+                    "USing a list or tuple, the weights attribute must "
+                    "have a length of 2. A length of {}".format(l)
+                )
+        elif isinstance(weights, dict):
+            weights = [weights[self.Name], weights[other.Name]]
 
         if quantity is None:
             new_values = np.average(
                 [self.all_values, other.all_values], axis=0, weights=weights
             )
         elif isinstance(quantity, dict):
+            # Multiplying the schedule values by the quantity for both self and other
+            # and then using a weighted average. Finally, new values are normalized.
             new_values = np.average(
                 [
                     self.all_values * quantity[self.Name],
@@ -186,6 +200,8 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             )
             new_values /= new_values.max()
         else:
+            # Multiplying the schedule values by the quantity for both self and other
+            # and then using a weighted average. Finally, new values are normalized.
             new_values = np.average(
                 [self.all_values * quantity[0], other.all_values * quantity[1]],
                 axis=0,
@@ -226,16 +242,23 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                 )
             )
         Parts = []
-        for i, week in zip(range(int(len(year.fieldvalues[3:]) / 5)), weeks):
+        weeks = {schd.Name: schd for schd in weeks}
 
+        def chunks(lst, n):
+            """Yield successive n-sized chunks from lst."""
+            for i in range(0, len(lst), n):
+                yield lst[i : i + n]
+
+        for fields in chunks(year.fieldvalues[3:], 5):
+            weekname, from_month, from_day, to_month, to_day = fields
             Parts.append(
                 YearSchedulePart(
-                    FromMonth=year["Start_Month_{}".format(i + 1)],
-                    ToMonth=year["End_Month_{}".format(i + 1)],
-                    FromDay=year["Start_Day_{}".format(i + 1)],
-                    ToDay=year["End_Day_{}".format(i + 1)],
+                    FromMonth=from_month,
+                    ToMonth=to_month,
+                    FromDay=from_day,
+                    ToDay=to_day,
                     Schedule=WeekSchedule.from_epbunch(
-                        week,
+                        weeks[weekname],
                         Comments="Year Week Day schedules created from:\n{}".format(
                             "\n".join(lines)
                         ),

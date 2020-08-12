@@ -3,6 +3,7 @@ from copy import deepcopy
 
 import numpy as np
 import pytest
+from geomeppy.patches import EpBunch
 from path import Path
 
 import archetypal as ar
@@ -1923,7 +1924,7 @@ class TestWindowSetting:
 
         idf, sql = small_idf
         idf2, sql2 = other_idf
-        zone = idf.idfobjects["ZONE"][0]
+        zone: EpBunch = idf.idfobjects["ZONE"][0]
         iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
         window_1 = WindowSetting.from_surface(surface)

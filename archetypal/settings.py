@@ -22,6 +22,9 @@ umitemplate = Path("data/BostonTemplateLibrary.json")
 # cache server responses
 use_cache = False
 
+# Debug behavior
+debug = False
+
 # write log to file and/or to console
 log_file = False
 log_console = False

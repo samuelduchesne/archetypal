@@ -289,7 +289,7 @@ class TestCli:
         result = runner.invoke(
             cli,
             [
-                "-cl",
+                "-cld",
                 "--cache-folder",
                 "tests/.temp/cache",
                 "--data-folder",

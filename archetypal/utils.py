@@ -57,6 +57,7 @@ def config(
     trnsys_default_folder=settings.trnsys_default_folder,
     default_weight_factor="area",
     ep_version=settings.ep_version,
+    debug=settings.debug,
 ):
     """Package configurations. Call this method at the beginning of script or at the
     top of an interactive python environment to set package-wide settings.
@@ -80,6 +81,7 @@ def config(
         trnsys_default_folder (str): root folder of TRNSYS install.
         default_weight_factor:
         ep_version (str): EnergyPlus version to use. eg. "9-2-0".
+        debug (bool): Use debug behavior in various part of code base.
 
     Returns:
         None
@@ -100,6 +102,7 @@ def config(
     settings.trnsys_default_folder = validate_trnsys_folder(trnsys_default_folder)
     settings.zone_weight.set_weigth_attr(default_weight_factor)
     settings.ep_version = validate_epversion(ep_version)
+    settings.debug = debug
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:

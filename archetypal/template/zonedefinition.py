@@ -94,8 +94,8 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
 
         self._epbunch = kwargs.get("epbunch", None)
         self._zonesurfaces = kwargs.get("zonesurfaces", None)
-        self._area = kwargs.get("area", None)
-        self._volume = kwargs.get("volume", None)
+        self._area = None
+        self._volume = None
 
         if self not in CREATED_OBJECTS:
             CREATED_OBJECTS.append(self)
@@ -147,6 +147,10 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         else:
             return self._area
 
+    @area.setter
+    def area(self, value):
+        self._area = value
+
     @property
     def volume(self):
         """Calculates the volume of the zone
@@ -169,6 +173,10 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         else:
             return self._volume
 
+    @volume.setter
+    def volume(self, value):
+        self._volume = value
+
     def zonesurfaces(self, exclude=None):
         """Returns list of surfaces belonging to this zone. Optionally filter
         surface types.
@@ -180,15 +188,8 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         if exclude is None:
             exclude = []
         if self._zonesurfaces is None:
-            return [
-                surf
-                for surf in self._epbunch.zonesurfaces
-                if surf.key.upper() not in exclude
-            ]
-        else:
-            return [
-                surf for surf in self._zonesurfaces if surf.key.upper() not in exclude
-            ]
+            self._zonesurfaces = [surf for surf in self._epbunch.zonesurfaces]
+        return [surf for surf in self._zonesurfaces if surf.key.upper() not in exclude]
 
     @property
     def is_core(self):
@@ -481,8 +482,8 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
             Loads=ZoneLoad.combine(self.Loads, other.Loads, weights),
         )
         new_obj = ZoneDefinition(**meta, **new_attr, idf=self.idf)
-        new_obj._volume = self.volume + other.volume
-        new_obj._area = self.area + other.area
+        new_obj.volume = self.volume + other.volume
+        new_obj.area = self.area + other.area
 
         if new_attr["Conditioning"]:  # Could be None
             new_attr["Conditioning"]._belongs_to_zone = new_obj

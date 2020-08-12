@@ -312,7 +312,11 @@ class BuildingTemplate(UmiBase):
 
         if cores:
             self.Core = reduce(
-                ZoneDefinition.combine, tqdm(cores, desc="Reducing core zones")
+                ZoneDefinition.combine,
+                tqdm(
+                    cores,
+                    desc=f"Reducing core zones {self.idf.position}-{self.idf.name}",
+                ),
             )
         if not perims:
             raise ValueError(
@@ -320,7 +324,11 @@ class BuildingTemplate(UmiBase):
             )
         else:
             self.Perimeter = reduce(
-                ZoneDefinition.combine, tqdm(perims, desc="Reducing perimeter zones")
+                ZoneDefinition.combine,
+                tqdm(
+                    perims,
+                    desc=f"Reducing perimeter zones {self.idf.position}-{self.idf.name}",
+                ),
             )
             self.Perimeter.Name = "Perimeter_" + self.Perimeter.Name.strip("Perimeter_")
         if self.Perimeter.Windows is None:
@@ -509,6 +517,7 @@ class ZoneGraph(networkx.Graph):
         G = cls(name=idf.name)
 
         counter = 0
+        zone: EpBunch
         for zone in tqdm(
             idf.idfobjects["ZONE"], desc="zone_loop", position=idf.position, **kwargs
         ):

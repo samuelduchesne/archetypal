@@ -736,11 +736,12 @@ def is_part_of_conditioned_floor_area(zone):
     """
     with sqlite3.connect(zone.idf.sql_file) as conn:
         sql_query = f"""
-                    select LoadType
-                    from ZoneSizes
-                    where ZoneName = "{zone.Name.upper()}";"""
+                SELECT t.Value
+                FROM TabularDataWithStrings t
+                WHERE TableName == 'Zone Summary' and ColumnName == 'Conditioned (Y/N)' and RowName == '{zone.Name.upper()}';"""
         res = conn.execute(sql_query).fetchone()
-    return res is not None
+    return "Yes" in res
+
 
 def is_part_of_total_floor_area(zone):
     """Returns True if Zone epbunch has :attr:`Part_of_Total_Floor_Area` == "YES"

@@ -143,7 +143,7 @@ def convert_idf_to_trnbuild(
             ),
         },
     ]
-    idf = IDF(idf_file, epw=weather_file, ep_version=ep_version, prep_outputs=outputs)
+    idf = IDF(idf_file, epw=weather_file, as_version=ep_version, prep_outputs=outputs)
 
     # Check if cache exists
     # idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
@@ -152,7 +152,7 @@ def convert_idf_to_trnbuild(
     sql_file = idf.sql_file
 
     # Clean names of idf objects (e.g. 'MATERIAL')
-    idf_2 = deepcopy(idf)
+    idf_2 = idf
     log("Cleaning names of the IDF objects...", lg.INFO)
     start_time = time.time()
     clear_name_idf_objects(idf_2, log_clear_names)
@@ -366,7 +366,7 @@ def convert_idf_to_trnbuild(
     # output_folder
     new_idf_path = os.path.join(output_folder, "MODIFIED_" + os.path.basename(idf_file))
     if return_idf:
-        idf_2.saveas(filename=new_idf_path)
+        idf_2.save(filename=new_idf_path)
 
     # Run trnsidf to convert T3D to BUI
     log("Converting t3d file to bui file. Running trnsidf.exe...")
@@ -931,10 +931,6 @@ def load_idf_file_and_clean_names(idf_file, log_clear_names):
     log("Cleaning names of the IDF objects...", lg.INFO)
     start_time = time.time()
     clear_name_idf_objects(idf, log_clear_names)
-    path = os.path.join(settings.cache_folder, cache_filename, cache_filename + ".idf")
-    if not os.path.exists(os.path.dirname(path)):
-        os.makedirs(os.path.dirname(path))
-    idf.saveas(filename=path)
     # save_idf_object_to_cache(idf, idf_file, cache_filename, 'pickle')
     log(
         "Cleaned IDF object names in {:,.2f} seconds".format(time.time() - start_time),
@@ -2674,7 +2670,9 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials, **kwargs)
         # Writes HBACK
         try:
             condition = (
-                construction.getreferingobjs()[0].Outside_Boundary_Condition.lower()
+                construction.getreferingobjs(iddgroups=["Thermal Zones and Surfaces"])[
+                    0
+                ].Outside_Boundary_Condition.lower()
                 == "ground"
             )
         except:

@@ -2,6 +2,7 @@ import os
 
 import pytest
 from click.testing import CliRunner
+from path import Path
 
 from archetypal import settings, log, IDF
 from archetypal.cli import cli
@@ -24,7 +25,6 @@ class TestCli:
                 "tests/.temp/images",
                 "--logs-folder",
                 "tests/.temp/logs",
-                "--verbose",
                 "convert",
                 "--ep_version",
                 "9-2-0",
@@ -44,7 +44,6 @@ class TestCli:
                 "tests/.temp/images",
                 "--logs-folder",
                 "tests/.temp/logs",
-                "--verbose",
                 "convert",
                 "--ep_version",
                 "9-2-0",
@@ -67,7 +66,6 @@ class TestCli:
                 "tests/.temp/images",
                 "--logs-folder",
                 "tests/.temp/logs",
-                "--verbose",
                 "convert",
                 "--ep_version",
                 "9-2-0",
@@ -89,7 +87,6 @@ class TestCli:
                 "tests/.temp/images",
                 "--logs-folder",
                 "tests/.temp/logs",
-                "--verbose",
                 "convert",
                 "--ep_version",
                 "9-2-0",
@@ -111,7 +108,6 @@ class TestCli:
                 "tests/.temp/images",
                 "--logs-folder",
                 "tests/.temp/logs",
-                "--verbose",
                 "convert",
                 "--ep_version",
                 "9-2-0",
@@ -132,7 +128,6 @@ class TestCli:
                 "tests/.temp/images",
                 "--logs-folder",
                 "tests/.temp/logs",
-                "--verbose",
                 "convert",
                 "--ep_version",
                 "9-2-0",
@@ -159,7 +154,6 @@ class TestCli:
                 "tests/.temp/images",
                 "--logs-folder",
                 "tests/.temp/logs",
-                "--verbose",
                 "convert",
                 "--ep_version",
                 "9-2-0",
@@ -180,7 +174,6 @@ class TestCli:
                 "tests/.temp/images",
                 "--logs-folder",
                 "tests/.temp/logs",
-                "--verbose",
                 "convert",
                 "--ep_version",
                 "9-2-0",
@@ -207,7 +200,6 @@ class TestCli:
                 "tests/.temp/images",
                 "--logs-folder",
                 "tests/.temp/logs",
-                "--verbose",
                 "convert",
                 "--ep_version",
                 "9-2-0",
@@ -279,7 +271,7 @@ class TestCli:
         get_platform() > (10, 15, 0),
         reason="Skipping since wine 32bit can't run on MacOs >10.15 (Catalina)",
     )
-    def test_convert(self, config, cli_args):
+    def test_convert(self, cli_args):
         """Tests the 'reduce' method"""
         runner = CliRunner()
         args = cli_args
@@ -287,7 +279,7 @@ class TestCli:
         print(result.stdout)
         assert result.exit_code == 0
 
-    def test_reduce(self, config):
+    def test_reduce(self):
         """Tests the 'reduce' method"""
         runner = CliRunner()
         test_file_list = [
@@ -297,7 +289,7 @@ class TestCli:
         result = runner.invoke(
             cli,
             [
-                "--use-cache",
+                "-cl",
                 "--cache-folder",
                 "tests/.temp/cache",
                 "--data-folder",
@@ -308,7 +300,6 @@ class TestCli:
                 "tests/.temp/logs",
                 "--ep_version",
                 settings.ep_version,
-                "--verbose",
                 "reduce",
                 "-w",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_*.epw",
@@ -320,6 +311,7 @@ class TestCli:
         )
         print(result.stdout)
         assert result.exit_code == 0
+        assert Path("tests/.temp/retail.json").exists()
 
     def test_reduce_failed(self, config):
         """Tests the 'reduce' method on a failed file"""
@@ -335,7 +327,7 @@ class TestCli:
             pass
         else:
             idf.removeidfobject(bldg)
-            idf.save()
+            idf.save("tests/.temp/brokenidf.idf")
 
         result = runner.invoke(
             cli,
@@ -358,21 +350,30 @@ class TestCli:
                 "-o",
                 "tests/.temp/retail.json",
             ],
-            catch_exceptions=True,
+            catch_exceptions=False,
         )
         print(result.stdout)
         # check an error file has been created
         assert (settings.logs_folder / "failed_reduce.txt").expand().exists()
         assert result.exit_code == 0
 
-    def test_transition_dir_file_mixed(self, config):
+    def test_transition_dir_file_mixed(self):
         """Tests the transition method for the CLI using a mixture of a directory
         (Path.isdir()) and a file Path.isfile()"""
         runner = CliRunner()
         result = runner.invoke(
             cli,
             [
-                "-v",
+                "--cache-folder",
+                "tests/.temp/cache",
+                "--data-folder",
+                "tests/.temp/data",
+                "--imgs-folder",
+                "tests/.temp/images",
+                "--logs-folder",
+                "tests/.temp/logs",
+                "--ep_version",
+                settings.ep_version,
                 "transition",
                 "tests/input_data/problematic/ASHRAE90.1_ApartmentHighRise_STD2016_Buffalo.idf",
                 "tests/input_data/problematic/*.idf",  # Path with wildcard

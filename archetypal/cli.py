@@ -78,24 +78,27 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     default=settings.cache_folder,
 )
 @click.option(
-    "-c/-nc",
-    "--use-cache/--no-cache",
+    "-c",
+    "--use-cache",
+    is_flag=True,
+    default=False,
     help="Use a local cache to save/retrieve many of "
     "archetypal outputs such as EnergyPlus simulation results",
-    default=True,
 )
 @click.option(
     "-l",
     "--log-file",
+    "log_file",
     is_flag=True,
     help="save log output to a log file in logs_folder",
     default=settings.log_file,
 )
 @click.option(
-    "--verbose/--noverbose",
-    "-v/-nv",
+    "--silent",
+    "-s",
     "log_console",
-    default=False,
+    is_flag=True,
+    default=True,
     help="print log output to the console",
 )
 @click.option(
@@ -364,7 +367,14 @@ def convert(
     default=False,
     help="Include all zones in the " "output template",
 )
-def reduce(idf, output, weather, cores, all_zones):
+@click.option(
+    "-v",
+    "--version",
+    "as_version",
+    default=settings.ep_version,
+    help="EnergyPlus version to upgrade to - e.g., '9-2-0'",
+)
+def reduce(idf, output, weather, cores, all_zones, as_version):
     """Convert EnergyPlus models to an Umi Template Library by using the model
     complexity reduction algorithm.
 
@@ -392,16 +402,11 @@ def reduce(idf, output, weather, cores, all_zones):
     # Call UmiTemplateLibrary constructor with list of IDFs
     try:
         template = UmiTemplateLibrary.read_idf(
-            file_paths, weather=weather, name=name, processors=cores
+            file_paths, weather=weather, name=name, processors=cores,
+            as_version=as_version
         )
-    except EnergyPlusProcessError as e:
-        log(e.write())
-        filename = (settings.logs_folder / "failed_reduce.txt").expand()
-        with open(filename, "a") as file:
-            file.writelines(e.write())
-            log(f"EnergyPlusProcess errors listed in {filename}")
-    except Exception as e:
-        log(f"An Unknown exception occurred: {e}", logging.ERROR)
+    except Exception:
+        pass
     else:
         # Save json file
         final_path: Path = dir_ / name + ext

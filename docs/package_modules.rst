@@ -36,7 +36,7 @@ Template Classes
     OpaqueConstruction
     OpaqueMaterial
     UmiSchedule
-    StructureDefinition
+    StructureInformation
     VentilationSetting
     WindowConstruction
     WindowSetting
@@ -62,7 +62,7 @@ Classes that support the :ref:`templates_label` classes above.
     ConstructionBase
     LayeredConstruction
     MassRatio
-    YearScheduleParts
+    YearSchedulePart
     DaySchedule
     WeekSchedule
     YearSchedule

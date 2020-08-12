@@ -6,9 +6,12 @@
 ################################################################################
 
 import collections
+import concurrent.futures.thread
 import logging as lg
+import threading
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 
 import eppy
 import matplotlib.collections
@@ -24,10 +27,10 @@ import archetypal
 from archetypal import log, save_and_show
 from archetypal.template import (
     UmiBase,
-    Zone,
+    ZoneDefinition,
     resolve_obco,
     WindowSetting,
-    StructureDefinition,
+    StructureInformation,
     MassRatio,
     is_core,
 )
@@ -55,11 +58,11 @@ class BuildingTemplate(UmiBase):
         attributes:
 
         Args:
-            Core (Zone): The Zone object defining the core zone. see
+            Core (ZoneDefinition): The Zone object defining the core zone. see
                 :class:`Zone` for more details.
-            Perimeter (Zone): The Zone object defining the perimeter zone. see
+            Perimeter (ZoneDefinition): The Zone object defining the perimeter zone. see
                 :class:`Zone` for more details.
-            Structure (StructureDefinition): The StructureDefinition object
+            Structure (StructureInformation): The StructureInformation object
                 defining the structural properties of the template.
             Windows (WindowSetting): The WindowSetting object defining the
                 window properties of the object.
@@ -75,13 +78,21 @@ class BuildingTemplate(UmiBase):
         """
         super(BuildingTemplate, self).__init__(**kwargs)
         self._zone_graph = None
-        self.PartitionRatio = PartitionRatio
+        self._partition_ratio = PartitionRatio
         self.Lifespan = Lifespan
         self.Core = Core
         self.Perimeter = Perimeter
         self.Structure = Structure
         self.Windows = Windows
         self.DefaultWindowToWallRatio = DefaultWindowToWallRatio
+
+        self._allzones = []
+
+    @property
+    def PartitionRatio(self):
+        if self._partition_ratio is None:
+            self._partition_ratio = self.idf.partition_ratio
+        return self._partition_ratio
 
     def __hash__(self):
         return hash((self.__class__.__name__, self.Name, self.DataSource))
@@ -238,35 +249,47 @@ class BuildingTemplate(UmiBase):
         # initialize empty BuildingTemplate
         name = kwargs.pop("Name", Path(idf.idfname).basename().splitext()[0])
         bt = cls(Name=name, idf=idf, **kwargs)
-        zone: EpBunch
-        zones = [
-            Zone.from_zone_epbunch(zone, sql=bt.sql)
-            for zone in tqdm(
-                idf.idfobjects["ZONE"],
+
+        epbunch_zones = idf.idfobjects["ZONE"]
+        zones = []
+        with concurrent.futures.thread.ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(
+                    ZoneDefinition.from_zone_epbunch,
+                    zone,
+                    sql=idf.sql,
+                    allow_duplicates=True,
+                ): zone
+                for zone in epbunch_zones
+            }
+            for future in tqdm(
+                concurrent.futures.as_completed(futures),
                 desc=f"zone_loop {idf.position}-{name}",
-                position=idf.position
-            )
-        ]
-        zone: Zone
-        bt.cores = [
-            zone
-            for zone in zones
-        ]
-        bt.perims = [
-            zone
-            for zone in zones
-        ]
+                total=len(futures),
+                position=idf.position,
+            ):
+                zone = futures[future]
+                try:
+                    result = future.result()
+                except Exception as exc:
+                    raise exc
+                else:
+                    zones.append(result)
+                    log("%r created" % (result.Name))
+
+        zone: ZoneDefinition
+        bt.cores = [zone for zone in zones if zone.is_core]
+        bt.perims = [zone for zone in zones if not zone.is_core]
         # do Core and Perim zone reduction
         bt.reduce(bt.cores, bt.perims)
 
-        # resolve StructureDefinition and WindowSetting
-        bt.Structure = StructureDefinition(
+        # resolve StructureInformation and WindowSetting
+        bt.Structure = StructureInformation(
             Name=bt.Name + "_StructureDefinition",
             MassRatios=[MassRatio.generic()],
             idf=idf,
         )
         bt.Windows = bt.Perimeter.Windows
-        bt.PartitionRatio = idf.partition_ratio
 
         bt.Comments += "\n".join(
             [
@@ -288,33 +311,37 @@ class BuildingTemplate(UmiBase):
         start_time = time.time()
 
         if cores:
-            self.Core = reduce(Zone.combine, cores)
+            self.Core = reduce(
+                ZoneDefinition.combine, tqdm(cores, desc="Reducing core zones")
+            )
         if not perims:
             raise ValueError(
                 "Building complexity reduction must have at least one perimeter zone"
             )
         else:
-            self.Perimeter = reduce(Zone.combine, perims)
-
+            self.Perimeter = reduce(
+                ZoneDefinition.combine, tqdm(perims, desc="Reducing perimeter zones")
+            )
+            self.Perimeter.Name = "Perimeter_" + self.Perimeter.Name.strip("Perimeter_")
         if self.Perimeter.Windows is None:
             # create generic window
             self.Perimeter.Windows = WindowSetting.generic(idf=self.idf)
 
         if not self.Core:
             self.Core = self.Perimeter
+        else:
+            self.Core.Name = "Core_" + self.Core.Name.strip("Core_")
         log(
-            "Equivalent core zone has an area of {:,.0f} m2".format(self.Core.area),
+            f"Equivalent core zone has an area of {self.Core.area:,.0f} m2",
             level=lg.DEBUG,
         )
         log(
-            "Equivalent perimeter zone has an area of {:,.0f} m2".format(
-                self.Perimeter.area
-            ),
+            f"Equivalent perimeter zone has an area of {self.Perimeter.area:,.0f} m2",
             level=lg.DEBUG,
         )
         log(
-            'Completed model complexity reduction for BuildingTemplate "{}" in {:,'
-            ".2f} seconds".format(self.Name, time.time() - start_time)
+            f"Completed model complexity reduction for BuildingTemplate '{self.Name}' "
+            f"in {time.time() - start_time:,.2f}"
         )
 
     def _graph_reduce(self, G):
@@ -330,7 +357,7 @@ class BuildingTemplate(UmiBase):
             G (ZoneGraph):
 
         Returns:
-            Zone: The reduced zone
+            ZoneDefinition: The reduced zone
         """
         if len(G) < 1:
             log("No zones for building graph %s" % G.name)
@@ -384,6 +411,22 @@ class BuildingTemplate(UmiBase):
         """Validates UmiObjects and fills in missing values"""
         return self
 
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            Core=self.Core,
+            Lifespan=self.Lifespan,
+            PartitionRatio=self.PartitionRatio,
+            Perimeter=self.Perimeter,
+            Structure=self.Structure,
+            Windows=self.Windows,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
+
 
 def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):
     """
@@ -400,6 +443,21 @@ def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):
     adj_report["Surface Type"].append(surface["Surface_Type"])
     adj_report["Adjacent Zone"].append(adj_zone["Name"])
     adj_report["Surface Type_"].append(adj_surf["Surface_Type"])
+
+
+class ZoneThread(threading.Thread):
+    def __init__(self, building_template, zone):
+        super().__init__()
+        self.zone = zone
+        self.building_template = building_template
+        self.name = "Zone_" + self.zone.Name
+
+    def run(self):
+        self.building_template._allzones.append(
+            ZoneDefinition.from_zone_epbunch(
+                self.zone, sql=self.building_template.idf.sql, allow_duplicates=True
+            )
+        )
 
 
 class ZoneGraph(networkx.Graph):
@@ -428,9 +486,7 @@ class ZoneGraph(networkx.Graph):
     """
 
     @classmethod
-    def from_idf(
-        cls, idf, sql, log_adj_report=True, skeleton=False, force=False, **kwargs
-    ):
+    def from_idf(cls, idf, log_adj_report=True, **kwargs):
         """Create a graph representation of all the building zones. An edge
         between two zones represents the adjacency of the two zones.
 
@@ -453,18 +509,14 @@ class ZoneGraph(networkx.Graph):
         G = cls(name=idf.name)
 
         counter = 0
-        for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop", position=idf.position, **kwargs):
+        for zone in tqdm(
+            idf.idfobjects["ZONE"], desc="zone_loop", position=idf.position, **kwargs
+        ):
             # initialize the adjacency report dictionary. default list.
             adj_report = defaultdict(list)
             zone_obj = None
-            if not skeleton:
-                zone_obj = Zone.from_zone_epbunch(zone, sql=sql)
-                zonesurfaces = zone.zonesurfaces
-                zone_obj._zonesurfaces = zonesurfaces
-                _is_core = zone_obj.is_core
-            else:
-                zonesurfaces = zone.zonesurfaces
-                _is_core = is_core(zone)
+            zonesurfaces = zone.zonesurfaces
+            _is_core = is_core(zone)
             G.add_node(zone.Name, epbunch=zone, core=_is_core, zone=zone_obj)
 
             for surface in zonesurfaces:
@@ -479,12 +531,8 @@ class ZoneGraph(networkx.Graph):
                     if adj_zone and adj_surf:
                         counter += 1
 
-                        if skeleton:
-                            zone_obj = None
-                            _is_core = is_core(zone)
-                        else:
-                            zone_obj = Zone.from_zone_epbunch(adj_zone, sql=sql)
-                            _is_core = zone_obj.is_core
+                        zone_obj = None
+                        _is_core = is_core(zone)
 
                         # create node for adjacent zone
                         G.add_node(

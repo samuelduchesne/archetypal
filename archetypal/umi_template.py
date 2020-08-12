@@ -1,9 +1,12 @@
 import io
 import json
+import logging as lg
 import os
 from collections import OrderedDict
 
 import numpy as np
+from path import Path
+
 from archetypal import (
     BuildingTemplate,
     GasMaterial,
@@ -11,7 +14,7 @@ from archetypal import (
     OpaqueMaterial,
     OpaqueConstruction,
     WindowConstruction,
-    StructureDefinition,
+    StructureInformation,
     DaySchedule,
     WeekSchedule,
     YearSchedule,
@@ -20,18 +23,18 @@ from archetypal import (
     ZoneConditioning,
     ZoneConstructionSet,
     ZoneLoad,
-    Zone,
+    ZoneDefinition,
     WindowSetting,
     settings,
     UmiBase,
     MaterialLayer,
-    YearScheduleParts,
+    YearSchedulePart,
     UmiSchedule,
     MassRatio,
     IDF,
     parallel_process,
+    log, EnergyPlusProcessError,
 )
-from path import Path
 
 
 class UmiTemplateLibrary:
@@ -75,8 +78,8 @@ class UmiTemplateLibrary:
                 objects.
             WindowConstructions (list of WindowConstruction): list of
                 WindowConstruction objects.
-            StructureDefinitions (list of StructureDefinition): list of
-                StructureDefinition objects.
+            StructureDefinitions (list of StructureInformation): list of
+                StructureInformation objects.
             DaySchedules (list of DaySchedule): list of DaySchedule objects.
             WeekSchedules (list of WeekSchedule): list of WeekSchedule objects.
             YearSchedules (list of YearSchedule): list of YearSchedule objects.
@@ -91,7 +94,7 @@ class UmiTemplateLibrary:
             ZoneConstructionSets (list of ZoneConstructionSet): list of
                 ZoneConstructionSet objects.
             ZoneLoads (list of ZoneLoad): list of ZoneLoad objects.
-            Zones (list of Zone): list of Zone objects
+            Zones (list of ZoneDefinition): list of Zone objects
         """
         if Zones is None:
             Zones = []
@@ -178,22 +181,41 @@ class UmiTemplateLibrary:
                 epw=umi_template.weather,
                 annual=True,
                 as_version=as_version or settings.ep_version,
-                verbose="q",
-                position=i + 1,
+                verbose=False,
+                position=None,
             )
-        umi_template.BuildingTemplates = list(
-            parallel_process(
-                in_dict,
-                cls.prep_func,
-                processors=processors,
-                use_kwargs=True,
-                debug=True,
-            ).values()
+        results = parallel_process(
+            in_dict,
+            cls.template_complexity_reduction,
+            processors=processors,
+            use_kwargs=True,
+            debug=True,
+            position=None,
         )
+        for res in results:
+            if isinstance(res, EnergyPlusProcessError):
+                filename = (settings.logs_folder / "failed_reduce.txt").expand()
+                with open(filename, "a") as file:
+                    file.writelines(res.write())
+                    log(f"EnergyPlusProcess errors listed in {filename}")
+            elif isinstance(res, Exception):
+                log(
+                    f"Unable to create Building Template. Exception raised: "
+                    f"{str(res)}",
+                    lg.WARNING,
+                )
+
+        if all(isinstance(x, Exception) for x in results):
+            raise Exception("Complexity reduction failed for all buildings.")
+
+        umi_template.BuildingTemplates = [
+            res for res in results if not isinstance(res, Exception)
+        ]
+
         return umi_template
 
     @staticmethod
-    def prep_func(idfname, epw, **kwargs):
+    def template_complexity_reduction(idfname, epw, **kwargs):
         idf = IDF(idfname, epw=epw, **kwargs)
         return BuildingTemplate.from_idf(idf, DataSource=idf.name)
 
@@ -220,71 +242,71 @@ class UmiTemplateLibrary:
 
             # with datastore, create each objects
             t.GasMaterials = [
-                GasMaterial.from_dict(**store, idf=idf)
+                GasMaterial.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["GasMaterials"]
             ]
             t.GlazingMaterials = [
-                GlazingMaterial(**store, idf=idf)
+                GlazingMaterial(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["GlazingMaterials"]
             ]
             t.OpaqueMaterials = [
-                OpaqueMaterial(**store, idf=idf)
+                OpaqueMaterial(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["OpaqueMaterials"]
             ]
             t.OpaqueConstructions = [
-                OpaqueConstruction.from_dict(**store, idf=idf)
+                OpaqueConstruction.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["OpaqueConstructions"]
             ]
             t.WindowConstructions = [
-                WindowConstruction.from_dict(**store, idf=idf)
+                WindowConstruction.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["WindowConstructions"]
             ]
             t.StructureDefinitions = [
-                StructureDefinition.from_dict(**store, idf=idf)
+                StructureInformation.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["StructureDefinitions"]
             ]
             t.DaySchedules = [
-                DaySchedule.from_dict(**store, idf=idf)
+                DaySchedule.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["DaySchedules"]
             ]
             t.WeekSchedules = [
-                WeekSchedule.from_dict(**store, idf=idf)
+                WeekSchedule.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["WeekSchedules"]
             ]
             t.YearSchedules = [
-                YearSchedule.from_dict(**store, idf=idf)
+                YearSchedule.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["YearSchedules"]
             ]
             t.DomesticHotWaterSettings = [
-                DomesticHotWaterSetting.from_dict(**store, idf=idf)
+                DomesticHotWaterSetting.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["DomesticHotWaterSettings"]
             ]
             t.VentilationSettings = [
-                VentilationSetting.from_dict(**store, idf=idf)
+                VentilationSetting.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["VentilationSettings"]
             ]
             t.ZoneConditionings = [
-                ZoneConditioning.from_dict(**store, idf=idf)
+                ZoneConditioning.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["ZoneConditionings"]
             ]
             t.ZoneConstructionSets = [
-                ZoneConstructionSet.from_dict(**store, idf=idf)
+                ZoneConstructionSet.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["ZoneConstructionSets"]
             ]
             t.ZoneLoads = [
-                ZoneLoad.from_dict(**store, idf=idf) for store in datastore["ZoneLoads"]
+                ZoneLoad.from_dict(**store, idf=idf, allow_duplicates=True) for store in datastore["ZoneLoads"]
             ]
-            t.Zones = [Zone.from_dict(**store, idf=idf) for store in datastore["Zones"]]
+            t.Zones = [ZoneDefinition.from_dict(**store, idf=idf, allow_duplicates=True) for store in datastore["Zones"]]
             t.WindowSettings = [
                 WindowSetting.from_ref(
                     store["$ref"], datastore["BuildingTemplates"], idf=idf
                 )
                 if "$ref" in store
-                else WindowSetting.from_dict(**store, idf=idf)
+                else WindowSetting.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["WindowSettings"]
             ]
             t.BuildingTemplates = [
-                BuildingTemplate.from_dict(**store, idf=idf)
+                BuildingTemplate.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["BuildingTemplates"]
             ]
 
@@ -354,7 +376,7 @@ class UmiTemplateLibrary:
                 "OpaqueMaterials": [],
                 "OpaqueConstructions": [],
                 "WindowConstructions": [],
-                "StructureDefinitions": [],
+                "StructureInformations": [],
                 "DaySchedules": [],
                 "WeekSchedules": [],
                 "YearSchedules": [],
@@ -363,7 +385,7 @@ class UmiTemplateLibrary:
                 "ZoneConditionings": [],
                 "ZoneConstructionSets": [],
                 "ZoneLoads": [],
-                "Zones": [],
+                "ZoneDefinitions": [],
                 "WindowSettings": [],
                 "BuildingTemplates": [],
             }
@@ -380,11 +402,10 @@ class UmiTemplateLibrary:
                     app_dict = obj.to_json()
                     data_dict[catname].append(app_dict)
                     jsonized[key] = obj
-            for key, value in obj.__dict__.items():
-
+            for key, value in obj.mapping().items():
                 if isinstance(
-                    value, (UmiBase, MaterialLayer, YearScheduleParts)
-                ) and not key.startswith("_"):
+                    value, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
+                ):
                     recursive_json(value)
                 elif isinstance(value, list):
                     [
@@ -392,7 +413,7 @@ class UmiTemplateLibrary:
                         for value in value
                         if isinstance(
                             value,
-                            (UmiBase, MaterialLayer, YearScheduleParts, MassRatio),
+                            (UmiBase, MaterialLayer, YearSchedulePart, MassRatio),
                         )
                     ]
 
@@ -414,9 +435,12 @@ class UmiTemplateLibrary:
             data_dict[key] = sorted(
                 data_dict[key], key=lambda x: x["Name"] if "Name" in x else "A"
             )
-
+        data_dict["Zones"] = data_dict.pop("ZoneDefinitions")
+        data_dict["StructureDefinitions"] = data_dict.pop("StructureInformations")
         if not data_dict["GasMaterials"]:
             # Umi needs at least one gas material even if it is not necessary.
             data_dict["GasMaterials"].append(GasMaterial(Name="AIR").to_json())
+            data_dict.move_to_end("GasMaterials", last=False)
+        data_dict.move_to_end("BuildingTemplates")
         # Write the dict to json using json.dumps
         return data_dict

@@ -15,7 +15,7 @@ from deprecation import deprecated
 from eppy.bunch_subclass import EpBunch
 
 import archetypal
-from archetypal import log, IDF, calc_simple_glazing, timeit
+from archetypal import log, calc_simple_glazing, timeit
 from archetypal.template import MaterialLayer, UmiSchedule, UniqueName
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
@@ -36,6 +36,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         AssemblyEnergy=0,
         DisassemblyCarbon=0,
         DisassemblyEnergy=0,
+        Layers=None,
         **kwargs
     ):
         """Initialize a WindowConstruction.
@@ -51,6 +52,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
                 construction.
             DisassemblyEnergy (float): Disassembly embodied energy by m2 of
                 construction.
+            Layers (list of MaterialLayer):
             **kwargs: Other keywords passed to the constructor.
         """
         super(WindowConstruction, self).__init__(**kwargs)
@@ -60,7 +62,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         self.AssemblyEnergy = AssemblyEnergy
         self.AssemblyCost = AssemblyCost
         self.AssemblyCarbon = AssemblyCarbon
-        self.Layers = kwargs.get("Layers", None)
+        self.Layers = Layers
 
     def __hash__(self):
         return hash((self.__class__.__name__, self.Name))
@@ -77,6 +79,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
                     self.AssemblyEnergy == other.AssemblyEnergy,
                     self.DisassemblyCarbon == other.DisassemblyCarbon,
                     self.DisassemblyEnergy == other.DisassemblyEnergy,
+                    self.Layers == other.Layers,
                 ]
             )
 
@@ -153,6 +156,22 @@ class WindowConstruction(UmiBase, metaclass=Unique):
 
         return data_dict
 
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            Layers=self.Layers,
+            AssemblyCarbon=self.AssemblyCarbon,
+            AssemblyCost=self.AssemblyCost,
+            AssemblyEnergy=self.AssemblyEnergy,
+            DisassemblyCarbon=self.DisassemblyCarbon,
+            DisassemblyEnergy=self.DisassemblyEnergy,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
+
     def layers(self, Construction, **kwargs):
         """Retrieve layers for the WindowConstruction"""
         layers = []
@@ -222,7 +241,12 @@ class WindowConstruction(UmiBase, metaclass=Unique):
             - Implement equivalent window layers for constant u-factor.
 
         """
-        return self
+        # Check if other is None. Simply return self
+        if not other:
+            return self
+
+        if not self:
+            return other
 
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
@@ -326,6 +350,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __repr__(self):
+        from archetypal import IDF
+
         v_ = [
             (k, v) for k, v in self.__dict__.items() if not isinstance(v, (dict, IDF))
         ]
@@ -420,7 +446,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return w
 
     @classmethod
-    def from_surface(cls, surface):
+    def from_surface(cls, surface, **kwargs):
         """Build a WindowSetting object from a FenestrationSurface:Detailed_
         object. This constructor will detect common window constructions and
         shading devices. Supported Shading and Natural Air flow EnergyPlus
@@ -625,7 +651,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 Construction=construction,
                 idf=surface.theidf,
                 Category=surface.theidf.name,
-                **attr
+                **attr,
+                **kwargs
             )
             return w
 
@@ -656,14 +683,13 @@ class WindowSetting(UmiBase, metaclass=Unique):
         if window_sets:
             # if one or more window has been created, reduce. Using reduce on
             # a len==1 list, will simply return the object.
-            from operator import add
 
-            return reduce(add, window_sets)
+            return reduce(WindowSetting.combine, window_sets)
         else:
             # no window found, probably a core zone, return None.
             return None
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, allow_duplicates=True):
         """Append other to self. Return self + other as a new object.
 
         Args:
@@ -674,10 +700,13 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Returns:
             WindowSetting: A new combined object made of self + other.
         """
-        if self is None:
-            return other
-        if other is None:
+        # Check if other is None. Simply return self
+        if not other:
             return self
+
+        if not self:
+            return other
+
         if not isinstance(other, self.__class__):
             msg = "Cannot combine %s with %s" % (
                 self.__class__.__name__,
@@ -697,11 +726,13 @@ class WindowSetting(UmiBase, metaclass=Unique):
             weights = [1.0, 1.0]
         meta = self._get_predecessors_meta(other)
         new_attr = dict(
-            Construction=self.Construction.combine(other.Construction, weights),
+            Construction=WindowConstruction.combine(
+                self.Construction, other.Construction, weights
+            ),
             AfnDischargeC=self._float_mean(other, "AfnDischargeC", weights),
             AfnTempSetpoint=self._float_mean(other, "AfnTempSetpoint", weights),
-            AfnWindowAvailability=self.AfnWindowAvailability.combine(
-                other.AfnWindowAvailability, weights
+            AfnWindowAvailability=UmiSchedule.combine(
+                self.AfnWindowAvailability, other.AfnWindowAvailability, weights
             ),
             IsShadingSystemOn=any([self.IsShadingSystemOn, other.IsShadingSystemOn]),
             IsVirtualPartition=any([self.IsVirtualPartition, other.IsVirtualPartition]),
@@ -720,19 +751,25 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 other, "ZoneMixingDeltaTemperature", weights
             ),
             ZoneMixingFlowRate=self._float_mean(other, "ZoneMixingFlowRate", weights),
-            ZoneMixingAvailabilitySchedule=self.ZoneMixingAvailabilitySchedule.combine(
-                other.ZoneMixingAvailabilitySchedule, weights
+            ZoneMixingAvailabilitySchedule=UmiSchedule.combine(
+                self.ZoneMixingAvailabilitySchedule,
+                other.ZoneMixingAvailabilitySchedule,
+                weights,
             ),
-            ShadingSystemAvailabilitySchedule=self.ShadingSystemAvailabilitySchedule.combine(
-                other.ShadingSystemAvailabilitySchedule, weights
+            ShadingSystemAvailabilitySchedule=UmiSchedule.combine(
+                self.ShadingSystemAvailabilitySchedule,
+                other.ShadingSystemAvailabilitySchedule,
+                weights,
             ),
         )
         new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
-        new_obj._predecessors.extend(self._predecessors + other._predecessors)
+        new_obj._predecessors.update(self._predecessors + other._predecessors)
         return new_obj
 
     def to_json(self):
         """Convert class properties to dict"""
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -821,3 +858,29 @@ class WindowSetting(UmiBase, metaclass=Unique):
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
         return self
+
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            AfnDischargeC=self.AfnDischargeC,
+            AfnTempSetpoint=self.AfnTempSetpoint,
+            AfnWindowAvailability=self.AfnWindowAvailability,
+            Construction=self.Construction,
+            IsShadingSystemOn=self.IsShadingSystemOn,
+            IsVirtualPartition=self.IsVirtualPartition,
+            IsZoneMixingOn=self.IsZoneMixingOn,
+            OperableArea=self.OperableArea,
+            ShadingSystemAvailabilitySchedule=self.ShadingSystemAvailabilitySchedule,
+            ShadingSystemSetpoint=self.ShadingSystemSetpoint,
+            ShadingSystemTransmittance=self.ShadingSystemTransmittance,
+            ShadingSystemType=self.ShadingSystemType,
+            Type=self.Type,
+            ZoneMixingAvailabilitySchedule=self.ZoneMixingAvailabilitySchedule,
+            ZoneMixingDeltaTemperature=self.ZoneMixingDeltaTemperature,
+            ZoneMixingFlowRate=self.ZoneMixingFlowRate,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )

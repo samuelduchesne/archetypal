@@ -41,7 +41,7 @@ class TestIDF:
 
     @pytest.fixture()
     def FiveZoneNightVent1(self):
-        """An old file that needs upgrade"""
+        """"""
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idfname = (
             get_eplus_dirs(settings.ep_version) / "ExampleFiles" / "5ZoneNightVent1.idf"
@@ -110,8 +110,21 @@ class TestIDF:
             natvent_v9_1_0.simulate()
 
     def test_version(self, natvent_v9_1_0):
+        # setting as_version
         natvent_v9_1_0.as_version = "9-2-0"
-        assert natvent_v9_1_0.iddname
+        assert natvent_v9_1_0.as_version == parse("9-2-0")
+
+        # setting idfname
+        natvent_v9_1_0.idfname = "this_name"
+        assert natvent_v9_1_0.idfname == Path("this_name")
+
+        # setting epw
+        natvent_v9_1_0.epw = "newepw.epw"
+        assert natvent_v9_1_0.epw == Path("newepw.epw")
+
+        with pytest.raises(AttributeError):
+            # illigal to set iddname, since it is a calculated property
+            natvent_v9_1_0.iddname = "this_name"
 
     def test_transition_error(self, config, wont_transition_correctly):
         with pytest.raises(
@@ -155,9 +168,9 @@ class TestIDF:
             i: {"idfname": file.expand(), "epw": w}
             for i, file in enumerate(Path("tests/input_data/necb").files("*.idf")[0:3])
         }
-        idfs = parallel_process(files, IDF, use_kwargs=True)
+        idfs = parallel_process(files, IDF, use_kwargs=True, processors=-1)
 
-        assert not any(isinstance(a, Exception) for a in idfs.values())
+        assert not any(isinstance(a, Exception) for a in idfs)
 
     def test_load_old(self, config, natvent, FiveZoneNightVent1):
         assert natvent.idd_version == (9, 2, 0)
@@ -210,3 +223,16 @@ class TestIDF:
         np.testing.assert_almost_equal(
             actual=idf.area_conditioned, desired=area, decimal=0
         )
+
+
+class TestThreads:
+    def test_runslab(self, config):
+        file = get_eplus_dirs() / "ExampleFiles" / "5ZoneAirCooledWithSlab.idf"
+        epw = (
+            get_eplus_dirs()
+            / "WeatherData"
+            / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
+        )
+        idf = IDF(file, epw, annual=True)
+
+        assert idf.simulate()

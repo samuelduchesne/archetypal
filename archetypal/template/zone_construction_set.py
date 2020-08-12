@@ -196,7 +196,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
         return zc
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, **kwargs):
         """Append other to self. Return self + other as a new object.
 
         Args:
@@ -206,6 +206,12 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         Returns:
             (ZoneConstructionSet): the combined ZoneConstructionSet object.
         """
+        # Check if other is None. Simply return self
+        if not other:
+            return self
+
+        if not self:
+            return other
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
             msg = "Cannot combine %s with %s" % (
@@ -243,8 +249,8 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             Facade=OpaqueConstruction.combine(self.Facade, other.Facade),
             IsFacadeAdiabatic=any([self.IsFacadeAdiabatic, other.IsFacadeAdiabatic]),
         )
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
-        new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf, **kwargs)
+        new_obj._predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def to_json(self):
@@ -273,12 +279,26 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     def validate(self):
         for attr in ["Slab", "Roof", "Partition", "Ground", "Facade"]:
             if getattr(self, attr) is None:
-                setattr(self, attr, OpaqueConstruction.generic(idf=self.idf))
+                # First try to get one from another zone that has the attr
+                zone = next(
+                    iter(
+                        filter(
+                            lambda x: getattr(x, attr, None) is not None,
+                            self.all_objects,
+                        )
+                    ),
+                    None,
+                )
+                if zone:
+                    setattr(self, attr, getattr(zone, attr))
+                else:
+                    # If not, default to a generic construction for last resort.
+                    setattr(self, attr, OpaqueConstruction.generic(idf=self.idf))
                 log(
                     f"While validating {self}, the required attribute "
                     f"'{attr}' was filled "
                     f"with {getattr(self, attr)}",
-                    lg.DEBUG
+                    lg.DEBUG,
                 )
         return self
 
@@ -398,6 +418,26 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         oc.Surface_Type = "Facade"
         return oc
 
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            Facade=self.Facade,
+            Ground=self.Ground,
+            Partition=self.Partition,
+            Roof=self.Roof,
+            Slab=self.Slab,
+            IsFacadeAdiabatic=self.IsFacadeAdiabatic,
+            IsGroundAdiabatic=self.IsGroundAdiabatic,
+            IsPartitionAdiabatic=self.IsPartitionAdiabatic,
+            IsRoofAdiabatic=self.IsRoofAdiabatic,
+            IsSlabAdiabatic=self.IsSlabAdiabatic,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
+
 
 def surface_dispatcher(surf, zone):
     """
@@ -411,6 +451,7 @@ def surface_dispatcher(surf, zone):
         ("Floor", "Outdoors"): ZoneConstructionSet._do_ground,
         ("Floor", "Foundation"): ZoneConstructionSet._do_ground,
         ("Floor", "OtherSideCoefficients"): ZoneConstructionSet._do_ground,
+        ("Floor", "GroundSlabPreprocessorAverage"): ZoneConstructionSet._do_ground,
         ("Floor", "Surface"): ZoneConstructionSet._do_slab,
         ("Floor", "Adiabatic"): ZoneConstructionSet._do_slab,
         ("Floor", "Zone"): ZoneConstructionSet._do_slab,

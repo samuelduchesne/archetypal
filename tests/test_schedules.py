@@ -36,18 +36,15 @@ def test_make_umi_schedule(config):
     idf = IDF("tests/input_data/schedules/schedules.idf")
 
     s = UmiSchedule(Name="POFF", idf=idf, start_day_of_the_week=0)
-    ep_year, ep_weeks, ep_days = s.to_year_week_day()
 
-    new = UmiSchedule(
-        Name=ep_year.Name, idf=idf, start_day_of_the_week=s.startDayOfTheWeek
-    )
+    new = s.develop()
 
     print(len(s.all_values))
     print(len(new.all_values))
     ax = s.plot(slice=("2018/01/01 00:00", "2018/01/07"), legend=True)
     new.plot(slice=("2018/01/01 00:00", "2018/01/07"), ax=ax, legend=True)
     plt.show()
-    assert s.__class__.__name__ == "UmiSchedule"
+    assert s.__class__.__name__ == "YearSchedule"
     assert len(s.all_values) == len(new.all_values)
     assert (new.all_values == s.all_values).all()
 
@@ -67,8 +64,8 @@ def test_from_values(mew_idf):
 
     heating_sched = UmiSchedule.from_values(
         Name="Zone_Heating_Schedule",
-        values=np.ones(8760),
-        schTypeLimitsName="Fraction",
+        Values=np.ones(8760),
+        Type="Fraction",
         idf=idf,
     )
     assert len(heating_sched.all_values) == 8760
@@ -142,7 +139,7 @@ def schedule_parametrized(request, run_schedules_idf):
 
     # create year:week:day version
     new_eps = orig.to_year_week_day()
-    new = Schedule(Name=new_eps[0].Name, idf=idf)
+    new = orig
 
     index = orig.series.index
     epv = pd.read_csv(run_schedules_idf)

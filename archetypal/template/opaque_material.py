@@ -7,6 +7,8 @@
 
 import collections
 
+import numpy as np
+
 from archetypal import log
 from archetypal.template import UmiBase, Unique, UniqueName
 
@@ -137,7 +139,9 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                     self.TransportCarbon == other.TransportCarbon,
                     self.TransportDistance == other.TransportDistance,
                     self.TransportEnergy == other.TransportEnergy,
-                    self.SubstitutionRatePattern == other.SubstitutionRatePattern,
+                    np.array_equal(
+                        self.SubstitutionRatePattern, other.SubstitutionRatePattern
+                    ),
                     self.SubstitutionTimestep == other.SubstitutionTimestep,
                 ]
             )
@@ -146,14 +150,19 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
     def generic(cls, idf=None):
         """generic plaster board"""
         return cls(
-            Conductivity=1.39,
-            SpecificHeat=1085,
-            Density=2000,
-            Name="generic_plaster_board",
+            Conductivity=0.16,
+            SpecificHeat=1090,
+            Density=800,
+            Name="GP01 GYPSUM",
+            Roughness="Smooth",
+            SolarAbsorptance=0.7,
+            ThermalEmittance=0.9,
+            VisibleAbsorptance=0.5,
+            DataSource="ASHRAE 90.1-2007",
             idf=idf,
         )
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, allow_duplicates=False):
         """Combine two OpaqueMaterial objects.
 
         Args:
@@ -212,7 +221,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             ),
             idf=self.idf
         )
-        new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj._predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def to_json(self):
@@ -347,4 +356,41 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
 
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
+
+        # Some OpaqueMaterial don't have a default value, therefore an empty string is
+        # parsed. This breaks the UmiTemplate Editor, therefore we set a value on these
+        # attributes (if necessary) in this validation step.
+
+        if getattr(self, "SolarAbsorptance") == "":
+            setattr(self, "SolarAbsorptance", 0.7)
+        if getattr(self, "ThermalEmittance") == "":
+            setattr(self, "ThermalEmittance", 0.9)
+        if getattr(self, "VisibleAbsorptance") == "":
+            setattr(self, "VisibleAbsorptance", 0.7)
         return self
+
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            MoistureDiffusionResistance=self.MoistureDiffusionResistance,
+            Roughness=self.Roughness,
+            SolarAbsorptance=self.SolarAbsorptance,
+            SpecificHeat=self.SpecificHeat,
+            ThermalEmittance=self.ThermalEmittance,
+            VisibleAbsorptance=self.VisibleAbsorptance,
+            Conductivity=self.Conductivity,
+            Cost=self.Cost,
+            Density=self.Density,
+            EmbodiedCarbon=self.EmbodiedCarbon,
+            EmbodiedEnergy=self.EmbodiedEnergy,
+            SubstitutionRatePattern=self.SubstitutionRatePattern,
+            SubstitutionTimestep=self.SubstitutionTimestep,
+            TransportCarbon=self.TransportCarbon,
+            TransportDistance=self.TransportDistance,
+            TransportEnergy=self.TransportEnergy,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )

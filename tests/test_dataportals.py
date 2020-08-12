@@ -205,7 +205,7 @@ def test_download_bld_window(config, scratch_then_cache):
     os.environ.get("CI", "False").lower() == "true",
     reason="Skipping this test on CI environment.",
 )
-def test_download_and_load_bld_window(config):
+def  test_download_and_load_bld_window(config):
     """Download window and load its idf file"""
     oauth_consumer_key = os.environ.get("NREL_CONSUMER_KEY")
 
@@ -216,7 +216,11 @@ def test_download_and_load_bld_window(config):
         oauth_key=oauth_consumer_key,
         tolerance=0.05,
     )
-    idf = IDF(response[0], prep_outputs=False)
+    idf = IDF(
+        response[0],
+        prep_outputs=False,
+        epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+    )
     construct = idf.getobject("CONSTRUCTION", "AEDG-SmOffice 1A Window Fixed")
     ws = ar.WindowSetting.from_construction(Name="test_window", Construction=construct)
 

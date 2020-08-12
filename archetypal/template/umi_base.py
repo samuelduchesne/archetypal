@@ -8,13 +8,11 @@
 import collections
 import logging as lg
 import math
-import random
 import re
 from itertools import chain
 
 import numpy as np
 
-import archetypal
 from archetypal import log
 from archetypal.idfclass import IDF
 from archetypal.utils import lcm
@@ -33,11 +31,11 @@ class Unique(type):
         """
         self = cls.__new__(cls, *args, **kwargs)
         cls.__init__(self, *args, **kwargs)
-        key = self.__hash__()
-        if key not in CREATED_OBJECTS:
-            cls._cache[key] = self
-            CREATED_OBJECTS[key] = self
-        return CREATED_OBJECTS[key]
+        if self not in CREATED_OBJECTS or kwargs.get("allow_duplicates", False):
+            CREATED_OBJECTS.append(self)
+            return self
+        else:
+            return next((x for x in CREATED_OBJECTS if x == self), self)
 
     def __init__(cls, name, bases, attributes):
         """
@@ -47,7 +45,6 @@ class Unique(type):
             attributes:
         """
         super().__init__(name, bases, attributes)
-        cls._cache = {}
 
 
 def _resolve_combined_names(predecessors):
@@ -55,13 +52,16 @@ def _resolve_combined_names(predecessors):
     (predecessors)
 
     Args:
-        predecessors:
+        predecessors (MetaData):
     """
 
     # all_names = [obj.Name for obj in predecessors]
     class_ = list(set([obj.__class__.__name__ for obj in predecessors]))[0]
 
-    return "Combined_%s_%s" % (class_, len(predecessors))
+    return "Combined_%s_%s" % (
+        class_,
+        str(hash((pre.Name for pre in predecessors))).strip("-"),
+    )
 
 
 def _shorten_name(long_name):
@@ -85,9 +85,7 @@ def clear_cache():
 
 class UmiBase(object):
     # dependencies: dict of <dependant value: independant value>
-    _dependencies = {
-        "sql": ["idf"],
-    }
+    _dependencies = {"sql": ["idf"]}
     _independant_vars = set(chain(*list(_dependencies.values())))
     _dependant_vars = set(_dependencies.keys())
 
@@ -146,13 +144,7 @@ class UmiBase(object):
         self._sql = None
         self.Category = Category
         self.Comments = Comments
-        if DataSource == "":
-            try:
-                self.DataSource = self.idf.name
-            except:
-                self.DataSource = DataSource
-        else:
-            self.DataSource = DataSource
+        self.DataSource = DataSource
         self.all_objects = CREATED_OBJECTS
         self.id = kwargs.get("$id", id(self))
         self._predecessors = MetaData()
@@ -162,7 +154,19 @@ class UmiBase(object):
         return ":".join([str(self.id), str(self.Name)])
 
     @property
+    def DataSource(self):
+        if self._datasource == "":
+            self._datasource = self.idf.name
+        return self._datasource
+
+    @DataSource.setter
+    def DataSource(self, value):
+        self._datasource = value
+
+    @property
     def idf(self):
+        if self._idf is None:
+            self._idf = IDF()
         return self._idf
 
     @property
@@ -185,10 +189,15 @@ class UmiBase(object):
         """get predecessor objects to self and other
 
         Args:
-            other (object): The other object.
+            other (UmiBase): The other object.
         """
         predecessors = self.predecessors + other.predecessors
-        meta = {
+        meta = self.combine_meta(predecessors)
+
+        return meta
+
+    def combine_meta(self, predecessors):
+        return {
             "Name": _resolve_combined_names(predecessors),
             "Comments": (
                 "Object composed of a combination of these "
@@ -200,9 +209,7 @@ class UmiBase(object):
             "DataSource": ", ".join(set([obj.DataSource for obj in predecessors])),
         }
 
-        return meta
-
-    def combine(self):
+    def combine(self, other, allow_duplicates=False):
         pass
 
     def rename(self, name):
@@ -211,16 +218,17 @@ class UmiBase(object):
         Args:
             name (str): the name.
         """
-        self._cache.pop(hash(self))
-        CREATED_OBJECTS.pop(hash(self))
-
         self.Name = name
-        self._cache[hash(self)] = self
-        CREATED_OBJECTS[hash(self)] = self
 
     def to_json(self):
         """Convert class properties to dict"""
         return {"$id": "{}".format(self.id), "Name": "{}".format(UniqueName(self.Name))}
+
+    @classmethod
+    def get_classref(cls, ref):
+        return next(
+            iter([value for value in CREATED_OBJECTS if value.id == ref["$ref"]]), None
+        )
 
     def get_ref(self, ref):
         """Gets item matching ref id
@@ -229,19 +237,7 @@ class UmiBase(object):
             ref:
         """
         return next(
-            iter(
-                [
-                    value
-                    for key, value in self.all_objects.items()
-                    if value.id == ref["$ref"]
-                ]
-            )
-        )
-
-    def get_random_schedule(self):
-        """Return a random YearSchedule from cache"""
-        return random.choice(
-            [self.all_objects[obj] for obj in self.all_objects if "YearSchedule" in obj]
+            iter([value for value in self.all_objects if value.id == ref["$ref"]]), None
         )
 
     def __hash__(self):
@@ -262,7 +258,10 @@ class UmiBase(object):
             weights (iterable, optional): Weights of [self, other] to calculate
                 weighted average.
         """
-
+        if getattr(self, attr) is None:
+            return getattr(other, attr)
+        if getattr(other, attr) is None:
+            return getattr(self, attr)
         # If weights is a list of zeros
         if not np.array(weights).any():
             weights = [1, 1]
@@ -303,6 +302,10 @@ class UmiBase(object):
                 together. If False, the attribute of self will is used (other is
                 ignored).
         """
+        if self is None:
+            return other
+        if other is None:
+            return self
         # if self has info, but other is none, use self
         if self.__dict__[attr] is not None and other.__dict__[attr] is None:
             return self.__dict__[attr]
@@ -325,9 +328,9 @@ class UmiBase(object):
         Args:
             other:
         """
-        return self.extend(other)
+        return UmiBase.extend(self, other, allow_duplicates=True)
 
-    def extend(self, other):
+    def extend(self, other, allow_duplicates):
         """Append other to self. Modify and return self.
 
         Args:
@@ -336,19 +339,26 @@ class UmiBase(object):
         Returns:
             UmiBase: self
         """
-        self.all_objects.pop(self.__hash__(), None)
+        if self is None:
+            return other
+        if other is None:
+            return self
+        self.all_objects.remove(self)
         id = self.id
-        new_obj = self.combine(other)
+        new_obj = self.combine(other, allow_duplicates=allow_duplicates)
         new_obj.__dict__.pop("id")
         new_obj.id = id
         name = new_obj.__dict__.pop("Name")
         self.__dict__.update(Name=name, **new_obj.__dict__)
-        self.all_objects[self.__hash__()] = self
+        self.all_objects.append(self)
         return self
 
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
         return self
+
+    def mapping(self):
+        pass
 
 
 class MaterialBase(UmiBase):
@@ -439,7 +449,9 @@ class MaterialBase(UmiBase):
                     self.TransportCarbon == other.TransportCarbon,
                     self.TransportDistance == other.TransportDistance,
                     self.TransportEnergy == other.TransportEnergy,
-                    self.SubstitutionRatePattern == other.SubstitutionRatePattern,
+                    np.array_equal(
+                        self.SubstitutionRatePattern, other.SubstitutionRatePattern
+                    ),
                     self.Conductivity == other.Conductivity,
                     self.Density == other.Density,
                 ]
@@ -450,7 +462,7 @@ class MaterialBase(UmiBase):
         return self
 
 
-CREATED_OBJECTS = {}
+CREATED_OBJECTS = []
 
 
 class MaterialLayer(object):
@@ -462,7 +474,7 @@ class MaterialLayer(object):
     2. Thickness (float): The thickness of the material in the layer.
     """
 
-    def __init__(self, Material, Thickness):
+    def __init__(self, Material, Thickness, **kwargs):
         """Initialize a MaterialLayer object with parameters:
 
         Args:
@@ -521,8 +533,47 @@ class MaterialLayer(object):
             Material={"$ref": str(self.Material.id)}, Thickness=self.Thickness
         )
 
+    def mapping(self):
+        return dict(Material=self.Material, Thickness=self.Thickness)
 
-class MetaData(collections.UserList):
+
+from collections.abc import Hashable, MutableSet
+
+
+class UserSet(Hashable, MutableSet):
+    __hash__ = MutableSet._hash
+
+    def __init__(self, iterable=()):
+        self.data = set(iterable)
+
+    def __contains__(self, value):
+        return value in self.data
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __repr__(self):
+        return repr(self.data)
+
+    def __add__(self, other):
+        self.data.update(other.data)
+        return self
+
+    def update(self, other):
+        self.data.update(other.data)
+        return self
+
+    def add(self, item):
+        self.data.add(item)
+
+    def discard(self, item):
+        self.data.discard(item)
+
+
+class MetaData(UserSet):
     """Handles data of combined objects such as Name, Comments and other."""
 
     @property
@@ -547,7 +598,7 @@ def load_json_objects(datastore, idf=None):
         OpaqueMaterial,
         OpaqueConstruction,
         WindowConstruction,
-        StructureDefinition,
+        StructureInformation,
         DaySchedule,
         WeekSchedule,
         YearSchedule,
@@ -556,92 +607,89 @@ def load_json_objects(datastore, idf=None):
         ZoneConditioning,
         ZoneConstructionSet,
         ZoneLoad,
-        Zone,
+        ZoneDefinition,
+        WindowSetting,
         BuildingTemplate,
     )
 
     if not idf:
         idf = IDF(prep_outputs=False)
-    loading_json_list = []
-    loading_json_list.append(
-        [GasMaterial.from_dict(**store, idf=idf) for store in datastore["GasMaterials"]]
-    )
-    loading_json_list.append(
-        [GlazingMaterial(**store, idf=idf) for store in datastore["GlazingMaterials"]]
-    )
-    loading_json_list.append(
-        [OpaqueMaterial(**store, idf=idf) for store in datastore["OpaqueMaterials"]]
-    )
-    loading_json_list.append(
-        [
-            OpaqueConstruction.from_dict(**store, idf=idf)
+    t = dict(
+        # with datastore, create each objects
+        GasMaterials=[
+            GasMaterial.from_dict(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["GasMaterials"]
+        ],
+        GlazingMaterials=[
+            GlazingMaterial(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["GlazingMaterials"]
+        ],
+        OpaqueMaterials=[
+            OpaqueMaterial(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["OpaqueMaterials"]
+        ],
+        OpaqueConstructions=[
+            OpaqueConstruction.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["OpaqueConstructions"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            WindowConstruction.from_dict(**store, idf=idf)
+        ],
+        WindowConstructions=[
+            WindowConstruction.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["WindowConstructions"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            StructureDefinition.from_dict(**store, idf=idf)
+        ],
+        StructureDefinitions=[
+            StructureInformation.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["StructureDefinitions"]
-        ]
-    )
-    loading_json_list.append(
-        [DaySchedule.from_dict(**store, idf=idf) for store in datastore["DaySchedules"]]
-    )
-    loading_json_list.append(
-        [
-            WeekSchedule.from_dict(**store, idf=idf)
+        ],
+        DaySchedules=[
+            DaySchedule.from_dict(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["DaySchedules"]
+        ],
+        WeekSchedules=[
+            WeekSchedule.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["WeekSchedules"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            YearSchedule.from_dict(**store, idf=idf)
+        ],
+        YearSchedules=[
+            YearSchedule.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["YearSchedules"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            DomesticHotWaterSetting.from_dict(**store, idf=idf)
+        ],
+        DomesticHotWaterSettings=[
+            DomesticHotWaterSetting.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["DomesticHotWaterSettings"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            VentilationSetting.from_dict(**store, idf=idf)
+        ],
+        VentilationSettings=[
+            VentilationSetting.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["VentilationSettings"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            ZoneConditioning.from_dict(**store, idf=idf)
+        ],
+        ZoneConditionings=[
+            ZoneConditioning.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["ZoneConditionings"]
-        ]
-    )
-    loading_json_list.append(
-        [
-            ZoneConstructionSet.from_dict(**store, idf=idf)
+        ],
+        ZoneConstructionSets=[
+            ZoneConstructionSet.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["ZoneConstructionSets"]
-        ]
-    )
-    loading_json_list.append(
-        [ZoneLoad.from_dict(**store, idf=idf) for store in datastore["ZoneLoads"]]
-    )
-    loading_json_list.append(
-        [Zone.from_dict(**store, idf=idf) for store in datastore["Zones"]]
-    )
-    loading_json_list.append(
-        [
-            BuildingTemplate.from_dict(**store, idf=idf)
+        ],
+        ZoneLoads=[
+            ZoneLoad.from_dict(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["ZoneLoads"]
+        ],
+        Zones=[
+            ZoneDefinition.from_dict(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["Zones"]
+        ],
+        WindowSettings=[
+            WindowSetting.from_ref(
+                store["$ref"], datastore["BuildingTemplates"], idf=idf
+            )
+            if "$ref" in store
+            else WindowSetting.from_dict(**store, idf=idf, allow_duplicates=True)
+            for store in datastore["WindowSettings"]
+        ],
+        BuildingTemplates=[
+            BuildingTemplate.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["BuildingTemplates"]
-        ]
+        ],
     )
-    return loading_json_list
+    return t
 
 
 class UniqueName(str):
@@ -665,14 +713,18 @@ class UniqueName(str):
         """
         if not name:
             return None
-        key = name
-        key, *_ = re.split(
-            r"_\d+(?!.*\d+)", key
-        )  # match last digit with the underscore
+        match = re.match(r"^(.*?)(\D*)(\d+)$", name)
+        if match:
+            groups = list(match.groups())
+            groups[-1] = int(groups[-1])
+            groups[-1] += 1
+            key = "".join(map(str, groups))
+        else:
+            key = name
 
         if key not in cls.existing:
             cls.existing[key] = 0
-            return name
-        cls.existing[key] += 1
-        the_name = key + "_{}".format(cls.existing[key])
-        return the_name
+        else:
+            cls.existing[key] += 1
+            key = key + str(cls.existing[key])
+        return key

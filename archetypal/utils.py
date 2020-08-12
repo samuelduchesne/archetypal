@@ -31,14 +31,14 @@ from typing import Union
 import numpy as np
 import pandas as pd
 import unicodedata
-from tqdm import tqdm
-
-from archetypal import settings, __version__
-from archetypal.settings import ep_version
 from packaging.version import Version, InvalidVersion
 from pandas.io.json import json_normalize
 from path import Path
 from tabulate import tabulate
+from tqdm import tqdm
+
+from archetypal import settings, __version__
+from archetypal.settings import ep_version
 
 
 def config(
@@ -726,6 +726,10 @@ class EnergyPlusVersion(Version):
         # type: () -> str
         return "-".join(map(str, (self.major, self.minor, self.micro)))
 
+    def __repr__(self):
+        # type: () -> str
+        return "<EnergyPlusVersion({0})>".format(repr(str(self)))
+
 
 def parse(version):
     # type: (Union[str, tuple, Version]) -> Union[None, EnergyPlusVersion]
@@ -1120,7 +1124,7 @@ def parallel_process(
         [function(array[0]), function(array[1]), ...]
     """
     from tqdm import tqdm
-    from concurrent.futures import ProcessPoolExecutor
+    from concurrent.futures import ThreadPoolExecutor
 
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())
@@ -1135,43 +1139,38 @@ def parallel_process(
     }
 
     if processors == 1:
-        if use_kwargs:
-            futures = {
-                a: submit(function, **in_dict[a]) for a in tqdm(in_dict, **kwargs)
-            }
-        else:
-            futures = {a: submit(function, in_dict[a]) for a in tqdm(in_dict, **kwargs)}
+        futures = []
+        out = []
+        for a in tqdm(in_dict, **kwargs):
+            if use_kwargs:
+                futures.append(submit(function, **in_dict[a]))
+            else:
+                futures.append(submit(function, in_dict[a]))
+        for job in futures:
+            out.append(job)
     else:
-        with ProcessPoolExecutor(max_workers=processors) as pool:
-            futures = {}
+        with ThreadPoolExecutor(max_workers=processors) as executor:
+            out = []
+            futures = []
 
             if use_kwargs:
                 for a in in_dict:
-                    future = pool.submit(function, **in_dict[a])
-                    futures[future] = a
+                    future = executor.submit(function, **in_dict[a])
+                    futures.append(future)
             else:
                 for a in in_dict:
-                    future = pool.submit(function, in_dict[a])
-                    futures[future] = a
+                    future = executor.submit(function, in_dict[a])
+                    futures.append(future)
 
             # Print out the progress as tasks complete
-            for f in tqdm(as_completed(futures), **kwargs):
-                pass
-    out = {}
-    # Get the results from the futures.
-    for key in futures:
-        if processors > 1:
-            try:
-                out[futures[key]] = key.result()
-            except Exception as e:
-                if debug:
-                    raise e
-                out[futures[key]] = e
-        else:
-            if isinstance(futures[key], Exception) and debug:
-                raise futures[key]
-            out[key] = futures[key]
-
+            for job in tqdm(as_completed(futures), **kwargs):
+                # Read result from future
+                try:
+                    result_done = job.result()
+                except Exception as e:
+                    result_done = e
+                # Append to the list of results
+                out.append(result_done)
     return out
 
 

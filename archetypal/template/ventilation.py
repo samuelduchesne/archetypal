@@ -222,13 +222,16 @@ class VentilationSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone):
+    def from_zone(cls, zone, **kwargs):
         """
 
         Args:
             zone (archetypal.template.zone.Zone): zone to gets information from
         """
-
+        # If Zone is not part of Conditioned Area, it should not have a
+        # VentilationSetting object.
+        if not zone.is_part_of_conditioned_floor_area:
+            return None
         name = zone.Name + "_VentilationSetting"
 
         df = {"a": zone.idf.sql}
@@ -279,6 +282,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
             ScheduledVentilationSetpoint=ScheduledVentilationSetpoint,
             idf=zone.idf,
             Category=zone.idf.name,
+            **kwargs
         )
         return z_vent
 
@@ -294,6 +298,13 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         Returns:
             (VentilationSetting): the combined VentilationSetting object.
         """
+        # Check if other is None. Simply return self
+        if not other:
+            return self
+
+        if not self:
+            return other
+
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
             msg = "Cannot combine %s with %s" % (
@@ -323,9 +334,11 @@ class VentilationSetting(UmiBase, metaclass=Unique):
                 )
             )
 
-        a = self.NatVentSchedule.combine(other.NatVentSchedule, weights)
-        b = self.ScheduledVentilationSchedule.combine(
-            other.ScheduledVentilationSchedule, weights
+        a = UmiSchedule.combine(self.NatVentSchedule, other.NatVentSchedule, weights)
+        b = UmiSchedule.combine(
+            self.ScheduledVentilationSchedule,
+            other.ScheduledVentilationSchedule,
+            weights,
         )
         c = any((self.Afn, other.Afn))
         d = self._float_mean(other, "Infiltration", weights)
@@ -361,12 +374,37 @@ class VentilationSetting(UmiBase, metaclass=Unique):
 
         # create a new object with the previous attributes
         new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
-        new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj._predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
         return self
+
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            Afn=self.Afn,
+            IsBuoyancyOn=self.IsBuoyancyOn,
+            Infiltration=self.Infiltration,
+            IsInfiltrationOn=self.IsInfiltrationOn,
+            IsNatVentOn=self.IsNatVentOn,
+            IsScheduledVentilationOn=self.IsScheduledVentilationOn,
+            NatVentMaxRelHumidity=self.NatVentMaxRelHumidity,
+            NatVentMaxOutdoorAirTemp=self.NatVentMaxOutdoorAirTemp,
+            NatVentMinOutdoorAirTemp=self.NatVentMinOutdoorAirTemp,
+            NatVentSchedule=self.NatVentSchedule,
+            NatVentZoneTempSetpoint=self.NatVentZoneTempSetpoint,
+            ScheduledVentilationAch=self.ScheduledVentilationAch,
+            ScheduledVentilationSchedule=self.ScheduledVentilationSchedule,
+            ScheduledVentilationSetpoint=self.ScheduledVentilationSetpoint,
+            IsWindOn=self.IsWindOn,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
 
 
 def do_infiltration(index, inf_df, zone):

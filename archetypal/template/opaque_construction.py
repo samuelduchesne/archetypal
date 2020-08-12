@@ -200,7 +200,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     def timeconstant_per_unit_area(self):
         return self.mass_per_unit_area * self.specific_heat / self.u_value()
 
-    def combine(self, other, method="dominant_wall"):
+    def combine(self, other, method="dominant_wall", allow_duplicates=False):
         """Combine two OpaqueConstruction together.
 
         Args:
@@ -259,7 +259,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value())
         )
         new_obj.rename(new_name)
-        new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj._predecessors.update(self.predecessors + other.predecessors)
         new_obj.area = sum(weights)
         return new_obj
 
@@ -422,12 +422,44 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         layers = kwargs.pop("Layers", None)
         oc = cls(Layers=layers, **kwargs)
         lys = [
-            MaterialLayer(oc.get_ref(layer["Material"]), layer["Thickness"])
+            MaterialLayer(oc.get_ref(layer["Material"]), layer["Thickness"],)
             for layer in layers
         ]
         oc.Layers = lys
 
         return oc
+
+    @classmethod
+    def generic_internalmass(cls, idf, for_zone):
+        mat = idf.newidfobject(
+            key="Material".upper(),
+            Name="Wood 6inch",
+            Roughness="MediumSmooth",
+            Thickness=0.15,
+            Conductivity=0.12,
+            Density=540,
+            Specific_Heat=1210,
+            Thermal_Absorptance=0.7,
+            Visible_Absorptance=0.7,
+        )
+        cons = idf.newidfobject(
+            key="Construction".upper(),
+            Name="InteriorFurnishings",
+            Outside_Layer="Wood 6inch",
+        )
+        internal_mass = "InternalMass"
+        cons.Name = internal_mass + "_construction"
+
+        new_epbunch = idf.newidfobject(
+            key="InternalMass".upper(),
+            Name=internal_mass,
+            Construction_Name=cons.Name,
+            Zone_or_ZoneList_Name=for_zone.Name,
+            Surface_Area=1,
+        )
+        return OpaqueConstruction(
+            Name=internal_mass, idf=idf, Layers=cls._internalmass_layer(new_epbunch)
+        )
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
@@ -478,9 +510,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
                 except AttributeError:
                     pass
                 else:
-                    layers.append(
-                        MaterialLayer(**dict(Material=o, Thickness=o._thickness))
-                    )
+                    layers.append(MaterialLayer(Material=o, Thickness=o._thickness))
             if not found:
                 raise AttributeError("%s material not found in IDF" % layer)
         return layers
@@ -505,14 +535,35 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
         return data_dict
 
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            Layers=self.Layers,
+            AssemblyCarbon=self.AssemblyCarbon,
+            AssemblyCost=self.AssemblyCost,
+            AssemblyEnergy=self.AssemblyEnergy,
+            DisassemblyCarbon=self.DisassemblyCarbon,
+            DisassemblyEnergy=self.DisassemblyEnergy,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
+
     @classmethod
     def generic(cls, idf=None):
-        # Generic Plaster Board
+        # 90.1-2007 Nonres 4B Int Wall
         """
         Args:
             idf:
         """
         om = OpaqueMaterial.generic(idf=idf)
 
-        layers = [MaterialLayer(om, 0.0127)]  # half inch
-        return cls(Name="generic plaster board half inch", Layers=layers, idf=idf)
+        layers = [MaterialLayer(om, 0.0127), MaterialLayer(om, 0.0127)]  # half inch
+        return cls(
+            Name="90.1-2007 Nonres 6A Int Wall",
+            Layers=layers,
+            DataSource="ASHRAE 90.1-2007",
+            idf=idf,
+        )

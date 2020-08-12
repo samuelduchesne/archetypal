@@ -7,6 +7,7 @@
 
 import collections
 
+import numpy as np
 from deprecation import deprecated
 
 import archetypal
@@ -46,7 +47,9 @@ class GasMaterial(MaterialBase, metaclass=Unique):
                     self.Density == other.Density,
                     self.EmbodiedCarbon == other.EmbodiedCarbon,
                     self.EmbodiedEnergy == other.EmbodiedEnergy,
-                    self.SubstitutionRatePattern == other.SubstitutionRatePattern,
+                    np.array_equal(
+                        self.SubstitutionRatePattern, other.SubstitutionRatePattern
+                    ),
                     self.SubstitutionTimestep == other.SubstitutionTimestep,
                     self.TransportCarbon == other.TransportCarbon,
                     self.TransportDistance == other.TransportDistance,
@@ -107,3 +110,24 @@ class GasMaterial(MaterialBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
+
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            Category=self.Category,
+            Type=self.Type,
+            Conductivity=self.Conductivity,
+            Cost=self.Cost,
+            Density=self.Density,
+            EmbodiedCarbon=self.EmbodiedCarbon,
+            EmbodiedEnergy=self.EmbodiedEnergy,
+            SubstitutionRatePattern=self.SubstitutionRatePattern,
+            SubstitutionTimestep=self.SubstitutionTimestep,
+            TransportCarbon=self.TransportCarbon,
+            TransportDistance=self.TransportDistance,
+            TransportEnergy=self.TransportEnergy,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )

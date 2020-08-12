@@ -16,7 +16,7 @@ from archetypal.template import UmiBase, Unique, OpaqueMaterial, UniqueName
 class MassRatio(object):
     """Handles the properties of the"""
 
-    def __init__(self, HighLoadRatio=None, Material=None, NormalRatio=None):
+    def __init__(self, HighLoadRatio=None, Material=None, NormalRatio=None, **kwargs):
         """Initialize a MassRatio object with parameters
 
         Args:
@@ -51,13 +51,39 @@ class MassRatio(object):
             NormalRatio=self.NormalRatio,
         )
 
+    def mapping(self):
+        return dict(
+            HighLoadRatio=self.HighLoadRatio,
+            Material=self.Material,
+            NormalRatio=self.NormalRatio,
+        )
+
     @classmethod
     def generic(cls):
-        mat = OpaqueMaterial.generic()
-        return cls(HighLoadRatio=1, Material=mat, NormalRatio=1)
+        mat = OpaqueMaterial(
+            Name="Steel General",
+            Conductivity=45.3,
+            SpecificHeat=500,
+            SolarAbsorptance=0.4,
+            ThermalEmittance=0.9,
+            VisibleAbsorptance=0.4,
+            Roughness="Rough",
+            Cost=0,
+            Density=7830,
+            MoistureDiffusionResistance=50,
+            EmbodiedCarbon=1.37,
+            EmbodiedEnergy=20.1,
+            TransportCarbon=0.067,
+            TransportDistance=500,
+            TransportEnergy=0.94,
+            SubstitutionRatePattern=[1],
+            SubstitutionTimestep=100,
+            DataSource="BostonTemplateLibrary.json",
+        )
+        return cls(HighLoadRatio=305, Material=mat, NormalRatio=305)
 
 
-class StructureDefinition(UmiBase, metaclass=Unique):
+class StructureInformation(UmiBase, metaclass=Unique):
     """Building Structure settings.
 
     .. image:: ../images/template/constructions-structure.png
@@ -85,7 +111,7 @@ class StructureDefinition(UmiBase, metaclass=Unique):
             MassRatios:
             **kwargs:
         """
-        super(StructureDefinition, self).__init__(*args, **kwargs)
+        super(StructureInformation, self).__init__(*args, **kwargs)
         self.AssemblyCarbon = AssemblyCarbon
         self.AssemblyCost = AssemblyCost
         self.AssemblyEnergy = AssemblyEnergy
@@ -97,7 +123,7 @@ class StructureDefinition(UmiBase, metaclass=Unique):
         return hash((self.__class__.__name__, self.Name, self.DataSource))
 
     def __eq__(self, other):
-        if not isinstance(other, StructureDefinition):
+        if not isinstance(other, StructureInformation):
             return False
         else:
             return all(
@@ -163,3 +189,18 @@ class StructureDefinition(UmiBase, metaclass=Unique):
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
         return self
+
+    def mapping(self):
+        self.validate()
+        return dict(
+            MassRatios=self.MassRatios,
+            AssemblyCarbon=self.AssemblyCarbon,
+            AssemblyCost=self.AssemblyCost,
+            AssemblyEnergy=self.AssemblyEnergy,
+            DisassemblyCarbon=self.DisassemblyCarbon,
+            DisassemblyEnergy=self.DisassemblyEnergy,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )

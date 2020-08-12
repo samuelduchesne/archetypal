@@ -8,7 +8,7 @@
 import collections
 
 from archetypal import log
-from archetypal.template import MaterialBase, Unique, UniqueName
+from archetypal.template import MaterialBase, Unique, UniqueName, UmiBase
 
 
 class GlazingMaterial(MaterialBase, metaclass=Unique):
@@ -122,7 +122,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
                 ]
             )
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, allow_duplicates=False):
         """Combine two GlazingMaterial objects together.
 
         Args:
@@ -153,7 +153,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
             weights = [self.Density, other.Density]
         # iterate over attributes and apply either float_mean or str_mean.
         new_attr = {}
-        for attr in self.__dict__:
+        for attr, value in self.__dict__.items():
             if attr not in [
                 "Comments",
                 "idf",
@@ -163,18 +163,19 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
                 "_idf",
                 "_sql",
             ]:
-                if isinstance(self.__dict__[attr], (int, float)):
-                    new_attr[attr] = self._float_mean(other, attr=attr, weights=weights)
-                elif isinstance(self.__dict__[attr], str):
-                    new_attr[attr] = self._str_mean(other, attr=attr, append=False)
-                elif isinstance(self.__dict__[attr], list):
+                if isinstance(value, (int, float)) or isinstance(other, (int, float)):
+                    new_attr[attr] = UmiBase._float_mean(
+                        self, other, attr=attr, weights=weights
+                    )
+                elif isinstance(value, str) or isinstance(other, str):
+                    new_attr[attr] = UmiBase._str_mean(
+                        self, other, attr=attr, append=False
+                    )
+                elif isinstance(value, list) or isinstance(other, list):
                     new_attr[attr] = getattr(self, attr) + getattr(other, attr)
-                elif not getattr(self, attr):
-                    if getattr(self, attr):
-                        new_attr[attr] = getattr(self, attr)
-                    else:
-                        new_attr[attr] = None
-                elif isinstance(getattr(self, attr), collections.UserList):
+                elif isinstance(value, collections.UserList) or isinstance(
+                    other, collections.UserList
+                ):
                     pass
                 else:
                     raise NotImplementedError
@@ -182,7 +183,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         # keywords.
         # create a new object from combined attributes
         new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
-        new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj._predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def to_json(self):
@@ -217,3 +218,33 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
+
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            DirtFactor=self.DirtFactor,
+            IREmissivityBack=self.IREmissivityBack,
+            IREmissivityFront=self.IREmissivityFront,
+            IRTransmittance=self.IRTransmittance,
+            SolarReflectanceBack=self.SolarReflectanceBack,
+            SolarReflectanceFront=self.SolarReflectanceFront,
+            SolarTransmittance=self.SolarTransmittance,
+            VisibleReflectanceBack=self.VisibleReflectanceBack,
+            VisibleReflectanceFront=self.VisibleReflectanceFront,
+            VisibleTransmittance=self.VisibleTransmittance,
+            Conductivity=self.Conductivity,
+            Cost=self.Cost,
+            Density=self.Density,
+            EmbodiedCarbon=self.EmbodiedCarbon,
+            EmbodiedEnergy=self.EmbodiedEnergy,
+            SubstitutionRatePattern=self.SubstitutionRatePattern,
+            SubstitutionTimestep=self.SubstitutionTimestep,
+            TransportCarbon=self.TransportCarbon,
+            TransportDistance=self.TransportDistance,
+            TransportEnergy=self.TransportEnergy,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )

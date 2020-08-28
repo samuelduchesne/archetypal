@@ -197,7 +197,7 @@ class EnergySeries(Series):
         elif isinstance(value, (Unit, Quantity)):
             self._units = value
         elif value is None:
-            self._units = value
+            self._units = settings.unit_registry.parse_expression(value).units
         else:
             raise TypeError(f"Unit of type {type(value)}")
 

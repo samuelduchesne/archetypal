@@ -11,6 +11,7 @@ import tsam.timeseriesaggregation as tsam
 from matplotlib import pyplot as plt, cm
 from matplotlib.colors import LightSource
 from pandas import Series, DataFrame, concat, MultiIndex, date_range
+from pint import Unit, Quantity
 from sklearn import preprocessing
 
 import archetypal
@@ -129,9 +130,9 @@ class EnergySeries(Series):
         self.profile_type = profile_type
         self.frequency = frequency
         self.base_year = base_year
-        self.units = settings.unit_registry.parse_expression(units).units
+        self.units = units
         self.archetypes = archetypes
-        self.to_units = settings.unit_registry.parse_expression(to_units).units
+        self.to_units = to_units
         self.converted_ = False
         self.concurrent_sort_ = concurrent_sort
         # handle sorting of the data
@@ -156,8 +157,8 @@ class EnergySeries(Series):
             self.normalize(inplace=True)
 
         # handle unit conversion
-        if to_units and units:
-            self.unit_conversion(to_units=to_units, inplace=True)
+        if self.to_units and self.units:
+            self.unit_conversion(to_units=self.to_units, inplace=True)
 
         # handle DateTimeIndex
         if index is None and use_timeindex:
@@ -170,8 +171,38 @@ class EnergySeries(Series):
                 )
             self.index = newindex
 
+    @property
+    def to_units(self):
+        return self._to_units
+
+    @to_units.setter
+    def to_units(self, value):
+        if isinstance(value, str):
+            self._to_units = settings.unit_registry.parse_expression(value).units
+        elif isinstance(value, (Unit, Quantity)):
+            self._to_units = value
+        elif value is None:
+            self._to_units = value
+        else:
+            raise TypeError(f"Unit of type {type(value)}")
+
+    @property
+    def units(self):
+        return self._units
+
+    @units.setter
+    def units(self, value):
+        if isinstance(value, str):
+            self._units = settings.unit_registry.parse_expression(value).units
+        elif isinstance(value, (Unit, Quantity)):
+            self._units = value
+        elif value is None:
+            self._units = value
+        else:
+            raise TypeError(f"Unit of type {type(value)}")
+
     @classmethod
-    def from_sqlite(
+    def from_reportdata(
         cls,
         df,
         name=None,
@@ -191,11 +222,12 @@ class EnergySeries(Series):
             name:
             base_year:
             units:
-            normalize:
+            normalize (bool): Normalize between 0 and 1.
             sort_values:
             ascending:
-            concurrent_sort:
-            to_units:
+            concurrent_sort (bool):
+            to_units (str): Convert original values to this unit. Dimensionality
+                check performed by `pint`.
             agg_func (callable): The aggregation function to use in the case
                 that multiple values have the same index value. If a function,
                 must either work when passed a DataFrame or when passed to
@@ -256,12 +288,7 @@ class EnergySeries(Series):
             to_units (pint.Unit):
             inplace:
         """
-        reg = settings.unit_registry
-        if to_units is None:
-            to_units = self.to_units
-        else:
-            to_units = reg.parse_expression(to_units).units
-        cdata = reg.Quantity(self.values, self.units).to(to_units).m
+        cdata = settings.unit_registry.Quantity(self.values, self.units).to(to_units).m
         result = self.apply(lambda x: x)
         result.update(pd.Series(cdata, index=result.index))
         result.__class__ = EnergySeries
@@ -318,8 +345,10 @@ class EnergySeries(Series):
             result = Series(scaler.fit_transform(self.values.reshape(-1, 1)).ravel())
             result = self._constructor(result)
             result.units = settings.unit_registry.dimensionless
+            result.to_units = None
         if inplace:
             self._update_inplace(result)
+            self.__finalize__(result)
         else:
             return result  # todo: make sure result has all the metadata
 
@@ -760,7 +789,7 @@ def plot_energyseries(
     vmax=None,
     filename=None,
     timeStepsPerPeriod=24,
-    **kwargs
+    **kwargs,
 ):
     """
     Args:
@@ -948,7 +977,7 @@ def plot_energyseries_map(
     sharey=False,
     layout=None,
     layout_type="vertical",
-    **kwargs
+    **kwargs,
 ):
     """
     Args:
@@ -1005,10 +1034,11 @@ def plot_energyseries_map(
     axes.set_aspect("auto")
     axes.set_ylabel("Hour")
     plt.xlabel("Day")
+    plt.title(f"{data.name}")
 
     # fig.subplots_adjust(right=1.1)
     cbar = fig.colorbar(im, ax=axes)
-    cbar.set_label("{} [{:~P}]".format(data.name, data.units))
+    cbar.set_label(f"[{data.units:~P}]")
 
     fig, axes = save_and_show(
         fig, axes, save, show, close, filename, file_format, dpi, axis_off, extent
@@ -1081,7 +1111,7 @@ def _plot_surface(ax, x, y, z, cmap=None, **kwargs):
         linewidth=0,
         antialiased=False,
         shade=False,
-        **kwargs
+        **kwargs,
     )
     return surf
 

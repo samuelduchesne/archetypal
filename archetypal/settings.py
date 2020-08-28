@@ -149,6 +149,7 @@ path_template_d18 = pkg_resources.resource_filename(resource_package, resource_p
 # Units
 
 unit_registry = pint.UnitRegistry()
+unit_registry.define("m3 = meter ** 3")
 
 
 class ZoneWeight(object):

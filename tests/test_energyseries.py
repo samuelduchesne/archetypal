@@ -1,14 +1,11 @@
 import os
 
-import archetypal as ar
 import pandas as pd
 import pytest
-
 from path import Path
 
+import archetypal as ar
 from archetypal import EnergySeries, get_eplus_dirs, settings, IDF
-
-import numpy as np
 
 
 @pytest.fixture(
@@ -37,7 +34,7 @@ def energy_series(config, request):
         table_name=("Heating:Electricity", "Heating:Gas", "Heating:DistrictHeating"),
     )
 
-    hl = EnergySeries.from_sqlite(
+    hl = EnergySeries.from_reportdata(
         report,
         name="Heating",
         normalize=False,
@@ -66,7 +63,7 @@ def test_EnergySeries(rd):
     import matplotlib.pyplot as plt
     from archetypal import EnergySeries
 
-    es = EnergySeries.from_sqlite(rd)
+    es = EnergySeries.from_reportdata(rd)
     es.plot()
     plt.show()
     print(es)

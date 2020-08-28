@@ -12,8 +12,8 @@ IDF Class
     :toctree: reference/
 
     IDF
-    run_eplus
     Outputs
+    Meter
 
 .. _templates_label:
 
@@ -40,7 +40,7 @@ Template Classes
     VentilationSetting
     WindowConstruction
     WindowSetting
-    Zone
+    ZoneDefinition
     ZoneConstructionSet
 
 Template Helper Classes
@@ -141,7 +141,8 @@ EnergySeries
     :nosignatures:
     :toctree: reference/
 
-    EnergySeries.from_sqlite
+    EnergySeries
+    EnergySeries.from_reportdata
     EnergySeries.unit_conversion
     EnergySeries.concurrent_sort
     EnergySeries.normalize

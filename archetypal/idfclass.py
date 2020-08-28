@@ -840,6 +840,31 @@ class IDF(geomeppy.IDF):
 
     @property
     def meters(self):
+        """List of available meters for the :class:`IDF` model.
+
+        The :class:`IDF` model must be simulated once (to retrieve the .mdd file).
+
+        The listed meters may or may not be included in the idf file. If they are
+        not, the output is added to the file and the model is simulated again. The
+        output is appended to the :attr:`IDF.idfobjects` list, but will not overwrite the
+        original idf file, unless :meth:`IDF.save` is called.
+
+        Hint:
+            Call `idf.meters.<output_group>.<meter_name>.values()` to retreive a
+            time-series based on the :class:`pandas.Series` class which can be plotted.
+
+            See :class:`Meter` and :class:`EnergySeries` for more information.
+
+        Example:
+            The IDF.meters attribute is populated with meters categories
+            (`Output:Meter` or `Output:Meter:Cumulative`) and each category is
+            populated with all the available meters.
+
+            .. code-block::
+
+                >>> IDF.meters.OutputMeter.WaterSystems__MainsWater
+                >>> IDF.meters.OutputMeterCumulative.WaterSystems__MainsWater
+        """
         if self._meters is None:
             try:
                 self.simulation_dir.files("*.mdd")
@@ -4420,11 +4445,18 @@ def getoldiddfile(versionid):
 class Meter:
     """"""
 
-    def __init__(self, idf: IDF, meter: dict):
-        self._key = meter.pop("key").upper()
+    def __init__(self, idf: IDF, meter: (dict or EpBunch)):
+        """Initialize a Meter object"""
         self._idf = idf
-        self._epobject = idf.anidfobject(key=self._key, **meter)
         self._values = None
+        if isinstance(meter, dict):
+            self._key = meter.pop("key").upper()
+            self._epobject = self._idf.anidfobject(key=self._key, **meter)
+        if isinstance(meter, EpBunch):
+            self._key = meter.key
+            self._epobject = meter
+        else:
+            raise TypeError()
 
     def __repr__(self):
         """returns the string representation of an EpBunch"""
@@ -4489,7 +4521,21 @@ class MeterGroup:
 
 
 class Meters:
-    """Available meters from the .mdd file"""
+    """Lists available meters in the IDF model. Once simulated at least once,
+    the IDF.meters attribute is populated with meters categories ("Output:Meter" or
+    "Output:Meter:Cumulative") and each category is populated with all the available
+    meters.
+
+    Example:
+        For example, to retrieve the WaterSystems:MainsWater meter, simply call
+
+        .. code-block::
+
+            >>> idf.meters.OutputMeter.WaterSystems__MainsWater.values()
+
+    Hint:
+        Available meters are read from the .mdd file
+    """
 
     def __init__(self, idf: IDF):
         self._idf = idf

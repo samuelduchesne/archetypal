@@ -104,6 +104,14 @@ class IDF(geomeppy.IDF):
             "idfname",
             "output_directory",
         ],
+        "meters": [
+            "as_version",
+            "annual",
+            "design_day",
+            "epw",
+            "idfname",
+            "output_directory",
+        ],
         "schedules_dict": ["idfobjects"],
         "partition_ratio": ["idfobjects"],
         "area_conditioned": ["idfobjects"],
@@ -216,6 +224,7 @@ class IDF(geomeppy.IDF):
         self._partition_ratio = None
         self._area_conditioned = None
         self._schedules = None
+        self._meters = None
 
         if parse(as_version):
             self.as_version = parse(as_version)
@@ -828,6 +837,17 @@ class IDF(geomeppy.IDF):
             return calendar.SATURDAY
         else:
             return 0
+
+    @property
+    def meters(self):
+        if self._meters is None:
+            try:
+                self.simulation_dir.files("*.mdd")
+            except FileNotFoundError:
+                return "call IDF.simulate() to get a list of possible meters"
+            else:
+                self._meters = Meters(self)
+        return self._meters
 
     def simulate(self, **kwargs):
         """Execute EnergyPlus. Does not return anything. See
@@ -1659,7 +1679,7 @@ class IDF(geomeppy.IDF):
             OutputPrep(self).add_custom(prep_outputs)
             self.simulate()
         rd = ReportData.from_sqlite(self.sql_file, table_name=energy_out_variable_name)
-        profile = EnergySeries.from_sqlite(
+        profile = EnergySeries.from_reportdata(
             rd, to_units=units, name=name, **EnergySeries_kwds
         )
         return profile
@@ -4395,6 +4415,99 @@ def getoldiddfile(versionid):
     eplusfolder = os.path.dirname(eplus_exe)
     iddfile = "{}/bin/Energy+.idd".format(eplusfolder)
     return iddfile
+
+
+class Meter:
+    """"""
+
+    def __init__(self, idf: IDF, meter: dict):
+        self._key = meter.pop("key").upper()
+        self._idf = idf
+        self._epobject = idf.anidfobject(key=self._key, **meter)
+        self._values = None
+
+    def __repr__(self):
+        """returns the string representation of an EpBunch"""
+        return self._epobject.__str__()
+
+    def values(
+        self,
+        units=None,
+        normalize=False,
+        sort_values=False,
+        ascending=False,
+        concurrent_sort=False,
+        agg_func="sum",
+    ):
+        """Returns the Meter as a time-series (:class:`EnergySeries`). Data is
+        retrieved from the sql file. It is possible to convert the time-series to
+        another unit, e.g.: "J" to "kWh".
+
+        Args:
+            units (str): Convert original values to another unit. The original unit
+                is detected automatically and a dimensionality check is performed.
+            normalize (bool): Normalize between 0 and 1.
+            sort_values (bool): If True, values are sorted (default ascending=True)
+            ascending (bool): If True and `sort_values` is True, values are sorted in ascending order.
+            concurrent_sort (bool): #Todo: Document
+            agg_func: #Todo: Document
+
+        Returns:
+            EnergySeries: The time-series object.
+        """
+        if self._values is None:
+            if self._epobject not in self._idf.idfobjects[self._epobject.key]:
+                self._idf.addidfobject(self._epobject)
+                self._idf.simulate()
+            report = ReportData.from_sqlite(
+                sqlite_file=self._idf.sql_file, table_name=self._epobject.Key_Name
+            )
+            self._values = report
+        return EnergySeries.from_reportdata(
+            self._values,
+            to_units=units,
+            name=self._epobject.Key_Name,
+            normalize=normalize,
+            sort_values=sort_values,
+            ascending=ascending,
+            concurrent_sort=concurrent_sort,
+            agg_func=agg_func,
+        )
+
+
+class MeterGroup:
+    """A class for sub meter groups (Output:Meter vs Output:Meter:Cumulative)"""
+
+    def __init__(self, idf: IDF, meters_dict: dict):
+        self._idf = idf
+        self._properties = {}
+
+        for i, meter in meters_dict.items():
+            meter_name = meter["Key_Name"].replace(":", "__").replace(" ", "_")
+            self._properties[meter_name] = Meter(idf, meter)
+            setattr(self, meter_name, self._properties[meter_name])
+
+
+class Meters:
+    """Available meters from the .mdd file"""
+
+    def __init__(self, idf: IDF):
+        self._idf = idf
+        self._properties = {}
+
+        mdd = self._idf.simulation_dir.files("*.mdd")
+        if not mdd:
+            raise FileNotFoundError
+        meters = pd.read_csv(
+            mdd[0], skiprows=2, names=["key", "Key_Name", "Reporting_Frequency"]
+        )
+        for key, group in meters.groupby("key"):
+            meters_dict = group.T.to_dict()
+            setattr(
+                Meters,
+                key.replace(":", "").replace(" ", "_"),
+                MeterGroup(self._idf, meters_dict),
+            )
 
 
 if __name__ == "__main__":

@@ -14,18 +14,22 @@ from archetypal import (
 )
 
 
+@pytest.fixture()
+def shoebox_model(config):
+    """An IDF model. Yields both the idf"""
+    file = "tests/input_data/umi_samples/B_Off_0.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    yield IDF(file, epw=w)
+
+
 class TestIDF:
     @pytest.fixture(scope="session")
     def idf_model(self, config):
         """An IDF model. Yields both the idf"""
-        file = "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        yield IDF(file, epw=w)
-
-    @pytest.fixture()
-    def shoebox_model(self, config):
-        """An IDF model. Yields both the idf"""
-        file = "tests/input_data/umi_samples/B_Off_0.idf"
+        file = (
+            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD "
+            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        )
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(file, epw=w)
 
@@ -223,6 +227,18 @@ class TestIDF:
         np.testing.assert_almost_equal(
             actual=idf.area_conditioned, desired=area, decimal=0
         )
+
+
+class TestMeters:
+    def test_retrieve_meters_nosim(self, config, shoebox_model):
+        assert (
+            shoebox_model.meters
+            == "call IDF.simulate() to get a list of possible meters"
+        )
+
+    def test_retrieve_meters(self, config, shoebox_model):
+        shoebox_model.simulate()
+        shoebox_model.meters.OutputMeter.WaterSystems__MainsWater.values()
 
 
 class TestThreads:

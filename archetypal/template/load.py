@@ -11,6 +11,7 @@ import sqlite3
 
 import pandas as pd
 from deprecation import deprecated
+from sigfig import round
 
 import archetypal
 from archetypal import log, timeit, settings
@@ -95,6 +96,38 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
         self._belongs_to_zone = kwargs.get("zone", None)
 
+    @property
+    def EquipmentPowerDensity(self):
+        return float(self._EquipmentPowerDensity)
+
+    @EquipmentPowerDensity.setter
+    def EquipmentPowerDensity(self, value):
+        self._EquipmentPowerDensity = value
+
+    @property
+    def IlluminanceTarget(self):
+        return float(self._IlluminanceTarget)
+
+    @IlluminanceTarget.setter
+    def IlluminanceTarget(self, value):
+        self._IlluminanceTarget = value
+
+    @property
+    def LightingPowerDensity(self):
+        return float(self._LightingPowerDensity)
+
+    @LightingPowerDensity.setter
+    def LightingPowerDensity(self, value):
+        self._LightingPowerDensity = value
+
+    @property
+    def PeopleDensity(self):
+        return float(self._PeopleDensity)
+
+    @PeopleDensity.setter
+    def PeopleDensity(self, value):
+        self._PeopleDensity = value
+
     def __add__(self, other):
         """
         Args:
@@ -166,9 +199,9 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         data_dict[
             "EquipmentAvailabilitySchedule"
         ] = self.EquipmentAvailabilitySchedule.to_dict()
-        data_dict["EquipmentPowerDensity"] = self.EquipmentPowerDensity
-        data_dict["IlluminanceTarget"] = self.IlluminanceTarget
-        data_dict["LightingPowerDensity"] = self.LightingPowerDensity
+        data_dict["EquipmentPowerDensity"] = round(self.EquipmentPowerDensity, 3)
+        data_dict["IlluminanceTarget"] = round(self.IlluminanceTarget, 3)
+        data_dict["LightingPowerDensity"] = round(self.LightingPowerDensity, 3)
         data_dict[
             "LightsAvailabilitySchedule"
         ] = self.LightsAvailabilitySchedule.to_dict()
@@ -176,7 +209,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         data_dict["IsEquipmentOn"] = self.IsEquipmentOn
         data_dict["IsLightingOn"] = self.IsLightingOn
         data_dict["IsPeopleOn"] = self.IsPeopleOn
-        data_dict["PeopleDensity"] = self.PeopleDensity
+        data_dict["PeopleDensity"] = round(self.PeopleDensity, 3)
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource

@@ -12,6 +12,7 @@ import sqlite3
 
 import numpy as np
 from deprecation import deprecated
+from sigfig import round
 
 import archetypal
 from archetypal import float_round, ReportData, log, timeit, settings
@@ -187,6 +188,70 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
         self._belongs_to_zone = kwargs.get("zone", None)
 
+    @property
+    def CoolingSetpoint(self):
+        return float(self._cooling_setpoint)
+
+    @CoolingSetpoint.setter
+    def CoolingSetpoint(self, value):
+        self._cooling_setpoint = value
+
+    @property
+    def HeatingSetpoint(self):
+        return float(self._heating_setpoint)
+
+    @HeatingSetpoint.setter
+    def HeatingSetpoint(self, value):
+        self._heating_setpoint = value
+
+    @property
+    def MaxCoolFlow(self):
+        return float(self._MaxCoolFlow)
+
+    @MaxCoolFlow.setter
+    def MaxCoolFlow(self, value):
+        self._MaxCoolFlow = value
+
+    @property
+    def MaxHeatFlow(self):
+        return float(self._MaxHeatFlow)
+
+    @MaxHeatFlow.setter
+    def MaxHeatFlow(self, value):
+        self._MaxHeatFlow = value
+
+    @property
+    def MaxHeatingCapacity(self):
+        return float(self._MaxHeatingCapacity)
+
+    @MaxHeatingCapacity.setter
+    def MaxHeatingCapacity(self, value):
+        self._MaxHeatingCapacity = value
+
+    @property
+    def MaxCoolingCapacity(self):
+        return float(self._MaxCoolingCapacity)
+
+    @MaxCoolingCapacity.setter
+    def MaxCoolingCapacity(self, value):
+        self._MaxCoolingCapacity = value
+
+    @property
+    def MinFreshAirPerArea(self):
+        return float(self._min_fresh_air_per_area)
+
+    @MinFreshAirPerArea.setter
+    def MinFreshAirPerArea(self, value):
+        self._min_fresh_air_per_area = value
+
+    @property
+    def MinFreshAirPerPerson(self):
+        return float(self._min_fresh_air_per_person)
+
+    @MinFreshAirPerPerson.setter
+    def MinFreshAirPerPerson(self, value):
+        self._min_fresh_air_per_person = value
+
     def __add__(self, other):
         return self.combine(other)
 
@@ -262,17 +327,21 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
         data_dict["$id"] = str(self.id)
         data_dict["CoolingSchedule"] = self.CoolingSchedule.to_dict()
-        data_dict["CoolingCoeffOfPerf"] = self.CoolingCoeffOfPerf
+        data_dict["CoolingCoeffOfPerf"] = round(self.CoolingCoeffOfPerf, 3)
         data_dict["CoolingSetpoint"] = (
-            self.CoolingSetpoint if not math.isnan(self.CoolingSetpoint) else 26
+            round(self.CoolingSetpoint, 3)
+            if not math.isnan(self.CoolingSetpoint)
+            else 26
         )
         data_dict["CoolingLimitType"] = self.CoolingLimitType
         data_dict["EconomizerType"] = self.EconomizerType
-        data_dict["HeatingCoeffOfPerf"] = self.HeatingCoeffOfPerf
+        data_dict["HeatingCoeffOfPerf"] = round(self.HeatingCoeffOfPerf, 3)
         data_dict["HeatingLimitType"] = self.HeatingLimitType
         data_dict["HeatingSchedule"] = self.HeatingSchedule.to_dict()
         data_dict["HeatingSetpoint"] = (
-            self.HeatingSetpoint if not math.isnan(self.HeatingSetpoint) else 20
+            round(self.HeatingSetpoint, 3)
+            if not math.isnan(self.HeatingSetpoint)
+            else 20
         )
         data_dict["HeatRecoveryEfficiencyLatent"] = self.HeatRecoveryEfficiencyLatent
         data_dict[
@@ -282,13 +351,13 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         data_dict["IsCoolingOn"] = self.IsCoolingOn
         data_dict["IsHeatingOn"] = self.IsHeatingOn
         data_dict["IsMechVentOn"] = self.IsMechVentOn
-        data_dict["MaxCoolFlow"] = self.MaxCoolFlow
-        data_dict["MaxCoolingCapacity"] = self.MaxCoolingCapacity
-        data_dict["MaxHeatFlow"] = self.MaxHeatFlow
-        data_dict["MaxHeatingCapacity"] = self.MaxHeatingCapacity
+        data_dict["MaxCoolFlow"] = round(self.MaxCoolFlow, 3)
+        data_dict["MaxCoolingCapacity"] = round(self.MaxCoolingCapacity, 3)
+        data_dict["MaxHeatFlow"] = round(self.MaxHeatFlow, 3)
+        data_dict["MaxHeatingCapacity"] = round(self.MaxHeatingCapacity, 3)
         data_dict["MechVentSchedule"] = self.MechVentSchedule.to_dict()
-        data_dict["MinFreshAirPerArea"] = self.MinFreshAirPerArea
-        data_dict["MinFreshAirPerPerson"] = self.MinFreshAirPerPerson
+        data_dict["MinFreshAirPerArea"] = round(self.MinFreshAirPerArea, 3)
+        data_dict["MinFreshAirPerPerson"] = round(self.MinFreshAirPerPerson, 3)
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource

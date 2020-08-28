@@ -19,3 +19,4 @@ pint
 click
 outdated
 deprecation
+sigfig

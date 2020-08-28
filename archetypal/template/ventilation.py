@@ -11,6 +11,7 @@ import logging as lg
 import numpy as np
 import pandas as pd
 from deprecation import deprecated
+from sigfig import round
 
 import archetypal
 from archetypal import log, timeit, settings, top, weighted_mean
@@ -126,11 +127,66 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         self.NatVentZoneTempSetpoint = NatVentZoneTempSetpoint
         self.ScheduledVentilationAch = ScheduledVentilationAch
         self.ScheduledVentilationSetpoint = ScheduledVentilationSetpoint
-
         self.ScheduledVentilationSchedule = ScheduledVentilationSchedule
         self.NatVentSchedule = NatVentSchedule
 
         self._belongs_to_zone = kwargs.get("zone", None)
+
+    @property
+    def Infiltration(self):
+        return float(self._Infiltration)
+
+    @Infiltration.setter
+    def Infiltration(self, value):
+        self._Infiltration = value
+
+    @property
+    def NatVentMaxOutdoorAirTemp(self):
+        return float(self._NatVentMaxOutdoorAirTemp)
+
+    @NatVentMaxOutdoorAirTemp.setter
+    def NatVentMaxOutdoorAirTemp(self, value):
+        self._NatVentMaxOutdoorAirTemp = value
+
+    @property
+    def NatVentMaxRelHumidity(self):
+        return float(self._NatVentMaxRelHumidity)
+
+    @NatVentMaxRelHumidity.setter
+    def NatVentMaxRelHumidity(self, value):
+        self._NatVentMaxRelHumidity = value
+
+    @property
+    def NatVentMinOutdoorAirTemp(self):
+        return float(self._NatVentMinOutdoorAirTemp)
+
+    @NatVentMinOutdoorAirTemp.setter
+    def NatVentMinOutdoorAirTemp(self, value):
+        self._NatVentMinOutdoorAirTemp = value
+
+    @property
+    def NatVentZoneTempSetpoint(self):
+        return float(self._NatVentZoneTempSetpoint)
+
+    @NatVentZoneTempSetpoint.setter
+    def NatVentZoneTempSetpoint(self, value):
+        self._NatVentZoneTempSetpoint = value
+
+    @property
+    def ScheduledVentilationAch(self):
+        return float(self._ScheduledVentilationAch)
+
+    @ScheduledVentilationAch.setter
+    def ScheduledVentilationAch(self, value):
+        self._ScheduledVentilationAch = value
+
+    @property
+    def ScheduledVentilationSetpoint(self):
+        return float(self._ScheduledVentilationSetpoint)
+
+    @ScheduledVentilationSetpoint.setter
+    def ScheduledVentilationSetpoint(self, value):
+        self._ScheduledVentilationSetpoint = value
 
     def __add__(self, other):
         return self.combine(other)
@@ -198,20 +254,22 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         data_dict["$id"] = str(self.id)
         data_dict["Afn"] = self.Afn
         data_dict["IsBuoyancyOn"] = self.IsBuoyancyOn
-        data_dict["Infiltration"] = self.Infiltration
+        data_dict["Infiltration"] = round(self.Infiltration, 3)
         data_dict["IsInfiltrationOn"] = self.IsInfiltrationOn
         data_dict["IsNatVentOn"] = self.IsNatVentOn
         data_dict["IsScheduledVentilationOn"] = self.IsScheduledVentilationOn
-        data_dict["NatVentMaxRelHumidity"] = self.NatVentMaxRelHumidity
-        data_dict["NatVentMaxOutdoorAirTemp"] = self.NatVentMaxOutdoorAirTemp
-        data_dict["NatVentMinOutdoorAirTemp"] = self.NatVentMinOutdoorAirTemp
+        data_dict["NatVentMaxRelHumidity"] = round(self.NatVentMaxRelHumidity, 3)
+        data_dict["NatVentMaxOutdoorAirTemp"] = round(self.NatVentMaxOutdoorAirTemp, 3)
+        data_dict["NatVentMinOutdoorAirTemp"] = round(self.NatVentMinOutdoorAirTemp, 3)
         data_dict["NatVentSchedule"] = self.NatVentSchedule.to_dict()
-        data_dict["NatVentZoneTempSetpoint"] = self.NatVentZoneTempSetpoint
-        data_dict["ScheduledVentilationAch"] = self.ScheduledVentilationAch
+        data_dict["NatVentZoneTempSetpoint"] = round(self.NatVentZoneTempSetpoint, 3)
+        data_dict["ScheduledVentilationAch"] = round(self.ScheduledVentilationAch, 3)
         data_dict[
             "ScheduledVentilationSchedule"
         ] = self.ScheduledVentilationSchedule.to_dict()
-        data_dict["ScheduledVentilationSetpoint"] = self.ScheduledVentilationSetpoint
+        data_dict["ScheduledVentilationSetpoint"] = round(
+            self.ScheduledVentilationSetpoint, 3
+        )
         data_dict["IsWindOn"] = self.IsWindOn
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments

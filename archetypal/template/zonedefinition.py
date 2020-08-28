@@ -17,6 +17,7 @@ import numpy as np
 from deprecation import deprecated
 from eppy.bunch_subclass import BadEPFieldError
 from geomeppy.geom.polygons import Polygon3D
+from sigfig import round
 
 from archetypal import log, timeit, settings, is_referenced, __version__
 from archetypal.template import (
@@ -28,7 +29,6 @@ from archetypal.template import (
     DomesticHotWaterSetting,
     OpaqueConstruction,
     WindowSetting,
-    CREATED_OBJECTS,
     UniqueName,
     Unique,
 )
@@ -99,8 +99,13 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         self._is_part_of_conditioned_floor_area = None
         self._is_part_of_total_floor_area = None
 
-        if self not in CREATED_OBJECTS:
-            CREATED_OBJECTS.append(self)
+    @property
+    def InternalMassExposedPerFloorArea(self):
+        return float(self._InternalMassExposedPerFloorArea)
+
+    @InternalMassExposedPerFloorArea.setter
+    def InternalMassExposedPerFloorArea(self, value):
+        self._InternalMassExposedPerFloorArea = value
 
     def __add__(self, other):
         """
@@ -338,13 +343,13 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         data_dict["$id"] = str(self.id)
         data_dict["Conditioning"] = self.Conditioning.to_dict()
         data_dict["Constructions"] = self.Constructions.to_dict()
-        data_dict["DaylightMeshResolution"] = self.DaylightMeshResolution
-        data_dict["DaylightWorkplaneHeight"] = self.DaylightWorkplaneHeight
+        data_dict["DaylightMeshResolution"] = round(self.DaylightMeshResolution, 2)
+        data_dict["DaylightWorkplaneHeight"] = round(self.DaylightWorkplaneHeight, 2)
         data_dict["DomesticHotWater"] = self.DomesticHotWater.to_dict()
         data_dict["InternalMassConstruction"] = self.InternalMassConstruction.to_dict()
-        data_dict[
-            "InternalMassExposedPerFloorArea"
-        ] = self.InternalMassExposedPerFloorArea
+        data_dict["InternalMassExposedPerFloorArea"] = round(
+            self.InternalMassExposedPerFloorArea, 2
+        )
         data_dict["Loads"] = self.Loads.to_dict()
         data_dict["Ventilation"] = self.Ventilation.to_dict()
         data_dict["Category"] = self.Category

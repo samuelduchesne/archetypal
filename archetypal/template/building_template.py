@@ -21,6 +21,7 @@ import tabulate
 from deprecation import deprecated
 from eppy.bunch_subclass import EpBunch
 from path import Path
+from sigfig import round
 from tqdm import tqdm
 
 import archetypal
@@ -404,7 +405,7 @@ class BuildingTemplate(UmiBase):
 
         data_dict["Core"] = self.Core.to_dict()
         data_dict["Lifespan"] = self.Lifespan
-        data_dict["PartitionRatio"] = self.PartitionRatio
+        data_dict["PartitionRatio"] = round(self.PartitionRatio, 2)
         data_dict["Perimeter"] = self.Perimeter.to_dict()
         data_dict["Structure"] = self.Structure.to_dict()
         data_dict["Windows"] = self.Windows.to_dict()

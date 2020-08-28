@@ -9,6 +9,7 @@ import collections
 
 import numpy as np
 from deprecation import deprecated
+from sigfig import round
 
 import archetypal
 from archetypal.template import MaterialBase, Unique
@@ -95,7 +96,7 @@ class GasMaterial(MaterialBase, metaclass=Unique):
         data_dict["$id"] = str(self.id)
         data_dict["Category"] = self.Category
         data_dict["Type"] = self.Type
-        data_dict["Conductivity"] = self.Conductivity
+        data_dict["Conductivity"] = round(self.Conductivity, sigfigs=2)
         data_dict["Cost"] = self.Cost
         data_dict["Density"] = self.Density
         data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon

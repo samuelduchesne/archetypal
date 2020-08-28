@@ -6,11 +6,11 @@
 ################################################################################
 
 import collections
-from operator import add
 from statistics import mean
 
 import numpy as np
 from deprecation import deprecated
+from sigfig import round
 
 import archetypal
 from archetypal import settings, log, timeit, reduce
@@ -48,6 +48,30 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         self.WaterTemperatureInlet = WaterTemperatureInlet
         self.WaterSchedule = WaterSchedule
         self._belongs_to_zone = kwargs.get("Zone", None)
+
+    @property
+    def FlowRatePerFloorArea(self):
+        return float(self._FlowRatePerFloorArea)
+
+    @FlowRatePerFloorArea.setter
+    def FlowRatePerFloorArea(self, value):
+        self._FlowRatePerFloorArea = value
+
+    @property
+    def WaterSupplyTemperature(self):
+        return float(self._WaterSupplyTemperature)
+
+    @WaterSupplyTemperature.setter
+    def WaterSupplyTemperature(self, value):
+        self._WaterSupplyTemperature = value
+
+    @property
+    def WaterTemperatureInlet(self):
+        return float(self._WaterTemperatureInlet)
+
+    @WaterTemperatureInlet.setter
+    def WaterTemperatureInlet(self, value):
+        self._WaterTemperatureInlet = value
 
     @property
     def Zone(self):
@@ -118,11 +142,15 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["FlowRatePerFloorArea"] = self.FlowRatePerFloorArea
+        data_dict["FlowRatePerFloorArea"] = round(self.FlowRatePerFloorArea, sigfigs=4)
         data_dict["IsOn"] = self.IsOn
         data_dict["WaterSchedule"] = self.WaterSchedule.to_dict()
-        data_dict["WaterSupplyTemperature"] = self.WaterSupplyTemperature
-        data_dict["WaterTemperatureInlet"] = self.WaterTemperatureInlet
+        data_dict["WaterSupplyTemperature"] = round(
+            self.WaterSupplyTemperature, sigfigs=4
+        )
+        data_dict["WaterTemperatureInlet"] = round(
+            self.WaterTemperatureInlet, sigfigs=4
+        )
         data_dict["Category"] = self.Category
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource

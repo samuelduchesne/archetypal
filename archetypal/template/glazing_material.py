@@ -7,6 +7,8 @@
 
 import collections
 
+from sigfig import round
+
 from archetypal import log
 from archetypal.template import MaterialBase, Unique, UniqueName, UmiBase
 
@@ -90,6 +92,78 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         self.SolarTransmittance = SolarTransmittance
         self.Density = Density
         self.Conductivity = Conductivity
+
+    @property
+    def IREmissivityBack(self):
+        return float(self._IREmissivityBack)
+
+    @IREmissivityBack.setter
+    def IREmissivityBack(self, value):
+        self._IREmissivityBack = value
+
+    @property
+    def IREmissivityFront(self):
+        return float(self._IREmissivityFront)
+
+    @IREmissivityFront.setter
+    def IREmissivityFront(self, value):
+        self._IREmissivityFront = value
+
+    @property
+    def IRTransmittance(self):
+        return float(self._IRTransmittance)
+
+    @IRTransmittance.setter
+    def IRTransmittance(self, value):
+        self._IRTransmittance = value
+
+    @property
+    def VisibleReflectanceBack(self):
+        return float(self._VisibleReflectanceBack)
+
+    @VisibleReflectanceBack.setter
+    def VisibleReflectanceBack(self, value):
+        self._VisibleReflectanceBack = value
+
+    @property
+    def VisibleReflectanceFront(self):
+        return float(self._VisibleReflectanceFront)
+
+    @VisibleReflectanceFront.setter
+    def VisibleReflectanceFront(self, value):
+        self._VisibleReflectanceFront = value
+
+    @property
+    def VisibleTransmittance(self):
+        return float(self._VisibleTransmittance)
+
+    @VisibleTransmittance.setter
+    def VisibleTransmittance(self, value):
+        self._VisibleTransmittance = value
+
+    @property
+    def SolarReflectanceBack(self):
+        return float(self._SolarReflectanceBack)
+
+    @SolarReflectanceBack.setter
+    def SolarReflectanceBack(self, value):
+        self._SolarReflectanceBack = value
+
+    @property
+    def SolarReflectanceFront(self):
+        return float(self._SolarReflectanceFront)
+
+    @SolarReflectanceFront.setter
+    def SolarReflectanceFront(self, value):
+        self._SolarReflectanceFront = value
+
+    @property
+    def SolarTransmittance(self):
+        return float(self._SolarTransmittance)
+
+    @SolarTransmittance.setter
+    def SolarTransmittance(self, value):
+        self._SolarTransmittance = value
 
     def __add__(self, other):
         """Overload + to implement self.combine."""
@@ -193,16 +267,16 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
 
         data_dict["$id"] = str(self.id)
         data_dict["DirtFactor"] = self.DirtFactor
-        data_dict["IREmissivityBack"] = self.IREmissivityBack
-        data_dict["IREmissivityFront"] = self.IREmissivityFront
-        data_dict["IRTransmittance"] = self.IRTransmittance
-        data_dict["SolarReflectanceBack"] = self.SolarReflectanceBack
-        data_dict["SolarReflectanceFront"] = self.SolarReflectanceFront
-        data_dict["SolarTransmittance"] = self.SolarTransmittance
-        data_dict["VisibleReflectanceBack"] = self.VisibleReflectanceBack
-        data_dict["VisibleReflectanceFront"] = self.VisibleReflectanceFront
-        data_dict["VisibleTransmittance"] = self.VisibleTransmittance
-        data_dict["Conductivity"] = self.Conductivity
+        data_dict["IREmissivityBack"] = round(self.IREmissivityBack, 2)
+        data_dict["IREmissivityFront"] = round(self.IREmissivityFront, 2)
+        data_dict["IRTransmittance"] = round(self.IRTransmittance, 2)
+        data_dict["SolarReflectanceBack"] = round(self.SolarReflectanceBack, 2)
+        data_dict["SolarReflectanceFront"] = round(self.SolarReflectanceFront, 2)
+        data_dict["SolarTransmittance"] = round(self.SolarTransmittance, 2)
+        data_dict["VisibleReflectanceBack"] = round(self.VisibleReflectanceBack, 2)
+        data_dict["VisibleReflectanceFront"] = round(self.VisibleReflectanceFront, 2)
+        data_dict["VisibleTransmittance"] = round(self.VisibleTransmittance, 2)
+        data_dict["Conductivity"] = round(self.Conductivity, 2)
         data_dict["Cost"] = self.Cost
         data_dict["Density"] = self.Density
         data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon

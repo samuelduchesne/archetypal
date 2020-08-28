@@ -12,6 +12,7 @@ import re
 from itertools import chain
 
 import numpy as np
+from sigfig import round
 
 from archetypal import log
 from archetypal.idfclass import IDF
@@ -530,7 +531,8 @@ class MaterialLayer(object):
 
     def to_dict(self):
         return collections.OrderedDict(
-            Material={"$ref": str(self.Material.id)}, Thickness=self.Thickness
+            Material={"$ref": str(self.Material.id)},
+            Thickness=round(self.Thickness, decimals=3),
         )
 
     def mapping(self):

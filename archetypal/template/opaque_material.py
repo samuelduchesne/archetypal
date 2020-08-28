@@ -8,6 +8,7 @@
 import collections
 
 import numpy as np
+from sigfig import round
 
 from archetypal import log
 from archetypal.template import UmiBase, Unique, UniqueName, GasMaterial
@@ -247,13 +248,13 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         data_dict["$id"] = str(self.id)
         data_dict["MoistureDiffusionResistance"] = self.MoistureDiffusionResistance
         data_dict["Roughness"] = self.Roughness
-        data_dict["SolarAbsorptance"] = self.SolarAbsorptance
-        data_dict["SpecificHeat"] = self.SpecificHeat
-        data_dict["ThermalEmittance"] = self.ThermalEmittance
-        data_dict["VisibleAbsorptance"] = self.VisibleAbsorptance
-        data_dict["Conductivity"] = self.Conductivity
+        data_dict["SolarAbsorptance"] = round(self.SolarAbsorptance, 2)
+        data_dict["SpecificHeat"] = round(self.SpecificHeat, 4)
+        data_dict["ThermalEmittance"] = round(self.ThermalEmittance, 2)
+        data_dict["VisibleAbsorptance"] = round(self.VisibleAbsorptance, 2)
+        data_dict["Conductivity"] = round(self.Conductivity, 2)
         data_dict["Cost"] = self.Cost
-        data_dict["Density"] = self.Density
+        data_dict["Density"] = round(self.Density, 4)
         data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon
         data_dict["EmbodiedEnergy"] = self.EmbodiedEnergy
         data_dict["SubstitutionRatePattern"] = self.SubstitutionRatePattern

@@ -137,7 +137,13 @@ def validate_trnsys_folder(trnsys_default_folder):
 
 
 def log(
-    message, level=None, name=None, filename=None, avoid_console=False, log_dir=None
+    message,
+    level=None,
+    name=None,
+    filename=None,
+    avoid_console=False,
+    log_dir=None,
+    verbose=False,
 ):
     """Write a message to the log file and/or print to the the console.
 
@@ -150,6 +156,7 @@ def log(
             only
         log_dir (str, optional): directory of log file. Defaults to
             settings.log_folder
+        verbose: If True, settings.log_console is overridden.
     """
     if level is None:
         level = settings.log_level
@@ -174,7 +181,7 @@ def log(
 
     # if logging to console is turned on, convert message to ascii and print to
     # the console
-    if settings.log_console and not avoid_console:
+    if settings.log_console or verbose or level == lg.ERROR and not avoid_console:
         # capture current stdout, then switch it to the console, print the
         # message, then switch back to what had been the stdout. this prevents
         # logging to notebook - instead, it goes to console
@@ -950,7 +957,8 @@ def warn_if_not_compatible():
     if not eplus_homes:
         warnings.warn(
             "No installation of EnergyPlus could be detected on this "
-            "machine. Please install EnergyPlus from https://energyplus.net before using archetypal"
+            "machine. Please install EnergyPlus from https://energyplus.net before "
+            "using archetypal"
         )
 
 

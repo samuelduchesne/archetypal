@@ -26,3 +26,4 @@ dependencies:
     - eppy
     - geomeppy
     - deprecation
+    - sigfig

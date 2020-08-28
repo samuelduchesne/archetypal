@@ -157,6 +157,7 @@ class IDF(geomeppy.IDF):
         annual=False,
         design_day=False,
         expandobjects=False,
+        convert=False,
         verbose=settings.log_console,
         readvars=True,
         prep_outputs=True,
@@ -185,7 +186,6 @@ class IDF(geomeppy.IDF):
         # Set independents to there original values
         if include is None:
             include = []
-        self.convert = False
         self.idfname = idfname
         self.epw = epw
         self._custom_processes = custom_processes
@@ -197,6 +197,7 @@ class IDF(geomeppy.IDF):
         self.verbose = verbose
         self.readvars = readvars
         self.expandobjects = expandobjects
+        self.convert = convert
         self.epmacro = epmacro
         self.design_day = design_day
         self.annual = annual
@@ -205,6 +206,7 @@ class IDF(geomeppy.IDF):
         self._position = position
         self.output_prefix = None
         self.output_directory = None
+        self._energyplus_its = 0
 
         # Set dependants to None
         self._file_version = None
@@ -722,6 +724,33 @@ class IDF(geomeppy.IDF):
             else:
                 self._htm = htm_dict
         return self._htm
+
+    def htm_open(self):
+        """Open .htm file in browser"""
+        import webbrowser
+
+        (html,) = self.simulation_dir.files("*.htm")
+
+        webbrowser.open(html.abspath())
+
+    def mdd_open(self):
+        """Open .mdd file in browser. This file shows all the report meters along
+        with their “availability” for the current input file"""
+        import webbrowser
+
+        (mdd,) = self.simulation_dir.files("*.mdd")
+
+        webbrowser.open(mdd.abspath())
+
+    def mtd_open(self):
+        """Open .mtd file in browser. This file contains the “meter details” for the
+        run. This shows what report variables are on which meters and vice versa –
+        which meters contain what report variables."""
+        import webbrowser
+
+        (mtd,) = self.simulation_dir.files("*.mtd")
+
+        webbrowser.open(mtd.abspath())
 
     @property
     def sql_file(self):
@@ -2235,6 +2264,9 @@ class Outputs:
         Args:
             outputs (list, bool): Pass a list of ep-objects defined as dictionary. See
                 examples. If a bool, ignored.
+
+        Returns:
+            Outputs: self
         """
         if isinstance(outputs, list):
             self._outputs.extend(outputs)
@@ -2242,12 +2274,37 @@ class Outputs:
 
     def add_basics(self):
         """Adds the summary report and the sql file to the idf outputs"""
-        return self.add_summary_report().add_output_control().add_sql().add_schedules()
+        return (
+            self.add_summary_report()
+            .add_output_control()
+            .add_sql()
+            .add_schedules()
+            .add_meter_variables()
+        )
 
     def add_schedules(self):
         """Adds Schedules object"""
         outputs = [{"key": "Output:Schedules".upper(), **dict(Key_Field="Hourly")}]
 
+        self._outputs.extend(outputs)
+        return self
+
+    def add_meter_variables(self, format="IDF"):
+        """Generate .mdd file at end of simulation. This file (from the
+        Output:VariableDictionary, regular; and Output:VariableDictionary,
+        IDF; commands) shows all the report meters along with their “availability”
+        for the current input file. A user must first run the simulation (at least
+        semi-successfully) before the available output meters are known. This output
+        file is available in two flavors: regular (listed as they are in the Input
+        Output Reference) and IDF (ready to be copied and pasted into your Input File).
+
+        Args:
+            format (str): Choices are "IDF" and "regular.
+
+        Returns:
+            Outputs: self
+        """
+        outputs = [dict(key="Output:VariableDictionary".upper(), Key_Field=format)]
         self._outputs.extend(outputs)
         return self
 
@@ -2269,6 +2326,8 @@ class Outputs:
                 LEEDSummary, TariffReport, EconomicResultSummary,
                 ComponentCostEconomicsSummary, LifeCycleCostReport,
                 HeatEmissionsSummary,
+        Returns:
+            Outputs: self
         """
         outputs = [
             {
@@ -2293,6 +2352,8 @@ class Outputs:
                 Using the *SimpleAndTabular* choice adds database tables related
                 to the tabular reports that are already output by EnergyPlus in
                 other formats.
+        Returns:
+            Outputs: self
         """
         output = {"key": "Output:SQLite".upper(), **dict(Option_Type=sql_output_style)}
 
@@ -2305,6 +2366,8 @@ class Outputs:
         Args:
             output_control_table_style (str): Choices are: Comma, Tab, Fixed,
                 HTML, XML, CommaAndHTML, TabAndHTML, XMLAndHTML, All
+        Returns:
+            Outputs: self
         """
         outputs = [
             {
@@ -2531,7 +2594,7 @@ class Outputs:
         return self
 
     def apply(self):
-        """Applies the outputs to the idf model. Modifies the model bu calling
+        """Applies the outputs to the idf model. Modifies the model by calling
         :meth:`~archetypal.idfclass.IDF.newidfobject`"""
         for output in self._outputs:
             self.idf.newidfobject(**output)
@@ -3635,6 +3698,9 @@ class EnergyPlusThread(Thread):
             # Start process with tqdm bar
             with tqdm(
                 unit_scale=True,
+                total=self.idf._energyplus_its
+                if self.idf._energyplus_its > 0
+                else None,
                 miniters=1,
                 desc=f"EnergyPlus #{self.idf.position}-{self.idf.name}",
                 position=self.idf.position,
@@ -3647,8 +3713,10 @@ class EnergyPlusThread(Thread):
                 )
                 start_time = time.time()
                 self.msg_callback("Simulation started")
+                self.idf._energyplus_its = 0  # reset counter
                 for line in self.p.stdout:
                     self.msg_callback(line.decode("utf-8").strip("\n"))
+                    self.idf._energyplus_its += 1
                     progress.update()
 
                 # We explicitly close stdout

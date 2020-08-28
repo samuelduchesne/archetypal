@@ -157,6 +157,7 @@ class IDF(geomeppy.IDF):
         annual=False,
         design_day=False,
         expandobjects=False,
+        convert=False,
         verbose=settings.log_console,
         readvars=True,
         prep_outputs=True,
@@ -185,7 +186,6 @@ class IDF(geomeppy.IDF):
         # Set independents to there original values
         if include is None:
             include = []
-        self.convert = False
         self.idfname = idfname
         self.epw = epw
         self._custom_processes = custom_processes
@@ -197,6 +197,7 @@ class IDF(geomeppy.IDF):
         self.verbose = verbose
         self.readvars = readvars
         self.expandobjects = expandobjects
+        self.convert = convert
         self.epmacro = epmacro
         self.design_day = design_day
         self.annual = annual

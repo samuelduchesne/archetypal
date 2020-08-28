@@ -16,6 +16,7 @@ from eppy.bunch_subclass import EpBunch
 from numpy import ndarray
 
 from archetypal import log
+from archetypal.energyseries import plot_energyseries_map, EnergySeries
 
 
 class Schedule(object):
@@ -268,6 +269,10 @@ class Schedule(object):
         label = kwargs.pop("label", self.Name)
         ax = series.loc[slice].plot(**kwargs, label=label)
         return ax
+
+    def plot2d(self):
+        """Plot the carpet plot of the schedule"""
+        return plot_energyseries_map(EnergySeries(self.series, name=self.Name))
 
     def get_interval_day_ep_schedule_values(self, epbunch: EpBunch) -> np.ndarray:
         """Schedule:Day:Interval

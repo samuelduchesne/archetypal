@@ -5509,6 +5509,7 @@
         "DataSource": "MIT_SDL",
         "Name": "B_Off_0 windows"
       },
+      "DefaultWindowToWallRatio": 0.4,
       "Category": "Office Spaces",
       "Comments": "Base building definition for MIT 4433",
       "DataSource": "MIT_SDL",
@@ -5557,6 +5558,7 @@
         "DataSource": "MIT_SDL",
         "Name": "B_Ret_0 windows"
       },
+      "DefaultWindowToWallRatio": 0.4,
       "Category": "Retail",
       "Comments": "Base building definition for MIT 4433",
       "DataSource": "MIT_SDL",
@@ -5605,6 +5607,7 @@
         "DataSource": "MIT_SDL",
         "Name": "B_Res_0 windows"
       },
+      "DefaultWindowToWallRatio": 0.4,
       "Category": "Residential and Lodging",
       "Comments": "Base building definition for MIT 4433",
       "DataSource": "MIT_SDL",
@@ -5625,6 +5628,7 @@
       "Windows": {
         "$ref": "181"
       },
+      "DefaultWindowToWallRatio": 0.4,
       "Category": "Residential and Lodging",
       "Comments": "Base building definition for MIT 4433",
       "DataSource": "MIT_SDL",

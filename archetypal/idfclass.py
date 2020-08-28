@@ -725,6 +725,33 @@ class IDF(geomeppy.IDF):
                 self._htm = htm_dict
         return self._htm
 
+    def htm_open(self):
+        """Open .htm file in browser"""
+        import webbrowser
+
+        (html,) = self.simulation_dir.files("*.htm")
+
+        webbrowser.open(html.abspath())
+
+    def mdd_open(self):
+        """Open .mdd file in browser. This file shows all the report meters along
+        with their “availability” for the current input file"""
+        import webbrowser
+
+        (mdd,) = self.simulation_dir.files("*.mdd")
+
+        webbrowser.open(mdd.abspath())
+
+    def mtd_open(self):
+        """Open .mtd file in browser. This file contains the “meter details” for the
+        run. This shows what report variables are on which meters and vice versa –
+        which meters contain what report variables."""
+        import webbrowser
+
+        (mtd,) = self.simulation_dir.files("*.mtd")
+
+        webbrowser.open(mtd.abspath())
+
     @property
     def sql_file(self):
         """Get the sql file path"""

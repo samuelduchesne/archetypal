@@ -106,7 +106,9 @@ class Schedule(object):
         return cls(Name=Name, Values=Values, Type=Type, idf=idf, **kwargs,)
 
     @classmethod
-    def constant_schedule(cls, hourly_value=1, Name="AlwaysOn", idf=None, **kwargs):
+    def constant_schedule(
+        cls, hourly_value=1, Name="AlwaysOn", idf=None, Type="Fraction", **kwargs
+    ):
         """Create a schedule with a constant value for the whole year. Defaults
         to a schedule with a value of 1, named 'AlwaysOn'.
 
@@ -126,13 +128,19 @@ class Schedule(object):
         epbunch = idf.anidfobject(
             key="Schedule:Constant".upper(),
             Name=Name,
-            Schedule_Type_Limits_Name="",
+            Schedule_Type_Limits_Name=Type,
             Hourly_Value=hourly_value,
         )
-        return cls(Name=Name, idf=idf, epbunch=epbunch, **kwargs)
+        return cls(
+            Name=Name,
+            Values=np.ones(8760) * hourly_value,
+            idf=idf,
+            epbunch=epbunch,
+            **kwargs,
+        )
 
     @property
-    def all_values(self):
+    def all_values(self) -> np.ndarray:
         """returns the values array"""
         if self._values is None:
             self._values = self.get_schedule_values(self.epbunch)
@@ -895,14 +903,13 @@ class Schedule(object):
             )
         except ValueError:
             raise ValueError(
-                "Looks like the idf model needs to be rerun with " "'annual=True'"
+                "Looks like the idf model needs to be rerun with 'annual=True'"
             )
 
         # Appending unique weeks in dictionary with name and values of weeks as
         # keys
         # {'name_week': {'dayName':[]}}
         dict_week = {}
-        count_week = 0
         for count_week, unique_week in enumerate(unique_weeks):
             week_id = "w_" + self.Name + "_" + "%03d" % count_week
             dict_week[week_id] = {}

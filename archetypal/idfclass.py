@@ -206,6 +206,7 @@ class IDF(geomeppy.IDF):
         self._position = position
         self.output_prefix = None
         self.output_directory = None
+        self._energyplus_its = 0
 
         # Set dependants to None
         self._file_version = None
@@ -3670,6 +3671,9 @@ class EnergyPlusThread(Thread):
             # Start process with tqdm bar
             with tqdm(
                 unit_scale=True,
+                total=self.idf._energyplus_its
+                if self.idf._energyplus_its > 0
+                else None,
                 miniters=1,
                 desc=f"EnergyPlus #{self.idf.position}-{self.idf.name}",
                 position=self.idf.position,
@@ -3682,8 +3686,10 @@ class EnergyPlusThread(Thread):
                 )
                 start_time = time.time()
                 self.msg_callback("Simulation started")
+                self.idf._energyplus_its = 0  # reset counter
                 for line in self.p.stdout:
                     self.msg_callback(line.decode("utf-8").strip("\n"))
+                    self.idf._energyplus_its += 1
                     progress.update()
 
                 # We explicitly close stdout

@@ -16,7 +16,7 @@ from eppy.bunch_subclass import EpBunch
 from numpy import ndarray
 
 from archetypal import log
-from archetypal.energyseries import plot_energyseries_map, EnergySeries
+from archetypal.energypandas import plot_energyseries_map, EnergySeries
 
 
 class Schedule(object):

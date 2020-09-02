@@ -119,22 +119,23 @@ Data Portal
 EnergyDataFrame
 ---------------
 
-.. currentmodule:: archetypal.energydataframe
+.. currentmodule:: archetypal.energypandas
 
 .. autosummary::
-    :template: autosummary.rst
+    :template: autosummary-noinherit.rst
     :nosignatures:
     :toctree: reference/
 
-    EnergyDataFrame.set_unit
+    EnergyDataFrame
+    EnergySeries.to_units
+    EnergySeries.normalize
     EnergyDataFrame.discretize_tsam
-    plot_energydataframe_map
 
 
 EnergySeries
 ------------
 
-.. currentmodule:: archetypal.energyseries
+.. currentmodule:: archetypal.energypandas
 
 .. autosummary::
     :template: autosummary.rst
@@ -143,13 +144,11 @@ EnergySeries
 
     EnergySeries
     EnergySeries.from_reportdata
-    EnergySeries.unit_conversion
-    EnergySeries.concurrent_sort
+    EnergySeries.to_units
     EnergySeries.normalize
     EnergySeries.ldc_source
     EnergySeries.source_side
     EnergySeries.discretize_tsam
-    EnergySeries.discretize
     EnergySeries.plot3d
     EnergySeries.plot2d
     EnergySeries.p_max

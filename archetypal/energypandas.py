@@ -1,5 +1,4 @@
 import copy
-import logging as lg
 import os
 import time
 import warnings
@@ -10,97 +9,55 @@ import pandas as pd
 import tsam.timeseriesaggregation as tsam
 from matplotlib import pyplot as plt, cm
 from matplotlib.colors import LightSource
-from pandas import Series, DataFrame, concat, MultiIndex, date_range
+from pandas import (
+    Series,
+    DataFrame,
+    MultiIndex,
+    pivot_table,
+    to_datetime,
+    DatetimeIndex,
+)
+from pandas.core.generic import NDFrame
+from pandas.plotting._matplotlib.tools import _subplots, _flatten
 from pint import Unit, Quantity
 from sklearn import preprocessing
 
-import archetypal
-from archetypal import log, rmse, piecewise, settings
+from archetypal import log, settings
 
 
 class EnergySeries(Series):
     """A Series object designed to store energy related data."""
 
+    _metadata = [
+        "bin_edges_",
+        "bin_scaling_factors_",
+        "base_year",
+        "frequency",
+        "units",
+    ]
+
     @property
     def _constructor(self):
         return EnergySeries
 
-    _metadata = [
-        "name",
-        "bin_edges_",
-        "bin_scaling_factors_",
-        "profile_type",
-        "base_year",
-        "frequency",
-        "units",
-        "sort_values",
-        "to_units",
-        "converted_",
-        "concurrent_sort_",
-    ]
+    @property
+    def _constructor_expanddim(self):
+        def f(*args, **kwargs):
+            # adapted from https://github.com/pandas-dev/pandas/issues/19850#issuecomment-367934440
+            return EnergyDataFrame(*args, **kwargs).__finalize__(self, method="inherit")
 
-    def __new__(
-        cls,
-        data,
-        frequency=None,
-        units=None,
-        profile_type="undefinded",
-        index=None,
-        dtype=None,
-        copy=True,
-        name=None,
-        fastpath=False,
-        base_year=2018,
-        normalize=False,
-        sort_values=False,
-        ascending=False,
-        archetypes=None,
-        concurrent_sort=False,
-        to_units=None,
-        use_timeindex=False,
-    ):
-        """
-        Args:
-            data:
-            frequency:
-            units:
-            profile_type:
-            index:
-            dtype:
-            copy:
-            name:
-            fastpath:
-            base_year:
-            normalize:
-            sort_values:
-            ascending:
-            archetypes:
-            concurrent_sort:
-            to_units:
-            use_timeindex:
-        """
-        self = super(EnergySeries, cls).__new__(cls)
-        return self
+        return f
 
     def __init__(
         self,
-        data,
-        frequency=None,
-        units=None,
-        profile_type="undefinded",
+        data=None,
         index=None,
         dtype=None,
-        copy=True,
         name=None,
+        copy=False,
         fastpath=False,
-        base_year=2018,
-        normalize=False,
-        sort_values=False,
-        ascending=False,
-        archetypes=None,
-        concurrent_sort=False,
-        to_units=None,
-        use_timeindex=False,
+        units=None,
+        **kwargs,
     ):
         """
         Args:
@@ -127,64 +84,57 @@ class EnergySeries(Series):
         )
         self.bin_edges_ = None
         self.bin_scaling_factors_ = None
-        self.profile_type = profile_type
-        self.frequency = frequency
-        self.base_year = base_year
         self.units = units
-        self.archetypes = archetypes
-        self.to_units = to_units
-        self.converted_ = False
-        self.concurrent_sort_ = concurrent_sort
-        # handle sorting of the data
-        if sort_values:
-            self.is_sorted = True
-            if concurrent_sort:
-                self.concurrent_sort(ascending=ascending, inplace=True)
-            else:
-                self.sort_values(ascending=ascending, inplace=True)
-                self.reset_index(drop=True, inplace=True)
-        else:
-            self.is_sorted = False
 
-        # handle archetype names
-        if isinstance(self.index, MultiIndex):
-            self.archetypes = list(set(self.index.get_level_values(level=0)))
-        else:
-            self.archetypes = None
+        for k, v in kwargs.items():
+            EnergySeries._metadata.append(k)
+            setattr(EnergySeries, k, v)
 
-        # handle normalization
-        if normalize:
-            self.normalize(inplace=True)
+    def __finalize__(self, other, method=None, **kwargs):
+        """Propagate metadata from other to self."""
+        if isinstance(other, NDFrame):
+            for name in other.attrs:
+                self.attrs[name] = other.attrs[name]
+            # For subclasses using _metadata.
+            for name in self._metadata:
+                object.__setattr__(self, name, getattr(other, name, None))
+                self._metadata.append(name) if name not in self._metadata else None
+        return self
 
-        # handle unit conversion
-        if self.to_units and self.units:
-            self.unit_conversion(to_units=self.to_units, inplace=True)
+    def __repr__(self):
+        """Adds units to repr"""
+        result = super(EnergySeries, self).__repr__()
+        return result + f", units:{self.units:~P}"
 
+    @classmethod
+    def with_timeindex(
+        cls,
+        data,
+        base_year=2018,
+        frequency="H",
+        index=None,
+        dtype=None,
+        name=None,
+        copy=False,
+        fastpath=False,
+        units=None,
+        **kwargs,
+    ):
         # handle DateTimeIndex
-        if index is None and use_timeindex:
-            start_date = str(self.base_year) + "0101"
-            if isinstance(self.index, MultiIndex):
-                newindex = self.index  # todo: finish this
-            else:
-                newindex = pd.date_range(
-                    start=start_date, freq=self.frequency, periods=len(self)
-                )
-            self.index = newindex
-
-    @property
-    def to_units(self):
-        return self._to_units
-
-    @to_units.setter
-    def to_units(self, value):
-        if isinstance(value, str):
-            self._to_units = settings.unit_registry.parse_expression(value).units
-        elif isinstance(value, (Unit, Quantity)):
-            self._to_units = value
-        elif value is None:
-            self._to_units = value
-        else:
-            raise TypeError(f"Unit of type {type(value)}")
+        es = cls(
+            data=data,
+            index=index,
+            dtype=dtype,
+            name=name,
+            copy=copy,
+            fastpath=fastpath,
+            units=units,
+            **kwargs,
+        )
+        start_date = str(base_year) + "0101"
+        newindex = pd.date_range(start=start_date, freq=frequency, periods=len(es))
+        es.index = newindex
+        return es
 
     @property
     def units(self):
@@ -211,7 +161,6 @@ class EnergySeries(Series):
         normalize=False,
         sort_values=False,
         ascending=False,
-        concurrent_sort=False,
         to_units=None,
         agg_func="sum",
     ):
@@ -225,7 +174,6 @@ class EnergySeries(Series):
             normalize (bool): Normalize between 0 and 1.
             sort_values:
             ascending:
-            concurrent_sort (bool):
             to_units (str): Convert original values to this unit. Dimensionality
                 check performed by `pint`.
             agg_func (callable): The aggregation function to use in the case
@@ -266,62 +214,42 @@ class EnergySeries(Series):
         else:
             df["DateTimeIndex"] = index
             grouped_Data = df.set_index(["DateTimeIndex", "Name"]).Value
-        # Since we create the index, use_timeindex must be false
-        return cls(
+        # Since we create the index, don't need to use .with_timeindex() constructor
+        energy_series = cls(
             grouped_Data.values,
             name=name,
             units=units,
             index=grouped_Data.index,
-            use_timeindex=False,
             base_year=base_year,
-            normalize=normalize,
-            sort_values=sort_values,
-            ascending=ascending,
-            concurrent_sort=concurrent_sort,
-            to_units=to_units,
         )
+        if normalize:
+            energy_series.normalize(inplace=True)
+        if sort_values:
+            energy_series.sort_values(ascending=ascending, inplace=True)
+        if to_units:
+            energy_series.to_units(to_units, inplace=True)
+        return energy_series
 
-    def unit_conversion(self, to_units=None, inplace=False):
+    def to_units(self, to_units=None, inplace=False):
         """returns the multiplier to convert units
 
         Args:
-            to_units (pint.Unit):
+            to_units (str, pint.Unit):
             inplace:
         """
-        cdata = settings.unit_registry.Quantity(self.values, self.units).to(to_units).m
-        result = self.apply(lambda x: x)
-        result.update(pd.Series(cdata, index=result.index))
-        result.__class__ = EnergySeries
-        result.converted_ = True
-        result.units = to_units
+        cdata = settings.unit_registry.Quantity(1, self.units).to(to_units).m
         if inplace:
-            self._update_inplace(result)
-            self.__finalize__(result)
+            self[:] *= cdata
+            self.units = to_units
         else:
+            # create new instance using constructor
+            result = self._constructor(
+                data=self.values * cdata, index=self.index, copy=False
+            )
+            # Copy metadata over
+            result.__finalize__(self)
+            result.units = to_units
             return result
-
-    def concurrent_sort(self, ascending=False, inplace=False, level=0):
-        """
-        Args:
-            ascending:
-            inplace:
-            level:
-        """
-        if isinstance(self.index, MultiIndex):
-            concurrent = self.unstack(level=level)
-            concurrent_sum = concurrent.sum(axis=1)
-
-            sortedIdx = concurrent_sum.sort_values(ascending=ascending).index
-
-            result = concurrent.loc[sortedIdx, :]
-            result.index = concurrent.index
-            result = result.stack().swaplevel()
-
-            if inplace:
-                self.update(result)
-                self.__finalize__(result)
-            else:
-                return result  # todo: make sure results has all the metadata
 
     def normalize(self, feature_range=(0, 1), inplace=False):
         """Returns a normalized EnergySeries
@@ -330,27 +258,20 @@ class EnergySeries(Series):
             feature_range:
             inplace:
         """
-        scaler = preprocessing.MinMaxScaler(feature_range=feature_range)
-        if self.archetypes:
-            result = concat(
-                {
-                    name: Series(
-                        scaler.fit_transform(sub.values.reshape(-1, 1)).ravel()
-                    )
-                    for name, sub in self.groupby(level=0)
-                }
-            ).sort_index()
-            result = self._constructor(result)
-        else:
-            result = Series(scaler.fit_transform(self.values.reshape(-1, 1)).ravel())
-            result = self._constructor(result)
-            result.units = settings.unit_registry.dimensionless
-            result.to_units = None
+        x = self.values  # returns a numpy array
+        min_max_scaler = preprocessing.MinMaxScaler()
+        x_scaled = min_max_scaler.fit_transform(x.reshape(-1, 1)).ravel()
         if inplace:
-            self._update_inplace(result)
-            self.__finalize__(result)
+            # replace whole data with array
+            self[:] = x_scaled
+            # change units to dimensionless
+            self.units = settings.unit_registry.dimensionless
         else:
-            return result  # todo: make sure result has all the metadata
+            # create new instance using constructor
+            result = self._constructor(data=x_scaled, index=self.index, copy=False)
+            # Copy metadata over
+            result.__finalize__(self)
+            return result
 
     def ldc_source(self, SCOPH=4, SCOPC=4):
         """Returns the Load Duration Curve from the source side of theoretical
@@ -388,44 +309,12 @@ class EnergySeries(Series):
         else:
             raise ValueError("Please provide a SCOPH or a SCOPC")
 
-    def discretize_tsam(
-        self,
-        resolution=None,
-        noTypicalPeriods=10,
-        hoursPerPeriod=24,
-        clusterMethod="hierarchical",
-        evalSumPeriods=False,
-        sortValues=False,
-        sameMean=False,
-        rescaleClusterPeriods=True,
-        weightDict=None,
-        extremePeriodMethod="None",
-        solver="glpk",
-        roundOutput=None,
-        addPeakMin=None,
-        addPeakMax=None,
-        addMeanMin=None,
-        addMeanMax=None,
-    ):
-        """uses tsam
+    def discretize_tsam(self, inplace=False, **kwargs):
+        """Clusters time series data to typical periods. See
+        :class:`tsam.timeseriesaggregation.TimeSeriesAggregation` for more info.
 
-        Args:
-            resolution:
-            noTypicalPeriods:
-            hoursPerPeriod:
-            clusterMethod:
-            evalSumPeriods:
-            sortValues:
-            sameMean:
-            rescaleClusterPeriods:
-            weightDict:
-            extremePeriodMethod:
-            solver:
-            roundOutput:
-            addPeakMin:
-            addPeakMax:
-            addMeanMin:
-            addMeanMax:
+        Returns:
+            EnergySeries:
         """
         try:
             import tsam.timeseriesaggregation as tsam
@@ -433,169 +322,22 @@ class EnergySeries(Series):
             raise ImportError("tsam is required for discretize_tsam()")
         if not isinstance(self.index, pd.DatetimeIndex):
             raise TypeError("To use tsam, index of series must be a " "DateTimeIndex")
-        if isinstance(self, Series):
-            timeSeries = pd.DataFrame(self)
-        else:
-            timeSeries = self.copy()
-        agg = tsam.TimeSeriesAggregation(
-            timeSeries,
-            resolution=resolution,
-            noTypicalPeriods=noTypicalPeriods,
-            hoursPerPeriod=hoursPerPeriod,
-            clusterMethod=clusterMethod,
-            evalSumPeriods=evalSumPeriods,
-            sortValues=sortValues,
-            sameMean=sameMean,
-            rescaleClusterPeriods=rescaleClusterPeriods,
-            weightDict=weightDict,
-            extremePeriodMethod=extremePeriodMethod,
-            solver=solver,
-            roundOutput=roundOutput,
-            addPeakMin=addPeakMin,
-            addPeakMax=addPeakMax,
-            addMeanMin=addMeanMin,
-            addMeanMax=addMeanMax,
-        )
+
+        timeSeries = self.to_frame()
+        agg = tsam.TimeSeriesAggregation(timeSeries, **kwargs)
 
         agg.createTypicalPeriods()
-        results = agg.predictOriginalData()
-        results = EnergySeries(results.iloc[:, 0])
-        # results._internal_names += agg.clusterOrder
-        return results.__finalize__(self)
-
-    def discretize(self, n_bins=3, inplace=False):
-        """Retruns a discretized pandas.Series
-
-        Args:
-            n_bins (int): Number of bins or steps to discretize the function
-            inplace (bool): if True, perform operation in-place
-        """
-        try:
-            from scipy.optimize import minimize
-            from itertools import chain
-        except ImportError:
-            raise ImportError(
-                "The sklearn package must be installed to " "use this optional feature."
-            )
-        if self.archetypes:
-            # if multiindex, group and apply operation on each group.
-            # combine at the end
-            results = {}
-            edges = {}
-            ampls = {}
-            for name, sub in self.groupby(level=0):
-                hour_of_min = sub.time_at_min[1]
-
-                sf = [1 / (i * 1.01) for i in range(1, n_bins + 1)]
-                sf.extend([sub.min()])
-                sf_bounds = [(0, sub.max()) for i in range(0, n_bins + 1)]
-                hours = [
-                    hour_of_min - hour_of_min * 1 / (i * 1.01)
-                    for i in range(1, n_bins + 1)
-                ]
-                # Todo hours need to work fow datetime index
-                hours.extend([len(sub)])
-                hours_bounds = [(0, len(sub)) for i in range(0, n_bins + 1)]
-
-                start_time = time.time()
-                log("discretizing EnergySeries {}".format(name), lg.DEBUG)
-                res = minimize(
-                    rmse,
-                    np.array(hours + sf),
-                    args=(sub.values),
-                    method="L-BFGS-B",
-                    bounds=hours_bounds + sf_bounds,
-                    options=dict(disp=True),
-                )
-                log(
-                    "Completed discretization in {:,.2f} seconds".format(
-                        time.time() - start_time
-                    ),
-                    lg.DEBUG,
-                )
-                edges[name] = res.x[0 : n_bins + 1]
-                ampls[name] = res.x[n_bins + 1 :]
-                results[name] = Series(piecewise(res.x))
-            self.bin_edges_ = Series(edges).apply(Series)
-            self.bin_scaling_factors_ = DataFrame(ampls)
-
-            result = concat(results)
-        else:
-            hour_of_min = self.time_at_min
-
-            sf = [1 / (i * 1.01) for i in range(1, n_bins + 1)]
-            sf.extend([self.min()])
-            sf_bounds = [(0, self.max()) for i in range(0, n_bins + 1)]
-            hours = [
-                hour_of_min - hour_of_min * 1 / (i * 1.01) for i in range(1, n_bins + 1)
-            ]
-            hours.extend([len(self)])
-            hours_bounds = [(0, len(self)) for i in range(0, n_bins + 1)]
-
-            start_time = time.time()
-            # log('discretizing EnergySeries {}'.format(name), lg.DEBUG)
-            res = minimize(
-                rmse,
-                np.array(hours + sf),
-                args=(self.values),
-                method="L-BFGS-B",
-                bounds=hours_bounds + sf_bounds,
-                options=dict(disp=True),
-            )
-            log(
-                "Completed discretization in {:,.2f} seconds".format(
-                    time.time() - start_time
-                ),
-                lg.DEBUG,
-            )
-            edges = res.x[0 : n_bins + 1]
-            ampls = res.x[n_bins + 1 :]
-            result = Series(piecewise(res.x))
-            bin_edges = Series(edges).apply(Series)
-            self.bin_edges_ = bin_edges
-            bin_edges.loc[-1, 0] = 0
-            bin_edges.sort_index(inplace=True)
-            bin_edges = bin_edges.diff().dropna()
-            bin_edges = bin_edges.round()
-            self.bin_scaling_factors_ = DataFrame(
-                {"duration": bin_edges[0], "scaling factor": ampls}
-            )
-            self.bin_scaling_factors_.index = np.round(edges).astype(int)
-
+        result = agg.predictOriginalData()
         if inplace:
-            self.update(result)
-            self.__class__ = EnergySeries
-            self.__finalize__(result)
+            self.loc[:] = result.values.ravel()
         else:
-            result.__class__ = EnergySeries
-            return result.__finalize__(self)
-
-    def unstack(self, level=-1, fill_value=None):
-        """
-        Args:
-            level:
-            fill_value:
-        """
-        from pandas.core.reshape.reshape import unstack
-
-        result = unstack(self, level, fill_value)
-        result.__class__ = archetypal.EnergyDataFrame
-        return result.__finalize__(self)
-
-    def stack(self, level=-1, dropna=True):
-        """
-        Args:
-            level:
-            dropna:
-        """
-        from pandas.core.reshape.reshape import stack, stack_multiple
-
-        if isinstance(level, (tuple, list)):
-            result = stack_multiple(self, level, dropna=dropna)
-            return self.__finalize__(result)
-        else:
-            result = stack(self, level, dropna=dropna)
-            return self.__finalize__(result)
+            # create new instance using constructor
+            result = self._constructor(
+                data=result.values.ravel(), index=self.index, copy=False
+            )
+            # Copy metadata over
+            result.__finalize__(self)
+            return result
 
     def plot3d(self, *args, **kwargs):
         """Generate a plot of the EnergySeries.
@@ -617,10 +359,6 @@ class EnergySeries(Series):
         """
         return plot_energyseries_map(self, **kwargs)
 
-    # @property
-    # def units(self):
-    #     return self.units.units
-
     @property
     def p_max(self):
         if isinstance(self.index, MultiIndex):
@@ -630,19 +368,13 @@ class EnergySeries(Series):
 
     @property
     def monthly(self):
-        if isinstance(self.index, MultiIndex):
-            return self.groupby(level=0).max()
-        else:
-            datetimeindex = date_range(
-                freq=self.frequency,
-                start="{}-01-01".format(self.base_year),
-                periods=self.size,
+        if isinstance(self.index, DatetimeIndex):
+            data = self.resample("M").mean()
+            return self._constructor(
+                data, index=data.index, frequency="M", units=self.units
             )
-            self_copy = self.copy()
-            self_copy.index = datetimeindex
-            self_copy = self_copy.resample("M").mean()
-            self_copy.frequency = "M"
-            return EnergySeries(self_copy, frequency="M", units=self.units)
+        else:
+            return None
 
     @property
     def capacity_factor(self):
@@ -1145,3 +877,316 @@ def _polygon_under_graph(xlist, ylist):
 
 EnergySeries.plot3d.__doc__ = plot_energyseries.__doc__
 EnergySeries.plot2d.__doc__ = plot_energyseries_map.__doc__
+
+
+class EnergyDataFrame(DataFrame):
+    """An EnergyDataFrame object is a pandas.DataFrame that has energy related
+    data. In addition to the standard DataFrame constructor arguments,
+    EnergyDataFrame also accepts the following keyword arguments:
+
+
+    """
+
+    # temporary properties
+    _internal_names = DataFrame._internal_names
+    _internal_names_set = set(_internal_names)
+
+    # normal properties
+    _metadata = ["units", "name"]
+
+    @property
+    def _constructor(self):
+        return EnergyDataFrame
+
+    @property
+    def _constructor_sliced(self):
+        # return EnergySeries
+        def f(*args, **kwargs):
+            # adapted from https://github.com/pandas-dev/pandas/issues/13208#issuecomment-326556232
+            return EnergySeries(*args, **kwargs).__finalize__(self, method="inherit")
+
+        return f
+
+    def __init__(
+        self,
+        data,
+        units=None,
+        index=None,
+        columns=None,
+        dtype=None,
+        copy=True,
+        **kwargs,
+    ):
+        super(EnergyDataFrame, self).__init__(
+            data, index=index, columns=columns, dtype=dtype, copy=copy
+        )
+        self.units = units
+        for k, v in kwargs.items():
+            EnergyDataFrame._metadata.append(k)
+            setattr(EnergyDataFrame, k, v)
+
+    def __finalize__(self, other, method=None, **kwargs):
+        """Propagate metadata from other to self."""
+        if isinstance(other, NDFrame):
+            for name in other.attrs:
+                self.attrs[name] = other.attrs[name]
+            # For subclasses using _metadata.
+            for name in other._metadata:
+                object.__setattr__(self, name, getattr(other, name, None))
+                self._metadata.append(name) if name not in self._metadata else None
+        return self
+
+    @classmethod
+    def from_reportdata(
+        cls,
+        df,
+        name=None,
+        base_year=2018,
+        units=None,
+        normalize=False,
+        sort_values=False,
+        ascending=False,
+        concurrent_sort=False,
+        to_units=None,
+    ):
+        # get data
+        units = [units] if units else set(df.Units)
+        if len(units) > 1:
+            raise ValueError("The DataFrame contains mixed units: {}".format(units))
+        else:
+            units = next(iter(units), None)
+        # group data by index value (level=0) using the agg_func
+        grouped_Data = pivot_table(
+            df, index="TimeIndex", columns=["KeyValue"], values=["Value"]
+        ).droplevel(axis=1, level=0)
+        df = pivot_table(
+            df,
+            index="TimeIndex",
+            columns=None,
+            values=["Month", "Day", "Hour", "Minute", "Interval"],
+        )
+        index = to_datetime(
+            {
+                "year": base_year,
+                "month": df.Month,
+                "day": df.Day,
+                "hour": df.Hour,
+                "minute": df.Minute,
+            }
+        )
+
+        # Adjust timeindex by timedelta
+        index -= df.Interval.apply(lambda x: timedelta(minutes=x))
+        index = DatetimeIndex(index)
+        grouped_Data.index = index
+        # Since we create the index, use_timeindex must be false
+        edf = cls(grouped_Data, units=units, index=grouped_Data.index)
+        if to_units:
+            edf.to_units(to_units=to_units, inplace=True)
+        if normalize:
+            edf.normalize(inplace=True)
+        if sort_values:
+            edf.sort_values(sort_values, inplace=True)
+        if concurrent_sort:
+            pass
+        return edf
+
+    @property
+    def units(self):
+        return self._units
+
+    @units.setter
+    def units(self, value):
+        if isinstance(value, str):
+            self._units = settings.unit_registry.parse_expression(value).units
+        elif isinstance(value, (Unit, Quantity)):
+            self._units = value
+        elif value is None:
+            self._units = settings.unit_registry.parse_expression(value).units
+        else:
+            raise TypeError(f"Unit of type {type(value)}")
+
+    def to_units(self, to_units=None, inplace=False):
+        """returns the multiplier to convert units
+
+        Args:
+            to_units (str or pint.Unit):
+            inplace:
+        """
+        cdata = settings.unit_registry.Quantity(1, self.units).to(to_units).m
+        if inplace:
+            self[:] *= cdata
+            self.units = to_units
+        else:
+            # create new instance using constructor
+            result = self._constructor(
+                data=self * cdata, index=self.index, columns=self.columns, copy=False
+            )
+            # Copy metadata over
+            result.__finalize__(self)
+            result.units = to_units
+            return result
+
+    def normalize(self, inplace=False):
+        x = self.values  # returns a numpy array
+        min_max_scaler = preprocessing.MinMaxScaler()
+        x_scaled = min_max_scaler.fit_transform(x)
+        if inplace:
+            # replace whole data with array
+            self[:] = x_scaled
+            # change units to dimensionless
+            self.units = settings.unit_registry.dimensionless
+        else:
+            # create new instance using constructor
+            result = self._constructor(
+                data=x_scaled, index=self.index, columns=self.columns, copy=False
+            )
+            # Copy metadata over
+            result.__finalize__(self)
+            return result
+
+    def plot2d(self, **kwargs):
+        return plot_energydataframe_map(self, **kwargs)
+
+    @property
+    def nseries(self):
+        if self._data.ndim == 1:
+            return 1
+        else:
+            return self._data.shape[0]
+
+    def discretize_tsam(self, inplace=False, **kwargs):
+        """Clusters time series data to typical periods. See
+        :class:`tsam.timeseriesaggregation.TimeSeriesAggregation` for more info.
+
+        Returns:
+            EnergyDataFrame:
+        """
+        try:
+            import tsam.timeseriesaggregation as tsam
+        except ImportError:
+            raise ImportError("tsam is required for discretize_tsam()")
+        if not isinstance(self.index, DatetimeIndex):
+            raise TypeError("To use tsam, index of series must be a " "DateTimeIndex")
+        timeSeries = self.copy()
+        agg = tsam.TimeSeriesAggregation(timeSeries, **kwargs)
+
+        agg.createTypicalPeriods()
+        result = agg.predictOriginalData()
+        if inplace:
+            self.loc[:] = result.values
+        else:
+            # create new instance using constructor
+            result = self._constructor(
+                data=result.values, index=self.index, columns=self.columns, copy=False
+            )
+            # Copy metadata over
+            result.__finalize__(self)
+            return result
+
+    discretize_tsam.__doc__ = tsam.TimeSeriesAggregation.__init__.__doc__
+
+
+def plot_energydataframe_map(
+    data,
+    periodlength=24,
+    subplots=False,
+    vmin=None,
+    vmax=None,
+    axis_off=True,
+    cmap="RdBu",
+    fig_height=None,
+    fig_width=6,
+    show=True,
+    view_angle=-60,
+    save=False,
+    close=False,
+    dpi=300,
+    file_format="png",
+    color=None,
+    ax=None,
+    filename="untitled",
+    extent="tight",
+    sharex=True,
+    sharey=True,
+    layout=None,
+    layout_type="vertical",
+    **kwargs,
+):
+    if fig_height is None:
+        fig_height = fig_width / 3
+    figsize = (fig_width, fig_height)
+    nseries = data.nseries
+    fig, axes = _setup_subplots(
+        subplots, nseries, sharex, sharey, figsize, ax, layout, layout_type
+    )
+    cols = data.columns
+    for ax, col in zip(axes, cols):
+        plot_energyseries_map(
+            data[col],
+            periodlength=periodlength,
+            subplots=subplots,
+            vmin=vmin,
+            vmax=vmax,
+            axis_off=axis_off,
+            cmap=cmap,
+            fig_height=fig_height,
+            fig_width=fig_width,
+            show=False,
+            save=False,
+            close=False,
+            dpi=dpi,
+            file_format=file_format,
+            color=color,
+            ax=ax,
+            filename=filename,
+            extent=extent,
+            sharex=sharex,
+            sharey=sharey,
+            layout=layout,
+            layout_type=layout_type,
+            **kwargs,
+        )
+
+    fig, axes = save_and_show(
+        fig, axes, save, show, close, filename, file_format, dpi, axis_off, extent
+    )
+
+    return fig, axes
+
+
+def _setup_subplots(
+    subplots,
+    nseries,
+    sharex=False,
+    sharey=False,
+    figsize=None,
+    ax=None,
+    layout=None,
+    layout_type="vertical",
+):
+    """prepares the subplots"""
+
+    if subplots:
+        fig, axes = _subplots(
+            naxes=nseries,
+            sharex=sharex,
+            sharey=sharey,
+            figsize=figsize,
+            ax=ax,
+            layout=layout,
+            layout_type=layout_type,
+        )
+    else:
+        if ax is None:
+            fig = plt.figure(figsize=figsize)
+            axes = fig.add_subplot(111)
+        else:
+            fig = ax.get_figure()
+            if figsize is not None:
+                fig.set_size_inches(figsize)
+            axes = ax
+
+    axes = _flatten(axes)
+
+    return fig, axes

@@ -58,11 +58,12 @@ from archetypal import (
     get_eplus_dirs,
     EnergyPlusWeatherError,
     Schedule,
+    EnergyDataFrame,
 )
 from archetypal.utils import _unpack_tuple, parse, extend_class, get_eplus_basedirs
 
 
-class IDF(geomeppy.IDF):
+class IDF(eppy.modeleditor.IDF):
     """Class for loading and parsing idf models and running simulations and
     retrieving results.
 

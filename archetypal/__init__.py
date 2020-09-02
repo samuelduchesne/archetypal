@@ -10,6 +10,7 @@ __version__ = "1.3.4"
 
 # warn if a newer version of archetypal is available
 from outdated import warn_if_outdated
+
 from .utils import warn_if_not_compatible
 
 warn_if_outdated("archetypal", __version__)
@@ -17,8 +18,7 @@ warn_if_not_compatible()
 
 from .utils import *
 from .simple_glazing import *
-from .energyseries import EnergySeries
-from .energydataframe import EnergyDataFrame
+from .energypandas import EnergySeries, EnergyDataFrame
 from .reportdata import ReportData
 from .tabulardata import TabularData
 from .schedule import Schedule

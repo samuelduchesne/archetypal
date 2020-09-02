@@ -104,13 +104,15 @@ class IDF(geomeppy.IDF):
             "idfname",
             "output_directory",
         ],
-        "meters": [
-            "as_version",
+        "meters": ["sim_id",],
+        "variables": ["sim_id",],
+        "sim_id": [
+            "idfobjects",
+            "epw",
             "annual",
             "design_day",
-            "epw",
-            "idfname",
-            "output_directory",
+            "readvars",
+            "as_version",
         ],
         "schedules_dict": ["idfobjects"],
         "partition_ratio": ["idfobjects"],
@@ -227,6 +229,8 @@ class IDF(geomeppy.IDF):
         self._area_conditioned = None
         self._schedules = None
         self._meters = None
+        self._variables = None
+        self._sim_id = None
 
         if parse(as_version):
             self.as_version = parse(as_version)
@@ -646,6 +650,12 @@ class IDF(geomeppy.IDF):
     def output_prefix(self):
         if self._output_prefix is None:
             self._output_prefix = hash_model(
+
+    @property
+    def sim_id(self):
+        """Returns the hash of the model"""
+        if self._sim_id is None:
+            self._sim_id = hash_model(
                 self,
                 epw=self.epw,
                 annual=self.annual,
@@ -653,13 +663,13 @@ class IDF(geomeppy.IDF):
                 readvars=self.readvars,
                 ep_version=self.as_version,
             )
-        return self._output_prefix
+        return self._sim_id
 
-    @output_prefix.setter
-    def output_prefix(self, value):
+    @sim_id.setter
+    def sim_id(self, value):
         if value and not isinstance(value, str):
             raise TypeError("'output_prefix' needs to be a string")
-        self._output_prefix = value
+        self._sim_id = value
 
     # endregion
 
@@ -898,10 +908,50 @@ class IDF(geomeppy.IDF):
             try:
                 self.simulation_dir.files("*.mdd")
             except FileNotFoundError:
-                return "call IDF.simulate() to get a list of possible meters"
+                raise Exception(
+                    "call IDF.simulate() at least once to get a list of "
+                    "possible meters"
+                )
             else:
                 self._meters = Meters(self)
         return self._meters
+
+    @property
+    def variables(self):
+        """List of available meters for the :class:`IDF` model.
+
+        The :class:`IDF` model must be simulated once (to retrieve the .mdd file).
+
+        The listed meters may or may not be included in the idf file. If they are
+        not, the output is added to the file and the model is simulated again. The
+        output is appended to the :attr:`IDF.idfobjects` list, but will not overwrite
+        the
+        original idf file, unless :meth:`IDF.save` is called.
+
+        Hint:
+            Call `idf.meters.<output_group>.<meter_name>.values()` to retreive a
+            time-series based on the :class:`pandas.Series` class which can be plotted.
+
+            See :class:`Meter` and :class:`EnergySeries` for more information.
+
+        Example:
+            The IDF.meters attribute is populated with meters categories
+            (`Output:Meter` or `Output:Meter:Cumulative`) and each category is
+            populated with all the available meters.
+
+            .. code-block::
+
+                >>> IDF.variables.OutputVariable
+                >>> IDF.variables.OutputVariable
+        """
+        if self._variables is None:
+            try:
+                self.simulation_dir.files("*.rdd")
+            except FileNotFoundError:
+                return "call IDF.simulate() to get a list of possible variables"
+            else:
+                self._variables = Variables(self)
+        return self._variables
 
     def simulate(self, **kwargs):
         """Execute EnergyPlus. Does not return anything. See
@@ -4520,7 +4570,7 @@ class Meter:
         if isinstance(meter, dict):
             self._key = meter.pop("key").upper()
             self._epobject = self._idf.anidfobject(key=self._key, **meter)
-        if isinstance(meter, EpBunch):
+        elif isinstance(meter, EpBunch):
             self._key = meter.key
             self._epobject = meter
         else:
@@ -4536,7 +4586,6 @@ class Meter:
         normalize=False,
         sort_values=False,
         ascending=False,
-        concurrent_sort=False,
         agg_func="sum",
     ):
         """Returns the Meter as a time-series (:class:`EnergySeries`). Data is
@@ -4570,7 +4619,6 @@ class Meter:
             normalize=normalize,
             sort_values=sort_values,
             ascending=ascending,
-            concurrent_sort=concurrent_sort,
             agg_func=agg_func,
         )
 
@@ -4586,6 +4634,23 @@ class MeterGroup:
             meter_name = meter["Key_Name"].replace(":", "__").replace(" ", "_")
             self._properties[meter_name] = Meter(idf, meter)
             setattr(self, meter_name, self._properties[meter_name])
+
+    def __repr__(self):
+        # getmembers() returns all the
+        # members of an object
+        members = []
+        for i in inspect.getmembers(self):
+
+            # to remove private and protected
+            # functions
+            if not i[0].startswith("_"):
+
+                # To remove other methods that
+                # do not start with an underscore
+                if not inspect.ismethod(i[1]):
+                    members.append(i)
+
+        return f"{len(members)} available meters"
 
 
 class Meters:
@@ -4607,20 +4672,136 @@ class Meters:
 
     def __init__(self, idf: IDF):
         self._idf = idf
-        self._properties = {}
 
-        mdd = self._idf.simulation_dir.files("*.mdd")
+        (mdd,) = self._idf.simulation_dir.files("*.mdd")
         if not mdd:
             raise FileNotFoundError
         meters = pd.read_csv(
-            mdd[0], skiprows=2, names=["key", "Key_Name", "Reporting_Frequency"]
+            mdd, skiprows=2, names=["key", "Key_Name", "Reporting_Frequency"]
         )
+        meters.Reporting_Frequency = meters.Reporting_Frequency.str.replace("\;.*", "")
         for key, group in meters.groupby("key"):
             meters_dict = group.T.to_dict()
             setattr(
                 Meters,
                 key.replace(":", "").replace(" ", "_"),
                 MeterGroup(self._idf, meters_dict),
+            )
+
+    def __repr__(self):
+        # getmembers() returns all the
+        # members of an object
+        members = []
+        for i in inspect.getmembers(self):
+
+            # to remove private and protected
+            # functions
+            if not i[0].startswith("_"):
+
+                # To remove other methods that
+                # do not start with an underscore
+                if not inspect.ismethod(i[1]):
+                    members.append(i)
+        return tabulate(members, headers=("Available subgroups", "Preview"))
+
+
+class Variable:
+    def __init__(self, idf: IDF, variable: (dict or EpBunch)):
+        """Initialize a Meter object"""
+        self._idf = idf
+        self._values = None
+        if isinstance(variable, dict):
+            self._key = variable.pop("key").upper()
+            self._epobject = self._idf.anidfobject(key=self._key, **variable)
+        elif isinstance(variable, EpBunch):
+            self._key = variable.key
+            self._epobject = variable
+        else:
+            raise TypeError()
+
+    def __repr__(self):
+        """returns the string representation of an EpBunch"""
+        return self._epobject.__str__()
+
+    def values(
+        self,
+        units=None,
+        normalize=False,
+        sort_values=False,
+        ascending=False,
+        concurrent_sort=False,
+    ):
+        """Returns the Variable as a time-series (:class:`EnergySeries`). Data is
+        retrieved from the sql file. It is possible to convert the time-series to
+        another unit, e.g.: "J" to "kWh".
+
+        Args:
+            units (str): Convert original values to another unit. The original unit
+                is detected automatically and a dimensionality check is performed.
+            normalize (bool): Normalize between 0 and 1.
+            sort_values (bool): If True, values are sorted (default ascending=True)
+            ascending (bool): If True and `sort_values` is True, values are sorted in ascending order.
+            concurrent_sort (bool): #Todo: Document
+
+        Returns:
+            EnergySeries: The time-series object.
+        """
+        if self._values is None:
+            if self._epobject not in self._idf.idfobjects[self._epobject.key]:
+                self._idf.addidfobject(self._epobject)
+                self._idf.simulate()
+            report = ReportData.from_sqlite(
+                sqlite_file=self._idf.sql_file,
+                table_name=self._epobject.Variable_Name,
+                environment_type=1 if self._idf.design_day else 3,
+            )
+            self._values = report
+        return EnergyDataFrame.from_reportdata(
+            self._values,
+            to_units=units,
+            name=self._epobject.Variable_Name,
+            normalize=normalize,
+            sort_values=sort_values,
+            ascending=ascending,
+            concurrent_sort=concurrent_sort,
+        )
+
+
+class VariableGroup:
+    def __init__(self, idf: IDF, variables_dict: dict):
+        self._idf = idf
+        self._properties = {}
+
+        for i, variable in variables_dict.items():
+            variable_name = (
+                variable["Variable_Name"].replace(":", "__").replace(" ", "_")
+            )
+            self._properties[variable_name] = Variable(idf, variable)
+            setattr(self, variable_name, self._properties[variable_name])
+
+
+class Variables:
+    def __init__(self, idf: IDF):
+        self._idf = idf
+
+        (rdd,) = self._idf.simulation_dir.files("*.rdd")
+
+        if not rdd:
+            raise FileNotFoundError
+        variables = pd.read_csv(
+            rdd,
+            skiprows=2,
+            names=["key", "Key_Value", "Variable_Name", "Reporting_Frequency"],
+        )
+        variables.Reporting_Frequency = variables.Reporting_Frequency.str.replace(
+            "\;.*", ""
+        )
+        for key, group in variables.groupby("key"):
+            variable_dict = group.T.to_dict()
+            setattr(
+                Variables,
+                key.replace(":", "").replace(" ", "_"),
+                VariableGroup(self._idf, variable_dict),
             )
 
 

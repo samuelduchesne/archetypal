@@ -225,6 +225,8 @@ class UmiTemplateLibrary:
     @staticmethod
     def template_complexity_reduction(idfname, epw, **kwargs):
         idf = IDF(idfname, epw=epw, **kwargs)
+        if not idf.simulation_dir.exists():
+            idf.simulate()
         return BuildingTemplate.from_idf(idf, DataSource=idf.name, **kwargs)
 
     @classmethod

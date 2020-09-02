@@ -392,7 +392,7 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     OUTPUT is the output file
     name (or path) to write to. Optional.
 
-    Example: % archetypal -v reduce "." "elsewhere/model1.idf" -w "weather.epw"
+    Example: % archetypal -csl reduce "." "elsewhere/model1.idf" -w "weather.epw"
 
     """
     settings.use_cache = True
@@ -459,7 +459,7 @@ def transition(idf, to_version, cores, yes):
     files will be found in the directory and subdirectories (recursively). Mix &
     match is ok (see example below).
 
-    Example: % archetypal -v transition "." "elsewhere/model1.idf"
+    Example: % archetypal -csl transition "." "elsewhere/model1.idf"
 
     archetypal will look in the current working directory (".") and find any
     *.idf files and also run the model located at "elsewhere/model1.idf".

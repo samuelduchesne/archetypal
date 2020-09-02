@@ -432,7 +432,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
     @classmethod
     def generic_internalmass(cls, idf, for_zone):
-        mat = idf.newidfobject(
+        mat = idf.anidfobject(
             key="Material".upper(),
             Name="Wood 6inch",
             Roughness="MediumSmooth",
@@ -443,7 +443,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             Thermal_Absorptance=0.7,
             Visible_Absorptance=0.7,
         )
-        cons = idf.newidfobject(
+        cons = idf.anidfobject(
             key="Construction".upper(),
             Name="InteriorFurnishings",
             Outside_Layer="Wood 6inch",
@@ -451,7 +451,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         internal_mass = "InternalMass"
         cons.Name = internal_mass + "_construction"
 
-        new_epbunch = idf.newidfobject(
+        new_epbunch = idf.anidfobject(
             key="InternalMass".upper(),
             Name=internal_mass,
             Construction_Name=cons.Name,

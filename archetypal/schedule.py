@@ -887,7 +887,7 @@ class Schedule(object):
             dict_day[name] = unique_day
 
             # Create idf_objects for schedule:day:hourly
-            ep_day = self.idf.newidfobject(
+            ep_day = self.idf.anidfobject(
                 key="Schedule:Day:Hourly".upper(),
                 **dict(
                     Name=name,
@@ -934,7 +934,7 @@ class Schedule(object):
         # Create ep_weeks list and iterate over dict_week
         ep_weeks = []
         for week_id in dict_week:
-            ep_week = self.idf.newidfobject(
+            ep_week = self.idf.anidfobject(
                 key="Schedule:Week:Daily".upper(),
                 **dict(
                     Name=week_id,
@@ -990,7 +990,7 @@ class Schedule(object):
                 }
             )
 
-        ep_year = self.idf.newidfobject(key="Schedule:Year".upper(), **new_dict)
+        ep_year = self.idf.anidfobject(key="Schedule:Year".upper(), **new_dict)
         return ep_year, ep_weeks, ep_days
 
     def _date_field_interpretation(self, field):

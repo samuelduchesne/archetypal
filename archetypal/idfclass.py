@@ -15,6 +15,7 @@ import os
 import platform
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import time
@@ -31,7 +32,6 @@ from typing import Any
 
 import eppy
 import eppy.modeleditor
-import geomeppy
 import pandas as pd
 from deprecation import deprecated
 from eppy.EPlusInterfaceFunctions import parse_idd
@@ -40,9 +40,11 @@ from eppy.bunch_subclass import BadEPFieldError
 from eppy.easyopen import getiddfile
 from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from eppy.runner.run_functions import paths_from_version
+from geomeppy import IDF as geomIDF
 from geomeppy.patches import EpBunch, idfreader1, obj2bunch
 from pandas.errors import ParserError
-from path import Path, TempDir
+from path import Path
+from tabulate import tabulate
 from tqdm import tqdm
 
 import archetypal
@@ -63,7 +65,7 @@ from archetypal import (
 from archetypal.utils import _unpack_tuple, parse, extend_class, get_eplus_basedirs
 
 
-class IDF(eppy.modeleditor.IDF):
+class IDF(geomIDF):
     """Class for loading and parsing idf models and running simulations and
     retrieving results.
 
@@ -82,14 +84,6 @@ class IDF(eppy.modeleditor.IDF):
         "block": ["iddname", "idfname"],
         "model": ["iddname", "idfname"],
         "sql": [
-            "as_version",
-            "annual",
-            "design_day",
-            "epw",
-            "idfname",
-            "output_directory",
-        ],
-        "sql_file": [
             "as_version",
             "annual",
             "design_day",
@@ -118,6 +112,8 @@ class IDF(eppy.modeleditor.IDF):
         "schedules_dict": ["idfobjects"],
         "partition_ratio": ["idfobjects"],
         "area_conditioned": ["idfobjects"],
+        "energyplus_its": ["annual", "design_day"],
+        "output_directory": ["idfobjects"],
     }
     _independant_vars = set(chain(*list(_dependencies.values())))
     _dependant_vars = set(_dependencies.keys())
@@ -208,10 +204,9 @@ class IDF(eppy.modeleditor.IDF):
         self.as_version = None
         self._position = position
         self.output_prefix = None
-        self.output_directory = None
-        self._energyplus_its = 0
 
         # Set dependants to None
+        self._output_directory = None
         self._file_version = None
         self._iddname = None
         self._idd_info = None
@@ -231,6 +226,7 @@ class IDF(eppy.modeleditor.IDF):
         self._schedules = None
         self._meters = None
         self._variables = None
+        self._energyplus_its = 0
         self._sim_id = None
 
         if parse(as_version):
@@ -238,10 +234,8 @@ class IDF(eppy.modeleditor.IDF):
 
         self.load_kwargs = dict(epw=epw, **kwargs)
 
-        self._original_idfname = (
-            idfname if idfname else StringIO(f"VERSION, {latest_energyplus_version()};")
-        )
-
+        self.outputtype = "standard"
+        self._original_idfname = hash_model(self)
         # Move to output_directory, if we want to keep the original file intact.
         if settings.use_cache:
             previous_file = self.output_directory / self.name
@@ -250,12 +244,12 @@ class IDF(eppy.modeleditor.IDF):
                 self.idfname = previous_file
             else:
                 if not isinstance(self.idfname, StringIO):
-                    self.idfname = self.idfname.copy(self.output_directory)
+                    self.output_directory.makedirs_p()
+                    self.idfname = self.savecopy(self.output_directory / self.name)
 
         try:
             # load the idf object by asserting self.idd_info
             assert self.idd_info
-            self.outputtype = "standard"
         except Exception as e:
             raise e
         else:
@@ -352,10 +346,6 @@ class IDF(eppy.modeleditor.IDF):
         cache_filename = hash_model(idfname, **kwargs)
         output_directory = settings.cache_folder / cache_filename
         return output_directory / os.extsep.join([cache_filename + "idfs", "dat"])
-
-    @property
-    def original_idfname(self):
-        return self._original_idfname
 
     @property
     def block(self):
@@ -632,9 +622,10 @@ class IDF(eppy.modeleditor.IDF):
         """Returns the output directory based on the hashing of the original file (
         before transitions or modifications)."""
         if self._output_directory is None:
-            self._output_directory = self.get_output_directory(
-                self.original_idfname
-            ).expand()
+            cache_filename = self._original_idfname
+            output_directory = settings.cache_folder / cache_filename
+            output_directory.makedirs_p()
+            self._output_directory = output_directory.expand()
         return Path(self._output_directory)
 
     @output_directory.setter
@@ -650,7 +641,14 @@ class IDF(eppy.modeleditor.IDF):
     @property
     def output_prefix(self):
         if self._output_prefix is None:
-            self._output_prefix = hash_model(
+            self._output_prefix = self.name.stem
+        return self._output_prefix
+
+    @output_prefix.setter
+    def output_prefix(self, value):
+        if value and not isinstance(value, str):
+            raise TypeError("'output_prefix' needs to be a string")
+        self._output_prefix = value
 
     @property
     def sim_id(self):
@@ -712,7 +710,9 @@ class IDF(eppy.modeleditor.IDF):
                 )
                 if sql_object not in self.idfobjects["Output:SQLite".upper()]:
                     self.addidfobject(sql_object)
-                return self.simulate().sql
+                raise FileNotFoundError(
+                    "call IDF.simulate() at least once to get the sql table report"
+                )
             except Exception as e:
                 raise e
             else:
@@ -731,10 +731,19 @@ class IDF(eppy.modeleditor.IDF):
                     output_prefix=self.output_prefix,
                 )
             except FileNotFoundError:
-                return self.simulate().htm
+                raise FileNotFoundError(
+                    "call IDF.simulate() at least once to get the sql file path"
+                )
             else:
                 self._htm = htm_dict
         return self._htm
+
+    @property
+    def energyplus_its(self):
+        """Number of iterations needed to complete simulation"""
+        if self._energyplus_its is None:
+            self._energyplus_its = 0
+        return self._energyplus_its
 
     def htm_open(self):
         """Open .htm file in browser"""
@@ -743,6 +752,36 @@ class IDF(eppy.modeleditor.IDF):
         (html,) = self.simulation_dir.files("*.htm")
 
         webbrowser.open(html.abspath())
+
+    def idf_open(self):
+        """Open .idf file in Ep-Launch"""
+
+        self.save()
+
+        filepath = self.idfname
+
+        import subprocess, os, platform
+
+        if platform.system() == "Darwin":  # macOS
+            subprocess.call(("open", filepath))
+        elif platform.system() == "Windows":  # Windows
+            os.startfile(filepath)
+        else:  # linux variants
+            subprocess.call(("xdg-open", filepath))
+
+    def idf_open_last_sim(self):
+        """Open last simulation in Ep-Launch"""
+
+        (filepath,) = self.simulation_dir.files("*.idf")
+
+        import subprocess, os, platform
+
+        if platform.system() == "Darwin":  # macOS
+            subprocess.call(("open", filepath))
+        elif platform.system() == "Windows":  # Windows
+            os.startfile(filepath)
+        else:  # linux variants
+            subprocess.call(("xdg-open", filepath))
 
     def mdd_open(self):
         """Open .mdd file in browser. This file shows all the report meters along
@@ -766,20 +805,28 @@ class IDF(eppy.modeleditor.IDF):
     @property
     def sql_file(self):
         """Get the sql file path"""
-        if self._sql_file is None:
-            try:
-                (file,) = self.simulation_dir.files("*out.sql")
-            except FileNotFoundError:
-                (file,) = self.simulate().simulation_dir.files("*out.sql")
-            self._sql_file = file.expand()
-        return self._sql_file
+        try:
+            (file,) = self.simulation_dir.files("*out.sql")
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                "call IDF.simulate() at least once to get the sql file path"
+            )
+        return file.expand()
 
     @property
     def area_conditioned(self):
         """Returns the total conditioned area of a building (taking into account
         zone multipliers
         """
-        if self._partition_ratio is None:
+        if self._area_conditioned is None and self.sql_file:
+            with sqlite3.connect(self.sql_file) as conn:
+                sql_query = f"""
+                        SELECT t.Value
+                        FROM TabularDataWithStrings t
+                        WHERE TableName == 'Building Area' and ColumnName == 'Area' and RowName == 'Net Conditioned Building Area';"""
+                (res,) = conn.execute(sql_query).fetchone()
+            self._area_conditioned = float(res)
+        elif self._area_conditioned is None and not self.sql_file:
             area = 0
             zones = self.idfobjects["ZONE"]
             zone: EpBunch
@@ -793,8 +840,8 @@ class IDF(eppy.modeleditor.IDF):
                             )
 
                             area += surface.area * multiplier * part_of
-            self._partition_ratio = area
-        return self._partition_ratio
+            self._area_conditioned = area
+        return self._area_conditioned
 
     @property
     def partition_ratio(self):
@@ -831,7 +878,7 @@ class IDF(eppy.modeleditor.IDF):
     def simulation_dir(self):
         """The path where simulation results are stored"""
         try:
-            return (self.output_directory / self.output_prefix).expand()
+            return (self.output_directory / self.sim_id).expand()
         except AttributeError:
             return Path()
 
@@ -1040,32 +1087,43 @@ class IDF(eppy.modeleditor.IDF):
             )
 
         # Todo: Add EpMacro Thread -> if exist in.imf "%program_path%EPMacro"
-
-        # Run the ExpandObjects preprocessor program
-        self._expandobjects_thread = ExpandObjectsThread(self)
-        self._expandobjects_thread.start()
-        self._expandobjects_thread.join()
-        e = self._expandobjects_thread.exception
-        if e:
-            raise e
+        # Run the expandobjects program if necessary
+        with TemporaryDirectory(
+            prefix="expandobjects_run_",
+            suffix=self.output_prefix,
+            dir=self.output_directory,
+        ) as tmp:
+            # Run the ExpandObjects preprocessor program
+            expandobjects_thread = ExpandObjectsThread(self, tmp)
+            expandobjects_thread.start()
+            expandobjects_thread.join()
+            e = expandobjects_thread.exception
+            if e is not None:
+                raise e
 
         # Run the Basement preprocessor program if necessary
-
         # Todo: Add Basement.exe Thread -> https://github.com/NREL/EnergyPlus/blob/4836252ecffbaf63e98b62a8e6613510de0046a9/scripts/Epl-run.bat#L271
 
         # Run the Slab preprocessor program if necessary
-        self._slab_thread = SlabThread(self)
-        self._slab_thread.start()
-        self._slab_thread.join()
-        e = self._slab_thread.exception
-        if e:
+        with TemporaryDirectory(
+            prefix="RunSlab_run_", suffix=self.output_prefix, dir=self.output_directory,
+        ) as tmp:
+            slab_thread = SlabThread(self, tmp)
+            slab_thread.start()
+            slab_thread.join()
+        e = slab_thread.exception
+        if e is not None:
             raise e
 
-        self._running_simulation_thread = EnergyPlusThread(self)
-        self._running_simulation_thread.start()
-        self._running_simulation_thread.join()
-        e = self._running_simulation_thread.exception
-        if e:
+        # Run the energyplus program
+        with TemporaryDirectory(
+            prefix="eplus_run_", suffix=self.output_prefix, dir=self.output_directory,
+        ) as tmp:
+            running_simulation_thread = EnergyPlusThread(self, tmp)
+            running_simulation_thread.start()
+            running_simulation_thread.join()
+        e = running_simulation_thread.exception
+        if e is not None:
             raise e
         return self
 
@@ -1088,9 +1146,8 @@ class IDF(eppy.modeleditor.IDF):
         super(IDF, self).save(filename, lineendings, encoding)
         return Path(filename)
 
-    def save(self, filename=None, lineendings="default", encoding="latin-1"):
-        """Save the IDF as a text file with the optional filename passed. If None,
-        the original_idfname of the IDF is used. Uses
+    def save(self, lineendings="default", encoding="latin-1", **kwargs):
+        """Write the IDF model to the text file. Uses
         :meth:`~eppy.modeleditor.IDF.saveas`
 
         Args:
@@ -1102,16 +1159,64 @@ class IDF(eppy.modeleditor.IDF):
                 endings for the current system.
             encoding (str): Encoding to use for the saved file. The default is
                 'latin-1' which is compatible with the EnergyPlus IDFEditor.
-            """
-        if not settings.use_cache and filename is None:
-            self.idfname = self.original_idfname
-        save_path = super(IDF, self).save(
+        Returns:
+            IDF: The IDF model
+        """
+        super(IDF, self).save(
+            filename=self.idfname, lineendings=lineendings, encoding=encoding
+        )
+        if not settings.use_cache:
+            cache_filename = hash_model(self)
+            output_directory = settings.cache_folder / cache_filename
+            output_directory.makedirs_p()
+            self.simulation_dir.copytree(
+                output_directory / self.simulation_dir.basename(), dirs_exist_ok=True
+            )
+        log(f"saved '{self.name}' at '{self.idfname}'")
+        return self
+
+    def saveas(self, filename, lineendings="default", encoding="latin-1"):
+        """Save the IDF model as. Writes a new text file and load a new instance of
+        the IDF class (new object).
+
+        Args:
+            filename (str): Filepath to save the file. If None then use the IDF.idfname
+                parameter. Also accepts a file handle.
+            lineendings (str) : Line endings to use in the saved file. Options are
+            'default',
+                'windows' and 'unix' the default is 'default' which uses the line
+                endings for the current system.
+            encoding (str): Encoding to use for the saved file. The default is
+                'latin-1' which is compatible with the EnergyPlus IDFEditor.
+
+        Returns:
+            IDF: A new IDF object based on the new location file.
+        """
+        super(IDF, self).save(
             filename=filename, lineendings=lineendings, encoding=encoding
         )
-        if filename:
-            self.idfname = filename
-        log(f"saved '{self.name}' at '{filename if filename else self.idfname}'")
-        return save_path
+
+        import inspect
+
+        sig = inspect.signature(IDF.__init__)
+        kwargs = {
+            key: getattr(self, key)
+            for key in [a for a in sig.parameters]
+            if key not in ["self", "idfname", "kwargs"]
+        }
+
+        as_idf = IDF(filename, **kwargs)
+        # copy simulation_dir over to new location
+        file: Path
+        as_idf.simulation_dir.makedirs_p()
+        for file in self.simulation_files:
+            if self.output_prefix in file:
+                name = file.replace(self.output_prefix, as_idf.output_prefix)
+                name = Path(name).basename()
+            else:
+                name = file.basename()
+            file.copy(as_idf.simulation_dir / name)
+        return as_idf
 
     def process_results(self):
         """Returns the list of processed results as defined by self.custom_processes
@@ -1153,21 +1258,6 @@ class IDF(eppy.modeleditor.IDF):
             return self.process_results()
         else:
             return results
-
-    @staticmethod
-    def get_output_directory(idfname, **kwargs):
-        """
-
-        Args:
-            idfname (Path-like):
-
-        Returns:
-
-        """
-        cache_filename = hash_model(idfname, **kwargs)
-        output_directory = settings.cache_folder / cache_filename
-        output_directory.makedirs_p()
-        return output_directory
 
     def upgrade(self, to_version, overwrite=True, **kwargs):
         """EnergyPlus idf version updater using local transition program.
@@ -1241,7 +1331,7 @@ class IDF(eppy.modeleditor.IDF):
             self._sql_file = results
             return results
 
-    def wwr(self, azimuth_threshold=10, round_to=None):
+    def wwr(self, azimuth_threshold=10, round_to=10):
         """Returns the Window-to-Wall Ratio by major orientation for the IDF
         model. Optionally round up the WWR value to nearest value (eg.: nearest
         10).
@@ -1261,6 +1351,7 @@ class IDF(eppy.modeleditor.IDF):
             area and WWR for each main orientation of the building.
         """
         import math
+        from builtins import round
 
         def roundto(x, to=10.0):
             """Rounds up to closest `to` number"""
@@ -1269,7 +1360,7 @@ class IDF(eppy.modeleditor.IDF):
             else:
                 return x
 
-        total_wall_area = defaultdict(int)
+        total_surface_area = defaultdict(int)
         total_window_area = defaultdict(int)
 
         zones = self.idfobjects["ZONE"]
@@ -1284,7 +1375,7 @@ class IDF(eppy.modeleditor.IDF):
                 if isclose(surface.tilt, 90, abs_tol=10):
                     if surface.Outside_Boundary_Condition == "Outdoors":
                         surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
-                        total_wall_area[surf_azim] += surface.area * multiplier
+                        total_surface_area[surf_azim] += surface.area * multiplier
                 for subsurface in surface.subsurfaces:
                     if hasattr(subsurface, "tilt"):
                         if isclose(subsurface.tilt, 90, abs_tol=10):
@@ -1295,16 +1386,26 @@ class IDF(eppy.modeleditor.IDF):
                                 total_window_area[surf_azim] += (
                                     subsurface.area * multiplier
                                 )
+                        if isclose(subsurface.tilt, 180, abs_tol=80):
+                            total_window_area["sky"] += subsurface.area * multiplier
         # Fix azimuth = 360 which is the same as azimuth 0
-        total_wall_area[0] += total_wall_area.pop(360, 0)
+        total_surface_area[0] += total_surface_area.pop(360, 0)
         total_window_area[0] += total_window_area.pop(360, 0)
 
         # Create dataframe with wall_area, window_area and wwr as columns and azimuth
         # as indexes
-        df = pd.DataFrame(
-            {"wall_area": total_wall_area, "window_area": total_window_area}
-        ).rename_axis("Azimuth")
-        df["wwr"] = df.window_area / df.wall_area
+        from sigfig import round
+
+        df = (
+            pd.DataFrame(
+                {"wall_area": total_surface_area, "window_area": total_window_area}
+            )
+            .rename_axis("Azimuth")
+            .fillna(0)
+        )
+        df.wall_area = df.wall_area.apply(round, decimals=1)
+        df.window_area = df.window_area.apply(round, decimals=1)
+        df["wwr"] = (df.window_area / df.wall_area).apply(round, 2)
         df["wwr_rounded_%"] = (df.window_area / df.wall_area * 100).apply(
             lambda x: roundto(x, to=round_to)
         )
@@ -2896,7 +2997,7 @@ def run_eplus(
         elif include is not None:
             include = [Path(file) for file in include]
         # run the EnergyPlus Simulation
-        with TempDir(
+        with TemporaryDirectory(
             prefix="eplus_run_", suffix=output_prefix, dir=output_directory
         ) as tmp:
             log(
@@ -3268,7 +3369,7 @@ class TransitionExe:
 
 
 class ExpandObjectsThread(Thread):
-    def __init__(self, idf):
+    def __init__(self, idf, tmp):
         """
 
         Args:
@@ -3283,6 +3384,7 @@ class ExpandObjectsThread(Thread):
         self.run_dir = Path("")
         self.exception = None
         self.name = "ExpandObjects_" + self.idf.name
+        self.tmp = tmp
 
     def run(self):
         """Wrapper around the EnergyPlus command line interface.
@@ -3292,63 +3394,57 @@ class ExpandObjectsThread(Thread):
         self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
-        with TempDir(
-            prefix="expandobjects_run_",
-            suffix=self.idf.output_prefix,
-            dir=self.idf.output_directory,
-        ) as tmp:
-            self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
-            self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
-            self.idd = self.idf.iddname.copy(tmp / "Energy+.idd").expand()
-            self.expandobjectsexe = Path(
-                shutil.which("ExpandObjects", path=self.eplus_home.expand())
-            ).copy2(tmp)
-            self.run_dir = Path(tmp).expand()
+        tmp = self.tmp
+        self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
+        self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
+        self.idd = self.idf.iddname.copy(tmp / "Energy+.idd").expand()
+        self.expandobjectsexe = Path(
+            shutil.which("ExpandObjects", path=self.eplus_home.expand())
+        ).copy2(tmp)
+        self.run_dir = Path(tmp).expand()
 
-            # Run ExpandObjects Program
-            self.cmd = str(self.expandobjectsexe.basename())
-            with tqdm(
-                unit_scale=True,
-                miniters=1,
-                desc=f"ExpandObjects #{self.idf.position}-{self.idf.name}",
-                position=self.idf.position,
-            ) as progress:
+        # Run ExpandObjects Program
+        self.cmd = str(self.expandobjectsexe.basename())
+        with tqdm(
+            unit_scale=True,
+            miniters=1,
+            desc=f"ExpandObjects #{self.idf.position}-{self.idf.name}",
+            position=self.idf.position,
+        ) as progress:
 
-                self.p = subprocess.Popen(
-                    ["ExpandObjects"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    shell=True,
-                    cwd=self.run_dir.abspath(),
-                )
-                start_time = time.time()
-                # self.msg_callback("ExpandObjects started")
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8"))
-                    progress.update()
+            self.p = subprocess.Popen(
+                ["ExpandObjects"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=True,
+                cwd=self.run_dir.abspath(),
+            )
+            start_time = time.time()
+            # self.msg_callback("ExpandObjects started")
+            for line in self.p.stdout:
+                self.msg_callback(line.decode("utf-8"))
+                progress.update()
 
-                # We explicitly close stdout
-                self.p.stdout.close()
+            # We explicitly close stdout
+            self.p.stdout.close()
 
-                # Wait for process to complete
-                self.p.wait()
+            # Wait for process to complete
+            self.p.wait()
 
-                # Communicate callbacks
-                if self.cancelled:
-                    self.msg_callback("ExpandObjects cancelled")
-                    # self.cancelled_callback(self.std_out, self.std_err)
-                else:
-                    if self.p.returncode == 0:
-                        self.msg_callback(
-                            "ExpandObjects completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
+            # Communicate callbacks
+            if self.cancelled:
+                self.msg_callback("ExpandObjects cancelled")
+                # self.cancelled_callback(self.std_out, self.std_err)
+            else:
+                if self.p.returncode == 0:
+                    self.msg_callback(
+                        "ExpandObjects completed in {:,.2f} seconds".format(
+                            time.time() - start_time
                         )
-                        self.success_callback()
-                    else:
-                        self.msg_callback("ExpandObjects failed")
-                        self.failure_callback()
-        return self.p.returncode
+                    )
+                    self.success_callback()
+                else:
+                    self.msg_callback("ExpandObjects failed")
 
     def msg_callback(self, *args, **kwargs):
         log(*args, name=self.idf.name, **kwargs)
@@ -3384,7 +3480,7 @@ class ExpandObjectsThread(Thread):
 
 
 class SlabThread(Thread):
-    def __init__(self, idf):
+    def __init__(self, idf, tmp):
         """The slab program used to calculate the results is included with the
         EnergyPlus distribution. It requires an input file named GHTin.idf in input
         data file format. The needed corresponding idd file is SlabGHT.idd. An
@@ -3402,6 +3498,7 @@ class SlabThread(Thread):
         self.run_dir = Path("")
         self.exception = None
         self.name = "RunSlab_" + self.idf.name
+        self.tmp = tmp
 
     def run(self):
         """Wrapper around the EnergyPlus command line interface.
@@ -3411,80 +3508,73 @@ class SlabThread(Thread):
         self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
-        with TempDir(
-            prefix="RunSlab_run_",
-            suffix=self.idf.output_prefix,
-            dir=self.idf.output_directory,
-        ) as tmp:
-            self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
-            self.idfname = Path(self.idf.idfname.copy(tmp / "in.idf")).expand()
-            self.idd = self.idf.iddname.copy(tmp).expand()
+        tmp = self.tmp
+        self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
+        self.idfname = Path(self.idf.idfname.copy(tmp / "in.idf")).expand()
+        self.idd = self.idf.iddname.copy(tmp).expand()
 
-            # Get executable using shutil.which (determines the extension based on
-            # the platform, eg: .exe. And copy the executable to tmp
-            self.slabexe = Path(
-                shutil.which(
-                    "Slab", path=self.eplus_home / "PreProcess" / "GrndTempCalc"
-                )
-            ).copy(tmp)
-            self.slabidd = (
-                self.eplus_home / "PreProcess" / "GrndTempCalc" / "SlabGHT.idd"
-            ).copy(tmp)
-            self.run_dir = Path(tmp).expand()
+        # Get executable using shutil.which (determines the extension based on
+        # the platform, eg: .exe. And copy the executable to tmp
+        self.slabexe = Path(
+            shutil.which("Slab", path=self.eplus_home / "PreProcess" / "GrndTempCalc")
+        ).copy(tmp)
+        self.slabidd = (
+            self.eplus_home / "PreProcess" / "GrndTempCalc" / "SlabGHT.idd"
+        ).copy(tmp)
+        self.run_dir = Path(tmp).expand()
 
-            # The GHTin.idf file is copied from the self.include list (added by
-            # ExpandObjects. If self.include is empty, no need to run Slab.
-            self.include = [Path(file).copy(tmp) for file in self.idf.include]
-            if not self.include:
-                self.cleanup_callback()
-                return
+        # The GHTin.idf file is copied from the self.include list (added by
+        # ExpandObjects. If self.include is empty, no need to run Slab.
+        self.include = [Path(file).copy(tmp) for file in self.idf.include]
+        if not self.include:
+            self.cleanup_callback()
+            pass
 
-            # Run Slab Program
-            self.cmd = [self.slabexe.stem]
-            with tqdm(
-                unit_scale=True,
-                miniters=1,
-                desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
-                position=self.idf.position,
-            ) as progress:
+        # Run Slab Program
+        self.cmd = [self.slabexe.stem]
+        with tqdm(
+            unit_scale=True,
+            miniters=1,
+            desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
+            position=self.idf.position,
+        ) as progress:
 
-                self.p = subprocess.Popen(
-                    ["Slab"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    shell=True,
-                    cwd=self.run_dir.abspath(),
-                )
-                start_time = time.time()
-                self.msg_callback("Begin Slab Temperature Calculation processing . . .")
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8").strip("\n"))
-                    progress.update()
+            self.p = subprocess.Popen(
+                ["Slab"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=True,
+                cwd=self.run_dir.abspath(),
+            )
+            start_time = time.time()
+            self.msg_callback("Begin Slab Temperature Calculation processing . . .")
+            for line in self.p.stdout:
+                self.msg_callback(line.decode("utf-8").strip("\n"))
+                progress.update()
 
-                # We explicitly close stdout
-                self.p.stdout.close()
+            # We explicitly close stdout
+            self.p.stdout.close()
 
-                # Wait for process to complete
-                self.p.wait()
+            # Wait for process to complete
+            self.p.wait()
 
-                # Communicate callbacks
-                if self.cancelled:
-                    self.msg_callback("RunSlab cancelled")
-                    # self.cancelled_callback(self.std_out, self.std_err)
-                else:
-                    if self.p.returncode == 0:
-                        self.msg_callback(
-                            "RunSlab completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
+            # Communicate callbacks
+            if self.cancelled:
+                self.msg_callback("RunSlab cancelled")
+                # self.cancelled_callback(self.std_out, self.std_err)
+            else:
+                if self.p.returncode == 0:
+                    self.msg_callback(
+                        "RunSlab completed in {:,.2f} seconds".format(
+                            time.time() - start_time
                         )
-                        self.success_callback()
-                        for line in self.p.stderr:
-                            self.msg_callback(line.decode("utf-8"))
-                    else:
-                        self.msg_callback("RunSlab failed")
-                        self.failure_callback()
-        return self.p.returncode
+                    )
+                    self.success_callback()
+                    for line in self.p.stderr:
+                        self.msg_callback(line.decode("utf-8"))
+                else:
+                    self.msg_callback("RunSlab failed")
+                    self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
         log(*args, name=self.idf.name, **kwargs)
@@ -3562,7 +3652,7 @@ class TransitionThread(Thread):
         self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
-        with TempDir(
+        with TemporaryDirectory(
             prefix="Transition_run_",
             suffix=self.idf.output_prefix,
             dir=self.idf.output_directory,
@@ -3621,7 +3711,6 @@ class TransitionThread(Thread):
                             self.msg_callback(line.decode("utf-8"))
                         self.msg_callback("Transition failed")
                         self.failure_callback()
-        return self.p.returncode
 
     @property
     def trans_exec(self):
@@ -3682,11 +3771,12 @@ class TransitionThread(Thread):
 
 
 class EnergyPlusThread(Thread):
-    def __init__(self, idf):
+    def __init__(self, idf, tmp):
         """
 
         Args:
-            idf (IDF):
+            idf (IDF): The idf model.
+            tmp (str or Path): The directory in which the process will be launched.
         """
         super(EnergyPlusThread, self).__init__()
         self.p = None
@@ -3697,6 +3787,7 @@ class EnergyPlusThread(Thread):
         self.run_dir = Path("")
         self.exception = None
         self.name = "EnergyPlus_" + self.idf.name
+        self.tmp = tmp
 
     def stop(self):
         if self.p.poll() is None:
@@ -3712,86 +3803,76 @@ class EnergyPlusThread(Thread):
         self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
-        with TempDir(
-            prefix="eplus_run_",
-            suffix=self.idf.output_prefix,
-            dir=self.idf.output_directory,
-        ) as tmp:
-            self.epw = self.idf.epw.copy(tmp).expand()
-            self.idfname = Path(self.idf.savecopy(tmp / self.idf.name)).expand()
-            self.idd = self.idf.iddname.copy(tmp).expand()
-            self.run_dir = Path(tmp).expand()
-            self.include = [Path(file).copy(tmp) for file in self.idf.include]
+        tmp = self.tmp
+        self.epw = self.idf.epw.copy(tmp).expand()
+        self.idfname = Path(self.idf.savecopy(tmp / self.idf.name)).expand()
+        self.idd = self.idf.iddname.copy(tmp).expand()
+        self.run_dir = Path(tmp).expand()
+        self.include = [Path(file).copy(tmp) for file in self.idf.include]
 
-            # build a list of command line arguments
-            try:
-                self.cmd = EnergyPlusExe(
-                    idfname=self.idfname,
-                    epw=self.epw,
-                    output_directory=self.run_dir,
-                    ep_version=self.idf.as_version,
-                    annual=self.idf.annual,
-                    convert=self.idf.convert,
-                    design_day=self.idf.design_day,
-                    help=False,
-                    idd=self.idd,
-                    epmacro=self.idf.epmacro,
-                    output_prefix=self.idf.output_prefix,
-                    readvars=self.idf.readvars,
-                    output_sufix=self.idf.output_suffix,
-                    version=False,
-                    expandobjects=self.idf.expandobjects,
-                ).cmd()
-            except EnergyPlusVersionError as e:
-                self.exception = e
-                return
+        # build a list of command line arguments
+        try:
+            self.cmd = EnergyPlusExe(
+                idfname=self.idfname,
+                epw=self.epw,
+                output_directory=self.run_dir,
+                ep_version=self.idf.as_version,
+                annual=self.idf.annual,
+                convert=self.idf.convert,
+                design_day=self.idf.design_day,
+                help=False,
+                idd=self.idd,
+                epmacro=self.idf.epmacro,
+                output_prefix=self.idf.output_prefix,
+                readvars=self.idf.readvars,
+                output_sufix=self.idf.output_suffix,
+                version=False,
+                expandobjects=self.idf.expandobjects,
+            ).cmd()
+        except EnergyPlusVersionError as e:
+            self.exception = e
+            return
 
-            # Start process with tqdm bar
-            with tqdm(
-                unit_scale=True,
-                total=self.idf._energyplus_its
-                if self.idf._energyplus_its > 0
-                else None,
-                miniters=1,
-                desc=f"EnergyPlus #{self.idf.position}-{self.idf.name}",
-                position=self.idf.position,
-            ) as progress:
-                self.p = subprocess.Popen(
-                    self.cmd,
-                    shell=False,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
-                start_time = time.time()
-                self.msg_callback("Simulation started")
-                self.idf._energyplus_its = 0  # reset counter
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8").strip("\n"))
-                    self.idf._energyplus_its += 1
-                    progress.update()
+        # Start process with tqdm bar
+        with tqdm(
+            unit_scale=True,
+            total=self.idf._energyplus_its if self.idf._energyplus_its > 0 else None,
+            miniters=1,
+            desc=f"EnergyPlus #{self.idf.position}-{self.idf.name}",
+            position=self.idf.position,
+        ) as progress:
+            self.p = subprocess.Popen(
+                self.cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+            start_time = time.time()
+            self.msg_callback("Simulation started")
+            self.idf._energyplus_its = 0  # reset counter
+            for line in self.p.stdout:
+                self.msg_callback(line.decode("utf-8").strip("\n"))
+                self.idf._energyplus_its += 1
+                progress.update()
 
-                # We explicitly close stdout
-                self.p.stdout.close()
+            # We explicitly close stdout
+            self.p.stdout.close()
 
-                # Wait for process to complete
-                self.p.wait()
+            # Wait for process to complete
+            self.p.wait()
 
-                # Communicate callbacks
-                if self.cancelled:
-                    self.msg_callback("Simulation cancelled")
-                    self.cancelled_callback(self.std_out, self.std_err)
-                else:
-                    if self.p.returncode == 0:
-                        self.msg_callback(
-                            "EnergyPlus Completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
+            # Communicate callbacks
+            if self.cancelled:
+                self.msg_callback("Simulation cancelled")
+                self.cancelled_callback(self.std_out, self.std_err)
+            else:
+                if self.p.returncode == 0:
+                    self.msg_callback(
+                        "EnergyPlus Completed in {:,.2f} seconds".format(
+                            time.time() - start_time
                         )
-                        self.success_callback()
-                    else:
-                        self.msg_callback("Simulation failed")
-                        self.failure_callback()
-        return self.p.returncode
+                    )
+                    self.success_callback()
+                else:
+                    self.msg_callback("Simulation failed")
+                    self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
         log(*args, name=self.idf.name, **kwargs)

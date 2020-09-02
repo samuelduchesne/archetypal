@@ -90,7 +90,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone):
+    def from_zone(cls, zone, **kwargs):
         """
         Args:
             zone (Zone):
@@ -157,6 +157,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             zone=zone,
             idf=zone.idf,
             Category=zone.idf.name,
+            **kwargs,
         )
         return z_set
 
@@ -250,7 +251,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             IsFacadeAdiabatic=any([self.IsFacadeAdiabatic, other.IsFacadeAdiabatic]),
         )
         new_obj = self.__class__(**meta, **new_attr, idf=self.idf, **kwargs)
-        new_obj._predecessors.update(self.predecessors + other.predecessors)
+        new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def to_json(self):
@@ -411,11 +412,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             lg.WARNING,
             name=surf.theidf.name,
         )
-        oc = OpaqueConstruction.from_epbunch(
-            surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
-        )
-        oc.area = surf.area
-        oc.Surface_Type = "Facade"
+        oc = None
         return oc
 
     def mapping(self):

@@ -35,6 +35,7 @@ from archetypal import (
     parallel_process,
     log,
     EnergyPlusProcessError,
+    CREATED_OBJECTS,
 )
 
 
@@ -165,6 +166,10 @@ class UmiTemplateLibrary:
             name (str): The name of the Template File
             parallel (bool): If True, uses all available logical cores.
             kwargs: keyword arguments passed to IDF().
+
+        Raises:
+            Exception: All exceptions are raised if settings.debug=True. Will raise
+                an exception if all BuildingTemplates failed to be created.
         """
         # instantiate class
         umi_template = cls(name)
@@ -181,6 +186,7 @@ class UmiTemplateLibrary:
                 epw=umi_template.weather,
                 verbose=False,
                 position=None,
+                nolimit=True,
                 **kwargs,
             )
         results = parallel_process(
@@ -204,7 +210,7 @@ class UmiTemplateLibrary:
                     log(
                         f"Unable to create Building Template. Exception raised: "
                         f"{str(res)}",
-                        lg.WARNING,
+                        lg.ERROR,
                     )
 
         if all(isinstance(x, Exception) for x in results):
@@ -219,7 +225,7 @@ class UmiTemplateLibrary:
     @staticmethod
     def template_complexity_reduction(idfname, epw, **kwargs):
         idf = IDF(idfname, epw=epw, **kwargs)
-        return BuildingTemplate.from_idf(idf, DataSource=idf.name)
+        return BuildingTemplate.from_idf(idf, DataSource=idf.name, **kwargs)
 
     @classmethod
     def read_file(cls, filename, idf=None):
@@ -323,7 +329,14 @@ class UmiTemplateLibrary:
     def validate(self, defaults=True):
         pass
 
-    def to_json(self, path_or_buf=None, indent=2, all_zones=False, sort_keys=False):
+    def to_json(
+        self,
+        path_or_buf=None,
+        indent=2,
+        all_zones=False,
+        sort_keys=False,
+        include_orphaned=False,
+    ):
         """Writes the umi template to json format
 
         Args:
@@ -354,7 +367,7 @@ class UmiTemplateLibrary:
             if not os.path.exists(settings.data_folder):
                 os.makedirs(settings.data_folder)
         with io.open(path_or_buf, "w+", encoding="utf-8") as path_or_buf:
-            data_dict = self.to_dict(all_zones)
+            data_dict = self.to_dict(all_zones, include_orphaned=include_orphaned)
 
             class CustomJSONEncoder(json.JSONEncoder):
                 def default(self, obj):
@@ -370,12 +383,15 @@ class UmiTemplateLibrary:
 
         return response
 
-    def to_dict(self, all_zones=False):
+    def to_dict(self, all_zones=False, include_orphaned=False):
         """
         Args:
             all_zones (bool): If True, all zones that have participated in the
                 creation of the core and perimeter zones will be outputed to the
                 json file.
+            include_orphaned (boll): If True, will recursively create all created
+                UmiBase objects during session, which could include orphaned
+                components (not used by any other parent component).
         """
         data_dict = OrderedDict(
             {
@@ -398,6 +414,7 @@ class UmiTemplateLibrary:
                 "BuildingTemplates": [],
             }
         )
+        order = tuple(data_dict.keys())
         jsonized = {}
 
         def recursive_json(obj):
@@ -407,7 +424,11 @@ class UmiTemplateLibrary:
             if catname in data_dict:
                 key = obj.id
                 if key not in jsonized.keys():
-                    app_dict = obj.to_json()
+                    try:
+                        app_dict = obj.to_json()
+                    except AttributeError as e:
+                        raise Exception(f"{obj} from {obj.DataSource} raised "
+                                        f"exception: '{str(e)}'")
                     data_dict[catname].append(app_dict)
                     jsonized[key] = obj
             for key, value in obj.mapping().items():
@@ -425,30 +446,41 @@ class UmiTemplateLibrary:
                         )
                     ]
 
-        for bld in self.BuildingTemplates:
-            if all_zones:
-                recursive_json(bld)
-            else:
-                # First, remove cores and perims lists
-                cores = bld.__dict__.pop("cores", None)
-                perims = bld.__dict__.pop("perims", None)
+        if include_orphaned:
+            for obj in CREATED_OBJECTS:
+                recursive_json(obj)
+        else:
+            for bld in self.BuildingTemplates:
+                if all_zones:
+                    recursive_json(bld)
+                else:
+                    # First, remove cores and perims lists
+                    cores = bld.__dict__.pop("cores", None)
+                    perims = bld.__dict__.pop("perims", None)
 
-                # apply the recursion
-                recursive_json(bld)
+                    # apply the recursion
+                    recursive_json(bld)
 
-                # put back objects
-                bld.cores = cores
-                bld.perims = perims
+                    # put back objects
+                    bld.cores = cores
+                    bld.perims = perims
         for key in data_dict:
-            data_dict[key] = sorted(
-                data_dict[key], key=lambda x: x["Name"] if "Name" in x else "A"
-            )
-        data_dict["Zones"] = data_dict.pop("ZoneDefinitions")
-        data_dict["StructureDefinitions"] = data_dict.pop("StructureInformations")
-        if not data_dict["GasMaterials"]:
+            # Sort the list elements by $id
+            data_dict[key] = sorted(data_dict[key], key=lambda x: int(x.get("$id", 0)))
+
+        # Correct naming convention and reorder categories
+        if not data_dict.get("GasMaterials"):
             # Umi needs at least one gas material even if it is not necessary.
-            data_dict["GasMaterials"].append(GasMaterial(Name="AIR").to_json())
+            data_dict.get("GasMaterials").append(GasMaterial(Name="AIR").to_json())
             data_dict.move_to_end("GasMaterials", last=False)
-        data_dict.move_to_end("BuildingTemplates")
-        # Write the dict to json using json.dumps
+
+        for key in order:
+            v = data_dict[key]
+            del data_dict[key]
+            if key == "ZoneDefinitions":
+                key = "Zones"
+            if key == "StructureInformations":
+                key = "StructureDefinitions"
+            data_dict[key] = v
+
         return data_dict

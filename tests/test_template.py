@@ -207,7 +207,8 @@ class TestWeekSchedule:
             datastore = json.load(f)
         loaded_dict = load_json_objects(datastore, idf)
         assert (
-            loaded_dict["WeekSchedules"][0].to_json() == datastore["WeekSchedules"][0]
+            dict(loaded_dict["WeekSchedules"][0].to_json())
+            == datastore["WeekSchedules"][0]
         )
 
     def test_weekSchedule(self, config, idf):
@@ -268,8 +269,9 @@ class TestYearSchedule:
         with open(filename, "r") as f:
             datastore = json.load(f)
         loaded_dict = load_json_objects(datastore, idf)
-        assert (
-            loaded_dict["YearSchedules"][0].to_json() == datastore["YearSchedules"][0]
+
+        assert json.loads(json.dumps(loaded_dict["YearSchedules"][0].to_json())) == (
+            datastore["YearSchedules"][0]
         )
 
     def test_yearSchedule(self, config, idf):
@@ -1188,6 +1190,23 @@ class TestUmiSchedule:
         assert hash(sched) == hash(sched_3)
         assert id(sched) != id(sched_3)
 
+    def test_combine(self):
+        from archetypal import UmiSchedule
+        from archetypal.utils import reduce
+        import numpy as np
+
+        sch1 = UmiSchedule(
+            Name="Equipment_10kw", Values=np.ones(24), quantity=10, Type="Fraction"
+        )
+        sch2 = UmiSchedule(
+            Name="Equipment_20kw", Values=np.ones(24) / 2, quantity=20, Type="Fraction"
+        )
+        sch3 = UmiSchedule(
+            Name="Equipment_30kw", Values=np.ones(24) / 3, quantity=30, Type="Fraction"
+        )
+        sch4 = reduce(UmiSchedule.combine, (sch1, sch2, sch3))
+        assert sch4
+
 
 class TestZoneConstructionSet:
     """Combines different :class:`ZoneConstructionSet` tests"""
@@ -1380,6 +1399,7 @@ class TestZoneLoad:
         """
         import json
         from archetypal import ZoneLoad
+        from archetypal.utils import reduce
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
@@ -1390,7 +1410,7 @@ class TestZoneLoad:
             ZoneLoad.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["ZoneLoads"]
         ]
-        assert load_json[0].to_json()
+        assert reduce(ZoneLoad.combine, load_json, weights=[1, 1]).to_json()
 
     def test_hash_eq_zone_load(self, small_idf, small_idf_copy):
         """Test equality and hashing of :class:`ZoneLoad`
@@ -1446,8 +1466,8 @@ class TestZoneLoad:
         # don't have the same hash.
         assert len(set(zl_list)) == 2
 
-        # 2 ZoneLoad from different idf should not have the same hash if they
-        # have different names, not be the same object, yet be equal if they have the
+        # 2 ZoneLoad from different idf should have the same hash if they
+        # have the same name, be the same object, yet be equal if they have the
         # same values (EquipmentPowerDensity, LightingPowerDensity, etc.)
         idf_2, sql = small_idf_copy
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
@@ -1457,8 +1477,8 @@ class TestZoneLoad:
         assert zone_ep is not zone_ep_3
         assert zone_ep != zone_ep_3
         assert hash(zl) == hash(zl_3)
-        assert id(zl) != id(zl_3)
-        assert zl is not zl_3
+        assert id(zl) == id(zl_3)
+        assert zl is zl_3
         assert zl == zl_3
 
 
@@ -1529,6 +1549,7 @@ class TestZoneConditioning:
         """
         import json
         from archetypal import ZoneConditioning
+        from archetypal.utils import reduce
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
@@ -1539,7 +1560,7 @@ class TestZoneConditioning:
             ZoneConditioning.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["ZoneConditionings"]
         ]
-        assert cond_json[0].to_json()
+        assert reduce(ZoneConditioning.combine, cond_json, weights=[1, 1]).to_json()
 
     def test_hash_eq_zone_cond(self, zoneConditioningtests):
         """Test equality and hashing of :class:`ZoneConditioning`
@@ -1669,6 +1690,7 @@ class TestVentilationSetting:
         """
         import json
         from archetypal import VentilationSetting
+        from archetypal.utils import reduce
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         with open(filename, "r") as f:
@@ -1678,7 +1700,7 @@ class TestVentilationSetting:
             VentilationSetting.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["VentilationSettings"]
         ]
-        assert vent_json[0].to_json()
+        assert reduce(VentilationSetting.combine, vent_json, weights=[1, 1]).to_json()
 
     def test_hash_eq_vent_settings(self, ventilatontests):
         """Test equality and hashing of :class:`DomesticHotWaterSetting`
@@ -1734,8 +1756,8 @@ class TestVentilationSetting:
         # don't have the same hash.
         assert len(set(vent_list)) == 2
 
-        # 2 VentilationSettings from different idf should not have the same hash if they
-        # have different names, not be the same object, yet be equal if they have the
+        # 2 VentilationSettings from different idf should have the same hash if they
+        # have same names, be the same object, yet be equal if they have the
         # same values (Infiltration, IsWindOn, etc.)
 
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
@@ -1748,8 +1770,8 @@ class TestVentilationSetting:
         assert zone_ep is not zone_ep_3
         assert zone_ep != zone_ep_3
         assert hash(vent) == hash(vent_3)
-        assert id(vent) != id(vent_3)
-        assert vent is not vent_3
+        assert id(vent) == id(vent_3)
+        assert vent is vent_3
         assert vent == vent_3
 
 
@@ -1903,10 +1925,10 @@ class TestWindowSetting:
         Args:
             allwindowtypes:
         """
-        from operator import add
-        from functools import reduce
+        from archetypal.utils import reduce
+        from archetypal import WindowSetting
 
-        window = reduce(add, allwindowtypes)
+        window = reduce(WindowSetting.combine, allwindowtypes)
         print(window)
 
     def test_window_add(self, small_idf, other_idf):

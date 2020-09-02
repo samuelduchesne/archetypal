@@ -224,9 +224,8 @@ def thickness(r_l_w):
     """The thickness of the equivalent layer in units of meters.
 
     Args:
-        r_l_w (double): The resisance of the bare window under winter
-        conditions (without the film coefficients) in
-            units of m\ :sup:`2`\ K`/W.
+        r_l_w (double): The resistance of the bare window under winter
+            conditions (without the film coefficients) in units of m\ :sup:`2`\ K`/W.
 
     Returns:
         double: The thickness of the equivalent layer in units of meters

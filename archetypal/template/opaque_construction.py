@@ -260,7 +260,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value())
         )
         new_obj.rename(new_name)
-        new_obj._predecessors.update(self.predecessors + other.predecessors)
+        new_obj.predecessors.update(self.predecessors + other.predecessors)
         new_obj.area = sum(weights)
         return new_obj
 

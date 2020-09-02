@@ -160,7 +160,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone):
+    def from_zone(cls, zone, **kwargs):
         """Some WaterUse:Equipment objects can be assigned to a zone. :param
         zone: :type zone: Zone
 
@@ -179,6 +179,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             # This zone has more than one WaterUse:Equipment object
             total_flow_rate = cls._do_flow_rate(dhw_objs, zone.area)
             water_schedule = cls._do_water_schedule(dhw_objs, zone.idf)
+            water_schedule.quantity = total_flow_rate
             inlet_temp = cls._do_inlet_temp(dhw_objs, zone.idf)
             supply_temp = cls._do_hot_temp(dhw_objs, zone.idf)
 
@@ -193,6 +194,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
                 WaterTemperatureInlet=inlet_temp,
                 idf=zone.idf,
                 Category=zone.idf.name,
+                **kwargs,
             )
             return z_dhw
         else:
@@ -285,6 +287,8 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         Args:
             dhw_objs:
             idf:
+        Returns:
+            UmiSchedule: The WaterSchedule
         """
         water_schds = [
             UmiSchedule(
@@ -387,7 +391,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             ),
             idf=self.idf,
         )
-        new_obj._predecessors.update(self.predecessors + other.predecessors)
+        new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def validate(self):

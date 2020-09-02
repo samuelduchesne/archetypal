@@ -50,9 +50,10 @@ def config():
         imgs_folder="tests/.temp/images",
         cache_folder="tests/.temp/cache",
         use_cache=True,
-        log_file=True,
-        log_console=True,
+        log_file=False,
+        log_console=False,
         umitemplate="tests/input_data/umi_samples/BostonTemplateLibrary_2.json",
+        debug=True,
     )
 
 
@@ -118,17 +119,22 @@ def no_duplicates(file, attribute="Name"):
         data = json.loads(open(file).read())
     else:
         data = file
-    ids = defaultdict(int)
+    ids = {}
     for key, value in data.items():
+        ids[key] = defaultdict(int)
         for component in value:
             try:
                 _id = component[attribute]
             except KeyError:
                 pass  # BuildingTemplate does not have an id
             else:
-                ids[_id] += 1
-    dups = dict(filter(lambda x: x[1] > 1, ids.items()))
-    if dups:
+                ids[key][_id] += 1
+    dups = {
+        key: dict(filter(lambda x: x[1] > 1, values.items()))
+        for key, values in ids.items()
+        if dict(filter(lambda x: x[1] > 1, values.items()))
+    }
+    if any(dups.values()):
         raise Exception(f"Duplicate {attribute} found: {dups}")
     else:
         return True

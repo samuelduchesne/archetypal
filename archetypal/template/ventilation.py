@@ -29,7 +29,7 @@ def resolve_temp(temp, idf):
     if isinstance(temp, float):
         return temp
     elif isinstance(temp, str):
-        sched = archetypal.UmiSchedule(Name=temp, idf=idf)
+        sched = UmiSchedule(Name=temp, idf=idf)
         return sched.values.mean()
 
 
@@ -284,11 +284,11 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         """
 
         Args:
-            zone (archetypal.template.zone.Zone): zone to gets information from
+            zone (template.zone.Zone): zone to gets information from
         """
         # If Zone is not part of Conditioned Area, it should not have a
         # VentilationSetting object.
-        if not zone.is_part_of_conditioned_floor_area:
+        if not zone.is_part_of_total_floor_area:
             return None
         name = zone.Name + "_VentilationSetting"
 
@@ -432,11 +432,16 @@ class VentilationSetting(UmiBase, metaclass=Unique):
 
         # create a new object with the previous attributes
         new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
-        new_obj._predecessors.update(self.predecessors + other.predecessors)
+        new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
+        if not self.NatVentSchedule:
+            self.NatVentSchedule = UmiSchedule.constant_schedule(
+                hourly_value=0, Name="AlwaysOff", allow_duplicates=True
+            )
+
         return self
 
     def mapping(self):
@@ -472,7 +477,7 @@ def do_infiltration(index, inf_df, zone):
         index (tuple): Zone name
         inf_df (dataframe): Dataframe with infiltration information for each
             zone
-        zone (archetypal.template.zone.Zone): zone to gets information from
+        zone (template.zone.Zone): zone to gets information from
     """
     if not inf_df.empty:
         try:
@@ -493,23 +498,30 @@ def do_natural_ventilation(index, nat_df, zone):
     Args:
         index (tuple): Zone name
         nat_df:
-        zone (archetypal.template.zone.Zone): zone to gets information from
+        zone (template.zone.Zone): zone to gets information from
     """
     if not nat_df.empty:
         try:
             IsNatVentOn = any(nat_df.loc[index, "Name"])
             schedule_name_ = nat_df.loc[index, "Schedule Name"]
-            NatVentSchedule = archetypal.UmiSchedule(Name=schedule_name_, idf=zone.idf)
+            quantity = nat_df.loc[index, "Volume Flow Rate/Floor Area {m3/s/m2}"]
+            NatVentSchedule = UmiSchedule(
+                Name=schedule_name_, idf=zone.idf, quantity=quantity
+            )
         except KeyError:
             # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
             #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
             #  in the nat_df. For the mean time, a zone containing such an
             #  object will be turned on with an AlwaysOn schedule.
             IsNatVentOn = True
-            NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
+            NatVentSchedule = UmiSchedule.constant_schedule(
+                idf=zone.idf, allow_duplicates=True, quantity=np.nan
+            )
         except Exception:
             IsNatVentOn = False
-            NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
+            NatVentSchedule = UmiSchedule.constant_schedule(
+                idf=zone.idf, allow_duplicates=True
+            )
         finally:
             try:
                 NatVentMaxRelHumidity = 90  # todo: not sure if it is being used
@@ -534,7 +546,9 @@ def do_natural_ventilation(index, nat_df, zone):
 
     else:
         IsNatVentOn = False
-        NatVentSchedule = archetypal.UmiSchedule.constant_schedule(idf=zone.idf)
+        NatVentSchedule = UmiSchedule.constant_schedule(
+            idf=zone.idf, allow_duplicates=True
+        )
         NatVentMaxRelHumidity = 90
         NatVentMaxOutdoorAirTemp = 30
         NatVentMinOutdoorAirTemp = 0
@@ -566,13 +580,13 @@ def do_scheduled_ventilation(index, scd_df, zone):
     Args:
         index (tuple): Zone name
         scd_df:
-        zone (archetypal.template.zone.Zone): zone to gets information from
+        zone (template.zone.Zone): zone to gets information from
     """
     if not scd_df.empty:
         try:
             IsScheduledVentilationOn = any(scd_df.loc[index, "Name"])
             schedule_name_ = scd_df.loc[index, "Schedule Name"]
-            ScheduledVentilationSchedule = archetypal.UmiSchedule(
+            ScheduledVentilationSchedule = UmiSchedule(
                 Name=schedule_name_, idf=zone.idf
             )
             ScheduledVentilationAch = scd_df.loc[index, "ACH - Air Changes per Hour"]
@@ -581,15 +595,15 @@ def do_scheduled_ventilation(index, scd_df, zone):
                 zone.idf,
             )
         except:
-            ScheduledVentilationSchedule = archetypal.UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", idf=zone.idf
+            ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
+                hourly_value=0, Name="AlwaysOff", idf=zone.idf, allow_duplicates=True
             )
             IsScheduledVentilationOn = False
             ScheduledVentilationAch = 0
             ScheduledVentilationSetpoint = 18
     else:
-        ScheduledVentilationSchedule = archetypal.UmiSchedule.constant_schedule(
-            hourly_value=0, Name="AlwaysOff", idf=zone.idf
+        ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
+            hourly_value=0, Name="AlwaysOff", idf=zone.idf, allow_duplicates=True
         )
         IsScheduledVentilationOn = False
         ScheduledVentilationAch = 0

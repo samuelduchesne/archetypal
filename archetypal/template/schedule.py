@@ -6,7 +6,7 @@
 ################################################################################
 
 import collections
-import uuid
+import hashlib
 
 import numpy as np
 import pandas as pd
@@ -31,7 +31,9 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         self.quantity = quantity
 
     @classmethod
-    def constant_schedule(cls, hourly_value=1, Name="AlwaysOn", idf=None, **kwargs):
+    def constant_schedule(
+        cls, hourly_value=1, Name="AlwaysOn", Type="Fraction", idf=None, **kwargs
+    ):
         """
         Args:
             hourly_value:
@@ -40,7 +42,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             **kwargs:
         """
         return super(UmiSchedule, cls).constant_schedule(
-            hourly_value=hourly_value, Name=Name, idf=idf, **kwargs
+            hourly_value=hourly_value, Name=Name, Type=Type, idf=idf, **kwargs
         )
 
     @classmethod
@@ -212,17 +214,18 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         # the new object's name
         meta = self._get_predecessors_meta(other)
 
+        # Overriding meta Name
+        hasher = hashlib.md5()
+        hasher.update(new_values)
+        meta["Name"] = f"Combined_UmiSchedule_{hasher.hexdigest()}"
+        if self.quantity and other.quantity:
+            quantity = np.nansum(self.quantity + other.quantity)
+        else:
+            quantity = None
         new_obj = UmiSchedule.from_values(
-            Values=new_values, Type="Fraction", idf=self.idf, **meta
+            Values=new_values, Type="Fraction", quantity=quantity, idf=self.idf, **meta,
         )
-        new_name = (
-            "Combined Schedule {{{}}} with mean daily min:{:.2f} "
-            "mean:{:.2f} max:{:.2f}".format(
-                uuid.uuid1(), new_obj.min, new_obj.mean, new_obj.max
-            )
-        )
-        new_obj.rename(new_name)
-        new_obj._predecessors.update(self.predecessors + other.predecessors)
+        new_obj.predecessors.update(self.predecessors + other.predecessors)
         new_obj.weights = sum(weights)
         return new_obj
 
@@ -262,7 +265,6 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                         Comments="Year Week Day schedules created from:\n{}".format(
                             "\n".join(lines)
                         ),
-                        allow_duplicates=True,
                     ),
                 )
             )
@@ -337,6 +339,20 @@ class YearSchedulePart:
         self.ToDay = ToDay
         self.ToMonth = ToMonth
         self.Schedule = Schedule
+
+    def __eq__(self, other):
+        if not isinstance(other, YearSchedulePart):
+            return False
+        else:
+            return all(
+                [
+                    self.FromDay == other.FromDay,
+                    self.FromMonth == other.FromMonth,
+                    self.ToDay == other.ToDay,
+                    self.ToMonth == other.ToMonth,
+                    self.Schedule == other.Schedule,
+                ]
+            )
 
     @classmethod
     @deprecated(
@@ -495,7 +511,7 @@ class DaySchedule(UmiSchedule):
         )
 
     @property
-    def all_values(self):
+    def all_values(self) -> np.ndarray:
         if self._values is None:
             self._values = self.get_schedule_values(self.epbunch)
         if isinstance(self._values, list):
@@ -519,6 +535,18 @@ class WeekSchedule(UmiSchedule):
         """
         super(WeekSchedule, self).__init__(**kwargs)
         self.Days = Days
+
+    def __eq__(self, other):
+        if not isinstance(other, WeekSchedule):
+            return False
+        else:
+            return all(
+                [
+                    # self.Name == other.Name,
+                    self.Type == other.Type,
+                    self.Days == other.Days,
+                ]
+            )
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
@@ -559,7 +587,8 @@ class WeekSchedule(UmiSchedule):
         Args:
             **kwargs:
         """
-        Days = [UmiBase.get_classref(ref) for ref in kwargs.pop("Days")]
+        refs = kwargs.pop("Days")
+        Days = [UmiBase.get_classref(ref) for ref in refs]
         wc = cls(Type=Type, Days=Days, **kwargs)
         return wc
 
@@ -624,7 +653,7 @@ class WeekSchedule(UmiSchedule):
         return blocks
 
     @property
-    def all_values(self):
+    def all_values(self) -> np.ndarray:
         if self._values is None:
             self._values = np.concatenate([day.all_values for day in self.Days])
         return self._values
@@ -646,14 +675,23 @@ class YearSchedule(UmiSchedule):
             Parts (list of YearSchedulePart): The YearScheduleParts.
             **kwargs:
         """
-        super(YearSchedule, self).__init__(
-            Name=Name, Type=Type, schType="Schedule:Year", **kwargs
-        )
         self.epbunch = kwargs.get("epbunch", None)
         if Parts is None:
             self.Parts = self.get_parts(self.epbunch)
         else:
             self.Parts = Parts
+        super(YearSchedule, self).__init__(
+            Name=Name, Type=Type, schType="Schedule:Year", **kwargs
+        )
+
+    def __eq__(self, other):
+        if not isinstance(other, YearSchedule):
+            return False
+        else:
+            return all([self.Type == other.Type, self.Parts == other.Parts,])
+
+    def __hash__(self):
+        return super(YearSchedule, self).__hash__()
 
     @classmethod
     def from_parts(cls, *args, Parts, **kwargs):

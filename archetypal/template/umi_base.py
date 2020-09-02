@@ -6,6 +6,7 @@
 ################################################################################
 
 import collections
+import itertools
 import logging as lg
 import math
 import re
@@ -32,9 +33,18 @@ class Unique(type):
         """
         self = cls.__new__(cls, *args, **kwargs)
         cls.__init__(self, *args, **kwargs)
-        if self not in CREATED_OBJECTS or kwargs.get("allow_duplicates", False):
+        if self not in CREATED_OBJECTS:
             CREATED_OBJECTS.append(self)
             return self
+        elif kwargs.get("allow_duplicates", False):
+            if self.Name not in [obj.Name for obj in CREATED_OBJECTS]:
+                CREATED_OBJECTS.append(self)
+                return self
+            else:
+                return next(
+                    (x for x in CREATED_OBJECTS if x == self and x.Name == self.Name),
+                    self,
+                )
         else:
             return next((x for x in CREATED_OBJECTS if x == self), self)
 
@@ -99,10 +109,11 @@ class UmiBase(object):
             super().__setattr__(f"_{var}", None)
 
     def __setattr__(self, key, value):
-        propobj = getattr(self.__class__, key, None)
+        propobj = getattr(UmiBase, key, None)
         if isinstance(propobj, property):
             if propobj.fset is None:
-                self.__set_on_dependencies(key.strip("_"), value)
+                raise AttributeError("Cannot set attribute")
+                # self.__set_on_dependencies(key.strip("_"), value)
             else:
                 propobj.fset(self, value)
                 self.__set_on_dependencies(key, value)
@@ -123,7 +134,7 @@ class UmiBase(object):
         idf=None,
         Category="Uncategorized",
         Comments="",
-        DataSource="",
+        DataSource=None,
         **kwargs,
     ):
         """The UmiBase class handles common properties to all Template objects.
@@ -139,24 +150,40 @@ class UmiBase(object):
                 created.
             **kwargs:
         """
-        super(UmiBase, self).__init__()
-        self.Name = Name
-        self._idf = idf
+        self._datasource = None
+        self._predecessors = None
+        self._idf = None
         self._sql = None
+        self._id = None
+
+        self.Name = Name
+        self.idf = idf
         self.Category = Category
         self.Comments = Comments
         self.DataSource = DataSource
         self.all_objects = CREATED_OBJECTS
-        self.id = kwargs.get("$id", id(self))
-        self._predecessors = MetaData()
+        self.id = kwargs.get("$id", None)
+
+    def __repr__(self):
+        return ":".join([str(self.id), str(self.Name)])
 
     def __str__(self):
         """string representation of the object as id:Name"""
-        return ":".join([str(self.id), str(self.Name)])
+        return self.__repr__()
+
+    @property
+    def id(self):
+        if self._id is None:
+            self._id = id(self)
+        return self._id
+
+    @id.setter
+    def id(self, value):
+        self._id = value
 
     @property
     def DataSource(self):
-        if self._datasource == "":
+        if self._datasource is None:
             self._datasource = self.idf.name
         return self._datasource
 
@@ -170,6 +197,10 @@ class UmiBase(object):
             self._idf = IDF()
         return self._idf
 
+    @idf.setter
+    def idf(self, value):
+        self._idf = value
+
     @property
     def sql(self):
         if self._sql is None:
@@ -181,10 +212,9 @@ class UmiBase(object):
         """Of which objects is self made of. If from nothing else then self,
         return self.
         """
-        if self._predecessors:
-            return self._predecessors
-        else:
-            return MetaData([self])
+        if self._predecessors is None:
+            self._predecessors = MetaData([self])
+        return self._predecessors
 
     def _get_predecessors_meta(self, other):
         """get predecessor objects to self and other
@@ -206,8 +236,18 @@ class UmiBase(object):
                     "\n- ".join(set(obj.Name for obj in predecessors))
                 )
             ),
-            "Category": ", ".join(set([obj.Category for obj in predecessors])),
-            "DataSource": ", ".join(set([obj.DataSource for obj in predecessors])),
+            "Category": ", ".join(
+                set(
+                    itertools.chain(*[obj.Category.split(", ") for obj in predecessors])
+                )
+            ),
+            "DataSource": ", ".join(
+                set(
+                    itertools.chain(
+                        *[obj.DataSource.split(", ") for obj in predecessors]
+                    )
+                )
+            ),
         }
 
     def combine(self, other, allow_duplicates=False):
@@ -267,30 +307,32 @@ class UmiBase(object):
         if not np.array(weights).any():
             weights = [1, 1]
 
-        if not isinstance(self.__dict__[attr], list) and not isinstance(
-            other.__dict__[attr], list
+        if not isinstance(getattr(self, attr), list) and not isinstance(
+            getattr(other, attr), list
         ):
-            if math.isnan(self.__dict__[attr]):
-                return other.__dict__[attr]
-            elif math.isnan(other.__dict__[attr]):
-                return self.__dict__[attr]
-            elif math.isnan(self.__dict__[attr]) and math.isnan(other.__dict__[attr]):
+            if math.isnan(getattr(self, attr)):
+                return getattr(other, attr)
+            elif math.isnan(getattr(other, attr)):
+                return getattr(self, attr)
+            elif math.isnan(getattr(self, attr)) and math.isnan(getattr(other, attr)):
                 raise ValueError("Both values for self and other are Not A Number.")
             else:
-                return np.average(
-                    [self.__dict__[attr], other.__dict__[attr]], weights=weights
+                return float(
+                    np.average(
+                        [getattr(self, attr), getattr(other, attr)], weights=weights
+                    )
                 )
-        elif self.__dict__[attr] is None and other.__dict__[attr] is None:
+        elif getattr(self, attr) is None and getattr(other, attr) is None:
             return None
         else:
             # handle arrays by finding the least common multiple of the two arrays and
             # tiling to the full length; then, apply average
-            self_attr_ = np.array(self.__dict__[attr])
-            other_attr_ = np.array(other.__dict__[attr])
+            self_attr_ = np.array(getattr(self, attr))
+            other_attr_ = np.array(getattr(other, attr))
             l_ = lcm(len(self_attr_), len(other_attr_))
             self_attr_ = np.tile(self_attr_, int(l_ / len(self_attr_)))
             other_attr_ = np.tile(other_attr_, int(l_ / len(other_attr_)))
-            return np.average([self_attr_, other_attr_], weights=weights, axis=0)
+            return float(np.average([self_attr_, other_attr_], weights=weights, axis=0))
 
     def _str_mean(self, other, attr, append=False):
         """Returns the combined string attributes
@@ -308,17 +350,17 @@ class UmiBase(object):
         if other is None:
             return self
         # if self has info, but other is none, use self
-        if self.__dict__[attr] is not None and other.__dict__[attr] is None:
-            return self.__dict__[attr]
+        if getattr(self, attr) is not None and getattr(other, attr) is None:
+            return getattr(self, attr)
         # if self is none, but other is not none, use other
-        elif self.__dict__[attr] is None and other.__dict__[attr] is not None:
-            return other.__dict__[attr]
+        elif getattr(self, attr) is None and getattr(other, attr) is not None:
+            return getattr(other, attr)
         # if both are not note, impose self
-        elif self.__dict__[attr] and other.__dict__[attr]:
+        elif getattr(self, attr) and getattr(other, attr):
             if append:
-                return self.__dict__[attr] + other.__dict__[attr]
+                return getattr(self, attr) + getattr(other, attr)
             else:
-                return self.__dict__[attr]
+                return getattr(self, attr)
         # if both are None, return None
         else:
             return None
@@ -347,10 +389,8 @@ class UmiBase(object):
         self.all_objects.remove(self)
         id = self.id
         new_obj = self.combine(other, allow_duplicates=allow_duplicates)
-        new_obj.__dict__.pop("id")
         new_obj.id = id
-        name = new_obj.__dict__.pop("Name")
-        self.__dict__.update(Name=name, **new_obj.__dict__)
+        self.__dict__.update(**new_obj.__dict__)
         self.all_objects.append(self)
         return self
 
@@ -699,7 +739,7 @@ class UniqueName(str):
     makes sure they are unique.
     """
 
-    existing = {}  # a dict to store the created names
+    existing = []
 
     def __new__(cls, content):
         """Pick a name. Will increment the name if already used"""
@@ -715,18 +755,17 @@ class UniqueName(str):
         """
         if not name:
             return None
-        match = re.match(r"^(.*?)(\D*)(\d+)$", name)
-        if match:
-            groups = list(match.groups())
-            groups[-1] = int(groups[-1])
-            groups[-1] += 1
-            key = "".join(map(str, groups))
+        if name not in cls.existing:
+            cls.existing.append(name)
+            return name
         else:
-            key = name
-
-        if key not in cls.existing:
-            cls.existing[key] = 0
-        else:
-            cls.existing[key] += 1
-            key = key + str(cls.existing[key])
-        return key
+            match = re.match(r"^(.*?)(\D*)(\d+)$", name)
+            if match:
+                groups = list(match.groups())
+                groups[-1] = int(groups[-1])
+                groups[-1] += 1
+                name = "".join(map(str, groups))
+                return cls.create_unique(name)
+            else:
+                return cls.create_unique(name + "_1")
+        return name

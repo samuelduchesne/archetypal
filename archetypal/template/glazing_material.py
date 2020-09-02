@@ -227,16 +227,8 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
             weights = [self.Density, other.Density]
         # iterate over attributes and apply either float_mean or str_mean.
         new_attr = {}
-        for attr, value in self.__dict__.items():
-            if attr not in [
-                "Comments",
-                "idf",
-                "sql",
-                "all_objects",
-                "id",
-                "_idf",
-                "_sql",
-            ]:
+        for attr, value in self.mapping().items():
+            if attr not in ["Comments", "DataSource"]:
                 if isinstance(value, (int, float)) or isinstance(other, (int, float)):
                     new_attr[attr] = UmiBase._float_mean(
                         self, other, attr=attr, weights=weights
@@ -257,7 +249,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         # keywords.
         # create a new object from combined attributes
         new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
-        new_obj._predecessors.update(self.predecessors + other.predecessors)
+        new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def to_json(self):

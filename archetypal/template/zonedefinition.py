@@ -98,6 +98,7 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         self._volume = None
         self._is_part_of_conditioned_floor_area = None
         self._is_part_of_total_floor_area = None
+        self._multiplier = None
 
     @property
     def InternalMassExposedPerFloorArea(self):
@@ -203,15 +204,31 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         return is_core(self._epbunch)
 
     @property
+    def multiplier(self):
+        """Zone multipliers are designed as a “multiplier” for floor area,
+        zone loads, and energy consumed by internal gains.
+        """
+        if self._multiplier is None:
+            with sqlite3.connect(self.idf.sql_file) as conn:
+                sql_query = "SELECT t.Value FROM TabularDataWithStrings t WHERE TableName='Zone Summary' and ColumnName='Multipliers' and RowName=?"
+                (res,) = conn.execute(sql_query, (self.Name.upper(),)).fetchone()
+            self._multiplier = int(float(res))
+        return self._multiplier
+
+    @multiplier.setter
+    def multiplier(self, value):
+        self._multiplier = value
+
+    @property
     def is_part_of_conditioned_floor_area(self):
         """Returns True if zone is conditioned"""
         if self._is_part_of_conditioned_floor_area is None:
             with sqlite3.connect(self.idf.sql_file) as conn:
-                sql_query = f"""
-                        SELECT t.Value
-                        FROM TabularDataWithStrings t
-                        WHERE TableName == 'Zone Summary' and ColumnName == 'Conditioned (Y/N)' and RowName == '{self.Name.upper()}';"""
-                res = conn.execute(sql_query).fetchone()
+                sql_query = (
+                    "SELECT t.Value FROM TabularDataWithStrings t WHERE TableName='Zone Summary' and ColumnName='Conditioned (Y/N)' and RowName=?"
+                    ""
+                )
+                res = conn.execute(sql_query, (self.Name.upper(),)).fetchone()
             self._is_part_of_conditioned_floor_area = "Yes" in res
         return self._is_part_of_conditioned_floor_area
 
@@ -220,11 +237,8 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         """Returns True if zone is part of the total floor area"""
         if self._is_part_of_total_floor_area is None:
             with sqlite3.connect(self.idf.sql_file) as conn:
-                sql_query = f"""
-                            SELECT t.Value
-                            FROM TabularDataWithStrings t
-                            WHERE TableName == 'Zone Summary' and ColumnName =='Part of Total Floor Area (Y/N)' and RowName == '{self.Name.upper()}';"""
-                res = conn.execute(sql_query).fetchone()
+                sql_query = "SELECT t.Value FROM TabularDataWithStrings t WHERE TableName='Zone Summary' and ColumnName='Part of Total Floor Area (Y/N)' and RowName=?"
+                res = conn.execute(sql_query, (self.Name.upper(),)).fetchone()
             self._is_part_of_total_floor_area = "Yes" in res
         return self._is_part_of_total_floor_area
 
@@ -371,26 +385,38 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         return cls.from_dict(*args, **kwargs)
 
     @classmethod
-    def from_dict(cls, *args, **kwargs):
+    def from_dict(
+        cls,
+        Conditioning,
+        Constructions,
+        DomesticHotWater,
+        InternalMassConstruction,
+        Loads,
+        Ventilation,
+        *args,
+        **kwargs,
+    ):
         """
         Args:
             *args:
             **kwargs:
         """
-        zone = cls(*args, **kwargs)
-
-        ref = kwargs.get("Conditioning", None)
-        zone.Conditioning = zone.get_ref(ref)
-        ref = kwargs.get("Constructions", None)
-        zone.Constructions = zone.get_ref(ref)
-        ref = kwargs.get("DomesticHotWater", None)
-        zone.DomesticHotWater = zone.get_ref(ref)
-        ref = kwargs.get("InternalMassConstruction", None)
-        zone.InternalMassConstruction = zone.get_ref(ref)
-        ref = kwargs.get("Loads", None)
-        zone.Loads = zone.get_ref(ref)
-        ref = kwargs.get("Ventilation", None)
-        zone.Ventilation = zone.get_ref(ref)
+        Conditioning = cls.get_classref(Conditioning)
+        Constructions = cls.get_classref(Constructions)
+        DomesticHotWater = cls.get_classref(DomesticHotWater)
+        InternalMassConstruction = cls.get_classref(InternalMassConstruction)
+        Loads = cls.get_classref(Loads)
+        Ventilation = cls.get_classref(Ventilation)
+        zone = cls(
+            *args,
+            Conditioning=Conditioning,
+            Constructions=Constructions,
+            DomesticHotWater=DomesticHotWater,
+            InternalMassConstruction=InternalMassConstruction,
+            Loads=Loads,
+            Ventilation=Ventilation,
+            **kwargs,
+        )
 
         return zone
 
@@ -416,13 +442,13 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         zone._epbunch = zone_ep
         zone._zonesurfaces = zone_ep.zonesurfaces
 
-        zone.Constructions = ZoneConstructionSet.from_zone(zone)
-        zone.Conditioning = ZoneConditioning.from_zone(zone)
-        zone.Ventilation = VentilationSetting.from_zone(zone)
-        zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(zone)
-        zone.Loads = ZoneLoad.from_zone(zone)
+        zone.Constructions = ZoneConstructionSet.from_zone(zone, **kwargs)
+        zone.Conditioning = ZoneConditioning.from_zone(zone, **kwargs)
+        zone.Ventilation = VentilationSetting.from_zone(zone, **kwargs)
+        zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(zone, **kwargs)
+        zone.Loads = ZoneLoad.from_zone(zone, **kwargs)
         zone.InternalMassConstruction = zone._internalmassconstruction()
-        zone.Windows = WindowSetting.from_zone(zone)
+        zone.Windows = WindowSetting.from_zone(zone, **kwargs)
 
         log(
             'completed Zone "{}" constructor in {:,.2f} seconds'.format(
@@ -460,10 +486,6 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
                 other.__class__.__name__,
             )
             raise NotImplementedError(msg)
-
-        # Check if other is not the same as self
-        if self == other:
-            return self
 
         meta = self._get_predecessors_meta(other)
 
@@ -525,14 +547,14 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         if new_attr["Windows"]:  # Could be None
             new_attr["Windows"]._belongs_to_zone = new_obj
 
-        new_obj._predecessors.update(self.predecessors + other.predecessors)
+        new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
         if not self.InternalMassConstruction:
             self.set_generic_internalmass()
-        self.InternalMassExposedPerFloorArea = 0
+            self.InternalMassExposedPerFloorArea = 0
         log(
             f"While validating {self}, the required attribute "
             f"'InternalMassConstruction' was filled "
@@ -542,6 +564,10 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         )
         if not self.DomesticHotWater:
             self.DomesticHotWater = DomesticHotWaterSetting.whole_building(self.idf)
+
+        if self.Conditioning is None:
+            self.Conditioning = ZoneConditioning(Name="Unconditioned Zone")
+
         return self
 
     def mapping(self):
@@ -749,7 +775,7 @@ def is_core(zone):
         try:
             if (abs(int(s.tilt)) < 180) & (abs(int(s.tilt)) > 0):
                 obc = s.Outside_Boundary_Condition.lower()
-                if obc == "outdoors":
+                if obc in ["outdoors", "ground"]:
                     iscore = False
                     break
         except BadEPFieldError:

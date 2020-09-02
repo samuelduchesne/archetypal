@@ -28,25 +28,25 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
     def __init__(
         self,
         Name,
-        IsHeatingOn=True,
+        IsHeatingOn=False,
         HeatingSetpoint=20,
         HeatingSchedule=None,
         HeatingLimitType="NoLimit",
         MaxHeatingCapacity=100,
         MaxHeatFlow=100,
         HeatingCoeffOfPerf=1,
-        IsCoolingOn=True,
+        IsCoolingOn=False,
         CoolingSetpoint=26,
         CoolingSchedule=None,
         CoolingLimitType="NoLimit",
         MaxCoolingCapacity=100,
         MaxCoolFlow=100,
         CoolingCoeffOfPerf=1,
-        IsMechVentOn=True,
+        IsMechVentOn=False,
         EconomizerType="NoEconomizer",
         MechVentSchedule=None,
         MinFreshAirPerArea=0,
-        MinFreshAirPerPerson=0.00944,
+        MinFreshAirPerPerson=0,
         HeatRecoveryType="None",
         HeatRecoveryEfficiencyLatent=0.65,
         HeatRecoveryEfficiencySensible=0.7,
@@ -367,7 +367,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone):
+    def from_zone(cls, zone, nolimit=False, **kwargs):
         """
         Args:
             zone (archetypal.template.zone.Zone): zone to gets information from
@@ -376,9 +376,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         if zone.is_part_of_conditioned_floor_area and zone.is_part_of_total_floor_area:
             # First create placeholder object.
             name = zone.Name + "_ZoneConditioning"
-            z_cond = cls(Name=name, zone=zone, idf=zone.idf, Category=zone.idf.name)
+            z_cond = cls(
+                Name=name, zone=zone, idf=zone.idf, Category=zone.idf.name, **kwargs
+            )
             z_cond._set_thermostat_setpoints(zone)
-            z_cond._set_zone_cops(zone)
+            z_cond._set_zone_cops(zone, nolimit=nolimit)
             z_cond._set_heat_recovery(zone)
             z_cond._set_mechanical_ventilation(zone)
             z_cond._set_economizer(zone)
@@ -457,9 +459,9 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 ) = self.fresh_air_from_ideal_loads(zone)
         except:
             # Set elements to None so that .combine works correctly
-            self.IsMechVentOn = None
-            self.MinFreshAirPerPerson = None
-            self.MinFreshAirPerArea = None
+            self.IsMechVentOn = False
+            self.MinFreshAirPerPerson = 0
+            self.MinFreshAirPerArea = 0
             self.MechVentSchedule = None
 
     @staticmethod
@@ -519,16 +521,26 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             4-tuple: (IsMechVentOn, MinFreshAirPerArea, MinFreshAirPerPerson, MechVentSchedule)
         """
         import sqlite3
+        import pandas as pd
 
         # create database connection with sqlite3
         with sqlite3.connect(zone.idf.sql_file) as conn:
             sql_query = f"""
-                        select CalcOutsideAirFlow
-                        from ZoneSizes
-                        where ZoneName = "{zone.Name.upper()}";"""
-            oa_area = float(max(conn.execute(sql_query)) / zone.area)
+                        select t.ColumnName, t.Value
+                        from TabularDataWithStrings t
+                        where TableName == 'Minimum Outdoor Air During Occupied Hours' and RowName == '{zone.Name.upper()}'"""
+            oa = (
+                pd.read_sql_query(sql_query, con=conn, coerce_float=True)
+                .set_index("ColumnName")
+                .squeeze()
+            )
+            oa = pd.to_numeric(oa)
+            oa_design = oa["Zone Volume"] * oa["Mechanical Ventilation"] / 3600  # m3/s
+            oa_area = oa_design / zone.area
+            oa_person = oa_design / oa["Nominal Number of Occupants"]
+
             designobjs = zone._epbunch.getreferingobjs(
-                iddgroups=["HVAC Design Objects"]
+                iddgroups=["HVAC Design Objects"], fields=["Zone_or_ZoneList_Name"]
             )
             obj = next(iter(eq for eq in designobjs if eq.key.lower() == "sizing:zone"))
             oa_spec = obj.get_referenced_object(
@@ -537,10 +549,10 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             mechvent_schedule = self._mechanical_schedule_from_outdoorair_object(
                 oa_spec, zone
             )
-            return True, oa_area, 0, mechvent_schedule
+            return True, oa_area, oa_person, mechvent_schedule
 
     def _mechanical_schedule_from_outdoorair_object(self, oa_spec, zone):
-        try:
+        if oa_spec.Outdoor_Air_Schedule_Name != "":
             umi_schedule = UmiSchedule(
                 Name=oa_spec.Outdoor_Air_Schedule_Name, idf=zone.idf
             )
@@ -550,14 +562,14 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 lg.DEBUG,
             )
             return umi_schedule
-        except KeyError:
+        else:
             # Schedule is not specified so return a constant schedule
             log(
                 f"No Mechanical Ventilation Schedule specified for zone " f"{zone.Name}"
             )
-            return None
+            return UmiSchedule.constant_schedule(idf=zone.idf, allow_duplicates=True)
 
-    def _set_zone_cops(self, zone):
+    def _set_zone_cops(self, zone, nolimit=False):
         """
         Todo:
             - Make this method zone-independent.
@@ -602,11 +614,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         ]
         # Heating
         HeatingLimitType, heating_cap, heating_flow = self._get_design_limits(
-            zone, zone_size, load_name="Heating"
+            zone, zone_size, load_name="Heating", nolimit=nolimit
         )
         # Cooling
         CoolingLimitType, cooling_cap, cooling_flow = self._get_design_limits(
-            zone, zone_size, load_name="Cooling"
+            zone, zone_size, load_name="Cooling", nolimit=nolimit
         )
 
         self.HeatingLimitType = HeatingLimitType
@@ -658,6 +670,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                         Values=(heating_setpoints > 0).astype(int),
                         Type="Fraction",
                         idf=zone.idf,
+                        allow_duplicates=True,
                     )
                 else:
                     heating_sched = None
@@ -674,12 +687,13 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                         WHERE ReportVariableDataDictionaryIndex == {index[0]};"""
                 c_array = conn.execute(sql_query).fetchall()
                 if c_array:
-                    cooling_setpoints = np.array(h_array).flatten()
+                    cooling_setpoints = np.array(c_array).flatten()
                     cooling_sched = UmiSchedule.from_values(
                         Name=zone.Name + "_Cooling_Schedule",
                         Values=(cooling_setpoints > 0).astype(int),
                         Type="Fraction",
                         idf=zone.idf,
+                        allow_duplicates=True,
                     )
                 else:
                     heating_sched = None
@@ -829,7 +843,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         return HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible
 
     @staticmethod
-    def _get_design_limits(zone, zone_size, load_name):
+    def _get_design_limits(zone, zone_size, load_name, nolimit=False):
         """Gets design limits for heating and cooling systems
 
         Args:
@@ -839,11 +853,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             load_name (str): 'Heating' or 'Cooling' depending on what system we
                 want to characterize
         """
+        if nolimit:
+            return "NoLimit", 100, 100
         try:
-            cap = round(
+            cap = (
                 zone_size[zone_size["LoadType"] == load_name]["UserDesLoad"].values[0]
-                / zone.area,
-                3,
+                / zone.area
             )
             flow = (
                 zone_size[zone_size["LoadType"] == load_name]["UserDesFlow"].values[0]
@@ -896,27 +911,6 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         cop = float_round(outs.sum() / ins, 3)
 
         return cop
-
-    @staticmethod
-    def _get_setpoint_and_scheds(zone):
-        """Gets temperature set points from sql EnergyPlus output and associated
-        schedules.
-
-        Args:
-            zone (archetypal.template.zone.Zone): zone to gets information from
-        """
-        # Load the ReportData and filter *variable_output_name* and group by
-        # zone name (*KeyValue*). Return annual average.
-
-        if np.all(c_array == 0):
-            c_mean = np.NaN
-        else:
-            c_mean = c_array.mean()
-        if np.all(h_array == 0):
-            h_mean = np.NaN
-        else:
-            h_mean = h_array.mean()
-        return h_mean, heating_sched, c_mean, cooling_sched
 
     def combine(self, other, weights=None):
         """Combine two ZoneConditioning objects together.
@@ -1015,17 +1009,29 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         )
         # create a new object with the previous attributes
         new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
-        new_obj._predecessors.update(self.predecessors + other.predecessors)
+        new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
+        if self.HeatingSchedule is None:
+            self.HeatingSchedule = UmiSchedule.constant_schedule(
+                idf=self.idf, allow_duplicates=True
+            )
+        if self.CoolingSchedule is None:
+            self.CoolingSchedule = UmiSchedule.constant_schedule(
+                idf=self.idf, allow_duplicates=True
+            )
         if self.MechVentSchedule is None:
-            self.MechVentSchedule = UmiSchedule.constant_schedule(idf=self.idf)
+            self.MechVentSchedule = UmiSchedule.constant_schedule(
+                idf=self.idf, allow_duplicates=True
+            )
+        if not self.IsMechVentOn:
             self.IsMechVentOn = False
+        if not self.MinFreshAirPerPerson:
             self.MinFreshAirPerPerson = 0
+        if not self.MinFreshAirPerArea:
             self.MinFreshAirPerArea = 0
-        return self
 
     def mapping(self):
         self.validate()

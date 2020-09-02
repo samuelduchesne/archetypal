@@ -222,10 +222,10 @@ class ZoneLoad(UmiBase, metaclass=Unique):
     def from_zone(cls, zone, **kwargs):
         """
         Args:
-            zone (archetypal.template.zone.Zone): zone to gets information from
+            zone (ZoneDefinition): zone to gets information from
         """
-        # If Zone is not part of Conditioned Area, it should not have a ZoneLoad object.
-        if not zone.is_part_of_conditioned_floor_area:
+        # If Zone is not part of total area, it should not have a ZoneLoad object.
+        if not zone._is_part_of_total_floor_area:
             return None
 
         # Get schedule index for different loads and create ZoneLoad arguments
@@ -465,7 +465,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
         new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
         new_obj._belongs_to_zone = self._belongs_to_zone
-        new_obj._predecessors.update(self.predecessors + other.predecessors)
+        new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def validate(self):

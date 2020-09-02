@@ -327,7 +327,7 @@ class TestCli:
             pass
         else:
             idf.removeidfobject(bldg)
-            idf.save("tests/.temp/brokenidf.idf")
+            idf.saveas("tests/.temp/brokenidf.idf")
 
         result = runner.invoke(
             cli,

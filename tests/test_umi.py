@@ -24,10 +24,15 @@ class TestUmiTemplate:
         b = TestUmiTemplate.read_json(file)
         assert json.loads(json.dumps(a)) == json.loads(json.dumps(b))
 
-    def test_template_to_tempalte_json(self, config):
+    def test_template_to_template_json(self, config):
         file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
 
-        UmiTemplateLibrary.read_file(file).to_json("BostonTemplateLibrary_ar.json")
+        UmiTemplateLibrary.read_file(file).to_json(
+            "BostonTemplateLibrary_ar.json", include_orphaned=True
+        )
+        import filecmp
+
+        assert filecmp.cmp(file, "BostonTemplateLibrary_ar.json")
 
     def test_umitemplate(self, config):
         """Test creating UmiTemplateLibrary from 2 IDF files"""
@@ -38,8 +43,9 @@ class TestUmiTemplate:
             / "VentilationSimpleTest.idf",
         ]
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        a = UmiTemplateLibrary.read_idf(idf_source, wf, name="Mixed_Files",
-                                        processors=-1)
+        a = UmiTemplateLibrary.read_idf(
+            idf_source, wf, name="Mixed_Files", processors=-1
+        )
 
         data_dict = a.to_dict()
         a.to_json()
@@ -58,7 +64,7 @@ class TestUmiTemplate:
         ]
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         a = UmiTemplateLibrary.read_idf(idf_source, wf, name="Mixed_Files")
-
+        a.to_json()
         data_dict = a.to_dict()
         assert no_duplicates(data_dict)
 
@@ -90,8 +96,9 @@ class TestUmiTemplate:
             data_dict.update(a)
             for key in data_dict:
                 # Sort the list elements by $id
-                data_dict[key] = sorted(data_dict[key],
-                                        key=lambda x: int(x.get("$id", 0)))
+                data_dict[key] = sorted(
+                    data_dict[key], key=lambda x: int(x.get("$id", 0))
+                )
             return data_dict
 
     @pytest.fixture()

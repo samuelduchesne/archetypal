@@ -4,7 +4,6 @@
 # License: MIT, see full license in LICENSE.txt
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
-import logging
 import os
 import time
 from glob import glob
@@ -22,7 +21,6 @@ from archetypal import (
     log,
     idf_version_updater,
     timeit,
-    EnergyPlusProcessError,
     __version__,
     ep_version,
     docstring_parameter,
@@ -405,30 +403,30 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     dir_ = output.dirname()
 
     file_paths = list(set_filepaths(idf))
-    log(f"executing {len(file_paths)} file(s): {[file.stem for file in file_paths]}")
+    file_list = "\n".join(
+        [f"{i}. " + str(file.name) for i, file in enumerate(file_paths)]
+    )
+    log(
+        f"executing {len(file_paths)} file(s):\n{file_list}", verbose=True,
+    )
     weather = next(iter(set_filepaths([weather])))
-    log(f"using the '{weather.basename()}' weather file\n")
+    log(f"using the '{weather.basename()}' weather file\n", verbose=True)
 
     # Call UmiTemplateLibrary constructor with list of IDFs
-    try:
-        template = UmiTemplateLibrary.read_idf(
-            file_paths,
-            weather=weather,
-            name=name,
-            processors=cores,
-            as_version=as_version,
-            annual=True,
-        )
-    except Exception as e:
-        if not ctx.obj.debug:
-            pass
-        else:
-            raise e
-    else:
-        # Save json file
-        final_path: Path = dir_ / name + ext
-        template.to_json(path_or_buf=final_path, all_zones=all_zones)
-        log("Successfully created template file at {}".format(final_path.abspath()))
+    template = UmiTemplateLibrary.read_idf(
+        file_paths,
+        weather=weather,
+        name=name,
+        processors=cores,
+        as_version=as_version,
+        annual=True,
+    )
+    # Save json file
+    final_path: Path = dir_ / name + ext
+    template.to_json(path_or_buf=final_path, all_zones=all_zones)
+    log(
+        f"Successfully created template file at {final_path.abspath()}", verbose=True,
+    )
 
 
 @cli.command()

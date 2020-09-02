@@ -11,7 +11,7 @@ import numpy as np
 from sigfig import round
 
 from archetypal import log
-from archetypal.template import UmiBase, Unique, UniqueName, GasMaterial
+from archetypal.template import UmiBase, Unique, UniqueName
 
 
 class OpaqueMaterial(UmiBase, metaclass=Unique):
@@ -236,7 +236,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             ),
             idf=self.idf,
         )
-        new_obj._predecessors.update(self.predecessors + other.predecessors)
+        new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def to_json(self):
@@ -342,7 +342,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                 **kwargs,
             )
         elif epbunch.key.upper() == "MATERIAL:AIRGAP":
-            for gasname, properties in {
+            gas_prop = {
                 "AIR": dict(
                     Conductivity=0.02436,
                     Density=1.754,
@@ -373,13 +373,24 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
                     SpecificHeat=1000,
                     ThermalEmittance=0.001,
                 ),
-            }.items():
+            }
+            for gasname, properties in gas_prop.items():
                 if gasname.lower() in epbunch.Name.lower():
                     thickness = properties["Conductivity"] * epbunch.Thermal_Resistance
                     return cls(
                         Name=epbunch.Name,
                         Thickness=thickness,
                         **properties,
+                        idf=epbunch.theidf,
+                    )
+                else:
+                    thickness = (
+                        gas_prop["AIR"]["Conductivity"] * epbunch.Thermal_Resistance
+                    )
+                    return cls(
+                        Name=epbunch.Name,
+                        Thickness=thickness,
+                        **gas_prop["AIR"],
                         idf=epbunch.theidf,
                     )
         else:

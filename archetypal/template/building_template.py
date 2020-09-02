@@ -11,7 +11,8 @@ import logging as lg
 import threading
 import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
+from copy import copy
+from itertools import chain, repeat
 
 import eppy
 import matplotlib.collections
@@ -110,6 +111,7 @@ class BuildingTemplate(UmiBase):
                     self.Windows == other.Windows,
                     self.Lifespan == other.Lifespan,
                     self.PartitionRatio == other.PartitionRatio,
+                    self.DefaultWindowToWallRatio == other.DefaultWindowToWallRatio,
                 ]
             )
 
@@ -260,12 +262,13 @@ class BuildingTemplate(UmiBase):
                     zone,
                     sql=idf.sql,
                     allow_duplicates=True,
+                    **kwargs,
                 ): zone
                 for zone in epbunch_zones
             }
             for future in tqdm(
                 concurrent.futures.as_completed(futures),
-                desc=f"zone_loop {idf.position}-{name}",
+                desc=f"Creating UMI objects for {idf.position or ''} {name}",
                 total=len(futures),
                 position=idf.position,
             ):
@@ -279,8 +282,24 @@ class BuildingTemplate(UmiBase):
                     log("%r created" % (result.Name))
 
         zone: ZoneDefinition
-        bt.cores = [zone for zone in zones if zone.is_core]
-        bt.perims = [zone for zone in zones if not zone.is_core]
+        bt.cores = list(
+            chain.from_iterable(
+                [
+                    list(repeat(copy(zone), zone.multiplier))
+                    for zone in zones
+                    if zone.is_core
+                ]
+            )
+        )
+        bt.perims = list(
+            chain.from_iterable(
+                [
+                    list(repeat(copy(zone), zone.multiplier))
+                    for zone in zones
+                    if not zone.is_core
+                ]
+            )
+        )
         # do Core and Perim zone reduction
         bt.reduce(bt.cores, bt.perims)
 

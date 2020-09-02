@@ -13,7 +13,6 @@ import shutil
 import subprocess
 import sys
 import time
-from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -366,7 +365,7 @@ def convert_idf_to_trnbuild(
     # output_folder
     new_idf_path = os.path.join(output_folder, "MODIFIED_" + os.path.basename(idf_file))
     if return_idf:
-        idf_2.save(filename=new_idf_path)
+        idf_2.saveas(filename=new_idf_path)
 
     # Run trnsidf to convert T3D to BUI
     log("Converting t3d file to bui file. Running trnsidf.exe...")

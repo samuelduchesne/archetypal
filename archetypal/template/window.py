@@ -248,6 +248,8 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         if not self:
             return other
 
+        return self
+
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
         return self
@@ -350,13 +352,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __repr__(self):
-        from archetypal import IDF
-
-        v_ = [
-            (k, v) for k, v in self.__dict__.items() if not isinstance(v, (dict, IDF))
-        ]
         header = "{}: <{}>\n".format(self.Name, self.__class__.mro()[0].__name__)
-        return header + tabulate.tabulate(v_, tablefmt="plain")
+        return header + tabulate.tabulate(self.mapping().items(), tablefmt="plain")
 
     def __str__(self):
         return repr(self)
@@ -658,7 +655,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone):
+    def from_zone(cls, zone, **kwargs):
         """Iterate over the zone subsurfaces and create a window object. If more
         than one window is created, use reduce to combine them together.
 
@@ -678,7 +675,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                     # For each subsurface, create a WindowSetting object
                     # using the `from_surface` constructor.
                     if subsurf.key.upper() == "FenestrationSurface:Detailed".upper():
-                        window_sets.append(cls.from_surface(subsurf))
+                        window_sets.append(cls.from_surface(subsurf, **kwargs))
 
         if window_sets:
             # if one or more window has been created, reduce. Using reduce on
@@ -689,7 +686,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
             # no window found, probably a core zone, return None.
             return None
 
-    def combine(self, other, weights=None, allow_duplicates=True):
+    def combine(self, other, weights=None, allow_duplicates=False):
         """Append other to self. Return self + other as a new object.
 
         Args:
@@ -762,8 +759,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 weights,
             ),
         )
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
-        new_obj._predecessors.update(self._predecessors + other._predecessors)
+        new_obj = WindowSetting(**meta, **new_attr, idf=self.idf)
+        new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def to_json(self):
@@ -831,7 +828,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         return w
 
     @classmethod
-    def from_ref(cls, ref, building_templates, idf=None):
+    def from_ref(cls, ref, building_templates, idf=None, **kwargs):
         """In some cases, the WindowSetting is referenced in the DataStore to the
         Windows property of a BuildingTemplate (instead of being listed in the
         WindowSettings list. This is the case in the original
@@ -852,7 +849,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 )
             )
         )
-        w = cls.from_json(**store, idf=idf)
+        w = cls.from_json(**store, idf=idf, **kwargs)
         return w
 
     def validate(self):

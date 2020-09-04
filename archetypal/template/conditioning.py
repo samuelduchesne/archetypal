@@ -609,8 +609,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         )
 
         # Capacity limits (heating and cooling)
-        zone_size = zone.idf.sql["ZoneSizes"][
-            zone.idf.sql["ZoneSizes"]["ZoneName"] == zone.Name.upper()
+        zone_size = zone.idf.sql()["ZoneSizes"][
+            zone.idf.sql()["ZoneSizes"]["ZoneName"] == zone.Name.upper()
         ]
         # Heating
         HeatingLimitType, heating_cap, heating_flow = self._get_design_limits(
@@ -821,7 +821,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             object:
             zone:
         """
-        rd = ReportData.from_sql_dict(zone.idf.sql)
+        rd = ReportData.from_sql_dict(zone.idf.sql())
         effectiveness = (
             rd.filter_report_data(
                 name=(
@@ -886,7 +886,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         from archetypal import ReportData
 
-        rd = ReportData.from_sql_dict(zone.idf.sql)
+        rd = ReportData.from_sql_dict(zone.idf.sql())
         energy_out = rd.filter_report_data(name=tuple(energy_out_variable_name))
         energy_in = rd.filter_report_data(name=tuple(energy_in_list))
 

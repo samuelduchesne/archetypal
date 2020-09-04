@@ -292,7 +292,7 @@ class VentilationSetting(UmiBase, metaclass=Unique):
             return None
         name = zone.Name + "_VentilationSetting"
 
-        df = {"a": zone.idf.sql}
+        df = {"a": zone.idf.sql()}
         ni_df = nominal_infiltration(df)
         sched_df = nominal_mech_ventilation(df)
         nat_df = nominal_nat_ventilation(df)

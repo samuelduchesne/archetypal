@@ -20,7 +20,7 @@ from geomeppy.geom.polygons import Polygon3D
 from path import Path
 from tqdm import tqdm
 
-import archetypal.settings
+import archetypal.settings as settings
 from archetypal.idfclass import IDF, hash_model
 from archetypal.reportdata import ReportData
 from archetypal.schedule import Schedule

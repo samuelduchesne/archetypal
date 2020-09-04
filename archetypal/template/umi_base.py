@@ -204,7 +204,7 @@ class UmiBase(object):
     @property
     def sql(self):
         if self._sql is None:
-            self._sql = self.idf.sql
+            self._sql = self.idf.sql()
         return self._sql
 
     @property
@@ -244,7 +244,8 @@ class UmiBase(object):
             "DataSource": ", ".join(
                 set(
                     itertools.chain(
-                        *[obj.DataSource.split(", ") for obj in predecessors]
+                        *[obj.DataSource.split(", ") for obj in predecessors if
+                          obj.DataSource is not None]
                     )
                 )
             ),

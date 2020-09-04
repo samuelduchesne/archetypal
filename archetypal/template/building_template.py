@@ -260,7 +260,7 @@ class BuildingTemplate(UmiBase):
                 executor.submit(
                     ZoneDefinition.from_zone_epbunch,
                     zone,
-                    sql=idf.sql,
+                    sql=idf.sql(),
                     allow_duplicates=True,
                     **kwargs,
                 ): zone
@@ -483,7 +483,7 @@ class ZoneThread(threading.Thread):
     def run(self):
         self.building_template._allzones.append(
             ZoneDefinition.from_zone_epbunch(
-                self.zone, sql=self.building_template.idf.sql, allow_duplicates=True
+                self.zone, sql=self.building_template.idf.sql(), allow_duplicates=True
             )
         )
 

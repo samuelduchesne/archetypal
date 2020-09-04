@@ -455,11 +455,15 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             key="InternalMass".upper(),
             Name=internal_mass,
             Construction_Name=cons.Name,
-            Zone_or_ZoneList_Name=for_zone.Name,
+            Zone_or_ZoneList_Name=for_zone,
             Surface_Area=1,
         )
+
         return OpaqueConstruction(
-            Name=internal_mass, idf=idf, Layers=cls._internalmass_layer(new_epbunch)
+            Name=internal_mass,
+            idf=idf,
+            Layers=[MaterialLayer(Material=OpaqueMaterial.from_epbunch(mat),
+                                  Thickness=0.15)],
         )
 
     @classmethod

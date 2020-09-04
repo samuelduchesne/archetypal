@@ -31,7 +31,7 @@ class TestIDF:
             "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         )
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        yield IDF(file, epw=w)
+        yield IDF(file, epw=w).simulate()
 
     @pytest.fixture()
     def natvent(self, config):
@@ -209,7 +209,7 @@ class TestIDF:
                 "Supermarket",
                 4181,
                 marks=pytest.mark.skip(
-                    "Supermarket " "missing from " "BTAP " "database"
+                    "Supermarket missing from BTAP " "database"
                 ),
             ),
             ("Warehouse", 4835),
@@ -231,13 +231,13 @@ class TestIDF:
 
 class TestMeters:
     def test_retrieve_meters_nosim(self, config, shoebox_model):
-        assert (
-            shoebox_model.meters
-            == "call IDF.simulate() to get a list of possible meters"
-        )
+        shoebox_model.simulation_dir.rmtree()
+        with pytest.raises(Exception):
+            print(shoebox_model.meters)
 
     def test_retrieve_meters(self, config, shoebox_model):
-        shoebox_model.simulate()
+        if not shoebox_model.simulation_dir.exists():
+            shoebox_model.simulate()
         shoebox_model.meters.OutputMeter.WaterSystems__MainsWater.values()
 
 

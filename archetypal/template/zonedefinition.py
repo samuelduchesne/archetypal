@@ -325,7 +325,7 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         """
 
         self.InternalMassConstruction = OpaqueConstruction.generic_internalmass(
-            idf=self.idf, for_zone=self
+            idf=self.idf, for_zone=self.Name
         )
         self.InternalMassExposedPerFloorArea = 0
 

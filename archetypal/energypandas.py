@@ -4,6 +4,7 @@ import time
 import warnings
 from datetime import timedelta
 
+from mpl_toolkits.mplot3d import axes3d
 from numpy import ndarray, meshgrid, asarray
 import tsam.timeseriesaggregation as tsam
 from matplotlib import pyplot as plt, cm
@@ -831,7 +832,7 @@ def _plot_surface(ax, x, y, z, cmap=None, **kwargs):
     # To use a custom hillshading mode, override the built-in shading and pass
     # in the rgb colors of the shaded surface calculated from "shade".
     rgb = ls.shade(z, cmap=cm.get_cmap(cmap), vert_exag=0.1, blend_mode="soft")
-    surf = plot_surface(
+    surf = ax.plot_surface(
         x,
         y,
         z,
@@ -1188,32 +1189,3 @@ def _setup_subplots(
     axes = _flatten(axes)
 
     return fig, axes
-
-
-def plot_surface(ax, x, y, z, cmap=None, **kwargs):
-    if cmap is None:
-        cmap = cm.gist_earth
-
-    ls = LightSource(270, 45)
-    # To use a custom hillshading mode, override the built-in shading and pass
-    # in the rgb colors of the shaded surface calculated from "shade".
-    rgb = ls.shade(z, cmap=cm.get_cmap(cmap), vert_exag=0.1, blend_mode="soft")
-    surf = ax.plot_surface(
-        x,
-        y,
-        z,
-        rstride=1,
-        cstride=1,
-        facecolors=rgb,
-        linewidth=0,
-        antialiased=False,
-        shade=False,
-    )
-    return surf
-
-
-def polygon_under_graph(xlist, ylist):
-    """Construct the vertex list which defines the polygon filling the space
-    under
-    the (xlist, ylist) line graph.  Assumes the xs are in ascending order."""
-    return [(xlist[0], 0.0), *zip(xlist, ylist), (xlist[-1], 0.0)]

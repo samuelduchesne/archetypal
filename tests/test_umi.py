@@ -24,16 +24,6 @@ class TestUmiTemplate:
         b = TestUmiTemplate.read_json(file)
         assert json.loads(json.dumps(a)) == json.loads(json.dumps(b))
 
-    def test_template_to_template_json(self, config):
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-
-        UmiTemplateLibrary.read_file(file).to_json(
-            "BostonTemplateLibrary_ar.json", include_orphaned=True
-        )
-        import filecmp
-
-        assert filecmp.cmp(file, "BostonTemplateLibrary_ar.json")
-
     def test_umitemplate(self, config):
         """Test creating UmiTemplateLibrary from 2 IDF files"""
         idf_source = [

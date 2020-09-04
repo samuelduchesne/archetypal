@@ -238,7 +238,7 @@ class IDF(geomIDF):
         self._original_idfname = hash_model(self)
         # Move to output_directory, if we want to keep the original file intact.
         if settings.use_cache:
-            previous_file = self.output_directory / self.name
+            previous_file = self.output_directory / (self.name or str(self.idfname))
             if previous_file.exists():
                 # We have a transitioned or cached file here; Load this one.
                 self.idfname = previous_file
@@ -689,10 +689,9 @@ class IDF(geomIDF):
     @property
     def name(self):
         if isinstance(self.idfname, StringIO):
-            return str(self.idfname)
+            return None
         return self.idfname.basename()
 
-    @property
     def sql(self):
         """Get the sql table report"""
         if self._sql is None:
@@ -710,7 +709,7 @@ class IDF(geomIDF):
                 )
                 if sql_object not in self.idfobjects["Output:SQLite".upper()]:
                     self.addidfobject(sql_object)
-                return self.simulate().sql
+                return self.simulate().sql()
             except Exception as e:
                 raise e
             else:
@@ -745,7 +744,7 @@ class IDF(geomIDF):
         """Open .htm file in browser"""
         import webbrowser
 
-        (html,) = self.simulation_dir.files("*.htm")
+        html, *_= self.simulation_dir.files("*.htm")
 
         webbrowser.open(html.abspath())
 
@@ -768,7 +767,7 @@ class IDF(geomIDF):
     def idf_open_last_sim(self):
         """Open last simulation in Ep-Launch"""
 
-        (filepath,) = self.simulation_dir.files("*.idf")
+        filepath, *_ = self.simulation_dir.files("*.idf")
 
         import subprocess, os, platform
 
@@ -784,7 +783,7 @@ class IDF(geomIDF):
         with their “availability” for the current input file"""
         import webbrowser
 
-        (mdd,) = self.simulation_dir.files("*.mdd")
+        mdd, *_ = self.simulation_dir.files("*.mdd")
 
         webbrowser.open(mdd.abspath())
 
@@ -794,7 +793,7 @@ class IDF(geomIDF):
         which meters contain what report variables."""
         import webbrowser
 
-        (mtd,) = self.simulation_dir.files("*.mtd")
+        mtd, *_ = self.simulation_dir.files("*.mtd")
 
         webbrowser.open(mtd.abspath())
 
@@ -802,7 +801,7 @@ class IDF(geomIDF):
     def sql_file(self):
         """Get the sql file path"""
         try:
-            (file,) = self.simulation_dir.files("*out.sql")
+            file, *_ = self.simulation_dir.files("*out.sql")
         except FileNotFoundError:
             return self.simulate().sql_file
         return file.expand()
@@ -4755,7 +4754,7 @@ class Meters:
     def __init__(self, idf: IDF):
         self._idf = idf
 
-        (mdd,) = self._idf.simulation_dir.files("*.mdd")
+        mdd, *_ = self._idf.simulation_dir.files("*.mdd")
         if not mdd:
             raise FileNotFoundError
         meters = pd.read_csv(
@@ -4866,7 +4865,7 @@ class Variables:
     def __init__(self, idf: IDF):
         self._idf = idf
 
-        (rdd,) = self._idf.simulation_dir.files("*.rdd")
+        rdd, *_ = self._idf.simulation_dir.files("*.rdd")
 
         if not rdd:
             raise FileNotFoundError

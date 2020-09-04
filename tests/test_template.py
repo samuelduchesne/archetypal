@@ -27,7 +27,7 @@ from archetypal.template.umi_base import clear_cache, load_json_objects, UniqueN
 @pytest.fixture(scope="module")
 def small_idf(config, small_idf_obj):
     """An IDF model. Yields both the idf and the sql"""
-    sql = small_idf_obj.sql
+    sql = small_idf_obj.sql()
     yield small_idf_obj, sql
 
 
@@ -37,7 +37,7 @@ def small_idf_copy(config):
     file = "tests/input_data/umi_samples/B_Off_0.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
-    yield idf, idf.sql
+    yield idf, idf.sql()
 
 
 @pytest.fixture(scope="module")
@@ -54,7 +54,7 @@ def other_idf(config):
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
-    sql = idf.sql
+    sql = idf.sql()
     yield idf, sql
 
 
@@ -72,11 +72,13 @@ def small_office(config):
     Args:
         config:
     """
-    file = "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD " \
-           "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+    file = (
+        "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD "
+        "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+    )
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
-    sql = idf.sql
+    sql = idf.sql()
     yield idf, sql
 
 
@@ -134,8 +136,10 @@ class TestMassRatio:
 class TestInternalMass:
     """Series of tests for the parsing of internal mass"""
 
-    def test_with_thermalmassobject(self):
-        pass
+    def test_with_thermalmassobject(self, small_idf):
+        idf, sql = small_idf
+        intmass = OpaqueConstruction.generic_internalmass(idf, "Perim")
+        assert intmass.to_json()
 
 
 class TestYearScheduleParts:
@@ -216,8 +220,8 @@ class TestWeekSchedule:
             datastore = json.load(f)
         loaded_dict = load_json_objects(datastore, idf)
         assert (
-                dict(loaded_dict["WeekSchedules"][0].to_json())
-                == datastore["WeekSchedules"][0]
+            dict(loaded_dict["WeekSchedules"][0].to_json())
+            == datastore["WeekSchedules"][0]
         )
 
     def test_weekSchedule(self, config, idf):
@@ -767,7 +771,7 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def facebrick_and_concrete(
-            self, face_brick, thermal_insulation, hollow_concrete_block, plaster, idf
+        self, face_brick, thermal_insulation, hollow_concrete_block, plaster, idf
     ):
         """A :class:Construction based on the `Facebrick–concrete wall` from: On
         the thermal time constant of structural walls. Applied Thermal
@@ -788,7 +792,7 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def insulated_concrete_wall(
-            self, face_brick, thermal_insulation, concrete_layer, plaster, idf
+        self, face_brick, thermal_insulation, concrete_layer, plaster, idf
     ):
         """A :class:Construction based on the `Facebrick–concrete wall` from: On
         the thermal time constant of structural walls. Applied Thermal
@@ -953,7 +957,7 @@ class TestOpaqueConstruction:
         assert oc == oc_3
 
     def test_real_word_construction(
-            self, facebrick_and_concrete, insulated_concrete_wall
+        self, facebrick_and_concrete, insulated_concrete_wall
     ):
         """This test is based on wall constructions, materials and results from:
         Tsilingiris, P. T. (2004). On the thermal time constant of structural
@@ -967,8 +971,8 @@ class TestOpaqueConstruction:
             0.6740, 0.01
         )
         assert (
-                facebrick_and_concrete.equivalent_heat_capacity_per_unit_volume
-                == pytest.approx(1595166.7, 0.01)
+            facebrick_and_concrete.equivalent_heat_capacity_per_unit_volume
+            == pytest.approx(1595166.7, 0.01)
         )
         assert facebrick_and_concrete.heat_capacity_per_unit_wall_area == pytest.approx(
             574260.0, 0.1
@@ -978,8 +982,8 @@ class TestOpaqueConstruction:
             0.7710, 0.01
         )
         assert (
-                insulated_concrete_wall.equivalent_heat_capacity_per_unit_volume
-                == pytest.approx(1826285.7, 0.01)
+            insulated_concrete_wall.equivalent_heat_capacity_per_unit_volume
+            == pytest.approx(1826285.7, 0.01)
         )
 
         combined_mat = facebrick_and_concrete.combine(
@@ -1227,7 +1231,7 @@ class TestZoneConstructionSet:
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=w)
-        yield idf, idf.sql
+        yield idf, idf.sql()
 
     def test_add_zoneconstructionset(self, small_idf):
         """Test __add__() for ZoneConstructionSet
@@ -1320,17 +1324,17 @@ class TestZoneLoad:
     @pytest.fixture(scope="class")
     def fiveZoneEndUses(self, config):
         file = (
-                get_eplus_dirs(settings.ep_version)
-                / "ExampleFiles"
-                / "5ZoneAirCooled_AirBoundaries_Daylighting.idf"
+            get_eplus_dirs(settings.ep_version)
+            / "ExampleFiles"
+            / "5ZoneAirCooled_AirBoundaries_Daylighting.idf"
         )
         w = (
-                get_eplus_dirs(settings.ep_version)
-                / "WeatherData"
-                / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
+            get_eplus_dirs(settings.ep_version)
+            / "WeatherData"
+            / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         )
         idf = IDF(file, epw=w)
-        sql = idf.sql
+        sql = idf.sql()
         yield idf, sql
 
     @pytest.fixture(scope="class", params=["RefBldgWarehouseNew2004_Chicago.idf"])
@@ -1344,7 +1348,7 @@ class TestZoneLoad:
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=w)
-        sql = idf.sql
+        sql = idf.sql()
         yield idf, sql
 
     def test_zoneLoad_init(self, config, idf):
@@ -1508,7 +1512,7 @@ class TestZoneConditioning:
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=w)
-        sql = idf.sql
+        sql = idf.sql()
         yield idf, sql, request.param, IDF(file, epw=w)  # pass an idfcopy
 
     def test_zoneConditioning_init(self, config, idf):
@@ -1654,7 +1658,7 @@ class TestVentilationSetting:
         file = eplusdir / "ExampleFiles" / request.param
         w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         idf = IDF(file, epw=w)
-        sql = idf.sql
+        sql = idf.sql()
         yield idf, sql, request.param, IDF(file, epw=w)  # passes a copy as well
 
     def test_ventilation_init(self, config, idf):
@@ -1856,8 +1860,8 @@ class TestWindowSetting:
         eplusdir = get_eplus_dirs(archetypal.settings.ep_version)
         file = eplusdir / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file, epw=w)
-        sql = idf.sql
+        idf = IDF(file, epw=w, design_day=True)
+        sql = idf.sql()
         yield idf, sql
 
     def test_window_from_construction_name(self, small_idf):
@@ -2075,7 +2079,7 @@ class TestWindowSetting:
 class TestZone:
     """Tests for :class:`Zone` class"""
 
-    def test_zone_volume(self, config):
+    def test_zone_volume(self, small_idf_copy):
         """Test the zone volume for a sloped roof
 
         Args:
@@ -2083,24 +2087,18 @@ class TestZone:
         """
         from archetypal import ZoneDefinition
 
-        file = "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD " \
-               "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file, epw=w)
-        sql = idf.sql
-        zone = idf.getobject(
-            "ZONE", "Sp-attic Sys-0 Flr-2 Sch-- undefined - HPlcmt-core ZN"
-        )
+        idf, sql = small_idf_copy
+        zone = idf.getobject("ZONE", "Perim")
         z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
-        np.testing.assert_almost_equal(desired=z.volume, actual=856.3, decimal=1)
+        np.testing.assert_almost_equal(desired=z.volume, actual=137.4, decimal=1)
 
-    def test_add_zone(self, small_idf):
+    def test_add_zone(self, small_idf_copy):
         """Test __add__() for Zone
 
         Args:
             small_idf:
         """
-        idf, sql = small_idf
+        idf, sql = small_idf_copy
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
@@ -2117,13 +2115,13 @@ class TestZone:
             actual=z_core.area + z_perim.area, desired=z_new.area, decimal=3
         )
 
-    def test_iadd_zone(self, small_idf):
+    def test_iadd_zone(self, small_idf_copy):
         """Test __iadd__() for Zone
 
         Args:
             small_idf:
         """
-        idf, sql = small_idf
+        idf, sql = small_idf_copy
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
@@ -2217,7 +2215,7 @@ def bt(config):
     """A building template fixture used in subsequent tests"""
     eplus_dir = get_eplus_dirs(archetypal.settings.ep_version)
     file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
-    (w,) = (eplus_dir / "WeatherData").glob("*.epw")[0]
+    w, *_ = (eplus_dir / "WeatherData").files("*.epw")
     idf = IDF(file, epw=w)
     from archetypal.template import BuildingTemplate
 

@@ -37,7 +37,7 @@ def test_plot(schedules_in_necb_specific):
 
 
 def test_plot2d(schedules_in_necb_specific):
-    schedules_in_necb_specific.plot2d()
+    schedules_in_necb_specific.plot2d(show=False, save=False)
 
 
 def test_make_umi_schedule(config):

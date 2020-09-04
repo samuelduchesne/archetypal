@@ -282,14 +282,14 @@ class TestCli:
     def test_reduce(self):
         """Tests the 'reduce' method"""
         runner = CliRunner()
-        test_file_list = [
-            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        ]
+        base = Path(
+            "tests/input_data/necb"
+        )
+        outname = "tests/.temp/warehouse.json"
         result = runner.invoke(
             cli,
             [
-                "-cld",
+                "-csd",
                 "--cache-folder",
                 "tests/.temp/cache",
                 "--data-folder",
@@ -303,59 +303,15 @@ class TestCli:
                 "reduce",
                 "-w",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_*.epw",
-                *test_file_list,
+                *base.files("*ware*.idf"),
                 "-o",
-                "tests/.temp/retail.json",
+                outname,
             ],
             catch_exceptions=False,
         )
         print(result.stdout)
         assert result.exit_code == 0
-        assert Path("tests/.temp/retail.json").exists()
-
-    def test_reduce_failed(self, config):
-        """Tests the 'reduce' method on a failed file"""
-        runner = CliRunner()
-        test_file = "tests/input_data/necb/NECB 2011-Warehouse-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
-
-        # First, modify file so that it breaks. We will removing the building object.
-        idf = IDF(test_file)
-        try:
-            bldg = idf.idfobjects["BUILDING"][0]
-        except IndexError:
-            # Building object already removed if test is ran a second time
-            pass
-        else:
-            idf.removeidfobject(bldg)
-            idf.saveas("tests/.temp/brokenidf.idf")
-
-        result = runner.invoke(
-            cli,
-            [
-                "--use-cache",
-                "--cache-folder",
-                "tests/.temp/cache",
-                "--data-folder",
-                "tests/.temp/data",
-                "--imgs-folder",
-                "tests/.temp/images",
-                "--logs-folder",
-                "tests/.temp/logs",
-                "--ep_version",
-                settings.ep_version,
-                "reduce",
-                "-w",
-                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270*.epw",
-                *[idf.idfname, idf.idfname],
-                "-o",
-                "tests/.temp/retail.json",
-            ],
-            catch_exceptions=False,
-        )
-        print(result.stdout)
-        # check an error file has been created
-        assert (settings.logs_folder / "failed_reduce.txt").expand().exists()
-        assert result.exit_code == 0
+        assert Path(outname).exists()
 
     def test_transition_dir_file_mixed(self):
         """Tests the transition method for the CLI using a mixture of a directory

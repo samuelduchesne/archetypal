@@ -104,7 +104,7 @@ class Schedule(object):
             Type:
             **kwargs:
         """
-        return cls(Name=Name, Values=Values, Type=Type, idf=idf, **kwargs,)
+        return cls(Name=Name, Values=Values, Type=Type, idf=idf, **kwargs)
 
     @classmethod
     def constant_schedule(
@@ -270,9 +270,11 @@ class Schedule(object):
         ax = series.loc[slice].plot(**kwargs, label=label)
         return ax
 
-    def plot2d(self):
+    def plot2d(self, **kwargs):
         """Plot the carpet plot of the schedule"""
-        return plot_energyseries_map(EnergySeries(self.series, name=self.Name))
+        return plot_energyseries_map(EnergySeries(self.series, name=self.Name), **kwargs)
+
+    plot2d.__doc__ = plot_energyseries_map.__doc__
 
     def get_interval_day_ep_schedule_values(self, epbunch: EpBunch) -> np.ndarray:
         """Schedule:Day:Interval

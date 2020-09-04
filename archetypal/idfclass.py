@@ -3390,60 +3390,63 @@ class ExpandObjectsThread(Thread):
 
         Adapted from :func:`eppy.runner.runfunctions.run`.
         """
-        self.cancelled = False
-        # get version from IDF object or by parsing the IDF file for it
+        try:
+            self.cancelled = False
+            # get version from IDF object or by parsing the IDF file for it
 
-        tmp = self.tmp
-        self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
-        self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
-        self.idd = self.idf.iddname.copy(tmp / "Energy+.idd").expand()
-        self.expandobjectsexe = Path(
-            shutil.which("ExpandObjects", path=self.eplus_home.expand())
-        ).copy2(tmp)
-        self.run_dir = Path(tmp).expand()
+            tmp = self.tmp
+            self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
+            self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
+            self.idd = self.idf.iddname.copy(tmp / "Energy+.idd").expand()
+            self.expandobjectsexe = Path(
+                shutil.which("ExpandObjects", path=self.eplus_home.expand())
+            ).copy2(tmp)
+            self.run_dir = Path(tmp).expand()
 
-        # Run ExpandObjects Program
-        self.cmd = str(self.expandobjectsexe.basename())
-        with tqdm(
-            unit_scale=True,
-            miniters=1,
-            desc=f"ExpandObjects #{self.idf.position}-{self.idf.name}",
-            position=self.idf.position,
-        ) as progress:
+            # Run ExpandObjects Program
+            self.cmd = str(self.expandobjectsexe.basename())
+            with tqdm(
+                unit_scale=True,
+                miniters=1,
+                desc=f"ExpandObjects #{self.idf.position}-{self.idf.name}",
+                position=self.idf.position,
+            ) as progress:
 
-            self.p = subprocess.Popen(
-                ["ExpandObjects"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                shell=True,
-                cwd=self.run_dir.abspath(),
-            )
-            start_time = time.time()
-            # self.msg_callback("ExpandObjects started")
-            for line in self.p.stdout:
-                self.msg_callback(line.decode("utf-8"))
-                progress.update()
+                self.p = subprocess.Popen(
+                    ["ExpandObjects"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=True,
+                    cwd=self.run_dir.abspath(),
+                )
+                start_time = time.time()
+                # self.msg_callback("ExpandObjects started")
+                for line in self.p.stdout:
+                    self.msg_callback(line.decode("utf-8"))
+                    progress.update()
 
-            # We explicitly close stdout
-            self.p.stdout.close()
+                # We explicitly close stdout
+                self.p.stdout.close()
 
-            # Wait for process to complete
-            self.p.wait()
+                # Wait for process to complete
+                self.p.wait()
 
-            # Communicate callbacks
-            if self.cancelled:
-                self.msg_callback("ExpandObjects cancelled")
-                # self.cancelled_callback(self.std_out, self.std_err)
-            else:
-                if self.p.returncode == 0:
-                    self.msg_callback(
-                        "ExpandObjects completed in {:,.2f} seconds".format(
-                            time.time() - start_time
-                        )
-                    )
-                    self.success_callback()
+                # Communicate callbacks
+                if self.cancelled:
+                    self.msg_callback("ExpandObjects cancelled")
+                    # self.cancelled_callback(self.std_out, self.std_err)
                 else:
-                    self.msg_callback("ExpandObjects failed")
+                    if self.p.returncode == 0:
+                        self.msg_callback(
+                            "ExpandObjects completed in {:,.2f} seconds".format(
+                                time.time() - start_time
+                            )
+                        )
+                        self.success_callback()
+                    else:
+                        self.msg_callback("ExpandObjects failed")
+        except Exception as e:
+            self.exception = e
 
     def msg_callback(self, *args, **kwargs):
         log(*args, name=self.idf.name, **kwargs)

@@ -249,6 +249,6 @@ class TestThreads:
             / "WeatherData"
             / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
         )
-        idf = IDF(file, epw, annual=True)
+        idf = IDF(file, epw, annual=False)
 
         assert idf.simulate()

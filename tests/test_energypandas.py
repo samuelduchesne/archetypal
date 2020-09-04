@@ -185,7 +185,7 @@ class TestEnergyDataFrame:
         assert edf.units == edf["Temp"].units
 
     def test_from_report_data(self, rd_edf):
-        assert rd_edf.sum().sum() == 398258.8688595464
+        assert_almost_equal(rd_edf.sum().sum(), 398258.8688595464, decimal=3)
         assert rd_edf.units == settings.unit_registry.C
 
     def test_discretize(self, rd_edf):

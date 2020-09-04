@@ -303,7 +303,7 @@ class TestCli:
                 "reduce",
                 "-w",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_*.epw",
-                *base.files("*ware*.idf"),
+                *base.files("*Ware*.idf"),
                 "-o",
                 outname,
             ],

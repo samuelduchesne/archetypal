@@ -908,8 +908,6 @@ class ZoneGraph(networkx.Graph):
         except RuntimeError:
             log("Matplotlib unable to open display", lg.WARNING)
             raise
-        # fill kwargs
-        kwargs["cmap"] = cmap
         G = self.copy()
         if node_labels_to_integers:
             G = networkx.convert_node_labels_to_integers(G, label_attribute="name")
@@ -930,7 +928,8 @@ class ZoneGraph(networkx.Graph):
                 mapping = dict(zip(sorted(groups), count()))
                 colors = [mapping[G.nodes[n][color_nodes]] for n in tree.nodes]
                 colors = [discrete_cmap(len(groups), cmap).colors[i] for i in colors]
-
+            font_color = kwargs.pop("font_color", None)
+            font_size = kwargs.pop("font_size", None)
             paths_ = []
             for nt in tree:
                 # choose nodes and color for each iteration
@@ -948,13 +947,22 @@ class ZoneGraph(networkx.Graph):
                     ax=ax,
                     node_color=node_color,
                     label=label,
-                    **kwargs,
+                    cmap=cmap,
+                    node_size=kwargs.get("node_size", 300),
+                    node_shape=kwargs.get("node_shape", "o"),
+                    alpha=kwargs.get("alpha", None),
+                    vmin=kwargs.get("vmin", None),
+                    vmax=kwargs.get("vmax", None),
+                    linewidths=kwargs.get("linewidths", None),
+                    edgecolors=kwargs.get("linewidths", None),
                 )
                 paths_.extend(sc.get_paths())
             scatter = matplotlib.collections.PathCollection(paths_)
             networkx.draw_networkx_edges(tree, pos, ax=ax, arrows=arrows, **kwargs)
             if with_labels:
-                networkx.draw_networkx_labels(G, pos, **kwargs)
+                networkx.draw_networkx_labels(
+                    G, pos, font_color=font_color, font_size=font_size, **kwargs,
+                )
 
             if legend:
                 bbox = kwargs.get("bbox_to_anchor", (1, 1))

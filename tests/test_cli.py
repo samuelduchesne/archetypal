@@ -328,9 +328,9 @@ class TestCli:
                 "tests/.temp/images",
                 "--logs-folder",
                 "tests/.temp/logs",
-                "--ep_version",
-                settings.ep_version,
                 "transition",
+                "-v",
+                "9.2",
                 "tests/input_data/problematic/ASHRAE90.1_ApartmentHighRise_STD2016_Buffalo.idf",
                 "tests/input_data/problematic/*.idf",  # Path with wildcard
                 "tests/input_data/problematic",  # Just a path

@@ -23,6 +23,7 @@ from archetypal import (
     __version__,
     ep_version,
     docstring_parameter,
+    parse,
 )
 from archetypal.idfclass import idf_version_updater
 
@@ -475,6 +476,7 @@ def transition(idf, to_version, cores, yes):
     else:
         overwrite = False
 
+    to_version = parse(to_version).dash
     file_paths = set_filepaths(idf)
     rundict = {
         file: dict(
@@ -483,7 +485,12 @@ def transition(idf, to_version, cores, yes):
         for i, file in enumerate(file_paths)
     }
     parallel_process(
-        rundict, idf_version_updater, processors=cores, show_progress=True, position=0
+        rundict,
+        idf_version_updater,
+        processors=cores,
+        show_progress=True,
+        position=0,
+        debug=True,
     )
     log(
         "Successfully transitioned files to version '{}' in {:,.2f} seconds".format(

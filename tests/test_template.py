@@ -2387,7 +2387,8 @@ class TestZoneGraph:
             color_nodes="core",
             node_labels_to_integers=True,
             plt_style="seaborn",
-            save=True,
+            save=False,
+            show=False,
             filename="test",
         )
 
@@ -2400,7 +2401,9 @@ class TestZoneGraph:
             G:
             annotate:
         """
-        G.plot_graph3d(annotate=annotate, axis_off=True)
+        G.plot_graph3d(
+            annotate=annotate, axis_off=True, save=False, show=False,
+        )
 
     def test_core_graph(self, G):
         """

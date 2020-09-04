@@ -101,19 +101,12 @@ def config(
     settings.umitemplate = umitemplate
     settings.trnsys_default_folder = validate_trnsys_folder(trnsys_default_folder)
     settings.zone_weight.set_weigth_attr(default_weight_factor)
-    settings.ep_version = validate_epversion(ep_version)
+    settings.ep_version = parse(ep_version).dash
     settings.debug = debug
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
         log("Configured archetypal")
-
-
-def validate_epversion(ep_version):
-    """Validates the ep_version form"""
-    if "." in ep_version:
-        raise NameError('Enter the EnergyPlus version in the form "9-2-0"')
-    return ep_version
 
 
 def validate_trnsys_folder(trnsys_default_folder):
@@ -1182,6 +1175,8 @@ def parallel_process(
                 try:
                     result_done = job.result()
                 except Exception as e:
+                    if debug:
+                        raise e
                     result_done = e
                 # Append to the list of results
                 out.append(result_done)

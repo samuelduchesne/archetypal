@@ -332,7 +332,7 @@ class UmiBase(object):
             l_ = lcm(len(self_attr_), len(other_attr_))
             self_attr_ = np.tile(self_attr_, int(l_ / len(self_attr_)))
             other_attr_ = np.tile(other_attr_, int(l_ / len(other_attr_)))
-            return float(np.average([self_attr_, other_attr_], weights=weights, axis=0))
+            return np.average([self_attr_, other_attr_], weights=weights, axis=0)
 
     def _str_mean(self, other, attr, append=False):
         """Returns the combined string attributes

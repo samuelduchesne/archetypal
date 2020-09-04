@@ -7,7 +7,7 @@ import archetypal as ar
 from archetypal import download_bld_window, IDF
 
 
-def test_tabula_available_country(config, scratch_then_cache):
+def test_tabula_available_country(config):
     # First, let's try the API call
     data = {"code_country": "FR"}
     cc_res = ar.dataportal.tabula_api_request(data, table="all-country")
@@ -22,7 +22,7 @@ def test_tabula_available_country(config, scratch_then_cache):
     assert list(cc_cache["id"])
 
 
-def test_tabula_api_request_valueerror(config, scratch_then_cache):
+def test_tabula_api_request_valueerror(config):
     # Gives "wrong_string" as table
     data = {"code_country": "FR"}
     with pytest.raises(ValueError):
@@ -38,18 +38,18 @@ def test_tabula_api_request_valueerror(config, scratch_then_cache):
     assert "cc_res" not in locals()
 
 
-def test_tabula_notavailable_country(config, scratch_then_cache):
+def test_tabula_notavailable_country(config):
     pass
 
 
-def test_tabula_building_sheet(config, scratch_then_cache):
+def test_tabula_building_sheet(config):
     sheet = ar.tabula_building_details_sheet(code_country="Austria")
 
     # Makes sure result is not empty
     assert list(sheet["val"])
 
 
-def test_tabula_building_sheet_code_building(config, scratch_then_cache):
+def test_tabula_building_sheet_code_building(config):
     # Test with code_building not None
     sheet = ar.tabula_building_details_sheet(
         code_building="AT.MT.AB.02.Gen.ReEx.001.001", code_country="Austria"
@@ -61,7 +61,7 @@ def test_tabula_building_sheet_code_building(config, scratch_then_cache):
     assert sheet["val"][0] == "AT.MT.AB.02.Gen.ReEx.001.001"
 
 
-def test_tabula_building_sheet_valueerror(config, scratch_then_cache):
+def test_tabula_building_sheet_valueerror(config):
     # Test with wrong code_building
     with pytest.raises(ValueError):
         sheet = ar.tabula_building_details_sheet(
@@ -85,7 +85,7 @@ def test_tabula_building_sheet_valueerror(config, scratch_then_cache):
     assert "sheet" not in locals()
 
 
-def test_tabula_system(config, scratch_then_cache):
+def test_tabula_system(config):
     res = ar.dataportal.tabula_system(code_country="FR")
 
     # Makes sure result is not empty
@@ -94,7 +94,7 @@ def test_tabula_system(config, scratch_then_cache):
     assert res["data"][0] == "FR"
 
 
-def test_tabula_system_valueerror(config, scratch_then_cache):
+def test_tabula_system_valueerror(config):
     # Test with wrong code_boundarycond
     with pytest.raises(ValueError):
         res = ar.dataportal.tabula_system(
@@ -104,7 +104,7 @@ def test_tabula_system_valueerror(config, scratch_then_cache):
     assert "res" not in locals()
 
 
-def test_resolve_codecountry(config, scratch_then_cache):
+def test_resolve_codecountry(config):
     # Tests with country string length == 3
     res = ar.dataportal._resolve_codecountry("USA")
     # Makes sure code_country is right
@@ -116,7 +116,7 @@ def test_resolve_codecountry(config, scratch_then_cache):
     assert res == "AW"
 
 
-def test_openei_api_request(config, scratch_then_cache):
+def test_openei_api_request(config):
     data = {"code_country": "FR"}
     res = ar.dataportal.openei_api_request(data)
 
@@ -124,7 +124,7 @@ def test_openei_api_request(config, scratch_then_cache):
     assert res is None
 
 
-def test_nrel_api_cbr_request(config, scratch_then_cache):
+def test_nrel_api_cbr_request(config):
     data = {"code_country": "FR"}
     res = ar.dataportal.nrel_api_cbr_request(data)
 
@@ -132,7 +132,7 @@ def test_nrel_api_cbr_request(config, scratch_then_cache):
     assert res["error"]["code"] == "API_KEY_MISSING"
 
 
-def test_nrel_api_cbr_request_exception(config, scratch_then_cache):
+def test_nrel_api_cbr_request_exception(config):
     # Test with wrong code_country
     data = {"code_country": "wrong_string"}
     res = ar.dataportal.nrel_api_cbr_request(data)
@@ -141,7 +141,7 @@ def test_nrel_api_cbr_request_exception(config, scratch_then_cache):
     assert res["error"]["code"] == "API_KEY_MISSING"
 
 
-def test_tabula_multiple(config, scratch_then_cache):
+def test_tabula_multiple(config):
     country_code = "FR"
     ab = ar.dataportal.tabula_available_buildings(country_code)
     archetypes = pd.concat(
@@ -166,7 +166,7 @@ def test_tabula_multiple(config, scratch_then_cache):
     reason="Must provide an NREL API key as ENV Variable 'NREL_CONSUMER_KEY'",
     strict=True,
 )
-def test_nrel_api_request(config, scratch_then_cache):
+def test_nrel_api_request(config):
     data = {
         "keyword": "Window",
         "format": "json",
@@ -183,7 +183,7 @@ def test_nrel_api_request(config, scratch_then_cache):
     reason="Must provide an NREL API key as ENV Variable 'NREL_CONSUMER_KEY'",
     strict=True,
 )
-def test_download_bld_window(config, scratch_then_cache):
+def test_download_bld_window(config):
     oauth_consumer_key = os.environ.get("NREL_CONSUMER_KEY")
 
     response = download_bld_window(
@@ -227,7 +227,7 @@ def test_download_and_load_bld_window(config):
     assert ws
 
 
-def test_statcan(config, scratch_then_cache):
+def test_statcan(config):
     data = dict(type="json", lang="E", dguid="2016A000011124", topic=5, notes=0)
     response = ar.dataportal.stat_can_request(**data)
     print(response)
@@ -236,7 +236,7 @@ def test_statcan(config, scratch_then_cache):
     assert response
 
 
-def test_statcan_error(config, scratch_then_cache):
+def test_statcan_error(config):
     # Tests statcan with error in inputs
     data = dict(type="json", lang="E", dguid="wrong_string", topic=5, notes=0)
     response = ar.dataportal.stat_can_request(**data)
@@ -246,7 +246,7 @@ def test_statcan_error(config, scratch_then_cache):
     assert response is None
 
 
-def test_statcan_geo(config, scratch_then_cache):
+def test_statcan_geo(config):
     data = dict(type="json", lang="E", geos="PR", cpt="00")
     response = ar.dataportal.stat_can_geo_request(**data)
     print(response)
@@ -255,7 +255,7 @@ def test_statcan_geo(config, scratch_then_cache):
     assert response
 
 
-def test_statcan_geo_error(config, scratch_then_cache):
+def test_statcan_geo_error(config):
     # Tests statcan_geo with error in inputs
     data = dict(type="json", lang="E", geos="wrong_string", cpt="00")
     response = ar.dataportal.stat_can_geo_request(**data)

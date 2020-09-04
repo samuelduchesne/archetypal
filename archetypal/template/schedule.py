@@ -128,6 +128,9 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
         Returns:
             (UmiSchedule): the combined UmiSchedule object.
+
+        Raises:
+            TypeError: if Quantity is not of type list, tuple, dict or a callable.
         """
         # Check if other is None. Simply return self
         if not other:
@@ -201,7 +204,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                 weights=weights,
             )
             new_values /= new_values.max()
-        else:
+        elif isinstance(quantity, (list, tuple)):
             # Multiplying the schedule values by the quantity for both self and other
             # and then using a weighted average. Finally, new values are normalized.
             new_values = np.average(
@@ -210,6 +213,8 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                 weights=weights,
             )
             new_values /= new_values.max()
+        else:
+            raise TypeError("Quantity is not of type list, tuple, dict or a callable")
 
         # the new object's name
         meta = self._get_predecessors_meta(other)
@@ -218,10 +223,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         hasher = hashlib.md5()
         hasher.update(new_values)
         meta["Name"] = f"Combined_UmiSchedule_{hasher.hexdigest()}"
-        if self.quantity and other.quantity:
-            quantity = np.nansum(self.quantity + other.quantity)
-        else:
-            quantity = None
+        quantity = np.nansum([self.quantity or float("nan"), other.quantity or float("nan")])
         new_obj = UmiSchedule.from_values(
             Values=new_values, Type="Fraction", quantity=quantity, idf=self.idf, **meta,
         )

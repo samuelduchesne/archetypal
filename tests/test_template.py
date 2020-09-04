@@ -54,13 +54,19 @@ def other_idf(config):
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
-    sql = idf.sql()
-    yield idf, sql
+    yield idf, idf.sql()
 
 
 @pytest.fixture(scope="module")
 def other_idf_object(config):
     """Another IDF object (same as other_idf).Yields just the idf object"""
+    file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    yield IDF(file, epw=w)
+
+@pytest.fixture(scope="module")
+def other_idf_object_copy(config):
+    """Another IDF object with a different signature. Yields both the idf and the sql"""
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     yield IDF(file, epw=w)
@@ -2226,15 +2232,6 @@ def bt(config):
 class TestBuildingTemplate:
     """Various tests with the :class:`BuildingTemplate` class"""
 
-    def test_viewbuilding(self, bt):
-        """test the visualization of a building
-
-        Args:
-            config:
-            bt:
-        """
-        bt.view_building()
-
     def test_buildingTemplate_from_to_json(self, config):
         """
         Args:
@@ -2249,19 +2246,18 @@ class TestBuildingTemplate:
         bt_to_json = bt[0].to_json()
         w_to_json = bt[0].Windows.to_json()
 
-    def test_hash_eq_bt(self, other_idf):
+    def test_hash_eq_bt(self, other_idf_object, other_idf_object_copy):
         """Test equality and hashing of class DomesticHotWaterSetting
 
         Args:
             other_idf:
         """
         from archetypal.template import BuildingTemplate
-        from copy import copy
 
-        idf, sql = other_idf
-        clear_cache()
+        idf = other_idf_object
         bt = BuildingTemplate.from_idf(idf)
-        bt_2 = copy(bt)
+        idf2 = other_idf_object_copy
+        bt_2 = BuildingTemplate.from_idf(idf2)
 
         # a copy of dhw should be equal and have the same hash, but still not be the
         # same object
@@ -2301,16 +2297,8 @@ class TestBuildingTemplate:
         # don't have the same hash.
         assert len(set(bt_list)) == 2
 
-    def test_building_template(self):
-        from archetypal import BuildingTemplate
-
-        idf = IDF(
-            r"tests\input_data\necb\NECB 2011-SmallOffice-NECB HDD "
-            r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            epw=r"tests\input_data\CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-        )
-        template = BuildingTemplate.from_idf(idf)
-        assert template
+    def test_building_template(self, bt):
+        assert bt
 
 
 class TestZoneGraph:

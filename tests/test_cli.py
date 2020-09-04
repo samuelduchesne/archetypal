@@ -313,6 +313,10 @@ class TestCli:
         assert result.exit_code == 0
         assert Path(outname).exists()
 
+    @pytest.mark.skipif(
+        os.environ.get("CI", "False").lower() == "true",
+        reason="Skipping this test on CI environment.",
+    )
     def test_transition_dir_file_mixed(self):
         """Tests the transition method for the CLI using a mixture of a directory
         (Path.isdir()) and a file Path.isfile()"""

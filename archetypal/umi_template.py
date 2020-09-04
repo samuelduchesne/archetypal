@@ -7,7 +7,8 @@ from collections import OrderedDict
 import numpy as np
 from path import Path
 
-from archetypal import (
+from archetypal import IDF, parallel_process, log, EnergyPlusProcessError
+from archetypal.template import (
     BuildingTemplate,
     GasMaterial,
     GlazingMaterial,
@@ -31,10 +32,6 @@ from archetypal import (
     YearSchedulePart,
     UmiSchedule,
     MassRatio,
-    IDF,
-    parallel_process,
-    log,
-    EnergyPlusProcessError,
     CREATED_OBJECTS,
 )
 
@@ -429,8 +426,10 @@ class UmiTemplateLibrary:
                     try:
                         app_dict = obj.to_json()
                     except AttributeError as e:
-                        raise Exception(f"{obj} from {obj.DataSource} raised "
-                                        f"exception: '{str(e)}'")
+                        raise Exception(
+                            f"{obj} from {obj.DataSource} raised "
+                            f"exception: '{str(e)}'"
+                        )
                     data_dict[catname].append(app_dict)
                     jsonized[key] = obj
             for key, value in obj.mapping().items():

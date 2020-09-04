@@ -710,9 +710,7 @@ class IDF(geomIDF):
                 )
                 if sql_object not in self.idfobjects["Output:SQLite".upper()]:
                     self.addidfobject(sql_object)
-                raise FileNotFoundError(
-                    "call IDF.simulate() at least once to get the sql table report"
-                )
+                return self.simulate().sql
             except Exception as e:
                 raise e
             else:
@@ -731,9 +729,7 @@ class IDF(geomIDF):
                     output_prefix=self.output_prefix,
                 )
             except FileNotFoundError:
-                raise FileNotFoundError(
-                    "call IDF.simulate() at least once to get the sql file path"
-                )
+                return self.simulate().htm
             else:
                 self._htm = htm_dict
         return self._htm
@@ -808,9 +804,7 @@ class IDF(geomIDF):
         try:
             (file,) = self.simulation_dir.files("*out.sql")
         except FileNotFoundError:
-            raise FileNotFoundError(
-                "call IDF.simulate() at least once to get the sql file path"
-            )
+            return self.simulate().sql_file
         return file.expand()
 
     @property
@@ -818,29 +812,30 @@ class IDF(geomIDF):
         """Returns the total conditioned area of a building (taking into account
         zone multipliers
         """
-        if self._area_conditioned is None and self.sql_file:
-            with sqlite3.connect(self.sql_file) as conn:
-                sql_query = f"""
-                        SELECT t.Value
-                        FROM TabularDataWithStrings t
-                        WHERE TableName == 'Building Area' and ColumnName == 'Area' and RowName == 'Net Conditioned Building Area';"""
-                (res,) = conn.execute(sql_query).fetchone()
-            self._area_conditioned = float(res)
-        elif self._area_conditioned is None and not self.sql_file:
-            area = 0
-            zones = self.idfobjects["ZONE"]
-            zone: EpBunch
-            for zone in zones:
-                for surface in zone.zonesurfaces:
-                    if hasattr(surface, "tilt"):
-                        if surface.tilt == 180.0:
-                            part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
-                            multiplier = float(
-                                zone.Multiplier if zone.Multiplier != "" else 1
-                            )
+        if self._area_conditioned is None:
+            if self.simulation_dir.exists():
+                with sqlite3.connect(self.sql_file) as conn:
+                    sql_query = f"""
+                            SELECT t.Value
+                            FROM TabularDataWithStrings t
+                            WHERE TableName == 'Building Area' and ColumnName == 'Area' and RowName == 'Net Conditioned Building Area';"""
+                    (res,) = conn.execute(sql_query).fetchone()
+                self._area_conditioned = float(res)
+            else:
+                area = 0
+                zones = self.idfobjects["ZONE"]
+                zone: EpBunch
+                for zone in zones:
+                    for surface in zone.zonesurfaces:
+                        if hasattr(surface, "tilt"):
+                            if surface.tilt == 180.0:
+                                part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
+                                multiplier = float(
+                                    zone.Multiplier if zone.Multiplier != "" else 1
+                                )
 
-                            area += surface.area * multiplier * part_of
-            self._area_conditioned = area
+                                area += surface.area * multiplier * part_of
+                self._area_conditioned = area
         return self._area_conditioned
 
     @property
@@ -872,7 +867,10 @@ class IDF(geomIDF):
 
     @property
     def simulation_files(self):
-        return self.simulation_dir.files()
+        try:
+            return self.simulation_dir.files()
+        except FileNotFoundError:
+            return []
 
     @property
     def simulation_dir(self):
@@ -1117,7 +1115,7 @@ class IDF(geomIDF):
 
         # Run the energyplus program
         with TemporaryDirectory(
-            prefix="eplus_run_", suffix=self.output_prefix, dir=self.output_directory,
+            prefix="eplus_run_", suffix=None, dir=self.output_directory,
         ) as tmp:
             running_simulation_thread = EnergyPlusThread(self, tmp)
             running_simulation_thread.start()
@@ -1405,9 +1403,11 @@ class IDF(geomIDF):
         )
         df.wall_area = df.wall_area.apply(round, decimals=1)
         df.window_area = df.window_area.apply(round, decimals=1)
-        df["wwr"] = (df.window_area / df.wall_area).apply(round, 2)
-        df["wwr_rounded_%"] = (df.window_area / df.wall_area * 100).apply(
-            lambda x: roundto(x, to=round_to)
+        df["wwr"] = (df.window_area / df.wall_area).fillna(0).apply(round, 2)
+        df["wwr_rounded_%"] = (
+            (df.window_area / df.wall_area * 100)
+            .fillna(0)
+            .apply(lambda x: roundto(x, to=round_to))
         )
         return df
 
@@ -3836,7 +3836,7 @@ class EnergyPlusThread(Thread):
         # Start process with tqdm bar
         with tqdm(
             unit_scale=True,
-            total=self.idf._energyplus_its if self.idf._energyplus_its > 0 else None,
+            total=self.idf.energyplus_its if self.idf.energyplus_its > 0 else None,
             miniters=1,
             desc=f"EnergyPlus #{self.idf.position}-{self.idf.name}",
             position=self.idf.position,

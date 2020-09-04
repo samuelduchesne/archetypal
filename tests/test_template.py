@@ -2,17 +2,26 @@ import numpy as np
 import pytest
 from geomeppy.patches import EpBunch
 
-import archetypal as ar
 import archetypal.settings
 from archetypal import (
     get_eplus_dirs,
-    clear_cache,
     settings,
     GlazingMaterial,
-    IDF,
     OpaqueConstruction,
-    load_json_objects,
+    IDF,
 )
+from archetypal.template import (
+    WeekSchedule,
+    DaySchedule,
+    YearSchedule,
+    OpaqueMaterial,
+    MaterialLayer,
+    ZoneConstructionSet,
+    ZoneDefinition,
+    calc_simple_glazing,
+    ZoneGraph,
+)
+from archetypal.template.umi_base import clear_cache, load_json_objects, UniqueName
 
 
 @pytest.fixture(scope="module")
@@ -63,7 +72,8 @@ def small_office(config):
     Args:
         config:
     """
-    file = "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+    file = "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD " \
+           "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
     sql = idf.sql
@@ -176,7 +186,6 @@ class TestDaySchedule:
             config:
         """
         import json
-        from archetypal import load_json_objects
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
@@ -207,25 +216,25 @@ class TestWeekSchedule:
             datastore = json.load(f)
         loaded_dict = load_json_objects(datastore, idf)
         assert (
-            dict(loaded_dict["WeekSchedules"][0].to_json())
-            == datastore["WeekSchedules"][0]
+                dict(loaded_dict["WeekSchedules"][0].to_json())
+                == datastore["WeekSchedules"][0]
         )
 
     def test_weekSchedule(self, config, idf):
         """ Creates WeekSchedule from DaySchedule"""
 
         # Creates 2 DaySchedules : 1 always ON and 1 always OFF
-        sch_d_on = ar.DaySchedule.from_values(
+        sch_d_on = DaySchedule.from_values(
             Values=[1] * 24, Category="Day", Type="Fraction", Name="AlwaysOn", idf=idf,
         )
-        sch_d_off = ar.DaySchedule.from_values(
+        sch_d_off = DaySchedule.from_values(
             Values=[0] * 24, Category="Day", Type="Fraction", Name="AlwaysOff", idf=idf,
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
         days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
         # Creates WeekSchedule from list of DaySchedule
-        a = ar.WeekSchedule(
+        a = WeekSchedule(
             Days=days, Category="Week", Type="Fraction", Name="OnOff_1", idf=idf,
         )
 
@@ -245,7 +254,7 @@ class TestWeekSchedule:
             "Name": "OnOff_2",
         }
         # Creates WeekSchedule from dict (from json)
-        b = ar.WeekSchedule.from_dict(**dict_w_on, idf=idf, allow_duplicates=True)
+        b = WeekSchedule.from_dict(**dict_w_on, idf=idf, allow_duplicates=True)
 
         # Makes sure WeekSchedules created with 2 methods have the same values
         # And different ids
@@ -280,17 +289,17 @@ class TestYearSchedule:
         clear_cache()
 
         # Creates 2 DaySchedules : 1 always ON and 1 always OFF
-        sch_d_on = ar.DaySchedule.from_values(
+        sch_d_on = DaySchedule.from_values(
             Values=[1] * 24, Category="Day", Type="Fraction", Name="AlwaysOn", idf=idf,
         )
-        sch_d_off = ar.DaySchedule.from_values(
+        sch_d_off = DaySchedule.from_values(
             Values=[0] * 24, Category="Day", Type="Fraction", Name="AlwaysOff", idf=idf,
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
         days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
         # Creates WeekSchedule from list of DaySchedule
-        sch_w_on_off = ar.WeekSchedule(
+        sch_w_on_off = WeekSchedule(
             Days=days, Category="Week", Type="Fraction", Name="OnOff", idf=idf,
         )
 
@@ -310,7 +319,7 @@ class TestYearSchedule:
             "Name": "OnOff",
         }
         # Creates YearSchedule from dict (from json)
-        a = ar.YearSchedule.from_dict(**dict_year, idf=idf, allow_duplicates=True)
+        a = YearSchedule.from_dict(**dict_year, idf=idf, allow_duplicates=True)
 
         # Makes sure YearSchedule has the same values as concatenate WeekSchedule
         np.testing.assert_equal(a.all_values, np.resize(sch_w_on_off.all_values, 8760))
@@ -329,15 +338,11 @@ class TestOpaqueMaterial:
 
     @pytest.fixture()
     def mat_a(self, idf):
-        yield ar.OpaqueMaterial(
-            Conductivity=100, SpecificHeat=4.18, Name="mat_a", idf=idf
-        )
+        yield OpaqueMaterial(Conductivity=100, SpecificHeat=4.18, Name="mat_a", idf=idf)
 
     @pytest.fixture()
     def mat_b(self, idf):
-        yield ar.OpaqueMaterial(
-            Conductivity=200, SpecificHeat=4.18, Name="mat_b", idf=idf
-        )
+        yield OpaqueMaterial(Conductivity=200, SpecificHeat=4.18, Name="mat_b", idf=idf)
 
     def test_add_materials(self, mat_a, mat_b):
         """test __add__() for OpaqueMaterial"""
@@ -352,12 +357,12 @@ class TestOpaqueMaterial:
 
     def test_iadd_materials(self, idf):
         """test __iadd__() for OpaqueMaterial"""
-        mat_a = ar.OpaqueMaterial(
+        mat_a = OpaqueMaterial(
             Conductivity=100, SpecificHeat=4.18, Name="mat_ia", idf=idf
         )
         id_ = mat_a.id  # storing mat_a's id.
 
-        mat_b = ar.OpaqueMaterial(
+        mat_b = OpaqueMaterial(
             Conductivity=200, SpecificHeat=4.18, Name="mat_ib", idf=idf
         )
         mat_a += mat_b
@@ -480,10 +485,10 @@ class TestGlazingMaterial:
 
     def test_add_glazing_material(self, config, idf):
         """test __add__() for OpaqueMaterial"""
-        sg_a = ar.calc_simple_glazing(0.763, 2.716, 0.812)
-        sg_b = ar.calc_simple_glazing(0.578, 2.413, 0.706)
-        mat_a = ar.GlazingMaterial(Name="mat_a", **sg_a, idf=idf)
-        mat_b = ar.GlazingMaterial(Name="mat_b", **sg_b, idf=idf)
+        sg_a = calc_simple_glazing(0.763, 2.716, 0.812)
+        sg_b = calc_simple_glazing(0.578, 2.413, 0.706)
+        mat_a = GlazingMaterial(Name="mat_a", **sg_a, idf=idf)
+        mat_b = GlazingMaterial(Name="mat_b", **sg_b, idf=idf)
 
         mat_c = mat_a + mat_b
 
@@ -492,10 +497,10 @@ class TestGlazingMaterial:
 
     def test_iadd_glazing_material(self, config, idf):
         """test __iadd__() for OpaqueMaterial"""
-        sg_a = ar.calc_simple_glazing(0.763, 2.716, 0.812)
-        sg_b = ar.calc_simple_glazing(0.578, 2.413, 0.706)
-        mat_a = ar.GlazingMaterial(Name="mat_ia", **sg_a, idf=idf)
-        mat_b = ar.GlazingMaterial(Name="mat_ib", **sg_b, idf=idf)
+        sg_a = calc_simple_glazing(0.763, 2.716, 0.812)
+        sg_b = calc_simple_glazing(0.578, 2.413, 0.706)
+        mat_a = GlazingMaterial(Name="mat_ia", **sg_a, idf=idf)
+        mat_b = GlazingMaterial(Name="mat_ib", **sg_b, idf=idf)
 
         id_ = mat_a.id  # storing mat_a's id.
 
@@ -515,8 +520,8 @@ class TestGlazingMaterial:
         """
         from copy import copy
 
-        sg_a = ar.calc_simple_glazing(0.763, 2.716, 0.812)
-        mat_a = ar.GlazingMaterial(Name="mat_ia", **sg_a, idf=idf)
+        sg_a = calc_simple_glazing(0.763, 2.716, 0.812)
+        mat_a = GlazingMaterial(Name="mat_ia", **sg_a, idf=idf)
         mat_b = copy(mat_a)
 
         # a copy of dhw should be equal and have the same hash, but still not be the
@@ -673,7 +678,7 @@ class TestOpaqueConstruction:
     @pytest.fixture()
     def mat_a(self, idf):
         """A :class:Material fixture"""
-        mat_a = ar.OpaqueMaterial(
+        mat_a = OpaqueMaterial(
             Conductivity=1.4, SpecificHeat=840, Density=2240, Name="Concrete", idf=idf
         )
         yield mat_a
@@ -681,7 +686,7 @@ class TestOpaqueConstruction:
     @pytest.fixture()
     def mat_b(self, idf):
         """A :class:Material fixture"""
-        mat_b = ar.OpaqueMaterial(
+        mat_b = OpaqueMaterial(
             Conductivity=0.12, SpecificHeat=1210, Density=540, Name="Plywood", idf=idf
         )
 
@@ -697,17 +702,17 @@ class TestOpaqueConstruction:
         """
         thickness = 0.10
         layers = [
-            ar.MaterialLayer(mat_a, thickness),
-            ar.MaterialLayer(mat_b, thickness),
+            MaterialLayer(mat_a, thickness),
+            MaterialLayer(mat_b, thickness),
         ]
-        oc_a = ar.OpaqueConstruction(Layers=layers, Name="oc_a", idf=idf)
+        oc_a = OpaqueConstruction(Layers=layers, Name="oc_a", idf=idf)
 
         yield oc_a
 
     @pytest.fixture()
     def face_brick(self, idf):
         """A :class:Material fixture"""
-        face_brick = ar.OpaqueMaterial(
+        face_brick = OpaqueMaterial(
             Conductivity=1.20,
             Density=1900,
             SpecificHeat=850,
@@ -719,7 +724,7 @@ class TestOpaqueConstruction:
     @pytest.fixture()
     def thermal_insulation(self, idf):
         """A :class:Material fixture"""
-        thermal_insulation = ar.OpaqueMaterial(
+        thermal_insulation = OpaqueMaterial(
             Conductivity=0.041,
             Density=40,
             SpecificHeat=850,
@@ -731,7 +736,7 @@ class TestOpaqueConstruction:
     @pytest.fixture()
     def hollow_concrete_block(self, idf):
         """A :class:Material fixture"""
-        hollow_concrete_block = ar.OpaqueMaterial(
+        hollow_concrete_block = OpaqueMaterial(
             Conductivity=0.85,
             Density=2000,
             SpecificHeat=920,
@@ -743,7 +748,7 @@ class TestOpaqueConstruction:
     @pytest.fixture()
     def plaster(self, idf):
         """A :class:Material fixture"""
-        plaster = ar.OpaqueMaterial(
+        plaster = OpaqueMaterial(
             Conductivity=1.39, Density=2000, SpecificHeat=1085, Name="Plaster", idf=idf
         )
         yield plaster
@@ -751,7 +756,7 @@ class TestOpaqueConstruction:
     @pytest.fixture()
     def concrete_layer(self, idf):
         """A :class:Material fixture"""
-        concrete = ar.OpaqueMaterial(
+        concrete = OpaqueMaterial(
             Conductivity=1.70,
             Density=2300,
             SpecificHeat=920,
@@ -762,7 +767,7 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def facebrick_and_concrete(
-        self, face_brick, thermal_insulation, hollow_concrete_block, plaster, idf
+            self, face_brick, thermal_insulation, hollow_concrete_block, plaster, idf
     ):
         """A :class:Construction based on the `Facebrick–concrete wall` from: On
         the thermal time constant of structural walls. Applied Thermal
@@ -770,12 +775,12 @@ class TestOpaqueConstruction:
         https://doi.org/10.1016/j.applthermaleng.2003.10.015
         """
         layers = [
-            ar.MaterialLayer(face_brick, 0.1),
-            ar.MaterialLayer(thermal_insulation, 0.04),
-            ar.MaterialLayer(hollow_concrete_block, 0.2),
-            ar.MaterialLayer(plaster, 0.02),
+            MaterialLayer(face_brick, 0.1),
+            MaterialLayer(thermal_insulation, 0.04),
+            MaterialLayer(hollow_concrete_block, 0.2),
+            MaterialLayer(plaster, 0.02),
         ]
-        oc_a = ar.OpaqueConstruction(
+        oc_a = OpaqueConstruction(
             Layers=layers, Name="Facebrick–concrete wall", idf=idf
         )
 
@@ -783,7 +788,7 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def insulated_concrete_wall(
-        self, face_brick, thermal_insulation, concrete_layer, plaster, idf
+            self, face_brick, thermal_insulation, concrete_layer, plaster, idf
     ):
         """A :class:Construction based on the `Facebrick–concrete wall` from: On
         the thermal time constant of structural walls. Applied Thermal
@@ -791,12 +796,12 @@ class TestOpaqueConstruction:
         https://doi.org/10.1016/j.applthermaleng.2003.10.015
         """
         layers = [
-            ar.MaterialLayer(plaster, 0.02),
-            ar.MaterialLayer(concrete_layer, 0.20),
-            ar.MaterialLayer(thermal_insulation, 0.04),
-            ar.MaterialLayer(plaster, 0.02),
+            MaterialLayer(plaster, 0.02),
+            MaterialLayer(concrete_layer, 0.20),
+            MaterialLayer(thermal_insulation, 0.04),
+            MaterialLayer(plaster, 0.02),
         ]
-        oc_a = ar.OpaqueConstruction(
+        oc_a = OpaqueConstruction(
             Layers=layers, Name="Insulated Concrete Wall", idf=idf
         )
 
@@ -810,8 +815,8 @@ class TestOpaqueConstruction:
             mat_a:
         """
         thickness = 0.30
-        layers = [ar.MaterialLayer(mat_a, thickness)]
-        oc_b = ar.OpaqueConstruction(Layers=layers, Name="oc_b", idf=idf)
+        layers = [MaterialLayer(mat_a, thickness)]
+        oc_b = OpaqueConstruction(Layers=layers, Name="oc_b", idf=idf)
 
         yield oc_b
 
@@ -948,7 +953,7 @@ class TestOpaqueConstruction:
         assert oc == oc_3
 
     def test_real_word_construction(
-        self, facebrick_and_concrete, insulated_concrete_wall
+            self, facebrick_and_concrete, insulated_concrete_wall
     ):
         """This test is based on wall constructions, materials and results from:
         Tsilingiris, P. T. (2004). On the thermal time constant of structural
@@ -962,8 +967,8 @@ class TestOpaqueConstruction:
             0.6740, 0.01
         )
         assert (
-            facebrick_and_concrete.equivalent_heat_capacity_per_unit_volume
-            == pytest.approx(1595166.7, 0.01)
+                facebrick_and_concrete.equivalent_heat_capacity_per_unit_volume
+                == pytest.approx(1595166.7, 0.01)
         )
         assert facebrick_and_concrete.heat_capacity_per_unit_wall_area == pytest.approx(
             574260.0, 0.1
@@ -973,8 +978,8 @@ class TestOpaqueConstruction:
             0.7710, 0.01
         )
         assert (
-            insulated_concrete_wall.equivalent_heat_capacity_per_unit_volume
-            == pytest.approx(1826285.7, 0.01)
+                insulated_concrete_wall.equivalent_heat_capacity_per_unit_volume
+                == pytest.approx(1826285.7, 0.01)
         )
 
         combined_mat = facebrick_and_concrete.combine(
@@ -1234,11 +1239,11 @@ class TestZoneConstructionSet:
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ar.ZoneConstructionSet.from_zone(
-            ar.ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
+        z_core = ZoneConstructionSet.from_zone(
+            ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
         )
-        z_perim = ar.ZoneConstructionSet.from_zone(
-            ar.ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
+        z_perim = ZoneConstructionSet.from_zone(
+            ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
         )
         z_new = z_core + z_perim
         assert z_new
@@ -1253,11 +1258,11 @@ class TestZoneConstructionSet:
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ar.ZoneConstructionSet.from_zone(
-            ar.ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
+        z_core = ZoneConstructionSet.from_zone(
+            ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
         )
-        z_perim = ar.ZoneConstructionSet.from_zone(
-            ar.ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
+        z_perim = ZoneConstructionSet.from_zone(
+            ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
         )
         id_ = z_core.id
         z_core += z_perim
@@ -1315,14 +1320,14 @@ class TestZoneLoad:
     @pytest.fixture(scope="class")
     def fiveZoneEndUses(self, config):
         file = (
-            get_eplus_dirs(settings.ep_version)
-            / "ExampleFiles"
-            / "5ZoneAirCooled_AirBoundaries_Daylighting.idf"
+                get_eplus_dirs(settings.ep_version)
+                / "ExampleFiles"
+                / "5ZoneAirCooled_AirBoundaries_Daylighting.idf"
         )
         w = (
-            get_eplus_dirs(settings.ep_version)
-            / "WeatherData"
-            / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
+                get_eplus_dirs(settings.ep_version)
+                / "WeatherData"
+                / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         )
         idf = IDF(file, epw=w)
         sql = idf.sql
@@ -1983,8 +1988,8 @@ class TestWindowSetting:
         Args:
             config:
         """
-        sg_a = ar.calc_simple_glazing(0.763, 2.716, 0.812)
-        mat_a = ar.GlazingMaterial(Name="mat_a", **sg_a, idf=idf)
+        sg_a = calc_simple_glazing(0.763, 2.716, 0.812)
+        mat_a = GlazingMaterial(Name="mat_a", **sg_a, idf=idf)
         glazMat_to_json = mat_a.to_json()
         assert glazMat_to_json
 
@@ -2078,7 +2083,8 @@ class TestZone:
         """
         from archetypal import ZoneDefinition
 
-        file = "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        file = "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD " \
+               "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=w)
         sql = idf.sql
@@ -2098,8 +2104,8 @@ class TestZone:
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ar.ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
-        z_perim = ar.ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
+        z_core = ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
+        z_perim = ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
 
         z_new = z_core + z_perim
 
@@ -2121,8 +2127,8 @@ class TestZone:
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ar.ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
-        z_perim = ar.ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
+        z_core = ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
+        z_perim = ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
         volume = z_core.volume + z_perim.volume  # save volume before changing
         area = z_core.area + z_perim.area  # save area before changing
 
@@ -2211,13 +2217,11 @@ def bt(config):
     """A building template fixture used in subsequent tests"""
     eplus_dir = get_eplus_dirs(archetypal.settings.ep_version)
     file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
-    w = next(iter((eplus_dir / "WeatherData").glob("*.epw")), None)
-    file = ar.copy_file(file)
+    (w,) = (eplus_dir / "WeatherData").glob("*.epw")[0]
     idf = IDF(file, epw=w)
-    sql = idf.sql
-    from archetypal import BuildingTemplate
+    from archetypal.template import BuildingTemplate
 
-    bt = BuildingTemplate.from_idf(idf, sql=sql)
+    bt = BuildingTemplate.from_idf(idf)
     yield bt
 
 
@@ -2258,7 +2262,7 @@ class TestBuildingTemplate:
 
         idf, sql = other_idf
         clear_cache()
-        bt = BuildingTemplate.from_idf(idf, sql=sql)
+        bt = BuildingTemplate.from_idf(idf)
         bt_2 = copy(bt)
 
         # a copy of dhw should be equal and have the same hash, but still not be the
@@ -2319,7 +2323,6 @@ class TestZoneGraph:
         Args:
             small_office:
         """
-        from archetypal import ZoneGraph
 
         idf, sql = small_office
 
@@ -2333,7 +2336,6 @@ class TestZoneGraph:
         Args:
             small_office:
         """
-        from archetypal import ZoneGraph
 
         idf, sql = small_office
         yield ZoneGraph.from_idf(idf)
@@ -2348,7 +2350,6 @@ class TestZoneGraph:
             adj_report:
         """
         import networkx as nx
-        from archetypal import ZoneGraph
 
         idf, sql = small_office
 
@@ -2425,8 +2426,6 @@ class TestZoneGraph:
 
 class TestUniqueName(object):
     def test_uniquename(self):
-        from archetypal import UniqueName
-
         name1 = UniqueName("myname")
         name2 = UniqueName("myname")
         name3 = UniqueName("myname")

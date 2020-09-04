@@ -23,8 +23,7 @@ from .reportdata import ReportData
 from .tabulardata import TabularData
 from .schedule import Schedule
 from .plot import *
-from .template import *
-from .idfclass import *
+from .idfclass import IDF
 from .dataportal import *
 from .trnsys import *
 from .umi_template import *

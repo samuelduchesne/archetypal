@@ -19,12 +19,12 @@ from archetypal import (
     UmiTemplateLibrary,
     config,
     log,
-    idf_version_updater,
     timeit,
     __version__,
     ep_version,
     docstring_parameter,
 )
+from archetypal.idfclass import idf_version_updater
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 

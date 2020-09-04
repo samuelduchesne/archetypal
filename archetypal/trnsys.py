@@ -20,17 +20,16 @@ from geomeppy.geom.polygons import Polygon3D
 from path import Path
 from tqdm import tqdm
 
-from archetypal import (
+import archetypal.settings
+from archetypal.idfclass import IDF, hash_model
+from archetypal.reportdata import ReportData
+from archetypal.schedule import Schedule
+from archetypal.utils import (
     log,
-    settings,
-    Schedule,
     checkStr,
     check_unique_name,
     angle,
-    hash_model,
     recursive_len,
-    ReportData,
-    IDF,
 )
 
 

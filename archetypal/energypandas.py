@@ -4,25 +4,23 @@ import time
 import warnings
 from datetime import timedelta
 
-import numpy as np
-import pandas as pd
+from numpy import ndarray, meshgrid, asarray
 import tsam.timeseriesaggregation as tsam
 from matplotlib import pyplot as plt, cm
 from matplotlib.colors import LightSource
-from pandas import (
-    Series,
-    DataFrame,
-    MultiIndex,
-    pivot_table,
-    to_datetime,
-    DatetimeIndex,
-)
+from pandas.core.frame import DataFrame
 from pandas.core.generic import NDFrame
+from pandas.core.indexes.multi import MultiIndex
+from pandas.core.indexes.datetimes import date_range, DatetimeIndex
+from pandas.core.reshape.pivot import pivot_table
+from pandas.core.series import Series
+from pandas.core.tools.datetimes import to_datetime
 from pandas.plotting._matplotlib.tools import _subplots, _flatten
 from pint import Unit, Quantity
 from sklearn import preprocessing
 
-from archetypal import log, settings
+import archetypal.settings as settings
+from archetypal.utils import log
 
 
 class EnergySeries(Series):
@@ -132,7 +130,7 @@ class EnergySeries(Series):
             **kwargs,
         )
         start_date = str(base_year) + "0101"
-        newindex = pd.date_range(start=start_date, freq=frequency, periods=len(es))
+        newindex = date_range(start=start_date, freq=frequency, periods=len(es))
         es.index = newindex
         return es
 
@@ -188,7 +186,7 @@ class EnergySeries(Series):
                     - list of functions
                     - dict of column names -> functions (or list of functions)
         """
-        index = pd.to_datetime(
+        index = to_datetime(
             {
                 "year": base_year,
                 "month": df.Month,
@@ -199,7 +197,7 @@ class EnergySeries(Series):
         )
         # Adjust timeindex by timedelta
         index -= df.Interval.apply(lambda x: timedelta(minutes=x))
-        index = pd.DatetimeIndex(index)
+        index = DatetimeIndex(index)
         # get data
         data = df.Value
         data.index = index
@@ -320,7 +318,7 @@ class EnergySeries(Series):
             import tsam.timeseriesaggregation as tsam
         except ImportError:
             raise ImportError("tsam is required for discretize_tsam()")
-        if not isinstance(self.index, pd.DatetimeIndex):
+        if not isinstance(self.index, DatetimeIndex):
             raise TypeError("To use tsam, index of series must be a " "DateTimeIndex")
 
         timeSeries = self.to_frame()
@@ -447,7 +445,7 @@ def save_and_show(
             settings.imgs_folder, os.extsep.join([filename, file_format])
         )
 
-        if not isinstance(ax, (np.ndarray, list)):
+        if not isinstance(ax, (ndarray, list)):
             ax = [ax]
         if file_format == "svg":
             for ax in ax:
@@ -559,7 +557,7 @@ def plot_energyseries(
     # noinspection PyUnresolvedReferences
     from mpl_toolkits.mplot3d import Axes3D
 
-    if isinstance(energy_series.index, pd.MultiIndex):
+    if isinstance(energy_series.index, MultiIndex):
         groups = energy_series.groupby(level=0)
         nax = len(groups)
     else:
@@ -577,7 +575,7 @@ def plot_energyseries(
         figsize=(fig_width, fig_height),
         dpi=dpi,
     )
-    if not isinstance(axes, np.ndarray):
+    if not isinstance(axes, ndarray):
         axes = [axes]
 
     for ax, (name, profile) in zip(axes, groups):
@@ -617,7 +615,7 @@ def plot_energyseries(
             x = z.columns
             y = z.index.values
 
-            x, y = np.meshgrid(x, y)
+            x, y = meshgrid(x, y)
             _plot_surface(ax, x, y, z.values, cmap=cmap, **kwargs)
         elif kind == "contour":
             import tsam.timeseriesaggregation as tsam
@@ -627,7 +625,7 @@ def plot_energyseries(
             x = z.columns
             y = z.index.values
 
-            x, y = np.meshgrid(x, y)
+            x, y = meshgrid(x, y)
             _plot_contour(ax, x, y, z.values, cmap=cmap, **kwargs)
         else:
             raise NameError('plot kind "{}" is not supported'.format(kind))
@@ -807,7 +805,7 @@ def _plot_poly_collection(
 
     poly = PolyCollection(verts, **kwargs)
     if zs is not None:
-        poly.set_array(np.asarray(zs))
+        poly.set_array(asarray(zs))
         poly.set_cmap(cmap)
         poly.set_clim(vmin, vmax)
 
@@ -833,7 +831,7 @@ def _plot_surface(ax, x, y, z, cmap=None, **kwargs):
     # To use a custom hillshading mode, override the built-in shading and pass
     # in the rgb colors of the shaded surface calculated from "shade".
     rgb = ls.shade(z, cmap=cm.get_cmap(cmap), vert_exag=0.1, blend_mode="soft")
-    surf = ax.plot_surface(
+    surf = plot_surface(
         x,
         y,
         z,
@@ -1190,3 +1188,32 @@ def _setup_subplots(
     axes = _flatten(axes)
 
     return fig, axes
+
+
+def plot_surface(ax, x, y, z, cmap=None, **kwargs):
+    if cmap is None:
+        cmap = cm.gist_earth
+
+    ls = LightSource(270, 45)
+    # To use a custom hillshading mode, override the built-in shading and pass
+    # in the rgb colors of the shaded surface calculated from "shade".
+    rgb = ls.shade(z, cmap=cm.get_cmap(cmap), vert_exag=0.1, blend_mode="soft")
+    surf = ax.plot_surface(
+        x,
+        y,
+        z,
+        rstride=1,
+        cstride=1,
+        facecolors=rgb,
+        linewidth=0,
+        antialiased=False,
+        shade=False,
+    )
+    return surf
+
+
+def polygon_under_graph(xlist, ylist):
+    """Construct the vertex list which defines the polygon filling the space
+    under
+    the (xlist, ylist) line graph.  Assumes the xs are in ascending order."""
+    return [(xlist[0], 0.0), *zip(xlist, ylist), (xlist[-1], 0.0)]

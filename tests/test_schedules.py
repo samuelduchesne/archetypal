@@ -1,17 +1,11 @@
-import os
-
-import pytest
 import numpy as np
+import pytest
 
-from archetypal import (
-    Schedule,
-    copy_file,
-    UmiSchedule,
-    config,
-    get_eplus_dirs,
-    settings,
-    IDF,
-)
+import archetypal.settings as settings
+from archetypal.idfclass import IDF
+from archetypal.schedule import Schedule
+from archetypal.template.schedule import UmiSchedule
+from archetypal.utils import config, get_eplus_dirs
 
 
 @pytest.fixture()
@@ -28,12 +22,9 @@ def schedules_in_necb_specific(config):
 
 
 def test_plot(schedules_in_necb_specific):
-    import matplotlib.pyplot as plt
-
     schedules_in_necb_specific.plot(
         slice=("2018/01/02", "2018/01/03"), drawstyle="steps-post"
     )
-    plt.show()
 
 
 def test_plot2d(schedules_in_necb_specific):
@@ -42,7 +33,6 @@ def test_plot2d(schedules_in_necb_specific):
 
 def test_make_umi_schedule(config):
     """Tests only a single schedule name"""
-    import matplotlib.pyplot as plt
 
     idf = IDF("tests/input_data/schedules/schedules.idf")
 
@@ -54,7 +44,6 @@ def test_make_umi_schedule(config):
     print(len(new.all_values))
     ax = s.plot(slice=("2018/01/01 00:00", "2018/01/07"), legend=True)
     new.plot(slice=("2018/01/01 00:00", "2018/01/07"), ax=ax, legend=True)
-    plt.show()
     assert s.__class__.__name__ == "YearSchedule"
     assert len(s.all_values) == len(new.all_values)
     np.testing.assert_array_equal(new.all_values, s.all_values)

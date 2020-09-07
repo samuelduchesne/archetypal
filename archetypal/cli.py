@@ -6,7 +6,6 @@
 ################################################################################
 import os
 import time
-from glob import glob
 
 import click
 from path import Path
@@ -23,7 +22,8 @@ from archetypal import (
     __version__,
     ep_version,
     docstring_parameter,
-    parse,
+    EnergyPlusVersion,
+    EnergyPlusVersionError,
 )
 from archetypal.idfclass import idf_version_updater
 
@@ -410,7 +410,7 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     log(
         f"executing {len(file_paths)} file(s):\n{file_list}", verbose=True,
     )
-    weather = next(iter(set_filepaths([weather])))
+    weather, *_ = set_filepaths([weather])
     log(f"using the '{weather.basename()}' weather file\n", verbose=True)
 
     # Call UmiTemplateLibrary constructor with list of IDFs
@@ -430,14 +430,33 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     )
 
 
+def validate_energyplusversion(ctx, param, value):
+    try:
+        return EnergyPlusVersion(value)
+    except EnergyPlusVersionError:
+        raise click.BadParameter("invalid energyplus version")
+
+
+def validate_paths(ctx, param, value):
+    try:
+        file_paths = set_filepaths(value)
+        file_list = "\n".join(
+            [f"{i}. " + str(file.name) for i, file in enumerate(file_paths)]
+        )
+        return file_paths, file_list
+    except FileNotFoundError:
+        raise click.BadParameter("no files were found.")
+
+
 @cli.command()
-@click.argument("idf", nargs=-1, required=True)
+@click.argument("idf", nargs=-1, required=True, callback=validate_paths)
 @click.option(
     "-v",
     "--version",
     "to_version",
     default=settings.ep_version,
     help="EnergyPlus version to upgrade to - e.g., '9-2-0'",
+    callback=validate_energyplusversion,
 )
 @click.option(
     "-p",
@@ -469,15 +488,17 @@ def transition(idf, to_version, cores, yes):
     {ep_version}.
 
     """
-    start_time = time.time()
-
+    file_paths, file_list = idf
+    log(
+        f"executing {len(file_paths)} file(s):\n{file_list}", verbose=True,
+    )
     if not yes:
         overwrite = click.confirm("Would you like to overwrite the file(s)?")
     else:
         overwrite = False
+    start_time = time.time()
 
-    to_version = parse(to_version).dash
-    file_paths = set_filepaths(idf)
+    to_version = to_version.dash
     rundict = {
         file: dict(
             idf_file=file, to_version=to_version, overwrite=overwrite, position=i + 1
@@ -514,7 +535,7 @@ def set_filepaths(idf):
     """
     if not isinstance(idf, (list, tuple)):
         raise ValueError("A list must be passed")
-    idf = (Path(file_or_path).expand() for file_or_path in idf)  # make Paths
+    idf = tuple(Path(file_or_path).expand() for file_or_path in idf)  # make Paths
     file_paths = ()  # Placeholder for tuple of paths
     for file_or_path in idf:
         if file_or_path.isfile():  # if a file, concatenate into file_paths
@@ -522,7 +543,30 @@ def set_filepaths(idf):
         elif file_or_path.isdir():  # if a directory, walkdir (recursive) and get *.idf
             file_paths += tuple(file_or_path.walkfiles("*.idf"))
         else:
-            file_paths += tuple([Path(a).expand() for a in glob(file_or_path)])  # has
-            # wildcard
+            # has wildcard
+            excluded_dirs = [
+                settings.cache_folder,
+                settings.data_folder,
+                settings.imgs_folder,
+                settings.logs_folder,
+            ]
+            legal_folders = [
+                f
+                for f in Path(os.getcwd()).dirs()
+                if not f.stem[0] == "." and f.stem not in excluded_dirs
+            ]
+            file_paths += tuple(
+                [
+                    Path(a).expand()
+                    for path in legal_folders
+                    for a in path.walkfiles(file_or_path)
+                ]
+            )
+            file_paths += tuple(
+                [Path(a).expand() for a in Path(os.getcwd()).glob(file_or_path)]
+            )
     file_paths = set(file_paths)  # Only keep unique values
-    return file_paths
+    if file_paths:
+        return file_paths
+    else:
+        raise FileNotFoundError

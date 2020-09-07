@@ -244,8 +244,11 @@ class UmiBase(object):
             "DataSource": ", ".join(
                 set(
                     itertools.chain(
-                        *[obj.DataSource.split(", ") for obj in predecessors if
-                          obj.DataSource is not None]
+                        *[
+                            obj.DataSource.split(", ")
+                            for obj in predecessors
+                            if obj.DataSource is not None
+                        ]
                     )
                 )
             ),

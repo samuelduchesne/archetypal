@@ -223,7 +223,9 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         hasher = hashlib.md5()
         hasher.update(new_values)
         meta["Name"] = f"Combined_UmiSchedule_{hasher.hexdigest()}"
-        quantity = np.nansum([self.quantity or float("nan"), other.quantity or float("nan")])
+        quantity = np.nansum(
+            [self.quantity or float("nan"), other.quantity or float("nan")]
+        )
         new_obj = UmiSchedule.from_values(
             Values=new_values, Type="Fraction", quantity=quantity, idf=self.idf, **meta,
         )

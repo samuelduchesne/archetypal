@@ -272,7 +272,9 @@ class Schedule(object):
 
     def plot2d(self, **kwargs):
         """Plot the carpet plot of the schedule"""
-        return plot_energyseries_map(EnergySeries(self.series, name=self.Name), **kwargs)
+        return plot_energyseries_map(
+            EnergySeries(self.series, name=self.Name), **kwargs
+        )
 
     plot2d.__doc__ = plot_energyseries_map.__doc__
 

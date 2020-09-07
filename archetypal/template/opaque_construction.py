@@ -462,8 +462,9 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return OpaqueConstruction(
             Name=internal_mass,
             idf=idf,
-            Layers=[MaterialLayer(Material=OpaqueMaterial.from_epbunch(mat),
-                                  Thickness=0.15)],
+            Layers=[
+                MaterialLayer(Material=OpaqueMaterial.from_epbunch(mat), Thickness=0.15)
+            ],
         )
 
     @classmethod

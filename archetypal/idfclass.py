@@ -62,7 +62,12 @@ from archetypal import (
     Schedule,
     EnergyDataFrame,
 )
-from archetypal.utils import _unpack_tuple, parse, extend_class, get_eplus_basedirs
+from archetypal.utils import (
+    _unpack_tuple,
+    extend_class,
+    get_eplus_basedirs,
+    EnergyPlusVersion,
+)
 
 
 class IDF(geomIDF):
@@ -99,8 +104,22 @@ class IDF(geomIDF):
             "idfname",
             "output_directory",
         ],
-        "meters": ["sim_id",],
-        "variables": ["sim_id",],
+        "meters": [
+            "idfobjects",
+            "epw",
+            "annual",
+            "design_day",
+            "readvars",
+            "as_version",
+        ],
+        "variables": [
+            "idfobjects",
+            "epw",
+            "annual",
+            "design_day",
+            "readvars",
+            "as_version",
+        ],
         "sim_id": [
             "idfobjects",
             "epw",
@@ -152,7 +171,7 @@ class IDF(geomIDF):
         self,
         idfname=None,
         epw=None,
-        as_version=None,
+        as_version=settings.ep_version,
         annual=False,
         design_day=False,
         expandobjects=False,
@@ -187,6 +206,7 @@ class IDF(geomIDF):
             include = []
         self.idfname = idfname
         self.epw = epw
+        self.as_version = as_version
         self._custom_processes = custom_processes
         self._include = include
         self._keep_data_err = keep_data_err
@@ -201,7 +221,6 @@ class IDF(geomIDF):
         self.design_day = design_day
         self.annual = annual
         self.prep_outputs = prep_outputs
-        self.as_version = None
         self._position = position
         self.output_prefix = None
 
@@ -228,9 +247,6 @@ class IDF(geomIDF):
         self._variables = None
         self._energyplus_its = 0
         self._sim_id = None
-
-        if parse(as_version):
-            self.as_version = parse(as_version)
 
         self.load_kwargs = dict(epw=epw, **kwargs)
 
@@ -284,11 +300,7 @@ class IDF(geomIDF):
 
     def valid_idds(self):
         """Returns all valid idd version numbers found in IDFVersionUpdater folder"""
-        iddnames = self.idfversionupdater_dir.files("*.idd")
-        return [
-            parse((re.match("V(.*)-Energy\+", idd.stem).groups()[0]))
-            for idd in iddnames
-        ]
+        return self.idf_version._choices
 
     def read(self):
         """
@@ -452,7 +464,7 @@ class IDF(geomIDF):
     @property
     def file_version(self):
         if self._file_version is None:
-            return parse(get_idf_version(self.idfname))
+            return EnergyPlusVersion(get_idf_version(self.idfname))
 
     @property
     def custom_processes(self):
@@ -605,17 +617,12 @@ class IDF(geomIDF):
     def as_version(self):
         if self._as_version is None:
             self._as_version = latest_energyplus_version()
-        return parse(self._as_version)
+        return EnergyPlusVersion(self._as_version)
 
     @as_version.setter
     def as_version(self, value):
         # Parse value and check if above or bellow
-        parsed_version = parse(value)
-        if parsed_version and parsed_version not in self.valid_idds():
-            raise EnergyPlusVersionError(
-                f"{parsed_version} is not valid. Choices are {self.valid_idds()}"
-            )
-        self._as_version = parsed_version
+        self._as_version = EnergyPlusVersion(value)
 
     @property
     def output_directory(self):
@@ -744,7 +751,7 @@ class IDF(geomIDF):
         """Open .htm file in browser"""
         import webbrowser
 
-        html, *_= self.simulation_dir.files("*.htm")
+        html, *_ = self.simulation_dir.files("*.htm")
 
         webbrowser.open(html.abspath())
 
@@ -828,7 +835,9 @@ class IDF(geomIDF):
                     for surface in zone.zonesurfaces:
                         if hasattr(surface, "tilt"):
                             if surface.tilt == 180.0:
-                                part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
+                                part_of = int(
+                                    zone.Part_of_Total_Floor_Area.upper() != "NO"
+                                )
                                 multiplier = float(
                                     zone.Multiplier if zone.Multiplier != "" else 1
                                 )
@@ -1063,9 +1072,9 @@ class IDF(geomIDF):
             if f"_{key}" in self.__dict__.keys():
                 setattr(self, key, value)
 
-        if self.as_version != parse(self.idd_version):
+        if self.as_version != EnergyPlusVersion(self.idd_version):
             raise EnergyPlusVersionError(
-                self.idfname, parse(self.idd_version), self.as_version
+                None, self.idfname, EnergyPlusVersion(self.idd_version), self.as_version
             )
 
         start_time = time.time()
@@ -1891,7 +1900,9 @@ class IDF(geomIDF):
 
     def _execute_transitions(self, idf_file, to_version, **kwargs):
         trans_exec = {
-            parse(re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)): exec
+            EnergyPlusVersion(
+                re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)
+            ): exec
             for exec in self.idfversionupdater_dir.files("Transition-V*")
         }
 
@@ -3151,7 +3162,7 @@ class EnergyPlusProgram:
         if not Path(eplus_home).exists():
             raise EnergyPlusVersionError(
                 msg=f"No EnergyPlus Executable found for version "
-                f"{parse(self.idf.as_version)}"
+                f"{EnergyPlusVersion(self.idf.as_version)}"
             )
         else:
             return Path(eplus_home)
@@ -3260,7 +3271,7 @@ class EnergyPlusExe:
         if not Path(eplus_exe_path).exists():
             raise EnergyPlusVersionError(
                 msg=f"No EnergyPlus Executable found for version "
-                f"{parse(self.ep_version)}"
+                f"{EnergyPlusVersion(self.ep_version)}"
             )
         self.eplus_exe_path = Path(eplus_exe_path).expand()
         self.eplus_weather_path = Path(eplus_weather_path).expand()
@@ -3340,7 +3351,9 @@ class TransitionExe:
     def trans_exec(self):
         if self._trans_exec is None:
             self._trans_exec = {
-                parse(re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)): exec
+                EnergyPlusVersion(
+                    re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)
+                ): exec
                 for exec in self.idf.idfversionupdater_dir.files("Transition-V*")
             }
         return self._trans_exec
@@ -3475,7 +3488,7 @@ class ExpandObjectsThread(Thread):
         if not Path(eplus_home).exists():
             raise EnergyPlusVersionError(
                 msg=f"No EnergyPlus Executable found for version "
-                f"{parse(self.idf.as_version)}"
+                f"{EnergyPlusVersion(self.idf.as_version)}"
             )
         else:
             return Path(eplus_home)
@@ -3622,7 +3635,7 @@ class SlabThread(Thread):
         if not Path(eplus_home).exists():
             raise EnergyPlusVersionError(
                 msg=f"No EnergyPlus Executable found for version "
-                f"{parse(self.idf.as_version)}"
+                f"{EnergyPlusVersion(self.idf.as_version)}"
             )
         else:
             return Path(eplus_home)
@@ -3717,7 +3730,9 @@ class TransitionThread(Thread):
     @property
     def trans_exec(self):
         return {
-            parse(re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)): exec
+            EnergyPlusVersion(
+                re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)
+            ): exec
             for exec in self.idf.idfversionupdater_dir.files("Transition-V*")
         }
 
@@ -3766,7 +3781,7 @@ class TransitionThread(Thread):
         if not Path(eplus_home).exists():
             raise EnergyPlusVersionError(
                 msg=f"No EnergyPlus Executable found for version "
-                f"{parse(self.idf.as_version)}"
+                f"{EnergyPlusVersion(self.idf.as_version)}"
             )
         else:
             return Path(eplus_home)
@@ -3918,7 +3933,7 @@ class EnergyPlusThread(Thread):
         if not Path(eplus_home).exists():
             raise EnergyPlusVersionError(
                 msg=f"No EnergyPlus Executable found for version "
-                f"{parse(self.idf.as_version)}"
+                f"{EnergyPlusVersion(self.idf.as_version)}"
             )
         else:
             return Path(eplus_home)
@@ -4001,7 +4016,7 @@ def _run_exec(
     )
     if not Path(eplus_exe_path).exists():
         raise EnergyPlusVersionError(
-            msg=f"No EnergyPlus Executable found for version {parse(ep_version)}"
+            msg=f"No EnergyPlus Executable found for version {EnergyPlusVersion(ep_version)}"
         )
     if version:
         # just get EnergyPlus version number and return
@@ -4380,7 +4395,7 @@ def idf_version_updater(
         /converting-older-version-files>`_ .
 
     Args:
-        overwrite:
+        overwrite (bool):
         idf_file (Path): path of idf file
         to_version (str, optional): EnergyPlus version in the form "X-X-X".
         out_dir (Path): path of the output_dir
@@ -4422,7 +4437,7 @@ def idf_version_updater(
     else:
         # execute transitions
         with TemporaryDirectory(
-            prefix="transition_run_", suffix=simulname, dir=out_dir
+            prefix="transition_run_", suffix=None, dir=out_dir
         ) as tmp:
             # Move to temporary transition_run folder
             log(f"temporary dir ({Path(tmp).expand()}) created", lg.DEBUG)
@@ -4581,7 +4596,7 @@ def latest_energyplus_version():
 
     return sorted(
         (
-            parse(re.search(r"([\d])-([\d])-([\d])", home.stem).group())
+            EnergyPlusVersion(re.search(r"([\d])-([\d])-([\d])", home.stem).group())
             for home in eplus_homes
         ),
         reverse=True,

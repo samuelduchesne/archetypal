@@ -10,7 +10,7 @@ from archetypal import (
     settings,
     EnergyPlusVersionError,
     EnergyPlusProcessError,
-    parse,
+    EnergyPlusVersion,
 )
 
 
@@ -78,9 +78,9 @@ class TestIDF:
         )
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=wf, as_version=None)
-        assert idf.idf_version == parse("9-2-0")
+        assert idf.idf_version == EnergyPlusVersion("9-2-0")
         assert idf.idd_version == (9, 2, 0)
-        assert idf.file_version == parse("9-2-0")
+        assert idf.file_version == EnergyPlusVersion("9-2-0")
 
     def test_default_version_specified_period(self):
         file = (
@@ -89,9 +89,9 @@ class TestIDF:
         )
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=wf, as_version="9.2.0")
-        assert idf.idf_version == parse("9-2-0")
+        assert idf.idf_version == EnergyPlusVersion("9-2-0")
         assert idf.idd_version == (9, 2, 0)
-        assert idf.file_version == parse("9-2-0")
+        assert idf.file_version == EnergyPlusVersion("9-2-0")
 
     def test_default_version_specified_dash(self):
         file = (
@@ -100,23 +100,23 @@ class TestIDF:
         )
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=wf, as_version="9-2-0")
-        assert idf.idf_version == parse("9-2-0")
+        assert idf.idf_version == EnergyPlusVersion("9-2-0")
         assert idf.idd_version == (9, 2, 0)
-        assert idf.file_version == parse("9-2-0")
+        assert idf.file_version == EnergyPlusVersion("9-2-0")
 
     def test_specific_version(self, config, natvent_v9_1_0):
-        assert natvent_v9_1_0.idf_version == parse("9-1-0")
+        assert natvent_v9_1_0.idf_version == EnergyPlusVersion("9-1-0")
         assert natvent_v9_1_0.idd_version == (9, 1, 0)
-        assert natvent_v9_1_0.file_version == parse("9-1-0")
+        assert natvent_v9_1_0.file_version == EnergyPlusVersion("9-1-0")
 
-    def test_specific_version_error_simulate(self, config, natvent_v9_1_0):
+    def test_specific_version_error_simulate(self, natvent_v9_1_0):
         with pytest.raises(EnergyPlusVersionError):
             natvent_v9_1_0.simulate()
 
     def test_version(self, natvent_v9_1_0):
         # setting as_version
         natvent_v9_1_0.as_version = "9-2-0"
-        assert natvent_v9_1_0.as_version == parse("9-2-0")
+        assert natvent_v9_1_0.as_version == EnergyPlusVersion("9-2-0")
 
         # setting idfname
         natvent_v9_1_0.idfname = "this_name"
@@ -208,9 +208,7 @@ class TestIDF:
             pytest.param(
                 "Supermarket",
                 4181,
-                marks=pytest.mark.skip(
-                    "Supermarket missing from BTAP " "database"
-                ),
+                marks=pytest.mark.skip("Supermarket missing from BTAP " "database"),
             ),
             ("Warehouse", 4835),
         ],

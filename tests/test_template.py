@@ -64,6 +64,7 @@ def other_idf_object(config):
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     yield IDF(file, epw=w)
 
+
 @pytest.fixture(scope="module")
 def other_idf_object_copy(config):
     """Another IDF object with a different signature. Yields both the idf and the sql"""

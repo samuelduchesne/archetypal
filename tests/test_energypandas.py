@@ -7,9 +7,7 @@ from archetypal import IDF, settings, EnergyDataFrame, EnergySeries
 
 @pytest.fixture()
 def edf():
-    frame = EnergyDataFrame(
-        {"Temp": range(0, 10)}, units="C", extrameta="this"
-    )
+    frame = EnergyDataFrame({"Temp": range(0, 10)}, units="C", extrameta="this")
     yield frame
 
     # check that the name is passed to the slice

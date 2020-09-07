@@ -4,7 +4,7 @@ import pytest
 from click.testing import CliRunner
 from path import Path
 
-from archetypal import settings, log, IDF
+from archetypal import settings, log
 from archetypal.cli import cli
 from tests.test_trnsys import get_platform
 
@@ -282,9 +282,7 @@ class TestCli:
     def test_reduce(self):
         """Tests the 'reduce' method"""
         runner = CliRunner()
-        base = Path(
-            "tests/input_data/necb"
-        )
+        base = Path("tests/input_data/necb")
         outname = "tests/.temp/warehouse.json"
         result = runner.invoke(
             cli,
@@ -303,7 +301,7 @@ class TestCli:
                 "reduce",
                 "-w",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_*.epw",
-                *base.files("*Ware*.idf"),
+                base / "*Ware*.idf",
                 "-o",
                 outname,
             ],

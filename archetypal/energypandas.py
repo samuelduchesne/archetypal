@@ -4,15 +4,14 @@ import time
 import warnings
 from datetime import timedelta
 
-from mpl_toolkits.mplot3d import axes3d
-from numpy import ndarray, meshgrid, asarray
 import tsam.timeseriesaggregation as tsam
 from matplotlib import pyplot as plt, cm
 from matplotlib.colors import LightSource
+from numpy import ndarray, meshgrid, asarray
 from pandas.core.frame import DataFrame
 from pandas.core.generic import NDFrame
-from pandas.core.indexes.multi import MultiIndex
 from pandas.core.indexes.datetimes import date_range, DatetimeIndex
+from pandas.core.indexes.multi import MultiIndex
 from pandas.core.reshape.pivot import pivot_table
 from pandas.core.series import Series
 from pandas.core.tools.datetimes import to_datetime

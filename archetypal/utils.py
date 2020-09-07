@@ -26,7 +26,6 @@ import warnings
 from collections import OrderedDict
 from concurrent.futures._base import as_completed
 from datetime import datetime, timedelta
-from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -101,7 +100,7 @@ def config(
     settings.umitemplate = umitemplate
     settings.trnsys_default_folder = validate_trnsys_folder(trnsys_default_folder)
     settings.zone_weight.set_weigth_attr(default_weight_factor)
-    settings.ep_version = parse(ep_version).dash
+    settings.ep_version = EnergyPlusVersion(ep_version).dash
     settings.debug = debug
 
     # if logging is turned on, log that we are configured
@@ -723,38 +722,6 @@ class EnergyPlusWeatherError(Exception):
     pass
 
 
-class EnergyPlusVersion(Version):
-    @property
-    def dash(self):
-        # type: () -> str
-        return "-".join(map(str, (self.major, self.minor, self.micro)))
-
-    def __repr__(self):
-        # type: () -> str
-        return "<EnergyPlusVersion({0})>".format(repr(str(self)))
-
-
-def parse(version):
-    # type: (Union[str, tuple, Version]) -> Union[None, EnergyPlusVersion]
-    """
-    Parse the given version string and return either a :class:`Version` object
-    or a :class:`LegacyVersion` object depending on if the given version is
-    a valid PEP 440 version or a legacy version.
-    """
-    if not version:
-        return None
-    if isinstance(version, tuple):
-        version = ".".join(map(str, version[0:3]))
-    if isinstance(version, Version):
-        return EnergyPlusVersion(
-            ".".join(map(str, (version.major, version.minor, version.micro)))
-        )
-    try:
-        return EnergyPlusVersion(version)
-    except InvalidVersion:
-        return EnergyPlusVersion(version.replace("-", "."))
-
-
 @contextlib.contextmanager
 def cd(path):
     """
@@ -1273,3 +1240,41 @@ def extend_class(cls):
         victorlei@gmail.com
     """
     return lambda f: (setattr(cls, f.__name__, f) or f)
+
+
+class InvalidEnergyPlusVersion(InvalidVersion):
+    """
+    An invalid version was found, users should refer to EnergyPlus Documentation.
+    """
+
+
+class EnergyPlusVersion(Version):
+    iddnames = (
+        get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
+    ).files("*.idd")
+    _choices = [re.match("V(.*)-Energy\+", idd.stem).groups()[0] for idd in iddnames]
+
+    @property
+    def dash(self):
+        # type: () -> str
+        return "-".join(map(str, (self.major, self.minor, self.micro)))
+
+    def __repr__(self):
+        # type: () -> str
+        return "<EnergyPlusVersion({0})>".format(repr(str(self)))
+
+    def __init__(self, version):
+        """
+
+        Args:
+            version (str, EnergyPlusVersion):
+        """
+        if isinstance(version, tuple):
+            version = ".".join(map(str, version[0:3]))
+        if isinstance(version, Version):
+            version = ".".join(map(str, (version.major, version.minor, version.micro)))
+        if isinstance(version, str) and "-" in version:
+            version = version.replace("-", ".")
+        super(EnergyPlusVersion, self).__init__(version)
+        if self.dash not in self._choices:
+            raise InvalidEnergyPlusVersion

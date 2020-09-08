@@ -1890,7 +1890,7 @@ class IDF(geomIDF):
             EnergySeries_kwds:
         """
         if prep_outputs:
-            OutputPrep(self).add_custom(prep_outputs)
+            OutputPrep(self).add_custom(prep_outputs).apply()
             self.simulate()
         rd = ReportData.from_sqlite(self.sql_file, table_name=energy_out_variable_name)
         profile = EnergySeries.from_reportdata(

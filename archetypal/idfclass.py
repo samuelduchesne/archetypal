@@ -2672,6 +2672,19 @@ class Outputs:
                 "key": "OUTPUT:METER",
                 **dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
             },
+            {
+                "key": "OUTPUT:METER",
+                **dict(
+                    Key_Name="Refrigeration:Electricity", Reporting_Frequency="hourly"
+                ),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(
+                    Key_Name="Refrigeration:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                ),
+            },
         ]
 
         self._outputs.extend(outputs)

@@ -4795,7 +4795,7 @@ class Meters:
         for key, group in meters.groupby("key"):
             meters_dict = group.T.to_dict()
             setattr(
-                Meters,
+                self,
                 key.replace(":", "").replace(" ", "_"),
                 MeterGroup(self._idf, meters_dict),
             )
@@ -4911,7 +4911,7 @@ class Variables:
         for key, group in variables.groupby("key"):
             variable_dict = group.T.to_dict()
             setattr(
-                Variables,
+                self,
                 key.replace(":", "").replace(" ", "_"),
                 VariableGroup(self._idf, variable_dict),
             )

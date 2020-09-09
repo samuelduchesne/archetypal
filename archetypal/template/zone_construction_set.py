@@ -93,7 +93,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
     def from_zone(cls, zone, **kwargs):
         """
         Args:
-            zone (Zone):
+            zone (ZoneDefinition):
         """
         name = zone.Name + "_ZoneConstructionSet"
         # dispatch surfaces
@@ -103,7 +103,8 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             for disp_surf in surface_dispatcher(surf, zone):
                 if disp_surf:
                     if disp_surf.Surface_Type == "Facade":
-                        facade.append(disp_surf)
+                        if zone.is_part_of_conditioned_floor_area:
+                            facade.append(disp_surf)
                     elif disp_surf.Surface_Type == "Ground":
                         ground.append(disp_surf)
                     elif disp_surf.Surface_Type == "Partition":
@@ -319,6 +320,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         )
         oc.area = surf.area
         oc.Surface_Type = "Facade"
+        oc.Category = oc.Surface_Type
         return oc
 
     @staticmethod
@@ -337,6 +339,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         )
         oc.area = surf.area
         oc.Surface_Type = "Ground"
+        oc.Category = oc.Surface_Type
         return oc
 
     @staticmethod
@@ -352,6 +355,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             oc = OpaqueConstruction.from_epbunch(the_construction)
             oc.area = surf.area
             oc.Surface_Type = "Partition"
+            oc.Category = oc.Surface_Type
             log(
                 'surface "%s" assigned as a Partition' % surf.Name,
                 lg.DEBUG,
@@ -380,6 +384,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         )
         oc.area = surf.area
         oc.Surface_Type = "Roof"
+        oc.Category = oc.Surface_Type
         return oc
 
     @staticmethod
@@ -398,6 +403,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         )
         oc.area = surf.area
         oc.Surface_Type = "Slab"
+        oc.Category = oc.Surface_Type
         return oc
 
     @staticmethod
@@ -440,7 +446,7 @@ def surface_dispatcher(surf, zone):
     """
     Args:
         surf (EpBunch):
-        zone (EpBunch):
+        zone (ZoneDefinition):
     """
     dispatch = {
         ("Wall", "Outdoors"): ZoneConstructionSet._do_facade,

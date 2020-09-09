@@ -19,7 +19,7 @@ from archetypal.template import (
     ZoneConstructionSet,
     ZoneDefinition,
     calc_simple_glazing,
-    ZoneGraph,
+    ZoneGraph, DimmingTypes,
 )
 from archetypal.template.umi_base import clear_cache, load_json_objects, UniqueName
 
@@ -1380,7 +1380,7 @@ class TestZoneLoad:
         z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
         zone_loads = ZoneLoad.from_zone(z)
 
-        assert zone_loads.DimmingType == "Off"
+        assert zone_loads.DimmingType == DimmingTypes.Off
         assert zone_loads.EquipmentPowerDensity == 8.07
         assert zone_loads.IlluminanceTarget == 500
         assert zone_loads.IsEquipmentOn

@@ -8,6 +8,7 @@
 import collections
 import logging as lg
 import sqlite3
+from enum import Enum
 
 import pandas as pd
 from deprecation import deprecated
@@ -17,6 +18,18 @@ import archetypal
 from archetypal import log, timeit, settings
 from archetypal.template import UmiBase, Unique, UmiSchedule, UniqueName
 from archetypal.utils import reduce
+
+
+class DimmingTypes(Enum):
+    Continuous = 0
+    Off = 1
+    Stepped = 2
+
+    def __lt__(self, other):
+        return self._value_ < other._value_
+
+    def __gt__(self, other):
+        return self._value_ > other._value_
 
 
 class ZoneLoad(UmiBase, metaclass=Unique):
@@ -31,7 +44,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
 
     def __init__(
         self,
-        DimmingType="Continuous",
+        DimmingType=DimmingTypes.Continuous,
         EquipmentAvailabilitySchedule=None,
         EquipmentPowerDensity=0,
         IlluminanceTarget=500,
@@ -47,17 +60,17 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         """Initialize a new ZoneLoad object
 
         Args:
-            DimmingType (str): Different types to dim the lighting to respect the
-                IlluminanceTraget and taking into account the daylight illuminance:
-                    - If `Continuous`, the overhead lights dim continuously and linearly
-                      from (maximum electric power, maximum light output) to (minimum
-                      electric power, minimum light output) as the daylight illuminance
-                      increases. The lights stay on at the minimum point with further
-                      increase in the daylight illuminance.
-                    - If `Stepped`, the electric power input and light output vary
-                      in discrete, equally spaced steps.
-                    - If `Off`, Lights switch off completely when the minimum
+            DimmingType (int): Different types to dim the lighting to respect the
+                IlluminanceTarget and taking into account the daylight illuminance:
+                    - Continuous = 0, the overhead lights dim continuously and
+                      linearly from (maximum electric power, maximum light output) to (
+                      minimum electric power, minimum light output) as the daylight
+                      illuminance increases. The lights stay on at the minimum point
+                      with further increase in the daylight illuminance.
+                    - Off = 1, Lights switch off completely when the minimum
                       dimming point is reached.
+                    - Stepped = 2, the electric power input and light output vary
+                      in discrete, equally spaced steps.
             EquipmentAvailabilitySchedule (UmiSchedule): The name of
                 the schedule (Day | Week | Year) that modifies the design level
                 parameter for electric equipment.
@@ -82,7 +95,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             **kwargs: Other keywords passed to the parent constructor :class:`UmiBase`.
         """
         super(ZoneLoad, self).__init__(**kwargs)
-        self.DimmingType = DimmingType
+        self.DimmingType = DimmingTypes(DimmingType)
         self.EquipmentAvailabilitySchedule = EquipmentAvailabilitySchedule
         self.EquipmentPowerDensity = EquipmentPowerDensity
         self.IlluminanceTarget = IlluminanceTarget
@@ -195,7 +208,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["DimmingType"] = self.DimmingType
+        data_dict["DimmingType"] = self.DimmingType.value
         data_dict[
             "EquipmentAvailabilitySchedule"
         ] = self.EquipmentAvailabilitySchedule.to_dict()
@@ -431,7 +444,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             )
 
         new_attr = dict(
-            DimmingType=self._str_mean(other, "DimmingType"),
+            DimmingType=max(self.DimmingType, other.DimmingType),
             EquipmentAvailabilitySchedule=UmiSchedule.combine(
                 self.EquipmentAvailabilitySchedule,
                 other.EquipmentAvailabilitySchedule,
@@ -471,7 +484,7 @@ class ZoneLoad(UmiBase, metaclass=Unique):
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
         if not self.DimmingType:
-            self.DimmingType = "Continuous"
+            self.DimmingType = DimmingTypes.Continuous
         if not self.EquipmentAvailabilitySchedule:
             self.EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule()
         if not self.EquipmentPowerDensity:
@@ -536,14 +549,14 @@ def _resolve_dimming_type(zone):
 
         # There should only be one control per zone. A set of controls should return 1.
         if len(set(ctrl_types)) == 1:
-            dimming_type = next(iter(set(ctrl_types)))
+            dimming_type, *_ = set(ctrl_types)
             if dimming_type.lower() not in ["continuous", "stepped"]:
                 raise ValueError(
                     f"A dimming type of type '{dimming_type}' for zone '{zone.Name}' is not yet supported in UMI"
                 )
             else:
                 log(f"Dimming type for zone '{zone.Name}' set to '{dimming_type}'")
-                return dimming_type  # Return first element
+                return DimmingTypes[dimming_type]  # Return first element
         else:
             raise ValueError(
                 "Could not resolve more than one dimming types for Zone {}. "
@@ -555,7 +568,7 @@ def _resolve_dimming_type(zone):
             "No dimming type found for zone {}. Setting as Off".format(zone.Name),
             lg.DEBUG,
         )
-        return "Off"
+        return DimmingTypes.Off
 
 
 def _resolve_illuminance_target(zone):

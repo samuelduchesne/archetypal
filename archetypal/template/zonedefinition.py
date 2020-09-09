@@ -284,7 +284,7 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
 
     @timeit
     def _internalmassconstruction(self):
-        """Specifies the internal mass construction based on InternaMass objects
+        """Specifies the internal mass construction based on InternalMass objects
         referenced to the zone. Group internal walls into a ThermalMass
         object for this Zone"""
 
@@ -303,7 +303,9 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
                     # then create object and append to list. There could be more then
                     # one.
                     mass_opaque_constructions.append(
-                        OpaqueConstruction.from_epbunch(int_obj)
+                        OpaqueConstruction.from_epbunch(
+                            int_obj, Category="Internal Mass"
+                        )
                     )
                     area += float(int_obj.Surface_Area)
 

@@ -9,6 +9,7 @@ import collections
 import logging as lg
 import math
 import sqlite3
+from enum import Enum
 
 import numpy as np
 from deprecation import deprecated
@@ -17,6 +18,60 @@ from sigfig import round
 import archetypal
 from archetypal import float_round, ReportData, log, timeit, settings
 from archetypal.template import UmiBase, Unique, UmiSchedule, UniqueName
+
+
+class UmiBaseEnum(Enum):
+    def __lt__(self, other):
+        return self._value_ < other._value_
+
+    def __gt__(self, other):
+        return self._value_ > other._value_
+
+
+class FuelType(Enum):
+    """Fuel types taken from EnergyPlus 9.2 .idd file for OtherEquipment."""
+
+    NONE = 0
+    Electricity = 1
+    NaturalGas = 2
+    PropaneGas = 3
+    FuelOil1 = 4
+    FuelOil2 = 5
+    Diesel = 6
+    Gasoline = 7
+    Coal = 8
+    OtherFuel1 = 9
+    OtherFuel2 = 10
+    Steam = 11
+    DistrictHeating = 12
+    DistrictCooling = 13
+
+
+class HeatRecoveryTypes(UmiBaseEnum):
+    NONE = 0
+    Enthalpy = 1
+    Sensible = 2
+
+
+class EconomizerTypes(UmiBaseEnum):
+    NoEconomizer = 0
+    DifferentialDryBulb = 1
+    DifferentialEnthalphy = 2
+
+
+class IdealSystemLimit(UmiBaseEnum):
+    """LimitFlowRate means that the heating supply air flow rate will be
+    limited to the value specified in the next input field. LimitCapacity means that
+    the sensible heating capacity will be limited to the value specified in the
+    Maximum Sensible Heating Capacity field. LimitFlowRateAndCapacity means that both
+    flow rate and capacity will be limited. NoLimit (the default) means that there will
+    not be any limit on the heating supply air flow rate or capacity and the subsequent
+    two fields will be ignored."""
+
+    NoLimit = 0
+    LimitFlowRate = 1
+    LimitCapacity = 2
+    LimitFlowRateAndCapacity = 3
 
 
 class ZoneConditioning(UmiBase, metaclass=Unique):
@@ -31,23 +86,25 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         IsHeatingOn=False,
         HeatingSetpoint=20,
         HeatingSchedule=None,
-        HeatingLimitType="NoLimit",
+        HeatingLimitType=IdealSystemLimit.NoLimit,
+        HeatingFuelType=FuelType.NaturalGas,
         MaxHeatingCapacity=100,
         MaxHeatFlow=100,
         HeatingCoeffOfPerf=1,
         IsCoolingOn=False,
         CoolingSetpoint=26,
         CoolingSchedule=None,
-        CoolingLimitType="NoLimit",
+        CoolingLimitType=IdealSystemLimit.NoLimit,
+        CoolingFuelType=FuelType.Electricity,
         MaxCoolingCapacity=100,
         MaxCoolFlow=100,
         CoolingCoeffOfPerf=1,
         IsMechVentOn=False,
-        EconomizerType="NoEconomizer",
+        EconomizerType=EconomizerTypes.NoEconomizer,
         MechVentSchedule=None,
         MinFreshAirPerArea=0,
         MinFreshAirPerPerson=0,
-        HeatRecoveryType="None",
+        HeatRecoveryType=HeatRecoveryTypes.NONE,
         HeatRecoveryEfficiencyLatent=0.65,
         HeatRecoveryEfficiencySensible=0.7,
         **kwargs,
@@ -62,8 +119,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             HeatingSchedule (UmiSchedule): The availability schedule for space
                 heating in this zone. If the value is 0, heating is not
                 available, and heating is not supplied to the zone.
-            HeatingLimitType (str): The input must be either LimitFlowRate,
-                LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
+            HeatingLimitType (int): The input must be either LimitFlowRate = 1,
+                LimitCapacity = 2, LimitFlowRateAndCapacity = 3 or NoLimit = 0.
             MaxHeatingCapacity (float): The maximum allowed sensible heating
                 capacity in Watts if Heating Limit is set to LimitCapacity or
                 LimitFlowRateAndCapacity
@@ -80,8 +137,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             CoolingSchedule (UmiSchedule): The availability schedule for space
                 cooling in this zone. If the value is 0, cooling is not
                 available, and cooling is not supplied to the zone.
-            CoolingLimitType (str): The input must be either LimitFlowRate,
-                LimitCapacity, LimitFlowRateAndCapacity or NoLimit.
+            CoolingLimitType (str): The input must be either LimitFlowRate = 1,
+                LimitCapacity = 2, LimitFlowRateAndCapacity = 3 or NoLimit = 0.
             MaxCoolingCapacity (float): The maximum allowed total (sensible plus
                 latent) cooling capacity in Watts per square meter.
             MaxCoolFlow (float): The maximum cooling supply air flow rate in
@@ -94,9 +151,9 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 building.
             IsMechVentOn (bool): If True, an outdoor air quantity for use by the
                 model is calculated.
-            EconomizerType (str): Specifies if there is an outdoor air
-                economizer. The choices are: NoEconomizer, DifferentialDryBulb,
-                or DifferentialEnthalpy. For the moment, the EconomizerType is
+            EconomizerType (int): Specifies if there is an outdoor air
+                economizer. The choices are: NoEconomizer = 0, DifferentialDryBulb = 1,
+                or DifferentialEnthalpy = 2. For the moment, the EconomizerType is
                 applied for the entire building (every zone with the same
                 EconomizerType). Moreover, since UMI does not support all
                 Economizer Types, some assumptions are made:
@@ -125,8 +182,8 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             MinFreshAirPerPerson (float): The design outdoor air volume flow
                 rate per person for this zone in cubic meters per second per
                 person. The default is 0.00944 (20 cfm per person).
-            HeatRecoveryType (str): Select from *None*, *Sensible*, or
-                *Enthalpy*. None means that there is no heat recovery. Sensible
+            HeatRecoveryType (int): Select from None = 0, Sensible = 1, or
+                Enthalpy = 2. None means that there is no heat recovery. Sensible
                 means that there is sensible heat recovery whenever the zone
                 exhaust air temperature is more favorable than the outdoor air
                 temperature. Enthalpy means that there is latent and sensible
@@ -167,14 +224,16 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         self.HeatingSchedule = HeatingSchedule
         self.CoolingSchedule = CoolingSchedule
         self.CoolingCoeffOfPerf = CoolingCoeffOfPerf
-        self.CoolingLimitType = CoolingLimitType
+        self.CoolingLimitType = IdealSystemLimit(CoolingLimitType)
+        self.CoolingFuelType = FuelType(CoolingFuelType)
         self.CoolingSetpoint = CoolingSetpoint
-        self.EconomizerType = EconomizerType
+        self.EconomizerType = EconomizerTypes(EconomizerType)
         self.HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencyLatent
         self.HeatRecoveryEfficiencySensible = HeatRecoveryEfficiencySensible
-        self.HeatRecoveryType = HeatRecoveryType
+        self.HeatRecoveryType = HeatRecoveryTypes(HeatRecoveryType)
         self.HeatingCoeffOfPerf = HeatingCoeffOfPerf
-        self.HeatingLimitType = HeatingLimitType
+        self.HeatingLimitType = IdealSystemLimit(HeatingLimitType)
+        self.HeatingFuelType = FuelType(HeatingFuelType)
         self.HeatingSetpoint = HeatingSetpoint
         self.IsCoolingOn = IsCoolingOn
         self.IsHeatingOn = IsHeatingOn
@@ -333,10 +392,12 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             if not math.isnan(self.CoolingSetpoint)
             else 26
         )
-        data_dict["CoolingLimitType"] = self.CoolingLimitType
-        data_dict["EconomizerType"] = self.EconomizerType
+        data_dict["CoolingLimitType"] = self.CoolingLimitType.value
+        data_dict["CoolingFuelType"] = self.CoolingFuelType.value
+        data_dict["EconomizerType"] = self.EconomizerType.value
         data_dict["HeatingCoeffOfPerf"] = round(self.HeatingCoeffOfPerf, 3)
-        data_dict["HeatingLimitType"] = self.HeatingLimitType
+        data_dict["HeatingLimitType"] = self.HeatingLimitType.value
+        data_dict["HeatingFuelType"] = self.HeatingFuelType.value
         data_dict["HeatingSchedule"] = self.HeatingSchedule.to_dict()
         data_dict["HeatingSetpoint"] = (
             round(self.HeatingSetpoint, 3)
@@ -347,7 +408,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         data_dict[
             "HeatRecoveryEfficiencySensible"
         ] = self.HeatRecoveryEfficiencySensible
-        data_dict["HeatRecoveryType"] = self.HeatRecoveryType
+        data_dict["HeatRecoveryType"] = self.HeatRecoveryType.value
         data_dict["IsCoolingOn"] = self.IsCoolingOn
         data_dict["IsHeatingOn"] = self.IsHeatingOn
         data_dict["IsMechVentOn"] = self.IsMechVentOn
@@ -404,25 +465,25 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """
         # Economizer
         controllers_in_idf = zone.idf.idfobjects["Controller:OutdoorAir".upper()]
-        self.EconomizerType = "NoEconomizer"  # default value
+        self.EconomizerType = EconomizerTypes.NoEconomizer  # default value
 
         for object in controllers_in_idf:
             if object.Economizer_Control_Type == "NoEconomizer":
-                self.EconomizerType = "NoEconomizer"
+                self.EconomizerType = EconomizerTypes.NoEconomizer
             elif object.Economizer_Control_Type == "DifferentialEnthalphy":
-                self.EconomizerType = "DifferentialEnthalphy"
+                self.EconomizerType = EconomizerTypes.DifferentialEnthalphy
             elif object.Economizer_Control_Type == "DifferentialDryBulb":
-                self.EconomizerType = "DifferentialDryBulb"
+                self.EconomizerType = EconomizerTypes.DifferentialDryBulb
             elif object.Economizer_Control_Type == "FixedDryBulb":
-                self.EconomizerType = "DifferentialDryBulb"
+                self.EconomizerType = EconomizerTypes.DifferentialDryBulb
             elif object.Economizer_Control_Type == "FixedEnthalpy":
-                self.EconomizerType = "DifferentialEnthalphy"
+                self.EconomizerType = EconomizerTypes.DifferentialEnthalphy
             elif object.Economizer_Control_Type == "ElectronicEnthalpy":
-                self.EconomizerType = "DifferentialEnthalphy"
+                self.EconomizerType = EconomizerTypes.DifferentialEnthalphy
             elif object.Economizer_Control_Type == "FixedDewPointAndDryBulb":
-                self.EconomizerType = "DifferentialDryBulb"
+                self.EconomizerType = EconomizerTypes.DifferentialDryBulb
             elif object.Economizer_Control_Type == "DifferentialDryBulbAndEnthalpy":
-                self.EconomizerType = "DifferentialEnthalphy"
+                self.EconomizerType = EconomizerTypes.DifferentialEnthalphy
 
     def _set_mechanical_ventilation(self, zone):
         """Mechanical Ventilation in UMI (or Archsim-based models) is applied to an
@@ -721,7 +782,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
               effectiveness.
             - HeatRecoveryEfficiencySensible (float): The sensible heat recovery
               effectiveness.
-            - HeatRecoveryType (str): 'None', 'Sensible' or 'Enthalpy'.
+            - HeatRecoveryType (int): None = 0, Sensible = 1 or Enthalpy = 2.
             - comment (str): A comment to append to the class comment attribute.
 
         Args:
@@ -752,7 +813,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         # Set defaults
         HeatRecoveryEfficiencyLatent = 0.7
         HeatRecoveryEfficiencySensible = 0.65
-        HeatRecoveryType = "None"
+        HeatRecoveryType = HeatRecoveryTypes.NONE
         comment = ""
 
         # iterate over those objects. If the list is empty, it will simply pass.
@@ -767,7 +828,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 HeatRecoveryEfficiencySensible = (nsaot - nsait) / (n2ait - nsait)
                 # Hypotheses: HeatRecoveryEfficiencySensible - 0.05
                 HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencySensible - 0.05
-                HeatRecoveryType = "Enthalpy"
+                HeatRecoveryType = HeatRecoveryTypes.Enthalpy
                 comment = (
                     "HeatRecoveryEfficiencySensible was calculated "
                     "using this formula: (Supply Air Outlet T°C -; "
@@ -784,7 +845,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                     HeatRecoveryEfficiencyLatent,
                     HeatRecoveryEfficiencySensible,
                 ) = self._get_recoverty_effectiveness(object, zone)
-                HeatRecoveryType = "Enthalpy"
+                HeatRecoveryType = HeatRecoveryTypes.Enthalpy
 
                 comment = (
                     "HeatRecoveryEfficiencies were calculated using "
@@ -797,7 +858,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 # Use default values
                 HeatRecoveryEfficiencyLatent = 0.7
                 HeatRecoveryEfficiencySensible = 0.65
-                HeatRecoveryType = "Enthalpy"
+                HeatRecoveryType = HeatRecoveryTypes.Enthalpy
 
             elif (
                 object.key.upper() == "HeatExchanger:Desiccant:BalancedFlow"
@@ -854,7 +915,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 want to characterize
         """
         if nolimit:
-            return "NoLimit", 100, 100
+            return IdealSystemLimit.NoLimit, 100, 100
         try:
             cap = (
                 zone_size[zone_size["LoadType"] == load_name]["UserDesLoad"].values[0]
@@ -864,11 +925,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
                 zone_size[zone_size["LoadType"] == load_name]["UserDesFlow"].values[0]
                 / zone.area
             )
-            LimitType = "LimitFlowRateAndCapacity"
+            LimitType = IdealSystemLimit.LimitFlowRateAndCapacity
         except:
             cap = 100
             flow = 100
-            LimitType = "NoLimit"
+            LimitType = IdealSystemLimit.NoLimit
         return LimitType, cap, flow
 
     @staticmethod
@@ -961,14 +1022,14 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             )
 
         a = UmiBase._float_mean(self, other, "CoolingCoeffOfPerf", weights)
-        b = UmiBase._str_mean(self, other, "CoolingLimitType")
+        b = max(self.CoolingLimitType, other.CoolingLimitType)
         c = UmiBase._float_mean(self, other, "CoolingSetpoint", weights)
-        d = UmiBase._str_mean(self, other, "EconomizerType")
+        d = max(self.EconomizerType, other.EconomizerType)
         e = UmiBase._float_mean(self, other, "HeatRecoveryEfficiencyLatent", weights)
         f = UmiBase._float_mean(self, other, "HeatRecoveryEfficiencySensible", weights)
-        g = UmiBase._str_mean(self, other, "HeatRecoveryType")
+        g = max(self.HeatRecoveryType, other.HeatRecoveryType)
         h = UmiBase._float_mean(self, other, "HeatingCoeffOfPerf", weights)
-        i = UmiBase._str_mean(self, other, "HeatingLimitType")
+        i = max(self.HeatingLimitType, other.HeatingLimitType)
         j = UmiBase._float_mean(self, other, "HeatingSetpoint", weights)
         k = any((self.IsCoolingOn, other.IsCoolingOn))
         l = any((self.IsHeatingOn, other.IsHeatingOn))
@@ -1041,9 +1102,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             CoolingCoeffOfPerf=self.CoolingCoeffOfPerf,
             CoolingSetpoint=self.CoolingSetpoint,
             CoolingLimitType=self.CoolingLimitType,
+            CoolingFuelType=self.CoolingFuelType,
             EconomizerType=self.EconomizerType,
             HeatingCoeffOfPerf=self.HeatingCoeffOfPerf,
             HeatingLimitType=self.HeatingLimitType,
+            HeatingFuelType=self.HeatingFuelType,
             HeatingSchedule=self.HeatingSchedule,
             HeatingSetpoint=self.HeatingSetpoint,
             HeatRecoveryEfficiencyLatent=self.HeatRecoveryEfficiencyLatent,

@@ -7,7 +7,7 @@
 
 import collections
 import logging as lg
-from enum import IntEnum
+from enum import Enum
 from functools import reduce
 
 import tabulate
@@ -20,6 +20,29 @@ from archetypal.template import MaterialLayer, UmiSchedule, UniqueName
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
 from archetypal.template.umi_base import UmiBase, Unique
+
+
+class WindowType(Enum):
+    External = 0
+    Internal = 1
+
+    def __lt__(self, other):
+        return self._value_ < other._value_
+
+    def __gt__(self, other):
+        return self._value_ > other._value_
+
+
+class ShadingType(Enum):
+
+    ExteriorShade = 0
+    InteriorShade = 1
+
+    def __lt__(self, other):
+        return self._value_ < other._value_
+
+    def __gt__(self, other):
+        return self._value_ > other._value_
 
 
 class WindowConstruction(UmiBase, metaclass=Unique):
@@ -255,11 +278,6 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         return self
 
 
-class WindowType(IntEnum):
-    External = 0
-    Internal = 1
-
-
 class WindowSetting(UmiBase, metaclass=Unique):
     """Window Settings define the various window-related properties of a
     specific :class:`Zone`. Control natural ventilation, shading and airflow
@@ -290,7 +308,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         ShadingSystemAvailabilitySchedule=None,
         ShadingSystemSetpoint=180,
         ShadingSystemTransmittance=0.5,
-        ShadingSystemType=0,
+        ShadingSystemType=ShadingType.ExteriorShading,
         Type=WindowType.External,
         IsZoneMixingOn=False,
         ZoneMixingAvailabilitySchedule=None,
@@ -343,8 +361,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
         self.OperableArea = OperableArea
         self.ShadingSystemSetpoint = ShadingSystemSetpoint
         self.ShadingSystemTransmittance = ShadingSystemTransmittance
-        self.ShadingSystemType = ShadingSystemType
-        self.Type = Type  # Todo: Could be deprecated
+        self.ShadingSystemType = ShadingType(ShadingSystemType)
+        self.Type = WindowType(Type)
         self.ZoneMixingDeltaTemperature = ZoneMixingDeltaTemperature
         self.ZoneMixingFlowRate = ZoneMixingFlowRate
 
@@ -530,14 +548,14 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 # get shading type
                 if shading_control["Shading_Type"] != "":
                     mapping = {
-                        "InteriorShade": WindowType(1),
-                        "ExteriorShade": WindowType(0),
-                        "ExteriorScreen": WindowType(0),
-                        "InteriorBlind": WindowType(1),
-                        "ExteriorBlind": WindowType(0),
-                        "BetweenGlassShade": WindowType(0),
-                        "BetweenGlassBlind": WindowType(0),
-                        "SwitchableGlazing": WindowType(0),
+                        "InteriorShade": ShadingType(1),
+                        "ExteriorShade": ShadingType(0),
+                        "ExteriorScreen": ShadingType(0),
+                        "InteriorBlind": ShadingType(1),
+                        "ExteriorBlind": ShadingType(0),
+                        "BetweenGlassShade": ShadingType(0),
+                        "BetweenGlassBlind": ShadingType(0),
+                        "SwitchableGlazing": ShadingType(0),
                     }
                     attr["ShadingSystemType"] = mapping[shading_control["Shading_Type"]]
             else:
@@ -741,9 +759,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
             ShadingSystemTransmittance=self._float_mean(
                 other, "ShadingSystemTransmittance", weights
             ),
-            ShadingSystemType=self.ShadingSystemType
-            if self.IsShadingSystemOn
-            else other.ShadingSystemType,
+            ShadingSystemType=max(self.ShadingSystemType, other.ShadingSystemType),
             ZoneMixingDeltaTemperature=self._float_mean(
                 other, "ZoneMixingDeltaTemperature", weights
             ),
@@ -758,6 +774,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 other.ShadingSystemAvailabilitySchedule,
                 weights,
             ),
+            Type=max(self.Type, other.Type),
         )
         new_obj = WindowSetting(**meta, **new_attr, idf=self.idf)
         new_obj.predecessors.update(self.predecessors + other.predecessors)
@@ -783,8 +800,8 @@ class WindowSetting(UmiBase, metaclass=Unique):
         ] = self.ShadingSystemAvailabilitySchedule.to_dict()
         data_dict["ShadingSystemSetpoint"] = self.ShadingSystemSetpoint
         data_dict["ShadingSystemTransmittance"] = self.ShadingSystemTransmittance
-        data_dict["ShadingSystemType"] = self.ShadingSystemType
-        data_dict["Type"] = self.Type
+        data_dict["ShadingSystemType"] = self.ShadingSystemType.value
+        data_dict["Type"] = self.Type.value
         data_dict[
             "ZoneMixingAvailabilitySchedule"
         ] = self.ZoneMixingAvailabilitySchedule.to_dict()

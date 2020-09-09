@@ -410,7 +410,8 @@ class MaterialBase(UmiBase):
     """A class used to store data linked with the Life Cycle aspect of materials
 
     For more information on the Life Cycle Analysis performed in UMI, see:
-    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life-cycle-impact
+    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life
+    -cycle-impact
     """
 
     def __init__(
@@ -527,15 +528,8 @@ class MaterialLayer(object):
             Thickness (float): The thickness of the material in the
                 construction.
         """
-        if Thickness < 0.003:
-            log(
-                "Modeling layers thinner (less) than 0.003 m is not "
-                "recommended; rather, add those properties to one of the "
-                'adjacent layers. Layer "%s"' % Material.Name,
-                lg.WARNING,
-            )
-        self.Thickness = Thickness
         self.Material = Material
+        self.Thickness = Thickness
 
     def __hash__(self):
         return id(self)
@@ -550,6 +544,20 @@ class MaterialLayer(object):
 
     def __repr__(self):
         return "{} with thickness of {:,.3f} m".format(self.Material, self.Thickness)
+
+    @property
+    def Thickness(self):
+        return self._thickness
+
+    @Thickness.setter
+    def Thickness(self, value):
+        self._thickness = value
+        if value <= 0.003:
+            log(
+                "Modeling layer thinner (less) than 0.003 m (not recommended) for "
+                f"MaterialLayer '{self}'",
+                lg.WARNING,
+            )
 
     @property
     def r_value(self):
@@ -772,4 +780,3 @@ class UniqueName(str):
                 return cls.create_unique(name)
             else:
                 return cls.create_unique(name + "_1")
-        return name

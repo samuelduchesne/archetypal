@@ -415,13 +415,10 @@ class TestUmiTemplate:
 
         # region Defines zone conditioning setttings
 
-        zone_conditioning = ar.ZoneConditioning(
-            Name="conditioning_setting_1",
-            CoolingSchedule=sch_y_on,
-            HeatingSchedule=sch_y_on,
-            MechVentSchedule=sch_y_off,
-            idf=idf,
-        )
+        zone_conditioning = ar.ZoneConditioning(Name="conditioning_setting_1",
+                                                HeatingSchedule=sch_y_on,
+                                                CoolingSchedule=sch_y_on,
+                                                MechVentSchedule=sch_y_off, idf=idf)
         ZoneConditionings = [zone_conditioning]
         # endregion
 
@@ -506,12 +503,12 @@ class TestUmiTemplate:
         # region Defines building template
 
         building_template = ar.BuildingTemplate(
-            Name="Building_template_1",
-            idf=idf,
             Core=core,
             Perimeter=perim,
             Structure=struct_definition,
             Windows=window_setting,
+            Name="Building_template_1",
+            idf=idf,
         )
         BuildingTemplates = [building_template]
         # endregion

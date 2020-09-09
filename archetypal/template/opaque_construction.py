@@ -480,7 +480,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         # treat internalmass and surfaces differently
         if epbunch.key.lower() == "internalmass":
             layers = cls._internalmass_layer(epbunch)
-            return cls(Name=name, Layers=layers, idf=idf)
+            return cls(Name=name, Layers=layers, idf=idf, **kwargs)
         else:
             layers = cls._surface_layers(epbunch)
             return cls(Name=name, Layers=layers, idf=idf, **kwargs)
@@ -566,4 +566,5 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             Layers=layers,
             DataSource="ASHRAE 90.1-2007",
             idf=idf,
+            Category="Partition"
         )

@@ -54,6 +54,13 @@ class BuildingTemplate(UmiBase):
         Lifespan=60,
         PartitionRatio=0.35,
         DefaultWindowToWallRatio=0.4,
+        YearFrom=None,
+        YearTo=None,
+        Country=None,
+        ClimateZone=None,
+        Authors=None,
+        AuthorEmails=None,
+        Version="v1.0",
         **kwargs,
     ):
         """Initialize a :class:`BuildingTemplate` object with the following
@@ -76,6 +83,14 @@ class BuildingTemplate(UmiBase):
             DefaultWindowToWallRatio (float): The default Window to Wall Ratio
                 (WWR) for this template (same for all orientations). Number
                 between 0 and 1.
+            YearFrom (int): Start year for range.
+            YearTo (int): End year for range.
+            Country (list of str): alpha-3 Country Code.
+            ClimateZone (list of str): ANSI/ASHRAE/IESNA Standard 90.1 International
+                Climatic Zone. eg. "5A"
+            Authors (list of str): Authors of this template
+            AuthorEmails (list of str): Contact information.
+            Version (str): Version number.
             **kwargs: other optional keywords passed to other constructors.
         """
         super(BuildingTemplate, self).__init__(**kwargs)
@@ -87,6 +102,13 @@ class BuildingTemplate(UmiBase):
         self.Structure = Structure
         self.Windows = Windows
         self.DefaultWindowToWallRatio = DefaultWindowToWallRatio
+        self.YearFrom = YearFrom
+        self.YearTo = YearTo
+        self.Country = Country if Country else []
+        self.ClimateZone = ClimateZone if ClimateZone else []
+        self.Authors = Authors if Authors else []
+        self.AuthorEmails = AuthorEmails if AuthorEmails else []
+        self.Version = Version
 
         self._allzones = []
 
@@ -112,6 +134,13 @@ class BuildingTemplate(UmiBase):
                     self.Lifespan == other.Lifespan,
                     self.PartitionRatio == other.PartitionRatio,
                     self.DefaultWindowToWallRatio == other.DefaultWindowToWallRatio,
+                    self.YearFrom == other.YearFrom,
+                    self.YearTo == other.YearTo,
+                    self.Country == other.Country,
+                    self.ClimateZone == other.ClimateZone,
+                    self.Authors == other.Authors,
+                    self.AuthorEmails == other.AuthorEmails,
+                    self.Version == other.Version,
                 ]
             )
 
@@ -341,6 +370,13 @@ class BuildingTemplate(UmiBase):
         data_dict["Comments"] = self.Comments
         data_dict["DataSource"] = self.DataSource
         data_dict["Name"] = self.Name
+        data_dict["YearFrom"] = self.YearFrom
+        data_dict["YearTo"] = self.YearTo
+        data_dict["Country"] = self.Country
+        data_dict["ClimateZone"] = self.ClimateZone
+        data_dict["Authors"] = self.Authors
+        data_dict["AuthorEmails"] = self.AuthorEmails
+        data_dict["Version"] = self.Version
 
         return data_dict
 
@@ -362,6 +398,13 @@ class BuildingTemplate(UmiBase):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
+            YearFrom=self.YearFrom,
+            YearTo=self.YearTo,
+            Country=self.Country,
+            ClimateZone=self.ClimateZone,
+            Authors=self.Authors,
+            AuthorEmails=self.AuthorEmails,
+            Version=self.Version,
         )
 
 

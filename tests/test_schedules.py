@@ -37,13 +37,8 @@ def test_make_umi_schedule(config):
     idf = IDF("tests/input_data/schedules/schedules.idf")
 
     s = UmiSchedule(Name="CoolingCoilAvailSched", idf=idf, start_day_of_the_week=0)
-
     new = s.develop()
 
-    print(len(s.all_values))
-    print(len(new.all_values))
-    ax = s.plot(slice=("2018/01/01 00:00", "2018/01/07"), legend=True)
-    new.plot(slice=("2018/01/01 00:00", "2018/01/07"), ax=ax, legend=True)
     assert s.__class__.__name__ == "YearSchedule"
     assert len(s.all_values) == len(new.all_values)
     np.testing.assert_array_equal(new.all_values, s.all_values)

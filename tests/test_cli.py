@@ -30,8 +30,6 @@ class TestCli:
                 "9-2-0",
                 "tests/input_data/trnsys/simple_2_zone.idf",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-                "--trnsidf_exe",
-                "docker/trnsidf/trnsidf.exe",
             ],
             [
                 2,
@@ -52,8 +50,6 @@ class TestCli:
                 "-d",
                 "tests/input_data/trnsys/simple_2_zone.idf",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-                "--trnsidf_exe",
-                "docker/trnsidf/trnsidf.exe",
             ],
             [
                 3,
@@ -73,8 +69,6 @@ class TestCli:
                 "archetypal/ressources/W74-lib.dat",
                 "tests/input_data/trnsys/simple_2_zone.idf",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-                "--trnsidf_exe",
-                "docker/trnsidf/trnsidf.exe",
             ],
             [
                 4,
@@ -94,8 +88,6 @@ class TestCli:
                 "archetypal/ressources/NewFileTemplate.d18",
                 "tests/input_data/trnsys/simple_2_zone.idf",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-                "--trnsidf_exe",
-                "docker/trnsidf/trnsidf.exe",
             ],
             [
                 5,
@@ -114,8 +106,6 @@ class TestCli:
                 "--log_clear_names",
                 "tests/input_data/trnsys/simple_2_zone.idf",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-                "--trnsidf_exe",
-                "docker/trnsidf/trnsidf.exe",
             ],
             [
                 6,
@@ -140,8 +130,6 @@ class TestCli:
                 5.6,
                 "tests/input_data/trnsys/simple_2_zone.idf",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-                "--trnsidf_exe",
-                "docker/trnsidf/trnsidf.exe",
             ],
             [
                 7,
@@ -160,8 +148,6 @@ class TestCli:
                 "--ordered",
                 "tests/input_data/trnsys/simple_2_zone.idf",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-                "--trnsidf_exe",
-                "docker/trnsidf/trnsidf.exe",
             ],
             [
                 8,
@@ -186,8 +172,6 @@ class TestCli:
                 "--capacitance",
                 "tests/input_data/trnsys/simple_2_zone.idf",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-                "--trnsidf_exe",
-                "docker/trnsidf/trnsidf.exe",
             ],
             [
                 9,
@@ -206,8 +190,6 @@ class TestCli:
                 "--schedule_as_input",
                 "tests/input_data/trnsys/simple_2_zone.idf",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-                "--trnsidf_exe",
-                "docker/trnsidf/trnsidf.exe",
             ],
         ]
     )
@@ -307,7 +289,6 @@ class TestCli:
             ],
             catch_exceptions=False,
         )
-        print(result.stdout)
         assert result.exit_code == 0
         assert Path(outname).exists()
 

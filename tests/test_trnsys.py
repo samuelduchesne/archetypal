@@ -305,9 +305,6 @@ class TestConvertEasy:
         assert Path(t3d_path).exists()
 
     def test_t_initial_to_b18(self, config, converttesteasy):
-        # Deletes cache folder
-        if os.path.exists(settings.cache_folder):
-            shutil.rmtree(settings.cache_folder)
 
         # Gets from fixture paths to files and IDF object to be used in test
         (
@@ -1009,7 +1006,6 @@ class TestTrnBuild:
             weather_file=weather_file,
             window_lib=window_filepath,
             template="tests/input_data/trnsys/NewFileTemplate.d18",
-            trnsidf_exe="docker/trnsidf/trnsidf.exe",
             **kwargs_dict
         )
 
@@ -1166,7 +1162,6 @@ def test_trnbuild_from_simple_idf(config):
         weather_file=weather_file,
         window_lib=window_filepath,
         template="tests/input_data/trnsys/NewFileTemplate.d18",
-        trnsidf_exe="docker/trnsidf/trnsidf.exe",
         schedule_as_input=False,
         **kwargs_dict
     )

@@ -5516,12 +5516,20 @@
         "Name": "B_Off_0 windows"
       },
       "DefaultWindowToWallRatio": 0.4,
-      "FromYear": 0,
-      "ToYear": 0,
-      "Country": null,
-      "ClimateZone": null,
-      "Author": null,
-      "AuthorEmail": null,
+      "YearFrom": 0,
+      "YearTo": 0,
+      "Country": [
+        "USA"
+      ],
+      "ClimateZone": [
+        "5A"
+      ],
+      "Authors": [
+        "Carlos Cerezo"
+      ],
+      "AuthorEmails": [
+        "ccerezo@mit.edu"
+      ],
       "Version": "v1.0",
       "Category": "Office Spaces",
       "Comments": "Base building definition for MIT 4433",
@@ -5572,12 +5580,20 @@
         "Name": "B_Ret_0 windows"
       },
       "DefaultWindowToWallRatio": 0.4,
-      "FromYear": 0,
-      "ToYear": 0,
-      "Country": null,
-      "ClimateZone": null,
-      "Author": null,
-      "AuthorEmail": null,
+      "YearFrom": 0,
+      "YearTo": 0,
+      "Country": [
+        "USA"
+      ],
+      "ClimateZone": [
+        "5A"
+      ],
+      "Authors": [
+        "Carlos Cerezo"
+      ],
+      "AuthorEmails": [
+        "ccerezo@mit.edu"
+      ],
       "Version": "v1.0",
       "Category": "Retail",
       "Comments": "Base building definition for MIT 4433",
@@ -5628,12 +5644,20 @@
         "Name": "B_Res_0 windows"
       },
       "DefaultWindowToWallRatio": 0.4,
-      "FromYear": 0,
-      "ToYear": 0,
-      "Country": null,
-      "ClimateZone": null,
-      "Author": null,
-      "AuthorEmail": null,
+      "YearFrom": 0,
+      "YearTo": 0,
+      "Country": [
+        "USA"
+      ],
+      "ClimateZone": [
+        "5A"
+      ],
+      "Authors": [
+        "Carlos Cerezo"
+      ],
+      "AuthorEmails": [
+        "ccerezo@mit.edu"
+      ],
       "Version": "v1.0",
       "Category": "Residential and Lodging",
       "Comments": "Base building definition for MIT 4433",
@@ -5656,12 +5680,20 @@
         "$ref": "181"
       },
       "DefaultWindowToWallRatio": 0.4,
-      "FromYear": 0,
-      "ToYear": 0,
-      "Country": null,
-      "ClimateZone": null,
-      "Author": null,
-      "AuthorEmail": null,
+      "YearFrom": 0,
+      "YearTo": 0,
+      "Country": [
+        "USA"
+      ],
+      "ClimateZone": [
+        "5A"
+      ],
+      "Authors": [
+        "Carlos Cerezo"
+      ],
+      "AuthorEmails": [
+        "ccerezo@mit.edu"
+      ],
       "Version": "v1.0",
       "Category": "Residential and Lodging",
       "Comments": "Base building definition for MIT 4433",

@@ -1396,7 +1396,7 @@ class TestZoneLoad:
         z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
         zone_loads = ZoneLoad.from_zone(z)
 
-        assert zone_loads.DimmingType == "Stepped"
+        assert zone_loads.DimmingType == DimmingTypes.Stepped
         np.testing.assert_almost_equal(
             zone_loads.EquipmentPowerDensity, 10.649455425574827
         )
@@ -1967,7 +1967,7 @@ class TestWindowSetting:
 
         new_w = window_1 + window_2
         assert new_w
-        assert window_1.id != window_2.id != new_w.id
+        assert window_1.id == window_2.id == new_w.id
 
     def test_window_iadd(self, small_idf, other_idf):
         """
@@ -1991,7 +1991,7 @@ class TestWindowSetting:
         window_1 += window_2
         assert window_1
         assert window_1.id == id_  # id should not change
-        assert window_1.id != window_2.id
+        assert window_1.id == window_2.id
 
     def test_glazing_material_from_simple_glazing(self, config, idf):
         """test __add__() for OpaqueMaterial
@@ -2077,9 +2077,8 @@ class TestWindowSetting:
         assert idf is not idf_2
         assert f_surf is not f_surf_3
         assert f_surf != f_surf_3
-        assert hash(wind) != hash(wind_3)
-        assert id(wind) != id(wind_3)
-        assert wind is not wind_3
+        assert hash(wind) == hash(wind_3)
+        assert id(wind) == id(wind_3)
         assert wind == wind_3
 
 

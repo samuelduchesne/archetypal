@@ -206,7 +206,7 @@ class IDF(geomIDF):
             include = []
         self.idfname = idfname
         self.epw = epw
-        self.as_version = as_version
+        self.as_version = as_version if as_version else settings.ep_version
         self._custom_processes = custom_processes
         self._include = include
         self._keep_data_err = keep_data_err
@@ -257,7 +257,9 @@ class IDF(geomIDF):
             previous_file = self.output_directory / (self.name or str(self.idfname))
             if previous_file.exists():
                 # We have a transitioned or cached file here; Load this one.
-                self.idfname = previous_file
+                cache_file_version = EnergyPlusVersion(get_idf_version(previous_file))
+                if cache_file_version <= self.as_version:
+                    self.idfname = previous_file
             else:
                 if not isinstance(self.idfname, StringIO):
                     self.output_directory.makedirs_p()
@@ -809,7 +811,7 @@ class IDF(geomIDF):
         """Get the sql file path"""
         try:
             file, *_ = self.simulation_dir.files("*out.sql")
-        except FileNotFoundError:
+        except (FileNotFoundError, ValueError):
             return self.simulate().sql_file
         return file.expand()
 
@@ -4785,7 +4787,10 @@ class Meters:
     def __init__(self, idf: IDF):
         self._idf = idf
 
-        mdd, *_ = self._idf.simulation_dir.files("*.mdd")
+        try:
+            mdd, *_ = self._idf.simulation_dir.files("*.mdd")
+        except ValueError:
+            mdd, *_ = self._idf.simulate().simulation_dir.files("*.mdd")
         if not mdd:
             raise FileNotFoundError
         meters = pd.read_csv(

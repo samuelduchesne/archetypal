@@ -10,7 +10,7 @@ from archetypal import (
     settings,
     EnergyPlusVersionError,
     EnergyPlusProcessError,
-    EnergyPlusVersion,
+    EnergyPlusVersion, InvalidEnergyPlusVersion,
 )
 
 
@@ -163,7 +163,7 @@ class TestIDF:
             ".2_5A_USA_IL_CHICAGO-OHARE.idf"
         )
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        with pytest.raises(EnergyPlusVersionError):
+        with pytest.raises(InvalidEnergyPlusVersion):
             IDF(file, epw=wf, as_version="7-3-0")
 
     def test_parallel_process(self, config):

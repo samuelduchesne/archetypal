@@ -427,8 +427,7 @@ class UmiTemplateLibrary:
                         app_dict = obj.to_json()
                     except AttributeError as e:
                         raise Exception(
-                            f"{obj} from {obj.DataSource} raised "
-                            f"exception: '{str(e)}'"
+                            f"Object '{obj}' raised exception: {str(e)}"
                         )
                     data_dict[catname].append(app_dict)
                     jsonized[key] = obj

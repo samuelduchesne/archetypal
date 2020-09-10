@@ -26,5 +26,5 @@ from .plot import *
 from .idfclass import IDF
 from .dataportal import *
 from .trnsys import *
-from .umi_template import *
+from .umi_template import UmiTemplateLibrary
 from .cli import *

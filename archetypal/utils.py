@@ -1254,7 +1254,7 @@ class EnergyPlusVersion(Version):
             get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
         ).files("*.idd")
     except FileNotFoundError:
-        pass
+        _choices = ["9-2-0"]  # Little hack in case E+ is not installed
     else:
         _choices = [
             re.match("V(.*)-Energy\+", idd.stem).groups()[0] for idd in iddnames

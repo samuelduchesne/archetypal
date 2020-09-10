@@ -1249,10 +1249,16 @@ class InvalidEnergyPlusVersion(InvalidVersion):
 
 
 class EnergyPlusVersion(Version):
-    iddnames = (
-        get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
-    ).files("*.idd")
-    _choices = [re.match("V(.*)-Energy\+", idd.stem).groups()[0] for idd in iddnames]
+    try:
+        iddnames = (
+            get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
+        ).files("*.idd")
+    except FileNotFoundError:
+        pass
+    else:
+        _choices = [
+            re.match("V(.*)-Energy\+", idd.stem).groups()[0] for idd in iddnames
+        ]
 
     @property
     def dash(self):

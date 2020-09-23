@@ -43,6 +43,7 @@ class EnergySeries(Series):
         def f(*args, **kwargs):
             # adapted from https://github.com/pandas-dev/pandas/issues/19850#issuecomment-367934440
             return EnergyDataFrame(*args, **kwargs).__finalize__(self, method="inherit")
+        f._get_axis_number = super(EnergySeries, self)._get_axis_number
 
         return f
 

@@ -7,7 +7,7 @@ from archetypal import IDF, settings, EnergyDataFrame, EnergySeries
 
 @pytest.fixture()
 def edf():
-    frame = EnergyDataFrame({"Temp": range(0, 10)}, units="C", extrameta="this")
+    frame = EnergyDataFrame({"Temp": range(0, 100)}, units="C", extrameta="this")
     yield frame
 
     # check that the name is passed to the slice
@@ -22,10 +22,10 @@ def es():
     datetimeindex = date_range(
         freq="H",
         start="{}-01-01".format("2018"),
-        periods=10,
+        periods=100,
     )
     series = EnergySeries(
-        range(0, 10), index=datetimeindex, name="Temp", units="C", extrameta="this"
+        range(0, 100), index=datetimeindex, name="Temp", units="C", extrameta="this"
     )
     yield series
 
@@ -192,6 +192,10 @@ class TestEnergyDataFrame:
 
         # check that the slice keeps the units
         assert edf.units == edf["Temp"].units
+
+    def test_repr(self, edf):
+        # check that a slice returns an EnergySeries
+        print(edf.__repr__())
 
     def test_from_report_data(self, rd_edf):
         assert_almost_equal(rd_edf.sum().sum(), 398258.8688595464, decimal=3)

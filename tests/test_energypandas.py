@@ -19,7 +19,11 @@ def edf():
 
 @pytest.fixture()
 def es():
-    datetimeindex = date_range(freq="H", start="{}-01-01".format("2018"), periods=10,)
+    datetimeindex = date_range(
+        freq="H",
+        start="{}-01-01".format("2018"),
+        periods=10,
+    )
     series = EnergySeries(
         range(0, 10), index=datetimeindex, name="Temp", units="C", extrameta="this"
     )
@@ -82,6 +86,10 @@ class TestEnergySeries:
         # check that a slice returns an EnergySeries
         assert type(es.to_frame(name="Temp")) == EnergyDataFrame
 
+    def test_repr(self, es):
+        # check that a slice returns an EnergySeries
+        print(es.__repr__())
+
     def test_monthly(self, es):
         assert es.monthly.extrameta == "this"
         print(es.monthly)
@@ -89,7 +97,11 @@ class TestEnergySeries:
     def test_from_csv(self):
         file = "tests/input_data/test_profile.csv"
         df = read_csv(file, index_col=[0], names=["Heat"])
-        ep = EnergySeries.with_timeindex(df.Heat, units="BTU/hour", frequency="1H",)
+        ep = EnergySeries.with_timeindex(
+            df.Heat,
+            units="BTU/hour",
+            frequency="1H",
+        )
         assert ep.units == settings.unit_registry.parse_expression("BTU/hour").units
 
     def test_from_report_data(self, rd_es):
@@ -165,14 +177,13 @@ class TestEnergyDataFrame:
         assert edf.sum().sum() == 5
         assert type(edf) == EnergyDataFrame
 
-    @pytest.mark.skip("skipping until fixed")
     def test_slice(self, edf):
         # check that a slice returns an EnergySeries
         assert type(edf[["Temp"]]) == EnergyDataFrame
         assert type(edf["Temp"]) == EnergySeries
 
         # check that the name is passed to the slice
-        assert edf[["Temp"]].name == "Temp"
+        assert edf[["Temp"]].name is None  # only EnergySeries have name
         assert edf["Temp"].name == "Temp"
 
         # check that the metadata is passed to the slice

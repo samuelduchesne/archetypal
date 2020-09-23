@@ -39,7 +39,7 @@ def test_make_umi_schedule(config):
     s = UmiSchedule(Name="CoolingCoilAvailSched", idf=idf, start_day_of_the_week=0)
     new = s.develop()
 
-    assert s.__class__.__name__ == "YearSchedule"
+    assert s.__class__.__name__ == "UmiSchedule"
     assert len(s.all_values) == len(new.all_values)
     np.testing.assert_array_equal(new.all_values, s.all_values)
 

@@ -441,6 +441,10 @@ class VentilationSetting(UmiBase, metaclass=Unique):
             self.NatVentSchedule = UmiSchedule.constant_schedule(
                 hourly_value=0, Name="AlwaysOff", allow_duplicates=True
             )
+        if not self.ScheduledVentilationSchedule:
+            self.ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
+                hourly_value=0, Name="AlwaysOff", allow_duplicates=True
+            )
 
         return self
 

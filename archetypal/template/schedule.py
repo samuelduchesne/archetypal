@@ -227,7 +227,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             [self.quantity or float("nan"), other.quantity or float("nan")]
         )
         new_obj = UmiSchedule.from_values(
-            Values=new_values, Type="Fraction", quantity=quantity, idf=self.idf, **meta,
+            Values=new_values, Type="Fraction", quantity=quantity, idf=self.idf, **meta
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         new_obj.weights = sum(weights)
@@ -274,11 +274,14 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             )
 
         _from = "\n".join(lines)
-        self.Comments = f"Year Week Day schedules created from: \n{_from}"
-        self.__class__ = YearSchedule
-        self.epbunch = year
-        self.Parts = Parts
-        return self
+        developed = YearSchedule(
+            Name=self.Name,
+            Comments=f"Year Week Day schedules created from: \n{_from}",
+            epbunch=year,
+            Parts=Parts,
+            DataSource=self.DataSource
+        )
+        return developed
 
     def to_json(self):
         """UmiSchedule does not implement the to_json method because it is not
@@ -692,7 +695,7 @@ class YearSchedule(UmiSchedule):
         if not isinstance(other, YearSchedule):
             return False
         else:
-            return all([self.Type == other.Type, self.Parts == other.Parts,])
+            return all([self.Type == other.Type, self.Parts == other.Parts])
 
     def __hash__(self):
         return super(YearSchedule, self).__hash__()

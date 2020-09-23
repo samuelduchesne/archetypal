@@ -6,7 +6,8 @@ import pytest
 from path import Path
 
 import archetypal as ar
-from archetypal import settings, get_eplus_dirs, YearSchedulePart, IDF
+from archetypal import settings, get_eplus_dirs, IDF
+from archetypal.template.schedule import YearSchedulePart
 from archetypal.umi_template import UmiTemplateLibrary
 from tests.conftest import no_duplicates
 
@@ -657,7 +658,7 @@ def climatestudio(config):
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w, annual=True)
 
-    from archetypal import BuildingTemplate
+    from archetypal.template import BuildingTemplate
 
     bt = BuildingTemplate.from_idf(idf)
     yield bt
@@ -671,7 +672,7 @@ def sf_cz5a(config):
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w, annual=True)
 
-    from archetypal import BuildingTemplate
+    from archetypal.template import BuildingTemplate
 
     bt = BuildingTemplate.from_idf(idf)
     yield bt

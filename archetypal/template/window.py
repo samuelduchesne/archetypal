@@ -871,6 +871,19 @@ class WindowSetting(UmiBase, metaclass=Unique):
 
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
+        if not self.AfnWindowAvailability:
+            self.AfnWindowAvailability = UmiSchedule.constant_schedule(
+                hourly_value=0, Name="AlwaysOff", allow_duplicates=True
+            )
+        if not self.ShadingSystemAvailabilitySchedule:
+            self.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(
+                hourly_value=0, Name="AlwaysOff", allow_duplicates=True
+            )
+        if not self.ZoneMixingAvailabilitySchedule:
+            self.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(
+                hourly_value=0, Name="AlwaysOff", allow_duplicates=True
+            )
+
         return self
 
     def mapping(self):

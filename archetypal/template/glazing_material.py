@@ -10,7 +10,7 @@ import collections
 from sigfig import round
 
 from archetypal import log
-from archetypal.template import MaterialBase, Unique, UniqueName, UmiBase
+from archetypal.template import MaterialBase, UmiBase, Unique, UniqueName
 
 
 class GlazingMaterial(MaterialBase, metaclass=Unique):

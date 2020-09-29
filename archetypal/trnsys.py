@@ -24,13 +24,7 @@ import archetypal.settings as settings
 from archetypal.idfclass import IDF, hash_model
 from archetypal.reportdata import ReportData
 from archetypal.schedule import Schedule
-from archetypal.utils import (
-    log,
-    checkStr,
-    check_unique_name,
-    angle,
-    recursive_len,
-)
+from archetypal.utils import angle, check_unique_name, checkStr, log, recursive_len
 
 
 def convert_idf_to_trnbuild(
@@ -87,18 +81,17 @@ def convert_idf_to_trnbuild(
         template (str): Path to d18 template file.
         log_clear_names (bool): If True, DOES NOT log the equivalence between
             the old and new names in the console.
-        schedule_as_input (bool): If True, writes the schedules as INPUTS in the BUI
-            file. Then, the user would have to link in TRNSYS studio the csv file
-            with the schedules to those INPUTS. If False, the schedules are written as
-            SCHEDULES in the BUI file. Be aware that this last option (False) can make
-            crash TRNBuild because the schedules are too long are there is too many
-            schedules.
-        kwargs: keyword arguments sent to
-            :func:`convert_idf_to_trnbuild()` or :func:`trnbuild_idf()` or
-            :func:`choose_window`. "ordered=True" to have the name of idf
-            objects in the outputfile in ascendant order. See
-            :func:`trnbuild_idf` or :func:`choose_window()` for other parameter
-            definition
+        schedule_as_input (bool): If True, writes the schedules as INPUTS in the
+            BUI file. Then, the user would have to link in TRNSYS studio the csv
+            file with the schedules to those INPUTS. If False, the schedules are
+            written as SCHEDULES in the BUI file. Be aware that this last option
+            (False) can make crash TRNBuild because the schedules are too long
+            are there is too many schedules.
+        kwargs: keyword arguments sent to :func:`convert_idf_to_trnbuild()` or
+            :func:`trnbuild_idf()` or :func:`choose_window`. "ordered=True" to
+            have the name of idf objects in the outputfile in ascendant order.
+            See :func:`trnbuild_idf` or :func:`choose_window()` for other
+            parameter definition
 
     Returns:
         (tuple): A tuple containing:
@@ -141,8 +134,14 @@ def convert_idf_to_trnbuild(
             ),
         },
     ]
-    idf = IDF(idf_file, epw=weather_file, as_version=ep_version, design_day=False,
-              annual=True, prep_outputs=outputs)
+    idf = IDF(
+        idf_file,
+        epw=weather_file,
+        as_version=ep_version,
+        design_day=False,
+        annual=True,
+        prep_outputs=outputs,
+    )
 
     # Check if cache exists
     # idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
@@ -445,6 +444,12 @@ def convert_idf_to_trnbuild(
 
 
 def t_initial_to_b18(b18_lines, zones, schedules):
+    """
+    Args:
+        b18_lines:
+        zones:
+        schedules:
+    """
     for zone in zones:
         t_ini = schedules["sch_h_setpoint_" + zone.Name]["all values"][0]
         # Get line number where to write TINITIAL
@@ -465,6 +470,16 @@ def t_initial_to_b18(b18_lines, zones, schedules):
 def adds_sch_setpoint(
     zones, report_sqlite, old_new_names, schedule_names, schedules, string, **kwargs
 ):
+    """
+    Args:
+        zones:
+        report_sqlite:
+        old_new_names:
+        schedule_names:
+        schedules:
+        string:
+        **kwargs:
+    """
     if string == "h":
         description = "Getting heating setpoints"
     if string == "c":
@@ -482,6 +497,12 @@ def adds_sch_setpoint(
 
 def adds_sch_ground(htm, schedule_names, schedules):
     # Get the monthly values from htm output file from EP simulation
+    """
+    Args:
+        htm:
+        schedule_names:
+        schedules:
+    """
     values = np.append(
         htm["Site:GroundTemperature:BuildingSurface"].values[0][1:],
         htm["Site:GroundTemperature:BuildingSurface"].values[0][-1],
@@ -501,6 +522,13 @@ def adds_sch_ground(htm, schedule_names, schedules):
 
 
 def infilt_to_b18(b18_lines, zones, htm, **kwargs):
+    """
+    Args:
+        b18_lines:
+        zones:
+        htm:
+        **kwargs:
+    """
     try:
         mean_infilt = round(
             np.average(
@@ -542,6 +570,20 @@ def gains_to_b18(
     schedule_as_input,
     **kwargs
 ):
+    """
+    Args:
+        b18_lines:
+        zones:
+        zonelists:
+        peoples:
+        lights:
+        equipments:
+        schedules_not_written:
+        htm:
+        old_new_names:
+        schedule_as_input:
+        **kwargs:
+    """
     peoples_in_zone = zone_where_gain_is(peoples, zones, zonelists)
     lights_in_zone = zone_where_gain_is(lights, zones, zonelists)
     equipments_in_zone = zone_where_gain_is(equipments, zones, zonelists)
@@ -596,6 +638,18 @@ def _write_gain_to_b18(
     string,
     schedule_as_input,
 ):
+    """
+    Args:
+        b18_lines:
+        zone:
+        gains:
+        gains_in_zone:
+        schedules_not_written:
+        htm:
+        old_new_names:
+        string:
+        schedule_as_input:
+    """
     for gain in gains:
         if zone.Name in gains_in_zone[gain.Name]:
             f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
@@ -636,6 +690,15 @@ def _write_gain_to_b18(
 def conditioning_to_b18(
     b18_lines, heat_dict, cool_dict, zones, old_new_names, **kwargs
 ):
+    """
+    Args:
+        b18_lines:
+        heat_dict:
+        cool_dict:
+        zones:
+        old_new_names:
+        **kwargs:
+    """
     for zone in tqdm(zones, desc="Writing conditioning in BUI", **kwargs):
         # Heating
         _write_heat_cool_to_b18(heat_dict, old_new_names, zone, b18_lines, " HEATING")
@@ -644,6 +707,14 @@ def conditioning_to_b18(
 
 
 def _write_heat_cool_to_b18(list_dict, old_new_names, zone, b18_lines, string):
+    """
+    Args:
+        list_dict:
+        old_new_names:
+        zone:
+        b18_lines:
+        string:
+    """
     for key in list_dict.keys():
         if old_new_names[zone.Name.upper()][0] in key:
             f_count = checkStr(b18_lines, "Z o n e  " + zone.Name)
@@ -657,6 +728,12 @@ def _write_heat_cool_to_b18(list_dict, old_new_names, zone, b18_lines, string):
 
 
 def zone_where_gain_is(gains, zones, zonelists):
+    """
+    Args:
+        gains:
+        zones:
+        zonelists:
+    """
     gain_in_zone = {}
     for gain in gains:
         list_zone = []
@@ -674,6 +751,12 @@ def zone_where_gain_is(gains, zones, zonelists):
 
 
 def _change_relative_coords(buildingSurfs, coordSys, idf):
+    """
+    Args:
+        buildingSurfs:
+        coordSys:
+        idf:
+    """
     if coordSys == "Relative":
         # Add zone coordinates to X, Y, Z vectors
         for buildingSurf in buildingSurfs:
@@ -683,6 +766,14 @@ def _change_relative_coords(buildingSurfs, coordSys, idf):
 
 
 def _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules, **kwargs):
+    """
+    Args:
+        idf_file:
+        output_folder:
+        schedule_names:
+        schedules:
+        **kwargs:
+    """
     log("Saving yearly schedules in CSV file...")
     idf_file = Path(idf_file)
     df_sched = pd.DataFrame()
@@ -699,6 +790,10 @@ def _yearlySched_to_csv(idf_file, output_folder, schedule_names, schedules, **kw
 
 
 def _get_constr_list(buildingSurfs):
+    """
+    Args:
+        buildingSurfs:
+    """
     constr_list = []
     for buildingSurf in buildingSurfs:
         constr_list.append(buildingSurf.Construction_Name)
@@ -716,9 +811,8 @@ def _save_t3d(idf_file, lines, output_folder):
         output_folder (str): path to the output folder (can be None)
 
     Returns:
-        output_folder (str): path to the output folder
-        t3d_path (str): path to the T3D file
-
+        output_folder (str): path to the output folder t3d_path (str): path to
+        the T3D file
     """
     if output_folder is None:
         # User did not provide an output folder path. We use the default setting
@@ -742,7 +836,6 @@ def _remove_low_conductivity(constructions, idf, materials):
 
     Returns:
         mat_name (list): list of name of the removed materials
-
     """
     material_low_res = []
     for material in materials:
@@ -787,29 +880,28 @@ def _order_objects(
     ordered=True,
 ):
     """
-
     Args:
-        ordered:
-        materials (Idf_MSequence): MATERIAL object from the IDF
-        materialNoMass (Idf_MSequence): MATERIAL:NOMASS object from the IDF
-        materialAirGap (Idf_MSequence): MATERIAL:AIRGAP object from the IDF
-        versions (Idf_MSequence): VERSION object from the IDF
+        buildingSurfs (Idf_MSequence): BUILDINGSURFACE:DETAILED object from the
+            IDF
         buildings (Idf_MSequence): BUILDING object from the IDF
-        locations (Idf_MSequence): SITE:LOCATION object from the IDF
-        globGeomRules (Idf_MSequence): GLOBALGEOMETRYRULES object from the IDF
+        constr_list:
         constructions (Idf_MSequence): CONSTRUCTION object from the IDF
-        buildingSurfs (Idf_MSequence): BUILDINGSURFACE:DETAILED object
-            from the IDF
+        equipments (Idf_MSequence): EQUIPMENT object from the IDF
         fenestrationSurfs (Idf_MSequence): FENESTRATIONSURFACE:DETAILED object
             from the IDF
-        zones (Idf_MSequence): ZONE object from the IDF
-        peoples (Idf_MSequence): PEOPLE object from the IDF
+        globGeomRules (Idf_MSequence): GLOBALGEOMETRYRULES object from the IDF
         lights (Idf_MSequence): LIGHTs object from the IDF
-        equipments (Idf_MSequence): EQUIPMENT object from the IDF
+        locations (Idf_MSequence): SITE:LOCATION object from the IDF
+        materialAirGap (Idf_MSequence): MATERIAL:AIRGAP object from the IDF
+        materialNoMass (Idf_MSequence): MATERIAL:NOMASS object from the IDF
+        materials (Idf_MSequence): MATERIAL object from the IDF
+        peoples (Idf_MSequence): PEOPLE object from the IDF
+        zones (Idf_MSequence): ZONE object from the IDF
+        zonelists:
+        ordered:
 
     Returns:
         IDF objects (see Args) with their order reversed
-
     """
     if ordered:
         materials = list(reversed(materials))
@@ -853,23 +945,24 @@ def get_idf_objects(idf):
         idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
 
     Returns:
-        materials (Idf_MSequence): MATERIAL object from the IDF
-        materialNoMass (Idf_MSequence): MATERIAL:NOMASS object from the IDF
-        materialAirGap (Idf_MSequence): MATERIAL:AIRGAP object from the IDF
-        versions (Idf_MSequence): VERSION object from the IDF
-        buildings (Idf_MSequence): BUILDING object from the IDF
-        locations (Idf_MSequence): SITE:LOCATION object from the IDF
-        globGeomRules (Idf_MSequence): GLOBALGEOMETRYRULES object from the IDF
-        constructions (Idf_MSequence): CONSTRUCTION object from the IDF
-        buildingSurfs (Idf_MSequence): BUILDINGSURFACE:DETAILED object
+        materials (Idf_MSequence): MATERIAL object from the IDF materialNoMass
+        (Idf_MSequence): MATERIAL:NOMASS object from the IDF materialAirGap
+        (Idf_MSequence): MATERIAL:AIRGAP object from the IDF versions
+        (Idf_MSequence): VERSION object from the IDF buildings (Idf_MSequence):
+        BUILDING object from the IDF locations (Idf_MSequence): SITE:LOCATION
+        object from the IDF globGeomRules (Idf_MSequence): GLOBALGEOMETRYRULES
+        object from the IDF constructions (Idf_MSequence): CONSTRUCTION object
+        from the IDF buildingSurfs (Idf_MSequence): BUILDINGSURFACE:DETAILED
+        object
+
             from the IDF
+
         fenestrationSurfs (Idf_MSequence): FENESTRATIONSURFACE:DETAILED object
             from the IDF
-        zones (Idf_MSequence): ZONE object from the IDF
-        peoples (Idf_MSequence): PEOPLE object from the IDF
-        lights (Idf_MSequence): LIGHTs object from the IDF
-        equipments (Idf_MSequence): EQUIPMENT object from the IDF
 
+        zones (Idf_MSequence): ZONE object from the IDF peoples (Idf_MSequence):
+        PEOPLE object from the IDF lights (Idf_MSequence): LIGHTs object from
+        the IDF equipments (Idf_MSequence): EQUIPMENT object from the IDF
     """
     materials = idf.idfobjects["MATERIAL"]
     materialNoMass = idf.idfobjects["MATERIAL:NOMASS"]
@@ -917,7 +1010,6 @@ def load_idf_file_and_clean_names(idf_file, log_clear_names):
 
     Returns:
         idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
-
     """
     log("Loading IDF file...", lg.INFO)
     start_time = time.time()
@@ -944,7 +1036,9 @@ def _assert_files(
 
     Args:
         idf_file (str or Path): path to the idf file to convert
-        window_lib (str or Path): File path of the window library (from Berkeley Lab)
+        weather_file:
+        window_lib (str or Path): File path of the window library (from Berkeley
+            Lab)
         output_folder (str or Path): path to the output folder (can be None)
         trnsidf_exe (str or Path): Path to *trnsidf.exe*.
         template (str or Path): Path to d18 template file.
@@ -1103,6 +1197,7 @@ def _get_schedules(idf, **kwargs):
 
     Args:
         idf (archetypal.idfclass.IDF): IDF object
+        **kwargs:
     """
     start_time = time.time()
     log("Reading schedules from the IDF file...")
@@ -1139,6 +1234,7 @@ def clear_name_idf_objects(idfFile, log_clear_names=False, **kwargs):
     Args:
         idfFile (archetypal.idfclass.IDF): IDF object where to clean names
         log_clear_names:
+        **kwargs:
     """
 
     uniqueList = []
@@ -1712,6 +1808,8 @@ def _write_zone_buildingSurf_fenestrationSurf(
         n_ground (Vector 3D): Normal vector of the ground surface
         zones (idf_MSequence): IDF object from idf.idfobjects(). List of zones
             ("ZONES" in the IDF).
+        schedule_as_input:
+        **kwargs:
     """
     # Get line number where to write
     variableDictNum = checkStr(
@@ -2082,6 +2180,8 @@ def _write_schedules(lines, schedule_names, schedules, schedule_as_input, idf_fi
             TRNBuild). To be appended (insert) here
         schedule_names (list): Names of all the schedules to be written in lines
         schedules (dict): Dictionary with the schedule names as key and with
+        schedule_as_input:
+        idf_file:
     """
     log("Writing schedules info from idf file to t3d file...")
     schedules_not_written = []
@@ -2210,6 +2310,13 @@ def _write_schedules(lines, schedule_names, schedules, schedule_as_input, idf_fi
 
 
 def _write_schedule_values(liste, lines, scheduleNum, string):
+    """
+    Args:
+        liste:
+        lines:
+        scheduleNum:
+        string:
+    """
     count = 0
     while count * 13 < len(liste):
         begin = count * 13
@@ -2255,6 +2362,15 @@ def _write_conditioning(
     htm, lines, schedules, old_new_names, schedule_as_input, **kwargs
 ):
     # Heating
+    """
+    Args:
+        htm:
+        lines:
+        schedules:
+        old_new_names:
+        schedule_as_input:
+        **kwargs:
+    """
     heat_dict = {}
     schedule = None
     if htm["Zone Sensible Heating"].iloc[0, 0] != "None":
@@ -2349,12 +2465,13 @@ def _write_gains(equipments, lights, lines, peoples, htm, old_new_names):
     Args:
         equipments (idf_MSequence): IDF object from idf.idfobjects(). List of
             equipments ("ELECTRICEQUIPMENT" in the IDF).
-        idf (archetypal.idfclass.IDF): IDF object
         lights (idf_MSequence): IDF object from idf.idfobjects(). List of lights
             ("LIGHTS" in the IDF).
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
         peoples (idf_MSequence): IDF object from idf.idfobjects()
+        htm:
+        old_new_names:
     """
     log("Writing gains info from idf file to t3d file...")
     # Get line number where to write
@@ -2376,6 +2493,9 @@ def _write_equipment_gain(equipments, gainNum, lines, htm, old_new_names, **kwar
         gainNum (int): Line number where to write the equipment gains
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
+        htm:
+        old_new_names:
+        **kwargs:
     """
     for equipment in tqdm(
         equipments,
@@ -2413,6 +2533,9 @@ def _write_light_gain(gainNum, lights, lines, htm, old_new_names, **kwargs):
             ("LIGHTS" in the IDF).
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
+        htm:
+        old_new_names:
+        **kwargs:
     """
     for light in tqdm(
         lights, desc="Writing light power density (internal gains)", **kwargs
@@ -2446,6 +2569,9 @@ def _write_people_gain(gainNum, lines, peoples, htm, old_new_names, **kwargs):
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
         peoples (idf_MSequence): IDF object from idf.idfobjects()
+        htm:
+        old_new_names:
+        **kwargs:
     """
     for people in tqdm(
         peoples, desc="Writing people density (internal gains)", **kwargs
@@ -2503,6 +2629,7 @@ def _write_material_airgap(layerNum, lines, listLayerName, materialAirGap, **kwa
             TRNBuild). To be appended (insert) here
         listLayerName (list): list of material's names. To be appended when
         materialAirGap (materialAirGap): IDF object from
+        **kwargs:
     """
     for i in tqdm(
         range(0, len(materialAirGap)), desc="Writing airgap materials", **kwargs
@@ -2531,6 +2658,7 @@ def _write_material_nomass(layerNum, lines, listLayerName, materialNoMass, **kwa
             TRNBuild). To be appended (insert) here
         listLayerName (list): list of material's names. To be appended when
         materialNoMass (idf_MSequence): IDF object from idf.idfobjects().
+        **kwargs:
     """
     for i in tqdm(
         range(0, len(materialNoMass)), desc="Writing nomass materials", **kwargs
@@ -2560,6 +2688,7 @@ def _write_material(layerNum, lines, listLayerName, materials, **kwargs):
         listLayerName (list): list of material's names. To be appended when
         materials (idf_MSequence): IDF object from idf.idfobjects(). List of
             materials ("MATERIAL" in the IDF)
+        **kwargs:
     """
     for i in tqdm(range(0, len(materials)), desc="Writing materials", **kwargs):
         lines.insert(layerNum + 1, "!-LAYER " + materials[i].Name + "\n")
@@ -2585,6 +2714,7 @@ def _write_constructions_end(constr_list, idf, lines, **kwargs):
         idf (archetypal.idfclass.IDF): IDF object
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
+        **kwargs:
     """
     # Get line number where to write
     constructionEndNum = checkStr(lines, "ALL OBJECTS IN CLASS: CONSTRUCTION")
@@ -2609,6 +2739,7 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials, **kwargs)
         mat_name (list): list of material names to be written
         materials (idf_MSequence): IDF object from idf.idfobjects(). List of
             materials ("MATERIAL" in the IDF)
+        **kwargs:
     """
     log("Writing constructions info from idf file to t3d file...")
     # Get line number where to write
@@ -2682,6 +2813,11 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials, **kwargs)
 
 
 def get_sol_abs(idf, layer):
+    """
+    Args:
+        idf:
+        layer:
+    """
     mat_ = idf.getobject("MATERIAL", layer)
     if mat_:
         sol_abs = mat_.Solar_Absorptance

@@ -15,7 +15,7 @@ from eppy.bunch_subclass import EpBunch
 
 import archetypal
 from archetypal import Schedule, log
-from archetypal.template import UmiBase, Unique, UniqueName, CREATED_OBJECTS
+from archetypal.template import CREATED_OBJECTS, UmiBase, Unique, UniqueName
 
 
 class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
@@ -279,7 +279,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             Comments=f"Year Week Day schedules created from: \n{_from}",
             epbunch=year,
             Parts=Parts,
-            DataSource=self.DataSource
+            DataSource=self.DataSource,
         )
         return developed
 

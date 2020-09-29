@@ -10,7 +10,7 @@ import collections
 from deprecation import deprecated
 
 import archetypal
-from archetypal.template import UmiBase, Unique, OpaqueMaterial, UniqueName
+from archetypal.template import OpaqueMaterial, UmiBase, Unique, UniqueName
 
 
 class MassRatio(object):

@@ -8,7 +8,6 @@
 import collections
 import functools
 import math
-import random
 import sqlite3
 import time
 from operator import add
@@ -19,18 +18,18 @@ from eppy.bunch_subclass import BadEPFieldError
 from geomeppy.geom.polygons import Polygon3D
 from sigfig import round
 
-from archetypal import log, timeit, settings, is_referenced, __version__
+from archetypal import __version__, is_referenced, log, settings, timeit
 from archetypal.template import (
-    UmiBase,
-    ZoneConstructionSet,
-    ZoneConditioning,
-    ZoneLoad,
-    VentilationSetting,
     DomesticHotWaterSetting,
     OpaqueConstruction,
-    WindowSetting,
-    UniqueName,
+    UmiBase,
     Unique,
+    UniqueName,
+    VentilationSetting,
+    WindowSetting,
+    ZoneConditioning,
+    ZoneConstructionSet,
+    ZoneLoad,
 )
 
 
@@ -330,26 +329,6 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
             idf=self.idf, for_zone=self.Name
         )
         self.InternalMassExposedPerFloorArea = 0
-
-    def _loads(self):
-        """run loads and return id"""
-        self.Loads = ZoneLoad(Name=str(random.randint(1, 999999)))
-
-    def _ventilation(self):
-        self.Ventilation = VentilationSetting(Name=str(random.randint(1, 999999)))
-
-    def _constructions(self):
-        """run construction sets and return id"""
-        set_name = "_".join([self.Name, "constructions"])
-        self.Constructions = ZoneConstructionSet.from_idf(
-            Zone_Names=self.Zone_Names, Name=set_name, idf=self.idf
-        )
-
-    def _domestichotwater(self):
-        """run domestic hot water and return id"""
-        self.DomesticHotWater = DomesticHotWaterSetting(
-            Name=str(random.randint(1, 999999))
-        )
 
     def to_json(self):
         self.validate()  # Validate object before trying to get json format

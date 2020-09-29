@@ -11,19 +11,19 @@ import click
 from path import Path
 
 from archetypal import (
-    settings,
-    convert_idf_to_trnbuild,
-    get_eplus_dirs,
-    parallel_process,
-    UmiTemplateLibrary,
-    config,
-    log,
-    timeit,
-    __version__,
-    ep_version,
-    docstring_parameter,
     EnergyPlusVersion,
     EnergyPlusVersionError,
+    UmiTemplateLibrary,
+    __version__,
+    config,
+    convert_idf_to_trnbuild,
+    docstring_parameter,
+    ep_version,
+    get_eplus_dirs,
+    log,
+    parallel_process,
+    settings,
+    timeit,
 )
 from archetypal.idfclass import idf_version_updater
 
@@ -408,7 +408,8 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
         [f"{i}. " + str(file.name) for i, file in enumerate(file_paths)]
     )
     log(
-        f"executing {len(file_paths)} file(s):\n{file_list}", verbose=True,
+        f"executing {len(file_paths)} file(s):\n{file_list}",
+        verbose=True,
     )
     weather, *_ = set_filepaths([weather])
     log(f"using the '{weather.basename()}' weather file\n", verbose=True)
@@ -426,7 +427,8 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     final_path: Path = dir_ / name + ext
     template.to_json(path_or_buf=final_path, all_zones=all_zones)
     log(
-        f"Successfully created template file at {final_path.abspath()}", verbose=True,
+        f"Successfully created template file at {final_path.abspath()}",
+        verbose=True,
     )
 
 
@@ -490,7 +492,8 @@ def transition(idf, to_version, cores, yes):
     """
     file_paths, file_list = idf
     log(
-        f"executing {len(file_paths)} file(s):\n{file_list}", verbose=True,
+        f"executing {len(file_paths)} file(s):\n{file_list}",
+        verbose=True,
     )
     if not yes:
         overwrite = click.confirm("Would you like to overwrite the file(s)?")

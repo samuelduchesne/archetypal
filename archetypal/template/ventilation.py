@@ -14,8 +14,8 @@ from deprecation import deprecated
 from sigfig import round
 
 import archetypal
-from archetypal import log, timeit, settings, top, weighted_mean
-from archetypal.template import UmiBase, Unique, UniqueName, UmiSchedule
+from archetypal import log, settings, timeit, top, weighted_mean
+from archetypal.template import UmiBase, UmiSchedule, Unique, UniqueName
 
 
 def resolve_temp(temp, idf):
@@ -30,7 +30,7 @@ def resolve_temp(temp, idf):
         return temp
     elif isinstance(temp, str):
         sched = UmiSchedule(Name=temp, idf=idf)
-        return sched.values.mean()
+        return sched.all_values.mean()
 
 
 class VentilationSetting(UmiBase, metaclass=Unique):

@@ -15,7 +15,7 @@ from deprecation import deprecated
 from eppy.bunch_subclass import EpBunch
 
 import archetypal
-from archetypal import log, calc_simple_glazing, timeit
+from archetypal import calc_simple_glazing, log, timeit
 from archetypal.template import MaterialLayer, UmiSchedule, UniqueName
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
@@ -139,10 +139,11 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         """WindowConstruction from idf Construction Name.
 
         Example:
-            >>> import archetypal as ar
-            >>> idf = ar.IDF("myidf.idf")
+            >>> from archetypal import IDF
+            >>> from archetypal.template import WindowSetting
+            >>> idf = IDF("myidf.idf")
             >>> construction_name = "Some construction name"
-            >>> ar.WindowConstruction.from_epbunch(Name=construction_name,
+            >>> WindowConstruction.from_epbunch(Name=construction_name,
             >>> idf=idf)
 
         Args:
@@ -437,12 +438,13 @@ class WindowSetting(UmiBase, metaclass=Unique):
         #construction-000
 
         Examples:
-            >>> import archetypal as ar
+            >>> from archetypal import IDF
+            >>> from archetypal.template import WindowSetting
             >>> # Given an IDF object
-            >>> idf = ar.IDF("idfname.idf")
+            >>> idf = IDF("idfname.idf")
             >>> construction = idf.getobject('CONSTRUCTION',
             >>>                              'AEDG-SmOffice 1A Window Fixed')
-            >>> ar.WindowSetting.from_construction(Name='test_window',
+            >>> WindowSetting.from_construction(Name='test_window',
             >>>                    Construction=construction)
 
         Args:

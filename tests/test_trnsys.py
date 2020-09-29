@@ -1,14 +1,12 @@
 import glob
 import io
 import os
-import shutil
 from copy import deepcopy
 
 import pandas as pd
 import pytest
 from path import Path
 
-import archetypal as ar
 from archetypal import (
     convert_idf_to_trnbuild,
     parallel_process,
@@ -19,10 +17,8 @@ from archetypal import (
     get_eplus_dirs,
     IDF,
 )
-
 # Function round to hundreds
 from archetypal.trnsys import (
-    _assert_files,
     load_idf_file_and_clean_names,
     clear_name_idf_objects,
     get_idf_objects,
@@ -544,7 +540,7 @@ class TestConvertEasy:
             else:
                 length = False
 
-        assert isinstance(idf_2, ar.idfclass.IDF)
+        assert isinstance(idf_2, IDF)
         assert unique
         assert length
 
@@ -590,7 +586,7 @@ class TestConvertEasy:
         ).simulate()
 
         # Makes sure idf variable is an IDF
-        assert isinstance(idf, ar.idfclass.IDF)
+        assert isinstance(idf, IDF)
 
 
 @pytest.fixture(scope="class", params=["5ZoneGeometryTransform.idf"])

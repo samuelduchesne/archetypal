@@ -16,8 +16,8 @@ from deprecation import deprecated
 from sigfig import round
 
 import archetypal
-from archetypal import float_round, ReportData, log, timeit, settings
-from archetypal.template import UmiBase, Unique, UmiSchedule, UniqueName
+from archetypal import ReportData, float_round, log, settings, timeit
+from archetypal.template import UmiBase, UmiSchedule, Unique, UniqueName
 
 
 class UmiBaseEnum(Enum):
@@ -115,7 +115,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             Name (str): Name of the object. Must be Unique.
             IsHeatingOn (bool): Whether or not heating is available.
             HeatingSetpoint (float): The temperature below which zone heating is
-                turned on. Here, we take the mean value over the year.
+                turned on. Here, we take the mean value over the ye
             HeatingSchedule (UmiSchedule): The availability schedule for space
                 heating in this zone. If the value is 0, heating is not
                 available, and heating is not supplied to the zone.
@@ -133,7 +133,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             IsCoolingOn (bool): Whether or not cooling is available.
             CoolingSetpoint (float): The temperature above which the zone
                 heating is turned on. Here, we take the mean value over the
-                year.
+                ye
             CoolingSchedule (UmiSchedule): The availability schedule for space
                 cooling in this zone. If the value is 0, cooling is not
                 available, and cooling is not supplied to the zone.
@@ -582,6 +582,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             4-tuple: (IsMechVentOn, MinFreshAirPerArea, MinFreshAirPerPerson, MechVentSchedule)
         """
         import sqlite3
+
         import pandas as pd
 
         # create database connection with sqlite3
@@ -799,7 +800,6 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         #     con.get_referenced_object("Zone_Air_Inlet_Node_or_NodeList_Name")
         #     for con in connections
         # ]
-
         # get possible heat recovery objects from idd
         heat_recovery_objects = zone.idf.getiddgroupdict()["Heat Recovery"]
 

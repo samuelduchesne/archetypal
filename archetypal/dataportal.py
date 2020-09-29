@@ -19,7 +19,7 @@ import pandas as pd
 import pycountry as pycountry
 import requests
 
-from archetypal import log, settings, make_str
+from archetypal import log, make_str, settings
 
 # scipy and sklearn are optional dependencies for faster nearest node search
 try:
@@ -408,7 +408,9 @@ def save_to_cache(url, response_json):
             log('Saved response to cache file "{}"'.format(cache_path_filename))
 
 
-def openei_api_request(data,):
+def openei_api_request(
+    data,
+):
     """Query the OpenEI.org API.
 
     Args:
@@ -434,8 +436,8 @@ def nrel_api_cbr_request(data):
     """Query the NREL Commercial Building Resource Database
 
     Examples:
-        >>> import archetypal as ar
-        >>> ar.dataportal.nrel_api_cbr_request({'s': 'Commercial'
+        >>> from archetypal import dataportal
+        >>> dataportal.nrel_api_cbr_request({'s': 'Commercial'
         >>> 'Reference', 'api_key': 'oGZdX1nhars1cTJYTm7M9T12T1ZOvikX9pH0Zudq'})
 
     Args:

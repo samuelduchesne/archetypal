@@ -6,8 +6,6 @@ import archetypal.settings
 from archetypal import (
     get_eplus_dirs,
     settings,
-    GlazingMaterial,
-    OpaqueConstruction,
     IDF,
 )
 from archetypal.template import (
@@ -20,20 +18,31 @@ from archetypal.template import (
     ZoneDefinition,
     calc_simple_glazing,
     ZoneGraph, DimmingTypes,
+GlazingMaterial,
+OpaqueConstruction
 )
 from archetypal.template.umi_base import clear_cache, load_json_objects, UniqueName
 
 
 @pytest.fixture(scope="module")
 def small_idf(config, small_idf_obj):
-    """An IDF model. Yields both the idf and the sql"""
+    """An IDF model. Yields both the idf and the sql
+
+    Args:
+        config:
+        small_idf_obj:
+    """
     sql = small_idf_obj.sql()
     yield small_idf_obj, sql
 
 
 @pytest.fixture(scope="module")
 def small_idf_copy(config):
-    """An IDF model. Yields both the idf and the sql"""
+    """An IDF model. Yields both the idf and the sql
+
+    Args:
+        config:
+    """
     file = "tests/input_data/umi_samples/B_Off_0.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
@@ -42,7 +51,11 @@ def small_idf_copy(config):
 
 @pytest.fixture(scope="module")
 def small_idf_obj(config):
-    """An IDF model. Yields just the idf object"""
+    """An IDF model. Yields just the idf object
+
+    Args:
+        config:
+    """
     file = "tests/input_data/umi_samples/B_Off_0.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     yield IDF(file, epw=w)
@@ -50,7 +63,12 @@ def small_idf_obj(config):
 
 @pytest.fixture(scope="module")
 def other_idf(config):
-    """Another IDF object with a different signature. Yields both the idf and the sql"""
+    """Another IDF object with a different signature. Yields both the idf and
+    the sql
+
+    Args:
+        config:
+    """
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
@@ -59,7 +77,11 @@ def other_idf(config):
 
 @pytest.fixture(scope="module")
 def other_idf_object(config):
-    """Another IDF object (same as other_idf).Yields just the idf object"""
+    """Another IDF object (same as other_idf).Yields just the idf object
+
+    Args:
+        config:
+    """
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     yield IDF(file, epw=w)
@@ -67,7 +89,12 @@ def other_idf_object(config):
 
 @pytest.fixture(scope="module")
 def other_idf_object_copy(config):
-    """Another IDF object with a different signature. Yields both the idf and the sql"""
+    """Another IDF object with a different signature. Yields both the idf and
+    the sql
+
+    Args:
+        config:
+    """
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     yield IDF(file, epw=w)
@@ -144,6 +171,10 @@ class TestInternalMass:
     """Series of tests for the parsing of internal mass"""
 
     def test_with_thermalmassobject(self, small_idf):
+        """
+        Args:
+            small_idf:
+        """
         idf, sql = small_idf
         intmass = OpaqueConstruction.generic_internalmass(idf, "Perim")
         assert intmass.to_json()
@@ -167,7 +198,7 @@ class TestDaySchedule:
         Args:
             small_idf:
         """
-        from archetypal import DaySchedule
+        from archetypal.template import DaySchedule
 
         idf, sql = small_idf
         epbunch = idf.getobject("Schedule:Day:Hourly".upper(), "B_Off_D_Het_WD")
@@ -176,8 +207,13 @@ class TestDaySchedule:
         assert repr(sched)
 
     def test_from_values(self, config, idf):
-        """test the `from_epbunch` constructor"""
-        from archetypal import DaySchedule
+        """test the `from_epbunch` constructor
+
+        Args:
+            config:
+            idf:
+        """
+        from archetypal.template import DaySchedule
 
         values = np.array(range(0, 24))
         kwargs = {
@@ -195,6 +231,7 @@ class TestDaySchedule:
         """
         Args:
             config:
+            idf:
         """
         import json
 
@@ -219,6 +256,7 @@ class TestWeekSchedule:
         """
         Args:
             config:
+            idf:
         """
         import json
 
@@ -232,7 +270,12 @@ class TestWeekSchedule:
         )
 
     def test_weekSchedule(self, config, idf):
-        """ Creates WeekSchedule from DaySchedule"""
+        """Creates WeekSchedule from DaySchedule
+
+        Args:
+            config:
+            idf:
+        """
 
         # Creates 2 DaySchedules : 1 always ON and 1 always OFF
         sch_d_on = DaySchedule.from_values(
@@ -282,6 +325,7 @@ class TestYearSchedule:
         """
         Args:
             config:
+            idf:
         """
         import json
 
@@ -295,7 +339,12 @@ class TestYearSchedule:
         )
 
     def test_yearSchedule(self, config, idf):
-        """ Creates YearSchedule from dict (json)"""
+        """Creates YearSchedule from dict (json)
+
+        Args:
+            config:
+            idf:
+        """
 
         clear_cache()
 
@@ -349,14 +398,27 @@ class TestOpaqueMaterial:
 
     @pytest.fixture()
     def mat_a(self, idf):
+        """
+        Args:
+            idf:
+        """
         yield OpaqueMaterial(Conductivity=100, SpecificHeat=4.18, Name="mat_a", idf=idf)
 
     @pytest.fixture()
     def mat_b(self, idf):
+        """
+        Args:
+            idf:
+        """
         yield OpaqueMaterial(Conductivity=200, SpecificHeat=4.18, Name="mat_b", idf=idf)
 
     def test_add_materials(self, mat_a, mat_b):
-        """test __add__() for OpaqueMaterial"""
+        """test __add__() for OpaqueMaterial
+
+        Args:
+            mat_a:
+            mat_b:
+        """
         mat_c = mat_a + mat_b
         assert mat_c
         assert mat_c.Conductivity == 150
@@ -367,7 +429,11 @@ class TestOpaqueMaterial:
         print(mat_d)
 
     def test_iadd_materials(self, idf):
-        """test __iadd__() for OpaqueMaterial"""
+        """test __iadd__() for OpaqueMaterial
+
+        Args:
+            idf:
+        """
         mat_a = OpaqueMaterial(
             Conductivity=100, SpecificHeat=4.18, Name="mat_ia", idf=idf
         )
@@ -385,9 +451,10 @@ class TestOpaqueMaterial:
     def test_opaqueMaterial_from_to_json(self, config, small_idf_obj):
         """
         Args:
-            small_idf:
+            config:
+            small_idf_obj:
         """
-        from archetypal import OpaqueMaterial
+        from archetypal.template import OpaqueMaterial
 
         idf = small_idf_obj
         if idf.idfobjects["MATERIAL"]:
@@ -408,8 +475,8 @@ class TestOpaqueMaterial:
         """Test equality and hashing of :class:`TestOpaqueMaterial`
 
         Args:
-            small_idf:
-            other_idf:
+            small_idf_obj:
+            other_idf_object:
         """
         from archetypal.template import OpaqueMaterial
         from copy import copy
@@ -476,6 +543,11 @@ class TestGlazingMaterial:
     """Series of tests for the :class:`GlazingMaterial` class"""
 
     def test_simple_glazing_material(self, config, idf):
+        """
+        Args:
+            config:
+            idf:
+        """
         name = "A Glass Material"
         glass = GlazingMaterial(
             Name=name,
@@ -495,7 +567,12 @@ class TestGlazingMaterial:
         assert glass.Name == name
 
     def test_add_glazing_material(self, config, idf):
-        """test __add__() for OpaqueMaterial"""
+        """test __add__() for OpaqueMaterial
+
+        Args:
+            config:
+            idf:
+        """
         sg_a = calc_simple_glazing(0.763, 2.716, 0.812)
         sg_b = calc_simple_glazing(0.578, 2.413, 0.706)
         mat_a = GlazingMaterial(Name="mat_a", **sg_a, idf=idf)
@@ -507,7 +584,12 @@ class TestGlazingMaterial:
         assert mat_a.id != mat_b.id != mat_c.id
 
     def test_iadd_glazing_material(self, config, idf):
-        """test __iadd__() for OpaqueMaterial"""
+        """test __iadd__() for OpaqueMaterial
+
+        Args:
+            config:
+            idf:
+        """
         sg_a = calc_simple_glazing(0.763, 2.716, 0.812)
         sg_b = calc_simple_glazing(0.578, 2.413, 0.706)
         mat_a = GlazingMaterial(Name="mat_ia", **sg_a, idf=idf)
@@ -528,6 +610,7 @@ class TestGlazingMaterial:
 
         Args:
             config:
+            idf:
         """
         from copy import copy
 
@@ -588,7 +671,12 @@ class TestGasMaterial:
     """Series of tests for the GasMaterial class"""
 
     def test_gas_material(self, config, idf):
-        from archetypal import GasMaterial
+        """
+        Args:
+            config:
+            idf:
+        """
+        from archetypal.template import GasMaterial
 
         air = GasMaterial(Name="Air", Conductivity=0.02, Density=1.24, idf=idf)
 
@@ -598,9 +686,10 @@ class TestGasMaterial:
         """
         Args:
             config:
+            idf:
         """
         import json
-        from archetypal import GasMaterial
+        from archetypal.template import GasMaterial
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
@@ -618,6 +707,7 @@ class TestGasMaterial:
 
         Args:
             config:
+            idf:
         """
         from archetypal.template import GasMaterial
         from copy import copy
@@ -688,7 +778,11 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def mat_a(self, idf):
-        """A :class:Material fixture"""
+        """A :class:Material fixture
+
+        Args:
+            idf:
+        """
         mat_a = OpaqueMaterial(
             Conductivity=1.4, SpecificHeat=840, Density=2240, Name="Concrete", idf=idf
         )
@@ -696,7 +790,11 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def mat_b(self, idf):
-        """A :class:Material fixture"""
+        """A :class:Material fixture
+
+        Args:
+            idf:
+        """
         mat_b = OpaqueMaterial(
             Conductivity=0.12, SpecificHeat=1210, Density=540, Name="Plywood", idf=idf
         )
@@ -710,6 +808,7 @@ class TestOpaqueConstruction:
         Args:
             mat_a:
             mat_b:
+            idf:
         """
         thickness = 0.10
         layers = [
@@ -722,7 +821,11 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def face_brick(self, idf):
-        """A :class:Material fixture"""
+        """A :class:Material fixture
+
+        Args:
+            idf:
+        """
         face_brick = OpaqueMaterial(
             Conductivity=1.20,
             Density=1900,
@@ -734,7 +837,11 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def thermal_insulation(self, idf):
-        """A :class:Material fixture"""
+        """A :class:Material fixture
+
+        Args:
+            idf:
+        """
         thermal_insulation = OpaqueMaterial(
             Conductivity=0.041,
             Density=40,
@@ -746,7 +853,11 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def hollow_concrete_block(self, idf):
-        """A :class:Material fixture"""
+        """A :class:Material fixture
+
+        Args:
+            idf:
+        """
         hollow_concrete_block = OpaqueMaterial(
             Conductivity=0.85,
             Density=2000,
@@ -758,7 +869,11 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def plaster(self, idf):
-        """A :class:Material fixture"""
+        """A :class:Material fixture
+
+        Args:
+            idf:
+        """
         plaster = OpaqueMaterial(
             Conductivity=1.39, Density=2000, SpecificHeat=1085, Name="Plaster", idf=idf
         )
@@ -766,7 +881,11 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def concrete_layer(self, idf):
-        """A :class:Material fixture"""
+        """A :class:Material fixture
+
+        Args:
+            idf:
+        """
         concrete = OpaqueMaterial(
             Conductivity=1.70,
             Density=2300,
@@ -784,6 +903,13 @@ class TestOpaqueConstruction:
         the thermal time constant of structural walls. Applied Thermal
         Engineering, 24(5–6), 743–757.
         https://doi.org/10.1016/j.applthermaleng.2003.10.015
+
+        Args:
+            face_brick:
+            thermal_insulation:
+            hollow_concrete_block:
+            plaster:
+            idf:
         """
         layers = [
             MaterialLayer(face_brick, 0.1),
@@ -805,6 +931,13 @@ class TestOpaqueConstruction:
         the thermal time constant of structural walls. Applied Thermal
         Engineering, 24(5–6), 743–757.
         https://doi.org/10.1016/j.applthermaleng.2003.10.015
+
+        Args:
+            face_brick:
+            thermal_insulation:
+            concrete_layer:
+            plaster:
+            idf:
         """
         layers = [
             MaterialLayer(plaster, 0.02),
@@ -824,6 +957,7 @@ class TestOpaqueConstruction:
 
         Args:
             mat_a:
+            idf:
         """
         thickness = 0.30
         layers = [MaterialLayer(mat_a, thickness)]
@@ -869,8 +1003,13 @@ class TestOpaqueConstruction:
         assert construction_a.id != construction_b.id
 
     def test_opaqueConstruction_from_to_json(self, config, idf):
+        """
+        Args:
+            config:
+            idf:
+        """
         import json
-        from archetypal import (
+        from archetypal.template import (
             OpaqueConstruction,
             OpaqueMaterial,
             MaterialLayer,
@@ -973,6 +1112,7 @@ class TestOpaqueConstruction:
 
         Args:
             facebrick_and_concrete:
+            insulated_concrete_wall:
         """
         assert facebrick_and_concrete.u_value(include_h=True) == pytest.approx(
             0.6740, 0.01
@@ -1007,8 +1147,13 @@ class TestWindowConstruction:
     # todo: Implement from_to_json for WindowConstruction class
 
     def test_windowConstr_from_to_json(self, config, idf):
+        """
+        Args:
+            config:
+            idf:
+        """
         import json
-        from archetypal import WindowConstruction
+        from archetypal.template import WindowConstruction
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
@@ -1028,8 +1173,13 @@ class TestStructureDefinition:
     # todo: Implement from_to_json for StructureInformation class
 
     def test_structure_from_to_json(self, config, idf):
+        """
+        Args:
+            config:
+            idf:
+        """
         import json
-        from archetypal import StructureInformation
+        from archetypal.template import StructureInformation
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
@@ -1047,8 +1197,9 @@ class TestStructureDefinition:
 
         Args:
             config:
+            idf:
         """
-        from archetypal import StructureInformation
+        from archetypal.template import StructureInformation
         from copy import copy
         import json
 
@@ -1122,8 +1273,9 @@ class TestUmiSchedule:
         """
         Args:
             config:
+            idf:
         """
-        from archetypal import UmiSchedule
+        from archetypal.template import UmiSchedule
 
         const = UmiSchedule.constant_schedule(idf=idf)
         assert const.__class__.__name__ == "UmiSchedule"
@@ -1135,7 +1287,7 @@ class TestUmiSchedule:
             config:
             small_idf:
         """
-        from archetypal import UmiSchedule
+        from archetypal.template import UmiSchedule
 
         idf, sql = small_idf
         # clear_cache()
@@ -1207,7 +1359,7 @@ class TestUmiSchedule:
         assert id(sched) != id(sched_3)
 
     def test_combine(self):
-        from archetypal import UmiSchedule
+        from archetypal.template import UmiSchedule
         from archetypal.utils import reduce
         import numpy as np
 
@@ -1286,8 +1438,9 @@ class TestZoneConstructionSet:
         """
         Args:
             config:
+            idf:
         """
-        from archetypal import ZoneConstructionSet
+        from archetypal.template import ZoneConstructionSet
 
         constrSet = ZoneConstructionSet(Name="A construction set", idf=idf)
 
@@ -1297,7 +1450,7 @@ class TestZoneConstructionSet:
             config:
             zoneConstructionSet_tests:
         """
-        from archetypal import ZoneConstructionSet, ZoneDefinition
+        from archetypal.template import ZoneConstructionSet, ZoneDefinition
 
         sql = next(iter([i for i in zoneConstructionSet_tests if isinstance(i, dict)]))
         idf = next(iter([i for i in zoneConstructionSet_tests if isinstance(i, IDF)]))
@@ -1309,9 +1462,10 @@ class TestZoneConstructionSet:
         """
         Args:
             config:
+            idf:
         """
         import json
-        from archetypal import ZoneConstructionSet
+        from archetypal.template import ZoneConstructionSet
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         clear_cache()
@@ -1330,6 +1484,10 @@ class TestZoneLoad:
 
     @pytest.fixture(scope="class")
     def fiveZoneEndUses(self, config):
+        """
+        Args:
+            config:
+        """
         file = (
             get_eplus_dirs(settings.ep_version)
             / "ExampleFiles"
@@ -1362,8 +1520,9 @@ class TestZoneLoad:
         """
         Args:
             config:
+            idf:
         """
-        from archetypal import ZoneLoad
+        from archetypal.template import ZoneLoad
 
         load = ZoneLoad(Name=None, idf=idf)
 
@@ -1373,7 +1532,7 @@ class TestZoneLoad:
             config:
             zoneLoadtests:
         """
-        from archetypal import ZoneLoad, ZoneDefinition
+        from archetypal.template import ZoneLoad, ZoneDefinition
 
         idf, sql = zoneLoadtests
         zone = idf.getobject("ZONE", "Office")
@@ -1389,7 +1548,12 @@ class TestZoneLoad:
         np.testing.assert_almost_equal(zone_loads.PeopleDensity, 0.021107919980354082)
 
     def test_zoneLoad_from_zone_mixedparams(self, config, fiveZoneEndUses):
-        from archetypal import ZoneLoad, ZoneDefinition
+        """
+        Args:
+            config:
+            fiveZoneEndUses:
+        """
+        from archetypal.template import ZoneLoad, ZoneDefinition
 
         idf, sql = fiveZoneEndUses
         zone = idf.getobject("ZONE", "SPACE1-1")
@@ -1412,9 +1576,10 @@ class TestZoneLoad:
         """
         Args:
             config:
+            idf:
         """
         import json
-        from archetypal import ZoneLoad
+        from archetypal.template import ZoneLoad
         from archetypal.utils import reduce
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -1433,6 +1598,7 @@ class TestZoneLoad:
 
         Args:
             small_idf:
+            small_idf_copy:
         """
         from archetypal.template import ZoneLoad, ZoneDefinition
         from copy import copy
@@ -1526,8 +1692,9 @@ class TestZoneConditioning:
         """
         Args:
             config:
+            idf:
         """
-        from archetypal import ZoneConditioning
+        from archetypal.template import ZoneConditioning
 
         cond = ZoneConditioning(Name="A Name", idf=idf)
         assert cond.Name == "A Name"
@@ -1542,7 +1709,7 @@ class TestZoneConditioning:
             config:
             zoneConditioningtests:
         """
-        from archetypal import ZoneConditioning, ZoneDefinition
+        from archetypal.template import ZoneConditioning, ZoneDefinition
 
         idf, sql, idf_name, _ = zoneConditioningtests
         if idf_name == "RefMedOffVAVAllDefVRP.idf":
@@ -1562,9 +1729,10 @@ class TestZoneConditioning:
         """
         Args:
             config:
+            idf:
         """
         import json
-        from archetypal import ZoneConditioning
+        from archetypal.template import ZoneConditioning
         from archetypal.utils import reduce
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -1582,7 +1750,7 @@ class TestZoneConditioning:
         """Test equality and hashing of :class:`ZoneConditioning`
 
         Args:
-            small_idf:
+            zoneConditioningtests:
         """
         from archetypal.template import ZoneConditioning, ZoneDefinition
         from copy import copy
@@ -1672,8 +1840,9 @@ class TestVentilationSetting:
         """
         Args:
             config:
+            idf:
         """
-        from archetypal import VentilationSetting
+        from archetypal.template import VentilationSetting
 
         vent = VentilationSetting(Name=None, idf=idf)
 
@@ -1683,7 +1852,7 @@ class TestVentilationSetting:
             config:
             ventilatontests:
         """
-        from archetypal import VentilationSetting, ZoneDefinition
+        from archetypal.template import VentilationSetting, ZoneDefinition
 
         idf, sql, idf_name, _ = ventilatontests
         if idf_name == "VentilationSimpleTest.idf":
@@ -1703,9 +1872,10 @@ class TestVentilationSetting:
         """
         Args:
             config:
+            idf:
         """
         import json
-        from archetypal import VentilationSetting
+        from archetypal.template import VentilationSetting
         from archetypal.utils import reduce
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -1722,7 +1892,7 @@ class TestVentilationSetting:
         """Test equality and hashing of :class:`DomesticHotWaterSetting`
 
         Args:
-            small_idf:
+            ventilatontests:
         """
         from archetypal.template import VentilationSetting, ZoneDefinition
         from copy import copy
@@ -1876,7 +2046,7 @@ class TestWindowSetting:
         Args:
             small_idf:
         """
-        from archetypal import WindowSetting
+        from archetypal.template import WindowSetting
 
         idf, sql = small_idf
         construction = idf.getobject("CONSTRUCTION", "B_Dbl_Air_Cl")
@@ -1892,7 +2062,7 @@ class TestWindowSetting:
             config:
             windowtests:
         """
-        from archetypal import WindowSetting
+        from archetypal.template import WindowSetting
 
         idf, sql = windowtests
         f_surfs = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"]
@@ -1914,7 +2084,7 @@ class TestWindowSetting:
             config:
             small_idf:
         """
-        from archetypal import WindowSetting
+        from archetypal.template import WindowSetting
 
         idf, sql = small_idf
         f_surfs = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"]
@@ -1942,7 +2112,7 @@ class TestWindowSetting:
             allwindowtypes:
         """
         from archetypal.utils import reduce
-        from archetypal import WindowSetting
+        from archetypal.template import WindowSetting
 
         window = reduce(WindowSetting.combine, allwindowtypes)
         print(window)
@@ -1951,8 +2121,9 @@ class TestWindowSetting:
         """
         Args:
             small_idf:
+            other_idf:
         """
-        from archetypal import WindowSetting
+        from archetypal.template import WindowSetting
 
         idf, sql = small_idf
         idf2, sql2 = other_idf
@@ -1973,8 +2144,9 @@ class TestWindowSetting:
         """
         Args:
             small_idf:
+            other_idf:
         """
-        from archetypal import WindowSetting
+        from archetypal.template import WindowSetting
 
         idf, sql = small_idf
         idf2, sql2 = other_idf
@@ -1998,6 +2170,7 @@ class TestWindowSetting:
 
         Args:
             config:
+            idf:
         """
         sg_a = calc_simple_glazing(0.763, 2.716, 0.812)
         mat_a = GlazingMaterial(Name="mat_a", **sg_a, idf=idf)
@@ -2009,7 +2182,7 @@ class TestWindowSetting:
         Args:
             small_idf:
         """
-        from archetypal import WindowSetting
+        from archetypal.template import WindowSetting
 
         idf, sql = small_idf
         w = WindowSetting.generic(idf)
@@ -2021,6 +2194,7 @@ class TestWindowSetting:
 
         Args:
             small_idf:
+            small_idf_copy:
         """
         from archetypal.template import WindowSetting
         from copy import copy
@@ -2089,9 +2263,9 @@ class TestZone:
         """Test the zone volume for a sloped roof
 
         Args:
-            config:
+            small_idf_copy:
         """
-        from archetypal import ZoneDefinition
+        from archetypal.template import ZoneDefinition
 
         idf, sql = small_idf_copy
         zone = idf.getobject("ZONE", "Perim")
@@ -2102,7 +2276,7 @@ class TestZone:
         """Test __add__() for Zone
 
         Args:
-            small_idf:
+            small_idf_copy:
         """
         idf, sql = small_idf_copy
         zone_core = idf.getobject("ZONE", core_name)
@@ -2125,7 +2299,7 @@ class TestZone:
         """Test __iadd__() for Zone
 
         Args:
-            small_idf:
+            small_idf_copy:
         """
         idf, sql = small_idf_copy
         zone_core = idf.getobject("ZONE", core_name)
@@ -2152,6 +2326,7 @@ class TestZone:
 
         Args:
             small_idf:
+            small_idf_copy:
         """
         from archetypal.template import ZoneDefinition
         from copy import copy
@@ -2218,7 +2393,11 @@ class TestZone:
 
 @pytest.fixture(scope="session")
 def bt(config):
-    """A building template fixture used in subsequent tests"""
+    """A building template fixture used in subsequent tests
+
+    Args:
+        config:
+    """
     eplus_dir = get_eplus_dirs(archetypal.settings.ep_version)
     file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
     w, *_ = (eplus_dir / "WeatherData").files("*.epw")
@@ -2250,7 +2429,8 @@ class TestBuildingTemplate:
         """Test equality and hashing of class DomesticHotWaterSetting
 
         Args:
-            other_idf:
+            other_idf_object:
+            other_idf_object_copy:
         """
         from archetypal.template import BuildingTemplate
 
@@ -2298,6 +2478,10 @@ class TestBuildingTemplate:
         assert len(set(bt_list)) == 2
 
     def test_building_template(self, bt):
+        """
+        Args:
+            bt:
+        """
         assert bt
 
 
@@ -2320,6 +2504,7 @@ class TestZoneGraph:
     def G(self, config, small_office):
         """
         Args:
+            config:
             small_office:
         """
 
@@ -2385,7 +2570,6 @@ class TestZoneGraph:
         """test the visualization of the zonegraph in 3d
 
         Args:
-            config:
             G:
             annotate:
         """

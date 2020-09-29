@@ -1,7 +1,8 @@
 import pandas as pd
 from path import Path
 
-from archetypal import config, run_eplus, parallel_process
+from archetypal import config, parallel_process
+from archetypal.idfclass import run_eplus
 
 config(cache_folder="../../tests/.temp/cache", use_cache=True, log_console=True)
 

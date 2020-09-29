@@ -14,10 +14,10 @@ from eppy.bunch_subclass import BadEPFieldError
 
 import archetypal
 from archetypal.template import (
-    Unique,
     MaterialLayer,
     OpaqueMaterial,
     UmiBase,
+    Unique,
     UniqueName,
 )
 
@@ -423,7 +423,10 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         layers = kwargs.pop("Layers", None)
         oc = cls(Layers=layers, **kwargs)
         lys = [
-            MaterialLayer(oc.get_ref(layer["Material"]), layer["Thickness"],)
+            MaterialLayer(
+                oc.get_ref(layer["Material"]),
+                layer["Thickness"],
+            )
             for layer in layers
         ]
         oc.Layers = lys
@@ -566,5 +569,5 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             Layers=layers,
             DataSource="ASHRAE 90.1-2007",
             idf=idf,
-            Category="Partition"
+            Category="Partition",
         )

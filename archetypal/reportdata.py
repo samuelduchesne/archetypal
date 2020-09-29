@@ -7,7 +7,11 @@ import numpy as np
 import pandas as pd
 from path import Path
 
-from archetypal import log, EnergySeries
+from archetypal import EnergySeries, log
+
+
+class MixedUnitsError(Exception):
+    pass
 
 
 class ReportData(pd.DataFrame):

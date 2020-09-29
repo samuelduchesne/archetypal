@@ -13,8 +13,8 @@ from deprecation import deprecated
 from sigfig import round
 
 import archetypal
-from archetypal import settings, log, timeit, reduce
-from archetypal.template import Unique, UmiBase, UmiSchedule, UniqueName
+from archetypal import log, reduce, settings, timeit
+from archetypal.template import UmiBase, UmiSchedule, Unique, UniqueName
 
 
 class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
@@ -314,7 +314,6 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
 
         Args:
             dhw_objs (Idf_MSequence):
-            zone (Zone):
         """
         total_flow_rate = 0
         for obj in dhw_objs:

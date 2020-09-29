@@ -22,6 +22,7 @@ import platform
 import re
 import sys
 import time
+import unicodedata
 import warnings
 from collections import OrderedDict
 from concurrent.futures._base import as_completed
@@ -29,14 +30,13 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
-import unicodedata
-from packaging.version import Version, InvalidVersion
+from packaging.version import InvalidVersion, Version
 from pandas.io.json import json_normalize
 from path import Path
 from tabulate import tabulate
 from tqdm import tqdm
 
-from archetypal import settings, __version__
+from archetypal import __version__, settings
 from archetypal.settings import ep_version
 
 
@@ -637,7 +637,8 @@ def copy_file(files, where=None):
         files (str or list): path(s) of the file(s) to copy
         where (str): path where to save the copy(ies)
     """
-    import shutil, os
+    import os
+    import shutil
 
     if isinstance(files, str):
         files = [files]
@@ -1068,10 +1069,10 @@ def parallel_process(
     position=0,
     debug=False,
 ):
-    """A parallel version of the map function with a progress bar.
+    """A parallel version of the map function with a progress b
 
     Examples:
-        >>> import archetypal as ar
+        >>> from archetypal import IDF
         >>> files = ['tests/input_data/problematic/nat_ventilation_SAMPLE0.idf',
         >>>          'tests/input_data/regular/5ZoneNightVent1.idf']
         >>> wf = 'tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'
@@ -1097,8 +1098,9 @@ def parallel_process(
     Returns:
         [function(array[0]), function(array[1]), ...]
     """
-    from tqdm import tqdm
     from concurrent.futures import ThreadPoolExecutor
+
+    from tqdm import tqdm
 
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())
@@ -1203,12 +1205,12 @@ def extend_class(cls):
         ...   pass
 
     Extending class has several usages:
-        1. There are classes A, B, ... Z, all defining methods foo and bar.
+        1. There are classes A, B, ... Z, all defining methods foo and b
            Though the usual approach is to group the code around class
            definitions in files A.py, B.py, ..., Z.py, it is sometimes more
            convenient to group all definitions of A.foo(), B.foo(), ... up
            to Z.foo(), in one file "foo.py", and all definitions of bar in
-           file "bar.py".
+           file "bpy".
         2. Another usage of @extend_class is building a class step-by-step
            --- first creating an empty class, and later populating it with
            methods.

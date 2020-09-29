@@ -20,9 +20,9 @@ import subprocess
 import sys
 import time
 import warnings
-from collections import defaultdict, OrderedDict
+from collections import OrderedDict, defaultdict
 from io import StringIO
-from itertools import compress, chain
+from itertools import chain, compress
 from math import isclose
 from sqlite3 import OperationalError
 from subprocess import CalledProcessError
@@ -34,10 +34,10 @@ import eppy
 import eppy.modeleditor
 import pandas as pd
 from deprecation import deprecated
-from eppy.EPlusInterfaceFunctions import parse_idd
-from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata, Idd, removecomment
 from eppy.bunch_subclass import BadEPFieldError
 from eppy.easyopen import getiddfile
+from eppy.EPlusInterfaceFunctions import parse_idd
+from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata, Idd, removecomment
 from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from eppy.runner.run_functions import paths_from_version
 from geomeppy import IDF as geomIDF
@@ -50,23 +50,23 @@ from tqdm import tqdm
 import archetypal
 import archetypal.settings
 from archetypal import (
+    EnergyDataFrame,
+    EnergyPlusProcessError,
+    EnergyPlusVersionError,
+    EnergyPlusWeatherError,
+    EnergySeries,
+    ReportData,
+    Schedule,
+    close_logger,
+    get_eplus_dirs,
     log,
     settings,
-    EnergyPlusProcessError,
-    ReportData,
-    EnergySeries,
-    close_logger,
-    EnergyPlusVersionError,
-    get_eplus_dirs,
-    EnergyPlusWeatherError,
-    Schedule,
-    EnergyDataFrame,
 )
 from archetypal.utils import (
+    EnergyPlusVersion,
     _unpack_tuple,
     extend_class,
     get_eplus_basedirs,
-    EnergyPlusVersion,
 )
 
 
@@ -764,7 +764,9 @@ class IDF(geomIDF):
 
         filepath = self.idfname
 
-        import subprocess, os, platform
+        import os
+        import platform
+        import subprocess
 
         if platform.system() == "Darwin":  # macOS
             subprocess.call(("open", filepath))
@@ -778,7 +780,9 @@ class IDF(geomIDF):
 
         filepath, *_ = self.simulation_dir.files("*.idf")
 
-        import subprocess, os, platform
+        import os
+        import platform
+        import subprocess
 
         if platform.system() == "Darwin":  # macOS
             subprocess.call(("open", filepath))
@@ -1114,7 +1118,9 @@ class IDF(geomIDF):
 
         # Run the Slab preprocessor program if necessary
         with TemporaryDirectory(
-            prefix="RunSlab_run_", suffix=self.output_prefix, dir=self.output_directory,
+            prefix="RunSlab_run_",
+            suffix=self.output_prefix,
+            dir=self.output_directory,
         ) as tmp:
             slab_thread = SlabThread(self, tmp)
             slab_thread.start()
@@ -1125,7 +1131,9 @@ class IDF(geomIDF):
 
         # Run the energyplus program
         with TemporaryDirectory(
-            prefix="eplus_run_", suffix=None, dir=self.output_directory,
+            prefix="eplus_run_",
+            suffix=None,
+            dir=self.output_directory,
         ) as tmp:
             running_simulation_thread = EnergyPlusThread(self, tmp)
             running_simulation_thread.start()
@@ -2232,7 +2240,8 @@ def save_idf_object_to_cache(idf_object, idf_file, output_folder=None, how=None)
 
         if how.upper() == "JSON":
             cache_fullpath_filename = cache_dir / cache_dir.basename() + "idfs.json"
-            import gzip, json
+            import gzip
+            import json
 
             with open(cache_fullpath_filename, "w") as file_handle:
                 json.dump(
@@ -2463,7 +2472,7 @@ class Outputs:
         Output Reference) and IDF (ready to be copied and pasted into your Input File).
 
         Args:
-            format (str): Choices are "IDF" and "regular.
+            format (str): Choices are "IDF" and "regul
 
         Returns:
             Outputs: self
@@ -3003,7 +3012,7 @@ def run_eplus(
         )
         # Call the OutputPrep class with chained instance methods to add all
         # necessary outputs + custom ones defined in the parameters of this function.
-        OutputPrep(idf=idf_obj).add_basics().add_umi_template_outputs.add_custom(
+        OutputPrep(idf=idf_obj).add_basics().add_umi_template_outputs().add_custom(
             outputs=prep_outputs
         ).add_profile_gas_elect_ouputs()
 
@@ -3326,7 +3335,6 @@ class TransitionExe:
         """
         Args:
             idf (IDF): The idf filename
-            to_version (EnergyPlusVersion): The version
         """
         self.idf = idf
         self.trans = None  # Set by __next__()
@@ -3874,7 +3882,10 @@ class EnergyPlusThread(Thread):
             position=self.idf.position,
         ) as progress:
             self.p = subprocess.Popen(
-                self.cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                self.cmd,
+                shell=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
             start_time = time.time()
             self.msg_callback("Simulation started")
@@ -4348,6 +4359,7 @@ def get_sqlite_report(report_file, report_tables=None):
     # if file exists, parse it with pandas' read_sql_query
     if os.path.isfile(report_file):
         import sqlite3
+
         import numpy as np
 
         # create database connection with sqlite3
@@ -4712,7 +4724,6 @@ class Meter:
             normalize (bool): Normalize between 0 and 1.
             sort_values (bool): If True, values are sorted (default ascending=True)
             ascending (bool): If True and `sort_values` is True, values are sorted in ascending order.
-            concurrent_sort (bool): #Todo: Document
             agg_func: #Todo: Document
 
         Returns:

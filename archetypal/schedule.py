@@ -16,7 +16,7 @@ from eppy.bunch_subclass import EpBunch
 from numpy import ndarray
 
 from archetypal import log
-from archetypal.energypandas import plot_energyseries_map, EnergySeries
+from archetypal.energypandas import EnergySeries, plot_energyseries_map
 
 
 class Schedule(object):
@@ -246,12 +246,13 @@ class Schedule(object):
         """Plot the schedule. Implements the .loc accessor on the series object.
 
         Examples:
+            >>> from archetypal import IDF
+            >>> idf = IDF()
             >>> s = Schedule(
             >>>         Name="NECB-A-Thermostat Setpoint-Heating",
-            >>>         idf=idf_object)
+            >>>         idf=idf)
             >>>     )
             >>> s.plot(slice=("2018/01/02", "2018/01/03"), drawstyle="steps-post")
-            >>> plt.show()
 
         Args:
             slice (tuple): define a 2-tuple object the will be passed to

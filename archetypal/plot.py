@@ -19,7 +19,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-from archetypal import settings, log
+from archetypal import log, settings
 
 
 def save_and_show(

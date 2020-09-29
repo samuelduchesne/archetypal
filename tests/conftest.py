@@ -1,17 +1,14 @@
 import glob
-import os
-import shutil
 import sys
 
 import pytest
-
-import archetypal as ar
-
 
 # Parametrization of the fixture scratch_then_cache. The following array
 # tells pytest to use True than False for all tests that use this fixture.
 # This is very usefull to test the behavior of methods that use cached data
 # or not.
+from archetypal import settings
+
 do = [True, False]
 
 
@@ -23,9 +20,9 @@ def scratch_then_cache(request):
     # params=do. Ids are there to give the test a human readable name.
     if request.param:
         dirs = [
-            ar.settings.data_folder,
-            ar.settings.cache_folder,
-            ar.settings.imgs_folder,
+            settings.data_folder,
+            settings.cache_folder,
+            settings.imgs_folder,
         ]
         for dir in dirs:
             dir.rmtree_p()
@@ -44,7 +41,7 @@ def idf_source(request):
 
 @pytest.fixture(scope="session")
 def config():
-    ar.config(
+    config(
         data_folder="tests/.temp/data",
         logs_folder="tests/.temp/logs",
         imgs_folder="tests/.temp/images",
@@ -61,7 +58,7 @@ def config():
 def clean_config(config):
     """calls config fixture and clears default folders"""
 
-    dirs = [ar.settings.data_folder, ar.settings.cache_folder, ar.settings.imgs_folder]
+    dirs = [settings.data_folder, settings.cache_folder, settings.imgs_folder]
     for dir in dirs:
         dir.rmtree_p()
 

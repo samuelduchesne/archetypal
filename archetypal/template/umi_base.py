@@ -646,24 +646,24 @@ def load_json_objects(datastore, idf=None):
     Args:
         datastore:
     """
-    from archetypal import (
+    from archetypal.template import (
+        BuildingTemplate,
+        DaySchedule,
+        DomesticHotWaterSetting,
         GasMaterial,
         GlazingMaterial,
-        OpaqueMaterial,
         OpaqueConstruction,
-        WindowConstruction,
+        OpaqueMaterial,
         StructureInformation,
-        DaySchedule,
-        WeekSchedule,
-        YearSchedule,
-        DomesticHotWaterSetting,
         VentilationSetting,
+        WeekSchedule,
+        WindowConstruction,
+        WindowSetting,
+        YearSchedule,
         ZoneConditioning,
         ZoneConstructionSet,
-        ZoneLoad,
         ZoneDefinition,
-        WindowSetting,
-        BuildingTemplate,
+        ZoneLoad,
     )
 
     if not idf:

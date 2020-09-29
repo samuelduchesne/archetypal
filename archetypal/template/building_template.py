@@ -28,13 +28,13 @@ from tqdm import tqdm
 import archetypal
 from archetypal import log, save_and_show
 from archetypal.template import (
-    UmiBase,
-    ZoneDefinition,
-    resolve_obco,
-    WindowSetting,
-    StructureInformation,
     MassRatio,
+    StructureInformation,
+    UmiBase,
+    WindowSetting,
+    ZoneDefinition,
     is_core,
+    resolve_obco,
 )
 from archetypal.utils import reduce
 
@@ -260,11 +260,7 @@ class BuildingTemplate(UmiBase):
         return bt
 
     def reduce(self, cores, perims):
-        """Reduce the building to its simplest core and perimeter zones.
-
-        Args:
-            **zone_graph_kwargs:
-        """
+        """Reduce the building to its simplest core and perimeter zones."""
         log("Initiating complexity reduction...")
         start_time = time.time()
 
@@ -636,9 +632,9 @@ class ZoneGraph(networkx.Graph):
         Returns:
             fig, ax: fig, ax
         """
-        from mpl_toolkits.mplot3d import Axes3D
         import matplotlib.pyplot as plt
         import numpy as np
+        from mpl_toolkits.mplot3d import Axes3D
 
         def avg(zone: eppy.bunch_subclass.EpBunch):
             """calculate the zone centroid coordinates"""
@@ -805,6 +801,7 @@ class ZoneGraph(networkx.Graph):
         the graph using matplotlib using the :mod:`networkx.drawing.py_lab`
 
         Examples:
+            >>> import networkx as nx
             >>> G = BuildingTemplate().from_idf
             >>> G.plot_graph2d(nx.nx_agraph.graphviz_layout, ('dot'),
             >>>                font_color='w', legend=True, font_size=8,
@@ -913,7 +910,11 @@ class ZoneGraph(networkx.Graph):
             networkx.draw_networkx_edges(tree, pos, ax=ax, arrows=arrows, **kwargs)
             if with_labels:
                 networkx.draw_networkx_labels(
-                    G, pos, font_color=font_color, font_size=font_size, **kwargs,
+                    G,
+                    pos,
+                    font_color=font_color,
+                    font_size=font_size,
+                    **kwargs,
                 )
 
             if legend:

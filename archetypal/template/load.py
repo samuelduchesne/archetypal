@@ -15,8 +15,8 @@ from deprecation import deprecated
 from sigfig import round
 
 import archetypal
-from archetypal import log, timeit, settings
-from archetypal.template import UmiBase, Unique, UmiSchedule, UniqueName
+from archetypal import log, settings, timeit
+from archetypal.template import UmiBase, UmiSchedule, Unique, UniqueName
 from archetypal.utils import reduce
 
 

@@ -5,18 +5,19 @@ import warnings
 from datetime import timedelta
 
 import tsam.timeseriesaggregation as tsam
-from matplotlib import pyplot as plt, cm
+from matplotlib import cm
+from matplotlib import pyplot as plt
 from matplotlib.colors import LightSource
-from numpy import ndarray, meshgrid, asarray
+from numpy import asarray, meshgrid, ndarray
 from pandas.core.frame import DataFrame
 from pandas.core.generic import NDFrame
-from pandas.core.indexes.datetimes import date_range, DatetimeIndex
+from pandas.core.indexes.datetimes import DatetimeIndex, date_range
 from pandas.core.indexes.multi import MultiIndex
 from pandas.core.reshape.pivot import pivot_table
 from pandas.core.series import Series
 from pandas.core.tools.datetimes import to_datetime
-from pandas.plotting._matplotlib.tools import _subplots, _flatten
-from pint import Unit, Quantity
+from pandas.plotting._matplotlib.tools import _flatten, _subplots
+from pint import Quantity, Unit
 from sklearn import preprocessing
 
 import archetypal.settings as settings
@@ -43,6 +44,7 @@ class EnergySeries(Series):
         def f(*args, **kwargs):
             # adapted from https://github.com/pandas-dev/pandas/issues/19850#issuecomment-367934440
             return EnergyDataFrame(*args, **kwargs).__finalize__(self, method="inherit")
+
         f._get_axis_number = super(EnergySeries, self)._get_axis_number
 
         return f
@@ -796,7 +798,6 @@ def _plot_poly_collection(
 
     # if None in zs:
     #     zs = None
-
     # color=None overwrites specified facecolor/edgecolor with default color
     if color is not None:
         kwargs["color"] = color

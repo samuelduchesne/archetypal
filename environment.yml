@@ -27,3 +27,4 @@ dependencies:
     - geomeppy
     - deprecation
     - sigfig
+    - -r file:requirements-dev.txt

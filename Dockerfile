@@ -39,11 +39,11 @@ ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 ENV PATH /opt/conda/bin:$PATH
 
 RUN apt-get update --fix-missing && \
-    apt-get install -y wget bzip2 ca-certificates curl git libxml2-dev && \
+    apt-get install -y wget bzip2 ca-certificates curl git libxml2-dev sudo && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh -O ~/miniconda.sh && \
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
     rm ~/miniconda.sh && \
     /opt/conda/bin/conda clean -tipsy && \
@@ -51,47 +51,24 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86
     echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
     echo "conda activate base" >> ~/.bashrc
 
-ENV TINI_VERSION v0.16.1
+ENV TINI_VERSION=v0.16.1
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
 RUN chmod +x /usr/bin/tini
 
 # Add EnergyPlus
-ENV ENERGYPLUS_VERSION=8.9.0
-ENV ENERGYPLUS_SHA=40101eaafd
-ENV ENERGYPLUS_INSTALL_VERSION=8-9-0
-ENV PLATFORM=Linux
-ENV EXT=sh
-ENV ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
-ENV ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-$ENERGYPLUS_VERSION-$ENERGYPLUS_SHA-$PLATFORM-x86_64
-ENV ENERGYPLUS_DOWNLOAD_URL=$ENERGYPLUS_DOWNLOAD_BASE_URL/$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
-RUN curl -SLO $ENERGYPLUS_DOWNLOAD_URL && \
-    chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT && \
-    echo "y\r" | ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT && \
-    rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
+# Install EnergyPlus
+ENV TRAVIS_OS_NAME=linux
+ENV ENERGYPLUS_VERSION=9.2.0
+COPY install_energyplus.sh install_energyplus.sh
+RUN /bin/bash install_energyplus.sh
 
 # Add trnsidf
-COPY ./trnsidf /app/trnsidf
+COPY docker/trnsidf /app/trnsidf
 
+# Copy over environement.yml and requirements-dev.txt
+COPY environment.yml environment.yml
+COPY requirements-dev.txt requirements-dev.txt
 # configure conda and install packages in one RUN to keep image tidy
-RUN git clone --branch=feature/umi --verbose https://github.com/samuelduchesne/archetypal.git && \
-    cd archetypal && \
-    conda update -n base conda && \
-    conda config --append channels conda-forge && \
-    conda env update -n archetypal -f environment.yml --prune && \
-    conda install -n archetypal --file requirements-dev.txt && \
-    conda install --strict-channel-priority --update-all --force-reinstall --yes jupyterlab python-igraph && \
-    conda clean --yes --all && \
-    conda info --all && \
-    conda list && \
-    echo "source activate archetypal" > ~/.bashrc && \
-    python setup.py install
-ENV PATH /opt/conda/envs/archetypal/bin:$PATH
-
-# launch notebook in the local working directory that we mount
-WORKDIR /home/archetypal/wip
-ENTRYPOINT ["/usr/bin/entrypoint"]
-# set default command to launch when container is run
-CMD ["jupyter", "lab", "--ip='0.0.0.0'", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=''", "--NotebookApp.password=''"]
-
-# to test, import archetypal and print its version
-RUN ipython -c "import archetypal; print(archetypal.__version__)"
+RUN conda update -n base conda && \
+    conda config --prepend channels conda-forge && \
+    conda env update -n base -f environment.yml --prune

@@ -7,7 +7,7 @@ import pytest
 # tells pytest to use True than False for all tests that use this fixture.
 # This is very usefull to test the behavior of methods that use cached data
 # or not.
-from archetypal import settings
+from archetypal import settings, utils
 
 do = [True, False]
 
@@ -41,7 +41,7 @@ def idf_source(request):
 
 @pytest.fixture(scope="session")
 def config():
-    config(
+    utils.config(
         data_folder="tests/.temp/data",
         logs_folder="tests/.temp/logs",
         imgs_folder="tests/.temp/images",

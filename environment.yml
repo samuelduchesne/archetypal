@@ -23,7 +23,7 @@ dependencies:
   - pip
   - pip:
     - tsam
-    - eppy
+    - git+https://github.com/samuelduchesne/eppy.git@feature/defaults#egg=eppy
     - geomeppy
     - deprecation
     - sigfig

@@ -195,6 +195,9 @@ cython_debug/
 # CMake
 cmake-build-*/
 
+# AMW
+.idea/aws.xml
+
 # Mongo Explorer plugin
 .idea/**/mongoSettings.xml
 

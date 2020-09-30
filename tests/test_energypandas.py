@@ -74,12 +74,12 @@ class TestEnergySeries:
 
     def test_normalize(self, es):
         """Tests normalization"""
-        assert es.normalize().sum().sum() == 5
+        assert es.normalize().sum().sum() == 50
         assert type(es.normalize()) == EnergySeries
         es.normalize(inplace=True)
 
         # inplace
-        assert es.sum().sum() == 5
+        assert es.sum().sum() == 50
         assert type(es) == EnergySeries
 
     def test_to_frame(self, es):
@@ -169,12 +169,12 @@ class TestEnergyDataFrame:
 
     def test_normalize(self, edf):
         """Tests normalization"""
-        assert edf.normalize().sum().sum() == 5
+        assert edf.normalize().sum().sum() == 50
         assert type(edf.normalize()) == EnergyDataFrame
         edf.normalize(inplace=True)
 
         # inplace
-        assert edf.sum().sum() == 5
+        assert edf.sum().sum() == 50
         assert type(edf) == EnergyDataFrame
 
     def test_slice(self, edf):

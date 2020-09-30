@@ -3692,7 +3692,6 @@ class TransitionThread(Thread):
 
         with TemporaryDirectory(
             prefix="Transition_run_",
-            suffix=self.idf.output_prefix,
             dir=self.idf.output_directory,
         ) as tmp:
             self.epw = self.idf.epw.copy(tmp).expand()
@@ -3714,7 +3713,7 @@ class TransitionThread(Thread):
                 self.p = subprocess.Popen(
                     self.cmd,
                     cwd=self.idf.idfversionupdater_dir,  # process runs in dir
-                    shell=False,
+                    shell=False,  # cannot use shell
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )

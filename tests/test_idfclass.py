@@ -10,7 +10,8 @@ from archetypal import (
     settings,
     EnergyPlusVersionError,
     EnergyPlusProcessError,
-    EnergyPlusVersion, InvalidEnergyPlusVersion,
+    EnergyPlusVersion,
+    InvalidEnergyPlusVersion,
 )
 
 

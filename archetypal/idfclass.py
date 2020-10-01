@@ -1935,7 +1935,7 @@ class IDF(geomIDF):
                     "(archetypal.readthedocs.io/troubleshooting.html#missing"
                     "-transition-programs) "
                     "to solve this issue".format(to_version, trans_exec[trans]),
-                    idf=self.name,
+                    idf=self,
                 )
             else:
                 cmd = [trans_exec[trans], idf_file]
@@ -3361,7 +3361,7 @@ class TransitionExe:
                 "to solve this issue".format(
                     self.idf.as_version, self.trans_exec[self.trans]
                 ),
-                idf=self.idf.name,
+                idf=self.idf,
             )
         return self.trans_exec[self.trans]
 
@@ -3645,7 +3645,7 @@ class SlabThread(Thread):
             with open(error_filename, "r") as stderr:
                 stderr_r = stderr.read()
                 self.exception = EnergyPlusProcessError(
-                    cmd=self.cmd, stderr=stderr_r, idf=self.idf.name
+                    cmd=self.cmd, stderr=stderr_r, idf=self.idf
                 )
         self.cleanup_callback()
 
@@ -3784,7 +3784,7 @@ class TransitionThread(Thread):
                 raise EnergyPlusProcessError(
                     cmd="IDF.upgrade",
                     stderr=f"An error occurred during transitioning",
-                    idf=self.name,
+                    idf=self.idf,
                 )
             else:
                 self.idf._reset_dependant_vars("idfname")
@@ -3942,7 +3942,7 @@ class EnergyPlusThread(Thread):
                 failed_dir.mkdir_p()
                 self.run_dir.copytree(failed_dir / self.idf.output_prefix)
             self.exception = EnergyPlusProcessError(
-                cmd=self.cmd, stderr=stderr_r, idf=self.idf.name
+                cmd=self.cmd, stderr=stderr_r, idf=self.idf
             )
         except FileNotFoundError:
             self.exception = CalledProcessError(
@@ -4104,7 +4104,7 @@ def _run_exec(
                             failed_dir.mkdir_p()
                             tmp.copytree(failed_dir / output_prefix)
                         raise EnergyPlusProcessError(
-                            cmd=cmd, stderr=stderr_r, idf=eplus_file.basename()
+                            cmd=cmd, stderr=stderr_r, idf=eplus_file.abspath()
                         )
                     except FileNotFoundError:
                         raise CalledProcessError(
@@ -4576,7 +4576,7 @@ def _execute_transitions(idf_file, to_version, versionid, **kwargs):
                 "(archetypal.readthedocs.io/troubleshooting.html#missing"
                 "-transition-programs) "
                 "to solve this issue".format(to_version, trans_exec[trans]),
-                idf=idf_file.basename(),
+                idf=idf_file.abspath(),
             )
         else:
             cmd = [trans_exec[trans], idf_file]

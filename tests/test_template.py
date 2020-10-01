@@ -2117,28 +2117,21 @@ class TestWindowSetting:
         window = reduce(WindowSetting.combine, allwindowtypes)
         print(window)
 
-    def test_window_add(self, small_idf, other_idf):
+    def test_window_add(self):
         """
         Args:
             small_idf:
             other_idf:
         """
         from archetypal.template import WindowSetting
-
-        idf, sql = small_idf
-        idf2, sql2 = other_idf
-        zone: EpBunch = idf.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
-        surface = next(iterator, None)
-        window_1 = WindowSetting.from_surface(surface)
-        zone = idf2.idfobjects["ZONE"][0]
-        iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
-        surface = next(iterator)
-        window_2 = WindowSetting.from_surface(surface, allow_duplicates=True)
+        idf = IDF()
+        window_1 = WindowSetting.generic(idf, Name="window_1")
+        window_2 = WindowSetting.generic(idf, Name="window_2")
 
         new_w = window_1 + window_2
-        assert new_w
-        assert window_1.id == window_2.id == new_w.id
+        assert window_1 == window_2
+        assert new_w.id == window_1
+        assert window_1.id != window_2.id != new_w.id
 
     def test_window_iadd(self, small_idf, other_idf):
         """

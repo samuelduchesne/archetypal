@@ -408,10 +408,11 @@ class WindowSetting(UmiBase, metaclass=Unique):
             )
 
     @classmethod
-    def generic(cls, idf):
+    def generic(cls, idf, Name=None):
         """Returns a generic window with SHGC=0.704, UFactor=2.703, Tvis=0.786
 
         Args:
+            Name (str): Name of the WindowSetting
             idf (IDF):
         """
         material = idf.anidfobject(
@@ -427,7 +428,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
             Name="SINGLE PANE HW WINDOW",
             Outside_Layer="SimpleWindow:SINGLE PANE HW WINDOW",
         )
-        return cls.from_construction(Construction=constr, material=material)
+        return cls.from_construction(Name=Name, Construction=constr, material=material)
 
     @classmethod
     def from_construction(cls, Construction, **kwargs):

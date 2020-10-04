@@ -658,11 +658,11 @@ class WindowSetting(UmiBase, metaclass=Unique):
                     )
             else:
                 attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule(
-                    idf=surface.theidf
+                    hourly_value=0, Name="AlwaysOff", idf=surface.theidf
                 )
-            # Zone Mixing
+            # Todo: Zone Mixing is always off
             attr["ZoneMixingAvailabilitySchedule"] = UmiSchedule.constant_schedule(
-                idf=surface.theidf
+                hourly_value=0, Name="AlwaysOff", idf=surface.theidf
             )
             w = cls(
                 Name=name,
@@ -876,15 +876,15 @@ class WindowSetting(UmiBase, metaclass=Unique):
         """Validates UmiObjects and fills in missing values"""
         if not self.AfnWindowAvailability:
             self.AfnWindowAvailability = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", allow_duplicates=True
+                hourly_value=0, Name="AlwaysOff"
             )
         if not self.ShadingSystemAvailabilitySchedule:
             self.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", allow_duplicates=True
+                hourly_value=0, Name="AlwaysOff"
             )
         if not self.ZoneMixingAvailabilitySchedule:
             self.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", allow_duplicates=True
+                hourly_value=0, Name="AlwaysOff"
             )
 
         return self

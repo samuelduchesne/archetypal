@@ -58,6 +58,9 @@ class MassRatio(object):
             NormalRatio=self.NormalRatio,
         )
 
+    def get_unique(self):
+        return self
+
     @classmethod
     def generic(cls):
         mat = OpaqueMaterial(

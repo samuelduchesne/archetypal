@@ -274,14 +274,12 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             )
 
         _from = "\n".join(lines)
-        developed = YearSchedule(
-            Name=self.Name,
-            Comments=f"Year Week Day schedules created from: \n{_from}",
-            epbunch=year,
-            Parts=Parts,
-            DataSource=self.DataSource,
-        )
-        return developed
+        self.__class__ = YearSchedule
+        self.Comments = f"Year Week Day schedules created from: \n{_from}"
+        self.epbunch = year
+        self.Type = "Fraction"
+        self.Parts = Parts
+        return self
 
     def to_json(self):
         """UmiSchedule does not implement the to_json method because it is not
@@ -305,7 +303,6 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
 
         return dict(
             Category=self.schType,
-            Parts=self.Parts,
             Type=self.Type,
             Comments=self.Comments,
             DataSource=self.DataSource,
@@ -411,6 +408,9 @@ class YearSchedulePart:
             ToMonth=self.ToMonth,
             Schedule=self.Schedule,
         )
+
+    def get_unique(self):
+        return self
 
 
 class DaySchedule(UmiSchedule):
@@ -794,6 +794,18 @@ class YearSchedule(UmiSchedule):
         data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
+
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            Category=self.schType,
+            Parts=self.Parts,
+            Type=self.Type,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
 
     def get_parts(self, epbunch):
         """

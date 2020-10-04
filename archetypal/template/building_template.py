@@ -380,6 +380,17 @@ class BuildingTemplate(UmiBase):
         """Validates UmiObjects and fills in missing values"""
         return self
 
+    def get_unique(self):
+
+        def recursive_replace(umibase):
+            for key, obj in umibase.mapping().items():
+                if isinstance(obj, (UmiBase)):
+                    recursive_replace(obj)
+                    setattr(umibase, key, obj.get_unique())
+
+        recursive_replace(self)
+        return self
+
     def mapping(self):
         self.validate()
 

@@ -550,7 +550,7 @@ class TestUmiTemplate:
     def test_climatestudio(self, climatestudio):
         template_json = UmiTemplateLibrary(
             name="my_umi_template", BuildingTemplates=[climatestudio]
-        ).to_json(all_zones=True)
+        ).to_json(all_zones=False)
         print(template_json)
 
     @pytest.mark.skipif(

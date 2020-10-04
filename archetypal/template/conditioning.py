@@ -1077,15 +1077,15 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         """Validates UmiObjects and fills in missing values"""
         if self.HeatingSchedule is None:
             self.HeatingSchedule = UmiSchedule.constant_schedule(
-                idf=self.idf, allow_duplicates=True
+                idf=self.idf
             )
         if self.CoolingSchedule is None:
             self.CoolingSchedule = UmiSchedule.constant_schedule(
-                idf=self.idf, allow_duplicates=True
+                idf=self.idf
             )
         if self.MechVentSchedule is None:
             self.MechVentSchedule = UmiSchedule.constant_schedule(
-                idf=self.idf, allow_duplicates=True
+                idf=self.idf
             )
         if not self.IsMechVentOn:
             self.IsMechVentOn = False

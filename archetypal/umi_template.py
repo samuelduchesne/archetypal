@@ -224,7 +224,7 @@ class UmiTemplateLibrary:
         idf = IDF(idfname, epw=epw, **kwargs)
         if not idf.simulation_dir.exists():
             idf.simulate()
-        return BuildingTemplate.from_idf(idf, DataSource=idf.name, **kwargs)
+        return BuildingTemplate.from_idf(idf, **kwargs)
 
     @classmethod
     def read_file(cls, filename, idf=None):
@@ -445,7 +445,7 @@ class UmiTemplateLibrary:
                     ]
 
         if include_orphaned:
-            for obj in CREATED_OBJECTS:
+            for obj in [obj.get_unique() for obj in CREATED_OBJECTS]:
                 recursive_json(obj)
         else:
             for bld in self.BuildingTemplates:
@@ -457,7 +457,7 @@ class UmiTemplateLibrary:
                     perims = bld.__dict__.pop("perims", None)
 
                     # apply the recursion
-                    recursive_json(bld)
+                    recursive_json(bld.get_unique())
 
                     # put back objects
                     bld.cores = cores

@@ -33,20 +33,28 @@ class Unique(type):
         """
         self = cls.__new__(cls, *args, **kwargs)
         cls.__init__(self, *args, **kwargs)
-        if self not in CREATED_OBJECTS:
-            CREATED_OBJECTS.append(self)
-            return self
-        elif kwargs.get("allow_duplicates", False):
-            if self.Name not in [obj.Name for obj in CREATED_OBJECTS]:
-                CREATED_OBJECTS.append(self)
-                return self
-            else:
-                return next(
-                    (x for x in CREATED_OBJECTS if x == self and x.Name == self.Name),
-                    self,
-                )
+        CREATED_OBJECTS.append(self)
+
+        if kwargs.get("allow_duplicates", False):
+            self._unique = False
         else:
-            return next((x for x in CREATED_OBJECTS if x == self), self)
+            self._unique = True
+
+        return self
+        # if self not in CREATED_OBJECTS:
+        #     CREATED_OBJECTS.append(self)
+        #     return self
+        # elif kwargs.get("allow_duplicates", False):
+        #     if self.Name not in [obj.Name for obj in CREATED_OBJECTS]:
+        #         CREATED_OBJECTS.append(self)
+        #         return self
+        #     else:
+        #         return next(
+        #             (x for x in CREATED_OBJECTS if x == self and x.Name == self.Name),
+        #             self,
+        #         )
+        # else:
+        #     return next((x for x in CREATED_OBJECTS if x == self), self)
 
     def __init__(cls, name, bases, attributes):
         """
@@ -87,11 +95,6 @@ def _shorten_name(long_name):
         return long_name[:148] + (long_name[148:] and " .. ")
     else:
         return long_name
-
-
-def clear_cache():
-    """Clear the dict of created object instances"""
-    CREATED_OBJECTS.clear()
 
 
 class UmiBase(object):
@@ -405,6 +408,23 @@ class UmiBase(object):
     def mapping(self):
         pass
 
+    def get_unique(self):
+        """Returns first object matching equality in the list of instantiated objects
+        or self if no match is found"""
+        if not self._unique:
+            # We want to return the first similar object (equality) that has this name.
+            return next(
+                (x for x in CREATED_OBJECTS if x == self and x.Name == self.Name),
+                self,
+            )
+        else:
+            # We want to return the first similar object (equality) regardless of the
+            # name.
+            return next(
+                (x for x in CREATED_OBJECTS if x == self),
+                self,
+            )
+
 
 class MaterialBase(UmiBase):
     """A class used to store data linked with the Life Cycle aspect of materials
@@ -589,6 +609,9 @@ class MaterialLayer(object):
 
     def mapping(self):
         return dict(Material=self.Material, Thickness=self.Thickness)
+
+    def get_unique(self):
+        return self
 
 
 from collections.abc import Hashable, MutableSet

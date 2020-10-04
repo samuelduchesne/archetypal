@@ -21,7 +21,7 @@ from archetypal.template import (
 GlazingMaterial,
 OpaqueConstruction
 )
-from archetypal.template.umi_base import clear_cache, load_json_objects, UniqueName
+from archetypal.template.umi_base import load_json_objects, UniqueName
 
 
 @pytest.fixture(scope="module")
@@ -236,7 +236,7 @@ class TestDaySchedule:
         import json
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
+
         with open(filename, "r") as f:
             datastore = json.load(f)
         loaded_dict = load_json_objects(datastore, idf)
@@ -345,9 +345,6 @@ class TestYearSchedule:
             config:
             idf:
         """
-
-        clear_cache()
-
         # Creates 2 DaySchedules : 1 always ON and 1 always OFF
         sch_d_on = DaySchedule.from_values(
             Values=[1] * 24, Category="Day", Type="Fraction", Name="AlwaysOn", idf=idf,
@@ -542,7 +539,7 @@ class TestOpaqueMaterial:
 class TestGlazingMaterial:
     """Series of tests for the :class:`GlazingMaterial` class"""
 
-    def test_simple_glazing_material(self, config, idf):
+    def test_simple_glazing_material(self, config):
         """
         Args:
             config:
@@ -561,12 +558,11 @@ class TestGlazingMaterial:
             VisibleReflectanceBack=0.5,
             IRTransmittance=0.7,
             IREmissivityFront=0.5,
-            IREmissivityBack=0.5,
-            idf=idf,
+            IREmissivityBack=0.5
         )
         assert glass.Name == name
 
-    def test_add_glazing_material(self, config, idf):
+    def test_add_glazing_material(self, config):
         """test __add__() for OpaqueMaterial
 
         Args:
@@ -575,15 +571,15 @@ class TestGlazingMaterial:
         """
         sg_a = calc_simple_glazing(0.763, 2.716, 0.812)
         sg_b = calc_simple_glazing(0.578, 2.413, 0.706)
-        mat_a = GlazingMaterial(Name="mat_a", **sg_a, idf=idf)
-        mat_b = GlazingMaterial(Name="mat_b", **sg_b, idf=idf)
+        mat_a = GlazingMaterial(Name="mat_a", **sg_a)
+        mat_b = GlazingMaterial(Name="mat_b", **sg_b)
 
         mat_c = mat_a + mat_b
 
         assert mat_c
         assert mat_a.id != mat_b.id != mat_c.id
 
-    def test_iadd_glazing_material(self, config, idf):
+    def test_iadd_glazing_material(self, config):
         """test __iadd__() for OpaqueMaterial
 
         Args:
@@ -592,8 +588,8 @@ class TestGlazingMaterial:
         """
         sg_a = calc_simple_glazing(0.763, 2.716, 0.812)
         sg_b = calc_simple_glazing(0.578, 2.413, 0.706)
-        mat_a = GlazingMaterial(Name="mat_ia", **sg_a, idf=idf)
-        mat_b = GlazingMaterial(Name="mat_ib", **sg_b, idf=idf)
+        mat_a = GlazingMaterial(Name="mat_ia", **sg_a)
+        mat_b = GlazingMaterial(Name="mat_ib", **sg_b)
 
         id_ = mat_a.id  # storing mat_a's id.
 
@@ -605,7 +601,7 @@ class TestGlazingMaterial:
 
     # todo: Implement from_to_json test for GlazingMaterial class
 
-    def test_hash_eq_glaz_mat(self, config, idf):
+    def test_hash_eq_glaz_mat(self, config):
         """Test equality and hashing of :class:`OpaqueConstruction`
 
         Args:
@@ -615,7 +611,7 @@ class TestGlazingMaterial:
         from copy import copy
 
         sg_a = calc_simple_glazing(0.763, 2.716, 0.812)
-        mat_a = GlazingMaterial(Name="mat_ia", **sg_a, idf=idf)
+        mat_a = GlazingMaterial(Name="mat_ia", **sg_a)
         mat_b = copy(mat_a)
 
         # a copy of dhw should be equal and have the same hash, but still not be the
@@ -670,7 +666,7 @@ class TestGlazingMaterial:
 class TestGasMaterial:
     """Series of tests for the GasMaterial class"""
 
-    def test_gas_material(self, config, idf):
+    def test_gas_material(self, config):
         """
         Args:
             config:
@@ -678,7 +674,7 @@ class TestGasMaterial:
         """
         from archetypal.template import GasMaterial
 
-        air = GasMaterial(Name="Air", Conductivity=0.02, Density=1.24, idf=idf)
+        air = GasMaterial(Name="Air", Conductivity=0.02, Density=1.24)
 
         assert air.Conductivity == 0.02
 
@@ -692,7 +688,6 @@ class TestGasMaterial:
         from archetypal.template import GasMaterial
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
         gasMat_json = [
@@ -714,7 +709,6 @@ class TestGasMaterial:
         import json
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
         gasMat_json = [
@@ -1045,7 +1039,6 @@ class TestOpaqueConstruction:
         from copy import copy
 
         idf, sql = small_idf
-        clear_cache()
         opaq_constr = idf.getobject("CONSTRUCTION", "B_Off_Thm_0")
         oc = OpaqueConstruction.from_epbunch(opaq_constr)
         oc_2 = copy(oc)
@@ -1156,7 +1149,6 @@ class TestWindowConstruction:
         from archetypal.template import WindowConstruction
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
         load_json_objects(datastore, idf)
@@ -1182,7 +1174,6 @@ class TestStructureDefinition:
         from archetypal.template import StructureInformation
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
         load_json_objects(datastore, idf)
@@ -1204,7 +1195,6 @@ class TestStructureDefinition:
         import json
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
 
@@ -1305,7 +1295,6 @@ class TestUmiSchedule:
         from copy import copy
 
         idf, sql = small_idf
-        clear_cache()
         sched = UmiSchedule(Name="On", idf=idf)
         sched_2 = copy(sched)
 
@@ -1350,9 +1339,8 @@ class TestUmiSchedule:
         # 2 UmiSchedule from different idf should have the same hash,
         # not be the same object, yet be equal if they have the same values
         idf_2, sql_2 = other_idf
-        clear_cache()
         assert idf is not idf_2
-        sched_3 = UmiSchedule(Name="On", idf=idf_2)
+        sched_3 = UmiSchedule(Name="On", idf=idf_2, allow_duplicates=True)
         assert sched is not sched_3
         assert sched == sched_3
         assert hash(sched) == hash(sched_3)
@@ -1468,7 +1456,6 @@ class TestZoneConstructionSet:
         from archetypal.template import ZoneConstructionSet
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
 
@@ -1583,7 +1570,6 @@ class TestZoneLoad:
         from archetypal.utils import reduce
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
 
@@ -1604,7 +1590,6 @@ class TestZoneLoad:
         from copy import copy
 
         idf, sql = small_idf
-        clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
         zl = ZoneLoad.from_zone(zone)
@@ -1649,7 +1634,7 @@ class TestZoneLoad:
         assert len(set(zl_list)) == 2
 
         # 2 ZoneLoad from different idf should have the same hash if they
-        # have the same name, be the same object, yet be equal if they have the
+        # have the same name, not be the same object, yet be equal if they have the
         # same values (EquipmentPowerDensity, LightingPowerDensity, etc.)
         idf_2, sql = small_idf_copy
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
@@ -1659,8 +1644,8 @@ class TestZoneLoad:
         assert zone_ep is not zone_ep_3
         assert zone_ep != zone_ep_3
         assert hash(zl) == hash(zl_3)
-        assert id(zl) == id(zl_3)
-        assert zl is zl_3
+        assert id(zl) != id(zl_3)
+        assert zl is not zl_3
         assert zl == zl_3
 
 
@@ -1736,7 +1721,6 @@ class TestZoneConditioning:
         from archetypal.utils import reduce
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
         load_json_objects(datastore, idf)
@@ -1943,7 +1927,7 @@ class TestVentilationSetting:
         assert len(set(vent_list)) == 2
 
         # 2 VentilationSettings from different idf should have the same hash if they
-        # have same names, be the same object, yet be equal if they have the
+        # have same names, not be the same object, yet be equal if they have the
         # same values (Infiltration, IsWindOn, etc.)
 
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
@@ -1956,8 +1940,8 @@ class TestVentilationSetting:
         assert zone_ep is not zone_ep_3
         assert zone_ep != zone_ep_3
         assert hash(vent) == hash(vent_3)
-        assert id(vent) == id(vent_3)
-        assert vent is vent_3
+        assert id(vent) != id(vent_3)
+        assert vent is not vent_3
         assert vent == vent_3
 
 
@@ -2130,7 +2114,7 @@ class TestWindowSetting:
 
         new_w = window_1 + window_2
         assert window_1 == window_2
-        assert new_w.id == window_1
+        assert new_w.id == window_1.id
         assert window_1.id != window_2.id != new_w.id
 
     def test_window_iadd(self, small_idf, other_idf):
@@ -2156,7 +2140,7 @@ class TestWindowSetting:
         window_1 += window_2
         assert window_1
         assert window_1.id == id_  # id should not change
-        assert window_1.id == window_2.id
+        assert window_1.id != window_2.id
 
     def test_glazing_material_from_simple_glazing(self, config, idf):
         """test __add__() for OpaqueMaterial
@@ -2244,8 +2228,8 @@ class TestWindowSetting:
         assert idf is not idf_2
         assert f_surf is not f_surf_3
         assert f_surf != f_surf_3
-        assert hash(wind) == hash(wind_3)
-        assert id(wind) == id(wind_3)
+        assert hash(wind) != hash(wind_3)
+        assert wind is not wind_3
         assert wind == wind_3
 
 

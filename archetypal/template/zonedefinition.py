@@ -415,7 +415,6 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         zone = cls(
             Name=name,
             idf=zone_ep.theidf,
-            sql=sql,
             Category=zone_ep.theidf.name,
             **kwargs,
         )

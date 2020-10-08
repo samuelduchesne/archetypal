@@ -33,6 +33,7 @@ from archetypal.template import (
     ZoneDefinition,
     ZoneLoad,
     settings,
+    UniqueName,
 )
 
 
@@ -393,6 +394,9 @@ class UmiTemplateLibrary:
                 UmiBase objects during session, which could include orphaned
                 components (not used by any other parent component).
         """
+        # First, reset existing name
+        UniqueName.existing = []
+
         data_dict = OrderedDict(
             {
                 "GasMaterials": [],

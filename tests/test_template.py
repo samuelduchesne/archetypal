@@ -2162,7 +2162,7 @@ class TestWindowSetting:
         from archetypal.template import WindowSetting
 
         idf, sql = small_idf
-        w = WindowSetting.generic(idf)
+        w = WindowSetting.generic(idf, "Generic Window")
 
         assert w.to_json()
 

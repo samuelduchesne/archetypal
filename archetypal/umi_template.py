@@ -184,6 +184,7 @@ class UmiTemplateLibrary:
                 verbose=False,
                 position=None,
                 nolimit=True,
+                keep_data_err=True,
                 **kwargs,
             )
         results = parallel_process(

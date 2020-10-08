@@ -1309,15 +1309,20 @@ class IDF(geomIDF):
         if self.file_version > to_version:
             raise EnergyPlusVersionError(self.name, self.idf_version, to_version)
         else:
-            # execute transitions
-            self._running_transition_thread = TransitionThread(
-                idf=self, overwrite=overwrite
-            )
-            self._running_transition_thread.start()
-            self._running_transition_thread.join()
-            e = self._running_transition_thread.exception
-            if e:
+            # # execute transitions
+            with TemporaryDirectory(
+                    prefix="Transition_run_",
+                    dir=self.output_directory,
+            ) as tmp:
+                slab_thread = TransitionThread(
+                self, tmp, overwrite=overwrite
+                )
+                slab_thread.start()
+                slab_thread.join()
+            e = slab_thread.exception
+            if e is not None:
                 raise e
+
 
     @deprecated(
         deprecated_in="1.4",
@@ -3377,7 +3382,9 @@ class TransitionExe:
                 EnergyPlusVersion(
                     re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)
                 ): exec
-                for exec in self.idf.idfversionupdater_dir.files("Transition-V*")
+                for exec in self.idf.idfversionupdater_dir.copytree(
+                    self.output_directory / "trans_prog"
+                ).files("Transition-V*")
             }
         return self._trans_exec
 
@@ -3396,7 +3403,7 @@ class TransitionExe:
         return " ".join(self.__repr__())
 
     def __repr__(self):
-        cmd = [self.get_exe_path(), self.idfname]
+        cmd = ["./" + self.get_exe_path().basename(), self.idfname]
         return cmd
 
     def cmd(self):
@@ -3636,8 +3643,11 @@ class SlabThread(Thread):
         # Remove from include
         ghtin = self.idf.output_directory / "GHTIn.idf"
         if ghtin.exists():
-            self.idf.include.remove(ghtin)
-            ghtin.remove()
+            try:
+                self.idf.include.remove(ghtin)
+                ghtin.remove()
+            except ValueError:
+                log("nothing to remove", lg.DEBUG)
 
     def failure_callback(self):
         error_filename = self.run_dir / "eplusout.err"
@@ -3665,7 +3675,7 @@ class SlabThread(Thread):
 
 
 class TransitionThread(Thread):
-    def __init__(self, idf, overwrite=False):
+    def __init__(self, idf, tmp, overwrite=False):
         """
 
         Args:
@@ -3681,6 +3691,7 @@ class TransitionThread(Thread):
         self.run_dir = Path("")
         self.exception = None
         self.name = "Transition_" + self.idf.name
+        self.tmp = tmp
 
     def run(self):
         """Wrapper around the EnergyPlus command line interface.
@@ -3690,64 +3701,61 @@ class TransitionThread(Thread):
         self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
-        with TemporaryDirectory(
-            prefix="Transition_run_",
-            dir=self.idf.output_directory,
-        ) as tmp:
-            self.epw = self.idf.epw.copy(tmp).expand()
-            self.idfname = Path(self.idf.idfname.copy(tmp)).expand()
-            self.idd = self.idf.iddname.copy(tmp).expand()
+        tmp = self.tmp
+        self.epw = self.idf.epw.copy(tmp).expand()
+        self.idfname = Path(self.idf.idfname.copy(tmp)).expand()
+        self.idd = self.idf.iddname.copy(tmp).expand()
 
-            for trans in tqdm(
-                TransitionExe(self.idf, output_directory=tmp),
-                position=self.idf.position,
-                desc=f"Transition #{self.idf.position}-{self.idf.name}",
-            ):
-                # Get executable using shutil.which (determines the extension based on
-                # the platform, eg: .exe. And copy the executable to tmp
-                self.run_dir = Path(tmp).expand()
-                self.transitionexe = trans
+        for trans in tqdm(
+            TransitionExe(self.idf, output_directory=tmp),
+            position=self.idf.position,
+            desc=f"Transition #{self.idf.position}-{self.idf.name}",
+        ):
+            # Get executable using shutil.which (determines the extension based on
+            # the platform, eg: .exe. And copy the executable to tmp
+            self.run_dir = Path(tmp).expand()
+            self.transitionexe = trans
 
-                # Run Transition Program
-                self.cmd = self.transitionexe.cmd()
-                self.p = subprocess.Popen(
-                    self.cmd,
-                    cwd=self.idf.idfversionupdater_dir,  # process runs in dir
-                    shell=False,  # cannot use shell
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
+            # Run Transition Program
+            self.cmd = self.transitionexe.cmd()
+            self.p = subprocess.Popen(
+                self.cmd,
+                cwd=(self.run_dir / "trans_prog").abspath(),
+                shell=False,  # cannot use shell
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
 
-                start_time = time.time()
-                self.msg_callback("Transition started")
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8").strip("\n"))
+            start_time = time.time()
+            self.msg_callback("Transition started")
+            for line in self.p.stdout:
+                self.msg_callback(line.decode("utf-8").strip("\n"))
 
-                # We explicitly close stdout
-                self.p.stdout.close()
+            # We explicitly close stdout
+            self.p.stdout.close()
 
-                # Wait for process to complete
-                self.p.wait()
+            # Wait for process to complete
+            self.p.wait()
 
-                # Communicate callbacks
-                if self.cancelled:
-                    self.msg_callback("Transition cancelled")
-                    # self.cancelled_callback(self.std_out, self.std_err)
-                else:
-                    if self.p.returncode == 0:
-                        self.msg_callback(
-                            "Transition completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
+            # Communicate callbacks
+            if self.cancelled:
+                self.msg_callback("Transition cancelled")
+                # self.cancelled_callback(self.std_out, self.std_err)
+            else:
+                if self.p.returncode == 0:
+                    self.msg_callback(
+                        "Transition completed in {:,.2f} seconds".format(
+                            time.time() - start_time
                         )
-                        self.success_callback()
-                        for line in self.p.stderr:
-                            self.msg_callback(line.decode("utf-8"))
-                    else:
-                        for line in self.p.stderr:
-                            self.msg_callback(line.decode("utf-8"))
-                        self.msg_callback("Transition failed")
-                        self.failure_callback()
+                    )
+                    self.success_callback()
+                    for line in self.p.stderr:
+                        self.msg_callback(line.decode("utf-8"))
+                else:
+                    for line in self.p.stderr:
+                        self.msg_callback(line.decode("utf-8"))
+                    self.msg_callback("Transition failed")
+                    self.failure_callback()
 
     @property
     def trans_exec(self):

@@ -384,7 +384,7 @@ class BuildingTemplate(UmiBase):
 
         def recursive_replace(umibase):
             for key, obj in umibase.mapping().items():
-                if isinstance(obj, (UmiBase)):
+                if isinstance(obj, UmiBase):
                     recursive_replace(obj)
                     setattr(umibase, key, obj.get_unique())
 

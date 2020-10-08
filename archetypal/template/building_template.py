@@ -287,7 +287,9 @@ class BuildingTemplate(UmiBase):
             self.Perimeter.Name = "Perimeter_" + self.Perimeter.Name.strip("Perimeter_")
         if self.Perimeter.Windows is None:
             # create generic window
-            self.Perimeter.Windows = WindowSetting.generic(idf=self.idf)
+            self.Perimeter.Windows = WindowSetting.generic(
+                idf=self.idf, Name="Generic Window"
+            )
 
         if not self.Core:
             self.Core = self.Perimeter
@@ -381,6 +383,8 @@ class BuildingTemplate(UmiBase):
         return self
 
     def get_unique(self):
+        """Recursively replaces every UmiBase objects with the first instance
+        satisfying equality"""
 
         def recursive_replace(umibase):
             for key, obj in umibase.mapping().items():
@@ -921,11 +925,7 @@ class ZoneGraph(networkx.Graph):
             networkx.draw_networkx_edges(tree, pos, ax=ax, arrows=arrows, **kwargs)
             if with_labels:
                 networkx.draw_networkx_labels(
-                    G,
-                    pos,
-                    font_color=font_color,
-                    font_size=font_size,
-                    **kwargs,
+                    G, pos, font_color=font_color, font_size=font_size, **kwargs,
                 )
 
             if legend:

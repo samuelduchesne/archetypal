@@ -41,20 +41,6 @@ class Unique(type):
             self._unique = True
 
         return self
-        # if self not in CREATED_OBJECTS:
-        #     CREATED_OBJECTS.append(self)
-        #     return self
-        # elif kwargs.get("allow_duplicates", False):
-        #     if self.Name not in [obj.Name for obj in CREATED_OBJECTS]:
-        #         CREATED_OBJECTS.append(self)
-        #         return self
-        #     else:
-        #         return next(
-        #             (x for x in CREATED_OBJECTS if x == self and x.Name == self.Name),
-        #             self,
-        #         )
-        # else:
-        #     return next((x for x in CREATED_OBJECTS if x == self), self)
 
     def __init__(cls, name, bases, attributes):
         """

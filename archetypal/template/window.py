@@ -408,7 +408,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
             )
 
     @classmethod
-    def generic(cls, idf, Name=None):
+    def generic(cls, idf, Name):
         """Returns a generic window with SHGC=0.704, UFactor=2.703, Tvis=0.786
 
         Args:

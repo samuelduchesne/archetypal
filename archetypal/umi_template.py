@@ -486,4 +486,53 @@ class UmiTemplateLibrary:
                 key = "StructureDefinitions"
             data_dict[key] = v
 
+        # Validate
+        try:
+            assert no_duplicates(data_dict, attribute="Name")
+        except Exception as e:
+            lg.warning(str(e))
+
         return data_dict
+
+
+def no_duplicates(file, attribute="Name"):
+    """Asserts whether or not dict has duplicated Names. `attribute` can be another
+    attribute name like "$id".
+
+    Args:
+        file (str or dict): Path of the json file or dict containing umi objects groups
+        attribute (str): Attribute to search for duplicates in json UMI structure.
+            eg. : "$id", "Name".
+
+    Returns:
+        bool: True if no duplicates.
+
+    Raises:
+        Exception if duplicates found.
+    """
+    import json
+    from collections import defaultdict
+
+    if isinstance(file, str):
+        data = json.loads(open(file).read())
+    else:
+        data = file
+    ids = {}
+    for key, value in data.items():
+        ids[key] = defaultdict(int)
+        for component in value:
+            try:
+                _id = component[attribute]
+            except KeyError:
+                pass  # BuildingTemplate does not have an id
+            else:
+                ids[key][_id] += 1
+    dups = {
+        key: dict(filter(lambda x: x[1] > 1, values.items()))
+        for key, values in ids.items()
+        if dict(filter(lambda x: x[1] > 1, values.items()))
+    }
+    if any(dups.values()):
+        raise Exception(f"Duplicate {attribute} found: {dups}")
+    else:
+        return True

@@ -12,8 +12,7 @@ from archetypal.template import OpaqueMaterial, GlazingMaterial, GasMaterial, \
     VentilationSetting, ZoneConstructionSet, ZoneDefinition, BuildingTemplate, ZoneLoad
 from archetypal.template.schedule import YearSchedulePart, DaySchedule, WeekSchedule, \
     YearSchedule
-from archetypal.umi_template import UmiTemplateLibrary
-from tests.conftest import no_duplicates
+from archetypal.umi_template import UmiTemplateLibrary, no_duplicates
 
 
 class TestUmiTemplate:

@@ -7,6 +7,7 @@
 
 import logging as lg
 import math
+import warnings
 
 import numpy as np
 
@@ -104,10 +105,10 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
     R_vis_f = r_vis_f(T_vis)
 
     # sanity checks
-    if T_vis + R_vis_f <= 1.0:
-        log("T_vis + R_vis_f > 1", lg.WARNING)
-    if T_vis + R_vis_b <= 1.0:
-        log("T_vis + R_vis_b > 1", lg.WARNING)
+    if T_vis + R_vis_f >= 1.0:
+        warnings.warn("T_vis + R_vis_f > 1", UserWarning)
+    if T_vis + R_vis_b >= 1.0:
+        warnings.warn("T_vis + R_vis_b > 1", UserWarning)
 
     # Last Step. Saving results to dict
     dict["SolarHeatGainCoefficient"] = shgc

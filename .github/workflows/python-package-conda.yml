@@ -9,13 +9,17 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: [3.6, 3.7, 3.8]
-
+    name: Python ${{ matrix.python-version }} example
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v2
+    - name: Setup conda
+      uses: s-weigand/setup-conda@v1
       with:
+        update-conda: true
         python-version: ${{ matrix.python-version }}
+        conda-channels: conda-forge, anaconda
+    - run: conda --version
+    - run: which python
     - name: Install dependencies
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory

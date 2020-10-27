@@ -846,8 +846,9 @@ def _save_t3d(idf_file, lines, output_folder):
         output_folder (str): path to the output folder (can be None)
 
     Returns:
-        output_folder (str): path to the output folder t3d_path (str): path to
-        the T3D file
+        output_folder (str): path to the output folder
+        t3d_path (str): path to the T3D file
+
     """
     if output_folder is None:
         # User did not provide an output folder path. We use the default setting

@@ -1888,7 +1888,7 @@ def _write_zone_buildingSurf_fenestrationSurf(
                     # surface
                     _relative_to_absolute(fenestrationSurf, incrX, incrY, incrZ)
 
-                # Round vertex to 4 decimal digit max
+                # Round vertex to 2 decimal digit max
                 _round_vertex(fenestrationSurf)
 
                 # Polygon from vector's window surface
@@ -1970,7 +1970,7 @@ def _write_zone_buildingSurf_fenestrationSurf(
                     )
                     raise NotImplementedError(msg)
 
-                # Round vertex to 4 decimal digit max
+                # Round vertex to 2 decimal digit max
                 _round_vertex(buildingSurf)
 
                 # Makes sure idf object key is not all upper string
@@ -2078,7 +2078,7 @@ def _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf, idfobject_key)
         ] = buildingSurf["Vertex_" + str(k) + "_Zcoordinate"]
 
 
-def _round_vertex(surface, nbr_decimal=4):
+def _round_vertex(surface, nbr_decimal=2):
     """Round vertex to the number of decimal (nbr_decimal) wanted
 
     Args:

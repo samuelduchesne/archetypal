@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import time
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -147,12 +148,14 @@ def convert_idf_to_trnbuild(
     # idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
     # Outpout reports
     htm = idf.htm
+    sql = idf.sql
     sql_file = idf.sql_file
 
     # Clean names of idf objects (e.g. 'MATERIAL')
+    idf_2 = deepcopy(idf)
     log("Cleaning names of the IDF objects...", lg.INFO)
     start_time = time.time()
-    clear_name_idf_objects(idf, log_clear_names)
+    clear_name_idf_objects(idf_2, log_clear_names)
     log(
         "Cleaned IDF object names in {:,.2f} seconds".format(time.time() - start_time),
         lg.INFO,
@@ -186,7 +189,7 @@ def convert_idf_to_trnbuild(
         versions,
         zones,
         zonelists,
-    ) = get_idf_objects(idf)
+    ) = get_idf_objects(idf_2)
 
     # Get all construction EXCEPT fenestration ones
     constr_list = _get_constr_list(buildingSurfs)
@@ -229,7 +232,7 @@ def convert_idf_to_trnbuild(
     )
 
     # region Get schedules from IDF
-    schedule_names, schedules = _get_schedules(idf)
+    schedule_names, schedules = _get_schedules(idf_2)
 
     # Adds ground temperature to schedules
     adds_sch_ground(htm, schedule_names, schedules)
@@ -255,7 +258,7 @@ def convert_idf_to_trnbuild(
     # endregion
 
     # Gets and removes from IDF materials with resistance lower than 0.0007
-    mat_name = _remove_low_conductivity(constructions, idf, materials)
+    mat_name = _remove_low_conductivity(constructions, idf_2, materials)
 
     # Write data from IDF file to T3D file
     start_time = time.time()
@@ -273,11 +276,11 @@ def convert_idf_to_trnbuild(
     coordSys = _is_coordSys_world(coordSys, zones)
 
     # Change coordinates from relative to absolute for building surfaces
-    _change_relative_coords(buildingSurfs, coordSys, idf)
+    _change_relative_coords(buildingSurfs, coordSys, idf_2)
 
     # Adds or changes adjacent surface if needed
-    _add_change_adj_surf(buildingSurfs, idf)
-    buildingSurfs = idf.idfobjects["BUILDINGSURFACE:DETAILED"]
+    _add_change_adj_surf(buildingSurfs, idf_2)
+    buildingSurfs = idf_2.idfobjects["BUILDINGSURFACE:DETAILED"]
 
     # region Write VARIABLEDICTONARY (Zone, BuildingSurf, FenestrationSurf)
     # from IDF to lines (T3D)
@@ -291,7 +294,7 @@ def convert_idf_to_trnbuild(
         buildingSurfs,
         coordSys,
         fenestrationSurfs,
-        idf,
+        idf_2,
         lines,
         n_ground,
         zones,
@@ -300,11 +303,11 @@ def convert_idf_to_trnbuild(
     # endregion
 
     # region Write CONSTRUCTION from IDF to lines (T3D)
-    _write_constructions(constr_list, idf, lines, mat_name, materials)
+    _write_constructions(constr_list, idf_2, lines, mat_name, materials)
     # endregion
 
     # Write CONSTRUCTION from IDF to lines, at the end of the T3D file
-    _write_constructions_end(constr_list, idf, lines)
+    _write_constructions_end(constr_list, idf_2, lines)
 
     # region Write LAYER from IDF to lines (T3D)
     _write_materials(lines, materialAirGap, materialNoMass, materials)
@@ -363,7 +366,7 @@ def convert_idf_to_trnbuild(
     # output_folder
     new_idf_path = os.path.join(output_folder, "MODIFIED_" + os.path.basename(idf_file))
     if return_idf:
-        idf.saveas(filename=new_idf_path)
+        idf_2.saveas(filename=new_idf_path)
 
     # Run trnsidf to convert T3D to BUI
     log("Converting t3d file to bui file. Running trnsidf.exe...")

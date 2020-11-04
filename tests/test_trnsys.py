@@ -1123,6 +1123,11 @@ class TestTrnBuild:
     os.environ.get("CI", "False").lower() == "true",
     reason="Skipping this test on CI environment.",
 )
+@pytest.mark.xfail(
+    not Path("docker/trnsidf/trnsidf.exe").exists(),
+    reason="xfail since trnsidf.exe is not installed. This test can work if the "
+           "trnsidf.exe is copied in ./docker/trnsidf",
+)
 def test_trnbuild_from_simple_idf(config):
     # Path to weather file, window library and T3D template
     window_file = "W74-lib.dat"

@@ -14,10 +14,10 @@ from sigfig import round
 
 import archetypal
 from archetypal import log, reduce, settings, timeit
-from archetypal.template import UmiBase, UmiSchedule, Unique, UniqueName
+from archetypal.template import UmiBase, UmiSchedule, UniqueName
 
 
-class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
+class DomesticHotWaterSetting(UmiBase):
     """Domestic Hot Water settings
 
     .. image:: ../images/template/zoneinfo-dhw.png
@@ -90,7 +90,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
         if not isinstance(other, DomesticHotWaterSetting):
@@ -171,7 +171,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
         if not zone.is_part_of_conditioned_floor_area:
             return None
 
-        # First, find the WaterUse:Equipement assigned to this zone
+        # First, find the WaterUse:Equipment assigned to this zone
         dhw_objs = zone._epbunch.getreferingobjs(
             iddgroups=["Water Systems"], fields=["Zone_Name"]
         )
@@ -310,7 +310,7 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
     @timeit
     def _do_flow_rate(cls, dhw_objs, area):
         """Calculate total flow rate from list of WaterUse:Equipment objects.
-        The zone's area_conditioned property is used to normalize the flow rate.
+        The zone's net_conditioned_building_area property is used to normalize the flow rate.
 
         Args:
             dhw_objs (Idf_MSequence):
@@ -402,24 +402,28 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
     def whole_building(cls, idf):
         z_dhw_list = []
         dhw_objs = idf.idfobjects["WaterUse:Equipment".upper()]
-        for obj in dhw_objs:
-            total_flow_rate = DomesticHotWaterSetting._do_flow_rate(
-                [obj], idf.area_conditioned
-            )
-            water_schedule = DomesticHotWaterSetting._do_water_schedule([obj], idf)
-            inlet_temp = DomesticHotWaterSetting._do_inlet_temp([obj], idf)
-            supply_temp = DomesticHotWaterSetting._do_hot_temp([obj], idf)
-            z_dhw = DomesticHotWaterSetting(
-                Name=obj.Name,
-                FlowRatePerFloorArea=total_flow_rate,
-                IsOn=total_flow_rate > 0,
-                WaterSchedule=water_schedule,
-                WaterSupplyTemperature=supply_temp,
-                WaterTemperatureInlet=inlet_temp,
-                idf=idf,
-                Category=idf.name,
-            )
-            z_dhw_list.append(z_dhw)
+
+        # Unconditioned area could be zero, therefore taking max of both
+        area = max(idf.net_conditioned_building_area,
+                   idf.unconditioned_building_area)
+
+        total_flow_rate = DomesticHotWaterSetting._do_flow_rate(
+            dhw_objs, area
+        )
+        water_schedule = DomesticHotWaterSetting._do_water_schedule(dhw_objs, idf)
+        inlet_temp = DomesticHotWaterSetting._do_inlet_temp(dhw_objs, idf)
+        supply_temp = DomesticHotWaterSetting._do_hot_temp(dhw_objs, idf)
+        z_dhw = DomesticHotWaterSetting(
+            Name="Whole Building WaterUse:Equipment",
+            FlowRatePerFloorArea=total_flow_rate,
+            IsOn=total_flow_rate > 0,
+            WaterSchedule=water_schedule,
+            WaterSupplyTemperature=supply_temp,
+            WaterTemperatureInlet=inlet_temp,
+            idf=idf,
+            Category=idf.name,
+        )
+        z_dhw_list.append(z_dhw)
         if not dhw_objs:
             # defaults with 0 flow rate.
             total_flow_rate = 0
@@ -455,6 +459,23 @@ class DomesticHotWaterSetting(UmiBase, metaclass=Unique):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
+        )
+
+    def get_ref(self, ref):
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in DomesticHotWaterSetting.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
         )
 
 

@@ -15,7 +15,7 @@ from sigfig import round
 
 import archetypal
 from archetypal import log, settings, timeit, top, weighted_mean
-from archetypal.template import UmiBase, UmiSchedule, Unique, UniqueName
+from archetypal.template import UmiBase, UmiSchedule, UniqueName
 
 
 def resolve_temp(temp, idf):
@@ -33,7 +33,7 @@ def resolve_temp(temp, idf):
         return sched.all_values.mean()
 
 
-class VentilationSetting(UmiBase, metaclass=Unique):
+class VentilationSetting(UmiBase):
     """Zone Ventilation Settings
 
     .. image:: ../images/template/zoneinfo-ventilation.png
@@ -192,7 +192,9 @@ class VentilationSetting(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash(
+            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+        )
 
     def __eq__(self, other):
         if not isinstance(other, VentilationSetting):
@@ -471,6 +473,23 @@ class VentilationSetting(UmiBase, metaclass=Unique):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
+        )
+
+    def get_ref(self, ref):
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in VentilationSetting.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
         )
 
 

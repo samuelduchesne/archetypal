@@ -10,7 +10,7 @@ import collections
 from deprecation import deprecated
 
 import archetypal
-from archetypal.template import OpaqueMaterial, UmiBase, Unique, UniqueName
+from archetypal.template import OpaqueMaterial, UmiBase, UniqueName
 
 
 class MassRatio(object):
@@ -86,7 +86,7 @@ class MassRatio(object):
         return cls(HighLoadRatio=305, Material=mat, NormalRatio=305)
 
 
-class StructureInformation(UmiBase, metaclass=Unique):
+class StructureInformation(UmiBase):
     """Building Structure settings.
 
     .. image:: ../images/template/constructions-structure.png
@@ -114,7 +114,7 @@ class StructureInformation(UmiBase, metaclass=Unique):
             MassRatios:
             **kwargs:
         """
-        super(StructureInformation, self).__init__(*args, **kwargs)
+        super(StructureInformation, self).__init__(**kwargs)
         self.AssemblyCarbon = AssemblyCarbon
         self.AssemblyCost = AssemblyCost
         self.AssemblyEnergy = AssemblyEnergy
@@ -123,7 +123,9 @@ class StructureInformation(UmiBase, metaclass=Unique):
         self.MassRatios = MassRatios
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash(
+            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+        )
 
     def __eq__(self, other):
         if not isinstance(other, StructureInformation):
@@ -206,4 +208,21 @@ class StructureInformation(UmiBase, metaclass=Unique):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
+        )
+
+    def get_ref(self, ref):
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in StructureInformation.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
         )

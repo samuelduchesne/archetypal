@@ -17,7 +17,6 @@ from archetypal.template import (
     MaterialLayer,
     OpaqueMaterial,
     UmiBase,
-    Unique,
     UniqueName,
 )
 
@@ -61,6 +60,23 @@ class ConstructionBase(UmiBase):
         """Validates UmiObjects and fills in missing values"""
         return self
 
+    def get_ref(self, ref):
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in ConstructionBase.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
+        )
+
 
 class LayeredConstruction(ConstructionBase):
     """Defines the layers of an :class:`OpaqueConstruction`. This class has one
@@ -81,7 +97,7 @@ class LayeredConstruction(ConstructionBase):
         self.Layers = Layers
 
 
-class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
+class OpaqueConstruction(LayeredConstruction):
     """Opaque Constructions
 
     .. image:: ../images/template/constructions-opaque.png
@@ -106,7 +122,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
         if not isinstance(other, OpaqueConstruction):
@@ -423,10 +439,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         layers = kwargs.pop("Layers", None)
         oc = cls(Layers=layers, **kwargs)
         lys = [
-            MaterialLayer(
-                oc.get_ref(layer["Material"]),
-                layer["Thickness"],
-            )
+            MaterialLayer(oc.get_ref(layer["Material"]), layer["Thickness"],)
             for layer in layers
         ]
         oc.Layers = lys
@@ -434,7 +447,16 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return oc
 
     @classmethod
-    def generic_internalmass(cls, idf, for_zone):
+    def generic_internalmass(cls, idf, **kwargs):
+        """
+
+        Args:
+            idf (IDF): The IDF model
+            **kwargs:
+
+        Returns:
+
+        """
         mat = idf.anidfobject(
             key="Material".upper(),
             Name="Wood 6inch",
@@ -446,28 +468,14 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             Thermal_Absorptance=0.7,
             Visible_Absorptance=0.7,
         )
-        cons = idf.anidfobject(
-            key="Construction".upper(),
-            Name="InteriorFurnishings",
-            Outside_Layer="Wood 6inch",
-        )
-        internal_mass = "InternalMass"
-        cons.Name = internal_mass + "_construction"
-
-        new_epbunch = idf.anidfobject(
-            key="InternalMass".upper(),
-            Name=internal_mass,
-            Construction_Name=cons.Name,
-            Zone_or_ZoneList_Name=for_zone,
-            Surface_Area=1,
-        )
-
         return OpaqueConstruction(
-            Name=internal_mass,
+            Name="InternalMass",
             idf=idf,
             Layers=[
                 MaterialLayer(Material=OpaqueMaterial.from_epbunch(mat), Thickness=0.15)
             ],
+            Category=kwargs.pop("Category", "InternalMass"),
+            **kwargs,
         )
 
     @classmethod

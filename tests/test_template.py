@@ -3,25 +3,22 @@ import pytest
 from geomeppy.patches import EpBunch
 
 import archetypal.settings
-from archetypal import (
-    get_eplus_dirs,
-    settings,
-    IDF,
-)
+from archetypal import IDF, get_eplus_dirs, settings
 from archetypal.template import (
-    WeekSchedule,
     DaySchedule,
-    YearSchedule,
-    OpaqueMaterial,
+    DimmingTypes,
+    GlazingMaterial,
     MaterialLayer,
+    OpaqueConstruction,
+    OpaqueMaterial,
+    WeekSchedule,
+    YearSchedule,
     ZoneConstructionSet,
     ZoneDefinition,
+    ZoneGraph,
     calc_simple_glazing,
-    ZoneGraph, DimmingTypes,
-GlazingMaterial,
-OpaqueConstruction
 )
-from archetypal.template.umi_base import load_json_objects, UniqueName
+from archetypal.template.umi_base import UniqueName, load_json_objects
 
 
 @pytest.fixture(scope="module")
@@ -176,7 +173,7 @@ class TestInternalMass:
             small_idf:
         """
         idf, sql = small_idf
-        intmass = OpaqueConstruction.generic_internalmass(idf, "Perim")
+        intmass = OpaqueConstruction.generic_internalmass(idf)
         assert intmass.to_json()
 
 
@@ -475,8 +472,9 @@ class TestOpaqueMaterial:
             small_idf_obj:
             other_idf_object:
         """
-        from archetypal.template import OpaqueMaterial
         from copy import copy
+
+        from archetypal.template import OpaqueMaterial
 
         idf = small_idf_obj
         opaq_mat = idf.getobject("MATERIAL", "B_Gypsum_Plaster_0.02_B_Off_Thm_0")
@@ -558,7 +556,7 @@ class TestGlazingMaterial:
             VisibleReflectanceBack=0.5,
             IRTransmittance=0.7,
             IREmissivityFront=0.5,
-            IREmissivityBack=0.5
+            IREmissivityBack=0.5,
         )
         assert glass.Name == name
 
@@ -685,6 +683,7 @@ class TestGasMaterial:
             idf:
         """
         import json
+
         from archetypal.template import GasMaterial
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -704,9 +703,10 @@ class TestGasMaterial:
             config:
             idf:
         """
-        from archetypal.template import GasMaterial
-        from copy import copy
         import json
+        from copy import copy
+
+        from archetypal.template import GasMaterial
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         with open(filename, "r") as f:
@@ -1003,10 +1003,11 @@ class TestOpaqueConstruction:
             idf:
         """
         import json
+
         from archetypal.template import (
+            MaterialLayer,
             OpaqueConstruction,
             OpaqueMaterial,
-            MaterialLayer,
         )
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -1035,8 +1036,9 @@ class TestOpaqueConstruction:
             small_idf:
             other_idf:
         """
-        from archetypal.template import OpaqueConstruction
         from copy import copy
+
+        from archetypal.template import OpaqueConstruction
 
         idf, sql = small_idf
         opaq_constr = idf.getobject("CONSTRUCTION", "B_Off_Thm_0")
@@ -1146,6 +1148,7 @@ class TestWindowConstruction:
             idf:
         """
         import json
+
         from archetypal.template import WindowConstruction
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -1171,6 +1174,7 @@ class TestStructureDefinition:
             idf:
         """
         import json
+
         from archetypal.template import StructureInformation
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -1190,9 +1194,10 @@ class TestStructureDefinition:
             config:
             idf:
         """
-        from archetypal.template import StructureInformation
-        from copy import copy
         import json
+        from copy import copy
+
+        from archetypal.template import StructureInformation
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         with open(filename, "r") as f:
@@ -1291,8 +1296,9 @@ class TestUmiSchedule:
             small_idf:
             other_idf:
         """
-        from archetypal.template import UmiSchedule
         from copy import copy
+
+        from archetypal.template import UmiSchedule
 
         idf, sql = small_idf
         sched = UmiSchedule(Name="On", idf=idf)
@@ -1347,9 +1353,10 @@ class TestUmiSchedule:
         assert id(sched) != id(sched_3)
 
     def test_combine(self):
+        import numpy as np
+
         from archetypal.template import UmiSchedule
         from archetypal.utils import reduce
-        import numpy as np
 
         sch1 = UmiSchedule(
             Name="Equipment_10kw", Values=np.ones(24), quantity=10, Type="Fraction"
@@ -1453,6 +1460,7 @@ class TestZoneConstructionSet:
             idf:
         """
         import json
+
         from archetypal.template import ZoneConstructionSet
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -1513,13 +1521,29 @@ class TestZoneLoad:
 
         load = ZoneLoad(Name=None, idf=idf)
 
+    def test_zoneLoad_picle(self, config, idf):
+        import pickle
+
+        from archetypal.template import ZoneLoad
+
+        zone_load = ZoneLoad(Name=None, idf=idf)
+
+        with open("Emp.pickle", "wb") as pickling_on:
+            pickle.dump(zone_load, pickling_on)
+
+        with open("Emp.pickle", "rb") as pickle_off:
+            emp = pickle.load(pickle_off)
+            print(emp)
+
+        assert zone_load == emp
+
     def test_zoneLoad_from_zone(self, config, zoneLoadtests):
         """
         Args:
             config:
             zoneLoadtests:
         """
-        from archetypal.template import ZoneLoad, ZoneDefinition
+        from archetypal.template import ZoneDefinition, ZoneLoad
 
         idf, sql = zoneLoadtests
         zone = idf.getobject("ZONE", "Office")
@@ -1540,7 +1564,7 @@ class TestZoneLoad:
             config:
             fiveZoneEndUses:
         """
-        from archetypal.template import ZoneLoad, ZoneDefinition
+        from archetypal.template import ZoneDefinition, ZoneLoad
 
         idf, sql = fiveZoneEndUses
         zone = idf.getobject("ZONE", "SPACE1-1")
@@ -1566,6 +1590,7 @@ class TestZoneLoad:
             idf:
         """
         import json
+
         from archetypal.template import ZoneLoad
         from archetypal.utils import reduce
 
@@ -1586,8 +1611,9 @@ class TestZoneLoad:
             small_idf:
             small_idf_copy:
         """
-        from archetypal.template import ZoneLoad, ZoneDefinition
         from copy import copy
+
+        from archetypal.template import ZoneDefinition, ZoneLoad
 
         idf, sql = small_idf
         zone_ep = idf.idfobjects["ZONE"][0]
@@ -1717,6 +1743,7 @@ class TestZoneConditioning:
             idf:
         """
         import json
+
         from archetypal.template import ZoneConditioning
         from archetypal.utils import reduce
 
@@ -1736,8 +1763,9 @@ class TestZoneConditioning:
         Args:
             zoneConditioningtests:
         """
-        from archetypal.template import ZoneConditioning, ZoneDefinition
         from copy import copy
+
+        from archetypal.template import ZoneConditioning, ZoneDefinition
 
         idf, sql, idf_name, idf_2 = zoneConditioningtests
         # clear_cache()
@@ -1859,6 +1887,7 @@ class TestVentilationSetting:
             idf:
         """
         import json
+
         from archetypal.template import VentilationSetting
         from archetypal.utils import reduce
 
@@ -1878,8 +1907,9 @@ class TestVentilationSetting:
         Args:
             ventilatontests:
         """
-        from archetypal.template import VentilationSetting, ZoneDefinition
         from copy import copy
+
+        from archetypal.template import VentilationSetting, ZoneDefinition
 
         idf, sql, idf_name, idf_2 = ventilatontests
 
@@ -1954,8 +1984,9 @@ class TestDomesticHotWaterSetting:
         Args:
             small_idf:
         """
-        from archetypal.template import DomesticHotWaterSetting, UmiSchedule
         from copy import copy
+
+        from archetypal.template import DomesticHotWaterSetting, UmiSchedule
 
         dhw = DomesticHotWaterSetting(
             Name="",
@@ -2095,8 +2126,8 @@ class TestWindowSetting:
         Args:
             allwindowtypes:
         """
-        from archetypal.utils import reduce
         from archetypal.template import WindowSetting
+        from archetypal.utils import reduce
 
         window = reduce(WindowSetting.combine, allwindowtypes)
         print(window)
@@ -2108,6 +2139,7 @@ class TestWindowSetting:
             other_idf:
         """
         from archetypal.template import WindowSetting
+
         idf = IDF()
         window_1 = WindowSetting.generic(idf, Name="window_1")
         window_2 = WindowSetting.generic(idf, Name="window_2")
@@ -2173,8 +2205,9 @@ class TestWindowSetting:
             small_idf:
             small_idf_copy:
         """
-        from archetypal.template import WindowSetting
         from copy import copy
+
+        from archetypal.template import WindowSetting
 
         idf, sql = small_idf
         f_surf = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"][0]
@@ -2305,8 +2338,9 @@ class TestZone:
             small_idf:
             small_idf_copy:
         """
-        from archetypal.template import ZoneDefinition
         from copy import copy
+
+        from archetypal.template import ZoneDefinition
 
         idf, sql = small_idf
         zone_ep = idf.idfobjects["ZONE"][0]

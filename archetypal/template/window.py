@@ -19,7 +19,7 @@ from archetypal import calc_simple_glazing, log, timeit
 from archetypal.template import MaterialLayer, UmiSchedule, UniqueName
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
-from archetypal.template.umi_base import UmiBase, Unique
+from archetypal.template.umi_base import UmiBase
 
 
 class WindowType(Enum):
@@ -45,7 +45,7 @@ class ShadingType(Enum):
         return self._value_ > other._value_
 
 
-class WindowConstruction(UmiBase, metaclass=Unique):
+class WindowConstruction(UmiBase):
     """
     $id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
     DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
@@ -88,7 +88,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         self.Layers = Layers
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
         if not isinstance(other, WindowConstruction):
@@ -154,7 +154,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         idf = Construction.theidf
         wc = cls(Name=Name, idf=idf, **kwargs)
         wc.Layers = wc.layers(Construction, **kwargs)
-        catdict = {1: "Single", 2: "Double", 3: "Triple", 4: "Quadruple"}
+        catdict = {0: "Single", 1: "Single", 2: "Double", 3: "Triple", 4: "Quadruple"}
         wc.Category = catdict[
             len([lyr for lyr in wc.Layers if isinstance(lyr.Material, GlazingMaterial)])
         ]
@@ -278,8 +278,25 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         """Validates UmiObjects and fills in missing values"""
         return self
 
+    def get_ref(self, ref):
+        """Gets item matching ref id
 
-class WindowSetting(UmiBase, metaclass=Unique):
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in WindowConstruction.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
+        )
+
+
+class WindowSetting(UmiBase):
     """Window Settings define the various window-related properties of a
     specific :class:`Zone`. Control natural ventilation, shading and airflow
     networks and more using this class. This class serves the same role as the
@@ -665,11 +682,14 @@ class WindowSetting(UmiBase, metaclass=Unique):
         attr["ZoneMixingAvailabilitySchedule"] = UmiSchedule.constant_schedule(
             hourly_value=0, Name="AlwaysOff", idf=surface.theidf
         )
+        DataSource = kwargs.pop("DataSource", surface.theidf.name)
+        Category = kwargs.pop("Category", surface.theidf.name)
         w = cls(
             Name=surface.Name,
             Construction=construction,
             idf=surface.theidf,
-            Category=surface.theidf.name,
+            Category=Category,
+            DataSource=DataSource,
             **attr,
             **kwargs,
         )
@@ -913,4 +933,21 @@ class WindowSetting(UmiBase, metaclass=Unique):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
+        )
+
+    def get_ref(self, ref):
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in WindowSetting.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
         )

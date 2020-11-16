@@ -33,7 +33,7 @@ class Unique(type):
         """
         self = cls.__new__(cls, *args, **kwargs)
         cls.__init__(self, *args, **kwargs)
-        CREATED_OBJECTS.append(self)
+        UmiBase.CREATED_OBJECTS.append(self)
 
         if kwargs.get("allow_duplicates", False):
             self._unique = False
@@ -88,6 +88,7 @@ class UmiBase(object):
     _dependencies = {"sql": ["idf"]}
     _independant_vars = set(chain(*list(_dependencies.values())))
     _dependant_vars = set(_dependencies.keys())
+    CREATED_OBJECTS = []
 
     def _reset_dependant_vars(self, name):
         _reverse_dependencies = {}
@@ -124,6 +125,7 @@ class UmiBase(object):
         Category="Uncategorized",
         Comments="",
         DataSource=None,
+        allow_duplicates=False,
         **kwargs,
     ):
         """The UmiBase class handles common properties to all Template objects.
@@ -137,6 +139,8 @@ class UmiBase(object):
             DataSource (str): A description of the datasource of the object.
                 This helps identify from which data is the current object
                 created.
+            allow_duplicates (bool): If True, this object can be equal to another one
+                if it has a different name.
             **kwargs:
         """
         self._datasource = None
@@ -150,8 +154,10 @@ class UmiBase(object):
         self.Category = Category
         self.Comments = Comments
         self.DataSource = DataSource
-        self.all_objects = CREATED_OBJECTS
         self.id = kwargs.get("$id", None)
+        self._not_unique = allow_duplicates
+
+        UmiBase.CREATED_OBJECTS.append(self)
 
     def __repr__(self):
         return ":".join([str(self.id), str(self.Name)])
@@ -261,18 +267,14 @@ class UmiBase(object):
     @classmethod
     def get_classref(cls, ref):
         return next(
-            iter([value for value in CREATED_OBJECTS if value.id == ref["$ref"]]), None
+            iter(
+                [value for value in UmiBase.CREATED_OBJECTS if value.id == ref["$ref"]]
+            ),
+            None,
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
-
-        Args:
-            ref:
-        """
-        return next(
-            iter([value for value in self.all_objects if value.id == ref["$ref"]]), None
-        )
+        pass
 
     def __hash__(self):
         return hash((self.__class__.mro()[0].__name__, self.Name))
@@ -379,12 +381,12 @@ class UmiBase(object):
             return other
         if other is None:
             return self
-        self.all_objects.remove(self)
+        self.CREATED_OBJECTS.remove(self)
         id = self.id
         new_obj = self.combine(other, allow_duplicates=allow_duplicates)
         new_obj.id = id
         self.__dict__.update(**new_obj.__dict__)
-        self.all_objects.append(self)
+        self.CREATED_OBJECTS.append(self)
         return self
 
     def validate(self):
@@ -397,19 +399,20 @@ class UmiBase(object):
     def get_unique(self):
         """Returns first object matching equality in the list of instantiated objects
         or self if no match is found"""
-        if not self._unique:
+        if self._not_unique:
             # We want to return the first similar object (equality) that has this name.
             return next(
-                (x for x in CREATED_OBJECTS if x == self and x.Name == self.Name),
+                (
+                    x
+                    for x in UmiBase.CREATED_OBJECTS
+                    if x == self and x.Name == self.Name
+                ),
                 self,
             )
         else:
             # We want to return the first similar object (equality) regardless of the
             # name.
-            return next(
-                (x for x in CREATED_OBJECTS if x == self),
-                self,
-            )
+            return next((x for x in UmiBase.CREATED_OBJECTS if x == self), self)
 
 
 class MaterialBase(UmiBase):
@@ -486,7 +489,7 @@ class MaterialBase(UmiBase):
         self.TransportEnergy = TransportEnergy
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
         if not isinstance(other, MaterialBase):
@@ -513,8 +516,22 @@ class MaterialBase(UmiBase):
         """Validates UmiObjects and fills in missing values"""
         return self
 
+    def get_ref(self, ref):
+        """Gets item matching ref id
 
-CREATED_OBJECTS = []
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in MaterialBase.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
+        )
 
 
 class MaterialLayer(object):

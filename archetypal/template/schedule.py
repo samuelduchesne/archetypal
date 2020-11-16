@@ -15,10 +15,10 @@ from eppy.bunch_subclass import EpBunch
 
 import archetypal
 from archetypal import Schedule, log
-from archetypal.template import CREATED_OBJECTS, UmiBase, Unique, UniqueName
+from archetypal.template import UmiBase, UniqueName
 
 
-class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
+class UmiSchedule(Schedule, UmiBase):
     """Class that handles Schedules as"""
 
     def __init__(self, *args, quantity=None, **kwargs):
@@ -27,7 +27,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             *args:
             **kwargs:
         """
-        super(UmiSchedule, self).__init__(*args, **kwargs)
+        super(UmiSchedule, self).__init__(**kwargs)
         self.quantity = quantity
 
     @classmethod
@@ -94,7 +94,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
         return repr(self)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
         if not isinstance(other, UmiSchedule):
@@ -193,17 +193,16 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                 axis=0,
                 weights=weights,
             )
-            new_values /= new_values.max()
+            new_values /= quantity[self.Name] + quantity[other.Name]
         elif callable(quantity):
             new_values = np.average(
-                [
-                    self.all_values * quantity(self.predecessors.data),
-                    other.all_values * quantity(other.predecessors.data),
+                np.stack((self.all_values, other.all_values), axis=1),
+                axis=1,
+                weights=[
+                    quantity(self.predecessors.data),
+                    quantity(other.predecessors.data),
                 ],
-                axis=0,
-                weights=weights,
             )
-            new_values /= new_values.max()
         elif isinstance(quantity, (list, tuple)):
             # Multiplying the schedule values by the quantity for both self and other
             # and then using a weighted average. Finally, new values are normalized.
@@ -212,7 +211,7 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
                 axis=0,
                 weights=weights,
             )
-            new_values /= new_values.max()
+            new_values /= sum(quantity)
         else:
             raise TypeError("Quantity is not of type list, tuple, dict or a callable")
 
@@ -307,6 +306,23 @@ class UmiSchedule(Schedule, UmiBase, metaclass=Unique):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
+        )
+
+    def get_ref(self, ref):
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in UmiSchedule.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
         )
 
 
@@ -649,7 +665,7 @@ class WeekSchedule(UmiSchedule):
                 next(
                     (
                         x
-                        for x in CREATED_OBJECTS
+                        for x in UmiBase.CREATED_OBJECTS
                         if x.Name == week_day_schedule_name
                         and type(x).__name__ == "DaySchedule"
                     ),
@@ -829,7 +845,7 @@ class YearSchedule(UmiSchedule):
                     next(
                         (
                             x
-                            for x in self.all_objects
+                            for x in self.CREATED_OBJECTS
                             if x.Name == week_day_schedule_name
                             and type(x).__name__ == "WeekSchedule"
                         )

@@ -3,13 +3,14 @@ import json
 import logging as lg
 import os
 from collections import OrderedDict
+from concurrent.futures.process import ProcessPoolExecutor
+from concurrent.futures.thread import ThreadPoolExecutor
 
 import numpy as np
 from path import Path
 
 from archetypal import IDF, EnergyPlusProcessError, log, parallel_process
 from archetypal.template import (
-    CREATED_OBJECTS,
     BuildingTemplate,
     DaySchedule,
     DomesticHotWaterSetting,
@@ -185,7 +186,8 @@ class UmiTemplateLibrary:
                 verbose=False,
                 position=None,
                 nolimit=True,
-                keep_data_err=True,
+                keep_data_err=True,  # For debugging
+                readvars=False,  # No need to readvars since only sql is used
                 **kwargs,
             )
         results = parallel_process(
@@ -195,6 +197,7 @@ class UmiTemplateLibrary:
             use_kwargs=True,
             debug=True,
             position=None,
+            executor=ThreadPoolExecutor
         )
         for res in results:
             if isinstance(res, EnergyPlusProcessError):
@@ -450,7 +453,7 @@ class UmiTemplateLibrary:
                     ]
 
         if include_orphaned:
-            for obj in [obj.get_unique() for obj in CREATED_OBJECTS]:
+            for obj in [obj.get_unique() for obj in UmiBase.CREATED_OBJECTS]:
                 recursive_json(obj)
         else:
             for bld in self.BuildingTemplates:

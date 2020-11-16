@@ -12,10 +12,10 @@ from deprecation import deprecated
 from sigfig import round
 
 import archetypal
-from archetypal.template import MaterialBase, Unique
+from archetypal.template import MaterialBase
 
 
-class GasMaterial(MaterialBase, metaclass=Unique):
+class GasMaterial(MaterialBase):
     """Gas Materials
 
     .. image:: ../images/template/materials-gas.png
@@ -33,7 +33,7 @@ class GasMaterial(MaterialBase, metaclass=Unique):
         self.Type = Type
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
         if not isinstance(other, GasMaterial):

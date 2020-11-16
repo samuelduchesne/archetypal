@@ -6,11 +6,11 @@
 ################################################################################
 
 import collections
-import concurrent.futures.thread
 import logging as lg
-import threading
+import multiprocessing
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import copy
 from itertools import chain, repeat
 
@@ -119,7 +119,9 @@ class BuildingTemplate(UmiBase):
         return self._partition_ratio
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash(
+            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+        )
 
     def __eq__(self, other):
         if not isinstance(other, BuildingTemplate):
@@ -193,7 +195,9 @@ class BuildingTemplate(UmiBase):
 
         epbunch_zones = idf.idfobjects["ZONE"]
         zones = []
-        with concurrent.futures.thread.ThreadPoolExecutor() as executor:
+        with ThreadPoolExecutor(
+            max_workers=min(len(epbunch_zones), multiprocessing.cpu_count())
+        ) as executor:
             futures = {
                 executor.submit(
                     ZoneDefinition.from_zone_epbunch,
@@ -205,7 +209,7 @@ class BuildingTemplate(UmiBase):
                 for zone in epbunch_zones
             }
             for future in tqdm(
-                concurrent.futures.as_completed(futures),
+                as_completed(futures),
                 desc=f"Creating UMI objects for {idf.position or ''} {name}",
                 total=len(futures),
                 position=idf.position,
@@ -277,13 +281,16 @@ class BuildingTemplate(UmiBase):
                 "Building complexity reduction must have at least one perimeter zone"
             )
         else:
-            self.Perimeter = reduce(
-                ZoneDefinition.combine,
-                tqdm(
-                    perims,
-                    desc=f"Reducing perimeter zones {self.idf.position}-{self.idf.name}",
-                ),
-            )
+            try:
+                self.Perimeter = reduce(
+                    ZoneDefinition.combine,
+                    tqdm(
+                        perims,
+                        desc=f"Reducing perimeter zones {self.idf.position}-{self.idf.name}",
+                    ),
+                )
+            except:
+                pass
             self.Perimeter.Name = "Perimeter_" + self.Perimeter.Name.strip("Perimeter_")
         if self.Perimeter.Windows is None:
             # create generic window
@@ -390,7 +397,10 @@ class BuildingTemplate(UmiBase):
             for key, obj in umibase.mapping().items():
                 if isinstance(obj, UmiBase):
                     recursive_replace(obj)
-                    setattr(umibase, key, obj.get_unique())
+                    try:
+                        setattr(umibase, key, obj.get_unique())
+                    except:
+                        pass
 
         recursive_replace(self)
         return self
@@ -418,6 +428,23 @@ class BuildingTemplate(UmiBase):
             Version=self.Version,
         )
 
+    def get_ref(self, ref):
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in BuildingTemplate.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
+        )
+
 
 def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):
     """
@@ -434,21 +461,6 @@ def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):
     adj_report["Surface Type"].append(surface["Surface_Type"])
     adj_report["Adjacent Zone"].append(adj_zone["Name"])
     adj_report["Surface Type_"].append(adj_surf["Surface_Type"])
-
-
-class ZoneThread(threading.Thread):
-    def __init__(self, building_template, zone):
-        super().__init__()
-        self.zone = zone
-        self.building_template = building_template
-        self.name = "Zone_" + self.zone.Name
-
-    def run(self):
-        self.building_template._allzones.append(
-            ZoneDefinition.from_zone_epbunch(
-                self.zone, sql=self.building_template.idf.sql(), allow_duplicates=True
-            )
-        )
 
 
 class ZoneGraph(networkx.Graph):

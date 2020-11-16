@@ -3,8 +3,12 @@ import os
 import pandas as pd
 import pytest
 
-from archetypal import download_bld_window, IDF, dataportal, \
-    tabula_building_details_sheet
+from archetypal import (
+    IDF,
+    dataportal,
+    download_bld_window,
+    tabula_building_details_sheet,
+)
 from archetypal.template import WindowSetting
 
 

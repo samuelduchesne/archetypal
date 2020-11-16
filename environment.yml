@@ -2,7 +2,7 @@ name: archetypal
 channels:
   - conda-forge
 dependencies:
-  - shapely
+  - geopandas
   - networkx
   - six
   - matplotlib>=2.1

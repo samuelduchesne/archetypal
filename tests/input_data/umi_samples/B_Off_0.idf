@@ -892,7 +892,7 @@
   WindowMaterial:Glazing,
     B_Glass_Clear_3_0.003_B_Dbl_Air_Cl,  !- Name
     SpectralAverage,         !- Optical Data Type
-    SpectralAverage,         !- Window Glass Spectral Data Set Name
+    ,         !- Window Glass Spectral Data Set Name
     0.003,                   !- Thickness {m}
     0.83,                    !- Solar Transmittance at Normal Incidence
     0.07,                    !- Front Side Solar Reflectance at Normal Incidence

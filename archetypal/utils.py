@@ -1295,6 +1295,10 @@ class EnergyPlusVersion(Version):
         ]
 
     @property
+    def tuple(self):
+        return self.major, self.minor, self.micro
+
+    @property
     def dash(self):
         # type: () -> str
         return "-".join(map(str, (self.major, self.minor, self.micro)))

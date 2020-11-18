@@ -1,9 +1,7 @@
 networkx
 shapely
-geomeppy
 matplotlib>=2.1
 six
-eppy
 requests>=2.18
 pycountry
 scikit-learn

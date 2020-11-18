@@ -19,6 +19,7 @@ dependencies:
   - pint
   - click
   - outdated
+  - opyplus
   - pip
   - pip:
     - tsam

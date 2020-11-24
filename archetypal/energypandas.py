@@ -957,10 +957,9 @@ class EnergyDataFrame(DataFrame):
         units=None,
         normalize=False,
         sort_values=False,
-        ascending=False,
-        concurrent_sort=False,
         to_units=None,
     ):
+        """From a ReportData DataFrame"""
         # get data
         units = [units] if units else set(df.Units)
         if len(units) > 1:
@@ -992,15 +991,13 @@ class EnergyDataFrame(DataFrame):
         index = DatetimeIndex(index)
         grouped_Data.index = index
         # Since we create the index, use_timeindex must be false
-        edf = cls(grouped_Data, units=units, index=grouped_Data.index)
+        edf = cls(grouped_Data, units=units, index=grouped_Data.index, name=name)
         if to_units:
             edf.to_units(to_units=to_units, inplace=True)
         if normalize:
             edf.normalize(inplace=True)
         if sort_values:
             edf.sort_values(sort_values, inplace=True)
-        if concurrent_sort:
-            pass
         return edf
 
     @property

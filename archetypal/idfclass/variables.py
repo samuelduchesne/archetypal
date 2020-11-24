@@ -1,3 +1,5 @@
+"""EnergyPlus variables module."""
+
 import pandas as pd
 from geomeppy.patches import EpBunch
 
@@ -23,14 +25,7 @@ class Variable:
         """returns the string representation of an EpBunch"""
         return self._epobject.__str__()
 
-    def values(
-        self,
-        units=None,
-        normalize=False,
-        sort_values=False,
-        ascending=False,
-        concurrent_sort=False,
-    ):
+    def values(self, units=None, normalize=False, sort_values=False):
         """Returns the Variable as a time-series (:class:`EnergySeries`). Data is
         retrieved from the sql file. It is possible to convert the time-series to
         another unit, e.g.: "J" to "kWh".
@@ -40,8 +35,6 @@ class Variable:
                 is detected automatically and a dimensionality check is performed.
             normalize (bool): Normalize between 0 and 1.
             sort_values (bool): If True, values are sorted (default ascending=True)
-            ascending (bool): If True and `sort_values` is True, values are sorted in ascending order.
-            concurrent_sort (bool): #Todo: Document
 
         Returns:
             EnergySeries: The time-series object.
@@ -58,12 +51,10 @@ class Variable:
             self._values = report
         return EnergyDataFrame.from_reportdata(
             self._values,
-            to_units=units,
             name=self._epobject.Variable_Name,
             normalize=normalize,
             sort_values=sort_values,
-            ascending=ascending,
-            concurrent_sort=concurrent_sort,
+            to_units=units,
         )
 
 
@@ -81,6 +72,8 @@ class VariableGroup:
 
 
 class Variables:
+    """Class attributes representing available rdd variables"""
+
     def __init__(self, idf):
         self._idf = idf
 

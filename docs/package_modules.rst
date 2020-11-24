@@ -178,9 +178,7 @@ Report Data
 
     ReportData.from_sql_dict
     ReportData.from_sqlite
-    ReportData.heating_load
     ReportData.filter_report_data
-    ReportData.sorted_values
 
 
 Tabular Data

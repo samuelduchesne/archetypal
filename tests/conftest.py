@@ -28,10 +28,7 @@ def scratch_then_cache(request):
             dir.rmtree_p()
 
 
-samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular',
-
-
-# 'umi_samples']
+samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular', 'umi_samples']
 
 
 @pytest.fixture(params=samples_, ids=samples_, scope="session")

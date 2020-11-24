@@ -1,4 +1,7 @@
+"""Slab module"""
+
 import logging as lg
+import platform
 import shutil
 import subprocess
 import time
@@ -18,37 +21,39 @@ from archetypal.utils import log
 
 
 class SlabExe(EnergyPlusProgram):
+    """Slab executable wrapper."""
+
     def __init__(self, idf):
-        """
-
-        Args:
-            idf (IDF): The IDF model.
-        """
+        """Constructor."""
         super().__init__(idf)
-
-        self.slab_idf = Path(self.idf.savecopy(self.slabdir / "GHTIn.idf")).expand()
-        self.slabepw = self.idf.epw.copy(self.slabdir / "in.epw").expand()
 
     @property
     def cmd(self):
-        cmd_path = shutil.which("Slab", path=self.slabdir)
+        """Get the platform-specific command."""
+        if platform.system() == "Windows":
+            cmd_path = shutil.which("Slab", path=self.program_directory)
+        else:
+            cmd_path = shutil.which("Slab", path=self.program_directory)
+            cmd_path = "./" + cmd_path
         return [cmd_path]
 
     @property
-    def slabdir(self):
+    def program_directory(self):
+
         return self.eplus_home / "PreProcess" / "GrndTempCalc"
 
 
 class SlabThread(Thread):
-    def __init__(self, idf, tmp):
-        """The slab program used to calculate the results is included with the
-        EnergyPlus distribution. It requires an input file named GHTin.idf in input
-        data file format. The needed corresponding idd file is SlabGHT.idd. An
-        EnergyPlus weather file for the location is also needed.
+    """Slab program manager.
 
-        Args:
-            idf (IDF):
-        """
+    The slab program used to calculate the results is included with the
+    EnergyPlus distribution. It requires an input file named GHTin.idf in
+    input data file format. The needed corresponding idd file is
+    SlabGHT.idd. An EnergyPlus weather file for the location is also needed.
+    """
+
+    def __init__(self, idf, tmp):
+        """Constructor."""
         super(SlabThread, self).__init__()
         self.p = None
         self.std_out = None
@@ -59,15 +64,15 @@ class SlabThread(Thread):
         self.exception = None
         self.name = "RunSlab_" + self.idf.name
         self.tmp = tmp
+        self.include = None
+        self.cmd = None
 
     def run(self):
-        """Wrapper around the EnergyPlus command line interface.
-
-        Adapted from :func:`eppy.runner.runfunctions.run`.
-        """
+        """Wrapper around the EnergyPlus command line interface."""
         self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
+        # Move files into place
         tmp = self.tmp
         self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
         self.idfname = Path(self.idf.idfname.copy(tmp / "in.idf")).expand()
@@ -91,7 +96,7 @@ class SlabThread(Thread):
             pass
 
         # Run Slab Program
-        self.cmd = [self.slabexe.stem]
+        self.cmd = SlabExe(self.idf).cmd
         with tqdm(
             unit_scale=True,
             miniters=1,
@@ -100,10 +105,10 @@ class SlabThread(Thread):
         ) as progress:
 
             self.p = subprocess.Popen(
-                ["./Slab"],
+                self.cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                shell=True,
+                shell=True,  # can use shell
                 cwd=self.run_dir.abspath(),
             )
             start_time = time.time()
@@ -137,9 +142,11 @@ class SlabThread(Thread):
                     self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
+        """Pass message to logger."""
         log(*args, name=self.idf.name, **kwargs)
 
     def success_callback(self):
+        """Parse surface temperature and append to IDF file."""
         temp_schedule = self.run_dir / "SLABSurfaceTemps.txt"
         if temp_schedule.exists():
             with open(self.idf.idfname, "a") as outfile:
@@ -153,7 +160,7 @@ class SlabThread(Thread):
         self.cleanup_callback()
 
     def cleanup_callback(self):
-        """cleans up temp files, directories and variables that need cleanup"""
+        """clean up temp files, directories and variables that need cleanup."""
 
         # Remove from include
         ghtin = self.idf.output_directory / "GHTIn.idf"
@@ -165,6 +172,7 @@ class SlabThread(Thread):
                 log("nothing to remove", lg.DEBUG)
 
     def failure_callback(self):
+        """Parse error file and log"""
         error_filename = self.run_dir / "eplusout.err"
         if error_filename.exists():
             with open(error_filename, "r") as stderr:
@@ -175,6 +183,7 @@ class SlabThread(Thread):
         self.cleanup_callback()
 
     def cancelled_callback(self, stdin, stdout):
+        """Call on cancelled."""
         self.cleanup_callback()
 
     @property

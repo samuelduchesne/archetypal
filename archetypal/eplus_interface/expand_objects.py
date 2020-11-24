@@ -1,6 +1,11 @@
+"""ExpandObjects module"""
+
+import logging as lg
+import platform
 import shutil
 import subprocess
 import time
+from subprocess import CalledProcessError
 from threading import Thread
 
 from eppy.runner.run_functions import paths_from_version
@@ -14,25 +19,26 @@ from archetypal.eplus_interface.version import EnergyPlusVersion
 
 
 class ExpandObjectsExe(EnergyPlusProgram):
+    """ExpandObject Wrapper"""
+
     def __init__(self, idf):
+        """Constructor."""
         super().__init__(idf)
 
     @property
-    def expandobjs_dir(self):
-        return self.eplus_home
-
-    @property
     def cmd(self):
-        return ["ExpandObjects"]
+        """Get the platform-specific command."""
+        if platform.system() == "Windows":
+            return ["ExpandObjects"]
+        else:
+            return ["./ExpandObjects"]
 
 
 class ExpandObjectsThread(Thread):
-    def __init__(self, idf, tmp):
-        """
+    """ExpandObjects program manager."""
 
-        Args:
-            idf (IDF):
-        """
+    def __init__(self, idf, tmp):
+        """Constructor."""
         super(ExpandObjectsThread, self).__init__()
         self.p = None
         self.std_out = None
@@ -43,16 +49,15 @@ class ExpandObjectsThread(Thread):
         self.exception = None
         self.name = "ExpandObjects_" + self.idf.name
         self.tmp = tmp
+        self.cmd = None
 
     def run(self):
-        """Wrapper around the EnergyPlus command line interface.
-
-        Adapted from :func:`eppy.runner.runfunctions.run`.
-        """
+        """Wrapper around the EnergyPlus command line interface."""
         try:
             self.cancelled = False
             # get version from IDF object or by parsing the IDF file for it
 
+            # Move files into place
             tmp = self.tmp
             self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
             self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
@@ -63,7 +68,7 @@ class ExpandObjectsThread(Thread):
             self.run_dir = Path(tmp).expand()
 
             # Run ExpandObjects Program
-            self.cmd = str(self.expandobjectsexe.basename())
+            self.cmd = ExpandObjectsExe(self.idf).cmd
             with tqdm(
                 unit_scale=True,
                 miniters=1,
@@ -72,10 +77,10 @@ class ExpandObjectsThread(Thread):
             ) as progress:
 
                 self.p = subprocess.Popen(
-                    ["./ExpandObjects"],
+                    self.cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    shell=True,
+                    shell=True,  # can use shell
                     cwd=self.run_dir.abspath(),
                 )
                 start_time = time.time()
@@ -97,20 +102,21 @@ class ExpandObjectsThread(Thread):
                 else:
                     if self.p.returncode == 0:
                         self.msg_callback(
-                            "ExpandObjects completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
+                            f"ExpandObjects completed in "
+                            f"{time.time() - start_time:,.2f} seconds"
                         )
                         self.success_callback()
                     else:
-                        self.msg_callback("ExpandObjects failed")
+                        self.failure_callback()
         except Exception as e:
             self.exception = e
 
     def msg_callback(self, *args, **kwargs):
+        """Pass message to logger."""
         log(*args, name=self.idf.name, **kwargs)
 
     def success_callback(self):
+        """Replace idf with expanded.idf."""
         if (self.run_dir / "expanded.idf").exists():
             self.idf.idfname = (self.run_dir / "expanded.idf").copy(
                 self.idf.output_directory / self.idf.name
@@ -123,9 +129,15 @@ class ExpandObjectsThread(Thread):
             )
 
     def failure_callback(self):
-        pass
+        """Read stderr and pass to logger."""
+        for line in self.p.stderr:
+            self.msg_callback(line.decode("utf-8"), level=lg.ERROR)
+        self.exception = CalledProcessError(
+            self.p.returncode, cmd=self.cmd, stderr=self.p.stderr
+        )
 
     def cancelled_callback(self, stdin, stdout):
+        """Call on cancelled."""
         pass
 
     @property

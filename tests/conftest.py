@@ -48,7 +48,7 @@ def config():
         cache_folder="tests/.temp/cache",
         use_cache=True,
         log_file=False,
-        log_console=False,
+        log_console=True,
         umitemplate="tests/input_data/umi_samples/BostonTemplateLibrary_2.json",
         debug=True,
     )

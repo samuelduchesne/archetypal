@@ -1,3 +1,5 @@
+"""Transition module"""
+
 import os
 import platform
 import re
@@ -12,6 +14,7 @@ from eppy.runner.run_functions import paths_from_version
 from path import Path
 from tqdm import tqdm
 
+from archetypal.eplus_interface.energy_plus import EnergyPlusProgram
 from archetypal.eplus_interface.exceptions import (
     EnergyPlusProcessError,
     EnergyPlusVersionError,
@@ -20,7 +23,7 @@ from archetypal.eplus_interface.version import EnergyPlusVersion
 from archetypal.utils import log
 
 
-class TransitionExe:
+class TransitionExe(EnergyPlusProgram):
     """Transition Program Generator.
 
     Examples:
@@ -29,10 +32,8 @@ class TransitionExe:
     """
 
     def __init__(self, idf, tmp_dir):
-        """
-        Args:
-            idf (IDF): The idf filename
-        """
+        """Constructor."""
+        super().__init__(idf)
         self.idf = idf
         self.trans = None  # Set by __next__()
         self.running_directory = tmp_dir
@@ -40,7 +41,7 @@ class TransitionExe:
         self._trans_exec = None
 
     def __next__(self):
-        self.trans = next(self.transitions)
+        self.trans = next(self.transitions_generator)
         return self
 
     def __iter__(self):
@@ -94,14 +95,18 @@ class TransitionExe:
 
     @property
     def transitions(self):
-        """Generator of transitions."""
         transitions = [
             key
             for key in self.trans_exec
             if self.idf.as_version >= key > self.idf.idf_version
         ]
         transitions.sort()
-        for transition in transitions:
+        return transitions
+
+    @property
+    def transitions_generator(self):
+        """Generator of transitions_generator."""
+        for transition in self.transitions:
             yield transition
 
     def __str__(self):
@@ -113,7 +118,7 @@ class TransitionExe:
         return self.cmd()
 
     def cmd(self):
-        """Builds the platform-specific command."""
+        """Get the platform-specific command."""
         _which = Path(shutil.which(self.get_exe_path()))
         if platform.system() == "Windows":
             cmd = [_which.relpath(), self.idfname.basename()]
@@ -124,12 +129,10 @@ class TransitionExe:
 
 
 class TransitionThread(Thread):
-    def __init__(self, idf, tmp, overwrite=False):
-        """
+    """Transition program manager"""
 
-        Args:
-            idf (IDF):
-        """
+    def __init__(self, idf, tmp, overwrite=False):
+        """Constructor."""
         super(TransitionThread, self).__init__()
         self.overwrite = overwrite
         self.p = None
@@ -143,39 +146,41 @@ class TransitionThread(Thread):
         self.tmp = tmp
         self.idfname = None
         self.idd = None
+        self.cmd = None
 
     def run(self):
-        """Wrapper around the EnergyPlus command line interface.
-
-        Adapted from :func:`eppy.runner.runfunctions.run`.
-        """
+        """Wrapper around the EnergyPlus command line interface."""
         self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
+        # Move files into place
         tmp = self.tmp
         self.idfname = Path(self.idf.idfname.copy(tmp)).expand()
         self.idd = self.idf.iddname.copy(tmp).expand()
 
+        generator = TransitionExe(self.idf, tmp_dir=tmp)
+
         for trans in tqdm(
-            TransitionExe(self.idf, tmp_dir=tmp),
+            generator,
+            total=len(generator.transitions),
+            unit_scale=True,
+            miniters=1,
             position=self.idf.position,
             desc=f"Transition #{self.idf.position}-{self.idf.name}",
         ):
             # Get executable using shutil.which (determines the extension
             # based on the platform, eg: .exe. And copy the executable to tmp
             self.run_dir = Path(tmp).expand()
-            self.transitionexe = trans
 
             # Run Transition Program
-            self.cmd = self.transitionexe.cmd()
+            self.cmd = trans.cmd()
             self.p = subprocess.Popen(
                 self.cmd,
-                cwd=self.run_dir,
-                shell=False,  # cannot use shell
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                shell=False,  # cannot use shell
+                cwd=self.run_dir,
             )
-
             start_time = time.time()
             self.msg_callback("Transition started")
             for line in self.p.stdout:
@@ -225,10 +230,15 @@ class TransitionThread(Thread):
         return transitions
 
     def msg_callback(self, *args, **kwargs):
-        log(*args, **kwargs)
+        """Pass message to logger."""
+        log(*args, name=self.idf.name, **kwargs)
 
     def success_callback(self):
-        # retrieve transitioned file
+        """Retrieve the transitioned file.
+
+        If self.overwrite is True, the transitioned file replaces the
+        original file.
+        """
         for f in Path(self.run_dir).files("*.idfnew"):
             if self.overwrite:
                 file = f.copy(self.idf.output_directory / self.idf.name)
@@ -237,7 +247,7 @@ class TransitionThread(Thread):
             try:
                 self.idf.idfname = file
             except (NameError, UnboundLocalError):
-                raise EnergyPlusProcessError(
+                self.exception = EnergyPlusProcessError(
                     cmd="IDF.upgrade",
                     stderr=f"An error occurred during transitioning",
                     idf=self.idf,
@@ -246,11 +256,15 @@ class TransitionThread(Thread):
                 self.idf._reset_dependant_vars("idfname")
 
     def failure_callback(self):
+        """Read stderr and pass to logger."""
         for line in self.p.stderr:
             self.msg_callback(line.decode("utf-8"), level=lg.ERROR)
-        raise CalledProcessError(self.p.returncode, cmd=self.cmd, stderr=self.p.stderr)
+        self.exception = CalledProcessError(
+            self.p.returncode, cmd=self.cmd, stderr=self.p.stderr
+        )
 
     def cancelled_callback(self, stdin, stdout):
+        """Call on cancelled."""
         pass
 
     @property

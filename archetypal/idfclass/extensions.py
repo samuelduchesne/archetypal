@@ -1,4 +1,5 @@
-"""Extensions module. """
+"""Eppy extensions module."""
+
 import copy
 
 from eppy.bunch_subclass import BadEPFieldError
@@ -10,7 +11,7 @@ from archetypal import extend_class, log
 
 @extend_class(EpBunch)
 def __eq__(self, other):
-    """Tests the equality of two EpBunch objects using all attribute values"""
+    """Test the equality of two EpBunch objects using all attribute values."""
     if not isinstance(other, EpBunch):
         return False
     return all(str(a).upper() == str(b).upper() for a, b in zip(self.obj, other.obj))
@@ -18,7 +19,7 @@ def __eq__(self, other):
 
 @extend_class(EpBunch)
 def nameexists(self):
-    """True if EpBunch Name already exists in idf.idfobjects[KEY]"""
+    """Return True if EpBunch Name already exists in idf.idfobjects[KEY]."""
     existing_objs = self.theidf.idfobjects[self.key.upper()]
     try:
         return self.Name.upper() in [obj.Name.upper() for obj in existing_objs]
@@ -28,6 +29,7 @@ def nameexists(self):
 
 @extend_class(EpBunch)
 def get_default(self, name):
+    """Return the default value of a field"""
     if "default" in self.getfieldidd(name).keys():
         _type = _parse_idd_type(self, name)
         default_ = next(iter(self.getfieldidd_item(name, "default")), None)
@@ -38,7 +40,7 @@ def get_default(self, name):
 
 @extend_class(Eplusdata)
 def makedict(self, dictfile, fnamefobject):
-    """stuff file data into the blank dictionary"""
+    """stuff file data into the blank dictionary."""
     # fname = './exapmlefiles/5ZoneDD.idf'
     # fname = './1ZoneUncontrolled.idf'
     if isinstance(dictfile, Idd):
@@ -83,8 +85,7 @@ def makedict(self, dictfile, fnamefobject):
 
 
 def _parse_idd_type(epbunch, name):
-    """parse the fieldvalue type into a python type. eg.: 'real' returns
-    'float'.
+    """Parse the fieldvalue type into a python type.
 
     Possible types are:
         - integer -> int

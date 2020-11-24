@@ -1,4 +1,5 @@
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -63,7 +64,7 @@ class TransitionExe:
 
     @property
     def idfname(self):
-        """Copies self.idf to the output directory"""
+        """Copies self.idf to the output directory."""
         return Path(self.idf.idfname.copy(self.running_directory)).abspath()
 
     @property
@@ -93,6 +94,7 @@ class TransitionExe:
 
     @property
     def transitions(self):
+        """Generator of transitions."""
         transitions = [
             key
             for key in self.trans_exec
@@ -103,15 +105,22 @@ class TransitionExe:
             yield transition
 
     def __str__(self):
+        """String representation."""
         return " ".join(self.__repr__())
 
     def __repr__(self):
-        _which = Path(shutil.which(self.get_exe_path()))
-        cmd = ["./" + _which.basename(), self.idfname.basename()]
-        return cmd
+        """String representation."""
+        return self.cmd()
 
     def cmd(self):
-        return self.__repr__()
+        """Builds the platform-specific command."""
+        _which = Path(shutil.which(self.get_exe_path()))
+        if platform.system() == "Windows":
+            cmd = [_which.relpath(), self.idfname.basename()]
+        else:
+            # must specify current dir on Unix
+            cmd = ["./" + _which.basename(), self.idfname.basename()]
+        return cmd
 
 
 class TransitionThread(Thread):

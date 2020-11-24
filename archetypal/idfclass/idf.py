@@ -237,7 +237,8 @@ class IDF(geomIDF):
         self.load_kwargs = dict(epw=epw, **kwargs)
 
         self.outputtype = "standard"
-        self._original_idfname = hash_model(self)
+        self.original_idfname = self.idfname  # Save original
+        self._original_cache = hash_model(self)
         # Move to tmp_dir, if we want to keep the original file intact.
         if settings.use_cache:
             previous_file = self.output_directory / (self.name or str(self.idfname))
@@ -623,7 +624,7 @@ class IDF(geomIDF):
         """Returns the output directory based on the hashing of the original file (
         before transitions or modifications)."""
         if self._output_directory is None:
-            cache_filename = self._original_idfname
+            cache_filename = self._original_cache
             output_directory = settings.cache_folder / cache_filename
             output_directory.makedirs_p()
             self._output_directory = output_directory.expand()

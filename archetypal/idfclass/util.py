@@ -13,8 +13,7 @@ from tempfile import TemporaryDirectory
 import eppy
 import pandas as pd
 from archetypal import log, close_logger, settings, __version__
-from archetypal.eplus_interface.version import get_eplus_dirs, \
-    latest_energyplus_version
+from archetypal.eplus_interface.version import get_eplus_dirs, latest_energyplus_version
 from deprecation import deprecated
 from eppy.easyopen import getiddfile
 from eppy.EPlusInterfaceFunctions import parse_idd

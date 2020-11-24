@@ -1172,9 +1172,9 @@ class IDF(geomIDF):
 
         # Run the Basement preprocessor program if necessary
         with TemporaryDirectory(
-                prefix="runBasement_run_",
-                suffix=None,
-                dir=self.output_directory,
+            prefix="runBasement_run_",
+            suffix=None,
+            dir=self.output_directory,
         ) as tmp:
             basement_thread = BasementThread(self, tmp)
             basement_thread.start()

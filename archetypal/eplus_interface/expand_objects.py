@@ -27,11 +27,8 @@ class ExpandObjectsExe(EnergyPlusProgram):
 
     @property
     def cmd(self):
-        """Get the platform-specific command."""
-        if platform.system() == "Windows":
-            return ["ExpandObjects"]
-        else:
-            return ["./ExpandObjects"]
+        """Get the command."""
+        return ["ExpandObjects"]
 
 
 class ExpandObjectsThread(Thread):

@@ -29,12 +29,8 @@ class SlabExe(EnergyPlusProgram):
 
     @property
     def cmd(self):
-        """Get the platform-specific command."""
-        if platform.system() == "Windows":
-            cmd_path = shutil.which("Slab", path=self.program_directory)
-        else:
-            cmd_path = shutil.which("Slab", path=self.program_directory)
-            cmd_path = "./" + cmd_path
+        """Get the command."""
+        cmd_path = shutil.which("Slab", path=self.program_directory)
         return [cmd_path]
 
     @property
@@ -93,7 +89,7 @@ class SlabThread(Thread):
         self.include = [Path(file).copy(tmp) for file in self.idf.include]
         if not self.include:
             self.cleanup_callback()
-            pass
+            return
 
         # Run Slab Program
         self.cmd = SlabExe(self.idf).cmd

@@ -125,6 +125,13 @@ class ExpandObjectsThread(Thread):
                 )
             )
 
+        if (Path(self.run_dir) / "BasementGHTIn.idf").exists():
+            self.idf.include.append(
+                (Path(self.run_dir) / "BasementGHTIn.idf").copy(
+                    self.idf.output_directory / "BasementGHTIn.idf"
+                )
+            )
+
     def failure_callback(self):
         """Read stderr and pass to logger."""
         for line in self.p.stderr:

@@ -10,7 +10,6 @@ from eppy.runner.run_functions import paths_from_version
 from path import Path
 from tqdm import tqdm
 
-from archetypal.eplus_interface.energy_plus import EnergyPlusProgram
 from archetypal.eplus_interface.exceptions import (
     EnergyPlusProcessError,
     EnergyPlusVersionError,
@@ -19,10 +18,10 @@ from archetypal.eplus_interface.version import EnergyPlusVersion
 from archetypal.utils import log
 
 
-class SlabThread(Thread):
-    """Slab program manager.
+class BasementThread(Thread):
+    """Basement program manager.
 
-    The slab program used to calculate the results is included with the
+    The basement program used to calculate the results is included with the
     EnergyPlus distribution. It requires an input file named GHTin.idf in
     input data file format. The needed corresponding idd file is
     SlabGHT.idd. An EnergyPlus weather file for the location is also needed.
@@ -30,7 +29,7 @@ class SlabThread(Thread):
 
     def __init__(self, idf, tmp):
         """Constructor."""
-        super(SlabThread, self).__init__()
+        super(BasementThread, self).__init__()
         self.p = None
         self.std_out = None
         self.std_err = None
@@ -38,47 +37,62 @@ class SlabThread(Thread):
         self.cancelled = False
         self.run_dir = Path(tmp).expand()
         self.exception = None
-        self.name = "RunSlab_" + self.idf.name
+        self.name = "RunBasement_" + self.idf.name
         self.include = None
 
     @property
     def cmd(self):
         """Get the command."""
-        cmd_path = Path(shutil.which("Slab", path=self.run_dir))
+        cmd_path = Path(shutil.which("Basement", path=self.run_dir))
         return [cmd_path.relpath(self.run_dir)]
 
     def run(self):
-        """Wrapper around the EnergyPlus command line interface."""
+        """Wrapper around the Basement command line interface."""
         self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
         # Move files into place
+        # copy "%wthrfile%.epw" in.epw
         self.epw = self.idf.epw.copy(self.run_dir / "in.epw").expand()
         self.idfname = Path(self.idf.idfname.copy(self.run_dir / "in.idf")).expand()
         self.idd = self.idf.iddname.copy(self.run_dir).expand()
 
         # Get executable using shutil.which (determines the extension based on
         # the platform, eg: .exe. And copy the executable to tmp
-        self.slabexe = Path(
-            shutil.which("Slab", path=self.eplus_home / "PreProcess" / "GrndTempCalc")
+        self.basement_exe = Path(
+            shutil.which(
+                "Basement", path=self.eplus_home / "PreProcess" / "GrndTempCalc"
+            )
         ).copy(self.run_dir)
-        self.slabidd = (
-            self.eplus_home / "PreProcess" / "GrndTempCalc" / "SlabGHT.idd"
+        self.basement_idd = (
+            self.eplus_home / "PreProcess" / "GrndTempCalc" / "BasementGHT.idd"
         ).copy(self.run_dir)
+        self.outfile = self.idf.name
 
-
-        # The GHTin.idf file is copied from the self.include list (added by
-        # ExpandObjects. If self.include is empty, no need to run Slab.
+        # The BasementGHTin.idf file is copied from the self.include list (
+        # added by ExpandObjects. If self.include is empty, no need to run
+        # Basement.
         self.include = [Path(file).copy(self.run_dir) for file in self.idf.include]
         if not self.include:
             self.cleanup_callback()
             return
 
+        self.msg_callback(
+            "===== (Run Basement Temperature Generation) ===== Start ====="
+        )
+        self.msg_callback("Running Basement.exe")
+        self.msg_callback(f"Input File  : {self.idfname}")
+        self.msg_callback(
+            f"Output Files: {self.outfile}_bsmt.csv "
+            f"{self.outfile}_bsmt.audit {self.outfile}_bsmt.out"
+        )
+        self.msg_callback(f"Weather File: {self.epw}")
+
         # Run Slab Program
         with tqdm(
             unit_scale=True,
             miniters=1,
-            desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
+            desc=f"RunBasement #{self.idf.position}-{self.idf.name}",
             position=self.idf.position,
         ) as progress:
 
@@ -87,10 +101,11 @@ class SlabThread(Thread):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 shell=True,  # can use shell
-                cwd=self.run_dir.abspath(),
+                cwd=self.run_dir,
             )
             start_time = time.time()
-            self.msg_callback("Begin Slab Temperature Calculation processing . . .")
+            self.msg_callback("Begin Basement Temperature Calculation processing . . .")
+
             for line in self.p.stdout:
                 self.msg_callback(line.decode("utf-8").strip("\n"))
                 progress.update()
@@ -125,10 +140,38 @@ class SlabThread(Thread):
 
     def success_callback(self):
         """Parse surface temperature and append to IDF file."""
-        temp_schedule = self.run_dir / "SLABSurfaceTemps.txt"
-        if temp_schedule.exists():
+        csv_ = self.run_dir / "MonthlyResults.csv"
+        if csv_.exists():
+            csv_ = csv_.rename(self.idf.output_directory / f"{self.outfile}_bsmt.csv")
+
+        input_ = self.run_dir / "RunINPUT.TXT"
+        if input_.exists():
+            input_ = input_.rename(
+                self.idf.output_directory / f"{self.outfile}_bsmt.out"
+            )
+
+        debug_ = self.run_dir / "RunDEBUGOUT.txt"
+        if debug_.exists():
+            debug_ = debug_.rename(self.idf.output_directory / "basementout.audit")
+
+        err_ = self.run_dir / "eplusout.err"
+        if err_.exists():
+            with open(err_) as f:
+                with open(debug_, "a") as f1:
+                    for line in f:
+                        f1.write(line)
+
+        audit_ = self.run_dir / "audit.out"
+        if audit_.exists():
+            with open(audit_) as f:
+                with open(debug_, "a") as f1:
+                    for line in f:
+                        f1.write(line)
+
+        ep_objects = self.run_dir / "EPObjects.txt"
+        if ep_objects.exists():
             with open(self.idf.idfname, "a") as outfile:
-                with open(temp_schedule) as infile:
+                with open(ep_objects) as infile:
                     next(infile)  # Skipping first line
                     next(infile)  # Skipping second line
                     for line in infile:

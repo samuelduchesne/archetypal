@@ -259,3 +259,15 @@ class TestThreads:
         idf = IDF(file, epw, annual=False)
 
         assert idf.simulate()
+
+    @pytest.mark.skip("To long to run for tests")
+    def test_runbasement(self, config):
+        file = get_eplus_dirs() / "ExampleFiles" / "LgOffVAVusingBasement.idf"
+        epw = (
+                get_eplus_dirs()
+                / "WeatherData"
+                / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
+        )
+        idf = IDF(file, epw, annual=False)
+
+        assert idf.simulate()

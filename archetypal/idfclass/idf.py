@@ -33,6 +33,7 @@ from tqdm import tqdm
 
 from archetypal import ReportData, log, settings
 from archetypal.energypandas import EnergySeries
+from archetypal.eplus_interface.basement import BasementThread
 from archetypal.eplus_interface.energy_plus import EnergyPlusThread
 from archetypal.eplus_interface.exceptions import (
     EnergyPlusProcessError,
@@ -1158,7 +1159,7 @@ class IDF(geomIDF):
         # Run the expandobjects program if necessary
         with TemporaryDirectory(
             prefix="expandobjects_run_",
-            suffix=self.output_prefix,
+            suffix=None,
             dir=self.output_directory,
         ) as tmp:
             # Run the ExpandObjects preprocessor program
@@ -1170,12 +1171,22 @@ class IDF(geomIDF):
                 raise e
 
         # Run the Basement preprocessor program if necessary
-        # Todo: Add Basement.exe Thread -> https://github.com/NREL/EnergyPlus/blob/4836252ecffbaf63e98b62a8e6613510de0046a9/scripts/Epl-run.bat#L271
+        with TemporaryDirectory(
+                prefix="runBasement_run_",
+                suffix=None,
+                dir=self.output_directory,
+        ) as tmp:
+            basement_thread = BasementThread(self, tmp)
+            basement_thread.start()
+            basement_thread.join()
+        e = basement_thread.exception
+        if e is not None:
+            raise e
 
         # Run the Slab preprocessor program if necessary
         with TemporaryDirectory(
-            prefix="RunSlab_run_",
-            suffix=self.output_prefix,
+            prefix="runSlab_run_",
+            suffix=None,
             dir=self.output_directory,
         ) as tmp:
             slab_thread = SlabThread(self, tmp)

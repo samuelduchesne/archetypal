@@ -4,10 +4,10 @@ import logging as lg
 from deprecation import deprecated
 
 from archetypal import __version__, log, reduce, timeit
-from archetypal.template import OpaqueConstruction, UmiBase, Unique, UniqueName
+from archetypal.template import OpaqueConstruction, UmiBase, UniqueName
 
 
-class ZoneConstructionSet(UmiBase, metaclass=Unique):
+class ZoneConstructionSet(UmiBase):
     """Zone-specific :class:`Construction` ids"""
 
     def __init__(
@@ -67,7 +67,9 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash(
+            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+        )
 
     def __eq__(self, other):
         if not isinstance(other, ZoneConstructionSet):
@@ -286,7 +288,7 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
                     iter(
                         filter(
                             lambda x: getattr(x, attr, None) is not None,
-                            self.all_objects,
+                            UmiBase.CREATED_OBJECTS,
                         )
                     ),
                     None,
@@ -439,6 +441,23 @@ class ZoneConstructionSet(UmiBase, metaclass=Unique):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
+        )
+
+    def get_ref(self, ref):
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in ZoneConstructionSet.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
         )
 
 

@@ -19,7 +19,7 @@ from archetypal import calc_simple_glazing, log, timeit
 from archetypal.template import MaterialLayer, UmiSchedule, UniqueName
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
-from archetypal.template.umi_base import UmiBase, Unique
+from archetypal.template.umi_base import UmiBase
 
 
 class WindowType(Enum):
@@ -45,7 +45,7 @@ class ShadingType(Enum):
         return self._value_ > other._value_
 
 
-class WindowConstruction(UmiBase, metaclass=Unique):
+class WindowConstruction(UmiBase):
     """
     $id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
     DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
@@ -60,7 +60,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         DisassemblyCarbon=0,
         DisassemblyEnergy=0,
         Layers=None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a WindowConstruction.
 
@@ -88,7 +88,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         self.Layers = Layers
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
         if not isinstance(other, WindowConstruction):
@@ -154,7 +154,7 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         idf = Construction.theidf
         wc = cls(Name=Name, idf=idf, **kwargs)
         wc.Layers = wc.layers(Construction, **kwargs)
-        catdict = {1: "Single", 2: "Double", 3: "Triple", 4: "Quadruple"}
+        catdict = {0: "Single", 1: "Single", 2: "Double", 3: "Triple", 4: "Quadruple"}
         wc.Category = catdict[
             len([lyr for lyr in wc.Layers if isinstance(lyr.Material, GlazingMaterial)])
         ]
@@ -278,8 +278,25 @@ class WindowConstruction(UmiBase, metaclass=Unique):
         """Validates UmiObjects and fills in missing values"""
         return self
 
+    def get_ref(self, ref):
+        """Gets item matching ref id
 
-class WindowSetting(UmiBase, metaclass=Unique):
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in WindowConstruction.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
+        )
+
+
+class WindowSetting(UmiBase):
     """Window Settings define the various window-related properties of a
     specific :class:`Zone`. Control natural ventilation, shading and airflow
     networks and more using this class. This class serves the same role as the
@@ -315,7 +332,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
         ZoneMixingAvailabilitySchedule=None,
         ZoneMixingDeltaTemperature=2,
         ZoneMixingFlowRate=0.001,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a WindowSetting using default values:
 
@@ -408,7 +425,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
             )
 
     @classmethod
-    def generic(cls, idf, Name=None):
+    def generic(cls, idf, Name):
         """Returns a generic window with SHGC=0.704, UFactor=2.703, Tvis=0.786
 
         Args:
@@ -499,180 +516,184 @@ class WindowSetting(UmiBase, metaclass=Unique):
         Returns:
             (WindowSetting): The window setting object.
         """
-        if isinstance(surface, EpBunch) and not surface.Surface_Type.upper() == "DOOR":
+        if surface.key.upper() == "FENESTRATIONSURFACE:DETAILED":
             construction = surface.get_referenced_object("Construction_Name")
             construction = WindowConstruction.from_epbunch(construction)
-            name = surface.Name
             shading_control = surface.get_referenced_object("Shading_Control_Name")
-            attr = {}
-            if shading_control:
-                # a WindowProperty:ShadingControl_ object can be attached to
-                # this window
-                attr["IsShadingSystemOn"] = True
-                if shading_control["Setpoint"] != "":
-                    attr["ShadingSystemSetpoint"] = shading_control["Setpoint"]
-                shade_mat = shading_control.get_referenced_object(
-                    "Shading_Device_Material_Name"
-                )
-                # get shading transmittance
-                if shade_mat:
-                    attr["ShadingSystemTransmittance"] = shade_mat[
-                        "Visible_Transmittance"
-                    ]
-                # get shading control schedule
-                if shading_control["Shading_Control_Is_Scheduled"].upper() == "YES":
-                    name = shading_control["Schedule_Name"]
-                    attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule(
-                        Name=name, idf=surface.theidf
-                    )
-                else:
-                    # Determine which behavior of control
-                    shade_ctrl_type = shading_control["Shading_Control_Type"]
-                    if shade_ctrl_type.lower() == "alwaysoff":
-                        attr[
-                            "ShadingSystemAvailabilitySchedule"
-                        ] = UmiSchedule.constant_schedule(
-                            name="AlwaysOff", hourly_value=0, idf=surface.theidf
-                        )
-                    elif shade_ctrl_type.lower() == "alwayson":
-                        attr[
-                            "ShadingSystemAvailabilitySchedule"
-                        ] = UmiSchedule.constant_schedule(idf=surface.theidf)
-                    else:
-                        log(
-                            'Window "{}" uses a  window control type that '
-                            'is not supported: "{}". Reverting to '
-                            '"AlwaysOn"'.format(name, shade_ctrl_type),
-                            lg.WARN,
-                        )
-                        attr[
-                            "ShadingSystemAvailabilitySchedule"
-                        ] = UmiSchedule.constant_schedule(idf=surface.theidf)
-                # get shading type
-                if shading_control["Shading_Type"] != "":
-                    mapping = {
-                        "InteriorShade": ShadingType(1),
-                        "ExteriorShade": ShadingType(0),
-                        "ExteriorScreen": ShadingType(0),
-                        "InteriorBlind": ShadingType(1),
-                        "ExteriorBlind": ShadingType(0),
-                        "BetweenGlassShade": ShadingType(0),
-                        "BetweenGlassBlind": ShadingType(0),
-                        "SwitchableGlazing": ShadingType(0),
-                    }
-                    attr["ShadingSystemType"] = mapping[shading_control["Shading_Type"]]
-            else:
-                # Set default schedules
-                attr[
-                    "ShadingSystemAvailabilitySchedule"
-                ] = UmiSchedule.constant_schedule(idf=surface.theidf)
-
-            # get airflow network
-            afn = next(
+        elif surface.key.upper() == "WINDOW":
+            construction = surface.get_referenced_object("Construction_Name")
+            construction = WindowConstruction.from_epbunch(construction)
+            shading_control = next(
                 iter(
                     surface.getreferingobjs(
-                        iddgroups=["Natural Ventilation and Duct Leakage"],
-                        fields=["Surface_Name"],
+                        iddgroups=["Thermal Zones and Surfaces"],
+                        fields=[f"Fenestration_Surface_{i}_Name" for i in range(1, 10)],
                     )
                 ),
                 None,
             )
-            if afn:
-                attr["OperableArea"] = afn.WindowDoor_Opening_Factor_or_Crack_Factor
-                leak = afn.get_referenced_object("Leakage_Component_Name")
-                name = afn["Venting_Availability_Schedule_Name"]
-                if name != "":
-                    attr["AfnWindowAvailability"] = UmiSchedule(
-                        Name=name, idf=surface.theidf
-                    )
-                else:
-                    attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule(
-                        idf=surface.theidf
-                    )
-                name = afn[
-                    "Ventilation_Control_Zone_Temperature_Setpoint_Schedule_Name"
-                ]
-                if name != "":
-                    attr["AfnTempSetpoint"] = UmiSchedule(
-                        Name=name, idf=surface.theidf
-                    ).mean
-                else:
-                    pass  # uses default
+        elif surface.key.upper() == "DOOR":
+            return  # Simply skip doors.
+        else:
+            raise ValueError(
+                f"A window of type {surface.key} is not yet supported. "
+                f"Please contact developers"
+            )
 
-                if (
-                    leak.key.upper()
-                    == "AIRFLOWNETWORK:MULTIZONE:SURFACE:EFFECTIVELEAKAGEAREA"
-                ):
-                    attr["AfnDischargeC"] = leak["Discharge_Coefficient"]
-                elif (
-                    leak.key.upper()
-                    == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:HORIZONTALOPENING"
-                ):
-                    log(
-                        '"{}" is not fully supported. Rerverting to '
-                        'defaults for object "{}"'.format(
-                            leak.key, cls.mro()[0].__name__
-                        ),
-                        lg.WARNING,
+        attr = {}
+        if shading_control:
+            # a WindowProperty:ShadingControl_ object can be attached to
+            # this window
+            attr["IsShadingSystemOn"] = True
+            if shading_control["Setpoint"] != "":
+                attr["ShadingSystemSetpoint"] = shading_control["Setpoint"]
+            shade_mat = shading_control.get_referenced_object(
+                "Shading_Device_Material_Name"
+            )
+            # get shading transmittance
+            if shade_mat:
+                attr["ShadingSystemTransmittance"] = shade_mat["Visible_Transmittance"]
+            # get shading control schedule
+            if shading_control["Shading_Control_Is_Scheduled"].upper() == "YES":
+                name = shading_control["Schedule_Name"]
+                attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule(
+                    Name=name, idf=surface.theidf
+                )
+            else:
+                # Determine which behavior of control
+                shade_ctrl_type = shading_control["Shading_Control_Type"]
+                if shade_ctrl_type.lower() == "alwaysoff":
+                    attr[
+                        "ShadingSystemAvailabilitySchedule"
+                    ] = UmiSchedule.constant_schedule(
+                        name="AlwaysOff", hourly_value=0, idf=surface.theidf
                     )
-                elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK":
+                elif shade_ctrl_type.lower() == "alwayson":
+                    attr[
+                        "ShadingSystemAvailabilitySchedule"
+                    ] = UmiSchedule.constant_schedule(idf=surface.theidf)
+                else:
                     log(
-                        '"{}" is not fully supported. Rerverting to '
-                        'defaults for object "{}"'.format(
-                            leak.key, cls.mro()[0].__name__
-                        ),
-                        lg.WARNING,
+                        'Window "{}" uses a  window control type that '
+                        'is not supported: "{}". Reverting to '
+                        '"AlwaysOn"'.format(surface.Name, shade_ctrl_type),
+                        lg.WARN,
                     )
-                elif (
-                    leak.key.upper()
-                    == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING"
-                ):
-                    log(
-                        '"{}" is not fully supported. Rerverting to '
-                        'defaults for object "{}"'.format(
-                            leak.key, cls.mro()[0].__name__
-                        ),
-                        lg.WARNING,
-                    )
-                elif (
-                    leak.key.upper()
-                    == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN"
-                ):
-                    log(
-                        '"{}" is not fully supported. Rerverting to '
-                        'defaults for object "{}"'.format(
-                            leak.key, cls.mro()[0].__name__
-                        ),
-                        lg.WARNING,
-                    )
-                elif (
-                    leak.key.upper()
-                    == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING"
-                ):
-                    log(
-                        '"{}" is not fully supported. Rerverting to '
-                        'defaults for object "{}"'.format(
-                            leak.key, cls.mro()[0].__name__
-                        ),
-                        lg.WARNING,
-                    )
+                    attr[
+                        "ShadingSystemAvailabilitySchedule"
+                    ] = UmiSchedule.constant_schedule(idf=surface.theidf)
+            # get shading type
+            if shading_control["Shading_Type"] != "":
+                mapping = {
+                    "InteriorShade": ShadingType(1),
+                    "ExteriorShade": ShadingType(0),
+                    "ExteriorScreen": ShadingType(0),
+                    "InteriorBlind": ShadingType(1),
+                    "ExteriorBlind": ShadingType(0),
+                    "BetweenGlassShade": ShadingType(0),
+                    "BetweenGlassBlind": ShadingType(0),
+                    "SwitchableGlazing": ShadingType(0),
+                }
+                attr["ShadingSystemType"] = mapping[shading_control["Shading_Type"]]
+        else:
+            # Set default schedules
+            attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.constant_schedule(
+                idf=surface.theidf
+            )
+
+        # get airflow network
+        afn = next(
+            iter(
+                surface.getreferingobjs(
+                    iddgroups=["Natural Ventilation and Duct Leakage"],
+                    fields=["Surface_Name"],
+                )
+            ),
+            None,
+        )
+
+        if afn:
+            attr["OperableArea"] = afn.WindowDoor_Opening_Factor_or_Crack_Factor
+            leak = afn.get_referenced_object("Leakage_Component_Name")
+            name = afn["Venting_Availability_Schedule_Name"]
+            if name != "":
+                attr["AfnWindowAvailability"] = UmiSchedule(
+                    Name=name, idf=surface.theidf
+                )
             else:
                 attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule(
                     idf=surface.theidf
                 )
-            # Zone Mixing
-            attr["ZoneMixingAvailabilitySchedule"] = UmiSchedule.constant_schedule(
-                idf=surface.theidf
+            name = afn["Ventilation_Control_Zone_Temperature_Setpoint_Schedule_Name"]
+            if name != "":
+                attr["AfnTempSetpoint"] = UmiSchedule(
+                    Name=name, idf=surface.theidf
+                ).mean
+            else:
+                pass  # uses default
+
+            if (
+                leak.key.upper()
+                == "AIRFLOWNETWORK:MULTIZONE:SURFACE:EFFECTIVELEAKAGEAREA"
+            ):
+                attr["AfnDischargeC"] = leak["Discharge_Coefficient"]
+            elif (
+                leak.key.upper()
+                == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:HORIZONTALOPENING"
+            ):
+                log(
+                    '"{}" is not fully supported. Reverting to '
+                    'defaults for object "{}"'.format(leak.key, cls.mro()[0].__name__),
+                    lg.WARNING,
+                )
+            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK":
+                log(
+                    '"{}" is not fully supported. Rerverting to '
+                    'defaults for object "{}"'.format(leak.key, cls.mro()[0].__name__),
+                    lg.WARNING,
+                )
+            elif (
+                leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING"
+            ):
+                log(
+                    '"{}" is not fully supported. Rerverting to '
+                    'defaults for object "{}"'.format(leak.key, cls.mro()[0].__name__),
+                    lg.WARNING,
+                )
+            elif (
+                leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN"
+            ):
+                log(
+                    '"{}" is not fully supported. Rerverting to '
+                    'defaults for object "{}"'.format(leak.key, cls.mro()[0].__name__),
+                    lg.WARNING,
+                )
+            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING":
+                log(
+                    '"{}" is not fully supported. Rerverting to '
+                    'defaults for object "{}"'.format(leak.key, cls.mro()[0].__name__),
+                    lg.WARNING,
+                )
+        else:
+            attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule(
+                hourly_value=0, Name="AlwaysOff", idf=surface.theidf
             )
-            w = cls(
-                Name=name,
-                Construction=construction,
-                idf=surface.theidf,
-                Category=surface.theidf.name,
-                **attr,
-                **kwargs
-            )
-            return w
+        # Todo: Zone Mixing is always off
+        attr["ZoneMixingAvailabilitySchedule"] = UmiSchedule.constant_schedule(
+            hourly_value=0, Name="AlwaysOff", idf=surface.theidf
+        )
+        DataSource = kwargs.pop("DataSource", surface.theidf.name)
+        Category = kwargs.pop("Category", surface.theidf.name)
+        w = cls(
+            Name=surface.Name,
+            Construction=construction,
+            idf=surface.theidf,
+            Category=Category,
+            DataSource=DataSource,
+            **attr,
+            **kwargs,
+        )
+        return w
 
     @classmethod
     @timeit
@@ -695,8 +716,7 @@ class WindowSetting(UmiBase, metaclass=Unique):
                 for subsurf in surf.subsurfaces:
                     # For each subsurface, create a WindowSetting object
                     # using the `from_surface` constructor.
-                    if subsurf.key.upper() == "FenestrationSurface:Detailed".upper():
-                        window_sets.append(cls.from_surface(subsurf, **kwargs))
+                    window_sets.append(cls.from_surface(subsurf, **kwargs))
 
         if window_sets:
             # if one or more window has been created, reduce. Using reduce on
@@ -876,15 +896,15 @@ class WindowSetting(UmiBase, metaclass=Unique):
         """Validates UmiObjects and fills in missing values"""
         if not self.AfnWindowAvailability:
             self.AfnWindowAvailability = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", allow_duplicates=True
+                hourly_value=0, Name="AlwaysOff"
             )
         if not self.ShadingSystemAvailabilitySchedule:
             self.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", allow_duplicates=True
+                hourly_value=0, Name="AlwaysOff"
             )
         if not self.ZoneMixingAvailabilitySchedule:
             self.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", allow_duplicates=True
+                hourly_value=0, Name="AlwaysOff"
             )
 
         return self
@@ -913,4 +933,21 @@ class WindowSetting(UmiBase, metaclass=Unique):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
+        )
+
+    def get_ref(self, ref):
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in WindowSetting.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
         )

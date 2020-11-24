@@ -10,10 +10,10 @@ import collections
 from sigfig import round
 
 from archetypal import log
-from archetypal.template import MaterialBase, UmiBase, Unique, UniqueName
+from archetypal.template import MaterialBase, UmiBase, UniqueName
 
 
-class GlazingMaterial(MaterialBase, metaclass=Unique):
+class GlazingMaterial(MaterialBase):
     """Glazing Materials
 
     .. image:: ../images/template/materials-glazing.png
@@ -170,7 +170,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
         if not isinstance(other, GlazingMaterial):

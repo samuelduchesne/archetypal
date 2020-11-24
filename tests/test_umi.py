@@ -5,15 +5,32 @@ import os
 import pytest
 from path import Path
 
-from archetypal import settings, get_eplus_dirs, IDF
-from archetypal.template import OpaqueMaterial, GlazingMaterial, GasMaterial, \
-    MaterialLayer, OpaqueConstruction, WindowConstruction, MassRatio, \
-    StructureInformation, WindowSetting, DomesticHotWaterSetting, ZoneConditioning, \
-    VentilationSetting, ZoneConstructionSet, ZoneDefinition, BuildingTemplate, ZoneLoad
-from archetypal.template.schedule import YearSchedulePart, DaySchedule, WeekSchedule, \
-    YearSchedule
-from archetypal.umi_template import UmiTemplateLibrary
-from tests.conftest import no_duplicates
+from archetypal import IDF, get_eplus_dirs, settings
+from archetypal.template import (
+    BuildingTemplate,
+    DomesticHotWaterSetting,
+    GasMaterial,
+    GlazingMaterial,
+    MassRatio,
+    MaterialLayer,
+    OpaqueConstruction,
+    OpaqueMaterial,
+    StructureInformation,
+    VentilationSetting,
+    WindowConstruction,
+    WindowSetting,
+    ZoneConditioning,
+    ZoneConstructionSet,
+    ZoneDefinition,
+    ZoneLoad,
+)
+from archetypal.template.schedule import (
+    DaySchedule,
+    WeekSchedule,
+    YearSchedule,
+    YearSchedulePart,
+)
+from archetypal.umi_template import UmiTemplateLibrary, no_duplicates
 
 
 class TestUmiTemplate:
@@ -420,10 +437,13 @@ class TestUmiTemplate:
 
         # region Defines zone conditioning setttings
 
-        zone_conditioning = ZoneConditioning(Name="conditioning_setting_1",
-                                                HeatingSchedule=sch_y_on,
-                                                CoolingSchedule=sch_y_on,
-                                                MechVentSchedule=sch_y_off, idf=idf)
+        zone_conditioning = ZoneConditioning(
+            Name="conditioning_setting_1",
+            HeatingSchedule=sch_y_on,
+            CoolingSchedule=sch_y_on,
+            MechVentSchedule=sch_y_off,
+            idf=idf,
+        )
         ZoneConditionings = [zone_conditioning]
         # endregion
 
@@ -550,7 +570,7 @@ class TestUmiTemplate:
     def test_climatestudio(self, climatestudio):
         template_json = UmiTemplateLibrary(
             name="my_umi_template", BuildingTemplates=[climatestudio]
-        ).to_json(all_zones=True)
+        ).to_json(all_zones=False)
         print(template_json)
 
     @pytest.mark.skipif(

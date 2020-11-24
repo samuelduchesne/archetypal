@@ -1,9 +1,8 @@
 name: archetypal
 channels:
-  - defaults
   - conda-forge
 dependencies:
-  - shapely
+  - geopandas
   - networkx
   - six
   - matplotlib>=2.1

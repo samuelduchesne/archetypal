@@ -34,10 +34,10 @@ import eppy
 import eppy.modeleditor
 import pandas as pd
 from deprecation import deprecated
-from eppy.bunch_subclass import BadEPFieldError
-from eppy.easyopen import getiddfile
 from eppy.EPlusInterfaceFunctions import parse_idd
 from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata, Idd, removecomment
+from eppy.bunch_subclass import BadEPFieldError
+from eppy.easyopen import getiddfile
 from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from eppy.runner.run_functions import paths_from_version
 from geomeppy import IDF as geomIDF
@@ -88,22 +88,8 @@ class IDF(geomIDF):
         "idfobjects": ["iddname", "idfname"],
         "block": ["iddname", "idfname"],
         "model": ["iddname", "idfname"],
-        "sql": [
-            "as_version",
-            "annual",
-            "design_day",
-            "epw",
-            "idfname",
-            "output_directory",
-        ],
-        "htm": [
-            "as_version",
-            "annual",
-            "design_day",
-            "epw",
-            "idfname",
-            "output_directory",
-        ],
+        "sql": ["as_version", "annual", "design_day", "epw", "idfname", "tmp_dir",],
+        "htm": ["as_version", "annual", "design_day", "epw", "idfname", "tmp_dir",],
         "meters": [
             "idfobjects",
             "epw",
@@ -130,9 +116,9 @@ class IDF(geomIDF):
         ],
         "schedules_dict": ["idfobjects"],
         "partition_ratio": ["idfobjects"],
-        "area_conditioned": ["idfobjects"],
+        "net_conditioned_building_area": ["idfobjects"],
         "energyplus_its": ["annual", "design_day"],
-        "output_directory": ["idfobjects"],
+        "tmp_dir": ["idfobjects"],
     }
     _independant_vars = set(chain(*list(_dependencies.values())))
     _dependant_vars = set(_dependencies.keys())
@@ -195,7 +181,7 @@ class IDF(geomIDF):
             epw (str or Path): The weather-file
 
         EnergyPlus args:
-            output_directory=None,
+            tmp_dir=None,
             as_version=None,
             prep_outputs=True,
             include=None,
@@ -209,7 +195,7 @@ class IDF(geomIDF):
         self.as_version = as_version if as_version else settings.ep_version
         self._custom_processes = custom_processes
         self._include = include
-        self._keep_data_err = keep_data_err
+        self.keep_data_err = keep_data_err
         self._keep_data = keep_data
         self._simulname = simulname
         self.output_suffix = output_suffix
@@ -242,6 +228,8 @@ class IDF(geomIDF):
         self._outputs = None
         self._partition_ratio = None
         self._area_conditioned = None
+        self._area_unconditioned = None
+        self._area_total = None
         self._schedules = None
         self._meters = None
         self._variables = None
@@ -252,7 +240,7 @@ class IDF(geomIDF):
 
         self.outputtype = "standard"
         self._original_idfname = hash_model(self)
-        # Move to output_directory, if we want to keep the original file intact.
+        # Move to tmp_dir, if we want to keep the original file intact.
         if settings.use_cache:
             previous_file = self.output_directory / (self.name or str(self.idfname))
             if previous_file.exists():
@@ -480,6 +468,12 @@ class IDF(geomIDF):
     def keep_data_err(self):
         return self._keep_data_err
 
+    @keep_data_err.setter
+    def keep_data_err(self, value):
+        if not isinstance(value, bool):
+            raise TypeError("'keep_data_err' needs to be a bool")
+        self._keep_data_err = value
+
     @property
     def keep_data(self):
         return self._keep_data
@@ -641,7 +635,7 @@ class IDF(geomIDF):
     def output_directory(self, value):
         if value and not Path(value).exists():
             raise ValueError(
-                f"The output_directory '{value}' must be created before being assigned"
+                f"The tmp_dir '{value}' must be created before being assigned"
             )
         elif value:
             value = Path(value)
@@ -820,9 +814,9 @@ class IDF(geomIDF):
         return file.expand()
 
     @property
-    def area_conditioned(self):
+    def net_conditioned_building_area(self):
         """Returns the total conditioned area of a building (taking into account
-        zone multipliers
+        zone multipliers)
         """
         if self._area_conditioned is None:
             if self.simulation_dir.exists():
@@ -853,6 +847,67 @@ class IDF(geomIDF):
         return self._area_conditioned
 
     @property
+    def unconditioned_building_area(self):
+        """Returns the Unconditioned Building Area"""
+        if self._area_unconditioned is None:
+            if self.simulation_dir.exists():
+                with sqlite3.connect(self.sql_file) as conn:
+                    sql_query = f"""
+                            SELECT t.Value
+                            FROM TabularDataWithStrings t
+                            WHERE TableName == 'Building Area' and 
+                            ColumnName == 'Area' and RowName == 'Unconditioned Building Area';"""
+                    (res,) = conn.execute(sql_query).fetchone()
+                self._area_unconditioned = float(res)
+            else:
+                area = 0
+                zones = self.idfobjects["ZONE"]
+                zone: EpBunch
+                for zone in zones:
+                    for surface in zone.zonesurfaces:
+                        if hasattr(surface, "tilt"):
+                            if surface.tilt == 180.0:
+                                part_of = int(
+                                    zone.Part_of_Total_Floor_Area.upper() == "NO"
+                                )
+                                multiplier = float(
+                                    zone.Multiplier if zone.Multiplier != "" else 1
+                                )
+
+                                area += surface.area * multiplier * part_of
+                self._area_unconditioned = area
+        return self._area_unconditioned
+
+    @property
+    def total_building_area(self):
+        """"""
+        if self._area_total is None:
+            if self.simulation_dir.exists():
+                with sqlite3.connect(self.sql_file) as conn:
+                    sql_query = f"""
+                            SELECT t.Value
+                            FROM TabularDataWithStrings t
+                            WHERE TableName == 'Building Area' and 
+                            ColumnName == 'Area' and RowName == 'Total Building Area';"""
+                    (res,) = conn.execute(sql_query).fetchone()
+                self._area_total = float(res)
+            else:
+                area = 0
+                zones = self.idfobjects["ZONE"]
+                zone: EpBunch
+                for zone in zones:
+                    for surface in zone.zonesurfaces:
+                        if hasattr(surface, "tilt"):
+                            if surface.tilt == 180.0:
+                                multiplier = float(
+                                    zone.Multiplier if zone.Multiplier != "" else 1
+                                )
+
+                                area += surface.area * multiplier
+                self._area_total = area
+        return self._area_total
+
+    @property
     def partition_ratio(self):
         """The number of lineal meters of partitions (Floor to ceiling) present
         in average in the building floor plan by m2.
@@ -876,7 +931,9 @@ class IDF(geomIDF):
                                 zone.Multiplier if zone.Multiplier != "" else 1
                             )
                             partition_lineal += surface.width * multiplier
-            self._partition_ratio = partition_lineal / self.area_conditioned
+            self._partition_ratio = (
+                partition_lineal / self.net_conditioned_building_area
+            )
         return self._partition_ratio
 
     @property
@@ -1029,7 +1086,7 @@ class IDF(geomIDF):
             simulname (str): The name of the simulation. (Todo: Currently not
             implemented).
             keep_data (bool): If True, files created by EnergyPlus are saved to the
-                output_directory.
+                tmp_dir.
             annual (bool): If True then force annual simulation (default: False)
             design_day (bool): Force design-day-only simulation (default: False)
             epmacro (bool): Run EPMacro prior to simulation (default: False)
@@ -1118,9 +1175,7 @@ class IDF(geomIDF):
 
         # Run the Slab preprocessor program if necessary
         with TemporaryDirectory(
-            prefix="RunSlab_run_",
-            suffix=self.output_prefix,
-            dir=self.output_directory,
+            prefix="RunSlab_run_", suffix=self.output_prefix, dir=self.output_directory,
         ) as tmp:
             slab_thread = SlabThread(self, tmp)
             slab_thread.start()
@@ -1131,9 +1186,7 @@ class IDF(geomIDF):
 
         # Run the energyplus program
         with TemporaryDirectory(
-            prefix="eplus_run_",
-            suffix=None,
-            dir=self.output_directory,
+            prefix="eplus_run_", suffix=None, dir=self.output_directory,
         ) as tmp:
             running_simulation_thread = EnergyPlusThread(self, tmp)
             running_simulation_thread.start()
@@ -1309,14 +1362,15 @@ class IDF(geomIDF):
         if self.file_version > to_version:
             raise EnergyPlusVersionError(self.name, self.idf_version, to_version)
         else:
-            # execute transitions
-            self._running_transition_thread = TransitionThread(
-                idf=self, overwrite=overwrite
-            )
-            self._running_transition_thread.start()
-            self._running_transition_thread.join()
-            e = self._running_transition_thread.exception
-            if e:
+            # # execute transitions
+            with TemporaryDirectory(
+                prefix="Transition_run_", dir=self.output_directory,
+            ) as tmp:
+                slab_thread = TransitionThread(self, tmp, overwrite=overwrite)
+                slab_thread.start()
+                slab_thread.join()
+            e = slab_thread.exception
+            if e is not None:
                 raise e
 
     @deprecated(
@@ -2805,7 +2859,7 @@ def cache_runargs(eplus_file, runargs):
     """
     import json
 
-    output_directory = runargs["output_directory"] / runargs["output_prefix"]
+    output_directory = runargs["tmp_dir"] / runargs["output_prefix"]
 
     runargs.update({"run_time": datetime.datetime.now().isoformat()})
     runargs.update({"idf_file": eplus_file})
@@ -2873,7 +2927,7 @@ def run_eplus(
             outputs as list of ep-object outputs.
         simulname (str): The name of the simulation. (Todo: Currently not implemented).
         keep_data (bool): If True, files created by EnergyPlus are saved to the
-            output_directory.
+            tmp_dir.
         annual (bool): If True then force annual simulation (default: False)
         design_day (bool): Force design-day-only simulation (default: False)
         epmacro (bool): Run EPMacro prior to simulation (default: False)
@@ -2932,7 +2986,7 @@ def run_eplus(
         output_directory = settings.cache_folder / cache_filename
     else:
         output_directory = Path(output_directory)
-    args["output_directory"] = output_directory
+    args["tmp_dir"] = output_directory
     # <editor-fold desc="Try to get cached results">
     try:
         start_time = time.time()
@@ -3047,7 +3101,7 @@ def run_eplus(
                 "eplus_file": tmp_file,
                 "weather": Path(weather_file.copy(tmp)),
                 "verbose": verbose,
-                "output_directory": output_directory,
+                "tmp_dir": output_directory,
                 "as_version": versionid,
                 "output_prefix": hash_model(eplus_file),
                 "idd": Path(idd_file.copy(tmp)),
@@ -3115,7 +3169,7 @@ def run_eplus(
                 cache_runargs(tmp_file, runargs.copy())
 
             # Return summary DataFrames
-            runargs["output_directory"] = save_dir
+            runargs["tmp_dir"] = save_dir
             cached_run_results = get_report(**runargs)
             if return_idf:
                 idf = load_idf(
@@ -3219,7 +3273,8 @@ class SlabExe(EnergyPlusProgram):
 
     @property
     def cmd(self):
-        return ["Slab"]
+        cmd_path = shutil.which("Slab")
+        return [cmd_path]
 
     @property
     def slabdir(self):
@@ -3327,18 +3382,18 @@ class TransitionExe:
     """Transition Program Generator.
 
     Examples:
-        >>> for transition in TransitionExe(IDF(), output_directory=os.getcwd()):
+        >>> for transition in TransitionExe(IDF(), tmp_dir=os.getcwd()):
         >>>     print(transition.cmd())
     """
 
-    def __init__(self, idf, output_directory):
+    def __init__(self, idf, tmp_dir):
         """
         Args:
             idf (IDF): The idf filename
         """
         self.idf = idf
         self.trans = None  # Set by __next__()
-        self.output_directory = output_directory
+        self.running_directory = tmp_dir
 
         self._trans_exec = None
 
@@ -3368,16 +3423,30 @@ class TransitionExe:
     @property
     def idfname(self):
         """Copies self.idf to the output directory"""
-        return Path(self.idf.idfname.copy(self.output_directory)).abspath()
+        return Path(self.idf.idfname.copy(self.running_directory)).abspath()
 
     @property
     def trans_exec(self):
+        def copytree(src, dst, symlinks=False, ignore=None):
+            for item in os.listdir(src):
+                s = os.path.join(src, item)
+                d = os.path.join(dst, item)
+                try:
+                    if os.path.isdir(s):
+                        shutil.copytree(s, d, symlinks, ignore)
+                    else:
+                        shutil.copy2(s, d)
+                except FileNotFoundError as e:
+                    time.sleep(60)
+                    log(f"{e}")
+
         if self._trans_exec is None:
+            copytree(self.idf.idfversionupdater_dir, self.running_directory)
             self._trans_exec = {
                 EnergyPlusVersion(
                     re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)
                 ): exec
-                for exec in self.idf.idfversionupdater_dir.files("Transition-V*")
+                for exec in self.running_directory.files("Transition-V*")
             }
         return self._trans_exec
 
@@ -3396,7 +3465,8 @@ class TransitionExe:
         return " ".join(self.__repr__())
 
     def __repr__(self):
-        cmd = [self.get_exe_path(), self.idfname]
+        _which = shutil.which(self.get_exe_path())
+        cmd = [_which, self.idfname.basename()]
         return cmd
 
     def cmd(self):
@@ -3636,8 +3706,11 @@ class SlabThread(Thread):
         # Remove from include
         ghtin = self.idf.output_directory / "GHTIn.idf"
         if ghtin.exists():
-            self.idf.include.remove(ghtin)
-            ghtin.remove()
+            try:
+                self.idf.include.remove(ghtin)
+                ghtin.remove()
+            except ValueError:
+                log("nothing to remove", lg.DEBUG)
 
     def failure_callback(self):
         error_filename = self.run_dir / "eplusout.err"
@@ -3665,7 +3738,7 @@ class SlabThread(Thread):
 
 
 class TransitionThread(Thread):
-    def __init__(self, idf, overwrite=False):
+    def __init__(self, idf, tmp, overwrite=False):
         """
 
         Args:
@@ -3681,6 +3754,7 @@ class TransitionThread(Thread):
         self.run_dir = Path("")
         self.exception = None
         self.name = "Transition_" + self.idf.name
+        self.tmp = tmp
 
     def run(self):
         """Wrapper around the EnergyPlus command line interface.
@@ -3690,64 +3764,60 @@ class TransitionThread(Thread):
         self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
-        with TemporaryDirectory(
-            prefix="Transition_run_",
-            dir=self.idf.output_directory,
-        ) as tmp:
-            self.epw = self.idf.epw.copy(tmp).expand()
-            self.idfname = Path(self.idf.idfname.copy(tmp)).expand()
-            self.idd = self.idf.iddname.copy(tmp).expand()
+        tmp = self.tmp
+        self.idfname = Path(self.idf.idfname.copy(tmp)).expand()
+        self.idd = self.idf.iddname.copy(tmp).expand()
 
-            for trans in tqdm(
-                TransitionExe(self.idf, output_directory=tmp),
-                position=self.idf.position,
-                desc=f"Transition #{self.idf.position}-{self.idf.name}",
-            ):
-                # Get executable using shutil.which (determines the extension based on
-                # the platform, eg: .exe. And copy the executable to tmp
-                self.run_dir = Path(tmp).expand()
-                self.transitionexe = trans
+        for trans in tqdm(
+            TransitionExe(self.idf, tmp_dir=tmp),
+            position=self.idf.position,
+            desc=f"Transition #{self.idf.position}-{self.idf.name}",
+        ):
+            # Get executable using shutil.which (determines the extension based on
+            # the platform, eg: .exe. And copy the executable to tmp
+            self.run_dir = Path(tmp).expand()
+            self.transitionexe = trans
 
-                # Run Transition Program
-                self.cmd = self.transitionexe.cmd()
-                self.p = subprocess.Popen(
-                    self.cmd,
-                    cwd=self.idf.idfversionupdater_dir,  # process runs in dir
-                    shell=False,  # cannot use shell
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
+            # Run Transition Program
+            self.cmd = self.transitionexe.cmd()
+            self.p = subprocess.Popen(
+                self.cmd,
+                cwd=(self.run_dir).abspath(),
+                shell=False,  # cannot use shell
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
 
-                start_time = time.time()
-                self.msg_callback("Transition started")
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8").strip("\n"))
+            start_time = time.time()
+            self.msg_callback("Transition started")
+            for line in self.p.stdout:
+                self.msg_callback(line.decode("utf-8").strip("\n"))
 
-                # We explicitly close stdout
-                self.p.stdout.close()
+            # We explicitly close stdout
+            self.p.stdout.close()
 
-                # Wait for process to complete
-                self.p.wait()
+            # Wait for process to complete
+            self.p.wait()
 
-                # Communicate callbacks
-                if self.cancelled:
-                    self.msg_callback("Transition cancelled")
-                    # self.cancelled_callback(self.std_out, self.std_err)
-                else:
-                    if self.p.returncode == 0:
-                        self.msg_callback(
-                            "Transition completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
+            # Communicate callbacks
+            if self.cancelled:
+                self.msg_callback("Transition cancelled")
+                # self.cancelled_callback(self.std_out, self.std_err)
+            else:
+                if self.p.returncode == 0:
+                    self.msg_callback(
+                        "Transition completed in {:,.2f} seconds".format(
+                            time.time() - start_time
                         )
-                        self.success_callback()
-                        for line in self.p.stderr:
-                            self.msg_callback(line.decode("utf-8"))
-                    else:
-                        for line in self.p.stderr:
-                            self.msg_callback(line.decode("utf-8"))
-                        self.msg_callback("Transition failed")
-                        self.failure_callback()
+                    )
+                    self.success_callback()
+                    for line in self.p.stderr:
+                        self.msg_callback(line.decode("utf-8"))
+                else:
+                    for line in self.p.stderr:
+                        self.msg_callback(line.decode("utf-8"))
+                    self.msg_callback("Transition failed")
+                    self.failure_callback()
 
     @property
     def trans_exec(self):
@@ -3881,10 +3951,7 @@ class EnergyPlusThread(Thread):
             position=self.idf.position,
         ) as progress:
             self.p = subprocess.Popen(
-                self.cmd,
-                shell=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                self.cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             )
             start_time = time.time()
             self.msg_callback("Simulation started")
@@ -4017,7 +4084,7 @@ def _run_exec(
     iddname = args.get("idd")
     tmp = args.pop("tmp")
     keep_data_err = args.pop("keep_data_err")
-    output_directory = args.pop("output_directory")
+    output_directory = args.pop("tmp_dir")
     idd = args.pop("idd")
     include = args.pop("include")
     custom_processes = args.pop("custom_processes")
@@ -4054,7 +4121,7 @@ def _run_exec(
         args["weather"] = os.path.abspath(args["weather"])
     else:
         args["weather"] = os.path.join(eplus_weather_path, args["weather"])
-    # args['output_directory'] = tmp.abspath()
+    # args['tmp_dir'] = tmp.abspath()
 
     with tmp.abspath() as tmp:
         # build a list of command line arguments
@@ -4238,7 +4305,7 @@ def get_from_cache(kwargs):
     Returns:
         dict: dict of DataFrames
     """
-    output_directory = Path(kwargs.get("output_directory"))
+    output_directory = Path(kwargs.get("tmp_dir"))
     output_report = kwargs.get("output_report")
     eplus_file = next(iter(output_directory.glob("*.idf")), None)
     if not eplus_file:

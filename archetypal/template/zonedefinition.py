@@ -23,7 +23,6 @@ from archetypal.template import (
     DomesticHotWaterSetting,
     OpaqueConstruction,
     UmiBase,
-    Unique,
     UniqueName,
     VentilationSetting,
     WindowSetting,
@@ -33,7 +32,7 @@ from archetypal.template import (
 )
 
 
-class ZoneDefinition(UmiBase, metaclass=Unique):
+class ZoneDefinition(UmiBase):
     """Class containing HVAC settings: Conditioning, Domestic Hot Water, Loads,
     Ventilation, adn Constructions
 
@@ -116,7 +115,9 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         return ZoneDefinition.combine(self, other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash(
+            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+        )
 
     def __eq__(self, other):
         if not isinstance(other, ZoneDefinition):
@@ -326,8 +327,7 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         """
 
         self.InternalMassConstruction = OpaqueConstruction.generic_internalmass(
-            idf=self.idf, for_zone=self.Name
-        )
+            idf=self.idf)
         self.InternalMassExposedPerFloorArea = 0
 
     def to_json(self):
@@ -413,11 +413,7 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
         log('Constructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
         name = zone_ep.Name
         zone = cls(
-            Name=name,
-            idf=zone_ep.theidf,
-            sql=sql,
-            Category=zone_ep.theidf.name,
-            **kwargs,
+            Name=name, idf=zone_ep.theidf, Category=zone_ep.theidf.name, **kwargs,
         )
 
         zone._epbunch = zone_ep
@@ -568,6 +564,23 @@ class ZoneDefinition(UmiBase, metaclass=Unique):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
+        )
+
+    def get_ref(self, ref):
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in ZoneDefinition.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
         )
 
 

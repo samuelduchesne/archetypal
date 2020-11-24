@@ -22,7 +22,6 @@ import platform
 import re
 import sys
 import time
-import unicodedata
 import warnings
 from collections import OrderedDict
 from concurrent.futures._base import as_completed
@@ -30,6 +29,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
+import unicodedata
 from packaging.version import InvalidVersion, Version
 from pandas.io.json import json_normalize
 from path import Path
@@ -1072,6 +1072,7 @@ def parallel_process(
     show_progress=True,
     position=0,
     debug=False,
+    executor=None,
 ):
     """A parallel version of the map function with a progress b
 
@@ -1098,11 +1099,16 @@ def parallel_process(
         position: Specify the line offset to print the tqdm bar (starting from 0)
             Automatic if unspecified. Useful to manage multiple bars at once
             (eg, from threads).
+        executor (Executor)
 
     Returns:
         [function(array[0]), function(array[1]), ...]
     """
-    from concurrent.futures import ThreadPoolExecutor
+    if executor is None:
+        from concurrent.futures import ThreadPoolExecutor
+        _executor_factory = ThreadPoolExecutor
+    else:
+        _executor_factory = executor
 
     from tqdm import tqdm
 
@@ -1129,7 +1135,28 @@ def parallel_process(
         for job in futures:
             out.append(job)
     else:
-        with ThreadPoolExecutor(max_workers=processors) as executor:
+        with _executor_factory(
+            max_workers=processors,
+            initializer=config,
+            initargs=(
+                settings.data_folder,
+                settings.logs_folder,
+                settings.imgs_folder,
+                settings.cache_folder,
+                settings.use_cache,
+                settings.log_file,
+                settings.log_console,
+                settings.log_level,
+                settings.log_name,
+                settings.log_filename,
+                settings.useful_idf_objects,
+                settings.umitemplate,
+                settings.trnsys_default_folder,
+                "area",
+                settings.ep_version,
+                settings.debug,
+            ),
+        ) as executor:
             out = []
             futures = []
 
@@ -1149,6 +1176,7 @@ def parallel_process(
                     result_done = job.result()
                 except Exception as e:
                     if debug:
+                        lg.warning(str(e))
                         raise e
                     result_done = e
                 # Append to the list of results

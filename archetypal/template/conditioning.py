@@ -17,7 +17,7 @@ from sigfig import round
 
 import archetypal
 from archetypal import ReportData, float_round, log, settings, timeit
-from archetypal.template import UmiBase, UmiSchedule, Unique, UniqueName
+from archetypal.template import UmiBase, UmiSchedule, UniqueName
 
 
 class UmiBaseEnum(Enum):
@@ -74,7 +74,7 @@ class IdealSystemLimit(UmiBaseEnum):
     LimitFlowRateAndCapacity = 3
 
 
-class ZoneConditioning(UmiBase, metaclass=Unique):
+class ZoneConditioning(UmiBase):
     """HVAC settings for the zone
 
     .. image:: ../images/template/zoninfo-conditioning.png
@@ -315,7 +315,9 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash(
+            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+        )
 
     def __eq__(self, other):
         if not isinstance(other, ZoneConditioning):
@@ -598,6 +600,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             )
             oa = pd.to_numeric(oa)
             oa_design = oa["Zone Volume"] * oa["Mechanical Ventilation"] / 3600  # m3/s
+            isoa = oa["Mechanical Ventilation"] > 0  # True if ach > 0
             oa_area = oa_design / zone.area
             oa_person = oa_design / oa["Nominal Number of Occupants"]
 
@@ -611,7 +614,7 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             mechvent_schedule = self._mechanical_schedule_from_outdoorair_object(
                 oa_spec, zone
             )
-            return True, oa_area, oa_person, mechvent_schedule
+            return isoa, oa_area, oa_person, mechvent_schedule
 
     def _mechanical_schedule_from_outdoorair_object(self, oa_spec, zone):
         if oa_spec.Outdoor_Air_Schedule_Name != "":
@@ -1076,17 +1079,11 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
     def validate(self):
         """Validates UmiObjects and fills in missing values"""
         if self.HeatingSchedule is None:
-            self.HeatingSchedule = UmiSchedule.constant_schedule(
-                idf=self.idf, allow_duplicates=True
-            )
+            self.HeatingSchedule = UmiSchedule.constant_schedule(idf=self.idf)
         if self.CoolingSchedule is None:
-            self.CoolingSchedule = UmiSchedule.constant_schedule(
-                idf=self.idf, allow_duplicates=True
-            )
+            self.CoolingSchedule = UmiSchedule.constant_schedule(idf=self.idf)
         if self.MechVentSchedule is None:
-            self.MechVentSchedule = UmiSchedule.constant_schedule(
-                idf=self.idf, allow_duplicates=True
-            )
+            self.MechVentSchedule = UmiSchedule.constant_schedule(idf=self.idf)
         if not self.IsMechVentOn:
             self.IsMechVentOn = False
         if not self.MinFreshAirPerPerson:
@@ -1126,4 +1123,21 @@ class ZoneConditioning(UmiBase, metaclass=Unique):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
+        )
+
+    def get_ref(self, ref):
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in ZoneConditioning.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
         )

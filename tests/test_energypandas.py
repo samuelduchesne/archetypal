@@ -1,8 +1,8 @@
 import pytest
-from pandas import date_range, read_csv
 from numpy.testing import assert_almost_equal
+from pandas import date_range, read_csv
 
-from archetypal import IDF, settings, EnergyDataFrame, EnergySeries
+from archetypal import IDF, EnergyDataFrame, EnergySeries, settings
 
 
 @pytest.fixture()
@@ -183,7 +183,9 @@ class TestEnergyDataFrame:
         assert type(edf["Temp"]) == EnergySeries
 
         # check that the name is passed to the slice
-        assert edf[["Temp"]].name is None  # only EnergySeries have name
+        with pytest.raises(AttributeError):
+            # only EnergySeries have name
+            assert edf[["Temp"]].name is None
         assert edf["Temp"].name == "Temp"
 
         # check that the metadata is passed to the slice

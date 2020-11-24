@@ -5,14 +5,14 @@ from path import Path
 
 from archetypal import (
     IDF,
-    parallel_process,
-    get_eplus_dirs,
-    settings,
-    EnergyPlusVersionError,
     EnergyPlusProcessError,
     EnergyPlusVersion,
+    EnergyPlusVersionError,
     InvalidEnergyPlusVersion,
+    parallel_process,
+    settings,
 )
+from archetypal.eplus_interface.version import get_eplus_dirs
 
 
 @pytest.fixture()
@@ -224,25 +224,45 @@ class TestIDF:
         idf = IDF(idf_file, epw=w, prep_outputs=False)
 
         np.testing.assert_almost_equal(
-            actual=idf.area_conditioned, desired=area, decimal=0
+            actual=idf.net_conditioned_building_area, desired=area, decimal=0
         )
 
 
 class TestMeters:
-    def test_retrieve_meters_nosim(self, config, shoebox_model):
-        shoebox_model.simulation_dir.rmtree()
-        with pytest.raises(Exception):
-            print(shoebox_model.meters)
+    @pytest.fixture()
+    def shoebox_res(self):
+        """An IDF model. Yields both the idf. This needs to be the only one used in
+        the following test: test_retrieve_meters_nosim"""
+        file = "tests/input_data/umi_samples/B_Res_0_WoodFrame.idf"
+        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        yield IDF(file, epw=w)
 
-    def test_retrieve_meters(self, config, shoebox_model):
-        if not shoebox_model.simulation_dir.exists():
-            shoebox_model.simulate()
-        shoebox_model.meters.OutputMeter.WaterSystems__MainsWater.values()
+    def test_retrieve_meters_nosim(self, config, shoebox_res):
+        shoebox_res.simulation_dir.rmtree_p()
+        with pytest.raises(Exception):
+            print(shoebox_res.meters)
+
+    def test_retrieve_meters(self, config, shoebox_res):
+        if not shoebox_res.simulation_dir.exists():
+            shoebox_res.simulate()
+        shoebox_res.meters.OutputMeter.WaterSystems__MainsWater.values()
 
 
 class TestThreads:
     def test_runslab(self, config):
         file = get_eplus_dirs() / "ExampleFiles" / "5ZoneAirCooledWithSlab.idf"
+        epw = (
+            get_eplus_dirs()
+            / "WeatherData"
+            / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
+        )
+        idf = IDF(file, epw, annual=False)
+
+        assert idf.simulate()
+
+    @pytest.mark.skip("To long to run for tests")
+    def test_runbasement(self, config):
+        file = get_eplus_dirs() / "ExampleFiles" / "LgOffVAVusingBasement.idf"
         epw = (
             get_eplus_dirs()
             / "WeatherData"

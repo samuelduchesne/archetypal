@@ -16,7 +16,7 @@ from sigfig import round
 
 import archetypal
 from archetypal import log, settings, timeit
-from archetypal.template import UmiBase, UmiSchedule, Unique, UniqueName
+from archetypal.template import UmiBase, UmiSchedule, UniqueName
 from archetypal.utils import reduce
 
 
@@ -32,7 +32,7 @@ class DimmingTypes(Enum):
         return self._value_ > other._value_
 
 
-class ZoneLoad(UmiBase, metaclass=Unique):
+class ZoneLoad(UmiBase):
     """Zone Loads
 
     Important:
@@ -149,7 +149,9 @@ class ZoneLoad(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash(
+            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+        )
 
     def __eq__(self, other):
         if not isinstance(other, ZoneLoad):
@@ -258,118 +260,104 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             sql_query = "select t.* from NominalGasEquipment t where ZoneIndex=?"
             nominal_gas = pd.read_sql(sql_query, conn, params=(zone_index,))
 
-            if nominal_elec.empty and nominal_gas.empty:
-                EquipmentPowerDensity = 0.0
-                EquipmentAvailabilitySchedule = None
-            else:
-                if nominal_gas.empty:
-                    EquipmentPowerDensity = (
-                        nominal_elec["DesignLevel"].sum() / zone.area
-                    )
-                elif nominal_elec.empty:
-                    EquipmentPowerDensity = nominal_gas["DesignLevel"].sum() / zone.area
-                else:
-                    EquipmentPowerDensity = (
-                        nominal_elec["DesignLevel"].sum()
-                        + nominal_gas["DesignLevel"].sum()
-                    ) / zone.area  # todo: Should nominal gas really be added to elec?
+            def get_schedule(series):
+                """Computes schedule with quantity for nominal equipment
+                series"""
+                sched = series["ScheduleIndex"]
+                sql_query = (
+                    "select t.ScheduleName, t.ScheduleType as M from "
+                    "Schedules t where ScheduleIndex=?"
+                )
+                sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
+                return UmiSchedule(
+                    Name=sched_name,
+                    idf=zone.idf,
+                    Type=sched_type,
+                    quantity=series["DesignLevel"],
+                )
 
-                sched_indexes = nominal_elec["ScheduleIndex"].values
-                design_index = nominal_elec["DesignLevel"].index
-                list_sched = []
-                for sched, design in zip(sched_indexes, design_index):
-                    sql_query = (
-                        "select t.ScheduleName, t.ScheduleType as M from "
-                        "Schedules t where ScheduleIndex=?"
-                    )
-                    sched_name, sched_type = c.execute(
-                        sql_query, (int(sched),)
-                    ).fetchone()
-                    schedule = UmiSchedule(
-                        Name=sched_name,
-                        idf=zone.idf,
-                        Type=sched_type,
-                        quantity=nominal_elec["DesignLevel"][design],
-                    )
-                    list_sched.append(schedule)
+            schedules = []
+            if not nominal_elec.empty:
+                # compute schedules series
+                elec_scds = nominal_elec.apply(get_schedule, axis=1).to_list()
+                schedules.extend(elec_scds)
 
+            if not nominal_gas.empty:
+                # compute schedules series
+                gas_scds = nominal_gas.apply(get_schedule, axis=1)
+                schedules.extend(gas_scds)
+
+            if schedules:
                 EquipmentAvailabilitySchedule = reduce(
                     UmiSchedule.combine,
-                    list_sched,
+                    schedules,
                     quantity=lambda x: sum(obj.quantity for obj in x),
                 )
+                EquipmentPowerDensity = (
+                    EquipmentAvailabilitySchedule.quantity / zone.area
+                )
+            else:
+                EquipmentAvailabilitySchedule = None
+                EquipmentPowerDensity = 0.0
 
             # Verifies if Lights in zone
-            sql_query = (
-                "select ifnull(t.ScheduleIndex, null), ifnull(t.DesignLevel, 0) "
-                "from NominalLighting t where t.ZoneIndex=?"
-            )
-            row = c.execute(sql_query, (int(zone_index),)).fetchall()
+            sql_query = "select t.* from NominalLighting t where ZoneIndex=?"
+            nominal_lighting = pd.read_sql(sql_query, conn, params=(zone_index,))
 
-            lighting_schds = []
-            lighting_densities = []
-            for row in row:
-                schedule_index, LightingPower = row
-                LightingPowerDensity = LightingPower / zone.area
-                lighting_densities.append(LightingPowerDensity)
-                sql_query = (
-                    "select t.ScheduleName, t.ScheduleType from "
-                    "Schedules t where ScheduleIndex=?"
-                )
-                sched_name, sched_type = c.execute(
-                    sql_query, (int(schedule_index),)
-                ).fetchone()
-                lighting_schds.append(
-                    UmiSchedule(
-                        Name=sched_name,
-                        idf=zone.idf,
-                        Type=sched_type,
-                        quantity=LightingPowerDensity,
-                    )
-                )
+            lighting_schedules = []
+            if not nominal_lighting.empty:
+                # compute schedules series
+                light_scds = nominal_lighting.apply(get_schedule, axis=1)
+                lighting_schedules.extend(light_scds)
 
-            LightsAvailabilitySchedule = reduce(
-                UmiSchedule.combine,
-                lighting_schds,
-                weights=None,
-                quantity=lambda x: sum(obj.quantity for obj in x),
-            )
-            LightingPowerDensity = sum(lighting_densities)
+            if lighting_schedules:
+                LightsAvailabilitySchedule = reduce(
+                    UmiSchedule.combine,
+                    lighting_schedules,
+                    quantity=lambda x: sum(obj.quantity for obj in x),
+                )
+                LightingPowerDensity = LightsAvailabilitySchedule.quantity / zone.area
+            else:
+                LightsAvailabilitySchedule = None
+                LightingPowerDensity = 0
 
             # Verifies if People in zone
-            sql_query = (
-                "SELECT ifnull(t.NumberOfPeopleScheduleIndex, null), "
-                "ifnull(t.NumberOfPeople, 0) from NominalPeople t where ZoneIndex=?"
-            )
-            row = c.execute(sql_query, (int(zone_index),)).fetchall()
-            people_schedules = []
-            people_densities = [0]
-            for row in row:
-                schedule_index, People = row
-                PeopleDensity = People / zone.area
-                people_densities.append(PeopleDensity)
+
+            def get_schedule(series):
+                """Computes schedule with quantity for nominal equipment
+                series"""
+                sched = series["NumberOfPeopleScheduleIndex"]
                 sql_query = (
-                    "select t.ScheduleName, t.ScheduleType from "
+                    "select t.ScheduleName, t.ScheduleType as M from "
                     "Schedules t where ScheduleIndex=?"
                 )
-                sched_name, sched_type = c.execute(
-                    sql_query, (int(schedule_index),)
-                ).fetchone()
-                people_schedules.append(
-                    UmiSchedule(
-                        Name=sched_name,
-                        idf=zone.idf,
-                        Type=sched_type,
-                        quantity=PeopleDensity,
-                    )
+                sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
+                return UmiSchedule(
+                    Name=sched_name,
+                    idf=zone.idf,
+                    Type=sched_type,
+                    quantity=series["NumberOfPeople"],
                 )
-            OccupancySchedule = reduce(
-                UmiSchedule.combine,
-                people_schedules,
-                weights=None,
-                quantity=lambda x: sum(obj.quantity for obj in x),
-            )
-            PeopleDensity = sum(people_densities)
+
+            sql_query = "select t.* from NominalPeople t where ZoneIndex=?"
+            nominal_people = pd.read_sql(sql_query, conn, params=(zone_index,))
+
+            occupancy_schedules = []
+            if not nominal_people.empty:
+                # compute schedules series
+                occ_scds = nominal_people.apply(get_schedule, axis=1)
+                occupancy_schedules.extend(occ_scds)
+
+            if occupancy_schedules:
+                OccupancySchedule = reduce(
+                    UmiSchedule.combine,
+                    occupancy_schedules,
+                    quantity=lambda x: sum(obj.quantity for obj in x),
+                )
+                PeopleDensity = OccupancySchedule.quantity / zone.area
+            else:
+                OccupancySchedule = None
+                PeopleDensity = 0
 
         name = zone.Name + "_ZoneLoad"
         z_load = cls(
@@ -526,6 +514,19 @@ class ZoneLoad(UmiBase, metaclass=Unique):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
+        )
+
+    def get_ref(self, ref):
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [value for value in ZoneLoad.CREATED_OBJECTS if value.id == ref["$ref"]]
+            ),
+            None,
         )
 
 

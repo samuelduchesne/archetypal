@@ -28,10 +28,7 @@ def scratch_then_cache(request):
             dir.rmtree_p()
 
 
-samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular',
-
-
-# 'umi_samples']
+samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular', 'umi_samples']
 
 
 @pytest.fixture(params=samples_, ids=samples_, scope="session")
@@ -48,7 +45,7 @@ def config():
         cache_folder="tests/.temp/cache",
         use_cache=True,
         log_file=False,
-        log_console=False,
+        log_console=True,
         umitemplate="tests/input_data/umi_samples/BostonTemplateLibrary_2.json",
         debug=True,
     )
@@ -96,42 +93,3 @@ def safe_int_cast(val, default=0):
         return int(val)
     except (ValueError, TypeError):
         return default
-
-
-def no_duplicates(file, attribute="Name"):
-    """
-
-    Args:
-        file (str): Path of the json file
-        attribute (str): Attribute to search for duplicates in json UMI structure.
-        eg. : "$id", "Name"
-
-    Returns:
-
-    """
-    import json
-    from collections import defaultdict
-
-    if isinstance(file, str):
-        data = json.loads(open(file).read())
-    else:
-        data = file
-    ids = {}
-    for key, value in data.items():
-        ids[key] = defaultdict(int)
-        for component in value:
-            try:
-                _id = component[attribute]
-            except KeyError:
-                pass  # BuildingTemplate does not have an id
-            else:
-                ids[key][_id] += 1
-    dups = {
-        key: dict(filter(lambda x: x[1] > 1, values.items()))
-        for key, values in ids.items()
-        if dict(filter(lambda x: x[1] > 1, values.items()))
-    }
-    if any(dups.values()):
-        raise Exception(f"Duplicate {attribute} found: {dups}")
-    else:
-        return True

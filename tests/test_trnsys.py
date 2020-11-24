@@ -8,50 +8,51 @@ import pytest
 from path import Path
 
 from archetypal import (
+    IDF,
+    ReportData,
+    choose_window,
     convert_idf_to_trnbuild,
     parallel_process,
-    trnbuild_idf,
     settings,
-    choose_window,
-    ReportData,
-    get_eplus_dirs,
-    IDF,
+    trnbuild_idf,
 )
+from archetypal.eplus_interface.version import get_eplus_dirs
+
 # Function round to hundreds
 from archetypal.trnsys import (
-    load_idf_file_and_clean_names,
-    clear_name_idf_objects,
-    get_idf_objects,
-    _get_constr_list,
-    _order_objects,
-    _get_schedules,
-    _yearlySched_to_csv,
-    _remove_low_conductivity,
-    _write_version,
-    _write_building,
     _add_change_adj_surf,
-    _write_location_geomrules,
-    _is_coordSys_world,
     _change_relative_coords,
+    _get_constr_list,
     _get_ground_vertex,
-    _write_zone_buildingSurf_fenestrationSurf,
+    _get_schedules,
+    _is_coordSys_world,
+    _order_objects,
+    _relative_to_absolute,
+    _remove_low_conductivity,
+    _save_t3d,
+    _write_building,
+    _write_conditioning,
     _write_constructions,
     _write_constructions_end,
-    _write_materials,
     _write_gains,
-    _write_conditioning,
+    _write_location_geomrules,
+    _write_materials,
     _write_schedules,
+    _write_version,
     _write_window,
     _write_winPool,
-    _save_t3d,
-    _relative_to_absolute,
-    infilt_to_b18,
-    gains_to_b18,
-    conditioning_to_b18,
+    _write_zone_buildingSurf_fenestrationSurf,
+    _yearlySched_to_csv,
     adds_sch_ground,
     adds_sch_setpoint,
-    t_initial_to_b18,
+    clear_name_idf_objects,
     closest_coords,
+    conditioning_to_b18,
+    gains_to_b18,
+    get_idf_objects,
+    infilt_to_b18,
+    load_idf_file_and_clean_names,
+    t_initial_to_b18,
 )
 from tests.conftest import get_platform
 
@@ -413,7 +414,7 @@ class TestConvertEasy:
 
         # Runs EnergyPlus Simulation
         idf = IDF(idf_file, epw=weather_file, design_day=True, prep_outputs=True)
-        res = idf.htm
+        res = idf.htm()
 
         # Copy IDF object, making sure we don't change/overwrite original IDF file
         idf_2 = idf
@@ -877,7 +878,7 @@ class TestConvert:
         )
 
         # Output reports
-        htm = idf.htm
+        htm = idf.htm()
         sql_file = idf.sql_file
 
         # Check if cache exists

@@ -1,3 +1,8 @@
+"""EnergyPandas module.
+
+An extension of pandas DataFrames and Series for Energy modelers.
+"""
+
 import copy
 import os
 import time
@@ -33,6 +38,7 @@ class EnergySeries(Series):
         "base_year",
         "frequency",
         "units",
+        "name",
     ]
 
     @property
@@ -60,25 +66,23 @@ class EnergySeries(Series):
         units=None,
         **kwargs,
     ):
-        """
+        """Initiate EnergySeries.
+
         Args:
-            data:
-            frequency:
-            units:
-            profile_type:
-            index:
-            dtype:
-            copy:
-            name:
-            fastpath:
-            base_year:
-            normalize:
-            sort_values:
-            ascending:
-            archetypes:
-            concurrent_sort:
-            to_units:
-            use_timeindex:
+            data (array-like, Iterable, dict, or scalar value): Contains data stored
+                in Series.
+            index (array-like or Index (1d)):  Values must be hashable and have the
+                same length as `data`. Non-unique index values are allowed. Will
+                default to RangeIndex (0, 1, 2, ..., n) if not provided. If both a
+                dict and index sequence are used, the index will override the keys
+                found in the dict.
+            dtype (str, numpy.dtype, or ExtensionDtype, optional): Data type for the
+                output Series. If not specified, this will be inferred from `data`.
+                See the :ref:`user guide <basics.dtypes>` for more usages.
+            name (str, optional): The name to give to the Series.
+            copy (bool): Copy input data. Defaults to False
+            fastpath (bool): Defaults to False
+            units (:obj:`str`, optional): The series units. Parsed as Pint units.
         """
         super(EnergySeries, self).__init__(
             data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath
@@ -96,10 +100,14 @@ class EnergySeries(Series):
         if isinstance(other, NDFrame):
             for name in other.attrs:
                 self.attrs[name] = other.attrs[name]
-            # For subclasses using _metadata.
-            for name in self._metadata:
-                object.__setattr__(self, name, getattr(other, name, None))
-                self._metadata.append(name) if name not in self._metadata else None
+            # For subclasses using _metadata. Set known attributes and update list.
+            for name in other._metadata:
+                try:
+                    object.__setattr__(self, name, getattr(other, name))
+                except AttributeError:
+                    pass
+                if name not in self._metadata:
+                    self._metadata.append(name)
         return self
 
     def __repr__(self):
@@ -930,10 +938,14 @@ class EnergyDataFrame(DataFrame):
         if isinstance(other, NDFrame):
             for name in other.attrs:
                 self.attrs[name] = other.attrs[name]
-            # For subclasses using _metadata.
+            # For subclasses using _metadata. Set known attributes and update list.
             for name in other._metadata:
-                object.__setattr__(self, name, getattr(other, name, None))
-                self._metadata.append(name) if name not in self._metadata else None
+                try:
+                    object.__setattr__(self, name, getattr(other, name))
+                except AttributeError:
+                    pass
+                if name not in self._metadata:
+                    self._metadata.append(name)
         return self
 
     @classmethod
@@ -945,10 +957,9 @@ class EnergyDataFrame(DataFrame):
         units=None,
         normalize=False,
         sort_values=False,
-        ascending=False,
-        concurrent_sort=False,
         to_units=None,
     ):
+        """From a ReportData DataFrame"""
         # get data
         units = [units] if units else set(df.Units)
         if len(units) > 1:
@@ -980,15 +991,13 @@ class EnergyDataFrame(DataFrame):
         index = DatetimeIndex(index)
         grouped_Data.index = index
         # Since we create the index, use_timeindex must be false
-        edf = cls(grouped_Data, units=units, index=grouped_Data.index)
+        edf = cls(grouped_Data, units=units, index=grouped_Data.index, name=name)
         if to_units:
             edf.to_units(to_units=to_units, inplace=True)
         if normalize:
             edf.normalize(inplace=True)
         if sort_values:
             edf.sort_values(sort_values, inplace=True)
-        if concurrent_sort:
-            pass
         return edf
 
     @property

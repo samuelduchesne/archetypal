@@ -3,25 +3,23 @@ import pytest
 from geomeppy.patches import EpBunch
 
 import archetypal.settings
-from archetypal import (
-    get_eplus_dirs,
-    settings,
-    IDF,
-)
+from archetypal import IDF, settings
+from archetypal.eplus_interface.version import get_eplus_dirs
 from archetypal.template import (
-    WeekSchedule,
     DaySchedule,
-    YearSchedule,
-    OpaqueMaterial,
+    DimmingTypes,
+    GlazingMaterial,
     MaterialLayer,
+    OpaqueConstruction,
+    OpaqueMaterial,
+    WeekSchedule,
+    YearSchedule,
     ZoneConstructionSet,
     ZoneDefinition,
+    ZoneGraph,
     calc_simple_glazing,
-    ZoneGraph, DimmingTypes,
-GlazingMaterial,
-OpaqueConstruction
 )
-from archetypal.template.umi_base import clear_cache, load_json_objects, UniqueName
+from archetypal.template.umi_base import UniqueName, load_json_objects
 
 
 @pytest.fixture(scope="module")
@@ -176,7 +174,7 @@ class TestInternalMass:
             small_idf:
         """
         idf, sql = small_idf
-        intmass = OpaqueConstruction.generic_internalmass(idf, "Perim")
+        intmass = OpaqueConstruction.generic_internalmass(idf)
         assert intmass.to_json()
 
 
@@ -236,7 +234,7 @@ class TestDaySchedule:
         import json
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
+
         with open(filename, "r") as f:
             datastore = json.load(f)
         loaded_dict = load_json_objects(datastore, idf)
@@ -279,17 +277,29 @@ class TestWeekSchedule:
 
         # Creates 2 DaySchedules : 1 always ON and 1 always OFF
         sch_d_on = DaySchedule.from_values(
-            Values=[1] * 24, Category="Day", Type="Fraction", Name="AlwaysOn", idf=idf,
+            Values=[1] * 24,
+            Category="Day",
+            Type="Fraction",
+            Name="AlwaysOn",
+            idf=idf,
         )
         sch_d_off = DaySchedule.from_values(
-            Values=[0] * 24, Category="Day", Type="Fraction", Name="AlwaysOff", idf=idf,
+            Values=[0] * 24,
+            Category="Day",
+            Type="Fraction",
+            Name="AlwaysOff",
+            idf=idf,
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
         days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
         # Creates WeekSchedule from list of DaySchedule
         a = WeekSchedule(
-            Days=days, Category="Week", Type="Fraction", Name="OnOff_1", idf=idf,
+            Days=days,
+            Category="Week",
+            Type="Fraction",
+            Name="OnOff_1",
+            idf=idf,
         )
 
         # Dict of a WeekSchedule (like it would be written in json file)
@@ -345,22 +355,31 @@ class TestYearSchedule:
             config:
             idf:
         """
-
-        clear_cache()
-
         # Creates 2 DaySchedules : 1 always ON and 1 always OFF
         sch_d_on = DaySchedule.from_values(
-            Values=[1] * 24, Category="Day", Type="Fraction", Name="AlwaysOn", idf=idf,
+            Values=[1] * 24,
+            Category="Day",
+            Type="Fraction",
+            Name="AlwaysOn",
+            idf=idf,
         )
         sch_d_off = DaySchedule.from_values(
-            Values=[0] * 24, Category="Day", Type="Fraction", Name="AlwaysOff", idf=idf,
+            Values=[0] * 24,
+            Category="Day",
+            Type="Fraction",
+            Name="AlwaysOff",
+            idf=idf,
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
         days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
         # Creates WeekSchedule from list of DaySchedule
         sch_w_on_off = WeekSchedule(
-            Days=days, Category="Week", Type="Fraction", Name="OnOff", idf=idf,
+            Days=days,
+            Category="Week",
+            Type="Fraction",
+            Name="OnOff",
+            idf=idf,
         )
 
         # Dict of a YearSchedule (like it would be written in json file)
@@ -478,8 +497,9 @@ class TestOpaqueMaterial:
             small_idf_obj:
             other_idf_object:
         """
-        from archetypal.template import OpaqueMaterial
         from copy import copy
+
+        from archetypal.template import OpaqueMaterial
 
         idf = small_idf_obj
         opaq_mat = idf.getobject("MATERIAL", "B_Gypsum_Plaster_0.02_B_Off_Thm_0")
@@ -542,7 +562,7 @@ class TestOpaqueMaterial:
 class TestGlazingMaterial:
     """Series of tests for the :class:`GlazingMaterial` class"""
 
-    def test_simple_glazing_material(self, config, idf):
+    def test_simple_glazing_material(self, config):
         """
         Args:
             config:
@@ -562,11 +582,10 @@ class TestGlazingMaterial:
             IRTransmittance=0.7,
             IREmissivityFront=0.5,
             IREmissivityBack=0.5,
-            idf=idf,
         )
         assert glass.Name == name
 
-    def test_add_glazing_material(self, config, idf):
+    def test_add_glazing_material(self, config):
         """test __add__() for OpaqueMaterial
 
         Args:
@@ -575,15 +594,15 @@ class TestGlazingMaterial:
         """
         sg_a = calc_simple_glazing(0.763, 2.716, 0.812)
         sg_b = calc_simple_glazing(0.578, 2.413, 0.706)
-        mat_a = GlazingMaterial(Name="mat_a", **sg_a, idf=idf)
-        mat_b = GlazingMaterial(Name="mat_b", **sg_b, idf=idf)
+        mat_a = GlazingMaterial(Name="mat_a", **sg_a)
+        mat_b = GlazingMaterial(Name="mat_b", **sg_b)
 
         mat_c = mat_a + mat_b
 
         assert mat_c
         assert mat_a.id != mat_b.id != mat_c.id
 
-    def test_iadd_glazing_material(self, config, idf):
+    def test_iadd_glazing_material(self, config):
         """test __iadd__() for OpaqueMaterial
 
         Args:
@@ -592,8 +611,8 @@ class TestGlazingMaterial:
         """
         sg_a = calc_simple_glazing(0.763, 2.716, 0.812)
         sg_b = calc_simple_glazing(0.578, 2.413, 0.706)
-        mat_a = GlazingMaterial(Name="mat_ia", **sg_a, idf=idf)
-        mat_b = GlazingMaterial(Name="mat_ib", **sg_b, idf=idf)
+        mat_a = GlazingMaterial(Name="mat_ia", **sg_a)
+        mat_b = GlazingMaterial(Name="mat_ib", **sg_b)
 
         id_ = mat_a.id  # storing mat_a's id.
 
@@ -605,7 +624,7 @@ class TestGlazingMaterial:
 
     # todo: Implement from_to_json test for GlazingMaterial class
 
-    def test_hash_eq_glaz_mat(self, config, idf):
+    def test_hash_eq_glaz_mat(self, config):
         """Test equality and hashing of :class:`OpaqueConstruction`
 
         Args:
@@ -615,7 +634,7 @@ class TestGlazingMaterial:
         from copy import copy
 
         sg_a = calc_simple_glazing(0.763, 2.716, 0.812)
-        mat_a = GlazingMaterial(Name="mat_ia", **sg_a, idf=idf)
+        mat_a = GlazingMaterial(Name="mat_ia", **sg_a)
         mat_b = copy(mat_a)
 
         # a copy of dhw should be equal and have the same hash, but still not be the
@@ -670,7 +689,7 @@ class TestGlazingMaterial:
 class TestGasMaterial:
     """Series of tests for the GasMaterial class"""
 
-    def test_gas_material(self, config, idf):
+    def test_gas_material(self, config):
         """
         Args:
             config:
@@ -678,7 +697,7 @@ class TestGasMaterial:
         """
         from archetypal.template import GasMaterial
 
-        air = GasMaterial(Name="Air", Conductivity=0.02, Density=1.24, idf=idf)
+        air = GasMaterial(Name="Air", Conductivity=0.02, Density=1.24)
 
         assert air.Conductivity == 0.02
 
@@ -689,10 +708,10 @@ class TestGasMaterial:
             idf:
         """
         import json
+
         from archetypal.template import GasMaterial
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
         gasMat_json = [
@@ -709,12 +728,12 @@ class TestGasMaterial:
             config:
             idf:
         """
-        from archetypal.template import GasMaterial
-        from copy import copy
         import json
+        from copy import copy
+
+        from archetypal.template import GasMaterial
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
         gasMat_json = [
@@ -1009,10 +1028,11 @@ class TestOpaqueConstruction:
             idf:
         """
         import json
+
         from archetypal.template import (
+            MaterialLayer,
             OpaqueConstruction,
             OpaqueMaterial,
-            MaterialLayer,
         )
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -1041,11 +1061,11 @@ class TestOpaqueConstruction:
             small_idf:
             other_idf:
         """
-        from archetypal.template import OpaqueConstruction
         from copy import copy
 
+        from archetypal.template import OpaqueConstruction
+
         idf, sql = small_idf
-        clear_cache()
         opaq_constr = idf.getobject("CONSTRUCTION", "B_Off_Thm_0")
         oc = OpaqueConstruction.from_epbunch(opaq_constr)
         oc_2 = copy(oc)
@@ -1153,10 +1173,10 @@ class TestWindowConstruction:
             idf:
         """
         import json
+
         from archetypal.template import WindowConstruction
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
         load_json_objects(datastore, idf)
@@ -1179,10 +1199,10 @@ class TestStructureDefinition:
             idf:
         """
         import json
+
         from archetypal.template import StructureInformation
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
         load_json_objects(datastore, idf)
@@ -1199,12 +1219,12 @@ class TestStructureDefinition:
             config:
             idf:
         """
-        from archetypal.template import StructureInformation
-        from copy import copy
         import json
+        from copy import copy
+
+        from archetypal.template import StructureInformation
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
 
@@ -1301,11 +1321,11 @@ class TestUmiSchedule:
             small_idf:
             other_idf:
         """
-        from archetypal.template import UmiSchedule
         from copy import copy
 
+        from archetypal.template import UmiSchedule
+
         idf, sql = small_idf
-        clear_cache()
         sched = UmiSchedule(Name="On", idf=idf)
         sched_2 = copy(sched)
 
@@ -1350,18 +1370,18 @@ class TestUmiSchedule:
         # 2 UmiSchedule from different idf should have the same hash,
         # not be the same object, yet be equal if they have the same values
         idf_2, sql_2 = other_idf
-        clear_cache()
         assert idf is not idf_2
-        sched_3 = UmiSchedule(Name="On", idf=idf_2)
+        sched_3 = UmiSchedule(Name="On", idf=idf_2, allow_duplicates=True)
         assert sched is not sched_3
         assert sched == sched_3
         assert hash(sched) == hash(sched_3)
         assert id(sched) != id(sched_3)
 
     def test_combine(self):
+        import numpy as np
+
         from archetypal.template import UmiSchedule
         from archetypal.utils import reduce
-        import numpy as np
 
         sch1 = UmiSchedule(
             Name="Equipment_10kw", Values=np.ones(24), quantity=10, Type="Fraction"
@@ -1465,10 +1485,10 @@ class TestZoneConstructionSet:
             idf:
         """
         import json
+
         from archetypal.template import ZoneConstructionSet
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
 
@@ -1526,13 +1546,29 @@ class TestZoneLoad:
 
         load = ZoneLoad(Name=None, idf=idf)
 
+    def test_zoneLoad_picle(self, config, idf):
+        import pickle
+
+        from archetypal.template import ZoneLoad
+
+        zone_load = ZoneLoad(Name=None, idf=idf)
+
+        with open("Emp.pickle", "wb") as pickling_on:
+            pickle.dump(zone_load, pickling_on)
+
+        with open("Emp.pickle", "rb") as pickle_off:
+            emp = pickle.load(pickle_off)
+            print(emp)
+
+        assert zone_load == emp
+
     def test_zoneLoad_from_zone(self, config, zoneLoadtests):
         """
         Args:
             config:
             zoneLoadtests:
         """
-        from archetypal.template import ZoneLoad, ZoneDefinition
+        from archetypal.template import ZoneDefinition, ZoneLoad
 
         idf, sql = zoneLoadtests
         zone = idf.getobject("ZONE", "Office")
@@ -1553,7 +1589,7 @@ class TestZoneLoad:
             config:
             fiveZoneEndUses:
         """
-        from archetypal.template import ZoneLoad, ZoneDefinition
+        from archetypal.template import ZoneDefinition, ZoneLoad
 
         idf, sql = fiveZoneEndUses
         zone = idf.getobject("ZONE", "SPACE1-1")
@@ -1579,11 +1615,11 @@ class TestZoneLoad:
             idf:
         """
         import json
+
         from archetypal.template import ZoneLoad
         from archetypal.utils import reduce
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
 
@@ -1600,11 +1636,11 @@ class TestZoneLoad:
             small_idf:
             small_idf_copy:
         """
-        from archetypal.template import ZoneLoad, ZoneDefinition
         from copy import copy
 
+        from archetypal.template import ZoneDefinition, ZoneLoad
+
         idf, sql = small_idf
-        clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
         zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
         zl = ZoneLoad.from_zone(zone)
@@ -1649,7 +1685,7 @@ class TestZoneLoad:
         assert len(set(zl_list)) == 2
 
         # 2 ZoneLoad from different idf should have the same hash if they
-        # have the same name, be the same object, yet be equal if they have the
+        # have the same name, not be the same object, yet be equal if they have the
         # same values (EquipmentPowerDensity, LightingPowerDensity, etc.)
         idf_2, sql = small_idf_copy
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
@@ -1659,8 +1695,8 @@ class TestZoneLoad:
         assert zone_ep is not zone_ep_3
         assert zone_ep != zone_ep_3
         assert hash(zl) == hash(zl_3)
-        assert id(zl) == id(zl_3)
-        assert zl is zl_3
+        assert id(zl) != id(zl_3)
+        assert zl is not zl_3
         assert zl == zl_3
 
 
@@ -1732,11 +1768,11 @@ class TestZoneConditioning:
             idf:
         """
         import json
+
         from archetypal.template import ZoneConditioning
         from archetypal.utils import reduce
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        clear_cache()
         with open(filename, "r") as f:
             datastore = json.load(f)
         load_json_objects(datastore, idf)
@@ -1752,8 +1788,9 @@ class TestZoneConditioning:
         Args:
             zoneConditioningtests:
         """
-        from archetypal.template import ZoneConditioning, ZoneDefinition
         from copy import copy
+
+        from archetypal.template import ZoneConditioning, ZoneDefinition
 
         idf, sql, idf_name, idf_2 = zoneConditioningtests
         # clear_cache()
@@ -1875,6 +1912,7 @@ class TestVentilationSetting:
             idf:
         """
         import json
+
         from archetypal.template import VentilationSetting
         from archetypal.utils import reduce
 
@@ -1894,8 +1932,9 @@ class TestVentilationSetting:
         Args:
             ventilatontests:
         """
-        from archetypal.template import VentilationSetting, ZoneDefinition
         from copy import copy
+
+        from archetypal.template import VentilationSetting, ZoneDefinition
 
         idf, sql, idf_name, idf_2 = ventilatontests
 
@@ -1943,7 +1982,7 @@ class TestVentilationSetting:
         assert len(set(vent_list)) == 2
 
         # 2 VentilationSettings from different idf should have the same hash if they
-        # have same names, be the same object, yet be equal if they have the
+        # have same names, not be the same object, yet be equal if they have the
         # same values (Infiltration, IsWindOn, etc.)
 
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
@@ -1956,8 +1995,8 @@ class TestVentilationSetting:
         assert zone_ep is not zone_ep_3
         assert zone_ep != zone_ep_3
         assert hash(vent) == hash(vent_3)
-        assert id(vent) == id(vent_3)
-        assert vent is vent_3
+        assert id(vent) != id(vent_3)
+        assert vent is not vent_3
         assert vent == vent_3
 
 
@@ -1970,8 +2009,9 @@ class TestDomesticHotWaterSetting:
         Args:
             small_idf:
         """
-        from archetypal.template import DomesticHotWaterSetting, UmiSchedule
         from copy import copy
+
+        from archetypal.template import DomesticHotWaterSetting, UmiSchedule
 
         dhw = DomesticHotWaterSetting(
             Name="",
@@ -2111,8 +2151,8 @@ class TestWindowSetting:
         Args:
             allwindowtypes:
         """
-        from archetypal.utils import reduce
         from archetypal.template import WindowSetting
+        from archetypal.utils import reduce
 
         window = reduce(WindowSetting.combine, allwindowtypes)
         print(window)
@@ -2124,13 +2164,14 @@ class TestWindowSetting:
             other_idf:
         """
         from archetypal.template import WindowSetting
+
         idf = IDF()
         window_1 = WindowSetting.generic(idf, Name="window_1")
         window_2 = WindowSetting.generic(idf, Name="window_2")
 
         new_w = window_1 + window_2
         assert window_1 == window_2
-        assert new_w.id == window_1
+        assert new_w.id == window_1.id
         assert window_1.id != window_2.id != new_w.id
 
     def test_window_iadd(self, small_idf, other_idf):
@@ -2156,7 +2197,7 @@ class TestWindowSetting:
         window_1 += window_2
         assert window_1
         assert window_1.id == id_  # id should not change
-        assert window_1.id == window_2.id
+        assert window_1.id != window_2.id
 
     def test_glazing_material_from_simple_glazing(self, config, idf):
         """test __add__() for OpaqueMaterial
@@ -2178,7 +2219,7 @@ class TestWindowSetting:
         from archetypal.template import WindowSetting
 
         idf, sql = small_idf
-        w = WindowSetting.generic(idf)
+        w = WindowSetting.generic(idf, "Generic Window")
 
         assert w.to_json()
 
@@ -2189,8 +2230,9 @@ class TestWindowSetting:
             small_idf:
             small_idf_copy:
         """
-        from archetypal.template import WindowSetting
         from copy import copy
+
+        from archetypal.template import WindowSetting
 
         idf, sql = small_idf
         f_surf = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"][0]
@@ -2244,8 +2286,8 @@ class TestWindowSetting:
         assert idf is not idf_2
         assert f_surf is not f_surf_3
         assert f_surf != f_surf_3
-        assert hash(wind) == hash(wind_3)
-        assert id(wind) == id(wind_3)
+        assert hash(wind) != hash(wind_3)
+        assert wind is not wind_3
         assert wind == wind_3
 
 
@@ -2321,8 +2363,9 @@ class TestZone:
             small_idf:
             small_idf_copy:
         """
-        from archetypal.template import ZoneDefinition
         from copy import copy
+
+        from archetypal.template import ZoneDefinition
 
         idf, sql = small_idf
         zone_ep = idf.idfobjects["ZONE"][0]
@@ -2567,7 +2610,10 @@ class TestZoneGraph:
             annotate:
         """
         G.plot_graph3d(
-            annotate=annotate, axis_off=True, save=False, show=False,
+            annotate=annotate,
+            axis_off=True,
+            save=False,
+            show=False,
         )
 
     def test_core_graph(self, G):

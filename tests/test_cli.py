@@ -1,10 +1,11 @@
 import os
 
+import click
 import pytest
 from click.testing import CliRunner
 from path import Path
 
-from archetypal import settings, log
+from archetypal import log, settings
 from archetypal.cli import cli
 from tests.test_trnsys import get_platform
 
@@ -258,7 +259,6 @@ class TestCli:
         runner = CliRunner()
         args = cli_args
         result = runner.invoke(cli, args, catch_exceptions=False)
-        print(result.stdout)
         assert result.exit_code == 0
 
     def test_reduce(self):
@@ -283,7 +283,7 @@ class TestCli:
                 "reduce",
                 "-w",
                 "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_*.epw",
-                base / "*Ware*.idf",
+                base / "*Office*.idf",
                 "-o",
                 outname,
             ],

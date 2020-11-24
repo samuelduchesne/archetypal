@@ -11,10 +11,10 @@ import numpy as np
 from sigfig import round
 
 from archetypal import log
-from archetypal.template import UmiBase, Unique, UniqueName
+from archetypal.template import UmiBase, UniqueName
 
 
-class OpaqueMaterial(UmiBase, metaclass=Unique):
+class OpaqueMaterial(UmiBase):
     """Use this component to create a custom opaque material.
 
     .. image:: ../images/template/materials-opaque.png
@@ -112,15 +112,20 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
 
     @ThermalEmittance.setter
     def ThermalEmittance(self, value):
-        if 9.9999e-6 < value <= 1:
-            self._thermal_emittance = value
-        else:
-            raise ValueError(
-                f"Out of range value Numeric Field (ThermalEmittance), "
-                f"value={value}, "
-                "range={>9.9999E-6 and <=1}, "
-                f"in MATERIAL={self.Name}"
-            )
+        try:
+            value = float(value)
+        except ValueError:
+            value = 0.9  # Use default
+        finally:
+            if 9.9999e-6 < value <= 1:
+                self._thermal_emittance = value
+            else:
+                raise ValueError(
+                    f"Out of range value Numeric Field (ThermalEmittance), "
+                    f"value={value}, "
+                    "range={>9.9999E-6 and <=1}, "
+                    f"in MATERIAL={self.Name}"
+                )
 
     def __add__(self, other):
         """Overload + to implement self.combine.
@@ -131,7 +136,7 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
         if not isinstance(other, OpaqueMaterial):
@@ -439,4 +444,21 @@ class OpaqueMaterial(UmiBase, metaclass=Unique):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
+        )
+
+    def get_ref(self, ref):
+        """Gets item matching ref id
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in OpaqueMaterial.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
         )

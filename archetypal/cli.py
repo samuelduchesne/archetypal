@@ -8,24 +8,23 @@ import os
 import time
 
 import click
+from archetypal.settings import ep_version
 from path import Path
 
 from archetypal import (
-    EnergyPlusVersion,
-    EnergyPlusVersionError,
-    UmiTemplateLibrary,
     __version__,
     config,
     convert_idf_to_trnbuild,
     docstring_parameter,
-    ep_version,
-    get_eplus_dirs,
     log,
     parallel_process,
     settings,
     timeit,
+    UmiTemplateLibrary,
+    IDF,
 )
-from archetypal.idfclass import idf_version_updater
+from archetypal.eplus_interface.exceptions import EnergyPlusVersionError
+from archetypal.eplus_interface.version import EnergyPlusVersion, get_eplus_dirs
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -504,22 +503,41 @@ def transition(idf, to_version, cores, yes):
     to_version = to_version.dash
     rundict = {
         file: dict(
-            idf_file=file, to_version=to_version, overwrite=overwrite, position=i + 1
+            idfname=file,
+            as_version=to_version,
+            check_required=False,
+            check_length=False,
+            overwrite=overwrite,
+            prep_outputs=False,
         )
         for i, file in enumerate(file_paths)
     }
-    parallel_process(
+    results = parallel_process(
         rundict,
-        idf_version_updater,
+        IDF,
         processors=cores,
         show_progress=True,
         position=0,
         debug=True,
     )
+
+    # Save results to file (overwriting if True)
+    file_list = []
+    for idf in results:
+        if isinstance(idf, IDF):
+            if overwrite:
+                file_list.append(idf.original_idfname)
+                idf.saveas(idf.original_idfname)
+            else:
+                full_path = (
+                    idf.original_idfname.dirname() / idf.idfname.stem
+                    + f"V{to_version}.idf"
+                )
+                file_list.append(full_path)
+                idf.saveas(full_path)
     log(
-        "Successfully transitioned files to version '{}' in {:,.2f} seconds".format(
-            to_version, time.time() - start_time
-        )
+        f"Successfully transitioned to version '{to_version}' in "
+        f"{time.time() - start_time:,.2f} seconds for file(s):\n" + "\n".join(file_list)
     )
 
 

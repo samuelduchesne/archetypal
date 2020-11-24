@@ -2,10 +2,11 @@ import numpy as np
 import pytest
 
 import archetypal.settings as settings
-from archetypal.idfclass import IDF
+from archetypal import IDF
+from archetypal.eplus_interface.version import get_eplus_dirs
 from archetypal.schedule import Schedule
 from archetypal.template.schedule import UmiSchedule
-from archetypal.utils import config, get_eplus_dirs
+from archetypal.utils import config
 
 
 @pytest.fixture()
@@ -39,7 +40,7 @@ def test_make_umi_schedule(config):
     s = UmiSchedule(Name="CoolingCoilAvailSched", idf=idf, start_day_of_the_week=0)
     new = s.develop()
 
-    assert s.__class__.__name__ == "UmiSchedule"
+    assert s.__class__.__name__ == "YearSchedule"
     assert len(s.all_values) == len(new.all_values)
     np.testing.assert_array_equal(new.all_values, s.all_values)
 
@@ -58,7 +59,10 @@ def test_from_values(mew_idf):
     import numpy as np
 
     heating_sched = UmiSchedule.from_values(
-        Name="Zone_Heating_Schedule", Values=np.ones(8760), Type="Fraction", idf=idf,
+        Name="Zone_Heating_Schedule",
+        Values=np.ones(8760),
+        Type="Fraction",
+        idf=idf,
     )
     assert len(heating_sched.all_values) == 8760
 
@@ -90,7 +94,7 @@ ids = [i.replace(" ", "_") for i in schedules]
 @pytest.fixture(scope="module")
 def csv_out(config):
     idf = schedules_idf().simulate()
-    csv = idf.simulation_dir.files("*out.csv")[0]
+    csv, *_ = idf.simulation_dir.files("*out.csv")
     yield csv
 
 

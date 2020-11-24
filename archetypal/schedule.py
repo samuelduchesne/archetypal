@@ -15,8 +15,8 @@ import pandas as pd
 from eppy.bunch_subclass import EpBunch
 from numpy import ndarray
 
-from archetypal import log
 from archetypal.energypandas import EnergySeries, plot_energyseries_map
+from archetypal.utils import log
 
 
 class Schedule(object):
@@ -89,7 +89,7 @@ class Schedule(object):
     @property
     def idf(self):
         if self._idf is None:
-            from archetypal.idfclass import IDF
+            from .idfclass.idf import IDF
 
             self._idf = IDF()
         return self._idf

@@ -414,7 +414,7 @@ class TestConvertEasy:
 
         # Runs EnergyPlus Simulation
         idf = IDF(idf_file, epw=weather_file, design_day=True, prep_outputs=True)
-        res = idf.htm
+        res = idf.htm()
 
         # Copy IDF object, making sure we don't change/overwrite original IDF file
         idf_2 = idf
@@ -878,7 +878,7 @@ class TestConvert:
         )
 
         # Output reports
-        htm = idf.htm
+        htm = idf.htm()
         sql_file = idf.sql_file
 
         # Check if cache exists

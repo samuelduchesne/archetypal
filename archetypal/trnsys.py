@@ -139,15 +139,15 @@ def convert_idf_to_trnbuild(
         idf_file,
         epw=weather_file,
         as_version=ep_version,
-        design_day=False,
         annual=True,
+        design_day=False,
         prep_outputs=outputs,
     )
 
     # Check if cache exists
     # idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
     # Outpout reports
-    htm = idf.htm
+    htm = idf.htm()
     sql_file = idf.sql_file
 
     # Clean names of idf objects (e.g. 'MATERIAL')

@@ -4,6 +4,7 @@ import hashlib
 import os
 from collections import OrderedDict
 from io import StringIO
+from path import Path
 
 import eppy
 from eppy.EPlusInterfaceFunctions import parse_idd
@@ -54,7 +55,17 @@ def hash_model(idfname, **kwargs):
         with open(idfname, "rb") as afile:
             buf = afile.read()
     hasher.update(buf)
-    hasher.update(kwargs.__str__().encode("utf-8"))  # Hashing the kwargs as well
+
+    # Hashing the kwargs as well
+    for k, v in kwargs.items():
+        if isinstance(v, str):
+            hasher.update(v.__str__().encode("utf-8"))
+        elif isinstance(v, list):
+            # include files are Paths
+            for item in v:
+                with open(item, "rb") as f:
+                    buf = f.read()
+                    hasher.update(buf)
     return hasher.hexdigest()
 
 

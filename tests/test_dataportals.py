@@ -223,8 +223,8 @@ def test_download_and_load_bld_window(config):
     )
     idf = IDF(
         response[0],
-        prep_outputs=False,
         epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+        prep_outputs=False,
     )
     construct = idf.getobject("CONSTRUCTION", "AEDG-SmOffice 1A Window Fixed")
     ws = WindowSetting.from_construction(Name="test_window", Construction=construct)

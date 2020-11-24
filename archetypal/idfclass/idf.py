@@ -166,7 +166,6 @@ class IDF(geomIDF):
         prep_outputs=True,
         include=None,
         custom_processes=None,
-        simulname=None,
         output_suffix="L",
         epmacro=False,
         keep_data=True,
@@ -196,7 +195,6 @@ class IDF(geomIDF):
         self._include = include
         self.keep_data_err = keep_data_err
         self._keep_data = keep_data
-        self._simulname = simulname
         self.output_suffix = output_suffix
         self.verbose = verbose
         self.readvars = readvars
@@ -274,6 +272,7 @@ class IDF(geomIDF):
                 )
 
     def __str__(self):
+        """Returns name of IDF model."""
         return self.name
 
     def setiddname(self, iddname, testing=False):
@@ -282,28 +281,22 @@ class IDF(geomIDF):
 
         Args:
             iddname (str): Path to the IDD file.
-            testing:
+            testing (bool):
         """
         self.iddname = iddname
         self.idd_info = None
         self.block = None
 
-    def valid_idds(self):
-        """Returns all valid idd version numbers found in IDFVersionUpdater folder"""
-        return self.idf_version._choices
-
     def read(self):
-        """
-        Read the IDF file and the IDD file. If the IDD file had already been
-        read, it will not be read again.
+        """Read the IDF file and the IDD file.
+
+        If the IDD file had already been read, it will not be read again.
 
         Read populates the following data structures:
-
-        - idfobjects : list
-        - model : list
-        - idd_info : list
-        - idd_index : dict
-
+            - idfobjects : list
+            - model : list
+            - idd_info : list
+            - idd_index : dict
         """
         if self.getiddname() is None:
             errortxt = (
@@ -318,39 +311,24 @@ class IDF(geomIDF):
         self.setidd(idd_info, idd_index, block, idd_version)
 
     def getiddname(self):
-        """Get the name of the current IDD used by eppy.
-
-        Returns
-        -------
-        str
-
-        """
+        """Get the name of the current IDD used by eppy."""
         return self.iddname
 
     def setidd(self, iddinfo, iddindex, block, idd_version):
         """Set the IDD to be used by eppy.
 
-        Parameters
-        ----------
-        iddinfo : list
-            Comments and metadata about fields in the IDD.
-        block : list
-            Field names in the IDD.
-
+        Args:
+            iddinfo (list): Comments and metadata about fields in the IDD.
+            block (list): Field names in the IDD.
         """
         self.idd_info = iddinfo
         self.block = block
         self.idd_index = iddindex
         self.idd_version = idd_version
 
-    @classmethod
-    def cached_file(cls, idfname, **kwargs):
-        cache_filename = hash_model(idfname, **kwargs)
-        output_directory = settings.cache_folder / cache_filename
-        return output_directory / os.extsep.join([cache_filename + "idfs", "dat"])
-
     @property
     def block(self):
+        """EnergyPlus field ID names of the IDF from the IDD."""
         if self._block is None:
             bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
                 self.idfname, self.iddname, self, commdct=None, block=None
@@ -365,6 +343,7 @@ class IDF(geomIDF):
 
     @property
     def idd_info(self):
+        """Descriptions of IDF fields from the IDD."""
         if self._idd_info is None:
             bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
                 self.idfname, self.iddname, self, commdct=None, block=None
@@ -379,6 +358,7 @@ class IDF(geomIDF):
 
     @property
     def idd_index(self):
+        """A pair of dicts used for fast lookups of names of groups of objects."""
         if self._idd_index is None:
             bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
                 self.idfname, self.iddname, self, commdct=None, block=None
@@ -393,6 +373,7 @@ class IDF(geomIDF):
 
     @property
     def idfobjects(self):
+        """Dict of lists of idf_MSequence objects in the IDF."""
         if self._idfobjects is None:
             bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
                 self.idfname, self.iddname, self, commdct=None, block=None
@@ -407,6 +388,7 @@ class IDF(geomIDF):
 
     @property
     def model(self):
+        """Eplusdata object containing representions of IDF objects."""
         if self._model is None:
             bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
                 self.idfname, self.iddname, self, commdct=None, block=None
@@ -421,6 +403,7 @@ class IDF(geomIDF):
 
     @property
     def idd_version(self):
+        """tuple: The version of the iddname."""
         if self._idd_version is None:
             bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
                 self.idfname, self.iddname, self, commdct=None, block=None
@@ -435,6 +418,7 @@ class IDF(geomIDF):
 
     @property
     def iddname(self):
+        """Path: The iddname used to parse the idf model."""
         if self._iddname is None:
             if self.file_version > self.as_version:
                 raise EnergyPlusVersionError(
@@ -453,19 +437,23 @@ class IDF(geomIDF):
 
     @property
     def file_version(self):
+        """The :class:`EnergyPlusVersion` of the idf text file."""
         if self._file_version is None:
             return EnergyPlusVersion(get_idf_version(self.idfname))
 
     @property
     def custom_processes(self):
+        """list: List of callables. Called on the output files."""
         return self._custom_processes
 
     @property
     def include(self):
+        """list: List of external files."""
         return self._include
 
     @property
     def keep_data_err(self):
+        """bool: If True, error files are copied back into self.output_folder"""
         return self._keep_data_err
 
     @keep_data_err.setter
@@ -478,12 +466,15 @@ class IDF(geomIDF):
     def keep_data(self):
         return self._keep_data
 
-    @property
-    def simulname(self):
-        return self._simulname
-
+    # region User-Defined Properties (have setter)
     @property
     def output_suffix(self):
+        """Suffix style for output file names (default: L)
+
+        - L: Legacy (e.g., eplustbl.csv)
+        - C: Capital (e.g., eplusTable.csv)
+        - D: Dash (e.g., eplus-table.csv)
+        """
         return self._output_suffix
 
     @output_suffix.setter
@@ -493,12 +484,13 @@ class IDF(geomIDF):
             raise ValueError(f"Choices of 'output_suffix' are {choices}")
         self._output_suffix = value
 
-    # region User-Defined Properties (have setter)
     @property
     def idfname(self):
-        """The path of the active (parsed) idf model. If `settings.use_cache ==
-        True`, then this path will point to `settings.cache_folder`. See
-        :meth:`~archetypal.utils.config`"""
+        """The path of the active (parsed) idf model.
+
+        If `settings.use_cache == True`, then this path will point to
+        `settings.cache_folder`. See :meth:`~archetypal.utils.config`
+        """
         if self._idfname is None:
             idfname = StringIO(f"VERSION, {self.as_version};")
             idfname.seek(0)
@@ -519,6 +511,7 @@ class IDF(geomIDF):
 
     @property
     def epw(self):
+        """The weather file path."""
         if self._epw is not None:
             return Path(self._epw).expand()
 
@@ -531,6 +524,11 @@ class IDF(geomIDF):
 
     @property
     def verbose(self):
+        """bool: If True, print outputs to logging module.
+
+        See Also:
+            :ref:`archetypal.utils.config`
+        """
         return self._verbose
 
     @verbose.setter
@@ -542,6 +540,7 @@ class IDF(geomIDF):
 
     @property
     def expandobjects(self):
+        """bool: If True, run ExpandObjects prior to simulation."""
         return self._expandobjects
 
     @expandobjects.setter
@@ -552,6 +551,7 @@ class IDF(geomIDF):
 
     @property
     def readvars(self):
+        """bool: If True, run ReadVarsESO after simulation."""
         return self._readvars
 
     @readvars.setter
@@ -562,6 +562,7 @@ class IDF(geomIDF):
 
     @property
     def epmacro(self):
+        """bool: If True, run EPMacro prior to simulation."""
         return self._epmacro
 
     @epmacro.setter
@@ -572,6 +573,7 @@ class IDF(geomIDF):
 
     @property
     def design_day(self):
+        """bool: If True, force design-day-only simulation."""
         return self._design_day
 
     @design_day.setter
@@ -582,6 +584,7 @@ class IDF(geomIDF):
 
     @property
     def annual(self):
+        """bool: If True, force annual simulation."""
         return self._annual
 
     @annual.setter
@@ -592,6 +595,10 @@ class IDF(geomIDF):
 
     @property
     def convert(self):
+        """bool: If True, only convert IDF->epJSON or epJSON->IDF.
+
+        Dependent on input file type. No simulation.
+        """
         return self._convert
 
     @convert.setter
@@ -611,6 +618,7 @@ class IDF(geomIDF):
 
     @property
     def as_version(self):
+        """Specify the desired :class:`EnergyPlusVersion` for the IDF model."""
         if self._as_version is None:
             self._as_version = EnergyPlusVersion.current()
         return EnergyPlusVersion(self._as_version)
@@ -622,8 +630,11 @@ class IDF(geomIDF):
 
     @property
     def output_directory(self):
-        """Returns the output directory based on the hashing of the original file (
-        before transitions or modifications)."""
+        """The output directory based on the hashing of the original file.
+
+        Notes:
+            The hashing is performed before transitions or modifications.
+        """
         if self._output_directory is None:
             cache_filename = self._original_cache
             output_directory = settings.cache_folder / cache_filename
@@ -643,8 +654,9 @@ class IDF(geomIDF):
 
     @property
     def output_prefix(self):
+        """Prefix for output file names (default: eplus)."""
         if self._output_prefix is None:
-            self._output_prefix = self.name.stem
+            self._output_prefix = "eplus"
         return self._output_prefix
 
     @output_prefix.setter
@@ -655,7 +667,16 @@ class IDF(geomIDF):
 
     @property
     def sim_id(self):
-        """Returns the hash of the model"""
+        """The unique Id of the simulation.
+
+        Based on a subset of hashed variables:
+            - The idf model itself.
+            - epw
+            - annual
+            - design_day
+            - readvars
+            - as_version
+        """
         if self._sim_id is None:
             self._sim_id = hash_model(
                 self,
@@ -664,6 +685,7 @@ class IDF(geomIDF):
                 design_day=self.design_day,
                 readvars=self.readvars,
                 ep_version=self.as_version,
+                include=self.include,
             )
         return self._sim_id
 
@@ -719,7 +741,6 @@ class IDF(geomIDF):
                 self._sql = sql_dict
         return self._sql
 
-    @property
     def htm(self):
         """Get the htm table report"""
         if self._htm is None:
@@ -731,7 +752,7 @@ class IDF(geomIDF):
                     output_prefix=self.output_prefix,
                 )
             except FileNotFoundError:
-                return self.simulate().htm
+                return self.simulate().htm()
             else:
                 self._htm = htm_dict
         return self._htm
@@ -743,7 +764,7 @@ class IDF(geomIDF):
             self._energyplus_its = 0
         return self._energyplus_its
 
-    def htm_open(self):
+    def open_htm(self):
         """Open .htm file in browser"""
         import webbrowser
 
@@ -751,7 +772,7 @@ class IDF(geomIDF):
 
         webbrowser.open(html.abspath())
 
-    def idf_open(self):
+    def open_idf(self):
         """Open .idf file in Ep-Launch"""
 
         self.save()
@@ -769,7 +790,7 @@ class IDF(geomIDF):
         else:  # linux variants
             subprocess.call(("xdg-open", filepath))
 
-    def idf_open_last_sim(self):
+    def open_last_simulation(self):
         """Open last simulation in Ep-Launch"""
 
         filepath, *_ = self.simulation_dir.files("*.idf")
@@ -785,7 +806,7 @@ class IDF(geomIDF):
         else:  # linux variants
             subprocess.call(("xdg-open", filepath))
 
-    def mdd_open(self):
+    def open_mdd(self):
         """Open .mdd file in browser. This file shows all the report meters along
         with their “availability” for the current input file"""
         import webbrowser
@@ -794,7 +815,7 @@ class IDF(geomIDF):
 
         webbrowser.open(mdd.abspath())
 
-    def mtd_open(self):
+    def open_mtd(self):
         """Open .mtd file in browser. This file contains the “meter details” for the
         run. This shows what report variables are on which meters and vice versa –
         which meters contain what report variables."""
@@ -1071,8 +1092,7 @@ class IDF(geomIDF):
         return self._variables
 
     def simulate(self, **kwargs):
-        """Execute EnergyPlus. Does not return anything. See
-        :meth:`simulation_files`, :meth:`processed_results` for simulation outputs.
+        """Execute EnergyPlus. Does not return anything.
 
         Keyword Args:
             eplus_file (str): path to the idf file.
@@ -1083,8 +1103,6 @@ class IDF(geomIDF):
             prep_outputs (bool or list, optional): if True, meters and variable
                 outputs will be appended to the idf files. Can also specify custom
                 outputs as list of ep-object outputs.
-            simulname (str): The name of the simulation. (Todo: Currently not
-            implemented).
             keep_data (bool): If True, files created by EnergyPlus are saved to the
                 tmp_dir.
             annual (bool): If True then force annual simulation (default: False)
@@ -1128,6 +1146,9 @@ class IDF(geomIDF):
         Raises:
             EnergyPlusProcessError: If an issue occurs with the execution of the
                 energyplus command.
+
+        See Also:
+            :meth:`simulation_files`, :meth:`processed_results` for simulation outputs.
 
         """
         # First, update keys with new values

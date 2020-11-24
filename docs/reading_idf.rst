@@ -70,7 +70,7 @@ is equivalent to:
 
     When running EnergyPlus simulations, a caching system can be activated to reduce the number of calls to the
     EnergyPlus executable or to reduce time spent on I/O operations such as in :attr:`~archetypal.idfclass.IDF.sql` and
-    :attr:`~archetypal.idfclass.IDF.htm` which parse the simulation results. This caching system will save
+    :func:`~archetypal.idfclass.IDF.htm()` which parse the simulation results. This caching system will save
     simulation results in a folder identified by a unique identifier. This identifier is based on the content of the IDF
     file, as well as EnergyPlus simulate options. This system works by invalidating any dependant attributes when
     independent attributes change.

@@ -9,10 +9,10 @@ from archetypal import (
     EnergyPlusVersion,
     EnergyPlusVersionError,
     InvalidEnergyPlusVersion,
-    get_eplus_dirs,
     parallel_process,
     settings,
 )
+from archetypal.eplus_interface.version import get_eplus_dirs
 
 
 @pytest.fixture()

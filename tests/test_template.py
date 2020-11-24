@@ -3,7 +3,8 @@ import pytest
 from geomeppy.patches import EpBunch
 
 import archetypal.settings
-from archetypal import IDF, get_eplus_dirs, settings
+from archetypal import IDF, settings
+from archetypal.eplus_interface.version import get_eplus_dirs
 from archetypal.template import (
     DaySchedule,
     DimmingTypes,

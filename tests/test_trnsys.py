@@ -5,6 +5,7 @@ from copy import deepcopy
 
 import pandas as pd
 import pytest
+from archetypal.eplus_interface.version import get_eplus_dirs
 from path import Path
 
 from archetypal import (
@@ -12,7 +13,6 @@ from archetypal import (
     ReportData,
     choose_window,
     convert_idf_to_trnbuild,
-    get_eplus_dirs,
     parallel_process,
     settings,
     trnbuild_idf,

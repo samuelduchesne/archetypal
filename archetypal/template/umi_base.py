@@ -15,8 +15,7 @@ from itertools import chain
 import numpy as np
 from sigfig import round
 
-from archetypal import log
-from archetypal.idfclass import IDF
+from archetypal import IDF, log
 from archetypal.utils import lcm
 
 

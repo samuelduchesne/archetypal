@@ -338,9 +338,9 @@ class ZoneLoad(UmiBase):
                     Type=sched_type,
                     quantity=series["NumberOfPeople"],
                 )
+
             sql_query = "select t.* from NominalPeople t where ZoneIndex=?"
-            nominal_people = pd.read_sql(sql_query, conn,
-                                           params=(zone_index,))
+            nominal_people = pd.read_sql(sql_query, conn, params=(zone_index,))
 
             occupancy_schedules = []
             if not nominal_people.empty:

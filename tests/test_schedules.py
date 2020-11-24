@@ -2,10 +2,11 @@ import numpy as np
 import pytest
 
 import archetypal.settings as settings
-from archetypal.idfclass import IDF
+from archetypal import IDF
+from archetypal.eplus_interface.version import get_eplus_dirs
 from archetypal.schedule import Schedule
 from archetypal.template.schedule import UmiSchedule
-from archetypal.utils import config, get_eplus_dirs
+from archetypal.utils import config
 
 
 @pytest.fixture()

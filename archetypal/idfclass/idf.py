@@ -18,7 +18,6 @@ from collections import defaultdict
 from io import StringIO
 from itertools import chain
 from math import isclose
-from parser import ParserError
 from tempfile import TemporaryDirectory
 
 import eppy
@@ -28,29 +27,29 @@ from eppy.easyopen import getiddfile
 from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from geomeppy import IDF as geomIDF
 from geomeppy.patches import EpBunch, idfreader1, obj2bunch
+from pandas.errors import ParserError
 from path import Path
 from tqdm import tqdm
 
 from archetypal import ReportData, log, settings
+from archetypal.energypandas import EnergySeries
 from archetypal.eplus_interface.energy_plus import EnergyPlusThread
 from archetypal.eplus_interface.exceptions import (
     EnergyPlusProcessError,
+    EnergyPlusVersionError,
     EnergyPlusWeatherError,
-    EnergyPlusVersionError
 )
-from archetypal.eplus_interface.version import EnergyPlusVersion, \
-    get_eplus_dirs, latest_energyplus_version
 from archetypal.eplus_interface.expand_objects import ExpandObjectsThread
 from archetypal.eplus_interface.slab import SlabThread
 from archetypal.eplus_interface.transition import TransitionThread
+from archetypal.eplus_interface.version import (
+    EnergyPlusVersion,
+    get_eplus_dirs,
+    latest_energyplus_version,
+)
 from archetypal.idfclass.meters import Meters
 from archetypal.idfclass.outputs import Outputs
-from archetypal.idfclass.util import (
-    get_idf_version,
-    get_report,
-    hash_model,
-)
-from archetypal.energypandas import EnergySeries
+from archetypal.idfclass.util import get_idf_version, get_report, hash_model
 from archetypal.idfclass.variables import Variables
 from archetypal.schedule import Schedule
 

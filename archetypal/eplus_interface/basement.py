@@ -73,7 +73,7 @@ class BasementThread(Thread):
         # added by ExpandObjects. If self.include is empty, no need to run
         # Basement.
         self.include = [Path(file).copy(self.run_dir) for file in self.idf.include]
-        if not self.include:
+        if "BasementGHTIn.idf" not in self.include:
             self.cleanup_callback()
             return
 
@@ -184,7 +184,7 @@ class BasementThread(Thread):
         """clean up temp files, directories and variables that need cleanup."""
 
         # Remove from include
-        ghtin = self.idf.output_directory / "GHTIn.idf"
+        ghtin = self.idf.output_directory / "BasementGHTIn.idf"
         if ghtin.exists():
             try:
                 self.idf.include.remove(ghtin)

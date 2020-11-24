@@ -188,7 +188,7 @@ class TestEnergyDataFrame:
 
         # check that the metadata is passed to the slice
         assert edf[["Temp"]].extrameta == "this"
-        # assert edf["Temp"].extrameta == "this"
+        assert edf["Temp"].extrameta == "this"
 
         # check that the slice keeps the units
         assert edf.units == edf["Temp"].units

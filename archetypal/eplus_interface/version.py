@@ -1,6 +1,7 @@
 import platform
 import re
 import warnings
+from itertools import chain
 
 from archetypal.settings import ep_version
 from path import Path
@@ -26,7 +27,7 @@ def get_eplus_dirs(version=ep_version):
 
 
 def get_eplus_basedirs():
-    """Returns a list of possible E+ install paths"""
+    """Return a list of possible E+ install paths."""
     if platform.system() == "Windows":
         eplus_homes = Path("C:\\").dirs("EnergyPlus*")
         return eplus_homes
@@ -43,7 +44,7 @@ def get_eplus_basedirs():
         )
 
 
-def latest_energyplus_version():
+def _latest_energyplus_version():
     """Finds all installed versions of EnergyPlus in the default location and
     returns the latest version number.
 
@@ -58,19 +59,14 @@ def latest_energyplus_version():
     if not eplus_homes:
         raise Exception(
             "No EnergyPlus installation found. Make sure you have EnergyPlus "
-            "installed. "
-            "Go to https://energyplus.net/downloads to download the latest version of "
-            "EnergyPlus."
+            "installed.  Go to https://energyplus.net/downloads to download the "
+            "latest version of EnergyPlus."
         )
 
     # Find the most recent version of EnergyPlus installed from the version
     # number (at the end of the folder name)
-
     return sorted(
-        (
-            EnergyPlusVersion(re.search(r"([\d])-([\d])-([\d])", home.stem).group())
-            for home in eplus_homes
-        ),
+        (re.search(r"([\d])-([\d])-([\d])", home.stem).group() for home in eplus_homes),
         reverse=True,
     )[0]
 
@@ -91,25 +87,7 @@ def warn_if_not_compatible():
 
 
 class EnergyPlusVersion(Version):
-    try:
-        iddnames = (
-            get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
-        ).files("*.idd")
-    except FileNotFoundError:
-        _choices = ["9-2-0"]  # Little hack in case E+ is not installed
-    else:
-        _choices = [
-            re.match("V(.*)-Energy\+", idd.stem).groups()[0] for idd in iddnames
-        ]
-
-    @property
-    def dash(self):
-        # type: () -> str
-        return "-".join(map(str, (self.major, self.minor, self.micro)))
-
-    def __repr__(self):
-        # type: () -> str
-        return "<EnergyPlusVersion({0})>".format(repr(str(self)))
+    """"""
 
     def __init__(self, version):
         """
@@ -124,5 +102,49 @@ class EnergyPlusVersion(Version):
         if isinstance(version, str) and "-" in version:
             version = version.replace("-", ".")
         super(EnergyPlusVersion, self).__init__(version)
-        if self.dash not in self._choices:
+        if self.dash not in self.valid_versions:
             raise InvalidEnergyPlusVersion
+
+    def __repr__(self):
+        # type: () -> str
+        return "<EnergyPlusVersion({0})>".format(repr(str(self)))
+
+    @classmethod
+    def latest(cls):
+        """Return the latest EnergyPlus version installed"""
+        version = _latest_energyplus_version()
+        return cls(version)
+
+    @classmethod
+    def current(cls):
+        """Return the current EnergyPlus version specified.
+
+        Specified by :ref:`archetypal.settings.ep_version`
+        """
+        version = settings.ep_version
+        return cls(version)
+
+    @property
+    def dash(self):
+        # type: () -> str
+        return "-".join(map(str, (self.major, self.minor, self.micro)))
+
+    @property
+    def valid_versions(self):
+        try:
+            # Get all possible iddnames from any E+ install
+            iddnames = set(
+                chain.from_iterable(
+                    (
+                        (basedir / "PreProcess" / "IDFVersionUpdater").files("*.idd")
+                        for basedir in get_eplus_basedirs()
+                    )
+                )
+            )
+        except FileNotFoundError:
+            _choices = ["9-2-0"]  # Little hack in case E+ is not installed
+        else:
+            _choices = set(
+                re.match("V(.*)-Energy\+", idd.stem).groups()[0] for idd in iddnames
+            )
+        return _choices

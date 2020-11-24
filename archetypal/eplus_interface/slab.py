@@ -66,7 +66,6 @@ class SlabThread(Thread):
             self.eplus_home / "PreProcess" / "GrndTempCalc" / "SlabGHT.idd"
         ).copy(self.run_dir)
 
-
         # The GHTin.idf file is copied from the self.include list (added by
         # ExpandObjects. If self.include is empty, no need to run Slab.
         self.include = [Path(file).copy(self.run_dir) for file in self.idf.include]

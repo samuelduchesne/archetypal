@@ -19,12 +19,12 @@ from archetypal import (
     log,
     parallel_process,
     settings,
-    timeit, UmiTemplateLibrary, IDF,
+    timeit,
+    UmiTemplateLibrary,
+    IDF,
 )
 from archetypal.eplus_interface.exceptions import EnergyPlusVersionError
-from archetypal.eplus_interface.version import EnergyPlusVersion, \
-    get_eplus_dirs
-from archetypal.idfclass.util import idf_version_updater
+from archetypal.eplus_interface.version import EnergyPlusVersion, get_eplus_dirs
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -530,15 +530,14 @@ def transition(idf, to_version, cores, yes):
                 idf.saveas(idf.original_idfname)
             else:
                 full_path = (
-                        idf.original_idfname.dirname() / idf.idfname.stem
-                        + f"V{to_version}.idf"
+                    idf.original_idfname.dirname() / idf.idfname.stem
+                    + f"V{to_version}.idf"
                 )
                 file_list.append(full_path)
                 idf.saveas(full_path)
     log(
         f"Successfully transitioned to version '{to_version}' in "
-        f"{time.time() - start_time:,.2f} seconds for file(s):\n"
-        + "\n".join(file_list)
+        f"{time.time() - start_time:,.2f} seconds for file(s):\n" + "\n".join(file_list)
     )
 
 

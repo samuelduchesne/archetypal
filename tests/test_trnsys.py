@@ -5,7 +5,6 @@ from copy import deepcopy
 
 import pandas as pd
 import pytest
-from archetypal.eplus_interface.version import get_eplus_dirs
 from path import Path
 
 from archetypal import (
@@ -17,6 +16,7 @@ from archetypal import (
     settings,
     trnbuild_idf,
 )
+from archetypal.eplus_interface.version import get_eplus_dirs
 
 # Function round to hundreds
 from archetypal.trnsys import (

@@ -277,17 +277,29 @@ class TestWeekSchedule:
 
         # Creates 2 DaySchedules : 1 always ON and 1 always OFF
         sch_d_on = DaySchedule.from_values(
-            Values=[1] * 24, Category="Day", Type="Fraction", Name="AlwaysOn", idf=idf,
+            Values=[1] * 24,
+            Category="Day",
+            Type="Fraction",
+            Name="AlwaysOn",
+            idf=idf,
         )
         sch_d_off = DaySchedule.from_values(
-            Values=[0] * 24, Category="Day", Type="Fraction", Name="AlwaysOff", idf=idf,
+            Values=[0] * 24,
+            Category="Day",
+            Type="Fraction",
+            Name="AlwaysOff",
+            idf=idf,
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
         days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
         # Creates WeekSchedule from list of DaySchedule
         a = WeekSchedule(
-            Days=days, Category="Week", Type="Fraction", Name="OnOff_1", idf=idf,
+            Days=days,
+            Category="Week",
+            Type="Fraction",
+            Name="OnOff_1",
+            idf=idf,
         )
 
         # Dict of a WeekSchedule (like it would be written in json file)
@@ -345,17 +357,29 @@ class TestYearSchedule:
         """
         # Creates 2 DaySchedules : 1 always ON and 1 always OFF
         sch_d_on = DaySchedule.from_values(
-            Values=[1] * 24, Category="Day", Type="Fraction", Name="AlwaysOn", idf=idf,
+            Values=[1] * 24,
+            Category="Day",
+            Type="Fraction",
+            Name="AlwaysOn",
+            idf=idf,
         )
         sch_d_off = DaySchedule.from_values(
-            Values=[0] * 24, Category="Day", Type="Fraction", Name="AlwaysOff", idf=idf,
+            Values=[0] * 24,
+            Category="Day",
+            Type="Fraction",
+            Name="AlwaysOff",
+            idf=idf,
         )
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
         days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
         # Creates WeekSchedule from list of DaySchedule
         sch_w_on_off = WeekSchedule(
-            Days=days, Category="Week", Type="Fraction", Name="OnOff", idf=idf,
+            Days=days,
+            Category="Week",
+            Type="Fraction",
+            Name="OnOff",
+            idf=idf,
         )
 
         # Dict of a YearSchedule (like it would be written in json file)
@@ -2586,7 +2610,10 @@ class TestZoneGraph:
             annotate:
         """
         G.plot_graph3d(
-            annotate=annotate, axis_off=True, save=False, show=False,
+            annotate=annotate,
+            axis_off=True,
+            save=False,
+            show=False,
         )
 
     def test_core_graph(self, G):

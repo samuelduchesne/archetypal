@@ -90,6 +90,7 @@ class Schedule(object):
     def idf(self):
         if self._idf is None:
             from .idfclass.idf import IDF
+
             self._idf = IDF()
         return self._idf
 

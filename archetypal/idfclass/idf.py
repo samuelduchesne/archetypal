@@ -46,7 +46,6 @@ from archetypal.eplus_interface.transition import TransitionThread
 from archetypal.eplus_interface.version import (
     EnergyPlusVersion,
     get_eplus_dirs,
-    latest_energyplus_version,
 )
 from archetypal.idfclass.meters import Meters
 from archetypal.idfclass.outputs import Outputs
@@ -439,7 +438,7 @@ class IDF(geomIDF):
             if self.file_version > self.as_version:
                 raise EnergyPlusVersionError(
                     f"{self.as_version} cannot be lower then "
-                    f"the version number set in the model"
+                    f"the version number set in the file: {self.file_version}"
                 )
             idd_filename = Path(getiddfile(str(self.file_version))).expand()
             if not idd_filename.exists():
@@ -500,7 +499,7 @@ class IDF(geomIDF):
         True`, then this path will point to `settings.cache_folder`. See
         :meth:`~archetypal.utils.config`"""
         if self._idfname is None:
-            idfname = StringIO(f"VERSION, {latest_energyplus_version()};")
+            idfname = StringIO(f"VERSION, {self.as_version};")
             idfname.seek(0)
             self._idfname = idfname
         else:
@@ -612,7 +611,7 @@ class IDF(geomIDF):
     @property
     def as_version(self):
         if self._as_version is None:
-            self._as_version = latest_energyplus_version()
+            self._as_version = EnergyPlusVersion.current()
         return EnergyPlusVersion(self._as_version)
 
     @as_version.setter

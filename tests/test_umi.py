@@ -239,15 +239,27 @@ class TestUmiTemplate:
         # Day schedules
         # Always on
         sch_d_on = DaySchedule.from_values(
-            Values=[1] * 24, Category="Day", Type="Fraction", Name="AlwaysOn", idf=idf,
+            Values=[1] * 24,
+            Category="Day",
+            Type="Fraction",
+            Name="AlwaysOn",
+            idf=idf,
         )
         # Always off
         sch_d_off = DaySchedule.from_values(
-            Values=[0] * 24, Category="Day", Type="Fraction", Name="AlwaysOff", idf=idf,
+            Values=[0] * 24,
+            Category="Day",
+            Type="Fraction",
+            Name="AlwaysOff",
+            idf=idf,
         )
         # DHW
         sch_d_dhw = DaySchedule.from_values(
-            Values=[0.3] * 24, Category="Day", Type="Fraction", Name="DHW", idf=idf,
+            Values=[0.3] * 24,
+            Category="Day",
+            Type="Fraction",
+            Name="DHW",
+            idf=idf,
         )
         # Internal gains
         sch_d_gains = DaySchedule.from_values(

@@ -1358,8 +1358,7 @@ class IDF(geomIDF):
                     ]
                 )
         except FileNotFoundError:
-            self.simulate()
-            return self.process_results()
+            raise ValueError("No results to process. Have you called IDF.simulate()?")
         else:
             return results
 
@@ -1742,7 +1741,7 @@ class IDF(geomIDF):
     def anidfobject(self, key, aname="", **kwargs):
         # type: (str, str, **Any) -> EpBunch
         """Create an object, but don't add to the model (See
-        :func:`~archetypal.idfclass.IDF.newidfobject`). If you don't specify a value
+        :func:`~archetypal.idfclass.idf.IDF.newidfobject`). If you don't specify a value
         for a field, the default value will be set.
 
         Example:

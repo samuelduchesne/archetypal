@@ -13,7 +13,8 @@ IDF Class
 
     IDF
     Outputs
-    Meter
+    Meters
+    Variables
 
 .. _templates_label:
 

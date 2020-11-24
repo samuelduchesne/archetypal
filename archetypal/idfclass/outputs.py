@@ -378,7 +378,7 @@ class Outputs:
 
     def apply(self):
         """Applies the outputs to the idf model. Modifies the model by calling
-        :meth:`~archetypal.idfclass.IDF.newidfobject`"""
+        :meth:`~archetypal.idfclass.idf.IDF.newidfobject`"""
         for output in self._outputs:
             self.idf.newidfobject(**output)
         return self

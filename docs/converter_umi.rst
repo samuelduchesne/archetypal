@@ -43,7 +43,7 @@ Using the Python Console
 
 1. Load the file
 
-First, load the EnergyPlus idf file using the :class:`archetypal.idfclass.IDF` class. In the following example,
+First, load the EnergyPlus idf file using the :class:`archetypal.idfclass.idf.IDF` class. In the following example,
 the AdultEducationCenter.idf model is used.
 
 .. code-block:: python

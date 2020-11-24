@@ -832,7 +832,7 @@ def _remove_low_conductivity(constructions, idf, materials):
 
     Args:
         constructions (Idf_MSequence): CONSTRUCTION object from the IDF
-        idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
+        idf (archetypal.idfclass.idf.IDF object at 0x11e3d3208): the IDf object
         materials (Idf_MSequence): MATERIAL object from the IDF
 
     Returns:
@@ -943,7 +943,7 @@ def get_idf_objects(idf):
     """Gets idf objects
 
     Args:
-        idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
+        idf (archetypal.idfclass.idf.IDF object at 0x11e3d3208): the IDf object
 
     Returns:
         materials (Idf_MSequence): MATERIAL object from the IDF materialNoMass
@@ -1010,7 +1010,7 @@ def load_idf_file_and_clean_names(idf_file, log_clear_names):
             the old and new names in the console.
 
     Returns:
-        idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
+        idf (archetypal.idfclass.idf.IDF object at 0x11e3d3208): the IDf object
     """
     log("Loading IDF file...", lg.INFO)
     start_time = time.time()

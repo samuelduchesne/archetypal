@@ -1,8 +1,7 @@
 import pandas as pd
 from path import Path
 
-from archetypal import config, parallel_process
-from archetypal.idfclass import run_eplus
+from archetypal import config, parallel_process, IDF
 
 config(cache_folder="../../tests/.temp/cache", use_cache=True, log_console=True)
 
@@ -30,7 +29,7 @@ def main():
         for k, file in idfs.file.to_dict().items()
     }
 
-    sql_files = parallel_process(rundict, run_eplus, processors=-1, use_kwargs=True)
+    sql_files = parallel_process(rundict, IDF, processors=-1, use_kwargs=True)
     return sql_files
 
 

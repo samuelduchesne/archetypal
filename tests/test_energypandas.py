@@ -183,7 +183,9 @@ class TestEnergyDataFrame:
         assert type(edf["Temp"]) == EnergySeries
 
         # check that the name is passed to the slice
-        assert edf[["Temp"]].name is None  # only EnergySeries have name
+        with pytest.raises(AttributeError):
+            # only EnergySeries have name
+            assert edf[["Temp"]].name is None
         assert edf["Temp"].name == "Temp"
 
         # check that the metadata is passed to the slice

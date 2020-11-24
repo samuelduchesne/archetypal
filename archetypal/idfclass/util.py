@@ -12,193 +12,19 @@ from tempfile import TemporaryDirectory
 
 import eppy
 import pandas as pd
-from archetypal import log, close_logger, settings, __version__
-from archetypal.eplus_interface.version import get_eplus_dirs
 from deprecation import deprecated
 from eppy.easyopen import getiddfile
 from eppy.EPlusInterfaceFunctions import parse_idd
 from path import Path
 from tqdm import tqdm
+
+from archetypal import __version__, close_logger, log, settings
 from archetypal.eplus_interface.exceptions import (
     EnergyPlusProcessError,
     EnergyPlusVersionError,
 )
+from archetypal.eplus_interface.version import EnergyPlusVersion, get_eplus_dirs
 
-
-def _run_exec(
-    tmp,
-    eplus_file,
-    weather,
-    output_directory,
-    annual,
-    design_day,
-    idd,
-    epmacro,
-    expandobjects,
-    readvars,
-    output_prefix,
-    output_suffix,
-    version,
-    verbose,
-    ep_version,
-    keep_data_err,
-    include,
-    custom_processes,
-    **kwargs,
-):
-    """Wrapper around the EnergyPlus command line interface.
-
-    Adapted from :func:`eppy.runner.runfunctions.run`.
-
-    Args:
-        tmp:
-        eplus_file:
-        weather:
-        output_directory:
-        annual:
-        design_day:
-        idd:
-        epmacro:
-        expandobjects:
-        readvars:
-        output_prefix:
-        output_suffix:
-        version:
-        verbose:
-        ep_version:
-        keep_data_err:
-        include:
-    """
-
-    args = locals().copy()
-    kwargs = args.pop("kwargs")
-    # get unneeded params out of args ready to pass the rest to energyplus.exe
-    verbose = args.pop("verbose")
-    eplus_file = args.pop("eplus_file")
-    iddname = args.get("idd")
-    tmp = args.pop("tmp")
-    keep_data_err = args.pop("keep_data_err")
-    output_directory = args.pop("tmp_dir")
-    idd = args.pop("idd")
-    include = args.pop("include")
-    custom_processes = args.pop("custom_processes")
-    try:
-        idf_path = os.path.abspath(eplus_file.idfname)
-    except AttributeError:
-        idf_path = os.path.abspath(eplus_file)
-    ep_version = args.pop("ep_version")
-    # get version from IDF object or by parsing the IDF file for it
-    if not ep_version:
-        try:
-            ep_version = "-".join(str(x) for x in eplus_file.idd_version[:3])
-        except AttributeError:
-            raise AttributeError(
-                "The as_version must be set when passing an IDF path. \
-                Alternatively, use IDF.run()"
-            )
-
-    eplus_exe_path, eplus_weather_path = eppy.runner.run_functions.install_paths(
-        ep_version, iddname
-    )
-    if not Path(eplus_exe_path).exists():
-        raise EnergyPlusVersionError(
-            msg=f"No EnergyPlus Executable found for version {EnergyPlusVersion(ep_version)}"
-        )
-    if version:
-        # just get EnergyPlus version number and return
-        cmd = [eplus_exe_path, "--version"]
-        subprocess.check_call(cmd)
-        return
-
-    # convert paths to absolute paths if required
-    if os.path.isfile(args["weather"]):
-        args["weather"] = os.path.abspath(args["weather"])
-    else:
-        args["weather"] = os.path.join(eplus_weather_path, args["weather"])
-    # args['tmp_dir'] = tmp.abspath()
-
-    with tmp.abspath() as tmp:
-        # build a list of command line arguments
-        cmd = [eplus_exe_path]
-        for arg in args:
-            if args[arg]:
-                if isinstance(args[arg], bool):
-                    args[arg] = ""
-                cmd.extend(["--{}".format(arg.replace("_", "-"))])
-                if args[arg] != "":
-                    cmd.extend([args[arg]])
-        cmd.extend([idf_path])
-        position = kwargs.get("position", None)
-        with tqdm(
-            unit_scale=True,
-            miniters=1,
-            desc=f"simulate #{position}-{Path(idf_path).basename()}",
-            position=position,
-        ) as progress:
-            with subprocess.Popen(
-                cmd,
-                shell=True,
-                universal_newlines=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            ) as process:
-                _log_subprocess_output(
-                    process.stdout,
-                    name=eplus_file.basename(),
-                    verbose=verbose,
-                    progress=progress,
-                )
-                # We explicitly close stdout
-                process.stdout.close()
-
-                # wait for the return code
-                return_code = process.wait()
-
-                # if return code is not 0 this means our script errored out
-                if return_code != 0:
-                    error_filename = output_prefix + "out.err"
-                    try:
-                        with open(error_filename, "r") as stderr:
-                            stderr_r = stderr.read()
-                        if keep_data_err:
-                            failed_dir = output_directory / "failed"
-                            failed_dir.mkdir_p()
-                            tmp.copytree(failed_dir / output_prefix)
-                        raise EnergyPlusProcessError(
-                            cmd=cmd, stderr=stderr_r, idf=eplus_file.abspath()
-                        )
-                    except FileNotFoundError:
-                        raise CalledProcessError(
-                            return_code, cmd=cmd, stderr=process.stderr
-                        )
-
-
-def _log_subprocess_output(pipe, name, verbose, progress):
-    """
-    Args:
-        pipe:
-        name:
-        verbose:
-        progress (tqdm): tqdm progress bar
-    """
-    logger = None
-    for line in pipe:
-        linetxt = line.decode("utf-8").strip("\n")
-        if verbose:
-            logger = log(
-                linetxt,
-                level=lg.DEBUG,
-                name="eplus_run_" + name,
-                filename="eplus_run_" + name,
-                log_dir=os.getcwd(),
-            )
-
-        if linetxt != "" and progress is not None:
-            progress.update()
-    if logger:
-        close_logger(logger)
-    if pipe:
-        sys.stdout.flush()
 
 
 def hash_model(idfname, **kwargs):
@@ -291,72 +117,6 @@ def get_report(
     else:
         return None
 
-
-def get_from_cache(kwargs):
-    """Retrieve a EPlus Tabulated Summary run result from the cache
-
-    Args:
-        kwargs (dict): Args used to create the cache name.
-
-    Returns:
-        dict: dict of DataFrames
-    """
-    output_directory = Path(kwargs.get("tmp_dir"))
-    output_report = kwargs.get("output_report")
-    eplus_file = next(iter(output_directory.glob("*.idf")), None)
-    if not eplus_file:
-        return None
-    if settings.use_cache:
-        # determine the filename by hashing the eplus_file
-        cache_filename_prefix = hash_model(eplus_file)
-
-        if output_report is None:
-            # No report is expected but we should still return the path if it exists.
-            cached_run_dir = output_directory / cache_filename_prefix
-            if cached_run_dir.exists():
-                return cached_run_dir
-            else:
-                return None
-        elif "htm" in output_report.lower():
-            # Get the html report
-
-            cache_fullpath_filename = (
-                output_directory / cache_filename_prefix / cache_filename_prefix
-                + "tbl.htm"
-            )
-            if cache_fullpath_filename.exists():
-                return get_html_report(cache_fullpath_filename)
-
-        elif "sql" == output_report.lower():
-            # get the SQL report
-            if not output_directory:
-                output_directory = settings.cache_folder / cache_filename_prefix
-
-            cache_fullpath_filename = (
-                output_directory / cache_filename_prefix / cache_filename_prefix
-                + "out.sql"
-            )
-
-            if cache_fullpath_filename.exists():
-                # get reports from passed-in report names or from
-                # settings.available_sqlite_tables if None are given
-                return get_sqlite_report(
-                    cache_fullpath_filename,
-                    kwargs.get("report_tables", settings.available_sqlite_tables),
-                )
-        elif "sql_file" == output_report.lower():
-            # get the SQL report
-            if not output_directory:
-                output_directory = settings.cache_folder / cache_filename_prefix
-
-            cache_fullpath_filename = (
-                output_directory / cache_filename_prefix / cache_filename_prefix
-                + "out.sql"
-            )
-            if cache_fullpath_filename.exists():
-                return cache_fullpath_filename
-
-
 def get_html_report(report_fullpath):
     """Parses the html Summary Report for each tables into a dictionary of
     DataFrames
@@ -404,7 +164,7 @@ def summary_reports_to_dataframes(reports_list):
 
 
 def get_sqlite_report(report_file, report_tables=None):
-    """Connects to the EnergyPlus SQL output file and retreives all tables
+    """Connect to the EnergyPlus SQL output file and retrieves all tables
 
     Args:
         report_file (str): path of report file

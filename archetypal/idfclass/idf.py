@@ -49,7 +49,8 @@ from archetypal.eplus_interface.version import (
 )
 from archetypal.idfclass.meters import Meters
 from archetypal.idfclass.outputs import Outputs
-from archetypal.idfclass.util import get_idf_version, get_report, hash_model
+from archetypal.idfclass.util import get_idf_version, hash_model
+from archetypal.idfclass.reports import get_report
 from archetypal.idfclass.variables import Variables
 from archetypal.schedule import Schedule
 

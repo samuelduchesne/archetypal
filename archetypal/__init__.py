@@ -11,7 +11,7 @@ __version__ = "1.3.4"
 # warn if a newer version of archetypal is available
 from outdated import warn_if_outdated
 
-from archetypal.eplus_interface.version import warn_if_not_compatible
+from .eplus_interface.version import warn_if_not_compatible
 
 warn_if_outdated("archetypal", __version__)
 warn_if_not_compatible()

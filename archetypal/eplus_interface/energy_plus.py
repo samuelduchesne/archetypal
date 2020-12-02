@@ -9,11 +9,12 @@ from eppy.runner.run_functions import paths_from_version
 from path import Path
 from tqdm import tqdm
 
-from archetypal import EnergyPlusVersion, log
 from archetypal.eplus_interface.exceptions import (
     EnergyPlusProcessError,
     EnergyPlusVersionError,
 )
+from archetypal.eplus_interface.version import EnergyPlusVersion
+from archetypal.utils import log
 
 
 class EnergyPlusProgram:

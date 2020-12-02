@@ -12,10 +12,10 @@ from eppy.runner.run_functions import paths_from_version
 from path import Path
 from tqdm import tqdm
 
-from archetypal import log
 from archetypal.eplus_interface.energy_plus import EnergyPlusProgram
 from archetypal.eplus_interface.exceptions import EnergyPlusVersionError
 from archetypal.eplus_interface.version import EnergyPlusVersion
+from archetypal.utils import log
 
 
 class ExpandObjectsExe(EnergyPlusProgram):

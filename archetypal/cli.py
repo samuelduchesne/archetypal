@@ -8,10 +8,10 @@ import os
 import time
 
 import click
-from archetypal.settings import ep_version
 from path import Path
 
 from archetypal import (
+    UmiTemplateLibrary,
     __version__,
     config,
     convert_idf_to_trnbuild,
@@ -20,11 +20,12 @@ from archetypal import (
     parallel_process,
     settings,
     timeit,
-    UmiTemplateLibrary,
-    IDF,
 )
-from archetypal.eplus_interface.exceptions import EnergyPlusVersionError
-from archetypal.eplus_interface.version import EnergyPlusVersion, get_eplus_dirs
+from archetypal.idfclass import IDF
+from archetypal.settings import ep_version
+
+from .eplus_interface.exceptions import EnergyPlusVersionError
+from .eplus_interface.version import EnergyPlusVersion, get_eplus_dirs
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 

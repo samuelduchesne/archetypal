@@ -3,13 +3,12 @@ import re
 import warnings
 from itertools import chain
 
-from archetypal.settings import ep_version
-from path import Path
-
 from packaging.version import Version
+from path import Path
 
 from archetypal import settings
 from archetypal.eplus_interface.exceptions import InvalidEnergyPlusVersion
+from archetypal.settings import ep_version
 
 
 def get_eplus_dirs(version=ep_version):

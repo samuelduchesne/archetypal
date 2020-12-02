@@ -23,7 +23,7 @@ from .reportdata import ReportData
 from .schedule import Schedule
 from .plot import *
 from .eplus_interface import *
-from .idfclass.idf import IDF
+from .idfclass import *
 from .dataportal import *
 from .trnsys import *
 from .umi_template import UmiTemplateLibrary

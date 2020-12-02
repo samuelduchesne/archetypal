@@ -52,9 +52,9 @@ setup(
     packages=find_namespace_packages(include=["archetypal", "archetypal.*"]),
     package_data={
         "archetypal": [
-            "archetypal/ressources/originBUISketchUp.idf",
-            "archetypal/ressources/W74-lib.dat",
-            "archetypal/ressources/NewFileTemplate.d18",
+            "ressources/originBUISketchUp.idf",
+            "ressources/W74-lib.dat",
+            "ressources/NewFileTemplate.d18",
         ]
     },
     include_package_data=True,

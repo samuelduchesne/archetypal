@@ -707,14 +707,14 @@ class TestConvert:
 
         # Changes Outside boundary of surface to adiabatic
         # To improve coverage of test
-        buildingSurfs[0].Outside_Boundary_Condition = "Adiabatic"
+        buildingSurfs[0].outside_boundary_condition = "Adiabatic"
 
         # Changes coords of zone
         # To improve coverage of test
         zones[0].X_Origin = ""
         zones[0].Y_Origin = ""
         zones[0].Z_Origin = ""
-        zones[0].Multiplier = ""
+        zones[0].multiplier = ""
 
         # Get all construction EXCEPT fenestration ones
         constr_list = _get_constr_list(buildingSurfs)
@@ -770,18 +770,18 @@ class TestConvert:
 
         # Change Outside boundary condition of surface to itself
         # To improve coverage of test
-        buildingSurfs[5].Outside_Boundary_Condition_Object = "C5-1"
+        buildingSurfs[5].outside_boundary_condition_Object = "C5-1"
 
         # Change Outside boundary condition of surface to Zone and adjacent to Outdoors
         # To improve coverage of test
-        buildingSurfs[0].Outside_Boundary_Condition = "Zone"
-        buildingSurfs[0].Outside_Boundary_Condition_Object = buildingSurfs[6].Zone_Name
-        buildingSurfs[6].Outside_Boundary_Condition = "Outdoors"
+        buildingSurfs[0].outside_boundary_condition = "Zone"
+        buildingSurfs[0].outside_boundary_condition_Object = buildingSurfs[6].Zone_Name
+        buildingSurfs[6].outside_boundary_condition = "Outdoors"
 
         # Change Outside boundary condition of surface to Zone and adjacent to Zone.Name
         # To improve coverage of test
-        buildingSurfs[1].Outside_Boundary_Condition = "Zone"
-        buildingSurfs[1].Outside_Boundary_Condition_Object = "SPACE3-1"
+        buildingSurfs[1].outside_boundary_condition = "Zone"
+        buildingSurfs[1].outside_boundary_condition_Object = "SPACE3-1"
 
         # Write LOCATION and GLOBALGEOMETRYRULES from IDF to lines (T3D) and
         # define if coordinate system is "Relative"

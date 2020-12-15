@@ -172,10 +172,10 @@ class ZoneDefinition(UmiBase):
 
             vol = self.get_volume_from_surfs(zone_surfs)
 
-            if self._epbunch.Multiplier == "":
+            if self._epbunch.multiplier == "":
                 multiplier = 1
             else:
-                multiplier = float(self._epbunch.Multiplier)
+                multiplier = float(self._epbunch.multiplier)
             # multiply to volume by the zone multiplier.
             return vol * multiplier
         else:
@@ -622,10 +622,10 @@ def resolve_obco(this):
     # for key in this.getfieldidd_item('Outside_Boundary_Condition_Object',
     #                                  'validobjects'):
 
-    obc = this.Outside_Boundary_Condition
+    obc = this.outside_boundary_condition
 
     if obc.upper() == "ZONE":
-        name = this.Outside_Boundary_Condition_Object
+        name = this.outside_boundary_condition_Object
         adj_zone = this.theidf.getobject("ZONE", name)
         return None, adj_zone
 
@@ -772,7 +772,7 @@ def is_core(zone):
     for s in zone.zonesurfaces:
         try:
             if (abs(int(s.tilt)) < 180) & (abs(int(s.tilt)) > 0):
-                obc = s.Outside_Boundary_Condition.lower()
+                obc = s.outside_boundary_condition.lower()
                 if obc in ["outdoors", "ground"]:
                     iscore = False
                     break

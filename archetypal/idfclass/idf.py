@@ -6,28 +6,20 @@
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
 
-import itertools
 import logging as lg
 import os
 import re
 import sqlite3
 import subprocess
 import time
-import warnings
 from collections import defaultdict
 from io import StringIO
-from itertools import chain
 from math import isclose
 from tempfile import TemporaryDirectory
 
 import eppy
 import pandas as pd
 from deprecation import deprecated
-from eppy.bunch_subclass import BadEPFieldError
-from eppy.easyopen import getiddfile
-from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
-from geomeppy import IDF as geomIDF
-from geomeppy.patches import EpBunch, idfreader1, obj2bunch
 from opyplus import Epm, Idd
 from opyplus.epm.record import Record
 from pandas.errors import ParserError
@@ -36,7 +28,6 @@ from tqdm import tqdm
 
 from archetypal import ReportData, __version__, extend_class, log, settings
 from archetypal.energypandas import EnergySeries
-from archetypal.eplus_interface.basement import BasementThread
 from archetypal.eplus_interface.energy_plus import EnergyPlusThread
 from archetypal.eplus_interface.exceptions import (
     EnergyPlusProcessError,
@@ -209,17 +200,7 @@ class IDF(object):
 
     @property
     def idd_version(self):
-        if self._idd_version is None:
-            bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
-                self.idfname, self.iddname, self, commdct=None, block=None
-            )
-            self._block = block
-            self._idd_info = commdct
-            self._idd_index = idd_index
-            self._idfobjects = bunchdt
-            self._model = data
-            self._idd_version = versiontuple
-        return self._idd_version
+        return self.idfobjects._dev_idd.version
 
     @property
     def iddname(self):
@@ -689,7 +670,7 @@ class IDF(object):
                                     zone.Part_of_Total_Floor_Area.upper() == "NO"
                                 )
                                 multiplier = float(
-                                    zone.Multiplier if zone.Multiplier != "" else 1
+                                    zone.multiplier if zone.multiplier != "" else 1
                                 )
 
                                 area += surface.area * multiplier * part_of
@@ -718,7 +699,7 @@ class IDF(object):
                         if hasattr(surface, "tilt"):
                             if surface.tilt == 180.0:
                                 multiplier = float(
-                                    zone.Multiplier if zone.Multiplier != "" else 1
+                                    zone.multiplier if zone.multiplier != "" else 1
                                 )
 
                                 area += surface.area * multiplier
@@ -743,10 +724,10 @@ class IDF(object):
                     if hasattr(surface, "tilt"):
                         if (
                             surface.tilt == 90.0
-                            and surface.Outside_Boundary_Condition != "Outdoors"
+                            and surface.outside_boundary_condition != "Outdoors"
                         ):
                             multiplier = float(
-                                zone.Multiplier if zone.Multiplier != "" else 1
+                                zone.multiplier if zone.multiplier else 1
                             )
                             partition_lineal += surface.width * multiplier
             self._partition_ratio = (
@@ -1140,14 +1121,14 @@ class IDF(object):
         zones = self.idfobjects.Zone
         zone: Record
         for zone in zones:
-            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
+            multiplier = float(zone.multiplier if zone.multiplier else 1)
             for surface in [
                 surf
                 for surf in zone.zonesurfaces
                 if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
             ]:
                 if isclose(surface.tilt, 90, abs_tol=10):
-                    if surface.Outside_Boundary_Condition == "Outdoors":
+                    if surface.outside_boundary_condition == "Outdoors":
                         surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
                         total_surface_area[surf_azim] += surface.area * multiplier
                 for subsurface in surface.subsurfaces:

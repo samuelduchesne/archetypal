@@ -1099,9 +1099,9 @@ def _add_change_adj_surf(buildingSurfs, idf):
     adj_surfs_to_change = {}
     adj_surfs_to_make = []
     for buildingSurf in buildingSurfs:
-        if "zone" in buildingSurf.Outside_Boundary_Condition.lower():
+        if "zone" in buildingSurf.outside_boundary_condition.lower():
             # Get the surface Record that is adjacent to the building surface
-            outside_bound_zone = buildingSurf.Outside_Boundary_Condition_Object
+            outside_bound_zone = buildingSurf.outside_boundary_condition_Object
             surfs_in_bound_zone = [
                 surf for surf in buildingSurfs if surf.Zone_Name == outside_bound_zone
             ]
@@ -1111,7 +1111,7 @@ def _add_change_adj_surf(buildingSurfs, idf):
             centroid_build = poly_buildingSurf.centroid
             # Check if buildingSurf has an adjacent surface
             for surf in surfs_in_bound_zone:
-                if surf.Outside_Boundary_Condition.lower() == "outdoors":
+                if surf.outside_boundary_condition.lower() == "outdoors":
                     poly_surf_bound = Polygon3D(surf.coords)
                     n_surf_bound = poly_surf_bound.normal_vector
                     area_bound = poly_surf_bound.area
@@ -1143,10 +1143,10 @@ def _add_change_adj_surf(buildingSurfs, idf):
     for key, value in adj_surfs_to_change.items():
         idf.getobject(
             "BUILDINGSURFACE:DETAILED", value
-        ).Outside_Boundary_Condition = "Zone"
+        ).outside_boundary_condition = "Zone"
         idf.getobject(
             "BUILDINGSURFACE:DETAILED", value
-        ).Outside_Boundary_Condition_Object = idf.getobject(
+        ).outside_boundary_condition_Object = idf.getobject(
             "BUILDINGSURFACE:DETAILED", key
         ).Zone_Name
         idf.getobject(
@@ -1172,7 +1172,7 @@ def _add_change_adj_surf(buildingSurfs, idf):
             Name=buildSurf.Name + "_adj",
             Surface_Type=surf_type_bound,
             Construction_Name=buildSurf.Construction_Name,
-            Zone_Name=buildSurf.Outside_Boundary_Condition_Object,
+            Zone_Name=buildSurf.outside_boundary_condition_Object,
             Outside_Boundary_Condition="Zone",
             Outside_Boundary_Condition_Object=buildSurf.Zone_Name,
             Sun_Exposure="NoSun",
@@ -1835,8 +1835,8 @@ def _write_zone_buildingSurf_fenestrationSurf(
         zones, desc="Writing building zone/surface coordinates ", **kwargs
     ):
         zone.Direction_of_Relative_North = 0.0
-        if zone.Multiplier == "":
-            zone.Multiplier = 1
+        if zone.multiplier == "":
+            zone.multiplier = 1
         # Coords of zone
         incrX, incrY, incrZ = zone_origin(zone)
 
@@ -1900,37 +1900,37 @@ def _write_zone_buildingSurf_fenestrationSurf(
                 buildingSurf.Number_of_Vertices = len(buildingSurf.coords)
                 surfList.append(buildingSurf)
                 # Verify if surface is adjacent. If yes, modifies it
-                if "surface" in buildingSurf.Outside_Boundary_Condition.lower():
+                if "surface" in buildingSurf.outside_boundary_condition.lower():
                     _modify_adj_surface(buildingSurf, idf)
 
-                if "ground" in buildingSurf.Outside_Boundary_Condition.lower():
+                if "ground" in buildingSurf.outside_boundary_condition.lower():
                     if schedule_as_input:
-                        buildingSurf.Outside_Boundary_Condition_Object = (
+                        buildingSurf.outside_boundary_condition_Object = (
                             "BOUNDARY=INPUT 1*sch_ground"
                         )
                     else:
-                        buildingSurf.Outside_Boundary_Condition_Object = (
+                        buildingSurf.outside_boundary_condition_Object = (
                             "BOUNDARY=SCHEDULE 1*sch_ground"
                         )
 
-                if "adiabatic" in buildingSurf.Outside_Boundary_Condition.lower():
-                    buildingSurf.Outside_Boundary_Condition = "OtherSideCoefficients"
-                    buildingSurf.Outside_Boundary_Condition_Object = (
+                if "adiabatic" in buildingSurf.outside_boundary_condition.lower():
+                    buildingSurf.outside_boundary_condition = "OtherSideCoefficients"
+                    buildingSurf.outside_boundary_condition_Object = (
                         "BOUNDARY=IDENTICAL"
                     )
 
                 if (
                     "othersidecoefficients"
-                    in buildingSurf.Outside_Boundary_Condition.lower()
+                    in buildingSurf.outside_boundary_condition.lower()
                 ):
-                    buildingSurf.Outside_Boundary_Condition = "OtherSideCoefficients"
-                    buildingSurf.Outside_Boundary_Condition_Object = (
+                    buildingSurf.outside_boundary_condition = "OtherSideCoefficients"
+                    buildingSurf.outside_boundary_condition_Object = (
                         "BOUNDARY=INPUT 1*TBOUNDARY"
                     )
 
                 if (
                     "othersideconditionsmodel"
-                    in buildingSurf.Outside_Boundary_Condition.lower()
+                    in buildingSurf.outside_boundary_condition.lower()
                 ):
                     msg = (
                         'Surface "{}" has '
@@ -1973,13 +1973,13 @@ def _modify_adj_surface(buildingSurf, idf):
         idf (archetypal.idfclass.IDF): IDF object
     """
     # Force outside boundary condition to "Zone"
-    buildingSurf.Outside_Boundary_Condition = "Zone"
+    buildingSurf.outside_boundary_condition = "Zone"
     # Get the surface Record that is adjacent to the building surface
-    outside_bound_surf = buildingSurf.Outside_Boundary_Condition_Object
+    outside_bound_surf = buildingSurf.outside_boundary_condition_Object
     # If outside_bound_surf is the same surface as buildingSurf, raises error
     if outside_bound_surf == buildingSurf.Name:
-        buildingSurf.Outside_Boundary_Condition = "OtherSideCoefficients"
-        buildingSurf.Outside_Boundary_Condition_Object = "BOUNDARY=IDENTICAL"
+        buildingSurf.outside_boundary_condition = "OtherSideCoefficients"
+        buildingSurf.outside_boundary_condition_Object = "BOUNDARY=IDENTICAL"
         # Prevents the user in the log of the change of the Boumdary Conditions
         msg = (
             'Surface "{surfname}" has "{outside_bound}" as Outside '
@@ -1993,7 +1993,7 @@ def _modify_adj_surface(buildingSurf, idf):
     else:
         # Replace the Outside_Boundary_Condition_Object that was the
         # outside_bound_surf, by the adjacent zone name
-        buildingSurf.Outside_Boundary_Condition_Object = idf.getobject(
+        buildingSurf.outside_boundary_condition_Object = idf.getobject(
             "ZONE",
             idf.getobject("BUILDINGSURFACE:DETAILED", outside_bound_surf).Zone_Name,
         ).Name
@@ -2809,7 +2809,7 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials, **kwargs)
             condition = (
                 construction.getreferingobjs(iddgroups=["Thermal Zones and Surfaces"])[
                     0
-                ].Outside_Boundary_Condition.lower()
+                ].outside_boundary_condition.lower()
                 == "ground"
             )
         except:
@@ -2849,7 +2849,7 @@ def _get_ground_vertex(buildingSurfs):
     ground_surfs = [
         buildingSurf
         for buildingSurf in buildingSurfs
-        if buildingSurf.Outside_Boundary_Condition.lower() == "ground"
+        if buildingSurf.outside_boundary_condition.lower() == "ground"
     ]
     if ground_surfs:
         ground = ground_surfs[0].coords

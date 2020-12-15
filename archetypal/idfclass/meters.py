@@ -15,16 +15,16 @@ class Meter:
         self._values = None
         if isinstance(meter, dict):
             self._key = meter.pop("key").upper()
-            self._epobject = self._idf.anidfobject(key=self._key, **meter)
+            self._record = self._idf.anidfobject(key=self._key, **meter)
         elif isinstance(meter, EpBunch):
             self._key = meter.key
-            self._epobject = meter
+            self._record = meter
         else:
             raise TypeError()
 
     def __repr__(self):
         """returns the string representation of an EpBunch"""
-        return self._epobject.__str__()
+        return self._record.__str__()
 
     def values(
         self,
@@ -50,17 +50,17 @@ class Meter:
             EnergySeries: The time-series object.
         """
         if self._values is None:
-            if self._epobject not in getattr(self._idf.idfobjects, self._epobject.key):
-                self._idf.addidfobject(self._epobject)
+            if self._record not in getattr(self._idf.idfobjects, self._record.key):
+                self._idf.addidfobject(self._record)
                 self._idf.simulate()
             report = ReportData.from_sqlite(
-                sqlite_file=self._idf.sql_file, table_name=self._epobject.Key_Name
+                sqlite_file=self._idf.sql_file, table_name=self._record.key_name
             )
             self._values = report
         return EnergySeries.from_reportdata(
             self._values,
             to_units=units,
-            name=self._epobject.Key_Name,
+            name=self._record.key_name,
             normalize=normalize,
             sort_values=sort_values,
             ascending=ascending,

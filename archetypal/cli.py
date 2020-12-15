@@ -21,10 +21,11 @@ from archetypal import (
     settings,
     timeit,
 )
-from archetypal.idfclass import idf_version_updater, IDF
+from archetypal.idfclass import IDF
 
 from .eplus_interface.exceptions import EnergyPlusVersionError
 from .eplus_interface.version import EnergyPlusVersion, get_eplus_dirs
+from .settings import ep_version
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 

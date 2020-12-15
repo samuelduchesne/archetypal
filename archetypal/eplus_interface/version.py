@@ -87,7 +87,6 @@ def warn_if_not_compatible():
 
 class EnergyPlusVersion(Version):
     """"""
-
     def __init__(self, version):
         """
 
@@ -124,22 +123,24 @@ class EnergyPlusVersion(Version):
         return cls(version)
 
     @property
+    def tuple(self):
+        return self.major, self.minor, self.micro
+
+    @property
     def dash(self):
         # type: () -> str
         return "-".join(map(str, (self.major, self.minor, self.micro)))
 
     @property
     def valid_versions(self):
+        """The idd versions installed on this machine."""
         try:
-            # Get all possible iddnames from any E+ install
-            iddnames = set(
-                chain.from_iterable(
-                    (
-                        (basedir / "PreProcess" / "IDFVersionUpdater").files("*.idd")
-                        for basedir in get_eplus_basedirs()
-                    )
-                )
-            )
+            basedirs_ = []
+            for basedir in get_eplus_basedirs():
+                updater_ = basedir / "PreProcess" / "IDFVersionUpdater"
+                if updater_.exists():
+                    basedirs_.append(updater_.files("*.idd"))
+            iddnames = set(chain.from_iterable(basedirs_))
         except FileNotFoundError:
             _choices = ["9-2-0"]  # Little hack in case E+ is not installed
         else:

@@ -251,7 +251,7 @@ class ZoneDefinition(UmiBase):
         Adapted from: https://stackoverflow.com/a/19125446
 
         Args:
-            zone_surfs (list): List of zone surfaces (EpBunch)
+            zone_surfs (list): List of zone surfaces (Record)
         """
         vol = 0
         for surf in zone_surfs:
@@ -406,7 +406,7 @@ class ZoneDefinition(UmiBase):
         """Create a Zone object from an eppy 'ZONE' epbunch.
 
         Args:
-            zone_ep (eppy.bunch_subclass.EpBunch): The Zone EpBunch.
+            zone_ep (eppy.bunch_subclass.Record): The Zone Record.
             sql (dict): The sql dict for this IDF object.
         """
         start_time = time.time()
@@ -589,13 +589,13 @@ def resolve_obco(this):
     SURFACE epbunch and, if possible, the ZONE epbunch.
 
     Args:
-        this (EpBunch): The surface for which we are identifying the boundary
+        this (Record): The surface for which we are identifying the boundary
             object.
 
     Returns:
-        (EpBunch, EpBunch): A tuple of:
+        (Record, Record): A tuple of:
 
-            EpBunch: The other surface EpBunch: The other zone
+            Record: The other surface Record: The other zone
 
     Notes:
         Info on the Outside Boundary Condition Object of a surface of type
@@ -758,7 +758,7 @@ def is_core(zone):
     """
 
     Args:
-        zone (eppy.bunch_subclass.EpBunch): The Zone object.
+        zone (eppy.bunch_subclass.Record): The Zone object.
 
     Returns:
         (bool): Whether the zone is a core zone or not.

@@ -1098,7 +1098,7 @@ def _add_change_adj_surf(buildingSurfs, idf):
     adj_surfs_to_make = []
     for buildingSurf in buildingSurfs:
         if "zone" in buildingSurf.Outside_Boundary_Condition.lower():
-            # Get the surface EpBunch that is adjacent to the building surface
+            # Get the surface Record that is adjacent to the building surface
             outside_bound_zone = buildingSurf.Outside_Boundary_Condition_Object
             surfs_in_bound_zone = [
                 surf for surf in buildingSurfs if surf.Zone_Name == outside_bound_zone
@@ -1320,7 +1320,7 @@ def zone_origin(zone_object):
     """Return coordinates of a zone
 
     Args:
-        zone_object (EpBunch): zone element in zone list.
+        zone_object (Record): zone element in zone list.
 
     Returns:
         Coordinates [X, Y, Z] of the zone in a list.
@@ -1961,12 +1961,12 @@ def _modify_adj_surface(buildingSurf, idf):
     adjacent building surface
 
     Args:
-        buildingSurf (EpBunch): Building surface object to modify
+        buildingSurf (Record): Building surface object to modify
         idf (archetypal.idfclass.IDF): IDF object
     """
     # Force outside boundary condition to "Zone"
     buildingSurf.Outside_Boundary_Condition = "Zone"
-    # Get the surface EpBunch that is adjacent to the building surface
+    # Get the surface Record that is adjacent to the building surface
     outside_bound_surf = buildingSurf.Outside_Boundary_Condition_Object
     # If outside_bound_surf is the same surface as buildingSurf, raises error
     if outside_bound_surf == buildingSurf.Name:
@@ -2020,7 +2020,7 @@ def _inverse_vertices_surf(buildingSurf, idf, outside_bound_surf, idfobject_key)
     etc.)
 
     Args:
-        buildingSurf (EpBunch): Building surface object to modify
+        buildingSurf (Record): Building surface object to modify
         idf (archetypal.idfclass.IDF): IDF object
         outside_bound_surf (str): Name of the adjacent surface to the
             buildingSurf
@@ -2045,7 +2045,7 @@ def _round_vertex(surface, nbr_decimal=4):
     """Round vertex to the number of decimal (nbr_decimal) wanted
 
     Args:
-        surface (EpBunch): Surface object to which we want to round its vertices
+        surface (Record): Surface object to which we want to round its vertices
         nbr_decimal (int): Number of decimal to round
     """
     for j in range(1, len(surface.coords) + 1):
@@ -2064,7 +2064,7 @@ def _relative_to_absolute(surface, incrX, incrY, incrZ):
     """Convert relative coordinates to absolute ones
 
     Args:
-        surface (EpBunch): Surface object to which we want to convert its
+        surface (Record): Surface object to which we want to convert its
             vertices
         incrX (str): X coordinate of the surface's zone
         incrY (str): Y coordinate of the surface's zone

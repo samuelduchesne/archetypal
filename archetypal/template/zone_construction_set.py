@@ -310,7 +310,7 @@ class ZoneConstructionSet(UmiBase):
     def _do_facade(surf):
         """
         Args:
-            surf (EpBunch):
+            surf (Record):
         """
         log(
             'surface "%s" assigned as a Facade' % surf.Name,
@@ -329,7 +329,7 @@ class ZoneConstructionSet(UmiBase):
     def _do_ground(surf):
         """
         Args:
-            surf (EpBunch):
+            surf (Record):
         """
         log(
             'surface "%s" assigned as a Ground' % surf.Name,
@@ -348,7 +348,7 @@ class ZoneConstructionSet(UmiBase):
     def _do_partition(surf):
         """
         Args:
-            surf (EpBunch):
+            surf (Record):
         """
         the_construction = surf.theidf.getobject(
             "Construction".upper(), surf.Construction_Name
@@ -374,7 +374,7 @@ class ZoneConstructionSet(UmiBase):
     def _do_roof(surf):
         """
         Args:
-            surf (EpBunch):
+            surf (Record):
         """
         log(
             'surface "%s" assigned as a Roof' % surf.Name,
@@ -393,7 +393,7 @@ class ZoneConstructionSet(UmiBase):
     def _do_slab(surf):
         """
         Args:
-            surf (EpBunch):
+            surf (Record):
         """
         log(
             'surface "%s" assigned as a Slab' % surf.Name,
@@ -412,7 +412,7 @@ class ZoneConstructionSet(UmiBase):
     def _do_basement(surf):
         """
         Args:
-            surf (EpBunch):
+            surf (Record):
         """
         log(
             'surface "%s" ignored because basement facades are not supported'
@@ -464,7 +464,7 @@ class ZoneConstructionSet(UmiBase):
 def surface_dispatcher(surf, zone):
     """
     Args:
-        surf (EpBunch):
+        surf (Record):
         zone (ZoneDefinition):
     """
     dispatch = {

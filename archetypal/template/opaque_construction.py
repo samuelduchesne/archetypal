@@ -483,7 +483,7 @@ class OpaqueConstruction(LayeredConstruction):
         """Construct an OpaqueMaterial object given an epbunch with keys
         "BuildingSurface:Detailed" or "InternalMass"
         Args:
-            epbunch (EpBunch):
+            epbunch (Record):
             **kwargs:
         """
         name = epbunch.Name
@@ -501,7 +501,7 @@ class OpaqueConstruction(LayeredConstruction):
         """Returns layers of an internal mass object.
 
         Args:
-            epbunch (EpBunch): The InternalMass epobject.
+            epbunch (Record): The InternalMass epobject.
         """
         constr_obj = epbunch.theidf.getobject("CONSTRUCTION", epbunch.Construction_Name)
         return cls._surface_layers(constr_obj)
@@ -511,7 +511,7 @@ class OpaqueConstruction(LayeredConstruction):
         """Retrieve layers for the OpaqueConstruction
 
         Args:
-            epbunch (EpBunch): EP-Construction object
+            epbunch (Record): EP-Construction object
         """
         layers = []
         for layer in epbunch.fieldnames[2:]:

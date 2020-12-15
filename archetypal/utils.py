@@ -26,6 +26,7 @@ import warnings
 from collections import OrderedDict
 from concurrent.futures._base import as_completed
 from datetime import datetime, timedelta
+from itertools import chain
 
 import numpy as np
 import pandas as pd
@@ -1091,7 +1092,7 @@ def parallel_process(
     Args:
         in_dict (dict): A dictionary to iterate over. `function` is applied to value
             and key is used as an identifier.
-        function (function): A python function to apply to the elements of
+        function (callable): A python function to apply to the elements of
             in_dict
         processors (int): The number of cores to use.
         use_kwargs (bool): If True, pass the kwargs as arguments to `function`.
@@ -1106,11 +1107,12 @@ def parallel_process(
     """
     if executor is None:
         from concurrent.futures import ThreadPoolExecutor
+
         _executor_factory = ThreadPoolExecutor
     else:
         _executor_factory = executor
 
-    from tqdm import tqdm
+    from pqdm.processes import pqdm
 
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())
@@ -1135,8 +1137,15 @@ def parallel_process(
         for job in futures:
             out.append(job)
     else:
-        with _executor_factory(
-            max_workers=processors,
+        if use_kwargs:
+            args = [v for k, v in in_dict.items()]
+        else:
+            args = in_dict
+        out = pqdm(
+            args,
+            function,
+            n_jobs=processors,
+            argument_type='kwargs',
             initializer=config,
             initargs=(
                 settings.data_folder,
@@ -1156,31 +1165,10 @@ def parallel_process(
                 settings.ep_version,
                 settings.debug,
             ),
-        ) as executor:
-            out = []
-            futures = []
-
-            if use_kwargs:
-                for a in in_dict:
-                    future = executor.submit(function, **in_dict[a])
-                    futures.append(future)
-            else:
-                for a in in_dict:
-                    future = executor.submit(function, in_dict[a])
-                    futures.append(future)
-
-            # Print out the progress as tasks complete
-            for job in tqdm(as_completed(futures), **kwargs):
-                # Read result from future
-                try:
-                    result_done = job.result()
-                except Exception as e:
-                    if debug:
-                        lg.warning(str(e))
-                        raise e
-                    result_done = e
-                # Append to the list of results
-                out.append(result_done)
+        )
+        for o in out:
+            if debug and isinstance(o, Exception):
+                raise o
     return out
 
 
@@ -1284,15 +1272,20 @@ class InvalidEnergyPlusVersion(InvalidVersion):
 
 class EnergyPlusVersion(Version):
     try:
-        iddnames = (
-            get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
-        ).files("*.idd")
+        iddnames = set(
+            chain.from_iterable(
+                (
+                    (basedir / "PreProcess" / "IDFVersionUpdater").files("*.idd")
+                    for basedir in get_eplus_basedirs()
+                )
+            )
+        )
     except FileNotFoundError:
         _choices = ["9-2-0"]  # Little hack in case E+ is not installed
     else:
-        _choices = [
+        _choices = set(
             re.match("V(.*)-Energy\+", idd.stem).groups()[0] for idd in iddnames
-        ]
+        )
 
     @property
     def tuple(self):

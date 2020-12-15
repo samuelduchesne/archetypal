@@ -11,7 +11,6 @@ import hashlib
 import numpy as np
 import pandas as pd
 from deprecation import deprecated
-from eppy.bunch_subclass import EpBunch
 
 import archetypal
 from archetypal import Schedule, log
@@ -442,11 +441,11 @@ class DaySchedule(UmiSchedule):
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
-        """Create a DaySchedule from a :class:`~eppy.bunch_subclass.EpBunch`
+        """Create a DaySchedule from a :class:`~eppy.bunch_subclass.Record`
         object
 
         Args:
-            epbunch (EpBunch): The EpBunch object to construct a DaySchedule
+            epbunch (Record): The Record object to construct a DaySchedule
                 from.
             **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
                 See :class:`UmiSchedule` for more details.
@@ -647,7 +646,7 @@ class WeekSchedule(UmiSchedule):
     def get_days(cls, epbunch):
         """
         Args:
-            epbunch (EpBunch):
+            epbunch (Record):
         """
         blocks = []
         dayname = [
@@ -826,7 +825,7 @@ class YearSchedule(UmiSchedule):
     def get_parts(self, epbunch):
         """
         Args:
-            epbunch (EpBunch):
+            epbunch (Record):
         """
         parts = []
         for i in range(int(len(epbunch.fieldvalues[3:]) / 5)):

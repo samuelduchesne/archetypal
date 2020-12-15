@@ -12,7 +12,6 @@ from functools import reduce
 
 import tabulate
 from deprecation import deprecated
-from eppy.bunch_subclass import EpBunch
 
 import archetypal
 from archetypal import calc_simple_glazing, log, timeit
@@ -147,7 +146,7 @@ class WindowConstruction(UmiBase):
             >>> idf=idf)
 
         Args:
-            Construction (EpBunch): The Construction epbunch object.
+            Construction (Record): The Construction epbunch object.
             **kwargs: Other keywords passed to the constructor.
         """
         Name = Construction.Name
@@ -466,7 +465,7 @@ class WindowSetting(UmiBase):
             >>>                    Construction=construction)
 
         Args:
-            Construction (EpBunch): The construction name for this window.
+            Construction (Record): The construction name for this window.
             **kwargs: Other keywords passed to the constructor.
 
         Returns:
@@ -511,7 +510,7 @@ class WindowSetting(UmiBase):
            #airflownetworkmultizonecomponentdetailedopening
 
         Args:
-            surface (EpBunch): The FenestrationSurface:Detailed_ object.
+            surface (Record): The FenestrationSurface:Detailed_ object.
 
         Returns:
             (WindowSetting): The window setting object.

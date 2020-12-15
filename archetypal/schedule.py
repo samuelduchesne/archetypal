@@ -12,8 +12,8 @@ from itertools import groupby
 
 import numpy as np
 import pandas as pd
-from eppy.bunch_subclass import EpBunch
 from numpy import ndarray
+from opyplus.epm.record import Record
 
 from archetypal import log
 from archetypal.energypandas import EnergySeries, plot_energyseries_map
@@ -53,7 +53,7 @@ class Schedule(object):
                 Limits (see above), then the restrictions from the referenced
                 object will be used to validate the current field values.
             Values (ndarray): A 24 or 8760 list of schedule values.
-            epbunch (EpBunch): An EpBunch object from which this schedule can
+            epbunch (Record): An Record object from which this schedule can
                 be created.
             **kwargs:
         """
@@ -279,11 +279,11 @@ class Schedule(object):
 
     plot2d.__doc__ = plot_energyseries_map.__doc__
 
-    def get_interval_day_ep_schedule_values(self, epbunch: EpBunch) -> np.ndarray:
+    def get_interval_day_ep_schedule_values(self, epbunch: Record) -> np.ndarray:
         """Schedule:Day:Interval
 
         Args:
-            epbunch (EpBunch): The schedule EpBunch object.
+            epbunch (Record): The schedule Record object.
         """
 
         (
@@ -319,7 +319,7 @@ class Schedule(object):
         """Schedule:Day:Hourly
 
         Args:
-            epbunch (EpBunch): The schedule EpBunch object.
+            epbunch (Record): The schedule Record object.
         """
 
         fieldvalues_ = np.array(epbunch.fieldvalues[3:])
@@ -332,7 +332,7 @@ class Schedule(object):
         """schedule:week:compact
 
         Args:
-            epbunch (EpBunch): the name of the schedule
+            epbunch (Record): the name of the schedule
             start_date:
             index:
         """
@@ -382,7 +382,7 @@ class Schedule(object):
         """schedule:week:daily
 
         Args:
-            epbunch (EpBunch): The schedule EpBunch object.
+            epbunch (Record): The schedule Record object.
         """
         # 7 list for 7 days of the week
         hourly_values = []
@@ -408,7 +408,7 @@ class Schedule(object):
         """schedule:day:list
 
         Args:
-            epbunch (EpBunch): The schedule epbunch object.
+            epbunch (Record): The schedule epbunch object.
         """
         import pandas as pd
 
@@ -439,7 +439,7 @@ class Schedule(object):
         """schedule:constant
 
         Args:
-            epbunch (EpBunch): The schedule epbunch object.
+            epbunch (Record): The schedule epbunch object.
         """
         (
             lower_limit,
@@ -462,7 +462,7 @@ class Schedule(object):
         """schedule:file
 
         Args:
-            epbunch (EpBunch): The schedule epbunch object.
+            epbunch (Record): The schedule epbunch object.
         """
         filename = epbunch["File_Name"]
         column = epbunch["Column_Number"]
@@ -486,7 +486,7 @@ class Schedule(object):
         """schedule:compact
 
         Args:
-            epbunch (EpBunch): The schedule epbunch object.
+            epbunch (Record): The schedule epbunch object.
         """
         field_sets = ["through", "for", "interpolate", "until", "value"]
         fields = epbunch.fieldvalues[3:]
@@ -758,7 +758,7 @@ class Schedule(object):
         """schedule:year
 
         Args:
-            epbunch (EpBunch): the schedule epbunch.
+            epbunch (Record): the schedule epbunch.
         """
         # first week
 
@@ -818,7 +818,7 @@ class Schedule(object):
         """Main function that returns the schedule values
 
         Args:
-            sched_epbunch (EpBunch): the schedule epbunch object
+            sched_epbunch (Record): the schedule epbunch object
             start_date:
             index:
         """

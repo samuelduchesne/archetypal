@@ -20,7 +20,6 @@ import matplotlib.colors
 import networkx
 import tabulate
 from deprecation import deprecated
-from eppy.bunch_subclass import EpBunch
 from path import Path
 from sigfig import round
 from tqdm import tqdm
@@ -450,10 +449,10 @@ def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):
     """
     Args:
         adj_report (dict): the report dict to append to.
-        zone (EpBunch):
-        surface (EpBunch):
-        adj_zone (EpBunch):
-        adj_surf (EpBunch):
+        zone (Record):
+        surface (Record):
+        adj_zone (Record):
+        adj_surf (Record):
         counter (int): Counter.
     """
     adj_report["#"].append(counter)
@@ -512,7 +511,7 @@ class ZoneGraph(networkx.Graph):
         G = cls(name=idf.name)
 
         counter = 0
-        zone: EpBunch
+        zone: Record
         for zone in tqdm(
             idf.idfobjects["ZONE"], desc="zone_loop", position=idf.position, **kwargs
         ):
@@ -528,8 +527,8 @@ class ZoneGraph(networkx.Graph):
                     # Todo deal with internal mass surfaces
                     pass
                 else:
-                    adj_zone: EpBunch
-                    adj_surf: EpBunch
+                    adj_zone: Record
+                    adj_surf: Record
                     adj_surf, adj_zone = resolve_obco(surface)
 
                     if adj_zone and adj_surf:
@@ -644,8 +643,8 @@ class ZoneGraph(networkx.Graph):
             proj_type (str): Type of projection, accepts 'persp' and 'ortho'.
             filename (str): the name of the file if saving.
             annotate (bool or str or tuple): If True, annotates the node with
-                the Zone Name. Pass an EpBunch *field_name* to retrieve data
-                from the zone EpBunch. Pass a tuple (data, key) to retrieve data
+                the Zone Name. Pass an Record *field_name* to retrieve data
+                from the zone Record. Pass a tuple (data, key) to retrieve data
                 from the graph: eg. ('core', None) will retrieve the attribute
                 'core' associated to the node. The second tuple element serves
                 as a key on the first: G.nodes(data=data)[key].
@@ -663,7 +662,7 @@ class ZoneGraph(networkx.Graph):
         import numpy as np
         from mpl_toolkits.mplot3d import Axes3D
 
-        def avg(zone: eppy.bunch_subclass.EpBunch):
+        def avg(zone: eppy.bunch_subclass.Record):
             """calculate the zone centroid coordinates"""
             x_, y_, z_, dem = 0, 0, 0, 0
             from geomeppy.geom.polygons import Polygon3D, Vector3D

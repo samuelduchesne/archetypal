@@ -295,7 +295,7 @@ class OpaqueMaterial(UmiBase):
             emittance) are assumed null.
 
         Args:
-            epbunch (EpBunch): EP-Construction object
+            epbunch (Record): EP-Construction object
             **kwargs:
         """
         if epbunch.key.upper() == "MATERIAL":

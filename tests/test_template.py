@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-from geomeppy.patches import EpBunch
 
 import archetypal.settings
 from archetypal import IDF, get_eplus_dirs, settings
@@ -2537,13 +2536,13 @@ class TestZoneGraph:
 
         G1 = ZoneGraph.from_idf(idf, log_adj_report=adj_report)
         assert not nx.is_empty(G1)
-        from eppy.bunch_subclass import EpBunch
+        from eppy.bunch_subclass import Record
 
         assert isinstance(
             G1.nodes["Sp-Attic Sys-0 Flr-2 Sch-- undefined - HPlcmt-core ZN"][
                 "epbunch"
             ],
-            EpBunch,
+            Record,
         )
 
     def test_graph_info(self, G):

@@ -3,13 +3,13 @@ import json
 import logging as lg
 import os
 from collections import OrderedDict
-from concurrent.futures.process import ProcessPoolExecutor
 from concurrent.futures.thread import ThreadPoolExecutor
 
 import numpy as np
 from path import Path
 
-from archetypal import IDF, EnergyPlusProcessError, log, parallel_process
+from archetypal import IDF, log, parallel_process
+from archetypal.eplus_interface.exceptions import EnergyPlusProcessError
 from archetypal.template import (
     BuildingTemplate,
     DaySchedule,
@@ -23,6 +23,7 @@ from archetypal.template import (
     StructureInformation,
     UmiBase,
     UmiSchedule,
+    UniqueName,
     VentilationSetting,
     WeekSchedule,
     WindowConstruction,
@@ -34,7 +35,6 @@ from archetypal.template import (
     ZoneDefinition,
     ZoneLoad,
     settings,
-    UniqueName,
 )
 
 
@@ -197,7 +197,7 @@ class UmiTemplateLibrary:
             use_kwargs=True,
             debug=True,
             position=None,
-            executor=ThreadPoolExecutor
+            executor=ThreadPoolExecutor,
         )
         for res in results:
             if isinstance(res, EnergyPlusProcessError):

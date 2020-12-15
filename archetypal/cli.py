@@ -11,21 +11,20 @@ import click
 from path import Path
 
 from archetypal import (
-    EnergyPlusVersion,
-    EnergyPlusVersionError,
     UmiTemplateLibrary,
     __version__,
     config,
     convert_idf_to_trnbuild,
     docstring_parameter,
-    ep_version,
-    get_eplus_dirs,
     log,
     parallel_process,
     settings,
     timeit,
 )
 from archetypal.idfclass import idf_version_updater, IDF
+
+from .eplus_interface.exceptions import EnergyPlusVersionError
+from .eplus_interface.version import EnergyPlusVersion, get_eplus_dirs
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 

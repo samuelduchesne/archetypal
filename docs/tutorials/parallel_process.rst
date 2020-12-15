@@ -14,7 +14,7 @@ show logs in the console.
 .. code-block:: python
 
     >>> from path import Path
-    >>> from archetypal import IDF, config, run_eplus, settings, parallel_process
+    >>> from archetypal import IDF, config, settings, parallel_process
     >>> import pandas as pd
     >>> config(use_cache=True, log_console=True)
 
@@ -48,17 +48,17 @@ The rundict, is the list of tasks we wish to do in parallel. This dictionary is 
 .. code-block:: python
 
     >>> rundict = {
-            k: dict(
-                eplus_file=str(file),
-                prep_outputs=True,
-                weather_file=str(epw),
-                expandobjects=True,
-                verbose="v",
-                design_day=True,
-                output_report="sql_file",
-            )
-            for k, file in idfs.file.to_dict().items()
-        }
+    >>>     k: dict(
+    >>>         idfname=str(file),
+    >>>         prep_outputs=True,
+    >>>         weather_file=str(epw),
+    >>>         expandobjects=True,
+    >>>         verbose=True,
+    >>>         design_day=True,
+    >>>         simulate=True,
+    >>>     )
+    >>>     for k, file in idfs.file.to_dict().items()
+    >>> }
 
 Finally, execute :meth:`~archetypal.utils.parallel_process`. The resulting sql_file paths, which we defined as the
 type of output_report attribute for :meth:`~archetypal.idfclass.run_eplus` is returned as a dictionary with the same

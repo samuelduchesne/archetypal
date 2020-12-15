@@ -327,7 +327,8 @@ class ZoneDefinition(UmiBase):
         """
 
         self.InternalMassConstruction = OpaqueConstruction.generic_internalmass(
-            idf=self.idf)
+            idf=self.idf
+        )
         self.InternalMassExposedPerFloorArea = 0
 
     def to_json(self):
@@ -413,7 +414,10 @@ class ZoneDefinition(UmiBase):
         log('Constructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
         name = zone_ep.Name
         zone = cls(
-            Name=name, idf=zone_ep.theidf, Category=zone_ep.theidf.name, **kwargs,
+            Name=name,
+            idf=zone_ep.theidf,
+            Category=zone_ep.theidf.name,
+            **kwargs,
         )
 
         zone._epbunch = zone_ep

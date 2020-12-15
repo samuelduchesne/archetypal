@@ -18,10 +18,10 @@ import json
 import logging as lg
 import multiprocessing
 import os
-import platform
 import re
 import sys
 import time
+import unicodedata
 import warnings
 from collections import OrderedDict
 from concurrent.futures._base import as_completed
@@ -30,15 +30,12 @@ from itertools import chain
 
 import numpy as np
 import pandas as pd
-import unicodedata
-from packaging.version import InvalidVersion, Version
 from pandas.io.json import json_normalize
 from path import Path
-from tabulate import tabulate
 from tqdm import tqdm
 
 from archetypal import __version__, settings
-from archetypal.settings import ep_version
+from archetypal.eplus_interface.version import EnergyPlusVersion
 
 
 def config(
@@ -660,74 +657,6 @@ def copy_file(files, where=None):
     return _unpack_tuple(list(files.values()))
 
 
-class EnergyPlusProcessError(Exception):
-    """EnergyPlus Process call error"""
-
-    def __init__(self, cmd=None, stderr=None, idf=None):
-        """
-        Args:
-            cmd:
-            stderr:
-            idf:
-        """
-        self.cmd = cmd
-        self.idf = idf
-        self.stderr = stderr
-        super().__init__(self.stderr)
-
-    def __str__(self):
-        """Override that only returns the stderr"""
-        try:
-            name = self.idf.idfname.abspath()
-        except Exception:
-            name = self.idf
-        msg = ":\n".join([name, self.stderr])
-        return msg
-
-    def write(self):
-        # create and add headers
-        invalid = [{"Filename": self.idf, "Error": self.stderr}]
-        return tabulate(invalid, headers="keys")
-
-
-class EnergyPlusVersionError(Exception):
-    """EnergyPlus Version call error"""
-
-    def __init__(self, msg=None, idf_file=None, idf_version=None, ep_version=None):
-        super(EnergyPlusVersionError, self).__init__(None)
-        self.msg = msg
-        self.idf_file = idf_file
-        self.idf_version = idf_version
-        self.ep_version = ep_version
-
-    def __str__(self):
-        """Override that only returns the stderr"""
-        if not self.msg:
-            if self.idf_version > self.ep_version:
-                compares_ = "higher"
-                self.msg = (
-                    f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
-                    f"is {compares_} than the specified EnergyPlus version "
-                    f"(v{self.ep_version}). This file looks like it has already been "
-                    f"transitioned to a newer version"
-                )
-            else:
-                compares_ = "lower"
-                self.msg = (
-                    f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
-                    f"is {compares_} than the specified EnergyPlus version "
-                    f"(v{self.ep_version})"
-                )
-
-        return self.msg
-
-
-class EnergyPlusWeatherError(Exception):
-    """Error for when weather file is not defined"""
-
-    pass
-
-
 @contextlib.contextmanager
 def cd(path):
     """
@@ -897,53 +826,6 @@ def float_round(num, n):
     num = float(num)
     num = round(num, n)
     return num
-
-
-def get_eplus_dirs(version=ep_version):
-    """Returns EnergyPlus root folder for a specific version.
-
-    Returns (Path): The folder path.
-
-    Args:
-        version (str): Version number in the form "9-2-0" to search for.
-    """
-    from eppy.runner.run_functions import install_paths
-
-    eplus_exe, eplus_weather = install_paths(version)
-    return Path(eplus_exe).dirname()
-
-
-def warn_if_not_compatible():
-    """Checks if an EnergyPlus install is detected. If the latest version
-    detected is higher than the one specified by archetypal, a warning is also
-    raised.
-    """
-    eplus_homes = get_eplus_basedirs()
-
-    if not eplus_homes:
-        warnings.warn(
-            "No installation of EnergyPlus could be detected on this "
-            "machine. Please install EnergyPlus from https://energyplus.net before "
-            "using archetypal"
-        )
-
-
-def get_eplus_basedirs():
-    """Returns a list of possible E+ install paths"""
-    if platform.system() == "Windows":
-        eplus_homes = Path("C:\\").dirs("EnergyPlus*")
-        return eplus_homes
-    elif platform.system() == "Linux":
-        eplus_homes = Path("/usr/local/").dirs("EnergyPlus*")
-        return eplus_homes
-    elif platform.system() == "Darwin":
-        eplus_homes = Path("/Applications").dirs("EnergyPlus*")
-        return eplus_homes
-    else:
-        warnings.warn(
-            "Archetypal is not compatible with %s. It is only compatible "
-            "with Windows, Linux or MacOs" % platform.system()
-        )
 
 
 def timeit(method):
@@ -1262,56 +1144,3 @@ def extend_class(cls):
         victorlei@gmail.com
     """
     return lambda f: (setattr(cls, f.__name__, f) or f)
-
-
-class InvalidEnergyPlusVersion(InvalidVersion):
-    """
-    An invalid version was found, users should refer to EnergyPlus Documentation.
-    """
-
-
-class EnergyPlusVersion(Version):
-    try:
-        iddnames = set(
-            chain.from_iterable(
-                (
-                    (basedir / "PreProcess" / "IDFVersionUpdater").files("*.idd")
-                    for basedir in get_eplus_basedirs()
-                )
-            )
-        )
-    except FileNotFoundError:
-        _choices = ["9-2-0"]  # Little hack in case E+ is not installed
-    else:
-        _choices = set(
-            re.match("V(.*)-Energy\+", idd.stem).groups()[0] for idd in iddnames
-        )
-
-    @property
-    def tuple(self):
-        return self.major, self.minor, self.micro
-
-    @property
-    def dash(self):
-        # type: () -> str
-        return "-".join(map(str, (self.major, self.minor, self.micro)))
-
-    def __repr__(self):
-        # type: () -> str
-        return "<EnergyPlusVersion({0})>".format(repr(str(self)))
-
-    def __init__(self, version):
-        """
-
-        Args:
-            version (str, EnergyPlusVersion):
-        """
-        if isinstance(version, tuple):
-            version = ".".join(map(str, version[0:3]))
-        if isinstance(version, Version):
-            version = ".".join(map(str, (version.major, version.minor, version.micro)))
-        if isinstance(version, str) and "-" in version:
-            version = version.replace("-", ".")
-        super(EnergyPlusVersion, self).__init__(version)
-        if self.dash not in self._choices:
-            raise InvalidEnergyPlusVersion

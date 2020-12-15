@@ -2,10 +2,11 @@ import numpy as np
 import pytest
 
 import archetypal.settings as settings
-from archetypal.idfclass import IDF
+from archetypal import IDF
+from archetypal.eplus_interface.version import get_eplus_dirs
 from archetypal.schedule import Schedule
 from archetypal.template.schedule import UmiSchedule
-from archetypal.utils import config, get_eplus_dirs
+from archetypal.utils import config
 
 
 @pytest.fixture()
@@ -58,7 +59,10 @@ def test_from_values(mew_idf):
     import numpy as np
 
     heating_sched = UmiSchedule.from_values(
-        Name="Zone_Heating_Schedule", Values=np.ones(8760), Type="Fraction", idf=idf,
+        Name="Zone_Heating_Schedule",
+        Values=np.ones(8760),
+        Type="Fraction",
+        idf=idf,
     )
     assert len(heating_sched.all_values) == 8760
 

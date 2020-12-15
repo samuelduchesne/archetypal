@@ -21,7 +21,8 @@ from path import Path
 from tqdm import tqdm
 
 import archetypal.settings as settings
-from archetypal.idfclass import IDF, hash_model
+from archetypal import IDF
+from archetypal.idfclass.util import hash_model
 from archetypal.reportdata import ReportData
 from archetypal.schedule import Schedule
 from archetypal.utils import angle, check_unique_name, checkStr, log, recursive_len
@@ -138,15 +139,15 @@ def convert_idf_to_trnbuild(
         idf_file,
         epw=weather_file,
         as_version=ep_version,
-        design_day=False,
         annual=True,
+        design_day=False,
         prep_outputs=outputs,
     )
 
     # Check if cache exists
     # idf = _load_idf_file_and_clean_names(idf_file, log_clear_names)
     # Outpout reports
-    htm = idf.htm
+    htm = idf.htm()
     sql_file = idf.sql_file
 
     # Clean names of idf objects (e.g. 'MATERIAL')
@@ -831,7 +832,7 @@ def _remove_low_conductivity(constructions, idf, materials):
 
     Args:
         constructions (Idf_MSequence): CONSTRUCTION object from the IDF
-        idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
+        idf (archetypal.idfclass.idf.IDF object at 0x11e3d3208): the IDf object
         materials (Idf_MSequence): MATERIAL object from the IDF
 
     Returns:
@@ -942,7 +943,7 @@ def get_idf_objects(idf):
     """Gets idf objects
 
     Args:
-        idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
+        idf (archetypal.idfclass.idf.IDF object at 0x11e3d3208): the IDf object
 
     Returns:
         materials (Idf_MSequence): MATERIAL object from the IDF materialNoMass
@@ -1009,7 +1010,7 @@ def load_idf_file_and_clean_names(idf_file, log_clear_names):
             the old and new names in the console.
 
     Returns:
-        idf (archetypal.idfclass.IDF object at 0x11e3d3208): the IDf object
+        idf (archetypal.idfclass.idf.IDF object at 0x11e3d3208): the IDf object
     """
     log("Loading IDF file...", lg.INFO)
     start_time = time.time()
@@ -1088,11 +1089,12 @@ def _add_change_adj_surf(buildingSurfs, idf):
     """Adds or changes adjacent surfaces if needed
 
     Args:
-        buildingSurfs (idf_MSequence): IDF object from idf.idfobjects(). List of
+        buildingSurfs (idf_MSequence): IDF object from idf.idfobjects().
+        List of
             building surfaces ("BUILDINGSURFACE:DETAILED" in the IDF). Building
             surfaces to iterate over and determine if either a change on an
             adjacent surface is needed or the creation of a new one
-        idf (archetypal.idfclass.IDF): IDF object
+        idf (archetypal.IDF): IDF object
     """
     adj_surfs_to_change = {}
     adj_surfs_to_make = []
@@ -1196,7 +1198,7 @@ def _get_schedules(idf, **kwargs):
     """Get schedules from IDF
 
     Args:
-        idf (archetypal.idfclass.IDF): IDF object
+        idf (archetypal.IDF): IDF object
         **kwargs:
     """
     start_time = time.time()
@@ -1232,7 +1234,7 @@ def clear_name_idf_objects(idfFile, log_clear_names=False, **kwargs):
     new name will be "stl_00000n" - limits length to 10 characters
 
     Args:
-        idfFile (archetypal.idfclass.IDF): IDF object where to clean names
+        idfFile (archetypal.IDF): IDF object where to clean names
         log_clear_names:
         **kwargs:
     """
@@ -1769,7 +1771,8 @@ def _write_zone_buildingSurf_fenestrationSurf(
     Then, writes zone, fenestration and building surfaces information in lines.
 
     Zones:
-        1. If the geometry global rule is 'World', convert zone's coordinates to
+        1. If the geometry global rule is 'World', convert zone's
+        coordinates to
            absolute.
         2. Rounds zone's coordinates to 4 decimal.
         3. Write zones in lines (T3D file).
@@ -1777,32 +1780,37 @@ def _write_zone_buildingSurf_fenestrationSurf(
     Fenestration surfaces:
         1. If the geometry global rule is 'Relative', convert fenestration's
            coordinates to absolute.
-        2. Find the window slope and create a new window object (to write in T3D
+        2. Find the window slope and create a new window object (to write in
+        T3D
            file) for each different slope.
         3. Rounds fenestration surface's coordinates to 4 decimal.
         4. Write fenestration surfaces in lines (T3D file).
 
     Building surfaces:
-        1. If the geometry global rule is 'Relative', convert building surface's
+        1. If the geometry global rule is 'Relative', convert building
+        surface's
            coordinates to absolute.
         2. Determine the outside boundary condition (eg. 'ground') of each
            surface. If boundary is 'surface' or 'zone', modify the surface to
            make sure adjancency is well done between surfaces (see
            _modify_adj_surface()). If boundary is 'ground', apply ground
-           temperature to the Outside_Boundary_Condition_Object. If the boundary
+           temperature to the Outside_Boundary_Condition_Object. If the
+           boundary
            is 'adiabatic', apply an IDENTICAL boundary to the
            Outside_Boundary_Condition_Object.
         3. Rounds building surface's coordinates to 4 decimal
         4. Write building surfaces in lines (T3D file)
 
     Args:
-        buildingSurfs (idf_MSequence): IDF object from idf.idfobjects(). List of
+        buildingSurfs (idf_MSequence): IDF object from idf.idfobjects().
+        List of
             building surfaces ("BUILDINGSURFACE:DETAILED" in the IDF).
         coordSys (str): Coordinate system of the IDF file. Can be 'Absolute'
         fenestrationSurfs (idf_MSequence): IDF object from idf.idfobjects().
-            List of fenestration surfaces ("FENESTRATIONSURFACE:DETAILED" in the
+            List of fenestration surfaces ("FENESTRATIONSURFACE:DETAILED" in
+            the
             IDF).
-        idf (archetypal.idfclass.IDF): IDF object
+        idf (archetypal.IDF): IDF object
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
         n_ground (Vector 3D): Normal vector of the ground surface
@@ -2711,7 +2719,7 @@ def _write_constructions_end(constr_list, idf, lines, **kwargs):
 
     Args:
         constr_list (list): list of construction names to be written
-        idf (archetypal.idfclass.IDF): IDF object
+        idf (archetypal.IDF): IDF object
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
         **kwargs:
@@ -2733,7 +2741,7 @@ def _write_constructions(constr_list, idf, lines, mat_name, materials, **kwargs)
 
     Args:
         constr_list (list): list of construction names to be written
-        idf (archetypal.idfclass.IDF): IDF object
+        idf (archetypal.IDF): IDF object
         lines (list): Text to create the T3D file (IDF file to import in
             TRNBuild). To be appended (insert) here
         mat_name (list): list of material names to be written

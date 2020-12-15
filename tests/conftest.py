@@ -28,10 +28,7 @@ def scratch_then_cache(request):
             dir.rmtree_p()
 
 
-samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular',
-
-
-# 'umi_samples']
+samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular', 'umi_samples']
 
 
 @pytest.fixture(params=samples_, ids=samples_, scope="session")
@@ -48,7 +45,7 @@ def config():
         cache_folder="tests/.temp/cache",
         use_cache=True,
         log_file=False,
-        log_console=False,
+        log_console=True,
         umitemplate="tests/input_data/umi_samples/BostonTemplateLibrary_2.json",
         debug=True,
     )

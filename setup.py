@@ -6,7 +6,7 @@ import os
 from os import path
 
 # Always prefer setuptools over distutils
-from setuptools import setup
+from setuptools import setup, find_namespace_packages
 
 here = os.getcwd()
 
@@ -49,12 +49,12 @@ dev_requires = [r.strip() for r in requirements_lines]
 setup(
     name="archetypal",
     version=find_version("archetypal", "__init__.py"),
-    packages=["archetypal"],
+    packages=find_namespace_packages(include=["archetypal", "archetypal.*"]),
     package_data={
         "archetypal": [
-            "archetypal/ressources/originBUISketchUp.idf",
-            "archetypal/ressources/W74-lib.dat",
-            "archetypal/ressources/NewFileTemplate.d18",
+            "ressources/originBUISketchUp.idf",
+            "ressources/W74-lib.dat",
+            "ressources/NewFileTemplate.d18",
         ]
     },
     include_package_data=True,

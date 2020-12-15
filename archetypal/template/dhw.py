@@ -276,7 +276,7 @@ class DomesticHotWaterSetting(UmiBase):
                     # the input file, a default constant value of 10 C is
                     # assumed.
                     WaterTemperatureInlet.append(float(10))
-        return mean(WaterTemperatureInlet)
+        return mean(WaterTemperatureInlet) if WaterTemperatureInlet else 10
 
     @classmethod
     @timeit
@@ -404,12 +404,9 @@ class DomesticHotWaterSetting(UmiBase):
         dhw_objs = idf.idfobjects["WaterUse:Equipment".upper()]
 
         # Unconditioned area could be zero, therefore taking max of both
-        area = max(idf.net_conditioned_building_area,
-                   idf.unconditioned_building_area)
+        area = max(idf.net_conditioned_building_area, idf.unconditioned_building_area)
 
-        total_flow_rate = DomesticHotWaterSetting._do_flow_rate(
-            dhw_objs, area
-        )
+        total_flow_rate = DomesticHotWaterSetting._do_flow_rate(dhw_objs, area)
         water_schedule = DomesticHotWaterSetting._do_water_schedule(dhw_objs, idf)
         inlet_temp = DomesticHotWaterSetting._do_inlet_temp(dhw_objs, idf)
         supply_temp = DomesticHotWaterSetting._do_hot_temp(dhw_objs, idf)

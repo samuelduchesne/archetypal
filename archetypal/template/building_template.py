@@ -936,7 +936,11 @@ class ZoneGraph(networkx.Graph):
             networkx.draw_networkx_edges(tree, pos, ax=ax, arrows=arrows, **kwargs)
             if with_labels:
                 networkx.draw_networkx_labels(
-                    G, pos, font_color=font_color, font_size=font_size, **kwargs,
+                    G,
+                    pos,
+                    font_color=font_color,
+                    font_size=font_size,
+                    **kwargs,
                 )
 
             if legend:

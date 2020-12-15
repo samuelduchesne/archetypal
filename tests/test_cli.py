@@ -1,5 +1,6 @@
 import os
 
+import click
 import pytest
 from click.testing import CliRunner
 from path import Path
@@ -258,7 +259,6 @@ class TestCli:
         runner = CliRunner()
         args = cli_args
         result = runner.invoke(cli, args, catch_exceptions=False)
-        print(result.stdout)
         assert result.exit_code == 0
 
     def test_reduce(self):

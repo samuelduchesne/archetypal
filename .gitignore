@@ -231,3 +231,6 @@ fabric.properties
 /data/
 /images/
 /logs/
+/_build/
+
+docs/reference/

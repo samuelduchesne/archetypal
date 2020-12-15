@@ -13,12 +13,7 @@ from deprecation import deprecated
 from eppy.bunch_subclass import BadEPFieldError
 
 import archetypal
-from archetypal.template import (
-    MaterialLayer,
-    OpaqueMaterial,
-    UmiBase,
-    UniqueName,
-)
+from archetypal.template import MaterialLayer, OpaqueMaterial, UmiBase, UniqueName
 
 
 class ConstructionBase(UmiBase):
@@ -439,7 +434,10 @@ class OpaqueConstruction(LayeredConstruction):
         layers = kwargs.pop("Layers", None)
         oc = cls(Layers=layers, **kwargs)
         lys = [
-            MaterialLayer(oc.get_ref(layer["Material"]), layer["Thickness"],)
+            MaterialLayer(
+                oc.get_ref(layer["Material"]),
+                layer["Thickness"],
+            )
             for layer in layers
         ]
         oc.Layers = lys

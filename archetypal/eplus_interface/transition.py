@@ -252,8 +252,6 @@ class TransitionThread(Thread):
                     stderr=f"An error occurred during transitioning",
                     idf=self.idf,
                 )
-            else:
-                self.idf._reset_dependant_vars("idfname")
 
     def failure_callback(self):
         """Read stderr and pass to logger."""

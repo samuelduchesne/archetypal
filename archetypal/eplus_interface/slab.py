@@ -132,8 +132,6 @@ class SlabThread(Thread):
                     next(infile)  # Skipping second line
                     for line in infile:
                         outfile.write(line)
-            # invalidate attributes dependant on idfname, since it has changed
-            self.idf._reset_dependant_vars("idfname")
         self.cleanup_callback()
 
     def cleanup_callback(self):

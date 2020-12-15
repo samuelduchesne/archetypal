@@ -22,16 +22,19 @@ from tempfile import TemporaryDirectory
 
 import eppy
 import pandas as pd
+from deprecation import deprecated
 from eppy.bunch_subclass import BadEPFieldError
 from eppy.easyopen import getiddfile
 from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from geomeppy import IDF as geomIDF
 from geomeppy.patches import EpBunch, idfreader1, obj2bunch
+from opyplus import Epm, Idd
+from opyplus.epm.record import Record
 from pandas.errors import ParserError
 from path import Path
 from tqdm import tqdm
 
-from archetypal import ReportData, log, settings
+from archetypal import ReportData, __version__, extend_class, log, settings
 from archetypal.energypandas import EnergySeries
 from archetypal.eplus_interface.basement import BasementThread
 from archetypal.eplus_interface.energy_plus import EnergyPlusThread
@@ -45,113 +48,21 @@ from archetypal.eplus_interface.slab import SlabThread
 from archetypal.eplus_interface.transition import TransitionThread
 from archetypal.eplus_interface.version import (
     EnergyPlusVersion,
+    _latest_energyplus_version,
     get_eplus_dirs,
 )
 from archetypal.idfclass.meters import Meters
 from archetypal.idfclass.outputs import Outputs
-from archetypal.idfclass.util import get_idf_version, hash_model
 from archetypal.idfclass.reports import get_report
+from archetypal.idfclass.util import get_idf_version, hash_model
 from archetypal.idfclass.variables import Variables
 from archetypal.schedule import Schedule
 
 
-class IDF(geomIDF):
+class IDF(object):
     """Class for loading and parsing idf models and running simulations and
     retrieving results.
-
-    Wrapper over the geomeppy.IDF class and subsequently the
-    eppy.modeleditor.IDF class
     """
-
-    # dependencies: dict of <dependant value: independent value>
-    _dependencies = {
-        "iddname": ["idfname", "as_version"],
-        "file_version": ["idfname"],
-        "idd_info": ["iddname", "idfname"],
-        "idd_index": ["iddname", "idfname"],
-        "idd_version": ["iddname", "idfname"],
-        "idfobjects": ["iddname", "idfname"],
-        "block": ["iddname", "idfname"],
-        "model": ["iddname", "idfname"],
-        "sql": [
-            "as_version",
-            "annual",
-            "design_day",
-            "epw",
-            "idfname",
-            "tmp_dir",
-        ],
-        "htm": [
-            "as_version",
-            "annual",
-            "design_day",
-            "epw",
-            "idfname",
-            "tmp_dir",
-        ],
-        "meters": [
-            "idfobjects",
-            "epw",
-            "annual",
-            "design_day",
-            "readvars",
-            "as_version",
-        ],
-        "variables": [
-            "idfobjects",
-            "epw",
-            "annual",
-            "design_day",
-            "readvars",
-            "as_version",
-        ],
-        "sim_id": [
-            "idfobjects",
-            "epw",
-            "annual",
-            "design_day",
-            "readvars",
-            "as_version",
-        ],
-        "schedules_dict": ["idfobjects"],
-        "partition_ratio": ["idfobjects"],
-        "net_conditioned_building_area": ["idfobjects"],
-        "energyplus_its": ["annual", "design_day"],
-        "tmp_dir": ["idfobjects"],
-    }
-    _independant_vars = set(chain(*list(_dependencies.values())))
-    _dependant_vars = set(_dependencies.keys())
-
-    _initial_postition = itertools.count(start=1)
-
-    def _reset_dependant_vars(self, name):
-        _reverse_dependencies = {}
-        for k, v in self._dependencies.items():
-            for x in v:
-                _reverse_dependencies.setdefault(x, []).append(k)
-        for var in _reverse_dependencies[name]:
-            super().__setattr__(f"_{var}", None)
-
-    def __setattr__(self, key, value):
-        propobj = getattr(self.__class__, key, None)
-        if isinstance(propobj, property):
-            if propobj.fset is None:
-                raise AttributeError("Cannot set attribute")
-                # self.__set_on_dependencies(key.strip("_"), value)
-            else:
-                propobj.fset(self, value)
-                self.__set_on_dependencies(key, value)
-        else:
-            self.__set_on_dependencies(key, value)
-
-    def __set_on_dependencies(self, key, value):
-        if key in self._dependant_vars:
-            raise AttributeError("Cannot set this value.")
-        if key in self._independant_vars:
-            self._reset_dependant_vars(key)
-            key = f"_{key}"
-        super(IDF, self).__setattr__(key, value)
-
     def __init__(
         self,
         idfname=None,
@@ -166,11 +77,14 @@ class IDF(geomIDF):
         prep_outputs=True,
         include=None,
         custom_processes=None,
+        simulname=None,
         output_suffix="L",
         epmacro=False,
         keep_data=True,
         keep_data_err=False,
         position=0,
+        check_required=True,
+        check_length=True,
         **kwargs,
     ):
         """
@@ -186,15 +100,16 @@ class IDF(geomIDF):
             keep_original=True,
         """
         # Set independents to there original values
-        if include is None:
-            include = []
         self.idfname = idfname
         self.epw = epw
+        self.check_required = check_required
+        self.check_length = check_length
         self.as_version = as_version if as_version else settings.ep_version
         self._custom_processes = custom_processes
-        self._include = include
+        self._include = include or []
         self.keep_data_err = keep_data_err
         self._keep_data = keep_data
+        self._simulname = simulname
         self.output_suffix = output_suffix
         self.verbose = verbose
         self.readvars = readvars
@@ -234,10 +149,8 @@ class IDF(geomIDF):
         self._sim_id = None
 
         self.load_kwargs = dict(epw=epw, **kwargs)
-
-        self.outputtype = "standard"
         self.original_idfname = self.idfname  # Save original
-        self._original_cache = hash_model(self)
+        self._original_cache = hash_model(self.idfname)
         # Move to tmp_dir, if we want to keep the original file intact.
         if settings.use_cache:
             previous_file = self.output_directory / (self.name or str(self.idfname))
@@ -249,161 +162,52 @@ class IDF(geomIDF):
             else:
                 if not isinstance(self.idfname, StringIO):
                     self.output_directory.makedirs_p()
-                    self.idfname = self.savecopy(self.output_directory / self.name)
+                    self.idfname = self.idfname.copy(self.output_directory / self.name)
 
-        try:
-            # load the idf object by asserting self.idd_info
-            assert self.idd_info
-        except Exception as e:
-            raise e
-        else:
-            if self.file_version < self.as_version:
-                self.upgrade(to_version=self.as_version)
-        finally:
-            # Set model outputs
-            self._outputs = Outputs(idf=self)
-            if self.prep_outputs:
-                (
-                    self._outputs.add_basics()
-                    .add_umi_template_outputs()
-                    .add_custom(outputs=self.prep_outputs)
-                    .add_profile_gas_elect_ouputs()
-                    .apply()
-                )
+        if self.file_version < self.as_version:
+            self.upgrade(to_version=self.as_version)
+
+        self._workspace = Epm.load(
+            self.idfname,
+            check_required=self.check_required,
+            check_length=self.check_length,
+            idd_or_version=self.as_version.tuple,
+        )
+
+        # Set model outputs
+        self._outputs = Outputs(idf=self)
+        if self.prep_outputs:
+            (
+                self._outputs.add_basics()
+                .add_umi_template_outputs()
+                .add_custom(outputs=self.prep_outputs)
+                .add_profile_gas_elect_ouputs()
+                .apply()
+            )
 
     def __str__(self):
-        """Returns name of IDF model."""
         return self.name
 
-    def setiddname(self, iddname, testing=False):
-        """Set the path to the EnergyPlus IDD for the version of EnergyPlus
-        which is to be used by eppy.
-
-        Args:
-            iddname (str): Path to the IDD file.
-            testing (bool):
-        """
-        self.iddname = iddname
-        self.idd_info = None
-        self.block = None
-
-    def read(self):
-        """Read the IDF file and the IDD file.
-
-        If the IDD file had already been read, it will not be read again.
-
-        Read populates the following data structures:
-            - idfobjects : list
-            - model : list
-            - idd_info : list
-            - idd_index : dict
-        """
-        if self.getiddname() is None:
-            errortxt = (
-                "IDD file needed to read the idf file. "
-                "Set it using IDF.setiddname(iddfile)"
-            )
-            raise IDDNotSetError(errortxt)
-        readout = idfreader1(
-            self.idfname, self.iddname, self, commdct=self.idd_info, block=self.block
-        )
-        (self.idfobjects, block, self.model, idd_info, idd_index, idd_version) = readout
-        self.setidd(idd_info, idd_index, block, idd_version)
+    def valid_idds(self):
+        """Returns all valid idd version numbers found in IDFVersionUpdater folder"""
+        return self.idf_version._choices
 
     def getiddname(self):
-        """Get the name of the current IDD used by eppy."""
-        return self.iddname
+        """Get the name of the current IDD used by eppy.
 
-    def setidd(self, iddinfo, iddindex, block, idd_version):
-        """Set the IDD to be used by eppy.
+        Returns
+        -------
+        str
 
-        Args:
-            iddinfo (list): Comments and metadata about fields in the IDD.
-            block (list): Field names in the IDD.
         """
-        self.idd_info = iddinfo
-        self.block = block
-        self.idd_index = iddindex
-        self.idd_version = idd_version
-
-    @property
-    def block(self):
-        """EnergyPlus field ID names of the IDF from the IDD."""
-        if self._block is None:
-            bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
-                self.idfname, self.iddname, self, commdct=None, block=None
-            )
-            self._block = block
-            self._idd_info = commdct
-            self._idd_index = idd_index
-            self._idfobjects = bunchdt
-            self._model = data
-            self._idd_version = versiontuple
-        return self._block
-
-    @property
-    def idd_info(self):
-        """Descriptions of IDF fields from the IDD."""
-        if self._idd_info is None:
-            bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
-                self.idfname, self.iddname, self, commdct=None, block=None
-            )
-            self._block = block
-            self._idd_info = commdct
-            self._idd_index = idd_index
-            self._idfobjects = bunchdt
-            self._model = data
-            self._idd_version = versiontuple
-        return self._idd_info
-
-    @property
-    def idd_index(self):
-        """A pair of dicts used for fast lookups of names of groups of objects."""
-        if self._idd_index is None:
-            bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
-                self.idfname, self.iddname, self, commdct=None, block=None
-            )
-            self._block = block
-            self._idd_info = commdct
-            self._idd_index = idd_index
-            self._idfobjects = bunchdt
-            self._model = data
-            self._idd_version = versiontuple
-        return self._idd_index
+        return self.iddname
 
     @property
     def idfobjects(self):
-        """Dict of lists of idf_MSequence objects in the IDF."""
-        if self._idfobjects is None:
-            bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
-                self.idfname, self.iddname, self, commdct=None, block=None
-            )
-            self._block = block
-            self._idd_info = commdct
-            self._idd_index = idd_index
-            self._idfobjects = bunchdt
-            self._model = data
-            self._idd_version = versiontuple
-        return self._idfobjects
-
-    @property
-    def model(self):
-        """Eplusdata object containing representions of IDF objects."""
-        if self._model is None:
-            bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
-                self.idfname, self.iddname, self, commdct=None, block=None
-            )
-            self._block = block
-            self._idd_info = commdct
-            self._idd_index = idd_index
-            self._idfobjects = bunchdt
-            self._model = data
-            self._idd_version = versiontuple
-        return self._model
+        return self._workspace
 
     @property
     def idd_version(self):
-        """tuple: The version of the iddname."""
         if self._idd_version is None:
             bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
                 self.idfname, self.iddname, self, commdct=None, block=None
@@ -418,15 +222,17 @@ class IDF(geomIDF):
 
     @property
     def iddname(self):
-        """Path: The iddname used to parse the idf model."""
         if self._iddname is None:
             if self.file_version > self.as_version:
                 raise EnergyPlusVersionError(
                     f"{self.as_version} cannot be lower then "
-                    f"the version number set in the file: {self.file_version}"
+                    f"the version number set in the model"
                 )
-            idd_filename = Path(getiddfile(str(self.file_version))).expand()
-            if not idd_filename.exists():
+            try:
+                idd_filename = Path(
+                    Idd._dev_get_from_cache(self.file_version.tuple).path
+                )
+            except ValueError:
                 # Try finding the one in IDFVersionsUpdater
                 idd_filename = (
                     self.idfversionupdater_dir / f"V"
@@ -435,25 +241,43 @@ class IDF(geomIDF):
             self._iddname = idd_filename
         return self._iddname
 
+    def save(self):
+        """Saves changes to idf file. Returns True is successful"""
+        dst = self.idfname
+        return self._workspace.save(dst, dump_external_files=True)
+
+    def saveas(self, filename, dump_external_files=False):
+        """Saves changes to another filename. Returns True is successful"""
+        dst = filename
+        return self._workspace.save(dst, dump_external_files=dump_external_files)
+
+    def savecopy(self, filename, dump_external_files=True):
+        """Saves changes to another filename. Returns True is successful.
+        Same as :ref:`archetypal.idfclass.IDF.saveas`"""
+        dst = Path(filename).expand()
+        self._workspace.save(dst, dump_external_files=dump_external_files)
+        return dst
+
+    @property
+    def idf_objects(self):
+        """Retruns list of IDF objects"""
+        return list(self._workspace.objects())
+
     @property
     def file_version(self):
-        """The :class:`EnergyPlusVersion` of the idf text file."""
         if self._file_version is None:
             return EnergyPlusVersion(get_idf_version(self.idfname))
 
     @property
     def custom_processes(self):
-        """list: List of callables. Called on the output files."""
         return self._custom_processes
 
     @property
     def include(self):
-        """list: List of external files."""
         return self._include
 
     @property
     def keep_data_err(self):
-        """bool: If True, error files are copied back into self.output_folder"""
         return self._keep_data_err
 
     @keep_data_err.setter
@@ -466,15 +290,12 @@ class IDF(geomIDF):
     def keep_data(self):
         return self._keep_data
 
-    # region User-Defined Properties (have setter)
+    @property
+    def simulname(self):
+        return self._simulname
+
     @property
     def output_suffix(self):
-        """Suffix style for output file names (default: L)
-
-        - L: Legacy (e.g., eplustbl.csv)
-        - C: Capital (e.g., eplusTable.csv)
-        - D: Dash (e.g., eplus-table.csv)
-        """
         return self._output_suffix
 
     @output_suffix.setter
@@ -484,15 +305,14 @@ class IDF(geomIDF):
             raise ValueError(f"Choices of 'output_suffix' are {choices}")
         self._output_suffix = value
 
+    # region User-Defined Properties (have setter)
     @property
     def idfname(self):
-        """The path of the active (parsed) idf model.
-
-        If `settings.use_cache == True`, then this path will point to
-        `settings.cache_folder`. See :meth:`~archetypal.utils.config`
-        """
+        """The path of the active (parsed) idf model. If `settings.use_cache ==
+        True`, then this path will point to `settings.cache_folder`. See
+        :meth:`~archetypal.utils.config`"""
         if self._idfname is None:
-            idfname = StringIO(f"VERSION, {self.as_version};")
+            idfname = StringIO(f"VERSION, {_latest_energyplus_version()};")
             idfname.seek(0)
             self._idfname = idfname
         else:
@@ -511,7 +331,6 @@ class IDF(geomIDF):
 
     @property
     def epw(self):
-        """The weather file path."""
         if self._epw is not None:
             return Path(self._epw).expand()
 
@@ -524,11 +343,6 @@ class IDF(geomIDF):
 
     @property
     def verbose(self):
-        """bool: If True, print outputs to logging module.
-
-        See Also:
-            :ref:`archetypal.utils.config`
-        """
         return self._verbose
 
     @verbose.setter
@@ -540,7 +354,6 @@ class IDF(geomIDF):
 
     @property
     def expandobjects(self):
-        """bool: If True, run ExpandObjects prior to simulation."""
         return self._expandobjects
 
     @expandobjects.setter
@@ -551,7 +364,6 @@ class IDF(geomIDF):
 
     @property
     def readvars(self):
-        """bool: If True, run ReadVarsESO after simulation."""
         return self._readvars
 
     @readvars.setter
@@ -562,7 +374,6 @@ class IDF(geomIDF):
 
     @property
     def epmacro(self):
-        """bool: If True, run EPMacro prior to simulation."""
         return self._epmacro
 
     @epmacro.setter
@@ -573,7 +384,6 @@ class IDF(geomIDF):
 
     @property
     def design_day(self):
-        """bool: If True, force design-day-only simulation."""
         return self._design_day
 
     @design_day.setter
@@ -584,7 +394,6 @@ class IDF(geomIDF):
 
     @property
     def annual(self):
-        """bool: If True, force annual simulation."""
         return self._annual
 
     @annual.setter
@@ -595,10 +404,6 @@ class IDF(geomIDF):
 
     @property
     def convert(self):
-        """bool: If True, only convert IDF->epJSON or epJSON->IDF.
-
-        Dependent on input file type. No simulation.
-        """
         return self._convert
 
     @convert.setter
@@ -618,9 +423,8 @@ class IDF(geomIDF):
 
     @property
     def as_version(self):
-        """Specify the desired :class:`EnergyPlusVersion` for the IDF model."""
         if self._as_version is None:
-            self._as_version = EnergyPlusVersion.current()
+            self._as_version = _latest_energyplus_version()
         return EnergyPlusVersion(self._as_version)
 
     @as_version.setter
@@ -630,11 +434,8 @@ class IDF(geomIDF):
 
     @property
     def output_directory(self):
-        """The output directory based on the hashing of the original file.
-
-        Notes:
-            The hashing is performed before transitions or modifications.
-        """
+        """Returns the output directory based on the hashing of the original file (
+        before transitions or modifications)."""
         if self._output_directory is None:
             cache_filename = self._original_cache
             output_directory = settings.cache_folder / cache_filename
@@ -654,9 +455,8 @@ class IDF(geomIDF):
 
     @property
     def output_prefix(self):
-        """Prefix for output file names (default: eplus)."""
         if self._output_prefix is None:
-            self._output_prefix = "eplus"
+            self._output_prefix = self.name.stem
         return self._output_prefix
 
     @output_prefix.setter
@@ -667,16 +467,7 @@ class IDF(geomIDF):
 
     @property
     def sim_id(self):
-        """The unique Id of the simulation.
-
-        Based on a subset of hashed variables:
-            - The idf model itself.
-            - epw
-            - annual
-            - design_day
-            - readvars
-            - as_version
-        """
+        """Returns the hash of the model"""
         if self._sim_id is None:
             self._sim_id = hash_model(
                 self,
@@ -685,7 +476,6 @@ class IDF(geomIDF):
                 design_day=self.design_day,
                 readvars=self.readvars,
                 ep_version=self.as_version,
-                include=self.include,
             )
         return self._sim_id
 
@@ -732,7 +522,7 @@ class IDF(geomIDF):
                 sql_object = self.anidfobject(
                     key="Output:SQLite".upper(), Option_Type="SimpleAndTabular"
                 )
-                if sql_object not in self.idfobjects["Output:SQLite".upper()]:
+                if sql_object not in self.idfobjects.Output_SQLite:
                     self.addidfobject(sql_object)
                 return self.simulate().sql()
             except Exception as e:
@@ -741,6 +531,7 @@ class IDF(geomIDF):
                 self._sql = sql_dict
         return self._sql
 
+    @property
     def htm(self):
         """Get the htm table report"""
         if self._htm is None:
@@ -752,7 +543,7 @@ class IDF(geomIDF):
                     output_prefix=self.output_prefix,
                 )
             except FileNotFoundError:
-                return self.simulate().htm()
+                return self.simulate().htm
             else:
                 self._htm = htm_dict
         return self._htm
@@ -764,7 +555,7 @@ class IDF(geomIDF):
             self._energyplus_its = 0
         return self._energyplus_its
 
-    def open_htm(self):
+    def htm_open(self):
         """Open .htm file in browser"""
         import webbrowser
 
@@ -772,7 +563,7 @@ class IDF(geomIDF):
 
         webbrowser.open(html.abspath())
 
-    def open_idf(self):
+    def idf_open(self):
         """Open .idf file in Ep-Launch"""
 
         self.save()
@@ -790,7 +581,7 @@ class IDF(geomIDF):
         else:  # linux variants
             subprocess.call(("xdg-open", filepath))
 
-    def open_last_simulation(self):
+    def idf_open_last_sim(self):
         """Open last simulation in Ep-Launch"""
 
         filepath, *_ = self.simulation_dir.files("*.idf")
@@ -806,7 +597,7 @@ class IDF(geomIDF):
         else:  # linux variants
             subprocess.call(("xdg-open", filepath))
 
-    def open_mdd(self):
+    def mdd_open(self):
         """Open .mdd file in browser. This file shows all the report meters along
         with their “availability” for the current input file"""
         import webbrowser
@@ -815,7 +606,7 @@ class IDF(geomIDF):
 
         webbrowser.open(mdd.abspath())
 
-    def open_mtd(self):
+    def mtd_open(self):
         """Open .mtd file in browser. This file contains the “meter details” for the
         run. This shows what report variables are on which meters and vice versa –
         which meters contain what report variables."""
@@ -850,8 +641,8 @@ class IDF(geomIDF):
                 self._area_conditioned = float(res)
             else:
                 area = 0
-                zones = self.idfobjects["ZONE"]
-                zone: EpBunch
+                zones = self.idfobjects.Zone
+                zone: Record
                 for zone in zones:
                     for surface in zone.zonesurfaces:
                         if hasattr(surface, "tilt"):
@@ -882,8 +673,8 @@ class IDF(geomIDF):
                 self._area_unconditioned = float(res)
             else:
                 area = 0
-                zones = self.idfobjects["ZONE"]
-                zone: EpBunch
+                zones = self.idfobjects.Zone
+                zone: Record
                 for zone in zones:
                     for surface in zone.zonesurfaces:
                         if hasattr(surface, "tilt"):
@@ -914,8 +705,8 @@ class IDF(geomIDF):
                 self._area_total = float(res)
             else:
                 area = 0
-                zones = self.idfobjects["ZONE"]
-                zone: EpBunch
+                zones = self.idfobjects.Zone
+                zone: Record
                 for zone in zones:
                     for surface in zone.zonesurfaces:
                         if hasattr(surface, "tilt"):
@@ -935,8 +726,8 @@ class IDF(geomIDF):
         """
         if self._partition_ratio is None:
             partition_lineal = 0
-            zones = self.idfobjects["ZONE"]
-            zone: EpBunch
+            zones = self.idfobjects.Zone
+            zone: Record
             for zone in zones:
                 for surface in [
                     surf
@@ -996,7 +787,7 @@ class IDF(geomIDF):
         """Get day of week for start day for the first found RUNPERIOD"""
         import calendar
 
-        day = self.idfobjects["RUNPERIOD"][0]["Day_of_Week_for_Start_Day"]
+        day = self.idfobjects.Runperiod.one().Day_of_Week_for_Start_Day
 
         if day.lower() == "sunday":
             return calendar.SUNDAY
@@ -1067,7 +858,7 @@ class IDF(geomIDF):
         original idf file, unless :meth:`IDF.save` is called.
 
         Hint:
-            Call `idf.meters.<output_group>.<meter_name>.values()` to retreive a
+            Call `idf.vairables.<output_group>.<meter_name>.values()` to retreive a
             time-series based on the :class:`pandas.Series` class which can be plotted.
 
             See :class:`Meter` and :class:`EnergySeries` for more information.
@@ -1092,7 +883,8 @@ class IDF(geomIDF):
         return self._variables
 
     def simulate(self, **kwargs):
-        """Execute EnergyPlus. Does not return anything.
+        """Execute EnergyPlus. Does not return anything. See
+        :meth:`simulation_files`, :meth:`processed_results` for simulation outputs.
 
         Keyword Args:
             eplus_file (str): path to the idf file.
@@ -1103,6 +895,8 @@ class IDF(geomIDF):
             prep_outputs (bool or list, optional): if True, meters and variable
                 outputs will be appended to the idf files. Can also specify custom
                 outputs as list of ep-object outputs.
+            simulname (str): The name of the simulation. (Todo: Currently not
+            implemented).
             keep_data (bool): If True, files created by EnergyPlus are saved to the
                 tmp_dir.
             annual (bool): If True then force annual simulation (default: False)
@@ -1147,9 +941,6 @@ class IDF(geomIDF):
             EnergyPlusProcessError: If an issue occurs with the execution of the
                 energyplus command.
 
-        See Also:
-            :meth:`simulation_files`, :meth:`processed_results` for simulation outputs.
-
         """
         # First, update keys with new values
         for key, value in kwargs.items():
@@ -1180,7 +971,7 @@ class IDF(geomIDF):
         # Run the expandobjects program if necessary
         with TemporaryDirectory(
             prefix="expandobjects_run_",
-            suffix=None,
+            suffix=self.output_prefix,
             dir=self.output_directory,
         ) as tmp:
             # Run the ExpandObjects preprocessor program
@@ -1192,22 +983,12 @@ class IDF(geomIDF):
                 raise e
 
         # Run the Basement preprocessor program if necessary
-        with TemporaryDirectory(
-            prefix="runBasement_run_",
-            suffix=None,
-            dir=self.output_directory,
-        ) as tmp:
-            basement_thread = BasementThread(self, tmp)
-            basement_thread.start()
-            basement_thread.join()
-        e = basement_thread.exception
-        if e is not None:
-            raise e
+        # Todo: Add Basement.exe Thread -> https://github.com/NREL/EnergyPlus/blob/4836252ecffbaf63e98b62a8e6613510de0046a9/scripts/Epl-run.bat#L271
 
         # Run the Slab preprocessor program if necessary
         with TemporaryDirectory(
-            prefix="runSlab_run_",
-            suffix=None,
+            prefix="RunSlab_run_",
+            suffix=self.output_prefix,
             dir=self.output_directory,
         ) as tmp:
             slab_thread = SlabThread(self, tmp)
@@ -1230,97 +1011,6 @@ class IDF(geomIDF):
         if e is not None:
             raise e
         return self
-
-    def savecopy(self, filename, lineendings="default", encoding="latin-1"):
-        """Save a copy of the file with the filename passed.
-
-        Args:
-            filename (str): Filepath to save the file.
-            lineendings (str): Line endings to use in the saved file. Options are
-            'default',
-                'windows' and 'unix' the default is 'default' which uses the line
-                endings for the current system.
-            encoding (str): Encoding to use for the saved file. The default is
-            'latin-1' which
-                is compatible with the EnergyPlus IDFEditor.
-
-        Returns:
-            Path: The new file path.
-        """
-        super(IDF, self).save(filename, lineendings, encoding)
-        return Path(filename)
-
-    def save(self, lineendings="default", encoding="latin-1", **kwargs):
-        """Write the IDF model to the text file. Uses
-        :meth:`~eppy.modeleditor.IDF.saveas`
-
-        Args:
-            filename (str): Filepath to save the file. If None then use the IDF.idfname
-                parameter. Also accepts a file handle.
-            lineendings (str) : Line endings to use in the saved file. Options are
-            'default',
-                'windows' and 'unix' the default is 'default' which uses the line
-                endings for the current system.
-            encoding (str): Encoding to use for the saved file. The default is
-                'latin-1' which is compatible with the EnergyPlus IDFEditor.
-        Returns:
-            IDF: The IDF model
-        """
-        super(IDF, self).save(
-            filename=self.idfname, lineendings=lineendings, encoding=encoding
-        )
-        if not settings.use_cache:
-            cache_filename = hash_model(self)
-            output_directory = settings.cache_folder / cache_filename
-            output_directory.makedirs_p()
-            self.simulation_dir.copytree(
-                output_directory / self.simulation_dir.basename(), dirs_exist_ok=True
-            )
-        log(f"saved '{self.name}' at '{self.idfname}'")
-        return self
-
-    def saveas(self, filename, lineendings="default", encoding="latin-1"):
-        """Save the IDF model as. Writes a new text file and load a new instance of
-        the IDF class (new object).
-
-        Args:
-            filename (str): Filepath to save the file. If None then use the IDF.idfname
-                parameter. Also accepts a file handle.
-            lineendings (str) : Line endings to use in the saved file. Options are
-            'default',
-                'windows' and 'unix' the default is 'default' which uses the line
-                endings for the current system.
-            encoding (str): Encoding to use for the saved file. The default is
-                'latin-1' which is compatible with the EnergyPlus IDFEditor.
-
-        Returns:
-            IDF: A new IDF object based on the new location file.
-        """
-        super(IDF, self).save(
-            filename=filename, lineendings=lineendings, encoding=encoding
-        )
-
-        import inspect
-
-        sig = inspect.signature(IDF.__init__)
-        kwargs = {
-            key: getattr(self, key)
-            for key in [a for a in sig.parameters]
-            if key not in ["self", "idfname", "kwargs"]
-        }
-
-        as_idf = IDF(filename, **kwargs)
-        # copy simulation_dir over to new location
-        file: Path
-        as_idf.simulation_dir.makedirs_p()
-        for file in self.simulation_files:
-            if self.output_prefix in file:
-                name = file.replace(self.output_prefix, as_idf.output_prefix)
-                name = Path(name).basename()
-            else:
-                name = file.basename()
-            file.copy(as_idf.simulation_dir / name)
-        return as_idf
 
     def process_results(self):
         """Returns the list of processed results as defined by self.custom_processes
@@ -1358,7 +1048,8 @@ class IDF(geomIDF):
                     ]
                 )
         except FileNotFoundError:
-            raise ValueError("No results to process. Have you called IDF.simulate()?")
+            self.simulate()
+            return self.process_results()
         else:
             return results
 
@@ -1440,8 +1131,8 @@ class IDF(geomIDF):
         total_surface_area = defaultdict(int)
         total_window_area = defaultdict(int)
 
-        zones = self.idfobjects["ZONE"]
-        zone: EpBunch
+        zones = self.idfobjects.Zone
+        zone: Record
         for zone in zones:
             multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
             for surface in [
@@ -1653,59 +1344,35 @@ class IDF(geomIDF):
             >>> )
 
         Returns:
-            EpBunch: the object
+            Record: the object
         """
-        # get list of objects
-        existing_objs = self.idfobjects[key]  # a list
-
+        key = key.replace(":", "_")
+        existing_objs = getattr(self.idfobjects, key)
         # create new object
         try:
             new_object = self.anidfobject(key, **kwargs)
-        except BadEPFieldError as e:
-            if str(e) == "unknown field Key_Name":
-                # Try backwards compatibility with EnergyPlus < 9.0.0
-                name = kwargs.pop("Key_Name")
-                kwargs["Name"] = name
-            else:
-                log(f"Could not add object {key} because of: {e}", lg.WARNING)
-                return None
+        except Exception as e:
+            raise e
         else:
-            new_object = self.anidfobject(key, **kwargs)
-            # If object is supposed to be 'unique-object', deletes all objects to be
+            # If object is supposed to be 'unique-object', delete all objects to be
             # sure there is only one of them when creating new object
             # (see following line)
-            if "unique-object" in set().union(
-                *(d.objidd[0].keys() for d in existing_objs)
-            ):
-                for obj in existing_objs:
-                    self.removeidfobject(obj)
-                    self.addidfobject(new_object)
-                    log(
-                        f"{obj} is a 'unique-object'; Removed and replaced with"
-                        f" {new_object}",
-                        lg.DEBUG,
-                    )
+            if "unique-object" in existing_objs._dev_descriptor.tags:
+                existing_objs.delete()
+                existing_objs.add(new_object.to_dict())
                 return new_object
-            if new_object in existing_objs:
-                # If obj already exists, simply return
-                log(
-                    f"object '{new_object}' already exists in {self.name}. "
-                    f"Skipping.",
-                    lg.DEBUG,
-                )
+            elif new_object in existing_objs:
                 return new_object
-            elif new_object not in existing_objs and new_object.nameexists():
-                obj = self.getobject(
-                    key=new_object.key.upper(), name=new_object.Name.upper()
-                )
-                self.removeidfobject(obj)
-                self.addidfobject(new_object)
-                log(
-                    f"{obj} exists but has different attributes; Removed and replaced "
-                    f"with {new_object}",
-                    lg.DEBUG,
-                )
-                return new_object
+            # elif new_object not in existing_objs and existing_objs.one(lambda x: x.name == new_object.name):
+            #     obj = existing_objs.one(lambda x: x.name == new_object.name)
+            #     self.removeidfobject(obj)
+            #     self.addidfobject(new_object)
+            #     log(
+            #         f"{obj} exists but has different attributes; Removed and replaced "
+            #         f"with {new_object}",
+            #         lg.DEBUG,
+            #     )
+            #     return new_object
             else:
                 # add to model and return
                 self.addidfobject(new_object)
@@ -1716,32 +1383,27 @@ class IDF(geomIDF):
         """Add an IDF object to the IDF.
 
         Args:
-            new_object (EpBunch): The IDF object to copy.
+            new_object (Record): The IDF object to copy.
 
         Returns:
-            EpBunch: object.
+            WorkspaceObject: object.
         """
-        key = new_object.key.upper()
-        self.idfobjects[key].append(new_object)
-        self._reset_dependant_vars("idfobjects")
+        return new_object.get_table().add(new_object.to_dict())
 
     def removeidfobject(self, idfobject):
         """Remove an IDF object from the IDF.
 
-        Parameters
-        ----------
-        idfobject : EpBunch object
-            The IDF object to remove.
+        Args:
+            idfobject (Record):
 
+        Returns:
+            Record: The added record
         """
-        key = idfobject.key.upper()
-        self.idfobjects[key].remove(idfobject)
-        self._reset_dependant_vars("idfobjects")
+        idfobject.delete()
 
-    def anidfobject(self, key, aname="", **kwargs):
-        # type: (str, str, **Any) -> EpBunch
+    def anidfobject(self, key, **kwargs):
         """Create an object, but don't add to the model (See
-        :func:`~archetypal.idfclass.idf.IDF.newidfobject`). If you don't specify a value
+        :func:`~archetypal.idfclass.IDF.newidfobject`). If you don't specify a value
         for a field, the default value will be set.
 
         Example:
@@ -1762,27 +1424,13 @@ class IDF(geomIDF):
                 fields in the EnergyPlus object.
 
         Returns:
-            EpBunch: object.
+            IdfObject: object.
         """
-        obj = newrawobject(self.model, self.idd_info, key)
-        abunch = obj2bunch(self.model, self.idd_info, obj)
-        if aname:
-            warnings.warn(
-                "The aname parameter should no longer be used (%s)." % aname,
-                UserWarning,
-            )
-            namebunch(abunch, aname)
-        for k, v in kwargs.items():
-            try:
-                abunch[k] = v
-            except BadEPFieldError as e:
-                # Backwards compatibility
-                if str(e) == "unknown field Key_Name":
-                    abunch["Name"] = v
-                else:
-                    raise e
-        abunch.theidf = self
-        return abunch
+        # Record field keys are lower case with underscores instead of spaces
+        key = key.replace(":", "_")
+        kwargs = {k.replace(" ", "_").lower(): v for k, v in kwargs.items()}
+        record = Record(getattr(self._workspace, key), kwargs)
+        return record
 
     def get_schedule_type_limits_data_by_name(self, schedule_limit_name):
         """Returns the data for a particular 'ScheduleTypeLimits' object
@@ -1831,20 +1479,25 @@ class IDF(geomIDF):
             yearly_only (bool): If True, return only yearly schedules
 
         Returns:
-            (dict of eppy.bunch_subclass.EpBunch): the schedules with their
+            (dict of eppy.bunch_subclass.Record): the schedules with their
                 name as a key
         """
-        schedule_types = list(map(str.upper, self.getiddgroupdict()["Schedules"]))
+        schedule_types = [
+            "Schedule_Year",
+            "Schedule_Compact",
+            "Schedule_Constant",
+            "Schedule_File",
+        ]
         if yearly_only:
             schedule_types = [
-                "Schedule:Year".upper(),
-                "Schedule:Compact".upper(),
-                "Schedule:Constant".upper(),
-                "Schedule:File".upper(),
+                "Schedule_Year",
+                "Schedule_Compact",
+                "Schedule_Constant",
+                "Schedule_File",
             ]
         scheds = {}
         for sched_type in schedule_types:
-            for sched in self.idfobjects[sched_type]:
+            for sched in getattr(self.idfobjects, sched_type):
                 try:
                     if sched.key.upper() in schedule_types:
                         scheds[sched.Name.upper()] = sched
@@ -1875,19 +1528,38 @@ class IDF(geomIDF):
 
         used_schedules = []
         all_schedules = self.get_all_schedules(yearly_only=yearly_only)
-        for object_name in self.idfobjects:
-            for object in self.idfobjects[object_name]:
-                if object.key.upper() not in schedule_types:
-                    for fieldvalue in object.fieldvalues:
-                        try:
-                            if (
-                                fieldvalue.upper() in all_schedules.keys()
-                                and fieldvalue not in used_schedules
-                            ):
-                                used_schedules.append(fieldvalue)
-                        except (KeyError, AttributeError):
-                            pass
+        for object in self.idfobjects:
+            if object.key.upper() not in schedule_types:
+                for fieldvalue in object.fieldvalues:
+                    try:
+                        if (
+                            fieldvalue.upper() in all_schedules.keys()
+                            and fieldvalue not in used_schedules
+                        ):
+                            used_schedules.append(fieldvalue)
+                    except (KeyError, AttributeError):
+                        pass
         return used_schedules
+
+    @deprecated(
+        deprecated_in="1.3.5",
+        removed_in="1.4",
+        current_version=__version__,
+        details="Use IDF.name instead",
+    )
+    def building_name(self, use_idfname=False):
+        """
+        Args:
+            use_idfname:
+        """
+        if use_idfname:
+            return os.path.basename(self.idfname)
+        else:
+            bld = self.idfobjects.Building
+            if bld is not None:
+                return bld[0].Name
+            else:
+                return os.path.basename(self.idfname)
 
     def rename(self, objkey, objname, newname):
         """rename all the references to this objname.
@@ -1897,13 +1569,13 @@ class IDF(geomIDF):
         idfobject[idfobject.objls[findex]].lower() == objname.lower())
 
         Args:
-            objkey (str): EpBunch we want to rename and rename all the
+            objkey (str): Record we want to rename and rename all the
                 occurrences where this object is in the IDF file
-            objname (str): The name of the EpBunch to rename
-            newname (str): New name used to rename the EpBunch
+            objname (str): The name of the Record to rename
+            newname (str): New name used to rename the Record
 
         Returns:
-            theobject (EpBunch): The renamed idf object
+            theobject (Record): The renamed idf object
         """
 
         refnames = eppy.modeleditor.getrefnames(self, objkey)
@@ -1911,7 +1583,7 @@ class IDF(geomIDF):
             objlists = eppy.modeleditor.getallobjlists(self, refname)
             # [('OBJKEY', refname, fieldindexlist), ...]
             for robjkey, refname, fieldindexlist in objlists:
-                idfobjects = self.idfobjects[robjkey]
+                idfobjects = getattr(self.idfobjects, robjkey)
                 for idfobject in idfobjects:
                     for findex in fieldindexlist:  # for each field
                         if (
@@ -1941,7 +1613,7 @@ class IDF(geomIDF):
             EnergySeries_kwds:
         """
         if prep_outputs:
-            self.outputs.add_custom(prep_outputs).apply()
+            Outputs(self).add_custom(prep_outputs).apply()
             self.simulate()
         rd = ReportData.from_sqlite(self.sql_file, table_name=energy_out_variable_name)
         profile = EnergySeries.from_reportdata(
@@ -2002,6 +1674,20 @@ class IDF(geomIDF):
                             filename="transition_" + self.name,
                             log_dir=self.idfversionupdater_dir,
                         )
+
+    def idfstr(self):
+        return self._workspace.__str__()
+
+
+@extend_class(Record)
+def __eq__(self, other):
+    """Tests the equality of two Record objects using all attribute values"""
+    if not isinstance(other, Record):
+        return False
+    return self.to_dict() == other.to_dict()
+
+
+Record.key = property(lambda x: x._table.get_ref())
 
 
 def _process_csv(file, working_dir, simulname):

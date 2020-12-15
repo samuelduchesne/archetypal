@@ -25,4 +25,5 @@ dependencies:
     - tsam
     - deprecation
     - sigfig
+    - pqdm
     - -r file:requirements-dev.txt

@@ -19,6 +19,7 @@ from io import StringIO
 from itertools import chain
 from math import isclose
 from tempfile import TemporaryDirectory
+from typing import Any
 
 import eppy
 import pandas as pd
@@ -43,14 +44,11 @@ from archetypal.eplus_interface.exceptions import (
 from archetypal.eplus_interface.expand_objects import ExpandObjectsThread
 from archetypal.eplus_interface.slab import SlabThread
 from archetypal.eplus_interface.transition import TransitionThread
-from archetypal.eplus_interface.version import (
-    EnergyPlusVersion,
-    get_eplus_dirs,
-)
+from archetypal.eplus_interface.version import EnergyPlusVersion, get_eplus_dirs
 from archetypal.idfclass.meters import Meters
 from archetypal.idfclass.outputs import Outputs
-from archetypal.idfclass.util import get_idf_version, hash_model
 from archetypal.idfclass.reports import get_report
+from archetypal.idfclass.util import get_idf_version, hash_model
 from archetypal.idfclass.variables import Variables
 from archetypal.schedule import Schedule
 

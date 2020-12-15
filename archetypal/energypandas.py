@@ -235,7 +235,7 @@ class EnergySeries(Series):
             energy_series.normalize(inplace=True)
         if sort_values:
             energy_series.sort_values(ascending=ascending, inplace=True)
-        if to_units:
+        if to_units and not normalize:
             energy_series.to_units(to_units, inplace=True)
         return energy_series
 
@@ -260,11 +260,10 @@ class EnergySeries(Series):
             result.units = to_units
             return result
 
-    def normalize(self, feature_range=(0, 1), inplace=False):
+    def normalize(self, inplace=False):
         """Returns a normalized EnergySeries
 
         Args:
-            feature_range:
             inplace:
         """
         x = self.values  # returns a numpy array

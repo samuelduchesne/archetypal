@@ -40,18 +40,18 @@ class Variable:
             EnergySeries: The time-series object.
         """
         if self._values is None:
-            if self._epobject not in self._idf.idfobjects[self._epobject.key]:
+            if self._epobject not in getattr(self._idf.idfobjects, self._epobject.key):
                 self._idf.addidfobject(self._epobject)
                 self._idf.simulate()
             report = ReportData.from_sqlite(
                 sqlite_file=self._idf.sql_file,
-                table_name=self._epobject.Variable_Name,
+                table_name=self._epobject.variable_name,
                 environment_type=1 if self._idf.design_day else 3,
             )
             self._values = report
         return EnergyDataFrame.from_reportdata(
             self._values,
-            name=self._epobject.Variable_Name,
+            name=self._epobject.variable_name,
             normalize=normalize,
             sort_values=sort_values,
             to_units=units,
@@ -65,7 +65,7 @@ class VariableGroup:
 
         for i, variable in variables_dict.items():
             variable_name = (
-                variable["Variable_Name"].replace(":", "__").replace(" ", "_")
+                variable["variable_name"].replace(":", "__").replace(" ", "_")
             )
             self._properties[variable_name] = Variable(idf, variable)
             setattr(self, variable_name, self._properties[variable_name])
@@ -84,9 +84,9 @@ class Variables:
         variables = pd.read_csv(
             rdd,
             skiprows=2,
-            names=["key", "Key_Value", "Variable_Name", "Reporting_Frequency"],
+            names=["key", "Key_Value", "variable_name", "reporting_frequency"],
         )
-        variables.Reporting_Frequency = variables.Reporting_Frequency.str.replace(
+        variables.reporting_frequency = variables.reporting_frequency.str.replace(
             "\;.*", ""
         )
         for key, group in variables.groupby("key"):

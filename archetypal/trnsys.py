@@ -123,15 +123,15 @@ def convert_idf_to_trnbuild(
         {
             "key": "Output:Variable".upper(),
             **dict(
-                Variable_Name="Zone Thermostat Heating Setpoint Temperature",
-                Reporting_Frequency="hourly",
+                variable_name="Zone Thermostat Heating Setpoint Temperature",
+                reporting_frequency="hourly",
             ),
         },
         {
             "key": "Output:Variable".upper(),
             **dict(
-                Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
-                Reporting_Frequency="hourly",
+                variable_name="Zone Thermostat Cooling Setpoint Temperature",
+                reporting_frequency="hourly",
             ),
         },
     ]

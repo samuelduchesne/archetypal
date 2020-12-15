@@ -50,7 +50,7 @@ class Meter:
             EnergySeries: The time-series object.
         """
         if self._values is None:
-            if self._epobject not in self._idf.idfobjects[self._epobject.key]:
+            if self._epobject not in getattr(self._idf.idfobjects, self._epobject.key):
                 self._idf.addidfobject(self._epobject)
                 self._idf.simulate()
             report = ReportData.from_sqlite(
@@ -125,9 +125,9 @@ class Meters:
         if not mdd:
             raise FileNotFoundError
         meters = pd.read_csv(
-            mdd, skiprows=2, names=["key", "Key_Name", "Reporting_Frequency"]
+            mdd, skiprows=2, names=["key", "Key_Name", "reporting_frequency"]
         )
-        meters.Reporting_Frequency = meters.Reporting_Frequency.str.replace("\;.*", "")
+        meters.reporting_frequency = meters.reporting_frequency.str.replace("\;.*", "")
         for key, group in meters.groupby("key"):
             meters_dict = group.T.to_dict()
             setattr(

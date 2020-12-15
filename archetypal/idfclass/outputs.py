@@ -27,7 +27,7 @@ class Outputs:
             >>> to_add = dict(
             >>>       key= "OUTPUT:METER",
             >>>       Key_Name="Electricity:Facility",
-            >>>       Reporting_Frequency="hourly",
+            >>>       reporting_frequency="hourly",
             >>> )
             >>> outputs.add_custom([to_add]).apply()
 
@@ -156,141 +156,141 @@ class Outputs:
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Air System Total Heating Energy",
-                    Reporting_Frequency="hourly",
+                    variable_name="Air System Total Heating Energy",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Air System Total Cooling Energy",
-                    Reporting_Frequency="hourly",
+                    variable_name="Air System Total Cooling Energy",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
-                    Reporting_Frequency="hourly",
+                    variable_name="Zone Ideal Loads Zone Total Cooling Energy",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
-                    Reporting_Frequency="hourly",
+                    variable_name="Zone Ideal Loads Zone Total Heating Energy",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Zone Thermostat Heating Setpoint Temperature",
-                    Reporting_Frequency="hourly",
+                    variable_name="Zone Thermostat Heating Setpoint Temperature",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
-                    Reporting_Frequency="hourly",
+                    variable_name="Zone Thermostat Cooling Setpoint Temperature",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Heat Exchanger Total Heating Rate",
-                    Reporting_Frequency="hourly",
+                    variable_name="Heat Exchanger Total Heating Rate",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Heat Exchanger Sensible Effectiveness",
-                    Reporting_Frequency="hourly",
+                    variable_name="Heat Exchanger Sensible Effectiveness",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Heat Exchanger Latent Effectiveness",
-                    Reporting_Frequency="hourly",
+                    variable_name="Heat Exchanger Latent Effectiveness",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Water Heater Heating Energy",
-                    Reporting_Frequency="hourly",
+                    variable_name="Water Heater Heating Energy",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "OUTPUT:METER",
                 **dict(
                     Key_Name="HeatRejection:EnergyTransfer",
-                    Reporting_Frequency="hourly",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "OUTPUT:METER",
-                **dict(Key_Name="Heating:EnergyTransfer", Reporting_Frequency="hourly"),
+                **dict(Key_Name="Heating:EnergyTransfer", reporting_frequency="hourly"),
             },
             {
                 "key": "OUTPUT:METER",
-                **dict(Key_Name="Cooling:EnergyTransfer", Reporting_Frequency="hourly"),
+                **dict(Key_Name="Cooling:EnergyTransfer", reporting_frequency="hourly"),
             },
             {
                 "key": "OUTPUT:METER",
                 **dict(
-                    Key_Name="Heating:DistrictHeating", Reporting_Frequency="hourly"
+                    Key_Name="Heating:DistrictHeating", reporting_frequency="hourly"
                 ),
             },
             {
                 "key": "OUTPUT:METER",
-                **dict(Key_Name="Heating:Electricity", Reporting_Frequency="hourly"),
+                **dict(Key_Name="Heating:Electricity", reporting_frequency="hourly"),
             },
             {
                 "key": "OUTPUT:METER",
-                **dict(Key_Name="Heating:Gas", Reporting_Frequency="hourly"),
+                **dict(Key_Name="Heating:Gas", reporting_frequency="hourly"),
             },
             {
                 "key": "OUTPUT:METER",
                 **dict(
-                    Key_Name="Cooling:DistrictCooling", Reporting_Frequency="hourly"
+                    Key_Name="Cooling:DistrictCooling", reporting_frequency="hourly"
                 ),
             },
             {
                 "key": "OUTPUT:METER",
-                **dict(Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"),
+                **dict(Key_Name="Cooling:Electricity", reporting_frequency="hourly"),
             },
             {
                 "key": "OUTPUT:METER",
-                **dict(Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"),
+                **dict(Key_Name="Cooling:Electricity", reporting_frequency="hourly"),
             },
             {
                 "key": "OUTPUT:METER",
-                **dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
+                **dict(Key_Name="Cooling:Gas", reporting_frequency="hourly"),
             },
             {
                 "key": "OUTPUT:METER",
                 **dict(
-                    Key_Name="WaterSystems:EnergyTransfer", Reporting_Frequency="hourly"
+                    Key_Name="WaterSystems:EnergyTransfer", reporting_frequency="hourly"
                 ),
             },
             {
                 "key": "OUTPUT:METER",
-                **dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
+                **dict(Key_Name="Cooling:Gas", reporting_frequency="hourly"),
             },
             {
                 "key": "OUTPUT:METER",
                 **dict(
-                    Key_Name="Refrigeration:Electricity", Reporting_Frequency="hourly"
+                    Key_Name="Refrigeration:Electricity", reporting_frequency="hourly"
                 ),
             },
             {
                 "key": "OUTPUT:METER",
                 **dict(
                     Key_Name="Refrigeration:EnergyTransfer",
-                    Reporting_Frequency="hourly",
+                    reporting_frequency="hourly",
                 ),
             },
         ]
@@ -307,36 +307,36 @@ class Outputs:
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Air System Total Heating Energy",
-                    Reporting_Frequency="hourly",
+                    variable_name="Air System Total Heating Energy",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Air System Total Cooling Energy",
-                    Reporting_Frequency="hourly",
+                    variable_name="Air System Total Cooling Energy",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
-                    Reporting_Frequency="hourly",
+                    variable_name="Zone Ideal Loads Zone Total Cooling Energy",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
-                    Reporting_Frequency="hourly",
+                    variable_name="Zone Ideal Loads Zone Total Heating Energy",
+                    reporting_frequency="hourly",
                 ),
             },
             {
                 "key": "Output:Variable".upper(),
                 **dict(
-                    Variable_Name="Water Heater Heating Energy",
-                    Reporting_Frequency="hourly",
+                    variable_name="Water Heater Heating Energy",
+                    reporting_frequency="hourly",
                 ),
             },
         ]
@@ -352,25 +352,25 @@ class Outputs:
         outputs = [
             {
                 "key": "OUTPUT:METER",
-                **dict(Key_Name="Electricity:Facility", Reporting_Frequency="hourly"),
+                **dict(Key_Name="Electricity:Facility", reporting_frequency="hourly"),
             },
             {
                 "key": "OUTPUT:METER",
-                **dict(Key_Name="Gas:Facility", Reporting_Frequency="hourly"),
+                **dict(Key_Name="Gas:Facility", reporting_frequency="hourly"),
             },
             {
                 "key": "OUTPUT:METER",
                 **dict(
-                    Key_Name="WaterSystems:Electricity", Reporting_Frequency="hourly"
+                    Key_Name="WaterSystems:Electricity", reporting_frequency="hourly"
                 ),
             },
             {
                 "key": "OUTPUT:METER",
-                **dict(Key_Name="Heating:Electricity", Reporting_Frequency="hourly"),
+                **dict(Key_Name="Heating:Electricity", reporting_frequency="hourly"),
             },
             {
                 "key": "OUTPUT:METER",
-                **dict(Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"),
+                **dict(Key_Name="Cooling:Electricity", reporting_frequency="hourly"),
             },
         ]
         self._outputs.extend(outputs)

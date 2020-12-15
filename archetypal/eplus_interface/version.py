@@ -86,7 +86,34 @@ def warn_if_not_compatible():
 
 
 class EnergyPlusVersion(Version):
-    """"""
+    try:
+        iddnames = set(
+            chain.from_iterable(
+                (
+                    (basedir / "PreProcess" / "IDFVersionUpdater").files("*.idd")
+                    for basedir in get_eplus_basedirs()
+                )
+            )
+        )
+    except FileNotFoundError:
+        _choices = ["9-2-0"]  # Little hack in case E+ is not installed
+    else:
+        _choices = set(
+            re.match("V(.*)-Energy\+", idd.stem).groups()[0] for idd in iddnames
+        )
+
+    @property
+    def tuple(self):
+        return self.major, self.minor, self.micro
+
+    @property
+    def dash(self):
+        # type: () -> str
+        return "-".join(map(str, (self.major, self.minor, self.micro)))
+
+    def __repr__(self):
+        # type: () -> str
+        return "<EnergyPlusVersion({0})>".format(repr(str(self)))
 
     def __init__(self, version):
         """
@@ -101,49 +128,5 @@ class EnergyPlusVersion(Version):
         if isinstance(version, str) and "-" in version:
             version = version.replace("-", ".")
         super(EnergyPlusVersion, self).__init__(version)
-        if self.dash not in self.valid_versions:
+        if self.dash not in self._choices:
             raise InvalidEnergyPlusVersion
-
-    def __repr__(self):
-        # type: () -> str
-        return "<EnergyPlusVersion({0})>".format(repr(str(self)))
-
-    @classmethod
-    def latest(cls):
-        """Return the latest EnergyPlus version installed"""
-        version = _latest_energyplus_version()
-        return cls(version)
-
-    @classmethod
-    def current(cls):
-        """Return the current EnergyPlus version specified.
-
-        Specified by :ref:`archetypal.settings.ep_version`
-        """
-        version = settings.ep_version
-        return cls(version)
-
-    @property
-    def dash(self):
-        # type: () -> str
-        return "-".join(map(str, (self.major, self.minor, self.micro)))
-
-    @property
-    def valid_versions(self):
-        try:
-            # Get all possible iddnames from any E+ install
-            iddnames = set(
-                chain.from_iterable(
-                    (
-                        (basedir / "PreProcess" / "IDFVersionUpdater").files("*.idd")
-                        for basedir in get_eplus_basedirs()
-                    )
-                )
-            )
-        except FileNotFoundError:
-            _choices = ["9-2-0"]  # Little hack in case E+ is not installed
-        else:
-            _choices = set(
-                re.match("V(.*)-Energy\+", idd.stem).groups()[0] for idd in iddnames
-            )
-        return _choices

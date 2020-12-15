@@ -63,6 +63,7 @@ class IDF(object):
     """Class for loading and parsing idf models and running simulations and
     retrieving results.
     """
+
     def __init__(
         self,
         idfname=None,
@@ -644,14 +645,19 @@ class IDF(object):
                 zones = self.idfobjects.Zone
                 zone: Record
                 for zone in zones:
+                    surface: Record
                     for surface in zone.zonesurfaces:
+                        surface.set_defaults()
                         if hasattr(surface, "tilt"):
                             if surface.tilt == 180.0:
-                                part_of = int(
-                                    zone.Part_of_Total_Floor_Area.upper() != "NO"
-                                )
+                                if zone.part_of_total_floor_area:
+                                    part_of = int(
+                                        zone.part_of_total_floor_area.upper() != "NO"
+                                    )
+                                else:
+                                    part_of = 0
                                 multiplier = float(
-                                    zone.Multiplier if zone.Multiplier != "" else 1
+                                    zone.multiplier if zone.multiplier else 1
                                 )
 
                                 area += surface.area * multiplier * part_of

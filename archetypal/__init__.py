@@ -23,6 +23,7 @@ from .reportdata import ReportData
 from .schedule import Schedule
 from .plot import *
 from .eplus_interface import *
+from .eplus_interface.extensions import geometry, eppy
 from .idfclass import *
 from .dataportal import *
 from .trnsys import *

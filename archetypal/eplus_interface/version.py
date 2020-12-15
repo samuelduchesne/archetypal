@@ -87,14 +87,12 @@ def warn_if_not_compatible():
 
 class EnergyPlusVersion(Version):
     try:
-        iddnames = set(
-            chain.from_iterable(
-                (
-                    (basedir / "PreProcess" / "IDFVersionUpdater").files("*.idd")
-                    for basedir in get_eplus_basedirs()
-                )
-            )
-        )
+        basedirs_ = []
+        for basedir in get_eplus_basedirs():
+            updater_ = basedir / "PreProcess" / "IDFVersionUpdater"
+            if updater_.exists():
+                basedirs_.append(updater_.files("*.idd"))
+        iddnames = set(chain.from_iterable(basedirs_))
     except FileNotFoundError:
         _choices = ["9-2-0"]  # Little hack in case E+ is not installed
     else:

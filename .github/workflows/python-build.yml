@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ 3.7, 3.8 ]
+        python-version: [3.7, 3.8]
+        ep-version: [9.2.0, 9.4.0]
         include:
          - ep-version: 9.2.0
            ep-sha: 921312fa1d

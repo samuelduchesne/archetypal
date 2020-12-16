@@ -8,15 +8,15 @@ fi
 if [[ -z "${ENERGYPLUS_INSTALL_VERSION}" ]]; then
   ENERGYPLUS_INSTALL_VERSION=9-2-0
 fi
-if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+if [[ "${TRAVIS_OS_NAME}" == "osx" ]]; then
   EXT=dmg
   PLATFORM=Darwin
 fi
-if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
   EXT="sh"
   PLATFORM=Linux
 fi
-if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+if [[ "${TRAVIS_OS_NAME}" == "windows" ]]; then
   EXT=zip
   PLATFORM=Windows
 fi

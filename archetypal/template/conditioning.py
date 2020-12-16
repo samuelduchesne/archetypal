@@ -814,8 +814,8 @@ class ZoneConditioning(UmiBase):
         )
 
         # Set defaults
-        HeatRecoveryEfficiencyLatent = 0.7
-        HeatRecoveryEfficiencySensible = 0.65
+        HeatRecoveryEfficiencyLatent = 0.65
+        HeatRecoveryEfficiencySensible = 0.7
         HeatRecoveryType = HeatRecoveryTypes.NONE
         comment = ""
 
@@ -859,8 +859,8 @@ class ZoneConditioning(UmiBase):
             elif object.key.upper() == "HeatExchanger:Desiccant:BalancedFlow".upper():
                 # Do HeatExchanger:Dessicant:BalancedFlow
                 # Use default values
-                HeatRecoveryEfficiencyLatent = 0.7
-                HeatRecoveryEfficiencySensible = 0.65
+                HeatRecoveryEfficiencyLatent = 0.65
+                HeatRecoveryEfficiencySensible = 0.7
                 HeatRecoveryType = HeatRecoveryTypes.Enthalpy
 
             elif (

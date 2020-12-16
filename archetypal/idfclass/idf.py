@@ -1271,9 +1271,10 @@ class IDF(geomIDF):
             cache_filename = hash_model(self)
             output_directory = settings.cache_folder / cache_filename
             output_directory.makedirs_p()
-            self.simulation_dir.copytree(
-                output_directory / self.simulation_dir.basename(), dirs_exist_ok=True
-            )
+            dst = output_directory / self.simulation_dir.basename()
+            if dst.exists():
+                dst.rmtree_p()
+            self.simulation_dir.copytree(dst)
         log(f"saved '{self.name}' at '{self.idfname}'")
         return self
 

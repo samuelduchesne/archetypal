@@ -8,20 +8,19 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
         python-version: [3.7, 3.8]
         ep-version: [9.2.0, 9.4.0]
         include:
          - ep-version: 9.2.0
            ep-sha: 921312fa1d
            ep-install: 9-2-0
-           ep-os: linux
          - ep-version: 9.4.0
            ep-sha: 998c4b761e
            ep-install: 9-4-0
-           ep-os: linux
     
     steps:
       - name: Install builder
@@ -57,7 +56,7 @@ jobs:
           ENERGYPLUS_VERSION: ${{ matrix.ep-version }}
           ENERGYPLUS_SHA: ${{ matrix.ep-sha }}
           ENERGYPLUS_INSTALL_VERSION: ${{ matrix.ep-install }}
-          TRAVIS_OS_NAME: ${{ matrix.ep-os }}
+          OS_NAME: ${{ matrix.os }}
         run: sh ./install_energyplus.sh
       - name: Lint with flake8
         run: |

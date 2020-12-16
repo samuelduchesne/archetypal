@@ -429,7 +429,7 @@ class TestOpaqueMaterial:
         Args:
             idf:
         """
-        yield OpaqueMaterial(Conductivity=200, SpecificHeat=4.18, Name="mat_b", idf=idf)
+        yield OpaqueMaterial(Conductivity=0.2, SpecificHeat=4.18, Name="mat_b", idf=idf)
 
     def test_add_materials(self, mat_a, mat_b):
         """test __add__() for OpaqueMaterial
@@ -459,7 +459,7 @@ class TestOpaqueMaterial:
         id_ = mat_a.id  # storing mat_a's id.
 
         mat_b = OpaqueMaterial(
-            Conductivity=200, SpecificHeat=4.18, Name="mat_ib", idf=idf
+            Conductivity=0.2, SpecificHeat=4.18, Name="mat_ib", idf=idf
         )
         mat_a += mat_b
         assert mat_a
@@ -1041,7 +1041,7 @@ class TestOpaqueConstruction:
             Conductivity=100, SpecificHeat=4.18, Name="mat_a", idf=idf
         )
         mat_b = OpaqueMaterial(
-            Conductivity=200, SpecificHeat=4.18, Name="mat_b", idf=idf
+            Conductivity=0.2, SpecificHeat=4.18, Name="mat_b", idf=idf
         )
         thickness = 0.10
         layers = [MaterialLayer(mat_a, thickness), MaterialLayer(mat_b, thickness)]

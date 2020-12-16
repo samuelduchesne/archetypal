@@ -468,27 +468,28 @@ class TestOpaqueMaterial:
         assert mat_a.id != mat_b.id
 
     def test_opaqueMaterial_from_to_json(self, config, small_idf_obj):
-        """
-        Args:
-            config:
-            small_idf_obj:
-        """
+        """Get OpaqueMaterial, convert to json, load back and compare."""
         from archetypal.template import OpaqueMaterial
 
         idf = small_idf_obj
         if idf.idfobjects["MATERIAL"]:
-            opaqMat_epBunch = OpaqueMaterial.from_epbunch(idf.idfobjects["MATERIAL"][0])
-            opaqMat_epBunch.to_json()
+            opaqMat_epBunch = OpaqueMaterial.from_epbunch(
+                idf.idfobjects["MATERIAL"][0]
+            )
+            opaqMat_json= opaqMat_epBunch.to_json()
+            assert OpaqueMaterial(**opaqMat_json) == opaqMat_epBunch
         if idf.idfobjects["MATERIAL:NOMASS"]:
             opaqMat_epBunch = OpaqueMaterial.from_epbunch(
                 idf.idfobjects["MATERIAL:NOMASS"][0]
             )
-            opaqMat_epBunch.to_json()
+            opaqMat_json = opaqMat_epBunch.to_json()
+            assert OpaqueMaterial(**opaqMat_json) == opaqMat_epBunch
         if idf.idfobjects["MATERIAL:AIRGAP"]:
             opaqMat_epBunch = OpaqueMaterial.from_epbunch(
                 idf.idfobjects["MATERIAL:AIRGAP"][0]
             )
-            opaqMat_epBunch.to_json()
+            opaqMat_json = opaqMat_epBunch.to_json()
+            assert OpaqueMaterial(**opaqMat_json) == opaqMat_epBunch
 
     def test_hash_eq_opaq_mat(self, small_idf_obj, other_idf_object):
         """Test equality and hashing of :class:`TestOpaqueMaterial`

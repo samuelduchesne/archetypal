@@ -306,7 +306,7 @@ class OpaqueMaterial(UmiBase):
             Roughness = epbunch.Roughness
             SolarAbsorptance = epbunch.Solar_Absorptance
             SpecificHeat = epbunch.Specific_Heat
-            ThermalEmittance = 1 - epbunch.Thermal_Absorptance  # as used by Archsim
+            ThermalEmittance = epbunch.Thermal_Absorptance
             VisibleAbsorptance = epbunch.Visible_Absorptance
             Thickness = epbunch.Thickness
             return cls(
@@ -331,7 +331,7 @@ class OpaqueMaterial(UmiBase):
             Thickness = Conductivity * epbunch.Thermal_Resistance
             Roughness = epbunch.Roughness
             SolarAbsorptance = epbunch.Solar_Absorptance
-            ThermalEmittance = 1 - epbunch.Thermal_Absorptance  # as used by Archsim
+            ThermalEmittance = epbunch.Thermal_Absorptance
             VisibleAbsorptance = epbunch.Visible_Absorptance
             return cls(
                 Conductivity=Conductivity,

@@ -17,11 +17,11 @@ jobs:
          - ep-version: 9.2.0
            ep-sha: 921312fa1d
            ep-install: 9-2-0
-           os: linux
+           ep-os: linux
          - ep-version: 9.4.0
            ep-sha: 998c4b761e
            ep-install: 9-4-0
-           os: linux
+           ep-os: linux
     
     steps:
       - name: Install builder
@@ -57,7 +57,7 @@ jobs:
           ENERGYPLUS_VERSION: ${{ matrix.ep-version }}
           ENERGYPLUS_SHA: ${{ matrix.ep-sha }}
           ENERGYPLUS_INSTALL_VERSION: ${{ matrix.ep-install }}
-          TRAVIS_OS_NAME: ${{ matrix.os }}
+          TRAVIS_OS_NAME: ${{ matrix.ep-os }}
         run: sh ./install_energyplus.sh
       - name: Lint with flake8
         run: |

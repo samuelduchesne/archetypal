@@ -8,15 +8,15 @@ fi
 if [[ -z "${ENERGYPLUS_INSTALL_VERSION}" ]]; then
   export ENERGYPLUS_INSTALL_VERSION=9-2-0
 fi
-if [[ $TRAVIS_OS_NAME == "osx" ]]; then
+if [[ "$OS_NAME" == "osx" ]]; then
   export EXT=dmg
   export PLATFORM=Darwin
 fi
-if [[ $TRAVIS_OS_NAME == "linux" ]]; then
+if [[ "$OS_NAME" == "linux" ]]; then
   export EXT="sh"
   export PLATFORM=Linux
 fi
-if [[ $TRAVIS_OS_NAME == "windows" ]]; then
+if [[ "$OS_NAME" == "windows" ]]; then
   export EXT=zip
   export PLATFORM=Windows
 fi
@@ -28,15 +28,15 @@ echo "$ENERGYPLUS_DOWNLOAD_URL"
 curl -SL -C - "$ENERGYPLUS_DOWNLOAD_URL" -o "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
 
 # Extra downloads
-if [[ $TRAVIS_OS_NAME == "linux" ]]; then
+if [[ "$OS_NAME" == "linux" ]]; then
   ATTCHBASE=97
   ATTCHNUM=8230
 fi
-if [[ $TRAVIS_OS_NAME == "osx" ]]; then
+if [[ "$OS_NAME" == "osx" ]]; then
   ATTCHBASE=98
   ATTCHNUM=8232
 fi
-if [[ $TRAVIS_OS_NAME == "windows" ]]; then
+if [[ "$OS_NAME" == "windows" ]]; then
   ATTCHBASE=86
   ATTCHNUM=8231
 fi
@@ -44,7 +44,7 @@ EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve.com/Knowledgebase/Article/GetAtt
 curl -SL -C - $EXTRAS_DOWNLOAD_URL -o $ATTCHNUM.zip
 
 # Install EnergyPlus and Extra Downloads
-if [ $TRAVIS_OS_NAME == "linux" ]; then
+if [ "$OS_NAME" == "linux" ]; then
   sudo chmod +x "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
   printf "y\r" | sudo ./"$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
   sudo tar zxvf $ATTCHNUM.zip -C /usr/local/EnergyPlus-"$ENERGYPLUS_INSTALL_VERSION"/PreProcess/IDFVersionUpdater
@@ -54,7 +54,7 @@ if [ $TRAVIS_OS_NAME == "linux" ]; then
   sudo rm "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
   sudo rm $ATTCHNUM.zip
 fi
-if [ $TRAVIS_OS_NAME == "osx" ]; then
+if [ "$OS_NAME" == "osx" ]; then
   # getting custom install script https://github.com/NREL/EnergyPlus/pull/7615
   curl -SL -C - https://raw.githubusercontent.com/jmarrec/EnergyPlus/40afb275f66201db5305f54df6c070d0b0cb4fc3/cmake/qtifw/install_script.qs -o install_script.qs
   sudo hdiutil attach "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
@@ -67,7 +67,7 @@ if [ $TRAVIS_OS_NAME == "osx" ]; then
   sudo rm "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
   sudo rm $ATTCHNUM.zip
 fi
-if [ $TRAVIS_OS_NAME == "windows" ]; then
+if [ "$OS_NAME" == "windows" ]; then
   # On windows, we are simply extracting the zip file to c:\\
   echo "Extracting and Copying files to... C:\\"
   powershell Expand-Archive -Path $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT -DestinationPath C:\\

@@ -513,7 +513,7 @@ class ZoneConditioning(UmiBase):
                     self.MinFreshAirPerPerson,
                     self.MechVentSchedule,
                 ) = self.fresh_air_from_zone_sizes(zone)
-            except ValueError:
+            except (ValueError, StopIteration):
                 (
                     self.IsMechVentOn,
                     self.MinFreshAirPerArea,

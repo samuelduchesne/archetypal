@@ -215,8 +215,9 @@ class UmiTemplateLibrary:
                         lg.ERROR,
                     )
 
+        # If all exceptions, raise them for debugging
         if all(isinstance(x, Exception) for x in results):
-            raise Exception("Complexity reduction failed for all buildings.")
+            raise Exception([res for res in results if isinstance(res, Exception)])
 
         umi_template.BuildingTemplates = [
             res for res in results if not isinstance(res, Exception)

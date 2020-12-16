@@ -1,24 +1,24 @@
 # Check if EnergyPlus env variables exist already. If not use these defaults
 if [[ -z "${ENERGYPLUS_VERSION}" ]]; then
-  ENERGYPLUS_VERSION=9.2.0
+  export ENERGYPLUS_VERSION=9.2.0
 fi
 if [[ -z "${ENERGYPLUS_SHA}" ]]; then
-  ENERGYPLUS_SHA=921312fa1d
+  export ENERGYPLUS_SHA=921312fa1d
 fi
 if [[ -z "${ENERGYPLUS_INSTALL_VERSION}" ]]; then
-  ENERGYPLUS_INSTALL_VERSION=9-2-0
+  export ENERGYPLUS_INSTALL_VERSION=9-2-0
 fi
 if [[ $TRAVIS_OS_NAME == "osx" ]]; then
-  EXT=dmg
-  PLATFORM=Darwin
+  export EXT=dmg
+  export PLATFORM=Darwin
 fi
 if [[ $TRAVIS_OS_NAME == "linux" ]]; then
-  EXT="sh"
-  PLATFORM=Linux
+  export EXT="sh"
+  export PLATFORM=Linux
 fi
 if [[ $TRAVIS_OS_NAME == "windows" ]]; then
-  EXT=zip
-  PLATFORM=Windows
+  export EXT=zip
+  export PLATFORM=Windows
 fi
 # Download EnergyPlus executable
 ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION

@@ -80,6 +80,10 @@ class MeterGroup:
             self._properties[meter_name] = Meter(idf, meter)
             setattr(self, meter_name, self._properties[meter_name])
 
+    def __getitem__(self, meter_name):
+        """Get item by key."""
+        return self._properties[meter_name]
+
     def __repr__(self):
         # getmembers() returns all the
         # members of an object

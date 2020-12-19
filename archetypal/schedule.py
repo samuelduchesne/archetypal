@@ -7,6 +7,7 @@
 
 import functools
 import logging as lg
+from calendar import calendar
 from datetime import datetime, timedelta
 from itertools import groupby
 
@@ -236,11 +237,8 @@ class Schedule(object):
     @property
     def startDate(self):
         """The start date of the schedule. Satisfies `startDayOfTheWeek`"""
-        import calendar
-
-        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
-        start_date = c.monthdatescalendar(self.year, 1)[0][0]
-        return datetime(start_date.year, start_date.month, start_date.day)
+        year = get_year_for_first_weekday(self.startDayOfTheWeek)
+        return datetime(year, 1, 1)
 
     def plot(self, slice=None, **kwargs):
         """Plot the schedule. Implements the .loc accessor on the series object.
@@ -880,6 +878,8 @@ class Schedule(object):
             full_year = Values
         else:
             full_year = np.array(self.all_values)  # array of shape (8760,)
+
+        # reshape to (365, 24)
         Values = full_year.reshape(-1, 24)  # shape (365, 24)
 
         # create unique days
@@ -916,6 +916,12 @@ class Schedule(object):
                 "Looks like the idf model needs to be rerun with 'annual=True'"
             )
 
+        # We use the calendar module to set the week days order
+        import calendar
+
+        # initialize the calendar object
+        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
+
         # Appending unique weeks in dictionary with name and values of weeks as
         # keys
         # {'name_week': {'dayName':[]}}
@@ -923,18 +929,13 @@ class Schedule(object):
         for count_week, unique_week in enumerate(unique_weeks):
             week_id = "w_" + self.Name + "_" + "%03d" % count_week
             dict_week[week_id] = {}
-            for i in list(range(0, 7)):
-                day_of_week = unique_week[..., i * 24 : (i + 1) * 24]
+            for i, day in zip(list(range(0, 7)), list(c.iterweekdays())):
+                day_of_week = unique_week[..., i * 24: (i + 1) * 24]
                 for key in dict_day:
                     if (day_of_week == dict_day[key]).all():
-                        dict_week[week_id]["day_{}".format(i)] = key
+                        dict_week[week_id]["day_{}".format(day)] = key
 
         # Create idf_objects for schedule:week:daily
-        # We use the calendar module to set the week days order
-        import calendar
-
-        # initialize the calendar object
-        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
 
         # Create ep_weeks list and iterate over dict_week
         ep_weeks = []
@@ -1387,3 +1388,20 @@ def _how(how):
         return "max"
     else:
         return "max"
+
+
+def get_year_for_first_weekday(weekday=0):
+    """Returns the year that starts on weekday, eg. Monday=0"""
+    import calendar
+
+    if weekday > 6:
+        raise ValueError("weekday must be between 0 and 6")
+    year = 2020
+    not_found = True
+    while not_found:
+        firstday = calendar.weekday(year, 1, 1)
+        if firstday == weekday and not calendar.isleap(year):
+            not_found = False
+        else:
+            year = year - 1
+    return year

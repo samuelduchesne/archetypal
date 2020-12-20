@@ -1003,7 +1003,11 @@ class IDF(geomIDF):
         """Get day of week for start day for the first found RUNPERIOD"""
         import calendar
 
-        day = self.idfobjects["RUNPERIOD"][0]["Day_of_Week_for_Start_Day"]
+        run_period = next(iter(self.idfobjects["RUNPERIOD"]), None)
+        if run_period:
+            day = run_period["Day_of_Week_for_Start_Day"]
+        else:
+            raise ValueError("model does not contain a 'RunPeriod'")
 
         if day.lower() == "sunday":
             return calendar.SUNDAY
@@ -1020,7 +1024,8 @@ class IDF(geomIDF):
         elif day.lower() == "saturday":
             return calendar.SATURDAY
         else:
-            return 0
+            # field is null
+            return 6  # E+ default is Sunday
 
     @property
     def meters(self):

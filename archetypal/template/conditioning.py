@@ -646,32 +646,34 @@ class ZoneConditioning(UmiBase):
 
         # Heating
         heating_meters = (
-            "Heating:Electricity",
-            "Heating:Gas",
-            "Heating:DistrictHeating",
+            "Heating__Electricity",
+            "Heating__Gas",
+            "Heating__DistrictHeating",
         )
-        heating_cop = self._get_cop(
-            zone,
-            energy_in_list=heating_meters,
-            energy_out_variable_name=(
-                "Air System Total Heating Energy",
-                "Zone Ideal Loads Zone Total Heating Energy",
-            ),
-        )
-        # Cooling
+        total_input_heating_energy = 0
+        for meter in heating_meters:
+            try:
+                total_input_heating_energy += self.idf.meters.OutputMeter[meter].values("kWh").sum()
+            except KeyError:
+                pass  # pass if meter does not exist for model
+        total_output_heating_energy = self.idf.meters.OutputMeter.HeatingCoils__EnergyTransfer.values("kWh").sum()
+        heating_cop = total_output_heating_energy / total_input_heating_energy
+
         cooling_meters = (
-            "Cooling:Electricity",
-            "Cooling:Gas",
-            "Cooling:DistrictCooling",
+            "Cooling__Electricity",
+            "Cooling__Gas",
+            "Cooling__DistrictCooling",
         )
-        cooling_cop = self._get_cop(
-            zone,
-            energy_in_list=cooling_meters,
-            energy_out_variable_name=(
-                "Air System Total Cooling Energy",
-                "Zone Ideal Loads Zone Total Cooling Energy",
-            ),
-        )
+        total_input_cooling_energy = 0
+        for meter in cooling_meters:
+            try:
+                total_input_cooling_energy += self.idf.meters.OutputMeter[meter].values("kWh").sum()
+            except KeyError:
+                pass  # pass if meter does not exist for model
+        total_output_cooling_energy = \
+            self.idf.meters.OutputMeter.CoolingCoils__EnergyTransfer.values("kWh").sum()
+
+        cooling_cop = total_output_cooling_energy / total_input_cooling_energy
 
         # Capacity limits (heating and cooling)
         zone_size = zone.idf.sql()["ZoneSizes"][

@@ -592,7 +592,7 @@ class ZoneConditioning(UmiBase):
             sql_query = f"""
                         select t.ColumnName, t.Value
                         from TabularDataWithStrings t
-                        where TableName == 'Minimum Outdoor Air During Occupied Hours' and RowName == '{zone.Name.upper()}'"""
+                        where TableName == 'Average Outdoor Air During Occupied Hours' and RowName == '{zone.Name.upper()}'"""
             oa = (
                 pd.read_sql_query(sql_query, con=conn, coerce_float=True)
                 .set_index("ColumnName")

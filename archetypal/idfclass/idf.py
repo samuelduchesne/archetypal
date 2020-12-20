@@ -833,6 +833,15 @@ class IDF(geomIDF):
         return file.expand()
 
     @property
+    def mtd_file(self):
+        """Get the mtd file path"""
+        try:
+            file, *_ = self.simulation_dir.files("*.mtd")
+        except (FileNotFoundError, ValueError):
+            return self.simulate().mtd_file
+        return file.expand()
+
+    @property
     def net_conditioned_building_area(self):
         """Returns the total conditioned area of a building (taking into account
         zone multipliers)

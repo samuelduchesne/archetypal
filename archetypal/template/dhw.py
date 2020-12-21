@@ -376,8 +376,7 @@ class DomesticHotWaterSetting(UmiBase):
             WaterSchedule=UmiSchedule.combine(
                 self.WaterSchedule,
                 other.WaterSchedule,
-                weights,
-                [self.FlowRatePerFloorArea, other.FlowRatePerFloorArea],
+                [self.WaterSchedule.quantity, other.WaterSchedule.quantity],
             ),
             FlowRatePerFloorArea=self._float_mean(
                 other, "FlowRatePerFloorArea", weights

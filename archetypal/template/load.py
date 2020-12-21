@@ -436,8 +436,10 @@ class ZoneLoad(UmiBase):
             EquipmentAvailabilitySchedule=UmiSchedule.combine(
                 self.EquipmentAvailabilitySchedule,
                 other.EquipmentAvailabilitySchedule,
-                weights=weights,
-                quantity=[self.EquipmentPowerDensity, other.EquipmentPowerDensity],
+                quantity=[
+                    self.EquipmentAvailabilitySchedule.quantity,
+                    other.EquipmentAvailabilitySchedule.quantity,
+                ],
             ),
             EquipmentPowerDensity=self._float_mean(
                 other, "EquipmentPowerDensity", weights
@@ -449,14 +451,18 @@ class ZoneLoad(UmiBase):
             LightsAvailabilitySchedule=UmiSchedule.combine(
                 self.LightsAvailabilitySchedule,
                 other.LightsAvailabilitySchedule,
-                weights=weights,
-                quantity=[self.LightingPowerDensity, other.LightingPowerDensity],
+                quantity=[
+                    self.LightsAvailabilitySchedule.quantity,
+                    other.LightsAvailabilitySchedule.quantity,
+                ],
             ),
             OccupancySchedule=UmiSchedule.combine(
                 self.OccupancySchedule,
                 other.OccupancySchedule,
-                weights=weights,
-                quantity=[self.PeopleDensity, other.PeopleDensity],
+                quantity=[
+                    self.OccupancySchedule.quantity,
+                    other.OccupancySchedule.quantity,
+                ],
             ),
             IsEquipmentOn=any([self.IsEquipmentOn, other.IsEquipmentOn]),
             IsLightingOn=any([self.IsLightingOn, other.IsLightingOn]),

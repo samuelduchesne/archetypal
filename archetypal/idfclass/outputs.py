@@ -293,6 +293,20 @@ class Outputs:
                     Reporting_Frequency="hourly",
                 ),
             },
+            {
+                "key": "Output:Meter".upper(),
+                **dict(
+                    Key_Name="HeatingCoils:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Meter".upper(),
+                **dict(
+                    Key_Name="CoolingCoils:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                ),
+            },
         ]
 
         self._outputs.extend(outputs)

@@ -14,6 +14,7 @@ from enum import Enum
 import numpy as np
 from deprecation import deprecated
 from sigfig import round
+from sklearn.preprocessing import MinMaxScaler
 
 import archetypal
 from archetypal import ReportData, float_round, log, settings, timeit
@@ -649,14 +650,19 @@ class ZoneConditioning(UmiBase):
             "Heating__Electricity",
             "Heating__Gas",
             "Heating__DistrictHeating",
+            "Heating__Oil",
         )
         total_input_heating_energy = 0
         for meter in heating_meters:
             try:
-                total_input_heating_energy += self.idf.meters.OutputMeter[meter].values("kWh").sum()
+                total_input_heating_energy += (
+                    self.idf.meters.OutputMeter[meter].values("kWh").sum()
+                )
             except KeyError:
                 pass  # pass if meter does not exist for model
-        total_output_heating_energy = self.idf.meters.OutputMeter.HeatingCoils__EnergyTransfer.values("kWh").sum()
+        total_output_heating_energy = (
+            self.idf.meters.OutputMeter.HeatingCoils__EnergyTransfer.values("kWh").sum()
+        )
         heating_cop = total_output_heating_energy / total_input_heating_energy
 
         cooling_meters = (
@@ -667,11 +673,14 @@ class ZoneConditioning(UmiBase):
         total_input_cooling_energy = 0
         for meter in cooling_meters:
             try:
-                total_input_cooling_energy += self.idf.meters.OutputMeter[meter].values("kWh").sum()
+                total_input_cooling_energy += (
+                    self.idf.meters.OutputMeter[meter].values("kWh").sum()
+                )
             except KeyError:
                 pass  # pass if meter does not exist for model
-        total_output_cooling_energy = \
+        total_output_cooling_energy = (
             self.idf.meters.OutputMeter.CoolingCoils__EnergyTransfer.values("kWh").sum()
+        )
 
         cooling_cop = total_output_cooling_energy / total_input_cooling_energy
 

@@ -660,15 +660,27 @@ class ZoneConditioning(UmiBase):
                 )
             except KeyError:
                 pass  # pass if meter does not exist for model
-        total_output_heating_energy = (
-            self.idf.meters.OutputMeter.HeatingCoils__EnergyTransfer.values("kWh").sum()
+
+        heating_energy_transfer_meters = (
+            "HeatingCoils__EnergyTransfer",
+            "Baseboard__EnergyTransfer"
         )
+
+        total_output_heating_energy = 0
+        for meter in heating_energy_transfer_meters:
+            try:
+                total_output_heating_energy += (
+                    self.idf.meters.OutputMeter[meter].values("kWh").sum()
+                )
+            except KeyError:
+                pass  # pass if meter does not exist for model
         heating_cop = total_output_heating_energy / total_input_heating_energy
 
         cooling_meters = (
             "Cooling__Electricity",
             "Cooling__Gas",
             "Cooling__DistrictCooling",
+            "HeatRejection__Electricity"  # includes cooling towers
         )
         total_input_cooling_energy = 0
         for meter in cooling_meters:

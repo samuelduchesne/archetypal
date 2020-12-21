@@ -303,6 +303,20 @@ class Outputs:
             {
                 "key": "Output:Meter".upper(),
                 **dict(
+                    Key_Name="Baseboard:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Meter".upper(),
+                **dict(
+                    Key_Name="HeatRejection:Electricity",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Meter".upper(),
+                **dict(
                     Key_Name="CoolingCoils:EnergyTransfer",
                     Reporting_Frequency="hourly",
                 ),

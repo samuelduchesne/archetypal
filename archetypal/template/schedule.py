@@ -206,12 +206,10 @@ class UmiSchedule(Schedule, UmiBase):
         elif isinstance(quantity, (list, tuple)):
             # Multiplying the schedule values by the quantity for both self and other
             # and then using a weighted average. Finally, new values are normalized.
-            new_values = np.average(
-                [self.all_values * quantity[0], other.all_values * quantity[1]],
-                axis=0,
-                weights=weights,
-            )
-            new_values /= sum(quantity)
+            self_quantity, other_quantity = quantity
+            new_values = (
+                self.all_values * self_quantity + other.all_values * other_quantity
+            ) / sum(quantity)
         else:
             raise TypeError("Quantity is not of type list, tuple, dict or a callable")
 

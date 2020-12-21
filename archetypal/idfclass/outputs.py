@@ -298,6 +298,16 @@ class Outputs:
         self._outputs.extend(outputs)
         return self
 
+    def add_dxf(self):
+        outputs = [
+            {
+                "key": "Output:Surfaces:Drawing".upper(),
+                **dict(Report_Type="DXF", Report_Specifications_1="ThickPolyline"),
+            }
+        ]
+        self._outputs.extend(outputs)
+        return self
+
     def add_umi_ouputs(self):
         """Adds the necessary outputs in order to return the same energy profile
         as in UMI.

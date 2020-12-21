@@ -502,10 +502,13 @@ class IDF(geomIDF):
 
     @idfname.setter
     def idfname(self, value):
-        if value:
-            self._idfname = Path(value).expand()
-        else:
+        if not value:
             self._idfname = None
+        elif not isinstance(value, str):
+            raise ValueError(f"IDF path must be Path-Like, not {type(value)}")
+        else:
+            self._idfname = Path(value).expand()
+
 
     @property
     def epw(self):

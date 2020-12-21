@@ -740,10 +740,11 @@ class ZoneConditioning(UmiBase):
                         WHERE ReportVariableDataDictionaryIndex == {index[0]};"""
                 h_array = conn.execute(sql_query).fetchall()
                 if h_array:
-                    heating_setpoints = np.array(h_array).flatten()
+                    scaler = MinMaxScaler()
+                    heating_availability = scaler.fit_transform(h_array).flatten()
                     heating_sched = UmiSchedule.from_values(
                         Name=zone.Name + "_Heating_Schedule",
-                        Values=(heating_setpoints > 0).astype(int),
+                        Values=heating_availability,
                         Type="Fraction",
                         idf=zone.idf,
                         allow_duplicates=True,
@@ -763,19 +764,20 @@ class ZoneConditioning(UmiBase):
                         WHERE ReportVariableDataDictionaryIndex == {index[0]};"""
                 c_array = conn.execute(sql_query).fetchall()
                 if c_array:
-                    cooling_setpoints = np.array(c_array).flatten()
+                    scaler = MinMaxScaler()
+                    cooling_availability = scaler.fit_transform(c_array).flatten()
                     cooling_sched = UmiSchedule.from_values(
                         Name=zone.Name + "_Cooling_Schedule",
-                        Values=(cooling_setpoints > 0).astype(int),
+                        Values=cooling_availability,
                         Type="Fraction",
                         idf=zone.idf,
                         allow_duplicates=True,
                     )
                 else:
                     heating_sched = None
-        self.HeatingSetpoint = heating_setpoints.mean()
+        self.HeatingSetpoint = max(np.array(h_array))
         self.HeatingSchedule = heating_sched
-        self.CoolingSetpoint = cooling_setpoints.mean()
+        self.CoolingSetpoint = min(np.array(c_array))
         self.CoolingSchedule = cooling_sched
 
         # If HeatingSetpoint == nan, means there is no heat or cold input,

@@ -107,7 +107,7 @@ class UmiSchedule(Schedule, UmiBase):
                     self.schType == other.schType,
                     self.Type == other.Type,
                     self.quantity == other.quantity,
-                    np.array_equal(self.all_values, other.all_values),
+                    np.allclose(self.all_values, other.all_values, rtol=1e-02),
                 ]
             )
 

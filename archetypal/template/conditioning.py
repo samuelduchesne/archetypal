@@ -14,10 +14,11 @@ from enum import Enum
 import numpy as np
 from deprecation import deprecated
 from sigfig import round
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import Binarizer
 
 import archetypal
 from archetypal import ReportData, float_round, log, settings, timeit
+from archetypal.schedule import get_year_for_first_weekday
 from archetypal.template import UmiBase, UmiSchedule, UniqueName
 
 
@@ -407,10 +408,12 @@ class ZoneConditioning(UmiBase):
             if not math.isnan(self.HeatingSetpoint)
             else 20
         )
-        data_dict["HeatRecoveryEfficiencyLatent"] = self.HeatRecoveryEfficiencyLatent
-        data_dict[
-            "HeatRecoveryEfficiencySensible"
-        ] = self.HeatRecoveryEfficiencySensible
+        data_dict["HeatRecoveryEfficiencyLatent"] = round(
+            self.HeatRecoveryEfficiencyLatent, 3
+        )
+        data_dict["HeatRecoveryEfficiencySensible"] = round(
+            self.HeatRecoveryEfficiencySensible, 3
+        )
         data_dict["HeatRecoveryType"] = self.HeatRecoveryType.value
         data_dict["IsCoolingOn"] = self.IsCoolingOn
         data_dict["IsHeatingOn"] = self.IsHeatingOn
@@ -579,7 +582,7 @@ class ZoneConditioning(UmiBase):
         """Returns the Mechanical Ventilation from the ZoneSizes Table in the sql db.
 
         Args:
-            zone:
+            zone (ZoneDefinition):
 
         Returns:
             4-tuple: (IsMechVentOn, MinFreshAirPerArea, MinFreshAirPerPerson, MechVentSchedule)
@@ -593,17 +596,17 @@ class ZoneConditioning(UmiBase):
             sql_query = f"""
                         select t.ColumnName, t.Value
                         from TabularDataWithStrings t
-                        where TableName == 'Average Outdoor Air During Occupied Hours' and RowName == '{zone.Name.upper()}'"""
+                        where TableName == 'Zone Sensible Heating' and RowName == '{zone.Name.upper()}'"""
             oa = (
                 pd.read_sql_query(sql_query, con=conn, coerce_float=True)
                 .set_index("ColumnName")
                 .squeeze()
             )
-            oa = pd.to_numeric(oa)
-            oa_design = oa["Zone Volume"] * oa["Mechanical Ventilation"] / 3600  # m3/s
-            isoa = oa["Mechanical Ventilation"] > 0  # True if ach > 0
+            oa = pd.to_numeric(oa, errors="coerce")
+            oa_design = oa["Minimum Outdoor Air Flow Rate"]  # m3/s
+            isoa = oa["Calculated Design Air Flow"] > 0  # True if ach > 0
             oa_area = oa_design / zone.area
-            oa_person = oa_design / oa["Nominal Number of Occupants"]
+            oa_person = oa_design / zone.occupants
 
             designobjs = zone._epbunch.getreferingobjs(
                 iddgroups=["HVAC Design Objects"], fields=["Zone_or_ZoneList_Name"]
@@ -663,7 +666,7 @@ class ZoneConditioning(UmiBase):
 
         heating_energy_transfer_meters = (
             "HeatingCoils__EnergyTransfer",
-            "Baseboard__EnergyTransfer"
+            "Baseboard__EnergyTransfer",
         )
 
         total_output_heating_energy = 0
@@ -680,7 +683,7 @@ class ZoneConditioning(UmiBase):
             "Cooling__Electricity",
             "Cooling__Gas",
             "Cooling__DistrictCooling",
-            "HeatRejection__Electricity"  # includes cooling towers
+            "HeatRejection__Electricity",  # includes cooling towers
         )
         total_input_cooling_energy = 0
         for meter in cooling_meters:
@@ -716,8 +719,8 @@ class ZoneConditioning(UmiBase):
         self.MaxCoolingCapacity = cooling_cap
         self.MaxCoolFlow = cooling_flow
 
-        self.CoolingCoeffOfPerf = cooling_cop
-        self.HeatingCoeffOfPerf = heating_cop
+        self.CoolingCoeffOfPerf = float(cooling_cop)
+        self.HeatingCoeffOfPerf = float(heating_cop)
 
         # If cop calc == infinity, COP = 1 because we need a value in json file.
         if heating_cop == float("infinity"):
@@ -752,7 +755,8 @@ class ZoneConditioning(UmiBase):
                         WHERE ReportVariableDataDictionaryIndex == {index[0]};"""
                 h_array = conn.execute(sql_query).fetchall()
                 if h_array:
-                    scaler = MinMaxScaler()
+                    h_array = np.array(h_array).round(2)
+                    scaler = Binarizer(threshold=np.array(h_array).mean())
                     heating_availability = scaler.fit_transform(h_array).flatten()
                     heating_sched = UmiSchedule.from_values(
                         Name=zone.Name + "_Heating_Schedule",
@@ -776,20 +780,21 @@ class ZoneConditioning(UmiBase):
                         WHERE ReportVariableDataDictionaryIndex == {index[0]};"""
                 c_array = conn.execute(sql_query).fetchall()
                 if c_array:
-                    scaler = MinMaxScaler()
+                    c_array = np.array(c_array).round(2)
+                    scaler = Binarizer(threshold=c_array.mean())
                     cooling_availability = scaler.fit_transform(c_array).flatten()
                     cooling_sched = UmiSchedule.from_values(
                         Name=zone.Name + "_Cooling_Schedule",
-                        Values=cooling_availability,
+                        Values=1 - cooling_availability,  # take flipped
                         Type="Fraction",
                         idf=zone.idf,
                         allow_duplicates=True,
                     )
                 else:
-                    heating_sched = None
-        self.HeatingSetpoint = max(np.array(h_array))
+                    cooling_sched = None
+        self.HeatingSetpoint = max(h_array)
         self.HeatingSchedule = heating_sched
-        self.CoolingSetpoint = min(np.array(c_array))
+        self.CoolingSetpoint = min(c_array)
         self.CoolingSchedule = cooling_sched
 
         # If HeatingSetpoint == nan, means there is no heat or cold input,

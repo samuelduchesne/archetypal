@@ -442,6 +442,16 @@ class DaySchedule(UmiSchedule):
             **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
         """
         super(DaySchedule, self).__init__(**kwargs)
+    def __eq__(self, other):
+        if not isinstance(other, DaySchedule):
+            return False
+        else:
+            return all(
+                [
+                    self.Type == other.Type,
+                    np.allclose(self._values, other._values, rtol=1e-02),
+                ]
+            )
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):

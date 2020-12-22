@@ -614,7 +614,7 @@ def do_scheduled_ventilation(index, scd_df, zone):
             )
             ScheduledVentilationAch = scd_df.loc[index, "ACH - Air Changes per Hour"]
             ScheduledVentilationSetpoint = resolve_temp(
-                scd_df.loc[index, "Minimum " "Indoor " "Temperature{" "C}/Schedule"],
+                scd_df.loc[index, "Minimum Indoor Temperature{C}/Schedule"],
                 zone.idf,
             )
         except:

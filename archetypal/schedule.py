@@ -887,7 +887,7 @@ class Schedule(object):
         ep_days = []
         dict_day = {}
         for count_day, unique_day in enumerate(unique_days):
-            name = "d_" + self.Name + "_" + "%03d" % count_day
+            name = f"d_{self.Name}_{count_day:02d}"
             dict_day[name] = unique_day
 
             # Create idf_objects for schedule:day:hourly
@@ -926,7 +926,7 @@ class Schedule(object):
         # {'name_week': {'dayName':[]}}
         dict_week = {}
         for count_week, unique_week in enumerate(unique_weeks):
-            week_id = "w_" + self.Name + "_" + "%03d" % count_week
+            week_id = f"w_{self.Name}_{count_week:02d}"
             dict_week[week_id] = {}
             for i, day in zip(list(range(0, 7)), list(c.iterweekdays())):
                 day_of_week = unique_week[..., i * 24: (i + 1) * 24]

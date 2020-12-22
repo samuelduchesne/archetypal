@@ -858,13 +858,12 @@ class Schedule(object):
 
         return hourly_values
 
-    def to_year_week_day(self, Values=None, idf=None):
+    def to_year_week_day(self, Values=None):
         """convert a Schedule Class to the 'Schedule:Year',
         'Schedule:Week:Daily' and 'Schedule:Day:Hourly' representation
 
         Args:
             Values:
-            idf:
 
         Returns:
             3-element tuple containing
@@ -1233,7 +1232,6 @@ class Schedule(object):
             or dd.Special_Day_Type.lower() in special_day_types
         ]
         if len(dd) > 0:
-            slice = []
             for dd in dd:
                 # can have more than one special day types
                 data = dd.Start_Date

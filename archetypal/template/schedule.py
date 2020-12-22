@@ -248,6 +248,7 @@ class UmiSchedule(Schedule, UmiBase):
                         "\n".join(lines)
                     ),
                     allow_duplicates=True,
+                    Category=self.Name,
                 )
             )
         Parts = []
@@ -271,6 +272,7 @@ class UmiSchedule(Schedule, UmiBase):
                         Comments="Year Week Day schedules created from:\n{}".format(
                             "\n".join(lines)
                         ),
+                        Category=self.Name,
                     ),
                 )
             )
@@ -281,6 +283,7 @@ class UmiSchedule(Schedule, UmiBase):
         self.epbunch = year
         self.Type = "Fraction"
         self.Parts = Parts
+        self.Category = self.Name
         return self
 
     def to_json(self):
@@ -304,7 +307,7 @@ class UmiSchedule(Schedule, UmiBase):
         self.validate()
 
         return dict(
-            Category=self.schType,
+            Category=self.Category,
             Type=self.Type,
             Comments=self.Comments,
             DataSource=self.DataSource,
@@ -435,13 +438,15 @@ class YearSchedulePart:
 class DaySchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles daily schedules."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, Category="Day", **kwargs):
         """Initialize a DaySchedule object with parameters:
 
         Args:
+            Category:
             **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
         """
-        super(DaySchedule, self).__init__(**kwargs)
+        super(DaySchedule, self).__init__(Category=Category, **kwargs)
+
     def __eq__(self, other):
         if not isinstance(other, DaySchedule):
             return False
@@ -527,7 +532,7 @@ class DaySchedule(UmiSchedule):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Category"] = "Day"
+        data_dict["Category"] = self.Category
         data_dict["Type"] = self.Type
         data_dict["Values"] = self.all_values.round(3).tolist()
         data_dict["Comments"] = self.Comments
@@ -538,7 +543,7 @@ class DaySchedule(UmiSchedule):
 
     def mapping(self):
         return dict(
-            Category=self.schType,
+            Category=self.Category,
             Type=self.Type,
             Values=self.all_values.round(3).tolist(),
             Comments=self.Comments,
@@ -562,14 +567,14 @@ class DaySchedule(UmiSchedule):
 class WeekSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles weekly schedules."""
 
-    def __init__(self, Days=None, **kwargs):
+    def __init__(self, Days=None, Category="Week", **kwargs):
         """Initialize a WeekSchedule object with parameters:
 
         Args:
             Days (list of DaySchedule): list of :class:`DaySchedule`.
             **kwargs:
         """
-        super(WeekSchedule, self).__init__(**kwargs)
+        super(WeekSchedule, self).__init__(Category=Category, **kwargs)
         self.Days = Days
 
     def __eq__(self, other):
@@ -578,7 +583,6 @@ class WeekSchedule(UmiSchedule):
         else:
             return all(
                 [
-                    # self.Name == other.Name,
                     self.Type == other.Type,
                     self.Days == other.Days,
                 ]
@@ -637,7 +641,7 @@ class WeekSchedule(UmiSchedule):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Category"] = "Week"
+        data_dict["Category"] = self.Category
         data_dict["Days"] = [day.to_dict() for day in self.Days]
         data_dict["Type"] = self.Type
         data_dict["Comments"] = self.Comments
@@ -648,7 +652,7 @@ class WeekSchedule(UmiSchedule):
 
     def mapping(self):
         return dict(
-            Category=self.schType,
+            Category=self.Category,
             Days=self.Days,
             Type=self.Type,
             Comments=self.Comments,
@@ -702,10 +706,11 @@ class WeekSchedule(UmiSchedule):
 class YearSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles yearly schedules."""
 
-    def __init__(self, Name, Type="Fraction", Parts=None, **kwargs):
+    def __init__(self, Name, Type="Fraction", Parts=None, Category="Year", **kwargs):
         """Initialize a YearSchedule object with parameters:
 
         Args:
+            Category:
             Name:
             Type:
             Parts (list of YearSchedulePart): The YearScheduleParts.
@@ -717,7 +722,7 @@ class YearSchedule(UmiSchedule):
         else:
             self.Parts = Parts
         super(YearSchedule, self).__init__(
-            Name=Name, Type=Type, schType="Schedule:Year", **kwargs
+            Name=Name, Type=Type, schType="Schedule:Year", Category=Category, **kwargs
         )
 
     def __eq__(self, other):
@@ -815,7 +820,7 @@ class YearSchedule(UmiSchedule):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Category"] = "Year"
+        data_dict["Category"] = self.Category
         data_dict["Parts"] = [part.to_dict() for part in self.Parts]
         data_dict["Type"] = self.Type
         data_dict["Comments"] = self.Comments
@@ -828,7 +833,7 @@ class YearSchedule(UmiSchedule):
         self.validate()
 
         return dict(
-            Category=self.schType,
+            Category=self.Category,
             Parts=self.Parts,
             Type=self.Type,
             Comments=self.Comments,

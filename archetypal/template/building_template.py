@@ -268,6 +268,7 @@ class BuildingTemplate(UmiBase):
         log("Initiating complexity reduction...")
         start_time = time.time()
 
+        # reduce list of core zones
         if cores:
             self.Core = reduce(
                 ZoneDefinition.combine,
@@ -276,6 +277,9 @@ class BuildingTemplate(UmiBase):
                     desc=f"Reducing core zones {self.idf.position}-{self.idf.name}",
                 ),
             )
+            self.Core.Name = f"{self.Name}_ZoneDefinition_Core"  # set name
+
+        # reduce list of perimeter zones
         if not perims:
             raise ValueError(
                 "Building complexity reduction must have at least one perimeter zone"
@@ -289,19 +293,22 @@ class BuildingTemplate(UmiBase):
                         desc=f"Reducing perimeter zones {self.idf.position}-{self.idf.name}",
                     ),
                 )
-            except:
-                pass
-            self.Perimeter.Name = "Perimeter_" + self.Perimeter.Name.strip("Perimeter_")
+                self.Perimeter.Name = f"{self.Name}_ZoneDefinition_Perimeter"
+            except Exception as e:
+                raise e
+
+        # If all perimeter zones, assign self.Perimeter to core.
+        if not self.Core:
+            self.Core = self.Perimeter
+            self.Core.Name = f"{self.Name}_ZoneDefinition"  # rename as both core/perim
+
+        # assign generic window if None
         if self.Perimeter.Windows is None:
             # create generic window
             self.Perimeter.Windows = WindowSetting.generic(
                 idf=self.idf, Name="Generic Window"
             )
 
-        if not self.Core:
-            self.Core = self.Perimeter
-        else:
-            self.Core.Name = "Core_" + self.Core.Name.strip("Core_")
         log(
             f"Equivalent core zone has an area of {self.Core.area:,.0f} m2",
             level=lg.DEBUG,

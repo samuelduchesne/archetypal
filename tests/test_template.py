@@ -421,7 +421,7 @@ class TestOpaqueMaterial:
         Args:
             idf:
         """
-        yield OpaqueMaterial(Conductivity=100, SpecificHeat=4.18, Name="mat_a", idf=idf)
+        yield OpaqueMaterial(Conductivity=0.1, SpecificHeat=4.18, Name="mat_a", idf=idf)
 
     @pytest.fixture()
     def mat_b(self, idf):
@@ -440,7 +440,7 @@ class TestOpaqueMaterial:
         """
         mat_c = mat_a + mat_b
         assert mat_c
-        assert mat_c.Conductivity == 150
+        np.testing.assert_almost_equal(mat_c.Conductivity, .150)
         assert mat_a.id != mat_b.id != mat_c.id
 
         mat_d = mat_c + mat_a
@@ -454,7 +454,7 @@ class TestOpaqueMaterial:
             idf:
         """
         mat_a = OpaqueMaterial(
-            Conductivity=100, SpecificHeat=4.18, Name="mat_ia", idf=idf
+            Conductivity=0.1, SpecificHeat=4.18, Name="mat_ia", idf=idf
         )
         id_ = mat_a.id  # storing mat_a's id.
 
@@ -463,7 +463,7 @@ class TestOpaqueMaterial:
         )
         mat_a += mat_b
         assert mat_a
-        assert mat_a.Conductivity == 150
+        np.testing.assert_almost_equal(mat_a.Conductivity, .150)
         assert mat_a.id == id_  # id should not change
         assert mat_a.id != mat_b.id
 
@@ -1410,7 +1410,7 @@ class TestZoneConstructionSet:
 
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file, epw=w)
+        idf = IDF(file, epw=w, annual=True)
         yield idf, idf.sql()
 
     def test_add_zoneconstructionset(self, small_idf):

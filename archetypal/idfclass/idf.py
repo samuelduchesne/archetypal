@@ -231,8 +231,6 @@ class IDF(geomIDF):
         self._energyplus_its = 0
         self._sim_id = None
 
-        self.load_kwargs = dict(epw=epw, **kwargs)
-
         self.outputtype = "standard"
         self.original_idfname = self.idfname  # Save original
         self._original_cache = hash_model(self)

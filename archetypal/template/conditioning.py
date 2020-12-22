@@ -984,21 +984,6 @@ class ZoneConditioning(UmiBase):
         energy_out = rd.filter_report_data(name=tuple(energy_out_variable_name))
         energy_in = rd.filter_report_data(name=tuple(energy_in_list))
 
-        # zone_to_hvac = {zone.Zone_Name: [
-        #     zone.get_referenced_object(
-        #         'Zone_Conditioning_Equipment_List_Name
-        #         ').get_referenced_object(
-        #         fieldname) for fieldname in zone.get_referenced_object(
-        #         'Zone_Conditioning_Equipment_List_Name').fieldnames if
-        #     zone.get_referenced_object(
-        #         'Zone_Conditioning_Equipment_List_Name
-        #         ').get_referenced_object(
-        #         fieldname) is not None
-        # ]
-        #     for zone in zone.idf.idfobjects[
-        #         'ZoneHVAC:EquipmentConnections'.upper()]
-        # }
-
         outs = energy_out.groupby("KeyValue").Value.sum()
         ins = energy_in.Value.sum()
 

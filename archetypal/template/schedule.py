@@ -121,10 +121,10 @@ class UmiSchedule(Schedule, UmiBase):
                 element is applied to self and the second element is applied to other.
                 If a dict is passed, the self.Name and other.Name are the keys. If a
                 str is passed, the
-            quantity (list or dict): Scalar value that will be multiplied by self before
-                the averaging occurs. This ensures that the resulting schedule
-                returns the correct integrated value. If a dict is passed, keys are
-                schedules Names and values are quantities.
+            quantity (list or dict or bool): Scalar value that will be multiplied by
+                self before the averaging occurs. This ensures that the resulting
+                schedule returns the correct integrated value. If a dict is passed,
+                keys are schedules Names and values are quantities.
 
         Returns:
             (UmiSchedule): the combined UmiSchedule object.
@@ -210,6 +210,11 @@ class UmiSchedule(Schedule, UmiBase):
             new_values = (
                 self.all_values * self_quantity + other.all_values * other_quantity
             ) / sum(quantity)
+        elif isinstance(quantity, bool):
+            self_quantity, other_quantity = self.quantity, other.quantity
+            new_values = (
+                self.all_values * self_quantity + other.all_values * other_quantity
+            ) / (self_quantity + other_quantity)
         else:
             raise TypeError("Quantity is not of type list, tuple, dict or a callable")
 

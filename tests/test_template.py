@@ -2283,7 +2283,7 @@ class TestWindowSetting:
         assert idf is not idf_2
         assert f_surf is not f_surf_3
         assert f_surf != f_surf_3
-        assert hash(wind) != hash(wind_3)
+        assert hash(wind) == hash(wind_3)
         assert wind is not wind_3
         assert wind == wind_3
 

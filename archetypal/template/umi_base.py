@@ -542,7 +542,7 @@ class MaterialLayer(object):
     @Thickness.setter
     def Thickness(self, value):
         self._thickness = value
-        if value <= 0.003:
+        if value < 0.003:
             log(
                 "Modeling layer thinner (less) than 0.003 m (not recommended) for "
                 f"MaterialLayer '{self}'",

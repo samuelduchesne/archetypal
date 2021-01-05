@@ -19,38 +19,6 @@ from archetypal import IDF, log
 from archetypal.utils import lcm
 
 
-class Unique(type):
-    """Metaclass that handles unique class instantiation based on the
-    :attr:`Name` attribute of a class.
-    """
-
-    def __call__(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        self = cls.__new__(cls, *args, **kwargs)
-        cls.__init__(self, *args, **kwargs)
-        UmiBase.CREATED_OBJECTS.append(self)
-
-        if kwargs.get("allow_duplicates", False):
-            self._unique = False
-        else:
-            self._unique = True
-
-        return self
-
-    def __init__(cls, name, bases, attributes):
-        """
-        Args:
-            name:
-            bases:
-            attributes:
-        """
-        super().__init__(name, bases, attributes)
-
-
 def _resolve_combined_names(predecessors):
     """Creates a unique name from the list of :class:`UmiBase` objects
     (predecessors)

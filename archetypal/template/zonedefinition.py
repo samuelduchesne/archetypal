@@ -146,7 +146,9 @@ class ZoneDefinition(UmiBase):
             with sqlite3.connect(self.idf.sql_file) as conn:
                 sql_query = "SELECT t.Value FROM TabularDataWithStrings t " \
                             "WHERE TableName='Average Outdoor Air During Occupied Hours' and ColumnName='Nominal Number of Occupants' and RowName=?"
-                (res,) = conn.execute(sql_query, (self.Name.upper(),)).fetchone()
+
+                fetchone = conn.execute(sql_query, (self.Name.upper(),)).fetchone()
+                (res,) = fetchone or (0, )
             self._occupants = float(res)
         return self._occupants
 

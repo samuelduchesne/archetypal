@@ -111,7 +111,7 @@ class ZoneLoad(UmiBase):
 
     @property
     def EquipmentPowerDensity(self):
-        return float(self._EquipmentPowerDensity)
+        return round(float(self._EquipmentPowerDensity), decimals=2)
 
     @EquipmentPowerDensity.setter
     def EquipmentPowerDensity(self, value):
@@ -127,7 +127,7 @@ class ZoneLoad(UmiBase):
 
     @property
     def LightingPowerDensity(self):
-        return float(self._LightingPowerDensity)
+        return round(self._LightingPowerDensity, decimals=2)
 
     @LightingPowerDensity.setter
     def LightingPowerDensity(self, value):
@@ -135,7 +135,7 @@ class ZoneLoad(UmiBase):
 
     @property
     def PeopleDensity(self):
-        return float(self._PeopleDensity)
+        return round(self._PeopleDensity, decimals=2)
 
     @PeopleDensity.setter
     def PeopleDensity(self, value):

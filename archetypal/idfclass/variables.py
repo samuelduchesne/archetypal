@@ -77,6 +77,7 @@ class VariableGroup:
 
 class Variables:
     """Class attributes representing available rdd variables"""
+    OutputVariable = VariableGroup  # Placeholder for variables
 
     def __init__(self, idf):
         self._idf = idf

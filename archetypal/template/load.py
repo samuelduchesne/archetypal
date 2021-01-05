@@ -111,7 +111,7 @@ class ZoneLoad(UmiBase):
 
     @property
     def EquipmentPowerDensity(self):
-        return round(float(self._EquipmentPowerDensity), decimals=2)
+        return round(float(self._EquipmentPowerDensity), decimals=3)
 
     @EquipmentPowerDensity.setter
     def EquipmentPowerDensity(self, value):
@@ -127,7 +127,7 @@ class ZoneLoad(UmiBase):
 
     @property
     def LightingPowerDensity(self):
-        return round(self._LightingPowerDensity, decimals=2)
+        return round(float(self._LightingPowerDensity), decimals=3)
 
     @LightingPowerDensity.setter
     def LightingPowerDensity(self, value):
@@ -135,7 +135,7 @@ class ZoneLoad(UmiBase):
 
     @property
     def PeopleDensity(self):
-        return round(self._PeopleDensity, decimals=2)
+        return round(float(self._PeopleDensity), decimals=3)
 
     @PeopleDensity.setter
     def PeopleDensity(self, value):
@@ -467,7 +467,7 @@ class ZoneLoad(UmiBase):
         return new_obj
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         if not self.DimmingType:
             self.DimmingType = DimmingTypes.Continuous
         if not self.EquipmentAvailabilitySchedule:
@@ -514,7 +514,7 @@ class ZoneLoad(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

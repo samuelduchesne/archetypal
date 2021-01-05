@@ -668,7 +668,6 @@ class ZoneConditioning(UmiBase):
             "HeatingCoils__EnergyTransfer",
             "Baseboard__EnergyTransfer",
         )
-
         total_output_heating_energy = 0
         for meter in heating_energy_transfer_meters:
             try:
@@ -1092,7 +1091,7 @@ class ZoneConditioning(UmiBase):
         return new_obj
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         if self.HeatingSchedule is None:
             self.HeatingSchedule = UmiSchedule.constant_schedule(idf=self.idf)
         if self.CoolingSchedule is None:
@@ -1141,7 +1140,7 @@ class ZoneConditioning(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

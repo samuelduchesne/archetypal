@@ -119,6 +119,8 @@ class Meters:
         Available meters are read from the .mdd file
     """
 
+    OutputMeter = MeterGroup  # placeholder for OutputMeters
+
     def __init__(self, idf):
         self._idf = idf
 

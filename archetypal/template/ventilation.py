@@ -438,7 +438,7 @@ class VentilationSetting(UmiBase):
         return new_obj
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         if not self.NatVentSchedule:
             self.NatVentSchedule = UmiSchedule.constant_schedule(
                 hourly_value=0, Name="AlwaysOff", allow_duplicates=True
@@ -476,7 +476,7 @@ class VentilationSetting(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

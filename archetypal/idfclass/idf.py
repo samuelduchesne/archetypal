@@ -1029,7 +1029,7 @@ class IDF(geomIDF):
             return 6  # E+ default is Sunday
 
     @property
-    def meters(self):
+    def meters(self) -> Meters:
         """List of available meters for the :class:`IDF` model.
 
         The :class:`IDF` model must be simulated once (to retrieve the .mdd file).

@@ -1,9 +1,4 @@
-################################################################################
-# Module: archetypal.template
-# Description:
-# License: MIT, see full license in LICENSE.txt
-# Web: https://github.com/samuelduchesne/archetypal
-################################################################################
+"""Window module handles window settings."""
 
 import collections
 import logging as lg
@@ -23,32 +18,46 @@ from archetypal.template.umi_base import UmiBase
 
 
 class WindowType(Enum):
+    """Refers to the window type. Two choices are available: interior or exterior."""
+
     External = 0
     Internal = 1
 
     def __lt__(self, other):
+        """Return true if self lower than other."""
         return self._value_ < other._value_
 
     def __gt__(self, other):
+        """Return true if self higher than other."""
         return self._value_ > other._value_
 
 
 class ShadingType(Enum):
+    """Refers to window shading types.
+
+    Hint:
+        EnergyPlus specifies 8 different shading types, but only 2 are supported
+        here: InteriorShade and ExteriorShade. See shading_ for more info.
+
+    .. _shading: https://bigladdersoftware.com/epx/docs/8-4/input-output-reference/group-thermal-zone-description-geometry.html#field-shading-type
+    """
 
     ExteriorShade = 0
     InteriorShade = 1
 
     def __lt__(self, other):
+        """Return true if self lower than other."""
         return self._value_ < other._value_
 
     def __gt__(self, other):
+        """Return true if self higher than other."""
         return self._value_ > other._value_
 
 
 class WindowConstruction(UmiBase):
-    """
-    $id, AssemblyCarbon, AssemblyCost, AssemblyEnergy, Category, Comments,
-    DataSource, DisassemblyCarbon, DisassemblyEnergy, Layers, Name, Type
+    """Window Construction.
+
+    .. image:: ../images/template/constructions-window.png
     """
 
     def __init__(
@@ -119,11 +128,7 @@ class WindowConstruction(UmiBase):
 
     @classmethod
     def from_dict(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
+        """Create :class:`WindowConstruction` object from json dict."""
         wc = cls(*args, **kwargs)
         layers = kwargs.get("Layers", None)
 
@@ -136,7 +141,7 @@ class WindowConstruction(UmiBase):
 
     @classmethod
     def from_epbunch(cls, Construction, **kwargs):
-        """WindowConstruction from idf Construction Name.
+        """Create :class:`WindowConstruction` object from idf Construction object.
 
         Example:
             >>> from archetypal import IDF
@@ -161,7 +166,7 @@ class WindowConstruction(UmiBase):
         return wc
 
     def to_json(self):
-        """Convert class properties to dict"""
+        """Convert class properties to dict."""
         self.validate()  # Validate object before trying to get json format
 
         data_dict = collections.OrderedDict()
@@ -258,8 +263,9 @@ class WindowConstruction(UmiBase):
         return layers
 
     def combine(self, other, weights=None):
-        """Append other to self. Return self + other as a new object. For
-        now, simply returns self.
+        """Append other to self. Return self + other as a new object.
+
+        For now, simply returns self.
 
         todo:
             - Implement equivalent window layers for constant u-factor.
@@ -275,15 +281,15 @@ class WindowConstruction(UmiBase):
         return self
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values.
+
+        todo:
+            - Implement validation
+        """
         return self
 
     def get_ref(self, ref):
-        """Gets item matching ref id
-
-        Args:
-            ref:
-        """
+        """Get item matching reference id."""
         return next(
             iter(
                 [
@@ -304,7 +310,7 @@ class WindowSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-windows.png
 
-    Classmethods:
+    Hint:
         The WindowSetting class implements two constructors that are tailored to
         the eppy_ scripting language:
 
@@ -384,6 +390,50 @@ class WindowSetting(UmiBase):
         self.ZoneMixingDeltaTemperature = ZoneMixingDeltaTemperature
         self.ZoneMixingFlowRate = ZoneMixingFlowRate
 
+    @property
+    def OperableArea(self):
+        return self._operable_area
+
+    @OperableArea.setter
+    def OperableArea(self, value):
+        if value > 1:
+            raise ValueError("Operable Area must be a number between 0 and 1.")
+        self._operable_area = value
+
+    @property
+    def AfnDischargeC(self):
+        return float(self._afn_discharge_c)
+
+    @AfnDischargeC.setter
+    def AfnDischargeC(self, value):
+        if value > 1:
+            raise ValueError("Operable Area must be a number between 0 and 1.")
+        self._afn_discharge_c = value
+
+    @property
+    def AfnTempSetpoint(self):
+        return float(self._afn_temp_setpoint)
+
+    @AfnTempSetpoint.setter
+    def AfnTempSetpoint(self, value):
+        self._afn_temp_setpoint = value
+
+    @property
+    def ShadingSystemSetpoint(self):
+        return float(self._shading_system_setpoint)
+
+    @ShadingSystemSetpoint.setter
+    def ShadingSystemSetpoint(self, value):
+        self._shading_system_setpoint = value
+
+    @property
+    def ShadingSystemTransmittance(self):
+        return float(self._shading_system_transmittance)
+
+    @ShadingSystemTransmittance.setter
+    def ShadingSystemTransmittance(self, value):
+        self._shading_system_transmittance = value
+
     def __add__(self, other):
         return self.combine(other)
 
@@ -426,7 +476,7 @@ class WindowSetting(UmiBase):
 
     @classmethod
     def generic(cls, idf, Name):
-        """Returns a generic window with SHGC=0.704, UFactor=2.703, Tvis=0.786
+        """Initialize a generic window with SHGC=0.704, UFactor=2.703, Tvis=0.786.
 
         Args:
             Name (str): Name of the WindowSetting
@@ -451,9 +501,7 @@ class WindowSetting(UmiBase):
     def from_construction(cls, Construction, **kwargs):
         """Make a :class:`WindowSetting` directly from a Construction_ object.
 
-        .. _Construction : https://bigladdersoftware.com/epx/docs/8-9/input
-        -output-reference/group-surface-construction-elements.html
-        #construction-000
+        .. _Construction : https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-surface-construction-elements.html#construction-000
 
         Examples:
             >>> from archetypal import IDF
@@ -482,8 +530,9 @@ class WindowSetting(UmiBase):
 
     @classmethod
     def from_surface(cls, surface, **kwargs):
-        """Build a WindowSetting object from a FenestrationSurface:Detailed_
-        object. This constructor will detect common window constructions and
+        """Build a WindowSetting object from a FenestrationSurface:Detailed_.
+
+        This constructor will detect common window constructions and
         shading devices. Supported Shading and Natural Air flow EnergyPlus
         objects are: WindowProperty:ShadingControl_,
         AirflowNetwork:MultiZone:Surface_.
@@ -698,8 +747,9 @@ class WindowSetting(UmiBase):
     @classmethod
     @timeit
     def from_zone(cls, zone, **kwargs):
-        """Iterate over the zone subsurfaces and create a window object. If more
-        than one window is created, use reduce to combine them together.
+        """Iterate over the zone subsurfaces and create a window object.
+
+        If more than one window is created, use reduce to combine them together.
 
         Args:
             zone (Zone): The Zone object from which the WindowSetting is
@@ -804,7 +854,7 @@ class WindowSetting(UmiBase):
         return new_obj
 
     def to_json(self):
-        """Convert class properties to dict"""
+        """Convert class properties to dict."""
         self.validate()  # Validate object before trying to get json format
 
         data_dict = collections.OrderedDict()
@@ -850,11 +900,7 @@ class WindowSetting(UmiBase):
 
     @classmethod
     def from_dict(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
+        """Initialize :class:`WindowSetting` object from json dict."""
         w = cls(*args, **kwargs)
 
         ref = kwargs.get("AfnWindowAvailability", None)
@@ -869,13 +915,16 @@ class WindowSetting(UmiBase):
 
     @classmethod
     def from_ref(cls, ref, building_templates, idf=None, **kwargs):
-        """In some cases, the WindowSetting is referenced in the DataStore to the
-        Windows property of a BuildingTemplate (instead of being listed in the
-        WindowSettings list. This is the case in the original
-        BostonTemplateLibrary.json.
+        """Initialize :class:`WindowSetting` object from a reference id.
+
+        Hint:
+            In some cases, the WindowSetting is referenced in the DataStore to the
+            Windows property of a BuildingTemplate (instead of being listed in the
+            WindowSettings list. This is the case in the original
+            BostonTemplateLibrary.json.
 
         Args:
-            ref (str): The referenced number
+            ref (str): The referenced number in the json library.
             building_templates (list): List of BuildingTemplates from the datastore.
 
         Returns:
@@ -893,7 +942,7 @@ class WindowSetting(UmiBase):
         return w
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         if not self.AfnWindowAvailability:
             self.AfnWindowAvailability = UmiSchedule.constant_schedule(
                 hourly_value=0, Name="AlwaysOff"
@@ -936,7 +985,7 @@ class WindowSetting(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

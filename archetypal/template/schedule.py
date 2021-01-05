@@ -300,7 +300,7 @@ class UmiSchedule(Schedule, UmiBase):
         return {"$ref": str(self.id)}
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         return self
 
     def mapping(self):
@@ -315,7 +315,7 @@ class UmiSchedule(Schedule, UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

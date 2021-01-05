@@ -393,7 +393,7 @@ class BuildingTemplate(UmiBase):
         return data_dict
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         return self
 
     def get_unique(self):
@@ -436,7 +436,7 @@ class BuildingTemplate(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

@@ -444,7 +444,7 @@ class ZoneConstructionSet(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

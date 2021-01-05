@@ -389,15 +389,15 @@ class UmiBase(object):
         return self
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate UmiObjects and fills in missing values."""
         return self
 
     def mapping(self):
         pass
 
     def get_unique(self):
-        """Returns first object matching equality in the list of instantiated objects
-        or self if no match is found"""
+        """Return first object matching equality in the list of instantiated objects
+        or self if no match is found."""
         if self._not_unique:
             # We want to return the first similar object (equality) that has this name.
             return next(
@@ -512,11 +512,11 @@ class MaterialBase(UmiBase):
             )
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         return self
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

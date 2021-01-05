@@ -393,7 +393,7 @@ class DomesticHotWaterSetting(UmiBase):
         return new_obj
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         # Assume water systems for whole building
         pass
 
@@ -458,7 +458,7 @@ class DomesticHotWaterSetting(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

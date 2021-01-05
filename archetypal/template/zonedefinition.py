@@ -537,7 +537,7 @@ class ZoneDefinition(UmiBase):
         return new_obj
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         if not self.InternalMassConstruction:
             self.set_generic_internalmass()
             self.InternalMassExposedPerFloorArea = 0
@@ -576,7 +576,7 @@ class ZoneDefinition(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

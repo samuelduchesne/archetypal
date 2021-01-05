@@ -75,14 +75,14 @@ def other_idf(config):
 
 @pytest.fixture(scope="module")
 def other_idf_object(config):
-    """Another IDF object (same as other_idf).Yields just the idf object
+    """Another IDF object (same as other_idf). Yields just the idf object
 
     Args:
         config:
     """
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    yield IDF(file, epw=w)
+    yield IDF(file, epw=w).simulate()
 
 
 @pytest.fixture(scope="module")
@@ -95,7 +95,7 @@ def other_idf_object_copy(config):
     """
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    yield IDF(file, epw=w)
+    yield IDF(file, epw=w).simulate()
 
 
 @pytest.fixture(scope="module")
@@ -1533,7 +1533,7 @@ class TestZoneLoad:
 
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file, epw=w)
+        idf = IDF(file, epw=w, annual=True)
         sql = idf.sql()
         yield idf, sql
 
@@ -1582,7 +1582,7 @@ class TestZoneLoad:
         assert zone_loads.IsEquipmentOn
         assert zone_loads.IsPeopleOn
         assert zone_loads.LightingPowerDensity == 11.84
-        np.testing.assert_almost_equal(zone_loads.PeopleDensity, 0.021107919980354082)
+        assert zone_loads.PeopleDensity == 0.021
 
     def test_zoneLoad_from_zone_mixedparams(self, config, fiveZoneEndUses):
         """
@@ -1598,16 +1598,12 @@ class TestZoneLoad:
         zone_loads = ZoneLoad.from_zone(z)
 
         assert zone_loads.DimmingType == DimmingTypes.Stepped
-        np.testing.assert_almost_equal(
-            zone_loads.EquipmentPowerDensity, 10.649455425574827
-        )
+        assert zone_loads.EquipmentPowerDensity == 10.649
         assert zone_loads.IlluminanceTarget == 400
         assert zone_loads.IsEquipmentOn
         assert zone_loads.IsPeopleOn
-        np.testing.assert_almost_equal(
-            zone_loads.LightingPowerDensity, 15.974, decimal=3
-        )
-        np.testing.assert_almost_equal(zone_loads.PeopleDensity, 0.111, decimal=3)
+        assert zone_loads.LightingPowerDensity == 15.974
+        assert zone_loads.PeopleDensity == 0.111
 
     def test_zoneLoad_from_to_json(self, config, idf):
         """
@@ -1721,9 +1717,9 @@ class TestZoneConditioning:
 
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file, epw=w)
+        idf = IDF(file, epw=w, annual=True)
         sql = idf.sql()
-        yield idf, sql, request.param, IDF(file, epw=w)  # pass an idfcopy
+        yield idf, sql, request.param, IDF(file, epw=w, annual=True)  # pass an idfcopy
 
     def test_zoneConditioning_init(self, config, idf):
         """
@@ -1870,9 +1866,9 @@ class TestVentilationSetting:
         eplusdir = get_eplus_dirs(settings.ep_version)
         file = eplusdir / "ExampleFiles" / request.param
         w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
-        idf = IDF(file, epw=w)
+        idf = IDF(file, epw=w, annual=True)
         sql = idf.sql()
-        yield idf, sql, request.param, IDF(file, epw=w)  # passes a copy as well
+        yield idf, sql, request.param, IDF(file, epw=w, annual=True)  # passes a copy as well
 
     def test_ventilation_init(self, config, idf):
         """
@@ -2306,7 +2302,7 @@ class TestZone:
         idf, sql = small_idf_copy
         zone = idf.getobject("ZONE", "Perim")
         z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
-        np.testing.assert_almost_equal(desired=z.volume, actual=137.4, decimal=1)
+        np.testing.assert_almost_equal(desired=z.volume, actual=25.54, decimal=1)
 
     def test_add_zone(self, small_idf_copy):
         """Test __add__() for Zone
@@ -2438,7 +2434,7 @@ def bt(config):
     eplus_dir = get_eplus_dirs(archetypal.settings.ep_version)
     file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
     w, *_ = (eplus_dir / "WeatherData").files("*.epw")
-    idf = IDF(file, epw=w)
+    idf = IDF(file, epw=w, annual=True)
     from archetypal.template import BuildingTemplate
 
     bt = BuildingTemplate.from_idf(idf)
@@ -2462,8 +2458,8 @@ class TestBuildingTemplate:
         bt_to_json = bt[0].to_json()
         w_to_json = bt[0].Windows.to_json()
 
-    def test_hash_eq_bt(self, other_idf_object, other_idf_object_copy):
-        """Test equality and hashing of class DomesticHotWaterSetting
+    def test_hash_eq_bt(self, config, other_idf_object, other_idf_object_copy):
+        """Test equality and hashing of class BuildingTemplate
 
         Args:
             other_idf_object:

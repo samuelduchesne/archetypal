@@ -68,6 +68,7 @@ Classes that support the :ref:`templates_label` classes above.
     WeekSchedule
     YearSchedule
     WindowType
+    ShadingType
 
 Graph Module
 ------------

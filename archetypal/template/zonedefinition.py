@@ -144,11 +144,13 @@ class ZoneDefinition(UmiBase):
     def occupants(self):
         if self._occupants is None:
             with sqlite3.connect(self.idf.sql_file) as conn:
-                sql_query = "SELECT t.Value FROM TabularDataWithStrings t " \
-                            "WHERE TableName='Average Outdoor Air During Occupied Hours' and ColumnName='Nominal Number of Occupants' and RowName=?"
+                sql_query = (
+                    "SELECT t.Value FROM TabularDataWithStrings t "
+                    "WHERE TableName='Average Outdoor Air During Occupied Hours' and ColumnName='Nominal Number of Occupants' and RowName=?"
+                )
 
                 fetchone = conn.execute(sql_query, (self.Name.upper(),)).fetchone()
-                (res,) = fetchone or (0, )
+                (res,) = fetchone or (0,)
             self._occupants = float(res)
         return self._occupants
 
@@ -177,8 +179,10 @@ class ZoneDefinition(UmiBase):
         """
         if self._volume is None:
             with sqlite3.connect(self.idf.sql_file) as conn:
-                sql_query = "SELECT t.Value FROM TabularDataWithStrings t " \
-                            "WHERE TableName='Zone Summary' and ColumnName='Volume' and RowName=?"
+                sql_query = (
+                    "SELECT t.Value FROM TabularDataWithStrings t "
+                    "WHERE TableName='Zone Summary' and ColumnName='Volume' and RowName=?"
+                )
                 (res,) = conn.execute(sql_query, (self.Name.upper(),)).fetchone()
             self._volume = float(res)
         return self._volume

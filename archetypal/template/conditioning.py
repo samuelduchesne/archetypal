@@ -606,7 +606,10 @@ class ZoneConditioning(UmiBase):
             oa_design = oa["Minimum Outdoor Air Flow Rate"]  # m3/s
             isoa = oa["Calculated Design Air Flow"] > 0  # True if ach > 0
             oa_area = oa_design / zone.area
-            oa_person = oa_design / zone.occupants
+            if zone.occupants > 0:
+                oa_person = oa_design / zone.occupants
+            else:
+                oa_person = np.NaN
 
             designobjs = zone._epbunch.getreferingobjs(
                 iddgroups=["HVAC Design Objects"], fields=["Zone_or_ZoneList_Name"]

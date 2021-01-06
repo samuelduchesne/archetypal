@@ -158,7 +158,7 @@ class WindowConstruction(UmiBase):
         Name = Construction.Name
         idf = Construction.theidf
         wc = cls(Name=Name, idf=idf, **kwargs)
-        wc.Layers = wc.layers(Construction, idf)
+        wc.Layers = wc.layers(Construction, **kwargs)
         catdict = {0: "Single", 1: "Single", 2: "Double", 3: "Triple", 4: "Quadruple"}
         wc.Category = catdict[
             len([lyr for lyr in wc.Layers if isinstance(lyr.Material, GlazingMaterial)])
@@ -201,9 +201,8 @@ class WindowConstruction(UmiBase):
             Name=self.Name,
         )
 
-    @staticmethod
-    def layers(Construction, idf):
-        """Retrieve layers for the WindowConstruction."""
+    def layers(self, Construction, **kwargs):
+        """Retrieve layers for the WindowConstruction"""
         layers = []
         for field in Construction.fieldnames:
             # Loop through the layers from the outside layer towards the
@@ -229,14 +228,16 @@ class WindowConstruction(UmiBase):
                         Name=material.Name,
                         Optical=material.Optical_Data_Type,
                         OpticalData=material.Window_Glass_Spectral_Data_Set_Name,
-                        idf=idf,
+                        idf=self.idf,
                     )
 
                     material_layer = MaterialLayer(material_obj, material.Thickness)
 
                 elif material.key.upper() == "WindowMaterial:Gas".upper():
                     # Todo: Make gas name generic, like in UmiTemplateLibrary Editor
-                    material_obj = GasMaterial(Name=material.Gas_Type.upper(), idf=idf)
+                    material_obj = GasMaterial(
+                        Name=material.Gas_Type.upper(), idf=self.idf
+                    )
                     material_layer = MaterialLayer(material_obj, material.Thickness)
                 elif material.key.upper() == "WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM":
                     glass_properties = calc_simple_glazing(
@@ -245,7 +246,7 @@ class WindowConstruction(UmiBase):
                         material.Visible_Transmittance,
                     )
                     material_obj = GlazingMaterial(
-                        **glass_properties, Name=material.Name, idf=idf
+                        **glass_properties, Name=material.Name, idf=self.idf
                     )
 
                     material_layer = MaterialLayer(

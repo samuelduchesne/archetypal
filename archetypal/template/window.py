@@ -207,7 +207,9 @@ class WindowConstruction(UmiBase):
         for field in Construction.fieldnames:
             # Loop through the layers from the outside layer towards the
             # indoor layers and get the material they are made of.
-            material = Construction.get_referenced_object(field)
+            material = Construction.get_referenced_object(field) or kwargs.get(
+                "material", None
+            )
             if material:
                 # Create the WindowMaterial:Glazing or the WindowMaterial:Gas
                 # and append to the list of layers

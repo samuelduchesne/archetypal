@@ -33,7 +33,7 @@ class MassRatio(object):
 
     def __eq__(self, other):
         if not isinstance(other, MassRatio):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -129,7 +129,7 @@ class StructureInformation(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, StructureInformation):
-            return False
+            return NotImplemented
         else:
             return all(
                 [

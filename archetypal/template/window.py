@@ -101,7 +101,7 @@ class WindowConstruction(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, WindowConstruction):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -449,7 +449,7 @@ class WindowSetting(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, WindowSetting):
-            return False
+            return NotImplemented
         else:
             return all(
                 [

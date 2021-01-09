@@ -98,7 +98,7 @@ class UmiSchedule(Schedule, UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, UmiSchedule):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -368,7 +368,7 @@ class YearSchedulePart:
 
     def __eq__(self, other):
         if not isinstance(other, YearSchedulePart):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -449,7 +449,7 @@ class DaySchedule(UmiSchedule):
 
     def __eq__(self, other):
         if not isinstance(other, DaySchedule):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -579,7 +579,7 @@ class WeekSchedule(UmiSchedule):
 
     def __eq__(self, other):
         if not isinstance(other, WeekSchedule):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -727,7 +727,7 @@ class YearSchedule(UmiSchedule):
 
     def __eq__(self, other):
         if not isinstance(other, YearSchedule):
-            return False
+            return NotImplemented
         else:
             return all([self.Type == other.Type, self.Parts == other.Parts])
 

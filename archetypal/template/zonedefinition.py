@@ -122,7 +122,7 @@ class ZoneDefinition(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, ZoneDefinition):
-            return False
+            return NotImplemented
         else:
             return all(
                 [

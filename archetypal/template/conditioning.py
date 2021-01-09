@@ -323,7 +323,7 @@ class ZoneConditioning(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, ZoneConditioning):
-            return False
+            return NotImplemented
         else:
             return all(
                 [

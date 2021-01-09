@@ -460,7 +460,7 @@ class MaterialBase(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, MaterialBase):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -526,7 +526,7 @@ class MaterialLayer(object):
 
     def __eq__(self, other):
         if not isinstance(other, MaterialLayer):
-            return False
+            return NotImplemented
         else:
             return all(
                 [self.Thickness == other.Thickness, self.Material == other.Material]

@@ -121,7 +121,7 @@ class OpaqueConstruction(LayeredConstruction):
 
     def __eq__(self, other):
         if not isinstance(other, OpaqueConstruction):
-            return False
+            return NotImplemented
         else:
             return all([self.Layers == other.Layers])
 

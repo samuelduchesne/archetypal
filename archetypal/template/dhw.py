@@ -90,7 +90,9 @@ class DomesticHotWaterSetting(UmiBase):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(
+            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+        )
 
     def __eq__(self, other):
         if not isinstance(other, DomesticHotWaterSetting):

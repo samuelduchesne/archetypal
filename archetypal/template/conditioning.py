@@ -765,7 +765,7 @@ class ZoneConditioning(UmiBase):
                 h_array = conn.execute(sql_query).fetchall()
                 if h_array:
                     h_array = np.array(h_array).round(2)
-                    scaler = Binarizer(threshold=np.array(h_array).mean())
+                    scaler = Binarizer(threshold=np.array(h_array).mean() - 0.1)
                     heating_availability = scaler.fit_transform(h_array).flatten()
                     heating_sched = UmiSchedule.from_values(
                         Name=zone.Name + "_Heating_Schedule",
@@ -790,7 +790,7 @@ class ZoneConditioning(UmiBase):
                 c_array = conn.execute(sql_query).fetchall()
                 if c_array:
                     c_array = np.array(c_array).round(2)
-                    scaler = Binarizer(threshold=c_array.mean())
+                    scaler = Binarizer(threshold=c_array.mean() + 0.1)
                     cooling_availability = scaler.fit_transform(c_array).flatten()
                     cooling_sched = UmiSchedule.from_values(
                         Name=zone.Name + "_Cooling_Schedule",

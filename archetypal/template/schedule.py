@@ -278,15 +278,15 @@ class UmiSchedule(Schedule, UmiBase):
                     ),
                 )
             )
-
         _from = "\n".join(lines)
-        self.__class__ = YearSchedule
-        self.Comments = f"Year Week Day schedules created from: \n{_from}"
-        self.epbunch = year
-        self.Type = "Fraction"
-        self.Parts = Parts
-        self.Category = self.Name
-        return self
+        return YearSchedule(
+            Name=self.Name,
+            Parts=Parts,
+            Type="Fraction",
+            epbunch=year,
+            Category=self.Name,
+            Comments=f"Year Week Day schedules created from: \n{_from}" + str(id(self)),
+        ).get_unique()
 
     def to_json(self):
         """UmiSchedule does not implement the to_json method because it is not
@@ -297,8 +297,7 @@ class UmiSchedule(Schedule, UmiBase):
         return self.to_dict()
 
     def to_dict(self):
-        self.validate()  # Validate object before trying to get json format
-        self.develop()  # Develop into Year-, Week- and DaySchedules
+        self = self.develop()  # Develop into Year-, Week- and DaySchedules
         return {"$ref": str(self.id)}
 
     def validate(self):

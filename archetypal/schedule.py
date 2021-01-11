@@ -929,7 +929,7 @@ class Schedule(object):
             week_id = f"w_{self.Name}_{count_week:02d}"
             dict_week[week_id] = {}
             for i, day in zip(list(range(0, 7)), list(c.iterweekdays())):
-                day_of_week = unique_week[..., i * 24: (i + 1) * 24]
+                day_of_week = unique_week[..., i * 24 : (i + 1) * 24]
                 for key in dict_day:
                     if (day_of_week == dict_day[key]).all():
                         dict_week[week_id]["day_{}".format(day)] = key

@@ -107,7 +107,9 @@ class UmiSchedule(Schedule, UmiBase):
                     self.schType == other.schType,
                     self.Type == other.Type,
                     self.quantity == other.quantity,
-                    np.allclose(self.all_values, other.all_values, rtol=1e-02),
+                    np.allclose(self.all_values, other.all_values, rtol=1e-02)
+                    if self.all_values.size == other.all_values.size
+                    else False,
                 ]
             )
 

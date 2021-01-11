@@ -286,7 +286,11 @@ class UmiSchedule(Schedule, UmiBase):
             epbunch=year,
             Category=self.Name,
             Comments=f"Year Week Day schedules created from: \n{_from}" + str(id(self)),
-        ).get_unique()
+            idf=self.idf,
+        )
+
+    def get_unique(self):
+        return super(UmiSchedule, self.develop()).get_unique()
 
     def to_json(self):
         """UmiSchedule does not implement the to_json method because it is not
@@ -297,7 +301,6 @@ class UmiSchedule(Schedule, UmiBase):
         return self.to_dict()
 
     def to_dict(self):
-        self = self.develop()  # Develop into Year-, Week- and DaySchedules
         return {"$ref": str(self.id)}
 
     def validate(self):
@@ -526,6 +529,9 @@ class DaySchedule(UmiSchedule):
 
         return sched
 
+    def get_unique(self):
+        return UmiBase.get_unique(self)
+
     def to_json(self):
         """Returns a dict-like representation of the schedule.
 
@@ -638,6 +644,9 @@ class WeekSchedule(UmiSchedule):
         Days = [UmiBase.get_classref(ref) for ref in refs]
         wc = cls(Type=Type, Days=Days, **kwargs)
         return wc
+
+    def get_unique(self):
+        return UmiBase.get_unique(self)
 
     def to_json(self):
         """Returns a dict-like representation of the schedule.
@@ -817,6 +826,9 @@ class YearSchedule(UmiSchedule):
         ys = cls(Type=Type, Parts=Parts, **kwargs)
         ys.schType = "Schedule:Year"
         return ys
+
+    def get_unique(self):
+        return UmiBase.get_unique(self)
 
     def to_json(self):
         """Returns a dict-like representation of the schedule.

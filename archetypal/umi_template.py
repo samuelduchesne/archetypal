@@ -426,8 +426,6 @@ class UmiTemplateLibrary:
         jsonized = {}
 
         def recursive_json(obj):
-            if obj.__class__.mro()[0] == UmiSchedule:
-                obj = obj.develop()
             catname = obj.__class__.__name__ + "s"
             if catname in data_dict:
                 key = obj.id

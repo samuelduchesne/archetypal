@@ -29,7 +29,7 @@ class Schedule(object):
         idf=None,
         start_day_of_the_week=None,
         strict=False,
-        base_year=2018,
+        base_year=None,
         schType=None,
         Type=None,
         Values=None,
@@ -68,7 +68,7 @@ class Schedule(object):
         self._idf = idf
         self.Name = Name
         self.startDayOfTheWeek = self.get_sdow(start_day_of_the_week)
-        self.year = base_year
+        self.year = get_year_for_first_weekday(self.startDayOfTheWeek)
 
         self.count = 0
         self.startHOY = 1

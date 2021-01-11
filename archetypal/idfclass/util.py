@@ -51,6 +51,10 @@ def hash_model(idfname, **kwargs):
         buf = idfname.read().encode("utf-8")
     elif isinstance(idfname, IDF):
         buf = idfname.idfstr().encode("utf-8")
+        if idfname.name:
+            hasher.update(idfname.name.encode("utf-8"))
+            # hash idfname.basename in case file content is identical with another
+            # file with a different name
     else:
         with open(idfname, "rb") as afile:
             buf = afile.read()

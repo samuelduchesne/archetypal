@@ -29,9 +29,11 @@ import archetypal
 from archetypal import log, save_and_show
 from archetypal.template import (
     MassRatio,
+    MaterialLayer,
     StructureInformation,
     UmiBase,
     WindowSetting,
+    YearSchedulePart,
     ZoneDefinition,
     is_core,
     resolve_obco,
@@ -402,12 +404,19 @@ class BuildingTemplate(UmiBase):
 
         def recursive_replace(umibase):
             for key, obj in umibase.mapping().items():
-                if isinstance(obj, UmiBase):
+                if isinstance(
+                    obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
+                ):
                     recursive_replace(obj)
-                    try:
-                        setattr(umibase, key, obj.get_unique())
-                    except:
-                        pass
+                    setattr(umibase, key, obj.get_unique())
+                elif isinstance(obj, list):
+                    [
+                        recursive_replace(obj)
+                        for obj in obj
+                        if isinstance(
+                            obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
+                        )
+                    ]
 
         recursive_replace(self)
         return self

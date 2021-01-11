@@ -493,10 +493,7 @@ class UmiTemplateLibrary:
             data_dict[key] = v
 
         # Validate
-        try:
-            assert no_duplicates(data_dict, attribute="Name")
-        except Exception as e:
-            lg.warning(str(e))
+        assert no_duplicates(data_dict, attribute="Name")
 
         return data_dict
 

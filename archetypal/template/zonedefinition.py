@@ -596,6 +596,9 @@ class ZoneDefinition(UmiBase):
             None,
         )
 
+    def get_unique(self):
+        return super(ZoneDefinition, self).get_unique()
+
 
 def resolve_obco(this):
     """Resolve the outside boundary condition of a surface and return the other

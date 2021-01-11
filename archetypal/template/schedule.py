@@ -456,7 +456,7 @@ class DaySchedule(UmiSchedule):
             return all(
                 [
                     self.Type == other.Type,
-                    np.allclose(self._values, other._values, rtol=1e-02),
+                    np.allclose(self.all_values, other.all_values, rtol=1e-02),
                 ]
             )
 

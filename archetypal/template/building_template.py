@@ -125,7 +125,7 @@ class BuildingTemplate(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, BuildingTemplate):
-            return False
+            return NotImplemented
         else:
             return all(
                 [

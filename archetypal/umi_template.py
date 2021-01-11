@@ -474,8 +474,8 @@ class UmiTemplateLibrary:
                     bld.cores = cores
                     bld.perims = perims
         for key in data_dict:
-            # Sort the list elements by $id
-            data_dict[key] = sorted(data_dict[key], key=lambda x: int(x.get("$id", 0)))
+            # Sort the list elements by their Name
+            data_dict[key] = sorted(data_dict[key], key=lambda x: x.get("Name"))
 
         # Correct naming convention and reorder categories
         if not data_dict.get("GasMaterials"):

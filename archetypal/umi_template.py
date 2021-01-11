@@ -458,6 +458,8 @@ class UmiTemplateLibrary:
                 recursive_json(obj)
         else:
             for bld in self.BuildingTemplates:
+                bld.get_unique()
+            for bld in self.BuildingTemplates:
                 if all_zones:
                     recursive_json(bld)
                 else:
@@ -466,7 +468,7 @@ class UmiTemplateLibrary:
                     perims = bld.__dict__.pop("perims", None)
 
                     # apply the recursion
-                    recursive_json(bld.get_unique())
+                    recursive_json(bld)
 
                     # put back objects
                     bld.cores = cores

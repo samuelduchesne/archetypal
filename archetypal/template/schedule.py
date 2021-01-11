@@ -249,7 +249,7 @@ class UmiSchedule(Schedule, UmiBase):
                     Comments="Year Week Day schedules created from: \n{}".format(
                         "\n".join(lines)
                     ),
-                    allow_duplicates=True,
+                    allow_duplicates=getattr(self, "_not_unique", False),
                     Category=self.Name,
                 )
             )
@@ -275,6 +275,7 @@ class UmiSchedule(Schedule, UmiBase):
                             "\n".join(lines)
                         ),
                         Category=self.Name,
+                        allow_duplicates=getattr(self, "_not_unique", False)
                     ),
                 )
             )
@@ -287,6 +288,7 @@ class UmiSchedule(Schedule, UmiBase):
             Category=self.Name,
             Comments=f"Year Week Day schedules created from: \n{_from}" + str(id(self)),
             idf=self.idf,
+            allow_duplicates=getattr(self, "_not_unique", False),
         )
 
     def get_unique(self):

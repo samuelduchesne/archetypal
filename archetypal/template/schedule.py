@@ -460,6 +460,9 @@ class DaySchedule(UmiSchedule):
                 ]
             )
 
+    def __hash__(self):
+        return super(DaySchedule, self).__hash__()
+
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
         """Create a DaySchedule from a :class:`~eppy.bunch_subclass.EpBunch`
@@ -589,6 +592,9 @@ class WeekSchedule(UmiSchedule):
                     self.Days == other.Days,
                 ]
             )
+
+    def __hash__(self):
+        return super(WeekSchedule, self).__hash__()
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):

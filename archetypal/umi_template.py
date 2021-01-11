@@ -399,7 +399,7 @@ class UmiTemplateLibrary:
                 components (not used by any other parent component).
         """
         # First, reset existing name
-        UniqueName.existing = []
+        UniqueName.existing = set()
 
         data_dict = OrderedDict(
             {

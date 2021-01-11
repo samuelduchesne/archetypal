@@ -744,7 +744,7 @@ class UniqueName(str):
     makes sure they are unique.
     """
 
-    existing = []
+    existing = set()
 
     def __new__(cls, content):
         """Pick a name. Will increment the name if already used"""
@@ -761,14 +761,16 @@ class UniqueName(str):
         if not name:
             return None
         if name not in cls.existing:
-            cls.existing.append(name)
+            cls.existing.add(name)
             return name
         else:
             match = re.match(r"^(.*?)(\D*)(\d+)$", name)
             if match:
                 groups = list(match.groups())
+                pad = len(groups[-1])
                 groups[-1] = int(groups[-1])
                 groups[-1] += 1
+                groups[-1] = str(groups[-1]).zfill(pad)
                 name = "".join(map(str, groups))
                 return cls.create_unique(name)
             else:

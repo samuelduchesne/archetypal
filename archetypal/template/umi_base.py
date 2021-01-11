@@ -56,6 +56,7 @@ class UmiBase(object):
     _independant_vars = set(chain(*list(_dependencies.values())))
     _dependant_vars = set(_dependencies.keys())
     CREATED_OBJECTS = []
+    _ids = itertools.count(0)  # unique id for each class instance
 
     def _reset_dependant_vars(self, name):
         _reverse_dependencies = {}
@@ -123,6 +124,7 @@ class UmiBase(object):
         self.DataSource = DataSource
         self.id = kwargs.get("$id", None)
         self._not_unique = allow_duplicates
+        self.unit_number = next(self._ids)
 
         UmiBase.CREATED_OBJECTS.append(self)
 
@@ -364,22 +366,40 @@ class UmiBase(object):
         pass
 
     def get_unique(self):
-        """Return first object matching equality in the list of instantiated objects
-        or self if no match is found."""
+        """Return first object matching equality in the list of instantiated objects."""
         if self._not_unique:
             # We want to return the first similar object (equality) that has this name.
-            return next(
-                (
-                    x
-                    for x in UmiBase.CREATED_OBJECTS
-                    if x == self and x.Name == self.Name
+            obj = next(
+                iter(
+                    sorted(
+                        (
+                            x
+                            for x in UmiBase.CREATED_OBJECTS
+                            if x == self
+                            and x.Name == self.Name
+                            and type(x) == type(self)
+                        ),
+                        key=lambda x: x.unit_number,
+                    )
                 ),
-                self,
             )
         else:
             # We want to return the first similar object (equality) regardless of the
             # name.
-            return next((x for x in UmiBase.CREATED_OBJECTS if x == self), self)
+            obj = next(
+                iter(
+                    sorted(
+                        (
+                            x
+                            for x in UmiBase.CREATED_OBJECTS
+                            if x == self and type(x) == type(self)
+                        ),
+                        key=lambda x: x.unit_number,
+                    )
+                ),
+            )
+
+        return obj
 
 
 class MaterialBase(UmiBase):

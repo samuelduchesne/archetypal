@@ -14,9 +14,11 @@ from enum import Enum
 import numpy as np
 from deprecation import deprecated
 from sigfig import round
+from sklearn.preprocessing import Binarizer
 
 import archetypal
 from archetypal import ReportData, float_round, log, settings, timeit
+from archetypal.schedule import get_year_for_first_weekday
 from archetypal.template import UmiBase, UmiSchedule, UniqueName
 
 
@@ -321,7 +323,7 @@ class ZoneConditioning(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, ZoneConditioning):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -406,10 +408,12 @@ class ZoneConditioning(UmiBase):
             if not math.isnan(self.HeatingSetpoint)
             else 20
         )
-        data_dict["HeatRecoveryEfficiencyLatent"] = self.HeatRecoveryEfficiencyLatent
-        data_dict[
-            "HeatRecoveryEfficiencySensible"
-        ] = self.HeatRecoveryEfficiencySensible
+        data_dict["HeatRecoveryEfficiencyLatent"] = round(
+            self.HeatRecoveryEfficiencyLatent, 3
+        )
+        data_dict["HeatRecoveryEfficiencySensible"] = round(
+            self.HeatRecoveryEfficiencySensible, 3
+        )
         data_dict["HeatRecoveryType"] = self.HeatRecoveryType.value
         data_dict["IsCoolingOn"] = self.IsCoolingOn
         data_dict["IsHeatingOn"] = self.IsHeatingOn
@@ -513,7 +517,7 @@ class ZoneConditioning(UmiBase):
                     self.MinFreshAirPerPerson,
                     self.MechVentSchedule,
                 ) = self.fresh_air_from_zone_sizes(zone)
-            except ValueError:
+            except (ValueError, StopIteration):
                 (
                     self.IsMechVentOn,
                     self.MinFreshAirPerArea,
@@ -578,7 +582,7 @@ class ZoneConditioning(UmiBase):
         """Returns the Mechanical Ventilation from the ZoneSizes Table in the sql db.
 
         Args:
-            zone:
+            zone (ZoneDefinition):
 
         Returns:
             4-tuple: (IsMechVentOn, MinFreshAirPerArea, MinFreshAirPerPerson, MechVentSchedule)
@@ -592,17 +596,20 @@ class ZoneConditioning(UmiBase):
             sql_query = f"""
                         select t.ColumnName, t.Value
                         from TabularDataWithStrings t
-                        where TableName == 'Minimum Outdoor Air During Occupied Hours' and RowName == '{zone.Name.upper()}'"""
+                        where TableName == 'Zone Sensible Heating' and RowName == '{zone.Name.upper()}'"""
             oa = (
                 pd.read_sql_query(sql_query, con=conn, coerce_float=True)
                 .set_index("ColumnName")
                 .squeeze()
             )
-            oa = pd.to_numeric(oa)
-            oa_design = oa["Zone Volume"] * oa["Mechanical Ventilation"] / 3600  # m3/s
-            isoa = oa["Mechanical Ventilation"] > 0  # True if ach > 0
+            oa = pd.to_numeric(oa, errors="coerce")
+            oa_design = oa["Minimum Outdoor Air Flow Rate"]  # m3/s
+            isoa = oa["Calculated Design Air Flow"] > 0  # True if ach > 0
             oa_area = oa_design / zone.area
-            oa_person = oa_design / oa["Nominal Number of Occupants"]
+            if zone.occupants > 0:
+                oa_person = oa_design / zone.occupants
+            else:
+                oa_person = np.NaN
 
             designobjs = zone._epbunch.getreferingobjs(
                 iddgroups=["HVAC Design Objects"], fields=["Zone_or_ZoneList_Name"]
@@ -646,32 +653,60 @@ class ZoneConditioning(UmiBase):
 
         # Heating
         heating_meters = (
-            "Heating:Electricity",
-            "Heating:Gas",
-            "Heating:DistrictHeating",
+            "Heating__Electricity",
+            "Heating__Gas",
+            "Heating__DistrictHeating",
+            "Heating__Oil",
         )
-        heating_cop = self._get_cop(
-            zone,
-            energy_in_list=heating_meters,
-            energy_out_variable_name=(
-                "Air System Total Heating Energy",
-                "Zone Ideal Loads Zone Total Heating Energy",
-            ),
+        total_input_heating_energy = 0
+        for meter in heating_meters:
+            try:
+                total_input_heating_energy += (
+                    self.idf.meters.OutputMeter[meter].values("kWh").sum()
+                )
+            except KeyError:
+                pass  # pass if meter does not exist for model
+
+        heating_energy_transfer_meters = (
+            "HeatingCoils__EnergyTransfer",
+            "Baseboard__EnergyTransfer",
         )
-        # Cooling
+        total_output_heating_energy = 0
+        for meter in heating_energy_transfer_meters:
+            try:
+                total_output_heating_energy += (
+                    self.idf.meters.OutputMeter[meter].values("kWh").sum()
+                )
+            except KeyError:
+                pass  # pass if meter does not exist for model
+        heating_cop = total_output_heating_energy / total_input_heating_energy
+
         cooling_meters = (
-            "Cooling:Electricity",
-            "Cooling:Gas",
-            "Cooling:DistrictCooling",
+            "Cooling__Electricity",
+            "Cooling__Gas",
+            "Cooling__DistrictCooling",
+            "HeatRejection__Electricity",  # includes cooling towers
         )
-        cooling_cop = self._get_cop(
-            zone,
-            energy_in_list=cooling_meters,
-            energy_out_variable_name=(
-                "Air System Total Cooling Energy",
-                "Zone Ideal Loads Zone Total Cooling Energy",
-            ),
-        )
+        total_input_cooling_energy = 0
+        for meter in cooling_meters:
+            try:
+                total_input_cooling_energy += (
+                    self.idf.meters.OutputMeter[meter].values("kWh").sum()
+                )
+            except KeyError:
+                pass  # pass if meter does not exist for model
+
+        cooling_energy_transfer_meters = ("CoolingCoils__EnergyTransfer",)
+        total_output_cooling_energy = 0
+        for meter in cooling_energy_transfer_meters:
+            try:
+                total_output_cooling_energy += (
+                    self.idf.meters.OutputMeter[meter].values("kWh").sum()
+                )
+            except KeyError:
+                pass  # pass if meter does not exist for model
+
+        cooling_cop = total_output_cooling_energy / total_input_cooling_energy
 
         # Capacity limits (heating and cooling)
         zone_size = zone.idf.sql()["ZoneSizes"][
@@ -693,8 +728,8 @@ class ZoneConditioning(UmiBase):
         self.MaxCoolingCapacity = cooling_cap
         self.MaxCoolFlow = cooling_flow
 
-        self.CoolingCoeffOfPerf = cooling_cop
-        self.HeatingCoeffOfPerf = heating_cop
+        self.CoolingCoeffOfPerf = float(cooling_cop)
+        self.HeatingCoeffOfPerf = float(heating_cop)
 
         # If cop calc == infinity, COP = 1 because we need a value in json file.
         if heating_cop == float("infinity"):
@@ -729,10 +764,12 @@ class ZoneConditioning(UmiBase):
                         WHERE ReportVariableDataDictionaryIndex == {index[0]};"""
                 h_array = conn.execute(sql_query).fetchall()
                 if h_array:
-                    heating_setpoints = np.array(h_array).flatten()
+                    h_array = np.array(h_array).round(2)
+                    scaler = Binarizer(threshold=np.array(h_array).mean() - 0.1)
+                    heating_availability = scaler.fit_transform(h_array).flatten()
                     heating_sched = UmiSchedule.from_values(
                         Name=zone.Name + "_Heating_Schedule",
-                        Values=(heating_setpoints > 0).astype(int),
+                        Values=heating_availability,
                         Type="Fraction",
                         idf=zone.idf,
                         allow_duplicates=True,
@@ -752,19 +789,21 @@ class ZoneConditioning(UmiBase):
                         WHERE ReportVariableDataDictionaryIndex == {index[0]};"""
                 c_array = conn.execute(sql_query).fetchall()
                 if c_array:
-                    cooling_setpoints = np.array(c_array).flatten()
+                    c_array = np.array(c_array).round(2)
+                    scaler = Binarizer(threshold=c_array.mean() + 0.1)
+                    cooling_availability = scaler.fit_transform(c_array).flatten()
                     cooling_sched = UmiSchedule.from_values(
                         Name=zone.Name + "_Cooling_Schedule",
-                        Values=(cooling_setpoints > 0).astype(int),
+                        Values=1 - cooling_availability,  # take flipped
                         Type="Fraction",
                         idf=zone.idf,
                         allow_duplicates=True,
                     )
                 else:
-                    heating_sched = None
-        self.HeatingSetpoint = heating_setpoints.mean()
+                    cooling_sched = None
+        self.HeatingSetpoint = max(h_array)
         self.HeatingSchedule = heating_sched
-        self.CoolingSetpoint = cooling_setpoints.mean()
+        self.CoolingSetpoint = min(c_array)
         self.CoolingSchedule = cooling_sched
 
         # If HeatingSetpoint == nan, means there is no heat or cold input,
@@ -814,8 +853,8 @@ class ZoneConditioning(UmiBase):
         )
 
         # Set defaults
-        HeatRecoveryEfficiencyLatent = 0.7
-        HeatRecoveryEfficiencySensible = 0.65
+        HeatRecoveryEfficiencyLatent = 0.65
+        HeatRecoveryEfficiencySensible = 0.7
         HeatRecoveryType = HeatRecoveryTypes.NONE
         comment = ""
 
@@ -859,8 +898,8 @@ class ZoneConditioning(UmiBase):
             elif object.key.upper() == "HeatExchanger:Desiccant:BalancedFlow".upper():
                 # Do HeatExchanger:Dessicant:BalancedFlow
                 # Use default values
-                HeatRecoveryEfficiencyLatent = 0.7
-                HeatRecoveryEfficiencySensible = 0.65
+                HeatRecoveryEfficiencyLatent = 0.65
+                HeatRecoveryEfficiencySensible = 0.7
                 HeatRecoveryType = HeatRecoveryTypes.Enthalpy
 
             elif (
@@ -953,21 +992,6 @@ class ZoneConditioning(UmiBase):
         rd = ReportData.from_sql_dict(zone.idf.sql())
         energy_out = rd.filter_report_data(name=tuple(energy_out_variable_name))
         energy_in = rd.filter_report_data(name=tuple(energy_in_list))
-
-        # zone_to_hvac = {zone.Zone_Name: [
-        #     zone.get_referenced_object(
-        #         'Zone_Conditioning_Equipment_List_Name
-        #         ').get_referenced_object(
-        #         fieldname) for fieldname in zone.get_referenced_object(
-        #         'Zone_Conditioning_Equipment_List_Name').fieldnames if
-        #     zone.get_referenced_object(
-        #         'Zone_Conditioning_Equipment_List_Name
-        #         ').get_referenced_object(
-        #         fieldname) is not None
-        # ]
-        #     for zone in zone.idf.idfobjects[
-        #         'ZoneHVAC:EquipmentConnections'.upper()]
-        # }
 
         outs = energy_out.groupby("KeyValue").Value.sum()
         ins = energy_in.Value.sum()
@@ -1077,7 +1101,7 @@ class ZoneConditioning(UmiBase):
         return new_obj
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         if self.HeatingSchedule is None:
             self.HeatingSchedule = UmiSchedule.constant_schedule(idf=self.idf)
         if self.CoolingSchedule is None:
@@ -1126,7 +1150,7 @@ class ZoneConditioning(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

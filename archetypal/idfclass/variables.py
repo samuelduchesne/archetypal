@@ -70,9 +70,14 @@ class VariableGroup:
             self._properties[variable_name] = Variable(idf, variable)
             setattr(self, variable_name, self._properties[variable_name])
 
+    def __getitem__(self, variable_name):
+        """Get item by key."""
+        return self._properties[variable_name]
+
 
 class Variables:
     """Class attributes representing available rdd variables"""
+    OutputVariable = VariableGroup  # Placeholder for variables
 
     def __init__(self, idf):
         self._idf = idf

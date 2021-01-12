@@ -111,7 +111,7 @@ class ZoneLoad(UmiBase):
 
     @property
     def EquipmentPowerDensity(self):
-        return float(self._EquipmentPowerDensity)
+        return round(float(self._EquipmentPowerDensity), decimals=3)
 
     @EquipmentPowerDensity.setter
     def EquipmentPowerDensity(self, value):
@@ -127,7 +127,7 @@ class ZoneLoad(UmiBase):
 
     @property
     def LightingPowerDensity(self):
-        return float(self._LightingPowerDensity)
+        return round(float(self._LightingPowerDensity), decimals=3)
 
     @LightingPowerDensity.setter
     def LightingPowerDensity(self, value):
@@ -135,7 +135,7 @@ class ZoneLoad(UmiBase):
 
     @property
     def PeopleDensity(self):
-        return float(self._PeopleDensity)
+        return round(float(self._PeopleDensity), decimals=3)
 
     @PeopleDensity.setter
     def PeopleDensity(self, value):
@@ -155,7 +155,7 @@ class ZoneLoad(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, ZoneLoad):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -436,8 +436,7 @@ class ZoneLoad(UmiBase):
             EquipmentAvailabilitySchedule=UmiSchedule.combine(
                 self.EquipmentAvailabilitySchedule,
                 other.EquipmentAvailabilitySchedule,
-                weights=weights,
-                quantity=[self.EquipmentPowerDensity, other.EquipmentPowerDensity],
+                quantity=True,
             ),
             EquipmentPowerDensity=self._float_mean(
                 other, "EquipmentPowerDensity", weights
@@ -449,14 +448,12 @@ class ZoneLoad(UmiBase):
             LightsAvailabilitySchedule=UmiSchedule.combine(
                 self.LightsAvailabilitySchedule,
                 other.LightsAvailabilitySchedule,
-                weights=weights,
-                quantity=[self.LightingPowerDensity, other.LightingPowerDensity],
+                quantity=True,
             ),
             OccupancySchedule=UmiSchedule.combine(
                 self.OccupancySchedule,
                 other.OccupancySchedule,
-                weights=weights,
-                quantity=[self.PeopleDensity, other.PeopleDensity],
+                quantity=True,
             ),
             IsEquipmentOn=any([self.IsEquipmentOn, other.IsEquipmentOn]),
             IsLightingOn=any([self.IsLightingOn, other.IsLightingOn]),
@@ -470,7 +467,7 @@ class ZoneLoad(UmiBase):
         return new_obj
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         if not self.DimmingType:
             self.DimmingType = DimmingTypes.Continuous
         if not self.EquipmentAvailabilitySchedule:
@@ -517,7 +514,7 @@ class ZoneLoad(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

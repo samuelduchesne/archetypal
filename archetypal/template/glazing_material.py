@@ -174,7 +174,7 @@ class GlazingMaterial(MaterialBase):
 
     def __eq__(self, other):
         if not isinstance(other, GlazingMaterial):
-            return False
+            return NotImplemented
         else:
             return all(
                 [

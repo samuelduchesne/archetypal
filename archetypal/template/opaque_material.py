@@ -108,7 +108,7 @@ class OpaqueMaterial(UmiBase):
 
     @property
     def ThermalEmittance(self):
-        return self._thermal_emittance
+        return float(self._thermal_emittance)
 
     @ThermalEmittance.setter
     def ThermalEmittance(self, value):
@@ -140,7 +140,7 @@ class OpaqueMaterial(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, OpaqueMaterial):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -406,7 +406,7 @@ class OpaqueMaterial(UmiBase):
             )
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
 
         # Some OpaqueMaterial don't have a default value, therefore an empty string is
         # parsed. This breaks the UmiTemplate Editor, therefore we set a value on these
@@ -447,7 +447,7 @@ class OpaqueMaterial(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

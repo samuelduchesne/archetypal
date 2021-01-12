@@ -52,11 +52,11 @@ class ConstructionBase(UmiBase):
         self.DisassemblyEnergy = DisassemblyEnergy
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         return self
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:
@@ -121,7 +121,7 @@ class OpaqueConstruction(LayeredConstruction):
 
     def __eq__(self, other):
         if not isinstance(other, OpaqueConstruction):
-            return False
+            return NotImplemented
         else:
             return all([self.Layers == other.Layers])
 

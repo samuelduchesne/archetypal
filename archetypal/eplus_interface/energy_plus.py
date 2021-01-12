@@ -199,6 +199,7 @@ class EnergyPlusThread(Thread):
             ).cmd()
         except EnergyPlusVersionError as e:
             self.exception = e
+            self.kill()  # kill process to be sure
             return
 
         # Start process with tqdm bar
@@ -267,9 +268,11 @@ class EnergyPlusThread(Thread):
             with open(error_filename, "r") as stderr:
                 stderr_r = stderr.read()
             if self.idf.keep_data_err:
-                failed_dir = self.idf.output_directory / "failed"
-                failed_dir.mkdir_p()
-                self.run_dir.copytree(failed_dir / self.idf.output_prefix)
+                failed_dir = self.idf.simulation_dir.mkdir_p() / "failed"
+                if failed_dir.exists():
+                    failed_dir.rmtree_p()
+                else:
+                    self.run_dir.copytree(failed_dir)  # no need to create folder before
             self.exception = EnergyPlusProcessError(
                 cmd=self.cmd, stderr=stderr_r, idf=self.idf
             )

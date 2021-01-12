@@ -231,8 +231,6 @@ class IDF(geomIDF):
         self._energyplus_its = 0
         self._sim_id = None
 
-        self.load_kwargs = dict(epw=epw, **kwargs)
-
         self.outputtype = "standard"
         self.original_idfname = self.idfname  # Save original
         self._original_cache = hash_model(self)
@@ -502,10 +500,13 @@ class IDF(geomIDF):
 
     @idfname.setter
     def idfname(self, value):
-        if value:
-            self._idfname = Path(value).expand()
-        else:
+        if not value:
             self._idfname = None
+        elif not isinstance(value, str):
+            raise ValueError(f"IDF path must be Path-Like, not {type(value)}")
+        else:
+            self._idfname = Path(value).expand()
+
 
     @property
     def epw(self):
@@ -833,6 +834,15 @@ class IDF(geomIDF):
         return file.expand()
 
     @property
+    def mtd_file(self):
+        """Get the mtd file path"""
+        try:
+            file, *_ = self.simulation_dir.files("*.mtd")
+        except (FileNotFoundError, ValueError):
+            return self.simulate().mtd_file
+        return file.expand()
+
+    @property
     def net_conditioned_building_area(self):
         """Returns the total conditioned area of a building (taking into account
         zone multipliers)
@@ -994,7 +1004,11 @@ class IDF(geomIDF):
         """Get day of week for start day for the first found RUNPERIOD"""
         import calendar
 
-        day = self.idfobjects["RUNPERIOD"][0]["Day_of_Week_for_Start_Day"]
+        run_period = next(iter(self.idfobjects["RUNPERIOD"]), None)
+        if run_period:
+            day = run_period["Day_of_Week_for_Start_Day"]
+        else:
+            raise ValueError("model does not contain a 'RunPeriod'")
 
         if day.lower() == "sunday":
             return calendar.SUNDAY
@@ -1011,10 +1025,11 @@ class IDF(geomIDF):
         elif day.lower() == "saturday":
             return calendar.SATURDAY
         else:
-            return 0
+            # field is null
+            return 6  # E+ default is Sunday
 
     @property
-    def meters(self):
+    def meters(self) -> Meters:
         """List of available meters for the :class:`IDF` model.
 
         The :class:`IDF` model must be simulated once (to retrieve the .mdd file).
@@ -1271,9 +1286,10 @@ class IDF(geomIDF):
             cache_filename = hash_model(self)
             output_directory = settings.cache_folder / cache_filename
             output_directory.makedirs_p()
-            self.simulation_dir.copytree(
-                output_directory / self.simulation_dir.basename(), dirs_exist_ok=True
-            )
+            dst = output_directory / self.simulation_dir.basename()
+            if dst.exists():
+                dst.rmtree_p()
+            self.simulation_dir.copytree(dst)
         log(f"saved '{self.name}' at '{self.idfname}'")
         return self
 

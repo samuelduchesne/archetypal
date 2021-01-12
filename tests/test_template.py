@@ -75,14 +75,14 @@ def other_idf(config):
 
 @pytest.fixture(scope="module")
 def other_idf_object(config):
-    """Another IDF object (same as other_idf).Yields just the idf object
+    """Another IDF object (same as other_idf). Yields just the idf object
 
     Args:
         config:
     """
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    yield IDF(file, epw=w)
+    yield IDF(file, epw=w).simulate()
 
 
 @pytest.fixture(scope="module")
@@ -95,7 +95,7 @@ def other_idf_object_copy(config):
     """
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    yield IDF(file, epw=w)
+    yield IDF(file, epw=w).simulate()
 
 
 @pytest.fixture(scope="module")
@@ -421,7 +421,7 @@ class TestOpaqueMaterial:
         Args:
             idf:
         """
-        yield OpaqueMaterial(Conductivity=100, SpecificHeat=4.18, Name="mat_a", idf=idf)
+        yield OpaqueMaterial(Conductivity=0.1, SpecificHeat=4.18, Name="mat_a", idf=idf)
 
     @pytest.fixture()
     def mat_b(self, idf):
@@ -429,7 +429,7 @@ class TestOpaqueMaterial:
         Args:
             idf:
         """
-        yield OpaqueMaterial(Conductivity=200, SpecificHeat=4.18, Name="mat_b", idf=idf)
+        yield OpaqueMaterial(Conductivity=0.2, SpecificHeat=4.18, Name="mat_b", idf=idf)
 
     def test_add_materials(self, mat_a, mat_b):
         """test __add__() for OpaqueMaterial
@@ -440,7 +440,7 @@ class TestOpaqueMaterial:
         """
         mat_c = mat_a + mat_b
         assert mat_c
-        assert mat_c.Conductivity == 150
+        np.testing.assert_almost_equal(mat_c.Conductivity, .150)
         assert mat_a.id != mat_b.id != mat_c.id
 
         mat_d = mat_c + mat_a
@@ -454,41 +454,42 @@ class TestOpaqueMaterial:
             idf:
         """
         mat_a = OpaqueMaterial(
-            Conductivity=100, SpecificHeat=4.18, Name="mat_ia", idf=idf
+            Conductivity=0.1, SpecificHeat=4.18, Name="mat_ia", idf=idf
         )
         id_ = mat_a.id  # storing mat_a's id.
 
         mat_b = OpaqueMaterial(
-            Conductivity=200, SpecificHeat=4.18, Name="mat_ib", idf=idf
+            Conductivity=0.2, SpecificHeat=4.18, Name="mat_ib", idf=idf
         )
         mat_a += mat_b
         assert mat_a
-        assert mat_a.Conductivity == 150
+        np.testing.assert_almost_equal(mat_a.Conductivity, .150)
         assert mat_a.id == id_  # id should not change
         assert mat_a.id != mat_b.id
 
     def test_opaqueMaterial_from_to_json(self, config, small_idf_obj):
-        """
-        Args:
-            config:
-            small_idf_obj:
-        """
+        """Get OpaqueMaterial, convert to json, load back and compare."""
         from archetypal.template import OpaqueMaterial
 
         idf = small_idf_obj
         if idf.idfobjects["MATERIAL"]:
-            opaqMat_epBunch = OpaqueMaterial.from_epbunch(idf.idfobjects["MATERIAL"][0])
-            opaqMat_epBunch.to_json()
+            opaqMat_epBunch = OpaqueMaterial.from_epbunch(
+                idf.idfobjects["MATERIAL"][0]
+            )
+            opaqMat_json= opaqMat_epBunch.to_json()
+            assert OpaqueMaterial(**opaqMat_json) == opaqMat_epBunch
         if idf.idfobjects["MATERIAL:NOMASS"]:
             opaqMat_epBunch = OpaqueMaterial.from_epbunch(
                 idf.idfobjects["MATERIAL:NOMASS"][0]
             )
-            opaqMat_epBunch.to_json()
+            opaqMat_json = opaqMat_epBunch.to_json()
+            assert OpaqueMaterial(**opaqMat_json) == opaqMat_epBunch
         if idf.idfobjects["MATERIAL:AIRGAP"]:
             opaqMat_epBunch = OpaqueMaterial.from_epbunch(
                 idf.idfobjects["MATERIAL:AIRGAP"][0]
             )
-            opaqMat_epBunch.to_json()
+            opaqMat_json = opaqMat_epBunch.to_json()
+            assert OpaqueMaterial(**opaqMat_json) == opaqMat_epBunch
 
     def test_hash_eq_opaq_mat(self, small_idf_obj, other_idf_object):
         """Test equality and hashing of :class:`TestOpaqueMaterial`
@@ -1040,7 +1041,7 @@ class TestOpaqueConstruction:
             Conductivity=100, SpecificHeat=4.18, Name="mat_a", idf=idf
         )
         mat_b = OpaqueMaterial(
-            Conductivity=200, SpecificHeat=4.18, Name="mat_b", idf=idf
+            Conductivity=0.2, SpecificHeat=4.18, Name="mat_b", idf=idf
         )
         thickness = 0.10
         layers = [MaterialLayer(mat_a, thickness), MaterialLayer(mat_b, thickness)]
@@ -1409,7 +1410,7 @@ class TestZoneConstructionSet:
 
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file, epw=w)
+        idf = IDF(file, epw=w, annual=True)
         yield idf, idf.sql()
 
     def test_add_zoneconstructionset(self, small_idf):
@@ -1532,7 +1533,7 @@ class TestZoneLoad:
 
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file, epw=w)
+        idf = IDF(file, epw=w, annual=True)
         sql = idf.sql()
         yield idf, sql
 
@@ -1581,7 +1582,7 @@ class TestZoneLoad:
         assert zone_loads.IsEquipmentOn
         assert zone_loads.IsPeopleOn
         assert zone_loads.LightingPowerDensity == 11.84
-        np.testing.assert_almost_equal(zone_loads.PeopleDensity, 0.021107919980354082)
+        assert zone_loads.PeopleDensity == 0.021
 
     def test_zoneLoad_from_zone_mixedparams(self, config, fiveZoneEndUses):
         """
@@ -1597,16 +1598,12 @@ class TestZoneLoad:
         zone_loads = ZoneLoad.from_zone(z)
 
         assert zone_loads.DimmingType == DimmingTypes.Stepped
-        np.testing.assert_almost_equal(
-            zone_loads.EquipmentPowerDensity, 10.649455425574827
-        )
+        assert zone_loads.EquipmentPowerDensity == 10.649
         assert zone_loads.IlluminanceTarget == 400
         assert zone_loads.IsEquipmentOn
         assert zone_loads.IsPeopleOn
-        np.testing.assert_almost_equal(
-            zone_loads.LightingPowerDensity, 15.974, decimal=3
-        )
-        np.testing.assert_almost_equal(zone_loads.PeopleDensity, 0.111, decimal=3)
+        assert zone_loads.LightingPowerDensity == 15.974
+        assert zone_loads.PeopleDensity == 0.111
 
     def test_zoneLoad_from_to_json(self, config, idf):
         """
@@ -1720,9 +1717,9 @@ class TestZoneConditioning:
 
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file, epw=w)
+        idf = IDF(file, epw=w, annual=True)
         sql = idf.sql()
-        yield idf, sql, request.param, IDF(file, epw=w)  # pass an idfcopy
+        yield idf, sql, request.param, IDF(file, epw=w, annual=True)  # pass an idfcopy
 
     def test_zoneConditioning_init(self, config, idf):
         """
@@ -1869,9 +1866,9 @@ class TestVentilationSetting:
         eplusdir = get_eplus_dirs(settings.ep_version)
         file = eplusdir / "ExampleFiles" / request.param
         w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
-        idf = IDF(file, epw=w)
+        idf = IDF(file, epw=w, annual=True)
         sql = idf.sql()
-        yield idf, sql, request.param, IDF(file, epw=w)  # passes a copy as well
+        yield idf, sql, request.param, IDF(file, epw=w, annual=True)  # passes a copy as well
 
     def test_ventilation_init(self, config, idf):
         """
@@ -2286,7 +2283,7 @@ class TestWindowSetting:
         assert idf is not idf_2
         assert f_surf is not f_surf_3
         assert f_surf != f_surf_3
-        assert hash(wind) != hash(wind_3)
+        assert hash(wind) == hash(wind_3)
         assert wind is not wind_3
         assert wind == wind_3
 
@@ -2305,7 +2302,7 @@ class TestZone:
         idf, sql = small_idf_copy
         zone = idf.getobject("ZONE", "Perim")
         z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
-        np.testing.assert_almost_equal(desired=z.volume, actual=137.4, decimal=1)
+        np.testing.assert_almost_equal(desired=z.volume, actual=25.54, decimal=1)
 
     def test_add_zone(self, small_idf_copy):
         """Test __add__() for Zone
@@ -2437,7 +2434,7 @@ def bt(config):
     eplus_dir = get_eplus_dirs(archetypal.settings.ep_version)
     file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
     w, *_ = (eplus_dir / "WeatherData").files("*.epw")
-    idf = IDF(file, epw=w)
+    idf = IDF(file, epw=w, annual=True)
     from archetypal.template import BuildingTemplate
 
     bt = BuildingTemplate.from_idf(idf)
@@ -2461,8 +2458,8 @@ class TestBuildingTemplate:
         bt_to_json = bt[0].to_json()
         w_to_json = bt[0].Windows.to_json()
 
-    def test_hash_eq_bt(self, other_idf_object, other_idf_object_copy):
-        """Test equality and hashing of class DomesticHotWaterSetting
+    def test_hash_eq_bt(self, config, other_idf_object, other_idf_object_copy):
+        """Test equality and hashing of class BuildingTemplate
 
         Args:
             other_idf_object:

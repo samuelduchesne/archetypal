@@ -19,38 +19,6 @@ from archetypal import IDF, log
 from archetypal.utils import lcm
 
 
-class Unique(type):
-    """Metaclass that handles unique class instantiation based on the
-    :attr:`Name` attribute of a class.
-    """
-
-    def __call__(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        self = cls.__new__(cls, *args, **kwargs)
-        cls.__init__(self, *args, **kwargs)
-        UmiBase.CREATED_OBJECTS.append(self)
-
-        if kwargs.get("allow_duplicates", False):
-            self._unique = False
-        else:
-            self._unique = True
-
-        return self
-
-    def __init__(cls, name, bases, attributes):
-        """
-        Args:
-            name:
-            bases:
-            attributes:
-        """
-        super().__init__(name, bases, attributes)
-
-
 def _resolve_combined_names(predecessors):
     """Creates a unique name from the list of :class:`UmiBase` objects
     (predecessors)
@@ -88,6 +56,7 @@ class UmiBase(object):
     _independant_vars = set(chain(*list(_dependencies.values())))
     _dependant_vars = set(_dependencies.keys())
     CREATED_OBJECTS = []
+    _ids = itertools.count(0)  # unique id for each class instance
 
     def _reset_dependant_vars(self, name):
         _reverse_dependencies = {}
@@ -155,6 +124,7 @@ class UmiBase(object):
         self.DataSource = DataSource
         self.id = kwargs.get("$id", None)
         self._not_unique = allow_duplicates
+        self.unit_number = next(self._ids)
 
         UmiBase.CREATED_OBJECTS.append(self)
 
@@ -389,29 +359,47 @@ class UmiBase(object):
         return self
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate UmiObjects and fills in missing values."""
         return self
 
     def mapping(self):
         pass
 
     def get_unique(self):
-        """Returns first object matching equality in the list of instantiated objects
-        or self if no match is found"""
+        """Return first object matching equality in the list of instantiated objects."""
         if self._not_unique:
             # We want to return the first similar object (equality) that has this name.
-            return next(
-                (
-                    x
-                    for x in UmiBase.CREATED_OBJECTS
-                    if x == self and x.Name == self.Name
+            obj = next(
+                iter(
+                    sorted(
+                        (
+                            x
+                            for x in UmiBase.CREATED_OBJECTS
+                            if x == self
+                            and x.Name == self.Name
+                            and type(x) == type(self)
+                        ),
+                        key=lambda x: x.unit_number,
+                    )
                 ),
-                self,
             )
         else:
             # We want to return the first similar object (equality) regardless of the
             # name.
-            return next((x for x in UmiBase.CREATED_OBJECTS if x == self), self)
+            obj = next(
+                iter(
+                    sorted(
+                        (
+                            x
+                            for x in UmiBase.CREATED_OBJECTS
+                            if x == self and type(x) == type(self)
+                        ),
+                        key=lambda x: x.unit_number,
+                    )
+                ),
+            )
+
+        return obj
 
 
 class MaterialBase(UmiBase):
@@ -492,7 +480,7 @@ class MaterialBase(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, MaterialBase):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -512,11 +500,11 @@ class MaterialBase(UmiBase):
             )
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         return self
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:
@@ -558,7 +546,7 @@ class MaterialLayer(object):
 
     def __eq__(self, other):
         if not isinstance(other, MaterialLayer):
-            return False
+            return NotImplemented
         else:
             return all(
                 [self.Thickness == other.Thickness, self.Material == other.Material]
@@ -574,7 +562,7 @@ class MaterialLayer(object):
     @Thickness.setter
     def Thickness(self, value):
         self._thickness = value
-        if value <= 0.003:
+        if value < 0.003:
             log(
                 "Modeling layer thinner (less) than 0.003 m (not recommended) for "
                 f"MaterialLayer '{self}'",
@@ -776,7 +764,7 @@ class UniqueName(str):
     makes sure they are unique.
     """
 
-    existing = []
+    existing = set()
 
     def __new__(cls, content):
         """Pick a name. Will increment the name if already used"""
@@ -793,14 +781,16 @@ class UniqueName(str):
         if not name:
             return None
         if name not in cls.existing:
-            cls.existing.append(name)
+            cls.existing.add(name)
             return name
         else:
             match = re.match(r"^(.*?)(\D*)(\d+)$", name)
             if match:
                 groups = list(match.groups())
+                pad = len(groups[-1])
                 groups[-1] = int(groups[-1])
                 groups[-1] += 1
+                groups[-1] = str(groups[-1]).zfill(pad)
                 name = "".join(map(str, groups))
                 return cls.create_unique(name)
             else:

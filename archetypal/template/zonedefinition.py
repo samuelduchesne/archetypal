@@ -94,6 +94,7 @@ class ZoneDefinition(UmiBase):
         self._zonesurfaces = kwargs.get("zonesurfaces", None)
         self._area = None
         self._volume = None
+        self._occupants = None
         self._is_part_of_conditioned_floor_area = None
         self._is_part_of_total_floor_area = None
         self._multiplier = None
@@ -121,7 +122,7 @@ class ZoneDefinition(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, ZoneDefinition):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -140,20 +141,31 @@ class ZoneDefinition(UmiBase):
             )
 
     @property
-    def area(self):
-        """Calculates the floor surface area of the zone
+    def occupants(self):
+        if self._occupants is None:
+            with sqlite3.connect(self.idf.sql_file) as conn:
+                sql_query = (
+                    "SELECT t.Value FROM TabularDataWithStrings t "
+                    "WHERE TableName='Average Outdoor Air During Occupied Hours' and ColumnName='Nominal Number of Occupants' and RowName=?"
+                )
 
-        Returns (float): zone's area in m²
-        """
+                fetchone = conn.execute(sql_query, (self.Name.upper(),)).fetchone()
+                (res,) = fetchone or (0,)
+            self._occupants = float(res)
+        return self._occupants
+
+    @occupants.setter
+    def occupants(self, value):
+        self._occupants = value
+
+    @property
+    def area(self):
         if self._area is None:
-            zone_surfs = self.zonesurfaces(
-                exclude=["INTERNALMASS", "WINDOWSHADINGCONTROL"]
-            )
-            floors = [s for s in zone_surfs if s.Surface_Type.upper() == "FLOOR"]
-            area = sum([floor.area for floor in floors])
-            return area
-        else:
-            return self._area
+            with sqlite3.connect(self.idf.sql_file) as conn:
+                sql_query = "SELECT t.Value FROM TabularDataWithStrings t WHERE TableName='Zone Summary' and ColumnName='Area' and RowName=?"
+                (res,) = conn.execute(sql_query, (self.Name.upper(),)).fetchone()
+            self._area = float(res)
+        return self._area
 
     @area.setter
     def area(self, value):
@@ -165,21 +177,15 @@ class ZoneDefinition(UmiBase):
 
         Returns (float): zone's volume in m³
         """
-        if not self._volume:
-            zone_surfs = self.zonesurfaces(
-                exclude=["INTERNALMASS", "WINDOWSHADINGCONTROL"]
-            )
-
-            vol = self.get_volume_from_surfs(zone_surfs)
-
-            if self._epbunch.Multiplier == "":
-                multiplier = 1
-            else:
-                multiplier = float(self._epbunch.Multiplier)
-            # multiply to volume by the zone multiplier.
-            return vol * multiplier
-        else:
-            return self._volume
+        if self._volume is None:
+            with sqlite3.connect(self.idf.sql_file) as conn:
+                sql_query = (
+                    "SELECT t.Value FROM TabularDataWithStrings t "
+                    "WHERE TableName='Zone Summary' and ColumnName='Volume' and RowName=?"
+                )
+                (res,) = conn.execute(sql_query, (self.Name.upper(),)).fetchone()
+            self._volume = float(res)
+        return self._volume
 
     @volume.setter
     def volume(self, value):
@@ -514,8 +520,11 @@ class ZoneDefinition(UmiBase):
             Loads=ZoneLoad.combine(self.Loads, other.Loads, weights),
         )
         new_obj = ZoneDefinition(**meta, **new_attr, idf=self.idf)
+
+        # transfer aggregated values [volume, area, occupants] to new combined zone
         new_obj.volume = self.volume + other.volume
         new_obj.area = self.area + other.area
+        new_obj.occupants = self.occupants + other.occupants
 
         if new_attr["Conditioning"]:  # Could be None
             new_attr["Conditioning"]._belongs_to_zone = new_obj
@@ -532,7 +541,7 @@ class ZoneDefinition(UmiBase):
         return new_obj
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         if not self.InternalMassConstruction:
             self.set_generic_internalmass()
             self.InternalMassExposedPerFloorArea = 0
@@ -571,7 +580,7 @@ class ZoneDefinition(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

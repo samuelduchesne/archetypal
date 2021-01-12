@@ -98,7 +98,7 @@ class UmiSchedule(Schedule, UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, UmiSchedule):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -107,7 +107,9 @@ class UmiSchedule(Schedule, UmiBase):
                     self.schType == other.schType,
                     self.Type == other.Type,
                     self.quantity == other.quantity,
-                    np.array_equal(self.all_values, other.all_values),
+                    np.allclose(self.all_values, other.all_values, rtol=1e-02)
+                    if self.all_values.size == other.all_values.size
+                    else False,
                 ]
             )
 
@@ -121,10 +123,10 @@ class UmiSchedule(Schedule, UmiBase):
                 element is applied to self and the second element is applied to other.
                 If a dict is passed, the self.Name and other.Name are the keys. If a
                 str is passed, the
-            quantity (list or dict): Scalar value that will be multiplied by self before
-                the averaging occurs. This ensures that the resulting schedule
-                returns the correct integrated value. If a dict is passed, keys are
-                schedules Names and values are quantities.
+            quantity (list or dict or bool): Scalar value that will be multiplied by
+                self before the averaging occurs. This ensures that the resulting
+                schedule returns the correct integrated value. If a dict is passed,
+                keys are schedules Names and values are quantities.
 
         Returns:
             (UmiSchedule): the combined UmiSchedule object.
@@ -206,12 +208,15 @@ class UmiSchedule(Schedule, UmiBase):
         elif isinstance(quantity, (list, tuple)):
             # Multiplying the schedule values by the quantity for both self and other
             # and then using a weighted average. Finally, new values are normalized.
-            new_values = np.average(
-                [self.all_values * quantity[0], other.all_values * quantity[1]],
-                axis=0,
-                weights=weights,
-            )
-            new_values /= sum(quantity)
+            self_quantity, other_quantity = quantity
+            new_values = (
+                self.all_values * self_quantity + other.all_values * other_quantity
+            ) / sum(quantity)
+        elif isinstance(quantity, bool):
+            self_quantity, other_quantity = self.quantity, other.quantity
+            new_values = (
+                self.all_values * self_quantity + other.all_values * other_quantity
+            ) / (self_quantity + other_quantity)
         else:
             raise TypeError("Quantity is not of type list, tuple, dict or a callable")
 
@@ -244,7 +249,8 @@ class UmiSchedule(Schedule, UmiBase):
                     Comments="Year Week Day schedules created from: \n{}".format(
                         "\n".join(lines)
                     ),
-                    allow_duplicates=True,
+                    allow_duplicates=getattr(self, "_not_unique", False),
+                    Category=self.Name,
                 )
             )
         Parts = []
@@ -268,17 +274,25 @@ class UmiSchedule(Schedule, UmiBase):
                         Comments="Year Week Day schedules created from:\n{}".format(
                             "\n".join(lines)
                         ),
+                        Category=self.Name,
+                        allow_duplicates=getattr(self, "_not_unique", False)
                     ),
                 )
             )
-
         _from = "\n".join(lines)
-        self.__class__ = YearSchedule
-        self.Comments = f"Year Week Day schedules created from: \n{_from}"
-        self.epbunch = year
-        self.Type = "Fraction"
-        self.Parts = Parts
-        return self
+        return YearSchedule(
+            Name=self.Name,
+            Parts=Parts,
+            Type="Fraction",
+            epbunch=year,
+            Category=self.Name,
+            Comments=f"Year Week Day schedules created from: \n{_from}" + str(id(self)),
+            idf=self.idf,
+            allow_duplicates=getattr(self, "_not_unique", False),
+        )
+
+    def get_unique(self):
+        return super(UmiSchedule, self.develop()).get_unique()
 
     def to_json(self):
         """UmiSchedule does not implement the to_json method because it is not
@@ -289,19 +303,17 @@ class UmiSchedule(Schedule, UmiBase):
         return self.to_dict()
 
     def to_dict(self):
-        self.validate()  # Validate object before trying to get json format
-        self.develop()  # Develop into Year-, Week- and DaySchedules
         return {"$ref": str(self.id)}
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         return self
 
     def mapping(self):
         self.validate()
 
         return dict(
-            Category=self.schType,
+            Category=self.Category,
             Type=self.Type,
             Comments=self.Comments,
             DataSource=self.DataSource,
@@ -309,7 +321,7 @@ class UmiSchedule(Schedule, UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:
@@ -362,7 +374,7 @@ class YearSchedulePart:
 
     def __eq__(self, other):
         if not isinstance(other, YearSchedulePart):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -432,13 +444,28 @@ class YearSchedulePart:
 class DaySchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles daily schedules."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, Category="Day", **kwargs):
         """Initialize a DaySchedule object with parameters:
 
         Args:
+            Category:
             **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
         """
-        super(DaySchedule, self).__init__(**kwargs)
+        super(DaySchedule, self).__init__(Category=Category, **kwargs)
+
+    def __eq__(self, other):
+        if not isinstance(other, DaySchedule):
+            return NotImplemented
+        else:
+            return all(
+                [
+                    self.Type == other.Type,
+                    np.allclose(self.all_values, other.all_values, rtol=1e-02),
+                ]
+            )
+
+    def __hash__(self):
+        return super(DaySchedule, self).__hash__()
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
@@ -504,6 +531,9 @@ class DaySchedule(UmiSchedule):
 
         return sched
 
+    def get_unique(self):
+        return UmiBase.get_unique(self)
+
     def to_json(self):
         """Returns a dict-like representation of the schedule.
 
@@ -514,7 +544,7 @@ class DaySchedule(UmiSchedule):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Category"] = "Day"
+        data_dict["Category"] = self.Category
         data_dict["Type"] = self.Type
         data_dict["Values"] = self.all_values.round(3).tolist()
         data_dict["Comments"] = self.Comments
@@ -525,7 +555,7 @@ class DaySchedule(UmiSchedule):
 
     def mapping(self):
         return dict(
-            Category=self.schType,
+            Category=self.Category,
             Type=self.Type,
             Values=self.all_values.round(3).tolist(),
             Comments=self.Comments,
@@ -549,27 +579,29 @@ class DaySchedule(UmiSchedule):
 class WeekSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles weekly schedules."""
 
-    def __init__(self, Days=None, **kwargs):
+    def __init__(self, Days=None, Category="Week", **kwargs):
         """Initialize a WeekSchedule object with parameters:
 
         Args:
             Days (list of DaySchedule): list of :class:`DaySchedule`.
             **kwargs:
         """
-        super(WeekSchedule, self).__init__(**kwargs)
+        super(WeekSchedule, self).__init__(Category=Category, **kwargs)
         self.Days = Days
 
     def __eq__(self, other):
         if not isinstance(other, WeekSchedule):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
-                    # self.Name == other.Name,
                     self.Type == other.Type,
                     self.Days == other.Days,
                 ]
             )
+
+    def __hash__(self):
+        return super(WeekSchedule, self).__hash__()
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
@@ -615,6 +647,9 @@ class WeekSchedule(UmiSchedule):
         wc = cls(Type=Type, Days=Days, **kwargs)
         return wc
 
+    def get_unique(self):
+        return UmiBase.get_unique(self)
+
     def to_json(self):
         """Returns a dict-like representation of the schedule.
 
@@ -624,7 +659,7 @@ class WeekSchedule(UmiSchedule):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Category"] = "Week"
+        data_dict["Category"] = self.Category
         data_dict["Days"] = [day.to_dict() for day in self.Days]
         data_dict["Type"] = self.Type
         data_dict["Comments"] = self.Comments
@@ -635,7 +670,7 @@ class WeekSchedule(UmiSchedule):
 
     def mapping(self):
         return dict(
-            Category=self.schType,
+            Category=self.Category,
             Days=self.Days,
             Type=self.Type,
             Comments=self.Comments,
@@ -689,10 +724,11 @@ class WeekSchedule(UmiSchedule):
 class YearSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles yearly schedules."""
 
-    def __init__(self, Name, Type="Fraction", Parts=None, **kwargs):
+    def __init__(self, Name, Type="Fraction", Parts=None, Category="Year", **kwargs):
         """Initialize a YearSchedule object with parameters:
 
         Args:
+            Category:
             Name:
             Type:
             Parts (list of YearSchedulePart): The YearScheduleParts.
@@ -704,12 +740,12 @@ class YearSchedule(UmiSchedule):
         else:
             self.Parts = Parts
         super(YearSchedule, self).__init__(
-            Name=Name, Type=Type, schType="Schedule:Year", **kwargs
+            Name=Name, Type=Type, schType="Schedule:Year", Category=Category, **kwargs
         )
 
     def __eq__(self, other):
         if not isinstance(other, YearSchedule):
-            return False
+            return NotImplemented
         else:
             return all([self.Type == other.Type, self.Parts == other.Parts])
 
@@ -793,6 +829,9 @@ class YearSchedule(UmiSchedule):
         ys.schType = "Schedule:Year"
         return ys
 
+    def get_unique(self):
+        return UmiBase.get_unique(self)
+
     def to_json(self):
         """Returns a dict-like representation of the schedule.
 
@@ -802,7 +841,7 @@ class YearSchedule(UmiSchedule):
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
-        data_dict["Category"] = "Year"
+        data_dict["Category"] = self.Category
         data_dict["Parts"] = [part.to_dict() for part in self.Parts]
         data_dict["Type"] = self.Type
         data_dict["Comments"] = self.Comments
@@ -815,7 +854,7 @@ class YearSchedule(UmiSchedule):
         self.validate()
 
         return dict(
-            Category=self.schType,
+            Category=self.Category,
             Parts=self.Parts,
             Type=self.Type,
             Comments=self.Comments,

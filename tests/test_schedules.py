@@ -5,7 +5,7 @@ import archetypal.settings as settings
 from archetypal import IDF
 from archetypal.eplus_interface.version import get_eplus_dirs
 from archetypal.schedule import Schedule
-from archetypal.template.schedule import UmiSchedule
+from archetypal.template.schedule import UmiSchedule, YearSchedule
 from archetypal.utils import config
 
 
@@ -39,8 +39,11 @@ def test_make_umi_schedule(config):
 
     s = UmiSchedule(Name="CoolingCoilAvailSched", idf=idf, start_day_of_the_week=0)
     new = s.develop()
+    assert hash(s) != hash(new)
+    assert id(s) != id(new)
 
-    assert s.__class__.__name__ == "YearSchedule"
+    assert isinstance(s, UmiSchedule)
+    assert isinstance(new, YearSchedule)
     assert len(s.all_values) == len(new.all_values)
     np.testing.assert_array_equal(new.all_values, s.all_values)
 

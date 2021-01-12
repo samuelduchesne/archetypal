@@ -73,7 +73,7 @@ class ZoneConstructionSet(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, ZoneConstructionSet):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -444,7 +444,7 @@ class ZoneConstructionSet(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

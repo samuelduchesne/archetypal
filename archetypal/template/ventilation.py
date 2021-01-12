@@ -198,7 +198,7 @@ class VentilationSetting(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, VentilationSetting):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -438,7 +438,7 @@ class VentilationSetting(UmiBase):
         return new_obj
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         if not self.NatVentSchedule:
             self.NatVentSchedule = UmiSchedule.constant_schedule(
                 hourly_value=0, Name="AlwaysOff", allow_duplicates=True
@@ -476,7 +476,7 @@ class VentilationSetting(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:
@@ -614,7 +614,7 @@ def do_scheduled_ventilation(index, scd_df, zone):
             )
             ScheduledVentilationAch = scd_df.loc[index, "ACH - Air Changes per Hour"]
             ScheduledVentilationSetpoint = resolve_temp(
-                scd_df.loc[index, "Minimum " "Indoor " "Temperature{" "C}/Schedule"],
+                scd_df.loc[index, "Minimum Indoor Temperature{C}/Schedule"],
                 zone.idf,
             )
         except:

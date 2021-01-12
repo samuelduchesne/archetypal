@@ -215,8 +215,9 @@ class UmiTemplateLibrary:
                         lg.ERROR,
                     )
 
+        # If all exceptions, raise them for debugging
         if all(isinstance(x, Exception) for x in results):
-            raise Exception("Complexity reduction failed for all buildings.")
+            raise Exception([res for res in results if isinstance(res, Exception)])
 
         umi_template.BuildingTemplates = [
             res for res in results if not isinstance(res, Exception)
@@ -398,7 +399,7 @@ class UmiTemplateLibrary:
                 components (not used by any other parent component).
         """
         # First, reset existing name
-        UniqueName.existing = []
+        UniqueName.existing = set()
 
         data_dict = OrderedDict(
             {
@@ -425,8 +426,6 @@ class UmiTemplateLibrary:
         jsonized = {}
 
         def recursive_json(obj):
-            if obj.__class__.mro()[0] == UmiSchedule:
-                obj = obj.develop()
             catname = obj.__class__.__name__ + "s"
             if catname in data_dict:
                 key = obj.id
@@ -457,6 +456,8 @@ class UmiTemplateLibrary:
                 recursive_json(obj)
         else:
             for bld in self.BuildingTemplates:
+                bld.get_unique()
+            for bld in self.BuildingTemplates:
                 if all_zones:
                     recursive_json(bld)
                 else:
@@ -465,14 +466,14 @@ class UmiTemplateLibrary:
                     perims = bld.__dict__.pop("perims", None)
 
                     # apply the recursion
-                    recursive_json(bld.get_unique())
+                    recursive_json(bld)
 
                     # put back objects
                     bld.cores = cores
                     bld.perims = perims
         for key in data_dict:
-            # Sort the list elements by $id
-            data_dict[key] = sorted(data_dict[key], key=lambda x: int(x.get("$id", 0)))
+            # Sort the list elements by their Name
+            data_dict[key] = sorted(data_dict[key], key=lambda x: x.get("Name"))
 
         # Correct naming convention and reorder categories
         if not data_dict.get("GasMaterials"):
@@ -490,10 +491,7 @@ class UmiTemplateLibrary:
             data_dict[key] = v
 
         # Validate
-        try:
-            assert no_duplicates(data_dict, attribute="Name")
-        except Exception as e:
-            lg.warning(str(e))
+        assert no_duplicates(data_dict, attribute="Name")
 
         return data_dict
 

@@ -293,8 +293,46 @@ class Outputs:
                     Reporting_Frequency="hourly",
                 ),
             },
+            {
+                "key": "Output:Meter".upper(),
+                **dict(
+                    Key_Name="HeatingCoils:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Meter".upper(),
+                **dict(
+                    Key_Name="Baseboard:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Meter".upper(),
+                **dict(
+                    Key_Name="HeatRejection:Electricity",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Meter".upper(),
+                **dict(
+                    Key_Name="CoolingCoils:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                ),
+            },
         ]
 
+        self._outputs.extend(outputs)
+        return self
+
+    def add_dxf(self):
+        outputs = [
+            {
+                "key": "Output:Surfaces:Drawing".upper(),
+                **dict(Report_Type="DXF", Report_Specifications_1="ThickPolyline"),
+            }
+        ]
         self._outputs.extend(outputs)
         return self
 

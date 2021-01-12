@@ -33,7 +33,7 @@ class MassRatio(object):
 
     def __eq__(self, other):
         if not isinstance(other, MassRatio):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -129,7 +129,7 @@ class StructureInformation(UmiBase):
 
     def __eq__(self, other):
         if not isinstance(other, StructureInformation):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -192,7 +192,7 @@ class StructureInformation(UmiBase):
         return data_dict
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         return self
 
     def mapping(self):
@@ -211,7 +211,7 @@ class StructureInformation(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

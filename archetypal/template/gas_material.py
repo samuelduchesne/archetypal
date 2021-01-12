@@ -37,7 +37,7 @@ class GasMaterial(MaterialBase):
 
     def __eq__(self, other):
         if not isinstance(other, GasMaterial):
-            return False
+            return NotImplemented
         else:
             return all(
                 [

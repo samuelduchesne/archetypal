@@ -90,11 +90,13 @@ class DomesticHotWaterSetting(UmiBase):
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(
+            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+        )
 
     def __eq__(self, other):
         if not isinstance(other, DomesticHotWaterSetting):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -376,8 +378,7 @@ class DomesticHotWaterSetting(UmiBase):
             WaterSchedule=UmiSchedule.combine(
                 self.WaterSchedule,
                 other.WaterSchedule,
-                weights,
-                [self.FlowRatePerFloorArea, other.FlowRatePerFloorArea],
+                quantity=True,
             ),
             FlowRatePerFloorArea=self._float_mean(
                 other, "FlowRatePerFloorArea", weights
@@ -394,7 +395,7 @@ class DomesticHotWaterSetting(UmiBase):
         return new_obj
 
     def validate(self):
-        """Validates UmiObjects and fills in missing values"""
+        """Validate object and fill in missing values."""
         # Assume water systems for whole building
         pass
 
@@ -459,7 +460,7 @@ class DomesticHotWaterSetting(UmiBase):
         )
 
     def get_ref(self, ref):
-        """Gets item matching ref id
+        """Get item matching reference id.
 
         Args:
             ref:

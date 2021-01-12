@@ -21,7 +21,7 @@ from pandas.core.indexes.multi import MultiIndex
 from pandas.core.reshape.pivot import pivot_table
 from pandas.core.series import Series
 from pandas.core.tools.datetimes import to_datetime
-from pandas.plotting._matplotlib.tools import _flatten, _subplots
+from pandas.plotting._matplotlib.tools import flatten_axes, create_subplots
 from pint import Quantity, Unit
 from sklearn import preprocessing
 
@@ -1176,7 +1176,7 @@ def _setup_subplots(
     """prepares the subplots"""
 
     if subplots:
-        fig, axes = _subplots(
+        fig, axes = create_subplots(
             naxes=nseries,
             sharex=sharex,
             sharey=sharey,
@@ -1195,6 +1195,6 @@ def _setup_subplots(
                 fig.set_size_inches(figsize)
             axes = ax
 
-    axes = _flatten(axes)
+    axes = flatten_axes(axes)
 
     return fig, axes

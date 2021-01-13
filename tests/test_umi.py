@@ -16,7 +16,7 @@ from archetypal.template import (
     MaterialLayer,
     OpaqueConstruction,
     OpaqueMaterial,
-    StructureDefinition,
+    StructureInformation,
     VentilationSetting,
     WindowConstruction,
     WindowSetting,
@@ -232,7 +232,7 @@ class TestUmiTemplate:
 
         # Structure definition
         mass_ratio = MassRatio(Material=plywood, NormalRatio=1, HighLoadRatio=1)
-        struct_definition = StructureDefinition(
+        struct_definition = StructureInformation(
             Name="Structure", MassRatios=[mass_ratio], idf=idf
         )
         StructureDefinitions = [struct_definition]

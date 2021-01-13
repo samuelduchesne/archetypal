@@ -20,7 +20,7 @@ from archetypal.template import (
     MaterialLayer,
     OpaqueConstruction,
     OpaqueMaterial,
-    StructureDefinition,
+    StructureInformation,
     UmiBase,
     UmiSchedule,
     UniqueName,
@@ -79,7 +79,7 @@ class UmiTemplateLibrary:
                 objects.
             WindowConstructions (list of WindowConstruction): list of
                 WindowConstruction objects.
-            StructureDefinitions (list of StructureDefinition): list of
+            StructureDefinitions (list of StructureInformation): list of
                 StructureInformation objects.
             DaySchedules (list of DaySchedule): list of DaySchedule objects.
             WeekSchedules (list of WeekSchedule): list of WeekSchedule objects.
@@ -134,7 +134,7 @@ class UmiTemplateLibrary:
 
         self.idf_files = None
         self.name = name
-        self.ZoneDefinitions = Zones
+        self.Zones = Zones
         self.ZoneLoads = ZoneLoads
         self.ZoneConstructionSets = ZoneConstructionSets
         self.ZoneConditionings = ZoneConditionings
@@ -275,7 +275,7 @@ class UmiTemplateLibrary:
                 for store in datastore["WindowConstructions"]
             ]
             t.StructureDefinitions = [
-                StructureDefinition.from_dict(**store, idf=idf, allow_duplicates=True)
+                StructureInformation.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["StructureDefinitions"]
             ]
             t.DaySchedules = [
@@ -312,7 +312,7 @@ class UmiTemplateLibrary:
                 ZoneLoad.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["ZoneLoads"]
             ]
-            t.ZoneDefinitions = [
+            t.Zones = [
                 ZoneDefinition.from_dict(**store, idf=idf, allow_duplicates=True)
                 for store in datastore["Zones"]
             ]
@@ -408,7 +408,7 @@ class UmiTemplateLibrary:
                 "OpaqueMaterials": [],
                 "OpaqueConstructions": [],
                 "WindowConstructions": [],
-                "StructureDefinitions": [],
+                "StructureInformations": [],
                 "DaySchedules": [],
                 "WeekSchedules": [],
                 "YearSchedules": [],
@@ -434,11 +434,8 @@ class UmiTemplateLibrary:
                         app_dict = obj.to_json()
                     except AttributeError as e:
                         raise Exception(f"Object '{obj}' raised exception: {str(e)}")
-                    else:
-                        data_dict[catname].append(app_dict)
-                        jsonized[key] = obj
-                    finally:
-                        getattr(self, catname).append(obj)  # populate class attr.
+                    data_dict[catname].append(app_dict)
+                    jsonized[key] = obj
             for key, value in obj.mapping().items():
                 if isinstance(
                     value, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
@@ -489,6 +486,8 @@ class UmiTemplateLibrary:
             del data_dict[key]
             if key == "ZoneDefinitions":
                 key = "Zones"
+            if key == "StructureInformations":
+                key = "StructureDefinitions"
             data_dict[key] = v
 
         # Validate

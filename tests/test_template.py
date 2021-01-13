@@ -166,15 +166,7 @@ class TestMassRatio:
 
 
 class TestInternalMass:
-    """Series of tests related to internal mass.
-
-    There are two approaches to using internal mass. The first approach is to have
-    several pieces of internal mass with each piece having a different construction
-    type.
-
-    The other approach is to choose an average construction type and combine all of
-    the interior surfaces into a single internal mass.
-    """
+    """Series of tests for the parsing of internal mass"""
 
     def test_with_thermalmassobject(self, small_idf):
         """
@@ -1197,9 +1189,9 @@ class TestWindowConstruction:
 
 
 class TestStructureDefinition:
-    """Series of tests for the :class:`StructureDefinition` class"""
+    """Series of tests for the :class:`StructureInformation` class"""
 
-    # todo: Implement from_to_json for StructureDefinition class
+    # todo: Implement from_to_json for StructureInformation class
 
     def test_structure_from_to_json(self, config, idf):
         """
@@ -1209,14 +1201,14 @@ class TestStructureDefinition:
         """
         import json
 
-        from archetypal.template import StructureDefinition
+        from archetypal.template import StructureInformation
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         with open(filename, "r") as f:
             datastore = json.load(f)
         load_json_objects(datastore, idf)
         struct_json = [
-            StructureDefinition.from_dict(**store, idf=idf, allow_duplicates=True)
+            StructureInformation.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["StructureDefinitions"]
         ]
         assert struct_json[0].to_json()
@@ -1231,14 +1223,14 @@ class TestStructureDefinition:
         import json
         from copy import copy
 
-        from archetypal.template import StructureDefinition
+        from archetypal.template import StructureInformation
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         with open(filename, "r") as f:
             datastore = json.load(f)
 
         struct_json = [
-            StructureDefinition.from_dict(**store, idf=idf, allow_duplicates=True)
+            StructureInformation.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["StructureDefinitions"]
         ]
         sd = struct_json[0]

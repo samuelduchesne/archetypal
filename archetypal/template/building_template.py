@@ -30,7 +30,7 @@ from archetypal import log, save_and_show
 from archetypal.template import (
     MassRatio,
     MaterialLayer,
-    StructureDefinition,
+    StructureInformation,
     UmiBase,
     WindowSetting,
     YearSchedulePart,
@@ -74,7 +74,7 @@ class BuildingTemplate(UmiBase):
                 :class:`Zone` for more details.
             Perimeter (ZoneDefinition): The Zone object defining the perimeter zone. see
                 :class:`Zone` for more details.
-            Structure (StructureDefinition): The StructureDefinition object
+            Structure (StructureInformation): The StructureInformation object
                 defining the structural properties of the template.
             Windows (WindowSetting): The WindowSetting object defining the
                 window properties of the object.
@@ -248,8 +248,8 @@ class BuildingTemplate(UmiBase):
         # do Core and Perim zone reduction
         bt.reduce(bt.cores, bt.perims)
 
-        # resolve StructureDefinition and WindowSetting
-        bt.Structure = StructureDefinition(
+        # resolve StructureInformation and WindowSetting
+        bt.Structure = StructureInformation(
             Name=bt.Name + "_StructureDefinition",
             MassRatios=[MassRatio.generic()],
             idf=idf,

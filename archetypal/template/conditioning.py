@@ -697,7 +697,6 @@ class ZoneConditioning(UmiBase):
         heating_energy_transfer_meters = (
             "HeatingCoils__EnergyTransfer",
             "Baseboard__EnergyTransfer",
-            "Refrigeration__EnergyTransfer",
         )
         total_output_heating_energy = 0
         for meter in heating_energy_transfer_meters:
@@ -733,7 +732,10 @@ class ZoneConditioning(UmiBase):
             except KeyError:
                 pass  # pass if meter does not exist for model
 
-        cooling_energy_transfer_meters = ("CoolingCoils__EnergyTransfer",)
+        cooling_energy_transfer_meters = (
+            "CoolingCoils__EnergyTransfer",
+            "Refrigeration__EnergyTransfer",
+        )
         total_output_cooling_energy = 0
         for meter in cooling_energy_transfer_meters:
             try:

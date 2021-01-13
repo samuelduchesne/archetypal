@@ -528,9 +528,12 @@ def do_natural_ventilation(index, nat_df, zone):
             IsNatVentOn = any(nat_df.loc[index, "Name"])
             schedule_name_ = nat_df.loc[index, "Schedule Name"]
             quantity = nat_df.loc[index, "Volume Flow Rate/Floor Area {m3/s/m2}"]
-            NatVentSchedule = UmiSchedule(
-                Name=schedule_name_, idf=zone.idf, quantity=quantity
-            )
+            if schedule_name_.upper() in zone.idf.schedules:
+                NatVentSchedule = UmiSchedule(
+                    Name=schedule_name_, idf=zone.idf, quantity=quantity
+                )
+            else:
+                raise KeyError
         except KeyError:
             # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
             #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
@@ -538,7 +541,7 @@ def do_natural_ventilation(index, nat_df, zone):
             #  object will be turned on with an AlwaysOn schedule.
             IsNatVentOn = True
             NatVentSchedule = UmiSchedule.constant_schedule(
-                idf=zone.idf, allow_duplicates=True, quantity=np.nan
+                idf=zone.idf, allow_duplicates=True
             )
         except Exception:
             IsNatVentOn = False

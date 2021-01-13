@@ -45,6 +45,10 @@ class TestUmiTemplate:
 
         a = UmiTemplateLibrary.read_file(file).to_dict()
         b = TestUmiTemplate.read_json(file)
+
+        for key in b:
+            # Sort the list elements by their Name because .to_dict() sorts by Name
+            b[key] = sorted(b[key], key=lambda x: x.get("Name"))
         assert json.loads(json.dumps(a)) == json.loads(json.dumps(b))
 
     def test_umitemplate(self, config):

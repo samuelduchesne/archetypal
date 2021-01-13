@@ -562,8 +562,6 @@ class ZoneDefinition(UmiBase):
             f"'InternalMassExposedPerFloorArea' set to"
             f" {self.InternalMassExposedPerFloorArea}"
         )
-        if not self.DomesticHotWater:
-            self.DomesticHotWater = DomesticHotWaterSetting.whole_building(self.idf)
 
         if self.Conditioning is None:
             self.Conditioning = ZoneConditioning(Name="Unconditioned Zone")

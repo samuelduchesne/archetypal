@@ -37,6 +37,7 @@ from archetypal.template import (
     ZoneDefinition,
     is_core,
     resolve_obco,
+    DomesticHotWaterSetting,
 )
 from archetypal.utils import reduce
 
@@ -310,6 +311,13 @@ class BuildingTemplate(UmiBase):
             self.Perimeter.Windows = WindowSetting.generic(
                 idf=self.idf, Name="Generic Window"
             )
+
+        if not self.Core.DomesticHotWater or not self.Perimeter.DomesticHotWater:
+            dhw = DomesticHotWaterSetting.whole_building(self.idf)
+            if not self.Core.DomesticHotWater:
+                self.Core.DomesticHotWater = dhw
+            if not self.Perimeter.DomesticHotWater:
+                self.Perimeter.DomesticHotWater = dhw
 
         log(
             f"Equivalent core zone has an area of {self.Core.area:,.0f} m2",

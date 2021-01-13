@@ -18,7 +18,7 @@ from eppy.bunch_subclass import BadEPFieldError
 from geomeppy.geom.polygons import Polygon3D
 from sigfig import round
 
-from archetypal import __version__, is_referenced, log, settings, timeit
+from archetypal import __version__, log, settings
 from archetypal.template import (
     DomesticHotWaterSetting,
     OpaqueConstruction,
@@ -30,6 +30,66 @@ from archetypal.template import (
     ZoneConstructionSet,
     ZoneLoad,
 )
+
+
+class InternalMass(object):
+    """Class handles the creation of InternalMass constructions from
+    :class:`ZoneDefinition`."""
+
+    @classmethod
+    def from_zone(cls, zone, **kwargs):
+        """
+
+        Args:
+            zone (ZoneDefinition): A ZoneDefinition object.
+            **kwargs:
+
+        Returns:
+            Construction: The internal mass construction for the zone
+            None: if no internal mass defined for zone.
+        """
+        internal_mass_objs = zone._epbunch.getreferingobjs(
+            iddgroups=["Thermal Zones and Surfaces"], fields=["Zone_or_ZoneList_Name"]
+        )
+
+        area = 0  # initialize area
+        mass_opaque_constructions = []  # collect internal mass objects
+
+        # Looping over possible InternalMass objects
+        # This InternalMass object (int_obj) is assigned to self,
+        # then create object and append to list. There could be more then
+        # one.
+        for int_obj in internal_mass_objs:
+            if int_obj.key.upper() == "INTERNALMASS":
+                mass_opaque_constructions.append(
+                    OpaqueConstruction.from_epbunch(int_obj, Category="Internal Mass")
+                )
+                area += float(int_obj.Surface_Area)
+
+        # If one or more constructions, combine them into one.
+        if mass_opaque_constructions:
+            # Combine elements and assign the aggregated Surface Area
+            zone.InternalMassExposedPerFloorArea = float(area) / zone.area
+            return functools.reduce(add, mass_opaque_constructions)
+        else:
+            # No InternalMass object assigned to this Zone, then return Zone and set
+            # floor area to 0
+            zone.InternalMassExposedPerFloorArea = 0
+            return None
+
+    @classmethod
+    def generic_internalmass_from_zone(cls, zone):
+        """Assign a generic internal mass with InternalMassExposedPerFloorArea = 0 to zone.
+
+        Also set it to the self.InternalMassConstruction attribute.
+
+        Args:
+            zone (ZoneDefinition): A ZoneDefinition object.
+        """
+        zone.InternalMassConstruction = OpaqueConstruction.generic_internalmass(
+            idf=zone.idf
+        )
+        zone.InternalMassExposedPerFloorArea = 0
 
 
 class ZoneDefinition(UmiBase):
@@ -288,55 +348,6 @@ class ZoneDefinition(UmiBase):
                 )
         return vol / 6.0
 
-    @timeit
-    def _internalmassconstruction(self):
-        """Specifies the internal mass construction based on InternalMass objects
-        referenced to the zone. Group internal walls into a ThermalMass
-        object for this Zone"""
-
-        # Check for internal mass objects in all zones.
-        mass_opaque_constructions = []  # placeholder for possible InternalMass
-        area = 0  # placeholder for possible InternalMass area.
-        internal_mass_objs = self.idf.idfobjects["INTERNALMASS"]
-
-        # then loop to find referenced InternalMass to zone self
-        if internal_mass_objs:
-            # There are InternalMass objects, but is there one assigned to this zone?
-            for int_obj in internal_mass_objs:
-                # Looping over possible InternalMass objects
-                if is_referenced(self.Name, int_obj):
-                    # This InternalMass object (int_obj) is assigned to self,
-                    # then create object and append to list. There could be more then
-                    # one.
-                    mass_opaque_constructions.append(
-                        OpaqueConstruction.from_epbunch(
-                            int_obj, Category="Internal Mass"
-                        )
-                    )
-                    area += float(int_obj.Surface_Area)
-
-        # If one or more constructions, combine them into one.
-        if mass_opaque_constructions:
-            # Combine elements and assign the aggregated Surface Area
-            self.InternalMassExposedPerFloorArea = float(area) / self.area
-            return functools.reduce(add, mass_opaque_constructions)
-        else:
-            # No InternalMass object assigned to this Zone, then return Zone and set
-            # floor area to 0
-            self.InternalMassExposedPerFloorArea = 0
-            return None
-
-    def set_generic_internalmass(self):
-        """Creates a valid internal mass object with
-        InternalMassExposedPerFloorArea = 0 and sets it to the
-        self.InternalMassConstruction attribute.
-        """
-
-        self.InternalMassConstruction = OpaqueConstruction.generic_internalmass(
-            idf=self.idf
-        )
-        self.InternalMassExposedPerFloorArea = 0
-
     def to_json(self):
         self.validate()  # Validate object before trying to get json format
 
@@ -434,7 +445,7 @@ class ZoneDefinition(UmiBase):
         zone.Ventilation = VentilationSetting.from_zone(zone, **kwargs)
         zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(zone, **kwargs)
         zone.Loads = ZoneLoad.from_zone(zone, **kwargs)
-        zone.InternalMassConstruction = zone._internalmassconstruction()
+        zone.InternalMassConstruction = InternalMass.from_zone(zone, **kwargs)
         zone.Windows = WindowSetting.from_zone(zone, **kwargs)
 
         log(
@@ -543,8 +554,7 @@ class ZoneDefinition(UmiBase):
     def validate(self):
         """Validate object and fill in missing values."""
         if not self.InternalMassConstruction:
-            self.set_generic_internalmass()
-            self.InternalMassExposedPerFloorArea = 0
+            InternalMass.generic_internalmass_from_zone(self)
         log(
             f"While validating {self}, the required attribute "
             f"'InternalMassConstruction' was filled "

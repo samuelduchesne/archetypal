@@ -572,23 +572,19 @@ def set_filepaths(idf):
                 settings.imgs_folder,
                 settings.logs_folder,
             ]
-            legal_folders = [
-                f
-                for f in Path(os.getcwd()).dirs()
-                if not f.stem[0] == "." and f.stem not in excluded_dirs
-            ]
-            file_paths += tuple(
-                [
-                    Path(a).expand()
-                    for path in legal_folders
-                    for a in path.walkfiles(file_or_path)
-                ]
-            )
-            file_paths += tuple(
-                [Path(a).expand() for a in Path(os.getcwd()).glob(file_or_path)]
-            )
+            top = file_or_path.abspath().dirname()
+            for root, dirs, files in walkdirs(top, excluded_dirs):
+                pattern = file_or_path.basename()
+                file_paths += tuple(root.files(pattern))
+
     file_paths = set(file_paths)  # Only keep unique values
     if file_paths:
         return file_paths
     else:
         raise FileNotFoundError
+
+
+def walkdirs(top, excluded):
+    for root, dirs, files in os.walk(top, topdown=True):
+        yield root, dirs, files
+        dirs[:] = [d for d in dirs if (Path(root) / d) not in excluded]

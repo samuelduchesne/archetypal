@@ -441,11 +441,11 @@ class VentilationSetting(UmiBase):
         """Validate object and fill in missing values."""
         if not self.NatVentSchedule:
             self.NatVentSchedule = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", allow_duplicates=True
+                hourly_value=0, Name="AlwaysOff", allow_duplicates=True, idf=self.idf
             )
         if not self.ScheduledVentilationSchedule:
             self.ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", allow_duplicates=True
+                hourly_value=0, Name="AlwaysOff", allow_duplicates=True, idf=self.idf
             )
 
         return self

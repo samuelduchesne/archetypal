@@ -947,15 +947,15 @@ class WindowSetting(UmiBase):
         """Validate object and fill in missing values."""
         if not self.AfnWindowAvailability:
             self.AfnWindowAvailability = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff"
+                hourly_value=0, Name="AlwaysOff", idf=self.idf
             )
         if not self.ShadingSystemAvailabilitySchedule:
             self.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff"
+                hourly_value=0, Name="AlwaysOff", idf=self.idf
             )
         if not self.ZoneMixingAvailabilitySchedule:
             self.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff"
+                hourly_value=0, Name="AlwaysOff", idf=self.idf
             )
 
         return self

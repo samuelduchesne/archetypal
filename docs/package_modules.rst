@@ -37,7 +37,7 @@ Template Classes
     OpaqueConstruction
     OpaqueMaterial
     UmiSchedule
-    StructureInformation
+    StructureDefinition
     VentilationSetting
     WindowConstruction
     WindowSetting

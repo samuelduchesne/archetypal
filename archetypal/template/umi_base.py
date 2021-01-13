@@ -669,7 +669,7 @@ def load_json_objects(datastore, idf=None):
         GlazingMaterial,
         OpaqueConstruction,
         OpaqueMaterial,
-        StructureInformation,
+        StructureDefinition,
         VentilationSetting,
         WeekSchedule,
         WindowConstruction,
@@ -706,7 +706,7 @@ def load_json_objects(datastore, idf=None):
             for store in datastore["WindowConstructions"]
         ],
         StructureDefinitions=[
-            StructureInformation.from_dict(**store, idf=idf, allow_duplicates=True)
+            StructureDefinition.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["StructureDefinitions"]
         ],
         DaySchedules=[

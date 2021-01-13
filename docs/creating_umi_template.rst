@@ -259,7 +259,7 @@ Structure definition
 ____________________
 
 Here are all the parameters and their default values for an
-StructureInformation object (see StructureDefinition_ doc for more information)
+StructureDefinition object (see StructureDefinition_ doc for more information)
 
 .. code-block:: python
 
@@ -273,21 +273,21 @@ StructureInformation object (see StructureDefinition_ doc for more information)
         MassRatios=None,
         **kwargs)
 
-We observe that StructureInformation uses MassRatio objects. Here are the
+We observe that StructureDefinition uses MassRatio objects. Here are the
 parameters of MassRatio object (see MassRatio_ doc for more information)
 
 .. code-block:: python
 
     def __init__(HighLoadRatio=None, Material=None, NormalRatio=None)
 
-Example of StructureInformation object:
+Example of StructureDefinition object:
 
 .. code-block:: python
 
-    # StructureInformation using OpaqueMaterial objects
+    # StructureDefinition using OpaqueMaterial objects
     mass_ratio = ar.MassRatio(Material=plywood, HighLoadRatio=1, NormalRatio=1)
-    struct_definition = ar.StructureInformation(MassRatios=[mass_ratio])
-    # List of StructureInformation objects (needed for Umi template creation)
+    struct_definition = ar.StructureDefinition(MassRatios=[mass_ratio])
+    # List of StructureDefinition objects (needed for Umi template creation)
     StructureDefinitions = [struct_definition]
 
 Defining schedules
@@ -874,7 +874,7 @@ Defining building template
 
   .. code-block:: python
 
-    # BuildingTemplate using Zone, StructureInformation and WindowSetting objects
+    # BuildingTemplate using Zone, StructureDefinition and WindowSetting objects
     building_template = ar.BuildingTemplate(
         Name="Building_template_1",
         Core=core,
@@ -928,7 +928,7 @@ Creating Umi template
 .. _GasMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GasMaterial.html
 .. _OpaqueConstruction: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueConstruction.html
 .. _WindowConstruction: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.WindowConstruction.html
-.. _StructureDefinition: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.StructureInformation.html
+.. _StructureDefinition: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.StructureDefinition.html
 .. _MassRatio: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.MassRatio.html
 .. _DaySchedule: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.DaySchedule.html
 .. _WeekSchedule: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.WeekSchedule.html

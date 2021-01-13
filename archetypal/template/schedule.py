@@ -275,7 +275,7 @@ class UmiSchedule(Schedule, UmiBase):
                             "\n".join(lines)
                         ),
                         Category=self.Name,
-                        allow_duplicates=getattr(self, "_not_unique", False)
+                        allow_duplicates=getattr(self, "_not_unique", False),
                     ),
                 )
             )

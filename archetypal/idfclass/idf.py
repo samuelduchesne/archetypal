@@ -507,7 +507,6 @@ class IDF(geomIDF):
         else:
             self._idfname = Path(value).expand()
 
-
     @property
     def epw(self):
         """The weather file path."""

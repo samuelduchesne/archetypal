@@ -87,6 +87,7 @@ def warn_if_not_compatible():
 
 class EnergyPlusVersion(Version):
     """"""
+
     def __init__(self, version):
         """
 

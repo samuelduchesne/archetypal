@@ -524,7 +524,7 @@ class ZoneConditioning(UmiBase):
                     self.MinFreshAirPerPerson,
                     self.MechVentSchedule,
                 ) = self.fresh_air_from_ideal_loads(zone)
-        except:
+        except Exception as e:
             # Set elements to None so that .combine works correctly
             self.IsMechVentOn = False
             self.MinFreshAirPerPerson = 0
@@ -623,7 +623,8 @@ class ZoneConditioning(UmiBase):
             )
             return isoa, oa_area, oa_person, mechvent_schedule
 
-    def _mechanical_schedule_from_outdoorair_object(self, oa_spec, zone):
+    def _mechanical_schedule_from_outdoorair_object(self, oa_spec, zone) -> UmiSchedule:
+        """Get the mechanical ventilation schedule for zone and OutdoorAir:DesignSpec"""
         if oa_spec.Outdoor_Air_Schedule_Name != "":
             umi_schedule = UmiSchedule(
                 Name=oa_spec.Outdoor_Air_Schedule_Name, idf=zone.idf
@@ -635,11 +636,37 @@ class ZoneConditioning(UmiBase):
             )
             return umi_schedule
         else:
-            # Schedule is not specified so return a constant schedule
-            log(
-                f"No Mechanical Ventilation Schedule specified for zone " f"{zone.Name}"
-            )
-            return UmiSchedule.constant_schedule(idf=zone.idf, allow_duplicates=True)
+            # Schedule is not specified,
+            # Try to get
+            try:
+                values = (
+                    self.idf.variables.OutputVariable[
+                        "Air_System_Outdoor_Air_Minimum_Flow_Fraction"
+                    ]
+                    .values()  # return values
+                    .mean(axis=1)  # for more than one system, return mean
+                    .values  # get numpy array
+                )
+            except KeyError:
+                # if no Air_System_Outdoor_Air_Minimum_Flow_Fraction defined,
+                # then create an always on schedule as a backup.
+                log(
+                    f"No Mechanical Ventilation Schedule specified for zone "
+                    f"{zone.Name}"
+                )
+                return UmiSchedule.constant_schedule(
+                    idf=zone.idf, allow_duplicates=True
+                )
+            else:
+                log(
+                    f"Mechanical Ventilation Schedule specified for zone "
+                    f"{zone.Name} as AirSystemOutdoorAirMinimumFlowFraction"
+                )
+                return UmiSchedule.from_values(
+                    Name="AirSystemOutdoorAirMinimumFlowFraction",
+                    Values=values,
+                    idf=zone.idf,
+                )
 
     def _set_zone_cops(self, zone, nolimit=False):
         """
@@ -670,6 +697,7 @@ class ZoneConditioning(UmiBase):
         heating_energy_transfer_meters = (
             "HeatingCoils__EnergyTransfer",
             "Baseboard__EnergyTransfer",
+            "Refrigeration__EnergyTransfer",
         )
         total_output_heating_energy = 0
         for meter in heating_energy_transfer_meters:
@@ -679,13 +707,22 @@ class ZoneConditioning(UmiBase):
                 )
             except KeyError:
                 pass  # pass if meter does not exist for model
-        heating_cop = total_output_heating_energy / total_input_heating_energy
+        if total_output_heating_energy == 0:  # IdealLoadsAirSystem
+            try:
+                total_output_heating_energy += (
+                    self.idf.meters.OutputMeter["Heating__EnergyTransfer"]
+                    .values("kWh")
+                    .sum()
+                )
+            except KeyError:
+                pass
 
         cooling_meters = (
             "Cooling__Electricity",
             "Cooling__Gas",
             "Cooling__DistrictCooling",
             "HeatRejection__Electricity",  # includes cooling towers
+            "Refrigeration__Electricity",
         )
         total_input_cooling_energy = 0
         for meter in cooling_meters:
@@ -705,8 +742,56 @@ class ZoneConditioning(UmiBase):
                 )
             except KeyError:
                 pass  # pass if meter does not exist for model
+        if total_output_cooling_energy == 0:  # IdealLoadsAirSystem
+            try:
+                total_output_cooling_energy += (
+                    self.idf.meters.OutputMeter["Cooling__EnergyTransfer"]
+                    .values("kWh")
+                    .sum()
+                )
+            except KeyError:
+                pass
 
+        ratio_cooling = total_output_cooling_energy / (
+            total_output_cooling_energy + total_output_heating_energy
+        )
+        ratio_heating = total_output_heating_energy / (
+            total_output_cooling_energy + total_output_heating_energy
+        )
+
+        # estimate fans electricity for cooling and heating
+        try:
+            fans_energy = (
+                self.idf.meters.OutputMeter["Fans__Electricity"].values("kWh").sum()
+            )
+            fans_cooling = fans_energy * ratio_cooling
+            fans_heating = fans_energy * ratio_heating
+        except KeyError:
+            fans_energy = 0
+            fans_cooling = 0
+            fans_heating = 0
+
+        # estimate pumps electricity for cooling and heating
+        try:
+            pumps_energy = (
+                self.idf.meters.OutputMeter["Pumps__Electricity"].values("kWh").sum()
+            )
+            pumps_cooling = pumps_energy * ratio_cooling
+            pumps_heating = pumps_energy * ratio_heating
+        except KeyError:
+            pumps_energy = 0
+            pumps_cooling = 0
+            pumps_heating = 0
+
+        # Add fans and pumps to total_inputs
+        total_input_cooling_energy += fans_cooling
+        total_input_heating_energy += fans_heating
+        total_input_cooling_energy += pumps_cooling
+        total_input_heating_energy += pumps_heating
+
+        # Calculate COPs
         cooling_cop = total_output_cooling_energy / total_input_cooling_energy
+        heating_cop = total_output_heating_energy / total_input_heating_energy
 
         # Capacity limits (heating and cooling)
         zone_size = zone.idf.sql()["ZoneSizes"][

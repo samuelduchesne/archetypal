@@ -84,10 +84,10 @@ def config(
     """
     # set each global variable to the passed-in parameter value
     settings.use_cache = use_cache
-    settings.cache_folder = Path(cache_folder).makedirs_p()
-    settings.data_folder = Path(data_folder).makedirs_p()
-    settings.imgs_folder = Path(imgs_folder).makedirs_p()
-    settings.logs_folder = Path(logs_folder).makedirs_p()
+    settings.cache_folder = Path(cache_folder).expand().makedirs_p()
+    settings.data_folder = Path(data_folder).expand().makedirs_p()
+    settings.imgs_folder = Path(imgs_folder).expand().makedirs_p()
+    settings.logs_folder = Path(logs_folder).expand().makedirs_p()
     settings.log_console = log_console
     settings.log_file = log_file
     settings.log_level = log_level

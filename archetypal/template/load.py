@@ -7,6 +7,7 @@
 
 import collections
 import logging as lg
+import math
 import sqlite3
 from enum import Enum
 
@@ -18,6 +19,7 @@ import archetypal
 from archetypal import log, settings, timeit
 from archetypal.template import UmiBase, UmiSchedule, UniqueName
 from archetypal.utils import reduce
+import numpy as np
 
 
 class DimmingTypes(Enum):
@@ -111,6 +113,8 @@ class ZoneLoad(UmiBase):
 
     @property
     def EquipmentPowerDensity(self):
+        if math.isnan(self._EquipmentPowerDensity):
+            return self._EquipmentPowerDensity
         return round(float(self._EquipmentPowerDensity), decimals=3)
 
     @EquipmentPowerDensity.setter
@@ -127,6 +131,8 @@ class ZoneLoad(UmiBase):
 
     @property
     def LightingPowerDensity(self):
+        if math.isnan(self._LightingPowerDensity):
+            return self._LightingPowerDensity
         return round(float(self._LightingPowerDensity), decimals=3)
 
     @LightingPowerDensity.setter
@@ -135,6 +141,8 @@ class ZoneLoad(UmiBase):
 
     @property
     def PeopleDensity(self):
+        if math.isnan(self._PeopleDensity):
+            return self._PeopleDensity
         return round(float(self._PeopleDensity), decimals=3)
 
     @PeopleDensity.setter
@@ -269,36 +277,40 @@ class ZoneLoad(UmiBase):
                     "Schedules t where ScheduleIndex=?"
                 )
                 sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
-                return UmiSchedule(
-                    Name=sched_name,
-                    idf=zone.idf,
-                    Type=sched_type,
-                    quantity=series["DesignLevel"],
-                )
+                level_ = float(series["DesignLevel"])
+                if level_ > 0:
+                    return UmiSchedule(
+                        Name=sched_name,
+                        idf=zone.idf,
+                        Type=sched_type,
+                        quantity=level_,
+                    )
 
             schedules = []
             if not nominal_elec.empty:
                 # compute schedules series
                 elec_scds = nominal_elec.apply(get_schedule, axis=1).to_list()
+                elec_scds = list(filter(None, elec_scds))
                 schedules.extend(elec_scds)
 
             if not nominal_gas.empty:
                 # compute schedules series
-                gas_scds = nominal_gas.apply(get_schedule, axis=1)
+                gas_scds = nominal_gas.apply(get_schedule, axis=1).to_list()
+                gas_scds = list(filter(None, gas_scds))
                 schedules.extend(gas_scds)
 
             if schedules:
                 EquipmentAvailabilitySchedule = reduce(
                     UmiSchedule.combine,
                     schedules,
-                    quantity=lambda x: sum(obj.quantity for obj in x),
+                    quantity=True,
                 )
                 EquipmentPowerDensity = (
                     EquipmentAvailabilitySchedule.quantity / zone.area
                 )
             else:
                 EquipmentAvailabilitySchedule = None
-                EquipmentPowerDensity = 0.0
+                EquipmentPowerDensity = np.NaN
 
             # Verifies if Lights in zone
             sql_query = "select t.* from NominalLighting t where ZoneIndex=?"
@@ -314,12 +326,12 @@ class ZoneLoad(UmiBase):
                 LightsAvailabilitySchedule = reduce(
                     UmiSchedule.combine,
                     lighting_schedules,
-                    quantity=lambda x: sum(obj.quantity for obj in x),
+                    quantity=True,
                 )
                 LightingPowerDensity = LightsAvailabilitySchedule.quantity / zone.area
             else:
                 LightsAvailabilitySchedule = None
-                LightingPowerDensity = 0
+                LightingPowerDensity = np.NaN
 
             # Verifies if People in zone
 
@@ -357,7 +369,7 @@ class ZoneLoad(UmiBase):
                 PeopleDensity = OccupancySchedule.quantity / zone.area
             else:
                 OccupancySchedule = None
-                PeopleDensity = 0
+                PeopleDensity = np.NaN
 
         name = zone.Name + "_ZoneLoad"
         z_load = cls(

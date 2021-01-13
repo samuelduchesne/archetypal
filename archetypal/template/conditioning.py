@@ -649,13 +649,16 @@ class ZoneConditioning(UmiBase):
                 )
             except KeyError:
                 # if no Air_System_Outdoor_Air_Minimum_Flow_Fraction defined,
-                # then create an always on schedule as a backup.
+                # then create an always off schedule as a backup.
                 log(
                     f"No Mechanical Ventilation Schedule specified for zone "
                     f"{zone.Name}"
                 )
                 return UmiSchedule.constant_schedule(
-                    idf=zone.idf, allow_duplicates=True
+                    hourly_value=0,
+                    Name="AlwaysOff",
+                    allow_duplicates=True,
+                    idf=zone.idf,
                 )
             else:
                 log(

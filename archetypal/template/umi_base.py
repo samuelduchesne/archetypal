@@ -382,6 +382,7 @@ class UmiBase(object):
                         key=lambda x: x.unit_number,
                     )
                 ),
+                self,
             )
         else:
             # We want to return the first similar object (equality) regardless of the
@@ -397,6 +398,7 @@ class UmiBase(object):
                         key=lambda x: x.unit_number,
                     )
                 ),
+                self,
             )
 
         return obj

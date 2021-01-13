@@ -224,6 +224,13 @@ class Outputs:
                 ),
             },
             {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Air System Outdoor Air Minimum Flow Fraction",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
                 "key": "OUTPUT:METER",
                 **dict(
                     Key_Name="HeatRejection:EnergyTransfer",
@@ -278,7 +285,11 @@ class Outputs:
             },
             {
                 "key": "OUTPUT:METER",
-                **dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
+                **dict(Key_Name="Fans:Electricity", Reporting_Frequency="hourly"),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Pumps:Electricity", Reporting_Frequency="hourly"),
             },
             {
                 "key": "OUTPUT:METER",

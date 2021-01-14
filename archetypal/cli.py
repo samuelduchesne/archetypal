@@ -575,7 +575,7 @@ def set_filepaths(idf):
             top = file_or_path.abspath().dirname()
             for root, dirs, files in walkdirs(top, excluded_dirs):
                 pattern = file_or_path.basename()
-                file_paths += tuple(root.files(pattern))
+                file_paths += tuple(Path(root).files(pattern))
 
     file_paths = set(file_paths)  # Only keep unique values
     if file_paths:

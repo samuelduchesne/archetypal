@@ -152,6 +152,11 @@ class UmiTemplateLibrary:
         self.GasMaterials = GasMaterials
         self.GlazingMaterials = GlazingMaterials
 
+    def __iter__(self):
+        """Iterator over component groups."""
+        for group in self._LIB_GROUPS:
+            yield group, self.__dict__[group]
+
     @classmethod
     def read_idf(cls, idf_files, weather, name="unnamed", processors=-1, **kwargs):
         """Initializes an UmiTemplateLibrary object from one or more idf_files.

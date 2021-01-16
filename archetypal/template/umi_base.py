@@ -135,6 +135,10 @@ class UmiBase(object):
         """string representation of the object as id:Name"""
         return self.__repr__()
 
+    def __iter__(self):
+        for attr, value in self.mapping().items():
+            yield attr, value
+
     @property
     def id(self):
         if self._id is None:
@@ -556,6 +560,10 @@ class MaterialLayer(object):
 
     def __repr__(self):
         return "{} with thickness of {:,.3f} m".format(self.Material, self.Thickness)
+
+    def __iter__(self):
+        for k, v in self.mapping().items():
+            yield k, v
 
     @property
     def Thickness(self):

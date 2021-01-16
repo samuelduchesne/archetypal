@@ -43,6 +43,10 @@ class MassRatio(object):
                 ]
             )
 
+    def __iter__(self):
+        for k, v in self.mapping().items():
+            yield k, v
+
     def to_dict(self):
         """dict representation of object"""
         return collections.OrderedDict(

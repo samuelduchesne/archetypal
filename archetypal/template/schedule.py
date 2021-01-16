@@ -386,6 +386,10 @@ class YearSchedulePart:
                 ]
             )
 
+    def __iter__(self):
+        for k, v in self.mapping().items():
+            yield k, v
+
     @classmethod
     @deprecated(
         deprecated_in="1.3.1",

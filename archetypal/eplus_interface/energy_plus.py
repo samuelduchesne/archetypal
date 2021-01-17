@@ -199,7 +199,7 @@ class EnergyPlusThread(Thread):
             ).cmd()
         except EnergyPlusVersionError as e:
             self.exception = e
-            self.kill()  # kill process to be sure
+            self.p.kill()  # kill process to be sure
             return
 
         # Start process with tqdm bar

@@ -107,7 +107,7 @@ class ExpandObjectsThread(Thread):
                         self.failure_callback()
         except Exception as e:
             self.exception = e
-            self.kill()  # kill process to be sure
+            self.p.kill()  # kill process to be sure
             return
 
     def msg_callback(self, *args, **kwargs):

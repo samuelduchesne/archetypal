@@ -192,7 +192,7 @@ class UmiTemplateLibrary:
                 idfname=idf_file,
                 epw=umi_template.weather,
                 verbose=False,
-                position=None,
+                position=i,
                 nolimit=True,
                 keep_data_err=True,  # For debugging
                 readvars=False,  # No need to readvars since only sql is used

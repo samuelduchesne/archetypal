@@ -207,7 +207,9 @@ class EnergyPlusThread(Thread):
             unit_scale=True,
             total=self.idf.energyplus_its if self.idf.energyplus_its > 0 else None,
             miniters=1,
-            desc=f"EnergyPlus #{self.idf.position}-{self.idf.name}",
+            desc=f"EnergyPlus #{self.idf.position}-{self.idf.name}"
+            if self.idf.position
+            else f"EnergyPlus {self.idf.name}",
             position=self.idf.position,
         ) as progress:
             self.p = subprocess.Popen(

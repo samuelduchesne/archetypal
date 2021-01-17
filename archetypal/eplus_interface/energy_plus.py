@@ -252,15 +252,18 @@ class EnergyPlusThread(Thread):
     def success_callback(self):
         save_dir = self.idf.simulation_dir
         if self.idf.keep_data:
-            save_dir.rmtree_p()  # purge target dir
-            self.run_dir.copytree(save_dir)  # copy files
-
-            log(
-                "Files generated at the end of the simulation: %s"
-                % "\n".join(save_dir.files()),
-                lg.DEBUG,
-                name=self.name,
-            )
+            try:
+                save_dir.rmtree_p()  # purge target dir
+                self.run_dir.copytree(save_dir)  # copy files
+            except PermissionError as e:
+                pass
+            else:
+                log(
+                    "Files generated at the end of the simulation: %s"
+                    % "\n".join(save_dir.files()),
+                    lg.DEBUG,
+                    name=self.name,
+                )
 
     def failure_callback(self):
         error_filename = self.run_dir / self.idf.output_prefix + "out.err"
@@ -269,8 +272,10 @@ class EnergyPlusThread(Thread):
                 stderr_r = stderr.read()
             if self.idf.keep_data_err:
                 failed_dir = self.idf.simulation_dir.mkdir_p() / "failed"
-                if failed_dir.exists():
+                try:
                     failed_dir.rmtree_p()
+                except PermissionError as e:
+                    log(f"Could not remove {failed_dir}")
                 else:
                     self.run_dir.copytree(failed_dir)  # no need to create folder before
             self.exception = EnergyPlusProcessError(

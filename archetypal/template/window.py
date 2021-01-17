@@ -5,7 +5,6 @@ import logging as lg
 from enum import Enum
 from functools import reduce
 
-import tabulate
 from deprecation import deprecated
 from eppy.bunch_subclass import EpBunch
 
@@ -438,8 +437,9 @@ class WindowSetting(UmiBase):
         return self.combine(other)
 
     def __repr__(self):
-        header = "{}: <{}>\n".format(self.Name, self.__class__.mro()[0].__name__)
-        return header + tabulate.tabulate(self.mapping().items(), tablefmt="plain")
+        # header = "{}: <{}>\n".format(self.Name, self.__class__.mro()[0].__name__)
+        # return header + tabulate.tabulate(self.mapping().items(), tablefmt="plain")
+        return super(WindowSetting, self).__repr__()
 
     def __str__(self):
         return repr(self)

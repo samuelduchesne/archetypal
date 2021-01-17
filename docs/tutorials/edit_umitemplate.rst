@@ -6,7 +6,7 @@ Editing UMI Template Files
 .. code-block:: python
 
     >>> from archetypal import UmiTemplateLibrary
-    >>> template_library = UmiTemplateLibrary.read_file()
+    >>> template_library = UmiTemplateLibrary.open()
 
 which returns an :class:`~archetypal.umi_template.UmiTemplateLibrary` object.
 

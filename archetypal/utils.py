@@ -1157,3 +1157,11 @@ def extend_class(cls):
         victorlei@gmail.com
     """
     return lambda f: (setattr(cls, f.__name__, f) or f)
+
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+
+        return obj

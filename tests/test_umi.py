@@ -43,7 +43,7 @@ class TestUmiTemplate:
 
         file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
 
-        a = UmiTemplateLibrary.read_file(file).to_dict()
+        a = UmiTemplateLibrary.open(file).to_dict()
         b = TestUmiTemplate.read_json(file)
 
         for key in b:
@@ -60,7 +60,7 @@ class TestUmiTemplate:
             / "VentilationSimpleTest.idf",
         ]
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        a = UmiTemplateLibrary.read_idf(
+        a = UmiTemplateLibrary.from_idf_files(
             idf_source, wf, name="Mixed_Files", processors=-1
         )
 
@@ -80,7 +80,7 @@ class TestUmiTemplate:
             "tests/input_data/umi_samples/B_Res_0_WoodFrame.idf",
         ]
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        a = UmiTemplateLibrary.read_idf(idf_source, wf, name="Mixed_Files")
+        a = UmiTemplateLibrary.from_idf_files(idf_source, wf, name="Mixed_Files")
         a.to_json()
         data_dict = a.to_dict()
         assert no_duplicates(data_dict)
@@ -565,7 +565,7 @@ class TestUmiTemplate:
             OpaqueConstructions=OpaqueConstructions,
             OpaqueMaterials=OpaqueMaterials,
             WindowConstructions=WindowConstructions,
-            StructureDefinitions=StructureDefinitions,
+            StructureInformations=StructureDefinitions,
             DaySchedules=DaySchedules,
             WeekSchedules=WeekSchedules,
             YearSchedules=YearSchedules,
@@ -575,7 +575,7 @@ class TestUmiTemplate:
             ZoneConditionings=ZoneConditionings,
             ZoneConstructionSets=ZoneConstructionSets,
             ZoneLoads=ZoneLoads,
-            Zones=Zones,
+            ZoneDefinitions=Zones,
         )
 
         yield umi_template.to_dict()
@@ -587,7 +587,7 @@ class TestUmiTemplate:
     def test_climatestudio(self, climatestudio):
         template_json = UmiTemplateLibrary(
             name="my_umi_template", BuildingTemplates=[climatestudio]
-        ).to_json(all_zones=False)
+        ).to_json()
         print(template_json)
 
     @pytest.mark.skipif(
@@ -600,7 +600,7 @@ class TestUmiTemplate:
         settings.log_console = False
         files = Path("tests/input_data/problematic").files("*CZ5A*.idf")
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        template = UmiTemplateLibrary.read_idf(
+        template = UmiTemplateLibrary.from_idf_files(
             name="my_umi_template", idf_files=files, as_version="9-2-0", weather=w
         )
         template.to_json()
@@ -624,7 +624,7 @@ class TestUmiTemplate:
     def test_necb_serial(self, file, config):
         settings.log_console = True
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        template = UmiTemplateLibrary.read_idf(
+        template = UmiTemplateLibrary.from_idf_files(
             name="my_umi_template",
             idf_files=[file],
             as_version="9-2-0",
@@ -649,7 +649,7 @@ class TestUmiTemplate:
             "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
         ]
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        template = UmiTemplateLibrary.read_idf(
+        template = UmiTemplateLibrary.from_idf_files(
             name="my_umi_template",
             idf_files=office,
             as_version="9-2-0",
@@ -679,7 +679,7 @@ class TestUmiTemplate:
     def test_cz5a_serial(self, file, config):
         settings.log_console = True
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        template = UmiTemplateLibrary.read_idf(
+        template = UmiTemplateLibrary.from_idf_files(
             name=file.stem,
             idf_files=[file],
             as_version="9-2-0",

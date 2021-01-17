@@ -415,7 +415,7 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     log(f"using the '{weather.basename()}' weather file\n", verbose=True)
 
     # Call UmiTemplateLibrary constructor with list of IDFs
-    template = UmiTemplateLibrary.read_idf(
+    template = UmiTemplateLibrary.from_idf_files(
         file_paths,
         weather=weather,
         name=name,
@@ -425,7 +425,7 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     )
     # Save json file
     final_path: Path = dir_ / name + ext
-    template.to_json(path_or_buf=final_path, all_zones=all_zones)
+    template.to_json(path_or_buf=final_path)
     log(
         f"Successfully created template file at {final_path.abspath()}",
         verbose=True,

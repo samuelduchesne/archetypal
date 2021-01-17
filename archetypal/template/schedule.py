@@ -390,6 +390,9 @@ class YearSchedulePart:
         for k, v in self.mapping().items():
             yield k, v
 
+    def __hash__(self):
+        return id(self)
+
     @classmethod
     @deprecated(
         deprecated_in="1.3.1",

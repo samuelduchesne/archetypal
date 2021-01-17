@@ -420,12 +420,13 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
         weather=weather,
         name=name,
         processors=cores,
+        keep_all_zones=all_zones,
         as_version=as_version,
         annual=True,
     )
     # Save json file
     final_path: Path = dir_ / name + ext
-    template.to_json(path_or_buf=final_path)
+    template.save(path_or_buf=final_path)
     log(
         f"Successfully created template file at {final_path.abspath()}",
         verbose=True,

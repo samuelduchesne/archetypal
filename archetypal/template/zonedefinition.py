@@ -555,13 +555,13 @@ class ZoneDefinition(UmiBase):
         """Validate object and fill in missing values."""
         if not self.InternalMassConstruction:
             InternalMass.generic_internalmass_from_zone(self)
-        log(
-            f"While validating {self}, the required attribute "
-            f"'InternalMassConstruction' was filled "
-            f"with {self.InternalMassConstruction} and the "
-            f"'InternalMassExposedPerFloorArea' set to"
-            f" {self.InternalMassExposedPerFloorArea}"
-        )
+            log(
+                f"While validating {self}, the required attribute "
+                f"'InternalMassConstruction' was filled "
+                f"with {self.InternalMassConstruction} and the "
+                f"'InternalMassExposedPerFloorArea' set to"
+                f" {self.InternalMassExposedPerFloorArea}"
+            )
 
         if self.Conditioning is None:
             self.Conditioning = ZoneConditioning(Name="Unconditioned Zone")

@@ -16,6 +16,12 @@ from .eplus_interface.version import warn_if_not_compatible
 warn_if_outdated("archetypal", __version__)
 warn_if_not_compatible()
 
+# don't display futurewarnings
+
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
+
 from .utils import *
 from .simple_glazing import *
 from .energypandas import EnergySeries, EnergyDataFrame

@@ -21,6 +21,7 @@ warn_if_not_compatible()
 import warnings
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
+warnings.simplefilter(action="ignore", category=UserWarning)
 
 from .utils import *
 from .simple_glazing import *

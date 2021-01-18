@@ -420,12 +420,11 @@ class ZoneDefinition(UmiBase):
         return zone
 
     @classmethod
-    def from_zone_epbunch(cls, zone_ep, sql, **kwargs):
+    def from_zone_epbunch(cls, zone_ep, **kwargs):
         """Create a Zone object from an eppy 'ZONE' epbunch.
 
         Args:
             zone_ep (eppy.bunch_subclass.EpBunch): The Zone EpBunch.
-            sql (dict): The sql dict for this IDF object.
         """
         start_time = time.time()
         log('Constructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))

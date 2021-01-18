@@ -24,19 +24,18 @@ from archetypal.template.umi_base import UniqueName, load_json_objects
 
 @pytest.fixture(scope="module")
 def small_idf(config, small_idf_obj):
-    """An IDF model. Yields both the idf and the sql
+    """An IDF model
 
     Args:
         config:
         small_idf_obj:
     """
-    sql = small_idf_obj.sql()
-    yield small_idf_obj, sql
+    yield small_idf_obj
 
 
 @pytest.fixture(scope="module")
 def small_idf_copy(config):
-    """An IDF model. Yields both the idf and the sql
+    """An IDF model
 
     Args:
         config:
@@ -44,7 +43,7 @@ def small_idf_copy(config):
     file = "tests/input_data/umi_samples/B_Off_0.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
-    yield idf, idf.sql()
+    yield idf
 
 
 @pytest.fixture(scope="module")
@@ -61,8 +60,7 @@ def small_idf_obj(config):
 
 @pytest.fixture(scope="module")
 def other_idf(config):
-    """Another IDF object with a different signature. Yields both the idf and
-    the sql
+    """Another IDF object with a different signature.
 
     Args:
         config:
@@ -70,7 +68,7 @@ def other_idf(config):
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
-    yield idf, idf.sql()
+    yield idf
 
 
 @pytest.fixture(scope="module")
@@ -87,8 +85,7 @@ def other_idf_object(config):
 
 @pytest.fixture(scope="module")
 def other_idf_object_copy(config):
-    """Another IDF object with a different signature. Yields both the idf and
-    the sql
+    """Another IDF object with a different signature.
 
     Args:
         config:
@@ -110,8 +107,7 @@ def small_office(config):
     )
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
-    sql = idf.sql()
-    yield idf, sql
+    yield idf
 
 
 @pytest.fixture(scope="module")
@@ -173,7 +169,7 @@ class TestInternalMass:
         Args:
             small_idf:
         """
-        idf, sql = small_idf
+        idf = small_idf
         intmass = OpaqueConstruction.generic_internalmass(idf)
         assert intmass.to_json()
 
@@ -198,7 +194,7 @@ class TestDaySchedule:
         """
         from archetypal.template import DaySchedule
 
-        idf, sql = small_idf
+        idf = small_idf
         epbunch = idf.getobject("Schedule:Day:Hourly".upper(), "B_Off_D_Het_WD")
         sched = DaySchedule.from_epbunch(epbunch)
         assert len(sched.all_values) == 24.0
@@ -440,7 +436,7 @@ class TestOpaqueMaterial:
         """
         mat_c = mat_a + mat_b
         assert mat_c
-        np.testing.assert_almost_equal(mat_c.Conductivity, .150)
+        np.testing.assert_almost_equal(mat_c.Conductivity, 0.150)
         assert mat_a.id != mat_b.id != mat_c.id
 
         mat_d = mat_c + mat_a
@@ -463,7 +459,7 @@ class TestOpaqueMaterial:
         )
         mat_a += mat_b
         assert mat_a
-        np.testing.assert_almost_equal(mat_a.Conductivity, .150)
+        np.testing.assert_almost_equal(mat_a.Conductivity, 0.150)
         assert mat_a.id == id_  # id should not change
         assert mat_a.id != mat_b.id
 
@@ -473,10 +469,8 @@ class TestOpaqueMaterial:
 
         idf = small_idf_obj
         if idf.idfobjects["MATERIAL"]:
-            opaqMat_epBunch = OpaqueMaterial.from_epbunch(
-                idf.idfobjects["MATERIAL"][0]
-            )
-            opaqMat_json= opaqMat_epBunch.to_json()
+            opaqMat_epBunch = OpaqueMaterial.from_epbunch(idf.idfobjects["MATERIAL"][0])
+            opaqMat_json = opaqMat_epBunch.to_json()
             assert OpaqueMaterial(**opaqMat_json) == opaqMat_epBunch
         if idf.idfobjects["MATERIAL:NOMASS"]:
             opaqMat_epBunch = OpaqueMaterial.from_epbunch(
@@ -1066,7 +1060,7 @@ class TestOpaqueConstruction:
 
         from archetypal.template import OpaqueConstruction
 
-        idf, sql = small_idf
+        idf = small_idf
         opaq_constr = idf.getobject("CONSTRUCTION", "B_Off_Thm_0")
         oc = OpaqueConstruction.from_epbunch(opaq_constr)
         oc_2 = copy(oc)
@@ -1112,7 +1106,7 @@ class TestOpaqueConstruction:
         # 2 OpaqueConstruction from different idf should not have the same hash if they
         # have different names, not be the same object, yet be equal if they have the
         # same layers (Material and Thickness)
-        idf_2, sql_2 = other_idf
+        idf_2 = other_idf
         assert idf is not idf_2
         opaq_constr_3 = idf_2.getobject("CONSTRUCTION", "B_Res_Thm_0")
         assert opaq_constr is not opaq_constr_3
@@ -1310,7 +1304,7 @@ class TestUmiSchedule:
         """
         from archetypal.template import UmiSchedule
 
-        idf, sql = small_idf
+        idf = small_idf
         # clear_cache()
         sched = UmiSchedule(Name="B_Off_Y_Occ", idf=idf)
         assert sched.to_dict()
@@ -1326,7 +1320,7 @@ class TestUmiSchedule:
 
         from archetypal.template import UmiSchedule
 
-        idf, sql = small_idf
+        idf = small_idf
         sched = UmiSchedule(Name="On", idf=idf)
         sched_2 = copy(sched)
 
@@ -1370,7 +1364,7 @@ class TestUmiSchedule:
 
         # 2 UmiSchedule from different idf should have the same hash,
         # not be the same object, yet be equal if they have the same values
-        idf_2, sql_2 = other_idf
+        idf_2 = other_idf
         assert idf is not idf_2
         sched_3 = UmiSchedule(Name="On", idf=idf_2, allow_duplicates=True)
         assert sched is not sched_3
@@ -1411,7 +1405,7 @@ class TestZoneConstructionSet:
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=w, annual=True)
-        yield idf, idf.sql()
+        yield idf
 
     def test_add_zoneconstructionset(self, small_idf):
         """Test __add__() for ZoneConstructionSet
@@ -1419,15 +1413,15 @@ class TestZoneConstructionSet:
         Args:
             small_idf:
         """
-        idf, sql = small_idf
+        idf = small_idf
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
         z_core = ZoneConstructionSet.from_zone(
-            ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
+            ZoneDefinition.from_zone_epbunch(zone_core)
         )
         z_perim = ZoneConstructionSet.from_zone(
-            ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
+            ZoneDefinition.from_zone_epbunch(zone_perim)
         )
         z_new = z_core + z_perim
         assert z_new
@@ -1438,15 +1432,15 @@ class TestZoneConstructionSet:
         Args:
             small_idf:
         """
-        idf, sql = small_idf
+        idf = small_idf
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
         z_core = ZoneConstructionSet.from_zone(
-            ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
+            ZoneDefinition.from_zone_epbunch(zone_core)
         )
         z_perim = ZoneConstructionSet.from_zone(
-            ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
+            ZoneDefinition.from_zone_epbunch(zone_perim)
         )
         id_ = z_core.id
         z_core += z_perim
@@ -1473,10 +1467,9 @@ class TestZoneConstructionSet:
         """
         from archetypal.template import ZoneConstructionSet, ZoneDefinition
 
-        sql = next(iter([i for i in zoneConstructionSet_tests if isinstance(i, dict)]))
-        idf = next(iter([i for i in zoneConstructionSet_tests if isinstance(i, IDF)]))
+        idf = zoneConstructionSet_tests
         zone = idf.getobject("ZONE", "Office")
-        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
+        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
         constrSet_ = ZoneConstructionSet.from_zone(z)
 
     def test_zoneConstructionSet_from_to_json(self, config, idf):
@@ -1520,8 +1513,7 @@ class TestZoneLoad:
             / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         )
         idf = IDF(file, epw=w)
-        sql = idf.sql()
-        yield idf, sql
+        yield idf
 
     @pytest.fixture(scope="class", params=["RefBldgWarehouseNew2004_Chicago.idf"])
     def zoneLoadtests(self, config, request):
@@ -1534,8 +1526,7 @@ class TestZoneLoad:
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=w, annual=True)
-        sql = idf.sql()
-        yield idf, sql
+        yield idf
 
     def test_zoneLoad_init(self, config, idf):
         """
@@ -1571,9 +1562,9 @@ class TestZoneLoad:
         """
         from archetypal.template import ZoneDefinition, ZoneLoad
 
-        idf, sql = zoneLoadtests
+        idf = zoneLoadtests
         zone = idf.getobject("ZONE", "Office")
-        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
+        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
         zone_loads = ZoneLoad.from_zone(z)
 
         assert zone_loads.DimmingType == DimmingTypes.Off
@@ -1592,9 +1583,9 @@ class TestZoneLoad:
         """
         from archetypal.template import ZoneDefinition, ZoneLoad
 
-        idf, sql = fiveZoneEndUses
+        idf = fiveZoneEndUses
         zone = idf.getobject("ZONE", "SPACE1-1")
-        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
+        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
         zone_loads = ZoneLoad.from_zone(z)
 
         assert zone_loads.DimmingType == DimmingTypes.Stepped
@@ -1637,9 +1628,9 @@ class TestZoneLoad:
 
         from archetypal.template import ZoneDefinition, ZoneLoad
 
-        idf, sql = small_idf
+        idf = small_idf
         zone_ep = idf.idfobjects["ZONE"][0]
-        zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
+        zone = ZoneDefinition.from_zone_epbunch(zone_ep)
         zl = ZoneLoad.from_zone(zone)
         zl_2 = copy(zl)
 
@@ -1684,9 +1675,9 @@ class TestZoneLoad:
         # 2 ZoneLoad from different idf should have the same hash if they
         # have the same name, not be the same object, yet be equal if they have the
         # same values (EquipmentPowerDensity, LightingPowerDensity, etc.)
-        idf_2, sql = small_idf_copy
+        idf_2 = small_idf_copy
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, sql=sql)
+        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3)
         assert idf is not idf_2
         zl_3 = ZoneLoad.from_zone(zone_3, allow_duplicates=True)
         assert zone_ep is not zone_ep_3
@@ -1718,8 +1709,7 @@ class TestZoneConditioning:
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=w, annual=True)
-        sql = idf.sql()
-        yield idf, sql, request.param, IDF(file, epw=w, annual=True)  # pass an idfcopy
+        yield idf, request.param, IDF(file, epw=w, annual=True)  # pass an idfcopy
 
     def test_zoneConditioning_init(self, config, idf):
         """
@@ -1744,18 +1734,18 @@ class TestZoneConditioning:
         """
         from archetypal.template import ZoneConditioning, ZoneDefinition
 
-        idf, sql, idf_name, _ = zoneConditioningtests
+        idf, idf_name, _ = zoneConditioningtests
         if idf_name == "RefMedOffVAVAllDefVRP.idf":
             zone = idf.getobject("ZONE", "Core_mid")
-            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
             cond_ = ZoneConditioning.from_zone(z)
         if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf":
             zone = idf.getobject("ZONE", "West Zone")
-            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
             cond_HX = ZoneConditioning.from_zone(z)
         if idf_name == "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf":
             zone = idf.getobject("ZONE", "East Zone")
-            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
             cond_HX_eco = ZoneConditioning.from_zone(z)
 
     def test_zoneConditioning_from_to_json(self, config, idf):
@@ -1789,10 +1779,10 @@ class TestZoneConditioning:
 
         from archetypal.template import ZoneConditioning, ZoneDefinition
 
-        idf, sql, idf_name, idf_2 = zoneConditioningtests
+        idf, idf_name, idf_2 = zoneConditioningtests
         # clear_cache()
         zone_ep = idf.idfobjects["ZONE"][0]
-        zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
+        zone = ZoneDefinition.from_zone_epbunch(zone_ep)
         zc = ZoneConditioning.from_zone(zone)
         zc_2 = copy(zc)
 
@@ -1838,7 +1828,7 @@ class TestZoneConditioning:
         # have different names, not be the same object, yet be equal if they have the
         # same values (CoolingSetpoint, HeatingSetpoint, etc.)
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, sql=sql)
+        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3)
         assert idf is not idf_2
         zc_3 = ZoneConditioning.from_zone(zone_3)
         assert zone_ep is not zone_ep_3
@@ -1867,8 +1857,7 @@ class TestVentilationSetting:
         file = eplusdir / "ExampleFiles" / request.param
         w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         idf = IDF(file, epw=w, annual=True)
-        sql = idf.sql()
-        yield idf, sql, request.param, IDF(file, epw=w, annual=True)  # passes a copy as well
+        yield idf, request.param, IDF(file, epw=w, annual=True)  # passes a copy as well
 
     def test_ventilation_init(self, config, idf):
         """
@@ -1888,18 +1877,18 @@ class TestVentilationSetting:
         """
         from archetypal.template import VentilationSetting, ZoneDefinition
 
-        idf, sql, idf_name, _ = ventilatontests
+        idf, idf_name, _ = ventilatontests
         if idf_name == "VentilationSimpleTest.idf":
             zone = idf.getobject("ZONE", "ZONE 1")
-            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
             natVent = VentilationSetting.from_zone(z)
         if idf_name == "VentilationSimpleTest.idf":
             zone = idf.getobject("ZONE", "ZONE 2")
-            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
             schedVent = VentilationSetting.from_zone(z)
         if idf_name == "RefBldgWarehouseNew2004_Chicago.idf":
             zone = idf.getobject("ZONE", "Office")
-            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
             infiltVent = VentilationSetting.from_zone(z)
 
     def test_ventilationSetting_from_to_json(self, config, idf):
@@ -1933,10 +1922,10 @@ class TestVentilationSetting:
 
         from archetypal.template import VentilationSetting, ZoneDefinition
 
-        idf, sql, idf_name, idf_2 = ventilatontests
+        idf, idf_name, idf_2 = ventilatontests
 
         zone_ep = idf.idfobjects["ZONE"][0]
-        zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
+        zone = ZoneDefinition.from_zone_epbunch(zone_ep)
         vent = VentilationSetting.from_zone(zone)
         vent_2 = copy(vent)
 
@@ -1983,9 +1972,7 @@ class TestVentilationSetting:
         # same values (Infiltration, IsWindOn, etc.)
 
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = ZoneDefinition.from_zone_epbunch(
-            zone_ep_3, sql=sql, allow_duplicates=True
-        )
+        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, allow_duplicates=True)
         vent_3 = VentilationSetting.from_zone(zone)
         assert idf is not idf_2
         vent_3 = VentilationSetting.from_zone(zone_3, allow_duplicates=True)
@@ -2075,8 +2062,7 @@ class TestWindowSetting:
         file = eplusdir / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=w, design_day=True)
-        sql = idf.sql()
-        yield idf, sql
+        yield idf
 
     def test_window_from_construction_name(self, small_idf):
         """
@@ -2085,7 +2071,7 @@ class TestWindowSetting:
         """
         from archetypal.template import WindowSetting
 
-        idf, sql = small_idf
+        idf = small_idf
         construction = idf.getobject("CONSTRUCTION", "B_Dbl_Air_Cl")
         # clear_cache()
         w = WindowSetting.from_construction(construction)
@@ -2101,7 +2087,7 @@ class TestWindowSetting:
         """
         from archetypal.template import WindowSetting
 
-        idf, sql = windowtests
+        idf = windowtests
         f_surfs = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"]
         windows = []
         for f in f_surfs:
@@ -2123,7 +2109,7 @@ class TestWindowSetting:
         """
         from archetypal.template import WindowSetting
 
-        idf, sql = small_idf
+        idf = small_idf
         f_surfs = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"]
         for f in f_surfs:
             constr = f.Construction_Name
@@ -2179,8 +2165,8 @@ class TestWindowSetting:
         """
         from archetypal.template import WindowSetting
 
-        idf, sql = small_idf
-        idf2, sql2 = other_idf
+        idf = small_idf
+        idf2 = other_idf
         zone = idf.idfobjects["ZONE"][0]
         iterator = iter([win for surf in zone.zonesurfaces for win in surf.subsurfaces])
         surface = next(iterator, None)
@@ -2215,7 +2201,7 @@ class TestWindowSetting:
         """
         from archetypal.template import WindowSetting
 
-        idf, sql = small_idf
+        idf = small_idf
         w = WindowSetting.generic(idf, "Generic Window")
 
         assert w.to_json()
@@ -2231,7 +2217,7 @@ class TestWindowSetting:
 
         from archetypal.template import WindowSetting
 
-        idf, sql = small_idf
+        idf = small_idf
         f_surf = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"][0]
         wind = WindowSetting.from_surface(f_surf)
         wind_2 = copy(wind)
@@ -2277,7 +2263,7 @@ class TestWindowSetting:
         # 2 WindowSettings from different idf should not have the same hash
         # if they have different names, not be the same object, yet be equal if they
         # have the same values (Construction, Type, etc.)
-        idf_2, sql = small_idf_copy
+        idf_2 = small_idf_copy
         f_surf_3 = idf_2.idfobjects["FENESTRATIONSURFACE:DETAILED"][0]
         wind_3 = WindowSetting.from_surface(f_surf_3, allow_duplicates=True)
         assert idf is not idf_2
@@ -2299,9 +2285,9 @@ class TestZone:
         """
         from archetypal.template import ZoneDefinition
 
-        idf, sql = small_idf_copy
+        idf = small_idf_copy
         zone = idf.getobject("ZONE", "Perim")
-        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, sql=sql)
+        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
         np.testing.assert_almost_equal(desired=z.volume, actual=25.54, decimal=1)
 
     def test_add_zone(self, small_idf_copy):
@@ -2310,12 +2296,12 @@ class TestZone:
         Args:
             small_idf_copy:
         """
-        idf, sql = small_idf_copy
+        idf = small_idf_copy
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
-        z_perim = ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
+        z_core = ZoneDefinition.from_zone_epbunch(zone_core)
+        z_perim = ZoneDefinition.from_zone_epbunch(zone_perim)
 
         z_new = z_core + z_perim
 
@@ -2333,12 +2319,12 @@ class TestZone:
         Args:
             small_idf_copy:
         """
-        idf, sql = small_idf_copy
+        idf = small_idf_copy
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ZoneDefinition.from_zone_epbunch(zone_core, sql=sql)
-        z_perim = ZoneDefinition.from_zone_epbunch(zone_perim, sql=sql)
+        z_core = ZoneDefinition.from_zone_epbunch(zone_core)
+        z_perim = ZoneDefinition.from_zone_epbunch(zone_perim)
         volume = z_core.volume + z_perim.volume  # save volume before changing
         area = z_core.area + z_perim.area  # save area before changing
 
@@ -2364,9 +2350,9 @@ class TestZone:
 
         from archetypal.template import ZoneDefinition
 
-        idf, sql = small_idf
+        idf = small_idf
         zone_ep = idf.idfobjects["ZONE"][0]
-        zone = ZoneDefinition.from_zone_epbunch(zone_ep, sql=sql)
+        zone = ZoneDefinition.from_zone_epbunch(zone_ep)
         zone_2 = copy(zone)
 
         # a copy of dhw should be equal and have the same hash, but still not be the
@@ -2410,11 +2396,9 @@ class TestZone:
         # 2 Zones from different idf should not have the same hash, not be the same
         # object, yet be equal if they have the same values (Conditioning, Loads, etc.).
         # 2 Zones with different names should not have the same hash.
-        idf_2, sql = small_idf_copy
+        idf_2 = small_idf_copy
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = ZoneDefinition.from_zone_epbunch(
-            zone_ep_3, sql=sql, DataSource="OtherIDF"
-        )
+        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, DataSource="OtherIDF")
         assert idf is not idf_2
         assert zone_ep is not zone_ep_3
         assert zone_ep != zone_ep_3
@@ -2527,7 +2511,7 @@ class TestZoneGraph:
             small_office:
         """
 
-        idf, sql = small_office
+        idf = small_office
 
         G = ZoneGraph.from_idf(idf, log_adj_report=False)
 
@@ -2541,7 +2525,7 @@ class TestZoneGraph:
             small_office:
         """
 
-        idf, sql = small_office
+        idf = small_office
         yield ZoneGraph.from_idf(idf)
 
     @pytest.mark.parametrize("adj_report", [True, False])
@@ -2555,7 +2539,7 @@ class TestZoneGraph:
         """
         import networkx as nx
 
-        idf, sql = small_office
+        idf = small_office
 
         G1 = ZoneGraph.from_idf(idf, log_adj_report=adj_report)
         assert not nx.is_empty(G1)

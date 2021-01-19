@@ -1199,9 +1199,10 @@ class IDF(geomIDF):
             expandobjects_thread = ExpandObjectsThread(self, tmp)
             expandobjects_thread.start()
             expandobjects_thread.join()
-            e = expandobjects_thread.exception
-            if e is not None:
-                raise e
+            time.sleep(1)
+        e = expandobjects_thread.exception
+        if e is not None:
+            raise e
 
         # Run the Basement preprocessor program if necessary
         with TemporaryDirectory(
@@ -1212,6 +1213,7 @@ class IDF(geomIDF):
             basement_thread = BasementThread(self, tmp)
             basement_thread.start()
             basement_thread.join()
+            time.sleep(1)
         e = basement_thread.exception
         if e is not None:
             raise e
@@ -1225,6 +1227,7 @@ class IDF(geomIDF):
             slab_thread = SlabThread(self, tmp)
             slab_thread.start()
             slab_thread.join()
+            time.sleep(1)
         e = slab_thread.exception
         if e is not None:
             raise e
@@ -1238,6 +1241,7 @@ class IDF(geomIDF):
             running_simulation_thread = EnergyPlusThread(self, tmp)
             running_simulation_thread.start()
             running_simulation_thread.join()
+            time.sleep(1)
         e = running_simulation_thread.exception
         if e is not None:
             raise e
@@ -1417,6 +1421,7 @@ class IDF(geomIDF):
                 slab_thread = TransitionThread(self, tmp, overwrite=overwrite)
                 slab_thread.start()
                 slab_thread.join()
+                time.sleep(1)
             e = slab_thread.exception
             if e is not None:
                 raise e

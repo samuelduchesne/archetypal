@@ -21,7 +21,7 @@ class GasMaterial(MaterialBase):
     .. image:: ../images/template/materials-gas.png
     """
 
-    def __init__(self, Name, Category="Gases", Type="Gas", **kwargs):
+    def __init__(self, Name, Category="Gases", Type="Air", **kwargs):
         """
         Args:
             Name:

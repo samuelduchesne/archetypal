@@ -356,11 +356,6 @@ class UmiTemplateLibrary:
                 for store in datastore["BuildingTemplates"]
             ]
 
-        # update attributes for this instance t.
-        t.update_components_list(exceptions=UmiTemplateLibrary._LIB_GROUPS)
-
-        t.unique_components(exceptions=UmiTemplateLibrary._LIB_GROUPS)
-
         return t
 
     def validate(self, defaults=True):

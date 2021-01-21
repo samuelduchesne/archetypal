@@ -197,34 +197,10 @@ class BuildingTemplate(UmiBase):
         bt = cls(Name=name, idf=idf, **kwargs)
 
         epbunch_zones = idf.idfobjects["ZONE"]
-        zones = []
-        with ThreadPoolExecutor(
-            max_workers=min(len(epbunch_zones), multiprocessing.cpu_count())
-        ) as executor:
-            futures = {
-                executor.submit(
-                    ZoneDefinition.from_zone_epbunch,
-                    zone,
-                    sql=idf.sql(),
-                    allow_duplicates=True,
-                    **kwargs,
-                ): zone
-                for zone in epbunch_zones
-            }
-            for future in tqdm(
-                as_completed(futures),
-                desc=f"Creating UMI objects for {idf.position or ''} {name}",
-                total=len(futures),
-                position=idf.position,
-            ):
-                zone = futures[future]
-                try:
-                    result = future.result()
-                except Exception as exc:
-                    raise exc
-                else:
-                    zones.append(result)
-                    log("%r created" % (result.Name))
+        zones = [
+            ZoneDefinition.from_zone_epbunch(zone, allow_duplicates=True, **kwargs)
+            for zone in tqdm(epbunch_zones, desc=f"Creating UMI objects for {name}")
+        ]
 
         zone: ZoneDefinition
         bt.cores = list(

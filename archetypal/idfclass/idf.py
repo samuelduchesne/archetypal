@@ -13,12 +13,12 @@ import re
 import sqlite3
 import subprocess
 import time
+import uuid
 import warnings
 from collections import defaultdict
 from io import StringIO
 from itertools import chain
 from math import isclose
-from tempfile import TemporaryDirectory
 from typing import Any
 
 import eppy
@@ -1190,58 +1190,54 @@ class IDF(geomIDF):
 
         # Todo: Add EpMacro Thread -> if exist in.imf "%program_path%EPMacro"
         # Run the expandobjects program if necessary
-        with TemporaryDirectory(
-            prefix="expandobjects_run_",
-            suffix=None,
-            dir=self.output_directory,
-        ) as tmp:
-            # Run the ExpandObjects preprocessor program
-            expandobjects_thread = ExpandObjectsThread(self, tmp)
-            expandobjects_thread.start()
-            expandobjects_thread.join()
+        tmp = (
+            self.output_directory / "expandobjects_run_" + str(uuid.uuid1())[0:8]
+        ).mkdir()
+        # Run the ExpandObjects preprocessor program
+        expandobjects_thread = ExpandObjectsThread(self, tmp)
+        expandobjects_thread.start()
+        expandobjects_thread.join()
+        while expandobjects_thread.is_alive():
             time.sleep(1)
+        tmp.rmtree(ignore_errors=True)
         e = expandobjects_thread.exception
         if e is not None:
             raise e
 
         # Run the Basement preprocessor program if necessary
-        with TemporaryDirectory(
-            prefix="runBasement_run_",
-            suffix=None,
-            dir=self.output_directory,
-        ) as tmp:
-            basement_thread = BasementThread(self, tmp)
-            basement_thread.start()
-            basement_thread.join()
+        tmp = (
+            self.output_directory / "runBasement_run_" + str(uuid.uuid1())[0:8]
+        ).mkdir()
+        basement_thread = BasementThread(self, tmp)
+        basement_thread.start()
+        basement_thread.join()
+        while basement_thread.is_alive():
             time.sleep(1)
+        tmp.rmtree(ignore_errors=True)
         e = basement_thread.exception
         if e is not None:
             raise e
 
         # Run the Slab preprocessor program if necessary
-        with TemporaryDirectory(
-            prefix="runSlab_run_",
-            suffix=None,
-            dir=self.output_directory,
-        ) as tmp:
-            slab_thread = SlabThread(self, tmp)
-            slab_thread.start()
-            slab_thread.join()
+        tmp = (self.output_directory / "runSlab_run_" + str(uuid.uuid1())[0:8]).mkdir()
+        slab_thread = SlabThread(self, tmp)
+        slab_thread.start()
+        slab_thread.join()
+        while slab_thread.is_alive():
             time.sleep(1)
+        tmp.rmtree(ignore_errors=True)
         e = slab_thread.exception
         if e is not None:
             raise e
 
         # Run the energyplus program
-        with TemporaryDirectory(
-            prefix="eplus_run_",
-            suffix=None,
-            dir=self.output_directory,
-        ) as tmp:
-            running_simulation_thread = EnergyPlusThread(self, tmp)
-            running_simulation_thread.start()
-            running_simulation_thread.join()
+        tmp = (self.output_directory / "eplus_run_" + str(uuid.uuid1())[0:8]).mkdir()
+        running_simulation_thread = EnergyPlusThread(self, tmp)
+        running_simulation_thread.start()
+        running_simulation_thread.join()
+        while running_simulation_thread.is_alive():
             time.sleep(1)
+        tmp.rmtree(ignore_errors=True)
         e = running_simulation_thread.exception
         if e is not None:
             raise e
@@ -1414,14 +1410,15 @@ class IDF(geomIDF):
             raise EnergyPlusVersionError(self.name, self.idf_version, to_version)
         else:
             # # execute transitions
-            with TemporaryDirectory(
-                prefix="Transition_run_",
-                dir=self.output_directory,
-            ) as tmp:
-                slab_thread = TransitionThread(self, tmp, overwrite=overwrite)
-                slab_thread.start()
-                slab_thread.join()
+            tmp = (
+                self.output_directory / "Transition_run_" + str(uuid.uuid1())[0:8]
+            ).mkdir()
+            slab_thread = TransitionThread(self, tmp, overwrite=overwrite)
+            slab_thread.start()
+            slab_thread.join()
+            while slab_thread.is_alive():
                 time.sleep(1)
+            tmp.rmtree(ignore_errors=True)
             e = slab_thread.exception
             if e is not None:
                 raise e

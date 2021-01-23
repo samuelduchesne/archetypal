@@ -1,16 +1,23 @@
+"""EnergyPlus meters module."""
+
 import inspect
 
 import pandas as pd
-from archetypal import EnergySeries, ReportData
 from geomeppy.patches import EpBunch
 from tabulate import tabulate
 
+from archetypal import EnergySeries, ReportData
+from archetypal.idfclass.extensions import bunch2db
+
 
 class Meter:
-    """"""
+    """Meter class.
+
+    Holds values for a specific Meter.
+    """
 
     def __init__(self, idf, meter: (dict or EpBunch)):
-        """Initialize a Meter object"""
+        """Initialize a Meter object."""
         self._idf = idf
         self._values = None
         if isinstance(meter, dict):
@@ -23,38 +30,47 @@ class Meter:
             raise TypeError()
 
     def __repr__(self):
-        """returns the string representation of an EpBunch"""
+        """Return the string representation of an EpBunch."""
         return self._epobject.__str__()
 
     def values(
         self,
         units=None,
+        reporting_frequency="Hourly",
         normalize=False,
         sort_values=False,
         ascending=False,
         agg_func="sum",
     ):
-        """Returns the Meter as a time-series (:class:`EnergySeries`). Data is
-        retrieved from the sql file. It is possible to convert the time-series to
-        another unit, e.g.: "J" to "kWh".
+        """Return the Meter as a time-series (:class:`EnergySeries`).
+
+        Data is retrieved from the sql file. It is possible to convert the
+        time-series to another unit, e.g.: "J" to "kWh".
 
         Args:
             units (str): Convert original values to another unit. The original unit
                 is detected automatically and a dimensionality check is performed.
+            reporting_frequency (str): Timestep, Hourly, Daily, Monthly,
+                RunPeriod, Environment, Annual or Detailed. Default "Hourly".
             normalize (bool): Normalize between 0 and 1.
             sort_values (bool): If True, values are sorted (default ascending=True)
-            ascending (bool): If True and `sort_values` is True, values are sorted in ascending order.
+            ascending (bool): If True and `sort_values` is True, values are sorted in
+            ascending order.
             agg_func: #Todo: Document
 
         Returns:
             EnergySeries: The time-series object.
         """
+        self._epobject.Reporting_Frequency = reporting_frequency.lower()
         if self._values is None:
             if self._epobject not in self._idf.idfobjects[self._epobject.key]:
                 self._idf.addidfobject(self._epobject)
                 self._idf.simulate()
             report = ReportData.from_sqlite(
-                sqlite_file=self._idf.sql_file, table_name=self._epobject.Key_Name
+                sqlite_file=self._idf.sql_file,
+                table_name=self._epobject.Key_Name,
+                environment_type=1 if self._idf.design_day else 3,
+                reporting_frequency=bunch2db[reporting_frequency],
             )
             self._values = report
         return EnergySeries.from_reportdata(
@@ -113,6 +129,8 @@ class Meters:
 
         .. code-block::
 
+            >>> from archetypal import IDF
+            >>> idf = IDF()  # load an actual idf file here
             >>> idf.meters.OutputMeter.WaterSystems__MainsWater.values()
 
     Hint:

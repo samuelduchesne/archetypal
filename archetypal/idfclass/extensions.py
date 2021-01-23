@@ -105,3 +105,16 @@ def _parse_idd_type(epbunch, name):
         return int
     else:
         return str
+
+
+# relationship between epbunch output frequency and db.
+bunch2db = {
+    "Detailed": ["HVAC System Timestep", "Zone Timestep"],
+    "Timestep": ["HVAC System Timestep", "Zone Timestep"],
+    "Hourly": "Hourly",
+    "Daily": "Daily",
+    "Monthly": "Monthly",
+    "RunPeriod": "Run Period",
+    "Environment": "Run Period",
+    "Annual": "Annual",
+}

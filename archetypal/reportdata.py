@@ -52,6 +52,7 @@ class ReportData(DataFrame):
         table_name,
         warmup_flag=0,
         environment_type=3,
+        reporting_frequency=None,
     ):
         """Read an EnergyPlus eplusout.sql file.
 
@@ -62,6 +63,8 @@ class ReportData(DataFrame):
             environment_type (int): An enumeration of the environment type. (1 = Design
                 Day, 2 = Design Run Period, 3 = Weather Run Period) See the various
                 SizingPeriod objects and the RunPeriod object for details.
+            reporting_frequency (str, optional): "HVAC System Timestep",
+                "Zone Timestep", "Hourly", "Daily", "Monthly", "Run Period".
 
         Examples:
             >>> ReportData.from_sqlite("eplusout.sql",
@@ -133,6 +136,12 @@ class ReportData(DataFrame):
                 )
                 sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
                 params.update(env_name)
+            if reporting_frequency:
+                conditions, reporting_frequency = cls.multiple_conditions(
+                    "reporting_frequency", reporting_frequency, "ReportingFrequency"
+                )
+                sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
+                params.update(reporting_frequency)
             df = cls.execute(conn, sql_query, params)
             return cls(df)
 

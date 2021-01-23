@@ -4,12 +4,18 @@ import pandas as pd
 from geomeppy.patches import EpBunch
 
 from archetypal.energypandas import EnergyDataFrame
+from archetypal.idfclass.extensions import bunch2db
 from archetypal.reportdata import ReportData
 
 
 class Variable:
+    """Variable class.
+
+    Holds values for a specific Variable.
+    """
+
     def __init__(self, idf, variable: (dict or EpBunch)):
-        """Initialize a Meter object"""
+        """Initialize a Meter object."""
         self._idf = idf
         self._values = None
         if isinstance(variable, dict):
@@ -22,33 +28,47 @@ class Variable:
             raise TypeError()
 
     def __repr__(self):
-        """returns the string representation of an EpBunch"""
+        """Return the string representation of an EpBunch."""
         return self._epobject.__str__()
 
-    def values(self, units=None, normalize=False, sort_values=False):
-        """Returns the Variable as a time-series (:class:`EnergySeries`). Data is
-        retrieved from the sql file. It is possible to convert the time-series to
-        another unit, e.g.: "J" to "kWh".
+    def values(
+        self,
+        units=None,
+        reporting_frequency="Hourly",
+        normalize=False,
+        sort_values=False,
+    ):
+        """Return the Variable as a time-series (:class:`EnergySeries`).
+
+        Can return an :class:`EnergyDataFrame` with multiple columns.
+
+        Specify the reporting_frequency such as "Hourly" or "Monthly".
+        It is possible to convert the time-series to another unit, e.g.: "J" to "kWh".
+
+        Data is retrieved from the sql file.
 
         Args:
             units (str): Convert original values to another unit. The original unit
                 is detected automatically and a dimensionality check is performed.
+            reporting_frequency (str): Timestep, Hourly, Daily, Monthly,
+                RunPeriod, Environment, Annual or Detailed. Default "Hourly".
             normalize (bool): Normalize between 0 and 1.
-            sort_values (bool): If True, values are sorted (default ascending=True)
+            sort_values (bool): If True, values are sorted (default ascending=True).
 
         Returns:
-            EnergySeries: The time-series object.
+            EnergyDataFrame: The time-series object.
         """
-        if self._values is None:
-            if self._epobject not in self._idf.idfobjects[self._epobject.key]:
-                self._idf.addidfobject(self._epobject)
-                self._idf.simulate()
-            report = ReportData.from_sqlite(
-                sqlite_file=self._idf.sql_file,
-                table_name=self._epobject.Variable_Name,
-                environment_type=1 if self._idf.design_day else 3,
-            )
-            self._values = report
+        self._epobject.Reporting_Frequency = reporting_frequency.lower()
+        if self._epobject not in self._idf.idfobjects[self._epobject.key]:
+            self._idf.addidfobject(self._epobject)
+            self._idf.simulate()
+        report = ReportData.from_sqlite(
+            sqlite_file=self._idf.sql_file,
+            table_name=self._epobject.Variable_Name,
+            environment_type=1 if self._idf.design_day else 3,
+            reporting_frequency=bunch2db[reporting_frequency],
+        )
+        self._values = report
         return EnergyDataFrame.from_reportdata(
             self._values,
             name=self._epobject.Variable_Name,
@@ -59,6 +79,8 @@ class Variable:
 
 
 class VariableGroup:
+    """A class for sub variable groups (Output:Variable)"""
+
     def __init__(self, idf, variables_dict: dict):
         self._idf = idf
         self._properties = {}
@@ -76,7 +98,23 @@ class VariableGroup:
 
 
 class Variables:
-    """Class attributes representing available rdd variables"""
+    """Lists available variables in the IDF model. Once simulated at least once,
+    the IDF.variables attribute is populated with variable categories  and each
+    category is populated with all the available
+    variables.
+
+    Example:
+        For example, to retrieve the "Zone Operative Temperature" variable, simply call
+
+        .. code-block::
+
+            >>> from archetypal import IDF
+            >>> idf = IDF()  # load an actual idf file here
+            >>> idf.variables.OutputVariable.Zone_Operative_Temperature.values()
+
+    Hint:
+        Available meters are read from the .mdd file
+    """
 
     OutputVariable = VariableGroup  # Placeholder for variables
 

@@ -19,3 +19,4 @@ from .meters import Meters
 from .outputs import Outputs
 from .util import hash_model
 from .variables import Variables
+from .reports import get_ideal_loads_summary

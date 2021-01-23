@@ -161,3 +161,28 @@ def get_sqlite_report(report_file, report_tables=None):
                 )
             )
             return all_tables
+
+
+def get_ideal_loads_summary(idf):
+    """Get ideal loads report summary.
+
+    Returns DataFrame with Cooling, Domestic Hot Water, Equipment, Heating and
+    Lighting hourly time series.
+
+    Returns:
+        DataFrame: DataFrame of hourly time series.
+    """
+    res = {
+        "SDL/Cooling": idf.meters.OutputMeter.Cooling__DistrictCooling.values("kWh"),
+        "SDL/Domestic Hot Water": idf.meters.OutputMeter.WaterSystems__DistrictHeating.values(
+            "kWh"
+        ),
+        "SDL/Equipment": idf.meters.OutputMeter.InteriorEquipment__Electricity.values(
+            "kWh"
+        ),
+        "SDL/Heating": idf.meters.OutputMeter.Heating__DistrictHeating.values("kWh"),
+        "SDL/Lighting": idf.meters.OutputMeter.InteriorLights__Electricity.values(
+            "kWh"
+        ),
+    }
+    return pd.DataFrame(res)

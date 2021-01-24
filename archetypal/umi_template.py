@@ -167,6 +167,9 @@ class UmiTemplateLibrary:
         The resulting object contains the reduced version of the IDF files.
         To save to file, call the :meth:`save` method.
 
+        The idf files are striped of run period modifiers and special days to return
+        simple annual schedules.
+
         Args:
             idf_files (list of (str or Path)): list of IDF file paths.
             weather (str or Path): Path to the weather file.
@@ -255,6 +258,20 @@ class UmiTemplateLibrary:
     def template_complexity_reduction(idfname, epw, **kwargs):
         """Wrap IDF, simulate and BuildingTemplate for parallel processing."""
         idf = IDF(idfname, epw=epw, **kwargs)
+
+        # remove daylight saving time modifiers
+        for daylight in idf.idfobjects["RunPeriodControl:DaylightSavingTime".upper()]:
+            idf.removeidfobject(daylight)
+        # edit run period to start on Monday
+        for run_period in idf.idfobjects["RunPeriod".upper()]:
+            run_period.Day_of_Week_for_Start_Day = "Monday"
+            run_period.Apply_Weekend_Holiday_Rule = "No"
+            run_period.Use_Weather_File_Holidays_and_Special_Days = "No"
+            run_period.Use_Weather_File_Daylight_Saving_Period = "No"
+        # remove daylight saving time modifiers
+        for day in idf.idfobjects["RunPeriodControl:SpecialDays".upper()]:
+            idf.removeidfobject(day)
+
         if not idf.simulation_dir.exists():
             idf.simulate()
         return BuildingTemplate.from_idf(idf, **kwargs)

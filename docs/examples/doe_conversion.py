@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     # Create the Template Library File
     umi = UmiTemplateLibrary.from_idf_files(
-        idf_files, weather=epw, name=f"refbldgs_{zone}", processors=1
+        idf_files, weather=epw, name=f"refbldgs_{zone}", processors=-1
     )
 
     # Adjust metadata

@@ -502,7 +502,7 @@ class ZoneConditioning(UmiBase):
         not all models have the `DesignSpecification:OutdoorAir` object which poses a
         difficulty when trying to resolve the mechanical ventilation parameters.
 
-        Two general cases exist: 1) models with a `Zone:Sizing` object (and possibly
+        Two general cases exist: 1) models with a `Sizing:Zone` object (and possibly
         no `DesignSpecification:OutdoorAir`) and 2) models with
 
         Args:
@@ -1186,7 +1186,9 @@ class ZoneConditioning(UmiBase):
             MechVentSchedule=v,
         )
         # create a new object with the previous attributes
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
+        new_obj = self.__class__(
+            **meta, **new_attr, idf=self.idf, allow_duplicates=self._allow_duplicates
+        )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 

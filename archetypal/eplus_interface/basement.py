@@ -54,7 +54,7 @@ class BasementThread(Thread):
         # Move files into place
         # copy "%wthrfile%.epw" in.epw
         self.epw = self.idf.epw.copy(self.run_dir / "in.epw").expand()
-        self.idfname = Path(self.idf.idfname.copy(self.run_dir / "in.idf")).expand()
+        self.idfname = Path(self.idf.savecopy(self.run_dir / "in.idf")).expand()
         self.idd = self.idf.iddname.copy(self.run_dir).expand()
 
         # Get executable using shutil.which (determines the extension based on

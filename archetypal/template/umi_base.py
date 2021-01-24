@@ -123,7 +123,7 @@ class UmiBase(object):
         self.Comments = Comments
         self.DataSource = DataSource
         self.id = kwargs.get("$id", None)
-        self._not_unique = allow_duplicates
+        self._allow_duplicates = allow_duplicates
         self.unit_number = next(self._ids)
 
         UmiBase.CREATED_OBJECTS.append(self)
@@ -371,7 +371,7 @@ class UmiBase(object):
 
     def get_unique(self):
         """Return first object matching equality in the list of instantiated objects."""
-        if self._not_unique:
+        if self._allow_duplicates:
             # We want to return the first similar object (equality) that has this name.
             obj = next(
                 iter(

@@ -19,7 +19,6 @@ class Meter:
     def __init__(self, idf, meter: (dict or EpBunch)):
         """Initialize a Meter object."""
         self._idf = idf
-        self._values = None
         if isinstance(meter, dict):
             self._key = meter.pop("key").upper()
             self._epobject = self._idf.anidfobject(key=self._key, **meter)
@@ -62,19 +61,17 @@ class Meter:
             EnergySeries: The time-series object.
         """
         self._epobject.Reporting_Frequency = reporting_frequency.lower()
-        if self._values is None:
-            if self._epobject not in self._idf.idfobjects[self._epobject.key]:
-                self._idf.addidfobject(self._epobject)
-                self._idf.simulate()
-            report = ReportData.from_sqlite(
-                sqlite_file=self._idf.sql_file,
-                table_name=self._epobject.Key_Name,
-                environment_type=1 if self._idf.design_day else 3,
-                reporting_frequency=bunch2db[reporting_frequency],
-            )
-            self._values = report
+        if self._epobject not in self._idf.idfobjects[self._epobject.key]:
+            self._idf.addidfobject(self._epobject)
+            self._idf.simulate()
+        report = ReportData.from_sqlite(
+            sqlite_file=self._idf.sql_file,
+            table_name=self._epobject.Key_Name,
+            environment_type=1 if self._idf.design_day else 3,
+            reporting_frequency=bunch2db[reporting_frequency],
+        )
         return EnergySeries.from_reportdata(
-            self._values,
+            report,
             to_units=units,
             name=self._epobject.Key_Name,
             normalize=normalize,
@@ -85,9 +82,10 @@ class Meter:
 
 
 class MeterGroup:
-    """A class for sub meter groups (Output:Meter vs Output:Meter:Cumulative)"""
+    """A class for sub meter groups (Output:Meter vs Output:Meter:Cumulative)."""
 
     def __init__(self, idf, meters_dict: dict):
+        """Initialize MeterGroup."""
         self._idf = idf
         self._properties = {}
 
@@ -101,6 +99,7 @@ class MeterGroup:
         return self._properties[meter_name]
 
     def __repr__(self):
+        """Return all available meters."""
         # getmembers() returns all the
         # members of an object
         members = []
@@ -119,10 +118,11 @@ class MeterGroup:
 
 
 class Meters:
-    """Lists available meters in the IDF model. Once simulated at least once,
-    the IDF.meters attribute is populated with meters categories ("Output:Meter" or
-    "Output:Meter:Cumulative") and each category is populated with all the available
-    meters.
+    """Lists available meters in the IDF model.
+
+    Once simulated at least once, the IDF.meters attribute is populated with meters
+    categories ("Output:Meter" or "Output:Meter:Cumulative") and each category is
+    populated with all the available meters.
 
     Example:
         For example, to retrieve the WaterSystems:MainsWater meter, simply call
@@ -140,6 +140,7 @@ class Meters:
     OutputMeter = MeterGroup  # placeholder for OutputMeters
 
     def __init__(self, idf):
+        """Initialize Meter."""
         self._idf = idf
 
         try:
@@ -151,7 +152,7 @@ class Meters:
         meters = pd.read_csv(
             mdd, skiprows=2, names=["key", "Key_Name", "Reporting_Frequency"]
         )
-        meters.Reporting_Frequency = meters.Reporting_Frequency.str.replace("\;.*", "")
+        meters.Reporting_Frequency = meters.Reporting_Frequency.str.replace(r"\;.*", "")
         for key, group in meters.groupby("key"):
             meters_dict = group.T.to_dict()
             setattr(
@@ -161,6 +162,7 @@ class Meters:
             )
 
     def __repr__(self):
+        """Tabulate available meters."""
         # getmembers() returns all the
         # members of an object
         members = []

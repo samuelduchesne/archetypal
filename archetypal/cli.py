@@ -81,8 +81,8 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     "--use-cache",
     is_flag=True,
     default=False,
-    help="Use a local cache to save/retrieve many of "
-    "archetypal outputs such as EnergyPlus simulation results",
+    help="Use a local cache to save/retrieve DataPortal API calls for the same "
+    "requests.",
 )
 @click.option(
     "-l",
@@ -396,8 +396,6 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     Example: % archetypal -csl reduce "." "elsewhere/model1.idf" -w "weather.epw"
 
     """
-    settings.use_cache = True
-
     output = Path(output)
     name = output.stem
     ext = output.ext if output.ext == ".json" else ".json"

@@ -1,24 +1,25 @@
-################################################################################
-# Module: idf.py
-# Description: Various functions for processing of EnergyPlus models and
-#              retrieving results in different forms
-# License: MIT, see full license in LICENSE.txt
-# Web: https://github.com/samuelduchesne/archetypal
-################################################################################
+"""IDF class module.
+
+Various functions for processing EnergyPlus models and retrieving results in
+different forms.
+"""
 
 import itertools
 import logging as lg
 import os
 import re
+import shutil
 import sqlite3
 import subprocess
 import time
 import uuid
 import warnings
 from collections import defaultdict
-from io import StringIO
+from datetime import datetime
+from io import IOBase, StringIO
 from itertools import chain
 from math import isclose
+from os import PathLike
 from typing import Any
 
 import eppy
@@ -30,6 +31,7 @@ from geomeppy import IDF as geomIDF
 from geomeppy.patches import EpBunch, idfreader1, obj2bunch
 from pandas.errors import ParserError
 from path import Path
+from tabulate import tabulate
 from tqdm import tqdm
 
 from archetypal import ReportData, log, settings
@@ -54,11 +56,12 @@ from archetypal.schedule import Schedule
 
 
 class IDF(geomIDF):
-    """Class for loading and parsing idf models and running simulations and
-    retrieving results.
+    """Class for loading and parsing idf models.
+
+    This is the starting point to run simulations and retrieving results.
 
     Wrapper over the geomeppy.IDF class and subsequently the
-    eppy.modeleditor.IDF class
+    eppy.modeleditor.IDF class.
     """
 
     # dependencies: dict of <dependant value: independent value>
@@ -169,12 +172,29 @@ class IDF(geomIDF):
         keep_data=True,
         keep_data_err=False,
         position=0,
+        name=None,
+        output_directory=None,
         **kwargs,
     ):
-        """
+        """Initialize an IDF object.
+
         Args:
-            idfname (str _TemporaryFileWrapper): The idf model filename.
-            epw (str or Path): The weather-file
+            output_directory:
+            idfname (str or PathLike): The path of the idf file to read. If none,
+            an in-memory
+                IDF object is generated.
+            epw (str or PathLike): The weather-file. If None, epw can be specified in
+                IDF.simulate().
+            as_version (str): Specify the target EnergyPlus version for the IDF model.
+                If as_version is higher than the file version, the model will be
+                transitioned to the target version. This will not overwrite the file
+                unless IDF.save() is invoked. See :meth:`IDF.save`,
+                :meth:`IDF.saveas` and :meth:`IDF.savecopy` for other IO operations
+                on IDF objects.
+            annual (bool): If True then force annual simulation (default: False).
+            design_day (bool): Force design-day-only simulation (default: False).
+            expandobjects (bool): Run ExpandObjects prior to simulation (default: True).
+            convert (bool): If True, only convert IDF->epJSON or epJSON->IDF.
 
         EnergyPlus args:
             tmp_dir=None,
@@ -204,9 +224,10 @@ class IDF(geomIDF):
         self.prep_outputs = prep_outputs
         self._position = position
         self.output_prefix = None
+        self.name = name
+        self.output_directory = output_directory
 
         # Set dependants to None
-        self._output_directory = None
         self._file_version = None
         self._iddname = None
         self._idd_info = None
@@ -230,22 +251,10 @@ class IDF(geomIDF):
         self._variables = None
         self._energyplus_its = 0
         self._sim_id = None
+        self._sim_timestamp = None
 
         self.outputtype = "standard"
         self.original_idfname = self.idfname  # Save original
-        self._original_cache = hash_model(self)
-        # Move to tmp_dir, if we want to keep the original file intact.
-        if settings.use_cache:
-            previous_file = self.output_directory / (self.name or str(self.idfname))
-            if previous_file.exists():
-                # We have a transitioned or cached file here; Load this one.
-                cache_file_version = EnergyPlusVersion(get_idf_version(previous_file))
-                if cache_file_version <= self.as_version:
-                    self.idfname = previous_file
-            else:
-                if not isinstance(self.idfname, StringIO):
-                    self.output_directory.makedirs_p()
-                    self.idfname = self.savecopy(self.output_directory / self.name)
 
         try:
             # load the idf object by asserting self.idd_info
@@ -253,8 +262,9 @@ class IDF(geomIDF):
         except Exception as e:
             raise e
         else:
+            self._original_cache = hash_model(self)
             if self.file_version < self.as_version:
-                self.upgrade(to_version=self.as_version)
+                self.upgrade(to_version=self.as_version, overwrite=False)
         finally:
             # Set model outputs
             self._outputs = Outputs(idf=self)
@@ -268,8 +278,20 @@ class IDF(geomIDF):
                 )
 
     def __str__(self):
-        """Returns name of IDF model."""
+        """Return the name of IDF model."""
         return self.name
+
+    def __repr__(self):
+        """Describe the model."""
+        if self.sim_info is not None:
+            sim_info = tabulate(self.sim_info.T, tablefmt="orgtbl")
+            sim_info += f"\n\tFiles at '{self.simulation_dir}'"
+        else:
+            sim_info = "\tNot yet simulated"
+        body = "\n".join([f"IDF object {self.name}", f"at {self.idfname}"])
+        body += f"\n\tVersion {self.file_version}\nSimulation Info:\n"
+        body += sim_info
+        return f"<{body}>"
 
     def setiddname(self, iddname, testing=False):
         """Set the path to the EnergyPlus IDD for the version of EnergyPlus
@@ -482,18 +504,14 @@ class IDF(geomIDF):
 
     @property
     def idfname(self):
-        """The path of the active (parsed) idf model.
-
-        If `settings.use_cache == True`, then this path will point to
-        `settings.cache_folder`. See :meth:`~archetypal.utils.config`
-        """
+        """The path of the active (parsed) idf model."""
         if self._idfname is None:
             idfname = StringIO(f"VERSION, {self.as_version};")
-            idfname.seek(0)
             self._idfname = idfname
+            self._reset_dependant_vars("idfname")
         else:
             if isinstance(self._idfname, StringIO):
-                self._idfname.seek(0)
+                pass
             else:
                 self._idfname = Path(self._idfname).expand()
         return self._idfname
@@ -502,10 +520,13 @@ class IDF(geomIDF):
     def idfname(self, value):
         if not value:
             self._idfname = None
-        elif not isinstance(value, str):
+        elif not isinstance(value, (str, os.PathLike, StringIO, IOBase)):
             raise ValueError(f"IDF path must be Path-Like, not {type(value)}")
-        else:
+        elif isinstance(value, (str, os.PathLike)):
             self._idfname = Path(value).expand()
+        else:
+            self._idfname = value
+        self._reset_dependant_vars("idfname")
 
     @property
     def epw(self):
@@ -675,25 +696,34 @@ class IDF(geomIDF):
             - readvars
             - as_version
         """
-        if self._sim_id is None:
-            self._sim_id = hash_model(
-                self,
-                epw=self.epw,
-                annual=self.annual,
-                design_day=self.design_day,
-                readvars=self.readvars,
-                ep_version=self.as_version,
-                include=self.include,
-            )
+        self._sim_id = hash_model(
+            self,
+            epw=self.epw,
+            annual=self.annual,
+            design_day=self.design_day,
+            readvars=self.readvars,
+            ep_version=self.as_version,
+            include=self.include,
+        )
         return self._sim_id
 
-    @sim_id.setter
-    def sim_id(self, value):
-        if value and not isinstance(value, str):
-            raise TypeError("'output_prefix' needs to be a string")
-        self._sim_id = value
-
     # endregion
+    @property
+    def sim_info(self):
+        if self.sql_file is not None:
+            with sqlite3.connect(self.sql_file) as conn:
+                sql_query = f"""select * from Simulations"""
+                sim_info = pd.read_sql_query(sql_query, con=conn)
+            return sim_info
+        else:
+            return None
+
+    @property
+    def sim_timestamp(self):
+        if self.sim_info is None:
+            return "Never"
+        else:
+            return self.sim_info.TimeStamp
 
     @property
     def position(self):
@@ -711,9 +741,17 @@ class IDF(geomIDF):
 
     @property
     def name(self):
-        if isinstance(self.idfname, StringIO):
-            return None
-        return self.idfname.basename()
+        if self._name is not None:
+            return self._name
+        elif isinstance(self.idfname, StringIO):
+            self._name = f"{uuid.uuid1()}.idf"
+            return self._name
+        else:
+            return self.idfname.basename()
+
+    @name.setter
+    def name(self, value):
+        self._name = value
 
     def sql(self):
         """Get the sql table report"""
@@ -771,22 +809,27 @@ class IDF(geomIDF):
         webbrowser.open(html.abspath())
 
     def open_idf(self):
-        """Open .idf file in Ep-Launch"""
+        """Open file in correct version of Ep-Launch."""
 
-        self.save()
+        if isinstance(self.idfname, StringIO):
+            # make a temporary file if inmemery IDF.
+            filepath = self.savecopy(self.output_directory / self.name)
+        else:
+            filepath = self.idfname
 
-        filepath = self.idfname
-
-        import os
-        import platform
         import subprocess
 
-        if platform.system() == "Darwin":  # macOS
-            subprocess.call(("open", filepath))
-        elif platform.system() == "Windows":  # Windows
-            os.startfile(filepath)
-        else:  # linux variants
-            subprocess.call(("xdg-open", filepath))
+        subprocess.call(
+            (
+                shutil.which(
+                    "IDFEditor",
+                    path=get_eplus_dirs(self.idf_version.dash)
+                    / "PreProcess"
+                    / "IDFEditor",
+                ),
+                filepath.abspath(),
+            )
+        )
 
     def open_last_simulation(self):
         """Open last simulation in Ep-Launch"""
@@ -829,7 +872,7 @@ class IDF(geomIDF):
         try:
             file, *_ = self.simulation_dir.files("*out.sql")
         except (FileNotFoundError, ValueError):
-            return self.simulate().sql_file
+            return None
         return file.expand()
 
     @property
@@ -966,6 +1009,7 @@ class IDF(geomIDF):
 
     @property
     def simulation_files(self):
+        """The list of files generated by the simulation."""
         try:
             return self.simulation_dir.files()
         except FileNotFoundError:
@@ -973,7 +1017,7 @@ class IDF(geomIDF):
 
     @property
     def simulation_dir(self):
-        """The path where simulation results are stored"""
+        """The path where simulation results are stored."""
         try:
             return (self.output_directory / self.sim_id).expand()
         except AttributeError:
@@ -1173,7 +1217,6 @@ class IDF(geomIDF):
                 None, self.idfname, EnergyPlusVersion(self.idd_version), self.as_version
             )
 
-        start_time = time.time()
         include = self.include
         if isinstance(include, str):
             include = Path().abspath().glob(include)
@@ -1263,8 +1306,10 @@ class IDF(geomIDF):
         return Path(filename)
 
     def save(self, lineendings="default", encoding="latin-1", **kwargs):
-        """Write the IDF model to the text file. Uses
-        :meth:`~eppy.modeleditor.IDF.saveas`
+        """Write the IDF model to the text file.
+
+        Uses :meth:`~eppy.modeleditor.IDF.save` but also brings over existing
+        simulation results.
 
         Args:
             filename (str): Filepath to save the file. If None then use the IDF.idfname
@@ -1281,14 +1326,6 @@ class IDF(geomIDF):
         super(IDF, self).save(
             filename=self.idfname, lineendings=lineendings, encoding=encoding
         )
-        if not settings.use_cache:
-            cache_filename = hash_model(self)
-            output_directory = settings.cache_folder / cache_filename
-            output_directory.makedirs_p()
-            dst = output_directory / self.simulation_dir.basename()
-            if dst.exists():
-                dst.rmtree_p()
-            self.simulation_dir.copytree(dst)
         log(f"saved '{self.name}' at '{self.idfname}'")
         return self
 
@@ -1375,7 +1412,7 @@ class IDF(geomIDF):
         else:
             return results
 
-    def upgrade(self, to_version, overwrite=True, **kwargs):
+    def upgrade(self, to_version=None, overwrite=True, **kwargs):
         """EnergyPlus idf version updater using local transition program.
 
         Update the EnergyPlus simulation file (.idf) to the latest available
@@ -1404,12 +1441,20 @@ class IDF(geomIDF):
             EnergyPlusVersionError:
             CalledProcessError:
         """
+        # First, set versions
+        if to_version is None:
+            to_version = EnergyPlusVersion.latest()
+        elif isinstance(to_version, (str, tuple)):
+            to_version = EnergyPlusVersion(to_version)
+
+        # second check if upgrade needed
         if self.file_version == to_version:
             return
-        if self.file_version > to_version:
+        elif self.file_version > to_version:
             raise EnergyPlusVersionError(self.name, self.idf_version, to_version)
         else:
-            # # execute transitions
+            self.as_version = to_version  # set version number
+            # execute transitions
             tmp = (
                 self.output_directory / "Transition_run_" + str(uuid.uuid1())[0:8]
             ).mkdir()

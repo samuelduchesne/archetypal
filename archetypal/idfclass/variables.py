@@ -17,7 +17,6 @@ class Variable:
     def __init__(self, idf, variable: (dict or EpBunch)):
         """Initialize a Meter object."""
         self._idf = idf
-        self._values = None
         if isinstance(variable, dict):
             self._key = variable.pop("key").upper()
             self._epobject = self._idf.anidfobject(key=self._key, **variable)
@@ -68,9 +67,8 @@ class Variable:
             environment_type=1 if self._idf.design_day else 3,
             reporting_frequency=bunch2db[reporting_frequency],
         )
-        self._values = report
         return EnergyDataFrame.from_reportdata(
-            self._values,
+            report,
             name=self._epobject.Variable_Name,
             normalize=normalize,
             sort_values=sort_values,
@@ -79,9 +77,10 @@ class Variable:
 
 
 class VariableGroup:
-    """A class for sub variable groups (Output:Variable)"""
+    """A class for sub variable groups (Output:Variable)."""
 
     def __init__(self, idf, variables_dict: dict):
+        """Initialize VariableGroup."""
         self._idf = idf
         self._properties = {}
 
@@ -98,9 +97,10 @@ class VariableGroup:
 
 
 class Variables:
-    """Lists available variables in the IDF model. Once simulated at least once,
-    the IDF.variables attribute is populated with variable categories  and each
-    category is populated with all the available
+    """Lists available variables in the IDF model.
+
+    Once simulated at least once, he IDF.variables attribute is populated with
+    variable categories  and each category is populated with all the available
     variables.
 
     Example:
@@ -119,6 +119,7 @@ class Variables:
     OutputVariable = VariableGroup  # Placeholder for variables
 
     def __init__(self, idf):
+        """Initialize MeterGroup."""
         self._idf = idf
 
         rdd, *_ = self._idf.simulation_dir.files("*.rdd")
@@ -131,7 +132,7 @@ class Variables:
             names=["key", "Key_Value", "Variable_Name", "Reporting_Frequency"],
         )
         variables.Reporting_Frequency = variables.Reporting_Frequency.str.replace(
-            "\;.*", ""
+            r"\;.*", ""
         )
         for key, group in variables.groupby("key"):
             variable_dict = group.T.to_dict()

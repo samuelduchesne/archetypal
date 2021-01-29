@@ -821,16 +821,17 @@ class IDF(geomIDF):
         """Open last simulation in Ep-Launch."""
         filepath, *_ = self.simulation_dir.files("*.idf")
 
-        import os
-        import platform
         import subprocess
 
-        if platform.system() == "Darwin":  # macOS
-            subprocess.call(("open", filepath))
-        elif platform.system() == "Windows":  # Windows
-            os.startfile(filepath)
-        else:  # linux variants
-            subprocess.call(("xdg-open", filepath))
+        subprocess.call(
+            (
+                shutil.which(
+                    "EP-Launch",
+                    path=get_eplus_dirs(self.file_version.dash),
+                ),
+                filepath.abspath(),
+            )
+        )
 
     def open_mdd(self):
         """Open .mdd file in browser.

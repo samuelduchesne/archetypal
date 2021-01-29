@@ -1024,6 +1024,7 @@ def parallel_process(
                 settings.logs_folder,
                 settings.imgs_folder,
                 settings.cache_folder,
+                settings.use_cache,
                 settings.log_file,
                 settings.log_console,
                 settings.log_level,

@@ -292,6 +292,18 @@ class IDF(geomIDF):
         body += sim_info
         return f"<{body}>"
 
+    @classmethod
+    def from_example_files(cls, example_name, **kwargs):
+        """Load an IDF model from the ExampleFiles folder by name."""
+        file = next(
+            iter(
+                (get_eplus_dirs(settings.ep_version) / "ExampleFiles").files(
+                    example_name
+                )
+            )
+        )
+        return cls(file, **kwargs)
+
     def setiddname(self, iddname, testing=False):
         """Set EnergyPlus IDD path for model.
 

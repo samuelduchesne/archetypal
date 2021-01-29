@@ -66,7 +66,6 @@ class IDF(geomIDF):
     # dependencies: dict of <dependant value: independent value>
     _dependencies = {
         "iddname": ["idfname", "as_version"],
-        "file_version": ["idfname"],
         "idd_info": ["iddname", "idfname"],
         "idd_index": ["iddname", "idfname"],
         "idd_version": ["iddname", "idfname"],
@@ -228,7 +227,7 @@ class IDF(geomIDF):
         self.output_directory = output_directory
 
         # Set dependants to None
-        self._file_version = None
+        self.file_version = kwargs.get("file_version", None)
         self._iddname = None
         self._idd_info = None
         self._idd_index = None
@@ -423,6 +422,15 @@ class IDF(geomIDF):
         """Return the :class:`EnergyPlusVersion` of the idf text file."""
         if self._file_version is None:
             return EnergyPlusVersion(get_idf_version(self.idfname))
+        else:
+            return self._file_version
+
+    @file_version.setter
+    def file_version(self, value):
+        if value is None:
+            self._file_version = None
+        else:
+            self._file_version = EnergyPlusVersion(value)
 
     @property
     def custom_processes(self) -> list:

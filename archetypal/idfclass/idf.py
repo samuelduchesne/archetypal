@@ -477,7 +477,7 @@ class IDF(geomIDF):
         self._output_suffix = value
 
     @property
-    def idfname(self) -> Path:
+    def idfname(self) -> Union[Path, StringIO]:
         """Path: The path of the active (parsed) idf model."""
         if self._idfname is None:
             idfname = StringIO(f"VERSION, {self.as_version};")
@@ -1286,12 +1286,10 @@ class IDF(geomIDF):
         Args:
             filename (str): Filepath to save the file.
             lineendings (str): Line endings to use in the saved file. Options are
-            'default',
-                'windows' and 'unix' the default is 'default' which uses the line
-                endings for the current system.
+                'default', 'windows' and 'unix' the default is 'default' which uses
+                the line endings for the current system.
             encoding (str): Encoding to use for the saved file. The default is
-            'latin-1' which
-                is compatible with the EnergyPlus IDFEditor.
+                'latin-1' which is compatible with the EnergyPlus IDFEditor.
 
         Returns:
             Path: The new file path.
@@ -1309,9 +1307,8 @@ class IDF(geomIDF):
             filename (str): Filepath to save the file. If None then use the IDF.idfname
                 parameter. Also accepts a file handle.
             lineendings (str) : Line endings to use in the saved file. Options are
-            'default',
-                'windows' and 'unix' the default is 'default' which uses the line
-                endings for the current system.
+                'default', 'windows' and 'unix' the default is 'default' which uses
+                the line endings for the current system.
             encoding (str): Encoding to use for the saved file. The default is
                 'latin-1' which is compatible with the EnergyPlus IDFEditor.
         Returns:
@@ -1721,13 +1718,7 @@ class IDF(geomIDF):
         try:
             new_object = self.anidfobject(key, **kwargs)
         except BadEPFieldError as e:
-            if str(e) == "unknown field Key_Name":
-                # Try backwards compatibility with EnergyPlus < 9.0.0
-                name = kwargs.pop("Key_Name")
-                kwargs["Name"] = name
-            else:
-                log(f"Could not add object {key} because of: {e}", lg.WARNING)
-                return None
+            raise e
         else:
             # If object is supposed to be 'unique-object', deletes all objects to be
             # sure there is only one of them when creating new object

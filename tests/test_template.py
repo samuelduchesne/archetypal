@@ -1404,7 +1404,7 @@ class TestZoneConstructionSet:
 
         file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file, epw=w, annual=True)
+        idf = IDF(file, epw=w, annual=True).simulate()
         yield idf
 
     def test_add_zoneconstructionset(self, small_idf):
@@ -1512,7 +1512,7 @@ class TestZoneLoad:
             / "WeatherData"
             / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         )
-        idf = IDF(file, epw=w)
+        idf = IDF(file, epw=w).simulate()
         yield idf
 
     @pytest.fixture(scope="class", params=["RefBldgWarehouseNew2004_Chicago.idf"])

@@ -106,7 +106,7 @@ class TransitionExe(EnergyPlusProgram):
         transitions = [
             key
             for key in self.trans_exec
-            if self.idf.as_version >= key > self.idf.idf_version
+            if self.idf.as_version >= key > self.idf.file_version
         ]
         transitions.sort()
         return transitions
@@ -237,7 +237,7 @@ class TransitionThread(Thread):
         transitions = [
             key
             for key in self.trans_exec
-            if self.idf.as_version >= key > self.idf.idf_version
+            if self.idf.as_version >= key > self.idf.file_version
         ]
         transitions.sort()
         return transitions

@@ -79,7 +79,7 @@ class TestIDF:
         )
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=wf, as_version=None)
-        assert idf.idf_version == EnergyPlusVersion("9-2-0")
+        assert idf.file_version == EnergyPlusVersion("9-2-0")
         assert idf.idd_version == (9, 2, 0)
         assert idf.file_version == EnergyPlusVersion("9-2-0")
 
@@ -90,7 +90,7 @@ class TestIDF:
         )
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=wf, as_version="9.2.0")
-        assert idf.idf_version == EnergyPlusVersion("9-2-0")
+        assert idf.file_version == EnergyPlusVersion("9-2-0")
         assert idf.idd_version == (9, 2, 0)
         assert idf.file_version == EnergyPlusVersion("9-2-0")
 
@@ -101,12 +101,12 @@ class TestIDF:
         )
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=wf, as_version="9-2-0")
-        assert idf.idf_version == EnergyPlusVersion("9-2-0")
+        assert idf.file_version == EnergyPlusVersion("9-2-0")
         assert idf.idd_version == (9, 2, 0)
         assert idf.file_version == EnergyPlusVersion("9-2-0")
 
     def test_specific_version(self, config, natvent_v9_1_0):
-        assert natvent_v9_1_0.idf_version == EnergyPlusVersion("9-1-0")
+        assert natvent_v9_1_0.file_version == EnergyPlusVersion("9-1-0")
         assert natvent_v9_1_0.idd_version == (9, 1, 0)
         assert natvent_v9_1_0.file_version == EnergyPlusVersion("9-1-0")
 
@@ -226,6 +226,78 @@ class TestIDF:
         np.testing.assert_almost_equal(
             actual=idf.net_conditioned_building_area, desired=area, decimal=0
         )
+
+    @pytest.fixture(
+        params=[
+            None,
+            get_eplus_dirs(settings.ep_version)
+            / "ExampleFiles"
+            / "5ZoneNightVent1.idf",
+        ],
+        ids=["in memory", "5ZoneNightVent1"],
+    )
+    def idf(self, request):
+        """Parametrized IDF model.
+
+        One is in-memory, the other is read from an IDF file.
+        """
+        yield IDF(request.param)
+
+    def test_init_version(self, idf):
+        """Test creation of in-memory IDF file"""
+        assert idf.file_version.dash == settings.ep_version
+
+        # test another instance in this session with a different version number.
+        idf = IDF(as_version="8-9-0")
+        assert idf.file_version.dash == "8-9-0"
+
+    def test_location(self, idf):
+        print(idf.output_directory)
+
+    def test_editing(self, idf):
+        """Editing the file should change its simulation dir.
+
+        Any edits in the model must trigger a new simulation dir location.
+        """
+        original_output_directory = idf.simulation_dir
+
+        # Edit model by adding a zone.
+        idf.add_block(
+            name="Core",
+            coordinates=[(10, 0), (10, 5), (0, 5), (0, 0)],
+            height=3,
+            num_stories=1,
+        )
+        new_output_directory = idf.simulation_dir
+
+        assert original_output_directory != new_output_directory
+
+    def test_version_object(self, idf):
+        """IDF model should have a Version object.
+
+        Will raise StopIteration if VERSION is not present
+        """
+        assert next(iter(idf.idfobjects["VERSION"]))
+
+    def test_save(self, idf):
+        """Saving should overwrite the file content."""
+        idf.save()
+
+
+class TestIDFTransition:
+    def test_transition(self, tmp_path):
+        f = tmp_path / "test.idf"
+        f.write_text("Version, 8.9;")
+        idf = IDF(f.absolute(), as_version="8.9")
+        assert idf.file_version == EnergyPlusVersion("8.9.0")
+        idf.upgrade("9-2-0")
+        assert idf.file_version == EnergyPlusVersion("9.2.0")
+
+    def test_transition_of_memory_file(self):
+        idf = IDF(as_version="8.9")
+        assert idf.file_version == EnergyPlusVersion("8.9.0")
+        idf.upgrade("9-2-0")
+        assert idf.file_version == EnergyPlusVersion("9.2.0")
 
 
 class TestMeters:

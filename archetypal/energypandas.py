@@ -246,14 +246,14 @@ class EnergySeries(Series):
             to_units (str, pint.Unit):
             inplace:
         """
-        cdata = settings.unit_registry.Quantity(1, self.units).to(to_units).m
+        cdata = settings.unit_registry.Quantity(self.values, self.units).to(to_units).m
         if inplace:
-            self[:] *= cdata
+            self[:] = cdata
             self.units = to_units
         else:
             # create new instance using constructor
             result = self._constructor(
-                data=self.values * cdata, index=self.index, copy=False
+                data=cdata, index=self.index, copy=False
             )
             # Copy metadata over
             result.__finalize__(self)
@@ -1021,14 +1021,14 @@ class EnergyDataFrame(DataFrame):
             to_units (str or pint.Unit):
             inplace:
         """
-        cdata = settings.unit_registry.Quantity(1, self.units).to(to_units).m
+        cdata = settings.unit_registry.Quantity(self.values, self.units).to(to_units).m
         if inplace:
-            self[:] *= cdata
+            self[:] = cdata
             self.units = to_units
         else:
             # create new instance using constructor
             result = self._constructor(
-                data=self * cdata, index=self.index, columns=self.columns, copy=False
+                data=cdata, index=self.index, columns=self.columns, copy=False
             )
             # Copy metadata over
             result.__finalize__(self)

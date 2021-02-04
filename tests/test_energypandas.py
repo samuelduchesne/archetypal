@@ -72,6 +72,15 @@ class TestEnergySeries:
         assert es.units == settings.unit_registry.degF
         assert type(es) == EnergySeries
 
+    def test_units_value(self, es):
+        """test unit conversion."""
+        assert (es.to_units(to_units="kelvin") == es + 273.15).all()
+
+        # inplace
+        original = es.copy()
+        es.to_units(to_units="kelvin", inplace=True)
+        assert es.equals(original + 273.15)
+
     def test_normalize(self, es):
         """Tests normalization"""
         assert es.normalize().sum().sum() == 50
@@ -158,7 +167,7 @@ class TestEnergySeries:
 
 class TestEnergyDataFrame:
     def test_units(self, edf):
-        """tests unit conversion"""
+        """test unit conversion."""
         assert edf.to_units(to_units="degF").units == settings.unit_registry.degF
         assert type(edf.to_units(to_units="degF")) == EnergyDataFrame
 
@@ -167,8 +176,17 @@ class TestEnergyDataFrame:
         assert edf.units == settings.unit_registry.degF
         assert type(edf) == EnergyDataFrame
 
+    def test_units_value(self, edf):
+        """test unit conversion."""
+        assert edf.to_units(to_units="kelvin").equals(edf + 273.15)
+
+        # inplace
+        original = edf.copy()
+        edf.to_units(to_units="kelvin", inplace=True)
+        assert edf.equals(original + 273.15)
+
     def test_normalize(self, edf):
-        """Tests normalization"""
+        """Test normalization."""
         assert edf.normalize().sum().sum() == 50
         assert type(edf.normalize()) == EnergyDataFrame
         edf.normalize(inplace=True)

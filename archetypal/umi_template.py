@@ -1,3 +1,5 @@
+"""UmiTemplateLibrary Module."""
+
 import json
 import logging as lg
 from collections import OrderedDict
@@ -37,8 +39,9 @@ from archetypal.utils import CustomJSONEncoder, log, parallel_process
 
 
 class UmiTemplateLibrary:
-    """Main class supporting the definition of a multiple building templates and
-    corresponding template objects.
+    """Main class supporting the definition of a multiple building templates.
+
+    Contains lists of corresponding template objects.
     """
 
     _LIB_GROUPS = [
@@ -115,7 +118,6 @@ class UmiTemplateLibrary:
             ZoneLoads (list of ZoneLoad): list of ZoneLoad objects.
             ZoneDefinitions (list of ZoneDefinition): list of Zone objects
         """
-
         self.idf_files = []
         self.name = name
         self.ZoneDefinitions = ZoneDefinitions or []
@@ -138,7 +140,7 @@ class UmiTemplateLibrary:
         self.GlazingMaterials = GlazingMaterials or []
 
     def __iter__(self):
-        """Iterator over component groups."""
+        """Iterate over component groups."""
         for group in self._LIB_GROUPS:
             yield group, self.__dict__[group]
 
@@ -278,7 +280,7 @@ class UmiTemplateLibrary:
 
     @classmethod
     def open(cls, filename, idf=None):
-        """Initializes an UmiTemplate object from an UMI Template Library File.
+        """Initialize an UmiTemplate object from an UMI Template Library File.
 
         Args:
             filename (str or Path): PathLike object giving the pathname of the UMI
@@ -376,6 +378,7 @@ class UmiTemplateLibrary:
         return t
 
     def validate(self, defaults=True):
+        """Validate the object."""
         pass
 
     def save(
@@ -463,7 +466,6 @@ class UmiTemplateLibrary:
                 non-fsspec URL. See the fsspec and backend storage implementation
                 docs for the set of allowed keys and values.
         """
-
         if default_handler is None:
             default_handler = CustomJSONEncoder
 
@@ -475,7 +477,7 @@ class UmiTemplateLibrary:
                 # Sort the list elements by their Name
                 try:
                     data_dict[key] = sorted(data_dict[key], key=sort_keys)
-                except Exception as e:
+                except Exception:
                     # revert to sorting by Name if failure
                     data_dict[key] = sorted(data_dict[key], key=lambda x: x.get("Name"))
 
@@ -594,8 +596,9 @@ class UmiTemplateLibrary:
 
 
 def no_duplicates(file, attribute="Name"):
-    """Asserts whether or not dict has duplicated Names. `attribute` can be another
-    attribute name like "$id".
+    """Assert whether or not dict has duplicated Names.
+
+    `attribute` can be another attribute name like "$id".
 
     Args:
         file (str or dict): Path of the json file or dict containing umi objects groups

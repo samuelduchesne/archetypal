@@ -5,6 +5,7 @@ import platform
 import shutil
 import subprocess
 import time
+from io import StringIO
 from subprocess import CalledProcessError
 from threading import Thread
 
@@ -117,7 +118,11 @@ class ExpandObjectsThread(Thread):
     def success_callback(self):
         """Replace idf with expanded.idf."""
         if (self.run_dir / "expanded.idf").exists():
-            self.idf.idfname = (self.run_dir / "expanded.idf").copy(self.idf.idfname)
+            if isinstance(self.idf.idfname, StringIO):
+                file = StringIO((self.run_dir / "expanded.idf").read_text())
+            else:
+                file = (self.run_dir / "expanded.idf").copy(self.idf.idfname)
+            self.idf.idfname = file
         if (Path(self.run_dir) / "GHTIn.idf").exists():
             self.idf.include.append(
                 (Path(self.run_dir) / "GHTIn.idf").copy(

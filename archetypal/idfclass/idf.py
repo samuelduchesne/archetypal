@@ -1786,6 +1786,7 @@ class IDF(geomIDF):
         key = new_object.key.upper()
         self.idfobjects[key].append(new_object)
         self._reset_dependant_vars("idfobjects")
+        return new_object
 
     def removeidfobject(self, idfobject):
         """Remove an IDF object from the model.

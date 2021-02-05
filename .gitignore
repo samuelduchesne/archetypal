@@ -234,3 +234,5 @@ fabric.properties
 /_build/
 
 docs/reference/
+
+.idea/

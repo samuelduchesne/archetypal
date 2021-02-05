@@ -16,6 +16,18 @@ IDF Class
     Meters
     Variables
 
+UMI Template Library
+--------------------
+
+.. currentmodule:: archetypal.umi_template
+
+.. autosummary::
+    :template: autosummary.rst
+    :nosignatures:
+    :toctree: reference/
+
+    UmiTemplateLibrary
+
 .. _templates_label:
 
 Template Classes
@@ -56,7 +68,6 @@ Classes that support the :ref:`templates_label` classes above.
     :nosignatures:
     :toctree: reference/
 
-    Unique
     UmiBase
     MaterialBase
     MaterialLayer
@@ -216,17 +227,6 @@ IDF to BUI module
     trnbuild_idf
 
 
-UMI Template
-------------
-
-.. currentmodule:: archetypal.umi_template
-
-.. autosummary::
-    :template: autosummary.rst
-    :nosignatures:
-    :toctree: reference/
-
-    UmiTemplateLibrary
 
 
 

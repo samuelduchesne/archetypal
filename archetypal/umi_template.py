@@ -39,9 +39,10 @@ from archetypal.utils import CustomJSONEncoder, log, parallel_process
 
 
 class UmiTemplateLibrary:
-    """Main class supporting the definition of a multiple building templates.
+    """Handles parsing and creating Template Library Files for UMI for Rhino.
 
-    Contains lists of corresponding template objects.
+    - See :meth:`open` to parse existing Umi Template Library files (.json).
+    - See :meth:`from_idf_files` to create a library by converting existing IDF models.
     """
 
     _LIB_GROUPS = [
@@ -169,8 +170,9 @@ class UmiTemplateLibrary:
         The resulting object contains the reduced version of the IDF files.
         To save to file, call the :meth:`save` method.
 
-        The idf files are striped of run period modifiers and special days to return
-        simple annual schedules.
+        Important:
+            When using :meth:`from_idf_files` The idf files are striped of run period
+            modifiers and special days to return simple annual schedules.
 
         Args:
             idf_files (list of (str or Path)): list of IDF file paths.

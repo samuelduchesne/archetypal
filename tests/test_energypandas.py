@@ -218,7 +218,7 @@ class TestEnergyDataFrame:
         print(edf.__repr__())
 
     def test_from_report_data(self, rd_edf):
-        assert_almost_equal(rd_edf.sum().sum(), 398258.8688595464, decimal=3)
+        assert_almost_equal(rd_edf.sum().sum(), 397714.38260559476, decimal=3)
         assert rd_edf.units == settings.unit_registry.C
 
     def test_discretize(self, rd_edf):

@@ -164,6 +164,25 @@ class WindowConstruction(UmiBase):
         ]
         return wc
 
+    def to_epbunch(self, idf) -> EpBunch:
+        """Create Construction object."""
+
+        obj = idf.anidfobject("CONSTRUCTION")
+        layers = iter(self.Layers)
+        try:
+            for fieldname in obj.fieldnames:
+                if fieldname == "key":
+                    pass
+                elif fieldname == "Name":
+                    obj[fieldname] = self.Name
+                elif fieldname == "Outside_Layer":
+                    obj[fieldname] = next(layers).to_epbunch(idf).Name
+                else:
+                    obj[fieldname] = next(layers).to_epbunch(idf).Name
+        except StopIteration:
+            pass  # we have reach the end of the layers
+        return idf.addidfobject(obj)
+
     def to_json(self):
         """Convert class properties to dict."""
         self.validate()  # Validate object before trying to get json format

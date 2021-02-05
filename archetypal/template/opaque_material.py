@@ -274,6 +274,14 @@ class OpaqueMaterial(UmiBase):
 
         return data_dict
 
+    def to_epbunch(self, idf, thickness):
+        obj = idf.newidfobject("MATERIAL")
+        for fieldname in obj.fieldnames:
+            if fieldname == "key":
+                pass
+            if fieldname == "Thickness":
+                obj[fieldname] = thickness
+
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
         """Create an OpaqueMaterial from an IDF "Material", "Material:NoMAss",

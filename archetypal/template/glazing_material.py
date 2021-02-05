@@ -38,7 +38,7 @@ class GlazingMaterial(MaterialBase):
         Type=None,
         Cost=0.0,
         Life=1,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a GlazingMaterial object with parameters:
 
@@ -285,6 +285,12 @@ class GlazingMaterial(MaterialBase):
 
         return data_dict
 
+    def to_epbunch(self, idf, thickness):
+        """"""
+        mapping = self.reverse_mapping()
+        mapping.update(dict(Name=f"{self.Name}, {thickness} m", Thickness=thickness))
+        return idf.newidfobject(**mapping)
+
     def mapping(self):
         self.validate()
 
@@ -314,3 +320,34 @@ class GlazingMaterial(MaterialBase):
             DataSource=self.DataSource,
             Name=self.Name,
         )
+
+    def reverse_mapping(self):
+        """UMI to EpBunch mapping.
+
+        Name and Thickness must be provided.
+        """
+
+        return {
+            "key": "WINDOWMATERIAL:GLAZING",
+            "Name": "",
+            "Optical_Data_Type": "",
+            "Window_Glass_Spectral_Data_Set_Name": "",
+            "Thickness": "",
+            "Solar_Transmittance_at_Normal_Incidence": self.SolarTransmittance,
+            "Front_Side_Solar_Reflectance_at_Normal_Incidence": self.SolarReflectanceFront,
+            "Back_Side_Solar_Reflectance_at_Normal_Incidence": self.SolarReflectanceBack,
+            "Visible_Transmittance_at_Normal_Incidence": self.VisibleTransmittance,
+            "Front_Side_Visible_Reflectance_at_Normal_Incidence": self.VisibleReflectanceFront,
+            "Back_Side_Visible_Reflectance_at_Normal_Incidence": self.VisibleReflectanceBack,
+            "Infrared_Transmittance_at_Normal_Incidence": self.IRTransmittance,
+            "Front_Side_Infrared_Hemispherical_Emissivity": self.IREmissivityFront,
+            "Back_Side_Infrared_Hemispherical_Emissivity": self.IREmissivityBack,
+            "Conductivity": self.Conductivity,
+            "Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance": self.DirtFactor,
+            "Solar_Diffusing": "No",
+            "Youngs_modulus": 72000000000.0,
+            "Poissons_ratio": 0.22,
+            "Window_Glass_Spectral_and_Incident_Angle_Transmittance_Data_Set_Table_Name": "",
+            "Window_Glass_Spectral_and_Incident_Angle_Front_Reflectance_Data_Set_Table_Name": "",
+            "Window_Glass_Spectral_and_Incident_Angle_Back_Reflectance_Data_Set_Table_Name": "",
+        }

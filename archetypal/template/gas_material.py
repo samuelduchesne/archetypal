@@ -26,7 +26,7 @@ class GasMaterial(MaterialBase):
         Args:
             Name:
             Category:
-            Type:
+            Type (str): The choices are Air, Argon, Krypton, or Xenon.
             **kwargs:
         """
         super(GasMaterial, self).__init__(Name, Category=Category, **kwargs)
@@ -112,6 +112,11 @@ class GasMaterial(MaterialBase):
 
         return data_dict
 
+    def to_epbunch(self, idf, thickness):
+        mapping = self.reverse_mapping()
+        mapping.update(dict(Name=f"{self.Name}, {thickness} m", Thickness=thickness))
+        return idf.newidfobject(**mapping)
+
     def mapping(self):
         self.validate()
 
@@ -132,3 +137,26 @@ class GasMaterial(MaterialBase):
             DataSource=self.DataSource,
             Name=self.Name,
         )
+
+    def reverse_mapping(self):
+        """UMI to EpBunch mapping.
+
+        Name and Thickness must be provided.
+        """
+        return {
+            "key": "WINDOWMATERIAL:GAS",
+            "Name": "",
+            "Gas_Type": self.Type,
+            "Thickness": "",
+            "Conductivity_Coefficient_A": "",
+            "Conductivity_Coefficient_B": "",
+            "Conductivity_Coefficient_C": "",
+            "Viscosity_Coefficient_A": "",
+            "Viscosity_Coefficient_B": "",
+            "Viscosity_Coefficient_C": "",
+            "Specific_Heat_Coefficient_A": "",
+            "Specific_Heat_Coefficient_B": "",
+            "Specific_Heat_Coefficient_C": "",
+            "Molecular_Weight": "",
+            "Specific_Heat_Ratio": "",
+        }

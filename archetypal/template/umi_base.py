@@ -14,6 +14,7 @@ from itertools import chain
 
 import numpy as np
 from sigfig import round
+from eppy.bunch_subclass import EpBunch
 
 from archetypal import IDF, log
 from archetypal.utils import lcm
@@ -606,6 +607,9 @@ class MaterialLayer(object):
             Material={"$ref": str(self.Material.id)},
             Thickness=round(self.Thickness, decimals=3),
         )
+
+    def to_epbunch(self, idf) -> EpBunch:
+        return self.Material.to_epbunch(idf, self.Thickness)
 
     def mapping(self):
         return dict(Material=self.Material, Thickness=self.Thickness)

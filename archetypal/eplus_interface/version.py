@@ -1,3 +1,5 @@
+"""EnergyPlusVersion module."""
+
 import platform
 import re
 import warnings
@@ -12,12 +14,13 @@ from archetypal.settings import ep_version
 
 
 def get_eplus_dirs(version=ep_version):
-    """Returns EnergyPlus root folder for a specific version.
-
-    Returns (Path): The folder path.
+    """Return EnergyPlus root folder for a specific version.
 
     Args:
         version (str): Version number in the form "9-2-0" to search for.
+
+    Returns:
+        (Path): The folder path.
     """
     from eppy.runner.run_functions import install_paths
 
@@ -44,21 +47,20 @@ def get_eplus_basedirs():
 
 
 def _latest_energyplus_version():
-    """Finds all installed versions of EnergyPlus in the default location and
-    returns the latest version number.
+    """Find all EnergyPlus installs. and returns the latest version number.
+
+    Only looks in default locations on all platforms.
 
     Returns:
-        (archetypal.EnergyPlusVersion): The version number of the latest E+
-        install
+        (EnergyPlusVersion): The version number of the latest E+ install
     """
-
     eplus_homes = get_eplus_basedirs()
 
     # check if any EnergyPlus install exists
     if not eplus_homes:
         raise Exception(
             "No EnergyPlus installation found. Make sure you have EnergyPlus "
-            "installed.  Go to https://energyplus.net/downloads to download the "
+            "installed. Go to https://energyplus.net/downloads to download the "
             "latest version of EnergyPlus."
         )
 
@@ -71,9 +73,11 @@ def _latest_energyplus_version():
 
 
 def warn_if_not_compatible():
-    """Checks if an EnergyPlus install is detected. If the latest version
-    detected is higher than the one specified by archetypal, a warning is also
-    raised.
+    """Check if an EnergyPlus install is detected.
+
+    Warnings:
+        If the latest version detected is higher than the one specified by
+        archetypal, a warning is raised.
     """
     eplus_homes = get_eplus_basedirs()
 
@@ -86,13 +90,38 @@ def warn_if_not_compatible():
 
 
 class EnergyPlusVersion(Version):
-    """"""
+    """EnergyPlusVersion class.
+
+    This class subclasses the :class:`packaging.version.Version` class. It is usuful
+    to compare version numbers together.
+
+    Any EnergyPlusVersion numbers are checked against valid versions before they can
+    be initialized.
+
+    Examples:
+        To create a version number:
+
+        >>> from archetypal import EnergyPlusVersion
+        >>> EnergyPlusVersion("9.2.0")
+        <EnergyPlusVersion('9.2.0')>
+
+        An invalid version number raises an exception:
+
+        >>> from archetypal import EnergyPlusVersion
+        >>> EnergyPlusVersion("3.2.0")  # "3.2.0" was never released.
+        archetypal.eplus_interface.exceptions.InvalidEnergyPlusVersion
+
+    """
 
     def __init__(self, version):
-        """
+        """Initialize an EnergyPlusVersion from a version number.
 
         Args:
-            version (str, EnergyPlusVersion):
+            version (str, EnergyPlusVersion): The version number to create. Can be a
+                string a tuple or another EnergyPlusVersion object.
+
+        Raises:
+            InvalidEnergyPlusVersion: If the version is not a valid version number.
         """
         if isinstance(version, tuple):
             version = ".".join(map(str, version[0:3]))
@@ -104,19 +133,19 @@ class EnergyPlusVersion(Version):
         if self.dash not in self.valid_versions:
             raise InvalidEnergyPlusVersion
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
+        """Return the string representation of the object."""
         return "<EnergyPlusVersion({0})>".format(repr(str(self)))
 
     @classmethod
     def latest(cls):
-        """Return the latest EnergyPlus version installed"""
+        """Return the latest EnergyPlus version installed."""
         version = _latest_energyplus_version()
         return cls(version)
 
     @classmethod
     def current(cls):
-        """Return the current EnergyPlus version specified.
+        """Return the current EnergyPlus version specified by the main module.
 
         Specified by :ref:`archetypal.settings.ep_version`
         """
@@ -124,17 +153,18 @@ class EnergyPlusVersion(Version):
         return cls(version)
 
     @property
-    def tuple(self):
+    def tuple(self) -> tuple:
+        """Return the object as a tuple: (major, minor, micro)."""
         return self.major, self.minor, self.micro
 
     @property
-    def dash(self):
-        # type: () -> str
+    def dash(self) -> str:
+        """Return the object as a dash-separated string: "major-minor-micro"."""
         return "-".join(map(str, (self.major, self.minor, self.micro)))
 
     @property
-    def valid_versions(self):
-        """The idd versions installed on this machine."""
+    def valid_versions(self) -> list:
+        """List the idd versions installed on this machine."""
         try:
             basedirs_ = []
             for basedir in get_eplus_basedirs():
@@ -146,6 +176,6 @@ class EnergyPlusVersion(Version):
             _choices = ["9-2-0"]  # Little hack in case E+ is not installed
         else:
             _choices = set(
-                re.match("V(.*)-Energy\+", idd.stem).groups()[0] for idd in iddnames
+                re.match(r"V(.*)-Energy\+", idd.stem).groups()[0] for idd in iddnames
             )
         return _choices

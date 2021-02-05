@@ -530,7 +530,7 @@ def do_natural_ventilation(index, nat_df, zone):
             IsNatVentOn = any(nat_df.loc[index, "Name"])
             schedule_name_ = nat_df.loc[index, "Schedule Name"]
             quantity = nat_df.loc[index, "Volume Flow Rate/Floor Area {m3/s/m2}"]
-            if schedule_name_.upper() in zone.idf.schedules:
+            if schedule_name_.upper() in zone.idf.schedules_dict:
                 NatVentSchedule = UmiSchedule(
                     Name=schedule_name_, idf=zone.idf, quantity=quantity
                 )

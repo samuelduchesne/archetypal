@@ -1,4 +1,4 @@
-"""Transition module"""
+"""Transition module."""
 
 import os
 import platform
@@ -6,6 +6,7 @@ import re
 import shutil
 import subprocess
 import time
+from io import StringIO
 from subprocess import CalledProcessError
 from threading import Thread
 import logging as lg
@@ -27,12 +28,13 @@ class TransitionExe(EnergyPlusProgram):
     """Transition Program Generator.
 
     Examples:
+        >>> from archetypal import IDF
         >>> for transition in TransitionExe(IDF(), tmp_dir=os.getcwd()):
         >>>     print(transition.cmd())
     """
 
     def __init__(self, idf, tmp_dir):
-        """Constructor."""
+        """Initialize Transition Executable."""
         super().__init__(idf)
         self.idf = idf
         self.trans = None  # Set by __next__()
@@ -41,13 +43,16 @@ class TransitionExe(EnergyPlusProgram):
         self._trans_exec = None
 
     def __next__(self):
+        """Return next transition."""
         self.trans = next(self.transitions_generator)
         return self
 
     def __iter__(self):
+        """Iterate over transitions."""
         return self
 
     def get_exe_path(self):
+        """Return the path containing the next transition."""
         if not self.trans_exec[self.trans].exists():
             raise EnergyPlusProcessError(
                 cmd=self.trans_exec[self.trans],
@@ -65,11 +70,13 @@ class TransitionExe(EnergyPlusProgram):
 
     @property
     def idfname(self):
-        """Copies self.idf to the output directory."""
-        return Path(self.idf.idfname.copy(self.running_directory)).abspath()
+        """Copy and return self.idf to the output directory and expand."""
+        return Path(self.idf.savecopy(self.running_directory / "in.idf")).expand()
 
     @property
-    def trans_exec(self):
+    def trans_exec(self) -> dict:
+        """Return dict of {EnergyPlusVersion: executable} for each transitions."""
+
         def copytree(src, dst, symlinks=False, ignore=None):
             for item in os.listdir(src):
                 s = os.path.join(src, item)
@@ -94,27 +101,28 @@ class TransitionExe(EnergyPlusProgram):
         return self._trans_exec
 
     @property
-    def transitions(self):
+    def transitions(self) -> list:
+        """Return a sorted list of necessary transitions."""
         transitions = [
             key
             for key in self.trans_exec
-            if self.idf.as_version >= key > self.idf.idf_version
+            if self.idf.as_version >= key > self.idf.file_version
         ]
         transitions.sort()
         return transitions
 
     @property
     def transitions_generator(self):
-        """Generator of transitions_generator."""
+        """Generate transitions."""
         for transition in self.transitions:
             yield transition
 
     def __str__(self):
-        """String representation."""
+        """Return string representation."""
         return " ".join(self.__repr__())
 
     def __repr__(self):
-        """String representation."""
+        """Return command as string."""
         return self.cmd()
 
     def cmd(self):
@@ -129,10 +137,10 @@ class TransitionExe(EnergyPlusProgram):
 
 
 class TransitionThread(Thread):
-    """Transition program manager"""
+    """Transition program manager."""
 
     def __init__(self, idf, tmp, overwrite=False):
-        """Constructor."""
+        """Initialize Thread."""
         super(TransitionThread, self).__init__()
         self.overwrite = overwrite
         self.p = None
@@ -149,13 +157,16 @@ class TransitionThread(Thread):
         self.cmd = None
 
     def run(self):
-        """Wrapper around the EnergyPlus command line interface."""
+        """Run.
+
+        Wrapper around the EnergyPlus command line interface.
+        """
         self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
         # Move files into place
         tmp = self.tmp
-        self.idfname = Path(self.idf.idfname.copy(tmp)).expand()
+        self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
         self.idd = self.idf.iddname.copy(tmp).expand()
 
         generator = TransitionExe(self.idf, tmp_dir=tmp)
@@ -211,7 +222,8 @@ class TransitionThread(Thread):
                     self.failure_callback()
 
     @property
-    def trans_exec(self):
+    def trans_exec(self) -> dict:
+        """Return dict of {EnergyPlusVersion, executable} for each transitions."""
         return {
             EnergyPlusVersion(
                 re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)
@@ -221,10 +233,11 @@ class TransitionThread(Thread):
 
     @property
     def transitions(self):
+        """Return a sorted list of necessary transitions."""
         transitions = [
             key
             for key in self.trans_exec
-            if self.idf.as_version >= key > self.idf.idf_version
+            if self.idf.as_version >= key > self.idf.file_version
         ]
         transitions.sort()
         return transitions
@@ -240,16 +253,18 @@ class TransitionThread(Thread):
         original file.
         """
         for f in Path(self.run_dir).files("*.idfnew"):
-            if self.overwrite:
-                file = f.copy(self.idf.output_directory / self.idf.name)
+            if isinstance(self.idf.idfname, StringIO) or not self.overwrite:
+                file = StringIO(f.read_text())
             else:
-                file = f.copy(self.idf.output_directory)
+                file = f.copy(self.idf.idfname)
+
+            # replace idfname with file
             try:
                 self.idf.idfname = file
             except (NameError, UnboundLocalError):
                 self.exception = EnergyPlusProcessError(
                     cmd="IDF.upgrade",
-                    stderr=f"An error occurred during transitioning",
+                    stderr="An error occurred during transitioning",
                     idf=self.idf,
                 )
             else:
@@ -267,6 +282,7 @@ class TransitionThread(Thread):
 
     @property
     def eplus_home(self):
+        """Return the location of the EnergyPlus directory."""
         eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
         if not Path(eplus_home).exists():
             raise EnergyPlusVersionError(

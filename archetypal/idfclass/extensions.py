@@ -48,13 +48,12 @@ def makedict(self, dictfile, fnamefobject):
         dt, dtls = localidd.dt, localidd.dtls
     else:
         dt, dtls = self.initdict(dictfile)
-    # astr = mylib2.readfile(fname)
+    fnamefobject.seek(0)  # make sure to read from the beginning
     astr = fnamefobject.read()
     try:
         astr = astr.decode("ISO-8859-2")
     except AttributeError:
         pass
-    fnamefobject.seek(0)
     nocom = removecomment(astr, "!")
     idfst = nocom
     # alist = string.split(idfst, ';')

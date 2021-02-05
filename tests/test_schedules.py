@@ -90,7 +90,7 @@ def schedules_idf():
 
 
 idf = schedules_idf()
-schedules = list(idf.get_all_schedules(yearly_only=True).keys())
+schedules = list(idf._get_all_schedules(yearly_only=True).keys())
 ids = [i.replace(" ", "_") for i in schedules]
 
 

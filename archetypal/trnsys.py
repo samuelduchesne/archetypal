@@ -1204,7 +1204,7 @@ def _get_schedules(idf, **kwargs):
     start_time = time.time()
     log("Reading schedules from the IDF file...")
     schedule_names = []
-    used_schedules = idf.get_used_schedules(yearly_only=True)
+    used_schedules = idf._get_used_schedules(yearly_only=True)
     schedules = {}
     for schedule_name in tqdm(used_schedules, desc="Getting schedules", **kwargs):
         s = Schedule(

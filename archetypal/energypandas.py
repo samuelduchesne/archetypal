@@ -12,7 +12,7 @@ from datetime import timedelta
 import tsam.timeseriesaggregation as tsam
 from matplotlib import cm
 from matplotlib import pyplot as plt
-from matplotlib.colors import LightSource
+from matplotlib.colors import LightSource, TwoSlopeNorm
 from numpy import asarray, meshgrid, ndarray
 from pandas.core.frame import DataFrame
 from pandas.core.generic import NDFrame
@@ -252,9 +252,7 @@ class EnergySeries(Series):
             self.units = to_units
         else:
             # create new instance using constructor
-            result = self._constructor(
-                data=cdata, index=self.index, copy=False
-            )
+            result = self._constructor(data=cdata, index=self.index, copy=False)
             # Copy metadata over
             result.__finalize__(self)
             result.units = to_units
@@ -699,6 +697,7 @@ def plot_energyseries_map(
     subplots=False,
     vmin=None,
     vmax=None,
+    vcenter=None,
     axis_off=True,
     cmap="RdBu",
     fig_height=None,
@@ -724,8 +723,11 @@ def plot_energyseries_map(
         data (EnergySeries or EnergyDataFrame):
         periodlength:
         subplots:
-        vmin:
-        vmax:
+        vmin (float): The data value that defines ``0.0`` in the normalization.
+            Defaults to the min value of the dataset.
+        vmax (float): The data value that defines ``1.0`` in the normalization.
+            Defaults to the the max value of the dataset.
+        vcenter (float): The data value that defines ``0.5`` in the normalization.
         axis_off:
         cmap:
         fig_height:
@@ -768,8 +770,17 @@ def plot_energyseries_map(
 
     stacked, timeindex = tsam.unstackToPeriods(copy.deepcopy(data), periodlength)
     cmap = plt.get_cmap(cmap)
+    if vcenter is not None:
+        norm = TwoSlopeNorm(vcenter, vmin=vmin, vmax=vmax)
+    else:
+        norm = None
     im = axes.imshow(
-        stacked.values.T, interpolation="nearest", vmin=vmin, vmax=vmax, cmap=cmap
+        stacked.values.T,
+        interpolation="nearest",
+        vmin=vmin,
+        vmax=vmax,
+        cmap=cmap,
+        norm=norm,
     )
     axes.set_aspect("auto")
     axes.set_ylabel("Hour of day")
@@ -1097,7 +1108,7 @@ class EnergyDataFrame(DataFrame):
 
 def plot_energydataframe_map(
     data,
-    periodlength=24,
+    periodlength=None,
     subplots=False,
     vmin=None,
     vmax=None,
@@ -1121,14 +1132,20 @@ def plot_energydataframe_map(
     layout_type="vertical",
     **kwargs,
 ):
-    if fig_height is None:
-        fig_height = fig_width / 3
-    figsize = (fig_width, fig_height)
     nseries = data.nseries
+    if fig_height is None:
+        fig_height = fig_width / 3 * nseries
+    figsize = (fig_width, fig_height)
     fig, axes = _setup_subplots(
         subplots, nseries, sharex, sharey, figsize, ax, layout, layout_type
     )
     cols = data.columns
+    if periodlength is None:
+        import pandas as pd
+
+        periodlength = (
+            24 * 1 / (pd.to_timedelta(data.index.inferred_freq).seconds / 3600)
+        )
     for ax, col in zip(axes, cols):
         plot_energyseries_map(
             data[col],

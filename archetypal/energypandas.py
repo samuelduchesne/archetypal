@@ -940,8 +940,8 @@ class EnergyDataFrame(DataFrame):
         )
         self.units = units
         for k, v in kwargs.items():
-            EnergyDataFrame._metadata.append(k)
-            setattr(EnergyDataFrame, k, v)
+            self._metadata.append(k)
+            setattr(self, k, v)
 
     def __finalize__(self, other, method=None, **kwargs):
         """Propagate metadata from other to self."""

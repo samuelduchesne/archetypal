@@ -21,7 +21,8 @@ from pandas.core.indexes.multi import MultiIndex
 from pandas.core.reshape.pivot import pivot_table
 from pandas.core.series import Series
 from pandas.core.tools.datetimes import to_datetime
-from pandas.plotting._matplotlib.tools import create_subplots, flatten_axes
+from pandas.plotting._matplotlib.tools import flatten_axes, create_subplots
+from pandas.tseries.frequencies import to_offset
 from pint import Quantity, Unit
 from sklearn import preprocessing
 
@@ -107,6 +108,8 @@ class EnergySeries(Series):
                         setattr(self, name, getattr(other, "_units").get(self.name))
                     else:
                         setattr(self, name, getattr(other, "units"))
+                elif name == "name":
+                    pass
                 else:
                     try:
                         object.__setattr__(self, name, getattr(other, name))
@@ -791,7 +794,7 @@ def plot_energyseries_map(
     axes.set_aspect("auto")
     axes.set_ylabel("Hour of day")
     axes.set_xlabel("Day of year")
-    plt.title(f"{data.name}")
+    axes.set_title(f"{data.name}")
 
     # fig.subplots_adjust(right=1.1)
     cbar = fig.colorbar(im, ax=axes)
@@ -1156,7 +1159,7 @@ def plot_energydataframe_map(
     axis_off=True,
     cmap="RdBu",
     fig_height=None,
-    fig_width=6,
+    fig_width=8,
     show=True,
     view_angle=-60,
     save=False,
@@ -1184,9 +1187,8 @@ def plot_energydataframe_map(
     if periodlength is None:
         import pandas as pd
 
-        periodlength = (
-            24 * 1 / (pd.to_timedelta(data.index.inferred_freq).seconds / 3600)
-        )
+        freq = pd.infer_freq(data.index[0:3])  # infer on first 3.
+        periodlength = 24 * 1 / (pd.to_timedelta(to_offset(freq)).seconds / 3600)
     for ax, col in zip(axes, cols):
         plot_energyseries_map(
             data[col],
@@ -1213,7 +1215,8 @@ def plot_energydataframe_map(
             layout_type=layout_type,
             **kwargs,
         )
-
+    fig.suptitle(data.name, fontsize="large")
+    fig.tight_layout()  # Adjust the padding between and around subplots.
     fig, axes = save_and_show(
         fig, axes, save, show, close, filename, file_format, dpi, axis_off, extent
     )

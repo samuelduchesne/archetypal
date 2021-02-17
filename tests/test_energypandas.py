@@ -268,3 +268,17 @@ class TestEnergyDataFrame:
         assert hasattr(rd_edf, "agg")
         # check that the type is maintained
         assert type(rd_edf) == EnergyDataFrame
+
+    def test_plot_2d(self, rd_edf):
+        fig, ax = rd_edf.plot2d(
+            save=False,
+            show=True,
+            axis_off=False,
+            cmap="Reds",
+            subplots=True,
+            fig_width=6,
+            fig_height=None,
+            edgecolors="k",
+            linewidths=0.5,
+            extent="tight",
+        )

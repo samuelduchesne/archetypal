@@ -3,6 +3,7 @@ from numpy.testing import assert_almost_equal
 from pandas import date_range, read_csv
 
 from archetypal import IDF, EnergyDataFrame, EnergySeries, settings
+from archetypal.energypandas import MultipleUnitsError
 
 
 @pytest.fixture()
@@ -212,6 +213,8 @@ class TestEnergyDataFrame:
         assert edf_from_e_series[["Series 1 degC"]].units == {
             "Series 1 degC": settings.unit_registry.degC
         }
+        with pytest.raises(MultipleUnitsError):
+            edf_from_e_series.to_units("degF")
 
     def test_units_value(self, edf):
         """test unit conversion."""

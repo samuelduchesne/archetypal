@@ -18,6 +18,24 @@ def edf():
 
 
 @pytest.fixture()
+def edf_from_e_series():
+    frame = EnergyDataFrame(
+        {
+            "Series 1 degC": EnergySeries(range(0, 100), units="degC"),
+            "Series 2 degK": EnergySeries(range(0, 100), units="degK"),
+        },
+        extrameta="this",
+    )
+    yield frame
+
+    # check that the name is passed to the slice
+    assert frame["Series 1 degC"].name == "Series 1 degC"
+
+    # check that the metadata is passed to the slice
+    assert frame.extrameta == "this"
+
+
+@pytest.fixture()
 def es():
     datetimeindex = date_range(
         freq="H",
@@ -72,6 +90,11 @@ class TestEnergySeries:
         assert es.units == settings.unit_registry.degF
         assert type(es) == EnergySeries
 
+    def test_meta_ops(self, es):
+        """Operations keep units."""
+        assert (es * 2).units == es.units
+        assert (es - es).units == es.units
+
     def test_units_value(self, es):
         """test unit conversion."""
         assert (es.to_units(to_units="kelvin") == es + 273.15).all()
@@ -92,8 +115,12 @@ class TestEnergySeries:
         assert type(es) == EnergySeries
 
     def test_to_frame(self, es):
-        # check that a slice returns an EnergySeries
+        """Check that a slice returns an EnergySeries."""
         assert type(es.to_frame(name="Temp")) == EnergyDataFrame
+
+    def test_to_frame_units(self, es):
+        """Check that a slice returns keeps the units."""
+        assert es.to_frame()["Temp"].units == settings.unit_registry.degC
 
     def test_repr(self, es):
         # check that a slice returns an EnergySeries
@@ -123,7 +150,7 @@ class TestEnergySeries:
         assert type(es.to_frame()) == EnergyDataFrame
 
         # Units of expandeddim frame should be same as EnergySeries
-        assert es.to_frame().units == es.units
+        assert es.to_frame().units == {"Temp": es.units}
 
         # Meta of expandeddim frame should be same as EnergySeries
         assert es.to_frame().extrameta == es.extrameta
@@ -168,13 +195,23 @@ class TestEnergySeries:
 class TestEnergyDataFrame:
     def test_units(self, edf):
         """test unit conversion."""
-        assert edf.to_units(to_units="degF").units == settings.unit_registry.degF
+        assert (
+            edf.to_units(to_units="degF")["Temp"].units == settings.unit_registry.degF
+        )
         assert type(edf.to_units(to_units="degF")) == EnergyDataFrame
 
         # inplace
         edf.to_units(to_units="degF", inplace=True)
-        assert edf.units == settings.unit_registry.degF
+        assert edf["Temp"].units == settings.unit_registry.degF
         assert type(edf) == EnergyDataFrame
+
+    def test_mixed_units(self, edf_from_e_series):
+        """Check that units are kept on slices."""
+        assert edf_from_e_series["Series 1 degC"].extrameta == "this"
+        assert edf_from_e_series["Series 1 degC"].units == settings.unit_registry.degC
+        assert edf_from_e_series[["Series 1 degC"]].units == {
+            "Series 1 degC": settings.unit_registry.degC
+        }
 
     def test_units_value(self, edf):
         """test unit conversion."""
@@ -211,7 +248,7 @@ class TestEnergyDataFrame:
         assert edf["Temp"].extrameta == "this"
 
         # check that the slice keeps the units
-        assert edf.units == edf["Temp"].units
+        assert edf.units == {"Temp": edf["Temp"].units}
 
     def test_repr(self, edf):
         # check that a slice returns an EnergySeries
@@ -219,7 +256,7 @@ class TestEnergyDataFrame:
 
     def test_from_report_data(self, rd_edf):
         assert_almost_equal(rd_edf.sum().sum(), 397714.38260559476, decimal=3)
-        assert rd_edf.units == settings.unit_registry.C
+        assert rd_edf.units["CORE"] == settings.unit_registry.C
 
     def test_discretize(self, rd_edf):
         rd_edf = rd_edf.discretize_tsam(noTypicalPeriods=1)

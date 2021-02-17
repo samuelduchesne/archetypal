@@ -21,7 +21,7 @@ from pandas.core.indexes.multi import MultiIndex
 from pandas.core.reshape.pivot import pivot_table
 from pandas.core.series import Series
 from pandas.core.tools.datetimes import to_datetime
-from pandas.plotting._matplotlib.tools import flatten_axes, create_subplots
+from pandas.plotting._matplotlib.tools import create_subplots, flatten_axes
 from pint import Quantity, Unit
 from sklearn import preprocessing
 
@@ -102,16 +102,22 @@ class EnergySeries(Series):
                 self.attrs[name] = other.attrs[name]
             # For subclasses using _metadata. Set known attributes and update list.
             for name in other._metadata:
-                try:
-                    object.__setattr__(self, name, getattr(other, name))
-                except AttributeError:
-                    pass
-                if name not in self._metadata:
-                    self._metadata.append(name)
+                if name == "units":
+                    if isinstance(other, EnergyDataFrame):
+                        setattr(self, name, getattr(other, "_units").get(self.name))
+                    else:
+                        setattr(self, name, getattr(other, "units"))
+                else:
+                    try:
+                        object.__setattr__(self, name, getattr(other, name))
+                    except AttributeError:
+                        pass
+                    if name not in self._metadata:
+                        self._metadata.append(name)
         return self
 
     def __repr__(self):
-        """Adds units to repr"""
+        """Add units to repr."""
         result = super(EnergySeries, self).__repr__()
         return result + f", units:{self.units:~P}"
 
@@ -146,7 +152,7 @@ class EnergySeries(Series):
         return es
 
     @property
-    def units(self):
+    def units(self) -> dict or Unit:
         return self._units
 
     @units.setter
@@ -897,6 +903,10 @@ EnergySeries.plot3d.__doc__ = plot_energyseries.__doc__
 EnergySeries.plot2d.__doc__ = plot_energyseries_map.__doc__
 
 
+class MultipleUnitsError(Exception):
+    pass
+
+
 class EnergyDataFrame(DataFrame):
     """An EnergyDataFrame object is a pandas.DataFrame that has energy related
     data. In addition to the standard DataFrame constructor arguments,
@@ -938,7 +948,18 @@ class EnergyDataFrame(DataFrame):
         super(EnergyDataFrame, self).__init__(
             data, index=index, columns=columns, dtype=dtype, copy=copy
         )
-        self.units = units
+
+        # prepare units dict; holds series units.
+        self._units = {}
+        if isinstance(data, (dict, DataFrame)):
+            # for each series, setattr `units` defined in each items or for whole df.
+            for name, col in data.items():
+                # ndarray (structured or homogeneous), Iterable, dict, or DataFrame
+                self._units[name] = getattr(col, "units", self._parse_units(units))
+        elif isinstance(data, EnergySeries):
+            self._units[data.name] = data.units
+
+        # for each extra kwargs, set as metadata of self.
         for k, v in kwargs.items():
             self._metadata.append(k)
             setattr(self, k, v)
@@ -951,7 +972,18 @@ class EnergyDataFrame(DataFrame):
             # For subclasses using _metadata. Set known attributes and update list.
             for name in other._metadata:
                 try:
-                    object.__setattr__(self, name, getattr(other, name))
+                    # for units, only keep units for each column name.
+                    if name == "units":
+                        object.__setattr__(
+                            self,
+                            name,
+                            {
+                                col: getattr(other, name).get(col)
+                                for col in self.columns
+                            },
+                        )
+                    else:
+                        object.__setattr__(self, name, getattr(other, name))
                 except AttributeError:
                     pass
                 if name not in self._metadata:
@@ -1016,12 +1048,15 @@ class EnergyDataFrame(DataFrame):
 
     @units.setter
     def units(self, value):
+        self._units = value
+
+    def _parse_units(self, value):
         if isinstance(value, str):
-            self._units = settings.unit_registry.parse_expression(value).units
+            return settings.unit_registry.parse_expression(value).units
         elif isinstance(value, (Unit, Quantity)):
-            self._units = value
+            return value
         elif value is None:
-            self._units = settings.unit_registry.parse_expression(value).units
+            return settings.unit_registry.parse_expression(value).units
         else:
             raise TypeError(f"Unit of type {type(value)}")
 
@@ -1032,18 +1067,22 @@ class EnergyDataFrame(DataFrame):
             to_units (str or pint.Unit):
             inplace:
         """
-        cdata = settings.unit_registry.Quantity(self.values, self.units).to(to_units).m
+        if len(set(self.units.values())) > 1:
+            raise MultipleUnitsError
+        else:
+            units = next(iter(set(self.units.values())))
+        cdata = settings.unit_registry.Quantity(self.values, units).to(to_units)
         if inplace:
-            self[:] = cdata
-            self.units = to_units
+            self[:] = cdata.m
+            self._units = {name: cdata.units for name in self.columns}
         else:
             # create new instance using constructor
             result = self._constructor(
-                data=cdata, index=self.index, columns=self.columns, copy=False
+                data=cdata.m, index=self.index, columns=self.columns, copy=False
             )
             # Copy metadata over
             result.__finalize__(self)
-            result.units = to_units
+            result._units = {name: cdata.units for name in self.columns}
             return result
 
     def normalize(self, inplace=False):
@@ -1054,7 +1093,9 @@ class EnergyDataFrame(DataFrame):
             # replace whole data with array
             self[:] = x_scaled
             # change units to dimensionless
-            self.units = settings.unit_registry.dimensionless
+            self._units = {
+                name: settings.unit_registry.dimensionless for name in self.columns
+            }
         else:
             # create new instance using constructor
             result = self._constructor(

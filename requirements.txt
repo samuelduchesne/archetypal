@@ -8,7 +8,7 @@ requests>=2.18
 pycountry
 scikit-learn
 scipy
-pandas==1.2.0
+pandas>=1.2.0
 pyomo
 numpy>=1.17
 tqdm

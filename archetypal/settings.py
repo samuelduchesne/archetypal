@@ -149,7 +149,8 @@ path_template_d18 = pkg_resources.resource_filename(resource_package, resource_p
 
 # Units
 
-unit_registry = pint.UnitRegistry()
+from energy_pandas.units import unit_registry
+
 unit_registry.define("m3 = 1 * meter ** 3 = m³")
 unit_registry.define(
     "degree_Celsius = kelvin; offset: 273.15 = °C = C = celsius = degC = degreeC"

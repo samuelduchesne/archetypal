@@ -20,3 +20,4 @@ click
 outdated
 deprecation
 sigfig
+energy-pandas

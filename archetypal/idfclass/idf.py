@@ -35,7 +35,7 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from archetypal import ReportData, log, settings
-from archetypal.energypandas import EnergySeries
+from archetypal import EnergySeries
 from archetypal.eplus_interface.basement import BasementThread
 from archetypal.eplus_interface.energy_plus import EnergyPlusThread
 from archetypal.eplus_interface.exceptions import (

@@ -16,7 +16,7 @@ import pandas as pd
 from eppy.bunch_subclass import EpBunch
 from numpy import ndarray
 
-from archetypal.energypandas import EnergySeries, plot_energyseries_map
+from archetypal import EnergySeries
 from archetypal.utils import log
 
 
@@ -271,11 +271,7 @@ class Schedule(object):
 
     def plot2d(self, **kwargs):
         """Plot the carpet plot of the schedule"""
-        return plot_energyseries_map(
-            EnergySeries(self.series, name=self.Name), **kwargs
-        )
-
-    plot2d.__doc__ = plot_energyseries_map.__doc__
+        return EnergySeries(self.series, name=self.Name).plot2d(**kwargs)
 
     def get_interval_day_ep_schedule_values(self, epbunch: EpBunch) -> np.ndarray:
         """Schedule:Day:Interval

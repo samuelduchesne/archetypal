@@ -3,7 +3,7 @@
 import pandas as pd
 from geomeppy.patches import EpBunch
 
-from archetypal.energypandas import EnergyDataFrame
+from archetypal import EnergyDataFrame
 from archetypal.idfclass.extensions import bunch2db
 from archetypal.reportdata import ReportData
 

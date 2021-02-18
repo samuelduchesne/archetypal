@@ -1,39 +1,8 @@
 import pytest
 from numpy.testing import assert_almost_equal
-from pandas import date_range, read_csv
+from pandas import read_csv
 
 from archetypal import IDF, EnergyDataFrame, EnergySeries, settings
-
-
-@pytest.fixture()
-def edf():
-    frame = EnergyDataFrame({"Temp": range(0, 100)}, units="C", extrameta="this")
-    yield frame
-
-    # check that the name is passed to the slice
-    assert frame["Temp"].name == "Temp"
-
-    # check that the metadata is passed to the slice
-    assert frame.extrameta == "this"
-
-
-@pytest.fixture()
-def es():
-    datetimeindex = date_range(
-        freq="H",
-        start="{}-01-01".format("2018"),
-        periods=100,
-    )
-    series = EnergySeries(
-        range(0, 100), index=datetimeindex, name="Temp", units="C", extrameta="this"
-    )
-    yield series
-
-    # check that the name is passed to the slice
-    assert series.name == "Temp"
-
-    # check that the metadata is passed to the slice
-    assert series.extrameta == "this"
 
 
 @pytest.fixture(scope="module")
@@ -62,77 +31,21 @@ def rd_edf(idf):
 
 
 class TestEnergySeries:
-    def test_units(self, es):
-        """tests unit conversion"""
-        assert es.to_units(to_units="degF").units == settings.unit_registry.degF
-        assert type(es.to_units(to_units="degF")) == EnergySeries
-
-        # inplace
-        es.to_units(to_units="degF", inplace=True)
-        assert es.units == settings.unit_registry.degF
-        assert type(es) == EnergySeries
-
-    def test_units_value(self, es):
-        """test unit conversion."""
-        assert (es.to_units(to_units="kelvin") == es + 273.15).all()
-
-        # inplace
-        original = es.copy()
-        es.to_units(to_units="kelvin", inplace=True)
-        assert es.equals(original + 273.15)
-
-    def test_normalize(self, es):
-        """Tests normalization"""
-        assert es.normalize().sum().sum() == 50
-        assert type(es.normalize()) == EnergySeries
-        es.normalize(inplace=True)
-
-        # inplace
-        assert es.sum().sum() == 50
-        assert type(es) == EnergySeries
-
-    def test_to_frame(self, es):
-        # check that a slice returns an EnergySeries
-        assert type(es.to_frame(name="Temp")) == EnergyDataFrame
-
-    def test_repr(self, es):
-        # check that a slice returns an EnergySeries
-        print(es.__repr__())
-
-    def test_monthly(self, es):
-        assert es.monthly.extrameta == "this"
-        print(es.monthly)
-
     def test_from_csv(self):
         file = "tests/input_data/test_profile.csv"
         df = read_csv(file, index_col=[0], names=["Heat"])
-        ep = EnergySeries.with_timeindex(
-            df.Heat,
-            units="BTU/hour",
-            frequency="1H",
-        )
+        ep = EnergySeries.with_timeindex(df.Heat, frequency="1H", units="BTU/hour")
         assert ep.units == settings.unit_registry.parse_expression("BTU/hour").units
 
     def test_from_report_data(self, rd_es):
         assert_almost_equal(rd_es.sum(), 2.1187133811706036, decimal=3)
         assert rd_es.units == settings.unit_registry.m3
 
-    def test_expanddim(self, es):
-        """Tests when result has one higher dimension as the original"""
-        # to_frame should return an EnergyDataFrame
-        assert type(es.to_frame()) == EnergyDataFrame
-
-        # Units of expandeddim frame should be same as EnergySeries
-        assert es.to_frame().units == es.units
-
-        # Meta of expandeddim frame should be same as EnergySeries
-        assert es.to_frame().extrameta == es.extrameta
-
     @pytest.mark.parametrize("kind", ["polygon", "surface", "contour"])
     def test_plot_3d(self, rd_es, kind):
         fig, ax = rd_es.plot3d(
             save=False,
-            show=False,
+            show=True,
             axis_off=False,
             kind=kind,
             cmap="Reds",
@@ -144,15 +57,12 @@ class TestEnergySeries:
 
     def test_plot_2d(self, rd_es):
         fig, ax = rd_es.plot2d(
-            save=False,
-            show=False,
             axis_off=False,
             cmap="Reds",
-            subplots=False,
-            fig_width=6,
             fig_height=2,
-            edgecolors="k",
-            linewidths=0.5,
+            fig_width=6,
+            show=True,
+            save=False,
             filename=rd_es.name + "_heatmap",
         )
 
@@ -166,60 +76,9 @@ class TestEnergySeries:
 
 
 class TestEnergyDataFrame:
-    def test_units(self, edf):
-        """test unit conversion."""
-        assert edf.to_units(to_units="degF").units == settings.unit_registry.degF
-        assert type(edf.to_units(to_units="degF")) == EnergyDataFrame
-
-        # inplace
-        edf.to_units(to_units="degF", inplace=True)
-        assert edf.units == settings.unit_registry.degF
-        assert type(edf) == EnergyDataFrame
-
-    def test_units_value(self, edf):
-        """test unit conversion."""
-        assert edf.to_units(to_units="kelvin").equals(edf + 273.15)
-
-        # inplace
-        original = edf.copy()
-        edf.to_units(to_units="kelvin", inplace=True)
-        assert edf.equals(original + 273.15)
-
-    def test_normalize(self, edf):
-        """Test normalization."""
-        assert edf.normalize().sum().sum() == 50
-        assert type(edf.normalize()) == EnergyDataFrame
-        edf.normalize(inplace=True)
-
-        # inplace
-        assert edf.sum().sum() == 50
-        assert type(edf) == EnergyDataFrame
-
-    def test_slice(self, edf):
-        # check that a slice returns an EnergySeries
-        assert type(edf[["Temp"]]) == EnergyDataFrame
-        assert type(edf["Temp"]) == EnergySeries
-
-        # check that the name is passed to the slice
-        with pytest.raises(AttributeError):
-            # only EnergySeries have name
-            assert edf[["Temp"]].name is None
-        assert edf["Temp"].name == "Temp"
-
-        # check that the metadata is passed to the slice
-        assert edf[["Temp"]].extrameta == "this"
-        assert edf["Temp"].extrameta == "this"
-
-        # check that the slice keeps the units
-        assert edf.units == edf["Temp"].units
-
-    def test_repr(self, edf):
-        # check that a slice returns an EnergySeries
-        print(edf.__repr__())
-
     def test_from_report_data(self, rd_edf):
         assert_almost_equal(rd_edf.sum().sum(), 397714.38260559476, decimal=3)
-        assert rd_edf.units == settings.unit_registry.C
+        assert rd_edf.units["CORE"] == settings.unit_registry.C
 
     def test_discretize(self, rd_edf):
         rd_edf = rd_edf.discretize_tsam(noTypicalPeriods=1)
@@ -228,3 +87,14 @@ class TestEnergyDataFrame:
         assert hasattr(rd_edf, "agg")
         # check that the type is maintained
         assert type(rd_edf) == EnergyDataFrame
+
+    def test_plot_2d(self, rd_edf):
+        fig, ax = rd_edf.plot2d(
+            axis_off=False,
+            cmap="Reds",
+            fig_height=None,
+            fig_width=6,
+            show=True,
+            save=False,
+            extent="tight",
+        )

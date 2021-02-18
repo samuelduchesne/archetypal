@@ -25,7 +25,7 @@ warnings.simplefilter(action="ignore", category=UserWarning)
 
 from .utils import *
 from .simple_glazing import *
-from .energypandas import EnergySeries, EnergyDataFrame
+from energy_pandas import EnergySeries, EnergyDataFrame
 from .reportdata import ReportData
 from .schedule import Schedule
 from .plot import *

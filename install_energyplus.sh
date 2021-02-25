@@ -1,4 +1,5 @@
 #!/bin/bash
+function version_gt() { test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"; }
 # Check if EnergyPlus env variables exist already. If not use these defaults
 if [[ -z "${ENERGYPLUS_VERSION}" ]]; then
   export ENERGYPLUS_VERSION=9.2.0
@@ -9,25 +10,33 @@ fi
 if [[ -z "${ENERGYPLUS_INSTALL_VERSION}" ]]; then
   export ENERGYPLUS_INSTALL_VERSION=9-2-0
 fi
+
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  export EXT="sh"
-  export PLATFORM=Linux
+  if version_gt $ENERGYPLUS_VERSION 9.3.0; then
+    export EXT="sh"
+    export PLATFORM=Linux-Ubuntu18.04
+  else
+    export EXT="sh"
+    export PLATFORM=Linux
+  fi
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-  export EXT=dmg
-  export PLATFORM=Darwin
+  if version_gt $ENERGYPLUS_VERSION 9.3.0; then
+    export EXT=dmg
+    export PLATFORM=Darwin-macOS10.15
+  else
+    export EXT=dmg
+    export PLATFORM=Darwin
+  fi
 elif [[ "$OSTYPE" == "win32" ]]; then
   export EXT=zip
   export PLATFORM=Windows
-else
-  export EXT="sh"
-  export PLATFORM=Linux
 fi
 # Download EnergyPlus executable
 ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
 ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-$ENERGYPLUS_VERSION-$ENERGYPLUS_SHA-$PLATFORM-x86_64
 ENERGYPLUS_DOWNLOAD_URL=$ENERGYPLUS_DOWNLOAD_BASE_URL/$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
 echo "$ENERGYPLUS_DOWNLOAD_URL"
-curl -SL -C - "$ENERGYPLUS_DOWNLOAD_URL" -o "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
+curl --fail -SL -C - "$ENERGYPLUS_DOWNLOAD_URL" -o "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
 
 # Extra downloads
 if [[ "$OS_NAME" == "linux" ]]; then

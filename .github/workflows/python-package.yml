@@ -36,7 +36,6 @@ jobs:
           ENERGYPLUS_VERSION: ${{ matrix.energyplus-version }}
           ENERGYPLUS_SHA: ${{ matrix.energyplus-sha }}
           ENERGYPLUS_INSTALL_VERSION: ${{ matrix.energyplus-install }}
-          OS_NAME: ${{ runner.os }}
         run: bash ./install_energyplus.sh
       - name: Install dependencies
         if: success()

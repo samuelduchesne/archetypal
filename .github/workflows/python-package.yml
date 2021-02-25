@@ -28,7 +28,6 @@ jobs:
           #   energyplus-install: 9-4-0
     steps:
       - uses: actions/checkout@v2
-        run: echo $OSTYPE
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:

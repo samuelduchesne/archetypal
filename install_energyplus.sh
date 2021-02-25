@@ -19,6 +19,8 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     export EXT="sh"
     export PLATFORM=Linux
   fi
+  export ATTCHBASE=97
+  export ATTCHNUM=8230
 elif [[ "$OSTYPE" == "darwin"* ]]; then
   if version_gt $ENERGYPLUS_VERSION 9.3.0; then
     export EXT=dmg
@@ -27,9 +29,13 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     export EXT=dmg
     export PLATFORM=Darwin
   fi
+  export ATTCHBASE=98
+  export ATTCHNUM=8232
 elif [[ "$OSTYPE" == "win32" ]]; then
   export EXT=zip
   export PLATFORM=Windows
+  export ATTCHBASE=86
+  export ATTCHNUM=8231
 fi
 # Download EnergyPlus executable
 ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
@@ -39,23 +45,11 @@ echo "$ENERGYPLUS_DOWNLOAD_URL"
 curl --fail -SL -C - "$ENERGYPLUS_DOWNLOAD_URL" -o "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
 
 # Extra downloads
-if [[ "$OS_NAME" == "linux" ]]; then
-  ATTCHBASE=97
-  ATTCHNUM=8230
-fi
-if [[ "$OS_NAME" == "osx" ]]; then
-  ATTCHBASE=98
-  ATTCHNUM=8232
-fi
-if [[ "$OS_NAME" == "windows" ]]; then
-  ATTCHBASE=86
-  ATTCHNUM=8231
-fi
 EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/$ATTCHBASE/$ATTCHNUM
-curl -SL -C - $EXTRAS_DOWNLOAD_URL -o $ATTCHNUM.zip
+curl --fail -SL -C - $EXTRAS_DOWNLOAD_URL -o $ATTCHNUM.zip
 
 # Install EnergyPlus and Extra Downloads
-if [ "$OS_NAME" == "linux" ]; then
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   sudo chmod +x "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
   printf "y\r" | sudo ./"$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
   sudo tar zxvf $ATTCHNUM.zip -C /usr/local/EnergyPlus-"$ENERGYPLUS_INSTALL_VERSION"/PreProcess/IDFVersionUpdater
@@ -64,8 +58,7 @@ if [ "$OS_NAME" == "linux" ]; then
   # cleanup
   sudo rm "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
   sudo rm $ATTCHNUM.zip
-fi
-if [ "$OS_NAME" == "osx" ]; then
+elif [[ "$OSTYPE" == "darwin"* ]]; then
   # getting custom install script https://github.com/NREL/EnergyPlus/pull/7615
   curl -SL -C - https://raw.githubusercontent.com/jmarrec/EnergyPlus/40afb275f66201db5305f54df6c070d0b0cb4fc3/cmake/qtifw/install_script.qs -o install_script.qs
   sudo hdiutil attach "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
@@ -77,8 +70,7 @@ if [ "$OS_NAME" == "osx" ]; then
   sudo rm install_script.qs
   sudo rm "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
   sudo rm $ATTCHNUM.zip
-fi
-if [ "$OS_NAME" == "windows" ]; then
+elif [[ "$OSTYPE" == "win32" ]]; then
   # On windows, we are simply extracting the zip file to c:\\
   echo "Extracting and Copying files to... C:\\"
   powershell Expand-Archive -Path $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT -DestinationPath C:\\

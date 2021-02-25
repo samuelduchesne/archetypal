@@ -27,8 +27,9 @@ jobs:
           #   energyplus-sha: 998c4b761e
           #   energyplus-install: 9-4-0
     steps:
-      - name: echo ostype
+      - name: Display the OS
         run: echo $OSTYPE
+        shell: bash
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2

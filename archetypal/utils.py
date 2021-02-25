@@ -50,7 +50,6 @@ def config(
     log_filename=settings.log_filename,
     useful_idf_objects=settings.useful_idf_objects,
     umitemplate=settings.umitemplate,
-    trnsys_default_folder=settings.trnsys_default_folder,
     default_weight_factor="area",
     ep_version=settings.ep_version,
     debug=settings.debug,
@@ -72,7 +71,6 @@ def config(
         log_filename (str): name of the log file.
         useful_idf_objects (list): a list of useful idf objects.
         umitemplate (str): where the umitemplate is located.
-        trnsys_default_folder (str): root folder of TRNSYS install.
         default_weight_factor:
         ep_version (str): EnergyPlus version to use. eg. "9-2-0".
         debug (bool): Use debug behavior in various part of code base.
@@ -93,7 +91,6 @@ def config(
     settings.log_filename = log_filename
     settings.useful_idf_objects = useful_idf_objects
     settings.umitemplate = umitemplate
-    settings.trnsys_default_folder = validate_trnsys_folder(trnsys_default_folder)
     settings.zone_weight.set_weigth_attr(default_weight_factor)
     settings.ep_version = EnergyPlusVersion(ep_version).dash
     settings.debug = debug
@@ -101,26 +98,6 @@ def config(
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
         log("Configured archetypal")
-
-
-def validate_trnsys_folder(trnsys_default_folder):
-    """
-    Args:
-        trnsys_default_folder:
-    """
-    if sys.platform == "win32":
-        if os.path.isdir(trnsys_default_folder):
-            return trnsys_default_folder
-        else:
-            warnings.warn(
-                "The TRNSYS path does not exist. Please set the TRNSYS "
-                "path with the --trnsys-default-folder option".format(
-                    trnsys_default_folder
-                )
-            )
-        return trnsys_default_folder
-    else:
-        return trnsys_default_folder
 
 
 def log(
@@ -1032,7 +1009,6 @@ def parallel_process(
                 settings.log_filename,
                 settings.useful_idf_objects,
                 settings.umitemplate,
-                settings.trnsys_default_folder,
                 "area",
                 settings.ep_version,
                 settings.debug,

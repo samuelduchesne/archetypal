@@ -14,7 +14,6 @@ from archetypal import (
     UmiTemplateLibrary,
     __version__,
     config,
-    convert_idf_to_trnbuild,
     docstring_parameter,
     log,
     parallel_process,
@@ -44,7 +43,6 @@ class CliConfig(object):
         self.log_filename = settings.log_filename
         self.useful_idf_objects = settings.useful_idf_objects
         self.umitemplate = settings.umitemplate
-        self.trnsys_default_folder = settings.trnsys_default_folder
         self.ep_version = settings.ep_version
 
 
@@ -111,12 +109,6 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     "--log-filename", help="name of the log file", default=settings.log_filename
 )
 @click.option(
-    "--trnsys-default-folder",
-    type=click.Path(),
-    help="root folder of TRNSYS install",
-    default=settings.trnsys_default_folder,
-)
-@click.option(
     "--ep_version",
     type=click.STRING,
     default=settings.ep_version,
@@ -142,7 +134,6 @@ def cli(
     log_level,
     log_name,
     log_filename,
-    trnsys_default_folder,
     ep_version,
     debug,
 ):
@@ -162,185 +153,10 @@ def cli(
     cli_config.log_level = log_level
     cli_config.log_name = log_name
     cli_config.log_filename = log_filename
-    cli_config.trnsys_default_folder = trnsys_default_folder
     cli_config.ep_version = ep_version
     cli_config.debug = debug
     # apply new config params
     config(**cli_config.__dict__)
-
-
-@cli.command()
-@click.argument("idf_file", type=click.Path(exists=True))
-@click.argument("weather_file", type=click.Path(exists=True))
-@click.argument(
-    "output_folder", type=click.Path(exists=True), required=False, default="."
-)
-@click.option(
-    "--return_idf",
-    "-i",
-    is_flag=True,
-    default=False,
-    help="Save modified IDF file to output_folder, and return path "
-    "to the file in the console",
-)
-@click.option(
-    "--return_t3d",
-    "-t",
-    is_flag=True,
-    default=False,
-    help="Return T3D file path in the console",
-)
-@click.option(
-    "--return_dck",
-    "-d",
-    is_flag=True,
-    default=False,
-    help="Generate dck file and save to output_folder, and return "
-    "path to the file in the console",
-)
-@click.option(
-    "--window_lib",
-    type=click.Path(),
-    default=None,
-    help="Path of the window library (from Berkeley Lab)",
-)
-@click.option(
-    "--trnsidf_exe",
-    type=click.Path(),
-    help="Path to trnsidf.exe",
-    default=os.path.join(
-        settings.trnsys_default_folder, r"Building\trnsIDF\trnsidf.exe"
-    ),
-)
-@click.option(
-    "--template",
-    type=click.Path(),
-    default=settings.path_template_d18,
-    help="Path to d18 template file",
-)
-@click.option(
-    "--log_clear_names",
-    is_flag=True,
-    default=False,
-    help='If mentioned (True), DO NOT print log of "clear_names" (equivalence between '
-    "old and new names) in the console. Default (not mentioned) is False.",
-)
-@click.option(
-    "--schedule_as_input",
-    is_flag=True,
-    default=True,
-    help="If mentioned (False), writes schedules as SCHEDULES in BUI file. Be aware that "
-    "this option might make crash TRNBuild. Default (not mentioned) is True, and "
-    "writes the schedules as INPUTS. This option requires the user to link "
-    "(in the TRNSYS Studio) the csv file containing the schedules with those INPUTS",
-)
-@click.option(
-    "--ep_version",
-    type=str,
-    default=None,
-    help="Specify the EnergyPlus version to use. Default = None",
-)
-@click.option(
-    "--window",
-    nargs=6,
-    type=float,
-    default=(2.2, 0.64, 0.8, 0.05, 0.15, 8.17),
-    help="Specify window properties <u_value> <shgc> <t_vis> "
-    "<tolerance> <fframe> <uframe>. Default = 2.2 0.64 0.8 0.05 0.15 8.17",
-)
-@click.option("--ordered", is_flag=True, help="sort idf object names")
-@click.option("--nonum", is_flag=True, default=False, help="Do not renumber surfaces")
-@click.option("--batchjob", "-N", is_flag=True, default=False, help="BatchJob Modus")
-@click.option(
-    "--geofloor",
-    type=float,
-    default=0.6,
-    help="Generates GEOSURF values for distributing; direct solar "
-    "radiation where `geo_floor` % is directed to the floor, "
-    "the rest; to walls/windows. Default = 0.6",
-)
-@click.option(
-    "--refarea",
-    is_flag=True,
-    default=False,
-    help="Updates floor reference area of airnodes",
-)
-@click.option(
-    "--volume", is_flag=True, default=False, help="Updates volume of airnodes"
-)
-@click.option(
-    "--capacitance", is_flag=True, default=False, help="Updates capacitance of airnodes"
-)
-def convert(
-    idf_file,
-    weather_file,
-    output_folder,
-    return_idf,
-    return_t3d,
-    return_dck,
-    window_lib,
-    trnsidf_exe,
-    template,
-    log_clear_names,
-    schedule_as_input,
-    ep_version,
-    window,
-    ordered,
-    nonum,
-    batchjob,
-    geofloor,
-    refarea,
-    volume,
-    capacitance,
-):
-    """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS) The
-    output folder path defaults to the working directory. Equivalent to '.'
-
-    """
-    u_value, shgc, t_vis, tolerance, fframe, uframe = window
-    window_kwds = {
-        "u_value": u_value,
-        "shgc": shgc,
-        "t_vis": t_vis,
-        "tolerance": tolerance,
-        "fframe": fframe,
-        "uframe": uframe,
-    }
-    paths = convert_idf_to_trnbuild(
-        idf_file,
-        weather_file,
-        window_lib,
-        return_idf,
-        True,
-        return_t3d,
-        return_dck,
-        output_folder,
-        trnsidf_exe,
-        template,
-        log_clear_names=log_clear_names,
-        schedule_as_input=schedule_as_input,
-        ep_version=ep_version,
-        **window_kwds,
-        ordered=ordered,
-        nonum=nonum,
-        N=batchjob,
-        geo_floor=geofloor,
-        refarea=refarea,
-        volume=volume,
-        capacitance=capacitance,
-    )
-    # Print path of output files in console
-    click.echo("Here are the paths to the different output files: ")
-
-    for path in paths:
-        if "MODIFIED" in path:
-            click.echo("Path to the modified IDF file: {}".format(path))
-        elif "b18" in path:
-            click.echo("Path to the BUI file: {}".format(path))
-        elif "dck" in path:
-            click.echo("Path to the DCK file: {}".format(path))
-        else:
-            click.echo("Path to the T3D file: {}".format(path))
 
 
 @timeit

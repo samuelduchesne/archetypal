@@ -70,7 +70,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
   sudo rm install_script.qs
   sudo rm "$ENERGYPLUS_DOWNLOAD_FILENAME".$EXT
   sudo rm $ATTCHNUM.zip
-elif [[ "$OSTYPE" == "win32" ]]; then
+elif [[ "$OSTYPE" == "win"* || "$OSTYPE" == "msys"* ]]; then
   # On windows, we are simply extracting the zip file to c:\\
   echo "Extracting and Copying files to... C:\\"
   powershell Expand-Archive -Path $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT -DestinationPath C:\\

@@ -392,7 +392,8 @@ def set_filepaths(idf):
                 pattern = file_or_path.basename()
                 file_paths += tuple(Path(root).files(pattern))
 
-    file_paths = set(file_paths)  # Only keep unique values
+    file_paths = set([f.relpath().expand() for f in file_paths])  # Only keep unique
+    # values
     if file_paths:
         return file_paths
     else:

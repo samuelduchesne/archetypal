@@ -17,14 +17,14 @@ jobs:
       matrix:
         python-version: [ 3.7, 3.8, 3.9 ]
         os: [ macos-latest, ubuntu-latest, windows-latest ]
-        energyplus-version: [ 9.2.0 ]  # later, add 9.4.0
         include:
           - energyplus-version: 9.2.0
             energyplus-sha: 921312fa1d
             energyplus-install: 9-2-0
-          - energyplus-version: 9.4.0
-            energyplus-sha: 998c4b761e
-            energyplus-install: 9-4-0
+          # Include 9.4.0 later
+          # - energyplus-version: 9.4.0
+          #   energyplus-sha: 998c4b761e
+          #   energyplus-install: 9-4-0
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}

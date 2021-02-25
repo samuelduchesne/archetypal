@@ -31,7 +31,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
   fi
   export ATTCHBASE=98
   export ATTCHNUM=8232
-elif [[ "$OSTYPE" == "win32" ]]; then
+elif [[ "$OSTYPE" == "win"* || "$OSTYPE" == "msys"* ]]; then
   export EXT=zip
   export PLATFORM=Windows
   export ATTCHBASE=86

@@ -9,17 +9,18 @@ fi
 if [[ -z "${ENERGYPLUS_INSTALL_VERSION}" ]]; then
   export ENERGYPLUS_INSTALL_VERSION=9-2-0
 fi
-if [[ "$OS_NAME" == "macOS" ]]; then
-  export EXT=dmg
-  export PLATFORM=Darwin
-fi
-if [[ "$OS_NAME" == "Linux" ]]; then
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   export EXT="sh"
   export PLATFORM=Linux
-fi
-if [[ "$OS_NAME" == "Windows" ]]; then
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+  export EXT=dmg
+  export PLATFORM=Darwin
+elif [[ "$OSTYPE" == "win32" ]]; then
   export EXT=zip
   export PLATFORM=Windows
+else
+  export EXT="sh"
+  export PLATFORM=Linux
 fi
 # Download EnergyPlus executable
 ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
@@ -84,7 +85,7 @@ if [ "$OS_NAME" == "windows" ]; then
   if [ -f "$IDD" ]; then
     echo "$IDD" exists
   else
-    echo "$IDD" does not exist;
-    travis_terminate 1;
+    echo "$IDD" does not exist
+    travis_terminate 1
   fi
 fi

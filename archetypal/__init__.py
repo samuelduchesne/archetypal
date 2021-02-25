@@ -33,7 +33,6 @@ from .plot import *
 from .eplus_interface import *
 from .idfclass import *
 from .dataportal import *
-from .trnsys import *
 from .umi_template import UmiTemplateLibrary
 from .utils import *
-from .cli import reduce, transition, convert
+from .cli import reduce, transition

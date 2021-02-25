@@ -48,8 +48,10 @@ dev_requires = [r.strip() for r in requirements_lines]
 
 setup(
     name="archetypal",
-    version=find_version("archetypal", "__init__.py"),
-    packages=find_namespace_packages(include=["archetypal", "archetypal.*"]),
+    use_scm_version=True,
+    setup_requires=["setuptools_scm"],
+    packages=find_namespace_packages(include=["archetypal", "archetypal.*"],
+                                     exclude=["tests"]),
     package_data={
         "archetypal": [
             "ressources/originBUISketchUp.idf",

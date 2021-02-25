@@ -21,3 +21,4 @@ outdated
 deprecation
 sigfig
 energy-pandas
+setuptools_scm

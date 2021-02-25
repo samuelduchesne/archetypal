@@ -6,7 +6,8 @@
 ################################################################################
 
 # Version of the package
-__version__ = "1.3.4"
+from setuptools_scm import get_version
+__version__ = get_version()
 
 # warn if a newer version of archetypal is available
 from outdated import warn_if_outdated

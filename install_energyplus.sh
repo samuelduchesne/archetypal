@@ -1,3 +1,4 @@
+#!/bin/bash
 # Check if EnergyPlus env variables exist already. If not use these defaults
 if [[ -z "${ENERGYPLUS_VERSION}" ]]; then
   export ENERGYPLUS_VERSION=9.2.0
@@ -8,15 +9,15 @@ fi
 if [[ -z "${ENERGYPLUS_INSTALL_VERSION}" ]]; then
   export ENERGYPLUS_INSTALL_VERSION=9-2-0
 fi
-if [[ "$OS_NAME" == "osx" ]]; then
+if [[ "$OS_NAME" == "macOS" ]]; then
   export EXT=dmg
   export PLATFORM=Darwin
 fi
-if [[ "$OS_NAME" == "linux" ]]; then
+if [[ "$OS_NAME" == "Linux" ]]; then
   export EXT="sh"
   export PLATFORM=Linux
 fi
-if [[ "$OS_NAME" == "windows" ]]; then
+if [[ "$OS_NAME" == "Windows" ]]; then
   export EXT=zip
   export PLATFORM=Windows
 fi

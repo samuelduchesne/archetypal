@@ -608,12 +608,9 @@ class TestUmiTemplate:
         assert no_duplicates(template.to_dict(), attribute="$id")
 
     office = [
-        r"tests\input_data\necb\NECB 2011-SmallOffice-NECB HDD "
-        r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        r"tests\input_data\necb\NECB 2011-MediumOffice-NECB HDD "
-        r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        r"tests\input_data\necb\NECB 2011-LargeOffice-NECB HDD "
-        r"Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
     ]
 
     @pytest.mark.skipif(

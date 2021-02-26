@@ -581,6 +581,7 @@ class ZoneDefinition(UmiBase):
             DomesticHotWater=self.DomesticHotWater,
             InternalMassConstruction=self.InternalMassConstruction,
             InternalMassExposedPerFloorArea=self.InternalMassExposedPerFloorArea,
+            Windows=self.Windows,
             Loads=self.Loads,
             Ventilation=self.Ventilation,
             Category=self.Category,

@@ -157,8 +157,6 @@ class UmiBase(object):
 
     @property
     def DataSource(self):
-        if self._datasource is None:
-            self._datasource = self.idf.name
         return self._datasource
 
     @DataSource.setter

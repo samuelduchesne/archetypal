@@ -420,11 +420,13 @@ class ZoneDefinition(UmiBase):
         return zone
 
     @classmethod
-    def from_zone_epbunch(cls, zone_ep, **kwargs):
+    def from_zone_epbunch(cls, zone_ep, construct_parents=True, **kwargs):
         """Create a Zone object from an eppy 'ZONE' epbunch.
 
         Args:
             zone_ep (eppy.bunch_subclass.EpBunch): The Zone EpBunch.
+            construct_parents (bool): If False, skips construction of parents objects
+                such as Constructions, Conditioning, etc.
         """
         start_time = time.time()
         log('Constructing :class:`Zone` for zone "{}"'.format(zone_ep.Name))
@@ -439,13 +441,14 @@ class ZoneDefinition(UmiBase):
         zone._epbunch = zone_ep
         zone._zonesurfaces = zone_ep.zonesurfaces
 
-        zone.Constructions = ZoneConstructionSet.from_zone(zone, **kwargs)
-        zone.Conditioning = ZoneConditioning.from_zone(zone, **kwargs)
-        zone.Ventilation = VentilationSetting.from_zone(zone, **kwargs)
-        zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(zone, **kwargs)
-        zone.Loads = ZoneLoad.from_zone(zone, **kwargs)
-        zone.InternalMassConstruction = InternalMass.from_zone(zone, **kwargs)
-        zone.Windows = WindowSetting.from_zone(zone, **kwargs)
+        if construct_parents:
+            zone.Constructions = ZoneConstructionSet.from_zone(zone, **kwargs)
+            zone.Conditioning = ZoneConditioning.from_zone(zone, **kwargs)
+            zone.Ventilation = VentilationSetting.from_zone(zone, **kwargs)
+            zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(zone, **kwargs)
+            zone.Loads = ZoneLoad.from_zone(zone, **kwargs)
+            zone.InternalMassConstruction = InternalMass.from_zone(zone, **kwargs)
+            zone.Windows = WindowSetting.from_zone(zone, **kwargs)
 
         log(
             'completed Zone "{}" constructor in {:,.2f} seconds'.format(

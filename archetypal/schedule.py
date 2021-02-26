@@ -6,6 +6,7 @@
 ################################################################################
 
 import functools
+import io
 import logging as lg
 from calendar import calendar
 from datetime import datetime, timedelta
@@ -158,17 +159,17 @@ class Schedule(object):
 
     @property
     def mean(self):
-        return np.mean(self.all_values)
+        return np.average(self.all_values)
 
     @property
     def series(self):
-        """Returns the schedule values as a pd.Series object with a
+        """Returns the schedule values as an :class:`EnergySeries` object with a
         DateTimeIndex
         """
         index = pd.date_range(
             start=self.startDate, periods=len(self.all_values), freq="1H"
         )
-        return pd.Series(self.all_values, index=index)
+        return EnergySeries(self.all_values, index=index, name=self.Name)
 
     def get_schedule_type_limits_name(self, sch_type=None):
         """Return the Schedule Type Limits name associated to this schedule
@@ -1193,6 +1194,13 @@ class Schedule(object):
             return self.all_values * other
         else:
             raise NotImplementedError
+
+    def _repr_svg_(self):
+        """SVG representation for iPython notebook"""
+        fig, ax = self.series.plot2d(cmap="Greys", show=False, fig_width=5, dpi=72)
+        f = io.BytesIO()
+        fig.savefig(f, format="svg")
+        return f.getvalue()
 
     def get_sdow(self, start_day_of_week):
         """Returns the start day of the week

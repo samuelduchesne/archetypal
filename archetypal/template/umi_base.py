@@ -128,12 +128,6 @@ class UmiBase(object):
 
         UmiBase.CREATED_OBJECTS.append(self)
 
-    def __copy__(self):
-        kwargs = self.mapping()
-        kwargs.pop("Name")
-        copy = self.__class__(Name=self.Name + "_copy", **kwargs)
-        return copy
-
     def __repr__(self):
         return ":".join([str(self.id), str(self.Name)])
 

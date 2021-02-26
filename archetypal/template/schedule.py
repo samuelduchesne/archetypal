@@ -30,11 +30,6 @@ class UmiSchedule(Schedule, UmiBase):
         super(UmiSchedule, self).__init__(**kwargs)
         self.quantity = quantity
 
-    def __copy__(self):
-        copy = super(UmiSchedule, self).__copy__()
-        copy.epbunch = self.epbunch
-        return copy
-
     @classmethod
     def constant_schedule(
         cls, hourly_value=1, Name="AlwaysOn", Type="Fraction", idf=None, **kwargs

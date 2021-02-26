@@ -190,7 +190,6 @@ class GlazingMaterial(MaterialBase):
                     self.IREmissivityFront == other.IREmissivityFront,
                     self.IREmissivityBack == other.IREmissivityBack,
                     self.DirtFactor == other.DirtFactor,
-                    self.Type == other.Type,
                     self.Cost == other.Cost,
                     self.Life == other.Life,
                 ]

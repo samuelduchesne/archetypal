@@ -276,7 +276,7 @@ class UmiTemplateLibrary:
         for day in idf.idfobjects["RunPeriodControl:SpecialDays".upper()]:
             idf.removeidfobject(day)
 
-        if not idf.simulation_dir.exists():
+        if idf.sim_info is None:
             idf.simulate()
         return BuildingTemplate.from_idf(idf, **kwargs)
 

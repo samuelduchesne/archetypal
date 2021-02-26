@@ -1,8 +1,6 @@
 import numpy as np
 import pytest
-from geomeppy.patches import EpBunch
 
-import archetypal.settings
 from archetypal import IDF, settings
 from archetypal.eplus_interface.version import get_eplus_dirs
 from archetypal.template import (
@@ -22,14 +20,9 @@ from archetypal.template import (
 from archetypal.template.umi_base import UniqueName, load_json_objects
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def small_idf(config, small_idf_obj):
-    """An IDF model
-
-    Args:
-        config:
-        small_idf_obj:
-    """
+    """An IDF model"""
     yield small_idf_obj
 
 
@@ -48,14 +41,13 @@ def small_idf_copy(config):
 
 @pytest.fixture(scope="module")
 def small_idf_obj(config):
-    """An IDF model. Yields just the idf object
-
-    Args:
-        config:
-    """
+    """An IDF model. Yields just the idf object."""
     file = "tests/input_data/umi_samples/B_Off_0.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    yield IDF(file, epw=w)
+    idf = IDF(file, epw=w)
+    if idf.sim_info is None:
+        idf.simulate()
+    yield idf
 
 
 @pytest.fixture(scope="module")
@@ -80,7 +72,11 @@ def other_idf_object(config):
     """
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    yield IDF(file, epw=w).simulate()
+    idf = IDF(file, epw=w)
+    if idf.sim_info is None:
+        idf.simulate()
+    else:
+        yield idf
 
 
 @pytest.fixture(scope="module")
@@ -92,15 +88,15 @@ def other_idf_object_copy(config):
     """
     file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-    yield IDF(file, epw=w).simulate()
+    idf = IDF(file, epw=w)
+    if idf.sim_info is None:
+        idf.simulate()
+    else:
+        yield idf
 
 
 @pytest.fixture(scope="module")
 def small_office(config):
-    """
-    Args:
-        config:
-    """
     file = (
         "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD "
         "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
@@ -113,6 +109,15 @@ def small_office(config):
 @pytest.fixture(scope="module")
 def idf():
     yield IDF(prep_outputs=False)
+
+
+@pytest.fixture(scope="class", params=["RefBldgWarehouseNew2004_Chicago.idf"])
+def warehouse(config, request):
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    idf = IDF.from_example_files(request.param, epw=w, annual=True)
+    if idf.sim_info is None:
+        idf.simulate()
+    yield idf
 
 
 core_name = "core"
@@ -501,10 +506,10 @@ class TestOpaqueMaterial:
         om = OpaqueMaterial.from_epbunch(opaq_mat)
         om_2 = copy(om)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
+        # a copy of dhw should be equal and not have the same hash, but still not be the
         # same object
         assert om == om_2
-        assert hash(om) == hash(om_2)
+        assert hash(om) != hash(om_2)
         assert om is not om_2
 
         # hash is used to find object in lookup table
@@ -515,13 +520,13 @@ class TestOpaqueMaterial:
         om_list.append(om_2)
         assert om_2 in om_list
 
-        # length of set() should be 1 since both objects are
-        # equal and have the same hash.
-        assert len(set(om_list)) == 1
+        # length of set() should be 2 since both objects are
+        # equal but don't have the same hash.
+        assert len(set(om_list)) == 2
 
         # dict behavior
         om_dict = {om: "this_idf", om_2: "same_idf"}
-        assert len(om_dict) == 1
+        assert len(om_dict) == 2
 
         om_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -632,10 +637,10 @@ class TestGlazingMaterial:
         mat_a = GlazingMaterial(Name="mat_ia", **sg_a)
         mat_b = copy(mat_a)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
+        # a copy of dhw should be equal and not have the same hash, but still not be the
         # same object
         assert mat_a == mat_b
-        assert hash(mat_a) == hash(mat_b)
+        assert hash(mat_a) != hash(mat_b)
         assert mat_a is not mat_b
 
         # hash is used to find object in lookup table
@@ -646,13 +651,13 @@ class TestGlazingMaterial:
         glm_list.append(mat_b)
         assert mat_b in glm_list
 
-        # length of set() should be 1 since both objects are
-        # equal and have the same hash.
-        assert len(set(glm_list)) == 1
+        # length of set() should be 2 since both objects are
+        # equal but don't have the same hash.
+        assert len(set(glm_list)) == 2
 
         # dict behavior
         glm_dict = {mat_a: "this_idf", mat_b: "same_idf"}
-        assert len(glm_dict) == 1
+        assert len(glm_dict) == 2
 
         mat_b.Name = "some other name"
         # even if name changes, they should be equal
@@ -738,10 +743,10 @@ class TestGasMaterial:
         gm = gasMat_json[0]
         gm_2 = copy(gm)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
+        # a copy of dhw should be equal and not have the same hash, but still not be the
         # same object
         assert gm == gm_2
-        assert hash(gm) == hash(gm_2)
+        assert hash(gm) != hash(gm_2)
         assert gm is not gm_2
 
         # hash is used to find object in lookup table
@@ -752,13 +757,13 @@ class TestGasMaterial:
         gm_list.append(gm_2)
         assert gm_2 in gm_list
 
-        # length of set() should be 1 since both objects are
-        # equal and have the same hash.
-        assert len(set(gm_list)) == 1
+        # length of set() should be 2 since both objects are
+        # equal but don't have the same hash.
+        assert len(set(gm_list)) == 2
 
         # dict behavior
         gm_dict = {gm: "this_idf", gm_2: "same_idf"}
-        assert len(gm_dict) == 1
+        assert len(gm_dict) == 2
 
         gm_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -1065,10 +1070,10 @@ class TestOpaqueConstruction:
         oc = OpaqueConstruction.from_epbunch(opaq_constr)
         oc_2 = copy(oc)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
+        # a copy of dhw should be equal and not have the same hash, but still not be the
         # same object
         assert oc == oc_2
-        assert hash(oc) == hash(oc_2)
+        assert hash(oc) != hash(oc_2)
         assert oc is not oc_2
 
         # hash is used to find object in lookup table
@@ -1079,13 +1084,13 @@ class TestOpaqueConstruction:
         oc_list.append(oc_2)
         assert oc_2 in oc_list
 
-        # length of set() should be 1 since both objects are
-        # equal and have the same hash.
-        assert len(set(oc_list)) == 1
+        # length of set() should be 2 since both objects are
+        # equal but don't have the same hash.
+        assert len(set(oc_list)) == 2
 
         # dict behavior
         oc_dict = {oc: "this_idf", oc_2: "same_idf"}
-        assert len(oc_dict) == 1
+        assert len(oc_dict) == 2
 
         oc_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -1230,10 +1235,10 @@ class TestStructureDefinition:
         sd = struct_json[0]
         sd_2 = copy(sd)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
+        # a copy of dhw should be equal and not have the same hash, but still not be the
         # same object
         assert sd == sd_2
-        assert hash(sd) == hash(sd_2)
+        assert hash(sd) != hash(sd_2)
         assert sd is not sd_2
 
         # hash is used to find object in lookup table
@@ -1244,13 +1249,13 @@ class TestStructureDefinition:
         sd_list.append(sd_2)
         assert sd_2 in sd_list
 
-        # length of set() should be 1 since both objects are
-        # equal and have the same hash.
-        assert len(set(sd_list)) == 1
+        # length of set() should be 2 since both objects are
+        # equal but don't have the same hash.
+        assert len(set(sd_list)) == 2
 
         # dict behavior
         sd_dict = {sd: "this_idf", sd_2: "same_idf"}
-        assert len(sd_dict) == 1
+        assert len(sd_dict) == 2
 
         sd_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -1310,12 +1315,7 @@ class TestUmiSchedule:
         assert sched.to_dict()
 
     def test_hash_eq_umi_sched(self, small_idf, other_idf):
-        """Test equality and hashing of :class:`ZoneLoad`
-
-        Args:
-            small_idf:
-            other_idf:
-        """
+        """Test equality and hashing of :class:`ZoneLoad`"""
         from copy import copy
 
         from archetypal.template import UmiSchedule
@@ -1324,10 +1324,10 @@ class TestUmiSchedule:
         sched = UmiSchedule(Name="On", idf=idf)
         sched_2 = copy(sched)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
+        # a copy of dhw should be equal and not have the same hash, but still not be the
         # same object
         assert sched == sched_2
-        assert hash(sched) == hash(sched_2)
+        assert hash(sched) != hash(sched_2)
         assert sched is not sched_2
 
         # hash is used to find object in lookup table
@@ -1338,13 +1338,13 @@ class TestUmiSchedule:
         sched_list.append(sched_2)
         assert sched_2 in sched_list
 
-        # length of set() should be 1 since both objects are
-        # equal and have the same hash.
-        assert len(set(sched_list)) == 1
+        # length of set() should be 2 since both objects are
+        # equal but don't have the same hash.
+        assert len(set(sched_list)) == 2
 
         # dict behavior
         sched_dict = {sched: "this_idf", sched_2: "same_idf"}
-        assert len(sched_dict) == 1
+        assert len(sched_dict) == 2
 
         sched_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -1394,25 +1394,8 @@ class TestUmiSchedule:
 class TestZoneConstructionSet:
     """Combines different :class:`ZoneConstructionSet` tests"""
 
-    @pytest.fixture(params=["RefBldgWarehouseNew2004_Chicago.idf"])
-    def zoneConstructionSet_tests(self, config, request):
-        """
-        Args:
-            config:
-            request:
-        """
-
-        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file, epw=w, annual=True).simulate()
-        yield idf
-
     def test_add_zoneconstructionset(self, small_idf):
-        """Test __add__() for ZoneConstructionSet
-
-        Args:
-            small_idf:
-        """
+        """Test __add__() for ZoneConstructionSet."""
         idf = small_idf
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
@@ -1427,11 +1410,7 @@ class TestZoneConstructionSet:
         assert z_new
 
     def test_iadd_zoneconstructionset(self, small_idf):
-        """Test __iadd__() for ZoneConstructionSet
-
-        Args:
-            small_idf:
-        """
+        """Test __iadd__() for ZoneConstructionSet."""
         idf = small_idf
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
@@ -1450,34 +1429,22 @@ class TestZoneConstructionSet:
         assert z_core.id != z_perim.id
 
     def test_zoneConstructionSet_init(self, config, idf):
-        """
-        Args:
-            config:
-            idf:
-        """
+        """"""
         from archetypal.template import ZoneConstructionSet
 
         constrSet = ZoneConstructionSet(Name="A construction set", idf=idf)
 
-    def test_zoneConstructionSet_from_zone(self, config, zoneConstructionSet_tests):
-        """
-        Args:
-            config:
-            zoneConstructionSet_tests:
-        """
+    def test_zoneConstructionSet_from_zone(self, config, warehouse):
+        """"""
         from archetypal.template import ZoneConstructionSet, ZoneDefinition
 
-        idf = zoneConstructionSet_tests
+        idf = warehouse
         zone = idf.getobject("ZONE", "Office")
         z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
         constrSet_ = ZoneConstructionSet.from_zone(z)
 
     def test_zoneConstructionSet_from_to_json(self, config, idf):
-        """
-        Args:
-            config:
-            idf:
-        """
+        """"""
         import json
 
         from archetypal.template import ZoneConstructionSet
@@ -1498,42 +1465,19 @@ class TestZoneLoad:
 
     @pytest.fixture(scope="class")
     def fiveZoneEndUses(self, config):
-        """
-        Args:
-            config:
-        """
-        file = (
-            get_eplus_dirs(settings.ep_version)
-            / "ExampleFiles"
-            / "5ZoneAirCooled_AirBoundaries_Daylighting.idf"
-        )
+        """"""
         w = (
             get_eplus_dirs(settings.ep_version)
             / "WeatherData"
             / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         )
-        idf = IDF(file, epw=w).simulate()
-        yield idf
-
-    @pytest.fixture(scope="class", params=["RefBldgWarehouseNew2004_Chicago.idf"])
-    def zoneLoadtests(self, config, request):
-        """
-        Args:
-            config:
-            request:
-        """
-
-        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file, epw=w, annual=True)
+        idf = IDF.from_example_files(
+            "5ZoneAirCooled_AirBoundaries_Daylighting.idf", epw=w
+        ).simulate()
         yield idf
 
     def test_zoneLoad_init(self, config, idf):
-        """
-        Args:
-            config:
-            idf:
-        """
+        """"""
         from archetypal.template import ZoneLoad
 
         load = ZoneLoad(Name=None, idf=idf)
@@ -1554,15 +1498,11 @@ class TestZoneLoad:
 
         assert zone_load == emp
 
-    def test_zoneLoad_from_zone(self, config, zoneLoadtests):
-        """
-        Args:
-            config:
-            zoneLoadtests:
-        """
+    def test_zoneLoad_from_zone(self, config, warehouse):
+        """"""
         from archetypal.template import ZoneDefinition, ZoneLoad
 
-        idf = zoneLoadtests
+        idf = warehouse
         zone = idf.getobject("ZONE", "Office")
         z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
         zone_loads = ZoneLoad.from_zone(z)
@@ -1576,11 +1516,7 @@ class TestZoneLoad:
         assert zone_loads.PeopleDensity == 0.021
 
     def test_zoneLoad_from_zone_mixedparams(self, config, fiveZoneEndUses):
-        """
-        Args:
-            config:
-            fiveZoneEndUses:
-        """
+        """"""
         from archetypal.template import ZoneDefinition, ZoneLoad
 
         idf = fiveZoneEndUses
@@ -1597,11 +1533,7 @@ class TestZoneLoad:
         assert zone_loads.PeopleDensity == 0.111
 
     def test_zoneLoad_from_to_json(self, config, idf):
-        """
-        Args:
-            config:
-            idf:
-        """
+        """"""
         import json
 
         from archetypal.template import ZoneLoad
@@ -1618,12 +1550,7 @@ class TestZoneLoad:
         assert reduce(ZoneLoad.combine, load_json, weights=[1, 1]).to_json()
 
     def test_hash_eq_zone_load(self, small_idf, small_idf_copy):
-        """Test equality and hashing of :class:`ZoneLoad`
-
-        Args:
-            small_idf:
-            small_idf_copy:
-        """
+        """Test equality and hashing of :class:`ZoneLoad`."""
         from copy import copy
 
         from archetypal.template import ZoneDefinition, ZoneLoad
@@ -1634,10 +1561,10 @@ class TestZoneLoad:
         zl = ZoneLoad.from_zone(zone)
         zl_2 = copy(zl)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
+        # a copy of dhw should be equal and not have the same hash, but still not be the
         # same object
         assert zl == zl_2
-        assert hash(zl) == hash(zl_2)
+        assert hash(zl) != hash(zl_2)
         assert zl is not zl_2
 
         # hash is used to find object in lookup table
@@ -1648,13 +1575,13 @@ class TestZoneLoad:
         zl_list.append(zl_2)
         assert zl_2 in zl_list
 
-        # length of set() should be 1 since both objects are
-        # equal and have the same hash.
-        assert len(set(zl_list)) == 1
+        # length of set() should be 2 since both objects are
+        # equal but don't have the same hash.
+        assert len(set(zl_list)) == 2
 
         # dict behavior
         zl_dict = {zl: "this_idf", zl_2: "same_idf"}
-        assert len(zl_dict) == 1
+        assert len(zl_dict) == 2
 
         zl_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -1700,23 +1627,25 @@ class TestZoneConditioning:
         ],
     )
     def zoneConditioningtests(self, config, request):
-        """
-        Args:
-            config:
-            request:
-        """
-
-        file = get_eplus_dirs(settings.ep_version) / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file, epw=w, annual=True)
-        yield idf, request.param, IDF(file, epw=w, annual=True)  # pass an idfcopy
+        idf = IDF.from_example_files(
+            request.param, epw=w, annual=False, design_day=True
+        )
+        copy = IDF.from_example_files(
+            request.param, epw=w, annual=False, design_day=True
+        )
+        if idf.sim_info is None:
+            idf.simulate()
+        if copy.sim_info is None:
+            copy.simulate()
+        yield (
+            idf,
+            request.param,
+            copy,  # yield a copy
+        )
 
     def test_zoneConditioning_init(self, config, idf):
-        """
-        Args:
-            config:
-            idf:
-        """
+        """"""
         from archetypal.template import ZoneConditioning
 
         cond = ZoneConditioning(Name="A Name", idf=idf)
@@ -1727,11 +1656,7 @@ class TestZoneConditioning:
             cond = ZoneConditioning()
 
     def test_zoneConditioning_from_zone(self, config, zoneConditioningtests):
-        """
-        Args:
-            config:
-            zoneConditioningtests:
-        """
+        """"""
         from archetypal.template import ZoneConditioning, ZoneDefinition
 
         idf, idf_name, _ = zoneConditioningtests
@@ -1749,11 +1674,7 @@ class TestZoneConditioning:
             cond_HX_eco = ZoneConditioning.from_zone(z)
 
     def test_zoneConditioning_from_to_json(self, config, idf):
-        """
-        Args:
-            config:
-            idf:
-        """
+        """"""
         import json
 
         from archetypal.template import ZoneConditioning
@@ -1780,16 +1701,16 @@ class TestZoneConditioning:
         from archetypal.template import ZoneConditioning, ZoneDefinition
 
         idf, idf_name, idf_2 = zoneConditioningtests
-        # clear_cache()
+
         zone_ep = idf.idfobjects["ZONE"][0]
-        zone = ZoneDefinition.from_zone_epbunch(zone_ep)
+        zone = ZoneDefinition.from_zone_epbunch(zone_ep, construct_parents=False)
         zc = ZoneConditioning.from_zone(zone)
         zc_2 = copy(zc)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
+        # a copy of dhw should be equal and not have the same hash, but still not be the
         # same object
         assert zc == zc_2
-        assert hash(zc) == hash(zc_2)
+        assert hash(zc) != hash(zc_2)
         assert zc is not zc_2
 
         # hash is used to find object in lookup table
@@ -1800,13 +1721,13 @@ class TestZoneConditioning:
         zc_list.append(zc_2)
         assert zc_2 in zc_list
 
-        # length of set() should be 1 since both objects are
-        # equal and have the same hash.
-        assert len(set(zc_list)) == 1
+        # length of set() should be 2 since both objects are
+        # equal but don't have the same hash.
+        assert len(set(zc_list)) == 2
 
         # dict behavior
         zc_dict = {zc: "this_idf", zc_2: "same_idf"}
-        assert len(zc_dict) == 1
+        assert len(zc_dict) == 2
 
         zc_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -1828,7 +1749,7 @@ class TestZoneConditioning:
         # have different names, not be the same object, yet be equal if they have the
         # same values (CoolingSetpoint, HeatingSetpoint, etc.)
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3)
+        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, construct_parents=False)
         assert idf is not idf_2
         zc_3 = ZoneConditioning.from_zone(zone_3)
         assert zone_ep is not zone_ep_3
@@ -1854,10 +1775,14 @@ class TestVentilationSetting:
         """
 
         eplusdir = get_eplus_dirs(settings.ep_version)
-        file = eplusdir / "ExampleFiles" / request.param
         w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
-        idf = IDF(file, epw=w, annual=True)
-        yield idf, request.param, IDF(file, epw=w, annual=True)  # passes a copy as well
+        idf = IDF.from_example_files(request.param, epw=w, annual=True)
+        if idf.sim_info is None:
+            idf.simulate()
+        copy = IDF.from_example_files(request.param, epw=w, annual=True)
+        if copy.sim_info is None:
+            copy.simulate()
+        yield idf, request.param, copy  # passes a copy as well
 
     def test_ventilation_init(self, config, idf):
         """
@@ -1880,23 +1805,19 @@ class TestVentilationSetting:
         idf, idf_name, _ = ventilatontests
         if idf_name == "VentilationSimpleTest.idf":
             zone = idf.getobject("ZONE", "ZONE 1")
-            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, construct_parents=False)
             natVent = VentilationSetting.from_zone(z)
         if idf_name == "VentilationSimpleTest.idf":
             zone = idf.getobject("ZONE", "ZONE 2")
-            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, construct_parents=False)
             schedVent = VentilationSetting.from_zone(z)
         if idf_name == "RefBldgWarehouseNew2004_Chicago.idf":
             zone = idf.getobject("ZONE", "Office")
-            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
+            z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, construct_parents=False)
             infiltVent = VentilationSetting.from_zone(z)
 
     def test_ventilationSetting_from_to_json(self, config, idf):
-        """
-        Args:
-            config:
-            idf:
-        """
+        """"""
         import json
 
         from archetypal.template import VentilationSetting
@@ -1913,11 +1834,7 @@ class TestVentilationSetting:
         assert reduce(VentilationSetting.combine, vent_json, weights=[1, 1]).to_json()
 
     def test_hash_eq_vent_settings(self, ventilatontests):
-        """Test equality and hashing of :class:`DomesticHotWaterSetting`
-
-        Args:
-            ventilatontests:
-        """
+        """Test equality and hashing of :class:`DomesticHotWaterSetting`."""
         from copy import copy
 
         from archetypal.template import VentilationSetting, ZoneDefinition
@@ -1925,14 +1842,14 @@ class TestVentilationSetting:
         idf, idf_name, idf_2 = ventilatontests
 
         zone_ep = idf.idfobjects["ZONE"][0]
-        zone = ZoneDefinition.from_zone_epbunch(zone_ep)
+        zone = ZoneDefinition.from_zone_epbunch(zone_ep, construct_parents=False)
         vent = VentilationSetting.from_zone(zone)
         vent_2 = copy(vent)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
+        # a copy of dhw should be equal and not have the same hash, but still not be the
         # same object
         assert vent == vent_2
-        assert hash(vent) == hash(vent_2)
+        assert hash(vent) != hash(vent_2)
         assert vent is not vent_2
 
         # hash is used to find object in lookup table
@@ -1943,13 +1860,13 @@ class TestVentilationSetting:
         vent_list.append(vent_2)
         assert vent_2 in vent_list
 
-        # length of set() should be 1 since both objects are
-        # equal and have the same hash.
-        assert len(set(vent_list)) == 1
+        # length of set() should be 2 since both objects are
+        # equal but don't have the same hash.
+        assert len(set(vent_list)) == 2
 
         # dict behavior
         vent_dict = {vent: "this_idf", vent_2: "same_idf"}
-        assert len(vent_dict) == 1
+        assert len(vent_dict) == 2
 
         vent_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -1972,7 +1889,9 @@ class TestVentilationSetting:
         # same values (Infiltration, IsWindOn, etc.)
 
         zone_ep_3 = idf_2.idfobjects["ZONE"][0]
-        zone_3 = ZoneDefinition.from_zone_epbunch(zone_ep_3, allow_duplicates=True)
+        zone_3 = ZoneDefinition.from_zone_epbunch(
+            zone_ep_3, construct_parents=False, allow_duplicates=True
+        )
         vent_3 = VentilationSetting.from_zone(zone)
         assert idf is not idf_2
         vent_3 = VentilationSetting.from_zone(zone_3, allow_duplicates=True)
@@ -2007,10 +1926,10 @@ class TestDomesticHotWaterSetting:
         )
         dhw_2 = copy(dhw)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
+        # a copy of dhw should be equal and not have the same hash, but still not be the
         # same object
         assert dhw == dhw_2
-        assert hash(dhw) == hash(dhw_2)
+        assert hash(dhw) != hash(dhw_2)
         assert dhw is not dhw_2
 
         # hash is used to find object in lookup table
@@ -2021,13 +1940,13 @@ class TestDomesticHotWaterSetting:
         dhw_list.append(dhw_2)
         assert dhw_2 in dhw_list
 
-        # length of set() should be 1 since both objects are
-        # equal and have the same hash.
-        assert len(set(dhw_list)) == 1
+        # length of set() should be 2 since both objects are
+        # equal but don't have the same hash.
+        assert len(set(dhw_list)) == 2
 
         # dict behavior
         dhw_dict = {dhw: "this_idf", dhw_2: "same_idf"}
-        assert len(dhw_dict) == 1
+        assert len(dhw_dict) == 2
 
         dhw_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -2058,10 +1977,10 @@ class TestWindowSetting:
             config:
             request:
         """
-        eplusdir = get_eplus_dirs(archetypal.settings.ep_version)
-        file = eplusdir / "ExampleFiles" / request.param
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF(file, epw=w, design_day=True)
+        idf = IDF.from_example_files(request.param, epw=w, design_day=True)
+        if idf.sim_info is None:
+            idf.simulate()
         yield idf
 
     def test_window_from_construction_name(self, small_idf):
@@ -2222,10 +2141,10 @@ class TestWindowSetting:
         wind = WindowSetting.from_surface(f_surf)
         wind_2 = copy(wind)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
+        # a copy of dhw should be equal and not have the same hash, but still not be the
         # same object
         assert wind == wind_2
-        assert hash(wind) == hash(wind_2)
+        assert hash(wind) != hash(wind_2)
         assert wind is not wind_2
 
         # hash is used to find object in lookup table
@@ -2236,13 +2155,13 @@ class TestWindowSetting:
         wind_list.append(wind_2)
         assert wind_2 in wind_list
 
-        # length of set() should be 1 since both objects are
-        # equal and have the same hash.
-        assert len(set(wind_list)) == 1
+        # length of set() should be 2 since both objects are
+        # equal but don't have the same hash.
+        assert len(set(wind_list)) == 2
 
         # dict behavior
         wind_dict = {wind: "this_idf", wind_2: "same_idf"}
-        assert len(wind_dict) == 1
+        assert len(wind_dict) == 2
 
         wind_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -2287,7 +2206,7 @@ class TestZone:
 
         idf = small_idf_copy
         zone = idf.getobject("ZONE", "Perim")
-        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone)
+        z = ZoneDefinition.from_zone_epbunch(zone_ep=zone, construct_parents=False)
         np.testing.assert_almost_equal(desired=z.volume, actual=25.54, decimal=1)
 
     def test_add_zone(self, small_idf_copy):
@@ -2300,8 +2219,8 @@ class TestZone:
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ZoneDefinition.from_zone_epbunch(zone_core)
-        z_perim = ZoneDefinition.from_zone_epbunch(zone_perim)
+        z_core = ZoneDefinition.from_zone_epbunch(zone_core, construct_parents=False)
+        z_perim = ZoneDefinition.from_zone_epbunch(zone_perim, construct_parents=False)
 
         z_new = z_core + z_perim
 
@@ -2323,8 +2242,8 @@ class TestZone:
         zone_core = idf.getobject("ZONE", core_name)
         zone_perim = idf.getobject("ZONE", perim_name)
 
-        z_core = ZoneDefinition.from_zone_epbunch(zone_core)
-        z_perim = ZoneDefinition.from_zone_epbunch(zone_perim)
+        z_core = ZoneDefinition.from_zone_epbunch(zone_core, construct_parents=False)
+        z_perim = ZoneDefinition.from_zone_epbunch(zone_perim, construct_parents=False)
         volume = z_core.volume + z_perim.volume  # save volume before changing
         area = z_core.area + z_perim.area  # save area before changing
 
@@ -2355,10 +2274,10 @@ class TestZone:
         zone = ZoneDefinition.from_zone_epbunch(zone_ep)
         zone_2 = copy(zone)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
+        # a copy of dhw should be equal and not have the same hash, but still not be the
         # same object
         assert zone == zone_2
-        assert hash(zone) == hash(zone_2)
+        assert hash(zone) != hash(zone_2)
         assert zone is not zone_2
 
         # hash is used to find object in lookup table
@@ -2369,13 +2288,13 @@ class TestZone:
         zone_list.append(zone_2)
         assert zone_2 in zone_list
 
-        # length of set() should be 1 since both objects are
-        # equal and have the same hash.
-        assert len(set(zone_list)) == 1
+        # length of set() should be 2 since both objects are
+        # equal but don't have the same hash.
+        assert len(set(zone_list)) == 2
 
         # dict behavior
         zone_dict = {zone: "this_idf", zone_2: "same_idf"}
-        assert len(zone_dict) == 1
+        assert len(zone_dict) == 2
 
         zone_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -2410,16 +2329,13 @@ class TestZone:
 
 @pytest.fixture(scope="session")
 def bt(config):
-    """A building template fixture used in subsequent tests
-
-    Args:
-        config:
-    """
-    eplus_dir = get_eplus_dirs(archetypal.settings.ep_version)
-    file = eplus_dir / "ExampleFiles" / "5ZoneCostEst.idf"
-    w, *_ = (eplus_dir / "WeatherData").files("*.epw")
-    idf = IDF(file, epw=w, annual=True)
+    """A building template fixture used in subsequent tests"""
     from archetypal.template import BuildingTemplate
+
+    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    idf = IDF.from_example_files("5ZoneCostEst.idf", epw=w, annual=True)
+    if idf.sim_info is None:
+        idf.simulate()
 
     bt = BuildingTemplate.from_idf(idf)
     yield bt
@@ -2429,10 +2345,6 @@ class TestBuildingTemplate:
     """Various tests with the :class:`BuildingTemplate` class"""
 
     def test_buildingTemplate_from_to_json(self, config):
-        """
-        Args:
-            config:
-        """
         from archetypal import UmiTemplateLibrary
 
         filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
@@ -2443,12 +2355,7 @@ class TestBuildingTemplate:
         w_to_json = bt[0].Windows.to_json()
 
     def test_hash_eq_bt(self, config, other_idf_object, other_idf_object_copy):
-        """Test equality and hashing of class BuildingTemplate
-
-        Args:
-            other_idf_object:
-            other_idf_object_copy:
-        """
+        """Test equality and hashing of class BuildingTemplate"""
         from archetypal.template import BuildingTemplate
 
         idf = other_idf_object
@@ -2456,10 +2363,10 @@ class TestBuildingTemplate:
         idf2 = other_idf_object_copy
         bt_2 = BuildingTemplate.from_idf(idf2)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
+        # a copy of dhw should be equal and not have the same hash, but still not be the
         # same object
         assert bt == bt_2
-        assert hash(bt) == hash(bt_2)
+        assert hash(bt) != hash(bt_2)
         assert bt is not bt_2
 
         # hash is used to find object in lookup table
@@ -2470,13 +2377,13 @@ class TestBuildingTemplate:
         bt_list.append(bt_2)
         assert bt_2 in bt_list
 
-        # length of set() should be 1 since both objects are
-        # equal and have the same hash.
-        assert len(set(bt_list)) == 1
+        # length of set() should be 2 since both objects are
+        # equal but don't have the same hash.
+        assert len(set(bt_list)) == 2
 
         # dict behavior
         bt_dict = {bt: "this_idf", bt_2: "same_idf"}
-        assert len(bt_dict) == 1
+        assert len(bt_dict) == 2
 
         bt_2.Name = "some other name"
         # even if name changes, they should be equal

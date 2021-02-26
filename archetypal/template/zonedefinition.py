@@ -222,7 +222,11 @@ class ZoneDefinition(UmiBase):
     def area(self):
         if self._area is None:
             with sqlite3.connect(self.idf.sql_file) as conn:
-                sql_query = "SELECT t.Value FROM TabularDataWithStrings t WHERE TableName='Zone Summary' and ColumnName='Area' and RowName=?"
+                sql_query = """
+                    SELECT t.Value 
+                    FROM TabularDataWithStrings t 
+                    WHERE TableName='Zone Summary' and ColumnName='Area' and RowName=?
+                """
                 (res,) = conn.execute(sql_query, (self.Name.upper(),)).fetchone()
             self._area = float(res)
         return self._area

@@ -373,7 +373,7 @@ class UmiBase(object):
         return self
 
     def mapping(self):
-        pass
+        return {}
 
     def get_unique(self):
         """Return first object matching equality in the list of instantiated objects."""

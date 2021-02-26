@@ -26,7 +26,7 @@ def small_idf(config, small_idf_obj):
     yield small_idf_obj
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def small_idf_copy(config):
     """An IDF model
 
@@ -39,7 +39,7 @@ def small_idf_copy(config):
     yield idf
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def small_idf_obj(config):
     """An IDF model. Yields just the idf object."""
     file = "tests/input_data/umi_samples/B_Off_0.idf"
@@ -1547,7 +1547,7 @@ class TestZoneLoad:
             ZoneLoad.from_dict(**store, idf=idf, allow_duplicates=True)
             for store in datastore["ZoneLoads"]
         ]
-        assert reduce(ZoneLoad.combine, load_json, weights=[1, 1]).to_json()
+        assert load_json[0].to_json()
 
     def test_hash_eq_zone_load(self, small_idf, small_idf_copy):
         """Test equality and hashing of :class:`ZoneLoad`."""
@@ -2020,34 +2020,6 @@ class TestWindowSetting:
         """
         assert allwindowtypes
 
-    def test_window_fromsurface(self, config, small_idf):
-        """
-        Args:
-            config:
-            small_idf:
-        """
-        from archetypal.template import WindowSetting
-
-        idf = small_idf
-        f_surfs = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"]
-        for f in f_surfs:
-            constr = f.Construction_Name
-            idf.newidfobject(
-                "WindowMaterial:Shade".upper(),
-                Visible_Transmittance=0.5,
-                Name="Roll Shade",
-            )
-            idf.newidfobject(
-                "WindowShadingControl".upper(),
-                Construction_with_Shading_Name=constr,
-                Setpoint=14,
-                Shading_Device_Material_Name="Roll Shade",
-                Fenestration_Surface_1_Name="test_control",
-            )
-            f.Name = "test_control"
-            w = WindowSetting.from_surface(f)
-            assert w
-
     def test_winow_add2(self, allwindowtypes):
         """
         Args:
@@ -2126,12 +2098,7 @@ class TestWindowSetting:
         assert w.to_json()
 
     def test_hash_eq_window_settings(self, small_idf, small_idf_copy):
-        """Test equality and hashing of :class:`DomesticHotWaterSetting`
-
-        Args:
-            small_idf:
-            small_idf_copy:
-        """
+        """Test equality and hashing of :class:`DomesticHotWaterSetting`"""
         from copy import copy
 
         from archetypal.template import WindowSetting
@@ -2191,6 +2158,34 @@ class TestWindowSetting:
         assert hash(wind) == hash(wind_3)
         assert wind is not wind_3
         assert wind == wind_3
+
+    def test_window_fromsurface(self, config, small_idf):
+        """
+        Args:
+            config:
+            small_idf:
+        """
+        from archetypal.template import WindowSetting
+
+        idf = small_idf
+        f_surfs = idf.idfobjects["FENESTRATIONSURFACE:DETAILED"]
+        for f in f_surfs:
+            constr = f.Construction_Name
+            idf.newidfobject(
+                "WindowMaterial:Shade".upper(),
+                Visible_Transmittance=0.5,
+                Name="Roll Shade",
+            )
+            idf.newidfobject(
+                "WindowShadingControl".upper(),
+                Construction_with_Shading_Name=constr,
+                Setpoint=14,
+                Shading_Device_Material_Name="Roll Shade",
+                Fenestration_Surface_1_Name="test_control",
+            )
+            f.Name = "test_control"
+            w = WindowSetting.from_surface(f)
+            assert w
 
 
 class TestZone:
@@ -2259,12 +2254,7 @@ class TestZone:
         np.testing.assert_almost_equal(actual=area, desired=z_core.area, decimal=3)
 
     def test_hash_eq_zone(self, small_idf, small_idf_copy):
-        """Test equality and hashing of :class:`ZoneLoad`
-
-        Args:
-            small_idf:
-            small_idf_copy:
-        """
+        """Test equality and hashing of :class:`ZoneLoad`."""
         from copy import copy
 
         from archetypal.template import ZoneDefinition

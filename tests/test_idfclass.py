@@ -327,7 +327,9 @@ class TestThreads:
             / "WeatherData"
             / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
         )
-        idf = IDF.from_example_files("5ZoneAirCooledWithSlab.idf", epw, annual=False)
+        idf = IDF.from_example_files(
+            "5ZoneAirCooledWithSlab.idf", epw=epw, annual=False
+        )
 
         assert idf.simulate()
 

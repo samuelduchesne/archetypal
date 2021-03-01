@@ -322,13 +322,12 @@ class TestMeters:
 
 class TestThreads:
     def test_runslab(self, config):
-        file = get_eplus_dirs() / "ExampleFiles" / "5ZoneAirCooledWithSlab.idf"
         epw = (
             get_eplus_dirs()
             / "WeatherData"
             / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
         )
-        idf = IDF(file, epw, annual=False)
+        idf = IDF.from_example_files("5ZoneAirCooledWithSlab.idf", epw, annual=False)
 
         assert idf.simulate()
 

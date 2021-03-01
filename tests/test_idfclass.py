@@ -334,7 +334,7 @@ class TestThreads:
         slab_idf = get_eplus_dirs() / "ExampleFiles" / "5ZoneAirCooledWithSlab.idf"
         with open(slab_idf, "r") as f:
             p.write_text(f.read())
-        idf = IDF(slab_idf, epw=epw, annual=False, design_day=True)
+        idf = IDF(p, epw=epw, annual=False, design_day=True)
 
         assert idf.simulate()
 

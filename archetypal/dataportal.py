@@ -711,8 +711,8 @@ def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
             # There seems to be a double backlash in the response. We try
             # removing it here.
             try:
-                response = response.content.decode("UTF-8").replace("//", "")
-                response_json = json.loads(response)
+                response_str = response.content.decode("UTF-8").replace("//", "")
+                response_json = json.loads(response_str)
             except Exception:
                 log(
                     "Server at {} returned status code {} and no JSON "

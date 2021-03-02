@@ -7,14 +7,11 @@
 
 import collections
 import logging as lg
-import multiprocessing
 import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import copy
 from itertools import chain, repeat
 
-import eppy
 import matplotlib.collections
 import matplotlib.colors
 import networkx
@@ -198,8 +195,8 @@ class BuildingTemplate(UmiBase):
 
         epbunch_zones = idf.idfobjects["ZONE"]
         zones = [
-            ZoneDefinition.from_zone_epbunch(zone, allow_duplicates=True, **kwargs)
-            for zone in tqdm(epbunch_zones, desc=f"Creating UMI objects for {name}")
+            ZoneDefinition.from_zone_epbunch(ep_zone, allow_duplicates=True, **kwargs)
+            for ep_zone in tqdm(epbunch_zones, desc=f"Creating UMI objects for {name}")
         ]
 
         zone: ZoneDefinition
@@ -345,10 +342,8 @@ class BuildingTemplate(UmiBase):
             )
 
             log(
-                'completed zone reduction for zone "{}" in building "{}" in {:,'
-                ".2f} seconds".format(
-                    bundle_zone.Name, self.Name, time.time() - start_time
-                )
+                f"completed zone reduction for zone '{bundle_zone.Name}' "
+                f"in building '{self.Name}' in {time.time() - start_time:,.2f} seconds"
             )
             return bundle_zone
 
@@ -663,7 +658,7 @@ class ZoneGraph(networkx.Graph):
         import numpy as np
         from mpl_toolkits.mplot3d import Axes3D
 
-        def avg(zone: eppy.bunch_subclass.EpBunch):
+        def avg(zone: EpBunch):
             """calculate the zone centroid coordinates"""
             x_, y_, z_, dem = 0, 0, 0, 0
             from geomeppy.geom.polygons import Polygon3D, Vector3D
@@ -697,14 +692,14 @@ class ZoneGraph(networkx.Graph):
         pos = {name: avg(epbunch) for name, epbunch in self.nodes(data="epbunch")}
 
         # Get the maximum number of edges adjacent to a single node
-        edge_max = max(1, max([self.degree(i) for i in self.nodes]))  # min = 1
+        edge_max = max(1, max([self.degree[i] for i in self.nodes]))  # min = 1
 
         # Define color range proportional to number of edges adjacent to a
         # single node
         colors = {
-            i: plt.cm.get_cmap(cmap)(self.degree(i) / edge_max) for i in self.nodes
+            i: plt.cm.get_cmap(cmap)(self.degree[i] / edge_max) for i in self.nodes
         }
-
+        labels = {}
         if annotate:
             # annotate can be bool or str.
             if isinstance(annotate, bool):
@@ -731,7 +726,7 @@ class ZoneGraph(networkx.Graph):
                     }
 
         # 3D network plot
-        with plt.style.context((plt_style)):
+        with plt.style.context(plt_style):
             if fig_height is None:
                 fig_height = fig_width
 
@@ -754,7 +749,7 @@ class ZoneGraph(networkx.Graph):
                     yi,
                     zi,
                     color=colors[key],
-                    s=20 + 20 * self.degree(key),
+                    s=20 + 20 * self.degree[key],
                     edgecolors="k",
                     alpha=0.7,
                 )
@@ -1005,9 +1000,9 @@ def discrete_cmap(N, base_cmap=None):
     #    return plt.cm.get_cmap(base_cmap, N)
     # The following works for string, None, or a colormap instance:
     import matplotlib.pyplot as plt
-    import numpy as np
+    from numpy.core.function_base import linspace
 
     base = plt.cm.get_cmap(base_cmap)
-    color_list = base(np.linspace(0, 1, N))
+    color_list = base(linspace(0, 1, N))
     cmap_name = base.name + str(N)
     return matplotlib.colors.ListedColormap(color_list, cmap_name, N)

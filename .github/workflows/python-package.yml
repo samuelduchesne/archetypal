@@ -22,16 +22,10 @@ jobs:
           - energyplus-version: 9.2.0
             energyplus-sha: 921312fa1d
             energyplus-install: 9-2-0
-        # later, add 9.4.0
-        # - energyplus-version: 9.4.0
-        #   energyplus-sha: 998c4b761e
-        #   energyplus-install: 9-4-0
-          - os: macos-latest
-            eplus-path: /Applications/EnergyPlus-
-          - os: ubuntu-latest
-            eplus-path: /usr/local/EnergyPlus-
-          - os: windows-latest
-            eplus-path: C:\\EnergyPlusV
+          # later, add 9.4.0
+          # - energyplus-version: 9.4.0
+          #   energyplus-sha: 998c4b761e
+          #   energyplus-install: 9-4-0
     steps:
       - name: Display the OS
         run: echo $OSTYPE
@@ -41,20 +35,11 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: energyplus cache
-        id: restore-energyplus
-        uses: actions/cache@v2
-        with:
-          path: ${{ matrix.eplus-path }}${{ matrix.energyplus-install }}
-          key: ${{ runner.os }}-energyplus-${{ matrix.energyplus-sha }}
-          restore-keys: |
-            ${{ runner.os }}-energyplus-
       - name: Install EnergyPlus
         env:
           ENERGYPLUS_VERSION: ${{ matrix.energyplus-version }}
           ENERGYPLUS_SHA: ${{ matrix.energyplus-sha }}
           ENERGYPLUS_INSTALL_VERSION: ${{ matrix.energyplus-install }}
-        if: steps.restore-energyplus.outputs.cache-hit != 'true'
         run: bash ./install_energyplus.sh
       - name: Get pip cache dir
         id: pip-cache

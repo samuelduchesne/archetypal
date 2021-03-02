@@ -27,11 +27,11 @@ jobs:
         #   energyplus-sha: 998c4b761e
         #   energyplus-install: 9-4-0
           - os: macos-latest
-            eplus-path: /Applications/EnergyPlus-${{ matrix.energyplus-install }}
+            eplus-path: /Applications/EnergyPlus
           - os: ubuntu-latest
-            eplus-path: /usr/local/EnergyPlus-${{ matrix.energyplus-install }}
+            eplus-path: /usr/local/EnergyPlus
           - os: windows-latest
-            eplus-path: C:\\EnergyPlusV${{ matrix.energyplus-install }}
+            eplus-path: C:\\EnergyPlusV
     steps:
       - name: Display the OS
         run: echo $OSTYPE
@@ -45,7 +45,7 @@ jobs:
         id: restore-energyplus
         uses: actions/cache@v2
         with:
-          path: ${{ matrix.eplus-path }}
+          path: ${{ matrix.eplus-path }}-${{ matrix.energyplus-install }}
           key: ${{ runner.os }}-energyplus-${{ matrix.energyplus-sha }}
           restore-keys: |
             ${{ runner.os }}-energyplus-

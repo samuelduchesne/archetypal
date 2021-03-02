@@ -713,21 +713,17 @@ def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
             try:
                 response_str = response.content.decode("UTF-8").replace("//", "")
                 response_json = json.loads(response_str)
-            except Exception:
+            except Exception as e:
                 log(
-                    "Server at {} returned status code {} and no JSON "
-                    "data.".format(domain, response.status_code),
+                    f"Error {e}\n"
+                    f"Server at {domain} returned status code {response.status_code} "
+                    f"and no JSON data.",
                     level=lg.ERROR,
                 )
+                return {}
             else:
                 save_to_cache(prepared_url, response_json)
                 return response_json
-            # deal with response satus_code here
-            log(
-                "Server at {} returned status code {} and no JSON "
-                "data.".format(domain, response.status_code),
-                level=lg.ERROR,
-            )
         else:
             return response_json
 

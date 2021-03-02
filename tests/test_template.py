@@ -63,7 +63,7 @@ def other_idf(config):
     yield idf
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def other_idf_object(config):
     """Another IDF object (same as other_idf). Yields just the idf object
 

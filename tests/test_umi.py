@@ -698,6 +698,8 @@ def climatestudio(config):
     file = "tests/input_data/umi_samples/climatestudio_test.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w, annual=True)
+    if idf.sim_info is None:
+        idf.simulate()
 
     from archetypal.template import BuildingTemplate
 

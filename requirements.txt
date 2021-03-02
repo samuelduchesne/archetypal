@@ -15,5 +15,5 @@ click
 outdated
 deprecation
 sigfig
-energy-pandas
+energy-pandas==0.1.2
 setuptools_scm

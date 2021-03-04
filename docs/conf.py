@@ -15,6 +15,7 @@
 import os
 import sys
 import datetime
+from pkg_resources import get_distribution
 
 sys.path.insert(0, os.path.abspath("."))
 sys.path.insert(0, os.path.abspath("archetypal"))
@@ -26,9 +27,9 @@ copyright = "{}, Samuel Letellier-Duchesne".format(datetime.datetime.now().year)
 author = "Samuel Letellier-Duchesne"
 
 # The full version, including alpha/beta/rc tags
-import archetypal
-
-version = release = archetypal.__version__
+release = get_distribution("archetypal").version
+# for example take major/minor
+version = release = ".".join(release.split(".")[:2])
 
 # -- General configuration ---------------------------------------------------
 

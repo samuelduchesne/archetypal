@@ -7,11 +7,13 @@
 
 import collections
 
+from sigfig import round
+
 from archetypal import log
-from archetypal.template import MaterialBase, Unique, UniqueName
+from archetypal.template import MaterialBase, UmiBase, UniqueName
 
 
-class GlazingMaterial(MaterialBase, metaclass=Unique):
+class GlazingMaterial(MaterialBase):
     """Glazing Materials
 
     .. image:: ../images/template/materials-glazing.png
@@ -20,6 +22,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
 
     def __init__(
         self,
+        Name,
         Density=2500,
         Conductivity=0,
         SolarTransmittance=0,
@@ -40,6 +43,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         """Initialize a GlazingMaterial object with parameters:
 
         Args:
+            Name (str): The name of the GlazingMaterial.
             Density (float): A number representing the density of the material
                 in kg/m3. This is essentially the mass of one cubic meter of the
                 material.
@@ -72,7 +76,7 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
             **kwargs: keywords passed to the :class:`MaterialBase`
                 constructor. For more info, see :class:`MaterialBase`.
         """
-        super(GlazingMaterial, self).__init__(**kwargs)
+        super(GlazingMaterial, self).__init__(Name, **kwargs)
         self.Life = Life
         self.Cost = Cost
         self.Type = Type
@@ -89,16 +93,88 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         self.Density = Density
         self.Conductivity = Conductivity
 
+    @property
+    def IREmissivityBack(self):
+        return float(self._IREmissivityBack)
+
+    @IREmissivityBack.setter
+    def IREmissivityBack(self, value):
+        self._IREmissivityBack = value
+
+    @property
+    def IREmissivityFront(self):
+        return float(self._IREmissivityFront)
+
+    @IREmissivityFront.setter
+    def IREmissivityFront(self, value):
+        self._IREmissivityFront = value
+
+    @property
+    def IRTransmittance(self):
+        return float(self._IRTransmittance)
+
+    @IRTransmittance.setter
+    def IRTransmittance(self, value):
+        self._IRTransmittance = value
+
+    @property
+    def VisibleReflectanceBack(self):
+        return float(self._VisibleReflectanceBack)
+
+    @VisibleReflectanceBack.setter
+    def VisibleReflectanceBack(self, value):
+        self._VisibleReflectanceBack = value
+
+    @property
+    def VisibleReflectanceFront(self):
+        return float(self._VisibleReflectanceFront)
+
+    @VisibleReflectanceFront.setter
+    def VisibleReflectanceFront(self, value):
+        self._VisibleReflectanceFront = value
+
+    @property
+    def VisibleTransmittance(self):
+        return float(self._VisibleTransmittance)
+
+    @VisibleTransmittance.setter
+    def VisibleTransmittance(self, value):
+        self._VisibleTransmittance = value
+
+    @property
+    def SolarReflectanceBack(self):
+        return float(self._SolarReflectanceBack)
+
+    @SolarReflectanceBack.setter
+    def SolarReflectanceBack(self, value):
+        self._SolarReflectanceBack = value
+
+    @property
+    def SolarReflectanceFront(self):
+        return float(self._SolarReflectanceFront)
+
+    @SolarReflectanceFront.setter
+    def SolarReflectanceFront(self, value):
+        self._SolarReflectanceFront = value
+
+    @property
+    def SolarTransmittance(self):
+        return float(self._SolarTransmittance)
+
+    @SolarTransmittance.setter
+    def SolarTransmittance(self, value):
+        self._SolarTransmittance = value
+
     def __add__(self, other):
         """Overload + to implement self.combine."""
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
         if not isinstance(other, GlazingMaterial):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -114,13 +190,12 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
                     self.IREmissivityFront == other.IREmissivityFront,
                     self.IREmissivityBack == other.IREmissivityBack,
                     self.DirtFactor == other.DirtFactor,
-                    self.Type == other.Type,
                     self.Cost == other.Cost,
                     self.Life == other.Life,
                 ]
             )
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, allow_duplicates=False):
         """Combine two GlazingMaterial objects together.
 
         Args:
@@ -142,8 +217,6 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
             return self
 
         meta = self._get_predecessors_meta(other)
-        idf = self.__dict__.get("idf")
-        sql = self.__dict__.get("sql")
 
         if not weights:
             log(
@@ -153,45 +226,48 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
             weights = [self.Density, other.Density]
         # iterate over attributes and apply either float_mean or str_mean.
         new_attr = {}
-        for attr in self.__dict__:
-            if attr not in ["Comments", "idf", "sql", "all_objects", "id"]:
-                if isinstance(self.__dict__[attr], (int, float)):
-                    new_attr[attr] = self._float_mean(other, attr=attr, weights=weights)
-                elif isinstance(self.__dict__[attr], str):
-                    new_attr[attr] = self._str_mean(other, attr=attr, append=False)
-                elif isinstance(self.__dict__[attr], list):
+        for attr, value in self.mapping().items():
+            if attr not in ["Comments", "DataSource"]:
+                if isinstance(value, (int, float)) or isinstance(other, (int, float)):
+                    new_attr[attr] = UmiBase._float_mean(
+                        self, other, attr=attr, weights=weights
+                    )
+                elif isinstance(value, str) or isinstance(other, str):
+                    new_attr[attr] = UmiBase._str_mean(
+                        self, other, attr=attr, append=False
+                    )
+                elif isinstance(value, list) or isinstance(other, list):
                     new_attr[attr] = getattr(self, attr) + getattr(other, attr)
-                elif not getattr(self, attr):
-                    if getattr(self, attr):
-                        new_attr[attr] = getattr(self, attr)
-                    else:
-                        new_attr[attr] = None
-                elif isinstance(getattr(self, attr), collections.UserList):
+                elif isinstance(value, collections.UserList) or isinstance(
+                    other, collections.UserList
+                ):
                     pass
                 else:
                     raise NotImplementedError
         [new_attr.pop(key, None) for key in meta.keys()]  # meta handles these
         # keywords.
         # create a new object from combined attributes
-        new_obj = self.__class__(**meta, idf=idf, sql=sql, **new_attr)
-        new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
+        new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
     def to_json(self):
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
         data_dict["DirtFactor"] = self.DirtFactor
-        data_dict["IREmissivityBack"] = self.IREmissivityBack
-        data_dict["IREmissivityFront"] = self.IREmissivityFront
-        data_dict["IRTransmittance"] = self.IRTransmittance
-        data_dict["SolarReflectanceBack"] = self.SolarReflectanceBack
-        data_dict["SolarReflectanceFront"] = self.SolarReflectanceFront
-        data_dict["SolarTransmittance"] = self.SolarTransmittance
-        data_dict["VisibleReflectanceBack"] = self.VisibleReflectanceBack
-        data_dict["VisibleReflectanceFront"] = self.VisibleReflectanceFront
-        data_dict["VisibleTransmittance"] = self.VisibleTransmittance
-        data_dict["Conductivity"] = self.Conductivity
+        data_dict["IREmissivityBack"] = round(self.IREmissivityBack, 2)
+        data_dict["IREmissivityFront"] = round(self.IREmissivityFront, 2)
+        data_dict["IRTransmittance"] = round(self.IRTransmittance, 2)
+        data_dict["SolarReflectanceBack"] = round(self.SolarReflectanceBack, 2)
+        data_dict["SolarReflectanceFront"] = round(self.SolarReflectanceFront, 2)
+        data_dict["SolarTransmittance"] = round(self.SolarTransmittance, 2)
+        data_dict["VisibleReflectanceBack"] = round(self.VisibleReflectanceBack, 2)
+        data_dict["VisibleReflectanceFront"] = round(self.VisibleReflectanceFront, 2)
+        data_dict["VisibleTransmittance"] = round(self.VisibleTransmittance, 2)
+        data_dict["Conductivity"] = round(self.Conductivity, 2)
         data_dict["Cost"] = self.Cost
         data_dict["Density"] = self.Density
         data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon
@@ -207,3 +283,33 @@ class GlazingMaterial(MaterialBase, metaclass=Unique):
         data_dict["Name"] = UniqueName(self.Name)
 
         return data_dict
+
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            DirtFactor=self.DirtFactor,
+            IREmissivityBack=self.IREmissivityBack,
+            IREmissivityFront=self.IREmissivityFront,
+            IRTransmittance=self.IRTransmittance,
+            SolarReflectanceBack=self.SolarReflectanceBack,
+            SolarReflectanceFront=self.SolarReflectanceFront,
+            SolarTransmittance=self.SolarTransmittance,
+            VisibleReflectanceBack=self.VisibleReflectanceBack,
+            VisibleReflectanceFront=self.VisibleReflectanceFront,
+            VisibleTransmittance=self.VisibleTransmittance,
+            Conductivity=self.Conductivity,
+            Cost=self.Cost,
+            Density=self.Density,
+            EmbodiedCarbon=self.EmbodiedCarbon,
+            EmbodiedEnergy=self.EmbodiedEnergy,
+            SubstitutionRatePattern=self.SubstitutionRatePattern,
+            SubstitutionTimestep=self.SubstitutionTimestep,
+            TransportCarbon=self.TransportCarbon,
+            TransportDistance=self.TransportDistance,
+            TransportEnergy=self.TransportEnergy,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )

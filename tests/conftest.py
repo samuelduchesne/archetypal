@@ -1,32 +1,14 @@
 import glob
-import os
-import shutil
 import sys
 
 import pytest
-
-import archetypal as ar
-
-
-@pytest.fixture(scope="session")
-def fresh_start():
-    """# remove the tests/temp folder if it already exists so we
-    start fresh with tests. Needs to be called after `config`"""
-    settings = [
-        ar.settings.cache_folder,
-        ar.settings.data_folder,
-        ar.settings.imgs_folder,
-    ]
-    for setting in settings:
-        if os.path.exists(setting):
-            shutil.rmtree(setting)
-            assert not os.path.exists(setting)
-
 
 # Parametrization of the fixture scratch_then_cache. The following array
 # tells pytest to use True than False for all tests that use this fixture.
 # This is very usefull to test the behavior of methods that use cached data
 # or not.
+from archetypal import settings, utils
+
 do = [True, False]
 
 
@@ -36,20 +18,17 @@ def scratch_then_cache(request):
     start fresh with tests"""
     # request is a special parameter known to pytest. It passes whatever is in
     # params=do. Ids are there to give the test a human readable name.
-    dirs = [ar.settings.data_folder, ar.settings.cache_folder, ar.settings.imgs_folder]
     if request.param:
+        dirs = [
+            settings.data_folder,
+            settings.cache_folder,
+            settings.imgs_folder,
+        ]
         for dir in dirs:
-            if os.path.exists(dir):
-                try:
-                    shutil.rmtree(dir)
-                finally:
-                    assert not os.path.exists(dir)
+            dir.rmtree_p()
 
 
-samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular',
-
-
-# 'umi_samples']
+samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular', 'umi_samples']
 
 
 @pytest.fixture(params=samples_, ids=samples_, scope="session")
@@ -59,16 +38,26 @@ def idf_source(request):
 
 @pytest.fixture(scope="session")
 def config():
-    ar.config(
-        log_console=True,
-        log_file=True,
-        use_cache=True,
+    utils.config(
         data_folder="tests/.temp/data",
         logs_folder="tests/.temp/logs",
-        imgs_folder="tests/.temp/imgs",
+        imgs_folder="tests/.temp/images",
         cache_folder="tests/.temp/cache",
-        umitemplate="tests/input_data/umi_samples" "/BostonTemplateLibrary_2.json",
+        use_cache=True,
+        log_file=False,
+        log_console=True,
+        umitemplate="tests/input_data/umi_samples/BostonTemplateLibrary_2.json",
+        debug=True,
     )
+
+
+@pytest.fixture(scope="class")
+def clean_config(config):
+    """calls config fixture and clears default folders"""
+
+    dirs = [settings.data_folder, settings.cache_folder, settings.imgs_folder]
+    for dir in dirs:
+        dir.rmtree_p()
 
 
 # List fixtures that are located outiside of conftest.py so that they can be
@@ -87,3 +76,20 @@ def pytest_runtest_setup(item):
 
 # dynamically define files to be ignored
 collect_ignore = ["test_core.py"]
+
+
+def get_platform():
+    """Returns the MacOS release number as tuple of ints"""
+    import platform
+
+    release, versioninfo, machine = platform.mac_ver()
+    release_split = release.split(".")
+    return tuple(map(safe_int_cast, release_split))
+
+
+def safe_int_cast(val, default=0):
+    """Safely casts a value to an int"""
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return default

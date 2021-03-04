@@ -9,13 +9,11 @@ import collections
 import uuid
 
 import numpy as np
-from archetypal.template import (
-    Unique,
-    MaterialLayer,
-    OpaqueMaterial,
-    UmiBase,
-    UniqueName,
-)
+from deprecation import deprecated
+from eppy.bunch_subclass import BadEPFieldError
+
+import archetypal
+from archetypal.template import MaterialLayer, OpaqueMaterial, UmiBase, UniqueName
 
 
 class ConstructionBase(UmiBase):
@@ -23,7 +21,8 @@ class ConstructionBase(UmiBase):
     constructions (eg.: wall assemblies).
 
     For more information on the Life Cycle Analysis performed in UMI, see:
-    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life-cycle-impact
+    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life
+    -cycle-impact
     """
 
     def __init__(
@@ -33,7 +32,7 @@ class ConstructionBase(UmiBase):
         AssemblyEnergy=0,
         DisassemblyCarbon=0,
         DisassemblyEnergy=0,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a ConstructionBase object with parameters:
 
@@ -51,6 +50,27 @@ class ConstructionBase(UmiBase):
         self.AssemblyEnergy = AssemblyEnergy
         self.DisassemblyCarbon = DisassemblyCarbon
         self.DisassemblyEnergy = DisassemblyEnergy
+
+    def validate(self):
+        """Validate object and fill in missing values."""
+        return self
+
+    def get_ref(self, ref):
+        """Get item matching reference id.
+
+        Args:
+            ref:
+        """
+        return next(
+            iter(
+                [
+                    value
+                    for value in ConstructionBase.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
+        )
 
 
 class LayeredConstruction(ConstructionBase):
@@ -72,57 +92,38 @@ class LayeredConstruction(ConstructionBase):
         self.Layers = Layers
 
 
-class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
+class OpaqueConstruction(LayeredConstruction):
     """Opaque Constructions
 
     .. image:: ../images/template/constructions-opaque.png
     """
 
-    def __init__(
-        self,
-        Layers,
-        Surface_Type=None,
-        Outside_Boundary_Condition=None,
-        IsAdiabatic=False,
-        **kwargs
-    ):
+    def __init__(self, Layers, **kwargs):
         """
         Args:
             Layers (list of MaterialLayer):
-            Surface_Type:
-            Outside_Boundary_Condition:
-            IsAdiabatic:
-            **kwargs:
+            **kwargs: Other attributes passed to parent constructors such as
+            :class:`ConstructionBase`
         """
         super(OpaqueConstruction, self).__init__(Layers, **kwargs)
         self.area = 1
-        self.Surface_Type = Surface_Type
-        self.Outside_Boundary_Condition = Outside_Boundary_Condition
-        self.IsAdiabatic = IsAdiabatic
 
     def __add__(self, other):
         """Overload + to implement self.combine.
 
         Args:
-            other:
+            other (OpaqueConstruction): The other OpaqueConstruction.
         """
         return self.combine(other)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
         if not isinstance(other, OpaqueConstruction):
-            return False
+            return NotImplemented
         else:
-            return all(
-                [
-                    self.Layers == other.Layers,
-                    self.Surface_Type == other.Surface_Type,
-                    self.Outside_Boundary_Condition == other.Outside_Boundary_Condition,
-                    self.IsAdiabatic == other.IsAdiabatic,
-                ]
-            )
+            return all([self.Layers == other.Layers])
 
     @property
     def r_value(self):
@@ -194,12 +195,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         """The per unit wall area of the heat capacity is :math:`(HC/A)=ρ·c·δ`,
         where :math:`δ` is the wall thickness. Expressed in J/(m2 K)
         """
-        return sum(
-            [
-                layer.Material.Density * layer.Material.SpecificHeat * layer.Thickness
-                for layer in self.Layers
-            ]
-        )
+        return sum([layer.heat_capacity for layer in self.Layers])
 
     @property
     def total_thickness(self):
@@ -216,14 +212,12 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
     def timeconstant_per_unit_area(self):
         return self.mass_per_unit_area * self.specific_heat / self.u_value()
 
-    def combine(self, other, weights=None, method="dominant_wall"):
+    def combine(self, other, method="dominant_wall", allow_duplicates=False):
         """Combine two OpaqueConstruction together.
 
         Args:
             other (OpaqueConstruction): The other OpaqueConstruction object to
                 combine with.
-            weights (list-like, optional): A list-like object of len 2. If None,
-                the weight is the same for both self and other.
             method (str): Equivalent wall assembly method. Only 'dominant_wall'
                 is safe to use. 'constant_ufactor' is still weird in terms of
                 respecting the thermal response of the walls and may cause
@@ -233,6 +227,13 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         Returns:
             (OpaqueConstruction): the combined ZoneLoad object.
         """
+        # Check if other is None. Simply return self
+        if not other:
+            return self
+
+        if not self:
+            return other
+
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
             msg = "Cannot combine %s with %s" % (
@@ -245,8 +246,7 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         if self == other:
             return self
 
-        if not weights:
-            weights = [self.area, other.area]
+        weights = [self.area, other.area]
 
         meta = self._get_predecessors_meta(other)
         # thicknesses & materials for self
@@ -260,17 +260,18 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
             return oc
         else:
             raise ValueError(
-                'Possible choices are ["equivalent_volume", "constant_ufactor", "dominant_wall"]'
+                'Possible choices are ["equivalent_volume", "constant_ufactor", '
+                '"dominant_wall"]'
             )
         # layers for the new OpaqueConstruction
         layers = [MaterialLayer(mat, t) for mat, t in zip(new_m, new_t)]
-        new_obj = self.__class__(**meta, Layers=layers)
+        new_obj = self.__class__(**meta, Layers=layers, idf=self.idf)
         new_name = (
             "Combined Opaque Construction {{{}}} with u_value "
             "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value())
         )
         new_obj.rename(new_name)
-        new_obj._predecessors.extend(self.predecessors + other.predecessors)
+        new_obj.predecessors.update(self.predecessors + other.predecessors)
         new_obj.area = sum(weights)
         return new_obj
 
@@ -408,17 +409,35 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return np.array(materials), res.x
 
     @classmethod
+    @deprecated(
+        deprecated_in="1.3.1",
+        removed_in="1.5",
+        current_version=archetypal.__version__,
+        details="Use from_dict function instead",
+    )
     def from_json(cls, *args, **kwargs):
         """
         Args:
             *args:
             **kwargs:
         """
+        return cls.from_dict(*args, **kwargs)
+
+    @classmethod
+    def from_dict(cls, *args, **kwargs):
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
         # resolve Material objects from ref
-        layers = kwargs.pop("Layers")
-        oc = cls(Layers=None, **kwargs)
+        layers = kwargs.pop("Layers", None)
+        oc = cls(Layers=layers, **kwargs)
         lys = [
-            MaterialLayer(oc.get_ref(layer["Material"]), layer["Thickness"])
+            MaterialLayer(
+                oc.get_ref(layer["Material"]),
+                layer["Thickness"],
+            )
             for layer in layers
         ]
         oc.Layers = lys
@@ -426,9 +445,41 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         return oc
 
     @classmethod
-    def from_epbunch(cls, epbunch, **kwargs):
-        # from the construction or internalmass object
+    def generic_internalmass(cls, idf, **kwargs):
         """
+
+        Args:
+            idf (IDF): The IDF model
+            **kwargs:
+
+        Returns:
+
+        """
+        mat = idf.anidfobject(
+            key="Material".upper(),
+            Name="Wood 6inch",
+            Roughness="MediumSmooth",
+            Thickness=0.15,
+            Conductivity=0.12,
+            Density=540,
+            Specific_Heat=1210,
+            Thermal_Absorptance=0.7,
+            Visible_Absorptance=0.7,
+        )
+        return OpaqueConstruction(
+            Name="InternalMass",
+            idf=idf,
+            Layers=[
+                MaterialLayer(Material=OpaqueMaterial.from_epbunch(mat), Thickness=0.15)
+            ],
+            Category=kwargs.pop("Category", "InternalMass"),
+            **kwargs,
+        )
+
+    @classmethod
+    def from_epbunch(cls, epbunch, **kwargs):
+        """Construct an OpaqueMaterial object given an epbunch with keys
+        "BuildingSurface:Detailed" or "InternalMass"
         Args:
             epbunch (EpBunch):
             **kwargs:
@@ -438,70 +489,45 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
         # treat internalmass and surfaces differently
         if epbunch.key.lower() == "internalmass":
             layers = cls._internalmass_layer(epbunch)
-            return cls(Name=name, Layers=layers, idf=idf)
+            return cls(Name=name, Layers=layers, idf=idf, **kwargs)
         else:
             layers = cls._surface_layers(epbunch)
             return cls(Name=name, Layers=layers, idf=idf, **kwargs)
 
     @classmethod
     def _internalmass_layer(cls, epbunch):
-        """
+        """Returns layers of an internal mass object.
+
         Args:
-            epbunch:
+            epbunch (EpBunch): The InternalMass epobject.
         """
-
-        layers = []
         constr_obj = epbunch.theidf.getobject("CONSTRUCTION", epbunch.Construction_Name)
-        field_idd = constr_obj.getfieldidd("Outside_Layer")
-        validobjects = field_idd["validobjects"]  # plausible layer types
-        for layer in constr_obj.fieldvalues[2:]:
-            # Iterate over the constructions layers
-            found = False
-            for key in validobjects:
-                try:
-                    material = constr_obj.theidf.getobject(key, layer)
-                    o = OpaqueMaterial.from_epbunch(material)
-                    found = True
-                except AttributeError:
-                    pass
-                else:
-                    layers.append(
-                        MaterialLayer(**dict(Material=o, Thickness=o._thickness))
-                    )
-            if not found:
-                raise AttributeError("%s material not found in IDF" % layer)
-        return layers
+        return cls._surface_layers(constr_obj)
 
-    @staticmethod
-    def _surface_layers(c):
+    @classmethod
+    def _surface_layers(cls, epbunch):
         """Retrieve layers for the OpaqueConstruction
 
         Args:
-            c (EpBunch): EP-Construction object
+            epbunch (EpBunch): EP-Construction object
         """
         layers = []
-        field_idd = c.getfieldidd("Outside_Layer")
-        validobjects = field_idd["validobjects"]  # plausible layer types
-        for layer in c.fieldvalues[2:]:
+        for layer in epbunch.fieldnames[2:]:
             # Iterate over the constructions layers
-            found = False
-            for key in validobjects:
+            material = epbunch.get_referenced_object(layer)
+            if material:
+                o = OpaqueMaterial.from_epbunch(material)
                 try:
-                    material = c.theidf.getobject(key, layer)
-                    o = OpaqueMaterial.from_epbunch(material)
-                    found = True
-                except AttributeError:
-                    pass
-                else:
-                    layers.append(
-                        MaterialLayer(**dict(Material=o, Thickness=o._thickness))
-                    )
-            if not found:
-                raise AttributeError("%s material not found in IDF" % layer)
+                    thickness = material.Thickness
+                except BadEPFieldError:
+                    thickness = o.Conductivity * material.Thermal_Resistance
+                layers.append(MaterialLayer(Material=o, Thickness=thickness))
         return layers
 
     def to_json(self):
         """Convert class properties to dict"""
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
@@ -518,14 +544,36 @@ class OpaqueConstruction(LayeredConstruction, metaclass=Unique):
 
         return data_dict
 
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            Layers=self.Layers,
+            AssemblyCarbon=self.AssemblyCarbon,
+            AssemblyCost=self.AssemblyCost,
+            AssemblyEnergy=self.AssemblyEnergy,
+            DisassemblyCarbon=self.DisassemblyCarbon,
+            DisassemblyEnergy=self.DisassemblyEnergy,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )
+
     @classmethod
     def generic(cls, idf=None):
-        # Generic Plaster Board
+        # 90.1-2007 Nonres 4B Int Wall
         """
         Args:
             idf:
         """
-        om = OpaqueMaterial.generic()
+        om = OpaqueMaterial.generic(idf=idf)
 
-        layers = [MaterialLayer(om, 0.0127)]  # half inch
-        return cls(Name="generic plaster board half inch", Layers=layers, idf=idf)
+        layers = [MaterialLayer(om, 0.0127), MaterialLayer(om, 0.0127)]  # half inch
+        return cls(
+            Name="90.1-2007 Nonres 6A Int Wall",
+            Layers=layers,
+            DataSource="ASHRAE 90.1-2007",
+            idf=idf,
+            Category="Partition",
+        )

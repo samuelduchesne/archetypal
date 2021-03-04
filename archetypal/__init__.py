@@ -6,26 +6,33 @@
 ################################################################################
 
 # Version of the package
-__version__ = "1.3.0"
-# Latest version of EnergyPlus compatible with archetypal
-ep_version = "8-9-0"
+from setuptools_scm import get_version
+__version__ = get_version()
 
 # warn if a newer version of archetypal is available
 from outdated import warn_if_outdated
 
+from .eplus_interface.version import warn_if_not_compatible
+
 warn_if_outdated("archetypal", __version__)
+warn_if_not_compatible()
+
+# don't display futurewarnings
+
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
+warnings.simplefilter(action="ignore", category=UserWarning)
 
 from .utils import *
 from .simple_glazing import *
-from .energyseries import EnergySeries
-from .energydataframe import EnergyDataFrame
+from energy_pandas import EnergySeries, EnergyDataFrame
 from .reportdata import ReportData
-from .tabulardata import TabularData
-from .idfclass import *
 from .schedule import Schedule
-from .dataportal import *
 from .plot import *
-from .trnsys import *
-from .template import *
-from .umi_template import *
-from .cli import *
+from .eplus_interface import *
+from .idfclass import *
+from .dataportal import *
+from .umi_template import UmiTemplateLibrary
+from .utils import *
+from .cli import reduce, transition

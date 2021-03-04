@@ -45,7 +45,7 @@ Using WINE with ``archetypal convert`` command
 
 The IDF to BUI converter uses an executable installed with TRNSYS (which is Windows only). Users that have bought
 TRNSYS can copy the trnsidf.exe executable to their UNIX machine (MacOs or Linux) and invoke the `archetypal convert`
-command with the :option:`--trnsidf-exe` option.
+command with the :option:`--trnsidf_exe` option.
 
 Example:
 

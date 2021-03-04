@@ -5,16 +5,31 @@
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
 import os
-from collections import defaultdict
+import time
 
-import archetypal
 import click
-from archetypal import settings, cd, load_idf
+from path import Path
+
+from archetypal import (
+    UmiTemplateLibrary,
+    __version__,
+    config,
+    docstring_parameter,
+    log,
+    parallel_process,
+    settings,
+    timeit,
+)
+from archetypal.idfclass import IDF
+from archetypal.settings import ep_version
+
+from .eplus_interface.exceptions import EnergyPlusVersionError
+from .eplus_interface.version import EnergyPlusVersion, get_eplus_dirs
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
-class Config(object):
+class CliConfig(object):
     def __init__(self):
         self.data_folder = settings.data_folder
         self.logs_folder = settings.logs_folder
@@ -28,10 +43,10 @@ class Config(object):
         self.log_filename = settings.log_filename
         self.useful_idf_objects = settings.useful_idf_objects
         self.umitemplate = settings.umitemplate
-        self.trnsys_default_folder = settings.trnsys_default_folder
+        self.ep_version = settings.ep_version
 
 
-pass_config = click.make_pass_decorator(Config, ensure=True)
+pass_config = click.make_pass_decorator(CliConfig, ensure=True)
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
@@ -60,24 +75,27 @@ pass_config = click.make_pass_decorator(Config, ensure=True)
     default=settings.cache_folder,
 )
 @click.option(
+    "-c",
     "--use-cache",
     is_flag=True,
-    help="Use a local cache to save/retrieve many of "
-    "archetypal outputs such as EnergyPlus simulation results",
-    default=settings.use_cache,
+    default=False,
+    help="Use a local cache to save/retrieve DataPortal API calls for the same "
+    "requests.",
 )
 @click.option(
+    "-l",
     "--log-file",
+    "log_file",
     is_flag=True,
     help="save log output to a log file in logs_folder",
     default=settings.log_file,
 )
 @click.option(
-    "--log-console",
-    "--verbose",
-    "-v",
+    "--silent",
+    "-s",
+    "log_console",
     is_flag=True,
-    default=settings.log_console,
+    default=True,
     help="print log output to the console",
 )
 @click.option(
@@ -91,14 +109,21 @@ pass_config = click.make_pass_decorator(Config, ensure=True)
     "--log-filename", help="name of the log file", default=settings.log_filename
 )
 @click.option(
-    "--trnsys-default-folder",
-    type=click.Path(),
-    help="root folder of TRNSYS install",
-    default=settings.trnsys_default_folder,
+    "--ep_version",
+    type=click.STRING,
+    default=settings.ep_version,
+    help='the EnergyPlus version to use. eg. "{}"'.format(settings.ep_version),
+)
+@click.option(
+    "-d",
+    "--debug",
+    is_flag=True,
+    default=False,
+    help="Will break on any exception. Useful when debugging",
 )
 @pass_config
 def cli(
-    config,
+    cli_config,
     data_folder,
     logs_folder,
     imgs_folder,
@@ -109,306 +134,273 @@ def cli(
     log_level,
     log_name,
     log_filename,
-    trnsys_default_folder,
+    ep_version,
+    debug,
 ):
     """archetypal: Retrieve, construct, simulate, convert and analyse building
     simulation templates
 
-    Visit archetypal.readthedocs.io for the online documentation
+    Visit archetypal.readthedocs.io for the online documentation.
 
-    Args:
-        config:
-        data_folder:
-        logs_folder:
-        imgs_folder:
-        cache_folder:
-        use_cache:
-        log_file:
-        log_console:
-        log_level:
-        log_name:
-        log_filename:
-        trnsys_default_folder:
     """
-    config.data_folder = data_folder
-    config.logs_folder = logs_folder
-    config.imgs_folder = imgs_folder
-    config.cache_folder = cache_folder
-    config.use_cache = use_cache
-    config.log_file = log_file
-    config.log_console = log_console
-    config.log_level = log_level
-    config.log_name = log_name
-    config.log_filename = log_filename
-    config.trnsys_default_folder = trnsys_default_folder
-    archetypal.config(**config.__dict__)
+    cli_config.data_folder = data_folder
+    cli_config.logs_folder = logs_folder
+    cli_config.imgs_folder = imgs_folder
+    cli_config.cache_folder = cache_folder
+    cli_config.use_cache = use_cache
+    cli_config.log_file = log_file
+    cli_config.log_console = log_console
+    cli_config.log_level = log_level
+    cli_config.log_name = log_name
+    cli_config.log_filename = log_filename
+    cli_config.ep_version = ep_version
+    cli_config.debug = debug
+    # apply new config params
+    config(**cli_config.__dict__)
 
 
+@timeit
 @cli.command()
-@click.argument("idf-file", type=click.Path(exists=True))
-@click.argument(
-    "output-folder", type=click.Path(exists=True), required=False, default="."
-)
+@click.argument("idf", nargs=-1, required=True)
 @click.option(
-    "--return-idf",
-    "-i",
-    is_flag=True,
-    default=False,
-    help="Save modified IDF file to output_folder, and return path "
-    "to the file in the console",
-)
-@click.option(
-    "--return_t3d",
-    "-t",
-    is_flag=True,
-    default=False,
-    help="Return T3D file path in the console",
-)
-@click.option(
-    "--return_dck",
-    "-d",
-    is_flag=True,
-    default=False,
-    help="Generate dck file and save to output_folder, and return "
-    "path to the file in the console",
-)
-@click.option(
-    "--window-lib",
-    type=click.Path(),
-    default=None,
-    help="Path of the window library (from Berkeley Lab)",
-)
-@click.option(
-    "--trnsidf-exe",
-    type=click.Path(),
-    help="Path to trnsidf.exe",
-    default=os.path.join(
-        settings.trnsys_default_folder, r"Building\trnsIDF\trnsidf.exe"
-    ),
-)
-@click.option(
-    "--template",
-    type=click.Path(),
-    default=settings.path_template_d18,
-    help="Path to d18 template file",
-)
-@click.option(
-    "--log-clear-names",
-    is_flag=True,
-    default=False,
-    help='Do not print log of "clear_names" (equivalence between '
-    "old and new names) in the console",
-)
-@click.option(
-    "--window",
-    nargs=4,
-    type=float,
-    default=(2.2, 0.64, 0.8, 0.05),
-    help="Specify window properties <u_value> <shgc> <t_vis> "
-    "<tolerance>. Default = 2.2 0.64 0.8 0.05",
-)
-@click.option("--ordered", is_flag=True, help="sort idf object names")
-@click.option("--nonum", is_flag=True, default=False, help="Do not renumber surfaces")
-@click.option("--batchjob", "-N", is_flag=True, default=False, help="BatchJob Modus")
-@click.option(
-    "--geofloor",
-    type=float,
-    default=0.6,
-    help="Generates GEOSURF values for distributing; direct solar "
-    "radiation where `geo_floor` % is directed to the floor, "
-    "the rest; to walls/windows. Default = 0.6",
-)
-@click.option(
-    "--refarea",
-    is_flag=True,
-    default=False,
-    help="Upadtes floor reference area of airnodes",
-)
-@click.option(
-    "--volume", is_flag=True, default=False, help="Upadtes volume of airnodes"
-)
-@click.option(
-    "--capacitance", is_flag=True, default=False, help="Upadtes capacitance of airnodes"
-)
-def convert(
-    idf_file,
-    window_lib,
-    return_idf,
-    return_t3d,
-    return_dck,
-    output_folder,
-    trnsidf_exe,
-    template,
-    log_clear_names,
-    window,
-    ordered,
-    nonum,
-    batchjob,
-    geofloor,
-    refarea,
-    volume,
-    capacitance,
-):
-    """Convert regular IDF file (EnergyPlus) to TRNBuild file (TRNSYS) The
-    output folder path defaults to the working directory. Equivalent to '.'
-
-    Args:
-        idf_file:
-        window_lib:
-        return_idf:
-        return_t3d:
-        return_dck:
-        output_folder:
-        trnsidf_exe:
-        template:
-        log_clear_names:
-        window:
-        ordered:
-        nonum:
-        batchjob:
-        geofloor:
-        refarea:
-        volume:
-        capacitance:
-    """
-    u_value, shgc, t_vis, tolerance = window
-    window_kwds = {
-        "u_value": u_value,
-        "shgc": shgc,
-        "t_vis": t_vis,
-        "tolerance": tolerance,
-    }
-    with cd(output_folder):
-        paths = archetypal.convert_idf_to_trnbuild(
-            idf_file,
-            window_lib,
-            return_idf,
-            True,
-            return_t3d,
-            return_dck,
-            output_folder,
-            trnsidf_exe,
-            template,
-            log_clear_names=log_clear_names,
-            **window_kwds,
-            ordered=ordered,
-            nonum=nonum,
-            N=batchjob,
-            geo_floor=geofloor,
-            refarea=refarea,
-            volume=volume,
-            capacitance=capacitance
-        )
-    # Print path of output files in console
-    if paths:
-        click.echo("Here are the paths to the different output files: ")
-
-        for path in paths:
-            if "MODIFIED" in path:
-                click.echo("Path to the modified IDF file: {}".format(path))
-            elif "b18" in path:
-                click.echo("Path to the BUI file: {}".format(path))
-            elif "dck" in path:
-                click.echo("Path to the DCK file: {}".format(path))
-            else:
-                click.echo("Path to the T3D file: {}".format(path))
-
-
-@cli.command()
-@click.argument("idf", nargs=-1)
-@click.option(
-    "--name",
-    "-n",
-    type=click.STRING,
-    default="umitemplate",
-    help="The name of the output json file",
-)
-@click.option(
-    "--ep-version",
-    type=click.STRING,
-    help="specify the version of EnergyPlus to use, eg.: '8-9-0'",
-    default="8-9-0",
+    "-o",
+    "--output",
+    type=click.Path(dir_okay=True, writable=True),
+    default="myumitemplate.json",
 )
 @click.option(
     "--weather",
     "-w",
-    type=click.Path(exists=True),
-    help="path to the EPW weather file",
-    default=archetypal.get_eplus_dire()
+    help="EPW weather file path",
+    default=get_eplus_dirs(settings.ep_version)
     / "WeatherData"
     / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+    show_default=True,
 )
 @click.option(
-    "--parallel/--no-parallel",
-    "-p/-np",
-    is_flag=True,
-    default=True,
-    help="process each idf file on different cores",
+    "-p",
+    "--parallel",
+    "cores",
+    default=-1,
+    help="Specify number of cores to run in parallel",
 )
-def reduce(idf, name, ep_version, weather, parallel):
-    """Perform the model reduction and translate to an UMI template file.
+@click.option(
+    "-z",
+    "--all_zones",
+    is_flag=True,
+    default=False,
+    help="Include all zones in the " "output template",
+)
+@click.option(
+    "-v",
+    "--version",
+    "as_version",
+    default=settings.ep_version,
+    help="EnergyPlus version to upgrade to - e.g., '9-2-0'",
+)
+@click.pass_context
+def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
+    """Convert EnergyPlus models to an Umi Template Library by using the model
+    complexity reduction algorithm.
+
+    IDF can be a file path or a directory. In case of a directory, all *.idf
+    files will be matched in the directory and subdirectories (recursively). Mix &
+    match is ok (see example below).
+    OUTPUT is the output file
+    name (or path) to write to. Optional.
+
+    Example: % archetypal -csl reduce "." "elsewhere/model1.idf" -w "weather.epw"
+
+    """
+    output = Path(output)
+    name = output.stem
+    ext = output.ext if output.ext == ".json" else ".json"
+    dir_ = output.dirname()
+
+    file_paths = list(set_filepaths(idf))
+    file_list = "\n".join(
+        [f"{i}. " + str(file.name) for i, file in enumerate(file_paths)]
+    )
+    log(
+        f"executing {len(file_paths)} file(s):\n{file_list}",
+        verbose=True,
+    )
+    weather, *_ = set_filepaths([weather])
+    log(f"using the '{weather.basename()}' weather file\n", verbose=True)
+
+    # Call UmiTemplateLibrary constructor with list of IDFs
+    template = UmiTemplateLibrary.from_idf_files(
+        file_paths,
+        weather=weather,
+        name=name,
+        processors=cores,
+        keep_all_zones=all_zones,
+        as_version=as_version,
+        annual=True,
+    )
+    # Save json file
+    final_path: Path = dir_ / name + ext
+    template.save(path_or_buf=final_path)
+    log(
+        f"Successfully created template file at {final_path.abspath()}",
+        verbose=True,
+    )
+
+
+def validate_energyplusversion(ctx, param, value):
+    try:
+        return EnergyPlusVersion(value)
+    except EnergyPlusVersionError:
+        raise click.BadParameter("invalid energyplus version")
+
+
+def validate_paths(ctx, param, value):
+    try:
+        file_paths = set_filepaths(value)
+        file_list = "\n".join(
+            [f"{i}. " + str(file.name) for i, file in enumerate(file_paths)]
+        )
+        return file_paths, file_list
+    except FileNotFoundError:
+        raise click.BadParameter("no files were found.")
+
+
+@cli.command()
+@click.argument("idf", nargs=-1, required=True, callback=validate_paths)
+@click.option(
+    "-v",
+    "--version",
+    "to_version",
+    default=settings.ep_version,
+    help="EnergyPlus version to upgrade to - e.g., '9-2-0'",
+    callback=validate_energyplusversion,
+)
+@click.option(
+    "-p",
+    "--parallel",
+    "cores",
+    default=-1,
+    help="Specify number of cores to run in parallel",
+)
+@click.option(
+    "-y",
+    "yes",
+    is_flag=True,
+    help="Suppress confirmation prompt, when overwriting files.",
+)
+@docstring_parameter(arversion=__version__, ep_version=ep_version)
+def transition(idf, to_version, cores, yes):
+    """Upgrade an IDF file to a newer version.
+
+    IDF can be a file path or a directory. In case of a directory, all *.idf
+    files will be found in the directory and subdirectories (recursively). Mix &
+    match is ok (see example below).
+
+    Example: % archetypal -csl transition "." "elsewhere/model1.idf"
+
+    archetypal will look in the current working directory (".") and find any
+    *.idf files and also run the model located at "elsewhere/model1.idf".
+
+    Note: The latest version archetypal v{arversion} can upgrade to is
+    {ep_version}.
+
+    """
+    file_paths, file_list = idf
+    log(
+        f"executing {len(file_paths)} file(s):\n{file_list}",
+        verbose=True,
+    )
+    if not yes:
+        overwrite = click.confirm("Would you like to overwrite the file(s)?")
+    else:
+        overwrite = False
+    start_time = time.time()
+
+    to_version = to_version.dash
+    rundict = {
+        file: dict(
+            idfname=file,
+            as_version=to_version,
+            check_required=False,
+            check_length=False,
+            overwrite=overwrite,
+            prep_outputs=False,
+        )
+        for i, file in enumerate(file_paths)
+    }
+    results = parallel_process(
+        rundict,
+        IDF,
+        processors=cores,
+        show_progress=True,
+        position=0,
+        debug=False,
+    )
+
+    # Save results to file (overwriting if True)
+    file_list = []
+    for idf in results:
+        if isinstance(idf, IDF):
+            if overwrite:
+                file_list.append(idf.original_idfname)
+                idf.saveas(str(idf.original_idfname))
+            else:
+                full_path = (
+                    idf.original_idfname.dirname() / idf.original_idfname.stem
+                    + f"V{to_version}.idf"
+                )
+                file_list.append(full_path)
+                idf.saveas(full_path)
+    log(
+        f"Successfully transitioned to version '{to_version}' in "
+        f"{time.time() - start_time:,.2f} seconds for file(s):\n" + "\n".join(file_list)
+    )
+
+
+def set_filepaths(idf):
+    """Simplifies file-like paths, dir-like paths and Paths with wildcards. A
+    list of unique paths is returned. For directories, Path.walkfiles("*.idfs")
+    returns IDF files. For Paths with wildcards, glob(Path) is used to return
+    whatever the pattern defines.
 
     Args:
-        idf:
-        name:
-        weather:
-        parallel:
+        idf (list of (str or Path) or tuple of (str or Path)): A list of path-like
+            objects. Can contain wildcards.
+
+    Returns:
+        set of Path: The set of a list of paths
     """
-    if parallel:
-        # if parallel is True, run eplus in parallel
-        rundict = {
-            file: dict(
-                eplus_file=file,
-                weather_file=weather,
-                annual=True,
-                prep_outputs=True,
-                expandobjects=True,
-                verbose="v",
-                output_report="sql",
-                return_idf=False,
-                ep_version=ep_version,
-            )
-            for file in idf
-        }
-        res = archetypal.parallel_process(rundict, archetypal.run_eplus)
-        loaded_idf = {}
-        for key, sql in res.items():
-            loaded_idf[key] = {}
-            loaded_idf[key][0] = sql
-            loaded_idf[key][1] = load_idf(key)
-        res = loaded_idf
+    if not isinstance(idf, (list, tuple)):
+        raise ValueError("A list must be passed")
+    idf = tuple(Path(file_or_path).expand() for file_or_path in idf)  # make Paths
+    file_paths = ()  # Placeholder for tuple of paths
+    for file_or_path in idf:
+        if file_or_path.isfile():  # if a file, concatenate into file_paths
+            file_paths += tuple([file_or_path])
+        elif file_or_path.isdir():  # if a directory, walkdir (recursive) and get *.idf
+            file_paths += tuple(file_or_path.walkfiles("*.idf"))
+        else:
+            # has wildcard
+            excluded_dirs = [
+                settings.cache_folder,
+                settings.data_folder,
+                settings.imgs_folder,
+                settings.logs_folder,
+            ]
+            top = file_or_path.abspath().dirname()
+            for root, dirs, files in walkdirs(top, excluded_dirs):
+                pattern = file_or_path.basename()
+                file_paths += tuple(Path(root).files(pattern))
+
+    file_paths = set([f.relpath().expand() for f in file_paths])  # Only keep unique
+    # values
+    if file_paths:
+        return file_paths
     else:
-        # else, run sequentially
-        res = defaultdict(dict)
-        for fn in idf:
-            res[fn][0], res[fn][1] = archetypal.run_eplus(
-                fn,
-                weather,
-                ep_version=ep_version,
-                output_report="sql",
-                prep_outputs=True,
-                annual=True,
-                design_day=False,
-                verbose="v",
-                return_idf=True,
-            )
-    from archetypal import BuildingTemplate
+        raise FileNotFoundError
 
-    bts = []
-    for fn in res.values():
-        sql = next(
-            iter([value for key, value in fn.items() if isinstance(value, dict)])
-        )
-        idf = next(
-            iter(
-                [
-                    value
-                    for key, value in fn.items()
-                    if isinstance(value, archetypal.IDF)
-                ]
-            )
-        )
-        bts.append(BuildingTemplate.from_idf(idf, sql=sql, DataSource=idf.name))
 
-    template = archetypal.UmiTemplate(name=name, BuildingTemplates=bts)
-    print(template.to_json())
+def walkdirs(top, excluded):
+    for root, dirs, files in os.walk(top, topdown=True):
+        yield root, dirs, files
+        dirs[:] = [d for d in dirs if (Path(root) / d) not in excluded]

@@ -1,0 +1,78 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Python package
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+
+jobs:
+  build:
+    
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        python-version: [ 3.7, 3.8, 3.9 ]
+        os: [ macos-latest, ubuntu-latest, windows-latest ]
+        energyplus-version: [ 9.2.0 ]  # later, add 9.4.0
+        include:
+          - energyplus-version: 9.2.0
+            energyplus-sha: 921312fa1d
+            energyplus-install: 9-2-0
+          # later, add 9.4.0
+          # - energyplus-version: 9.4.0
+          #   energyplus-sha: 998c4b761e
+          #   energyplus-install: 9-4-0
+    steps:
+      - name: Display the OS
+        run: echo $OSTYPE
+        shell: bash
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install EnergyPlus
+        env:
+          ENERGYPLUS_VERSION: ${{ matrix.energyplus-version }}
+          ENERGYPLUS_SHA: ${{ matrix.energyplus-sha }}
+          ENERGYPLUS_INSTALL_VERSION: ${{ matrix.energyplus-install }}
+        run: bash ./install_energyplus.sh
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "::set-output name=dir::$(pip cache dir)"
+      - name: pip cache
+        id: cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install dependencies
+        if: success()
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install flake8 pytest-cov pytest-xdist[psutil]
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Lint with flake8
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Test with pytest
+        run: |
+          pytest -n auto --cov=archetypal --cov-report=xml tests/
+      - name: Upload coverage to Codecov
+        if: ${{ matrix.python-version == 3.7 }}
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: false
+          verbose: true

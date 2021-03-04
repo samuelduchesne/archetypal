@@ -7,33 +7,37 @@
 
 import collections
 
-from archetypal.template import MaterialBase, Unique
+import numpy as np
+from deprecation import deprecated
+from sigfig import round
+
+import archetypal
+from archetypal.template import MaterialBase
 
 
-class GasMaterial(MaterialBase, metaclass=Unique):
+class GasMaterial(MaterialBase):
     """Gas Materials
 
     .. image:: ../images/template/materials-gas.png
-
     """
 
-    def __init__(self, *args, Category="Gases", Type="Gas", **kwargs):
+    def __init__(self, Name, Category="Gases", Type="Air", **kwargs):
         """
         Args:
-            *args:
+            Name:
             Category:
             Type:
             **kwargs:
         """
-        super(GasMaterial, self).__init__(*args, Category=Category, **kwargs)
+        super(GasMaterial, self).__init__(Name, Category=Category, **kwargs)
         self.Type = Type
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.Name))
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
         if not isinstance(other, GasMaterial):
-            return False
+            return NotImplemented
         else:
             return all(
                 [
@@ -44,7 +48,9 @@ class GasMaterial(MaterialBase, metaclass=Unique):
                     self.Density == other.Density,
                     self.EmbodiedCarbon == other.EmbodiedCarbon,
                     self.EmbodiedEnergy == other.EmbodiedEnergy,
-                    self.SubstitutionRatePattern == other.SubstitutionRatePattern,
+                    np.array_equal(
+                        self.SubstitutionRatePattern, other.SubstitutionRatePattern
+                    ),
                     self.SubstitutionTimestep == other.SubstitutionTimestep,
                     self.TransportCarbon == other.TransportCarbon,
                     self.TransportDistance == other.TransportDistance,
@@ -53,7 +59,23 @@ class GasMaterial(MaterialBase, metaclass=Unique):
             )
 
     @classmethod
+    @deprecated(
+        deprecated_in="1.3.1",
+        removed_in="1.5",
+        current_version=archetypal.__version__,
+        details="Use from_dict function instead",
+    )
     def from_json(cls, *args, **kwargs):
+
+        """
+        Args:
+            *args:
+            **kwargs:
+        """
+        return cls.from_dict(*args, **kwargs)
+
+    @classmethod
+    def from_dict(cls, *args, **kwargs):
         """
         Args:
             *args:
@@ -67,12 +89,14 @@ class GasMaterial(MaterialBase, metaclass=Unique):
 
     def to_json(self):
         """Convert class properties to dict"""
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
         data_dict["$id"] = str(self.id)
         data_dict["Category"] = self.Category
         data_dict["Type"] = self.Type
-        data_dict["Conductivity"] = self.Conductivity
+        data_dict["Conductivity"] = round(self.Conductivity, sigfigs=2)
         data_dict["Cost"] = self.Cost
         data_dict["Density"] = self.Density
         data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon
@@ -87,3 +111,24 @@ class GasMaterial(MaterialBase, metaclass=Unique):
         data_dict["Name"] = self.Name
 
         return data_dict
+
+    def mapping(self):
+        self.validate()
+
+        return dict(
+            Category=self.Category,
+            Type=self.Type,
+            Conductivity=self.Conductivity,
+            Cost=self.Cost,
+            Density=self.Density,
+            EmbodiedCarbon=self.EmbodiedCarbon,
+            EmbodiedEnergy=self.EmbodiedEnergy,
+            SubstitutionRatePattern=self.SubstitutionRatePattern,
+            SubstitutionTimestep=self.SubstitutionTimestep,
+            TransportCarbon=self.TransportCarbon,
+            TransportDistance=self.TransportDistance,
+            TransportEnergy=self.TransportEnergy,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+        )

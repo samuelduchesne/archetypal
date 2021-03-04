@@ -35,16 +35,21 @@ independently.
 
    Installation <install.rst>
    For MacOS/Linux users <unix_users.rst>
+   Caching <caching.rst>
 
 
 .. toctree::
    :maxdepth: 2
    :caption: User Guide
+   :numbered:
 
-   Getting Started <first.rst>
-   Convert IDF to UMI <converter_umi.rst>
-   Convert IDF to BUI <converter_bui.rst>
-   Tutorials <tutorials.rst>
+   Converting IDF models <converting.rst>
+   Reading and Running IDF files <reading_idf.rst>
+   Parallel Processing <tutorials/parallel_process.rst>
+   Managing Schedules <tutorials/schedules.rst>
+   Creating Umi template <creating_umi_template.rst>
+   Reading and Editing UMI Template Files <tutorials/edit_umitemplate.rst>
+   Troubleshooting <troubleshooting.rst>
 
 .. toctree::
    :maxdepth: 1

@@ -1,28 +1,26 @@
-from click.testing import CliRunner
+import os
 
-from archetypal import get_eplus_dire
-from archetypal.cli import cli
+import click
+import pytest
+from click.testing import CliRunner
 from path import Path
+
+from archetypal import log, settings
+from archetypal.cli import cli
 
 
 class TestCli:
     """Defines tests for usage of the archetypal Command Line Interface"""
 
-    def test_reduce(self, config):
+    def test_reduce(self):
         """Tests the 'reduce' method"""
         runner = CliRunner()
-        examples = get_eplus_dire() / "ExampleFiles"
-        necb = Path("tests/input_data/necb")
-        test_file = examples / "2ZoneDataCenterHVAC_wEconomizer.idf"
-        test_file_list = [
-            "tests/input_data/umi_samples/B_Off_0.idf",
-            "tests/input_data/umi_samples/B_Res_0_Masonry.idf",
-        ]
-        test_files = necb.glob("*Retail*.idf")
+        base = Path("tests/input_data/umi_samples")
+        outname = "tests/.temp/warehouse.json"
         result = runner.invoke(
             cli,
             [
-                "--use-cache",
+                "-csd",
                 "--cache-folder",
                 "tests/.temp/cache",
                 "--data-folder",
@@ -31,16 +29,47 @@ class TestCli:
                 "tests/.temp/images",
                 "--logs-folder",
                 "tests/.temp/logs",
-                "--log-console",
+                "--ep_version",
+                settings.ep_version,
                 "reduce",
-                "-n",
-                "Retail",
                 "-w",
-                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
-                "-p",
-                *test_file_list,
+                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_*.epw",
+                base / "*Res*.idf",
+                "-o",
+                outname,
             ],
             catch_exceptions=False,
         )
-        print(result.stdout)
+        assert result.exit_code == 0
+        assert Path(outname).exists()
+
+    @pytest.mark.skipif(
+        os.environ.get("CI", "False").lower() == "true",
+        reason="Skipping this test on CI environment.",
+    )
+    def test_transition_dir_file_mixed(self):
+        """Tests the transition method for the CLI using a mixture of a directory
+        (Path.isdir()) and a file Path.isfile()"""
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "--cache-folder",
+                "tests/.temp/cache",
+                "--data-folder",
+                "tests/.temp/data",
+                "--imgs-folder",
+                "tests/.temp/images",
+                "--logs-folder",
+                "tests/.temp/logs",
+                "transition",
+                "-v",
+                "9.2",
+                "tests/input_data/problematic/ASHRAE90.1_ApartmentHighRise_STD2016_Buffalo.idf",
+                "tests/input_data/problematic/*.idf",  # Path with wildcard
+                "tests/input_data/problematic",  # Just a path
+            ],
+            catch_exceptions=False,
+        )
+        log(result.stdout)
         assert result.exit_code == 0

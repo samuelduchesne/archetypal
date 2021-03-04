@@ -1,58 +1,53 @@
-dist: xenial
 language: python
-os: linux
-env: ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=8.9.0 ENERGYPLUS_SHA=40101eaafd ENERGYPLUS_INSTALL_VERSION=8-9-0
-
+env:
+  global:
+  - ARCHETYPAL_INTEGRATION=True ENERGYPLUS_VERSION=9.2.0 ENERGYPLUS_SHA=921312fa1d
+    ENERGYPLUS_INSTALL_VERSION=9-2-0 MINICONDA_VERSION=latest
 addons:
   apt:
     packages:
-      - wine
-      - libgfortran3
-
+    - wine
+    - libgfortran3
+jobs:
+  include:
+    - name: Python 3.8 on Xenial Linux
+      python: 3.8           # this works for Linux but is ignored on macOS or Windows
+      script: python -m pytest "tests/" -p no:warnings --cov="archetypal"
+      after_success:
+        - coverage report -m
+        - coveralls
+    - name: Python 3.8 on macOS
+      os: osx
+      osx_image: xcode11.2
+      language: objective-c
+      script: python -m pytest "tests/" -p no:warnings --cov="archetypal"
+    - name: "Python 3.8 on Windows"
+      os: windows           # Windows 10.0.17134 N/A Build 17134
+      language: shell       # 'language: python' is an error on Travis CI Windows
+      script: python -m pytest "tests/" -p no:warnings --cov="archetypal"
+    - stage: deploy
+      script: echo "Deploying to PyPi and GitHub releases ..."
+      deploy:
+      - provider: pypi
+        user: __token__
+        password:
+          secure: cVK75OF2LPDNdPuocxRmuWu4XUgdd81kNo5u/zah7XQf0oKW3TqgVSRhp06XYdQlnCSJZMfe8VJuHoBoCETTDdXFYZMIe6OBlSZeg1xclOtg+Wf4s4zkQ7gMSdzlUKJn9zkINUo7NwRn8Q0GGZCvldJvODzR0xDTcmbeVpeG3WHV8GNosYD7xWNscGBYrF3xVB0euLOHkPyJuFlxzpEhW2XFE7bdMk1/4gwOtfUcCgivpok4dWpgITVEdxRhcBI+ea9NDgpKlJfYHdRX9bBTSFoy8qLEQyvGeNG5cFXW3p+XwsPOKVPnEZv1e2nSYk3Od+sNa+45jte5PNkI43FcIdGaZJadUGck5SUQB9dCWFyLHMQgCtJg4fFLfWBHW5xrfxgOWMK5nqn93qbqOJbLrlw52eNimepfb0FksUpgdkLErkSWGvM5vOSK20Vb4nySjht6PJO88VSUixBd7cdGsioz8X0a69WfVVQhIdYlrjO2N0EGXXi3wh4QTp5VywZue3/cVvC5ainjFq8wuLiBg+LLCObwjj++Qp0OKr9Iw00942HpWhWKEZfpuepMowet8KVCE5SYh5lpKXtZv3+YNrkVy6jfzdZiw4QvMs3VAuQxCdNvILI7h/ktXntwdMT2CIUTKbQrX2uvuSuiwUgo6yRWX+5TkmRVCULpz4qE0lY=
+        on:
+          distributions: sdist bdist_wheel
+          repo: samuelduchesne/archetypal
+          branch: master
+          tags: true
 before_install:
-  # install EnergyPlus
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then EXT=dmg; PLATFORM=Darwin; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then EXT=sh; PLATFORM=Linux; fi
-  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then EXT=exe; PLATFORM=Windows; fi
-  - ENERGYPLUS_DOWNLOAD_BASE_URL=https://github.com/NREL/EnergyPlus/releases/download/v$ENERGYPLUS_VERSION
-  - ENERGYPLUS_DOWNLOAD_FILENAME=EnergyPlus-$ENERGYPLUS_VERSION-$ENERGYPLUS_SHA-$PLATFORM-x86_64
-  - ENERGYPLUS_DOWNLOAD_URL=$ENERGYPLUS_DOWNLOAD_BASE_URL/$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ATTCH=97/8230; fi
-  - EXTRAS_DOWNLOAD_URL=http://energyplus.helpserve.com/Knowledgebase/Article/GetAttachment/$ATTCH
-  - curl -SLO $ENERGYPLUS_DOWNLOAD_URL
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-    curl -SLO $EXTRAS_DOWNLOAD_URL; fi
-  
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-    sudo hdiutil attach $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-    sudo installer -pkg /Volumes/$ENERGYPLUS_DOWNLOAD_FILENAME/$ENERGYPLUS_DOWNLOAD_FILENAME.pkg -target /; fi
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-    sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-    echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-    sudo tar zxvf 8230 -C /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
-    sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/PreProcess/IDFVersionUpdater;
-    sudo chmod -R a+rwx /usr/local/EnergyPlus-$ENERGYPLUS_INSTALL_VERSION/ExampleFiles; fi
-  - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-    sudo chmod +x $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT;
-    echo "y\r" | sudo ./$ENERGYPLUS_DOWNLOAD_FILENAME.$EXT; fi
-  
-  - sudo rm $ENERGYPLUS_DOWNLOAD_FILENAME.$EXT
-  - sudo rm 8230
-  
-  # Install python
-  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - pip install .[dev]
-
+- source install_energyplus.sh
+- wget https://raw.githubusercontent.com/trichter/conda4travis/latest/conda4travis.sh -O conda4travis.sh
+- source conda4travis.sh
+- conda config --set always_yes yes --set changeps1 no
+- conda update -q conda
+- conda info -a
+- conda env update -q -n test-env python=$TRAVIS_PYTHON_VERSION -f environment.yml
+- conda activate test-env
+- python --version
 install:
-  - python setup.py install
-  - conda list
-
-script:
-  - pytest --cov=archetypal --verbose tests/
-
-after_success:
-  - coverage report -m
-  - coveralls
+# - pip install --upgrade pip
+- pip install --upgrade setuptools
+- pip install .[dev]

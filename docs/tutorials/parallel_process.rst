@@ -1,39 +1,70 @@
 Running multiple files
 ======================
 
-.. code-block::
+Running multiple IDF files is easily achieved by using the :meth:`~archetypal.utils.parallel_process` method.
+
+.. hint::
+
+    The :meth:`~archetypal.utils.parallel_process` method works with any method. You can use it to parallelize
+    other functions in your script.
+
+To create a parallel run, first import the usual package methods and configure `archetypal` to use caching and to
+show logs in the console.
+
+.. code-block:: python
 
     >>> from path import Path
-    >>> from archetypal import load_idf, config, run_eplus, settings
-    >>> from archetypal import parallel_process
+    >>> from archetypal import IDF, config, settings, parallel_process
+    >>> import pandas as pd
     >>> config(use_cache=True, log_console=True)
 
-.. code-block::
+Then, use
 
-    >>> necb_basedir = Path("tests/input_data/trnsys")
-    >>> files = necb_basedir.glob("Ref*.idf")
+.. code-block:: python
+
+    >>> from archetypal import IDF, config, settings
+    >>> from archetypal import parallel_process
+    >>> import pandas as pd
+    >>> config(use_cache=True, log_console=True)
+
+Then, use `glob` to make a list of NECB idf files in the input_data directory (relative to this package). The weather
+file path is also created:
+
+.. code-block:: python
+
+    >>> necb_basedir = Path("tests/input_data/necb")
+    >>> files = necb_basedir.glob("*.idf")
     >>> epw = Path("data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw")
 
-.. code-block::
+For good measure, load the files in a DataFrame, which we will use to create the rundict in the next step.
+
+.. code-block:: python
 
     >>> idfs = pd.DataFrame({"file": files, "name": [file.basename() for file in files]})
 
-.. code-block::
+The rundict, is the list of tasks we wish to do in parallel. This dictionary is passed to :meth:`~archetypal.idfclass
+.parallel_process`. Here, we want to execute :meth:`~archetypal.idfclass.run_eplus` with the following parameters:
+
+.. code-block:: python
 
     >>> rundict = {
-            k: dict(
-                eplus_file=str(file),
-                prep_outputs=True,
-                weather_file=str(epw),
-                expandobjects=True,
-                verbose="v",
-                design_day=True,
-                output_report="sql_file",
-            )
-            for k, file in idfs.file.to_dict().items()
-        }
+    >>>     k: dict(
+    >>>         idfname=str(file),
+    >>>         prep_outputs=True,
+    >>>         weather_file=str(epw),
+    >>>         expandobjects=True,
+    >>>         verbose=True,
+    >>>         design_day=True,
+    >>>         simulate=True,
+    >>>     )
+    >>>     for k, file in idfs.file.to_dict().items()
+    >>> }
 
-.. code-block::
+Finally, execute :meth:`~archetypal.utils.parallel_process`. The resulting sql_file paths, which we defined as the
+type of output_report attribute for :meth:`~archetypal.idfclass.run_eplus` is returned as a dictionary with the same
+keys as the index of the DataFrame.
+
+.. code-block:: python
 
     >>> sql_files =  parallel_process(rundict, run_eplus, use_kwargs=True, processors=-1)
     >>> sql_files

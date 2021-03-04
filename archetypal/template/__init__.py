@@ -17,5 +17,6 @@ from .conditioning import *
 from .load import *
 from .ventilation import *
 from .dhw import *
-from .zone import *
+from .zone_construction_set import *
+from .zonedefinition import *
 from .building_template import *

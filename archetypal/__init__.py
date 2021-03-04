@@ -6,16 +6,22 @@
 ################################################################################
 
 # Version of the package
-from setuptools_scm import get_version
-__version__ = get_version()
+from pkg_resources import get_distribution, DistributionNotFound
 
-# warn if a newer version of archetypal is available
-from outdated import warn_if_outdated
+try:
+    __version__ = get_distribution("archetypal").version
+except DistributionNotFound:
+    # package is not installed
+    pass
+else:
+    # warn if a newer version of archetypal is available
+    from outdated import warn_if_outdated
+    from .eplus_interface.version import warn_if_not_compatible
+finally:
+    # warn if energyplus not installed or incompatible
+    from .eplus_interface.version import warn_if_not_compatible
 
-from .eplus_interface.version import warn_if_not_compatible
-
-warn_if_outdated("archetypal", __version__)
-warn_if_not_compatible()
+    warn_if_not_compatible()
 
 # don't display futurewarnings
 

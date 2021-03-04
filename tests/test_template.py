@@ -63,7 +63,7 @@ def other_idf(config):
     yield idf
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def other_idf_object(config):
     """Another IDF object (same as other_idf). Yields just the idf object
 
@@ -75,8 +75,7 @@ def other_idf_object(config):
     idf = IDF(file, epw=w)
     if idf.sim_info is None:
         idf.simulate()
-    else:
-        yield idf
+    yield idf
 
 
 @pytest.fixture(scope="module")
@@ -91,8 +90,7 @@ def other_idf_object_copy(config):
     idf = IDF(file, epw=w)
     if idf.sim_info is None:
         idf.simulate()
-    else:
-        yield idf
+    yield idf
 
 
 @pytest.fixture(scope="module")
@@ -1473,7 +1471,9 @@ class TestZoneLoad:
         )
         idf = IDF.from_example_files(
             "5ZoneAirCooled_AirBoundaries_Daylighting.idf", epw=w
-        ).simulate()
+        )
+        if idf.sim_info is None:
+            idf.simulate()
         yield idf
 
     def test_zoneLoad_init(self, config, idf):

@@ -321,25 +321,34 @@ class TestMeters:
 
 
 class TestThreads:
-    def test_runslab(self, config):
-        file = get_eplus_dirs() / "ExampleFiles" / "5ZoneAirCooledWithSlab.idf"
+
+    @pytest.mark.xfail
+    def test_runslab(self, config, tmp_path):
+        """Test the slab preprocessors. Makes a temp file so that permissions are ok."""
+        d = tmp_path / "sub"
+        d.mkdir()
+        p = d / "5ZoneAirCooledWithSlab.idf"
         epw = (
             get_eplus_dirs()
             / "WeatherData"
             / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
         )
-        idf = IDF(file, epw, annual=False)
+        slab_idf = get_eplus_dirs() / "ExampleFiles" / "5ZoneAirCooledWithSlab.idf"
+        with open(slab_idf, "r") as f:
+            p.write_text(f.read())
+        idf = IDF(p, epw=epw, annual=False, design_day=True)
 
         assert idf.simulate()
 
     @pytest.mark.skip("To long to run for tests")
     def test_runbasement(self, config):
-        file = get_eplus_dirs() / "ExampleFiles" / "LgOffVAVusingBasement.idf"
         epw = (
             get_eplus_dirs()
             / "WeatherData"
             / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
         )
-        idf = IDF(file, epw, annual=False)
+        idf = IDF.from_example_files(
+            "LgOffVAVusingBasement.idf", epw=epw, annual=False, design_day=True
+        )
 
         assert idf.simulate()

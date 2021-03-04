@@ -22,6 +22,7 @@ def schedules_in_necb_specific(config):
     yield s
 
 
+@pytest.mark.xfail
 def test_plot(schedules_in_necb_specific):
     schedules_in_necb_specific.plot(
         slice=("2018/01/02", "2018/01/03"), drawstyle="steps-post"

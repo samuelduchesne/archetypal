@@ -12,7 +12,7 @@ try:
     __version__ = get_distribution("archetypal").version
 except DistributionNotFound:
     # package is not installed
-    pass
+    __version__ = "0.0.0"  # should happen only if package is copied, not installed.
 else:
     # warn if a newer version of archetypal is available
     from outdated import warn_if_outdated

@@ -130,7 +130,7 @@ class EnergyPlusExe:
                 if isinstance(value, bool):
                     cmd.append(f"-{key}") if value else None
                 else:
-                    cmd.extend([f"-{key}", value])
+                    cmd.extend([f"-{key}", value]) if value is not None else None
         cmd.append(self.idfname)
         return cmd
 

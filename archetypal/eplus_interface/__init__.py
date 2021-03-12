@@ -8,6 +8,7 @@ __all__ = [
     "EnergyPlusVersionError",
     "EnergyPlusWeatherError",
     "BasementThread",
+    "EnergyPlusExe",
     "EnergyPlusThread",
     "ExpandObjectsThread",
     "SlabThread",
@@ -16,7 +17,7 @@ __all__ = [
 ]
 
 from .basement import BasementThread
-from .energy_plus import EnergyPlusProgram, EnergyPlusThread
+from .energy_plus import EnergyPlusProgram, EnergyPlusThread, EnergyPlusExe
 from .exceptions import (
     EnergyPlusProcessError,
     EnergyPlusVersionError,

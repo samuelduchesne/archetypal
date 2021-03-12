@@ -1426,12 +1426,12 @@ class IDF(geomIDF):
         the updated file. The run is multiprocessing_safe.
 
         Hint:
-            If attempting to upgrade an earlier version of EnergyPlus ( pre-v7.2.0),
+            If attempting to upgrade an earlier version of EnergyPlus (pre-v7.2.0),
             specific binaries need to be downloaded and copied to the
             EnergyPlus*/PreProcess/IDFVersionUpdater folder. More info at
             `Converting older version files
             <http://energyplus.helpserve.com/Knowledgebase/List/Index/46
-            /converting-older-version-files>`_ .
+            /converting-older-version-files>`_.
 
         Args:
             to_version (str, optional): EnergyPlus version in the form "X-X-X".

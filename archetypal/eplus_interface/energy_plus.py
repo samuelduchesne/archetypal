@@ -56,33 +56,28 @@ class EnergyPlusExe:
     ):
         """
         Args:
+            idfname (str):
+            epw (str): Weather file path (default: in.epw in current directory))
+            output-directory (str): Output directory path (default: current directory)
+            ep_version (archetypal.EnergyPlusVersion): The version of energyplus
+                executable.
             annual (bool): Force annual simulation. (default: False)
-            convert (bool): Output IDF->epJSON or epJSON->IDF, dependent on
-            input
+            convert (bool): Output IDF->epJSON or epJSON->IDF, dependent on input
                 file type. (default: False)
-            output-directory (str): Output directory path (default: current
-            directory)
-            ep_version (archetypal.EnergyPlusVersion): The version of
-            energyplus executable.
-            design-day (bool): Force design-day-only simulation. (default:
-            False)
+            design_day (bool): Force design-day-only simulation. (default: False)
             help (bool): Display help information
             idd (str) :Input data dictionary path (default: Energy+.idd in
-            executable directory)
+                executable directory)
             epmacro (bool): Run EPMacro prior to simulation. (default: True)
-            output-prefix (str): Prefix for output file names (default: eplus)
+            output_prefix (str): Prefix for output file names (default: eplus)
             readvars (bool): Run ReadVarsESO after simulation. (default: True)
-            output-suffix (str): Suffix style for output file names (
-            default: L)
-                -L: Legacy (e.g., eplustbl.csv)
-                -C: Capital (e.g., eplusTable.csv)
-                -D: Dash (e.g., eplus-table.csv)
+            output_suffix (str): Suffix style for output file names (
+                default: L)
+                    -L: Legacy (e.g., eplustbl.csv)
+                    -C: Capital (e.g., eplusTable.csv)
+                    -D: Dash (e.g., eplus-table.csv)
             version (bool): Display version information (default: False)
-            epw (str): Weather file path (default: in.epw in current
-            directory))
-            expandobjects (bool): Run ExpandObjects prior to simulation. (
-            default:
-                True)
+            expandobjects (bool): Run ExpandObjects prior to simulation. (default: True)
         """
         self.a = annual
         self.c = convert
@@ -130,7 +125,7 @@ class EnergyPlusExe:
                 if isinstance(value, bool):
                     cmd.append(f"-{key}") if value else None
                 else:
-                    cmd.extend([f"-{key}", value])
+                    cmd.extend([f"-{key}", value]) if value is not None else None
         cmd.append(self.idfname)
         return cmd
 

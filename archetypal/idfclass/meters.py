@@ -3,11 +3,12 @@
 import inspect
 
 import pandas as pd
+from energy_pandas import EnergySeries
 from geomeppy.patches import EpBunch
 from tabulate import tabulate
 
-from archetypal import EnergySeries, ReportData
 from archetypal.idfclass.extensions import bunch2db
+from archetypal.reportdata import ReportData
 
 
 class Meter:

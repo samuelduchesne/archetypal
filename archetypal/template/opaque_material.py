@@ -10,8 +10,8 @@ import collections
 import numpy as np
 from sigfig import round
 
-from archetypal import log
 from archetypal.template import UmiBase, UniqueName
+from archetypal.utils import log
 
 
 class OpaqueMaterial(UmiBase):

@@ -8,7 +8,7 @@ import numpy as np
 from pandas import DataFrame, read_sql_query, to_numeric
 from path import Path
 
-from archetypal import log
+from archetypal.utils import log
 
 
 class ReportData(DataFrame):

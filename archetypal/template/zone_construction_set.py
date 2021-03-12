@@ -3,8 +3,9 @@ import logging as lg
 
 from deprecation import deprecated
 
-from archetypal import __version__, log, reduce, timeit
+from archetypal import __version__
 from archetypal.template import OpaqueConstruction, UmiBase, UniqueName
+from archetypal.utils import log, reduce, timeit
 
 
 class ZoneConstructionSet(UmiBase):

@@ -9,11 +9,12 @@ from deprecation import deprecated
 from eppy.bunch_subclass import EpBunch
 
 import archetypal
-from archetypal import calc_simple_glazing, log, timeit
+from archetypal.simple_glazing import calc_simple_glazing
 from archetypal.template import MaterialLayer, UmiSchedule, UniqueName
 from archetypal.template.gas_material import GasMaterial
 from archetypal.template.glazing_material import GlazingMaterial
 from archetypal.template.umi_base import UmiBase
+from archetypal.utils import log, timeit
 
 
 class WindowType(Enum):

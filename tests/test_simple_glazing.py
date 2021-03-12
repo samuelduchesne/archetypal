@@ -1,5 +1,3 @@
-import warnings
-
 import pytest
 
 from archetypal.simple_glazing import calc_simple_glazing

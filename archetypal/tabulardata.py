@@ -4,7 +4,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from archetypal import log
+from archetypal.utils import log
 
 
 class TabularData(pd.DataFrame):

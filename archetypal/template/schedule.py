@@ -14,8 +14,9 @@ from deprecation import deprecated
 from eppy.bunch_subclass import EpBunch
 
 import archetypal
-from archetypal import Schedule, log
+from archetypal.schedule import Schedule
 from archetypal.template import UmiBase, UniqueName
+from archetypal.utils import log
 
 
 class UmiSchedule(Schedule, UmiBase):

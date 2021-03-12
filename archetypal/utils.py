@@ -403,7 +403,7 @@ def layer_composition(row):
 
 
 def schedule_composition(row):
-    """Takes in a series with $id and \*_ScheduleDay_Name values and return an
+    """Takes in a series with $id and *_ScheduleDay_Name values and return an
     array of dict of the form {'$ref': ref}
 
     Args:

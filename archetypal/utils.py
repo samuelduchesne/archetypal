@@ -155,7 +155,7 @@ def log(
         # convert message to ascii for console display so it doesn't break
         # windows terminals
         message = (
-            unicodedata.normalize("NFKD", make_str(message))
+            unicodedata.normalize("NFKD", str(message))
             .encode("ascii", errors="replace")
             .decode()
         )
@@ -238,23 +238,6 @@ def close_logger(logger=None, level=None, name=None, filename=None, log_dir=None
     for handler in handlers:
         handler.close()
         logger.removeHandler(handler)
-
-
-def make_str(value):
-    """Convert a passed-in value to unicode if Python 2, or string if Python 3.
-
-    Args:
-        value (any): the value to convert to unicode/string
-
-    Returns:
-        unicode or string
-    """
-    try:
-        # for python 2.x compatibility, use unicode
-        return np.unicode(value)
-    except NameError:
-        # python 3.x has no unicode type, so if error, use str type
-        return str(value)
 
 
 def load_umi_template_objects(filename):

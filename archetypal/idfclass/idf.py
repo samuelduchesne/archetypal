@@ -22,6 +22,7 @@ from typing import Any, Optional, Union
 
 import eppy
 import pandas as pd
+from energy_pandas import EnergySeries
 from eppy.bunch_subclass import BadEPFieldError
 from eppy.easyopen import getiddfile
 from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata
@@ -34,8 +35,6 @@ from path import Path
 from tabulate import tabulate
 from tqdm import tqdm
 
-from archetypal import ReportData, log, settings
-from archetypal import EnergySeries
 from archetypal.eplus_interface.basement import BasementThread
 from archetypal.eplus_interface.energy_plus import EnergyPlusThread
 from archetypal.eplus_interface.exceptions import (
@@ -52,6 +51,8 @@ from archetypal.idfclass.outputs import Outputs
 from archetypal.idfclass.reports import get_report
 from archetypal.idfclass.util import get_idf_version, hash_model
 from archetypal.idfclass.variables import Variables
+from archetypal.reportdata import ReportData
+from archetypal.utils import log, settings
 
 
 class IDF(geomIDF):

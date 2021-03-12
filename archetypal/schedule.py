@@ -14,10 +14,10 @@ from itertools import groupby
 
 import numpy as np
 import pandas as pd
+from energy_pandas import EnergySeries
 from eppy.bunch_subclass import EpBunch
 from numpy import ndarray
 
-from archetypal import EnergySeries
 from archetypal.utils import log
 
 
@@ -124,7 +124,7 @@ class Schedule(object):
             **kwargs:
         """
         if not idf:
-            from archetypal import IDF
+            from archetypal.idfclass.idf import IDF
 
             idf = IDF(prep_outputs=False)
         # Add the schedule to the existing idf

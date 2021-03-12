@@ -18,7 +18,7 @@ from eppy.bunch_subclass import BadEPFieldError
 from geomeppy.geom.polygons import Polygon3D
 from sigfig import round
 
-from archetypal import __version__, log, settings
+from archetypal import __version__
 from archetypal.template import (
     DomesticHotWaterSetting,
     OpaqueConstruction,
@@ -30,6 +30,7 @@ from archetypal.template import (
     ZoneConstructionSet,
     ZoneLoad,
 )
+from archetypal.utils import log, settings
 
 
 class InternalMass(object):

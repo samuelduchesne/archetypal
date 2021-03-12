@@ -1,9 +1,9 @@
 """EnergyPlus variables module."""
 
 import pandas as pd
+from energy_pandas import EnergyDataFrame
 from geomeppy.patches import EpBunch
 
-from archetypal import EnergyDataFrame
 from archetypal.idfclass.extensions import bunch2db
 from archetypal.reportdata import ReportData
 

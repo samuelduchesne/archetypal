@@ -11,15 +11,14 @@ import math
 import sqlite3
 from enum import Enum
 
+import numpy as np
 import pandas as pd
 from deprecation import deprecated
 from sigfig import round
 
-import archetypal
-from archetypal import log, settings, timeit
+from archetypal import __version__, settings
 from archetypal.template import UmiBase, UmiSchedule, UniqueName
-from archetypal.utils import reduce
-import numpy as np
+from archetypal.utils import log, reduce, timeit
 
 
 class DimmingTypes(Enum):
@@ -186,7 +185,7 @@ class ZoneLoad(UmiBase):
     @deprecated(
         deprecated_in="1.3.1",
         removed_in="1.5",
-        current_version=archetypal.__version__,
+        current_version=__version__,
         details="Use from_dict function instead",
     )
     def from_json(cls, *args, **kwargs):

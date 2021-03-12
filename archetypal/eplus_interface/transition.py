@@ -1,5 +1,6 @@
 """Transition module."""
 
+import logging as lg
 import os
 import platform
 import re
@@ -9,7 +10,6 @@ import time
 from io import StringIO
 from subprocess import CalledProcessError
 from threading import Thread
-import logging as lg
 
 from eppy.runner.run_functions import paths_from_version
 from path import Path

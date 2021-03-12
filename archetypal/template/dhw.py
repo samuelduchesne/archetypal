@@ -13,8 +13,9 @@ from deprecation import deprecated
 from sigfig import round
 
 import archetypal
-from archetypal import log, reduce, settings, timeit
+from archetypal import settings
 from archetypal.template import UmiBase, UmiSchedule, UniqueName
+from archetypal.utils import log, reduce, timeit
 
 
 class DomesticHotWaterSetting(UmiBase):

@@ -19,7 +19,8 @@ import pandas as pd
 import pycountry as pycountry
 import requests
 
-from archetypal import log, settings
+from archetypal import settings
+from archetypal.utils import log
 
 # scipy and sklearn are optional dependencies for faster nearest node search
 try:

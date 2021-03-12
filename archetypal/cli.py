@@ -10,18 +10,11 @@ import time
 import click
 from path import Path
 
-from archetypal import (
-    UmiTemplateLibrary,
-    __version__,
-    config,
-    docstring_parameter,
-    log,
-    parallel_process,
-    settings,
-    timeit,
-)
+from archetypal import __version__, settings
 from archetypal.idfclass import IDF
 from archetypal.settings import ep_version
+from archetypal.umi_template import UmiTemplateLibrary
+from archetypal.utils import config, docstring_parameter, log, parallel_process, timeit
 
 from .eplus_interface.exceptions import EnergyPlusVersionError
 from .eplus_interface.version import EnergyPlusVersion, get_eplus_dirs

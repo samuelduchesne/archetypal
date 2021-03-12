@@ -9,8 +9,8 @@ import collections
 
 from sigfig import round
 
-from archetypal import log
 from archetypal.template import MaterialBase, UmiBase, UniqueName
+from archetypal.utils import log
 
 
 class GlazingMaterial(MaterialBase):

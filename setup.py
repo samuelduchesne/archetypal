@@ -1,12 +1,12 @@
 # To use a consistent encoding
 import codecs
+import os
 import re
 import sys
-import os
 from os import path
 
 # Always prefer setuptools over distutils
-from setuptools import setup, find_namespace_packages
+from setuptools import find_namespace_packages, setup
 
 here = os.getcwd()
 

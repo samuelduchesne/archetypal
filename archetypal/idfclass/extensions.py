@@ -6,7 +6,7 @@ from eppy.bunch_subclass import BadEPFieldError
 from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata, Idd, removecomment
 from geomeppy.patches import EpBunch
 
-from archetypal import extend_class, log
+from archetypal.utils import extend_class, log
 
 
 @extend_class(EpBunch)

@@ -18,7 +18,8 @@ import time
 
 import numpy as np
 
-from archetypal import log, settings
+from archetypal import settings
+from archetypal.utils import log
 
 
 def save_and_show(

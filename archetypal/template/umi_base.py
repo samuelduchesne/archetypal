@@ -15,8 +15,8 @@ from itertools import chain
 import numpy as np
 from sigfig import round
 
-from archetypal import IDF, log
-from archetypal.utils import lcm
+from archetypal.idfclass.idf import IDF
+from archetypal.utils import lcm, log
 
 
 def _resolve_combined_names(predecessors):

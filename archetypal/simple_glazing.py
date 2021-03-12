@@ -11,7 +11,7 @@ import warnings
 
 import numpy as np
 
-from archetypal import log
+from archetypal.utils import log
 
 
 def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):

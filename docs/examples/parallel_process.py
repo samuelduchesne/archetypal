@@ -1,7 +1,8 @@
 import pandas as pd
 from path import Path
 
-from archetypal import config, parallel_process, IDF
+from archetypal.idfclass.idf import IDF
+from archetypal.utils import config, parallel_process
 
 config(cache_folder="../../tests/.temp/cache", use_cache=True, log_console=True)
 

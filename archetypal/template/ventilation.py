@@ -13,9 +13,9 @@ import pandas as pd
 from deprecation import deprecated
 from sigfig import round
 
-import archetypal
-from archetypal import log, settings, timeit, top, weighted_mean
+from archetypal import __version__, settings
 from archetypal.template import UmiBase, UmiSchedule, UniqueName
+from archetypal.utils import log, timeit, top, weighted_mean
 
 
 def resolve_temp(temp, idf):
@@ -226,7 +226,7 @@ class VentilationSetting(UmiBase):
     @deprecated(
         deprecated_in="1.3.1",
         removed_in="1.5",
-        current_version=archetypal.__version__,
+        current_version=__version__,
         details="Use from_dict function instead",
     )
     def from_json(cls, *args, **kwargs):

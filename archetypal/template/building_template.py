@@ -18,7 +18,6 @@ from sigfig import round
 from tqdm import tqdm
 
 import archetypal
-from archetypal import log
 from archetypal.template import (
     DomesticHotWaterSetting,
     MassRatio,
@@ -29,7 +28,7 @@ from archetypal.template import (
     YearSchedulePart,
     ZoneDefinition,
 )
-from archetypal.utils import reduce
+from archetypal.utils import log, reduce
 
 
 class BuildingTemplate(UmiBase):

@@ -17,9 +17,10 @@ from sigfig import round
 from sklearn.preprocessing import Binarizer
 
 import archetypal
-from archetypal import ReportData, float_round, log, settings, timeit
-from archetypal.schedule import get_year_for_first_weekday
+from archetypal import settings
+from archetypal.reportdata import ReportData
 from archetypal.template import UmiBase, UmiSchedule, UniqueName
+from archetypal.utils import float_round, log, timeit
 
 
 class UmiBaseEnum(Enum):
@@ -1077,7 +1078,7 @@ class ZoneConditioning(UmiBase):
                 sql for the energy given to the zone from the system (e.g. 'Air
                 System Total Heating Energy')
         """
-        from archetypal import ReportData
+        from archetypal.reportdata import ReportData
 
         rd = ReportData.from_sql_dict(zone.idf.sql())
         energy_out = rd.filter_report_data(name=tuple(energy_out_variable_name))

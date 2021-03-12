@@ -10,12 +10,10 @@ from eppy.runner.run_functions import paths_from_version
 from path import Path
 from tqdm import tqdm
 
-from ..eplus_interface.exceptions import (
-    EnergyPlusProcessError,
-    EnergyPlusVersionError,
-)
-from ..eplus_interface.version import EnergyPlusVersion
 from archetypal.utils import log
+
+from ..eplus_interface.exceptions import EnergyPlusProcessError, EnergyPlusVersionError
+from ..eplus_interface.version import EnergyPlusVersion
 
 
 class BasementThread(Thread):

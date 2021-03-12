@@ -4,7 +4,7 @@ import os
 
 from path import Path
 
-from archetypal import UmiTemplateLibrary
+from archetypal.umi_template import UmiTemplateLibrary
 
 if __name__ == "__main__":
 

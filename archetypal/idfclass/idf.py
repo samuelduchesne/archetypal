@@ -64,6 +64,10 @@ class IDF(geomIDF):
     eppy.modeleditor.IDF class.
     """
 
+    IDD = {}
+    IDDINDEX = {}
+    BLOCK = {}
+
     # dependencies: dict of <dependant value: independent value>
     _dependencies = {
         "iddname": ["idfname", "as_version"],
@@ -359,12 +363,15 @@ class IDF(geomIDF):
 
     def _read_idf(self):
         """Read idf file and return bunches."""
+        self._idd_info = IDF.IDD.get(str(self.as_version), None)
+        self._idd_index = IDF.IDDINDEX.get(str(self.as_version), None)
+        self._block = IDF.BLOCK.get(str(self.as_version), None)
         bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
-            self.idfname, self.iddname, self, commdct=None, block=None
+            self.idfname, self.iddname, self, commdct=self._idd_info, block=self._block
         )
-        self._block = block
-        self._idd_info = commdct
-        self._idd_index = idd_index
+        self._block = IDF.BLOCK[str(self.as_version)] = block
+        self._idd_info = IDF.IDD[str(self.as_version)] = commdct
+        self._idd_index = IDF.IDDINDEX[str(self.as_version)] = idd_index
         self._idfobjects = bunchdt
         self._model = data
         self._idd_version = versiontuple

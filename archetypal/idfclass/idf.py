@@ -68,6 +68,8 @@ class IDF(geomIDF):
     IDDINDEX = {}
     BLOCK = {}
 
+    OUTPUTTYPES = ("standard", "nocomment1", "nocomment2", "compressed")
+
     # dependencies: dict of <dependant value: independent value>
     _dependencies = {
         "iddname": ["idfname", "as_version"],
@@ -178,6 +180,7 @@ class IDF(geomIDF):
         position=0,
         name=None,
         output_directory=None,
+        outputtype="standard",
         **kwargs,
     ):
         """Initialize an IDF object.
@@ -185,8 +188,7 @@ class IDF(geomIDF):
         Args:
             output_directory:
             idfname (str or os.PathLike): The path of the idf file to read. If none,
-            an in-memory
-                IDF object is generated.
+                an in-memory IDF object is generated.
             epw (str or os.PathLike): The weather-file. If None, epw can be specified in
                 IDF.simulate().
             as_version (str): Specify the target EnergyPlus version for the IDF model.
@@ -199,6 +201,8 @@ class IDF(geomIDF):
             design_day (bool): Force design-day-only simulation (default: False).
             expandobjects (bool): Run ExpandObjects prior to simulation (default: True).
             convert (bool): If True, only convert IDF->epJSON or epJSON->IDF.
+            outputtype (str): Specifies the idf string representation of the model.
+                Choices are: "standard", "nocomment1", "nocomment2", "compressed".
 
         EnergyPlus args:
             tmp_dir=None,
@@ -257,7 +261,7 @@ class IDF(geomIDF):
         self._sim_id = None
         self._sim_timestamp = None
 
-        self.outputtype = "standard"
+        self.outputtype = outputtype
         self.original_idfname = self.idfname  # Save original
 
         try:
@@ -280,6 +284,19 @@ class IDF(geomIDF):
                     .add_profile_gas_elect_ouputs()
                     .apply()
                 )
+
+    @property
+    def outputtype(self):
+        return self._outputtype
+
+    @outputtype.setter
+    def outputtype(self, value):
+        """Get or set the outputtype for the idf string representation of self."""
+        assert value in self.OUTPUTTYPES, (
+            f'Invalid input "{value}" for output_type.'
+            f"\nOutput type must be one of the following: {self.OUTPUTTYPES}"
+        )
+        self._outputtype = value
 
     def __str__(self):
         """Return the name of IDF model."""

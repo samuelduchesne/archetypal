@@ -22,7 +22,7 @@ class EnergyPlusProcessError(Exception):
         try:
             name = self.idf.idfname.abspath()
         except Exception:
-            name = self.idf
+            name = self.idf.name
         msg = ":\n".join([name, self.stderr])
         return msg
 

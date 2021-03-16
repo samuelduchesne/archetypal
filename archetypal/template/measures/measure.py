@@ -75,14 +75,14 @@ class SetFacadeConstructionThermalResistanceToEnergyStar(Measure):
     def __init__(self):
         super(SetFacadeConstructionThermalResistanceToEnergyStar, self).__init__()
 
-        self.AddThermalInsulation = self.apply
+        self.AddThermalInsulation = self._apply
 
-    def apply(self, bt):
+    def _apply(self, bt):
         """Only apply to Perimeter facade constructions."""
-        self.set_insulation_layer_resistance(bt.Perimeter.Constructions.Facade)
+        self._set_insulation_layer_resistance(bt.Perimeter.Constructions.Facade)
 
     @staticmethod
-    def set_insulation_layer_resistance(oc):
+    def _set_insulation_layer_resistance(oc):
         """Set the insulation later to r_value = 1.02."""
         layer: MaterialLayer = oc.infer_insulation_layer()
         layer.r_value = 1.017858  # R5.78 IP, will change the conductivity of the mat.

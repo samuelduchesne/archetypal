@@ -1,16 +1,44 @@
 """Test measures module."""
+import pytest
+
+from archetypal import (
+    SetFacadeConstructionThermalResistanceToEnergyStar,
+    EnergyStarUpgrade,
+)
 
 
-def test_apply_measure_to_whole_library():
-    from archetypal import EnergyStarUpgrade, UmiTemplateLibrary
+class TestMeasure:
+    @pytest.fixture()
+    def umi_library(self):
+        from archetypal import UmiTemplateLibrary
 
-    umi = UmiTemplateLibrary.open(
-        "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
-    )
+        umi = UmiTemplateLibrary.open(
+            "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
+        )
+        return umi
 
-    assert umi.BuildingTemplates[0].Core.Loads.EquipmentPowerDensity == 8.0
+    def test_apply_measure_to_whole_library(self, umi_library):
+        """Test applying measure to whole template library."""
+        assert umi_library.BuildingTemplates[0].Core.Loads.LightingPowerDensity == 12.0
 
-    # apply the measure
-    EnergyStarUpgrade().apply_measure_to_whole_library(umi)
+        # apply the measure
+        EnergyStarUpgrade().apply_measure_to_whole_library(umi_library)
 
-    assert umi.BuildingTemplates[0].Core.Loads.EquipmentPowerDensity == 3
+        # Assert the value has changed for all ZoneLoads objects.
+        for zone_loads in umi_library.ZoneLoads:
+            assert zone_loads.LightingPowerDensity == 8.07
+
+        SetFacadeConstructionThermalResistanceToEnergyStar().apply_measure_to_whole_library(
+            umi_library
+        )
+
+    def test_apply_measure_to_single_building_template(self, umi_library):
+        """Test applying measure only to a specific building template."""
+        building_template = umi_library.BuildingTemplates[0]
+
+        assert umi_library.BuildingTemplates[0].Core.Loads.LightingPowerDensity == 12.0
+
+        EnergyStarUpgrade().apply_measure_to_template(building_template)
+
+        assert umi_library.BuildingTemplates[0].Core.Loads.LightingPowerDensity == 8.07
+        assert umi_library.BuildingTemplates[1].Core.Loads.LightingPowerDensity == 16.0

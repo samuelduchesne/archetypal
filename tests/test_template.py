@@ -981,13 +981,46 @@ class TestOpaqueConstruction:
 
         yield oc_b
 
+    def test_change_r_value(self, facebrick_and_concrete):
+        """Test setting r_value on a construction."""
+        new_r_value = facebrick_and_concrete.r_value * 2  # lets double the r_value
+
+        before_thickness = facebrick_and_concrete.total_thickness
+
+        facebrick_and_concrete.r_value = new_r_value
+
+        after_thickness = facebrick_and_concrete.total_thickness
+
+        np.testing.assert_almost_equal(facebrick_and_concrete.r_value, new_r_value)
+        assert before_thickness < after_thickness
+
+    def test_change_r_value_one_layer_construction(self, construction_b):
+        """Test setting r_value on a construction with only one layer."""
+        new_r_value = construction_b.r_value * 2
+
+        before_thickness = construction_b.total_thickness
+
+        construction_b.r_value = new_r_value
+
+        after_thickness = construction_b.total_thickness
+
+        assert construction_b.r_value == new_r_value
+        assert after_thickness == 2 * before_thickness
+
+    def test_change_r_value_not_physical(self, facebrick_and_concrete):
+        """Test setting r_value on a construction that results in unrealistic
+        assembly.
+        """
+        with pytest.raises(ValueError):
+            facebrick_and_concrete.r_value = 0.1
+
     def test_thermal_properties(self, construction_a):
         """test r_value and u_value properties
 
         Args:
             construction_a:
         """
-        assert 1 / construction_a.r_value == construction_a.u_value()
+        assert 1 / construction_a.r_value == construction_a.u_value
 
     def test_add_opaque_construction(self, construction_a, construction_b):
         """Test __add__() for OpaqueConstruction
@@ -1001,7 +1034,7 @@ class TestOpaqueConstruction:
         )
         assert oc_c
         desired = 3.237
-        actual = oc_c.u_value()
+        actual = oc_c.u_value
         np.testing.assert_almost_equal(actual, desired, decimal=3)
 
     def test_iadd_opaque_construction(self, construction_a, construction_b):
@@ -1131,9 +1164,7 @@ class TestOpaqueConstruction:
             facebrick_and_concrete:
             insulated_concrete_wall:
         """
-        assert facebrick_and_concrete.u_value(include_h=True) == pytest.approx(
-            0.6740, 0.01
-        )
+        assert facebrick_and_concrete.u_factor == pytest.approx(0.6740, 0.01)
         assert (
             facebrick_and_concrete.equivalent_heat_capacity_per_unit_volume
             == pytest.approx(1595166.7, 0.01)
@@ -1142,9 +1173,7 @@ class TestOpaqueConstruction:
             574260.0, 0.1
         )
 
-        assert insulated_concrete_wall.u_value(include_h=True) == pytest.approx(
-            0.7710, 0.01
-        )
+        assert insulated_concrete_wall.u_factor == pytest.approx(0.7710, 0.01)
         assert (
             insulated_concrete_wall.equivalent_heat_capacity_per_unit_volume
             == pytest.approx(1826285.7, 0.01)

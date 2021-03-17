@@ -25,6 +25,14 @@ class ConstructionBase(UmiBase):
     -cycle-impact
     """
 
+    __slots__ = (
+        "_assembly_carbon",
+        "_assembly_cost",
+        "_assembly_energy",
+        "_dissassembly_carbon",
+        "_dissassembly_energy",
+    )
+
     def __init__(
         self,
         AssemblyCarbon=0,
@@ -37,12 +45,12 @@ class ConstructionBase(UmiBase):
         """Initialize a ConstructionBase object with parameters:
 
         Args:
-            AssemblyCarbon:
-            AssemblyCost:
-            AssemblyEnergy:
-            DisassemblyCarbon:
-            DisassemblyEnergy:
-            **kwargs:
+            AssemblyCarbon (float): assembly carbon [kgCO2/m2].
+            AssemblyCost (float): assembly carbon [kgCO2/m2].
+            AssemblyEnergy (float): assembly energy [MJ/m2].
+            DisassemblyCarbon (float): disassembly carbon [kgCO2/m2].
+            DisassemblyEnergy (float): disassembly energy [MJ/m2].
+            **kwargs: keywords passed to UmiBase.
         """
         super(ConstructionBase, self).__init__(**kwargs)
         self.AssemblyCarbon = AssemblyCarbon
@@ -50,6 +58,51 @@ class ConstructionBase(UmiBase):
         self.AssemblyEnergy = AssemblyEnergy
         self.DisassemblyCarbon = DisassemblyCarbon
         self.DisassemblyEnergy = DisassemblyEnergy
+
+    @property
+    def AssemblyCarbon(self):
+        """Get or set the assembly carbon [kgCO2/m2]."""
+        return self._assembly_carbon
+
+    @AssemblyCarbon.setter
+    def AssemblyCarbon(self, value):
+        self._assembly_carbon = float(value)
+
+    @property
+    def AssemblyCost(self):
+        """Get or set the assembly cost [$/m2]."""
+        return self._assembly_cost
+
+    @AssemblyCost.setter
+    def AssemblyCost(self, value):
+        self._assembly_cost = float(value)
+
+    @property
+    def AssemblyEnergy(self):
+        """Get or set the assembly energy [MJ/m2]."""
+        return self._assembly_energy
+
+    @AssemblyEnergy.setter
+    def AssemblyEnergy(self, value):
+        self._assembly_energy = float(value)
+
+    @property
+    def DisassemblyCarbon(self):
+        """Get or set the disassembly carbon [kgCO2/m2]."""
+        return self._dissassembly_carbon
+
+    @DisassemblyCarbon.setter
+    def DisassemblyCarbon(self, value):
+        self._dissassembly_carbon = float(value)
+
+    @property
+    def DisassemblyEnergy(self):
+        """Get or set the disassembly energy [MJ/m2]."""
+        return self._dissassembly_energy
+
+    @DisassemblyEnergy.setter
+    def DisassemblyEnergy(self, value):
+        self._dissassembly_energy = float(value)
 
     def validate(self):
         """Validate object and fill in missing values."""
@@ -74,14 +127,16 @@ class ConstructionBase(UmiBase):
 
 
 class LayeredConstruction(ConstructionBase):
-    """Defines the layers of an :class:`OpaqueConstruction`. This class has one
-    attribute:
+    """Defines the layers of an :class:`OpaqueConstruction`.
 
-    1. A list of :class:`MaterialLayer` objects.
+    Attributes:
+        Layers (list of MaterialLayer): List of MaterialLayer objects from
+            outside to inside.
     """
 
     def __init__(self, Layers, **kwargs):
-        """
+        """Initialize object.
+
         Args:
             Layers (list of MaterialLayer): A list of :class:`MaterialLayer`
                 objects.
@@ -96,71 +151,92 @@ class OpaqueConstruction(LayeredConstruction):
     """Opaque Constructions
 
     .. image:: ../images/template/constructions-opaque.png
+
+    Properties:
+        * r_value
+        * u_value
+        * r_factor
+        * u_factor
+        * equivalent_heat_capacity_per_unit_volume
+        * specific_heat
+        * heat_capacity_per_unit_wall_area
+        * total_thickness
+        * mass_per_unit_area
+        * timeconstant_per_unit_area
+        * solar_reflectance_index
     """
+    __slots__ = ()
 
     def __init__(self, Layers, **kwargs):
         """
         Args:
-            Layers (list of MaterialLayer):
+            Layers (list of MaterialLayer): List of MaterialLayers making up the
+                construction.
             **kwargs: Other attributes passed to parent constructors such as
-            :class:`ConstructionBase`
+                :class:`ConstructionBase`.
         """
         super(OpaqueConstruction, self).__init__(Layers, **kwargs)
         self.area = 1
 
-    def __add__(self, other):
-        """Overload + to implement self.combine.
-
-        Args:
-            other (OpaqueConstruction): The other OpaqueConstruction.
-        """
-        return self.combine(other)
-
-    def __hash__(self):
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
-
-    def __eq__(self, other):
-        if not isinstance(other, OpaqueConstruction):
-            return NotImplemented
-        else:
-            return all([self.Layers == other.Layers])
-
     @property
     def r_value(self):
-        """float: The Thermal Resistance of the :class:`OpaqueConstruction`"""
-        return sum([layer.r_value for layer in self.Layers])  # (K⋅m2/W)
+        """Get or set the thermal resistance [K⋅m2/W] (excluding air films).
 
-    def u_value(self, include_h=False, h_in=8.0, h_out=20.0):
-        """float: The overall heat transfer coefficient of the
-        :class:`OpaqueConstruction`. Expressed in W/(m2⋅K).
-
-        Hint:
-            The U value of a composite wall made of n layers of uniform
-            thermophysical properties, surface area A and thermal resistance R
-            is defined as U=(A·R) :sup:`−1` and is calculated by the
-            expressionbased on the following expression:
-            :math:`{{U=}{{{1/h}}_{}{{+∑}}_{i=1}^n{{(δ}}_i{{/k}}_i{{)+1/h}}_∞}^{−1}}`
-
-        Args:
-            include_h (bool): If True, the convective heat transfer coefficients
-                are included in the u_value calc.
-            h_in (float): The room side convective heat transfer coefficient
-                (W/m2-k).
-            h_out (float): The ambient convective heat transfer coefficient
-                (W/m2-k).
+        Note that, when setting the R-value, the thickness of the inferred insulation
+        layer will be adjusted.
         """
-        if include_h:
-            return (1 / h_out + self.r_value + 1 / h_in) ** -1
-        else:
-            return 1 / self.r_value
+        return sum([layer.r_value for layer in self.Layers])
+
+    @r_value.setter
+    def r_value(self, value):
+        # First, find the insulation layer
+        i = self.infer_insulation_layer()
+        all_layers_except_insulation_layer = [a for a in self.Layers]
+        all_layers_except_insulation_layer.pop(i)
+        insulation_layer: MaterialLayer = self.Layers[i]
+
+        if value <= sum([a.r_value for a in all_layers_except_insulation_layer]):
+            raise ValueError(
+                f"Cannot set assembly r-value smaller than "
+                f"{sum([a.r_value for a in all_layers_except_insulation_layer])} "
+                f"because it would result in an insulation of a "
+                f"negative thickness. Try a higher value or changing the material "
+                f"layers instead."
+            )
+
+        alpha = float(value) / self.r_value
+        new_r_value = (
+            ((alpha - 1) * sum([a.r_value for a in all_layers_except_insulation_layer]))
+        ) + alpha * insulation_layer.r_value
+        insulation_layer.r_value = new_r_value
+
+    @property
+    def u_value(self):
+        """Construction heat transfer coefficient [W/m2⋅K] (excluding air films)."""
+        return 1 / self.r_value
+
+    @property
+    def r_factor(self):
+        """Construction R-factor [m2-K/W] (including air films).
+
+        inside film resistance = 8 [K⋅m2/W]
+        outside film resistance = 20 [K⋅m2/W]
+        """
+        h_in = 8.0
+        h_out = 20.0
+        return 1 / h_out + self.r_value + 1 / h_in
+
+    @property
+    def u_factor(self):
+        """Overall heat transfer coefficient (including air films) W/(m2⋅K)."""
+        return 1 / self.r_factor
 
     @property
     def equivalent_heat_capacity_per_unit_volume(self):
-        """The equivalent per unit wall **volume** heat capacity. Expressed in
-        J/(kg⋅K).
+        """Construction equivalent per unit wall **volume** heat capacity [J/(kg⋅K)].
 
         Hint:
-            The physical quantity which represents the heat storage capability
+            "The physical quantity which represents the heat storage capability
             is the wall heat capacity, defined as HC=M·c. While the per unit
             wall area of this quantity is (HC/A)=ρ·c·δ, where δ the wall
             thickness, the per unit volume wall heat capacity, being a
@@ -171,7 +247,11 @@ class OpaqueConstruction(LayeredConstruction):
             :math:`{{(ρ·c)}}_{eq}{{=(1/L)·∑}}_{i=1}^n{{(ρ}}_i{{·c}}_i{{·δ}}_i{)}`
             where :math:`{ρ}_i`, :math:`{c}_i` and :math:`{δ}_i` are the
             densities, the specific heat capacities and the layer thicknesses of
-            the n parallel layers of the composite wall.
+            the n parallel layers of the composite wall." [ref]_
+
+        .. [ref] Tsilingiris, P. T. (2004). On the thermal time constant of
+            structural walls. Applied Thermal Engineering, 24(5–6), 743–757.
+            https://doi.org/10.1016/j.applthermaleng.2003.10.015
         """
         return (1 / self.total_thickness) * sum(
             [
@@ -182,9 +262,7 @@ class OpaqueConstruction(LayeredConstruction):
 
     @property
     def specific_heat(self):
-        """float: The overall specific heat of the OpaqueConstruction weighted
-        by wall area mass (J/kg K).
-        """
+        """Construction specific heat weighted by wall area mass [J/(kg⋅K)]."""
         return np.average(
             [layer.specific_heat for layer in self.Layers],
             weights=[layer.Thickness * layer.Material.Density for layer in self.Layers],
@@ -192,25 +270,51 @@ class OpaqueConstruction(LayeredConstruction):
 
     @property
     def heat_capacity_per_unit_wall_area(self):
-        """The per unit wall area of the heat capacity is :math:`(HC/A)=ρ·c·δ`,
-        where :math:`δ` is the wall thickness. Expressed in J/(m2 K)
+        """Construction heat capacity per unit wall area [J/(m2⋅K)].
+
+        Hint:
+            :math:`(HC/A)=ρ·c·δ`, where :math:`δ` is the wall thickness.
         """
         return sum([layer.heat_capacity for layer in self.Layers])
 
     @property
     def total_thickness(self):
-        """Returns the total thickness of an OpaqueConstruction by summing up
-        each material layer thicknesses
-        """
+        """Construction total thickness [m]."""
         return sum([layer.Thickness for layer in self.Layers])
 
     @property
     def mass_per_unit_area(self):
+        """Construction mass per unit area [kg/m2]."""
         return sum([layer.Thickness * layer.Material.Density for layer in self.Layers])
 
     @property
-    def timeconstant_per_unit_area(self):
-        return self.mass_per_unit_area * self.specific_heat / self.u_value()
+    def time_constant_per_unit_area(self):
+        """Construction time constant per unit area."""
+        return self.mass_per_unit_area * self.specific_heat / self.u_factor
+
+    @property
+    def solar_reflectance_index(self):
+        """Construction's Solar Reflectance Index of the exposed surface.
+
+        Hint:
+            calculation from K-12 AEDG, derived from ASTM E1980 assuming medium wind
+            speed.
+
+        """
+        exposedMaterial = self.Layers[0]  # 0-th layer is exterior layer
+        solarAbsorptance = exposedMaterial.Material.SolarAbsorptance
+        thermalEmissivity = exposedMaterial.Material.ThermalEmittance
+
+        x = (20.797 * solarAbsorptance - 0.603 * thermalEmissivity) / (
+            9.5205 * thermalEmissivity + 12.0
+        )
+        sri = 123.97 - 141.35 * x + 9.6555 * x * x
+
+        return sri
+
+    def infer_insulation_layer(self):
+        """Return the material layer index that corresponds to the insulation layer."""
+        return self.Layers.index(max(self.Layers, key=lambda x: x.r_value))
 
     def combine(self, other, method="dominant_wall", allow_duplicates=False):
         """Combine two OpaqueConstruction together.
@@ -268,7 +372,7 @@ class OpaqueConstruction(LayeredConstruction):
         new_obj = self.__class__(**meta, Layers=layers, idf=self.idf)
         new_name = (
             "Combined Opaque Construction {{{}}} with u_value "
-            "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value())
+            "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value)
         )
         new_obj.rename(new_name)
         new_obj.predecessors.update(self.predecessors + other.predecessors)
@@ -366,7 +470,7 @@ class OpaqueConstruction(LayeredConstruction):
         # thicknesses. Here, the U_value does not take into account the convective heat
         # transfer coefficients.
         u_equivalent = np.average(
-            [self.u_value(), other.u_value()],
+            [self.u_value, other.u_value],
             weights=[self.total_thickness, other.total_thickness],
         )
 
@@ -577,3 +681,20 @@ class OpaqueConstruction(LayeredConstruction):
             idf=idf,
             Category="Partition",
         )
+
+    def __add__(self, other):
+        """Overload + to implement self.combine.
+
+        Args:
+            other (OpaqueConstruction): The other OpaqueConstruction.
+        """
+        return self.combine(other)
+
+    def __hash__(self):
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+
+    def __eq__(self, other):
+        if not isinstance(other, OpaqueConstruction):
+            return NotImplemented
+        else:
+            return all([self.Layers == other.Layers])

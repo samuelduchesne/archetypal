@@ -15,7 +15,6 @@ def umi_library():
         "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
     )
     yield umi
-    del umi
 
 
 class TestMeasure:
@@ -41,6 +40,17 @@ class TestMeasure:
         for zone_loads in umi_library.ZoneLoads:
             assert zone_loads.LightingPowerDensity == 8.07
 
+        oc = umi_library.BuildingTemplates[3].Perimeter.Constructions.Facade
+        previous_thickness = oc.total_thickness
+        previous_r_value = oc.r_value
+
         SetFacadeConstructionThermalResistanceToEnergyStar().apply_measure_to_whole_library(
             umi_library
         )
+
+        # assert that the total wall r_value has increased.
+        assert oc.r_value > previous_r_value
+
+        # assert that the total wall thickness has increased since setting the
+        # r-value increases the thickness of the material.
+        assert oc.total_thickness > previous_thickness

@@ -535,7 +535,7 @@ class MaterialLayer(object):
     """
 
     def __init__(self, Material, Thickness, **kwargs):
-        """Initialize a MaterialLayer object with parameters:
+        """Initialize a MaterialLayer object with parameters.
 
         Args:
             Material (OpaqueMaterial, GlazingMaterial, GasMaterial):
@@ -544,6 +544,74 @@ class MaterialLayer(object):
         """
         self.Material = Material
         self.Thickness = Thickness
+
+    @property
+    def Thickness(self):
+        """Get or set the material thickness [m]."""
+        return self._thickness
+
+    @Thickness.setter
+    def Thickness(self, value):
+        self._thickness = value
+        if value < 0.003:
+            log(
+                "Modeling layer thinner (less) than 0.003 m (not recommended) for "
+                f"MaterialLayer '{self}'",
+                lg.WARNING,
+            )
+
+    @property
+    def resistivity(self):
+        """Get or set the resistivity of the material layer [m-K/W]."""
+        return 1 / self.Material.Conductivity
+
+    @resistivity.setter
+    def resistivity(self, value):
+        self.Material.Conductivity = 1 / float(value)
+
+    @property
+    def r_value(self):
+        """Get or set the the R-value of the material layer [m2-K/W].
+
+        Note that, when setting the R-value, the thickness of the material will
+        be adjusted and the conductivity will remain fixed.
+        """
+        return self.Thickness / self.Material.Conductivity
+
+    @r_value.setter
+    def r_value(self, value):
+        self.Thickness = float(value) * self.Material.Conductivity
+
+    @property
+    def u_value(self):
+        """Get or set the heat transfer coefficient [W/(m2⋅K)]."""
+        return 1 / self.r_value
+
+    @u_value.setter
+    def u_value(self, value):
+        self.r_value = 1 / float(value)
+
+    @property
+    def heat_capacity(self):
+        """The material layer's heat capacity [J/(m2-k)]."""
+        return self.Material.Density * self.Material.SpecificHeat * self.Thickness
+
+    @property
+    def specific_heat(self):
+        """The material layer's specific heat [J/kg-K]."""
+        return self.Material.SpecificHeat
+
+    def to_dict(self):
+        return collections.OrderedDict(
+            Material={"$ref": str(self.Material.id)},
+            Thickness=round(self.Thickness, decimals=3),
+        )
+
+    def mapping(self):
+        return dict(Material=self.Material, Thickness=self.Thickness)
+
+    def get_unique(self):
+        return self
 
     def __hash__(self):
         return id(self)
@@ -562,54 +630,6 @@ class MaterialLayer(object):
     def __iter__(self):
         for k, v in self.mapping().items():
             yield k, v
-
-    @property
-    def Thickness(self):
-        return self._thickness
-
-    @Thickness.setter
-    def Thickness(self, value):
-        self._thickness = value
-        if value < 0.003:
-            log(
-                "Modeling layer thinner (less) than 0.003 m (not recommended) for "
-                f"MaterialLayer '{self}'",
-                lg.WARNING,
-            )
-
-    @property
-    def r_value(self):
-        """float: The Thermal Resistance of the :class:`MaterialLayer`"""
-        return self.Thickness / self.Material.Conductivity  # (K⋅m2/W)
-
-    @property
-    def u_value(self):
-        """float: The overall heat transfer coefficient of the
-        :class:`MaterialLayer`. Expressed in W/(m2⋅K)
-        """
-        return 1 / self.r_value
-
-    @property
-    def heat_capacity(self):
-        """float: The Material Layer's heat capacity J/m2-k"""
-        return self.Material.Density * self.Material.SpecificHeat * self.Thickness
-
-    @property
-    def specific_heat(self):
-        """float: The Material's specific heat J/kg-K"""
-        return self.Material.SpecificHeat
-
-    def to_dict(self):
-        return collections.OrderedDict(
-            Material={"$ref": str(self.Material.id)},
-            Thickness=round(self.Thickness, decimals=3),
-        )
-
-    def mapping(self):
-        return dict(Material=self.Material, Thickness=self.Thickness)
-
-    def get_unique(self):
-        return self
 
 
 from collections.abc import Hashable, MutableSet

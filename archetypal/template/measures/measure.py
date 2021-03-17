@@ -71,6 +71,7 @@ class SetFacadeConstructionThermalResistanceToEnergyStar(Measure):
         "This measure changes the r-value of the insulation layer of the "
         "facade construction to R5.78."
     )
+    rsi_value = 3.08  # R17.5 IP, changes conductivity of the material.
 
     def __init__(self):
         super(SetFacadeConstructionThermalResistanceToEnergyStar, self).__init__()
@@ -81,8 +82,48 @@ class SetFacadeConstructionThermalResistanceToEnergyStar(Measure):
         """Only apply to Perimeter facade constructions."""
         self._set_insulation_layer_resistance(bt.Perimeter.Constructions.Facade)
 
-    @staticmethod
-    def _set_insulation_layer_resistance(oc):
-        """Set the insulation later to r_value = 1.02."""
-        layer: MaterialLayer = oc.infer_insulation_layer()
-        layer.r_value = 1.017858  # R5.78 IP, will change the conductivity of the mat.
+    def _set_insulation_layer_resistance(self, opaque_construction):
+        """Set the insulation later to r_value = 3.08.
+
+        Hint:
+            See `Table 2`_: Minimum Effective Thermal Resistance of Opaque Assemblies.
+
+        .. _Table 2:
+            https://www.nrcan.gc.ca/energy-efficiency/energy-star-canada/about-energy-star-canada/energy-star-announcements/energy-starr-new-homes-standard-version-126/14178
+        """
+        # First, find the insulation layer
+        i = opaque_construction.infer_insulation_layer()
+        layer: MaterialLayer = opaque_construction.Layers[i]
+
+        # Then, change the r_value (which changes the thickness) of that layer only.
+        energy_star_rsi = self.rsi_value
+        if layer.r_value > energy_star_rsi:
+            log.warning(
+                f"r_value is already higher for material_layer '{layer}' of "
+                f"opaque_construction '{opaque_construction}'"
+            )
+        layer.r_value = energy_star_rsi
+
+
+class FacadeUpgradeBest(SetFacadeConstructionThermalResistanceToEnergyStar):
+    name = "FacadeUpgradeBest"
+    description = "rsi value from climaplusbeta.com"
+    rsi_value = 1 / 0.13
+
+
+class FacadeUpgradeMid(SetFacadeConstructionThermalResistanceToEnergyStar):
+    name = "FacadeUpgradeMid"
+    description = "rsi value from climaplusbeta.com"
+    rsi_value = 1 / 0.34
+
+
+class FacadeUpgradeRegular(SetFacadeConstructionThermalResistanceToEnergyStar):
+    name = "FacadeUpgradeRegular"
+    description = "rsi value from climaplusbeta.com"
+    rsi_value = 1 / 1.66
+
+
+class FacadeUpgradeLow(SetFacadeConstructionThermalResistanceToEnergyStar):
+    name = "FacadeUpgradeLow"
+    description = "rsi value from climaplusbeta.com"
+    rsi_value = 1 / 3.5

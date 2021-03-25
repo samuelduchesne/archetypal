@@ -1,7 +1,7 @@
 """Energy measures modules."""
 import logging
 
-from archetypal.template import BuildingTemplate, MaterialLayer
+from archetypal.template.materials.material_layer import MaterialLayer
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +41,7 @@ class Measure:
             yield a
 
     def __repr__(self):
+        """Return a representation of self."""
         return self.description
 
 

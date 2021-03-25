@@ -1,24 +1,34 @@
-################################################################################
-# Module: archetypal.template
-# Description:
-# License: MIT, see full license in LICENSE.txt
-# Web: https://github.com/samuelduchesne/archetypal
-################################################################################
+"""archetypal GlazingMaterial."""
 
 import collections
 
 from sigfig import round
+from validator_collection import validators
 
-from archetypal.template import MaterialBase, UmiBase, UniqueName
+from archetypal.idfclass.extensions import EpBunch
+from archetypal.template.materials.material_base import MaterialBase
+from archetypal.template.umi_base import UmiBase, UniqueName
 from archetypal.utils import log
 
 
 class GlazingMaterial(MaterialBase):
-    """Glazing Materials
+    """Glazing Materials class.
 
     .. image:: ../images/template/materials-glazing.png
 
     """
+
+    __slots__ = (
+        "_ir_emissivity_back",
+        "_ir_emissivity_front",
+        "_ir_transmittance",
+        "_visible_reflectance_back",
+        "_visible_reflectance_front",
+        "_visible_transmittance",
+        "_solar_reflectance_back",
+        "_solar_reflectance_front",
+        "_solar_transmittance",
+    )
 
     def __init__(
         self,
@@ -35,12 +45,10 @@ class GlazingMaterial(MaterialBase):
         IREmissivityFront=0,
         IREmissivityBack=0,
         DirtFactor=1.0,
-        Type=None,
         Cost=0.0,
-        Life=1,
-        **kwargs
+        **kwargs,
     ):
-        """Initialize a GlazingMaterial object with parameters:
+        """Initialize a GlazingMaterial object.
 
         Args:
             Name (str): The name of the GlazingMaterial.
@@ -71,15 +79,18 @@ class GlazingMaterial(MaterialBase):
                 of dirt on the glass. Using a material with dirt correction
                 factor < 1.0 in the construction for an interior window will
                 result in an error message.
-            Type: # todo: defined parameter
-            Life: # todo: defined parameter
             **kwargs: keywords passed to the :class:`MaterialBase`
                 constructor. For more info, see :class:`MaterialBase`.
         """
-        super(GlazingMaterial, self).__init__(Name, **kwargs)
-        self.Life = Life
-        self.Cost = Cost
-        self.Type = Type
+        super(GlazingMaterial, self).__init__(
+            Name, Conductivity=Conductivity, Density=Density, Cost=Cost, **kwargs
+        )
+
+        self._solar_reflectance_front = 0
+        self._solar_reflectance_back = None
+        self._visible_reflectance_front = 0
+        self._visible_reflectance_back = None
+
         self.DirtFactor = DirtFactor
         self.IREmissivityBack = IREmissivityBack
         self.IREmissivityFront = IREmissivityFront
@@ -90,110 +101,105 @@ class GlazingMaterial(MaterialBase):
         self.SolarReflectanceBack = SolarReflectanceBack
         self.SolarReflectanceFront = SolarReflectanceFront
         self.SolarTransmittance = SolarTransmittance
-        self.Density = Density
-        self.Conductivity = Conductivity
+
+    @property
+    def DirtFactor(self):
+        """Get or set the dirt correction factor [-]."""
+        return self._dirt_factor
+
+    @DirtFactor.setter
+    def DirtFactor(self, value):
+        self._dirt_factor = validators.float(value, minimum=0, maximum=1)
 
     @property
     def IREmissivityBack(self):
-        return float(self._IREmissivityBack)
+        """Get or set the infrared emissivity of the back side [-]."""
+        return float(self._ir_emissivity_back)
 
     @IREmissivityBack.setter
     def IREmissivityBack(self, value):
-        self._IREmissivityBack = value
+        self._ir_emissivity_back = validators.float(value, False, 0.0, 1.0)
 
     @property
     def IREmissivityFront(self):
-        return float(self._IREmissivityFront)
+        """Get or set the infrared emissivity of the front side [-]."""
+        return self._ir_emissivity_front
 
     @IREmissivityFront.setter
     def IREmissivityFront(self, value):
-        self._IREmissivityFront = value
+        self._ir_emissivity_front = validators.float(value, False, 0.0, 1.0)
 
     @property
     def IRTransmittance(self):
-        return float(self._IRTransmittance)
+        """Get or set the infrared transmittance [-]."""
+        return self._ir_transmittance
 
     @IRTransmittance.setter
     def IRTransmittance(self, value):
-        self._IRTransmittance = value
+        self._ir_transmittance = validators.float(value, False, 0.0, 1.0)
 
     @property
     def VisibleReflectanceBack(self):
-        return float(self._VisibleReflectanceBack)
+        """Get or set the visible reflectance of the back side [-]."""
+        return self._visible_reflectance_back
 
     @VisibleReflectanceBack.setter
     def VisibleReflectanceBack(self, value):
-        self._VisibleReflectanceBack = value
+        self._visible_reflectance_back = validators.float(value, False, 0.0, 1.0)
 
     @property
     def VisibleReflectanceFront(self):
-        return float(self._VisibleReflectanceFront)
+        """Get or set the visible reflectance of the front side [-]."""
+        return self._visible_reflectance_front
 
     @VisibleReflectanceFront.setter
     def VisibleReflectanceFront(self, value):
-        self._VisibleReflectanceFront = value
+        self._visible_reflectance_front = validators.float(value, False, 0.0, 1.0)
 
     @property
     def VisibleTransmittance(self):
-        return float(self._VisibleTransmittance)
+        """Get or set the visible transmittance [-]."""
+        return self._visible_transmittance
 
     @VisibleTransmittance.setter
     def VisibleTransmittance(self, value):
-        self._VisibleTransmittance = value
+        assert value + self._visible_reflectance_front <= 1, (
+            f"Sum of window transmittance and reflectance '"
+            f"{self._visible_reflectance_front}' is greater than 1."
+        )
+        if self._visible_reflectance_back is not None:
+            assert value + self._visible_reflectance_back <= 1, (
+                f"Sum of window transmittance and reflectance '"
+                f"{self._visible_reflectance_back}' is greater than 1."
+            )
+        self._visible_transmittance = validators.float(value, False, 0.0, 1.0)
 
     @property
     def SolarReflectanceBack(self):
-        return float(self._SolarReflectanceBack)
+        """Get or set the solar reflectance of the back side [-]."""
+        return self._solar_reflectance_back
 
     @SolarReflectanceBack.setter
     def SolarReflectanceBack(self, value):
-        self._SolarReflectanceBack = value
+        self._solar_reflectance_back = validators.float(value, False, 0.0, 1.0)
 
     @property
     def SolarReflectanceFront(self):
-        return float(self._SolarReflectanceFront)
+        """Get or set the solar reflectance of the front side [-]."""
+        return self._solar_reflectance_front
 
     @SolarReflectanceFront.setter
     def SolarReflectanceFront(self, value):
-        self._SolarReflectanceFront = value
+        self._solar_reflectance_front = validators.float(value, False, 0.0, 1.0)
 
     @property
     def SolarTransmittance(self):
-        return float(self._SolarTransmittance)
+        """Get or set the solar transmittance [-]."""
+        return self._solar_transmittance
 
     @SolarTransmittance.setter
     def SolarTransmittance(self, value):
-        self._SolarTransmittance = value
-
-    def __add__(self, other):
-        """Overload + to implement self.combine."""
-        return self.combine(other)
-
-    def __hash__(self):
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
-
-    def __eq__(self, other):
-        if not isinstance(other, GlazingMaterial):
-            return NotImplemented
-        else:
-            return all(
-                [
-                    self.Density == other.Density,
-                    self.Conductivity == other.Conductivity,
-                    self.SolarTransmittance == other.SolarTransmittance,
-                    self.SolarReflectanceFront == other.SolarReflectanceFront,
-                    self.SolarReflectanceBack == other.SolarReflectanceBack,
-                    self.VisibleTransmittance == other.VisibleTransmittance,
-                    self.VisibleReflectanceFront == other.VisibleReflectanceFront,
-                    self.VisibleReflectanceBack == other.VisibleReflectanceBack,
-                    self.IRTransmittance == other.IRTransmittance,
-                    self.IREmissivityFront == other.IREmissivityFront,
-                    self.IREmissivityBack == other.IREmissivityBack,
-                    self.DirtFactor == other.DirtFactor,
-                    self.Cost == other.Cost,
-                    self.Life == other.Life,
-                ]
-            )
+        self._solar_transmittance = validators.float(value, False, 0.0, 1.0)
 
     def combine(self, other, weights=None, allow_duplicates=False):
         """Combine two GlazingMaterial objects together.
@@ -247,11 +253,12 @@ class GlazingMaterial(MaterialBase):
         [new_attr.pop(key, None) for key in meta.keys()]  # meta handles these
         # keywords.
         # create a new object from combined attributes
-        new_obj = self.__class__(**meta, **new_attr, idf=self.idf)
+        new_obj = self.__class__(**meta, **new_attr)
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
-    def to_json(self):
+    def to_dict(self):
+        """Return GlazingMaterial dictionary representation."""
         self.validate()  # Validate object before trying to get json format
 
         data_dict = collections.OrderedDict()
@@ -284,7 +291,54 @@ class GlazingMaterial(MaterialBase):
 
         return data_dict
 
+    def to_epbunch(self, idf, thickness) -> EpBunch:
+        """Convert self to an EpBunch given an idf model and a thickness.
+
+        Args:
+            idf (IDF): An IDF model.
+            thickness (float): the thickness of the material.
+
+        .. code-block:: python
+
+            WindowMaterial:Glazing,
+                B_Glass_Clear_3_0.003_B_Dbl_Air_Cl,    !- Name
+                SpectralAverage,          !- Optical Data Type
+                SpectralAverage,          !- Window Glass Spectral Data Set Name
+                0.003,                    !- Thickness
+                0.83,                     !- Solar Transmittance at Normal Incidence
+                0.07,                     !- Front Side Solar Reflectance at Normal Incidence
+                0.07,                     !- Back Side Solar Reflectance at Normal Incidence
+                0.89,                     !- Visible Transmittance at Normal Incidence
+                0.08,                     !- Front Side Visible Reflectance at Normal Incidence
+                0.08,                     !- Back Side Visible Reflectance at Normal Incidence
+                0,                        !- Infrared Transmittance at Normal Incidence
+                0.84,                     !- Front Side Infrared Hemispherical Emissivity
+                0.84,                     !- Back Side Infrared Hemispherical Emissivity
+                0.9,                      !- Conductivity
+                1;                        !- Dirt Correction Factor for Solar and Visible Transmittance
+
+        """
+        return idf.newidfobject(
+            "WINDOWMATERIAL:GLAZING",
+            Name=self.Name,
+            Optical_Data_Type="SpectralAverage",
+            Window_Glass_Spectral_Data_Set_Name="SpectralAverage",
+            Thickness=thickness,
+            Solar_Transmittance_at_Normal_Incidence=self.SolarTransmittance,
+            Front_Side_Solar_Reflectance_at_Normal_Incidence=self.SolarReflectanceFront,
+            Back_Side_Solar_Reflectance_at_Normal_Incidence=self.SolarReflectanceBack,
+            Visible_Transmittance_at_Normal_Incidence=self.VisibleTransmittance,
+            Front_Side_Visible_Reflectance_at_Normal_Incidence=self.VisibleReflectanceFront,
+            Back_Side_Visible_Reflectance_at_Normal_Incidence=self.VisibleReflectanceBack,
+            Infrared_Transmittance_at_Normal_Incidence=self.IRTransmittance,
+            Front_Side_Infrared_Hemispherical_Emissivity=self.IREmissivityFront,
+            Back_Side_Infrared_Hemispherical_Emissivity=self.IREmissivityBack,
+            Conductivity=self.Conductivity,
+            Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance=self.DirtFactor,
+        )
+
     def mapping(self):
+        """Get a dict based on the object properties, useful for dict repr."""
         self.validate()
 
         return dict(
@@ -313,3 +367,76 @@ class GlazingMaterial(MaterialBase):
             DataSource=self.DataSource,
             Name=self.Name,
         )
+
+    @classmethod
+    def from_dict(cls, data, **kwargs):
+        """Create a GlazingMaterial from a dictionary.
+
+        Args:
+            data: The python dictionary following the format below.
+
+        .. code-block:: python
+
+            {'$id': '1',
+             'DirtFactor': 1.0,
+             'IREmissivityBack': 0.0,
+             'IREmissivityFront': 0.0,
+             'IRTransmittance': 0.0,
+             'SolarReflectanceBack': 0.0,
+             'SolarReflectanceFront': 0.0,
+             'SolarTransmittance': 0.0,
+             'VisibleReflectanceBack': 0.0,
+             'VisibleReflectanceFront': 0.0,
+             'VisibleTransmittance': 0.0,
+             'Conductivity': 0.0,
+             'Cost': 0.0,
+             'Density': 2500,
+             'EmbodiedCarbon': 0.0,
+             'EmbodiedEnergy': 0.0,
+             'SubstitutionRatePattern': [1.0],
+             'SubstitutionTimestep': 100.0,
+             'TransportCarbon': 0.0,
+             'TransportDistance': 0.0,
+             'TransportEnergy': 0.0,
+             'Category': 'Uncategorized',
+             'Comments': '',
+             'DataSource': None,
+             'Name': 'A'}
+        """
+        _id = data.pop("$id")
+        return cls(id=_id, **data, **kwargs)
+
+    def __add__(self, other):
+        """Overload + to implement self.combine."""
+        return self.combine(other)
+
+    def __hash__(self):
+        """Return the hash value of self."""
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+
+    def __eq__(self, other):
+        """Assert self is equivalent to other."""
+        if not isinstance(other, GlazingMaterial):
+            return NotImplemented
+        else:
+            return all(
+                [
+                    self.Density == other.Density,
+                    self.Conductivity == other.Conductivity,
+                    self.SolarTransmittance == other.SolarTransmittance,
+                    self.SolarReflectanceFront == other.SolarReflectanceFront,
+                    self.SolarReflectanceBack == other.SolarReflectanceBack,
+                    self.VisibleTransmittance == other.VisibleTransmittance,
+                    self.VisibleReflectanceFront == other.VisibleReflectanceFront,
+                    self.VisibleReflectanceBack == other.VisibleReflectanceBack,
+                    self.IRTransmittance == other.IRTransmittance,
+                    self.IREmissivityFront == other.IREmissivityFront,
+                    self.IREmissivityBack == other.IREmissivityBack,
+                    self.DirtFactor == other.DirtFactor,
+                    self.Cost == other.Cost,
+                ]
+            )
+
+    def __copy__(self):
+        """Create a copy of self."""
+        return self.__class__(**self.mapping())

@@ -2,8 +2,8 @@
 import pytest
 
 from archetypal.template.measures import (
-    SetFacadeConstructionThermalResistanceToEnergyStar,
     EnergyStarUpgrade,
+    SetFacadeConstructionThermalResistanceToEnergyStar,
 )
 
 

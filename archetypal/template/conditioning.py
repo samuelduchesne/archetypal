@@ -823,9 +823,9 @@ class ZoneConditioning(UmiBase):
         self.HeatingCoeffOfPerf = float(heating_cop)
 
         # If cop calc == infinity, COP = 1 because we need a value in json file.
-        if heating_cop == float("infinity"):
+        if math.isnan(heating_cop):
             self.HeatingCoeffOfPerf = 1
-        if cooling_cop == float("infinity"):
+        if math.isnan(cooling_cop):
             self.CoolingCoeffOfPerf = 1
 
     def _set_thermostat_setpoints(self, zone):

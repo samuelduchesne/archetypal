@@ -1,40 +1,39 @@
-################################################################################
-# Module: archetypal.template
-# Description:
-# License: MIT, see full license in LICENSE.txt
-# Web: https://github.com/samuelduchesne/archetypal
-################################################################################
+"""archetypal ZoneLoad."""
 
 import collections
 import logging as lg
-import math
 import sqlite3
 from enum import Enum
 
 import numpy as np
 import pandas as pd
-from deprecation import deprecated
 from sigfig import round
+from validator_collection import checkers, validators
 
-from archetypal import __version__, settings
-from archetypal.template import UmiBase, UmiSchedule, UniqueName
+from archetypal import settings
+from archetypal.template.schedule import UmiSchedule
+from archetypal.template.umi_base import UmiBase, UniqueName
 from archetypal.utils import log, reduce, timeit
 
 
 class DimmingTypes(Enum):
+    """DimmingType class."""
+
     Continuous = 0
     Off = 1
     Stepped = 2
 
     def __lt__(self, other):
+        """Assert if self is lower then other."""
         return self._value_ < other._value_
 
     def __gt__(self, other):
+        """Assert if self is greater then other."""
         return self._value_ > other._value_
 
 
 class ZoneLoad(UmiBase):
-    """Zone Loads
+    """Zone Loads.
 
     Important:
         Please note that the calculation of the equipment power density will sum
@@ -42,6 +41,22 @@ class ZoneLoad(UmiBase):
 
     .. image:: ../images/template/zoneinfo-loads.png
     """
+
+    __slots__ = (
+        "_dimming_type",
+        "_equipment_availability_schedule",
+        "_lights_availability_schedule",
+        "_occupancy_schedule",
+        "_equipment_power_density",
+        "_illuminance_target",
+        "_lighting_power_density",
+        "_people_density",
+        "_is_equipment_on",
+        "_is_lighting_on",
+        "_is_people_on",
+        "_area",
+        "_volume",
+    )
 
     def __init__(
         self,
@@ -56,9 +71,11 @@ class ZoneLoad(UmiBase):
         IsLightingOn=True,
         IsPeopleOn=True,
         PeopleDensity=0,
+        area=1,
+        volume=1,
         **kwargs,
     ):
-        """Initialize a new ZoneLoad object
+        """Initialize a new ZoneLoad object.
 
         Args:
             DimmingType (int): Different types to dim the lighting to respect the
@@ -93,6 +110,7 @@ class ZoneLoad(UmiBase):
             IsPeopleOn (bool): If True, heat gains from People are taken into
                 account for the zone's load calculation.
             PeopleDensity (float): Density of people in the zone (people/m²).
+            area (float): The floor area assiciated to this zone load object.
             **kwargs: Other keywords passed to the parent constructor :class:`UmiBase`.
         """
         super(ZoneLoad, self).__init__(**kwargs)
@@ -107,144 +125,230 @@ class ZoneLoad(UmiBase):
         self.IsLightingOn = IsLightingOn
         self.IsPeopleOn = IsPeopleOn
         self.PeopleDensity = PeopleDensity
+        self.area = area
+        self.volume = volume
 
         self._belongs_to_zone = kwargs.get("zone", None)
 
     @property
+    def DimmintType(self):
+        """Get or set the dimming type.
+
+        Hint:
+            To set the value an int or a string is supported.
+            Choices are (<DimmingTypes.Continuous: 0>, <DimmingTypes.Off: 1>,
+            <DimmingTypes.Stepped: 2>)
+        """
+        return self._dimming_type
+
+    @DimmintType.setter
+    def DimmintType(self, value):
+        if checkers.is_string(value):
+            assert DimmingTypes[value], (
+                f"Input value error for '{value}'. "
+                f"Expected one of {tuple(a for a in DimmingTypes)}"
+            )
+            self._dimming_type = DimmingTypes[value]
+        elif checkers.is_numeric(value):
+            assert DimmingTypes[value], (
+                f"Input value error for '{value}'. "
+                f"Expected one of {tuple(a for a in DimmingTypes)}"
+            )
+            self._dimming_type = DimmingTypes(value)
+
+    @property
+    def EquipmentAvailabilitySchedule(self):
+        """Get or set the equipment availability schedule."""
+        return self._equipment_availability_schedule
+
+    @EquipmentAvailabilitySchedule.setter
+    def EquipmentAvailabilitySchedule(self, value):
+        if value is not None:
+            assert isinstance(value, UmiSchedule), (
+                f"Input value error for '{value}'. Value must be of type '"
+                f"{UmiSchedule}', not {type(value)}"
+            )
+        self._equipment_availability_schedule = value
+
+    @property
     def EquipmentPowerDensity(self):
-        if math.isnan(self._EquipmentPowerDensity):
-            return self._EquipmentPowerDensity
-        return round(float(self._EquipmentPowerDensity), decimals=3)
+        """Get or set the equipment power density [W/m²]."""
+        return self._equipment_power_density
 
     @EquipmentPowerDensity.setter
     def EquipmentPowerDensity(self, value):
-        self._EquipmentPowerDensity = value
+        self._equipment_power_density = validators.float(value, minimum=0)
 
     @property
     def IlluminanceTarget(self):
-        return float(self._IlluminanceTarget)
+        """Get or set the illuminance target [lux]."""
+        return self._illuminance_target
 
     @IlluminanceTarget.setter
     def IlluminanceTarget(self, value):
-        self._IlluminanceTarget = value
+        self._illuminance_target = validators.float(value, minimum=0)
 
     @property
     def LightingPowerDensity(self):
-        if math.isnan(self._LightingPowerDensity):
-            return self._LightingPowerDensity
-        return round(float(self._LightingPowerDensity), decimals=3)
+        """Get or set the lighting power density [W/m²]."""
+        return self._lighting_power_density
 
     @LightingPowerDensity.setter
     def LightingPowerDensity(self, value):
-        self._LightingPowerDensity = value
+        self._lighting_power_density = validators.float(value, minimum=0)
+
+    @property
+    def LightsAvailabilitySchedule(self) -> UmiSchedule:
+        """Get or set the lights availability schedule."""
+        return self._lights_availability_schedule
+
+    @LightsAvailabilitySchedule.setter
+    def LightsAvailabilitySchedule(self, value):
+        if value is not None:
+            assert isinstance(value, UmiSchedule), (
+                f"Input value error for '{value}'. Value must be of type '"
+                f"{UmiSchedule}', not {type(value)}"
+            )
+        self._lights_availability_schedule = value
+
+    @property
+    def OccupancySchedule(self) -> UmiSchedule:
+        """Get or set the occupancy schedule."""
+        return self._occupancy_schedule
+
+    @OccupancySchedule.setter
+    def OccupancySchedule(self, value):
+        if value is not None:
+            assert isinstance(value, UmiSchedule), (
+                f"Input value error for '{value}'. Value must be if type '"
+                f"{UmiSchedule}', not {type(value)}"
+            )
+        self._occupancy_schedule = value
 
     @property
     def PeopleDensity(self):
-        if math.isnan(self._PeopleDensity):
-            return self._PeopleDensity
-        return round(float(self._PeopleDensity), decimals=3)
+        """Get or set the people density [ppl/m²]."""
+        return self._people_density
 
     @PeopleDensity.setter
     def PeopleDensity(self, value):
-        self._PeopleDensity = value
+        self._people_density = validators.float(value, minimum=0)
 
-    def __add__(self, other):
-        """
-        Args:
-            other (Zone):
-        """
-        return self.combine(other)
+    @property
+    def IsEquipmentOn(self):
+        """Get or set the use of equipment [bool]."""
+        return self._is_equipment_on
 
-    def __hash__(self):
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+    @IsEquipmentOn.setter
+    def IsEquipmentOn(self, value):
+        assert isinstance(value, bool), (
+            f"Input error with value {value}. IsEquipmentOn must "
+            f"be a boolean, not a {type(value)}"
         )
+        self._is_equipment_on = value
 
-    def __eq__(self, other):
-        if not isinstance(other, ZoneLoad):
-            return NotImplemented
-        else:
-            return all(
-                [
-                    self.DimmingType == other.DimmingType,
-                    self.EquipmentAvailabilitySchedule
-                    == other.EquipmentAvailabilitySchedule,
-                    self.EquipmentPowerDensity == other.EquipmentPowerDensity,
-                    self.IlluminanceTarget == other.IlluminanceTarget,
-                    self.LightingPowerDensity == other.LightingPowerDensity,
-                    self.LightsAvailabilitySchedule == other.LightsAvailabilitySchedule,
-                    self.OccupancySchedule == other.OccupancySchedule,
-                    self.IsEquipmentOn == other.IsEquipmentOn,
-                    self.IsLightingOn == other.IsLightingOn,
-                    self.IsPeopleOn == other.IsPeopleOn,
-                    self.PeopleDensity == other.PeopleDensity,
-                ]
-            )
+    @property
+    def IsLightingOn(self):
+        """Get or set the use of lighting [bool]."""
+        return self._is_lighting_on
+
+    @IsLightingOn.setter
+    def IsLightingOn(self, value):
+        assert isinstance(value, bool), (
+            f"Input error with value {value}. IsLightingOn must "
+            f"be a boolean, not a {type(value)}"
+        )
+        self._is_lighting_on = value
+
+    @property
+    def IsPeopleOn(self):
+        """Get or set people [bool]."""
+        return self._is_people_on
+
+    @IsPeopleOn.setter
+    def IsPeopleOn(self, value):
+        assert isinstance(value, bool), (
+            f"Input error with value {value}. IsPeopleOn must "
+            f"be a boolean, not a {type(value)}"
+        )
+        self._is_people_on = value
+
+    @property
+    def area(self):
+        """Get or set the floor area of the zone associated to this zone load [m²]."""
+        return self._area
+
+    @area.setter
+    def area(self, value):
+        self._area = validators.float(value, minimum=0)
+
+    @property
+    def volume(self):
+        """Get or set the volume of the zone associated to this zone load [m³]."""
+        return self._volume
+
+    @volume.setter
+    def volume(self, value):
+        self._volume = validators.float(value, minimum=0)
 
     @classmethod
-    @deprecated(
-        deprecated_in="1.3.1",
-        removed_in="1.5",
-        current_version=__version__,
-        details="Use from_dict function instead",
-    )
-    def from_json(cls, *args, **kwargs):
+    def from_dict(cls, data, schedules, **kwargs):
+        """Create a ZoneLoad from a dictionary.
 
-        return cls.from_dict(*args, **kwargs)
-
-    @classmethod
-    def from_dict(cls, *args, **kwargs):
-        """
         Args:
-            *args:
-            **kwargs:
+            data (dict): A python dictionary with the structure shown bellow.
+            schedules (dict): A python dictionary of UmiSchedules with their id as keys.
+            **kwargs: keywords passed to parent constructors.
+
+        .. code-block:: python
+
+            {
+              "$id": "172",
+              "DimmingType": 1,
+              "EquipmentAvailabilitySchedule": {
+                "$ref": "147"
+              },
+              "EquipmentPowerDensity": 8.0,
+              "IlluminanceTarget": 500.0,
+              "LightingPowerDensity": 12.0,
+              "LightsAvailabilitySchedule": {
+                "$ref": "146"
+              },
+              "OccupancySchedule": {
+                "$ref": "145"
+              },
+              "IsEquipmentOn": true,
+              "IsLightingOn": true,
+              "IsPeopleOn": true,
+              "PeopleDensity": 0.055,
+              "Category": "Office Spaces",
+              "Comments": null,
+              "DataSource": "MIT_SDL",
+              "Name": "B_Off_0 loads"
+            },
         """
-        zl = cls(*args, **kwargs)
-
-        cool_schd = kwargs.get("EquipmentAvailabilitySchedule", None)
-        zl.EquipmentAvailabilitySchedule = zl.get_ref(cool_schd)
-        heat_schd = kwargs.get("LightsAvailabilitySchedule", None)
-        zl.LightsAvailabilitySchedule = zl.get_ref(heat_schd)
-        mech_schd = kwargs.get("OccupancySchedule", None)
-        zl.OccupancySchedule = zl.get_ref(mech_schd)
-
-        return zl
-
-    def to_json(self):
-        """Convert class properties to dict"""
-        self.validate()  # Validate object before trying to get json format
-
-        data_dict = collections.OrderedDict()
-
-        data_dict["$id"] = str(self.id)
-        data_dict["DimmingType"] = self.DimmingType.value
-        data_dict[
-            "EquipmentAvailabilitySchedule"
-        ] = self.EquipmentAvailabilitySchedule.to_dict()
-        data_dict["EquipmentPowerDensity"] = round(self.EquipmentPowerDensity, 3)
-        data_dict["IlluminanceTarget"] = round(self.IlluminanceTarget, 3)
-        data_dict["LightingPowerDensity"] = round(self.LightingPowerDensity, 3)
-        data_dict[
-            "LightsAvailabilitySchedule"
-        ] = self.LightsAvailabilitySchedule.to_dict()
-        data_dict["OccupancySchedule"] = self.OccupancySchedule.to_dict()
-        data_dict["IsEquipmentOn"] = self.IsEquipmentOn
-        data_dict["IsLightingOn"] = self.IsLightingOn
-        data_dict["IsPeopleOn"] = self.IsPeopleOn
-        data_dict["PeopleDensity"] = round(self.PeopleDensity, 3)
-        data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
-        data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = UniqueName(self.Name)
-
-        return data_dict
+        _id = data.pop("$id")
+        return cls(
+            id=_id,
+            EquipmentAvailabilitySchedule=schedules[
+                data.pop("EquipmentAvailabilitySchedule")["$ref"]
+            ],
+            LightsAvailabilitySchedule=schedules[
+                data.pop("LightsAvailabilitySchedule")["$ref"]
+            ],
+            OccupancySchedule=schedules[data.pop("OccupancySchedule")["$ref"]],
+            **data,
+            **kwargs,
+        )
 
     @classmethod
     @timeit
     def from_zone(cls, zone, **kwargs):
-        """
+        """Create a ZoneLoad object from a :class:`ZoneDefinition`.
+
         Args:
             zone (ZoneDefinition): zone to gets information from
+            kwargs: keywords passed to the parent constructor.
         """
         # If Zone is not part of total area, it should not have a ZoneLoad object.
         if not zone._is_part_of_total_floor_area:
@@ -268,8 +372,7 @@ class ZoneLoad(UmiBase):
             nominal_gas = pd.read_sql(sql_query, conn, params=(zone_index,))
 
             def get_schedule(series):
-                """Computes schedule with quantity for nominal equipment
-                series"""
+                """Compute the schedule with quantity for nominal equipment series."""
                 sched = series["ScheduleIndex"]
                 sql_query = (
                     "select t.ScheduleName, t.ScheduleType as M from "
@@ -278,9 +381,8 @@ class ZoneLoad(UmiBase):
                 sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
                 level_ = float(series["DesignLevel"])
                 if level_ > 0:
-                    return UmiSchedule(
-                        Name=sched_name,
-                        idf=zone.idf,
+                    return UmiSchedule.from_epbunch(
+                        zone.idf.schedules_dict[sched_name.upper()],
                         Type=sched_type,
                         quantity=level_,
                     )
@@ -335,17 +437,15 @@ class ZoneLoad(UmiBase):
             # Verifies if People in zone
 
             def get_schedule(series):
-                """Computes schedule with quantity for nominal equipment
-                series"""
+                """Compute schedule with quantity for nominal equipment series."""
                 sched = series["NumberOfPeopleScheduleIndex"]
                 sql_query = (
                     "select t.ScheduleName, t.ScheduleType as M from "
                     "Schedules t where ScheduleIndex=?"
                 )
                 sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
-                return UmiSchedule(
-                    Name=sched_name,
-                    idf=zone.idf,
+                return UmiSchedule.from_epbunch(
+                    zone.idf.schedules_dict[sched_name.upper()],
                     Type=sched_type,
                     quantity=series["NumberOfPeople"],
                 )
@@ -373,7 +473,6 @@ class ZoneLoad(UmiBase):
         name = zone.Name + "_ZoneLoad"
         z_load = cls(
             Name=name,
-            zone=zone,
             DimmingType=_resolve_dimming_type(zone),
             EquipmentAvailabilitySchedule=EquipmentAvailabilitySchedule,
             EquipmentPowerDensity=EquipmentPowerDensity,
@@ -385,20 +484,20 @@ class ZoneLoad(UmiBase):
             IsLightingOn=LightingPowerDensity > 0,
             IsPeopleOn=PeopleDensity > 0,
             PeopleDensity=PeopleDensity,
-            idf=zone.idf,
             Category=zone.idf.name,
+            area=zone.area,
+            volume=zone.volume,
             **kwargs,
         )
         return z_load
 
     def combine(self, other, weights=None):
-        """Combine two ZoneLoad objects together.
+        """Combine two ZoneLoad objects together. Returns a new object.
 
         Args:
-            other (ZoneLoad):
+            other (ZoneLoad): The other ZoneLoad object.
             weights (list-like, optional): A list-like object of len 2. If None,
-                the volume of the zones for which self and other belongs is
-                used.
+                the `settings.zone_weight` of the objects is used.
 
         Returns:
             (ZoneLoad): the combined ZoneLoad object.
@@ -430,8 +529,8 @@ class ZoneLoad(UmiBase):
         if not weights:
             zone_weight = settings.zone_weight
             weights = [
-                getattr(self._belongs_to_zone, str(zone_weight)),
-                getattr(other._belongs_to_zone, str(zone_weight)),
+                getattr(self, str(zone_weight)),
+                getattr(other, str(zone_weight)),
             ]
             log(
                 'using zone {} "{}" as weighting factor in "{}" '
@@ -449,11 +548,11 @@ class ZoneLoad(UmiBase):
                 other.EquipmentAvailabilitySchedule,
                 quantity=True,
             ),
-            EquipmentPowerDensity=self._float_mean(
+            EquipmentPowerDensity=self.float_mean(
                 other, "EquipmentPowerDensity", weights
             ),
-            IlluminanceTarget=self._float_mean(other, "IlluminanceTarget", weights),
-            LightingPowerDensity=self._float_mean(
+            IlluminanceTarget=self.float_mean(other, "IlluminanceTarget", weights),
+            LightingPowerDensity=self.float_mean(
                 other, "LightingPowerDensity", weights
             ),
             LightsAvailabilitySchedule=UmiSchedule.combine(
@@ -469,13 +568,14 @@ class ZoneLoad(UmiBase):
             IsEquipmentOn=any([self.IsEquipmentOn, other.IsEquipmentOn]),
             IsLightingOn=any([self.IsLightingOn, other.IsLightingOn]),
             IsPeopleOn=any([self.IsPeopleOn, other.IsPeopleOn]),
-            PeopleDensity=self._float_mean(other, "PeopleDensity", weights),
+            PeopleDensity=self.float_mean(other, "PeopleDensity", weights),
         )
 
         new_obj = self.__class__(
-            **meta, **new_attr, idf=self.idf, allow_duplicates=self._allow_duplicates
+            **meta, **new_attr, allow_duplicates=self._allow_duplicates
         )
-        new_obj._belongs_to_zone = self._belongs_to_zone
+        new_obj.area = self.area + other.area
+        new_obj.volume = self.volume + other.volume
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
@@ -506,6 +606,7 @@ class ZoneLoad(UmiBase):
         return self
 
     def mapping(self):
+        """Get a dict based on the object properties, useful for dict repr."""
         self.validate()
 
         return dict(
@@ -526,22 +627,182 @@ class ZoneLoad(UmiBase):
             Name=self.Name,
         )
 
-    def get_ref(self, ref):
-        """Get item matching reference id.
+    def to_dict(self):
+        """Return ZoneLoad dictionary representation."""
+        self.validate()  # Validate object before trying to get json format
+
+        data_dict = collections.OrderedDict()
+
+        data_dict["$id"] = str(self.id)
+        data_dict["DimmingType"] = self.DimmingType.value
+        data_dict[
+            "EquipmentAvailabilitySchedule"
+        ] = self.EquipmentAvailabilitySchedule.to_ref()
+        data_dict["EquipmentPowerDensity"] = round(self.EquipmentPowerDensity, 3)
+        data_dict["IlluminanceTarget"] = round(self.IlluminanceTarget, 3)
+        data_dict["LightingPowerDensity"] = round(self.LightingPowerDensity, 3)
+        data_dict[
+            "LightsAvailabilitySchedule"
+        ] = self.LightsAvailabilitySchedule.to_ref()
+        data_dict["OccupancySchedule"] = self.OccupancySchedule.to_ref()
+        data_dict["IsEquipmentOn"] = self.IsEquipmentOn
+        data_dict["IsLightingOn"] = self.IsLightingOn
+        data_dict["IsPeopleOn"] = self.IsPeopleOn
+        data_dict["PeopleDensity"] = round(self.PeopleDensity, 3)
+        data_dict["Category"] = self.Category
+        data_dict["Comments"] = self.Comments
+        data_dict["DataSource"] = self.DataSource
+        data_dict["Name"] = UniqueName(self.Name)
+
+        return data_dict
+
+    def to_epbunch(self, idf, zone_name):
+        """Convert the zone load to epbunch given an idf model and a zone name.
 
         Args:
-            ref:
+            idf (IDF): The idf model. epbunches will be added to this model.
+            zone_name (str): The name of the zone in the idf model.
+
+        .. code-block:: python
+
+            People,
+                People Perim,             !- Name
+                Perim,                    !- Zone or ZoneList Name
+                B_Off_Y_Occ,              !- Number of People Schedule Name
+                People/Area,              !- Number of People Calculation Method
+                ,                         !- Number of People
+                0.055,                    !- People per Zone Floor Area
+                ,                         !- Zone Floor Area per Person
+                0.3,                      !- Fraction Radiant
+                AUTOCALCULATE,            !- Sensible Heat Fraction
+                PerimPeopleActivity,      !- Activity Level Schedule Name
+                3.82e-08,                 !- Carbon Dioxide Generation Rate
+                No,                       !- Enable ASHRAE 55 Comfort Warnings
+                ZoneAveraged,             !- Mean Radiant Temperature Calculation Type
+                ,                         !- Surface NameAngle Factor List Name
+                PerimWorkEfficiency,      !- Work Efficiency Schedule Name
+                DynamicClothingModelASHRAE55,    !- Clothing Insulation Calculation Method
+                ,                         !- Clothing Insulation Calculation Method Schedule Name
+                ,                         !- Clothing Insulation Schedule Name
+                PerimAirVelocity,         !- Air Velocity Schedule Name
+                AdaptiveASH55;            !- Thermal Comfort Model 1 Type
+
+            Lights,
+                Perim General lighting,    !- Name
+                Perim,                    !- Zone or ZoneList Name
+                B_Off_Y_Lgt,              !- Schedule Name
+                Watts/Area,               !- Design Level Calculation Method
+                ,                         !- Lighting Level
+                12,                       !- Watts per Zone Floor Area
+                ,                         !- Watts per Person
+                0,                        !- Return Air Fraction
+                0.42,                     !- Fraction Radiant
+                0.18,                     !- Fraction Visible
+                1,                        !- Fraction Replaceable
+                ;                         !- EndUse Subcategory
+
+            ElectricEquipment,
+                Perim Equipment 1,        !- Name
+                Perim,                    !- Zone or ZoneList Name
+                B_Off_Y_Plg,              !- Schedule Name
+                Watts/Area,               !- Design Level Calculation Method
+                ,                         !- Design Level
+                8,                        !- Watts per Zone Floor Area
+                ,                         !- Watts per Person
+                0,                        !- Fraction Latent
+                0.2,                      !- Fraction Radiant
+                0,                        !- Fraction Lost
+                ;                         !- EndUse Subcategory
+
         """
-        return next(
-            iter(
-                [value for value in ZoneLoad.CREATED_OBJECTS if value.id == ref["$ref"]]
-            ),
-            None,
+        people = idf.newidfobject(
+            "PEOPLE",
+            Name=self.Name,
+            Zone_or_ZoneList_Name=zone_name,
+            Number_of_People_Schedule_Name=self.OccupancySchedule.to_epbunch(idf).Name,
+            Number_of_People_Calculation_Method="People/Area",
+            People_per_Zone_Floor_Area=self.PeopleDensity,
+            Fraction_Radiant=0.3,
+            Sensible_Heat_Fraction="AUTOCALCULATE",
+            Activity_Level_Schedule_Name=idf.newidfobject(
+                "SCHEDULE:CONSTANT", Name="PeopleActivity", Hourly_Value=125.28
+            ).Name,
+            Carbon_Dioxide_Generation_Rate=3.82e-08,
+            Enable_ASHRAE_55_Comfort_Warnings="No",
+            Mean_Radiant_Temperature_Calculation_Type="ZoneAveraged",
+            Work_Efficiency_Schedule_Name=idf.newidfobject(
+                "SCHEDULE:CONSTANT", Name="WorkEfficiency", Hourly_Value=0
+            ).Name,
+            Clothing_Insulation_Calculation_Method="DynamicClothingModelASHRAE55",
+            Air_Velocity_Schedule_Name=idf.newidfobject(
+                "SCHEDULE:CONSTANT", Name="AirVelocity", Hourly_Value=0.2
+            ).Name,
         )
+        lights = idf.newidfobject(
+            key="LIGHTS",
+            Name=self.Name,
+            Zone_or_ZoneList_Name=zone_name,
+            Schedule_Name=self.LightsAvailabilitySchedule.to_epbunch(idf).Name,
+            Design_Level_Calculation_Method="Watts/Area",
+            Watts_per_Zone_Floor_Area=self.LightingPowerDensity,
+            Return_Air_Fraction=0,
+            Fraction_Radiant=0.42,
+            Fraction_Visible=0.18,
+            Fraction_Replaceable=1,
+        )
+        equipment = idf.newidfobject(
+            "ELECTRICEQUIPMENT",
+            Name=self.Name,
+            Zone_or_ZoneList_Name=zone_name,
+            Schedule_Name=self.EquipmentAvailabilitySchedule.to_epbunch(idf).Name,
+            Design_Level_Calculation_Method="Watts/Area",
+            Watts_per_Zone_Floor_Area=self.EquipmentPowerDensity,
+            Fraction_Latent=0,
+            Fraction_Radiant=0.2,
+            Fraction_Lost=0,
+        )
+        return people, lights, equipment
+
+    def __copy__(self):
+        """Create a copy of self."""
+        return self.__class__(**self.mapping())
+
+    def __add__(self, other):
+        """Combine self and other."""
+        return self.combine(other)
+
+    def __hash__(self):
+        """Return the hash value of self."""
+        return hash(
+            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+        )
+
+    def __key__(self):
+        """Get a tuple of attributes. Useful for hashing and comparing."""
+        return (
+            self.DimmingType,
+            self.EquipmentAvailabilitySchedule,
+            self.EquipmentPowerDensity,
+            self.IlluminanceTarget,
+            self.LightingPowerDensity,
+            self.LightsAvailabilitySchedule,
+            self.OccupancySchedule,
+            self.IsEquipmentOn,
+            self.IsLightingOn,
+            self.IsPeopleOn,
+            self.PeopleDensity,
+        )
+
+    def __eq__(self, other):
+        """Assert self is equivalent to other."""
+        if not isinstance(other, ZoneLoad):
+            return NotImplemented
+        else:
+            return self.__key__() == other.__key__()
 
 
 def _resolve_dimming_type(zone):
-    """Resolves the dimming type for the Zone object"""
+    """Resolve the dimming type for the Zone object."""
     # First, retrieve the list of Daylighting objects for this zone. Uses the eppy
     # `getreferingobjs` method.
     ep_obj = zone._epbunch
@@ -583,7 +844,7 @@ def _resolve_dimming_type(zone):
 
 
 def _resolve_illuminance_target(zone):
-    """Resolves the illuminance target for the Zone object"""
+    """Resolve the illuminance target for the Zone object."""
     # First, retrieve the list of Daylighting objects for this zone. Uses the eppy
     # `getreferingobjs` method.
     ep_obj = zone._epbunch

@@ -1,25 +1,23 @@
-################################################################################
-# Module: archetypal.template
-# Description:
-# License: MIT, see full license in LICENSE.txt
-# Web: https://github.com/samuelduchesne/archetypal
-################################################################################
+"""archetypal VentilationSetting."""
 
 import collections
 import logging as lg
+from enum import Enum
 
 import numpy as np
 import pandas as pd
-from deprecation import deprecated
 from sigfig import round
+from validator_collection import checkers, validators
 
-from archetypal import __version__, settings
-from archetypal.template import UmiBase, UmiSchedule, UniqueName
+from archetypal.template.schedule import UmiSchedule
+from archetypal.template.umi_base import UmiBase, UniqueName
 from archetypal.utils import log, timeit, top, weighted_mean
 
 
 def resolve_temp(temp, idf):
-    """Resolve the temperature. If a float is passed, simply return it. If a str
+    """Resolve the temperature given a float or a string.
+
+    If a float is passed, simply return it. If a str
     is passed, get the schedule and return the mean value.
 
     Args:
@@ -29,20 +27,65 @@ def resolve_temp(temp, idf):
     if isinstance(temp, float):
         return temp
     elif isinstance(temp, str):
-        sched = UmiSchedule(Name=temp, idf=idf)
+        epbunch = idf.schedules_dict[temp.upper()]
+        sched = UmiSchedule.from_epbunch(epbunch)
         return sched.all_values.mean()
 
 
+class VentilationType(Enum):
+    """EnergyPlus Ventilation Types for ZoneVentilation:DesignFlowrate.
+
+    This alpha character string defines the type of ventilation as one of the
+    following options: Natural, Exhaust, Intake, or Balanced. Natural ventilation is
+    assumed to be air movement/exchange as a result of openings in the building
+    façade and will not consume any fan energy. Values for fan pressure and
+    efficiency for natural ventilation are ignored. For either Exhaust or Intake,
+    values for fan pressure and efficiency define the fan electric consumption. For
+    Natural and Exhaust ventilation, the conditions of the air entering the space are
+    assumed to be equivalent to outside air conditions. For Intake and Balanced
+    ventilation, an appropriate amount of fan heat is added to the entering air
+    stream. For Balanced ventilation, both an intake fan and an exhaust fan are
+    assumed to co-exist, both having the same flow rate and power consumption (using
+    the entered values for fan pressure rise and fan total efficiency). Thus,
+    the fan electric consumption for Balanced ventilation is twice that for the
+    Exhaust or Intake ventilation types which employ only a single fan.
+    """
+
+    Natural = 0
+    Intake = 1
+    Exhaust = 2
+    Balanced = 3
+
+
 class VentilationSetting(UmiBase):
-    """Zone Ventilation Settings
+    """Zone Ventilation Settings.
 
     .. image:: ../images/template/zoneinfo-ventilation.png
     """
 
+    __slots__ = (
+        "_infiltration",
+        "_is_infiltration_on",
+        "_is_buoyancy_on",
+        "_is_nat_vent_on",
+        "_is_scheduled_ventilation_on",
+        "_is_wind_on",
+        "_natural_ventilation_max_outdoor_air_temp",
+        "_natural_ventilation_max_relative_humidity",
+        "_natural_ventilation_min_outdoor_air_temp",
+        "_natural_ventilation_zone_setpoint_temp",
+        "_scheduled_ventilation_ach",
+        "_scheduled_ventilation_setpoint",
+        "_nat_ventilation_schedule",
+        "_ventilation_type",
+        "_area",
+        "_volume",
+    )
+
     def __init__(
         self,
-        NatVentSchedule=None,
-        ScheduledVentilationSchedule=None,
+        NatVentSchedule,
+        ScheduledVentilationSchedule,
         Afn=False,
         Infiltration=0.1,
         IsBuoyancyOn=True,
@@ -56,22 +99,23 @@ class VentilationSetting(UmiBase):
         NatVentZoneTempSetpoint=18,
         ScheduledVentilationAch=0.6,
         ScheduledVentilationSetpoint=18,
-        **kwargs
+        VentilationType=VentilationType.Exhaust,
+        area=1,
+        volume=1,
+        **kwargs,
     ):
-        """Initialize a new VentilationSetting (for zone) object
+        """Initialize a new VentilationSetting (for zone) object.
 
         Args:
             NatVentSchedule (UmiSchedule): The name of the schedule
                 (Day | Week | Year) which ultimately modifies the Opening Area
-                value (see previous field). In its current implementation, any
-                value greater than 0 will consider, value above The schedule
-                values must be any positive number between 0 and 1 as a
-                fraction.
+                value. In its current implementation, any
+                value greater than 0 will consider an open window.
             ScheduledVentilationSchedule (UmiSchedule): The name of
                 the schedule (Schedules Tab) that modifies the maximum design
                 volume flow rate. This fraction is between 0.0 and 1.0.
-            Afn (bool):
-            Infiltration (float): Infiltration rate in ACH
+            Afn (bool): Todo: Not Used.
+            Infiltration (float): Infiltration rate in ACH.
             IsBuoyancyOn (bool): If True, simulation takes into account the
                 stack effect in the infiltration calculation
             IsInfiltrationOn (bool): If yes, there is heat transfer between the
@@ -111,7 +155,24 @@ class VentilationSetting(UmiBase):
                 to be available if the zone air temperature is above 20°C. If
                 the zone air temperature drops below 20°C, then ventilation is
                 automatically turned off.
-            **kwargs:
+            VentilationType (int): This alpha character string defines the type of
+                ventilation as one of the following options: Natural, Exhaust,
+                Intake, or Balanced. Natural ventilation is assumed to be air
+                movement/exchange as a result of openings in the building façade and
+                will not consume any fan energy. Values for fan pressure and
+                efficiency for natural ventilation are ignored. For either Exhaust or
+                Intake, values for fan pressure and efficiency define the fan
+                electric consumption. For Natural and Exhaust ventilation,
+                the conditions of the air entering the space are assumed to be
+                equivalent to outside air conditions. For Intake and Balanced
+                ventilation, an appropriate amount of fan heat is added to the entering
+                air stream. For Balanced ventilation, both an intake fan and an
+                exhaust fan are assumed to co-exist, both having the same flow rate
+                and power consumption (using the entered values for fan pressure rise
+                and fan total efficiency). Thus, the fan electric consumption for
+                Balanced ventilation is twice that for the Exhaust or Intake
+                ventilation types which employ only a single fan.
+            **kwargs: keywords passed to the constructor.
         """
         super(VentilationSetting, self).__init__(**kwargs)
         self.Afn = Afn
@@ -128,127 +189,274 @@ class VentilationSetting(UmiBase):
         self.ScheduledVentilationAch = ScheduledVentilationAch
         self.ScheduledVentilationSetpoint = ScheduledVentilationSetpoint
         self.ScheduledVentilationSchedule = ScheduledVentilationSchedule
+        self.VentilationType = VentilationType
         self.NatVentSchedule = NatVentSchedule
+        self.area = area
+        self.volume = volume
 
-        self._belongs_to_zone = kwargs.get("zone", None)
+    @property
+    def NatVentSchedule(self):
+        """Get or set the natural ventilation schedule.
+
+        Hint:
+            This schedule ultimately modifies the Opening Area value.
+        """
+        return self._nat_ventilation_schedule
+
+    @NatVentSchedule.setter
+    def NatVentSchedule(self, value):
+        assert isinstance(value, UmiSchedule), (
+            f"Input error with value {value}. NatVentSchedule must "
+            f"be an UmiSchedule, not a {type(value)}"
+        )
+        self._nat_ventilation_schedule = value
+
+    @property
+    def ScheduledVentilationSchedule(self):
+        """Get or set the scheduled ventilation schedule."""
+        return self._scheduled_ventilation_schedule
+
+    @ScheduledVentilationSchedule.setter
+    def ScheduledVentilationSchedule(self, value):
+        assert isinstance(value, UmiSchedule), (
+            f"Input error with value {value}. ScheduledVentilationSchedule must "
+            f"be an UmiSchedule, not a {type(value)}"
+        )
+        self._scheduled_ventilation_schedule = value
 
     @property
     def Infiltration(self):
-        return float(self._Infiltration)
+        """Get or set the infiltration air change rate [ach]."""
+        return self._infiltration
 
     @Infiltration.setter
     def Infiltration(self, value):
-        self._Infiltration = value
+        self._infiltration = validators.float(value, minimum=0)
+
+    @property
+    def IsInfiltrationOn(self):
+        """Get or set the the infiltration [bool]."""
+        return self._is_infiltration_on
+
+    @IsInfiltrationOn.setter
+    def IsInfiltrationOn(self, value):
+        assert isinstance(value, bool), (
+            f"Input error with value {value}. IsInfiltrationOn must "
+            f"be an boolean, not a {type(value)}"
+        )
+        self._is_infiltration_on = value
+
+    @property
+    def IsBuoyancyOn(self):
+        """Get or set the buoyancy boolean."""
+        return self._is_buoyancy_on
+
+    @IsBuoyancyOn.setter
+    def IsBuoyancyOn(self, value):
+        assert isinstance(value, bool), (
+            f"Input error with value {value}. IsBuoyancyOn must "
+            f"be an boolean, not a {type(value)}"
+        )
+        self._is_buoyancy_on = value
+
+    @property
+    def IsNatVentOn(self):
+        """Get or set the natural ventilation [bool]."""
+        return self._is_nat_vent_on
+
+    @IsNatVentOn.setter
+    def IsNatVentOn(self, value):
+        assert isinstance(value, bool), (
+            f"Input error with value {value}. IsNatVentOn must "
+            f"be an boolean, not a {type(value)}"
+        )
+        self._is_nat_vent_on = value
+
+    @property
+    def IsScheduledVentilationOn(self):
+        """Get or set the scheduled ventilation [bool]."""
+        return self._is_scheduled_ventilation_on
+
+    @IsScheduledVentilationOn.setter
+    def IsScheduledVentilationOn(self, value):
+        assert isinstance(value, bool), (
+            f"Input error with value {value}. IsScheduledVentilationOn must "
+            f"be an boolean, not a {type(value)}"
+        )
+        self._is_scheduled_ventilation_on = value
+
+    @property
+    def IsWindOn(self):
+        """Get or set the wind effect [bool]."""
+        return self._is_wind_on
+
+    @IsWindOn.setter
+    def IsWindOn(self, value):
+        assert isinstance(value, bool), (
+            f"Input error with value {value}. IsWindOn must "
+            f"be an boolean, not a {type(value)}"
+        )
+        self._is_wind_on = value
 
     @property
     def NatVentMaxOutdoorAirTemp(self):
-        return float(self._NatVentMaxOutdoorAirTemp)
+        """Get or set the natural ventilation maximum outdoor air temperature [degC]."""
+        return self._natural_ventilation_max_outdoor_air_temp
 
     @NatVentMaxOutdoorAirTemp.setter
     def NatVentMaxOutdoorAirTemp(self, value):
-        self._NatVentMaxOutdoorAirTemp = value
+        self._natural_ventilation_max_outdoor_air_temp = validators.float(
+            value, minimum=-100, maximum=100
+        )
 
     @property
     def NatVentMaxRelHumidity(self):
-        return float(self._NatVentMaxRelHumidity)
+        """Get or set the natural ventilation relative humidity setpoint [%]."""
+        return self._natural_ventilation_max_relative_humidity
 
     @NatVentMaxRelHumidity.setter
     def NatVentMaxRelHumidity(self, value):
-        self._NatVentMaxRelHumidity = value
+        self._natural_ventilation_max_relative_humidity = validators.float(
+            value, minimum=0, maximum=100
+        )
 
     @property
     def NatVentMinOutdoorAirTemp(self):
-        return float(self._NatVentMinOutdoorAirTemp)
+        """Get or set the natural ventilation minimum outdoor air temperature [degC]."""
+        return self._natural_ventilation_min_outdoor_air_temp
 
     @NatVentMinOutdoorAirTemp.setter
     def NatVentMinOutdoorAirTemp(self, value):
-        self._NatVentMinOutdoorAirTemp = value
+        self._natural_ventilation_min_outdoor_air_temp = validators.float(
+            value, minimum=-100, maximum=100
+        )
 
     @property
     def NatVentZoneTempSetpoint(self):
-        return float(self._NatVentZoneTempSetpoint)
+        """Get or set the natural ventilation zone temperature setpoint [degC]."""
+        return self._natural_ventilation_zone_setpoint_temp
 
     @NatVentZoneTempSetpoint.setter
     def NatVentZoneTempSetpoint(self, value):
-        self._NatVentZoneTempSetpoint = value
+        self._natural_ventilation_zone_setpoint_temp = validators.float(
+            value,
+            minimum=self.NatVentMinOutdoorAirTemp,
+            maximum=self.NatVentMaxOutdoorAirTemp,
+        )
 
     @property
     def ScheduledVentilationAch(self):
-        return float(self._ScheduledVentilationAch)
+        """Get or set the scheduled ventilation air changes per hours [-]."""
+        return self._scheduled_ventilation_ach
 
     @ScheduledVentilationAch.setter
     def ScheduledVentilationAch(self, value):
-        self._ScheduledVentilationAch = value
+        self._scheduled_ventilation_ach = validators.float(value)
 
     @property
     def ScheduledVentilationSetpoint(self):
-        return float(self._ScheduledVentilationSetpoint)
+        """Get or set the scheduled ventilation setpoint."""
+        return self._scheduled_ventilation_setpoint
 
     @ScheduledVentilationSetpoint.setter
     def ScheduledVentilationSetpoint(self, value):
-        self._ScheduledVentilationSetpoint = value
-
-    def __add__(self, other):
-        return self.combine(other)
-
-    def __hash__(self):
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+        self._scheduled_ventilation_setpoint = validators.float(
+            value, minimum=-100, maximum=100
         )
 
-    def __eq__(self, other):
-        if not isinstance(other, VentilationSetting):
-            return NotImplemented
-        else:
-            return all(
-                [
-                    self.NatVentSchedule == other.NatVentSchedule,
-                    self.ScheduledVentilationSchedule
-                    == self.ScheduledVentilationSchedule,
-                    self.Afn == other.Afn,
-                    self.Infiltration == other.Infiltration,
-                    self.IsBuoyancyOn == other.IsBuoyancyOn,
-                    self.IsInfiltrationOn == other.IsInfiltrationOn,
-                    self.IsNatVentOn == other.IsNatVentOn,
-                    self.IsScheduledVentilationOn == other.IsScheduledVentilationOn,
-                    self.IsWindOn == other.IsWindOn,
-                    self.NatVentMaxOutdoorAirTemp == other.NatVentMaxOutdoorAirTemp,
-                    self.NatVentMaxRelHumidity == other.NatVentMaxRelHumidity,
-                    self.NatVentMinOutdoorAirTemp == other.NatVentMinOutdoorAirTemp,
-                    self.NatVentZoneTempSetpoint == other.NatVentZoneTempSetpoint,
-                    self.ScheduledVentilationAch == other.ScheduledVentilationAch,
-                    self.ScheduledVentilationSetpoint
-                    == other.ScheduledVentilationSetpoint,
-                ]
+    @property
+    def VentilationType(self):
+        """Get or set the ventilation type.
+
+        Choices are (<VentilationType.Natural: 0>, <VentilationType.Intake: 1>,
+        <VentilationType.Exhaust: 2>, <VentilationType.Balanced: 3>).
+        """
+        return self._ventilation_type
+
+    @VentilationType.setter
+    def VentilationType(self, value):
+        if checkers.is_string(value):
+            assert VentilationType[value], (
+                f"Input value error for '{value}'. "
+                f"Expected one of {tuple(a for a in VentilationType)}"
             )
+            self._ventilation_type = VentilationType[value]
+        elif checkers.is_numeric(value):
+            assert VentilationType[value], (
+                f"Input value error for '{value}'. "
+                f"Expected one of {tuple(a for a in VentilationType)}"
+            )
+            self._ventilation_type = VentilationType(value)
+        self._ventilation_type = value
+
+    @property
+    def area(self):
+        """Get or set the area of the zone [m²]."""
+        return self._area
+
+    @area.setter
+    def area(self, value):
+        self._area = validators.float(value, minimum=0)
+
+    @property
+    def volume(self):
+        """Get or set the volume of the zone [m³]."""
+        return self._volume
+
+    @volume.setter
+    def volume(self, value):
+        self._volume = validators.float(value, minimum=0)
 
     @classmethod
-    @deprecated(
-        deprecated_in="1.3.1",
-        removed_in="1.5",
-        current_version=__version__,
-        details="Use from_dict function instead",
-    )
-    def from_json(cls, *args, **kwargs):
+    def from_dict(cls, data, schedules, **kwargs):
+        """Create a VentilationSetting from a dictionary.
 
-        return cls.from_dict(*args, **kwargs)
-
-    @classmethod
-    def from_dict(cls, *args, **kwargs):
-        """
         Args:
-            *args:
-            **kwargs:
-        """
-        vs = cls(*args, **kwargs)
-        vent_sch = kwargs.get("ScheduledVentilationSchedule", None)
-        vs.ScheduledVentilationSchedule = vs.get_ref(vent_sch)
-        nat_sch = kwargs.get("NatVentSchedule", None)
-        vs.NatVentSchedule = vs.get_ref(nat_sch)
-        return vs
+            data (dict): The python dictionary.
+            schedules (dict): A dictionary of UmiSchedules with their id as keys.
+            **kwargs: keywords passed parent constructor.
 
-    def to_json(self):
-        """Convert class properties to dict"""
+        .. code-block:: python
+            {
+              "$id": "162",
+              "Afn": false,
+              "IsBuoyancyOn": true,
+              "Infiltration": 0.35,
+              "IsInfiltrationOn": true,
+              "IsNatVentOn": false,
+              "IsScheduledVentilationOn": false,
+              "NatVentMaxRelHumidity": 80.0,
+              "NatVentMaxOutdoorAirTemp": 26.0,
+              "NatVentMinOutdoorAirTemp": 20.0,
+              "NatVentSchedule": {
+                "$ref": "151"
+              },
+              "NatVentZoneTempSetpoint": 22.0,
+              "ScheduledVentilationAch": 0.6,
+              "ScheduledVentilationSchedule": {
+                "$ref": "151"
+              },
+              "ScheduledVentilationSetpoint": 22.0,
+              "IsWindOn": false,
+              "Category": "Office Spaces",
+              "Comments": null,
+              "DataSource": "MIT_SDL",
+              "Name": "B_Off_0 ventilation"
+            }
+        """
+        vent_sch = schedules[data.pop("ScheduledVentilationSchedule")["$ref"]]
+        nat_sch = schedules[data.pop("NatVentSchedule")["$ref"]]
+        _id = data.pop("$id")
+        return cls(
+            id=_id,
+            ScheduledVentilationSchedule=vent_sch,
+            NatVentSchedule=nat_sch,
+            **data,
+            **kwargs,
+        )
+
+    def to_dict(self):
+        """Return VentilationSetting dictionary representation."""
         self.validate()  # Validate object before trying to get json format
 
         data_dict = collections.OrderedDict()
@@ -263,12 +471,12 @@ class VentilationSetting(UmiBase):
         data_dict["NatVentMaxRelHumidity"] = round(self.NatVentMaxRelHumidity, 3)
         data_dict["NatVentMaxOutdoorAirTemp"] = round(self.NatVentMaxOutdoorAirTemp, 3)
         data_dict["NatVentMinOutdoorAirTemp"] = round(self.NatVentMinOutdoorAirTemp, 3)
-        data_dict["NatVentSchedule"] = self.NatVentSchedule.to_dict()
+        data_dict["NatVentSchedule"] = self.NatVentSchedule.to_ref()
         data_dict["NatVentZoneTempSetpoint"] = round(self.NatVentZoneTempSetpoint, 3)
         data_dict["ScheduledVentilationAch"] = round(self.ScheduledVentilationAch, 3)
         data_dict[
             "ScheduledVentilationSchedule"
-        ] = self.ScheduledVentilationSchedule.to_dict()
+        ] = self.ScheduledVentilationSchedule.to_ref()
         data_dict["ScheduledVentilationSetpoint"] = round(
             self.ScheduledVentilationSetpoint, 3
         )
@@ -283,7 +491,7 @@ class VentilationSetting(UmiBase):
     @classmethod
     @timeit
     def from_zone(cls, zone, **kwargs):
-        """
+        """Create VentilationSetting from a zone object.
 
         Args:
             zone (template.zone.Zone): zone to gets information from
@@ -301,7 +509,7 @@ class VentilationSetting(UmiBase):
         index = ("a", zone.Name.upper())
 
         # Do infiltration
-        Infiltration, IsInfiltrationOn = do_infiltration(index, ni_df, zone)
+        Infiltration, IsInfiltrationOn = do_infiltration(index, ni_df)
 
         # Do natural ventilation
         (
@@ -340,30 +548,40 @@ class VentilationSetting(UmiBase):
             IsScheduledVentilationOn=IsScheduledVentilationOn,
             ScheduledVentilationAch=ScheduledVentilationAch,
             ScheduledVentilationSetpoint=ScheduledVentilationSetpoint,
-            idf=zone.idf,
             Category=zone.idf.name,
-            **kwargs
+            **kwargs,
         )
         return z_vent
 
-    def combine(self, other, weights=None):
+    def combine(self, other, **kwargs):
         """Combine two VentilationSetting objects together.
 
         Args:
             other (VentilationSetting):
-            weights (list-like, optional): A list-like object of len 2. If None,
-                the volume of the zones for which self and other belongs is
-                used.
+            kwargs: keywords passed to constructor.
 
         Returns:
             (VentilationSetting): the combined VentilationSetting object.
         """
-        # Check if other is None. Simply return self
-        if not other:
-            return self
-
-        if not self:
-            return other
+        # Check if other is None. Simply return self or if other is not the same as self
+        if not other or self == other:
+            area = 1 if self.area + other.area == 2 else self.area + other.area
+            volume = (
+                1 if self.volume + other.volume == 2 else self.volume + other.volume
+            )
+            new_obj = self.duplicate()
+            new_obj.area = area
+            new_obj.volume = volume
+            return new_obj
+        elif not self:
+            area = 1 if self.area + other.area == 2 else self.area + other.area
+            volume = (
+                1 if self.volume + other.volume == 2 else self.volume + other.volume
+            )
+            new_obj = other.duplicate()
+            new_obj.area = area
+            new_obj.volume = volume
+            return new_obj
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
@@ -373,68 +591,54 @@ class VentilationSetting(UmiBase):
             )
             raise NotImplementedError(msg)
 
-        # Check if other is not the same as self
-        if self == other:
-            return self
-
         meta = self._get_predecessors_meta(other)
 
-        if not weights:
-            zone_weight = settings.zone_weight
-            weights = [
-                getattr(self._belongs_to_zone, str(zone_weight)),
-                getattr(other._belongs_to_zone, str(zone_weight)),
-            ]
-            log(
-                'using zone {} "{}" as weighting factor in "{}" '
-                "combine.".format(
-                    zone_weight,
-                    " & ".join(list(map(str, map(int, weights)))),
-                    self.__class__.__name__,
-                )
-            )
-
-        a = UmiSchedule.combine(self.NatVentSchedule, other.NatVentSchedule, weights)
-        b = UmiSchedule.combine(
-            self.ScheduledVentilationSchedule,
-            other.ScheduledVentilationSchedule,
-            weights,
-        )
-        c = any((self.Afn, other.Afn))
-        d = self._float_mean(other, "Infiltration", weights)
-        e = any((self.IsBuoyancyOn, other.IsBuoyancyOn))
-        f = any((self.IsInfiltrationOn, other.IsInfiltrationOn))
-        g = any((self.IsNatVentOn, other.IsNatVentOn))
-        h = any((self.IsScheduledVentilationOn, other.IsScheduledVentilationOn))
-        i = any((self.IsWindOn, other.IsWindOn))
-        j = self._float_mean(other, "NatVentMaxOutdoorAirTemp", weights)
-        k = self._float_mean(other, "NatVentMaxRelHumidity", weights)
-        l = self._float_mean(other, "NatVentMinOutdoorAirTemp", weights)
-        m = self._float_mean(other, "NatVentZoneTempSetpoint", weights)
-        n = self._float_mean(other, "ScheduledVentilationAch", weights)
-        o = self._float_mean(other, "ScheduledVentilationSetpoint", weights)
-
-        new_attr = dict(
-            NatVentSchedule=a,
-            ScheduledVentilationSchedule=b,
-            Afn=c,
-            Infiltration=d,
-            IsBuoyancyOn=e,
-            IsInfiltrationOn=f,
-            IsNatVentOn=g,
-            IsScheduledVentilationOn=h,
-            IsWindOn=i,
-            NatVentMaxOutdoorAirTemp=j,
-            NatVentMaxRelHumidity=k,
-            NatVentMinOutdoorAirTemp=l,
-            NatVentZoneTempSetpoint=m,
-            ScheduledVentilationAch=n,
-            ScheduledVentilationSetpoint=o,
-        )
-
-        # create a new object with the previous attributes
+        # create a new object with the combined attributes
         new_obj = self.__class__(
-            **meta, **new_attr, idf=self.idf, allow_duplicates=self._allow_duplicates
+            NatVentSchedule=UmiSchedule.combine(
+                self.NatVentSchedule, other.NatVentSchedule, [self.area, other.area]
+            ),
+            ScheduledVentilationSchedule=UmiSchedule.combine(
+                self.ScheduledVentilationSchedule,
+                other.ScheduledVentilationSchedule,
+                [
+                    self.ScheduledVentilationAch * self.volume,
+                    other.ScheduledVentilationAch * self.volume,
+                ],
+            ),
+            Afn=any((self.Afn, other.Afn)),
+            Infiltration=self.float_mean(
+                other, "Infiltration", [self.area, other.area]
+            ),
+            IsBuoyancyOn=any((self.IsBuoyancyOn, other.IsBuoyancyOn)),
+            IsInfiltrationOn=any((self.IsInfiltrationOn, other.IsInfiltrationOn)),
+            IsNatVentOn=any((self.IsNatVentOn, other.IsNatVentOn)),
+            IsScheduledVentilationOn=any(
+                (self.IsScheduledVentilationOn, other.IsScheduledVentilationOn)
+            ),
+            IsWindOn=any((self.IsWindOn, other.IsWindOn)),
+            NatVentMaxOutdoorAirTemp=self.float_mean(
+                other, "NatVentMaxOutdoorAirTemp", [self.area, other.area]
+            ),
+            NatVentMaxRelHumidity=self.float_mean(
+                other, "NatVentMaxRelHumidity", [self.area, other.area]
+            ),
+            NatVentMinOutdoorAirTemp=self.float_mean(
+                other, "NatVentMinOutdoorAirTemp", [self.area, other.area]
+            ),
+            NatVentZoneTempSetpoint=self.float_mean(
+                other, "NatVentZoneTempSetpoint", [self.area, other.area]
+            ),
+            ScheduledVentilationAch=self.float_mean(
+                other, "ScheduledVentilationAch", [self.volume, other.volume]
+            ),
+            ScheduledVentilationSetpoint=self.float_mean(
+                other, "ScheduledVentilationSetpoint", [self.area, other.area]
+            ),
+            area=1 if self.area + other.area == 2 else self.area + other.area,
+            volume=1 if self.volume + other.volume == 2 else self.volume + other.volume,
+            **meta,
+            allow_duplicates=self._allow_duplicates,
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
@@ -443,16 +647,17 @@ class VentilationSetting(UmiBase):
         """Validate object and fill in missing values."""
         if not self.NatVentSchedule:
             self.NatVentSchedule = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", allow_duplicates=True, idf=self.idf
+                value=0, Name="AlwaysOff", allow_duplicates=True
             )
         if not self.ScheduledVentilationSchedule:
             self.ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", allow_duplicates=True, idf=self.idf
+                value=0, Name="AlwaysOff", allow_duplicates=True
             )
 
         return self
 
     def mapping(self):
+        """Get a dict based on the object properties, useful for dict repr."""
         self.validate()
 
         return dict(
@@ -477,38 +682,204 @@ class VentilationSetting(UmiBase):
             Name=self.Name,
         )
 
-    def get_ref(self, ref):
-        """Get item matching reference id.
+    def duplicate(self):
+        """Get copy of self."""
+        return self.__copy__()
 
-        Args:
-            ref:
-        """
-        return next(
-            iter(
-                [
-                    value
-                    for value in VentilationSetting.CREATED_OBJECTS
-                    if value.id == ref["$ref"]
-                ]
-            ),
-            None,
+    def __add__(self, other):
+        """Combine self and other."""
+        return self.combine(other)
+
+    def __hash__(self):
+        """Return the hash value of self."""
+        return hash(
+            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
         )
 
+    def __key__(self):
+        """Get a tuple of attributes. Useful for hashing and comparing."""
+        return (
+            self.NatVentSchedule,
+            self.ScheduledVentilationSchedule,
+            self.Afn,
+            self.Infiltration,
+            self.IsBuoyancyOn,
+            self.IsInfiltrationOn,
+            self.IsNatVentOn,
+            self.IsScheduledVentilationOn,
+            self.IsWindOn,
+            self.NatVentMaxOutdoorAirTemp,
+            self.NatVentMaxRelHumidity,
+            self.NatVentMinOutdoorAirTemp,
+            self.NatVentZoneTempSetpoint,
+            self.ScheduledVentilationAch,
+            self.ScheduledVentilationSetpoint,
+        )
 
-def do_infiltration(index, inf_df, zone):
-    """Gets infiltration information of the zone
+    def __eq__(self, other):
+        """Assert self is equivalent to other."""
+        if not isinstance(other, VentilationSetting):
+            return NotImplemented
+        else:
+            return self.__key__() == other.__key__()
+
+    def __copy__(self):
+        """Create a copy of self."""
+        return self.__class__(**self.mapping(), area=self.area, volume=self.volume)
+
+    def to_epbunch(self, idf, zone_name):
+        """Convert to a "ZONEINFILTRATION:DESIGNFLOWRATE" EpBunch.
+
+        Note that attr:`IsInfiltrationOn`, attr:`IsScheduledVentilationOn` and
+        attr:`IsNatVentOn` must be `True` for their respective EpBunch objects be
+        created.
+
+        Args:
+            idf (IDF): The idf model in which the EpBunch is created.
+            zone_name (str): The zone name to associate this EpBunch.
+
+        .. code-block::
+
+            ZONEINFILTRATION:DESIGNFLOWRATE,
+                Zone Infiltration,        !- Name
+                Zone 1,                   !- Zone or ZoneList Name
+                AlwaysOn,                 !- Schedule Name
+                AirChanges/Hour,          !- Design Flow Rate Calculation Method
+                ,                         !- Design Flow Rate
+                ,                         !- Flow per Zone Floor Area
+                ,                         !- Flow per Exterior Surface Area
+                0.1,                      !- Air Changes per Hour
+                1,                        !- Constant Term Coefficient
+                0,                        !- Temperature Term Coefficient
+                0,                        !- Velocity Term Coefficient
+                0;                        !- Velocity Squared Term Coefficient
+
+            ZONEVENTILATION:DESIGNFLOWRATE,
+                 Zone 1 Ventilation,       !- Name
+                 Zone 1,                   !- Zone or ZoneList Name
+                 AlwaysOn,                 !- Schedule Name
+                 AirChanges/Hour,          !- Design Flow Rate Calculation Method
+                 ,                         !- Design Flow Rate
+                 ,                         !- Flow Rate per Zone Floor Area
+                 ,                         !- Flow Rate per Person
+                 0.6,                      !- Air Changes per Hour
+                 Exhaust,                  !- Ventilation Type
+                 67,                       !- Fan Pressure Rise
+                 0.7,                      !- Fan Total Efficiency
+                 1,                        !- Constant Term Coefficient
+                 0,                        !- Temperature Term Coefficient
+                 0,                        !- Velocity Term Coefficient
+                 0,                        !- Velocity Squared Term Coefficient
+                 -100,                     !- Minimum Indoor Temperature
+                 ,                         !- Minimum Indoor Temperature Schedule Name
+                 100,                      !- Maximum Indoor Temperature
+                 ,                         !- Maximum Indoor Temperature Schedule Name
+                 -100,                     !- Delta Temperature
+                 ,                         !- Delta Temperature Schedule Name
+                 -100,                     !- Minimum Outdoor Temperature
+                 ,                         !- Minimum Outdoor Temperature Schedule Name
+                 100,                      !- Maximum Outdoor Temperature
+                 ,                         !- Maximum Outdoor Temperature Schedule Name
+                 40;                       !- Maximum Wind Speed)
+        """
+        if self.IsInfiltrationOn:
+            infiltration_epbunch = idf.newidfobject(
+                key="ZONEINFILTRATION:DESIGNFLOWRATE",
+                Name=f"{zone_name} Infiltration",
+                Zone_or_ZoneList_Name=zone_name,
+                Schedule_Name=idf.newidfobject(
+                    key="SCHEDULE:CONSTANT", Name="AlwaysOn", Hourly_Value=1
+                ).Name,
+                Design_Flow_Rate_Calculation_Method="AirChanges/Hour",
+                Air_Changes_per_Hour=self.Infiltration,
+                Constant_Term_Coefficient=1,
+                Temperature_Term_Coefficient=0,
+                Velocity_Term_Coefficient=0,
+                Velocity_Squared_Term_Coefficient=0,
+            )
+        else:
+            infiltration_epbunch = None
+            log("No epbunch created since IsInfiltrationOn == False.")
+
+        if self.IsScheduledVentilationOn:
+            ventilation_epbunch = idf.newidfobject(
+                key="ZONEVENTILATION:DESIGNFLOWRATE",
+                Name=f"{zone_name} Ventilation",
+                Zone_or_ZoneList_Name=zone_name,
+                Schedule_Name=self.ScheduledVentilationSchedule.to_year_week_day(idf)[
+                    0
+                ].Name,  # take the YearSchedule and get the name.
+                Design_Flow_Rate_Calculation_Method="AirChanges/Hour",
+                Design_Flow_Rate="",
+                Flow_Rate_per_Zone_Floor_Area="",
+                Flow_Rate_per_Person="",
+                Air_Changes_per_Hour=self.ScheduledVentilationAch,
+                Ventilation_Type=self.VentilationType.name,
+                Fan_Pressure_Rise=67.0,
+                Fan_Total_Efficiency=0.7,
+                Constant_Term_Coefficient=1.0,
+                Temperature_Term_Coefficient=0.0,
+                Velocity_Term_Coefficient=0.0,
+                Velocity_Squared_Term_Coefficient=0.0,
+                Minimum_Indoor_Temperature=-100,
+                Minimum_Indoor_Temperature_Schedule_Name="",
+                Maximum_Indoor_Temperature=100.0,
+                Maximum_Indoor_Temperature_Schedule_Name="",
+                Delta_Temperature=-100.0,
+                Delta_Temperature_Schedule_Name="",
+                Minimum_Outdoor_Temperature=-100.0,
+                Minimum_Outdoor_Temperature_Schedule_Name="",
+                Maximum_Outdoor_Temperature=100.0,
+                Maximum_Outdoor_Temperature_Schedule_Name="",
+                Maximum_Wind_Speed=40.0,
+            )
+        else:
+            ventilation_epbunch = None
+            log("No epbunch created since IsScheduledVentilationOn == False.")
+
+        if self.IsNatVentOn:
+            natural_epbunch = idf.newidfobject(
+                key="ZONEVENTILATION:WINDANDSTACKOPENAREA",
+                Name=f"{zone_name} Natural Ventilation",
+                Zone_Name=zone_name,
+                Opening_Area=0.0,
+                Opening_Area_Fraction_Schedule_Name="",
+                Opening_Effectiveness="Autocalculate",
+                Effective_Angle=0.0,
+                Height_Difference=1,
+                Discharge_Coefficient_for_Opening="Autocalculate",
+                Minimum_Indoor_Temperature=self.NatVentZoneTempSetpoint,
+                Minimum_Indoor_Temperature_Schedule_Name="",
+                Maximum_Indoor_Temperature=100.0,
+                Maximum_Indoor_Temperature_Schedule_Name="",
+                Delta_Temperature=-100.0,
+                Delta_Temperature_Schedule_Name="",
+                Minimum_Outdoor_Temperature=self.NatVentMinOutdoorAirTemp,
+                Minimum_Outdoor_Temperature_Schedule_Name="",
+                Maximum_Outdoor_Temperature=self.NatVentMaxOutdoorAirTemp,
+                Maximum_Outdoor_Temperature_Schedule_Name="",
+                Maximum_Wind_Speed=40.0,
+            )
+        else:
+            natural_epbunch = None
+            log("No epbunch created since IsNatVentOn == False.")
+
+        return infiltration_epbunch, ventilation_epbunch, natural_epbunch
+
+
+def do_infiltration(index, inf_df):
+    """Get infiltration information of the zone.
 
     Args:
         index (tuple): Zone name
         inf_df (dataframe): Dataframe with infiltration information for each
-            zone
-        zone (template.zone.Zone): zone to gets information from
+            zone.
     """
     if not inf_df.empty:
         try:
             Infiltration = inf_df.loc[index, "ACH - Air Changes per Hour"]
             IsInfiltrationOn = any(inf_df.loc[index, "Name"])
-        except:
+        except Exception:
             Infiltration = 0
             IsInfiltrationOn = False
     else:
@@ -518,7 +889,7 @@ def do_infiltration(index, inf_df, zone):
 
 
 def do_natural_ventilation(index, nat_df, zone):
-    """Gets natural ventilation information of the zone
+    """Get natural ventilation information of the zone.
 
     Args:
         index (tuple): Zone name
@@ -531,9 +902,8 @@ def do_natural_ventilation(index, nat_df, zone):
             schedule_name_ = nat_df.loc[index, "Schedule Name"]
             quantity = nat_df.loc[index, "Volume Flow Rate/Floor Area {m3/s/m2}"]
             if schedule_name_.upper() in zone.idf.schedules_dict:
-                NatVentSchedule = UmiSchedule(
-                    Name=schedule_name_, idf=zone.idf, quantity=quantity
-                )
+                epbunch = zone.idf.schedules_dict[schedule_name_.upper()]
+                NatVentSchedule = UmiSchedule.from_epbunch(epbunch, quantity=quantity)
             else:
                 raise KeyError
         except KeyError:
@@ -542,14 +912,10 @@ def do_natural_ventilation(index, nat_df, zone):
             #  in the nat_df. For the mean time, a zone containing such an
             #  object will be turned on with an AlwaysOn schedule.
             IsNatVentOn = True
-            NatVentSchedule = UmiSchedule.constant_schedule(
-                idf=zone.idf, allow_duplicates=True
-            )
+            NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
         except Exception:
             IsNatVentOn = False
-            NatVentSchedule = UmiSchedule.constant_schedule(
-                idf=zone.idf, allow_duplicates=True
-            )
+            NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
         finally:
             try:
                 NatVentMaxRelHumidity = 90  # todo: not sure if it is being used
@@ -574,9 +940,7 @@ def do_natural_ventilation(index, nat_df, zone):
 
     else:
         IsNatVentOn = False
-        NatVentSchedule = UmiSchedule.constant_schedule(
-            idf=zone.idf, allow_duplicates=True
-        )
+        NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
         NatVentMaxRelHumidity = 90
         NatVentMaxOutdoorAirTemp = 30
         NatVentMinOutdoorAirTemp = 0
@@ -603,7 +967,7 @@ def do_natural_ventilation(index, nat_df, zone):
 
 
 def do_scheduled_ventilation(index, scd_df, zone):
-    """Gets schedule ventilation information of the zone
+    """Get schedule ventilation information of the zone.
 
     Args:
         index (tuple): Zone name
@@ -614,24 +978,23 @@ def do_scheduled_ventilation(index, scd_df, zone):
         try:
             IsScheduledVentilationOn = any(scd_df.loc[index, "Name"])
             schedule_name_ = scd_df.loc[index, "Schedule Name"]
-            ScheduledVentilationSchedule = UmiSchedule(
-                Name=schedule_name_, idf=zone.idf
-            )
+            epbunch = zone.idf.schedules_dict[schedule_name_.upper()]
+            ScheduledVentilationSchedule = UmiSchedule.from_epbunch(epbunch)
             ScheduledVentilationAch = scd_df.loc[index, "ACH - Air Changes per Hour"]
             ScheduledVentilationSetpoint = resolve_temp(
                 scd_df.loc[index, "Minimum Indoor Temperature{C}/Schedule"],
                 zone.idf,
             )
-        except:
+        except Exception:
             ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", idf=zone.idf, allow_duplicates=True
+                value=0, Name="AlwaysOff", allow_duplicates=True
             )
             IsScheduledVentilationOn = False
             ScheduledVentilationAch = 0
             ScheduledVentilationSetpoint = 18
     else:
         ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
-            hourly_value=0, Name="AlwaysOff", idf=zone.idf, allow_duplicates=True
+            value=0, Name="AlwaysOff", allow_duplicates=True
         )
         IsScheduledVentilationOn = False
         ScheduledVentilationAch = 0
@@ -645,6 +1008,7 @@ def do_scheduled_ventilation(index, scd_df, zone):
 
 
 def nominal_nat_ventilation(df):
+    """Get the Nominal Natural Ventilation."""
     _nom_vent = nominal_ventilation(df)
     if _nom_vent.empty:
         return _nom_vent
@@ -661,6 +1025,7 @@ def nominal_nat_ventilation(df):
 
 
 def nominal_mech_ventilation(df):
+    """Get the Nominal Mechanical Ventilation."""
     _nom_vent = nominal_ventilation(df)
     if _nom_vent.empty:
         return _nom_vent
@@ -677,19 +1042,12 @@ def nominal_mech_ventilation(df):
 
 
 def nominal_infiltration(df):
-    """Nominal Infiltration
-
-    Args:
-        df:
-
-    Returns:
-        df
+    """Get the Nominal Infiltration.
 
     References:
         * `Nominal Infiltration Table \
         <https://bigladdersoftware.com/epx/docs/8-9/output-details-and \
         -examples/eplusout-sql.html#nominalinfiltration-table>`_
-
     """
     df = get_from_tabulardata(df)
     report_name = "Initialization Summary"
@@ -720,19 +1078,12 @@ def nominal_infiltration(df):
 
 
 def nominal_ventilation(df):
-    """Nominal Ventilation
-
-    Args:
-        df:
-
-    Returns:
-        df
+    """Nominal Ventilation.
 
     References:
         * `Nominal Ventilation Table \
         <https://bigladdersoftware.com/epx/docs/8-9/output-details-and \
         -examples/eplusout-sql.html#nominalventilation-table>`_
-
     """
     df = get_from_tabulardata(df)
     report_name = "Initialization Summary"
@@ -768,10 +1119,10 @@ def nominal_ventilation(df):
 
 
 def nominal_ventilation_aggregation(x):
-    """Aggregates the ventilations whithin a single zone_loads name (implies
-    that
-    .groupby(['Archetype', 'Zone Name']) is
-    performed before calling this function).
+    """Aggregate the ventilation objects whithin a single zone_loads name.
+
+    Implies that .groupby(['Archetype', 'Zone Name']) is performed before calling
+    this function).
 
     Args:
         x:
@@ -854,14 +1205,9 @@ def nominal_ventilation_aggregation(x):
 
 
 def get_from_tabulardata(results):
-    """Returns a DataFrame from the 'TabularDataWithStrings' table. A
-    multiindex is returned with names ['Archetype', 'Index']
+    """Return a DataFrame from the 'TabularDataWithStrings' table.
 
-    Args:
-        results:
-
-    Returns:
-
+    A MultiIndex is returned with names ['Archetype', 'Index'].
     """
     tab_data_wstring = pd.concat(
         [value["TabularDataWithStrings"] for value in results.values()],

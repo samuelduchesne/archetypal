@@ -242,18 +242,9 @@ Utils
 
     config
     log
-    load_umi_template_objects
-    umi_template_object_to_dataframe
-    get_list_of_common_umi_objects
-    newrange
-    date_transform
     weighted_mean
     top
     copy_file
-    piecewise
-    rmse
-    checkStr
-    write_lines
     load_umi_template
     check_unique_name
     angle

@@ -27,7 +27,7 @@ class Variable:
             raise TypeError()
 
     def __repr__(self):
-        """Return the string representation of an EpBunch."""
+        """Return a representation of self."""
         return self._epobject.__str__()
 
     def values(

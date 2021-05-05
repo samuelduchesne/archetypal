@@ -1,312 +1,29 @@
-"""Window module handles window settings."""
+"""archetypal WindowSettings."""
 
 import collections
 import logging as lg
-from enum import Enum
+from copy import copy
 from functools import reduce
 
-from deprecation import deprecated
-from eppy.bunch_subclass import EpBunch
+from validator_collection import checkers, validators
+from validator_collection.errors import EmptyValueError
 
-import archetypal
-from archetypal.simple_glazing import calc_simple_glazing
-from archetypal.template import MaterialLayer, UmiSchedule, UniqueName
-from archetypal.template.gas_material import GasMaterial
-from archetypal.template.glazing_material import GlazingMaterial
+from archetypal.template.constructions.window_construction import (
+    ShadingType,
+    WindowConstruction,
+    WindowType,
+)
+from archetypal.template.schedule import UmiSchedule
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, timeit
 
 
-class WindowType(Enum):
-    """Refers to the window type. Two choices are available: interior or exterior."""
-
-    External = 0
-    Internal = 1
-
-    def __lt__(self, other):
-        """Return true if self lower than other."""
-        return self._value_ < other._value_
-
-    def __gt__(self, other):
-        """Return true if self higher than other."""
-        return self._value_ > other._value_
-
-
-class ShadingType(Enum):
-    """Refers to window shading types.
-
-    Hint:
-        EnergyPlus specifies 8 different shading types, but only 2 are supported
-        here: InteriorShade and ExteriorShade. See shading_ for more info.
-
-    .. _shading: https://bigladdersoftware.com/epx/docs/8-4/input-output-reference/group-thermal-zone-description-geometry.html#field-shading-type
-    """
-
-    ExteriorShade = 0
-    InteriorShade = 1
-
-    def __lt__(self, other):
-        """Return true if self lower than other."""
-        return self._value_ < other._value_
-
-    def __gt__(self, other):
-        """Return true if self higher than other."""
-        return self._value_ > other._value_
-
-
-class WindowConstruction(UmiBase):
-    """Window Construction.
-
-    .. image:: ../images/template/constructions-window.png
-    """
-
-    def __init__(
-        self,
-        Category="Double",
-        AssemblyCarbon=0,
-        AssemblyCost=0,
-        AssemblyEnergy=0,
-        DisassemblyCarbon=0,
-        DisassemblyEnergy=0,
-        Layers=None,
-        **kwargs,
-    ):
-        """Initialize a WindowConstruction.
-
-        Args:
-            Category (str): "Single", "Double" or "Triple".
-            AssemblyCarbon (float): Assembly Embodied Carbon by m2 of
-                construction.
-            AssemblyCost (float): Assembly cost by m2 of construction.
-            AssemblyEnergy (float): Assembly Embodied Energy by m2; of
-                construction.
-            DisassemblyCarbon (float): Disassembly embodied carbon by m2 of
-                construction.
-            DisassemblyEnergy (float): Disassembly embodied energy by m2 of
-                construction.
-            Layers (list of MaterialLayer):
-            **kwargs: Other keywords passed to the constructor.
-        """
-        super(WindowConstruction, self).__init__(**kwargs)
-        self.Category = Category
-        self.DisassemblyEnergy = DisassemblyEnergy
-        self.DisassemblyCarbon = DisassemblyCarbon
-        self.AssemblyEnergy = AssemblyEnergy
-        self.AssemblyCost = AssemblyCost
-        self.AssemblyCarbon = AssemblyCarbon
-        self.Layers = Layers
-
-    def __hash__(self):
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
-
-    def __eq__(self, other):
-        if not isinstance(other, WindowConstruction):
-            return NotImplemented
-        else:
-            return all(
-                [
-                    self.Category == other.Category,
-                    self.AssemblyCarbon == other.AssemblyCarbon,
-                    self.AssemblyCost == other.AssemblyCost,
-                    self.AssemblyEnergy == other.AssemblyEnergy,
-                    self.DisassemblyCarbon == other.DisassemblyCarbon,
-                    self.DisassemblyEnergy == other.DisassemblyEnergy,
-                    self.Layers == other.Layers,
-                ]
-            )
-
-    @classmethod
-    @deprecated(
-        deprecated_in="1.3.1",
-        removed_in="1.5",
-        current_version=archetypal.__version__,
-        details="Use from_dict function instead",
-    )
-    def from_json(cls, *args, **kwargs):
-
-        return cls.from_dict(*args, **kwargs)
-
-    @classmethod
-    def from_dict(cls, *args, **kwargs):
-        """Create :class:`WindowConstruction` object from json dict."""
-        wc = cls(*args, **kwargs)
-        layers = kwargs.get("Layers", None)
-
-        # resolve Material objects from ref
-        wc.Layers = [
-            MaterialLayer(wc.get_ref(layer["Material"]), layer["Thickness"])
-            for layer in layers
-        ]
-        return wc
-
-    @classmethod
-    def from_epbunch(cls, Construction, **kwargs):
-        """Create :class:`WindowConstruction` object from idf Construction object.
-
-        Example:
-            >>> from archetypal import IDF
-            >>> from archetypal.template import WindowSetting
-            >>> idf = IDF("myidf.idf")
-            >>> construction_name = "Some construction name"
-            >>> WindowConstruction.from_epbunch(Name=construction_name,
-            >>> idf=idf)
-
-        Args:
-            Construction (EpBunch): The Construction epbunch object.
-            **kwargs: Other keywords passed to the constructor.
-        """
-        Name = Construction.Name
-        idf = Construction.theidf
-        wc = cls(Name=Name, idf=idf, **kwargs)
-        wc.Layers = wc.layers(Construction, **kwargs)
-        catdict = {0: "Single", 1: "Single", 2: "Double", 3: "Triple", 4: "Quadruple"}
-        wc.Category = catdict[
-            len([lyr for lyr in wc.Layers if isinstance(lyr.Material, GlazingMaterial)])
-        ]
-        return wc
-
-    def to_json(self):
-        """Convert class properties to dict."""
-        self.validate()  # Validate object before trying to get json format
-
-        data_dict = collections.OrderedDict()
-
-        data_dict["$id"] = str(self.id)
-        data_dict["Layers"] = [layer.to_dict() for layer in self.Layers]
-        data_dict["AssemblyCarbon"] = self.AssemblyCarbon
-        data_dict["AssemblyCost"] = self.AssemblyCost
-        data_dict["AssemblyEnergy"] = self.AssemblyEnergy
-        data_dict["DisassemblyCarbon"] = self.DisassemblyCarbon
-        data_dict["DisassemblyEnergy"] = self.DisassemblyEnergy
-        data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
-        data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = UniqueName(self.Name)
-
-        return data_dict
-
-    def mapping(self):
-        self.validate()
-
-        return dict(
-            Layers=self.Layers,
-            AssemblyCarbon=self.AssemblyCarbon,
-            AssemblyCost=self.AssemblyCost,
-            AssemblyEnergy=self.AssemblyEnergy,
-            DisassemblyCarbon=self.DisassemblyCarbon,
-            DisassemblyEnergy=self.DisassemblyEnergy,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
-
-    def layers(self, Construction, **kwargs):
-        """Retrieve layers for the WindowConstruction"""
-        layers = []
-        for field in Construction.fieldnames:
-            # Loop through the layers from the outside layer towards the
-            # indoor layers and get the material they are made of.
-            material = Construction.get_referenced_object(field) or kwargs.get(
-                "material", None
-            )
-            if material:
-                # Create the WindowMaterial:Glazing or the WindowMaterial:Gas
-                # and append to the list of layers
-                if material.key.upper() == "WindowMaterial:Glazing".upper():
-                    material_obj = GlazingMaterial(
-                        Conductivity=material.Conductivity,
-                        SolarTransmittance=material.Solar_Transmittance_at_Normal_Incidence,
-                        SolarReflectanceFront=material.Front_Side_Solar_Reflectance_at_Normal_Incidence,
-                        SolarReflectanceBack=material.Back_Side_Solar_Reflectance_at_Normal_Incidence,
-                        VisibleTransmittance=material.Visible_Transmittance_at_Normal_Incidence,
-                        VisibleReflectanceFront=material.Front_Side_Visible_Reflectance_at_Normal_Incidence,
-                        VisibleReflectanceBack=material.Back_Side_Visible_Reflectance_at_Normal_Incidence,
-                        IRTransmittance=material.Infrared_Transmittance_at_Normal_Incidence,
-                        IREmissivityFront=material.Front_Side_Infrared_Hemispherical_Emissivity,
-                        IREmissivityBack=material.Back_Side_Infrared_Hemispherical_Emissivity,
-                        DirtFactor=material.Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance,
-                        Type="Uncoated",
-                        Name=material.Name,
-                        Optical=material.Optical_Data_Type,
-                        OpticalData=material.Window_Glass_Spectral_Data_Set_Name,
-                        idf=self.idf,
-                    )
-
-                    material_layer = MaterialLayer(material_obj, material.Thickness)
-
-                elif material.key.upper() == "WindowMaterial:Gas".upper():
-                    # Todo: Make gas name generic, like in UmiTemplateLibrary Editor
-                    material_obj = GasMaterial(
-                        Name=material.Gas_Type.upper(), idf=self.idf
-                    )
-                    material_layer = MaterialLayer(material_obj, material.Thickness)
-                elif material.key.upper() == "WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM":
-                    glass_properties = calc_simple_glazing(
-                        material.Solar_Heat_Gain_Coefficient,
-                        material.UFactor,
-                        material.Visible_Transmittance,
-                    )
-                    material_obj = GlazingMaterial(
-                        **glass_properties, Name=material.Name, idf=self.idf
-                    )
-
-                    material_layer = MaterialLayer(
-                        material_obj, glass_properties["Thickness"]
-                    )
-                    layers.append(material_layer)
-                    break
-                else:
-                    continue
-
-                layers.append(material_layer)
-        return layers
-
-    def combine(self, other, weights=None):
-        """Append other to self. Return self + other as a new object.
-
-        For now, simply returns self.
-
-        todo:
-            - Implement equivalent window layers for constant u-factor.
-
-        """
-        # Check if other is None. Simply return self
-        if not other:
-            return self
-
-        if not self:
-            return other
-
-        return self
-
-    def validate(self):
-        """Validate object and fill in missing values.
-
-        todo:
-            - Implement validation
-        """
-        return self
-
-    def get_ref(self, ref):
-        """Get item matching reference id."""
-        return next(
-            iter(
-                [
-                    value
-                    for value in WindowConstruction.CREATED_OBJECTS
-                    if value.id == ref["$ref"]
-                ]
-            ),
-            None,
-        )
-
-
 class WindowSetting(UmiBase):
-    """Window Settings define the various window-related properties of a
-    specific :class:`Zone`. Control natural ventilation, shading and airflow
-    networks and more using this class. This class serves the same role as the
-    ZoneInformation>Windows tab in the UMI TemplateEditor.
+    """Defines the various window-related properties of a :class:`Zone`.
+
+    Control natural ventilation, shading and airflow networks and more using this
+    class. This class serves the same role as the ZoneInformation>Windows tab in the
+    UMI TemplateEditor.
 
     .. image:: ../images/template/zoneinfo-windows.png
 
@@ -320,8 +37,29 @@ class WindowSetting(UmiBase):
     .. _eppy : https://eppy.readthedocs.io/en/latest/
     """
 
+    __slots__ = (
+        "_operable_area",
+        "_afn_discharge_c",
+        "_afn_temp_setpoint",
+        "_shading_system_setpoint",
+        "_shading_system_transmittance",
+        "_zone_mixing_availability_schedule",
+        "_shading_system_availability_schedule",
+        "_construction",
+        "_afn_window_availability",
+        "_is_shading_system_on",
+        "_is_virtual_partition",
+        "_is_zone_mixing_on",
+        "_shading_system_type",
+        "_type",
+        "_zone_mixing_delta_temperature",
+        "_zone_mixing_flow_rate",
+        "_area",
+    )
+
     def __init__(
         self,
+        Name,
         Construction=None,
         OperableArea=0.8,
         AfnWindowAvailability=None,
@@ -338,9 +76,10 @@ class WindowSetting(UmiBase):
         ZoneMixingAvailabilitySchedule=None,
         ZoneMixingDeltaTemperature=2,
         ZoneMixingFlowRate=0.001,
+        area=1,
         **kwargs,
     ):
-        """Initialize a WindowSetting using default values:
+        """Initialize a WindowSetting using default values.
 
         Args:
             Construction (WindowConstruction): The window construction.
@@ -371,9 +110,8 @@ class WindowSetting(UmiBase):
                 Default = 0.001 m3/m2.
             **kwargs: other keywords passed to the constructor.
         """
-        super(WindowSetting, self).__init__(**kwargs)
+        super(WindowSetting, self).__init__(Name, **kwargs)
 
-        self.ZoneMixingAvailabilitySchedule = ZoneMixingAvailabilitySchedule
         self.ShadingSystemAvailabilitySchedule = ShadingSystemAvailabilitySchedule
         self.Construction = Construction
         self.AfnWindowAvailability = AfnWindowAvailability
@@ -389,68 +127,243 @@ class WindowSetting(UmiBase):
         self.Type = WindowType(Type)
         self.ZoneMixingDeltaTemperature = ZoneMixingDeltaTemperature
         self.ZoneMixingFlowRate = ZoneMixingFlowRate
+        self.ZoneMixingAvailabilitySchedule = ZoneMixingAvailabilitySchedule
+
+        self.area = area
+
+    @property
+    def area(self):
+        """Get or set the area of the zone associated to this object [m²]."""
+        return self._area
+
+    @area.setter
+    def area(self, value):
+        self._area = validators.float(value, minimum=0)
 
     @property
     def OperableArea(self):
+        """Get or set the operable area ratio [-]."""
         return self._operable_area
 
     @OperableArea.setter
     def OperableArea(self, value):
-        if value > 1:
-            raise ValueError("Operable Area must be a number between 0 and 1.")
-        self._operable_area = value
+        self._operable_area = validators.float(value, minimum=0, maximum=1)
 
     @property
     def AfnDischargeC(self):
-        return float(self._afn_discharge_c)
+        """Get or set the air flow network discarge coefficient."""
+        return self._afn_discharge_c
 
     @AfnDischargeC.setter
     def AfnDischargeC(self, value):
-        if value > 1:
-            raise ValueError("Operable Area must be a number between 0 and 1.")
-        self._afn_discharge_c = value
+        self._afn_discharge_c = validators.float(value, minimum=0, maximum=1)
 
     @property
     def AfnTempSetpoint(self):
-        return float(self._afn_temp_setpoint)
+        """Get or set the air flow network setpoint temperature [degC]."""
+        return self._afn_temp_setpoint
 
     @AfnTempSetpoint.setter
     def AfnTempSetpoint(self, value):
-        self._afn_temp_setpoint = value
+        self._afn_temp_setpoint = validators.float(value, minimum=-100, maximum=100)
+
+    @property
+    def AfnWindowAvailability(self):
+        """Get or set the air flow network window availability schedule."""
+        return self._afn_window_availability
+
+    @AfnWindowAvailability.setter
+    def AfnWindowAvailability(self, value):
+        if value is not None:
+            assert isinstance(value, UmiSchedule), (
+                f"Input error with value {value}. AfnWindowAvailability must "
+                f"be an UmiSchedule, not a {type(value)}"
+            )
+        self._afn_window_availability = value
+
+    @property
+    def ShadingSystemType(self):
+        """Get or set the shading system type [enum]."""
+        return self._shading_system_type
+
+    @ShadingSystemType.setter
+    def ShadingSystemType(self, value):
+        if checkers.is_string(value):
+            assert ShadingType[value], (
+                f"Input value error for '{value}'. "
+                f"Expected one of {tuple(a for a in ShadingType)}"
+            )
+            self._shading_system_type = ShadingType[value]
+        elif checkers.is_numeric(value):
+            assert ShadingType[value], (
+                f"Input value error for '{value}'. "
+                f"Expected one of {tuple(a for a in ShadingType)}"
+            )
+            self._shading_system_type = ShadingType(value)
+        elif isinstance(value, ShadingType):
+            self._shading_system_type = value
 
     @property
     def ShadingSystemSetpoint(self):
-        return float(self._shading_system_setpoint)
+        """Get or set the shading system setpoint [W/m2]."""
+        return self._shading_system_setpoint
 
     @ShadingSystemSetpoint.setter
     def ShadingSystemSetpoint(self, value):
-        self._shading_system_setpoint = value
+        self._shading_system_setpoint = validators.float(value, minimum=0)
 
     @property
     def ShadingSystemTransmittance(self):
-        return float(self._shading_system_transmittance)
+        """Get or set the shading system transmittance [-]."""
+        return self._shading_system_transmittance
 
     @ShadingSystemTransmittance.setter
     def ShadingSystemTransmittance(self, value):
-        self._shading_system_transmittance = value
+        self._shading_system_transmittance = validators.float(
+            value, minimum=0, maximum=1
+        )
+
+    @property
+    def ShadingSystemAvailabilitySchedule(self):
+        """Get or set the shading system availability schedule."""
+        return self._shading_system_availability_schedule
+
+    @ShadingSystemAvailabilitySchedule.setter
+    def ShadingSystemAvailabilitySchedule(self, value):
+        if value is not None:
+            assert isinstance(value, UmiSchedule), (
+                f"Input error with value {value}. ZoneMixingAvailabilitySchedule must "
+                f"be an UmiSchedule, not a {type(value)}"
+            )
+        self._shading_system_availability_schedule = value
+
+    @property
+    def IsShadingSystemOn(self):
+        """Get or set the use of the shading system."""
+        return self._is_shading_system_on
+
+    @IsShadingSystemOn.setter
+    def IsShadingSystemOn(self, value):
+        assert isinstance(value, bool), (
+            f"Input error with value {value}. IsShadingSystemOn must "
+            f"be a boolean, not a {type(value)}"
+        )
+        self._is_shading_system_on = value
+
+    @property
+    def ZoneMixingAvailabilitySchedule(self):
+        """Get or set the zone mixing availability schedule."""
+        return self._zone_mixing_availability_schedule
+
+    @ZoneMixingAvailabilitySchedule.setter
+    def ZoneMixingAvailabilitySchedule(self, value):
+        if value is not None:
+            assert isinstance(value, UmiSchedule), (
+                f"Input error with value {value}. ZoneMixingAvailabilitySchedule must "
+                f"be an UmiSchedule, not a {type(value)}"
+            )
+        self._zone_mixing_availability_schedule = value
+
+    @property
+    def ZoneMixingDeltaTemperature(self):
+        """Get or set the zone mixing delta temperature."""
+        return self._zone_mixing_delta_temperature
+
+    @ZoneMixingDeltaTemperature.setter
+    def ZoneMixingDeltaTemperature(self, value):
+        self._zone_mixing_delta_temperature = validators.float(value, minimum=0)
+
+    @property
+    def Construction(self):
+        """Get or set the window construction."""
+        return self._construction
+
+    @Construction.setter
+    def Construction(self, value):
+        if value is not None:
+            assert isinstance(value, WindowConstruction), (
+                f"Input error with value {value}. Construction must "
+                f"be an WindowConstruction, not a {type(value)}"
+            )
+        self._construction = value
+
+    @property
+    def IsVirtualPartition(self):
+        """Get or set the state of the virtual partition."""
+        return self._is_virtual_partition
+
+    @IsVirtualPartition.setter
+    def IsVirtualPartition(self, value):
+        assert isinstance(value, bool), (
+            f"Input error with value {value}. IsVirtualPartition must "
+            f"be a boolean, not a {type(value)}"
+        )
+        self._is_virtual_partition = value
+
+    @property
+    def IsZoneMixingOn(self):
+        """Get or set mixing in zone."""
+        return self._is_zone_mixing_on
+
+    @IsZoneMixingOn.setter
+    def IsZoneMixingOn(self, value):
+        assert isinstance(value, bool), (
+            f"Input error with value {value}. IsZoneMixingOn must "
+            f"be a boolean, not a {type(value)}"
+        )
+        self._is_zone_mixing_on = value
+
+    @property
+    def ZoneMixingFlowRate(self):
+        """Get or set the zone mixing flow rate [m3/s]."""
+        return self._zone_mixing_flow_rate
+
+    @ZoneMixingFlowRate.setter
+    def ZoneMixingFlowRate(self, value):
+        self._zone_mixing_flow_rate = validators.float(value, minimum=0)
+
+    @property
+    def Type(self):
+        """Get or set the window type [enum]."""
+        return self._type
+
+    @Type.setter
+    def Type(self, value):
+        if checkers.is_string(value):
+            assert WindowType[value], (
+                f"Input value error for '{value}'. "
+                f"Expected one of {tuple(a for a in WindowType)}"
+            )
+            self._type = WindowType[value]
+        elif checkers.is_numeric(value):
+            assert WindowType[value], (
+                f"Input value error for '{value}'. "
+                f"Expected one of {tuple(a for a in WindowType)}"
+            )
+            self._type = WindowType(value)
+        elif isinstance(value, WindowType):
+            self._type = value
 
     def __add__(self, other):
+        """Combine self and other."""
         return self.combine(other)
 
     def __repr__(self):
-        # header = "{}: <{}>\n".format(self.Name, self.__class__.mro()[0].__name__)
-        # return header + tabulate.tabulate(self.mapping().items(), tablefmt="plain")
+        """Return a representation of self."""
         return super(WindowSetting, self).__repr__()
 
     def __str__(self):
+        """Return string representation."""
         return repr(self)
 
     def __hash__(self):
+        """Return the hash value of self."""
         return hash(
             (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
         )
 
     def __eq__(self, other):
+        """Assert self is equivalent to other."""
         if not isinstance(other, WindowSetting):
             return NotImplemented
         else:
@@ -478,27 +391,19 @@ class WindowSetting(UmiBase):
             )
 
     @classmethod
-    def generic(cls, idf, Name):
+    def generic(cls, Name):
         """Initialize a generic window with SHGC=0.704, UFactor=2.703, Tvis=0.786.
 
         Args:
             Name (str): Name of the WindowSetting
-            idf (IDF):
         """
-        material = idf.anidfobject(
-            "WindowMaterial:SimpleGlazingSystem".upper(),
-            Name="SimpleWindow:SINGLE PANE HW WINDOW",
-            UFactor=2.703,
-            Solar_Heat_Gain_Coefficient=0.704,
-            Visible_Transmittance=0.786,
+        construction = WindowConstruction.from_shgc(
+            "SimpleWindow:SINGLE PANE HW WINDOW",
+            u_factor=2.703,
+            solar_heat_gain_coefficient=0.704,
+            visible_transmittance=0.786,
         )
-
-        constr = idf.anidfobject(
-            "CONSTRUCTION",
-            Name="SINGLE PANE HW WINDOW",
-            Outside_Layer="SimpleWindow:SINGLE PANE HW WINDOW",
-        )
-        return cls.from_construction(Name=Name, Construction=constr, material=material)
+        return WindowSetting(Name, Construction=construction)
 
     @classmethod
     def from_construction(cls, Construction, **kwargs):
@@ -508,13 +413,15 @@ class WindowSetting(UmiBase):
 
         Examples:
             >>> from archetypal import IDF
-            >>> from archetypal.template import WindowSetting
+            >>> from archetypal.template.window_setting import WindowSetting
             >>> # Given an IDF object
             >>> idf = IDF("idfname.idf")
-            >>> construction = idf.getobject('CONSTRUCTION',
+            >>> constr = idf.getobject('CONSTRUCTION',
             >>>                              'AEDG-SmOffice 1A Window Fixed')
-            >>> WindowSetting.from_construction(Name='test_window',
-            >>>                    Construction=construction)
+            >>> WindowSetting.from_construction(
+            >>>     Name='test_window',
+            >>>     Construction=constr
+            >>> )
 
         Args:
             Construction (EpBunch): The construction name for this window.
@@ -524,12 +431,18 @@ class WindowSetting(UmiBase):
             (windowSetting): The window setting object.
         """
         name = kwargs.pop("Name", Construction.Name + "_Window")
-        w = cls(Name=name, idf=Construction.theidf, **kwargs)
-        w.Construction = WindowConstruction.from_epbunch(Construction, **kwargs)
-        w.AfnWindowAvailability = UmiSchedule.constant_schedule(idf=w.idf)
-        w.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(idf=w.idf)
-        w.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(idf=w.idf)
-        return w
+        construction = WindowConstruction.from_epbunch(Construction, **kwargs)
+        AfnWindowAvailability = UmiSchedule.constant_schedule()
+        ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule()
+        ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule()
+        return cls(
+            Name=name,
+            Construction=construction,
+            AfnWindowAvailability=AfnWindowAvailability,
+            ShadingSystemAvailabilitySchedule=ShadingSystemAvailabilitySchedule,
+            ZoneMixingAvailabilitySchedule=ZoneMixingAvailabilitySchedule,
+            **kwargs,
+        )
 
     @classmethod
     def from_surface(cls, surface, **kwargs):
@@ -569,7 +482,13 @@ class WindowSetting(UmiBase):
             (WindowSetting): The window setting object.
         """
         if surface.key.upper() == "FENESTRATIONSURFACE:DETAILED":
+            if not surface.Surface_Type.lower() == "window":
+                return  # Other surface types (Doors, GlassDoors, etc.) are ignored.
             construction = surface.get_referenced_object("Construction_Name")
+            if construction is None:
+                construction = surface.theidf.getobject(
+                    "CONSTRUCTION", surface.Construction_Name
+                )
             construction = WindowConstruction.from_epbunch(construction)
             shading_control = surface.get_referenced_object("Shading_Control_Name")
         elif surface.key.upper() == "WINDOW":
@@ -608,8 +527,8 @@ class WindowSetting(UmiBase):
             # get shading control schedule
             if shading_control["Shading_Control_Is_Scheduled"].upper() == "YES":
                 name = shading_control["Schedule_Name"]
-                attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule(
-                    Name=name, idf=surface.theidf
+                attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.from_epbunch(
+                    surface.theidf.schedules_dict[name.upper()]
                 )
             else:
                 # Determine which behavior of control
@@ -617,13 +536,11 @@ class WindowSetting(UmiBase):
                 if shade_ctrl_type.lower() == "alwaysoff":
                     attr[
                         "ShadingSystemAvailabilitySchedule"
-                    ] = UmiSchedule.constant_schedule(
-                        name="AlwaysOff", hourly_value=0, idf=surface.theidf
-                    )
+                    ] = UmiSchedule.constant_schedule(value=0, name="AlwaysOff")
                 elif shade_ctrl_type.lower() == "alwayson":
                     attr[
                         "ShadingSystemAvailabilitySchedule"
-                    ] = UmiSchedule.constant_schedule(idf=surface.theidf)
+                    ] = UmiSchedule.constant_schedule()
                 else:
                     log(
                         'Window "{}" uses a  window control type that '
@@ -633,7 +550,7 @@ class WindowSetting(UmiBase):
                     )
                     attr[
                         "ShadingSystemAvailabilitySchedule"
-                    ] = UmiSchedule.constant_schedule(idf=surface.theidf)
+                    ] = UmiSchedule.constant_schedule()
             # get shading type
             if shading_control["Shading_Type"] != "":
                 mapping = {
@@ -649,9 +566,7 @@ class WindowSetting(UmiBase):
                 attr["ShadingSystemType"] = mapping[shading_control["Shading_Type"]]
         else:
             # Set default schedules
-            attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.constant_schedule(
-                idf=surface.theidf
-            )
+            attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.constant_schedule()
 
         # get airflow network
         afn = next(
@@ -669,13 +584,11 @@ class WindowSetting(UmiBase):
             leak = afn.get_referenced_object("Leakage_Component_Name")
             name = afn["Venting_Availability_Schedule_Name"]
             if name != "":
-                attr["AfnWindowAvailability"] = UmiSchedule(
-                    Name=name, idf=surface.theidf
+                attr["AfnWindowAvailability"] = UmiSchedule.from_epbunch(
+                    surface.theidf.schedules_dict[name.upper()]
                 )
             else:
-                attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule(
-                    idf=surface.theidf
-                )
+                attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule()
             name = afn["Ventilation_Control_Zone_Temperature_Setpoint_Schedule_Name"]
             if name != "":
                 attr["AfnTempSetpoint"] = UmiSchedule(
@@ -728,11 +641,11 @@ class WindowSetting(UmiBase):
                 )
         else:
             attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", idf=surface.theidf
+                value=0, Name="AlwaysOff"
             )
         # Todo: Zone Mixing is always off
         attr["ZoneMixingAvailabilitySchedule"] = UmiSchedule.constant_schedule(
-            hourly_value=0, Name="AlwaysOff", idf=surface.theidf
+            value=0, Name="AlwaysOff"
         )
         DataSource = kwargs.pop("DataSource", surface.theidf.name)
         Category = kwargs.pop("Category", surface.theidf.name)
@@ -763,7 +676,7 @@ class WindowSetting(UmiBase):
         """
         window_sets = []
 
-        for surf in zone._zonesurfaces:
+        for surf in zone.zone_surfaces:
             # skip internalmass objects since they don't have windows.
             if surf.key.lower() != "internalmass":
                 for subsurf in surf.subsurfaces:
@@ -820,26 +733,26 @@ class WindowSetting(UmiBase):
             Construction=WindowConstruction.combine(
                 self.Construction, other.Construction, weights
             ),
-            AfnDischargeC=self._float_mean(other, "AfnDischargeC", weights),
-            AfnTempSetpoint=self._float_mean(other, "AfnTempSetpoint", weights),
+            AfnDischargeC=self.float_mean(other, "AfnDischargeC", weights),
+            AfnTempSetpoint=self.float_mean(other, "AfnTempSetpoint", weights),
             AfnWindowAvailability=UmiSchedule.combine(
                 self.AfnWindowAvailability, other.AfnWindowAvailability, weights
             ),
             IsShadingSystemOn=any([self.IsShadingSystemOn, other.IsShadingSystemOn]),
             IsVirtualPartition=any([self.IsVirtualPartition, other.IsVirtualPartition]),
             IsZoneMixingOn=any([self.IsZoneMixingOn, other.IsZoneMixingOn]),
-            OperableArea=self._float_mean(other, "OperableArea", weights),
-            ShadingSystemSetpoint=self._float_mean(
+            OperableArea=self.float_mean(other, "OperableArea", weights),
+            ShadingSystemSetpoint=self.float_mean(
                 other, "ShadingSystemSetpoint", weights
             ),
-            ShadingSystemTransmittance=self._float_mean(
+            ShadingSystemTransmittance=self.float_mean(
                 other, "ShadingSystemTransmittance", weights
             ),
             ShadingSystemType=max(self.ShadingSystemType, other.ShadingSystemType),
-            ZoneMixingDeltaTemperature=self._float_mean(
+            ZoneMixingDeltaTemperature=self.float_mean(
                 other, "ZoneMixingDeltaTemperature", weights
             ),
-            ZoneMixingFlowRate=self._float_mean(other, "ZoneMixingFlowRate", weights),
+            ZoneMixingFlowRate=self.float_mean(other, "ZoneMixingFlowRate", weights),
             ZoneMixingAvailabilitySchedule=UmiSchedule.combine(
                 self.ZoneMixingAvailabilitySchedule,
                 other.ZoneMixingAvailabilitySchedule,
@@ -852,12 +765,12 @@ class WindowSetting(UmiBase):
             ),
             Type=max(self.Type, other.Type),
         )
-        new_obj = WindowSetting(**meta, **new_attr, idf=self.idf)
+        new_obj = WindowSetting(**meta, **new_attr)
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
-    def to_json(self):
-        """Convert class properties to dict."""
+    def to_dict(self):
+        """Return WindowSetting dictionary representation."""
         self.validate()  # Validate object before trying to get json format
 
         data_dict = collections.OrderedDict()
@@ -865,7 +778,7 @@ class WindowSetting(UmiBase):
         data_dict["$id"] = str(self.id)
         data_dict["AfnDischargeC"] = self.AfnDischargeC
         data_dict["AfnTempSetpoint"] = self.AfnTempSetpoint
-        data_dict["AfnWindowAvailability"] = self.AfnWindowAvailability.to_dict()
+        data_dict["AfnWindowAvailability"] = self.AfnWindowAvailability.to_ref()
         data_dict["Construction"] = {"$ref": str(self.Construction.id)}
         data_dict["IsShadingSystemOn"] = self.IsShadingSystemOn
         data_dict["IsVirtualPartition"] = self.IsVirtualPartition
@@ -873,51 +786,58 @@ class WindowSetting(UmiBase):
         data_dict["OperableArea"] = self.OperableArea
         data_dict[
             "ShadingSystemAvailabilitySchedule"
-        ] = self.ShadingSystemAvailabilitySchedule.to_dict()
+        ] = self.ShadingSystemAvailabilitySchedule.to_ref()
         data_dict["ShadingSystemSetpoint"] = self.ShadingSystemSetpoint
         data_dict["ShadingSystemTransmittance"] = self.ShadingSystemTransmittance
         data_dict["ShadingSystemType"] = self.ShadingSystemType.value
         data_dict["Type"] = self.Type.value
         data_dict[
             "ZoneMixingAvailabilitySchedule"
-        ] = self.ZoneMixingAvailabilitySchedule.to_dict()
+        ] = self.ZoneMixingAvailabilitySchedule.to_ref()
         data_dict["ZoneMixingDeltaTemperature"] = self.ZoneMixingDeltaTemperature
         data_dict["ZoneMixingFlowRate"] = self.ZoneMixingFlowRate
         data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
+        data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = UniqueName(self.Name)
+        data_dict["Name"] = self.Name
 
         return data_dict
 
     @classmethod
-    @deprecated(
-        deprecated_in="1.3.1",
-        removed_in="1.5",
-        current_version=archetypal.__version__,
-        details="Use from_dict function instead",
-    )
-    def from_json(cls, *args, **kwargs):
+    def from_dict(cls, data, schedules, window_constructions, **kwargs):
+        """Create a ZoneConditioning from a dictionary.
 
-        return cls.from_dict(*args, **kwargs)
+        Args:
+            data (dict): The python dictionary.
+            schedules (dict): A dictionary of UmiSchedules with their id as keys.
+            window_constructions (dict): A dictionary of WindowConstruction objects
+                with their id as keys.
+            **kwargs: keywords passed to parent constructor.
+        """
+        data = copy(data)
+        _id = data.pop("$id")
+        afn_availability_schedule = schedules[data.pop("AfnWindowAvailability")["$ref"]]
+        construction = window_constructions[data.pop("Construction")["$ref"]]
+        shading_system_availability_schedule = schedules[
+            data.pop("ShadingSystemAvailabilitySchedule")["$ref"]
+        ]
+        zone_mixing_availability_schedule = schedules[
+            data.pop("ZoneMixingAvailabilitySchedule")["$ref"]
+        ]
+        return cls(
+            id=_id,
+            Construction=construction,
+            AfnWindowAvailability=afn_availability_schedule,
+            ShadingSystemAvailabilitySchedule=shading_system_availability_schedule,
+            ZoneMixingAvailabilitySchedule=zone_mixing_availability_schedule,
+            **data,
+            **kwargs,
+        )
 
     @classmethod
-    def from_dict(cls, *args, **kwargs):
-        """Initialize :class:`WindowSetting` object from json dict."""
-        w = cls(*args, **kwargs)
-
-        ref = kwargs.get("AfnWindowAvailability", None)
-        w.AfnWindowAvailability = w.get_ref(ref)
-        ref = kwargs.get("Construction", None)
-        w.Construction = w.get_ref(ref)
-        ref = kwargs.get("ShadingSystemAvailabilitySchedule", None)
-        w.ShadingSystemAvailabilitySchedule = w.get_ref(ref)
-        ref = kwargs.get("ZoneMixingAvailabilitySchedule", None)
-        w.ZoneMixingAvailabilitySchedule = w.get_ref(ref)
-        return w
-
-    @classmethod
-    def from_ref(cls, ref, building_templates, idf=None, **kwargs):
+    def from_ref(
+        cls, ref, building_templates, schedules, window_constructions, **kwargs
+    ):
         """Initialize :class:`WindowSetting` object from a reference id.
 
         Hint:
@@ -941,28 +861,35 @@ class WindowSetting(UmiBase):
                 )
             )
         )
-        w = cls.from_json(**store, idf=idf, **kwargs)
+        w = cls.from_dict(store, schedules, window_constructions, **kwargs)
         return w
 
     def validate(self):
         """Validate object and fill in missing values."""
         if not self.AfnWindowAvailability:
             self.AfnWindowAvailability = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", idf=self.idf
+                value=0, Name="AlwaysOff"
             )
         if not self.ShadingSystemAvailabilitySchedule:
             self.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", idf=self.idf
+                value=0, Name="AlwaysOff"
             )
         if not self.ZoneMixingAvailabilitySchedule:
             self.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(
-                hourly_value=0, Name="AlwaysOff", idf=self.idf
+                value=0, Name="AlwaysOff"
             )
 
         return self
 
-    def mapping(self):
-        self.validate()
+    def mapping(self, validate=True):
+        """Get a dict based on the object properties, useful for dict repr.
+
+        Args:
+            validate (bool): If True, try to validate object before returning the
+                mapping.
+        """
+        if validate:
+            self.validate()
 
         return dict(
             AfnDischargeC=self.AfnDischargeC,
@@ -985,21 +912,4 @@ class WindowSetting(UmiBase):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
-        )
-
-    def get_ref(self, ref):
-        """Get item matching reference id.
-
-        Args:
-            ref:
-        """
-        return next(
-            iter(
-                [
-                    value
-                    for value in WindowSetting.CREATED_OBJECTS
-                    if value.id == ref["$ref"]
-                ]
-            ),
-            None,
         )

@@ -122,7 +122,7 @@ class TransitionExe(EnergyPlusProgram):
         return " ".join(self.__repr__())
 
     def __repr__(self):
-        """Return command as string."""
+        """Return the command as a string."""
         return self.cmd()
 
     def cmd(self):

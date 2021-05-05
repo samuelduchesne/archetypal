@@ -4,9 +4,8 @@ import collections
 
 from validator_collection import validators
 
+from archetypal.template.constructions.base_construction import ConstructionBase
 from archetypal.template.materials.opaque_material import OpaqueMaterial
-from archetypal.template.opaque_construction import ConstructionBase
-from archetypal.template.umi_base import UniqueName
 
 
 class MassRatio(object):
@@ -140,27 +139,27 @@ class StructureInformation(ConstructionBase):
     .. image:: ../images/template/constructions-structure.png
     """
 
-    __slots__ = ("_mass_ratio",)
+    __slots__ = ("_mass_ratios",)
 
-    def __init__(self, MassRatios, **kwargs):
+    def __init__(self, Name, MassRatios, **kwargs):
         """Initialize object.
 
         Args:
             MassRatios (list of MassRatio): MassRatio object.
             **kwargs: keywords passed to the ConstructionBase constructor.
         """
-        super(StructureInformation, self).__init__(**kwargs)
+        super(StructureInformation, self).__init__(Name, **kwargs)
         self.MassRatios = MassRatios
 
     @property
-    def MassRatio(self):
+    def MassRatios(self):
         """Get or set the list of MassRatios."""
-        return self._mass_ratio
+        return self._mass_ratios
 
-    @MassRatio.setter
-    def MassRatio(self, value):
+    @MassRatios.setter
+    def MassRatios(self, value):
         assert isinstance(value, list), "mass_ratio must be of a list of MassRatio"
-        self._mass_ratio = value
+        self._mass_ratios = value
 
     @classmethod
     def from_dict(cls, data, materials, **kwargs):
@@ -198,9 +197,9 @@ class StructureInformation(ConstructionBase):
         data_dict["DisassemblyCarbon"] = self.DisassemblyCarbon
         data_dict["DisassemblyEnergy"] = self.DisassemblyEnergy
         data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
+        data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = UniqueName(self.Name)
+        data_dict["Name"] = self.Name
 
         return data_dict
 
@@ -208,9 +207,15 @@ class StructureInformation(ConstructionBase):
         """Validate object and fill in missing values."""
         return self
 
-    def mapping(self):
-        """Get a dict based on the object properties, useful for dict repr."""
-        self.validate()
+    def mapping(self, validate=True):
+        """Get a dict based on the object properties, useful for dict repr.
+
+        Args:
+            validate (bool): If True, try to validate object before returning the
+                mapping.
+        """
+        if validate:
+            self.validate()
 
         return dict(
             MassRatios=self.MassRatios,
@@ -253,4 +258,4 @@ class StructureInformation(ConstructionBase):
 
     def __copy__(self):
         """Create a copy of self."""
-        return self.__class__(**self.mapping())
+        return self.__class__(**self.mapping(validate=False))

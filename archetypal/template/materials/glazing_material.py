@@ -7,7 +7,7 @@ from validator_collection import validators
 
 from archetypal.idfclass.extensions import EpBunch
 from archetypal.template.materials.material_base import MaterialBase
-from archetypal.template.umi_base import UmiBase, UniqueName
+from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log
 
 
@@ -28,13 +28,15 @@ class GlazingMaterial(MaterialBase):
         "_solar_reflectance_back",
         "_solar_reflectance_front",
         "_solar_transmittance",
+        "_dirt_factor",
+        "_conductivity",
     )
 
     def __init__(
         self,
         Name,
         Density=2500,
-        Conductivity=0,
+        Conductivity=0.9,
         SolarTransmittance=0,
         SolarReflectanceFront=0,
         SolarReflectanceBack=0,
@@ -82,15 +84,15 @@ class GlazingMaterial(MaterialBase):
             **kwargs: keywords passed to the :class:`MaterialBase`
                 constructor. For more info, see :class:`MaterialBase`.
         """
-        super(GlazingMaterial, self).__init__(
-            Name, Conductivity=Conductivity, Density=Density, Cost=Cost, **kwargs
-        )
+        super(GlazingMaterial, self).__init__(Name, Cost=Cost, **kwargs)
 
         self._solar_reflectance_front = 0
         self._solar_reflectance_back = None
         self._visible_reflectance_front = 0
         self._visible_reflectance_back = None
 
+        self.Conductivity = Conductivity
+        self.Density = Density
         self.DirtFactor = DirtFactor
         self.IREmissivityBack = IREmissivityBack
         self.IREmissivityFront = IREmissivityFront
@@ -103,12 +105,32 @@ class GlazingMaterial(MaterialBase):
         self.SolarTransmittance = SolarTransmittance
 
     @property
+    def Conductivity(self):
+        """Get or set the conductivity of the material [W/m-K]."""
+        return self._conductivity
+
+    @Conductivity.setter
+    def Conductivity(self, value):
+        self._conductivity = validators.float(value, minimum=0)
+
+    @property
+    def Density(self):
+        """Get or set the density of the material [J/kg-K]."""
+        return self._density
+
+    @Density.setter
+    def Density(self, value):
+        self._density = validators.float(value, minimum=0)
+
+    @property
     def DirtFactor(self):
         """Get or set the dirt correction factor [-]."""
         return self._dirt_factor
 
     @DirtFactor.setter
     def DirtFactor(self, value):
+        if value == "":
+            value = 1
         self._dirt_factor = validators.float(value, minimum=0, maximum=1)
 
     @property
@@ -235,7 +257,7 @@ class GlazingMaterial(MaterialBase):
         for attr, value in self.mapping().items():
             if attr not in ["Comments", "DataSource"]:
                 if isinstance(value, (int, float)) or isinstance(other, (int, float)):
-                    new_attr[attr] = UmiBase._float_mean(
+                    new_attr[attr] = UmiBase.float_mean(
                         self, other, attr=attr, weights=weights
                     )
                 elif isinstance(value, str) or isinstance(other, str):
@@ -285,9 +307,9 @@ class GlazingMaterial(MaterialBase):
         data_dict["TransportDistance"] = self.TransportDistance
         data_dict["TransportEnergy"] = self.TransportEnergy
         data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
+        data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = UniqueName(self.Name)
+        data_dict["Name"] = self.Name
 
         return data_dict
 
@@ -317,6 +339,8 @@ class GlazingMaterial(MaterialBase):
                 0.9,                      !- Conductivity
                 1;                        !- Dirt Correction Factor for Solar and Visible Transmittance
 
+        Returns:
+            EpBunch: The EpBunch object added to the idf model.
         """
         return idf.newidfobject(
             "WINDOWMATERIAL:GLAZING",
@@ -337,9 +361,15 @@ class GlazingMaterial(MaterialBase):
             Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance=self.DirtFactor,
         )
 
-    def mapping(self):
-        """Get a dict based on the object properties, useful for dict repr."""
-        self.validate()
+    def mapping(self, validate=True):
+        """Get a dict based on the object properties, useful for dict repr.
+
+        Args:
+            validate (bool): If True, try to validate object before returning the
+                mapping.
+        """
+        if validate:
+            self.validate()
 
         return dict(
             DirtFactor=self.DirtFactor,

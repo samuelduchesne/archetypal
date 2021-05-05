@@ -2,6 +2,7 @@
 
 import collections
 import logging as lg
+import math
 import sqlite3
 from enum import Enum
 
@@ -12,7 +13,7 @@ from validator_collection import checkers, validators
 
 from archetypal import settings
 from archetypal.template.schedule import UmiSchedule
-from archetypal.template.umi_base import UmiBase, UniqueName
+from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, reduce, timeit
 
 
@@ -60,17 +61,18 @@ class ZoneLoad(UmiBase):
 
     def __init__(
         self,
-        DimmingType=DimmingTypes.Continuous,
-        EquipmentAvailabilitySchedule=None,
+        Name,
         EquipmentPowerDensity=0,
-        IlluminanceTarget=500,
+        EquipmentAvailabilitySchedule=None,
         LightingPowerDensity=0,
         LightsAvailabilitySchedule=None,
+        PeopleDensity=0,
         OccupancySchedule=None,
         IsEquipmentOn=True,
         IsLightingOn=True,
         IsPeopleOn=True,
-        PeopleDensity=0,
+        DimmingType=DimmingTypes.Continuous,
+        IlluminanceTarget=500,
         area=1,
         volume=1,
         **kwargs,
@@ -113,25 +115,24 @@ class ZoneLoad(UmiBase):
             area (float): The floor area assiciated to this zone load object.
             **kwargs: Other keywords passed to the parent constructor :class:`UmiBase`.
         """
-        super(ZoneLoad, self).__init__(**kwargs)
-        self.DimmingType = DimmingTypes(DimmingType)
-        self.EquipmentAvailabilitySchedule = EquipmentAvailabilitySchedule
+        super(ZoneLoad, self).__init__(Name, **kwargs)
+
         self.EquipmentPowerDensity = EquipmentPowerDensity
-        self.IlluminanceTarget = IlluminanceTarget
+        self.EquipmentAvailabilitySchedule = EquipmentAvailabilitySchedule
         self.LightingPowerDensity = LightingPowerDensity
         self.LightsAvailabilitySchedule = LightsAvailabilitySchedule
+        self.PeopleDensity = PeopleDensity
         self.OccupancySchedule = OccupancySchedule
         self.IsEquipmentOn = IsEquipmentOn
         self.IsLightingOn = IsLightingOn
         self.IsPeopleOn = IsPeopleOn
-        self.PeopleDensity = PeopleDensity
+        self.DimmingType = DimmingTypes(DimmingType)
+        self.IlluminanceTarget = IlluminanceTarget
         self.area = area
         self.volume = volume
 
-        self._belongs_to_zone = kwargs.get("zone", None)
-
     @property
-    def DimmintType(self):
+    def DimmingType(self):
         """Get or set the dimming type.
 
         Hint:
@@ -141,8 +142,8 @@ class ZoneLoad(UmiBase):
         """
         return self._dimming_type
 
-    @DimmintType.setter
-    def DimmintType(self, value):
+    @DimmingType.setter
+    def DimmingType(self, value):
         if checkers.is_string(value):
             assert DimmingTypes[value], (
                 f"Input value error for '{value}'. "
@@ -155,6 +156,10 @@ class ZoneLoad(UmiBase):
                 f"Expected one of {tuple(a for a in DimmingTypes)}"
             )
             self._dimming_type = DimmingTypes(value)
+        elif isinstance(value, DimmingTypes):
+            self._dimming_type = value
+        else:
+            raise ValueError(f"Could not set DimmingType with value '{value}'")
 
     @property
     def EquipmentAvailabilitySchedule(self):
@@ -168,6 +173,8 @@ class ZoneLoad(UmiBase):
                 f"Input value error for '{value}'. Value must be of type '"
                 f"{UmiSchedule}', not {type(value)}"
             )
+            # set quantity on schedule as well
+            value.quantity = self.EquipmentPowerDensity
         self._equipment_availability_schedule = value
 
     @property
@@ -177,7 +184,9 @@ class ZoneLoad(UmiBase):
 
     @EquipmentPowerDensity.setter
     def EquipmentPowerDensity(self, value):
-        self._equipment_power_density = validators.float(value, minimum=0)
+        self._equipment_power_density = validators.float(
+            value, minimum=0, allow_empty=True
+        )
 
     @property
     def IlluminanceTarget(self):
@@ -195,7 +204,9 @@ class ZoneLoad(UmiBase):
 
     @LightingPowerDensity.setter
     def LightingPowerDensity(self, value):
-        self._lighting_power_density = validators.float(value, minimum=0)
+        self._lighting_power_density = validators.float(
+            value, minimum=0, allow_empty=True
+        )
 
     @property
     def LightsAvailabilitySchedule(self) -> UmiSchedule:
@@ -209,6 +220,8 @@ class ZoneLoad(UmiBase):
                 f"Input value error for '{value}'. Value must be of type '"
                 f"{UmiSchedule}', not {type(value)}"
             )
+            # set quantity on schedule as well
+            value.quantity = self.LightingPowerDensity
         self._lights_availability_schedule = value
 
     @property
@@ -223,6 +236,8 @@ class ZoneLoad(UmiBase):
                 f"Input value error for '{value}'. Value must be if type '"
                 f"{UmiSchedule}', not {type(value)}"
             )
+            # set quantity on schedule as well
+            value.quantity = self.PeopleDensity
         self._occupancy_schedule = value
 
     @property
@@ -343,10 +358,11 @@ class ZoneLoad(UmiBase):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone, **kwargs):
+    def from_zone(cls, zone, zone_ep, **kwargs):
         """Create a ZoneLoad object from a :class:`ZoneDefinition`.
 
         Args:
+            zone_ep:
             zone (ZoneDefinition): zone to gets information from
             kwargs: keywords passed to the parent constructor.
         """
@@ -358,7 +374,7 @@ class ZoneLoad(UmiBase):
         # Verify if Equipment in zone
 
         # create database connection with sqlite3
-        with sqlite3.connect(str(zone.idf.sql_file)) as conn:
+        with sqlite3.connect(str(zone_ep.theidf.sql_file)) as conn:
             sql_query = "select ifnull(ZoneIndex, null) from Zones where ZoneName=?"
             t = (zone.Name.upper(),)
             c = conn.cursor()
@@ -382,7 +398,7 @@ class ZoneLoad(UmiBase):
                 level_ = float(series["DesignLevel"])
                 if level_ > 0:
                     return UmiSchedule.from_epbunch(
-                        zone.idf.schedules_dict[sched_name.upper()],
+                        zone_ep.theidf.schedules_dict[sched_name.upper()],
                         Type=sched_type,
                         quantity=level_,
                     )
@@ -445,7 +461,7 @@ class ZoneLoad(UmiBase):
                 )
                 sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
                 return UmiSchedule.from_epbunch(
-                    zone.idf.schedules_dict[sched_name.upper()],
+                    zone_ep.theidf.schedules_dict[sched_name.upper()],
                     Type=sched_type,
                     quantity=series["NumberOfPeople"],
                 )
@@ -473,10 +489,10 @@ class ZoneLoad(UmiBase):
         name = zone.Name + "_ZoneLoad"
         z_load = cls(
             Name=name,
-            DimmingType=_resolve_dimming_type(zone),
+            DimmingType=_resolve_dimming_type(zone, zone_ep),
             EquipmentAvailabilitySchedule=EquipmentAvailabilitySchedule,
             EquipmentPowerDensity=EquipmentPowerDensity,
-            IlluminanceTarget=_resolve_illuminance_target(zone),
+            IlluminanceTarget=_resolve_illuminance_target(zone, zone_ep),
             LightingPowerDensity=LightingPowerDensity,
             LightsAvailabilitySchedule=LightsAvailabilitySchedule,
             OccupancySchedule=OccupancySchedule,
@@ -484,7 +500,7 @@ class ZoneLoad(UmiBase):
             IsLightingOn=LightingPowerDensity > 0,
             IsPeopleOn=PeopleDensity > 0,
             PeopleDensity=PeopleDensity,
-            Category=zone.idf.name,
+            Category=zone.DataSource,
             area=zone.area,
             volume=zone.volume,
             **kwargs,
@@ -521,9 +537,6 @@ class ZoneLoad(UmiBase):
         if self == other:
             return self
 
-        incoming_load_data = self.__dict__.copy()
-        incoming_load_data.pop("Name")
-
         meta = self._get_predecessors_meta(other)
 
         if not weights:
@@ -546,6 +559,7 @@ class ZoneLoad(UmiBase):
             EquipmentAvailabilitySchedule=UmiSchedule.combine(
                 self.EquipmentAvailabilitySchedule,
                 other.EquipmentAvailabilitySchedule,
+                weights=[self.area, other.area],
                 quantity=True,
             ),
             EquipmentPowerDensity=self.float_mean(
@@ -558,11 +572,13 @@ class ZoneLoad(UmiBase):
             LightsAvailabilitySchedule=UmiSchedule.combine(
                 self.LightsAvailabilitySchedule,
                 other.LightsAvailabilitySchedule,
+                weights=[self.area, other.area],
                 quantity=True,
             ),
             OccupancySchedule=UmiSchedule.combine(
                 self.OccupancySchedule,
                 other.OccupancySchedule,
+                weights=[self.area, other.area],
                 quantity=True,
             ),
             IsEquipmentOn=any([self.IsEquipmentOn, other.IsEquipmentOn]),
@@ -572,7 +588,7 @@ class ZoneLoad(UmiBase):
         )
 
         new_obj = self.__class__(
-            **meta, **new_attr, allow_duplicates=self._allow_duplicates
+            **meta, **new_attr, allow_duplicates=self.allow_duplicates
         )
         new_obj.area = self.area + other.area
         new_obj.volume = self.volume + other.volume
@@ -605,9 +621,15 @@ class ZoneLoad(UmiBase):
             self.PeopleDensity = 0
         return self
 
-    def mapping(self):
-        """Get a dict based on the object properties, useful for dict repr."""
-        self.validate()
+    def mapping(self, validate=True):
+        """Get a dict based on the object properties, useful for dict repr.
+
+        Args:
+            validate (bool): If True, try to validate object before returning the
+                mapping.
+        """
+        if validate:
+            self.validate()
 
         return dict(
             DimmingType=self.DimmingType,
@@ -638,9 +660,17 @@ class ZoneLoad(UmiBase):
         data_dict[
             "EquipmentAvailabilitySchedule"
         ] = self.EquipmentAvailabilitySchedule.to_ref()
-        data_dict["EquipmentPowerDensity"] = round(self.EquipmentPowerDensity, 3)
+        data_dict["EquipmentPowerDensity"] = (
+            round(self.EquipmentPowerDensity, 3)
+            if not math.isnan(self.EquipmentPowerDensity)
+            else 0
+        )
         data_dict["IlluminanceTarget"] = round(self.IlluminanceTarget, 3)
-        data_dict["LightingPowerDensity"] = round(self.LightingPowerDensity, 3)
+        data_dict["LightingPowerDensity"] = (
+            round(self.LightingPowerDensity, 3)
+            if not math.isnan(self.LightingPowerDensity)
+            else 0
+        )
         data_dict[
             "LightsAvailabilitySchedule"
         ] = self.LightsAvailabilitySchedule.to_ref()
@@ -648,11 +678,13 @@ class ZoneLoad(UmiBase):
         data_dict["IsEquipmentOn"] = self.IsEquipmentOn
         data_dict["IsLightingOn"] = self.IsLightingOn
         data_dict["IsPeopleOn"] = self.IsPeopleOn
-        data_dict["PeopleDensity"] = round(self.PeopleDensity, 3)
+        data_dict["PeopleDensity"] = (
+            round(self.PeopleDensity, 3) if not math.isnan(self.PeopleDensity) else 0
+        )
         data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
+        data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = UniqueName(self.Name)
+        data_dict["Name"] = self.Name
 
         return data_dict
 
@@ -714,6 +746,8 @@ class ZoneLoad(UmiBase):
                 0,                        !- Fraction Lost
                 ;                         !- EndUse Subcategory
 
+        Returns:
+            EpBunch: The EpBunch object added to the idf model.
         """
         people = idf.newidfobject(
             "PEOPLE",
@@ -765,7 +799,9 @@ class ZoneLoad(UmiBase):
 
     def __copy__(self):
         """Create a copy of self."""
-        return self.__class__(**self.mapping())
+        return self.__class__(
+            **self.mapping(validate=False), area=self.area, volume=self.volume
+        )
 
     def __add__(self, other):
         """Combine self and other."""
@@ -801,12 +837,15 @@ class ZoneLoad(UmiBase):
             return self.__key__() == other.__key__()
 
 
-def _resolve_dimming_type(zone):
-    """Resolve the dimming type for the Zone object."""
+def _resolve_dimming_type(zone, zone_ep):
+    """Resolve the dimming type for the Zone object.
+
+    Args:
+        zone_ep:
+    """
     # First, retrieve the list of Daylighting objects for this zone. Uses the eppy
     # `getreferingobjs` method.
-    ep_obj = zone._epbunch
-    possible_ctrls = ep_obj.getreferingobjs(
+    possible_ctrls = zone_ep.getreferingobjs(
         iddgroups=["Daylighting"], fields=["Zone_Name"]
     )
     # Then, if there are controls
@@ -843,12 +882,15 @@ def _resolve_dimming_type(zone):
         return DimmingTypes.Off
 
 
-def _resolve_illuminance_target(zone):
-    """Resolve the illuminance target for the Zone object."""
+def _resolve_illuminance_target(zone, zone_ep):
+    """Resolve the illuminance target for the Zone object.
+
+    Args:
+        zone_ep:
+    """
     # First, retrieve the list of Daylighting objects for this zone. Uses the eppy
     # `getreferingobjs` method.
-    ep_obj = zone._epbunch
-    possible_ctrls = ep_obj.getreferingobjs(
+    possible_ctrls = zone_ep.getreferingobjs(
         iddgroups=["Daylighting"], fields=["Zone_Name"]
     )
     # Then, if there are controls

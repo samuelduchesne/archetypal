@@ -31,7 +31,7 @@ class Meter:
             raise TypeError()
 
     def __repr__(self):
-        """Return the string representation of an EpBunch."""
+        """Return a representation of self."""
         return self._epobject.__str__()
 
     def values(
@@ -105,7 +105,7 @@ class MeterGroup:
         return self._properties[meter_name]
 
     def __repr__(self):
-        """Return all available meters."""
+        """Return a representation of all available meters."""
         # getmembers() returns all the
         # members of an object
         members = []
@@ -168,7 +168,7 @@ class Meters:
             )
 
     def __repr__(self):
-        """Tabulate available meters."""
+        """Tabulate all available meters."""
         # getmembers() returns all the
         # members of an object
         members = []

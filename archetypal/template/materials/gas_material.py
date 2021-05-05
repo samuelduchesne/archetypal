@@ -4,6 +4,7 @@ import collections
 
 import numpy as np
 from sigfig import round
+from validator_collection import validators
 
 from .material_base import MaterialBase
 
@@ -14,22 +15,28 @@ class GasMaterial(MaterialBase):
     .. image:: ../images/template/materials-gas.png
     """
 
-    __slots__ = ("_type",)
+    __slots__ = ("_type", "_conductivity", "_density")
 
-    GASTYPES = ("air", "argon", "krypton", "xenon", "sf6")
+    _GASTYPES = ("air", "argon", "krypton", "xenon", "sf6")
 
-    def __init__(self, Name, Type="Air", Category="Gases", **kwargs):
+    def __init__(
+        self, Name, Conductivity=None, Density=None, Category="Gases", **kwargs
+    ):
         """Initialize object with parameters.
 
         Args:
             Name (str): The name of the GasMaterial.
+            Conductivity (float): Thermal conductivity (W/m-K).
+            Density (float): A number representing the density of the material
+                in kg/m3. This is essentially the mass of one cubic meter of the
+                material.
             Category (str): Category is set as "Gases" for GasMaterial.
-            Type (str): The gas type of the GasMaterial. Choices are ("Air", "Argon",
-                "Krypton", "Xenon")
             **kwargs: keywords passed to the MaterialBase constructor.
         """
         super(GasMaterial, self).__init__(Name, Category=Category, **kwargs)
-        self.Type = Type
+        self.Type = Name.upper()
+        self.Conductivity = Conductivity
+        self.Density = Density
 
     @property
     def Type(self):
@@ -41,11 +48,48 @@ class GasMaterial(MaterialBase):
 
     @Type.setter
     def Type(self, value):
-        assert value.lower() in self.GASTYPES, (
+        assert value.lower() in self._GASTYPES, (
             f"Invalid value '{value}' for material gas type. Gas type must be one "
-            f"of the following:\n{self.GASTYPES}"
+            f"of the following:\n{self._GASTYPES}"
         )
         self._type = value
+
+    @property
+    def Conductivity(self):
+        """Get or set the conductivity of the gas at 0C [W/m-K]."""
+        return self._conductivity
+
+    @Conductivity.setter
+    def Conductivity(self, value):
+        if value is not None:
+            self._conductivity = validators.float(value, minimum=0)
+        else:
+            self._conductivity = self.conductivity_at_temperature(273.15)
+
+    @property
+    def Density(self):
+        """Get or set the density of the gas."""
+        return self._density
+
+    @Density.setter
+    def Density(self, value):
+        """Density of the gas at 0C and sea-level pressure [J/kg-K]."""
+        if value is not None:
+            self._density = validators.float(value, minimum=0)
+        else:
+            self._density = self.density_at_temperature(273.15)
+
+    @property
+    def molecular_weight(self):
+        """Get the molecular weight [kg/mol]."""
+        import CoolProp.CoolProp as CP
+
+        return CP.PropsSI("molemass", self.Type)
+
+    @property
+    def specific_heat(self):
+        """Get the material layer's specific heat at 0C [J/kg-K]."""
+        return self.specific_heat_at_temperature(273.15)
 
     def duplicate(self):
         """Get copy of self."""
@@ -81,7 +125,7 @@ class GasMaterial(MaterialBase):
         data_dict["TransportCarbon"] = self.TransportCarbon
         data_dict["TransportDistance"] = self.TransportDistance
         data_dict["TransportEnergy"] = self.TransportEnergy
-        data_dict["Comments"] = self.Comments
+        data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
         data_dict["Name"] = self.Name
 
@@ -101,6 +145,8 @@ class GasMaterial(MaterialBase):
                 AIR,                      !- Gas Type
                 0.006;                    !- Thickness
 
+        Returns:
+            EpBunch: The EpBunch object added to the idf model.
         """
         return idf.newidfobject(
             "WINDOWMATERIAL:GAS",
@@ -109,9 +155,15 @@ class GasMaterial(MaterialBase):
             Thickness=thickness,
         )
 
-    def mapping(self):
-        """Get a dict based on the object properties, useful for dict repr."""
-        self.validate()
+    def mapping(self, validate=True):
+        """Get a dict based on the object properties, useful for dict repr.
+
+        Args:
+            validate (bool): If True, try to validate object before returning the
+                mapping.
+        """
+        if validate:
+            self.validate()
 
         return dict(
             Category=self.Category,
@@ -130,6 +182,72 @@ class GasMaterial(MaterialBase):
             DataSource=self.DataSource,
             Name=self.Name,
         )
+
+    def density_at_temperature(self, t_kelvin, pressure=101325):
+        """Get the density of the gas [kg/m3] at a given temperature and pressure.
+
+        This method uses CoolProp to get the density.
+
+        Args:
+            t_kelvin (float): The average temperature of the gas cavity in Kelvin.
+            pressure (float): The average pressure of the gas cavity in Pa.
+                Default is 101325 Pa for standard pressure at sea level.
+        """
+        import CoolProp.CoolProp as CP
+
+        return CP.PropsSI("Dmass", "T", t_kelvin, "P", pressure, self.Type)
+
+    def specific_heat_at_temperature(self, t_kelvin, pressure=101325):
+        """Get the specific heat of the gas [J/(kg-K)] at a given Kelvin temperature.
+
+        This method uses CoolProp to get the density.
+
+        Args:
+            t_kelvin (float): The average temperature of the gas cavity in Kelvin.
+            pressure (float): The average pressure of the gas cavity in Pa.
+                Default is 101325 Pa for standard pressure at sea level.
+        """
+        import CoolProp.CoolProp as CP
+
+        return CP.PropsSI("Cpmass", "T", t_kelvin, "P", pressure, self.Type)
+
+    def viscosity_at_temperature(self, t_kelvin, pressure=101325):
+        """Get the viscosity of the gas [kg/m-s] at a given Kelvin temperature.
+
+        This method uses CoolProp to get the density.
+
+        Args:
+            t_kelvin (float): The average temperature of the gas cavity in Kelvin.
+            pressure (float): The average pressure of the gas cavity in Pa.
+                Default is 101325 Pa for standard pressure at sea level.
+        """
+        import CoolProp.CoolProp as CP
+
+        try:
+            return CP.PropsSI("viscosity", "T", t_kelvin, "P", pressure, self.Type)
+        except ValueError:
+            # ValueError: Viscosity model is not available for Krypton, Xenon
+            return {"krypton": 2.3219e-5, "xenon": 2.1216e-5}[self.Type.lower()]
+
+    def conductivity_at_temperature(self, t_kelvin, pressure=101325):
+        """Get the conductivity of the gas [W/(m-K)] at a given Kelvin temperature.
+
+        This method uses CoolProp to get the density. Note that the thermal
+        conductivity model is not available for Krypton, Xenon gases. Values from the
+        literature are used instead.
+
+        Args:
+            t_kelvin (float): The average temperature of the gas cavity in Kelvin.
+            pressure (float): The average pressure of the gas cavity in Pa.
+                Default is 101325 Pa for standard pressure at sea level.
+        """
+        import CoolProp.CoolProp as CP
+
+        try:
+            return CP.PropsSI("conductivity", "T", t_kelvin, "P", pressure, self.Type)
+        except ValueError:
+            # ValueError: Thermal conductivity model is not available for Krypton, Xenon
+            return {"krypton": 0.00943, "xenon": 5.65e-3}[self.Type.lower()]
 
     def __hash__(self):
         """Return the hash value of self."""
@@ -161,4 +279,4 @@ class GasMaterial(MaterialBase):
 
     def __copy__(self):
         """Create a copy of self."""
-        return self.__class__(**self.mapping())
+        return self.__class__(**self.mapping(validate=False))

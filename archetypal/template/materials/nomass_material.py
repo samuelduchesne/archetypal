@@ -2,19 +2,16 @@
 
 import collections
 
-from eppy.bunch_subclass import EpBunch
+import numpy as np
+from sigfig import round
 from validator_collection import validators
 
-from archetypal.template.materials import GasMaterial
 from archetypal.template.materials.material_base import MaterialBase
 from archetypal.utils import log
 
 
-class OpaqueMaterial(MaterialBase):
-    """Use this component to create a custom opaque material.
-
-    .. image:: ../images/template/materials-opaque.png
-    """
+class NoMassMaterial(MaterialBase):
+    """Use this component to create a custom no mass material."""
 
     _ROUGHNESS_TYPES = (
         "VeryRough",
@@ -28,49 +25,28 @@ class OpaqueMaterial(MaterialBase):
     __slots__ = (
         "_roughness",
         "_solar_absorptance",
-        "_specific_heat",
         "_thermal_emittance",
         "_visible_absorptance",
         "_moisture_diffusion_resistance",
-        "_conductivity",
-        "_density",
+        "_r_value",
     )
 
     def __init__(
         self,
         Name,
-        Conductivity,
-        SpecificHeat,
+        RValue,
         SolarAbsorptance=0.7,
         ThermalEmittance=0.9,
         VisibleAbsorptance=0.7,
         Roughness="Rough",
-        Cost=0,
-        Density=1,
         MoistureDiffusionResistance=50,
-        EmbodiedCarbon=0.45,
-        EmbodiedEnergy=0,
-        TransportCarbon=0,
-        TransportDistance=0,
-        TransportEnergy=0,
-        SubstitutionRatePattern=None,
-        SubstitutionTimestep=20,
         **kwargs,
     ):
         """Initialize an opaque material.
 
         Args:
             Name (str): The name of the material.
-            Conductivity (float): A number representing the conductivity of the
-                material in W/m-K. This is essentially the heat flow in Watts
-                across one meter thick of the material when the temperature
-                difference on either side is 1 Kelvin. Modeling layers with
-                conductivity higher than 5.0 W/(m-K) is not recommended.
-            SpecificHeat (float): A number representing the specific heat
-                capacity of the material in J/kg-K. This is essentially the
-                number of joules needed to raise one kg of the material by 1
-                degree Kelvin. Only values of specific heat of 100 or larger are
-                allowed. Typical ranges are from 800 to 2000 J/(kg-K).
+            RValue (float): Number for the R-value of the material [m2-K/W].
             SolarAbsorptance (float): An number between 0 and 1 that represents
                 the absorptance of solar radiation by the material. The default
                 is set to 0.7, which is common for most non-metallic materials.
@@ -87,53 +63,27 @@ class OpaqueMaterial(MaterialBase):
                 material. This can be either "VeryRough", "Rough",
                 "MediumRough", "MediumSmooth", "Smooth", and "VerySmooth". The
                 default is set to "Rough".
-            Density (float): A number representing the density of the material
-                in kg/m3. This is essentially the mass of one cubic meter of the
-                material.
             MoistureDiffusionResistance (float): the factor by which the vapor
                 diffusion in the material is impeded, as compared to diffusion in
                 stagnant air [%].
             **kwargs: keywords passed to parent constructors.
         """
-        super(OpaqueMaterial, self).__init__(
-            Name,
-            Cost=Cost,
-            EmbodiedCarbon=EmbodiedCarbon,
-            EmbodiedEnergy=EmbodiedEnergy,
-            SubstitutionTimestep=SubstitutionTimestep,
-            TransportCarbon=TransportCarbon,
-            TransportDistance=TransportDistance,
-            TransportEnergy=TransportEnergy,
-            SubstitutionRatePattern=SubstitutionRatePattern,
-            **kwargs,
-        )
-
-        self.Conductivity = Conductivity
-        self.Density = Density
+        super(NoMassMaterial, self).__init__(Name, **kwargs)
+        self.r_value = RValue
         self.Roughness = Roughness
         self.SolarAbsorptance = SolarAbsorptance
-        self.SpecificHeat = SpecificHeat
         self.ThermalEmittance = ThermalEmittance
         self.VisibleAbsorptance = VisibleAbsorptance
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
 
     @property
-    def Conductivity(self):
-        """Get or set the conductivity of the material [W/m-K]."""
-        return self._conductivity
+    def r_value(self):
+        """Get or set the thermal resistance [m2-K/W]."""
+        return self._r_value
 
-    @Conductivity.setter
-    def Conductivity(self, value):
-        self._conductivity = validators.float(value, minimum=0)
-
-    @property
-    def Density(self):
-        """Get or set the density of the material [J/kg-K]."""
-        return self._density
-
-    @Density.setter
-    def Density(self, value):
-        self._density = validators.float(value, minimum=0)
+    @r_value.setter
+    def r_value(self, value):
+        self._r_value = validators.float(value, minimum=0)
 
     @property
     def Roughness(self):
@@ -163,15 +113,6 @@ class OpaqueMaterial(MaterialBase):
         self._solar_absorptance = validators.float(value, minimum=0, maximum=1)
 
     @property
-    def SpecificHeat(self):
-        """Get or set the specific heat of the material [J/(kg-K)]."""
-        return self._specific_heat
-
-    @SpecificHeat.setter
-    def SpecificHeat(self, value):
-        self._specific_heat = validators.float(value, minimum=100)
-
-    @property
     def ThermalEmittance(self):
         """Get or set the thermal emittance of the material [-]."""
         return self._thermal_emittance
@@ -199,27 +140,6 @@ class OpaqueMaterial(MaterialBase):
     @MoistureDiffusionResistance.setter
     def MoistureDiffusionResistance(self, value):
         self._moisture_diffusion_resistance = validators.float(value, minimum=0)
-
-    @classmethod
-    def generic(cls, **kwargs):
-        """Return a generic material based on properties of plaster board.
-
-        Args:
-            **kwargs: keywords passed to UmiBase constructor.
-        """
-        return cls(
-            Conductivity=0.16,
-            SpecificHeat=1090,
-            Density=800,
-            Name="GP01 GYPSUM",
-            Roughness="Smooth",
-            SolarAbsorptance=0.7,
-            ThermalEmittance=0.9,
-            VisibleAbsorptance=0.5,
-            DataSource="ASHRAE 90.1-2007",
-            MoistureDiffusionResistance=8.3,
-            **kwargs,
-        )
 
     def combine(self, other, weights=None, allow_duplicates=False):
         """Combine two OpaqueMaterial objects.
@@ -254,12 +174,11 @@ class OpaqueMaterial(MaterialBase):
             weights = [self.Density, other.Density]
 
         meta = self._get_predecessors_meta(other)
-        new_obj = OpaqueMaterial(
+        new_obj = NoMassMaterial(
             **meta,
-            Conductivity=self.float_mean(other, "Conductivity", weights),
             Roughness=self._str_mean(other, attr="Roughness", append=False),
             SolarAbsorptance=self.float_mean(other, "SolarAbsorptance", weights),
-            SpecificHeat=self.float_mean(other, "SpecificHeat"),
+            r_value=self.float_mean(other, "r_value", weights),
             ThermalEmittance=self.float_mean(other, "ThermalEmittance", weights),
             VisibleAbsorptance=self.float_mean(other, "VisibleAbsorptance", weights),
             TransportCarbon=self.float_mean(other, "TransportCarbon", weights),
@@ -272,7 +191,6 @@ class OpaqueMaterial(MaterialBase):
                 other, "SubstitutionTimestep", weights
             ),
             Cost=self.float_mean(other, "Cost", weights),
-            Density=self.float_mean(other, "Density", weights),
             EmbodiedCarbon=self.float_mean(other, "EmbodiedCarbon", weights),
             EmbodiedEnergy=self.float_mean(other, "EmbodiedEnergy", weights),
             MoistureDiffusionResistance=self.float_mean(
@@ -281,10 +199,6 @@ class OpaqueMaterial(MaterialBase):
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
-
-    def to_ref(self):
-        """Return a ref pointer to self."""
-        pass
 
     def to_dict(self):
         """Return OpaqueMaterial dictionary representation."""
@@ -295,13 +209,11 @@ class OpaqueMaterial(MaterialBase):
         data_dict["$id"] = str(self.id)
         data_dict["MoistureDiffusionResistance"] = self.MoistureDiffusionResistance
         data_dict["Roughness"] = self.Roughness
-        data_dict["SolarAbsorptance"] = self.SolarAbsorptance
-        data_dict["SpecificHeat"] = self.SpecificHeat
-        data_dict["ThermalEmittance"] = self.ThermalEmittance
-        data_dict["VisibleAbsorptance"] = self.VisibleAbsorptance
-        data_dict["Conductivity"] = self.Conductivity
+        data_dict["SolarAbsorptance"] = round(self.SolarAbsorptance, 2)
+        data_dict["ThermalEmittance"] = round(self.ThermalEmittance, 2)
+        data_dict["VisibleAbsorptance"] = round(self.VisibleAbsorptance, 2)
+        data_dict["RValue"] = round(self.r_value, 3)
         data_dict["Cost"] = self.Cost
-        data_dict["Density"] = self.Density
         data_dict["EmbodiedCarbon"] = self.EmbodiedCarbon
         data_dict["EmbodiedEnergy"] = self.EmbodiedEnergy
         data_dict["SubstitutionRatePattern"] = self.SubstitutionRatePattern
@@ -318,7 +230,7 @@ class OpaqueMaterial(MaterialBase):
 
     @classmethod
     def from_dict(cls, data, **kwargs):
-        """Create an OpaqueMaterial from a dictionary.
+        """Create an NoMassMaterial from a dictionary.
 
         Args:
             data (dict): The python dictionary.
@@ -327,29 +239,25 @@ class OpaqueMaterial(MaterialBase):
         .. code-block:: python
 
             {
-                "$id": "1",
+                "$id": "140532076832464",
+                "Name": "R13LAYER",
                 "MoistureDiffusionResistance": 50.0,
                 "Roughness": "Rough",
-                "SolarAbsorptance": 0.7,
-                "SpecificHeat": 920.0,
+                "SolarAbsorptance": 0.75,
                 "ThermalEmittance": 0.9,
-                "VisibleAbsorptance": 0.7,
-                "Conductivity": 0.85,
+                "VisibleAbsorptance": 0.75,
+                "RValue": 2.29,
                 "Cost": 0.0,
-                "Density": 2000,
-                "EmbodiedCarbon": 0.45,
+                "EmbodiedCarbon": 0.0,
                 "EmbodiedEnergy": 0.0,
-                "SubstitutionRatePattern": [
-                 1.0
-                ],
-                "SubstitutionTimestep": 20.0,
+                "SubstitutionRatePattern": [1.0],
+                "SubstitutionTimestep": 100.0,
                 "TransportCarbon": 0.0,
                 "TransportDistance": 0.0,
                 "TransportEnergy": 0.0,
                 "Category": "Uncategorized",
                 "Comments": "",
-                "DataSource": null,
-                "Name": "Concrete"
+                "DataSource": None,
             }
         """
         _id = data.pop("$id")
@@ -357,7 +265,7 @@ class OpaqueMaterial(MaterialBase):
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
-        """Create an OpaqueMaterial from an EpBunch.
+        """Create a NoMassMaterial from an EpBunch.
 
         Note that "Material", "Material:NoMAss" and "Material:AirGap" objects are
         supported.
@@ -391,6 +299,7 @@ class OpaqueMaterial(MaterialBase):
                 ThermalEmittance=epbunch.Thermal_Absorptance,
                 VisibleAbsorptance=epbunch.Visible_Absorptance,
                 Name=epbunch.Name,
+                idf=epbunch.theidf,
                 **kwargs,
             )
         elif epbunch.key.upper() == "MATERIAL:NOMASS":
@@ -404,33 +313,60 @@ class OpaqueMaterial(MaterialBase):
                 ThermalEmittance=epbunch.Thermal_Absorptance,
                 VisibleAbsorptance=epbunch.Visible_Absorptance,
                 Name=epbunch.Name,
+                idf=epbunch.theidf,
                 **kwargs,
             )
         elif epbunch.key.upper() == "MATERIAL:AIRGAP":
             gas_prop = {
-                obj.Name.upper(): obj.mapping()
-                for obj in [GasMaterial(gas_name) for gas_name in GasMaterial._GASTYPES]
+                "AIR": dict(
+                    Conductivity=0.02436,
+                    Density=1.754,
+                    SpecificHeat=1000,
+                    ThermalEmittance=0.001,
+                ),
+                "ARGON": dict(
+                    Conductivity=0.016,
+                    Density=1.784,
+                    SpecificHeat=1000,
+                    ThermalEmittance=0.001,
+                ),
+                "KRYPTON": dict(
+                    Conductivity=0.0088,
+                    Density=3.749,
+                    SpecificHeat=1000,
+                    ThermalEmittance=0.001,
+                ),
+                "XENON": dict(
+                    Conductivity=0.0051,
+                    Density=5.761,
+                    SpecificHeat=1000,
+                    ThermalEmittance=0.001,
+                ),
+                "SF6": dict(
+                    Conductivity=0.001345,
+                    Density=6.17,
+                    SpecificHeat=1000,
+                    ThermalEmittance=0.001,
+                ),
             }
             for gasname, properties in gas_prop.items():
                 if gasname.lower() in epbunch.Name.lower():
                     thickness = properties["Conductivity"] * epbunch.Thermal_Resistance
-                    properties.pop("Name")
                     return cls(
                         Name=epbunch.Name,
                         Thickness=thickness,
-                        SpecificHeat=100.5,
                         **properties,
+                        idf=epbunch.theidf,
                     )
                 else:
                     thickness = (
                         gas_prop["AIR"]["Conductivity"] * epbunch.Thermal_Resistance
                     )
-                    properties.pop("Name")
                     return cls(
                         Name=epbunch.Name,
                         Thickness=thickness,
-                        SpecificHeat=100.5,
                         **gas_prop["AIR"],
+                        idf=epbunch.theidf,
                     )
         else:
             raise NotImplementedError(
@@ -439,37 +375,19 @@ class OpaqueMaterial(MaterialBase):
                 "authors".format(epbunch.Name, epbunch.key)
             )
 
-    def to_epbunch(self, idf, thickness) -> EpBunch:
-        """Convert self to an EpBunch given an idf model and a thickness.
+    def to_epbunch(self, idf):
+        """Convert self to an epbunch given an IDF model.
 
         Args:
             idf (IDF): An IDF model.
-            thickness (float): the thickness of the material.
-
-        .. code-block:: python
-
-            MATERIAL,
-                ,                         !- Name
-                ,                         !- Roughness
-                ,                         !- Thickness
-                ,                         !- Conductivity
-                ,                         !- Density
-                ,                         !- Specific Heat
-                0.9,                      !- Thermal Absorptance
-                0.7,                      !- Solar Absorptance
-                0.7;                      !- Visible Absorptance
 
         Returns:
             EpBunch: The EpBunch object added to the idf model.
         """
         return idf.newidfobject(
-            "MATERIAL",
-            Name=self.Name,
+            "MATERIAL:NOMASS",
             Roughness=self.Roughness,
-            Thickness=thickness,
-            Conductivity=self.Conductivity,
-            Density=self.Density,
-            Specific_Heat=self.SpecificHeat,
+            Thermal_Resistance=self.r_value,
             Thermal_Absorptance=self.ThermalEmittance,
             Solar_Absorptance=self.SolarAbsorptance,
             Visible_Absorptance=self.VisibleAbsorptance,
@@ -502,15 +420,13 @@ class OpaqueMaterial(MaterialBase):
             self.validate()
 
         return dict(
+            RValue=self.r_value,
             MoistureDiffusionResistance=self.MoistureDiffusionResistance,
             Roughness=self.Roughness,
             SolarAbsorptance=self.SolarAbsorptance,
-            SpecificHeat=self.SpecificHeat,
             ThermalEmittance=self.ThermalEmittance,
             VisibleAbsorptance=self.VisibleAbsorptance,
-            Conductivity=self.Conductivity,
             Cost=self.Cost,
-            Density=self.Density,
             EmbodiedCarbon=self.EmbodiedCarbon,
             EmbodiedEnergy=self.EmbodiedEnergy,
             SubstitutionRatePattern=self.SubstitutionRatePattern,
@@ -538,40 +454,34 @@ class OpaqueMaterial(MaterialBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (
-                self.__class__.__name__,
-                getattr(self, "Name", None),
-            )
-        )
+        return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
-        if not isinstance(other, OpaqueMaterial):
+        if not isinstance(other, NoMassMaterial):
             return NotImplemented
         else:
-            return self.__key__() == other.__key__()
-
-    def __key__(self):
-        """Get a tuple of attributes. Useful for hashing and comparing."""
-        return (
-            self.Conductivity,
-            self.SpecificHeat,
-            self.SolarAbsorptance,
-            self.ThermalEmittance,
-            self.VisibleAbsorptance,
-            self.Roughness,
-            self.Cost,
-            self.Density,
-            self.MoistureDiffusionResistance,
-            self.EmbodiedCarbon,
-            self.EmbodiedEnergy,
-            self.TransportCarbon,
-            self.TransportDistance,
-            self.TransportEnergy,
-            self.SubstitutionRatePattern,
-            self.SubstitutionTimestep,
-        )
+            return all(
+                [
+                    self.r_value == other.r_value,
+                    self.SolarAbsorptance == other.SolarAbsorptance,
+                    self.ThermalEmittance == other.ThermalEmittance,
+                    self.VisibleAbsorptance == other.VisibleAbsorptance,
+                    self.Roughness == other.Roughness,
+                    self.Cost == other.Cost,
+                    self.MoistureDiffusionResistance
+                    == self.MoistureDiffusionResistance,
+                    self.EmbodiedCarbon == other.EmbodiedCarbon,
+                    self.EmbodiedEnergy == other.EmbodiedEnergy,
+                    self.TransportCarbon == other.TransportCarbon,
+                    self.TransportDistance == other.TransportDistance,
+                    self.TransportEnergy == other.TransportEnergy,
+                    np.array_equal(
+                        self.SubstitutionRatePattern, other.SubstitutionRatePattern
+                    ),
+                    self.SubstitutionTimestep == other.SubstitutionTimestep,
+                ]
+            )
 
     def __copy__(self):
         """Create a copy of self."""

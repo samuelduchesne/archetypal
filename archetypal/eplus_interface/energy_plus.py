@@ -111,9 +111,11 @@ class EnergyPlusExe:
         self.eplus_weather_path = Path(eplus_weather_path).expand()
 
     def __str__(self):
+        """Return string representation."""
         return " ".join(self.__repr__())
 
     def __repr__(self):
+        """Return a representation of self."""
         cmd = [self.eplus_exe_path]
         for key, value in self.__dict__.items():
             if key not in [

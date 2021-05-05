@@ -10,7 +10,7 @@ from sigfig import round
 from validator_collection import checkers, validators
 
 from archetypal.template.schedule import UmiSchedule
-from archetypal.template.umi_base import UmiBase, UniqueName
+from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, timeit, top, weighted_mean
 
 
@@ -76,30 +76,33 @@ class VentilationSetting(UmiBase):
         "_natural_ventilation_zone_setpoint_temp",
         "_scheduled_ventilation_ach",
         "_scheduled_ventilation_setpoint",
+        "_scheduled_ventilation_schedule",
         "_nat_ventilation_schedule",
         "_ventilation_type",
+        "_afn",
         "_area",
         "_volume",
     )
 
     def __init__(
         self,
-        NatVentSchedule,
-        ScheduledVentilationSchedule,
-        Afn=False,
+        Name,
         Infiltration=0.1,
-        IsBuoyancyOn=True,
         IsInfiltrationOn=True,
         IsNatVentOn=False,
-        IsScheduledVentilationOn=False,
+        NatVentSchedule=None,
         IsWindOn=False,
+        IsBuoyancyOn=True,
         NatVentMaxOutdoorAirTemp=30,
         NatVentMaxRelHumidity=90,
         NatVentMinOutdoorAirTemp=0,
         NatVentZoneTempSetpoint=18,
         ScheduledVentilationAch=0.6,
+        ScheduledVentilationSchedule=None,
         ScheduledVentilationSetpoint=18,
+        IsScheduledVentilationOn=False,
         VentilationType=VentilationType.Exhaust,
+        Afn=False,
         area=1,
         volume=1,
         **kwargs,
@@ -119,7 +122,7 @@ class VentilationSetting(UmiBase):
             IsBuoyancyOn (bool): If True, simulation takes into account the
                 stack effect in the infiltration calculation
             IsInfiltrationOn (bool): If yes, there is heat transfer between the
-                building and the outside caused by infiltration
+                building and the outside caused by infiltration.
             IsNatVentOn (bool): If True, Natural ventilation (air
                 movement/exchange as a result of openings in the building façade
                 not consuming any fan energy).
@@ -174,14 +177,14 @@ class VentilationSetting(UmiBase):
                 ventilation types which employ only a single fan.
             **kwargs: keywords passed to the constructor.
         """
-        super(VentilationSetting, self).__init__(**kwargs)
-        self.Afn = Afn
+        super(VentilationSetting, self).__init__(Name, **kwargs)
+
         self.Infiltration = Infiltration
-        self.IsBuoyancyOn = IsBuoyancyOn
         self.IsInfiltrationOn = IsInfiltrationOn
         self.IsNatVentOn = IsNatVentOn
-        self.IsScheduledVentilationOn = IsScheduledVentilationOn
+        self.NatVentSchedule = NatVentSchedule
         self.IsWindOn = IsWindOn
+        self.IsBuoyancyOn = IsBuoyancyOn
         self.NatVentMaxOutdoorAirTemp = NatVentMaxOutdoorAirTemp
         self.NatVentMaxRelHumidity = NatVentMaxRelHumidity
         self.NatVentMinOutdoorAirTemp = NatVentMinOutdoorAirTemp
@@ -189,8 +192,9 @@ class VentilationSetting(UmiBase):
         self.ScheduledVentilationAch = ScheduledVentilationAch
         self.ScheduledVentilationSetpoint = ScheduledVentilationSetpoint
         self.ScheduledVentilationSchedule = ScheduledVentilationSchedule
+        self.IsScheduledVentilationOn = IsScheduledVentilationOn
         self.VentilationType = VentilationType
-        self.NatVentSchedule = NatVentSchedule
+        self.Afn = Afn
         self.area = area
         self.volume = volume
 
@@ -205,10 +209,11 @@ class VentilationSetting(UmiBase):
 
     @NatVentSchedule.setter
     def NatVentSchedule(self, value):
-        assert isinstance(value, UmiSchedule), (
-            f"Input error with value {value}. NatVentSchedule must "
-            f"be an UmiSchedule, not a {type(value)}"
-        )
+        if value is not None:
+            assert isinstance(value, UmiSchedule), (
+                f"Input error with value {value}. NatVentSchedule must "
+                f"be an UmiSchedule, not a {type(value)}"
+            )
         self._nat_ventilation_schedule = value
 
     @property
@@ -218,10 +223,12 @@ class VentilationSetting(UmiBase):
 
     @ScheduledVentilationSchedule.setter
     def ScheduledVentilationSchedule(self, value):
-        assert isinstance(value, UmiSchedule), (
-            f"Input error with value {value}. ScheduledVentilationSchedule must "
-            f"be an UmiSchedule, not a {type(value)}"
-        )
+        if value is not None:
+            assert isinstance(value, UmiSchedule), (
+                f"Input error with value {value}. ScheduledVentilationSchedule must "
+                f"be an UmiSchedule, not a {type(value)}"
+            )
+            value.quantity = self.ScheduledVentilationAch
         self._scheduled_ventilation_schedule = value
 
     @property
@@ -231,7 +238,12 @@ class VentilationSetting(UmiBase):
 
     @Infiltration.setter
     def Infiltration(self, value):
-        self._infiltration = validators.float(value, minimum=0)
+        if value is None:
+            value = 0
+        value = validators.float(value, minimum=0)
+        if value == 0:
+            self.IsInfiltrationOn = False
+        self._infiltration = value
 
     @property
     def IsInfiltrationOn(self):
@@ -283,6 +295,14 @@ class VentilationSetting(UmiBase):
             f"Input error with value {value}. IsScheduledVentilationOn must "
             f"be an boolean, not a {type(value)}"
         )
+        if value:
+            assert (
+                self.ScheduledVentilationAch > 0
+                and self.ScheduledVentilationSchedule is not None
+            ), (
+                f"IsScheduledVentilationOn cannot be 'True' if ScheduledVentilationAch "
+                f"is 0 or if ScheduledVentilationSchedule is None."
+            )
         self._is_scheduled_ventilation_on = value
 
     @property
@@ -351,7 +371,9 @@ class VentilationSetting(UmiBase):
 
     @ScheduledVentilationAch.setter
     def ScheduledVentilationAch(self, value):
-        self._scheduled_ventilation_ach = validators.float(value)
+        if value is None:
+            value = 0
+        self._scheduled_ventilation_ach = validators.float(value, minimum=0)
 
     @property
     def ScheduledVentilationSetpoint(self):
@@ -388,6 +410,19 @@ class VentilationSetting(UmiBase):
             )
             self._ventilation_type = VentilationType(value)
         self._ventilation_type = value
+
+    @property
+    def Afn(self):
+        """Get or set the use of the airflow network [bool]."""
+        return self._afn
+
+    @Afn.setter
+    def Afn(self, value):
+        assert isinstance(value, bool), (
+            f"Input error with value {value}. Afn must "
+            f"be an boolean, not a {type(value)}"
+        )
+        self._afn = value
 
     @property
     def area(self):
@@ -482,18 +517,19 @@ class VentilationSetting(UmiBase):
         )
         data_dict["IsWindOn"] = self.IsWindOn
         data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
+        data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = UniqueName(self.Name)
+        data_dict["Name"] = self.Name
 
         return data_dict
 
     @classmethod
     @timeit
-    def from_zone(cls, zone, **kwargs):
+    def from_zone(cls, zone, zone_ep, **kwargs):
         """Create VentilationSetting from a zone object.
 
         Args:
+            zone_ep:
             zone (template.zone.Zone): zone to gets information from
         """
         # If Zone is not part of Conditioned Area, it should not have a
@@ -502,7 +538,7 @@ class VentilationSetting(UmiBase):
             return None
         name = zone.Name + "_VentilationSetting"
 
-        df = {"a": zone.idf.sql()}
+        df = {"a": zone_ep.theidf.sql()}
         ni_df = nominal_infiltration(df)
         sched_df = nominal_mech_ventilation(df)
         nat_df = nominal_nat_ventilation(df)
@@ -521,7 +557,7 @@ class VentilationSetting(UmiBase):
             NatVentMinOutdoorAirTemp,
             NatVentSchedule,
             NatVentZoneTempSetpoint,
-        ) = do_natural_ventilation(index, nat_df, zone)
+        ) = do_natural_ventilation(index, nat_df, zone, zone_ep)
 
         # Do scheduled ventilation
         (
@@ -548,13 +584,13 @@ class VentilationSetting(UmiBase):
             IsScheduledVentilationOn=IsScheduledVentilationOn,
             ScheduledVentilationAch=ScheduledVentilationAch,
             ScheduledVentilationSetpoint=ScheduledVentilationSetpoint,
-            Category=zone.idf.name,
+            Category=zone.DataSource,
             **kwargs,
         )
         return z_vent
 
     def combine(self, other, **kwargs):
-        """Combine two VentilationSetting objects together.
+        """Combine VentilationSetting objects together.
 
         Args:
             other (VentilationSetting):
@@ -564,7 +600,9 @@ class VentilationSetting(UmiBase):
             (VentilationSetting): the combined VentilationSetting object.
         """
         # Check if other is None. Simply return self or if other is not the same as self
-        if not other or self == other:
+        if not self and not other:
+            return None
+        elif self == other:
             area = 1 if self.area + other.area == 2 else self.area + other.area
             volume = (
                 1 if self.volume + other.volume == 2 else self.volume + other.volume
@@ -573,14 +611,8 @@ class VentilationSetting(UmiBase):
             new_obj.area = area
             new_obj.volume = volume
             return new_obj
-        elif not self:
-            area = 1 if self.area + other.area == 2 else self.area + other.area
-            volume = (
-                1 if self.volume + other.volume == 2 else self.volume + other.volume
-            )
-            new_obj = other.duplicate()
-            new_obj.area = area
-            new_obj.volume = volume
+        elif not self or not other:
+            new_obj = (self or other).duplicate()
             return new_obj
 
         # Check if other is the same type as self
@@ -601,10 +633,8 @@ class VentilationSetting(UmiBase):
             ScheduledVentilationSchedule=UmiSchedule.combine(
                 self.ScheduledVentilationSchedule,
                 other.ScheduledVentilationSchedule,
-                [
-                    self.ScheduledVentilationAch * self.volume,
-                    other.ScheduledVentilationAch * self.volume,
-                ],
+                weights=[self.volume, other.volume],
+                quantity=True,
             ),
             Afn=any((self.Afn, other.Afn)),
             Infiltration=self.float_mean(
@@ -638,7 +668,8 @@ class VentilationSetting(UmiBase):
             area=1 if self.area + other.area == 2 else self.area + other.area,
             volume=1 if self.volume + other.volume == 2 else self.volume + other.volume,
             **meta,
-            allow_duplicates=self._allow_duplicates,
+            **kwargs,
+            allow_duplicates=self.allow_duplicates,
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
@@ -656,8 +687,12 @@ class VentilationSetting(UmiBase):
 
         return self
 
-    def mapping(self):
-        """Get a dict based on the object properties, useful for dict repr."""
+    def mapping(self, validate=True):
+        """Get a dict based on the object properties, useful for dict repr.
+
+        Args:
+            validate:
+        """
         self.validate()
 
         return dict(
@@ -725,18 +760,23 @@ class VentilationSetting(UmiBase):
 
     def __copy__(self):
         """Create a copy of self."""
-        return self.__class__(**self.mapping(), area=self.area, volume=self.volume)
+        return self.__class__(
+            **self.mapping(validate=False), area=self.area, volume=self.volume
+        )
 
-    def to_epbunch(self, idf, zone_name):
-        """Convert to a "ZONEINFILTRATION:DESIGNFLOWRATE" EpBunch.
+    def to_epbunch(self, idf, zone_name, opening_area=0.0):
+        """Convert self to the EpBunches given an idf model, a zone name.
 
-        Note that attr:`IsInfiltrationOn`, attr:`IsScheduledVentilationOn` and
-        attr:`IsNatVentOn` must be `True` for their respective EpBunch objects be
-        created.
+        Notes:
+            Note that attr:`IsInfiltrationOn`, attr:`IsScheduledVentilationOn` and
+            attr:`IsNatVentOn` must be `True` for their respective EpBunch objects
+            to be created.
 
         Args:
             idf (IDF): The idf model in which the EpBunch is created.
             zone_name (str): The zone name to associate this EpBunch.
+            opening_area (float): The opening area exposed to outdoors (m2)
+                in a zone.
 
         .. code-block::
 
@@ -781,6 +821,30 @@ class VentilationSetting(UmiBase):
                  100,                      !- Maximum Outdoor Temperature
                  ,                         !- Maximum Outdoor Temperature Schedule Name
                  40;                       !- Maximum Wind Speed)
+
+            ZONEVENTILATION:WINDANDSTACKOPENAREA,
+                ,                         !- Name
+                ,                         !- Zone Name
+                0,                        !- Opening Area
+                ,                         !- Opening Area Fraction Schedule Name
+                Autocalculate,            !- Opening Effectiveness
+                0,                        !- Effective Angle
+                0,                        !- Height Difference
+                Autocalculate,            !- Discharge Coefficient for Opening
+                -100,                     !- Minimum Indoor Temperature
+                ,                         !- Minimum Indoor Temperature Schedule Name
+                100,                      !- Maximum Indoor Temperature
+                ,                         !- Maximum Indoor Temperature Schedule Name
+                -100,                     !- Delta Temperature
+                ,                         !- Delta Temperature Schedule Name
+                -100,                     !- Minimum Outdoor Temperature
+                ,                         !- Minimum Outdoor Temperature Schedule Name
+                100,                      !- Maximum Outdoor Temperature
+                ,                         !- Maximum Outdoor Temperature Schedule Name
+                40;                       !- Maximum Wind Speed
+
+        Returns:
+            tuple: A 3-tuple of EpBunch objects added to the idf model.
         """
         if self.IsInfiltrationOn:
             infiltration_epbunch = idf.newidfobject(
@@ -806,7 +870,7 @@ class VentilationSetting(UmiBase):
                 key="ZONEVENTILATION:DESIGNFLOWRATE",
                 Name=f"{zone_name} Ventilation",
                 Zone_or_ZoneList_Name=zone_name,
-                Schedule_Name=self.ScheduledVentilationSchedule.to_year_week_day(idf)[
+                Schedule_Name=self.ScheduledVentilationSchedule.to_year_week_day()[
                     0
                 ].Name,  # take the YearSchedule and get the name.
                 Design_Flow_Rate_Calculation_Method="AirChanges/Hour",
@@ -842,7 +906,7 @@ class VentilationSetting(UmiBase):
                 key="ZONEVENTILATION:WINDANDSTACKOPENAREA",
                 Name=f"{zone_name} Natural Ventilation",
                 Zone_Name=zone_name,
-                Opening_Area=0.0,
+                Opening_Area=opening_area,
                 Opening_Area_Fraction_Schedule_Name="",
                 Opening_Effectiveness="Autocalculate",
                 Effective_Angle=0.0,
@@ -888,10 +952,11 @@ def do_infiltration(index, inf_df):
     return Infiltration, IsInfiltrationOn
 
 
-def do_natural_ventilation(index, nat_df, zone):
+def do_natural_ventilation(index, nat_df, zone, zone_ep):
     """Get natural ventilation information of the zone.
 
     Args:
+        zone_ep:
         index (tuple): Zone name
         nat_df:
         zone (template.zone.Zone): zone to gets information from
@@ -921,15 +986,15 @@ def do_natural_ventilation(index, nat_df, zone):
                 NatVentMaxRelHumidity = 90  # todo: not sure if it is being used
                 NatVentMaxOutdoorAirTemp = resolve_temp(
                     nat_df.loc[index, "Maximum Outdoor Temperature{C}/Schedule"],
-                    zone.idf,
+                    zone_ep.theidf,
                 )
                 NatVentMinOutdoorAirTemp = resolve_temp(
                     nat_df.loc[index, "Minimum Outdoor Temperature{C}/Schedule"],
-                    zone.idf,
+                    zone_ep.theidf,
                 )
                 NatVentZoneTempSetpoint = resolve_temp(
                     nat_df.loc[index, "Minimum Indoor Temperature{C}/Schedule"],
-                    zone.idf,
+                    zone_ep.theidf,
                 )
             except KeyError:
                 # this zone is not in the nat_df. Revert to defaults.
@@ -947,7 +1012,9 @@ def do_natural_ventilation(index, nat_df, zone):
         NatVentZoneTempSetpoint = 18
 
     # Is Wind ON
-    if not zone.idf.idfobjects["ZoneVentilation:WindandStackOpenArea".upper()].list1:
+    if not zone_ep.theidf.idfobjects[
+        "ZoneVentilation:WindandStackOpenArea".upper()
+    ].list1:
         IsWindOn = False
         IsBuoyancyOn = False
     else:

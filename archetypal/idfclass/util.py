@@ -7,7 +7,6 @@ from io import StringIO
 
 import eppy
 from eppy.EPlusInterfaceFunctions import parse_idd
-from path import Path
 
 from archetypal.utils import log
 

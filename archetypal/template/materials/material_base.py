@@ -23,7 +23,6 @@ class MaterialBase(UmiBase):
         "_transport_distance",
         "_transport_energy",
         "_substitution_rate_pattern",
-        "_conductivity",
         "_density",
     )
 
@@ -38,8 +37,6 @@ class MaterialBase(UmiBase):
         TransportDistance=0,
         TransportEnergy=0,
         SubstitutionRatePattern=None,
-        Conductivity=0,
-        Density=0,
         **kwargs,
     ):
         """Initialize a MaterialBase object with parameters.
@@ -71,17 +68,11 @@ class MaterialBase(UmiBase):
                 after the first 10 years a 10% will be replaced, then after 20
                 years another 10%, then after 30 years a 100%, and finally the
                 series would start again in year 40.
-            Conductivity (float): Thermal conductivity (W/m-K).
-            Density (float): A number representing the density of the material
-                in kg/m3. This is essentially the mass of one cubic meter of the
-                material.
             **kwargs: Keywords passed to the :class:`UmiBase` class. See
                 :class:`UmiBase` for more details.
         """
         super(MaterialBase, self).__init__(Name, **kwargs)
-        self.Conductivity = Conductivity
         self.Cost = Cost
-        self.Density = Density
         self.EmbodiedCarbon = EmbodiedCarbon
         self.EmbodiedEnergy = EmbodiedEnergy
         self.SubstitutionRatePattern = SubstitutionRatePattern
@@ -89,15 +80,6 @@ class MaterialBase(UmiBase):
         self.TransportCarbon = TransportCarbon
         self.TransportDistance = TransportDistance
         self.TransportEnergy = TransportEnergy
-
-    @property
-    def Conductivity(self):
-        """Get or set the conductivity of the material [W/m-K]."""
-        return self._conductivity
-
-    @Conductivity.setter
-    def Conductivity(self, value):
-        self._conductivity = validators.float(value, minimum=0)
 
     @property
     def Cost(self):
@@ -196,7 +178,6 @@ class MaterialBase(UmiBase):
                     np.array_equal(
                         self.SubstitutionRatePattern, other.SubstitutionRatePattern
                     ),
-                    self.Conductivity == other.Conductivity,
                     self.Density == other.Density,
                 ]
             )

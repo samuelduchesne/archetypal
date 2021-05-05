@@ -4,15 +4,16 @@ import pytest
 from click.testing import CliRunner
 from path import Path
 
-from archetypal import log, settings
+from archetypal import settings
 from archetypal.cli import cli
+from archetypal.utils import log
 
 
 class TestCli:
     """Defines tests for usage of the archetypal Command Line Interface"""
 
     def test_reduce(self):
-        """Tests the 'reduce' method"""
+        """Tests the 'reduced_model' method"""
         runner = CliRunner()
         base = Path("tests/input_data/umi_samples")
         outname = "tests/.temp/warehouse.json"

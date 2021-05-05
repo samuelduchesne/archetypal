@@ -2,177 +2,14 @@
 
 import collections
 import uuid
-from typing import List
 
 import numpy as np
+from eppy.bunch_subclass import BadEPFieldError
 from validator_collection import validators
 
+from archetypal.template.constructions.base_construction import LayeredConstruction
 from archetypal.template.materials.material_layer import MaterialLayer
 from archetypal.template.materials.opaque_material import OpaqueMaterial
-from archetypal.template.umi_base import UmiBase, UniqueName
-
-
-class ConstructionBase(UmiBase):
-    """A class used to store data linked to Life Cycle aspects.
-
-    For more information on the Life Cycle Analysis performed in UMI, see:
-    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life-cycle-impact
-    """
-
-    __slots__ = (
-        "_assembly_carbon",
-        "_assembly_cost",
-        "_assembly_energy",
-        "_dissassembly_carbon",
-        "_dissassembly_energy",
-    )
-
-    def __init__(
-        self,
-        AssemblyCarbon=0,
-        AssemblyCost=0,
-        AssemblyEnergy=0,
-        DisassemblyCarbon=0,
-        DisassemblyEnergy=0,
-        **kwargs,
-    ):
-        """Initialize a ConstructionBase object with parameters.
-
-        Args:
-            AssemblyCarbon (float): assembly carbon [kgCO2/m2].
-            AssemblyCost (float): assembly carbon [kgCO2/m2].
-            AssemblyEnergy (float): assembly energy [MJ/m2].
-            DisassemblyCarbon (float): disassembly carbon [kgCO2/m2].
-            DisassemblyEnergy (float): disassembly energy [MJ/m2].
-            **kwargs: keywords passed to UmiBase.
-        """
-        super(ConstructionBase, self).__init__(**kwargs)
-        self.AssemblyCarbon = AssemblyCarbon
-        self.AssemblyCost = AssemblyCost
-        self.AssemblyEnergy = AssemblyEnergy
-        self.DisassemblyCarbon = DisassemblyCarbon
-        self.DisassemblyEnergy = DisassemblyEnergy
-
-    @property
-    def AssemblyCarbon(self):
-        """Get or set the assembly carbon [kgCO2/m2]."""
-        return self._assembly_carbon
-
-    @AssemblyCarbon.setter
-    def AssemblyCarbon(self, value):
-        self._assembly_carbon = float(value)
-
-    @property
-    def AssemblyCost(self):
-        """Get or set the assembly cost [$/m2]."""
-        return self._assembly_cost
-
-    @AssemblyCost.setter
-    def AssemblyCost(self, value):
-        self._assembly_cost = float(value)
-
-    @property
-    def AssemblyEnergy(self):
-        """Get or set the assembly energy [MJ/m2]."""
-        return self._assembly_energy
-
-    @AssemblyEnergy.setter
-    def AssemblyEnergy(self, value):
-        self._assembly_energy = float(value)
-
-    @property
-    def DisassemblyCarbon(self):
-        """Get or set the disassembly carbon [kgCO2/m2]."""
-        return self._dissassembly_carbon
-
-    @DisassemblyCarbon.setter
-    def DisassemblyCarbon(self, value):
-        self._dissassembly_carbon = float(value)
-
-    @property
-    def DisassemblyEnergy(self):
-        """Get or set the disassembly energy [MJ/m2]."""
-        return self._dissassembly_energy
-
-    @DisassemblyEnergy.setter
-    def DisassemblyEnergy(self, value):
-        self._dissassembly_energy = float(value)
-
-    def validate(self):
-        """Validate object and fill in missing values."""
-        return self
-
-    def duplicate(self):
-        """Get copy of self."""
-        return self.__copy__()
-
-    def __key__(self):
-        """Get a tuple of attributes. Useful for hashing and comparing."""
-        return (
-            self.AssemblyCarbon,
-            self.AssemblyCost,
-            self.AssemblyEnergy,
-            self.DisassemblyCarbon,
-            self.DisassemblyEnergy,
-        )
-
-    def __eq__(self, other):
-        """Assert self is equivalent to other."""
-        return isinstance(other, ConstructionBase) and self.__key__() == other.__key__()
-
-    def __copy__(self):
-        """Create a copy of self."""
-        return self.__class__(
-            self.AssemblyCarbon,
-            self.AssemblyCost,
-            self.AssemblyEnergy,
-            self.DisassemblyCarbon,
-            self.DisassemblyEnergy,
-            Name=self.Name,
-        )
-
-
-class LayeredConstruction(ConstructionBase):
-    """Defines the layers of an :class:`OpaqueConstruction`.
-
-    Attributes:
-        Layers (list of archetypal.MaterialLayer): List of MaterialLayer objects from
-            outside to inside.
-    """
-
-    __slots__ = ("_layers",)
-
-    def __init__(self, Layers, **kwargs):
-        """Initialize Layered Construction.
-
-        Args:
-            Layers (list of archetypal.MaterialLayer): A list of :class:`MaterialLayer`
-                objects.
-            **kwargs: Keywords passed to the :class:`ConstructionBase`
-                constructor.
-        """
-        super(LayeredConstruction, self).__init__(Layers=Layers, **kwargs)
-        self.Layers = Layers
-
-    @property
-    def Layers(self) -> List[MaterialLayer]:
-        """Get or set the material layers."""
-        return self._layers
-
-    @Layers.setter
-    def Layers(self, value):
-        assert all(isinstance(a, MaterialLayer) for a in value)
-        self._layers = validators.iterable(value, minimum_length=1, maximum_length=10)
-
-    def __copy__(self):
-        """Create a copy of self."""
-        return self.__class__(Name=self.Name, Layers=self.Layers)
-
-    def __eq__(self, other):
-        """Assert self is equivalent to other."""
-        return isinstance(other, LayeredConstruction) and all(
-            [self.Layers == other.Layers]
-        )
 
 
 class OpaqueConstruction(LayeredConstruction):
@@ -194,9 +31,9 @@ class OpaqueConstruction(LayeredConstruction):
         * solar_reflectance_index
     """
 
-    __slots__ = ()
+    __slots__ = ("area",)
 
-    def __init__(self, Layers, **kwargs):
+    def __init__(self, Name, Layers, **kwargs):
         """Initialize an OpaqueConstruction.
 
         Args:
@@ -205,17 +42,17 @@ class OpaqueConstruction(LayeredConstruction):
             **kwargs: Other attributes passed to parent constructors such as
                 :class:`ConstructionBase`.
         """
-        super(OpaqueConstruction, self).__init__(Layers, **kwargs)
+        super(OpaqueConstruction, self).__init__(Name, Layers, **kwargs)
         self.area = 1
 
     @property
     def r_value(self):
         """Get or set the thermal resistance [K⋅m2/W] (excluding air films).
 
-        Note that, when setting the R-value, the thickness of the inferred insulation
-        layer will be adjusted.
+        Note that, when setting the R-value, the thickness of the inferred
+        insulation layer will be adjusted.
         """
-        return sum([layer.r_value for layer in self.Layers])
+        return super(OpaqueConstruction, self).r_value
 
     @r_value.setter
     def r_value(self, value):
@@ -239,27 +76,6 @@ class OpaqueConstruction(LayeredConstruction):
             ((alpha - 1) * sum([a.r_value for a in all_layers_except_insulation_layer]))
         ) + alpha * insulation_layer.r_value
         insulation_layer.r_value = new_r_value
-
-    @property
-    def u_value(self):
-        """Get the heat transfer coefficient [W/m2⋅K] (excluding air films)."""
-        return 1 / self.r_value
-
-    @property
-    def r_factor(self):
-        """Get the R-factor [m2-K/W] (including air films).
-
-        inside film resistance = 8 [K⋅m2/W]
-        outside film resistance = 20 [K⋅m2/W]
-        """
-        h_in = 8.0
-        h_out = 20.0
-        return 1 / h_out + self.r_value + 1 / h_in
-
-    @property
-    def u_factor(self):
-        """Get the overall heat transfer coefficient (including air films) W/(m2⋅K)."""
-        return 1 / self.r_factor
 
     @property
     def equivalent_heat_capacity_per_unit_volume(self):
@@ -604,15 +420,14 @@ class OpaqueConstruction(LayeredConstruction):
             f"Expected ('Internalmass', 'Construction')." f"Got '{epbunch.key}'."
         )
         name = epbunch.Name
-        idf = kwargs.pop("idf", epbunch.theidf)
 
         # treat internalmass and regular surfaces differently
         if epbunch.key.lower() == "internalmass":
             layers = cls._internalmass_layer(epbunch)
-            return cls(Name=name, Layers=layers, idf=idf, **kwargs)
+            return cls(Name=name, Layers=layers, **kwargs)
         elif epbunch.key.lower() == "construction":
             layers = cls._surface_layers(epbunch)
-            return cls(Name=name, Layers=layers, idf=idf, **kwargs)
+            return cls(Name=name, Layers=layers, **kwargs)
 
     @classmethod
     def _internalmass_layer(cls, epbunch):
@@ -636,8 +451,11 @@ class OpaqueConstruction(LayeredConstruction):
             # Iterate over the construction's layers
             material = epbunch.get_referenced_object(layer)
             if material:
-                o = OpaqueMaterial.from_epbunch(material)
-                thickness = material.Thickness
+                o = OpaqueMaterial.from_epbunch(material, allow_duplicates=True)
+                try:
+                    thickness = material.Thickness
+                except BadEPFieldError:
+                    thickness = o.Conductivity * material.Thermal_Resistance
                 layers.append(MaterialLayer(Material=o, Thickness=thickness))
         return layers
 
@@ -655,15 +473,21 @@ class OpaqueConstruction(LayeredConstruction):
         data_dict["DisassemblyCarbon"] = self.DisassemblyCarbon
         data_dict["DisassemblyEnergy"] = self.DisassemblyEnergy
         data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
+        data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = str(self.DataSource)
-        data_dict["Name"] = UniqueName(self.Name)
+        data_dict["Name"] = self.Name
 
         return data_dict
 
-    def mapping(self):
-        """Get a dict based on the object properties, useful for dict repr."""
-        self.validate()
+    def mapping(self, validate=True):
+        """Get a dict based on the object properties, useful for dict repr.
+
+        Args:
+            validate (bool): If True, try to validate object before returning the
+                mapping.
+        """
+        if validate:
+            self.validate()
 
         return dict(
             Layers=self.Layers,
@@ -679,7 +503,7 @@ class OpaqueConstruction(LayeredConstruction):
         )
 
     @classmethod
-    def generic(cls):
+    def generic(cls, **kwargs):
         """Return OpaqueConstruction based on 90.1-2007 Nonres 4B Int Wall."""
         om = OpaqueMaterial.generic()
 
@@ -689,6 +513,7 @@ class OpaqueConstruction(LayeredConstruction):
             Layers=layers,
             DataSource="ASHRAE 90.1-2007",
             Category="Partition",
+            **kwargs,
         )
 
     def __add__(self, other):
@@ -714,3 +539,25 @@ class OpaqueConstruction(LayeredConstruction):
         """Create a copy of self."""
         new_con = self.__class__(Name=self.Name, Layers=[a for a in self.Layers])
         return new_con
+
+    def to_epbunch(self, idf):
+        """Get a Construction EpBunch given an idf model.
+
+        Notes:
+            Will create layered materials as well.
+
+        Args:
+            idf (IDF): An idf model to add the EpBunch in.
+
+        Returns:
+            EpBunch: The EpBunch object added to the idf model.
+        """
+        return idf.newidfobject(
+            key="CONSTRUCTION",
+            Name=self.Name,
+            Outside_Layer=self.Layers[0].to_epbunch(idf).Name,
+            **{
+                f"Layer_{i+2}": layer.to_epbunch(idf).Name
+                for i, layer in enumerate(self.Layers[1:])
+            },
+        )

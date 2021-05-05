@@ -134,7 +134,7 @@ class EnergyPlusVersion(Version):
             raise InvalidEnergyPlusVersion
 
     def __repr__(self) -> str:
-        """Return the string representation of the object."""
+        """Return a representation of self."""
         return "<EnergyPlusVersion({0})>".format(repr(str(self)))
 
     @classmethod

@@ -3,16 +3,14 @@ from subprocess import CalledProcessError
 import pytest
 from path import Path
 
-from archetypal import (
-    IDF,
+from archetypal import IDF, settings
+from archetypal.eplus_interface import (
     EnergyPlusProcessError,
-    EnergyPlusVersion,
     EnergyPlusVersionError,
     InvalidEnergyPlusVersion,
-    parallel_process,
-    settings,
 )
-from archetypal.eplus_interface.version import get_eplus_dirs
+from archetypal.eplus_interface.version import EnergyPlusVersion, get_eplus_dirs
+from archetypal.utils import parallel_process
 
 
 @pytest.fixture()
@@ -228,6 +226,7 @@ class TestIDF:
         )
 
     @pytest.fixture(
+        scope="class",
         params=[
             None,
             get_eplus_dirs(settings.ep_version)
@@ -279,10 +278,10 @@ class TestIDF:
         """
         assert next(iter(idf.idfobjects["VERSION"]))
 
-    def test_save(self, idf):
+    def test_save(self, idf, tmp_path):
         """Saving should overwrite the file content."""
-        idf.save()
-
+        save_as = tmp_path / "idf_dup.idf"
+        idf_dup = idf.saveas(save_as)
 
 class TestIDFTransition:
     def test_transition(self, tmp_path):
@@ -321,7 +320,6 @@ class TestMeters:
 
 
 class TestThreads:
-
     @pytest.mark.xfail
     def test_runslab(self, config, tmp_path):
         """Test the slab preprocessors. Makes a temp file so that permissions are ok."""

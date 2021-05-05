@@ -4,6 +4,7 @@ import collections
 import logging as lg
 
 from sigfig import round
+from validator_collection import validators
 
 from archetypal.utils import log
 
@@ -38,15 +39,12 @@ class MaterialLayer(object):
 
     @Material.setter
     def Material(self, value):
-        from archetypal.template.materials import (
-            GasMaterial,
-            GlazingMaterial,
-            OpaqueMaterial,
-        )
+        from archetypal.template.materials import GlazingMaterial, OpaqueMaterial
 
-        assert isinstance(
-            value, (OpaqueMaterial, GlazingMaterial, GasMaterial)
-        ), f"Input value error for '{value}'. Value must be of type (OpaqueMaterial, GlazingMaterial, GasMaterial), not {type(value)}"
+        assert isinstance(value, (OpaqueMaterial, GlazingMaterial)), (
+            f"Input value error for '{value}'. Value must be "
+            f"of type (OpaqueMaterial, GlazingMaterial), not {type(value)}"
+        )
         self._material = value
 
     @property
@@ -71,7 +69,7 @@ class MaterialLayer(object):
 
     @resistivity.setter
     def resistivity(self, value):
-        self.Material.Conductivity = 1 / float(value)
+        self.Material.Conductivity = 1 / validators.float(value, minimum=0)
 
     @property
     def r_value(self):
@@ -84,7 +82,7 @@ class MaterialLayer(object):
 
     @r_value.setter
     def r_value(self, value):
-        self.Thickness = float(value) * self.Material.Conductivity
+        self.Thickness = validators.float(value, minimum=0) * self.Material.Conductivity
 
     @property
     def u_value(self):
@@ -93,7 +91,7 @@ class MaterialLayer(object):
 
     @u_value.setter
     def u_value(self, value):
-        self.r_value = 1 / float(value)
+        self.r_value = 1 / validators.float(value, minimum=0)
 
     @property
     def heat_capacity(self):
@@ -113,12 +111,17 @@ class MaterialLayer(object):
         )
 
     def to_epbunch(self, idf):
-        """Convert self to an epbunch given an IDF model.
+        """Convert self to an EpBunch given an IDF model.
 
-        The thickness is passed to the epbunch.
+        Notes:
+            The object is added to the idf model.
+            The thickness is passed to the epbunch.
 
         Args:
             idf (IDF): An IDF model.
+
+        Returns:
+            EpBunch: The EpBunch object added to the idf model.
         """
         return self.Material.to_epbunch(idf, self.Thickness)
 

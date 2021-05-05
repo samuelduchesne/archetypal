@@ -9,11 +9,11 @@ from enum import Enum
 import numpy as np
 from sigfig import round
 from sklearn.preprocessing import Binarizer
-from validator_collection import validators, checkers
+from validator_collection import checkers, validators
 
 from archetypal.reportdata import ReportData
 from archetypal.template.schedule import UmiSchedule
-from archetypal.template.umi_base import UmiBase, UniqueName
+from archetypal.template.umi_base import UmiBase
 from archetypal.utils import float_round, log
 
 
@@ -113,6 +113,7 @@ class ZoneConditioning(UmiBase):
         "_heat_recovery_type",
         "_heat_recovery_efficiency_latent",
         "_heat_recovery_efficiency_sensible",
+        "_area",
     )
 
     def __init__(
@@ -283,7 +284,14 @@ class ZoneConditioning(UmiBase):
 
         self.area = area
 
-        self._belongs_to_zone = kwargs.get("zone", None)
+    @property
+    def area(self):
+        """Get or set the area of the zone associated to this object [m²]."""
+        return self._area
+
+    @area.setter
+    def area(self, value):
+        self._area = value
 
     @property
     def CoolingSetpoint(self):
@@ -713,37 +721,36 @@ class ZoneConditioning(UmiBase):
         data_dict["MinFreshAirPerArea"] = round(self.MinFreshAirPerArea, 3)
         data_dict["MinFreshAirPerPerson"] = round(self.MinFreshAirPerPerson, 3)
         data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
+        data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = UniqueName(self.Name)
+        data_dict["Name"] = self.Name
 
         return data_dict
 
     @classmethod
-    def from_zone(cls, zone, nolimit=False, **kwargs):
+    def from_zone(cls, zone, zone_ep, nolimit=False, **kwargs):
         """Create a ZoneConditioning object from a zone.
 
         Args:
+            zone_ep:
             zone (archetypal.template.zone.Zone): zone to gets information from.
         """
         # If Zone is not part of Conditioned Area, it should not have a ZoneLoad object.
         if zone.is_part_of_conditioned_floor_area and zone.is_part_of_total_floor_area:
             # First create placeholder object.
             name = zone.Name + "_ZoneConditioning"
-            z_cond = cls(
-                Name=name, zone=zone, idf=zone.idf, Category=zone.idf.name, **kwargs
-            )
-            z_cond._set_thermostat_setpoints(zone)
-            z_cond._set_zone_cops(zone, nolimit=nolimit)
-            z_cond._set_heat_recovery(zone)
-            z_cond._set_mechanical_ventilation(zone)
-            z_cond._set_economizer(zone)
+            z_cond = cls(Name=name, zone=zone, Category=zone.DataSource, **kwargs)
+            z_cond._set_thermostat_setpoints(zone, zone_ep)
+            z_cond._set_zone_cops(zone, zone_ep, nolimit=nolimit)
+            z_cond._set_heat_recovery(zone, zone_ep)
+            z_cond._set_mechanical_ventilation(zone, zone_ep)
+            z_cond._set_economizer(zone, zone_ep)
 
             return z_cond
         else:
             return None
 
-    def _set_economizer(self, zone):
+    def _set_economizer(self, zone, zone_ep):
         """Set economizer parameters.
 
         Todo:
@@ -754,10 +761,11 @@ class ZoneConditioning(UmiBase):
               https://github.com/MITSustainableDesignLab/basilisk/issues/32
 
         Args:
+            zone_ep:
             zone (Zone): The zone object.
         """
         # Economizer
-        controllers_in_idf = zone.idf.idfobjects["Controller:OutdoorAir".upper()]
+        controllers_in_idf = zone_ep.theidf.idfobjects["Controller:OutdoorAir".upper()]
         self.EconomizerType = EconomizerTypes.NoEconomizer  # default value
 
         for object in controllers_in_idf:
@@ -778,7 +786,7 @@ class ZoneConditioning(UmiBase):
             elif object.Economizer_Control_Type == "DifferentialDryBulbAndEnthalpy":
                 self.EconomizerType = EconomizerTypes.DifferentialEnthalphy
 
-    def _set_mechanical_ventilation(self, zone):
+    def _set_mechanical_ventilation(self, zone, zone_ep):
         """Set mechanical ventilation settings.
 
         Notes: Mechanical Ventilation in UMI (or Archsim-based models) is applied to
@@ -795,6 +803,7 @@ class ZoneConditioning(UmiBase):
         no `DesignSpecification:OutdoorAir`) and 2) models with
 
         Args:
+            zone_ep:
             zone (Zone): The zone object.
         """
         # For models with ZoneSizes
@@ -812,7 +821,7 @@ class ZoneConditioning(UmiBase):
                     self.MinFreshAirPerArea,
                     self.MinFreshAirPerPerson,
                     self.MechVentSchedule,
-                ) = self.fresh_air_from_ideal_loads(zone)
+                ) = self.fresh_air_from_ideal_loads(zone, zone_ep)
         except Exception:
             # Set elements to None so that .combine works correctly
             self.IsMechVentOn = False
@@ -821,9 +830,13 @@ class ZoneConditioning(UmiBase):
             self.MechVentSchedule = None
 
     @staticmethod
-    def get_equipment_list(zone):
-        """Get zone equipment list."""
-        connections = zone._epbunch.getreferingobjs(
+    def get_equipment_list(zone, zone_ep):
+        """Get zone equipment list.
+
+        Args:
+            zone_ep:
+        """
+        connections = zone_ep.getreferingobjs(
             iddgroups=["Zone HVAC Equipment Connections"], fields=["Zone_Name"]
         )
         referenced_object = next(iter(connections)).get_referenced_object(
@@ -838,16 +851,18 @@ class ZoneConditioning(UmiBase):
             ],
         )
 
-    def fresh_air_from_ideal_loads(self, zone):
+    def fresh_air_from_ideal_loads(self, zone, zone_ep):
         """Resolve fresh air requirements for Ideal Loads Air System.
 
         Args:
+            zone_ep:
             zone:
 
         Returns:
-            4-tuple: (IsMechVentOn, MinFreshAirPerArea, MinFreshAirPerPerson, MechVentSchedule)
+            4-tuple: (IsMechVentOn, MinFreshAirPerArea, MinFreshAirPerPerson,
+            MechVentSchedule)
         """
-        equip_list = self.get_equipment_list(zone)
+        equip_list = self.get_equipment_list(zone, zone_ep)
         equipment = next(
             iter(
                 [
@@ -956,7 +971,7 @@ class ZoneConditioning(UmiBase):
                     idf=zone.idf,
                 )
 
-    def _set_zone_cops(self, zone, nolimit=False):
+    def _set_zone_cops(self, zone, zone_ep, nolimit=False):
         """Set the zone COPs.
 
         Todo:
@@ -964,6 +979,7 @@ class ZoneConditioning(UmiBase):
             - This method takes 75% of the `from_zone` constructor.
 
         Args:
+            zone_ep:
             zone (Zone):
         """
         # COPs (heating and cooling)
@@ -979,7 +995,7 @@ class ZoneConditioning(UmiBase):
         for meter in heating_meters:
             try:
                 total_input_heating_energy += (
-                    self.idf.meters.OutputMeter[meter].values("kWh").sum()
+                    zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
                 )
             except KeyError:
                 pass  # pass if meter does not exist for model
@@ -992,14 +1008,14 @@ class ZoneConditioning(UmiBase):
         for meter in heating_energy_transfer_meters:
             try:
                 total_output_heating_energy += (
-                    self.idf.meters.OutputMeter[meter].values("kWh").sum()
+                    zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
                 )
             except KeyError:
                 pass  # pass if meter does not exist for model
         if total_output_heating_energy == 0:  # IdealLoadsAirSystem
             try:
                 total_output_heating_energy += (
-                    self.idf.meters.OutputMeter["Heating__EnergyTransfer"]
+                    zone_ep.theidf.meters.OutputMeter["Heating__EnergyTransfer"]
                     .values("kWh")
                     .sum()
                 )
@@ -1017,7 +1033,7 @@ class ZoneConditioning(UmiBase):
         for meter in cooling_meters:
             try:
                 total_input_cooling_energy += (
-                    self.idf.meters.OutputMeter[meter].values("kWh").sum()
+                    zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
                 )
             except KeyError:
                 pass  # pass if meter does not exist for model
@@ -1030,14 +1046,14 @@ class ZoneConditioning(UmiBase):
         for meter in cooling_energy_transfer_meters:
             try:
                 total_output_cooling_energy += (
-                    self.idf.meters.OutputMeter[meter].values("kWh").sum()
+                    zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
                 )
             except KeyError:
                 pass  # pass if meter does not exist for model
         if total_output_cooling_energy == 0:  # IdealLoadsAirSystem
             try:
                 total_output_cooling_energy += (
-                    self.idf.meters.OutputMeter["Cooling__EnergyTransfer"]
+                    zone_ep.theidf.meters.OutputMeter["Cooling__EnergyTransfer"]
                     .values("kWh")
                     .sum()
                 )
@@ -1054,7 +1070,9 @@ class ZoneConditioning(UmiBase):
         # estimate fans electricity for cooling and heating
         try:
             fans_energy = (
-                self.idf.meters.OutputMeter["Fans__Electricity"].values("kWh").sum()
+                zone_ep.theidf.meters.OutputMeter["Fans__Electricity"]
+                .values("kWh")
+                .sum()
             )
             fans_cooling = fans_energy * ratio_cooling
             fans_heating = fans_energy * ratio_heating
@@ -1066,7 +1084,9 @@ class ZoneConditioning(UmiBase):
         # estimate pumps electricity for cooling and heating
         try:
             pumps_energy = (
-                self.idf.meters.OutputMeter["Pumps__Electricity"].values("kWh").sum()
+                zone_ep.theidf.meters.OutputMeter["Pumps__Electricity"]
+                .values("kWh")
+                .sum()
             )
             pumps_cooling = pumps_energy * ratio_cooling
             pumps_heating = pumps_energy * ratio_heating
@@ -1086,8 +1106,8 @@ class ZoneConditioning(UmiBase):
         heating_cop = total_output_heating_energy / total_input_heating_energy
 
         # Capacity limits (heating and cooling)
-        zone_size = zone.idf.sql()["ZoneSizes"][
-            zone.idf.sql()["ZoneSizes"]["ZoneName"] == zone.Name.upper()
+        zone_size = zone_ep.theidf.sql()["ZoneSizes"][
+            zone_ep.theidf.sql()["ZoneSizes"]["ZoneName"] == zone.Name.upper()
         ]
         # Heating
         HeatingLimitType, heating_cap, heating_flow = self._get_design_limits(
@@ -1114,15 +1134,16 @@ class ZoneConditioning(UmiBase):
         if math.isnan(cooling_cop):
             self.CoolingCoeffOfPerf = 1
 
-    def _set_thermostat_setpoints(self, zone):
+    def _set_thermostat_setpoints(self, zone, zone_ep):
         """Set the thermostat settings and schedules for this zone.
 
         Args:
+            zone_ep:
             zone (Zone): The zone object.
         """
         # Set Thermostat set points
         # Heating and Cooling set points and schedules
-        with sqlite3.connect(zone.idf.sql_file) as conn:
+        with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
             sql_query = f"""
                     SELECT t.ReportVariableDataDictionaryIndex
                     FROM ReportVariableDataDictionary t
@@ -1142,7 +1163,6 @@ class ZoneConditioning(UmiBase):
                         Name=zone.Name + "_Heating_Schedule",
                         Values=heating_availability,
                         Type="Fraction",
-                        idf=zone.idf,
                         allow_duplicates=True,
                     )
                 else:
@@ -1167,7 +1187,6 @@ class ZoneConditioning(UmiBase):
                         Name=zone.Name + "_Cooling_Schedule",
                         Values=1 - cooling_availability,  # take flipped
                         Type="Fraction",
-                        idf=zone.idf,
                         allow_duplicates=True,
                     )
                 else:
@@ -1188,7 +1207,7 @@ class ZoneConditioning(UmiBase):
         else:
             self.IsCoolingOn = True
 
-    def _set_heat_recovery(self, zone):
+    def _set_heat_recovery(self, zone, zone_ep):
         """Set the heat recovery parameters for this zone.
 
         Heat Recovery Parameters:
@@ -1200,6 +1219,7 @@ class ZoneConditioning(UmiBase):
             - comment (str): A comment to append to the class comment attribute.
 
         Args:
+            zone_ep:
             zone (Zone): The Zone object.
         """
         from itertools import chain
@@ -1214,12 +1234,12 @@ class ZoneConditioning(UmiBase):
         #     for con in connections
         # ]
         # get possible heat recovery objects from idd
-        heat_recovery_objects = zone.idf.getiddgroupdict()["Heat Recovery"]
+        heat_recovery_objects = zone_ep.theidf.getiddgroupdict()["Heat Recovery"]
 
         # get possible heat recovery objects from this idf
         heat_recovery_in_idf = list(
             chain.from_iterable(
-                zone.idf.idfobjects[key.upper()] for key in heat_recovery_objects
+                zone_ep.theidf.idfobjects[key.upper()] for key in heat_recovery_objects
             )
         )
 
@@ -1257,7 +1277,7 @@ class ZoneConditioning(UmiBase):
                 (
                     HeatRecoveryEfficiencyLatent,
                     HeatRecoveryEfficiencySensible,
-                ) = self._get_recoverty_effectiveness(object, zone)
+                ) = self._get_recoverty_effectiveness(object, zone, zone_ep)
                 HeatRecoveryType = HeatRecoveryTypes.Enthalpy
 
                 comment = (
@@ -1289,8 +1309,8 @@ class ZoneConditioning(UmiBase):
         self.Comments += comment
 
     @staticmethod
-    def _get_recoverty_effectiveness(object, zone):
-        rd = ReportData.from_sql_dict(zone.idf.sql())
+    def _get_recoverty_effectiveness(object, zone, zone_ep):
+        rd = ReportData.from_sql_dict(zone_ep.theidf.sql())
         effectiveness = (
             rd.filter_report_data(
                 name=(
@@ -1451,7 +1471,7 @@ class ZoneConditioning(UmiBase):
         )
         # create a new object with the previous attributes
         new_obj = self.__class__(
-            **meta, **new_attr, allow_duplicates=self._allow_duplicates
+            **meta, **new_attr, allow_duplicates=self.allow_duplicates
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
@@ -1471,11 +1491,18 @@ class ZoneConditioning(UmiBase):
         if not self.MinFreshAirPerArea:
             self.MinFreshAirPerArea = 0
 
-    def mapping(self):
-        """Get a dict based on the object properties, useful for dict repr."""
-        self.validate()
+    def mapping(self, validate=True):
+        """Get a dict based on the object properties, useful for dict repr.
 
-        return dict(
+        Args:
+            validate (bool): If True, try to validate object before returning the
+                mapping.
+        """
+        if validate:
+            self.validate()
+
+        base = super(ZoneConditioning, self).mapping(validate=validate)
+        data = dict(
             CoolingSchedule=self.CoolingSchedule,
             CoolingCoeffOfPerf=self.CoolingCoeffOfPerf,
             CoolingSetpoint=self.CoolingSetpoint,
@@ -1500,10 +1527,50 @@ class ZoneConditioning(UmiBase):
             MechVentSchedule=self.MechVentSchedule,
             MinFreshAirPerArea=self.MinFreshAirPerArea,
             MinFreshAirPerPerson=self.MinFreshAirPerPerson,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
+        )
+        data.update(base)
+        return data
+
+    def to_epbunch(self, idf, zone_name, design_specification_outdoor_air_object):
+        """Convert self to an EpBunch given an IDF model.
+
+        Args:
+            idf:
+            zone_name:
+
+        Returns:
+            EpBunch: The EpBunch object added to the idf model.
+
+        """
+        return idf.newidfobject(
+            key="ZONEHVAC:IDEALLOADSAIRSYSTEM",
+            Name=f"{zone_name} Ideal Loads Air System",
+            Availability_Schedule_Name="",
+            Zone_Supply_Air_Node_Name="",
+            Zone_Exhaust_Air_Node_Name="",
+            System_Inlet_Air_Node_Name="",
+            Maximum_Heating_Supply_Air_Temperature="50",
+            Minimum_Cooling_Supply_Air_Temperature="13",
+            Maximum_Heating_Supply_Air_Humidity_Ratio="0.0156",
+            Minimum_Cooling_Supply_Air_Humidity_Ratio="0.0077",
+            Heating_Limit=self.HeatingLimitType.name,
+            Maximum_Heating_Air_Flow_Rate=self.MaxHeatFlow,
+            Maximum_Sensible_Heating_Capacity=self.MaxHeatingCapacity,
+            Cooling_Limit=self.CoolingLimitType.name,
+            Maximum_Cooling_Air_Flow_Rate=self.MaxCoolFlow,
+            Maximum_Total_Cooling_Capacity=self.MaxCoolingCapacity,
+            Heating_Availability_Schedule_Name=self.HeatingSchedule,
+            Cooling_Availability_Schedule_Name=self.CoolingSchedule,
+            Dehumidification_Control_Type="ConstantSensibleHeatRatio",
+            Cooling_Sensible_Heat_Ratio="0.7",
+            Humidification_Control_Type="None",
+            Design_Specification_Outdoor_Air_Object_Name=design_specification_outdoor_air_object.Name,
+            Outdoor_Air_Inlet_Node_Name="",
+            Demand_Controlled_Ventilation_Type="None",
+            Outdoor_Air_Economizer_Type=self.EconomizerType.name,
+            Heat_Recovery_Type=self.HeatRecoveryType.name,
+            Sensible_Heat_Recovery_Effectiveness=self.HeatRecoveryEfficiencySensible,
+            Latent_Heat_Recovery_Effectiveness=self.HeatRecoveryEfficiencyLatent,
         )
 
     def duplicate(self):
@@ -1556,4 +1623,4 @@ class ZoneConditioning(UmiBase):
 
     def __copy__(self):
         """Create a copy of self."""
-        return self.__class__(**self.mapping())
+        return self.__class__(**self.mapping(validate=False))

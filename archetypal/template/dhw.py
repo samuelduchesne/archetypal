@@ -10,7 +10,7 @@ from validator_collection import validators
 
 from archetypal import settings
 from archetypal.template.schedule import UmiSchedule
-from archetypal.template.umi_base import UmiBase, UniqueName
+from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, reduce, timeit
 
 
@@ -31,6 +31,7 @@ class DomesticHotWaterSetting(UmiBase):
 
     def __init__(
         self,
+        Name,
         WaterSchedule=None,
         IsOn=True,
         FlowRatePerFloorArea=0.03,
@@ -52,7 +53,7 @@ class DomesticHotWaterSetting(UmiBase):
                 mains [degC].
             **kwargs: keywords passed to parent constructors.
         """
-        super(DomesticHotWaterSetting, self).__init__(**kwargs)
+        super(DomesticHotWaterSetting, self).__init__(Name, **kwargs)
         self.FlowRatePerFloorArea = FlowRatePerFloorArea
         self.IsOn = IsOn
         self.WaterSupplyTemperature = WaterSupplyTemperature
@@ -132,9 +133,10 @@ class DomesticHotWaterSetting(UmiBase):
             schedules (dict): A dictionary of UmiSchedules with their id as keys.
             **kwargs: keywords passed the MaterialBase constructor.
         """
+        _id = data.pop("$id")
         wat_sch = data.pop("WaterSchedule", None)
         schedule = schedules[wat_sch["$ref"]]
-        return cls(WaterSchedule=schedule, **data, **kwargs)
+        return cls(id=_id, WaterSchedule=schedule, **data, **kwargs)
 
     def to_dict(self):
         """Return DomesticHotWaterSetting dictionary representation."""
@@ -153,9 +155,9 @@ class DomesticHotWaterSetting(UmiBase):
             self.WaterTemperatureInlet, sigfigs=4
         )
         data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
+        data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = UniqueName(self.Name)
+        data_dict["Name"] = self.Name
 
         return data_dict
 
@@ -412,29 +414,19 @@ class DomesticHotWaterSetting(UmiBase):
 
     @classmethod
     def whole_building(cls, idf):
-        """Create one DomesticHotWaterSetting for whole building model."""
-        z_dhw_list = []
-        dhw_objs = idf.idfobjects["WaterUse:Equipment".upper()]
+        """Create one DomesticHotWaterSetting for whole building model.
 
+        Args:
+            idf (IDF): The idf model.
+
+        Returns:
+            DomesticHotWaterSetting: The DomesticHotWaterSetting object.
+        """
         # Unconditioned area could be zero, therefore taking max of both
         area = max(idf.net_conditioned_building_area, idf.unconditioned_building_area)
 
-        total_flow_rate = DomesticHotWaterSetting._do_flow_rate(dhw_objs, area)
-        water_schedule = DomesticHotWaterSetting._do_water_schedule(dhw_objs)
-        water_schedule.quantity = total_flow_rate
-        inlet_temp = DomesticHotWaterSetting._do_inlet_temp(dhw_objs)
-        supply_temp = DomesticHotWaterSetting._do_hot_temp(dhw_objs)
-        z_dhw = DomesticHotWaterSetting(
-            WaterSchedule=water_schedule,
-            IsOn=bool(total_flow_rate > 0),
-            FlowRatePerFloorArea=total_flow_rate,
-            WaterSupplyTemperature=supply_temp,
-            WaterTemperatureInlet=inlet_temp,
-            area=area,
-            Name="Whole Building WaterUse:Equipment",
-            Category=idf.name,
-        )
-        z_dhw_list.append(z_dhw)
+        z_dhw_list = []
+        dhw_objs = idf.idfobjects["WaterUse:Equipment".upper()]
         if not dhw_objs:
             # defaults with 0 flow rate.
             total_flow_rate = 0
@@ -454,12 +446,35 @@ class DomesticHotWaterSetting(UmiBase):
                 Category=idf.name,
             )
             z_dhw_list.append(z_dhw)
+        else:
+            total_flow_rate = DomesticHotWaterSetting._do_flow_rate(dhw_objs, area)
+            water_schedule = DomesticHotWaterSetting._do_water_schedule(dhw_objs)
+            water_schedule.quantity = total_flow_rate
+            inlet_temp = DomesticHotWaterSetting._do_inlet_temp(dhw_objs)
+            supply_temp = DomesticHotWaterSetting._do_hot_temp(dhw_objs)
+            z_dhw = DomesticHotWaterSetting(
+                WaterSchedule=water_schedule,
+                IsOn=bool(total_flow_rate > 0),
+                FlowRatePerFloorArea=total_flow_rate,
+                WaterSupplyTemperature=supply_temp,
+                WaterTemperatureInlet=inlet_temp,
+                area=area,
+                Name="Whole Building WaterUse:Equipment",
+                Category=idf.name,
+            )
+            z_dhw_list.append(z_dhw)
 
         return reduce(DomesticHotWaterSetting.combine, z_dhw_list)
 
-    def mapping(self):
-        """Get a dict based on the object properties, useful for dict repr."""
-        self.validate()
+    def mapping(self, validate=True):
+        """Get a dict based on the object properties, useful for dict repr.
+
+        Args:
+            validate (bool): If True, try to validate object before returning the
+                mapping.
+        """
+        if validate:
+            self.validate()
 
         return dict(
             FlowRatePerFloorArea=self.FlowRatePerFloorArea,
@@ -519,7 +534,7 @@ class DomesticHotWaterSetting(UmiBase):
 
     def __copy__(self):
         """Create a copy of self."""
-        return self.__class__(**self.mapping())
+        return self.__class__(**self.mapping(validate=False))
 
 
 def water_main_correlation(t_out_avg, max_diff):

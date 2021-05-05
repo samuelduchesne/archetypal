@@ -16,15 +16,19 @@ __all__ = [
     "get_eplus_dirs",
 ]
 
-from .basement import BasementThread
-from .energy_plus import EnergyPlusProgram, EnergyPlusThread, EnergyPlusExe
-from .exceptions import (
+from archetypal.eplus_interface.basement import BasementThread
+from archetypal.eplus_interface.energy_plus import (
+    EnergyPlusExe,
+    EnergyPlusProgram,
+    EnergyPlusThread,
+)
+from archetypal.eplus_interface.exceptions import (
     EnergyPlusProcessError,
     EnergyPlusVersionError,
     EnergyPlusWeatherError,
     InvalidEnergyPlusVersion,
 )
-from .expand_objects import ExpandObjectsThread
-from .slab import SlabThread
-from .transition import TransitionThread
-from .version import EnergyPlusVersion, get_eplus_dirs
+from archetypal.eplus_interface.expand_objects import ExpandObjectsThread
+from archetypal.eplus_interface.slab import SlabThread
+from archetypal.eplus_interface.transition import TransitionThread
+from archetypal.eplus_interface.version import EnergyPlusVersion, get_eplus_dirs

@@ -1,0 +1,30 @@
+!- Darwin Line endings 
+
+VERSION,
+    9.2.0;                    !- Version Identifier
+
+MATERIAL,
+    A2 - 4 IN DENSE FACE BRICK,    !- Name
+    Rough,                    !- Roughness
+    0.1014984,                !- Thickness
+    1.245296,                 !- Conductivity
+    2082.4,                   !- Density
+    920.48,                   !- Specific Heat
+    0.9,                      !- Thermal Absorptance
+    0.93,                     !- Solar Absorptance
+    0.93;                     !- Visible Absorptance
+
+MATERIAL:NOMASS,
+    R13LAYER,                 !- Name
+    Rough,                    !- Roughness
+    2.290965,                 !- Thermal Resistance
+    0.9,                      !- Thermal Absorptance
+    0.75,                     !- Solar Absorptance
+    0.75;                     !- Visible Absorptance
+
+MATERIAL:INFRAREDTRANSPARENT,
+    IRTMaterial1;             !- Name
+
+MATERIAL:AIRGAP,
+    B1 - AIRSPACE RESISTANCE,    !- Name
+    0.1603675;                !- Thermal Resistance

@@ -10,7 +10,7 @@ from eppy.bunch_subclass import EpBunch
 from tqdm import tqdm
 
 from archetypal.plot import save_and_show
-from archetypal.template import is_core, resolve_obco
+from archetypal.template.zonedefinition import is_core, resolve_obco
 from archetypal.utils import log
 
 

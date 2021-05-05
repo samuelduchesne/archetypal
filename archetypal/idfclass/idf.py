@@ -6,6 +6,7 @@ different forms.
 
 import itertools
 import logging as lg
+import math
 import os
 import re
 import shutil
@@ -28,6 +29,7 @@ from eppy.easyopen import getiddfile
 from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata
 from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from geomeppy import IDF as geomIDF
+from geomeppy.geom.polygons import Polygon3D
 from geomeppy.patches import EpBunch, idfreader1, obj2bunch
 from pandas import DataFrame, Series
 from pandas.errors import ParserError
@@ -232,7 +234,7 @@ class IDF(geomIDF):
         self.prep_outputs = prep_outputs
         self._position = position
         self.output_prefix = None
-        self.name = name
+        self.name = self.idfname.basename() if isinstance(self.idfname, Path) else name
         self.output_directory = output_directory
 
         # Set dependants to None
@@ -303,7 +305,7 @@ class IDF(geomIDF):
         return self.name
 
     def __repr__(self):
-        """Describe the model."""
+        """Return a representation of self."""
         if self.sim_info is not None:
             sim_info = tabulate(self.sim_info.T, tablefmt="orgtbl")
             sim_info += f"\n\tFiles at '{self.simulation_dir}'"
@@ -765,16 +767,14 @@ class IDF(geomIDF):
 
         Can include the extension (.idf).
         """
-        if self._name is not None:
-            return self._name
-        elif isinstance(self.idfname, StringIO):
-            self._name = f"{uuid.uuid1()}.idf"
-            return self._name
-        else:
-            return self.idfname.basename()
+        return self._name
 
     @name.setter
     def name(self, value):
+        if value is None:
+            value = f"{uuid.uuid1()}.idf"
+        elif ".idf" not in value:
+            value = Path(value).stem + ".idf"
         self._name = value
 
     def sql(self) -> dict:
@@ -842,7 +842,7 @@ class IDF(geomIDF):
 
         import subprocess
 
-        subprocess.call(
+        subprocess.Popen(
             (
                 shutil.which(
                     "IDFEditor",
@@ -860,7 +860,7 @@ class IDF(geomIDF):
 
         import subprocess
 
-        subprocess.call(
+        subprocess.Popen(
             (
                 shutil.which(
                     "EP-Launch",
@@ -1015,6 +1015,50 @@ class IDF(geomIDF):
         return self._area_total
 
     @property
+    def total_building_volume(self):
+        return NotImplemented()
+
+    @staticmethod
+    def _get_volume_from_surfs(zone_surfs):
+        """Calculate the volume of a zone only and only if the surfaces are such
+        that you can find a point inside so that you can connect every vertex to
+        the point without crossing a face.
+
+        Adapted from: https://stackoverflow.com/a/19125446
+
+        Args:
+            zone_surfs (list): List of zone surfaces (EpBunch)
+        """
+        vol = 0
+        for surf in zone_surfs:
+            polygon_d = Polygon3D(surf.coords)  # create Polygon3D from surf
+            n = len(polygon_d.vertices_list)
+            v2 = polygon_d[0]
+            x2 = v2.x
+            y2 = v2.y
+            z2 = v2.z
+
+            for i in range(1, n - 1):
+                v0 = polygon_d[i]
+                x0 = v0.x
+                y0 = v0.y
+                z0 = v0.z
+                v1 = polygon_d[i + 1]
+                x1 = v1.x
+                y1 = v1.y
+                z1 = v1.z
+                # Add volume of tetrahedron formed by triangle and origin
+                vol += math.fabs(
+                    x0 * y1 * z2
+                    + x1 * y2 * z0
+                    + x2 * y0 * z1
+                    - x0 * y2 * z1
+                    - x1 * y0 * z2
+                    - x2 * y1 * z0
+                )
+        return vol / 6.0
+
+    @property
     def partition_ratio(self) -> float:
         """float: Lineal meters of partitions per m2 of floor area."""
         if self._partition_ratio is None:
@@ -1071,7 +1115,10 @@ class IDF(geomIDF):
 
     @property
     def day_of_week_for_start_day(self):
-        """Get day of week for start day for the first found RUNPERIOD."""
+        """Get day of week for start day for the first found RUNPERIOD.
+
+        Monday = 0 .. Sunday = 6
+        """
         import calendar
 
         run_period = next(iter(self.idfobjects["RUNPERIOD"]), None)
@@ -1538,7 +1585,7 @@ class IDF(geomIDF):
                 if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
             ]:
                 if isclose(surface.tilt, 90, abs_tol=10):
-                    if surface.Outside_Boundary_Condition == "Outdoors":
+                    if surface.Outside_Boundary_Condition.lower() == "outdoors":
                         surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
                         total_surface_area[surf_azim] += surface.area * multiplier
                 for subsurface in surface.subsurfaces:

@@ -5,8 +5,8 @@ import logging as lg
 
 from validator_collection import validators
 
-from archetypal.template.opaque_construction import OpaqueConstruction
-from archetypal.template.umi_base import UmiBase, UniqueName
+from archetypal.template.constructions.opaque_construction import OpaqueConstruction
+from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, reduce, timeit
 
 
@@ -249,27 +249,27 @@ class ZoneConstructionSet(UmiBase):
         name = zone.Name + "_ZoneConstructionSet"
         # dispatch surfaces
         facade, ground, partition, roof, slab = [], [], [], [], []
-        zonesurfaces = zone._zonesurfaces
+        zonesurfaces = zone.zone_surfaces
         for surf in zonesurfaces:
-            for disp_surf in SurfaceDispatcher(surf, zone):
-                if disp_surf:
-                    if disp_surf.Surface_Type == "Facade":
-                        if zone.is_part_of_conditioned_floor_area:
-                            facade.append(disp_surf)
-                    elif disp_surf.Surface_Type == "Ground":
-                        ground.append(disp_surf)
-                    elif disp_surf.Surface_Type == "Partition":
-                        partition.append(disp_surf)
-                    elif disp_surf.Surface_Type == "Roof":
-                        roof.append(disp_surf)
-                    elif disp_surf.Surface_Type == "Slab":
-                        slab.append(disp_surf)
-                    else:
-                        msg = (
-                            'Surface Type "{}" is not known, this method is not'
-                            " implemented".format(disp_surf.Surface_Type)
-                        )
-                        raise NotImplementedError(msg)
+            disp_surf = SurfaceDispatcher(surf, zone).resolved_surface
+            if disp_surf:
+                if disp_surf.Category == "Facade":
+                    if zone.is_part_of_conditioned_floor_area:
+                        facade.append(disp_surf)
+                elif disp_surf.Category == "Ground":
+                    ground.append(disp_surf)
+                elif disp_surf.Category == "Partition":
+                    partition.append(disp_surf)
+                elif disp_surf.Category == "Roof":
+                    roof.append(disp_surf)
+                elif disp_surf.Category == "Slab":
+                    slab.append(disp_surf)
+                else:
+                    msg = (
+                        'Surface Type "{}" is not known, this method is not'
+                        " implemented".format(disp_surf.Surface_Type)
+                    )
+                    raise NotImplementedError(msg)
 
         # Returning a set() for each groups of Constructions.
 
@@ -307,8 +307,7 @@ class ZoneConstructionSet(UmiBase):
             Slab=slab,
             Name=name,
             zone=zone,
-            idf=zone.idf,
-            Category=zone.idf.name,
+            Category=zone.DataSource,
             **kwargs,
         )
         return z_set
@@ -380,7 +379,9 @@ class ZoneConstructionSet(UmiBase):
             (ZoneConstructionSet): the combined ZoneConstructionSet object.
         """
         # Check if other is None. Simply return self
-        if not other or self == other:
+        if not self and not other:
+            return None
+        elif self == other:
             area = 1 if self.area + other.area == 2 else self.area + other.area
             volume = (
                 1 if self.volume + other.volume == 2 else self.volume + other.volume
@@ -389,14 +390,8 @@ class ZoneConstructionSet(UmiBase):
             new_obj.area = area
             new_obj.volume = volume
             return new_obj
-        elif not self:
-            area = 1 if self.area + other.area == 2 else self.area + other.area
-            volume = (
-                1 if self.volume + other.volume == 2 else self.volume + other.volume
-            )
-            new_obj = other.duplicate()
-            new_obj.area = area
-            new_obj.volume = volume
+        elif not self or not other:
+            new_obj = (self or other).duplicate()
             return new_obj
 
         # Check if other is the same type as self
@@ -427,7 +422,7 @@ class ZoneConstructionSet(UmiBase):
             volume=1 if self.volume + other.volume == 2 else self.volume + other.volume,
             **meta,
             **kwargs,
-            allow_duplicates=self._allow_duplicates,
+            allow_duplicates=self.allow_duplicates,
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
@@ -449,9 +444,9 @@ class ZoneConstructionSet(UmiBase):
         data_dict["IsRoofAdiabatic"] = self.IsRoofAdiabatic
         data_dict["IsSlabAdiabatic"] = self.IsSlabAdiabatic
         data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
+        data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
-        data_dict["Name"] = UniqueName(self.Name)
+        data_dict["Name"] = self.Name
 
         return data_dict
 
@@ -587,10 +582,6 @@ class SurfaceDispatcher:
             ("Ceiling", "Zone"): self._do_slab,
         }
 
-    def __iter__(self):
-        """Yield resolved surface."""
-        yield next(self.resolved_surface)
-
     @property
     def resolved_surface(self):
         """Generate a resolved surface. Yields value."""
@@ -600,7 +591,7 @@ class SurfaceDispatcher:
                 self.surf["Outside_Boundary_Condition"],
             )
             try:
-                yield self._dispatch[a, b](self.surf)
+                return self._dispatch[a, b](self.surf)
             except KeyError as e:
                 raise NotImplementedError(
                     "surface '%s' in zone '%s' not supported by surface dispatcher "
@@ -618,8 +609,7 @@ class SurfaceDispatcher:
             surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
         )
         oc.area = surf.area
-        oc.Surface_Type = "Facade"
-        oc.Category = oc.Surface_Type
+        oc.Category = "Facade"
         return oc
 
     @staticmethod
@@ -633,8 +623,7 @@ class SurfaceDispatcher:
             surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
         )
         oc.area = surf.area
-        oc.Surface_Type = "Ground"
-        oc.Category = oc.Surface_Type
+        oc.Category = "Ground"
         return oc
 
     @staticmethod
@@ -645,8 +634,7 @@ class SurfaceDispatcher:
         if the_construction:
             oc = OpaqueConstruction.from_epbunch(the_construction)
             oc.area = surf.area
-            oc.Surface_Type = "Partition"
-            oc.Category = oc.Surface_Type
+            oc.Category = "Partition"
             log(
                 'surface "%s" assigned as a Partition' % surf.Name,
                 lg.DEBUG,
@@ -670,8 +658,7 @@ class SurfaceDispatcher:
             surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
         )
         oc.area = surf.area
-        oc.Surface_Type = "Roof"
-        oc.Category = oc.Surface_Type
+        oc.Category = "Roof"
         return oc
 
     @staticmethod
@@ -685,8 +672,7 @@ class SurfaceDispatcher:
             surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
         )
         oc.area = surf.area
-        oc.Surface_Type = "Slab"
-        oc.Category = oc.Surface_Type
+        oc.Category = "Slab"
         return oc
 
     @staticmethod

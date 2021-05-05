@@ -1,293 +1,245 @@
-################################################################################
-# Module: schedule.py
-# Description: Functions for handling conversion of EnergyPlus schedule objects
-# License: MIT, see full license in LICENSE.txt
-# Web: https://github.com/samuelduchesne/archetypal
-################################################################################
+"""archetypal Schedule module."""
 
 import functools
 import io
 import logging as lg
-from calendar import calendar
 from datetime import datetime, timedelta
 from itertools import groupby
 
 import numpy as np
 import pandas as pd
 from energy_pandas import EnergySeries
-from eppy.bunch_subclass import EpBunch
-from numpy import ndarray
+from eppy.bunch_subclass import BadEPFieldError
+from validator_collection import checkers, validators
 
 from archetypal.utils import log
 
 
-class Schedule(object):
-    """An object designed to handle any EnergyPlus schedule object"""
+class ScheduleTypeLimits:
+    """ScheduleTypeLimits class."""
+
+    __slots__ = ("_name", "_lower_limit", "_upper_limit", "_numeric_type", "_unit_type")
+
+    _NUMERIC_TYPES = ("continuous", "discrete")
+    _UNIT_TYPES = (
+        "Dimensionless",
+        "Temperature",
+        "DeltaTemperature",
+        "PrecipitationRate",
+        "Angle",
+        "ConvectionCoefficient",
+        "ActivityLevel",
+        "Velocity",
+        "Capacity",
+        "Power",
+        "Availability",
+        "Percent",
+        "Control",
+        "Mode",
+    )
 
     def __init__(
         self,
         Name,
-        idf=None,
-        start_day_of_the_week=None,
-        strict=False,
-        base_year=None,
-        schType=None,
-        Type=None,
-        Values=None,
-        epbunch=None,
-        **kwargs,
+        LowerLimit,
+        UpperLimit,
+        NumericType="Continuous",
+        UnitType="Dimensionless",
     ):
-        """
-        Args:
-            Name (str): The schedule name in the idf model.
-            idf (IDF): The IDF model.
-            start_day_of_the_week (int): 0-based day of week (Monday=0). Default is
-                None which looks for the start day in the IDF model.
-            strict (bool): if True, schedules that have the Field-Sets such as
-                Holidays and CustomDay will raise an error if they are absent
-                from the IDF file. If False, any missing qualifiers will be
-                ignored.
-            base_year (int): The base year of the schedule. Defaults to 2018
-                since the first day of that year is a Monday.
-            schType (str): The EnergyPlus schedule type. eg.: "Schedule:Year"
-            Type (str): This field contains a reference to the
-                Schedule Type Limits object. If found in a list of Schedule Type
-                Limits (see above), then the restrictions from the referenced
-                object will be used to validate the current field values.
-            Values (ndarray): A 24 or 8760 list of schedule values.
-            epbunch (EpBunch): An EpBunch object from which this schedule can
-                be created.
-            **kwargs:
-        """
-        try:
-            kwargs["idf"] = idf
-            Name = kwargs.pop("Name", Name)
-            super(Schedule, self).__init__(Name, **kwargs)
-        except Exception as e:
-            pass  # todo: make this more robust
-        self.strict = strict
-        self._idf = idf
+        """Initialize object."""
         self.Name = Name
-        self.startDayOfTheWeek = self.get_sdow(start_day_of_the_week)
-        self.year = get_year_for_first_weekday(self.startDayOfTheWeek)
-
-        self.count = 0
-        self.startHOY = 1
-        self.endHOY = 24
-        self.unit = "unknown"
-        self.index_ = None
-        self._values = Values
-        self.schType = schType
-        self.Type = Type
-
-        try:
-            self.epbunch = epbunch or self.idf.get_schedule_epbunch(self.Name)
-        except KeyError:
-            self.epbunch = None
-
-        if self.Type is None:
-            self.Type = self.get_schedule_type_limits_name(sch_type=self.schType)
+        self.LowerLimit = LowerLimit
+        self.UpperLimit = UpperLimit
+        self.NumericType = NumericType
+        self.UnitType = UnitType
 
     @property
-    def idf(self):
-        if self._idf is None:
-            from .idfclass.idf import IDF
+    def Name(self):
+        """Get or set the name of the ScheduleTypeLimits."""
+        return self._name
 
-            self._idf = IDF()
-        return self._idf
-
-    @classmethod
-    def from_values(cls, Name, Values, idf, Type="Fraction", **kwargs):
-        """
-        Args:
-            Name:
-            Values:
-            idf:
-            Type:
-            **kwargs:
-        """
-        return cls(Name=Name, Values=Values, Type=Type, idf=idf, **kwargs)
-
-    @classmethod
-    def constant_schedule(
-        cls, hourly_value=1, Name="AlwaysOn", idf=None, Type="Fraction", **kwargs
-    ):
-        """Create a schedule with a constant value for the whole year. Defaults
-        to a schedule with a value of 1, named 'AlwaysOn'.
-
-        Args:
-            hourly_value (float, optional): The value for the constant schedule.
-                Defaults to 1.
-            Name (str, optional): The name of the schedule. Defaults to Always
-                On.
-            idf:
-            **kwargs:
-        """
-        if not idf:
-            from archetypal.idfclass.idf import IDF
-
-            idf = IDF(prep_outputs=False)
-        # Add the schedule to the existing idf
-        epbunch = idf.anidfobject(
-            key="Schedule:Constant".upper(),
-            Name=Name,
-            Schedule_Type_Limits_Name=Type,
-            Hourly_Value=hourly_value,
-        )
-        return cls(
-            Name=Name,
-            Values=np.ones(8760) * hourly_value,
-            idf=idf,
-            epbunch=epbunch,
-            **kwargs,
-        )
+    @Name.setter
+    def Name(self, value):
+        self._name = validators.string(value)
 
     @property
-    def all_values(self) -> np.ndarray:
-        """returns the values array"""
-        if self._values is None:
-            self._values = self.get_schedule_values(self.epbunch)
-        return self._values
+    def LowerLimit(self):
+        """Get or set the LowerLimit."""
+        return self._lower_limit
+
+    @LowerLimit.setter
+    def LowerLimit(self, value):
+        self._lower_limit = validators.float(value, allow_empty=True)
 
     @property
-    def max(self):
-        return max(self.all_values)
+    def UpperLimit(self):
+        """Get or set the UpperLimit."""
+        return self._upper_limit
+
+    @UpperLimit.setter
+    def UpperLimit(self, value):
+        self._upper_limit = validators.float(value, allow_empty=True)
 
     @property
-    def min(self):
-        return min(self.all_values)
+    def NumericType(self):
+        """Get or set numeric type. Can be null."""
+        return self._numeric_type
 
-    @property
-    def mean(self):
-        return np.average(self.all_values)
-
-    @property
-    def series(self):
-        """Returns the schedule values as an :class:`EnergySeries` object with a
-        DateTimeIndex
-        """
-        index = pd.date_range(
-            start=self.startDate, periods=len(self.all_values), freq="1H"
-        )
-        return EnergySeries(self.all_values, index=index, name=self.Name)
-
-    def get_schedule_type_limits_name(self, sch_type=None):
-        """Return the Schedule Type Limits name associated to this schedule
-
-        Args:
-            sch_type:
-        """
-        if self.epbunch is None:
-            schedule_values = self.idf.get_schedule_epbunch(
-                self.Name, sch_type=sch_type
+    @NumericType.setter
+    def NumericType(self, value):
+        validators.string(value, allow_empty=True)
+        if value is not None:
+            assert value.lower() in self._NUMERIC_TYPES, (
+                f"Input error for value '{value}'. NumericType must "
+                f"be one of '{self._NUMERIC_TYPES}'"
             )
-        else:
-            schedule_values = self.epbunch
-        try:
-            schedule_limit_name = schedule_values.Schedule_Type_Limits_Name
-        except:
-            return "unknown"
-        else:
-            return schedule_limit_name
-
-    def get_schedule_type_limits_data(self, name=None):
-        """Returns Schedule Type Limits data from schedule name
-
-        Args:
-            name:
-        """
-
-        if name is None:
-            name = self.Name
-
-        schedule_values = self.epbunch
-        try:
-            schedule_limit_name = schedule_values.Schedule_Type_Limits_Name
-        except:
-            # this schedule is probably a 'Schedule:Week:Daily' which does
-            # not have a Schedule_Type_Limits_Name field
-            return "", "", "", ""
-        else:
-            (
-                lower_limit,
-                upper_limit,
-                numeric_type,
-                unit_type,
-            ) = self.idf.get_schedule_type_limits_data_by_name(schedule_limit_name)
-
-            self.unit = unit_type
-            if self.unit == "unknown":
-                self.unit = numeric_type
-
-            return lower_limit, upper_limit, numeric_type, unit_type
-
-    def get_schedule_type(self, name=None):
-        """Return the schedule type, eg.: "Schedule:Year"
-
-        Args:
-            name:
-        """
-        if name is None:
-            name = self.Name
-
-        schedule_values = self.epbunch
-        sch_type = schedule_values.key
-
-        return sch_type
+        self._numeric_type = value
 
     @property
-    def startDate(self):
-        """The start date of the schedule. Satisfies `startDayOfTheWeek`"""
-        year = get_year_for_first_weekday(self.startDayOfTheWeek)
-        return datetime(year, 1, 1)
+    def UnitType(self):
+        """Get or set the unit type. Can be null."""
+        return self._unit_type
 
-    def plot(self, slice=None, **kwargs):
-        """Plot the schedule. Implements the .loc accessor on the series object.
+    @UnitType.setter
+    def UnitType(self, value):
+        value = validators.string(value)
+        assert value.lower() in map(str.lower, self._UNIT_TYPES), (
+            f"Input error for value '{value}'. UnitType must "
+            f"be one of '{self._UNIT_TYPES}'"
+        )
+        self._unit_type = value
 
-        Examples:
-            >>> from archetypal import IDF
-            >>> idf = IDF()
-            >>> s = Schedule(
-            >>>         Name="NECB-A-Thermostat Setpoint-Heating",
-            >>>         idf=idf)
-            >>>     )
-            >>> s.plot(slice=("2018/01/02", "2018/01/03"), drawstyle="steps-post")
+    @classmethod
+    def from_dict(cls, data):
+        """Create a ScheduleTypeLimit from a dictionary.
 
         Args:
-            slice (tuple): define a 2-tuple object the will be passed to
-                :class:`pandas.IndexSlice` as a range.
-            **kwargs (dict): keyword arguments passed to
-                :meth:`pandas.Series.plot`.
+            data: ScheduleTypeLimit dictionary following the format below.
+
+        .. code-block:: python
+            {
+            "Name": 'Fractional',
+            "LowerLimit": 0,
+            "UpperLimit": 1,
+            "NumericType": None,
+            "UnitType": "Dimensionless"
+            }
         """
-        hourlyvalues = self.all_values
-        index = pd.date_range(self.startDate, periods=len(hourlyvalues), freq="1H")
-        series = pd.Series(hourlyvalues, index=index, dtype=float)
-        if slice is None:
-            slice = pd.IndexSlice[:]
-        elif len(slice) > 1:
-            slice = pd.IndexSlice[slice[0] : slice[1]]
-        label = kwargs.pop("label", self.Name)
-        ax = series.loc[slice].plot(**kwargs, label=label)
-        return ax
+        return cls(**data)
 
-    def plot2d(self, **kwargs):
-        """Plot the carpet plot of the schedule"""
-        return EnergySeries(self.series, name=self.Name).plot2d(**kwargs)
+    @classmethod
+    def from_epbunch(cls, epbunch):
+        """Create a ScheduleTypeLimits from an epbunch.
 
-    def get_interval_day_ep_schedule_values(self, epbunch: EpBunch) -> np.ndarray:
-        """Schedule:Day:Interval
+        Args:
+            epbunch (EpBunch): The epbunch of key "SCHEDULETYPELIMITS".
+        """
+        assert (
+            epbunch.key.upper() == "SCHEDULETYPELIMITS"
+        ), f"Expected 'SCHEDULETYPELIMITS' epbunch. Got {epbunch.key}."
+        name = epbunch.Name
+        lower_limit = epbunch.Lower_Limit_Value
+        upper_limit = epbunch.Upper_Limit_Value
+        numeric_type = epbunch.Numeric_Type
+        unit_type = epbunch.Unit_Type
+        return cls(
+            Name=name,
+            LowerLimit=lower_limit if checkers.is_numeric(lower_limit) else None,
+            UpperLimit=upper_limit if checkers.is_numeric(upper_limit) else None,
+            NumericType=numeric_type
+            if checkers.is_string(numeric_type, minimum_length=1)
+            else "Continuous",
+            UnitType=unit_type
+            if checkers.is_string(unit_type, minimum_length=1)
+            else "Dimensionless",
+        )
+
+    def to_dict(self):
+        """Return ScheduleTypeLimits dictionary representation."""
+        return {
+            "Name": self.Name,
+            "LowerLimit": self.LowerLimit,
+            "UpperLimit": self.UpperLimit,
+            "NumericType": self.NumericType,
+            "UnitType": self.UnitType,
+        }
+
+    def to_epbunch(self, idf):
+        """Convert self to an epbunch given an idf model.
+
+        Notes:
+            The object is added to the idf model.
+
+        Args:
+            idf (IDF): An IDF model.
+
+        .. code-block:: python
+
+            SCHEDULETYPELIMITS,
+                ,                         !- Name
+                ,                         !- Lower Limit Value
+                ,                         !- Upper Limit Value
+                ,                         !- Numeric Type
+                Dimensionless;            !- Unit Type
+
+        Returns:
+            EpBunch: The EpBunch object added to the idf model.
+        """
+        return idf.newidfobject(
+            key="SCHEDULETYPELIMITS",
+            Name=self.Name,
+            Lower_Limit_Value=self.LowerLimit,
+            Upper_Limit_Value=self.UpperLimit,
+            Numeric_Type=self.NumericType,
+            Unit_Type=self.UnitType,
+        )
+
+    def duplicate(self):
+        """Get copy of self."""
+        return self.__copy__()
+
+    def __copy__(self):
+        """Get copy of self."""
+        return self.__class__(
+            self.Name, self.LowerLimit, self.UpperLimit, self.NumericType, self.UnitType
+        )
+
+    def __repr__(self):
+        """Return the string representation of self."""
+        return (
+            self.Name
+            + f" {self.LowerLimit} < values < {self.UpperLimit}"
+            + f"Units: {self.UnitType}"
+        )
+
+    def __keys__(self):
+        """Get keys of self. Useful for hashing."""
+        return (
+            self.Name,
+            self.LowerLimit,
+            self.UpperLimit,
+            self.NumericType,
+            self.UnitType,
+        )
+
+    def __eq__(self, other):
+        """Assert self is equal to other."""
+        if not isinstance(other, ScheduleTypeLimits):
+            return NotImplemented
+        else:
+            return self.__keys__() == other.__keys__()
+
+
+class _ScheduleParser:
+    """Class used to parse schedules in IDF files."""
+
+    @staticmethod
+    def get_interval_day_ep_schedule_values(epbunch) -> np.ndarray:
+        """Get values for Schedule:Day:Interval.
 
         Args:
             epbunch (EpBunch): The schedule EpBunch object.
         """
-
-        (
-            lower_limit,
-            upper_limit,
-            numeric_type,
-            unit_type,
-        ) = self.get_schedule_type_limits_data(epbunch.Name)
-
         number_of_day_sch = int((len(epbunch.fieldvalues) - 3) / 2)
 
         hourly_values = np.arange(24, dtype=float)
@@ -304,35 +256,33 @@ class Schedule(object):
                 hourly_values[hour] = value
 
             start_hour = end_hour
-
+        _, _, numeric_type, _ = _ScheduleParser.get_schedule_type_limits_data(epbunch)
         if numeric_type.strip().lower() == "discrete":
             hourly_values = hourly_values.astype(int)
 
         return hourly_values
 
-    def get_hourly_day_ep_schedule_values(self, epbunch):
-        """Schedule:Day:Hourly
+    @staticmethod
+    def get_hourly_day_ep_schedule_values(epbunch):
+        """Get values for Schedule:Day:Hourly.
 
         Args:
             epbunch (EpBunch): The schedule EpBunch object.
         """
+        return np.array(epbunch.fieldvalues[3:])
 
-        fieldvalues_ = np.array(epbunch.fieldvalues[3:])
-
-        return fieldvalues_
-
+    @staticmethod
     def get_compact_weekly_ep_schedule_values(
-        self, epbunch, start_date=None, index=None
+        epbunch, start_date, index=None, strict=False
     ) -> np.ndarray:
-        """schedule:week:compact
+        """Get values for schedule:week:compact.
 
         Args:
+            strict:
             epbunch (EpBunch): the name of the schedule
             start_date:
             index:
         """
-        if start_date is None:
-            start_date = self.startDate
         if index is None:
             idx = pd.date_range(start=start_date, periods=168, freq="1H")
             slicer_ = pd.Series([False] * (len(idx)), index=idx)
@@ -342,16 +292,14 @@ class Schedule(object):
         weekly_schedules = pd.Series([0] * len(slicer_), index=slicer_.index)
         # update last day of schedule
 
-        if self.count == 0:
-            self.schType = epbunch.key
-            self.endHOY = 168
-
         num_of_daily_schedules = int(len(epbunch.fieldvalues[2:]) / 2)
 
         for i in range(num_of_daily_schedules):
             day_type = epbunch["DayType_List_{}".format(i + 1)].lower()
             # This field can optionally contain the prefix “For”
-            how = self.field_set(day_type.strip("for: "), slicer_)
+            how = _ScheduleParser._field_set(
+                epbunch, day_type.strip("for: "), start_date, slicer_, strict
+            )
             if not weekly_schedules.loc[how].empty:
                 # Loop through days and replace with day:schedule values
                 days = []
@@ -362,21 +310,25 @@ class Schedule(object):
                         ref = epbunch.get_referenced_object(
                             "ScheduleDay_Name_{}".format(i + 1)
                         )
-                        day.loc[:] = self.get_schedule_values(sched_epbunch=ref)
+                        day.loc[:] = _ScheduleParser.get_schedule_values(
+                            sched_epbunch=ref, start_date=start_date, strict=strict
+                        )
                         days.append(day)
                 new = pd.concat(days)
                 slicer_.update(pd.Series([True] * len(new.index), index=new.index))
-                slicer_ = slicer_.apply(lambda x: x == True)
+                slicer_ = slicer_.apply(lambda x: x is True)
                 weekly_schedules.update(new)
             else:
                 return weekly_schedules.values
 
         return weekly_schedules.values
 
-    def get_daily_weekly_ep_schedule_values(self, epbunch) -> np.ndarray:
-        """schedule:week:daily
+    @staticmethod
+    def get_daily_weekly_ep_schedule_values(epbunch, start_date, strict) -> np.ndarray:
+        """Get values for schedule:week:daily.
 
         Args:
+            strict:
             epbunch (EpBunch): The schedule EpBunch object.
         """
         # 7 list for 7 days of the week
@@ -391,22 +343,24 @@ class Schedule(object):
             "Sunday",
         ]:
             ref = epbunch.get_referenced_object("{}_ScheduleDay_Name".format(day))
-            h = self.get_schedule_values(sched_epbunch=ref)
+            h = _ScheduleParser.get_schedule_values(
+                sched_epbunch=ref, start_date=start_date, strict=strict
+            )
             hourly_values.append(h)
         hourly_values = np.array(hourly_values)
         # shift days earlier by self.startDayOfTheWeek
-        hourly_values = np.roll(hourly_values, -self.startDayOfTheWeek, axis=0)
+        hourly_values = np.roll(hourly_values, -start_date.weekday(), axis=0)
 
         return hourly_values.ravel()
 
-    def get_list_day_ep_schedule_values(self, epbunch) -> np.ndarray:
-        """schedule:day:list
+    @staticmethod
+    def get_list_day_ep_schedule_values(epbunch, start_date) -> np.ndarray:
+        """Get values for schedule:day:list.
 
         Args:
+            start_date:
             epbunch (EpBunch): The schedule epbunch object.
         """
-        import pandas as pd
-
         freq = int(epbunch["Minutes_per_Item"])  # Frequency of the values
         num_values = epbunch.fieldvalues[5:]  # List of values
         method = epbunch["Interpolate_to_Timestep"]  # How to resample
@@ -417,11 +371,11 @@ class Schedule(object):
         for i in all_values:
             try:
                 all_values[i] = num_values[i]
-            except:
+            except Exception:
                 all_values[i] = 0
         # create a fake index to help us with the resampling
         index = pd.date_range(
-            start=self.startDate, periods=(24 * 60) / freq, freq="{}T".format(freq)
+            start=start_date, periods=(24 * 60) / freq, freq="{}T".format(freq)
         )
         series = pd.Series(all_values, index=index)
 
@@ -430,31 +384,26 @@ class Schedule(object):
 
         return series.values
 
-    def get_constant_ep_schedule_values(self, epbunch) -> np.ndarray:
-        """schedule:constant
+    @staticmethod
+    def get_constant_ep_schedule_values(epbunch) -> np.ndarray:
+        """Get values for schedule:constant.
 
         Args:
             epbunch (EpBunch): The schedule epbunch object.
         """
-        (
-            lower_limit,
-            upper_limit,
-            numeric_type,
-            unit_type,
-        ) = self.get_schedule_type_limits_data(epbunch.Name)
-
         hourly_values = np.arange(8760)
         value = float(epbunch["Hourly_Value"])
         for hour in hourly_values:
             hourly_values[hour] = value
-
+        _, _, numeric_type, _ = _ScheduleParser.get_schedule_type_limits_data(epbunch)
         if numeric_type.strip().lower() == "discrete":
             hourly_values = hourly_values.astype(int)
 
         return hourly_values
 
-    def get_file_ep_schedule_values(self, epbunch) -> np.ndarray:
-        """schedule:file
+    @staticmethod
+    def get_file_ep_schedule_values(epbunch) -> np.ndarray:
+        """Get values for schedule:file.
 
         Args:
             epbunch (EpBunch): The schedule epbunch object.
@@ -462,11 +411,11 @@ class Schedule(object):
         filename = epbunch["File_Name"]
         column = epbunch["Column_Number"]
         rows = epbunch["Rows_to_Skip_at_Top"]
-        hours = epbunch["Number_of_Hours_of_Data"]
+        # hours = epbunch["Number_of_Hours_of_Data"]
         sep = epbunch["Column_Separator"]
-        interp = epbunch["Interpolate_to_Timestep"]
+        # interp = epbunch["Interpolate_to_Timestep"]
 
-        file = self.idf.simulation_dir.files(filename)[0]
+        file = epbunch.theidf.simulation_dir.files(filename)[0]
 
         delimeter = _separator(sep)
         skip_rows = int(rows) - 1  # We want to keep the column
@@ -477,43 +426,48 @@ class Schedule(object):
 
         return epbunch.iloc[:, 0].values
 
-    def get_compact_ep_schedule_values(self, epbunch) -> np.ndarray:
-        """schedule:compact
+    @staticmethod
+    def get_compact_ep_schedule_values(epbunch, start_date, strict) -> np.ndarray:
+        """Get values for schedule:compact.
 
         Args:
+            strict:
+            start_date:
             epbunch (EpBunch): The schedule epbunch object.
         """
         field_sets = ["through", "for", "interpolate", "until", "value"]
         fields = epbunch.fieldvalues[3:]
 
-        index = pd.date_range(start=self.startDate, periods=8760, freq="H")
+        index = pd.date_range(start=start_date, periods=8760, freq="H")
         zeros = np.zeros(len(index))
 
         slicer_ = pd.Series([False] * len(index), index=index)
         series = pd.Series(zeros, index=index)
 
-        from_day = self.startDate
-        ep_from_day = datetime(self.year, 1, 1)
+        from_day = start_date
+        ep_from_day = datetime(start_date.year, 1, 1)
         from_time = "00:00"
         how_interpolate = None
         for field in fields:
             if any([spe in field.lower() for spe in field_sets]):
-                f_set, hour, minute, value = self._field_interpreter(field)
+                f_set, hour, minute, value = _ScheduleParser._field_interpreter(
+                    field, epbunch.Name
+                )
 
                 if f_set.lower() == "through":
                     # main condition. All sub-conditions must obey a
                     # `Through` condition
 
                     # First, initialize the slice (all False for now)
-                    through_conditions = self.invalidate_condition(series)
+                    through_conditions = _ScheduleParser._invalidate_condition(series)
 
                     # reset from_time
                     from_time = "00:00"
 
                     # Prepare ep_to_day variable
-                    ep_to_day = self._date_field_interpretation(value) + timedelta(
-                        days=1
-                    )
+                    ep_to_day = _ScheduleParser._date_field_interpretation(
+                        value, start_date
+                    ) + timedelta(days=1)
 
                     # Calculate Timedelta in days
                     days = (ep_to_day - ep_from_day).days
@@ -530,7 +484,7 @@ class Schedule(object):
                     # reset from_time
                     from_time = "00:00"
 
-                    for_condition = self.invalidate_condition(series)
+                    for_condition = _ScheduleParser._invalidate_condition(series)
                     fors = value.split()
                     if len(fors) > 1:
                         # if multiple `For`. eg.: For: Weekends Holidays,
@@ -538,23 +492,31 @@ class Schedule(object):
                         for value in fors:
                             if value.lower() == "allotherdays":
                                 # Apply condition to slice
-                                how = self.field_set(value, slicer_)
+                                how = _ScheduleParser._field_set(
+                                    epbunch, value, start_date, slicer_, strict
+                                )
                                 # Reset through condition
                                 through_conditions = how
                                 for_condition = how
                             else:
-                                how = self.field_set(value, slicer_)
+                                how = _ScheduleParser._field_set(
+                                    epbunch, value, start_date, slicer_, strict
+                                )
                                 if how is not None:
                                     for_condition.loc[how] = True
                     elif value.lower() == "allotherdays":
                         # Apply condition to slice
-                        how = self.field_set(value, slicer_)
+                        how = _ScheduleParser._field_set(
+                            epbunch, value, start_date, slicer_, strict
+                        )
                         # Reset through condition
                         through_conditions = how
                         for_condition = how
                     else:
                         # Apply condition to slice
-                        how = self.field_set(value, slicer_)
+                        how = _ScheduleParser._field_set(
+                            epbunch, value, start_date, slicer_, strict
+                        )
                         for_condition.loc[how] = True
 
                     # Combine the for_condition with all_conditions
@@ -565,7 +527,7 @@ class Schedule(object):
                 elif "interpolate" in f_set.lower():
                     # we need to upsample to series to 8760 * 60 values
                     new_idx = pd.date_range(
-                        start=self.startDate, periods=525600, closed="left", freq="T"
+                        start=start_date, periods=525600, closed="left", freq="T"
                     )
                     series = series.resample("T").pad()
                     series = series.reindex(new_idx)
@@ -578,7 +540,7 @@ class Schedule(object):
                     for_condition.fillna(method="pad", inplace=True)
                     how_interpolate = value.lower()
                 elif f_set.lower() == "until":
-                    until_condition = self.invalidate_condition(series)
+                    until_condition = _ScheduleParser._invalidate_condition(series)
                     if series.index.freq.name == "T":
                         # until_time = str(int(hour) - 1) + ':' + minute
                         until_time = timedelta(
@@ -617,14 +579,128 @@ class Schedule(object):
         else:
             return series.values
 
-    def _field_interpreter(self, field):
-        """dealing with a Field-Set (Through, For, Interpolate, # Until, Value)
-        and return the parsed string
+    @classmethod
+    def get_yearly_ep_schedule_values(cls, epbunch, start_date, strict) -> np.ndarray:
+        """Get values for schedule:year.
 
         Args:
-            field:
+            strict:
+            start_date (datetime):
+            epbunch (EpBunch): the schedule epbunch.
         """
+        # first week
+        year = start_date.year
+        idx = pd.date_range(start=start_date, periods=8760, freq="1H")
+        hourly_values = pd.Series([0] * 8760, index=idx)
 
+        # generate weekly schedules
+        num_of_weekly_schedules = int(len(epbunch.fieldvalues[3:]) / 5)
+
+        for i in range(num_of_weekly_schedules):
+            ref = epbunch.get_referenced_object("ScheduleWeek_Name_{}".format(i + 1))
+
+            start_month = getattr(epbunch, "Start_Month_{}".format(i + 1))
+            end_month = getattr(epbunch, "End_Month_{}".format(i + 1))
+            start_day = getattr(epbunch, "Start_Day_{}".format(i + 1))
+            end_day = getattr(epbunch, "End_Day_{}".format(i + 1))
+
+            start = datetime.strptime(
+                "{}/{}/{}".format(year, start_month, start_day), "%Y/%m/%d"
+            )
+            end = datetime.strptime(
+                "{}/{}/{}".format(year, end_month, end_day), "%Y/%m/%d"
+            )
+            days = (end - start).days + 1
+
+            end_date = start_date + timedelta(days=days) + timedelta(hours=23)
+            how = pd.IndexSlice[start_date:end_date]
+
+            weeks = []
+            for name, week in hourly_values.loc[how].groupby(pd.Grouper(freq="168H")):
+                if not week.empty:
+                    try:
+                        week.loc[:] = cls.get_schedule_values(
+                            sched_epbunch=ref,
+                            start_date=week.index[0],
+                            index=week.index,
+                            strict=strict,
+                        )
+                    except ValueError:
+                        week.loc[:] = cls.get_schedule_values(
+                            sched_epbunch=ref, start_date=week.index[0], strict=strict
+                        )[0 : len(week)]
+                    finally:
+                        weeks.append(week)
+            new = pd.concat(weeks)
+            hourly_values.update(new)
+            start_date += timedelta(days=days)
+
+        return hourly_values.values
+
+    @staticmethod
+    def get_schedule_values(
+        sched_epbunch, start_date, index=None, strict=False
+    ) -> list:
+        """Get schedule values for epbunch.
+
+        Args:
+            strict:
+            sched_epbunch (EpBunch): the schedule epbunch object
+            start_date:
+            index:
+        """
+        cls = _ScheduleParser
+        sch_type = sched_epbunch.key.upper()
+
+        if sch_type.upper() == "schedule:year".upper():
+            hourly_values = cls.get_yearly_ep_schedule_values(
+                sched_epbunch, start_date, strict
+            )
+        elif sch_type.upper() == "schedule:day:interval".upper():
+            hourly_values = cls.get_interval_day_ep_schedule_values(sched_epbunch)
+        elif sch_type.upper() == "schedule:day:hourly".upper():
+            hourly_values = cls.get_hourly_day_ep_schedule_values(sched_epbunch)
+        elif sch_type.upper() == "schedule:day:list".upper():
+            hourly_values = cls.get_list_day_ep_schedule_values(
+                sched_epbunch, start_date
+            )
+        elif sch_type.upper() == "schedule:week:compact".upper():
+            hourly_values = cls.get_compact_weekly_ep_schedule_values(
+                sched_epbunch, start_date, index, strict
+            )
+        elif sch_type.upper() == "schedule:week:daily".upper():
+            hourly_values = cls.get_daily_weekly_ep_schedule_values(
+                sched_epbunch, start_date, strict
+            )
+        elif sch_type.upper() == "schedule:constant".upper():
+            hourly_values = cls.get_constant_ep_schedule_values(sched_epbunch)
+        elif sch_type.upper() == "schedule:compact".upper():
+            hourly_values = cls.get_compact_ep_schedule_values(
+                sched_epbunch, start_date, strict
+            )
+        elif sch_type.upper() == "schedule:file".upper():
+            hourly_values = cls.get_file_ep_schedule_values(sched_epbunch)
+        else:
+            log(
+                "Archetypal does not currently support schedules of type "
+                '"{}"'.format(sch_type),
+                lg.WARNING,
+            )
+            hourly_values = []
+
+        return list(hourly_values)
+
+    @staticmethod
+    def _field_interpreter(field, name):
+        """Deal with a Field-Set (Through, For, Interpolate, # Until, Value).
+
+        Args:
+            name:
+            field:
+
+        Returns:
+            string: the parsed string
+        """
         values_sets = [
             "weekdays",
             "weekends",
@@ -654,9 +730,7 @@ class Schedule(object):
             else:
                 msg = (
                     'The schedule "{sch}" contains a Field '
-                    'that is not understood: "{field}"'.format(
-                        sch=self.Name, field=field
-                    )
+                    'that is not understood: "{field}"'.format(sch=name, field=field)
                 )
                 raise NotImplementedError(msg)
         elif "for" in field.lower():
@@ -678,16 +752,14 @@ class Schedule(object):
                 # parse without a colon
                 msg = (
                     'The schedule "{sch}" contains a Field '
-                    'that is not understood: "{field}"'.format(
-                        sch=self.Name, field=field
-                    )
+                    'that is not understood: "{field}"'.format(sch=name, field=field)
                 )
                 raise NotImplementedError(msg)
         elif "interpolate" in field.lower():
             msg = (
                 'The schedule "{sch}" contains sub-hourly values ('
                 'Field-Set="{field}"). The average over the hour is '
-                "taken".format(sch=self.Name, field=field)
+                "taken".format(sch=name, field=field)
             )
             log(msg, lg.WARNING)
             f_set, value = field.split(":")
@@ -701,7 +773,7 @@ class Schedule(object):
                     hour = hour.strip()  # remove trailing spaces
                     minute = minute.strip()  # remove trailing spaces
                     value = None
-                except:
+                except Exception:
                     f_set = "until"
                     hour, minute = field.split(":")
                     hour = hour[-2:].strip()
@@ -710,9 +782,7 @@ class Schedule(object):
             else:
                 msg = (
                     'The schedule "{sch}" contains a Field '
-                    'that is not understood: "{field}"'.format(
-                        sch=self.Name, field=field
-                    )
+                    'that is not understood: "{field}"'.format(sch=name, field=field)
                 )
                 raise NotImplementedError(msg)
         elif "value" in field.lower():
@@ -725,9 +795,7 @@ class Schedule(object):
             else:
                 msg = (
                     'The schedule "{sch}" contains a Field '
-                    'that is not understood: "{field}"'.format(
-                        sch=self.Name, field=field
-                    )
+                    'that is not understood: "{field}"'.format(sch=name, field=field)
                 )
                 raise NotImplementedError(msg)
         else:
@@ -740,269 +808,130 @@ class Schedule(object):
         return f_set, hour, minute, value
 
     @staticmethod
-    def invalidate_condition(series):
-        """
-        Args:
-            series:
-        """
+    def _invalidate_condition(series):
         index = series.index
         periods = len(series)
         return pd.Series([False] * periods, index=index)
 
-    def get_yearly_ep_schedule_values(self, epbunch) -> np.ndarray:
-        """schedule:year
-
-        Args:
-            epbunch (EpBunch): the schedule epbunch.
-        """
-        # first week
-
-        start_date = self.startDate
-        idx = pd.date_range(start=start_date, periods=8760, freq="1H")
-        hourly_values = pd.Series([0] * 8760, index=idx)
-
-        # update last day of schedule
-        self.endHOY = 8760
-
-        # generate weekly schedules
-        num_of_weekly_schedules = int(len(epbunch.fieldvalues[3:]) / 5)
-
-        for i in range(num_of_weekly_schedules):
-            ref = epbunch.get_referenced_object("ScheduleWeek_Name_{}".format(i + 1))
-
-            start_month = getattr(epbunch, "Start_Month_{}".format(i + 1))
-            end_month = getattr(epbunch, "End_Month_{}".format(i + 1))
-            start_day = getattr(epbunch, "Start_Day_{}".format(i + 1))
-            end_day = getattr(epbunch, "End_Day_{}".format(i + 1))
-
-            start = datetime.strptime(
-                "{}/{}/{}".format(self.year, start_month, start_day), "%Y/%m/%d"
-            )
-            end = datetime.strptime(
-                "{}/{}/{}".format(self.year, end_month, end_day), "%Y/%m/%d"
-            )
-            days = (end - start).days + 1
-
-            end_date = start_date + timedelta(days=days) + timedelta(hours=23)
-            how = pd.IndexSlice[start_date:end_date]
-
-            weeks = []
-            for name, week in hourly_values.loc[how].groupby(pd.Grouper(freq="168H")):
-                if not week.empty:
-                    try:
-                        week.loc[:] = self.get_schedule_values(
-                            sched_epbunch=ref,
-                            start_date=week.index[0],
-                            index=week.index,
-                        )
-                    except ValueError:
-                        week.loc[:] = self.get_schedule_values(
-                            sched_epbunch=ref, start_date=week.index[0]
-                        )[0 : len(week)]
-                    finally:
-                        weeks.append(week)
-            new = pd.concat(weeks)
-            hourly_values.update(new)
-            start_date += timedelta(days=days)
-
-        return hourly_values.values
-
-    def get_schedule_values(
-        self, sched_epbunch, start_date=None, index=None
-    ) -> np.ndarray:
-        """Main function that returns the schedule values
-
-        Args:
-            sched_epbunch (EpBunch): the schedule epbunch object
-            start_date:
-            index:
-        """
-        if self.count == 0:
-            # This is the first time, get the schedule type and the type limits.
-            if self.Type is None:
-                self.Type = self.get_schedule_type_limits_name()
-        self.count += 1
-
-        sch_type = sched_epbunch.key.upper()
-
-        if sch_type.upper() == "schedule:year".upper():
-            hourly_values = self.get_yearly_ep_schedule_values(sched_epbunch)
-        elif sch_type.upper() == "schedule:day:interval".upper():
-            hourly_values = self.get_interval_day_ep_schedule_values(sched_epbunch)
-        elif sch_type.upper() == "schedule:day:hourly".upper():
-            hourly_values = self.get_hourly_day_ep_schedule_values(sched_epbunch)
-        elif sch_type.upper() == "schedule:day:list".upper():
-            hourly_values = self.get_list_day_ep_schedule_values(sched_epbunch)
-        elif sch_type.upper() == "schedule:week:compact".upper():
-            hourly_values = self.get_compact_weekly_ep_schedule_values(
-                sched_epbunch, start_date, index
-            )
-        elif sch_type.upper() == "schedule:week:daily".upper():
-            hourly_values = self.get_daily_weekly_ep_schedule_values(sched_epbunch)
-        elif sch_type.upper() == "schedule:constant".upper():
-            hourly_values = self.get_constant_ep_schedule_values(sched_epbunch)
-        elif sch_type.upper() == "schedule:compact".upper():
-            hourly_values = self.get_compact_ep_schedule_values(sched_epbunch)
-        elif sch_type.upper() == "schedule:file".upper():
-            hourly_values = self.get_file_ep_schedule_values(sched_epbunch)
+    @staticmethod
+    def get_schedule_type_limits_data(epbunch):
+        """Return schedule type limits info for epbunch."""
+        try:
+            schedule_limit_name = epbunch.Schedule_Type_Limits_Name
+        except Exception:
+            # this schedule is probably a 'Schedule:Week:Daily' which does
+            # not have a Schedule_Type_Limits_Name field
+            return "", "", "", ""
         else:
-            log(
-                "Archetypal does not currently support schedules of type "
-                '"{}"'.format(sch_type),
-                lg.WARNING,
+            (
+                lower_limit,
+                upper_limit,
+                numeric_type,
+                unit_type,
+            ) = epbunch.theidf.get_schedule_type_limits_data_by_name(
+                schedule_limit_name
             )
-            hourly_values = []
 
-        return hourly_values
+            return lower_limit, upper_limit, numeric_type, unit_type
 
-    def to_year_week_day(self, Values=None):
-        """convert a Schedule Class to the 'Schedule:Year',
-        'Schedule:Week:Daily' and 'Schedule:Day:Hourly' representation
+    @staticmethod
+    def _field_set(schedule_epbunch, field, start_date, slicer_=None, strict=False):
+        """Return the proper slicer depending on the _field_set value.
+
+        Available values are: Weekdays, Weekends, Holidays, Alldays,
+        SummerDesignDay, WinterDesignDay, Sunday, Monday, Tuesday, Wednesday,
+        Thursday, Friday, Saturday, CustomDay1, CustomDay2, AllOtherDays
 
         Args:
-            Values:
+            start_date:
+            strict:
+            schedule_epbunch:
+            field (str): The EnergyPlus field set value.
+            slicer_:
 
         Returns:
-            3-element tuple containing
-
-            - **yearly** (*Schedule*): The yearly schedule object
-            - **weekly** (*list of Schedule*): The list of weekly schedule
-              objects
-            - **daily** (*list of Schedule*):The list of daily schedule objects
+            (indexer-like): Returns the appropriate indexer for the series.
         """
-        if Values:
-            full_year = Values
+        if field.lower() == "weekdays":
+            # return only days of weeks
+            return lambda x: x.index.dayofweek < 5
+        elif field.lower() == "weekends":
+            # return only weekends
+            return lambda x: x.index.dayofweek >= 5
+        elif field.lower() == "alldays":
+            # return all days := equivalent to .loc[:]
+            return pd.IndexSlice[:]
+        elif field.lower() == "allotherdays":
+            # return unused days (including special days). Uses the global
+            # variable `slicer_`
+            import operator
+
+            if slicer_ is not None:
+                return _conjunction(
+                    *[
+                        _ScheduleParser.special_day(
+                            schedule_epbunch, field, slicer_, strict, start_date
+                        ),
+                        ~slicer_,
+                    ],
+                    logical=operator.or_,
+                )
+            else:
+                raise NotImplementedError
+        elif field.lower() == "sunday":
+            # return only sundays
+            return lambda x: x.index.dayofweek == 6
+        elif field.lower() == "monday":
+            # return only mondays
+            return lambda x: x.index.dayofweek == 0
+        elif field.lower() == "tuesday":
+            # return only Tuesdays
+            return lambda x: x.index.dayofweek == 1
+        elif field.lower() == "wednesday":
+            # return only Wednesdays
+            return lambda x: x.index.dayofweek == 2
+        elif field.lower() == "thursday":
+            # return only Thursdays
+            return lambda x: x.index.dayofweek == 3
+        elif field.lower() == "friday":
+            # return only Fridays
+            return lambda x: x.index.dayofweek == 4
+        elif field.lower() == "saturday":
+            # return only Saturdays
+            return lambda x: x.index.dayofweek == 5
+        elif field.lower() == "summerdesignday":
+            # return _ScheduleParser.design_day(
+            #     schedule_epbunch, field, slicer_, start_date, strict
+            # )
+            return None
+        elif field.lower() == "winterdesignday":
+            # return _ScheduleParser.design_day(
+            #     schedule_epbunch, field, slicer_, start_date, strict
+            # )
+            return None
+        elif field.lower() == "holiday" or field.lower() == "holidays":
+            field = "holiday"
+            return _ScheduleParser.special_day(
+                schedule_epbunch, field, slicer_, strict, start_date
+            )
+        elif not strict:
+            # If not strict, ignore missing field-sets such as CustomDay1
+            return lambda x: x < 0
         else:
-            full_year = np.array(self.all_values)  # array of shape (8760,)
-
-        # reshape to (365, 24)
-        Values = full_year.reshape(-1, 24)  # shape (365, 24)
-
-        # create unique days
-        unique_days, nds = np.unique(Values, axis=0, return_inverse=True)
-
-        ep_days = []
-        dict_day = {}
-        for count_day, unique_day in enumerate(unique_days):
-            name = f"d_{self.Name}_{count_day:02d}"
-            dict_day[name] = unique_day
-
-            # Create idf_objects for schedule:day:hourly
-            ep_day = self.idf.anidfobject(
-                key="Schedule:Day:Hourly".upper(),
-                **dict(
-                    Name=name,
-                    Schedule_Type_Limits_Name=self.Type,
-                    **{"Hour_{}".format(i + 1): unique_day[i] for i in range(24)},
-                ),
-            )
-            ep_days.append(ep_day)
-
-        # create unique weeks from unique days
-        try:
-            unique_weeks, nwsi, nws, count = np.unique(
-                full_year[: 364 * 24, ...].reshape(-1, 168),
-                return_index=True,
-                axis=0,
-                return_inverse=True,
-                return_counts=True,
-            )
-        except ValueError:
-            raise ValueError(
-                "Looks like the idf model needs to be rerun with 'annual=True'"
+            raise NotImplementedError(
+                f"Archetypal does not yet support The Field_set '{field}'"
             )
 
-        # We use the calendar module to set the week days order
-        import calendar
-
-        # initialize the calendar object
-        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
-
-        # Appending unique weeks in dictionary with name and values of weeks as
-        # keys
-        # {'name_week': {'dayName':[]}}
-        dict_week = {}
-        for count_week, unique_week in enumerate(unique_weeks):
-            week_id = f"w_{self.Name}_{count_week:02d}"
-            dict_week[week_id] = {}
-            for i, day in zip(list(range(0, 7)), list(c.iterweekdays())):
-                day_of_week = unique_week[..., i * 24 : (i + 1) * 24]
-                for key in dict_day:
-                    if (day_of_week == dict_day[key]).all():
-                        dict_week[week_id]["day_{}".format(day)] = key
-
-        # Create idf_objects for schedule:week:daily
-
-        # Create ep_weeks list and iterate over dict_week
-        ep_weeks = []
-        for week_id in dict_week:
-            ep_week = self.idf.anidfobject(
-                key="Schedule:Week:Daily".upper(),
-                **dict(
-                    Name=week_id,
-                    **{
-                        "{}_ScheduleDay_Name".format(
-                            calendar.day_name[day_num]
-                        ): dict_week[week_id]["day_{}".format(day_num)]
-                        for day_num in c.iterweekdays()
-                    },
-                    Holiday_ScheduleDay_Name=dict_week[week_id]["day_6"],
-                    SummerDesignDay_ScheduleDay_Name=dict_week[week_id]["day_1"],
-                    WinterDesignDay_ScheduleDay_Name=dict_week[week_id]["day_1"],
-                    CustomDay1_ScheduleDay_Name=dict_week[week_id]["day_2"],
-                    CustomDay2_ScheduleDay_Name=dict_week[week_id]["day_5"],
-                ),
-            )
-            ep_weeks.append(ep_week)
-
-        blocks = {}
-        from_date = datetime(self.year, 1, 1)
-        bincount = [sum(1 for _ in group) for key, group in groupby(nws + 1) if key]
-        week_order = {
-            i: v
-            for i, v in enumerate(
-                np.array([key for key, group in groupby(nws + 1) if key]) - 1
-            )
-        }
-        for i, (week_n, count) in enumerate(zip(week_order, bincount)):
-            week_id = list(dict_week)[week_order[i]]
-            to_date = from_date + timedelta(days=int(count * 7), hours=-1)
-            blocks[i] = {}
-            blocks[i]["week_id"] = week_id
-            blocks[i]["from_day"] = from_date.day
-            blocks[i]["end_day"] = to_date.day
-            blocks[i]["from_month"] = from_date.month
-            blocks[i]["end_month"] = to_date.month
-            from_date = to_date + timedelta(hours=1)
-
-            # If this is the last block, force end of year
-            if i == len(bincount) - 1:
-                blocks[i]["end_day"] = 31
-                blocks[i]["end_month"] = 12
-
-        new_dict = dict(Name=self.Name, Schedule_Type_Limits_Name=self.Type)
-        for i in blocks:
-            new_dict.update(
-                {
-                    "ScheduleWeek_Name_{}".format(i + 1): blocks[i]["week_id"],
-                    "Start_Month_{}".format(i + 1): blocks[i]["from_month"],
-                    "Start_Day_{}".format(i + 1): blocks[i]["from_day"],
-                    "End_Month_{}".format(i + 1): blocks[i]["end_month"],
-                    "End_Day_{}".format(i + 1): blocks[i]["end_day"],
-                }
-            )
-
-        ep_year = self.idf.anidfobject(key="Schedule:Year".upper(), **new_dict)
-        return ep_year, ep_weeks, ep_days
-
-    def _date_field_interpretation(self, field):
-        """Date Field Interpretation
+    @staticmethod
+    def _date_field_interpretation(field, start_date):
+        """Date Field Interpretation.
 
         Info:
             See EnergyPlus documentation for more details: 1.6.8.1.2 Field:
             Start Date (Table 1.4: Date Field Interpretation)
 
         Args:
+            start_date:
             field (str): The EnergyPlus Field Contents
 
         Returns:
@@ -1015,32 +944,31 @@ class Schedule(object):
             # Tru to parse using each defined formats
             try:
                 date = datetime.strptime(field, format_str)
-            except:
+            except Exception:
                 pass
             else:
-                date = datetime(self.year, date.month, date.day)
+                date = datetime(start_date.year, date.month, date.day)
         if date is None:
             # if the defined formats did not work, try the fancy parse
             try:
-                date = self._parse_fancy_string(field)
-            except:
+                date = _ScheduleParser._parse_fancy_string(field, start_date)
+            except Exception as e:
                 msg = (
-                    "the schedule '{sch}' contains a "
-                    "Field that is not understood: '{field}'".format(
-                        sch=self.Name, field=field
-                    )
+                    f"the schedule contains a "
+                    f"Field that is not understood: '{field}'"
                 )
-                raise ValueError(msg)
+                raise ValueError(msg, e)
             else:
                 return date
         else:
             return date
 
-    def _parse_fancy_string(self, field):
-        """Will try to parse cases such as `3rd Monday in February` or `Last
-        Weekday In Month`
+    @staticmethod
+    def _parse_fancy_string(field, start_date):
+        """Parse cases such as `3rd Monday in February` or `Last Weekday In Month`.
 
         Args:
+            start_date:
             field (str): The EnergyPlus Field Contents
 
         Returns:
@@ -1076,8 +1004,8 @@ class Schedule(object):
         # create list of possible days using Calendar
         import calendar
 
-        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
-        monthcal = c.monthdatescalendar(self.year, month)
+        c = calendar.Calendar(firstweekday=start_date.weekday())
+        monthcal = c.monthdatescalendar(start_date.year, month)
 
         # iterate though the month and get the nth weekday
         date = [
@@ -1088,139 +1016,13 @@ class Schedule(object):
         ][nth]
         return datetime(date.year, date.month, date.day)
 
-    def field_set(self, field, slicer_=None):
-        """helper function to return the proper slicer depending on the
-        field_set value.
-
-        Available values are: Weekdays, Weekends, Holidays, Alldays,
-        SummerDesignDay, WinterDesignDay, Sunday, Monday, Tuesday, Wednesday,
-        Thursday, Friday, Saturday, CustomDay1, CustomDay2, AllOtherDays
+    @staticmethod
+    def special_day(schedule_epbunch, field, slicer_, strict, start_date):
+        """Try to get the RunPeriodControl:SpecialDays for the corresponding DayType.
 
         Args:
-            field (str): The EnergyPlus field set value.
-            slicer_:
-
-        Returns:
-            (indexer-like): Returns the appropriate indexer for the series.
-        """
-
-        if field.lower() == "weekdays":
-            # return only days of weeks
-            return lambda x: x.index.dayofweek < 5
-        elif field.lower() == "weekends":
-            # return only weekends
-            return lambda x: x.index.dayofweek >= 5
-        elif field.lower() == "alldays":
-            log(
-                'For schedule "{}", the field-set "AllDays" may be overridden '
-                'by the "AllOtherDays" field-set'.format(self.Name),
-                lg.WARNING,
-            )
-            # return all days := equivalent to .loc[:]
-            return pd.IndexSlice[:]
-        elif field.lower() == "allotherdays":
-            # return unused days (including special days). Uses the global
-            # variable `slicer_`
-            import operator
-
-            if slicer_ is not None:
-                return _conjunction(
-                    *[self.special_day(field, slicer_), ~slicer_], logical=operator.or_
-                )
-            else:
-                raise NotImplementedError
-        elif field.lower() == "sunday":
-            # return only sundays
-            return lambda x: x.index.dayofweek == 6
-        elif field.lower() == "monday":
-            # return only mondays
-            return lambda x: x.index.dayofweek == 0
-        elif field.lower() == "tuesday":
-            # return only Tuesdays
-            return lambda x: x.index.dayofweek == 1
-        elif field.lower() == "wednesday":
-            # return only Wednesdays
-            return lambda x: x.index.dayofweek == 2
-        elif field.lower() == "thursday":
-            # return only Thursdays
-            return lambda x: x.index.dayofweek == 3
-        elif field.lower() == "friday":
-            # return only Fridays
-            return lambda x: x.index.dayofweek == 4
-        elif field.lower() == "saturday":
-            # return only Saturdays
-            return lambda x: x.index.dayofweek == 5
-        elif field.lower() == "summerdesignday":
-            # return design_day(self, field)
-            return None
-        elif field.lower() == "winterdesignday":
-            # return design_day(self, field)
-            return None
-        elif field.lower() == "holiday" or field.lower() == "holidays":
-            field = "holiday"
-            return self.special_day(field, slicer_)
-        elif not self.strict:
-            # If not strict, ignore missing field-sets such as CustomDay1
-            return lambda x: x < 0
-        else:
-            raise NotImplementedError(
-                f"Archetypal does not yet support The Field_set '{field}'"
-            )
-
-    def __len__(self):
-        """returns the length of all values of the schedule"""
-        return len(self.all_values)
-
-    def __add__(self, other):
-        if isinstance(other, Schedule):
-            return self.all_values + other.all_values
-        elif isinstance(other, list):
-            return self.all_values + other
-        else:
-            raise NotImplementedError
-
-    def __sub__(self, other):
-        if isinstance(other, Schedule):
-            return self.all_values - other.all_values
-        elif isinstance(other, list):
-            return self.all_values - other
-        else:
-            raise NotImplementedError
-
-    def __mul__(self, other):
-        if isinstance(other, Schedule):
-            return self.all_values * other.all_values
-        elif isinstance(other, list):
-            return self.all_values * other
-        else:
-            raise NotImplementedError
-
-    def _repr_svg_(self):
-        """SVG representation for iPython notebook"""
-        fig, ax = self.series.plot2d(cmap="Greys", show=False, fig_width=5, dpi=72)
-        f = io.BytesIO()
-        fig.savefig(f, format="svg")
-        return f.getvalue()
-
-    def get_sdow(self, start_day_of_week):
-        """Returns the start day of the week
-
-        Args:
-            start_day_of_week:
-        """
-        if start_day_of_week is None:
-            try:
-                return self.idf.day_of_week_for_start_day
-            except:
-                return 0
-        else:
-            return start_day_of_week
-
-    def special_day(self, field, slicer_):
-        """try to get the RunPeriodControl:SpecialDays for the corresponding Day
-        Type
-
-        Args:
+            start_date:
+            strict:
             field:
             slicer_:
         """
@@ -1228,7 +1030,7 @@ class Schedule(object):
         sp_slicer_.loc[:] = False
         special_day_types = ["holiday", "customday1", "customday2"]
 
-        dds = self.idf.idfobjects["RunPeriodControl:SpecialDays".upper()]
+        dds = schedule_epbunch.theidf.idfobjects["RunPeriodControl:SpecialDays".upper()]
         dd = [
             dd
             for dd in dds
@@ -1239,36 +1041,40 @@ class Schedule(object):
             for dd in dd:
                 # can have more than one special day types
                 data = dd.Start_Date
-                ep_start_date = self._date_field_interpretation(data)
-                ep_orig = datetime(self.year, 1, 1)
+                ep_start_date = _ScheduleParser._date_field_interpretation(
+                    data, start_date
+                )
+                ep_orig = datetime(start_date.year, 1, 1)
                 days_to_speciald = (ep_start_date - ep_orig).days
                 duration = int(dd.Duration)
-                from_date = self.startDate + timedelta(days=days_to_speciald)
+                from_date = start_date + timedelta(days=days_to_speciald)
                 to_date = from_date + timedelta(days=duration) + timedelta(hours=-1)
 
                 sp_slicer_.loc[from_date:to_date] = True
             return sp_slicer_
-        elif not self.strict:
+        elif not strict:
             return sp_slicer_
         else:
             msg = (
                 'Could not find a "SizingPeriod:DesignDay" object '
-                'needed for schedule "{}" with Day Type "{}"'.format(
-                    self.Name, field.capitalize()
-                )
+                'needed for schedule with Day Type "{}"'.format(field.capitalize())
             )
             raise ValueError(msg)
 
-    def design_day(self, field, slicer_):
-        # try to get the SizingPeriod:DesignDay for the corresponding Day Type
-        """
+    @staticmethod
+    def design_day(schedule_epbunch, field, slicer_, start_date, strict):
+        """Try to get the SizingPeriod:DesignDay for the corresponding Day Type.
+
         Args:
+            strict:
+            start_date:
+            schedule_epbunch:
             field:
             slicer_:
         """
         sp_slicer_ = slicer_.copy()
         sp_slicer_.loc[:] = False
-        dds = self.idf.idfobjects["SizingPeriod:DesignDay".upper()]
+        dds = schedule_epbunch.theidf.idfobjects["SizingPeriod:DesignDay".upper()]
         dd = [dd for dd in dds if dd.Day_Type.lower() == field]
         if len(dd) > 0:
             for dd in dd:
@@ -1276,30 +1082,421 @@ class Schedule(object):
                 month = dd.Month
                 day = dd.Day_of_Month
                 data = str(month) + "/" + str(day)
-                ep_start_date = self._date_field_interpretation(data)
-                ep_orig = datetime(self.year, 1, 1)
+                ep_start_date = _ScheduleParser._date_field_interpretation(
+                    data, start_date
+                )
+                ep_orig = datetime(start_date.year, 1, 1)
                 days_to_speciald = (ep_start_date - ep_orig).days
                 duration = 1  # Duration of 1 day
-                from_date = self.startDate + timedelta(days=days_to_speciald)
+                from_date = start_date + timedelta(days=days_to_speciald)
                 to_date = from_date + timedelta(days=duration) + timedelta(hours=-1)
 
                 sp_slicer_.loc[from_date:to_date] = True
             return sp_slicer_
-        elif not self.strict:
+        elif not strict:
             return sp_slicer_
         else:
             msg = (
-                'Could not find a "SizingPeriod:DesignDay" object '
-                'needed for schedule "{}" with Day Type "{}"'.format(
-                    self.Name, field.capitalize()
-                )
+                f"Could not find a 'SizingPeriod:DesignDay' object "
+                f"needed for schedule with Day Type '{field.capitalize()}'"
             )
             raise ValueError(msg)
-
             data = [dd[0].Month, dd[0].Day_of_Month]
             date = "/".join([str(item).zfill(2) for item in data])
-            date = self._date_field_interpretation(date)
+            date = _ScheduleParser._date_field_interpretation(date, start_date)
             return lambda x: x.index == date
+
+
+class Schedule:
+    """Class handling any EnergyPlus schedule object."""
+
+    def __init__(
+        self,
+        Name,
+        start_day_of_the_week=0,
+        strict=False,
+        Type=None,
+        Values=None,
+        **kwargs,
+    ):
+        """Initialize object.
+
+        Args:
+            Name (str): The schedule name in the idf model.
+            start_day_of_the_week (int): 0-based day of week (Monday=0). Default is
+                None which looks for the start day in the IDF model.
+            strict (bool): if True, schedules that have the Field-Sets such as
+                Holidays and CustomDay will raise an error if they are absent
+                from the IDF file. If False, any missing qualifiers will be
+                ignored.
+            Type (str, ScheduleTypeLimits): This field contains a reference to the
+                Schedule Type Limits object. If found in a list of Schedule Type
+                Limits (see above), then the restrictions from the referenced
+                object will be used to validate the current field values. If None,
+                no validation will occur.
+            Values (ndarray): A 24 or 8760 list of schedule values.
+            **kwargs:
+        """
+        try:
+            super(Schedule, self).__init__(Name, **kwargs)
+        except Exception:
+            pass  # todo: make this more robust
+        self.Name = Name
+        self.strict = strict
+        self.startDayOfTheWeek = start_day_of_the_week
+        self.year = get_year_for_first_weekday(self.startDayOfTheWeek)
+        self.Values = Values
+        self.Type = Type
+
+    @property
+    def Type(self):
+        """Get or set the schedule type limits object. Can be None."""
+        return self._schedule_type_limits
+
+    @Type.setter
+    def Type(self, value):
+        if isinstance(value, str):
+            if "fraction" in value.lower():
+                value = ScheduleTypeLimits("Fractional", 0, 1)
+            elif value.lower() == "temperature":
+                value = ScheduleTypeLimits("Temperature", -100, 100)
+            else:
+                raise ValueError(
+                    f"'{value}' is not a known ScheduleTypeLimits for "
+                    f"{self.Name}. Please instantiate the object before "
+                    f"passing as the 'Type' parameter."
+                )
+            assert isinstance(value, ScheduleTypeLimits), value
+        self._schedule_type_limits = value
+
+    @property
+    def Values(self):
+        """Get or set the list of schedule values."""
+        return self._values
+
+    @Values.setter
+    def Values(self, value):
+        if isinstance(value, np.ndarray):
+            assert value.ndim == 1, value.ndim
+            value = value.tolist()
+        self._values = validators.iterable(value, allow_empty=True)
+
+    @property
+    def Name(self):
+        """Get or set the name of the schedule."""
+        return self._name
+
+    @Name.setter
+    def Name(self, value):
+        self._name = value
+
+    @classmethod
+    def from_values(cls, Name, Values, Type="Fraction", **kwargs):
+        """Create a Schedule from a list of Values.
+
+        Args:
+            Name:
+            Values:
+            Type:
+            **kwargs:
+        """
+        return cls(Name=Name, Values=Values, Type="Fraction", **kwargs)
+
+    @classmethod
+    def from_epbunch(cls, epbunch, strict=False, Type=None, **kwargs):
+        """Create a Schedule from an epbunch.
+
+        Args:
+            epbunch:
+            strict:
+            **kwargs:
+
+        """
+        if Type is None:
+            try:
+                type_limit_ep = epbunch.get_referenced_object(
+                    "Schedule_Type_Limits_Name"
+                )
+                Type = ScheduleTypeLimits.from_epbunch(type_limit_ep)
+            except (BadEPFieldError, AttributeError):
+                pass
+        name = epbunch.Name
+        start_day_of_the_week = epbunch.theidf.day_of_week_for_start_day
+        start_date = datetime(get_year_for_first_weekday(start_day_of_the_week), 1, 1)
+
+        schedule = cls(
+            Name=kwargs.pop("Name", name),
+            epbunch=epbunch,
+            start_day_of_the_week=kwargs.pop(
+                "start_day_of_the_week", start_day_of_the_week
+            ),
+            Type=Type,
+            DataSource=kwargs.pop("DataSource", epbunch.theidf.name),
+            Values=np.array(
+                _ScheduleParser.get_schedule_values(
+                    epbunch, start_date=start_date, strict=strict
+                )
+            ),
+            **kwargs,
+        )
+        return schedule
+
+    @classmethod
+    def constant_schedule(cls, value=1, Name="AlwaysOn", Type="Fraction", **kwargs):
+        """Initialize a schedule with a constant value for the whole year.
+
+        Defaults to a schedule with a value of 1, named 'AlwaysOn'.
+
+        Args:
+            value (float, optional): The value for the constant schedule.
+                Defaults to 1.
+            Name (str, optional): The name of the schedule. Defaults to Always
+                On.
+            **kwargs:
+        """
+        return cls.from_values(
+            Name=Name,
+            Values=np.ones((8760,)) * value,
+            **kwargs,
+        )
+
+    @property
+    def all_values(self) -> np.ndarray:
+        """Return numpy array of schedule Values."""
+        return np.array(self._values)
+
+    @all_values.setter
+    def all_values(self, value):
+        self._values = validators.iterable(value, maximum_length=8760)
+
+    @property
+    def max(self):
+        """Get the maximum value of the schedule."""
+        return max(self.all_values)
+
+    @property
+    def min(self):
+        """Get the minimum value of the schedule."""
+        return min(self.all_values)
+
+    @property
+    def mean(self):
+        """Get the mean value of the schedule."""
+        return np.average(self.all_values)
+
+    @property
+    def series(self):
+        """Return an :class:`EnergySeries`."""
+        index = pd.date_range(
+            start=self.startDate, periods=self.all_values.size, freq="1H"
+        )
+        return EnergySeries(self.all_values, index=index, name=self.Name)
+
+    @staticmethod
+    def get_schedule_type_limits_name(epbunch):
+        """Return the Schedule Type Limits name associated to this schedule."""
+        try:
+            schedule_limit_name = epbunch.Schedule_Type_Limits_Name
+        except Exception:
+            return "unknown"
+        else:
+            return schedule_limit_name
+
+    @property
+    def startDate(self):
+        """Get the start date of the schedule. Satisfies `startDayOfTheWeek`."""
+        year = get_year_for_first_weekday(self.startDayOfTheWeek)
+        return datetime(year, 1, 1)
+
+    def plot(self, slice=None, **kwargs):
+        """Plot the schedule. Implements the .loc accessor on the series object.
+
+        Examples:
+            >>> from archetypal import IDF
+            >>> idf = IDF()
+            >>> epbunch = idf.schedules_dict["NECB-A-Thermostat Setpoint-Heating"]
+            >>> s = Schedule.from_epbunch(epbunch)
+            >>>     )
+            >>> s.plot(slice=("2018/01/02", "2018/01/03"), drawstyle="steps-post")
+
+        Args:
+            slice (tuple): define a 2-tuple object the will be passed to
+                :class:`pandas.IndexSlice` as a range.
+            **kwargs (dict): keyword arguments passed to
+                :meth:`pandas.Series.plot`.
+        """
+        hourlyvalues = self.all_values
+        index = pd.date_range(self.startDate, periods=len(hourlyvalues), freq="1H")
+        series = pd.Series(hourlyvalues, index=index, dtype=float)
+        if slice is None:
+            slice = pd.IndexSlice[:]
+        elif len(slice) > 1:
+            slice = pd.IndexSlice[slice[0] : slice[1]]
+        label = kwargs.pop("label", self.Name)
+        ax = series.loc[slice].plot(**kwargs, label=label)
+        return ax
+
+    def plot2d(self, **kwargs):
+        """Plot the carpet plot of the schedule."""
+        return EnergySeries(self.series, name=self.Name).plot2d(**kwargs)
+
+    plot2d.__doc__ += EnergySeries.plot2d.__doc__
+
+    def to_year_week_day(self):
+        """Convert to three-tuple epbunch given an idf model.
+
+        Returns 'Schedule:Year', 'Schedule:Week:Daily' and 'Schedule:Day:Hourly'
+        representations.
+
+        Returns:
+            3-element tuple containing
+
+            - **yearly** (*Schedule*): The yearly schedule object
+            - **weekly** (*list of Schedule*): The list of weekly schedule
+              objects
+            - **daily** (*list of Schedule*):The list of daily schedule objects
+        """
+        from archetypal.template.schedule import (
+            DaySchedule,
+            WeekSchedule,
+            YearSchedule,
+            YearSchedulePart,
+        )
+
+        full_year = np.array(self.all_values)  # array of shape (8760,)
+
+        # reshape to (365, 24)
+        Values = full_year.reshape(-1, 24)  # shape (365, 24)
+
+        # create unique days
+        unique_days, nds = np.unique(Values, axis=0, return_inverse=True)
+
+        ep_days = []
+        dict_day = {}
+        for count_day, unique_day in enumerate(unique_days):
+            name = f"d_{self.Name}_{count_day:02d}"
+            dict_day[name] = unique_day
+
+            # Create idf_objects for schedule:day:hourly
+            ep_day = DaySchedule(
+                Name=name, Type=self.Type, Values=[unique_day[i] for i in range(24)]
+            )
+            ep_days.append(ep_day)
+
+        # create unique weeks from unique days
+        try:
+            unique_weeks, nwsi, nws, count = np.unique(
+                full_year[: 364 * 24, ...].reshape(-1, 168),
+                return_index=True,
+                axis=0,
+                return_inverse=True,
+                return_counts=True,
+            )
+        except ValueError:
+            raise ValueError(
+                "Looks like the idf model needs to be rerun with 'annual=True'"
+            )
+
+        # We use the calendar module to set the week days order
+        import calendar
+
+        # initialize the calendar object
+        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
+
+        # Appending unique weeks in dictionary with name and values of weeks as
+        # keys
+        # {'name_week': {'dayName':[]}}
+        dict_week = {}
+        for count_week, unique_week in enumerate(unique_weeks):
+            week_id = f"w_{self.Name}_{count_week:02d}"
+            dict_week[week_id] = {}
+            for i, day in zip(list(range(0, 7)), list(c.iterweekdays())):
+                day_of_week = unique_week[..., i * 24 : (i + 1) * 24]
+                for key, ep_day in zip(dict_day, ep_days):
+                    if (day_of_week == dict_day[key]).all():
+                        dict_week[week_id]["day_{}".format(day)] = ep_day
+
+        # Create idf_objects for schedule:week:daily
+
+        # Create ep_weeks list and iterate over dict_week
+        ep_weeks = {}
+        for week_id in dict_week:
+            ep_week = WeekSchedule(
+                Name=week_id,
+                Days=[
+                    dict_week[week_id]["day_{}".format(day_num)]
+                    for day_num in c.iterweekdays()
+                ],
+            )
+            ep_weeks[week_id] = ep_week
+
+        blocks = {}
+        from_date = datetime(self.year, 1, 1)
+        bincount = [sum(1 for _ in group) for key, group in groupby(nws + 1) if key]
+        week_order = {
+            i: v
+            for i, v in enumerate(
+                np.array([key for key, group in groupby(nws + 1) if key]) - 1
+            )
+        }
+        for i, (week_n, count) in enumerate(zip(week_order, bincount)):
+            week_id = list(dict_week)[week_order[i]]
+            to_date = from_date + timedelta(days=int(count * 7), hours=-1)
+            blocks[i] = YearSchedulePart(
+                FromDay=from_date.day,
+                FromMonth=from_date.month,
+                ToDay=to_date.day,
+                ToMonth=to_date.month,
+                Schedule=ep_weeks[week_id],
+            )
+            from_date = to_date + timedelta(hours=1)
+
+            # If this is the last block, force end of year
+            if i == len(bincount) - 1:
+                blocks[i].ToDay = 31
+                blocks[i].ToMonth = 12
+
+        ep_year = YearSchedule(self.Name, Type=self.Type, Parts=list(blocks.values()))
+
+        return ep_year, list(ep_weeks.values()), ep_days
+
+    def __len__(self):
+        """Get the length of all values of the schedule."""
+        return len(self.all_values)
+
+    def __add__(self, other):
+        """Add self and other."""
+        if isinstance(other, Schedule):
+            return self.all_values + other.all_values
+        elif isinstance(other, list):
+            return self.all_values + other
+        else:
+            raise NotImplementedError
+
+    def __sub__(self, other):
+        """Subtract self and other."""
+        if isinstance(other, Schedule):
+            return self.all_values - other.all_values
+        elif isinstance(other, list):
+            return self.all_values - other
+        else:
+            raise NotImplementedError
+
+    def __mul__(self, other):
+        """Multiply self with other."""
+        if isinstance(other, Schedule):
+            return self.all_values * other.all_values
+        elif isinstance(other, list):
+            return self.all_values * other
+        else:
+            raise NotImplementedError
+
+    def _repr_svg_(self):
+        """SVG representation for iPython notebook."""
+        fig, ax = self.series.plot2d(cmap="Greys", show=False, fig_width=5, dpi=72)
+        f = io.BytesIO()
+        fig.savefig(f, format="svg")
+        return f.getvalue()
 
     def combine(self, other, weights=None, quantity=None):
         """Combine two schedule objects together.
@@ -1343,27 +1540,16 @@ class Schedule(object):
         # the new object's name
         name = "+".join([self.Name, other.Name])
 
-        new_obj = self.__class__(name, value=new_values, idf=self.idf)
+        new_obj = self.__class__(name, value=new_values)
 
         return new_obj
 
 
 def _conjunction(*conditions, logical=np.logical_and):
-    """Applies a logical function on n conditions
-
-    Args:
-        *conditions:
-        logical:
-    """
     return functools.reduce(logical, conditions)
 
 
 def _separator(sep):
-    """helper function to return the correct delimiter
-
-    Args:
-        sep:
-    """
     if sep == "Comma":
         return ","
     elif sep == "Tab":
@@ -1377,11 +1563,6 @@ def _separator(sep):
 
 
 def _how(how):
-    """Helper function to return the correct resampler
-
-    Args:
-        how:
-    """
     if how.lower() == "average":
         return "mean"
     elif how.lower() == "linear":
@@ -1393,7 +1574,7 @@ def _how(how):
 
 
 def get_year_for_first_weekday(weekday=0):
-    """Returns the year that starts on weekday, eg. Monday=0"""
+    """Get the year that starts on 'weekday', eg. Monday=0."""
     import calendar
 
     if weekday > 6:

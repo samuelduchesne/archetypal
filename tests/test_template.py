@@ -3064,7 +3064,10 @@ class TestBuildingTemplate:
         return ZoneDefinition(
             Name="Zone 1",
             Constructions=ZoneConstructionSet("Zone 1 Constructions"),
-            Loads=ZoneLoad("Zone 1 Load", LightsAvailabilitySchedule=UmiSchedule.constant_schedule()),
+            Loads=ZoneLoad(
+                "Zone 1 Load",
+                LightsAvailabilitySchedule=UmiSchedule.constant_schedule(),
+            ),
             Conditioning=ZoneConditioning("Zone 1 Conditioning"),
             Ventilation=VentilationSetting("Zone 1 Ventilation"),
             DomesticHotWater=DomesticHotWaterSetting("Zone 1 DHW"),
@@ -3180,7 +3183,10 @@ class TestBuildingTemplate:
 
     def test_reduce(self, zone_definition):
 
-        bt = BuildingTemplate.reduced_model("A Building Template", [zone_definition], )
+        bt = BuildingTemplate.reduced_model(
+            "A Building Template",
+            [zone_definition],
+        )
 
 
 class TestUniqueName(object):

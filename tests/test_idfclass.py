@@ -283,6 +283,7 @@ class TestIDF:
         save_as = tmp_path / "idf_dup.idf"
         idf_dup = idf.saveas(save_as)
 
+
 class TestIDFTransition:
     def test_transition(self, tmp_path):
         f = tmp_path / "test.idf"

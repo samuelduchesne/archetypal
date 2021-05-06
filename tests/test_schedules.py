@@ -190,5 +190,5 @@ def test_ep_versus_schedule(schedule_parametrized):
     # # endregion
 
     print(pd.DataFrame({"actual": orig.series[mask], "expected": expected[mask]}))
-    np.testing.assert_array_equal(orig.all_values, expected, verbose=True)
-    np.testing.assert_array_equal(new.all_values, expected, verbose=True)
+    np.testing.assert_array_almost_equal(orig.all_values, expected, verbose=True)
+    np.testing.assert_array_almost_equal(new.all_values, expected, verbose=True)

@@ -399,7 +399,6 @@ class ZoneLoad(UmiBase):
                 if level_ > 0:
                     return UmiSchedule.from_epbunch(
                         zone_ep.theidf.schedules_dict[sched_name.upper()],
-                        Type=sched_type,
                         quantity=level_,
                     )
 
@@ -462,7 +461,6 @@ class ZoneLoad(UmiBase):
                 sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
                 return UmiSchedule.from_epbunch(
                     zone_ep.theidf.schedules_dict[sched_name.upper()],
-                    Type=sched_type,
                     quantity=series["NumberOfPeople"],
                 )
 

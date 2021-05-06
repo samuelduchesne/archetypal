@@ -556,32 +556,17 @@ class TestUmiTemplate:
 
     @pytest.mark.skipif(
         os.environ.get("CI", "False").lower() == "true",
-        reason="Skipping this test on CI environment because it needs EnergyPlys 8-7-0",
-    )
-    def test_sf_cz5a(self, config):
-        from path import Path
-
-        settings.log_console = False
-        files = Path("tests/input_data/problematic").files("*CZ5A*.idf")
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        template = UmiTemplateLibrary.from_idf_files(
-            name="my_umi_template", idf_files=files, as_version="9-2-0", weather=w
-        )
-        template.to_dict()
-        assert no_duplicates(template.to_dict(), attribute="Name")
-        assert no_duplicates(template.to_dict(), attribute="$id")
-
-    office = [
-        "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-    ]
-
-    @pytest.mark.skipif(
-        os.environ.get("CI", "False").lower() == "true",
         reason="Skipping this test on CI environment",
     )
-    @pytest.mark.parametrize("file", office, ids=["small", "medium", "large"])
+    @pytest.mark.parametrize(
+        "file",
+        (
+            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        ),
+        ids=("small", "medium", "large"),
+    )
     def test_necb_serial(self, file, config):
         settings.log_console = True
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"

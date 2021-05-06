@@ -1080,8 +1080,8 @@ class IDF(geomIDF):
                                 zone.Multiplier if zone.Multiplier != "" else 1
                             )
                             partition_lineal += surface.width * multiplier
-            self._partition_ratio = (
-                partition_lineal / self.net_conditioned_building_area
+            self._partition_ratio = partition_lineal / max(
+                self.net_conditioned_building_area, self.unconditioned_building_area
             )
         return self._partition_ratio
 

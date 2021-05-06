@@ -30,8 +30,14 @@ jobs:
       - name: Display the OS
         run: echo $OSTYPE
         shell: bash
-      - name: Set up GCC
+      - name: Set up GCC Linux
+        if: matrix.os == 'ubuntu-latest' or matrix.os == 'macos-latest'
         uses: egor-tensin/setup-gcc@v1
+        with:
+          platform: x64
+      - name: Set up MinGW
+        if: matrix.os == 'windows-latest'
+        uses: egor-tensin/setup-mingw@v2
         with:
           platform: x64
       - uses: actions/checkout@v2

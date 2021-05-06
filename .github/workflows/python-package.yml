@@ -19,6 +19,8 @@ jobs:
         os: [ macos-latest, ubuntu-latest, windows-latest ]
         energyplus-version: [ 9.2.0 ]  # later, add 9.4.0
         include:
+          - runs-on: ubuntu-latest
+            compiler: gcc
           - energyplus-version: 9.2.0
             energyplus-sha: 921312fa1d
             energyplus-install: 9-2-0

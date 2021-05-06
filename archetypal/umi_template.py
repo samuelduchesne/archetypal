@@ -564,13 +564,14 @@ class UmiTemplateLibrary:
     def to_dict(self):
         """Return UmiTemplateLibrary dictionary representation."""
         # First, reset existing name
-        UniqueName.existing = set()
 
         # Create ordered dict with empty list
         data_dict = OrderedDict([(key, []) for key in self._LIB_GROUPS])
 
         # create dict values
         for group_name, group in self:
+            # reset unique names for group
+            UniqueName.existing = set()
             obj: UmiBase
             for obj in group:
                 data = obj.to_dict()

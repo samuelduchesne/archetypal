@@ -488,15 +488,14 @@ class _ScheduleParser:
                     fors = value.split()
                     if len(fors) > 1:
                         # if multiple `For`. eg.: For: Weekends Holidays,
-                        # Combine both conditions
+                        # Combine all conditions
                         for value in fors:
                             if value.lower() == "allotherdays":
                                 # Apply condition to slice
                                 how = _ScheduleParser._field_set(
                                     epbunch, value, start_date, slicer_, strict
                                 )
-                                # Reset through condition
-                                through_conditions = how
+                                # Reset for condition
                                 for_condition = how
                             else:
                                 how = _ScheduleParser._field_set(
@@ -509,8 +508,7 @@ class _ScheduleParser:
                         how = _ScheduleParser._field_set(
                             epbunch, value, start_date, slicer_, strict
                         )
-                        # Reset through condition
-                        through_conditions = how
+                        # Reset for condition
                         for_condition = how
                     else:
                         # Apply condition to slice
@@ -1040,17 +1038,18 @@ class _ScheduleParser:
         if len(dd) > 0:
             for dd in dd:
                 # can have more than one special day types
-                data = dd.Start_Date
-                ep_start_date = _ScheduleParser._date_field_interpretation(
-                    data, start_date
+                field = dd.Start_Date
+                special_day_start_date = _ScheduleParser._date_field_interpretation(
+                    field, start_date
                 )
-                ep_orig = datetime(start_date.year, 1, 1)
-                days_to_speciald = (ep_start_date - ep_orig).days
                 duration = int(dd.Duration)
-                from_date = start_date + timedelta(days=days_to_speciald)
-                to_date = from_date + timedelta(days=duration) + timedelta(hours=-1)
+                to_date = (
+                    special_day_start_date
+                    + timedelta(days=duration)
+                    + timedelta(hours=-1)
+                )
 
-                sp_slicer_.loc[from_date:to_date] = True
+                sp_slicer_.loc[special_day_start_date:to_date] = True
             return sp_slicer_
         elif not strict:
             return sp_slicer_

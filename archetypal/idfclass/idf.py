@@ -1125,7 +1125,8 @@ class IDF(geomIDF):
         if run_period:
             day = run_period["Day_of_Week_for_Start_Day"]
         else:
-            raise ValueError("model does not contain a 'RunPeriod'")
+            log("model does not contain a 'RunPeriod'. Defaulting to Sunday.")
+            day = "Sunday"
 
         if day.lower() == "sunday":
             return calendar.SUNDAY

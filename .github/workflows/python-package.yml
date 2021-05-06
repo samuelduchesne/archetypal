@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [ 3.7, 3.8, 3.9 ]
+        python-version: [ 3.7, 3.8 ]
         os: [ macos-latest, ubuntu-latest, windows-latest ]
         energyplus-version: [ 9.2.0 ]  # later, add 9.4.0
         include:
@@ -37,10 +37,6 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.8
-      - name: Use cmake
-        run: cmake --version
       - name: Install EnergyPlus
         env:
           ENERGYPLUS_VERSION: ${{ matrix.energyplus-version }}
@@ -63,7 +59,7 @@ jobs:
         if: success()
         run: |
           python -m pip install --upgrade pip
-          python -m pip install flake8 pytest-cov pytest-xdist[psutil] cython requests jinja2 pyyaml pycrypto wheel
+          python -m pip install flake8 pytest-cov pytest-xdist[psutil]
           python -m pip install -r requirements.txt -r requirements-dev.txt
       - name: Lint with flake8
         run: |

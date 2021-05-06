@@ -2025,8 +2025,8 @@ class TestZoneLoad:
         zl_combined = ZoneLoad.combine(zl, zl_2, weights=[zl.area, zl_2.area])
 
         # zl_combined = zl + zl_2
-        assert zl_combined.EquipmentPowerDensity == 15
-        assert zl_combined.area == 2
+        assert zl_combined.EquipmentPowerDensity == 10
+        assert zl_combined.area == 100
 
 
 class TestZoneConditioning:

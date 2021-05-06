@@ -134,6 +134,8 @@ def idf():
 def warehouse(config, request):
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF.from_example_files(request.param, epw=w, annual=True)
+    if idf.sim_info is None:
+        idf.simulate()
     yield idf
 
 
@@ -1822,7 +1824,7 @@ class TestZoneConstructionSet:
             construction_set.Name == construction_set_dup.Name == "A construction set"
         )
 
-    def test_zone_construction_set_from_zone(self, config, warehouse):
+    def test_zone_construction_set_from_zone(self, warehouse):
         """Test from zone epbunch"""
         zone = warehouse.getobject("ZONE", "Office")
         z = ZoneDefinition.from_epbunch(ep_bunch=zone)
@@ -1893,8 +1895,6 @@ class TestZoneLoad:
     def test_zoneLoad_from_zone(self, warehouse):
         """"""
         idf = warehouse
-        if idf.sim_info is None:
-            idf.simulate()
         zone = idf.getobject("ZONE", "Office")
         z = ZoneDefinition.from_epbunch(ep_bunch=zone)
         zone_loads = ZoneLoad.from_zone(z, zone)

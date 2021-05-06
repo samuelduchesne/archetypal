@@ -2493,6 +2493,7 @@ class TestDomesticHotWaterSetting:
         dhw = DomesticHotWaterSetting.from_zone(zone)
         assert dhw
 
+    @pytest.mark.skip()
     def test_whole_building(self, five_zone_water_systems):
         dhws = {}
         for zone in five_zone_water_systems.idfobjects["ZONE"]:

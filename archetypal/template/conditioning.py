@@ -620,7 +620,9 @@ class ZoneConditioning(UmiBase):
 
     @HeatRecoveryEfficiencySensible.setter
     def HeatRecoveryEfficiencySensible(self, value):
-        self._heat_recovery_efficiency_sensible = value
+        self._heat_recovery_efficiency_sensible = validators.float(
+            value, minimum=0, maximum=1
+        )
 
     @classmethod
     def from_dict(cls, data, schedules, **kwargs):

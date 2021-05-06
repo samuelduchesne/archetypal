@@ -17,6 +17,8 @@ from archetypal.utils import log
 class UmiSchedule(Schedule, UmiBase):
     """Class that handles Schedules."""
 
+    __slots__ = ("_quantity", )
+
     def __init__(self, Name, quantity=None, **kwargs):
         """Initialize object with parameters.
 
@@ -27,6 +29,15 @@ class UmiSchedule(Schedule, UmiBase):
         """
         super(UmiSchedule, self).__init__(Name, **kwargs)
         self.quantity = quantity
+
+    @property
+    def quantity(self):
+        """Get or set the schedule quantity."""
+        return self._quantity
+
+    @quantity.setter
+    def quantity(self, value):
+        self._quantity = value
 
     @classmethod
     def constant_schedule(cls, value=1, Name="AlwaysOn", Type="Fraction", **kwargs):

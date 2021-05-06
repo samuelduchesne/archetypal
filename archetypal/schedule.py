@@ -1157,7 +1157,7 @@ class Schedule:
     def Type(self, value):
         if isinstance(value, str):
             if "fraction" in value.lower():
-                value = ScheduleTypeLimits("Fractional", 0, 1)
+                value = ScheduleTypeLimits("Fraction", 0, 1)
             elif value.lower() == "temperature":
                 value = ScheduleTypeLimits("Temperature", -100, 100)
             else:
